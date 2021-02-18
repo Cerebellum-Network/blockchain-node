@@ -1,12 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-	decl_error, decl_event, decl_module, decl_storage, 
+	decl_error, decl_event, decl_module, decl_storage,
+	// dispatch,
 	ensure,
 	traits::{ Get },
 };
 use frame_system::ensure_signed;
 
+/// Edit this file to define custom logic or remove it if it is not needed.
+/// Learn more about FRAME and the core library of Substrate FRAME pallets:
+/// https://substrate.dev/docs/en/knowledgebase/runtime/frame
 use sp_std::prelude::*;
 
 #[cfg(test)]
@@ -27,18 +31,28 @@ pub trait Trait: frame_system::Trait {
 	type MaxLength: Get<usize>;
 }
 
+// The pallet's runtime storage items.
+// https://substrate.dev/docs/en/knowledgebase/runtime/storage
 decl_storage! {
+	// A unique name is used to ensure that the pallet's storage items are isolated.
+	// This name may be updated, but each pallet in the runtime must use a unique name.
+	// ---------------------------------vvvvvvvvvvvvvv
 	trait Store for Module<T: Trait> as CereDDCModule {
 		/// The lookup table for string.
 		StringDataOf: map hasher(twox_64_concat) T::AccountId => Option<Vec<u8>>;
 	}
 }
 
+// Pallets use events to inform users when important changes are made.
+// https://substrate.dev/docs/en/knowledgebase/runtime/events
 decl_event!(
-	pub enum Event<T> where AccountId = <T as frame_system::Trait>::AccountId {
+	pub enum Event<T>
+	where
+		AccountId = <T as frame_system::Trait>::AccountId,
+	{
 		/// A data string was set. \[who\]
 		DataStringSet(AccountId),
-
+	
 		/// A data string was changed. \[who\]
 		DataStringChanged(AccountId),
 	}
