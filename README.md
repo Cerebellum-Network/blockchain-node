@@ -3,10 +3,9 @@
 ### Dispatchable Functions
 * `send_data` - Send string data to another account.
 
-### Command to test
-# Clone from git to /frame folder
+### Instruction to import this pallet to node
+# From project root folder
 cd ./frame
-git clone https://github.com/Cerebellum-Network/ddc-pallet
 cd ./ddc-pallet
 git checkout feat/ddc-pallet-integration
 
@@ -64,19 +63,5 @@ construct_runtime!(
         CereDDCModule: pallet_cere_ddc::{Module, Call, Storage, Event<T>},
 	}
 );
-# Change to root project folder then build source by command
-cargo build --release
-
-## Github: Avaiable soon
-# Add dependency for ddc-pallet
-In ./bin/node/runtime/Cargo.toml add
-# frame dependencies
-frame-executive = { version = "2.0.0", default-features = false, path = "../../../frame/executive" }
-...
-pallet-cere-ddc = { version = "2.0.0", default-features = false }
-
-# Modify source in runtime
-In .bin/node/runtime/src/lib.rs find "construct_runtime!" then add source like above:
-
 # Change to root project folder then build source by command
 cargo build --release
