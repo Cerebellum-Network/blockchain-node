@@ -7,12 +7,8 @@
 # Clone from git to /frame folder
 cd ./frame
 git clone https://github.com/Cerebellum-Network/ddc-pallet
-# Check by command
 cd ./ddc-pallet
-SKIP_WASM_BUILD=1 cargo check
-
-# Test by command
-SKIP_WASM_BUILD=1 cargo test
+git checkout feat/ddc-pallet-integration
 
 ### Import to node instruction
 ## Frame structure node:
@@ -28,21 +24,19 @@ members = [
     "utils/wasm-builder",
 ]
 
+# Check by command
+SKIP_WASM_BUILD=1 cargo check
+
+# Test by command
+SKIP_WASM_BUILD=1 cargo test
+
 In ./bin/node/runtime/Cargo.toml add
 # frame dependencies
 frame-executive = { version = "2.0.0", default-features = false, path = "../../../frame/executive" }
 ...
 pallet-cere-ddc = { version = "2.0.0", default-features = false, path = "../../../frame/ddc-pallet" }
 
-[features]
-default = ["std"]
-with-tracing = [ "frame-executive/with-tracing" ]
-std = [
-    ...
-    "pallet-cere-ddc/std",
-]
-
-In .bin/node/runtime/src/lib.rs add
+In .bin/node/runtime/src/lib.rs find "construct_runtime!" then add bellow source:
 parameter_types! {
 	// Minimum bounds on storage are important to secure your chain.
 	pub const MinDataLength: usize = 1;
@@ -70,18 +64,19 @@ construct_runtime!(
         CereDDCModule: pallet_cere_ddc::{Module, Call, Storage, Event<T>},
 	}
 );
+# Change to root project folder then build source by command
+cargo build --release
 
-## Github:
+## Github: Avaiable soon
+# Add dependency for ddc-pallet
 In ./bin/node/runtime/Cargo.toml add
 # frame dependencies
 frame-executive = { version = "2.0.0", default-features = false, path = "../../../frame/executive" }
 ...
-pallet-cere-ddc = { version = "2.0.0", default-features = false, path = "../../../frame/ddc-pallet" }
+pallet-cere-ddc = { version = "2.0.0", default-features = false }
 
-[features]
-default = ["std"]
-with-tracing = [ "frame-executive/with-tracing" ]
-std = [
-    ...
-    "pallet-cere-ddc/std",
-]
+# Modify source in runtime
+In .bin/node/runtime/src/lib.rs find "construct_runtime!" then add source like above:
+
+# Change to root project folder then build source by command
+cargo build --release
