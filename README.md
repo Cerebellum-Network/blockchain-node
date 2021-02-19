@@ -4,10 +4,10 @@ A module for sending encrypted string data to another account.
 
 ## Overview
 
-The Assets module provides functionality for sending data to another account, including:
+DDC - Decentralized Data Cloud by Cere Network. The module provides functionality for sending data to another account, including:
 
 * Send Data
-To use it in your runtime, you need to implement the assets follow below instructions.
+To use it in your runtime, you need to implement the module follow below instructions.
 
 ### Terminology
 
@@ -141,4 +141,6 @@ them are violated, the behavior of this module is undefined.
 * [`System`](https://docs.rs/frame-system/latest/frame_system/)
 * [`Support`](https://docs.rs/frame-support/latest/frame_support/)
 
-License: Apache-2.0
+## License: Apache-2.0
+
+* [`LICENSE-APACHE2`](https://github.com/paritytech/substrate/blob/master/LICENSE-APACHE2)
