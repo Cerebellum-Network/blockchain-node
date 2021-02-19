@@ -1,41 +1,83 @@
-### Cere Network DDC Pallet
+# CereDDCModule
+
+A module for sending encrypted string data to another account.
+
+## Overview
+
+The Assets module provides functionality for sending data to another account, including:
+
+* Send Data
+To use it in your runtime, you need to implement the assets follow below instructions.
+
+### Terminology
+
+### Goals
+
+A account can send encrypted string data to another account.
+
+* String data can be updated.
+
+## Interface
 
 ### Dispatchable Functions
-* `send_data` - Send string data to another account.
 
-### Instruction to import this pallet to node
-# From project root folder
-cd ./frame
-cd ./ddc-pallet
+* `send_data` - Transfers an `data` of encrypted string from the function caller's account (`origin`) to a `send_to` account.
+
+### Public Functions
+
+* `stringDataOf` - Get the string data of `AccountId`.
+* `send_data` - Send encrypted string data to another account.
+
+## Usage
+
+* Go to Developer -> Extrinsic submission sub menu, submit the cereDdcModule's send_data method.
+* Go to Developer -> Chain state sub menu, query chain state of the cereDdcModule's stringDataOf.
+
+### Prerequisites
+
+Import the CereDDCModule and derive your runtime's configuration traits from the CereDDCModule trait.
+
+### Import Instruction
+
+* Pull ddc-pallet. From project root folder:
+```bash
+git submodule update --remote
+```
+
+* (Optional) Specify the branch of ddc-pallet. From project root folder:
+```bash
+cd ./frame/ddc-pallet
 git checkout feat/ddc-pallet-integration
+```
 
-### Import to node instruction
-## Frame structure node:
+* Import to frame structure node:
 In ./Cargo.toml add
+```rust
 [workspace]
 members = [
 	"bin/node-template/node",
-    ...
-    "frame/vesting",
+	...
+	"frame/vesting",
 	"frame/ddc-pallet",
 	"primitives/allocator",
-    ...
-    "utils/wasm-builder",
+	...
+	"utils/wasm-builder",
 ]
+```
 
-# Check by command
-SKIP_WASM_BUILD=1 cargo check
-
-# Test by command
-SKIP_WASM_BUILD=1 cargo test
+### Code Snippet
 
 In ./bin/node/runtime/Cargo.toml add
-# frame dependencies
+```rust
 frame-executive = { version = "2.0.0", default-features = false, path = "../../../frame/executive" }
 ...
 pallet-cere-ddc = { version = "2.0.0", default-features = false, path = "../../../frame/ddc-pallet" }
+```
 
 In .bin/node/runtime/src/lib.rs find "construct_runtime!" then add bellow source:
+```rust
+pub use pallet_cere_ddc;
+...
 parameter_types! {
 	// Minimum bounds on storage are important to secure your chain.
 	pub const MinDataLength: usize = 1;
@@ -63,5 +105,40 @@ construct_runtime!(
         CereDDCModule: pallet_cere_ddc::{Module, Call, Storage, Event<T>},
 	}
 );
-# Change to root project folder then build source by command
+```
+
+### Command List
+* Check before compiling node by command:
+```bash
+cd ./frame/ddc-pallet
+SKIP_WASM_BUILD=1 cargo check
+```
+
+* Run unit test command:
+```bash
+cd ./frame/ddc-pallet
+SKIP_WASM_BUILD=1 cargo test
+```
+
+* Build and run node. From project root folder:
+```bash
 cargo build --release
+./target/release/cere --dev --ws-external
+```
+
+## Assumptions
+
+Below are assumptions that must be held when using this module.  If any of
+them are violated, the behavior of this module is undefined.
+
+* The length of string data should be grater than
+  `1`.
+* The length of string data should be less than
+  `usize::MAX`.
+
+## Related Modules
+
+* [`System`](https://docs.rs/frame-system/latest/frame_system/)
+* [`Support`](https://docs.rs/frame-support/latest/frame_support/)
+
+License: Apache-2.0
