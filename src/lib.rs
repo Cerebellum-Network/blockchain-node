@@ -36,10 +36,10 @@ use alloc::string::String;
 
 // The address of the metrics contract, in SS58 and in bytes formats.
 // To change the address, see tests/mod.rs decode_contract_address().
-pub const METRICS_CONTRACT_ADDR: &str = "5CBDU7AXzUcbR2saazoAEzKoZZQCjYGDNhHJJwp7aVv99XS7";
+pub const METRICS_CONTRACT_ADDR: &str = "5EFhuVjnUTH4fkvapxyXqkfmANQWFVGZtmkHd4GaWmhgrCLS";
 // address params: no salt, symbol: CERE, endowement: 1000
-pub const METRICS_CONTRACT_ID: [u8; 32] = [4, 247, 38, 230, 181, 229, 227, 165, 46, 194, 162, 155, 227, 62, 90, 178, 36, 243, 37, 206, 197, 162, 205, 148, 27, 31, 221, 123, 184, 78, 65, 2];
-pub const BLOCK_INTERVAL: u32 = 200; // TODO: Change to 1200 later [1h]. Now - 200 [10 minutes] for testing purposes.
+pub const METRICS_CONTRACT_ID: [u8; 32] = [96, 220, 84, 153, 65, 96, 13, 180, 40, 98, 142, 110, 218, 127, 9, 17, 182, 152, 78, 174, 24, 37, 26, 27, 128, 215, 170, 18, 3, 3, 69, 60];
+pub const BLOCK_INTERVAL: u32 = 10;
 
 pub const REPORT_METRICS_SELECTOR: [u8; 4] = hex!("35320bbe");
 
@@ -192,6 +192,8 @@ decl_module! {
 
 decl_storage! {
 	trait Store for Module<T: Trait> as ExampleOffchainWorker {
+        ConfigInfo get(fn something): Option<[u8; 32]>;
+        // ContractId get(fn setcontractid): <<T::CT as frame_system::Trait>::Lookup as StaticLookup>::Source;
 	}
 }
 
@@ -227,6 +229,10 @@ impl<T: Trait> Module<T> {
             })?;
 
         Ok(())
+    }
+
+    pub fn set_constart_address(value: [u8; 32]) {
+        ConfigInfo::put(value);
     }
 
     fn check_if_should_proceed(block_number: T::BlockNumber) -> bool {
@@ -276,6 +282,23 @@ impl<T: Trait> Module<T> {
         day_start_ms: u64,
         metrics: Vec<MetricInfo>,
     ) -> ResultStr<()> {
+
+        // Have value in config
+
+        // Get from persistent
+        let sc_address_store = StorageValueRef::persistent(b"example-offchain-worker::sc_address");
+        let sc_address = sc_address_store.get::<[u8; 32]>().unwrap();
+        debug::info!("------------- [OCW] sc_address {:?}:", sc_address.unwrap());
+
+        // Set to config
+        Self::set_constart_address(sc_address.unwrap());
+
+        // Get value in config
+        debug::info!("------------- [OCW] internal store {:?}:", ConfigInfo::get().unwrap());
+
+        let acc_id_temp = T::AccountId::from_raw(ConfigInfo::get().unwrap());
+        let contract_id: <<<T as Trait>::CT as frame_system::Trait>::Lookup as StaticLookup>::Source = <<T as Trait>::CT as frame_system::Trait>::Lookup::unlookup(acc_id_temp);
+
         for one_metric in metrics.iter() {
             let app_id = Self::account_id_from_hex(&one_metric.appPubKey)?;
 
@@ -290,7 +313,7 @@ impl<T: Trait> Module<T> {
                     let call_data = Self::encode_report_metrics(&app_id, day_start_ms, one_metric.bytes, one_metric.requests);
 
                     pallet_contracts::Call::call(
-                        T::ContractId::get(),
+                        contract_id,
                         0u32.into(),
                         100_000_000_000,
                         call_data,
@@ -455,7 +478,7 @@ decl_event!(
 
 
 pub trait Trait: frame_system::Trait {
-    type ContractId: Get<<<Self::CT as frame_system::Trait>::Lookup as StaticLookup>::Source>;
+    // type ContractId: Get<<<Self::CT as frame_system::Trait>::Lookup as StaticLookup>::Source>;
     type DdcUrl: Get<Vec<u8>>;
 
     type CT: pallet_contracts::Trait;
