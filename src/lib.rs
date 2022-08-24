@@ -20,9 +20,9 @@ mod mock;
 mod tests;
 
 /// Configure the pallet by specifying the parameters and types on which it depends.
-pub trait Trait: frame_system::Trait {
+pub trait Config: frame_system::Config {
 	/// Because this pallet emits events, it depends on the runtime's definition of an event.
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 
 	/// The minimum length a name may be.
 	type MinLength: Get<usize>;
@@ -37,7 +37,7 @@ decl_storage! {
 	// A unique name is used to ensure that the pallet's storage items are isolated.
 	// This name may be updated, but each pallet in the runtime must use a unique name.
 	// ---------------------------------vvvvvvvvvvvvvv
-	trait Store for Module<T: Trait> as CereDDCModule {
+	trait Store for Module<T: Config> as CereDDCModule {
 		/// The lookup table for string.
 		StringDataOf: map hasher(twox_64_concat) T::AccountId => Option<Vec<u8>>;
 	}
@@ -48,7 +48,7 @@ decl_storage! {
 decl_event!(
 	pub enum Event<T>
 	where
-		AccountId = <T as frame_system::Trait>::AccountId,
+		AccountId = <T as frame_system::Config>::AccountId,
 	{
 		/// A data string was set. \[who\]
 		DataStringSet(AccountId),
@@ -60,7 +60,7 @@ decl_event!(
 
 // Errors inform users that something went wrong.
 decl_error! {
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		/// A name is too short.
 		TooShort,
 		/// A name is too long.
@@ -73,7 +73,7 @@ decl_error! {
 // Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 decl_module! {
 	/// CereDDCModule declaration.
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		// Errors must be initialized if they are used by the pallet.
 		type Error = Error<T>;
 
