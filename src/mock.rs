@@ -18,6 +18,18 @@ parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
 
+/// A PalletInfo implementation which just panics.
+pub struct PanicPalletInfo;
+
+impl frame_support::traits::PalletInfo for PanicPalletInfo {
+	fn index<P: 'static>() -> Option<usize> {
+		unimplemented!("PanicPalletInfo mustn't be triggered by tests");
+	}
+	fn name<P: 'static>() -> Option<&'static str> {
+		unimplemented!("PanicPalletInfo mustn't be triggered by tests");
+	}
+}
+
 impl system::Config for Test {
 	type BaseCallFilter = ();
 	type BlockWeights = ();
@@ -35,7 +47,7 @@ impl system::Config for Test {
 	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
 	type Version = ();
-	type PalletInfo = ();
+	type PalletInfo = PanicPalletInfo;
 	type AccountData = ();
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
