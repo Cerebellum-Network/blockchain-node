@@ -1,8 +1,8 @@
-use crate::{Module, Config};
+use crate::{Module};
 use sp_core::H256;
-use frame_support::{construct_runtime, parameter_types, weights::Weight};
+use frame_support::{construct_runtime, parameter_types};
 use sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
+	traits::{BlakeTwo256, IdentityLookup}, testing::Header,
 };
 use frame_system as system;
 use crate as pallet_cere_ddc;
@@ -22,8 +22,6 @@ construct_runtime!(
 	}
 );
 
-#[derive(Clone, Eq, PartialEq)]
-pub struct Test;
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 }
@@ -63,8 +61,6 @@ impl pallet_cere_ddc::Config for Test {
 	type MinLength = MinLength;
 	type MaxLength = MaxLength;
 }
-
-pub type CereDDCModule = Module<Test>;
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
