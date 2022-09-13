@@ -88,10 +88,10 @@ Import the CereDDCModule and derive your runtime configuration traits from the C
     		NodeBlock = node_primitives::Block,
     		UncheckedExtrinsic = UncheckedExtrinsic
     	{
-    		System: frame_system::{Module, Call, Config, Storage, Event<T>},
+    		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
             ...
-            Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-            CereDDCModule: pallet_cere_ddc::{Module, Call, Storage, Event<T>},
+            Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
+            CereDDCModule: pallet_cere_ddc::{Pallet, Call, Storage, Event<T>},
     	}
     );
     ```
