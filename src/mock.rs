@@ -17,8 +17,8 @@ construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		CereDDCModule: pallet_cere_ddc::{Module, Call, Storage, Event<T>},
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		CereDDCModule: pallet_cere_ddc::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
