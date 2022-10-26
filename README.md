@@ -58,9 +58,9 @@ Import the CereDDCModule and derive your runtime configuration traits from the C
 
 1. In ./bin/node/runtime/Cargo.toml add:
     ```rust
-    frame-executive = { version = "2.0.0", default-features = false, path = "../../../frame/executive" }
+    frame-executive = { version = "4.0.0-dev", default-features = false, path = "../../../frame/executive" }
     ...
-    pallet-cere-ddc = { version = "6.1.1", default-features = false, path = "../../../frame/ddc-pallet" }
+    pallet-cere-ddc = { version = "7.0.0", default-features = false, path = "../../../frame/ddc-pallet" }
     ```
 
 1. In .bin/node/runtime/src/lib.rs find "construct_runtime!" then add bellow source:
