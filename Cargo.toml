@@ -6,7 +6,7 @@ homepage = 'https://www.cere.network/'
 license = 'Unlicense'
 name = 'pallet-cere-ddc'
 repository = 'https://github.com/Cerebellum-Network/ddc-pallet'
-version = '6.1.2'
+version = '7.0.1'
 readme = 'README.md'
 
 [package.metadata.docs.rs]
