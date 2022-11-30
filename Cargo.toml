@@ -1,12 +1,12 @@
 [package]
 authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
 description = 'FRAME pallet template for defining custom runtime logic.'
-edition = '2018'
+edition = '2021'
 homepage = 'https://www.cere.network/'
 license = 'Unlicense'
 name = 'pallet-cere-ddc'
 repository = 'https://github.com/Cerebellum-Network/ddc-pallet'
-version = '7.2.0'
+version = '7.3.0'
 readme = 'README.md'
 
 [package.metadata.docs.rs]
