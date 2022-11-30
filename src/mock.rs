@@ -1,6 +1,9 @@
 use crate::{Module};
 use sp_core::H256;
-use frame_support::{construct_runtime, parameter_types};
+use frame_support::{
+	traits::{Everything},
+	construct_runtime, parameter_types
+};
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup}, testing::Header,
 };
@@ -27,7 +30,7 @@ parameter_types! {
 }
 
 impl system::Config for Test {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
