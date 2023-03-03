@@ -1,16 +1,11 @@
-//! DDCStaking pallet benchmarking.
+//! DddcStaking pallet benchmarking.
 
 use super::*;
-use crate::Pallet as DDCStaking;
+use crate::Pallet as DddcStaking;
 use testing_utils::*;
 
-use frame_support::{
-	traits::Currency,
-	ensure
-};
-use sp_runtime::{
-	traits::{StaticLookup}
-};
+use frame_support::{ensure, traits::Currency};
+use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
 pub use frame_benchmarking::{
@@ -21,32 +16,32 @@ use frame_system::RawOrigin;
 const SEED: u32 = 0;
 
 pub fn clear_storages_with_edges<T: Config>(
-  n_storages: u32,
-  n_edges: u32,
-) -> Result<(Vec<<T::Lookup as StaticLookup>::Source>, Vec<<T::Lookup as StaticLookup>::Source>), &'static str> {
+	n_storages: u32,
+	n_edges: u32,
+) -> Result<
+	(Vec<<T::Lookup as StaticLookup>::Source>, Vec<<T::Lookup as StaticLookup>::Source>),
+	&'static str,
+> {
 	// Clean up any existing state.
 	clear_storages_and_edges::<T>();
 
-  // Create new storages
-	let mut storages: Vec<<T::Lookup as StaticLookup>::Source> = Vec::with_capacity(n_storages as usize);
+	// Create new storages
+	let mut storages: Vec<<T::Lookup as StaticLookup>::Source> =
+		Vec::with_capacity(n_storages as usize);
 	for i in 0..n_storages {
-		let (stash, controller) =
-			create_stash_controller::<T>(i + SEED, 100)?;
-		let storage_prefs =
-			StoragePrefs { foo: true };
-		DDCStaking::<T>::store(RawOrigin::Signed(controller).into(), storage_prefs)?;
+		let (stash, controller) = create_stash_controller::<T>(i + SEED, 100)?;
+		let storage_prefs = StoragePrefs { foo: true };
+		DddcStaking::<T>::store(RawOrigin::Signed(controller).into(), storage_prefs)?;
 		let stash_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(stash);
 		storages.push(stash_lookup);
 	}
 
-  // Create new edges
-  let mut edges: Vec<<T::Lookup as StaticLookup>::Source> = Vec::with_capacity(n_edges as usize);
+	// Create new edges
+	let mut edges: Vec<<T::Lookup as StaticLookup>::Source> = Vec::with_capacity(n_edges as usize);
 	for i in 0..n_edges {
-		let (stash, controller) =
-			create_stash_controller::<T>(i + SEED, 100)?;
-		let edge_prefs =
-			EdgePrefs { foo: true };
-		DDCStaking::<T>::serve(RawOrigin::Signed(controller).into(), edge_prefs)?;
+		let (stash, controller) = create_stash_controller::<T>(i + SEED, 100)?;
+		let edge_prefs = EdgePrefs { foo: true };
+		DddcStaking::<T>::serve(RawOrigin::Signed(controller).into(), edge_prefs)?;
 		let stash_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(stash);
 		edges.push(stash_lookup);
 	}
@@ -72,21 +67,15 @@ impl<T: Config> ListScenario<T> {
 
 		// create accounts with the origin weight
 
-		let (origin_stash1, origin_controller1) = create_stash_controller_with_balance::<T>(
-			USER_SEED + 2,
-			origin_weight,
-		)?;
+		let (origin_stash1, origin_controller1) =
+			create_stash_controller_with_balance::<T>(USER_SEED + 2, origin_weight)?;
 
-		let (_origin_stash2, _origin_controller2) = create_stash_controller_with_balance::<T>(
-			USER_SEED + 3,
-			origin_weight,
-		)?;
+		let (_origin_stash2, _origin_controller2) =
+			create_stash_controller_with_balance::<T>(USER_SEED + 3, origin_weight)?;
 
 		// create an account with the worst case destination weight
-		let (_dest_stash1, _dest_controller1) = create_stash_controller_with_balance::<T>(
-			USER_SEED + 1,
-			origin_weight,
-		)?;
+		let (_dest_stash1, _dest_controller1) =
+			create_stash_controller_with_balance::<T>(USER_SEED + 1, origin_weight)?;
 
 		Ok(ListScenario { origin_stash1, origin_controller1, dest_weight: origin_weight })
 	}
@@ -164,7 +153,7 @@ benchmarks! {
 	withdraw_unbonded {
 		let (stash, controller) = create_stash_controller::<T>(0, 100)?;
 		let amount = T::Currency::minimum_balance() * 5u32.into(); // Half of total
-		DDCStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into(), amount)?;
+		DddcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into(), amount)?;
 		CurrentEra::<T>::put(EraIndex::max_value());
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_total: BalanceOf<T> = ledger.total;
@@ -221,4 +210,3 @@ benchmarks! {
 	verify {
 	}
 }
-
