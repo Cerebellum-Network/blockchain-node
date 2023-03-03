@@ -45,7 +45,11 @@ use frame_system::{
 };
 pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
+pub use pallet_cere_ddc;
+pub use pallet_chainbridge;
 use pallet_contracts::weights::WeightInfo;
+pub use pallet_ddc_metrics_offchain_worker;
+pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -58,6 +62,7 @@ use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_inherents::{CheckInherentsResult, InherentData};
+use sp_io::hashing::blake2_128;
 use sp_runtime::{
 	create_runtime_str,
 	curve::PiecewiseLinear,
@@ -69,18 +74,11 @@ use sp_runtime::{
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
 };
-use sp_io::{
-	hashing::{blake2_128},
-};
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
-pub use pallet_cere_ddc;
-pub use pallet_chainbridge;
-pub use pallet_ddc_metrics_offchain_worker;
-pub use pallet_ddc_staking;
 
 #[cfg(any(feature = "std", test))]
 pub use frame_system::Call as SystemCall;
@@ -1175,7 +1173,7 @@ impl pallet_cere_ddc::Config for Runtime {
 
 parameter_types! {
 	pub const ChainId: u8 = 1;
-    pub const ProposalLifetime: BlockNumber = 1000;
+	pub const ProposalLifetime: BlockNumber = 1000;
 }
 
 /// Configure the send data pallet
@@ -1188,11 +1186,11 @@ impl pallet_chainbridge::Config for Runtime {
 }
 
 parameter_types! {
-    pub HashId: pallet_chainbridge::ResourceId = pallet_chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
-    // Note: Chain ID is 0 indicating this is native to another chain
-    pub NativeTokenId: pallet_chainbridge::ResourceId = pallet_chainbridge::derive_resource_id(0, &blake2_128(b"DAV"));
+	pub HashId: pallet_chainbridge::ResourceId = pallet_chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+	// Note: Chain ID is 0 indicating this is native to another chain
+	pub NativeTokenId: pallet_chainbridge::ResourceId = pallet_chainbridge::derive_resource_id(0, &blake2_128(b"DAV"));
 
-    pub NFTTokenId: pallet_chainbridge::ResourceId = pallet_chainbridge::derive_resource_id(1, &blake2_128(b"NFT"));
+	pub NFTTokenId: pallet_chainbridge::ResourceId = pallet_chainbridge::derive_resource_id(1, &blake2_128(b"NFT"));
 }
 
 impl pallet_erc721::Config for Runtime {
