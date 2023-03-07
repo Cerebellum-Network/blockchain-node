@@ -108,7 +108,7 @@ benchmarks! {
 		// the weight the nominator will start at.
 		let scenario = ListScenario::<T>::new(origin_weight)?;
 
-		let max_additional = scenario.dest_weight.clone() - origin_weight;
+		let max_additional = BalanceOf::<T>::try_from(10_000_000_000u128).map_err(|_| "balance expected to be a u128").unwrap();
 
 		let stash = scenario.origin_stash1.clone();
 		let controller = scenario.origin_controller1.clone();
@@ -122,6 +122,7 @@ benchmarks! {
 	verify {
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created after")?;
 		let new_bonded: BalanceOf<T> = ledger.active;
+		assert!(original_bonded < new_bonded);
 	}
 
 	unbond {
@@ -139,7 +140,7 @@ benchmarks! {
 
 		let stash = scenario.origin_stash1.clone();
 		let controller = scenario.origin_controller1.clone();
-		let amount = origin_weight - scenario.dest_weight.clone();
+		let amount = origin_weight / 2u32.into();
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_bonded: BalanceOf<T> = ledger.active;
 
@@ -148,6 +149,7 @@ benchmarks! {
 	verify {
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created after")?;
 		let new_bonded: BalanceOf<T> = ledger.active;
+		assert!(original_bonded > new_bonded);
 	}
 
 	withdraw_unbonded {
@@ -162,6 +164,7 @@ benchmarks! {
 	verify {
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created after")?;
 		let new_total: BalanceOf<T> = ledger.total;
+		assert!(original_total > new_total);
 	}
 
 	store {
@@ -172,6 +175,7 @@ benchmarks! {
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller), prefs)
 	verify {
+		assert!(Storages::<T>::contains_key(&stash));
 	}
 
   serve {
@@ -182,6 +186,7 @@ benchmarks! {
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller), prefs)
 	verify {
+		assert!(Edges::<T>::contains_key(&stash));
 	}
 
 	chill {
@@ -208,5 +213,6 @@ benchmarks! {
 		whitelist_account!(stash);
 	}: _(RawOrigin::Signed(stash), new_controller_lookup)
 	verify {
+		assert!(Ledger::<T>::contains_key(&new_controller));
 	}
 }
