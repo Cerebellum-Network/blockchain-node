@@ -1,4 +1,4 @@
-//! DddcStaking pallet benchmarking.
+//! DdcStaking pallet benchmarking.
 
 use super::*;
 use crate::Pallet as DddcStaking;
@@ -49,35 +49,24 @@ pub fn clear_storages_with_edges<T: Config>(
 	Ok((storages, edges))
 }
 
-struct ListScenario<T: Config> {
-	/// Stash that is expected to be moved.
+struct AccountsScenario<T: Config> {
 	origin_stash1: T::AccountId,
-	/// Controller of the Stash that is expected to be moved.
 	origin_controller1: T::AccountId,
-	dest_weight: BalanceOf<T>,
 }
 
-impl<T: Config> ListScenario<T> {
-	fn new(origin_weight: BalanceOf<T>) -> Result<Self, &'static str> {
-		ensure!(!origin_weight.is_zero(), "origin weight must be greater than 0");
+impl<T: Config> AccountsScenario<T> {
+	fn new(origin_balance: BalanceOf<T>) -> Result<Self, &'static str> {
+		ensure!(!origin_balance.is_zero(), "origin weight must be greater than 0");
 
 		// burn the entire issuance.
 		let i = T::Currency::burn(T::Currency::total_issuance());
 		sp_std::mem::forget(i);
 
-		// create accounts with the origin weight
-
+		// create accounts with the origin balance
 		let (origin_stash1, origin_controller1) =
-			create_stash_controller_with_balance::<T>(USER_SEED + 2, origin_weight)?;
+			create_stash_controller_with_balance::<T>(USER_SEED + 2, origin_balance)?;
 
-		let (_origin_stash2, _origin_controller2) =
-			create_stash_controller_with_balance::<T>(USER_SEED + 3, origin_weight)?;
-
-		// create an account with the worst case destination weight
-		let (_dest_stash1, _dest_controller1) =
-			create_stash_controller_with_balance::<T>(USER_SEED + 1, origin_weight)?;
-
-		Ok(ListScenario { origin_stash1, origin_controller1, dest_weight: origin_weight })
+		Ok(AccountsScenario { origin_stash1, origin_controller1 })
 	}
 }
 
@@ -89,7 +78,7 @@ benchmarks! {
 		let controller = create_funded_user::<T>("controller", USER_SEED, 100);
 		let controller_lookup: <T::Lookup as StaticLookup>::Source
 			= T::Lookup::unlookup(controller.clone());
-		let amount = T::Currency::minimum_balance() * 10u32.into();
+		let amount = T::Currency::minimum_balance() * 10u32.into(); 
 		whitelist_account!(stash);
 	}: _(RawOrigin::Signed(stash.clone()), controller_lookup, amount)
 	verify {
@@ -101,14 +90,12 @@ benchmarks! {
 		// clean up any existing state.
 		clear_storages_and_edges::<T>();
 
-		let origin_weight = MinStorageBond::<T>::get().max(T::Currency::minimum_balance());
+		let origin_balance = MinStorageBond::<T>::get().max(T::Currency::minimum_balance()); 
 
-		// setup the worst case list scenario.
+		let scenario = AccountsScenario::<T>::new(origin_balance)?; 
 
-		// the weight the nominator will start at.
-		let scenario = ListScenario::<T>::new(origin_weight)?;
-
-		let max_additional = BalanceOf::<T>::try_from(10_000_000_000u128).map_err(|_| "balance expected to be a u128").unwrap();
+		// Original benchmark staking code (/frame/staking/src/benchmarking.rs)
+		let max_additional = BalanceOf::<T>::try_from(u128::MAX).map_err(|_| "balance expected to be a u128").unwrap() - origin_balance;
 
 		let stash = scenario.origin_stash1.clone();
 		let controller = scenario.origin_controller1.clone();
@@ -129,18 +116,18 @@ benchmarks! {
 		// clean up any existing state.
 		clear_storages_and_edges::<T>();
 
-		// setup the worst case list scenario.
 		let total_issuance = T::Currency::total_issuance();
-		// the weight the nominator will start at. The value used here is expected to be
-		// significantly higher than the first position in a list (e.g. the first bag threshold).
-		let origin_weight = BalanceOf::<T>::try_from(952_994_955_240_703u128)
+		
+		// Constant taken from original benchmark staking code (/frame/staking/src/benchmarking.rs)
+		let origin_balance = BalanceOf::<T>::try_from(952_994_955_240_703u128)
 			.map_err(|_| "balance expected to be a u128")
 			.unwrap();
-		let scenario = ListScenario::<T>::new(origin_weight)?;
+		let scenario = AccountsScenario::<T>::new(origin_balance)?;
 
 		let stash = scenario.origin_stash1.clone();
 		let controller = scenario.origin_controller1.clone();
-		let amount = origin_weight / 2u32.into();
+		// unbond half of initial balance
+		let amount = origin_balance / 2u32.into(); 
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_bonded: BalanceOf<T> = ledger.active;
 
@@ -156,7 +143,7 @@ benchmarks! {
 		let (stash, controller) = create_stash_controller::<T>(0, 100)?;
 		let amount = T::Currency::minimum_balance() * 5u32.into(); // Half of total
 		DddcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into(), amount)?;
-		CurrentEra::<T>::put(EraIndex::max_value());
+		CurrentEra::<T>::put(EraIndex::max_value()); 
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_total: BalanceOf<T> = ledger.total;
 		whitelist_account!(controller);
@@ -169,7 +156,6 @@ benchmarks! {
 
 	store {
 		let (stash, controller) = create_stash_controller::<T>(0, 100)?;
-		// because it is chilled.
 
 		let prefs = StoragePrefs::default();
 		whitelist_account!(controller);
@@ -180,7 +166,6 @@ benchmarks! {
 
   serve {
 		let (stash, controller) = create_stash_controller::<T>(0, 100)?;
-		// because it is chilled.
 
 		let prefs = EdgePrefs::default();
 		whitelist_account!(controller);
@@ -193,11 +178,9 @@ benchmarks! {
 		// clean up any existing state.
 		clear_storages_and_edges::<T>();
 
-		let origin_weight = MinStorageBond::<T>::get().max(T::Currency::minimum_balance());
+		let origin_balance = MinStorageBond::<T>::get().max(T::Currency::minimum_balance());
 
-		// setup a worst case list scenario. Note that we don't care about the setup of the
-		// destination position because we are doing a removal from the list but no insert.
-		let scenario = ListScenario::<T>::new(origin_weight)?;
+		let scenario = AccountsScenario::<T>::new(origin_balance)?;
 		let controller = scenario.origin_controller1.clone();
 		let stash = scenario.origin_stash1.clone();
 
