@@ -94,4 +94,20 @@ pub mod pallet {
 			log::info!("Off-chain worker at block {:?}", block_number);
 		}
 	}
+
+	impl<T: Config> Pallet<T> {
+		/// Fetch the tasks related to current validator
+		fn fetch_tasks(validator: T::AccountId) -> Vec<T::AccountId> {
+			let mut cdn_nodes: Vec<T::AccountId> = vec![];
+			for (cdn_id, cdn_tasks) in <Tasks<T>>::iter() {
+				for decision in cdn_tasks.iter() {
+					if decision.validator == validator {
+						cdn_nodes.push(cdn_id);
+						break;
+					}
+				}
+			}
+			cdn_nodes
+		}
+	}
 }
