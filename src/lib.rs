@@ -4,9 +4,9 @@ pub use frame_support::{
 	pallet_prelude::*, parameter_types, traits::Randomness, weights::Weight, BoundedVec,
 };
 pub use frame_system::pallet_prelude::*;
+pub use pallet::*;
 pub use pallet_ddc_staking::{self as ddc_staking};
 pub use pallet_staking::{self as staking};
-pub use pallet::*;
 pub use sp_std::prelude::*;
 
 parameter_types! {
@@ -91,7 +91,7 @@ pub mod pallet {
 				(Some(global_era_counter), None) => {
 					<LastManagedEra<T>>::put(global_era_counter);
 				},
-				_ => { return 0 },
+				_ => return 0,
 			};
 
 			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
@@ -125,6 +125,7 @@ pub mod pallet {
 			}
 			0
 		}
+
 		fn offchain_worker(block_number: T::BlockNumber) {
 			log::info!("Off-chain worker at block {:?}", block_number);
 		}
@@ -138,7 +139,7 @@ pub mod pallet {
 				for decision in cdn_tasks.iter() {
 					if decision.validator == validator {
 						cdn_nodes.push(cdn_id);
-						break;
+						break
 					}
 				}
 			}
