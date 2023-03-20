@@ -1,6 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub use frame_support::{pallet_prelude::*, parameter_types, weights::Weight, BoundedVec};
+pub use frame_support::{
+	pallet_prelude::*, parameter_types, traits::Randomness, weights::Weight, BoundedVec,
+};
 pub use frame_system::pallet_prelude::*;
 pub use pallet_ddc_staking::{self as ddc_staking};
 pub use pallet_staking::{self as staking};
@@ -34,6 +36,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_staking::Config + ddc_staking::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 	}
 
 	#[pallet::storage]
@@ -79,15 +82,34 @@ pub mod pallet {
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_initialize(block_number: T::BlockNumber) -> Weight {
 			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
+			let validators_count = validators.len() as u32;
 			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
 			log::info!(
-				"Block number: {:?}, global era: {:?}, last era: {:?}, validators: {:?}, edges: {:?}",
+				"Block number: {:?}, global era: {:?}, last era: {:?}, validators_count: {:?}, validators: {:?}, edges: {:?}",
 				block_number,
 				<GlobalEraCounter<T>>::get(),
 				<LastManagedEra<T>>::get(),
+				validators_count,
 				validators,
 				edges,
 			);
+
+			// A naive approach assigns random validators for each edge.
+			for edge in edges {
+				let mut decisions: BoundedVec<Decision<T::AccountId>, DdcValidatorsQuorumSize> =
+					Default::default();
+				while !decisions.is_full() {
+					let validator_idx = Self::choose(validators_count).unwrap_or(0) as usize;
+					let validator: T::AccountId = validators[validator_idx].clone();
+					let assignment = Decision {
+						validator,
+						method: ValidationMethodKind::ProofOfDelivery,
+						decision: None,
+					};
+					decisions.try_push(assignment).unwrap();
+				}
+				Tasks::<T>::insert(edge, decisions);
+			}
 			0
 		}
 		fn offchain_worker(block_number: T::BlockNumber) {
@@ -108,6 +130,32 @@ pub mod pallet {
 				}
 			}
 			cdn_nodes
+		}
+
+		fn choose(total: u32) -> Option<u32> {
+			if total == 0 {
+				return None
+			}
+			let mut random_number = Self::generate_random_number(0);
+
+			// Best effort attempt to remove bias from modulus operator.
+			for i in 1..128 {
+				if random_number < u32::MAX - u32::MAX % total {
+					break
+				}
+
+				random_number = Self::generate_random_number(i);
+			}
+
+			Some(random_number % total)
+		}
+
+		fn generate_random_number(seed: u32) -> u32 {
+			let (random_seed, _) = T::Randomness::random(&(b"ddc-validator", seed).encode());
+			let random_number = <u32>::decode(&mut random_seed.as_ref())
+				.expect("secure hashes should always be bigger than u32; qed");
+
+			random_number
 		}
 	}
 }
