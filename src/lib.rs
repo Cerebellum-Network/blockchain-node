@@ -81,6 +81,19 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_initialize(block_number: T::BlockNumber) -> Weight {
+			match (<GlobalEraCounter<T>>::get(), <LastManagedEra<T>>::get()) {
+				(Some(global_era_counter), Some(last_managed_era)) => {
+					if last_managed_era >= global_era_counter {
+						return 0
+					}
+					<LastManagedEra<T>>::put(global_era_counter);
+				},
+				(Some(global_era_counter), None) => {
+					<LastManagedEra<T>>::put(global_era_counter);
+				},
+				_ => { return 0 },
+			};
+
 			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
 			let validators_count = validators.len() as u32;
 			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
