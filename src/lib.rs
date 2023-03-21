@@ -8,10 +8,15 @@ pub use pallet::*;
 pub use pallet_ddc_staking::{self as ddc_staking};
 pub use pallet_staking::{self as staking};
 pub use sp_std::prelude::*;
+pub use sp_io::offchain::timestamp;
 
 parameter_types! {
 	pub DdcValidatorsQuorumSize: u32 = 3;
 }
+
+const TIME_START_MS: u64 = 1_672_531_200_000;
+const ERA_DURATION_MS: u64 = 120_000;
+const ERA_IN_BLOCKS: u8 = 20;
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum ValidationMethodKind {
@@ -49,10 +54,6 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn global_era_counter)]
-	pub type GlobalEraCounter<T: Config> = StorageValue<_, u32>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn last_managed_era)]
 	pub type LastManagedEra<T: Config> = StorageValue<_, u32>;
 
@@ -62,21 +63,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {}
-
-	#[pallet::call]
-	impl<T: Config> Pallet<T> {
-		#[pallet::weight(100_000)]
-		pub fn inc_era(origin: OriginFor<T>) -> DispatchResult {
-			ensure_root(origin)?;
-			if let Some(era) = <GlobalEraCounter<T>>::get() {
-				let new_era = era.checked_add(1).unwrap_or_default();
-				<GlobalEraCounter<T>>::put(new_era);
-			} else {
-				<GlobalEraCounter<T>>::put(1);
-			}
-			Ok(())
-		}
-	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
@@ -100,7 +86,7 @@ pub mod pallet {
 			log::info!(
 				"Block number: {:?}, global era: {:?}, last era: {:?}, validators_count: {:?}, validators: {:?}, edges: {:?}",
 				block_number,
-				<GlobalEraCounter<T>>::get(),
+				Self::get_current_era(),
 				<LastManagedEra<T>>::get(),
 				validators_count,
 				validators,
@@ -170,6 +156,9 @@ pub mod pallet {
 				.expect("secure hashes should always be bigger than u32; qed");
 
 			random_number
+		// Get the current era; Shall we start era count from 0 or from 1?
+		fn get_current_era() -> u64 {
+			(timestamp().unix_millis() - TIME_START_MS) / ERA_DURATION_MS
 		}
 	}
 }
