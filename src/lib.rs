@@ -156,6 +156,8 @@ pub mod pallet {
 				.expect("secure hashes should always be bigger than u32; qed");
 
 			random_number
+		}
+
 		// Get the current era; Shall we start era count from 0 or from 1?
 		fn get_current_era() -> u64 {
 			(timestamp().unix_millis() - TIME_START_MS) / ERA_DURATION_MS
