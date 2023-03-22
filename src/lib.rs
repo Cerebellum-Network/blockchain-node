@@ -181,6 +181,10 @@ pub mod pallet {
 	#[pallet::getter(fn last_managed_era)]
 	pub type LastManagedEra<T: Config> = StorageValue<_, u64>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn validation_results)]
+	pub(super) type ValidationResults<T: Config> = StorageValue<_, Vec<ValidationResult::<T::AccountId>>, ValueQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> 
@@ -209,7 +213,6 @@ pub mod pallet {
 				(global_era_counter, None) => {
 					<LastManagedEra<T>>::put(global_era_counter);
 				},
-				_ => return 0,
 			};
 
 			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
@@ -280,6 +283,27 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::weight(10000)]
+		pub fn proof_of_delivery(origin: OriginFor<T>, era: u64) -> DispatchResult {
+			let signer: T::AccountId = ensure_signed(origin)?;
+
+			let cdn_nodes_to_validate = Self::fetch_tasks(&signer);
+			for cdn_node_id in cdn_nodes_to_validate {
+				let (bytes_sent, bytes_received) = Self::fetch_data(era, &cdn_node_id);
+				let val_res = Self::validate(bytes_sent.clone(), bytes_received.clone());
+
+				let decisions_for_cdn = <Tasks<T>>::get(cdn_node_id);
+				for decision in decisions_for_cdn.unwrap().iter_mut() {
+					if decision.validator == signer {
+						decision.decision = Some(val_res);
+						decision.method = ValidationMethodKind::ProofOfDelivery;
+					}
+				}
+			}
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> 
@@ -306,23 +330,26 @@ pub mod pallet {
 
 			// Read data from DataModel and do dumb validation
 			let current_era = Self::get_current_era() - 1u64;
-			let (bytes_sent, bytes_received) = Self::fetch_data(current_era);
-			let val_res = Self::validate(bytes_sent.clone(), bytes_received.clone());
 
-			let cdn_node_pub_key = bytes_sent.node_public_key.clone();
-			let tx_res = signer.send_signed_transaction(|_acct| {
-					info!("[DAC Validator] Sending save_validated_data tx");
+			// for decision in &mut cdn_nodes_to_validate {
 
-					// This is the on-chain function
-					Call::save_validated_data { val_res, cdn_node_pub_key: cdn_node_pub_key.clone(), era: bytes_sent.era.clone() }
-			});
+			// }
+			// let val_res = Self::validate(bytes_sent.clone(), bytes_received.clone());
+			// let cdn_node_pub_key = bytes_sent.node_public_key.clone();
 
-			match &tx_res {
-					None | Some((_, Err(()))) => {
-							return Err("Error while submitting save_validated_data TX")
-					}
-					Some((_, Ok(()))) => {}
-			}
+			// let tx_res = signer.send_signed_transaction(|_acct| {
+			// 		info!("[DAC Validator] Sending save_validated_data tx");
+
+			// 		// This is the on-chain function
+			// 		Call::save_validated_data { val_res, cdn_node_pub_key: cdn_node_pub_key.clone(), era: bytes_sent.era.clone() }
+			// });
+
+			// match &tx_res {
+			// 		None | Some((_, Err(()))) => {
+			// 				return Err("Error while submitting save_validated_data TX")
+			// 		}
+			// 		Some((_, Ok(()))) => {}
+			// }
 
 			Ok(())
 		}
@@ -341,16 +368,16 @@ pub mod pallet {
 			(timestamp().unix_millis() - TIME_START_MS) / ERA_DURATION_MS
 		}
 
-		fn fetch_data(era: u64 ) -> (BytesSent, BytesReceived){
+		fn fetch_data(era: u64, cdn_node: &T::AccountId) -> (BytesSent, BytesReceived) {
 			info!("[DAC Validator] DAC Validator is running. Current era is {}", era);
 			// Todo: handle the error
-			let bytes_sent_query = Self::get_bytes_sent_query_url(era);
+			let bytes_sent_query = Self::get_bytes_sent_query_url(era, cdn_node);
 			let bytes_sent_res: RedisFtAggregate = Self::http_get_json(&bytes_sent_query).unwrap();
 			info!("[DAC Validator] Bytes sent sum is fetched: {:?}", bytes_sent_res);
 			let bytes_sent = BytesSent::new(bytes_sent_res);
 
 			// Todo: handle the error
-			let bytes_received_query = Self::get_bytes_received_query_url(era);
+			let bytes_received_query = Self::get_bytes_received_query_url(era, cdn_node);
 			let bytes_received_res: RedisFtAggregate =
 					Self::http_get_json(&bytes_received_query).unwrap();
 			info!("[DAC Validator] Bytes received sum is fetched:: {:?}", bytes_received_res);
@@ -359,12 +386,12 @@ pub mod pallet {
 			(bytes_sent, bytes_received)
 		}
 
-		fn get_bytes_sent_query_url(era: u64) -> String {
-			format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", DATA_PROVIDER_URL, era, era)
+		fn get_bytes_sent_query_url(era: u64, cdn_node: &T::AccountId) -> String {
+			format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/{:?}/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", DATA_PROVIDER_URL, era, era, *cdn_node)
 		}
 
-		fn get_bytes_received_query_url(era: u64) -> String {
-			format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", DATA_PROVIDER_URL, era, era)
+		fn get_bytes_received_query_url(era: u64, cdn_node: &T::AccountId) -> String {
+			format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/{:?}/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", DATA_PROVIDER_URL, era, era, *cdn_node)
 		}
 
 		fn http_get_json<OUT: DeserializeOwned>(url: &str) -> ResultStr<OUT> {
@@ -412,11 +439,11 @@ pub mod pallet {
 		}
 
 		/// Fetch the tasks related to current validator
-		fn fetch_tasks(validator: T::AccountId) -> Vec<T::AccountId> {
+		fn fetch_tasks(validator: &T::AccountId) -> Vec<T::AccountId> {
 			let mut cdn_nodes: Vec<T::AccountId> = vec![];
 			for (cdn_id, cdn_tasks) in <Tasks<T>>::iter() {
 				for decision in cdn_tasks.iter() {
-					if decision.validator == validator {
+					if decision.validator == *validator {
 						cdn_nodes.push(cdn_id);
 						break
 					}
