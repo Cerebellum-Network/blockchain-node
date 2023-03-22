@@ -331,25 +331,20 @@ pub mod pallet {
 			// Read data from DataModel and do dumb validation
 			let current_era = Self::get_current_era() - 1u64;
 
-			// for decision in &mut cdn_nodes_to_validate {
+	
+			let tx_res = signer.send_signed_transaction(|_acct| {
+					info!("[DAC Validator] Trigger proof of delivery");
 
-			// }
-			// let val_res = Self::validate(bytes_sent.clone(), bytes_received.clone());
-			// let cdn_node_pub_key = bytes_sent.node_public_key.clone();
+					// This is the on-chain function
+					Call::proof_of_delivery { era: current_era }
+			});
 
-			// let tx_res = signer.send_signed_transaction(|_acct| {
-			// 		info!("[DAC Validator] Sending save_validated_data tx");
-
-			// 		// This is the on-chain function
-			// 		Call::save_validated_data { val_res, cdn_node_pub_key: cdn_node_pub_key.clone(), era: bytes_sent.era.clone() }
-			// });
-
-			// match &tx_res {
-			// 		None | Some((_, Err(()))) => {
-			// 				return Err("Error while submitting save_validated_data TX")
-			// 		}
-			// 		Some((_, Ok(()))) => {}
-			// }
+			match &tx_res {
+					None | Some((_, Err(()))) => {
+							return Err("Error while submitting proof of delivery TX")
+					}
+					Some((_, Ok(()))) => {}
+			}
 
 			Ok(())
 		}
