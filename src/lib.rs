@@ -8,7 +8,7 @@ pub use frame_support::{
 	decl_event, decl_module, decl_storage,
 	log::{error, info, warn},
 	pallet_prelude::*, 
-	traits::{Randomness, Currency}, 
+	traits::{Randomness, Currency, UnixTime}, 
 	weights::Weight, 
 	dispatch::DispatchResult,
 	RuntimeDebug,
@@ -22,9 +22,9 @@ pub use pallet_staking::{self as staking};
 pub use pallet_session as session;
 pub use scale_info::TypeInfo;
 pub use sp_core::crypto::{KeyTypeId, UncheckedFrom};
-pub use sp_runtime::offchain::{http, Duration};
+pub use sp_runtime::offchain::{http, Duration, Timestamp};
 pub use sp_std::prelude::*;
-pub use sp_io::offchain::timestamp;
+
 extern crate alloc;
 
 parameter_types! {
@@ -42,8 +42,8 @@ pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
 
 pub const HTTP_TIMEOUT_MS: u64 = 30_000;
 
-const TIME_START_MS: u64 = 1_672_531_200_000;
-const ERA_DURATION_MS: u64 = 120_000;
+const TIME_START_MS: u128 = 1_672_531_200_000;
+const ERA_DURATION_MS: u128 = 120_000;
 const ERA_IN_BLOCKS: u8 = 20;
 
 const DATA_PROVIDER_URL: &str = "http://localhost:7379/";
@@ -184,6 +184,7 @@ pub mod pallet {
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 		type Call: From<Call<Self>>;
     type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
+		type TimeProvider: UnixTime;
 	}
 
 	#[pallet::storage]
@@ -221,48 +222,53 @@ pub mod pallet {
         <BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 	{
 		fn on_initialize(block_number: T::BlockNumber) -> Weight {
-			match (Self::get_current_era(), <LastManagedEra<T>>::get()) {
-				(global_era_counter, Some(last_managed_era)) => {
-					if last_managed_era >= global_era_counter {
-						return 0
+			if block_number != 0u32.into() && block_number != 1u32.into() {
+				let era = Self::get_current_era();	
+				match (era, <LastManagedEra<T>>::get()) {
+					(global_era_counter, Some(last_managed_era)) => {
+						if last_managed_era >= global_era_counter {
+							return 0
+						}
+						<LastManagedEra<T>>::put(global_era_counter);
+					},
+					(global_era_counter, None) => {
+						<LastManagedEra<T>>::put(global_era_counter);
+					},
+				};
+	
+				let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
+				let validators_count = validators.len() as u32;
+				let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
+				log::info!(
+					"Block number: {:?}, global era: {:?}, last era: {:?}, validators_count: {:?}, validators: {:?}, edges: {:?}",
+					block_number,
+					era,
+					<LastManagedEra<T>>::get(),
+					validators_count,
+					validators,
+					edges,
+				);
+	
+				// A naive approach assigns random validators for each edge.
+				for edge in edges {
+					let mut decisions: BoundedVec<Decision<T::AccountId>, DdcValidatorsQuorumSize> =
+						Default::default();
+					while !decisions.is_full() {
+						let validator_idx = Self::choose(validators_count).unwrap_or(0) as usize;
+						let validator: T::AccountId = validators[validator_idx].clone();
+						let assignment = Decision {
+							validator,
+							method: ValidationMethodKind::ProofOfDelivery,
+							decision: None,
+						};
+						decisions.try_push(assignment).unwrap();
 					}
-					<LastManagedEra<T>>::put(global_era_counter);
-				},
-				(global_era_counter, None) => {
-					<LastManagedEra<T>>::put(global_era_counter);
-				},
-			};
-
-			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
-			let validators_count = validators.len() as u32;
-			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
-			log::info!(
-				"Block number: {:?}, global era: {:?}, last era: {:?}, validators_count: {:?}, validators: {:?}, edges: {:?}",
-				block_number,
-				Self::get_current_era(),
-				<LastManagedEra<T>>::get(),
-				validators_count,
-				validators,
-				edges,
-			);
-
-			// A naive approach assigns random validators for each edge.
-			for edge in edges {
-				let mut decisions: BoundedVec<Decision<T::AccountId>, DdcValidatorsQuorumSize> =
-					Default::default();
-				while !decisions.is_full() {
-					let validator_idx = Self::choose(validators_count).unwrap_or(0) as usize;
-					let validator: T::AccountId = validators[validator_idx].clone();
-					let assignment = Decision {
-						validator,
-						method: ValidationMethodKind::ProofOfDelivery,
-						decision: None,
-					};
-					decisions.try_push(assignment).unwrap();
+					Tasks::<T>::insert(edge, decisions);
 				}
-				Tasks::<T>::insert(edge, decisions);
+				0
+			} else {
+				0
 			}
-			0
 		}
 
 		fn offchain_worker(block_number: T::BlockNumber) {
@@ -378,7 +384,7 @@ pub mod pallet {
 
 		// Get the current era; Shall we start era count from 0 or from 1?
 		fn get_current_era() -> u64 {
-			(timestamp().unix_millis() - TIME_START_MS) / ERA_DURATION_MS
+			((T::TimeProvider::now().as_millis() - TIME_START_MS) / ERA_DURATION_MS).try_into().unwrap()
 		}
 
 		fn fetch_data(era: u64, cdn_node: &T::AccountId) -> (BytesSent, BytesReceived) {
