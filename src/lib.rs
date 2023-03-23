@@ -72,8 +72,16 @@ pub struct ValidationResult<AccountId> {
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct RedisFtAggregate {
-    #[serde(rename = "FT.AGGREGATE")]
-    pub ft_aggregate: (u32, Vec<String>, Vec<String>),
+	#[serde(rename = "FT.AGGREGATE")]
+	pub ft_aggregate: Vec<FtAggregate>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(crate = "alt_serde")]
+#[serde(untagged)]
+pub enum FtAggregate {
+	Length(u32),
+	Node(Vec<String>),
 }
 
 #[derive(Clone)]
@@ -84,15 +92,20 @@ struct BytesSent {
 }
 
 impl BytesSent {
-    pub fn new(aggregate: RedisFtAggregate) -> BytesSent {
-        let (_, values, values2) = aggregate.ft_aggregate;
+	pub fn new(aggregate: RedisFtAggregate) -> BytesSent {
+		let data = aggregate.ft_aggregate[1].clone();
 
-        BytesSent {
-            node_public_key: values[1].clone(),
-            era: values[3].clone(),
-            sum: values[5].parse::<u32>().expect("bytesSentSum must be convertable to u32"),
-        }
-    }
+		match data {
+			FtAggregate::Node(node) => {
+				return BytesSent {
+					node_public_key: node[1].clone(),
+					era: node[3].clone(),
+					sum: node[5].parse::<u32>().expect("bytesSentSum must be convertable to u32"),
+				}
+			}
+			FtAggregate::Length(_) => panic!("[DAC Validator] Not a Node"),
+		}
+	}
 }
 
 #[derive(Clone)]
@@ -103,15 +116,20 @@ struct BytesReceived {
 }
 
 impl BytesReceived {
-    pub fn new(aggregate: RedisFtAggregate) -> BytesReceived {
-        let (_, values, values2) = aggregate.ft_aggregate;
+	pub fn new(aggregate: RedisFtAggregate) -> BytesReceived {
+		let data = aggregate.ft_aggregate[1].clone();
 
-        BytesReceived {
-            node_public_key: values[1].clone(),
-            era: values[3].clone(),
-            sum: values[5].parse::<u32>().expect("bytesReceivedSum must be convertable to u32"),
-        }
-    }
+		match data {
+			FtAggregate::Node(node) => {
+				return BytesReceived {
+					node_public_key: node[1].clone(),
+					era: node[3].clone(),
+					sum: node[5].parse::<u32>().expect("bytesReceivedSum must be convertable to u32"),
+				}
+			}
+			FtAggregate::Length(_) => panic!("[DAC Validator] Not a Node"),
+		}
+	}
 }
 
 pub mod crypto {
