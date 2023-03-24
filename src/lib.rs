@@ -2,24 +2,27 @@
 
 pub use alloc::{format, string::String};
 pub use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
-pub use codec::{Encode, Decode, MaxEncodedLen, HasCompact};
+pub use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 pub use core::fmt::Debug;
 pub use frame_support::{
 	decl_event, decl_module, decl_storage,
-	log::{error, info, warn},
-	pallet_prelude::*, 
-	traits::{Randomness, Currency, UnixTime}, 
-	weights::Weight, 
 	dispatch::DispatchResult,
-	RuntimeDebug,
-	BoundedVec,
+	log::{error, info, warn},
+	pallet_prelude::*,
 	parameter_types,
+	traits::{Currency, Randomness, UnixTime},
+	weights::Weight,
+	BoundedVec, RuntimeDebug,
 };
-pub use frame_system::{ensure_signed, pallet_prelude::*, offchain::{CreateSignedTransaction, Signer, SigningTypes, AppCrypto, SendSignedTransaction}};
+pub use frame_system::{
+	ensure_signed,
+	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer, SigningTypes},
+	pallet_prelude::*,
+};
 pub use pallet::*;
 pub use pallet_ddc_staking::{self as ddc_staking};
-pub use pallet_staking::{self as staking};
 pub use pallet_session as session;
+pub use pallet_staking::{self as staking};
 pub use scale_info::TypeInfo;
 pub use sp_core::crypto::{KeyTypeId, UncheckedFrom};
 pub use sp_runtime::offchain::{http, Duration, Timestamp};
@@ -32,11 +35,10 @@ parameter_types! {
 }
 
 type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
-    <T as frame_system::Config>::AccountId,
+	<T as frame_system::Config>::AccountId,
 >>::Balance;
 
 type ResultStr<T> = Result<T, &'static str>;
-
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
 
@@ -62,10 +64,10 @@ pub struct Decision<AccountId> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, Default)]
 pub struct ValidationResult<AccountId> {
-    era: String,
-    signer: AccountId,
-    val_res: bool,
-    cdn_node_pub_key: String,
+	era: String,
+	signer: AccountId,
+	val_res: bool,
+	cdn_node_pub_key: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -86,9 +88,9 @@ pub enum FtAggregate {
 
 #[derive(Clone)]
 struct BytesSent {
-    node_public_key: String,
-    era: String,
-    sum: u32,
+	node_public_key: String,
+	era: String,
+	sum: u32,
 }
 
 impl BytesSent {
@@ -96,13 +98,12 @@ impl BytesSent {
 		let data = aggregate.ft_aggregate[1].clone();
 
 		match data {
-			FtAggregate::Node(node) => {
+			FtAggregate::Node(node) =>
 				return BytesSent {
 					node_public_key: node[1].clone(),
 					era: node[3].clone(),
 					sum: node[5].parse::<u32>().expect("bytesSentSum must be convertable to u32"),
-				}
-			}
+				},
 			FtAggregate::Length(_) => panic!("[DAC Validator] Not a Node"),
 		}
 	}
@@ -110,9 +111,9 @@ impl BytesSent {
 
 #[derive(Clone)]
 struct BytesReceived {
-    node_public_key: String,
-    era: String,
-    sum: u32,
+	node_public_key: String,
+	era: String,
+	sum: u32,
 }
 
 impl BytesReceived {
@@ -120,13 +121,14 @@ impl BytesReceived {
 		let data = aggregate.ft_aggregate[1].clone();
 
 		match data {
-			FtAggregate::Node(node) => {
+			FtAggregate::Node(node) =>
 				return BytesReceived {
 					node_public_key: node[1].clone(),
 					era: node[3].clone(),
-					sum: node[5].parse::<u32>().expect("bytesReceivedSum must be convertable to u32"),
-				}
-			}
+					sum: node[5]
+						.parse::<u32>()
+						.expect("bytesReceivedSum must be convertable to u32"),
+				},
 			FtAggregate::Length(_) => panic!("[DAC Validator] Not a Node"),
 		}
 	}
@@ -137,8 +139,8 @@ pub mod crypto {
 	use frame_system::offchain::AppCrypto;
 	use sp_core::sr25519::Signature as Sr25519Signature;
 	use sp_runtime::{
-			app_crypto::{app_crypto, sr25519},
-			traits::Verify,
+		app_crypto::{app_crypto, sr25519},
+		traits::Verify,
 	};
 	app_crypto!(sr25519, KEY_TYPE);
 
@@ -147,15 +149,15 @@ pub mod crypto {
 	pub struct TestAuthId;
 
 	impl AppCrypto<<Sr25519Signature as Verify>::Signer, Sr25519Signature> for TestAuthId {
-			type RuntimeAppPublic = Public;
-			type GenericSignature = sp_core::sr25519::Signature;
-			type GenericPublic = sp_core::sr25519::Public;
+		type RuntimeAppPublic = Public;
+		type GenericSignature = sp_core::sr25519::Signature;
+		type GenericPublic = sp_core::sr25519::Public;
 	}
 
 	impl AppCrypto<MultiSigner, MultiSignature> for TestAuthId {
-			type RuntimeAppPublic = Public;
-			type GenericSignature = sp_core::sr25519::Signature;
-			type GenericPublic = sp_core::sr25519::Public;
+		type RuntimeAppPublic = Public;
+		type GenericSignature = sp_core::sr25519::Signature;
+		type GenericPublic = sp_core::sr25519::Public;
 	}
 }
 
@@ -169,21 +171,21 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: 
+	pub trait Config:
 		frame_system::Config
 		+ pallet_contracts::Config
-    + pallet_session::Config<ValidatorId = <Self as frame_system::Config>::AccountId>
+		+ pallet_session::Config<ValidatorId = <Self as frame_system::Config>::AccountId>
 		+ pallet_staking::Config
 		+ ddc_staking::Config
 		+ CreateSignedTransaction<Call<Self>>
-			where
-				<Self as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<Self::Hash>,
-				<BalanceOf<Self> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
+	where
+		<Self as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<Self::Hash>,
+		<BalanceOf<Self> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 	{
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 		type Call: From<Call<Self>>;
-    type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
+		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 		type TimeProvider: UnixTime;
 	}
 
@@ -202,28 +204,28 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn validation_results)]
-	pub(super) type ValidationResults<T: Config> = StorageValue<_, Vec<ValidationResult::<T::AccountId>>, ValueQuery>;
+	pub(super) type ValidationResults<T: Config> =
+		StorageValue<_, Vec<ValidationResult<T::AccountId>>, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> 
+	pub enum Event<T: Config>
 	where
-	<T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
-	<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
-	{}
+		<T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
+		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode, {}
 
 	#[pallet::error]
 	pub enum Error<T> {}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> 
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T>
 	where
-        <T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
-        <BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
+		<T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
+		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 	{
 		fn on_initialize(block_number: T::BlockNumber) -> Weight {
 			if block_number != 0u32.into() && block_number != 1u32.into() {
-				let era = Self::get_current_era();	
+				let era = Self::get_current_era();
 				match (era, <LastManagedEra<T>>::get()) {
 					(global_era_counter, Some(last_managed_era)) => {
 						if last_managed_era >= global_era_counter {
@@ -235,10 +237,11 @@ pub mod pallet {
 						<LastManagedEra<T>>::put(global_era_counter);
 					},
 				};
-	
+
 				let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
 				let validators_count = validators.len() as u32;
-				let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
+				let edges: Vec<T::AccountId> =
+					<ddc_staking::pallet::Edges<T>>::iter_keys().collect();
 				log::info!(
 					"Block number: {:?}, global era: {:?}, last era: {:?}, validators_count: {:?}, validators: {:?}, edges: {:?}",
 					block_number,
@@ -248,7 +251,7 @@ pub mod pallet {
 					validators,
 					edges,
 				);
-	
+
 				// A naive approach assigns random validators for each edge.
 				for edge in edges {
 					let mut decisions: BoundedVec<Decision<T::AccountId>, DdcValidatorsQuorumSize> =
@@ -282,24 +285,25 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-    impl<T: Config> Pallet<T>
-    where
-        <T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
-        <BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
+	impl<T: Config> Pallet<T>
+	where
+		<T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
+		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 	{
 		#[pallet::weight(10000)]
-		pub fn save_validated_data(origin: OriginFor<T>, val_res: bool, cdn_node_pub_key: String, era: String) -> DispatchResult {
+		pub fn save_validated_data(
+			origin: OriginFor<T>,
+			val_res: bool,
+			cdn_node_pub_key: String,
+			era: String,
+		) -> DispatchResult {
 			let signer: T::AccountId = ensure_signed(origin)?;
 
 			info!("[DAC Validator] author: {:?}", signer);
 			let mut v_results = ValidationResults::<T>::get();
 
-			let cur_validation = ValidationResult::<T::AccountId> {
-					era,
-					val_res,
-					cdn_node_pub_key,
-					signer,
-			};
+			let cur_validation =
+				ValidationResult::<T::AccountId> { era, val_res, cdn_node_pub_key, signer };
 
 			v_results.push(cur_validation);
 
@@ -330,24 +334,27 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> Pallet<T> 
+	impl<T: Config> Pallet<T>
 	where
-        <T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
-        <BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
+		<T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
+		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 	{
 		fn offchain_worker_main(block_number: T::BlockNumber) -> ResultStr<()> {
-			info!("[DAC Validator] Validation data stored onchain: {:?}", ValidationResults::<T>::get());
+			info!(
+				"[DAC Validator] Validation data stored onchain: {:?}",
+				ValidationResults::<T>::get()
+			);
 
 			if block_number % ERA_IN_BLOCKS.into() != 0u32.into() {
-					return Ok(())
+				return Ok(())
 			}
 
 			let signer = match Self::get_signer() {
-					Err(e) => {
-							warn!("{:?}", e);
-							return Ok(());
-					}
-					Ok(signer) => signer,
+				Err(e) => {
+					warn!("{:?}", e);
+					return Ok(())
+				},
+				Ok(signer) => signer,
 			};
 
 			info!("[DAC Validator] ValidationResults: {:?}", ValidationResults::<T>::get());
@@ -355,19 +362,17 @@ pub mod pallet {
 			// Read data from DataModel and do dumb validation
 			let current_era = Self::get_current_era() - 1u64;
 
-	
 			let tx_res = signer.send_signed_transaction(|_acct| {
-					info!("[DAC Validator] Trigger proof of delivery");
+				info!("[DAC Validator] Trigger proof of delivery");
 
-					// This is the on-chain function
-					Call::proof_of_delivery { era: current_era }
+				// This is the on-chain function
+				Call::proof_of_delivery { era: current_era }
 			});
 
 			match &tx_res {
-					None | Some((_, Err(()))) => {
-							return Err("Error while submitting proof of delivery TX")
-					}
-					Some((_, Ok(()))) => {}
+				None | Some((_, Err(()))) =>
+					return Err("Error while submitting proof of delivery TX"),
+				Some((_, Ok(()))) => {},
 			}
 
 			Ok(())
@@ -376,7 +381,7 @@ pub mod pallet {
 		fn get_signer() -> ResultStr<Signer<T, T::AuthorityId>> {
 			let signer = Signer::<_, _>::any_account();
 			if !signer.can_sign() {
-					return Err("[DAC Validator] No local accounts available. Consider adding one via `author_insertKey` RPC.");
+				return Err("[DAC Validator] No local accounts available. Consider adding one via `author_insertKey` RPC.");
 			}
 
 			Ok(signer)
@@ -384,7 +389,9 @@ pub mod pallet {
 
 		// Get the current era; Shall we start era count from 0 or from 1?
 		fn get_current_era() -> u64 {
-			((T::TimeProvider::now().as_millis() - TIME_START_MS) / ERA_DURATION_MS).try_into().unwrap()
+			((T::TimeProvider::now().as_millis() - TIME_START_MS) / ERA_DURATION_MS)
+				.try_into()
+				.unwrap()
 		}
 
 		fn fetch_data(era: u64, cdn_node: &T::AccountId) -> (BytesSent, BytesReceived) {
@@ -398,7 +405,7 @@ pub mod pallet {
 			// Todo: handle the error
 			let bytes_received_query = Self::get_bytes_received_query_url(era, cdn_node);
 			let bytes_received_res: RedisFtAggregate =
-					Self::http_get_json(&bytes_received_query).unwrap();
+				Self::http_get_json(&bytes_received_query).unwrap();
 			info!("[DAC Validator] Bytes received sum is fetched:: {:?}", bytes_received_res);
 			let bytes_received = BytesReceived::new(bytes_received_res);
 
@@ -415,13 +422,13 @@ pub mod pallet {
 
 		fn http_get_json<OUT: DeserializeOwned>(url: &str) -> ResultStr<OUT> {
 			let body = Self::http_get_request(url).map_err(|err| {
-					error!("[DAC Validator] Error while getting {}: {:?}", url, err);
-					"HTTP GET error"
+				error!("[DAC Validator] Error while getting {}: {:?}", url, err);
+				"HTTP GET error"
 			})?;
 
 			let parsed = serde_json::from_slice(&body).map_err(|err| {
-					warn!("[DAC Validator] Error while parsing JSON from {}: {:?}", url, err);
-					"HTTP JSON parse error"
+				warn!("[DAC Validator] Error while parsing JSON from {}: {:?}", url, err);
+				"HTTP JSON parse error"
 			});
 
 			parsed
@@ -438,23 +445,20 @@ pub mod pallet {
 
 			let pending = request.deadline(deadline).send().map_err(|_| http::Error::IoError)?;
 
-			let response = pending.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
+			let response =
+				pending.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
 
 			if response.code != 200 {
-					warn!("[DAC Validator] http_get_request unexpected status code: {}", response.code);
-					return Err(http::Error::Unknown)
+				warn!("[DAC Validator] http_get_request unexpected status code: {}", response.code);
+				return Err(http::Error::Unknown)
 			}
 
 			// Next we fully read the response body and collect it to a vector of bytes.
 			Ok(response.body().collect::<Vec<u8>>())
-		}	
+		}
 
 		fn validate(bytes_sent: BytesSent, bytes_received: BytesReceived) -> bool {
-			return if bytes_sent.sum == bytes_received.sum {
-					true
-			} else {
-					false
-			}
+			return if bytes_sent.sum == bytes_received.sum { true } else { false }
 		}
 
 		/// Fetch the tasks related to current validator
@@ -490,7 +494,8 @@ pub mod pallet {
 		}
 
 		fn generate_random_number(seed: u32) -> u32 {
-			let (random_seed, _) = <T as pallet::Config>::Randomness::random(&(b"ddc-validator", seed).encode());
+			let (random_seed, _) =
+				<T as pallet::Config>::Randomness::random(&(b"ddc-validator", seed).encode());
 			let random_number = <u32>::decode(&mut random_seed.as_ref())
 				.expect("secure hashes should always be bigger than u32; qed");
 
