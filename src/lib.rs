@@ -26,6 +26,7 @@ pub use pallet_staking::{self as staking};
 pub use scale_info::TypeInfo;
 pub use sp_core::crypto::{KeyTypeId, UncheckedFrom};
 pub use sp_runtime::offchain::{http, Duration, Timestamp};
+pub use sp_staking::EraIndex;
 pub use sp_std::prelude::*;
 
 extern crate alloc;
@@ -64,7 +65,7 @@ pub struct Decision<AccountId> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, Default)]
 pub struct ValidationResult<AccountId> {
-	era: String,
+	era: EraIndex,
 	signer: AccountId,
 	val_res: bool,
 	cdn_node_pub_key: String,
@@ -89,7 +90,7 @@ pub enum FtAggregate {
 #[derive(Clone)]
 struct BytesSent {
 	node_public_key: String,
-	era: String,
+	era: EraIndex,
 	sum: u32,
 }
 
@@ -101,7 +102,8 @@ impl BytesSent {
 			FtAggregate::Node(node) =>
 				return BytesSent {
 					node_public_key: node[1].clone(),
-					era: node[3].clone(),
+					era: node[3].clone().parse::<u32>().expect("era must be convertible u32")
+						as EraIndex,
 					sum: node[5].parse::<u32>().expect("bytesSentSum must be convertable to u32"),
 				},
 			FtAggregate::Length(_) => panic!("[DAC Validator] Not a Node"),
@@ -116,7 +118,8 @@ impl BytesSent {
 				FtAggregate::Node(node) => {
 					let node = BytesSent {
 						node_public_key: node[1].clone(),
-						era: node[3].clone(),
+						era: node[3].clone().parse::<u32>().expect("era must be convertible u32")
+							as EraIndex,
 						sum: node[5].parse::<u32>().expect("bytesSentSum must be convertable to u32"),
 					};
 
@@ -133,7 +136,7 @@ impl BytesSent {
 #[derive(Clone)]
 struct BytesReceived {
 	node_public_key: String,
-	era: String,
+	era: EraIndex,
 	sum: u32,
 }
 
@@ -145,7 +148,8 @@ impl BytesReceived {
 			FtAggregate::Node(node) =>
 				return BytesReceived {
 					node_public_key: node[1].clone(),
-					era: node[3].clone(),
+					era: node[3].clone().parse::<u32>().expect("era must be convertible u32")
+						as EraIndex,
 					sum: node[5]
 						.parse::<u32>()
 						.expect("bytesReceivedSum must be convertable to u32"),
@@ -162,7 +166,8 @@ impl BytesReceived {
 				FtAggregate::Node(node) => {
 					let node = BytesReceived {
 						node_public_key: node[1].clone(),
-						era: node[3].clone(),
+						era: node[3].clone().parse::<u32>().expect("era must be convertible u32")
+							as EraIndex,
 						sum: node[5].parse::<u32>().expect("bytesReceivedSum must be convertable to u32"),
 					};
 
@@ -242,7 +247,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn last_managed_era)]
-	pub type LastManagedEra<T: Config> = StorageValue<_, u64>;
+	pub type LastManagedEra<T: Config> = StorageValue<_, EraIndex>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn validation_results)]
@@ -332,7 +337,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			val_res: bool,
 			cdn_node_pub_key: String,
-			era: String,
+			era: EraIndex,
 		) -> DispatchResult {
 			let signer: T::AccountId = ensure_signed(origin)?;
 
@@ -350,7 +355,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10000)]
-		pub fn proof_of_delivery(origin: OriginFor<T>, era: u64) -> DispatchResult {
+		pub fn proof_of_delivery(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
 			let signer: T::AccountId = ensure_signed(origin)?;
 
 			let cdn_nodes_to_validate = Self::fetch_tasks(&signer);
@@ -398,7 +403,7 @@ pub mod pallet {
 			info!("[DAC Validator] ValidationResults: {:?}", ValidationResults::<T>::get());
 
 			// Read data from DataModel and do dumb validation
-			let current_era = Self::get_current_era() - 1u64;
+			let current_era = Self::get_current_era() - 1;
 
 			let tx_res = signer.send_signed_transaction(|_acct| {
 				info!("[DAC Validator] Trigger proof of delivery");
@@ -426,13 +431,13 @@ pub mod pallet {
 		}
 
 		// Get the current era; Shall we start era count from 0 or from 1?
-		fn get_current_era() -> u64 {
+		fn get_current_era() -> EraIndex {
 			((T::TimeProvider::now().as_millis() - TIME_START_MS) / ERA_DURATION_MS)
 				.try_into()
 				.unwrap()
 		}
 
-		fn fetch_data(era: u64, cdn_node: &T::AccountId) -> (BytesSent, BytesReceived) {
+		fn fetch_data(era: EraIndex, cdn_node: &T::AccountId) -> (BytesSent, BytesReceived) {
 			info!("[DAC Validator] DAC Validator is running. Current era is {}", era);
 			// Todo: handle the error
 			let bytes_sent_query = Self::get_bytes_sent_query_url(era);
@@ -466,7 +471,7 @@ pub mod pallet {
 			(filtered_s.clone(), filtered_r.clone())
 		}
 
-		fn fetch_data1(era: u64 ) -> (Vec<BytesSent>, Vec<BytesReceived>){
+		fn fetch_data1(era: EraIndex) -> (Vec<BytesSent>, Vec<BytesReceived>){
 			info!("[DAC Validator] DAC Validator is running. Current era is {}", era);
 			// Todo: handle the error
 			let bytes_sent_query = Self::get_bytes_sent_query_url(era);
@@ -484,11 +489,11 @@ pub mod pallet {
 			(bytes_sent, bytes_received)
 		}
 
-		fn get_bytes_sent_query_url(era: u64) -> String {
+		fn get_bytes_sent_query_url(era: EraIndex) -> String {
 			format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", DATA_PROVIDER_URL, era, era)
 		}
 
-		fn get_bytes_received_query_url(era: u64) -> String {
+		fn get_bytes_received_query_url(era: EraIndex) -> String {
 			format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", DATA_PROVIDER_URL, era, era)
 		}
 
