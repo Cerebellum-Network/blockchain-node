@@ -268,18 +268,12 @@ pub mod pallet {
 		fn on_initialize(block_number: T::BlockNumber) -> Weight {
 			if block_number != 0u32.into() && block_number != 1u32.into() {
 				let era = Self::get_current_era();
-				match (era, <LastManagedEra<T>>::get()) {
-					(global_era_counter, Some(last_managed_era)) => {
-						if last_managed_era >= global_era_counter {
-							return 0
-						}
-						<LastManagedEra<T>>::put(global_era_counter);
-					},
-					(global_era_counter, None) => {
-						<LastManagedEra<T>>::put(global_era_counter);
-					},
-				};
-
+				if let Some(last_managed_era) = <LastManagedEra<T>>::get() {
+					if last_managed_era >= era {
+						return 0
+					}
+				}
+				<LastManagedEra<T>>::put(era);
 				let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
 				let validators_count = validators.len() as u32;
 				let edges: Vec<T::AccountId> =
