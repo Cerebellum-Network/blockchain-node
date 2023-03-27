@@ -266,48 +266,49 @@ pub mod pallet {
 		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 	{
 		fn on_initialize(block_number: T::BlockNumber) -> Weight {
-			if block_number != 0u32.into() && block_number != 1u32.into() {
-				let era = Self::get_current_era();
-				if let Some(last_managed_era) = <LastManagedEra<T>>::get() {
-					if last_managed_era >= era {
-						return 0
-					}
-				}
-				<LastManagedEra<T>>::put(era);
-				let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
-				let validators_count = validators.len() as u32;
-				let edges: Vec<T::AccountId> =
-					<ddc_staking::pallet::Edges<T>>::iter_keys().collect();
-				log::info!(
-					"Block number: {:?}, global era: {:?}, last era: {:?}, validators_count: {:?}, validators: {:?}, edges: {:?}",
-					block_number,
-					era,
-					<LastManagedEra<T>>::get(),
-					validators_count,
-					validators,
-					edges,
-				);
-
-				// A naive approach assigns random validators for each edge.
-				for edge in edges {
-					let mut decisions: BoundedVec<Decision<T::AccountId>, DdcValidatorsQuorumSize> =
-						Default::default();
-					while !decisions.is_full() {
-						let validator_idx = Self::choose(validators_count).unwrap_or(0) as usize;
-						let validator: T::AccountId = validators[validator_idx].clone();
-						let assignment = Decision {
-							validator,
-							method: ValidationMethodKind::ProofOfDelivery,
-							decision: None,
-						};
-						decisions.try_push(assignment).unwrap();
-					}
-					Tasks::<T>::insert(edge, decisions);
-				}
-				0
-			} else {
-				0
+			if block_number < 1u32.into() {
+				return 0
 			}
+
+			let era = Self::get_current_era();
+			if let Some(last_managed_era) = <LastManagedEra<T>>::get() {
+				if last_managed_era >= era {
+					return 0
+				}
+			}
+			<LastManagedEra<T>>::put(era);
+
+			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
+			let validators_count = validators.len() as u32;
+			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
+			log::info!(
+				"Block number: {:?}, global era: {:?}, last era: {:?}, validators_count: {:?}, validators: {:?}, edges: {:?}",
+				block_number,
+				era,
+				<LastManagedEra<T>>::get(),
+				validators_count,
+				validators,
+				edges,
+			);
+
+			// A naive approach assigns random validators for each edge.
+			for edge in edges {
+				let mut decisions: BoundedVec<Decision<T::AccountId>, DdcValidatorsQuorumSize> =
+					Default::default();
+				while !decisions.is_full() {
+					let validator_idx = Self::choose(validators_count).unwrap_or(0) as usize;
+					let validator: T::AccountId = validators[validator_idx].clone();
+					let assignment = Decision {
+						validator,
+						method: ValidationMethodKind::ProofOfDelivery,
+						decision: None,
+					};
+					decisions.try_push(assignment).unwrap();
+				}
+				Tasks::<T>::insert(edge, decisions);
+			}
+
+			0
 		}
 
 		fn offchain_worker(block_number: T::BlockNumber) {
