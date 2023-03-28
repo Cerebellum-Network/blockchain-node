@@ -271,7 +271,7 @@ pub mod pallet {
 		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 	{
 		fn on_initialize(block_number: T::BlockNumber) -> Weight {
-			if block_number < 1u32.into() {
+			if block_number <= 1u32.into() {
 				return 0
 			}
 
