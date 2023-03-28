@@ -242,8 +242,10 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn tasks)]
-	pub type Tasks<T: Config> = StorageMap<
+	pub type Tasks<T: Config> = StorageDoubleMap<
 		_,
+		Twox64Concat,
+		EraIndex,
 		Twox64Concat,
 		T::AccountId,
 		BoundedVec<Decision<T::AccountId>, DdcValidatorsQuorumSize>,
@@ -314,7 +316,7 @@ pub mod pallet {
 					};
 					decisions.try_push(assignment).unwrap();
 				}
-				Tasks::<T>::insert(edge, decisions);
+				Tasks::<T>::insert(era, edge, decisions);
 			}
 
 			0
@@ -361,14 +363,14 @@ pub mod pallet {
 		#[pallet::weight(10000)]
 		pub fn proof_of_delivery(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
 			let signer: T::AccountId = ensure_signed(origin)?;
-
-			let cdn_nodes_to_validate = Self::fetch_tasks(&signer);
+			let era = Self::get_current_era();
+			let cdn_nodes_to_validate = Self::fetch_tasks(era, &signer);
 			let (s, r) = Self::fetch_data1(era);
 			for cdn_node_id in cdn_nodes_to_validate {
 				let (bytes_sent, bytes_received) = Self::filter_data(&s, &r, &cdn_node_id);
 				let val_res = Self::validate(bytes_sent.clone(), bytes_received.clone());
 
-				let decisions_for_cdn = <Tasks<T>>::get(cdn_node_id);
+				let decisions_for_cdn = <Tasks<T>>::get(era, cdn_node_id);
 				for decision in decisions_for_cdn.unwrap().iter_mut() {
 					if decision.validator == signer {
 						decision.decision = Some(val_res);
@@ -547,9 +549,9 @@ pub mod pallet {
 		}
 
 		/// Fetch the tasks related to current validator
-		fn fetch_tasks(validator: &T::AccountId) -> Vec<T::AccountId> {
+		fn fetch_tasks(era: EraIndex, validator: &T::AccountId) -> Vec<T::AccountId> {
 			let mut cdn_nodes: Vec<T::AccountId> = vec![];
-			for (cdn_id, cdn_tasks) in <Tasks<T>>::iter() {
+			for (cdn_id, cdn_tasks) in <Tasks<T>>::iter_prefix(era) {
 				for decision in cdn_tasks.iter() {
 					if decision.validator == *validator {
 						cdn_nodes.push(cdn_id);
