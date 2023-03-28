@@ -111,7 +111,7 @@ impl BytesSent {
 	}
 
 	pub fn get_all(aggregation: RedisFtAggregate) -> Vec<BytesSent> {
-		let mut res: Vec<BytesSent> = vec!();
+		let mut res: Vec<BytesSent> = vec![];
 		for i in 1..aggregation.ft_aggregate.len() {
 			let data = aggregation.ft_aggregate[i].clone();
 			match data {
@@ -120,16 +120,18 @@ impl BytesSent {
 						node_public_key: node[1].clone(),
 						era: node[3].clone().parse::<u32>().expect("era must be convertible u32")
 							as EraIndex,
-						sum: node[5].parse::<u32>().expect("bytesSentSum must be convertable to u32"),
+						sum: node[5]
+							.parse::<u32>()
+							.expect("bytesSentSum must be convertable to u32"),
 					};
 
 					res.push(node);
-				}
+				},
 				FtAggregate::Length(_) => panic!("[DAC Validator] Not a Node"),
 			}
 		}
 
-		return res;
+		return res
 	}
 }
 
@@ -159,7 +161,7 @@ impl BytesReceived {
 	}
 
 	pub fn get_all(aggregation: RedisFtAggregate) -> Vec<BytesReceived> {
-		let mut res: Vec<BytesReceived> = vec!();
+		let mut res: Vec<BytesReceived> = vec![];
 		for i in 1..aggregation.ft_aggregate.len() {
 			let data = aggregation.ft_aggregate[i].clone();
 			match data {
@@ -168,16 +170,18 @@ impl BytesReceived {
 						node_public_key: node[1].clone(),
 						era: node[3].clone().parse::<u32>().expect("era must be convertible u32")
 							as EraIndex,
-						sum: node[5].parse::<u32>().expect("bytesReceivedSum must be convertable to u32"),
+						sum: node[5]
+							.parse::<u32>()
+							.expect("bytesReceivedSum must be convertable to u32"),
 					};
 
 					res.push(node);
-				}
+				},
 				FtAggregate::Length(_) => panic!("[DAC Validator] Not a Node"),
 			}
 		}
 
-		return res;
+		return res
 	}
 }
 
@@ -462,7 +466,11 @@ pub mod pallet {
 			pub_key_str
 		}
 
-		fn filter_data(s: &Vec<BytesSent>, r: &Vec<BytesReceived>, a: &T::AccountId) -> (BytesSent, BytesReceived){
+		fn filter_data(
+			s: &Vec<BytesSent>,
+			r: &Vec<BytesReceived>,
+			a: &T::AccountId,
+		) -> (BytesSent, BytesReceived) {
 			let ac = Self::account_to_string(a.clone());
 
 			let filtered_s = &*s.into_iter().find(|bs| bs.node_public_key == ac).unwrap();
@@ -471,7 +479,7 @@ pub mod pallet {
 			(filtered_s.clone(), filtered_r.clone())
 		}
 
-		fn fetch_data1(era: EraIndex) -> (Vec<BytesSent>, Vec<BytesReceived>){
+		fn fetch_data1(era: EraIndex) -> (Vec<BytesSent>, Vec<BytesReceived>) {
 			info!("[DAC Validator] DAC Validator is running. Current era is {}", era);
 			// Todo: handle the error
 			let bytes_sent_query = Self::get_bytes_sent_query_url(era);
