@@ -104,7 +104,7 @@ impl BytesSent {
 					node_public_key: node[1].clone(),
 					era: node[3].clone().parse::<u32>().expect("era must be convertible u32")
 						as EraIndex,
-					sum: node[5].parse::<u32>().expect("bytesSentSum must be convertable to u32"),
+					sum: node[5].parse::<u32>().expect("bytesSentSum must be convertible to u32"),
 				},
 			FtAggregate::Length(_) => panic!("[DAC Validator] Not a Node"),
 		}
@@ -122,7 +122,7 @@ impl BytesSent {
 							as EraIndex,
 						sum: node[5]
 							.parse::<u32>()
-							.expect("bytesSentSum must be convertable to u32"),
+							.expect("bytesSentSum must be convertible to u32"),
 					};
 
 					res.push(node);
@@ -154,7 +154,7 @@ impl BytesReceived {
 						as EraIndex,
 					sum: node[5]
 						.parse::<u32>()
-						.expect("bytesReceivedSum must be convertable to u32"),
+						.expect("bytesReceivedSum must be convertible to u32"),
 				},
 			FtAggregate::Length(_) => panic!("[DAC Validator] Not a Node"),
 		}
@@ -172,7 +172,7 @@ impl BytesReceived {
 							as EraIndex,
 						sum: node[5]
 							.parse::<u32>()
-							.expect("bytesReceivedSum must be convertable to u32"),
+							.expect("bytesReceivedSum must be convertible to u32"),
 					};
 
 					res.push(node);
