@@ -430,22 +430,32 @@ pub mod pallet {
 
 		#[pallet::weight(10000)]
 		pub fn proof_of_delivery(origin: OriginFor<T>, s: Vec<BytesSent>, r: Vec<BytesReceived>) -> DispatchResult {
+			info!("[DAC Validator] processing proof_of_delivery");
 			let signer: T::AccountId = ensure_signed(origin)?;
+
+			info!("signer: {:?}", Self::account_to_string(signer.clone()));
 
 			let era = Self::get_current_era();
 			let cdn_nodes_to_validate = Self::fetch_tasks(era, &signer);
-			let (s, r) = Self::fetch_data1(era);
+
+			info!("[DAC Validator] cdn_nodes_to_validate: {:?}", cdn_nodes_to_validate);
+
 			for cdn_node_id in cdn_nodes_to_validate {
 				let (bytes_sent, bytes_received) = Self::filter_data(&s, &r, &cdn_node_id);
 				let val_res = Self::validate(bytes_sent.clone(), bytes_received.clone());
 
 				let decisions_for_cdn = <Tasks<T>>::get(era, cdn_node_id);
-				for decision in decisions_for_cdn.unwrap().iter_mut() {
+				for decision in decisions_for_cdn.clone().unwrap().iter_mut() {
 					if decision.validator == signer {
 						decision.decision = Some(val_res);
 						decision.method = ValidationMethodKind::ProofOfDelivery;
 					}
 				}
+
+				info!(
+					"[DAC Validator] decisions_for_cdn: {:?}",
+					decisions_for_cdn
+				);
 			}
 
 			Ok(())
@@ -458,11 +468,6 @@ pub mod pallet {
 		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 	{
 		fn offchain_worker_main(block_number: T::BlockNumber) -> ResultStr<()> {
-			info!(
-				"[DAC Validator] Validation data stored onchain: {:?}",
-				ValidationResults::<T>::get()
-			);
-
 			if block_number % ERA_IN_BLOCKS.into() != 0u32.into() {
 				return Ok(())
 			}
@@ -475,8 +480,6 @@ pub mod pallet {
 				Ok(signer) => signer,
 			};
 
-			info!("[DAC Validator] ValidationResults: {:?}", ValidationResults::<T>::get());
-
 			// Read data from DataModel and do dumb validation
 			let current_era = Self::get_current_era() - 1;
 			let (s, r) = Self::fetch_data1(current_era);
@@ -484,9 +487,13 @@ pub mod pallet {
 			let tx_res = signer.send_signed_transaction(|_acct| {
 				Call::proof_of_delivery { s: s.clone(), r: r.clone() }
 			});
+
 			match &tx_res {
-				None | Some((_, Err(()))) =>
-					return Err("Error while submitting proof of delivery TX"),
+				None => return Err("Error while submitting proof of delivery TX"),
+				Some((_, Err(e))) => {
+					info!("Error while submitting proof of delivery TX: {:?}", e);
+					return Err("Error while submitting proof of delivery TX");
+				},
 				Some((_, Ok(()))) => {},
 			}
 
@@ -620,6 +627,8 @@ pub mod pallet {
 		fn fetch_tasks(era: EraIndex, validator: &T::AccountId) -> Vec<T::AccountId> {
 			let mut cdn_nodes: Vec<T::AccountId> = vec![];
 			for (cdn_id, cdn_tasks) in <Tasks<T>>::iter_prefix(era) {
+				info!("[DAC Validator] tasks assigned to {:?}: {:?}", cdn_id, cdn_tasks);
+
 				for decision in cdn_tasks.iter() {
 					if decision.validator == *validator {
 						cdn_nodes.push(cdn_id);
