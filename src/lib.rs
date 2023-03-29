@@ -25,6 +25,7 @@ pub use pallet_session as session;
 pub use pallet_staking::{self as staking};
 pub use scale_info::TypeInfo;
 pub use sp_core::crypto::{KeyTypeId, UncheckedFrom};
+pub use sp_io::crypto::sr25519_public_keys;
 pub use sp_runtime::offchain::{http, Duration, Timestamp};
 pub use sp_staking::EraIndex;
 pub use sp_std::prelude::*;
@@ -322,6 +323,16 @@ pub mod pallet {
 		}
 
 		fn offchain_worker(block_number: T::BlockNumber) {
+			let pubkeys = sr25519_public_keys(KEY_TYPE);
+			if pubkeys.is_empty() {
+				log::info!("No local sr25519 accounts available to offchain worker.");
+				return
+			}
+			log::info!(
+				"Local sr25519 accounts available to offchain worker: {:?}, first pubilc key: {:?}",
+				pubkeys, pubkeys.first().unwrap()
+			);
+
 			let res = Self::offchain_worker_main(block_number);
 
 			match res {
