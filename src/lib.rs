@@ -36,6 +36,7 @@ parameter_types! {
 	pub const ValidationThreshold: f32 = 5.0;
 }
 
+/// The balance type of this pallet.
 type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
@@ -52,15 +53,22 @@ const ERA_IN_BLOCKS: u8 = 20;
 
 const DATA_PROVIDER_URL: &str = "http://localhost:7379/";
 
+/// DAC Validation methods.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum ValidationMethodKind {
+	/// Compare amount of served content with amount of content consumed.
 	ProofOfDelivery,
 }
 
+/// Associates validation decision with the validator and the method used to produce it.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct Decision<AccountId> {
+	/// Individual validator's decision. Can be `None` if the validator did not produce a decision
+	/// (yet).
 	pub decision: Option<bool>,
+	/// The method used to produce the decision.
 	pub method: ValidationMethodKind,
+	/// The validator who produced the decision.
 	pub validator: AccountId,
 }
 
@@ -234,16 +242,27 @@ pub mod pallet {
 		<Self as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<Self::Hash>,
 		<BalanceOf<Self> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 	{
+		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		/// Something that provides randomness in the runtime. Required by the tasks assignment
+		/// procedure.
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
+
+		/// A dispatchable call.
 		type Call: From<Call<Self>>;
+
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 		type TimeProvider: UnixTime;
 
+		/// Number of validators expected to produce an individual validation decision to form a
+		/// consensus. Tasks assignment procedure use this value to determine the number of
+		/// validators are getting the same task. Must be an odd number.
 		#[pallet::constant]
 		type DdcValidatorsQuorumSize: Get<u32>;
 	}
 
+	/// The map from the era and CDN participant stash key to the validation decisions related.
 	#[pallet::storage]
 	#[pallet::getter(fn tasks)]
 	pub type Tasks<T: Config> = StorageDoubleMap<
@@ -255,6 +274,7 @@ pub mod pallet {
 		BoundedVec<Decision<T::AccountId>, T::DdcValidatorsQuorumSize>,
 	>;
 
+	/// The last era for which the tasks assignment produced.
 	#[pallet::storage]
 	#[pallet::getter(fn last_managed_era)]
 	pub type LastManagedEra<T: Config> = StorageValue<_, EraIndex>;
@@ -576,6 +596,9 @@ pub mod pallet {
 			cdn_nodes
 		}
 
+		/// Randomly choose a number in range `[0, total)`.
+		/// Returns `None` for zero input.
+		/// Modification of `choose_ticket` from `pallet-lottery` version `4.0.0-dev`.
 		fn choose(total: u32) -> Option<u32> {
 			if total == 0 {
 				return None
@@ -594,6 +617,11 @@ pub mod pallet {
 			Some(random_number % total)
 		}
 
+		/// Generate a random number from a given seed.
+		/// Note that there is potential bias introduced by using modulus operator.
+		/// You should call this function with different seed values until the random
+		/// number lies within `u32::MAX - u32::MAX % n`.
+		/// Modification of `generate_random_number` from `pallet-lottery` version `4.0.0-dev`.
 		fn generate_random_number(seed: u32) -> u32 {
 			let (random_seed, _) =
 				<T as pallet::Config>::Randomness::random(&(b"ddc-validator", seed).encode());
