@@ -32,6 +32,10 @@ pub use sp_std::prelude::*;
 
 extern crate alloc;
 
+parameter_types! {
+	pub const ValidationThreshold: f32 = 5.0;
+}
+
 type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
@@ -555,7 +559,9 @@ pub mod pallet {
 		}
 
 		fn validate(bytes_sent: BytesSent, bytes_received: BytesReceived) -> bool {
-			return if bytes_sent.sum == bytes_received.sum { true } else { false }
+			let percentage_difference = 1f32 - (bytes_received.sum as f32 / bytes_sent.sum as f32);
+
+			return if percentage_difference > 0.0 && (ValidationThreshold::get() - percentage_difference) > 0.0 { true } else { false }			
 		}
 
 		/// Fetch the tasks related to current validator
