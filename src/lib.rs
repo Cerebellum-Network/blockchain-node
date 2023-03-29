@@ -1,3 +1,37 @@
+//! # DDC Validator pallet
+//!
+//! The DDC Validator pallet is responsible for producing validation decisions based on activity
+//! data from DAC DataModel. It is expected to work on validators nodes only.
+//!
+//! - [`Config`]
+//! - [`Call`]
+//! - [`Pallet`]
+//! - [`Hooks`]
+//!
+//! ## Responsibility
+//!
+//! 1. Assign validation tasks on DAC Validators in the beginning of each era,
+//! 2. Spin the offchain worker which tries to execute the validation tasks each era,
+//! 3. Fetch the data required for validation from DAC DataModel,
+//! 4. Execute validation method on this data,
+//! 5. Produce validation decision and submit it to the chain.
+//!
+//! ## Usage
+//!
+//! 1. Run the node with `--validator` flag,
+//! 2. Setup validator key with `author_insertKey` RPC call. Use `dacv` validator key type and the
+//!    same private key as the one used to generate the validator's session keys,
+//!	3. Proceed a regular validator setup,
+//! 4. Tasks assignment will assign you a task in the beginning of the era which has your account in
+//!    validators set.
+//!
+//!	## Notes
+//!
+//! - Era definition in this pallet is different than in the `pallet-staking`. In this pallet era is
+//!   a period of time during which the validator is expected to produce a validation decision.
+//!   Means staking era and DAC era are different and are not related to each other,
+//! - You can set DAC Validators quorum size by specifying `DdcValidatorsQuorumSize` parameter,
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use alloc::{format, string::String};
