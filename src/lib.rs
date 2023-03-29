@@ -88,8 +88,8 @@ pub enum FtAggregate {
 	Node(Vec<String>),
 }
 
-#[derive(Clone)]
-struct BytesSent {
+#[derive(Clone, Debug, Encode, Decode, scale_info::TypeInfo, PartialEq)]
+pub struct BytesSent {
 	node_public_key: String,
 	era: EraIndex,
 	sum: u32,
@@ -136,8 +136,8 @@ impl BytesSent {
 	}
 }
 
-#[derive(Clone)]
-struct BytesReceived {
+#[derive(Clone, Debug, Encode, Decode, scale_info::TypeInfo, PartialEq)]
+pub struct BytesReceived {
 	node_public_key: String,
 	era: EraIndex,
 	sum: u32,
@@ -375,8 +375,9 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10000)]
-		pub fn proof_of_delivery(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
+		pub fn proof_of_delivery(origin: OriginFor<T>, s: Vec<BytesSent>, r: Vec<BytesReceived>) -> DispatchResult {
 			let signer: T::AccountId = ensure_signed(origin)?;
+
 			let era = Self::get_current_era();
 			let cdn_nodes_to_validate = Self::fetch_tasks(era, &signer);
 			let (s, r) = Self::fetch_data1(era);
@@ -423,15 +424,12 @@ pub mod pallet {
 			info!("[DAC Validator] ValidationResults: {:?}", ValidationResults::<T>::get());
 
 			// Read data from DataModel and do dumb validation
-			let current_era = Self::get_current_era() - 1;
+			let current_era = Self::get_current_era() - 1u64;
+			let (s, r) = Self::fetch_data1(current_era);
 
 			let tx_res = signer.send_signed_transaction(|_acct| {
-				info!("[DAC Validator] Trigger proof of delivery");
-
-				// This is the on-chain function
-				Call::proof_of_delivery { era: current_era }
+				Call::proof_of_delivery { s: s.clone(), r: r.clone() }
 			});
-
 			match &tx_res {
 				None | Some((_, Err(()))) =>
 					return Err("Error while submitting proof of delivery TX"),
