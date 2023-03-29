@@ -31,10 +31,6 @@ pub use sp_std::prelude::*;
 
 extern crate alloc;
 
-parameter_types! {
-	pub DdcValidatorsQuorumSize: u32 = 3;
-}
-
 type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
@@ -238,6 +234,9 @@ pub mod pallet {
 		type Call: From<Call<Self>>;
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 		type TimeProvider: UnixTime;
+
+		#[pallet::constant]
+		type DdcValidatorsQuorumSize: Get<u32>;
 	}
 
 	#[pallet::storage]
@@ -248,7 +247,7 @@ pub mod pallet {
 		EraIndex,
 		Twox64Concat,
 		T::AccountId,
-		BoundedVec<Decision<T::AccountId>, DdcValidatorsQuorumSize>,
+		BoundedVec<Decision<T::AccountId>, T::DdcValidatorsQuorumSize>,
 	>;
 
 	#[pallet::storage]
@@ -304,7 +303,7 @@ pub mod pallet {
 
 			// A naive approach assigns random validators for each edge.
 			for edge in edges {
-				let mut decisions: BoundedVec<Decision<T::AccountId>, DdcValidatorsQuorumSize> =
+				let mut decisions: BoundedVec<Decision<T::AccountId>, T::DdcValidatorsQuorumSize> =
 					Default::default();
 				while !decisions.is_full() {
 					let validator_idx = Self::choose(validators_count).unwrap_or(0) as usize;
