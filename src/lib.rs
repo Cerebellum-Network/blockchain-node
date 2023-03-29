@@ -424,7 +424,7 @@ pub mod pallet {
 			info!("[DAC Validator] ValidationResults: {:?}", ValidationResults::<T>::get());
 
 			// Read data from DataModel and do dumb validation
-			let current_era = Self::get_current_era() - 1u64;
+			let current_era = Self::get_current_era() - 1;
 			let (s, r) = Self::fetch_data1(current_era);
 
 			let tx_res = signer.send_signed_transaction(|_acct| {
