@@ -323,10 +323,22 @@ pub mod pallet {
 	pub enum Event<T: Config>
 	where
 		<T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
-		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode, {}
+		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
+	{
+		/// DAC Validator successfully published the validation decision.
+		ValidationDecisionSubmitted,
+	}
 
 	#[pallet::error]
-	pub enum Error<T> {}
+	pub enum Error<T> {
+		/// Validation decision attempts to submit the result for the wrong era (not the current
+		/// one).
+		BadEra,
+		/// Can't submit the validation decision twice.
+		DecisionAlreadySubmitted,
+		/// Task does not exist for a given era, CDN participant, and DAC validator.
+		TaskNotFound,
+	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T>
@@ -426,6 +438,40 @@ pub mod pallet {
 			ValidationResults::<T>::set(v_results);
 
 			Ok(())
+		}
+
+		/// Set validation decision in tasks assignment.
+		///
+		/// `origin` must be a DAC Validator assigned to the task.
+		/// `era` must be a current era, otherwise the decision will be rejected.
+		/// `subject` is a CDN participant stash.
+		///
+		/// Emits `ValidationDecisionSubmitted` event.
+		#[pallet::weight(100_000)]
+		pub fn submit_validation_decision(
+			origin: OriginFor<T>,
+			era: EraIndex,
+			subject: T::AccountId,
+			method: ValidationMethodKind,
+			decision: bool,
+		) -> DispatchResult {
+			let account = ensure_signed(origin)?;
+
+			ensure!(Self::get_current_era() == era, Error::<T>::BadEra);
+
+			Tasks::<T>::try_mutate_exists(era, &subject, |maybe_tasks| {
+				let mut tasks = maybe_tasks.take().ok_or(Error::<T>::TaskNotFound)?;
+				let mut task = tasks
+					.iter_mut()
+					.find(|task| task.validator == account && task.method == method)
+					.ok_or(Error::<T>::TaskNotFound)?;
+				ensure!(task.decision.is_none(), Error::<T>::DecisionAlreadySubmitted);
+				task.decision = Some(decision);
+
+				Self::deposit_event(Event::ValidationDecisionSubmitted);
+
+				Ok(())
+			})
 		}
 
 		#[pallet::weight(10000)]
