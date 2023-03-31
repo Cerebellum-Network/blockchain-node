@@ -490,18 +490,17 @@ pub mod pallet {
 				let (bytes_sent, bytes_received) = Self::filter_data(&s, &r, &cdn_node_id);
 				let val_res = Self::validate(bytes_sent.clone(), bytes_received.clone());
 
-				let decisions_for_cdn = <Tasks<T>>::get(era, cdn_node_id);
-				for decision in decisions_for_cdn.clone().unwrap().iter_mut() {
-					if decision.validator == signer {
-						decision.decision = Some(val_res);
-						decision.method = ValidationMethodKind::ProofOfDelivery;
-					}
-				}
+				<Tasks<T>>::mutate(era, cdn_node_id, |decisions_for_cdn| {
+					let decisions =
+						decisions_for_cdn.as_mut().expect("unexpected empty tasks assignment");
+					let mut decision = decisions
+						.iter_mut()
+						.find(|decision| decision.validator == signer)
+						.expect("unexpected validators set in tasks assignment");
+					decision.decision = Some(val_res);
+				});
 
-				info!(
-					"[DAC Validator] decisions_for_cdn: {:?}",
-					decisions_for_cdn
-				);
+				info!("[DAC Validator] decisions_for_cdn: {:?}", <Tasks<T>>::get(era, cdn_node_id));
 			}
 
 			Ok(())
