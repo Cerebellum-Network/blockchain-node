@@ -490,7 +490,7 @@ pub mod pallet {
 				let (bytes_sent, bytes_received) = Self::filter_data(&s, &r, &cdn_node_id);
 				let val_res = Self::validate(bytes_sent.clone(), bytes_received.clone());
 
-				<Tasks<T>>::mutate(era, cdn_node_id, |decisions_for_cdn| {
+				<Tasks<T>>::mutate(era, &cdn_node_id, |decisions_for_cdn| {
 					let decisions =
 						decisions_for_cdn.as_mut().expect("unexpected empty tasks assignment");
 					let mut decision = decisions
