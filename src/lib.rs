@@ -67,7 +67,7 @@ pub use sp_std::prelude::*;
 extern crate alloc;
 
 parameter_types! {
-	pub const ValidationThreshold: f32 = 5.0;
+	pub const ValidationThreshold: u32 = 5;
 }
 
 /// The balance type of this pallet.
@@ -665,7 +665,13 @@ pub mod pallet {
 		fn validate(bytes_sent: BytesSent, bytes_received: BytesReceived) -> bool {
 			let percentage_difference = 1f32 - (bytes_received.sum as f32 / bytes_sent.sum as f32);
 
-			return if percentage_difference > 0.0 && (ValidationThreshold::get() - percentage_difference) > 0.0 { true } else { false }			
+			return if percentage_difference > 0.0 &&
+				(ValidationThreshold::get() as f32 - percentage_difference) > 0.0
+			{
+				true
+			} else {
+				false
+			}
 		}
 
 		/// Fetch the tasks related to current validator
