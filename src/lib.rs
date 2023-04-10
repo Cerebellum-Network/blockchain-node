@@ -400,7 +400,8 @@ pub mod pallet {
 			}
 			log::info!(
 				"Local sr25519 accounts available to offchain worker: {:?}, first pubilc key: {:?}",
-				pubkeys, pubkeys.first().unwrap()
+				pubkeys,
+				pubkeys.first().unwrap()
 			);
 
 			let res = Self::offchain_worker_main(block_number);
@@ -475,7 +476,11 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10000)]
-		pub fn proof_of_delivery(origin: OriginFor<T>, s: Vec<BytesSent>, r: Vec<BytesReceived>) -> DispatchResult {
+		pub fn proof_of_delivery(
+			origin: OriginFor<T>,
+			s: Vec<BytesSent>,
+			r: Vec<BytesReceived>,
+		) -> DispatchResult {
 			info!("[DAC Validator] processing proof_of_delivery");
 			let signer: T::AccountId = ensure_signed(origin)?;
 
@@ -529,15 +534,16 @@ pub mod pallet {
 			let current_era = Self::get_current_era() - 1;
 			let (s, r) = Self::fetch_data1(current_era);
 
-			let tx_res = signer.send_signed_transaction(|_acct| {
-				Call::proof_of_delivery { s: s.clone(), r: r.clone() }
+			let tx_res = signer.send_signed_transaction(|_acct| Call::proof_of_delivery {
+				s: s.clone(),
+				r: r.clone(),
 			});
 
 			match &tx_res {
 				None => return Err("Error while submitting proof of delivery TX"),
 				Some((_, Err(e))) => {
 					info!("Error while submitting proof of delivery TX: {:?}", e);
-					return Err("Error while submitting proof of delivery TX");
+					return Err("Error while submitting proof of delivery TX")
 				},
 				Some((_, Ok(()))) => {},
 			}
