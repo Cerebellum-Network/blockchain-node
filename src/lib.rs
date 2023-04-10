@@ -66,10 +66,6 @@ pub use sp_std::prelude::*;
 
 extern crate alloc;
 
-parameter_types! {
-	pub const ValidationThreshold: u32 = 5;
-}
-
 /// The balance type of this pallet.
 type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
@@ -294,6 +290,13 @@ pub mod pallet {
 		/// validators are getting the same task. Must be an odd number.
 		#[pallet::constant]
 		type DdcValidatorsQuorumSize: Get<u32>;
+
+		/// Proof-of-Delivery parameter specifies an allowed deviation between bytes sent and bytes
+		/// received. The deviation is expressed as a percentage. For example, if the value is 10,
+		/// then the difference between bytes sent and bytes received is allowed to be up to 10%.
+		/// The value must be in range [0, 100].
+		#[pallet::constant]
+		type ValidationThreshold: Get<u32>;
 	}
 
 	/// The map from the era and CDN participant stash key to the validation decisions related.
@@ -672,7 +675,7 @@ pub mod pallet {
 			let percentage_difference = 1f32 - (bytes_received.sum as f32 / bytes_sent.sum as f32);
 
 			return if percentage_difference > 0.0 &&
-				(ValidationThreshold::get() as f32 - percentage_difference) > 0.0
+				(T::ValidationThreshold::get() as f32 - percentage_difference) > 0.0
 			{
 				true
 			} else {
