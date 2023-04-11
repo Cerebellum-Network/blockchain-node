@@ -43,3 +43,9 @@ std = [
     "sp-staking/std",
     "sp-std/std",
 ]
+
+[dev-dependencies]
+pallet-balances = { version = "4.0.0-dev", path = "../balances" }
+pallet-randomness-collective-flip = { version = "4.0.0-dev", path = "../randomness-collective-flip" }
+pallet-timestamp = { version = "4.0.0-dev", path = "../timestamp" }
+pallet-staking-reward-curve = { version = "4.0.0-dev", path = "../staking/reward-curve" }
