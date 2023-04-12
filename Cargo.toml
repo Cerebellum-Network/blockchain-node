@@ -16,12 +16,12 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["full"] }
 frame-support = { version = "4.0.0-dev", default-features = false, path = "../support" }
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../system" }
-serde = { version = "1.0.101", optional = true }
+serde = { version = "1.0.136", optional = true }
 sp-keystore = { version = "0.12.0", default-features = false, path = "../../primitives/keystore", optional = true }
 sp-core = { version = "6.0.0", default-features = false, path = "../../primitives/core" }
 sp-io = { version = "6.0.0", default-features = false, path = "../../primitives/io" }
 sp-runtime = { version = "6.0.0", default-features = false, path = "../../primitives/runtime" }
-sp-std = { version = "4.0.0-dev", default-features = false, path = "../../primitives/std" }
+sp-std = { version = "4.0.0", default-features = false, path = "../../primitives/std" }
 pallet-contracts  = { version = '4.0.0-dev', default-features = false, path = "../contracts" }
 lite-json = { version = "0.2.0", default-features = false }
 alt_serde = { version = "1", default-features = false, features = ["derive"] }
