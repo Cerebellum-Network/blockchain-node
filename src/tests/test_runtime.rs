@@ -151,6 +151,7 @@ impl contracts::Config for Test {
     type DepositPerByte = DepositPerByte;
     type DepositPerItem = DepositPerItem;
     type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+    type ContractAccessWeight = ();
 }
 
 parameter_types! {
