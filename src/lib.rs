@@ -81,7 +81,8 @@ const TIME_START_MS: u128 = 1_672_531_200_000;
 const ERA_DURATION_MS: u128 = 120_000;
 const ERA_IN_BLOCKS: u8 = 20;
 
-const DATA_PROVIDER_URL: &str = "http://localhost:7379/";
+/// Webdis in experimental cluster connected to Redis in dev.
+const DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379/";
 
 /// DAC Validation methods.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
@@ -299,6 +300,11 @@ pub mod pallet {
 		type ValidationThreshold: Get<u32>;
 	}
 
+	/// A signal to start a process on all the validators.
+	#[pallet::storage]
+	#[pallet::getter(fn signal)]
+	pub(super) type Signal<T: Config> = StorageValue<_, bool>;
+
 	/// The map from the era and CDN participant stash key to the validation decisions related.
 	#[pallet::storage]
 	#[pallet::getter(fn tasks)]
@@ -350,69 +356,108 @@ pub mod pallet {
 		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 	{
 		fn on_initialize(block_number: T::BlockNumber) -> Weight {
-			if block_number <= 1u32.into() {
-				return 0
+			// Reset the signal in the beginning of the block to keep it reset until an incoming
+			// transaction sets it to true.
+			if Signal::<T>::get().unwrap_or(false) {
+				Signal::<T>::set(Some(false));
 			}
 
-			let era = Self::get_current_era();
-			if let Some(last_managed_era) = <LastManagedEra<T>>::get() {
-				if last_managed_era >= era {
-					return 0
-				}
-			}
-			<LastManagedEra<T>>::put(era);
+			// Old task manager.
+			//
+			// if block_number <= 1u32.into() {
+			// 	return 0
+			// }
 
-			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
-			let validators_count = validators.len() as u32;
-			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
-			log::info!(
-				"Block number: {:?}, global era: {:?}, last era: {:?}, validators_count: {:?}, validators: {:?}, edges: {:?}",
-				block_number,
-				era,
-				<LastManagedEra<T>>::get(),
-				validators_count,
-				validators,
-				edges,
-			);
+			// let era = Self::get_current_era();
+			// if let Some(last_managed_era) = <LastManagedEra<T>>::get() {
+			// 	if last_managed_era >= era {
+			// 		return 0
+			// 	}
+			// }
+			// <LastManagedEra<T>>::put(era);
 
-			// A naive approach assigns random validators for each edge.
-			for edge in edges {
-				let mut decisions: BoundedVec<Decision<T::AccountId>, T::DdcValidatorsQuorumSize> =
-					Default::default();
-				while !decisions.is_full() {
-					let validator_idx = Self::choose(validators_count).unwrap_or(0) as usize;
-					let validator: T::AccountId = validators[validator_idx].clone();
-					let assignment = Decision {
-						validator,
-						method: ValidationMethodKind::ProofOfDelivery,
-						decision: None,
-					};
-					decisions.try_push(assignment).unwrap();
-				}
-				Tasks::<T>::insert(era, edge, decisions);
-			}
+			// let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
+			// let validators_count = validators.len() as u32;
+			// let edges: Vec<T::AccountId> =
+			// <ddc_staking::pallet::Edges<T>>::iter_keys().collect(); log::info!(
+			// 	"Block number: {:?}, global era: {:?}, last era: {:?}, validators_count: {:?},
+			// validators: {:?}, edges: {:?}", 	block_number,
+			// 	era,
+			// 	<LastManagedEra<T>>::get(),
+			// 	validators_count,
+			// 	validators,
+			// 	edges,
+			// );
+
+			// // A naive approach assigns random validators for each edge.
+			// for edge in edges {
+			// 	let mut decisions: BoundedVec<Decision<T::AccountId>, T::DdcValidatorsQuorumSize> =
+			// 		Default::default();
+			// 	while !decisions.is_full() {
+			// 		let validator_idx = Self::choose(validators_count).unwrap_or(0) as usize;
+			// 		let validator: T::AccountId = validators[validator_idx].clone();
+			// 		let assignment = Decision {
+			// 			validator,
+			// 			method: ValidationMethodKind::ProofOfDelivery,
+			// 			decision: None,
+			// 		};
+			// 		decisions.try_push(assignment).unwrap();
+			// 	}
+			// 	Tasks::<T>::insert(era, edge, decisions);
+			// }
 
 			0
 		}
 
+		/// Offchain worker entry point.
+		///
+		/// 1. Listen to a signal,
+		/// 2. Run a process at the same time,
+		/// 3. Read data from DAC.
 		fn offchain_worker(block_number: T::BlockNumber) {
-			let pubkeys = sr25519_public_keys(KEY_TYPE);
-			if pubkeys.is_empty() {
-				log::info!("No local sr25519 accounts available to offchain worker.");
+			// Skip if not a validator.
+			if !sp_io::offchain::is_validator() {
 				return
 			}
+
+			// Wait for signal.
+			let signal = Signal::<T>::get().unwrap_or(false);
+			if !signal {
+				log::info!("🔎 DAC Validator is idle at block {:?}, waiting for a signal, signal state is {:?}", block_number, signal);
+				return
+			}
+
+			// Read from DAC.
+			let current_era = Self::get_current_era();
+			let (sent_query, sent, received_query, received) = Self::fetch_data2(current_era - 1);
 			log::info!(
-				"Local sr25519 accounts available to offchain worker: {:?}, first pubilc key: {:?}",
-				pubkeys,
-				pubkeys.first().unwrap()
+				"🔎 DAC Validator is fetching data from DAC, current era: {:?}, bytes sent query: {:?}, bytes sent response: {:?}, bytes received query: {:?}, bytes received response: {:?}",
+				current_era,
+				sent_query,
+				sent,
+				received_query,
+				received,
 			);
 
-			let res = Self::offchain_worker_main(block_number);
+			// Old off-chain worker.
+			//
+			// let pubkeys = sr25519_public_keys(KEY_TYPE);
+			// if pubkeys.is_empty() {
+			// 	log::info!("No local sr25519 accounts available to offchain worker.");
+			// 	return
+			// }
+			// log::info!(
+			// 	"Local sr25519 accounts available to offchain worker: {:?}, first pubilc key: {:?}",
+			// 	pubkeys,
+			// 	pubkeys.first().unwrap()
+			// );
 
-			match res {
-				Ok(()) => info!("[DAC Validator] DAC Validator is suspended."),
-				Err(err) => error!("[DAC Validator] Error in Offchain Worker: {}", err),
-			};
+			// let res = Self::offchain_worker_main(block_number);
+
+			// match res {
+			// 	Ok(()) => info!("[DAC Validator] DAC Validator is suspended."),
+			// 	Err(err) => error!("[DAC Validator] Error in Offchain Worker: {}", err),
+			// };
 		}
 	}
 
@@ -422,6 +467,25 @@ pub mod pallet {
 		<T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
 		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 	{
+		/// Run a process at the same time on all the validators.
+		#[pallet::weight(10_000)]
+		pub fn send_signal(origin: OriginFor<T>) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			Signal::<T>::set(Some(true));
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn reset_signal(origin: OriginFor<T>) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			Signal::<T>::set(Some(false));
+
+			Ok(())
+		}
+
 		#[pallet::weight(10000)]
 		pub fn save_validated_data(
 			origin: OriginFor<T>,
@@ -626,6 +690,19 @@ pub mod pallet {
 			(bytes_sent, bytes_received)
 		}
 
+		fn fetch_data2(era: EraIndex) -> (String, Vec<BytesSent>, String, Vec<BytesReceived>) {
+			let bytes_sent_query = Self::get_bytes_sent_query_url(era);
+			let bytes_sent_res: RedisFtAggregate = Self::http_get_json(&bytes_sent_query).unwrap();
+			let bytes_sent = BytesSent::get_all(bytes_sent_res);
+
+			let bytes_received_query = Self::get_bytes_received_query_url(era);
+			let bytes_received_res: RedisFtAggregate =
+				Self::http_get_json(&bytes_received_query).unwrap();
+			let bytes_received = BytesReceived::get_all(bytes_received_res);
+
+			(bytes_sent_query, bytes_sent, bytes_received_query, bytes_received)
+		}
+
 		fn get_bytes_sent_query_url(era: EraIndex) -> String {
 			format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", DATA_PROVIDER_URL, era, era)
 		}
@@ -649,7 +726,7 @@ pub mod pallet {
 		}
 
 		fn http_get_request(http_url: &str) -> Result<Vec<u8>, http::Error> {
-			info!("[DAC Validator] Sending request to: {:?}", http_url);
+			// info!("[DAC Validator] Sending request to: {:?}", http_url);
 
 			// Initiate an external HTTP GET request. This is using high-level wrappers from
 			// `sp_runtime`.
