@@ -10,6 +10,22 @@ use sp_core::H256;
 use sp_runtime::{ curve::PiecewiseLinear, generic, testing::{Header, TestXt}, traits::{BlakeTwo256, IdentityLookup, Verify, Extrinsic as ExtrinsicT, IdentifyAccount}, Perbill, MultiSignature, curve};
 use pallet_contracts as contracts;
 
+use sp_runtime::traits::Convert;
+use pallet_session::ShouldEndSession;
+use sp_runtime::{
+	impl_opaque_keys,
+	testing::{UintAuthorityId},
+};
+use sp_staking::SessionIndex;
+use frame_support::{
+    traits::{U128CurrencyToVote}
+};
+
+use frame_election_provider_support::{
+	onchain, SequentialPhragmen
+};
+
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type Balance = u128;
@@ -32,6 +48,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances,
         Contracts: contracts,
         Session: pallet_session,
+        Staking: pallet_staking,
         Timestamp: pallet_timestamp,
         RandomnessCollectiveFlip: pallet_randomness_collective_flip,
         DdcStaking: pallet_ddc_staking,
@@ -90,13 +107,20 @@ use contracts::{Config as contractsConfig};
 
 type BalanceOf<T> = <<T as contractsConfig>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+pub struct TestWeightToFee;
+impl Convert<u64, u128> for TestWeightToFee {
+  fn convert(weight: u64) -> u128 {
+      weight as u128
+  }
+}
+
 impl contracts::Config for Test {
     type Time = Timestamp;
     type Randomness = RandomnessCollectiveFlip;
     type Currency = Balances;
     type Event = Event;
     type CallStack = [pallet_contracts::Frame<Self>; 31];
-    type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
+    type WeightPrice = TestWeightToFee; //pallet_transaction_payment::Module<Self>;
     type WeightInfo = ();
     type ChainExtension = ();
     type DeletionQueueDepth = ();
@@ -132,15 +156,34 @@ parameter_types! {
 	pub const DdcValidatorsQuorumSize: u32 = 3;
 }
 
+pub struct TestShouldEndSession;
+impl ShouldEndSession<u32> for TestShouldEndSession {
+  fn should_end_session(now: u32) -> bool {
+      now % 10 == 0 // every 10 blocks
+  }
+}
+
+impl_opaque_keys! {
+	pub struct MockSessionKeys {
+		pub dummy: UintAuthorityId,
+	}
+}
+
+impl From<UintAuthorityId> for MockSessionKeys {
+	fn from(dummy: UintAuthorityId) -> Self {
+		Self { dummy }
+	}
+}
+
 impl pallet_session::Config for Test {
-    type Event = ();
+    type Event = Event;
     type ValidatorId = AccountId;
     type ValidatorIdOf = ();
-    type ShouldEndSession = ();
+    type ShouldEndSession = TestShouldEndSession;
     type NextSessionRotation = ();
     type SessionManager = ();
-    type SessionHandler = ();
-    type Keys = ();
+    type SessionHandler = pallet_session::TestSessionHandler;
+    type Keys = MockSessionKeys;
     type WeightInfo = ();
 }
 
@@ -165,11 +208,24 @@ parameter_types! {
 	pub OffchainRepeat: BlockNumber = 5;
 }
 
+
+pub struct OnChainSeqPhragmen;
+impl onchain::ExecutionConfig for OnChainSeqPhragmen {
+	type System = Test;
+	type Solver = SequentialPhragmen<AccountId, Perbill>;
+	type DataProvider = Staking;
+}
+
+impl pallet_session::historical::Config for Test {
+	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+	type FullIdentificationOf = pallet_staking::ExposureOf<Test>;
+}
+
 impl pallet_staking::Config for Test {
     type MaxNominations = ();
     type Currency = Balances;
     type UnixTime = Timestamp;
-    type CurrencyToVote = ();
+    type CurrencyToVote = U128CurrencyToVote;
     type RewardRemainder = ();
     type Event = Event;
     type Slash = (); // send the slashed funds to the treasury.
@@ -177,19 +233,18 @@ impl pallet_staking::Config for Test {
     type SessionsPerEra = SessionsPerEra;
     type BondingDuration = BondingDuration;
     type SlashDeferDuration = SlashDeferDuration;
-    /// A super-majority of the council can cancel the slash.
-    type SlashCancelOrigin = ();
+    type SlashCancelOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type SessionInterface = Self;
     type EraPayout = pallet_staking::ConvertCurve<RewardCurve>;
     type NextNewSession = Session;
     type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
     type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
-    type ElectionProvider = ();
-    type GenesisElectionProvider = ();
-    type VoterList = ();
+    type ElectionProvider = onchain::UnboundedExecution<OnChainSeqPhragmen>;
+    type GenesisElectionProvider = Self::ElectionProvider;
+    type VoterList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
     type MaxUnlockingChunks = ConstU32<32>;
     type WeightInfo = pallet_staking::weights::SubstrateWeight<Test>;
-    type BenchmarkingConfig = ();
+    type BenchmarkingConfig = pallet_staking::TestBenchmarkingConfig;
 }
 
 impl pallet_ddc_staking::Config for Test {

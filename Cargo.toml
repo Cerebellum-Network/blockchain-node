@@ -9,6 +9,8 @@ alt_serde = { version = "1", default-features = false, features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
 frame-support = { version = "4.0.0-dev", default-features = false, path = "../support" }
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../system" }
+frame-election-provider-support = { version = "4.0.0-dev", path = "../election-provider-support" }
+
 log = { version = "0.4.17", default-features = false }
 pallet-contracts  = { version = '4.0.0-dev', default-features = false, path = "../contracts" }
 pallet-ddc-staking = { version = "0.1.0", default-features = false, path = "../ddc-staking" }
@@ -30,6 +32,7 @@ std = [
     "codec/std",
     "frame-support/std",
     "frame-system/std",
+    "frame-election-provider-support/std",
     "pallet-contracts/std",
     "pallet-ddc-staking/std",
     "pallet-session/std",
