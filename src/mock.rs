@@ -9,7 +9,6 @@ use frame_system::offchain::SendTransactionTypes;
 use sp_core::H256;
 use sp_runtime::{ curve::PiecewiseLinear, generic, testing::{Header, TestXt}, traits::{BlakeTwo256, IdentityLookup, Verify, Extrinsic as ExtrinsicT, IdentifyAccount}, Perbill, MultiSignature, curve};
 use pallet_contracts as contracts;
-
 use sp_runtime::traits::Convert;
 use pallet_session::ShouldEndSession;
 use sp_runtime::{
@@ -20,24 +19,17 @@ use sp_staking::SessionIndex;
 use frame_support::{
     traits::{U128CurrencyToVote}
 };
-
 use frame_election_provider_support::{
 	onchain, SequentialPhragmen
 };
-
-
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type Balance = u128;
-// type AccountId = u64;
-
 pub type Signature = MultiSignature;
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
-// pub type Balance = u128;
 pub type BlockNumber = u32;
 pub type Moment = u64;
 
-// Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Test where
 		Block = Block,
@@ -47,11 +39,11 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Balances: pallet_balances,
         Contracts: contracts,
+        Timestamp: pallet_timestamp,
         Session: pallet_session,
         Staking: pallet_staking,
-        Timestamp: pallet_timestamp,
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip,
         DdcStaking: pallet_ddc_staking,
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip,
         DdcValidator: pallet_ddc_validator,
 	}
 );
@@ -187,6 +179,11 @@ impl pallet_session::Config for Test {
     type WeightInfo = ();
 }
 
+impl pallet_session::historical::Config for Test {
+	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+	type FullIdentificationOf = pallet_staking::ExposureOf<Test>;
+}
+
 pallet_staking_reward_curve::build! {
 	const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
 		min_inflation: 0_000_100,
@@ -198,6 +195,13 @@ pallet_staking_reward_curve::build! {
 	);
 }
 
+pub struct OnChainSeqPhragmen;
+impl onchain::ExecutionConfig for OnChainSeqPhragmen {
+    type System = Test;
+    type Solver = SequentialPhragmen<AccountId, Perbill>;
+    type DataProvider = Staking;
+}
+
 parameter_types! {
 	pub const SessionsPerEra: sp_staking::SessionIndex = 6;
 	pub const BondingDuration: sp_staking::EraIndex = 3;
@@ -206,19 +210,6 @@ parameter_types! {
 	pub const MaxNominatorRewardedPerValidator: u32 = 256;
 	pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
 	pub OffchainRepeat: BlockNumber = 5;
-}
-
-
-pub struct OnChainSeqPhragmen;
-impl onchain::ExecutionConfig for OnChainSeqPhragmen {
-	type System = Test;
-	type Solver = SequentialPhragmen<AccountId, Perbill>;
-	type DataProvider = Staking;
-}
-
-impl pallet_session::historical::Config for Test {
-	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
-	type FullIdentificationOf = pallet_staking::ExposureOf<Test>;
 }
 
 impl pallet_staking::Config for Test {
@@ -299,22 +290,6 @@ impl SigningTypes for Test {
     type Public = <Signature as Verify>::Signer;
     type Signature = Signature;
 }
-
-// impl<C> frame_system::offchain::SendTransactionTypes<C> for Test
-//     where
-//         Call: From<C>,
-// {
-//     type OverarchingCall = Call;
-//     type Extrinsic = TestXt<Call, ()>;
-// }
-
-// impl<LocalCall> SendTransactionTypes<LocalCall> for Test
-//     where
-//         Call: From<LocalCall>,
-// {
-//     type OverarchingCall = Call;
-//     type Extrinsic = Extrinsic;
-// }
 
 impl<LocalCall> CreateSignedTransaction<LocalCall> for Test
     where
