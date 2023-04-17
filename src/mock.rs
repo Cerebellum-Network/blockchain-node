@@ -222,7 +222,7 @@ impl pallet_session::historical::Config for Test {
 }
 
 impl pallet_staking::Config for Test {
-    type MaxNominations = ();
+    type MaxNominations = ConstU32<16>;
     type Currency = Balances;
     type UnixTime = Timestamp;
     type CurrencyToVote = U128CurrencyToVote;
