@@ -144,10 +144,6 @@ impl pallet_timestamp::Config for Test {
 
 impl pallet_randomness_collective_flip::Config for Test {}
 
-parameter_types! {
-	pub const DdcValidatorsQuorumSize: u32 = 3;
-}
-
 pub struct TestShouldEndSession;
 impl ShouldEndSession<u32> for TestShouldEndSession {
   fn should_end_session(now: u32) -> bool {
@@ -196,10 +192,12 @@ pallet_staking_reward_curve::build! {
 }
 
 pub struct OnChainSeqPhragmen;
-impl onchain::ExecutionConfig for OnChainSeqPhragmen {
+impl onchain::Config for OnChainSeqPhragmen {
     type System = Test;
     type Solver = SequentialPhragmen<AccountId, Perbill>;
     type DataProvider = Staking;
+    type WeightInfo = frame_election_provider_support::weights::SubstrateWeight<Test>;
+
 }
 
 parameter_types! {
@@ -236,6 +234,8 @@ impl pallet_staking::Config for Test {
     type MaxUnlockingChunks = ConstU32<32>;
     type WeightInfo = pallet_staking::weights::SubstrateWeight<Test>;
     type BenchmarkingConfig = pallet_staking::TestBenchmarkingConfig;
+    type CurrencyBalance = Balance;
+    type OnStakerSlash = ();
 }
 
 impl pallet_ddc_staking::Config for Test {
@@ -245,6 +245,11 @@ impl pallet_ddc_staking::Config for Test {
     type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Test>;
 }
 
+parameter_types! {
+	pub const DdcValidatorsQuorumSize: u32 = 3;
+    pub const ValidationThreshold: u32 = 5;
+}
+
 impl pallet_ddc_validator::Config for Test {
     type DdcValidatorsQuorumSize = DdcValidatorsQuorumSize;
     type Event = Event;
@@ -252,6 +257,7 @@ impl pallet_ddc_validator::Config for Test {
     type Call = Call;
     type AuthorityId = pallet_ddc_validator::crypto::TestAuthId;
     type TimeProvider = pallet_timestamp::Pallet<Test>;
+    type ValidationThreshold = ValidationThreshold;
 }
 
 impl<LocalCall> SendTransactionTypes<LocalCall> for Test
