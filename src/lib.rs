@@ -93,7 +93,6 @@ const ERA_DURATION_MS: u128 = 120_000;
 const ERA_IN_BLOCKS: u8 = 20;
 
 /// Webdis in experimental cluster connected to Redis in dev.
-// const DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379/";
 const DEFAULT_DATA_PROVIDER_URL: &str = "localhost:7379/";
 const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
 
@@ -640,7 +639,7 @@ pub mod pallet {
 				sp_core::offchain::StorageKind::PERSISTENT,
 				DATA_PROVIDER_URL_KEY,
 			);
-			info!("url_ref: {:?}", url_ref);
+
 			match url_ref {
 				None => {
 					let url_key = String::from_utf8(DATA_PROVIDER_URL_KEY.to_vec()).unwrap();
