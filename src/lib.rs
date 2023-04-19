@@ -53,6 +53,7 @@ pub use frame_support::{
 	traits::{Currency, Randomness, UnixTime},
 	weights::Weight,
 	BoundedVec, RuntimeDebug,
+	storage,
 };
 pub use frame_system::{
 	ensure_signed,
@@ -66,7 +67,7 @@ pub use pallet_staking::{self as staking};
 pub use scale_info::TypeInfo;
 pub use sp_core::crypto::{KeyTypeId, UncheckedFrom};
 pub use sp_io::crypto::sr25519_public_keys;
-pub use sp_runtime::offchain::{http, Duration, Timestamp};
+pub use sp_runtime::offchain::{http, Duration, Timestamp, storage::StorageValueRef};
 pub use sp_staking::EraIndex;
 pub use sp_std::prelude::*;
 
@@ -92,7 +93,9 @@ const ERA_DURATION_MS: u128 = 120_000;
 const ERA_IN_BLOCKS: u8 = 20;
 
 /// Webdis in experimental cluster connected to Redis in dev.
-const DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379/";
+// const DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379/";
+const DEFAULT_DATA_PROVIDER_URL: &str = "localhost:7379/";
+const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
 
 /// DAC Validation methods.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
@@ -425,6 +428,10 @@ pub mod pallet {
 		/// 2. Run a process at the same time,
 		/// 3. Read data from DAC.
 		fn offchain_worker(block_number: T::BlockNumber) {
+			let data_provider_url = Self::get_data_provider_url();
+
+			info!("data_provider_url: {:?}", data_provider_url.unwrap_or(String::from("no url")));
+
 			// Skip if not a validator.
 			if !sp_io::offchain::is_validator() {
 				return
@@ -628,6 +635,26 @@ pub mod pallet {
 			Ok(())
 		}
 
+		fn get_data_provider_url() -> Option<String> {
+			let url_ref = StorageValueRef::persistent(DATA_PROVIDER_URL_KEY).get::<Vec<u8>>();
+			info!("url_ref: {:?}", url_ref);
+			match url_ref {
+				Ok(None) => {
+					let url_key = String::from_utf8(DATA_PROVIDER_URL_KEY.to_vec()).unwrap();
+					let msg = format!("[DAC Validator] Data provider URL is not configured. Please configure it using offchain_localStorageSet with key {:?}", url_key);
+					warn!("{}", msg);
+					None
+				}
+				Ok(Some(url)) => {
+					Some(String::from_utf8(url).unwrap())
+				},
+				Err(_) => {
+					error!("[OCW] Data provider URL is configured but the value could not be decoded");
+					None
+				}
+			}
+		}
+
 		fn get_signer() -> ResultStr<Signer<T, T::AuthorityId>> {
 			let signer = Signer::<_, _>::any_account();
 			if !signer.can_sign() {
@@ -714,11 +741,29 @@ pub mod pallet {
 		}
 
 		fn get_bytes_sent_query_url(era: EraIndex) -> String {
-			format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", DATA_PROVIDER_URL, era, era)
+			let data_provider_url = Self::get_data_provider_url();
+
+			match data_provider_url {
+				Some(url) => {
+					return format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", url, era, era);
+				}
+				None => {
+					return format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", DEFAULT_DATA_PROVIDER_URL, era, era);
+				}
+			}
 		}
 
 		fn get_bytes_received_query_url(era: EraIndex) -> String {
-			format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", DATA_PROVIDER_URL, era, era)
+			let data_provider_url = Self::get_data_provider_url();
+
+			match data_provider_url {
+				Some(url) => {
+					return format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", url, era, era);
+				}
+				None => {
+					return format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", DEFAULT_DATA_PROVIDER_URL, era, era);
+				}
+			}
 		}
 
 		fn http_get_json<OUT: DeserializeOwned>(url: &str) -> ResultStr<OUT> {
