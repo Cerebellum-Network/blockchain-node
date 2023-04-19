@@ -636,22 +636,19 @@ pub mod pallet {
 		}
 
 		fn get_data_provider_url() -> Option<String> {
-			let url_ref = StorageValueRef::persistent(DATA_PROVIDER_URL_KEY).get::<Vec<u8>>();
+			let url_ref = sp_io::offchain::local_storage_get(
+				sp_core::offchain::StorageKind::PERSISTENT,
+				DATA_PROVIDER_URL_KEY,
+			);
 			info!("url_ref: {:?}", url_ref);
 			match url_ref {
-				Ok(None) => {
+				None => {
 					let url_key = String::from_utf8(DATA_PROVIDER_URL_KEY.to_vec()).unwrap();
 					let msg = format!("[DAC Validator] Data provider URL is not configured. Please configure it using offchain_localStorageSet with key {:?}", url_key);
 					warn!("{}", msg);
 					None
-				}
-				Ok(Some(url)) => {
-					Some(String::from_utf8(url).unwrap())
 				},
-				Err(_) => {
-					error!("[OCW] Data provider URL is configured but the value could not be decoded");
-					None
-				}
+				Some(url) => Some(String::from_utf8(url).unwrap()),
 			}
 		}
 
