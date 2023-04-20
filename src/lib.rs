@@ -40,6 +40,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+use std::collections::{HashMap};
 pub use alloc::{format, string::String};
 pub use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 pub use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
@@ -70,6 +71,7 @@ pub use sp_io::crypto::sr25519_public_keys;
 pub use sp_runtime::offchain::{http, Duration, Timestamp, storage::StorageValueRef};
 pub use sp_staking::EraIndex;
 pub use sp_std::prelude::*;
+use rand::seq::SliceRandom;
 
 extern crate alloc;
 
@@ -304,6 +306,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type DdcValidatorsQuorumSize: Get<u32>;
 
+		type ValidatorsMax: Get<u32>;
+
 		/// Proof-of-Delivery parameter specifies an allowed deviation between bytes sent and bytes
 		/// received. The deviation is expressed as a percentage. For example, if the value is 10,
 		/// then the difference between bytes sent and bytes received is allowed to be up to 10%.
@@ -311,6 +315,17 @@ pub mod pallet {
 		#[pallet::constant]
 		type ValidationThreshold: Get<u32>;
 	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn assignments)]
+	pub(super) type Assignments<T: Config> = StorageDoubleMap<
+		_,
+		Twox64Concat,
+		EraIndex,
+		Twox64Concat,
+		String,
+		Vec<String>,
+	>;
 
 	/// A signal to start a process on all the validators.
 	#[pallet::storage]
@@ -370,36 +385,23 @@ pub mod pallet {
 		fn on_initialize(block_number: T::BlockNumber) -> Weight {
 			// Reset the signal in the beginning of the block to keep it reset until an incoming
 			// transaction sets it to true.
-			if Signal::<T>::get().unwrap_or(false) {
-				Signal::<T>::set(Some(false));
-			}
+			// if Signal::<T>::get().unwrap_or(false) {
+			// 	Signal::<T>::set(Some(false));
+			// }
 
 			// Old task manager.
-			//
-			// if block_number <= 1u32.into() {
-			// 	return 0
-			// }
 
-			// let era = Self::get_current_era();
-			// if let Some(last_managed_era) = <LastManagedEra<T>>::get() {
-			// 	if last_managed_era >= era {
-			// 		return 0
-			// 	}
-			// }
-			// <LastManagedEra<T>>::put(era);
+			if block_number <= 1u32.into() {
+				return 0
+			}
 
-			// let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
-			// let validators_count = validators.len() as u32;
-			// let edges: Vec<T::AccountId> =
-			// <ddc_staking::pallet::Edges<T>>::iter_keys().collect(); log::info!(
-			// 	"Block number: {:?}, global era: {:?}, last era: {:?}, validators_count: {:?},
-			// validators: {:?}, edges: {:?}", 	block_number,
-			// 	era,
-			// 	<LastManagedEra<T>>::get(),
-			// 	validators_count,
-			// 	validators,
-			// 	edges,
-			// );
+			let era = Self::get_current_era();
+			if let Some(last_managed_era) = <LastManagedEra<T>>::get() {
+				if last_managed_era >= era {
+					return 0
+				}
+			}
+			<LastManagedEra<T>>::put(era);
 
 			// // A naive approach assigns random validators for each edge.
 			// for edge in edges {
@@ -809,6 +811,60 @@ pub mod pallet {
 			} else {
 				false
 			}
+		}
+
+		fn shuffle(mut list: Vec<T::AccountId>) -> Vec<T::AccountId> {
+			list.shuffle(&mut rand::thread_rng());
+
+			list
+		}
+
+		fn split(list: Vec<String>, segment_len: usize) -> Vec<Vec<String>> {
+			list.chunks(segment_len).map(|chunk| chunk.to_vec()).collect()
+		}
+
+		fn assign(quorum_size: usize) -> HashMap<String, Vec<String>> {
+			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
+			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
+
+			let shuffled_validators = Self::shuffle(validators);
+			let shuffled_edges = Self::shuffle(edges);
+
+			let validators_keys: Vec<String> = shuffled_validators.iter().map( |v| {
+				Self::account_to_string(v.clone())
+			}).collect();
+
+			let edges_keys: Vec<String> = shuffled_edges.iter().map( |e| {
+				Self::account_to_string(e.clone())
+			}).collect();
+
+			let quorums = Self::split(validators_keys, quorum_size);
+			let edges_groups = Self::split(edges_keys, quorums.len());
+
+			Self::map_validators_to_edges(quorums, edges_groups)
+		}
+
+		fn map_validators_to_edges(quorums: Vec<Vec<String>>, edges_groups: Vec<Vec<String>>) -> HashMap<String, Vec<String>> {
+			let mut validators_to_edges: HashMap<String, Vec<String>> = HashMap::new();
+
+			for (i, quorum) in quorums.iter().enumerate() {
+				let edges_group = &edges_groups[i];
+				for validator in quorum {
+					validators_to_edges.insert(validator.clone(), edges_group.clone());
+				}
+			}
+
+			validators_to_edges
+		}
+
+		fn save_assignments(era: EraIndex, assignments: HashMap<String, Vec<String>>) -> DispatchResult {
+			let era = Self::get_current_era();
+
+			for (validator, edges) in assignments {
+				Assignments::<T>::insert(era, validator, edges);
+			}
+
+			Ok(())
 		}
 
 		/// Fetch the tasks related to current validator
