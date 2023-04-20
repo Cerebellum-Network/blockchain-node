@@ -49,11 +49,10 @@ pub use frame_support::{
 	dispatch::DispatchResult,
 	log::{error, info, warn},
 	pallet_prelude::*,
-	parameter_types,
+	parameter_types, storage,
 	traits::{Currency, Randomness, UnixTime},
 	weights::Weight,
 	BoundedVec, RuntimeDebug,
-	storage,
 };
 pub use frame_system::{
 	ensure_signed,
@@ -67,7 +66,7 @@ pub use pallet_staking::{self as staking};
 pub use scale_info::TypeInfo;
 pub use sp_core::crypto::{KeyTypeId, UncheckedFrom};
 pub use sp_io::crypto::sr25519_public_keys;
-pub use sp_runtime::offchain::{http, Duration, Timestamp, storage::StorageValueRef};
+pub use sp_runtime::offchain::{http, storage::StorageValueRef, Duration, Timestamp};
 pub use sp_staking::EraIndex;
 pub use sp_std::prelude::*;
 
@@ -738,10 +737,10 @@ pub mod pallet {
 			match data_provider_url {
 				Some(url) => {
 					return format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", url, era, era);
-				}
+				},
 				None => {
 					return format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", DEFAULT_DATA_PROVIDER_URL, era, era);
-				}
+				},
 			}
 		}
 
@@ -751,10 +750,10 @@ pub mod pallet {
 			match data_provider_url {
 				Some(url) => {
 					return format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", url, era, era);
-				}
+				},
 				None => {
 					return format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", DEFAULT_DATA_PROVIDER_URL, era, era);
-				}
+				},
 			}
 		}
 

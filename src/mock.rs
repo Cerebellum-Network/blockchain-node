@@ -1,27 +1,25 @@
-use crate::{*, self as pallet_ddc_validator};
+use crate::{self as pallet_ddc_validator, *};
+use frame_election_provider_support::{onchain, SequentialPhragmen};
 use frame_support::{
-    parameter_types,
-    weights::Weight,
-    traits::{ConstU16, ConstU64, Currency, Everything, Nothing}
+	parameter_types,
+	traits::{ConstU16, ConstU64, Currency, Everything, Nothing, U128CurrencyToVote},
+	weights::Weight,
 };
-use frame_system::EnsureRoot;
-use frame_system::offchain::SendTransactionTypes;
-use sp_core::H256;
-use sp_runtime::{ curve::PiecewiseLinear, generic, testing::{Header, TestXt}, traits::{BlakeTwo256, IdentityLookup, Verify, Extrinsic as ExtrinsicT, IdentifyAccount}, Perbill, MultiSignature, curve};
+use frame_system::{offchain::SendTransactionTypes, EnsureRoot};
 use pallet_contracts as contracts;
-use sp_runtime::traits::Convert;
 use pallet_session::ShouldEndSession;
+use sp_core::H256;
 use sp_runtime::{
-	impl_opaque_keys,
-	testing::{UintAuthorityId},
+	curve,
+	curve::PiecewiseLinear,
+	generic, impl_opaque_keys,
+	testing::{Header, TestXt, UintAuthorityId},
+	traits::{
+		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
+	},
+	MultiSignature, Perbill,
 };
 use sp_staking::SessionIndex;
-use frame_support::{
-    traits::{U128CurrencyToVote}
-};
-use frame_election_provider_support::{
-	onchain, SequentialPhragmen
-};
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type Balance = u128;
@@ -38,117 +36,118 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system,
 		Balances: pallet_balances,
-        Contracts: contracts,
-        Timestamp: pallet_timestamp,
-        Session: pallet_session,
-        Staking: pallet_staking,
-        DdcStaking: pallet_ddc_staking,
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip,
-        DdcValidator: pallet_ddc_validator,
+		Contracts: contracts,
+		Timestamp: pallet_timestamp,
+		Session: pallet_session,
+		Staking: pallet_staking,
+		DdcStaking: pallet_ddc_staking,
+		RandomnessCollectiveFlip: pallet_randomness_collective_flip,
+		DdcValidator: pallet_ddc_validator,
 	}
 );
 
 parameter_types! {
-    pub const BlockHashCount: BlockNumber = 250;
-    pub const MaximumBlockWeight: Weight = 1024;
-    pub const MaximumBlockLength: u32 = 2 * 1024;
-    pub const AvailableBlockRatio: Perbill = Perbill::one();
+	pub const BlockHashCount: BlockNumber = 250;
+	pub const MaximumBlockWeight: Weight = 1024;
+	pub const MaximumBlockLength: u32 = 2 * 1024;
+	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
 impl frame_system::Config for Test {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type Origin = Origin;
-    type Index = u64;
-    type BlockNumber = BlockNumber;
-    type Hash = H256;
-    type Call = Call;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    // u64; // sp_core::sr25519::Public;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = generic::Header<BlockNumber, BlakeTwo256>;
-    type Event = Event;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type PalletInfo = PalletInfo;
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type BaseCallFilter = Everything;
+	type BlockWeights = ();
+	type BlockLength = ();
+	type Origin = Origin;
+	type Index = u64;
+	type BlockNumber = BlockNumber;
+	type Hash = H256;
+	type Call = Call;
+	type Hashing = BlakeTwo256;
+	type AccountId = AccountId;
+	// u64; // sp_core::sr25519::Public;
+	type Lookup = IdentityLookup<Self::AccountId>;
+	type Header = generic::Header<BlockNumber, BlakeTwo256>;
+	type Event = Event;
+	type BlockHashCount = BlockHashCount;
+	type DbWeight = ();
+	type Version = ();
+	type PalletInfo = PalletInfo;
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type OnNewAccount = ();
+	type OnKilledAccount = ();
+	type SystemWeightInfo = ();
+	type SS58Prefix = ();
+	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {
-    pub const SignedClaimHandicap: BlockNumber = 2;
-    pub const TombstoneDeposit: Balance = 16;
-    pub const StorageSizeOffset: u32 = 8;
-    pub const RentByteFee: Balance = 4;
-    pub const RentDepositOffset: Balance = 10_000;
-    pub const SurchargeReward: Balance = 150;
-    pub const MaxDepth: u32 = 100;
-    pub const MaxValueSize: u32 = 16_384;
-    pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
+	pub const SignedClaimHandicap: BlockNumber = 2;
+	pub const TombstoneDeposit: Balance = 16;
+	pub const StorageSizeOffset: u32 = 8;
+	pub const RentByteFee: Balance = 4;
+	pub const RentDepositOffset: Balance = 10_000;
+	pub const SurchargeReward: Balance = 150;
+	pub const MaxDepth: u32 = 100;
+	pub const MaxValueSize: u32 = 16_384;
+	pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
 }
 
-use contracts::{Config as contractsConfig};
+use contracts::Config as contractsConfig;
 
-type BalanceOf<T> = <<T as contractsConfig>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+type BalanceOf<T> =
+	<<T as contractsConfig>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 pub struct TestWeightToFee;
 impl Convert<u64, u128> for TestWeightToFee {
-  fn convert(weight: u64) -> u128 {
-      weight as u128
-  }
+	fn convert(weight: u64) -> u128 {
+		weight as u128
+	}
 }
 
 impl contracts::Config for Test {
-    type Time = Timestamp;
-    type Randomness = RandomnessCollectiveFlip;
-    type Currency = Balances;
-    type Event = Event;
-    type CallStack = [pallet_contracts::Frame<Self>; 31];
-    type WeightPrice = TestWeightToFee; //pallet_transaction_payment::Module<Self>;
-    type WeightInfo = ();
-    type ChainExtension = ();
-    type DeletionQueueDepth = ();
-    type DeletionWeightLimit = ();
-    type Schedule = Schedule;
-    type Call = Call;
-    type CallFilter = Nothing;
-    type DepositPerByte = DepositPerByte;
-    type DepositPerItem = DepositPerItem;
-    type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type Time = Timestamp;
+	type Randomness = RandomnessCollectiveFlip;
+	type Currency = Balances;
+	type Event = Event;
+	type CallStack = [pallet_contracts::Frame<Self>; 31];
+	type WeightPrice = TestWeightToFee; //pallet_transaction_payment::Module<Self>;
+	type WeightInfo = ();
+	type ChainExtension = ();
+	type DeletionQueueDepth = ();
+	type DeletionWeightLimit = ();
+	type Schedule = Schedule;
+	type Call = Call;
+	type CallFilter = Nothing;
+	type DepositPerByte = DepositPerByte;
+	type DepositPerItem = DepositPerItem;
+	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 }
 
 parameter_types! {
-    pub const TransactionByteFee: u64 = 0;
-    pub const DepositPerItem: Balance = 0;
+	pub const TransactionByteFee: u64 = 0;
+	pub const DepositPerItem: Balance = 0;
 	pub const DepositPerByte: Balance = 0;
 }
 
 parameter_types! {
-    pub const MinimumPeriod: u64 = 1;
+	pub const MinimumPeriod: u64 = 1;
 }
 
 impl pallet_timestamp::Config for Test {
-    type Moment = Moment;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
+	type Moment = Moment;
+	type OnTimestampSet = ();
+	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
 }
 
 impl pallet_randomness_collective_flip::Config for Test {}
 
 pub struct TestShouldEndSession;
 impl ShouldEndSession<u32> for TestShouldEndSession {
-  fn should_end_session(now: u32) -> bool {
-      now % 10 == 0 // every 10 blocks
-  }
+	fn should_end_session(now: u32) -> bool {
+		now % 10 == 0 // every 10 blocks
+	}
 }
 
 impl_opaque_keys! {
@@ -164,15 +163,15 @@ impl From<UintAuthorityId> for MockSessionKeys {
 }
 
 impl pallet_session::Config for Test {
-    type Event = Event;
-    type ValidatorId = AccountId;
-    type ValidatorIdOf = ();
-    type ShouldEndSession = TestShouldEndSession;
-    type NextSessionRotation = ();
-    type SessionManager = ();
-    type SessionHandler = pallet_session::TestSessionHandler;
-    type Keys = MockSessionKeys;
-    type WeightInfo = ();
+	type Event = Event;
+	type ValidatorId = AccountId;
+	type ValidatorIdOf = ();
+	type ShouldEndSession = TestShouldEndSession;
+	type NextSessionRotation = ();
+	type SessionManager = ();
+	type SessionHandler = pallet_session::TestSessionHandler;
+	type Keys = MockSessionKeys;
+	type WeightInfo = ();
 }
 
 impl pallet_session::historical::Config for Test {
@@ -193,11 +192,10 @@ pallet_staking_reward_curve::build! {
 
 pub struct OnChainSeqPhragmen;
 impl onchain::Config for OnChainSeqPhragmen {
-    type System = Test;
-    type Solver = SequentialPhragmen<AccountId, Perbill>;
-    type DataProvider = Staking;
-    type WeightInfo = frame_election_provider_support::weights::SubstrateWeight<Test>;
-
+	type System = Test;
+	type Solver = SequentialPhragmen<AccountId, Perbill>;
+	type DataProvider = Staking;
+	type WeightInfo = frame_election_provider_support::weights::SubstrateWeight<Test>;
 }
 
 parameter_types! {
@@ -211,61 +209,61 @@ parameter_types! {
 }
 
 impl pallet_staking::Config for Test {
-    type MaxNominations = ConstU32<16>;
-    type Currency = Balances;
-    type UnixTime = Timestamp;
-    type CurrencyToVote = U128CurrencyToVote;
-    type RewardRemainder = ();
-    type Event = Event;
-    type Slash = (); // send the slashed funds to the treasury.
-    type Reward = (); // rewards are minted from the void
-    type SessionsPerEra = SessionsPerEra;
-    type BondingDuration = BondingDuration;
-    type SlashDeferDuration = SlashDeferDuration;
-    type SlashCancelOrigin = frame_system::EnsureRoot<Self::AccountId>;
-    type SessionInterface = Self;
-    type EraPayout = pallet_staking::ConvertCurve<RewardCurve>;
-    type NextNewSession = Session;
-    type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-    type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
-    type ElectionProvider = onchain::UnboundedExecution<OnChainSeqPhragmen>;
-    type GenesisElectionProvider = Self::ElectionProvider;
-    type VoterList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
-    type MaxUnlockingChunks = ConstU32<32>;
-    type WeightInfo = pallet_staking::weights::SubstrateWeight<Test>;
-    type BenchmarkingConfig = pallet_staking::TestBenchmarkingConfig;
-    type CurrencyBalance = Balance;
-    type OnStakerSlash = ();
+	type MaxNominations = ConstU32<16>;
+	type Currency = Balances;
+	type UnixTime = Timestamp;
+	type CurrencyToVote = U128CurrencyToVote;
+	type RewardRemainder = ();
+	type Event = Event;
+	type Slash = (); // send the slashed funds to the treasury.
+	type Reward = (); // rewards are minted from the void
+	type SessionsPerEra = SessionsPerEra;
+	type BondingDuration = BondingDuration;
+	type SlashDeferDuration = SlashDeferDuration;
+	type SlashCancelOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	type SessionInterface = Self;
+	type EraPayout = pallet_staking::ConvertCurve<RewardCurve>;
+	type NextNewSession = Session;
+	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
+	type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
+	type ElectionProvider = onchain::UnboundedExecution<OnChainSeqPhragmen>;
+	type GenesisElectionProvider = Self::ElectionProvider;
+	type VoterList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
+	type MaxUnlockingChunks = ConstU32<32>;
+	type WeightInfo = pallet_staking::weights::SubstrateWeight<Test>;
+	type BenchmarkingConfig = pallet_staking::TestBenchmarkingConfig;
+	type CurrencyBalance = Balance;
+	type OnStakerSlash = ();
 }
 
 impl pallet_ddc_staking::Config for Test {
-    type BondingDuration = BondingDuration;
-    type Currency = Balances;
-    type Event = Event;
-    type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Test>;
+	type BondingDuration = BondingDuration;
+	type Currency = Balances;
+	type Event = Event;
+	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Test>;
 }
 
 parameter_types! {
 	pub const DdcValidatorsQuorumSize: u32 = 3;
-    pub const ValidationThreshold: u32 = 5;
+	pub const ValidationThreshold: u32 = 5;
 }
 
 impl pallet_ddc_validator::Config for Test {
-    type DdcValidatorsQuorumSize = DdcValidatorsQuorumSize;
-    type Event = Event;
-    type Randomness = RandomnessCollectiveFlip;
-    type Call = Call;
-    type AuthorityId = pallet_ddc_validator::crypto::TestAuthId;
-    type TimeProvider = pallet_timestamp::Pallet<Test>;
-    type ValidationThreshold = ValidationThreshold;
+	type DdcValidatorsQuorumSize = DdcValidatorsQuorumSize;
+	type Event = Event;
+	type Randomness = RandomnessCollectiveFlip;
+	type Call = Call;
+	type AuthorityId = pallet_ddc_validator::crypto::TestAuthId;
+	type TimeProvider = pallet_timestamp::Pallet<Test>;
+	type ValidationThreshold = ValidationThreshold;
 }
 
 impl<LocalCall> SendTransactionTypes<LocalCall> for Test
-    where
-        Call: From<LocalCall>,
+where
+	Call: From<LocalCall>,
 {
-    type OverarchingCall = Call;
-    type Extrinsic = Extrinsic;
+	type OverarchingCall = Call;
+	type Extrinsic = Extrinsic;
 }
 
 parameter_types! {
@@ -274,39 +272,39 @@ parameter_types! {
 }
 
 impl pallet_balances::Config for Test {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type Event = Event;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
+	type Balance = Balance;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = System;
+	type WeightInfo = ();
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
 }
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    frame_system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+	frame_system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
 }
 
 pub type Extrinsic = TestXt<Call, ()>;
 
 impl SigningTypes for Test {
-    type Public = <Signature as Verify>::Signer;
-    type Signature = Signature;
+	type Public = <Signature as Verify>::Signer;
+	type Signature = Signature;
 }
 
 impl<LocalCall> CreateSignedTransaction<LocalCall> for Test
-    where
-        Call: From<LocalCall>,
+where
+	Call: From<LocalCall>,
 {
-    fn create_transaction<C: AppCrypto<Self::Public, Self::Signature>>(
-        call: Call,
-        _public: <Signature as Verify>::Signer,
-        _account: AccountId,
-        nonce: u64,
-    ) -> Option<(Call, <Extrinsic as ExtrinsicT>::SignaturePayload)> {
-        Some((call, (nonce, ())))
-    }
+	fn create_transaction<C: AppCrypto<Self::Public, Self::Signature>>(
+		call: Call,
+		_public: <Signature as Verify>::Signer,
+		_account: AccountId,
+		nonce: u64,
+	) -> Option<(Call, <Extrinsic as ExtrinsicT>::SignaturePayload)> {
+		Some((call, (nonce, ())))
+	}
 }
