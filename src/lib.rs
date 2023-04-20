@@ -73,10 +73,6 @@ pub use sp_std::prelude::*;
 
 extern crate alloc;
 
-parameter_types! {
-	pub const ValidationThreshold: f32 = 5.0;
-}
-
 /// The balance type of this pallet.
 type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
