@@ -34,6 +34,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod dac;
+mod validation;
+
 #[cfg(test)]
 mod mock;
 
