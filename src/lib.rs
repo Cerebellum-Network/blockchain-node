@@ -94,6 +94,30 @@ const ERA_IN_BLOCKS: u8 = 20;
 const DEFAULT_DATA_PROVIDER_URL: &str = "localhost:7379/";
 const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
 
+/// Aggregated values from DAC that describe CDN node's activity during a certain era.
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct DacTotalAggregates {
+	/// Total bytes received by the client.
+	pub received: u64,
+	/// Total bytes sent by the CDN node.
+	pub sent: u64,
+	/// Total bytes sent by the CDN node to the client which interrupts the connection.
+	pub failed_by_client: u64,
+	/// ToDo: explain.
+	pub failure_rate: u64,
+}
+
+/// Final DAC Validation decision.
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct ValidationDecision {
+	/// Validation result.
+	pub result: bool,
+	/// A hash of the data used to produce validation result.
+	pub payload: [u8; 256],
+	/// Values aggregated from the payload.
+	pub totals: DacTotalAggregates,
+}
+
 /// DAC Validation methods.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub enum ValidationMethodKind {
@@ -314,6 +338,12 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn signal)]
 	pub(super) type Signal<T: Config> = StorageValue<_, bool>;
+
+	/// The map from the era and CDN participant stash key to the validation decision related.
+	#[pallet::storage]
+	#[pallet::getter(fn validation_decisions)]
+	pub type ValidationDecisions<T: Config> =
+		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, ValidationDecision>;
 
 	/// The map from the era and CDN participant stash key to the validation decisions related.
 	#[pallet::storage]
@@ -588,6 +618,28 @@ pub mod pallet {
 
 				info!("[DAC Validator] decisions_for_cdn: {:?}", <Tasks<T>>::get(era, cdn_node_id));
 			}
+
+			Ok(())
+		}
+
+		/// Set validation decision for a given CDN node in an era.
+		#[pallet::weight(10_000)]
+		pub fn set_validation_decision(
+			origin: OriginFor<T>,
+			era: EraIndex,
+			cdn_node: T::AccountId,
+			validation_decision: ValidationDecision,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			// ToDo: check if origin is a validator.
+			// ToDo: check if the era is current - 1.
+			// ToDo: check if the validation decision is not set yet.
+			// ToDo: check cdn_node is known to ddc-staking.
+
+			ValidationDecisions::<T>::insert(era, cdn_node, validation_decision);
+
+			// ToDo: emit event.
 
 			Ok(())
 		}
