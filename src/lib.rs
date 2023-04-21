@@ -99,14 +99,6 @@ pub struct ValidationDecision {
 	pub totals: DacTotalAggregates,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, Default)]
-pub struct ValidationResult<AccountId> {
-	era: EraIndex,
-	signer: AccountId,
-	val_res: bool,
-	cdn_node_pub_key: String,
-}
-
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
@@ -297,11 +289,6 @@ pub mod pallet {
 	pub type ValidationDecisions<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, ValidationDecision>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn validation_results)]
-	pub(super) type ValidationResults<T: Config> =
-		StorageValue<_, Vec<ValidationResult<T::AccountId>>, ValueQuery>;
-
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config>
@@ -376,28 +363,6 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			Signal::<T>::set(Some(true));
-
-			Ok(())
-		}
-
-		#[pallet::weight(10000)]
-		pub fn save_validated_data(
-			origin: OriginFor<T>,
-			val_res: bool,
-			cdn_node_pub_key: String,
-			era: EraIndex,
-		) -> DispatchResult {
-			let signer: T::AccountId = ensure_signed(origin)?;
-
-			info!("[DAC Validator] author: {:?}", signer);
-			let mut v_results = ValidationResults::<T>::get();
-
-			let cur_validation =
-				ValidationResult::<T::AccountId> { era, val_res, cdn_node_pub_key, signer };
-
-			v_results.push(cur_validation);
-
-			ValidationResults::<T>::set(v_results);
 
 			Ok(())
 		}
