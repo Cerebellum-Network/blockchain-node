@@ -521,15 +521,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
-		pub fn reset_signal(origin: OriginFor<T>) -> DispatchResult {
-			ensure_signed(origin)?;
-
-			Signal::<T>::set(Some(false));
-
-			Ok(())
-		}
-
 		#[pallet::weight(10000)]
 		pub fn save_validated_data(
 			origin: OriginFor<T>,
