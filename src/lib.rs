@@ -70,6 +70,7 @@ pub use sp_io::crypto::sr25519_public_keys;
 pub use sp_runtime::offchain::{http, Duration, Timestamp, storage::StorageValueRef};
 pub use sp_staking::EraIndex;
 pub use sp_std::prelude::*;
+use sp_core::crypto::AccountId32;
 
 extern crate alloc;
 
@@ -93,7 +94,7 @@ const ERA_DURATION_MS: u128 = 120_000;
 const ERA_IN_BLOCKS: u8 = 20;
 
 /// Webdis in experimental cluster connected to Redis in dev.
-const DEFAULT_DATA_PROVIDER_URL: &str = "localhost:7379/";
+const DEFAULT_DATA_PROVIDER_URL: &str = "localhost:7379";
 const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
 
 /// DAC Validation methods.
@@ -321,8 +322,8 @@ pub mod pallet {
 		Twox64Concat,
 		EraIndex,
 		Twox64Concat,
-		String,
-		Vec<String>,
+		T::AccountId,
+		Vec<T::AccountId>,
 	>;
 
 	/// A signal to start a process on all the validators.
@@ -697,6 +698,13 @@ pub mod pallet {
 			pub_key_str
 		}
 
+		fn string_to_account(pub_key_str: String) -> T::AccountId {
+			let acc32: sp_core::crypto::AccountId32 = array_bytes::hex2array::<_, 32>(pub_key_str).unwrap().into();
+			let mut to32 = AccountId32::as_ref(&acc32);
+			let address: T::AccountId = T::AccountId::decode(&mut to32).unwrap();
+			address
+		}
+
 		fn filter_data(
 			s: &Vec<BytesSent>,
 			r: &Vec<BytesReceived>,
@@ -746,10 +754,10 @@ pub mod pallet {
 
 			match data_provider_url {
 				Some(url) => {
-					return format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", url, era, era);
+					return format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", url, era, era);
 				}
 				None => {
-					return format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", DEFAULT_DATA_PROVIDER_URL, era, era);
+					return format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", DEFAULT_DATA_PROVIDER_URL, era, era);
 				}
 			}
 		}
@@ -759,10 +767,10 @@ pub mod pallet {
 
 			match data_provider_url {
 				Some(url) => {
-					return format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", url, era, era);
+					return format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", url, era, era);
 				}
 				None => {
-					return format!("{}FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", DEFAULT_DATA_PROVIDER_URL, era, era);
+					return format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", DEFAULT_DATA_PROVIDER_URL, era, era);
 				}
 			}
 		}
@@ -826,7 +834,7 @@ pub mod pallet {
 			list
 		}
 
-		fn split(list: Vec<String>, segment_len: usize) -> Vec<Vec<String>> {
+		fn split<Item: Clone>(list: Vec<Item>, segment_len: usize) -> Vec<Vec<Item>> {
 			list.chunks(segment_len).map(|chunk| chunk.to_vec()).collect()
 		}
 
@@ -845,19 +853,19 @@ pub mod pallet {
 				Self::account_to_string(v.clone())
 			}).collect();
 
-			let edges_keys: Vec<String> = shuffled_edges.iter().map( |e| {
-				Self::account_to_string(e.clone())
-			}).collect();
+			// let edges_keys: Vec<String> = shuffled_edges.iter().map( |e| {
+			// 	Self::account_to_string(e.clone())
+			// }).collect();
 
 			let quorums = Self::split(validators_keys, quorum_size);
-			let edges_groups = Self::split(edges_keys, quorums.len());
+			let edges_groups = Self::split(shuffled_edges, quorums.len());
 
 			let era = Self::get_current_era();
 
 			for (i, quorum) in quorums.iter().enumerate() {
 				let edges_group = &edges_groups[i];
 				for validator in quorum {
-					Assignments::<T>::insert(era, validator, edges_group);
+					Assignments::<T>::insert(era, Self::string_to_account(validator.clone()), edges_group);
 				}
 			}
 		}
