@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "node",
-    "pallets/template",
     "pallets/chainbridge",
     "pallets/ddc",
     "pallets/ddc-staking",
