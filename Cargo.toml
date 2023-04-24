@@ -7,6 +7,7 @@ members = [
     "pallets/ddc-staking",
     "pallets/erc721",
     "pallets/erc20",
+    "pallets/ddc-metrics-offchain-worker",
     "runtime",
 ]
 [profile.release]
