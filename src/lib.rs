@@ -73,6 +73,7 @@ pub use sp_runtime::offchain::{http, storage::StorageValueRef, Duration, Timesta
 pub use sp_staking::EraIndex;
 pub use sp_std::prelude::*;
 use sp_core::crypto::AccountId32;
+use sp_std::collections::btree_map::BTreeMap as HashMap;
 
 extern crate alloc;
 
@@ -140,6 +141,62 @@ pub struct BytesSent {
 	node_public_key: String,
 	era: EraIndex,
 	sum: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(crate = "alt_serde")]
+pub struct Welcome2 {
+	file_request_id: String,
+	file_info: FileInfo,
+	bucket_id: i64,
+	timestamp: i64,
+	chunks: HashMap<String, Chunk>,
+	user_public_key: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(crate = "alt_serde")]
+pub struct Chunk {
+	log: Log,
+	cid: String,
+	ack: Ack,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(crate = "alt_serde")]
+pub struct Ack {
+	bytes_received: i64,
+	user_timestamp: i64,
+	nonce: String,
+	node_public_key: String,
+	user_public_key: String,
+	signature: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(crate = "alt_serde")]
+pub struct Log {
+	log_type: i64,
+	session_id: String,
+	user_public_key: String,
+	era: i64,
+	user_address: String,
+	bytes_sent: i64,
+	timestamp: i64,
+	node_public_key: String,
+	signature: String,
+	bucket_id: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(crate = "alt_serde")]
+#[serde(rename_all = "camelCase")]
+pub struct FileInfo {
+	#[serde(rename = "chunkCids")]
+	chunk_cids: Vec<String>,
+
+	#[serde(rename = "requestedChunkCids")]
+	requested_chunk_cids: Vec<String>,
 }
 
 impl BytesSent {
@@ -418,6 +475,16 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::weight(10_000)]
+		pub fn debug_fetch_file_request(origin: OriginFor<T>) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			let file_request = Self::fetch_file_request();
+			info!("fileRequest: {:?}", file_request);
+
+			Ok(())
+		}
+
 		/// Set validation decision for a given CDN node in an era.
 		#[pallet::weight(10_000)]
 		pub fn set_validation_decision(
@@ -477,6 +544,21 @@ pub mod pallet {
 			((T::TimeProvider::now().as_millis() - TIME_START_MS) / ERA_DURATION_MS)
 				.try_into()
 				.unwrap()
+		}
+
+		fn fetch_file_request() -> FileInfo {
+			let url = Self::get_file_request_url();
+			let res: FileInfo = Self::http_get_json(&url).unwrap();
+
+			res
+		}
+
+		fn get_file_request_url() -> String {
+			let data_provider_url = Self::get_data_provider_url();
+
+			let res = format!("{}/thing/8", data_provider_url.unwrap());
+
+			res
 		}
 
 		fn fetch_data(era: EraIndex, cdn_node: &T::AccountId) -> (BytesSent, BytesReceived) {

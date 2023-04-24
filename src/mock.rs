@@ -256,6 +256,7 @@ impl pallet_ddc_validator::Config for Test {
 	type AuthorityId = pallet_ddc_validator::crypto::TestAuthId;
 	type TimeProvider = pallet_timestamp::Pallet<Test>;
 	type ValidationThreshold = ValidationThreshold;
+	type ValidatorsMax = ();
 }
 
 impl<LocalCall> SendTransactionTypes<LocalCall> for Test
