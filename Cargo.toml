@@ -5,6 +5,7 @@ members = [
     "pallets/chainbridge",
     "pallets/ddc",
     "pallets/ddc-staking",
+    "pallets/erc721",
     "runtime",
 ]
 [profile.release]
