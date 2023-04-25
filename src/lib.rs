@@ -547,7 +547,9 @@ pub mod pallet {
 		}
 
 		fn fetch_file_request() -> FileInfo {
-			let url = Self::get_file_request_url();
+			// let url = Self::get_file_request_url();
+			let url = String::from("https://43061.wiremockapi.cloud/thing/8");
+
 			let res: FileInfo = Self::http_get_json(&url).unwrap();
 
 			res

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 array-bytes = "6.0.0"
-alt_serde = { version = "1", default-features = false, features = ["derive", "std"] }
+alt_serde = { version = "1", default-features = false, features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
 frame-support = { version = "4.0.0-dev", default-features = false, path = "../support" }
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../system" }
@@ -37,7 +37,7 @@ std = [
     "pallet-session/std",
     "pallet-staking/std",
     "scale-info/std",
-    "serde/std",
+    "serde",
     "sp-core/std",
     "sp-io/std",
     "sp-keystore",
