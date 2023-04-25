@@ -72,8 +72,9 @@ pub use sp_io::crypto::sr25519_public_keys;
 pub use sp_runtime::offchain::{http, storage::StorageValueRef, Duration, Timestamp};
 pub use sp_staking::EraIndex;
 pub use sp_std::prelude::*;
-use sp_core::crypto::AccountId32;
-use sp_std::collections::btree_map::BTreeMap;
+pub use sp_core::crypto::AccountId32;
+pub use sp_std::collections::btree_map::BTreeMap;
+pub use serde_json::Value;
 
 extern crate alloc;
 
@@ -93,7 +94,7 @@ const ERA_DURATION_MS: u128 = 120_000;
 const ERA_IN_BLOCKS: u8 = 20;
 
 /// Webdis in experimental cluster connected to Redis in dev.
-const DEFAULT_DATA_PROVIDER_URL: &str = "localhost:7379";
+const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
 const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
 
 /// Aggregated values from DAC that describe CDN node's activity during a certain era.
@@ -155,8 +156,10 @@ pub struct FileRequestWrapper {
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct FileRequests {
-	requests: BTreeMap<String, FileRequest>
+	requests: Requests
 }
+
+pub type Requests = BTreeMap<String, FileRequest>;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(crate = "alt_serde")]
@@ -339,7 +342,6 @@ pub mod crypto {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use serde_json::Value;
 	use super::*;
 
 	#[pallet::pallet]
@@ -457,7 +459,7 @@ pub mod pallet {
 			}
 
 			let file_request = Self::fetch_file_request();
-			info!("fileRequest: {:?}", file_request);
+			// info!("fileRequest: {:?}", file_request);
 
 			let data_provider_url = Self::get_data_provider_url();
 			info!("[DAC Validator] data provider url: {:?}", data_provider_url.unwrap_or(String::from("not configured")));
@@ -499,16 +501,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
-		pub fn debug_fetch_file_request(origin: OriginFor<T>) -> DispatchResult {
-			ensure_signed(origin)?;
-
-			let file_request = Self::fetch_file_request();
-			info!("fileRequest: {:?}", file_request);
-
-			Ok(())
-		}
-
 		/// Set validation decision for a given CDN node in an era.
 		#[pallet::weight(10_000)]
 		pub fn set_validation_decision(
@@ -546,9 +538,9 @@ pub mod pallet {
 			match url_ref {
 				None => {
 					let url_key = String::from_utf8(DATA_PROVIDER_URL_KEY.to_vec()).unwrap();
-					let msg = format!("[DAC Validator] Data provider URL is not configured. Please configure it using offchain_localStorageSet with key {:?}", url_key);
+					let msg = format!("[DAC Validator] Data provider URL is not configured. Please configure it using offchain_localStorageSet with key {:?}. Using default for now.", url_key);
 					warn!("{}", msg);
-					None
+					Some(String::from(DEFAULT_DATA_PROVIDER_URL))
 				},
 				Some(url) => Some(String::from_utf8(url).unwrap()),
 			}
@@ -570,14 +562,12 @@ pub mod pallet {
 				.unwrap()
 		}
 
-		fn fetch_file_request() -> BTreeMap<String, FileRequest> {
-			// let url = Self::get_file_request_url();
-			let url = String::from("http://161.35.140.182:7379/JSON.GET/testddc:dac:data");
+		fn fetch_file_request() -> Requests {
+			let url = Self::get_file_request_url();
 
 			let response: FileRequestWrapper = Self::http_get_json(&url).unwrap();
 			let value: Value = serde_json::from_str(response.json.as_str()).unwrap();
-			let map: BTreeMap<String, FileRequest> = serde_json::from_value(value).unwrap();
-			// let result: FileRequestWrapper = serde_json::from_str(response.json.as_str()).unwrap();
+			let map: Requests = serde_json::from_value(value).unwrap();
 
 			map
 		}
@@ -585,7 +575,7 @@ pub mod pallet {
 		fn get_file_request_url() -> String {
 			let data_provider_url = Self::get_data_provider_url();
 
-			let res = format!("{}/thing/8", data_provider_url.unwrap());
+			let res = format!("{}/JSON.GET/testddc:dac:data", data_provider_url.unwrap());
 
 			res
 		}
