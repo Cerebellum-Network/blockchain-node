@@ -73,7 +73,7 @@ pub use sp_runtime::offchain::{http, storage::StorageValueRef, Duration, Timesta
 pub use sp_staking::EraIndex;
 pub use sp_std::prelude::*;
 use sp_core::crypto::AccountId32;
-use sp_std::collections::btree_map::BTreeMap as HashMap;
+use sp_std::collections::btree_map::BTreeMap;
 
 extern crate alloc;
 
@@ -146,12 +146,27 @@ pub struct BytesSent {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
-pub struct Welcome2 {
+pub struct FileRequestWrapper {
+	#[serde(rename = "JSON.GET")]
+	json: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(crate = "alt_serde")]
+#[serde(rename_all = "camelCase")]
+pub struct FileRequests {
+	requests: BTreeMap<String, FileRequest>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(crate = "alt_serde")]
+#[serde(rename_all = "camelCase")]
+pub struct FileRequest {
 	file_request_id: String,
 	file_info: FileInfo,
 	bucket_id: i64,
 	timestamp: i64,
-	chunks: HashMap<String, Chunk>,
+	chunks: BTreeMap<String, Chunk>,
 	user_public_key: String,
 }
 
@@ -161,7 +176,7 @@ pub struct Welcome2 {
 pub struct Chunk {
 	log: Log,
 	cid: String,
-	ack: Ack,
+	ack: Option<Ack>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -324,6 +339,7 @@ pub mod crypto {
 
 #[frame_support::pallet]
 pub mod pallet {
+	use serde_json::Value;
 	use super::*;
 
 	#[pallet::pallet]
@@ -554,13 +570,16 @@ pub mod pallet {
 				.unwrap()
 		}
 
-		fn fetch_file_request() -> Welcome2 {
+		fn fetch_file_request() -> BTreeMap<String, FileRequest> {
 			// let url = Self::get_file_request_url();
-			let url = String::from("https://43061.wiremockapi.cloud/thing/8");
+			let url = String::from("http://161.35.140.182:7379/JSON.GET/testddc:dac:data");
 
-			let res: Welcome2 = Self::http_get_json(&url).unwrap();
+			let response: FileRequestWrapper = Self::http_get_json(&url).unwrap();
+			let value: Value = serde_json::from_str(response.json.as_str()).unwrap();
+			let map: BTreeMap<String, FileRequest> = serde_json::from_value(value).unwrap();
+			// let result: FileRequestWrapper = serde_json::from_str(response.json.as_str()).unwrap();
 
-			res
+			map
 		}
 
 		fn get_file_request_url() -> String {
