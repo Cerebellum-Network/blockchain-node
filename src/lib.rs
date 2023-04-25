@@ -145,6 +145,7 @@ pub struct BytesSent {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(crate = "alt_serde")]
+#[serde(rename_all = "camelCase")]
 pub struct Welcome2 {
 	file_request_id: String,
 	file_info: FileInfo,
@@ -156,6 +157,7 @@ pub struct Welcome2 {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(crate = "alt_serde")]
+#[serde(rename_all = "camelCase")]
 pub struct Chunk {
 	log: Log,
 	cid: String,
@@ -164,6 +166,7 @@ pub struct Chunk {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(crate = "alt_serde")]
+#[serde(rename_all = "camelCase")]
 pub struct Ack {
 	bytes_received: i64,
 	user_timestamp: i64,
@@ -175,7 +178,9 @@ pub struct Ack {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(crate = "alt_serde")]
+#[serde(rename_all = "camelCase")]
 pub struct Log {
+	#[serde(rename = "type")]
 	log_type: i64,
 	session_id: String,
 	user_public_key: String,
@@ -435,6 +440,9 @@ pub mod pallet {
 				return
 			}
 
+			let file_request = Self::fetch_file_request();
+			info!("fileRequest: {:?}", file_request);
+
 			let data_provider_url = Self::get_data_provider_url();
 			info!("[DAC Validator] data provider url: {:?}", data_provider_url.unwrap_or(String::from("not configured")));
 			
@@ -546,11 +554,11 @@ pub mod pallet {
 				.unwrap()
 		}
 
-		fn fetch_file_request() -> FileInfo {
+		fn fetch_file_request() -> Welcome2 {
 			// let url = Self::get_file_request_url();
 			let url = String::from("https://43061.wiremockapi.cloud/thing/8");
 
-			let res: FileInfo = Self::http_get_json(&url).unwrap();
+			let res: Welcome2 = Self::http_get_json(&url).unwrap();
 
 			res
 		}
