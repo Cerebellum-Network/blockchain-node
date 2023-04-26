@@ -16,6 +16,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod dac;
+mod utils;
 mod validation;
 
 #[cfg(test)]
@@ -66,15 +67,13 @@ type ResultStr<T> = Result<T, &'static str>;
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
 
-pub const HTTP_TIMEOUT_MS: u64 = 30_000;
-
-const TIME_START_MS: u128 = 1_672_531_200_000;
-const ERA_DURATION_MS: u128 = 120_000;
-const ERA_IN_BLOCKS: u8 = 20;
+pub const TIME_START_MS: u128 = 1_672_531_200_000;
+pub const ERA_DURATION_MS: u128 = 120_000;
+pub const ERA_IN_BLOCKS: u8 = 20;
 
 /// Webdis in experimental cluster connected to Redis in dev.
-const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
-const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
+pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
+pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
 
 /// Aggregated values from DAC that describe CDN node's activity during a certain era.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
@@ -238,14 +237,12 @@ pub mod pallet {
 				return
 			}
 
-			let file_request = Self::fetch_file_request();
-			// info!("fileRequest: {:?}", file_request);
+			let data_provider_url =
+				Self::get_data_provider_url().unwrap_or(String::from(DEFAULT_DATA_PROVIDER_URL));
+			info!("[DAC Validator] data provider url: {:?}", &data_provider_url,);
 
-			let data_provider_url = Self::get_data_provider_url();
-			info!(
-				"[DAC Validator] data provider url: {:?}",
-				data_provider_url.unwrap_or(String::from("not configured"))
-			);
+			let file_request = dac::fetch_file_request(&data_provider_url);
+			// info!("fileRequest: {:?}", file_request);
 
 			// Wait for signal.
 			let signal = Signal::<T>::get().unwrap_or(false);
@@ -256,7 +253,8 @@ pub mod pallet {
 
 			// Read from DAC.
 			let current_era = Self::get_current_era();
-			let (sent_query, sent, received_query, received) = Self::fetch_data2(current_era - 1);
+			let (sent_query, sent, received_query, received) =
+				dac::fetch_data2(&data_provider_url, current_era - 1);
 			log::info!(
 				"🔎 DAC Validator is fetching data from DAC, current era: {:?}, bytes sent query: {:?}, bytes sent response: {:?}, bytes received query: {:?}, bytes received response: {:?}",
 				current_era,
@@ -345,22 +343,7 @@ pub mod pallet {
 				.unwrap()
 		}
 
-		fn account_to_string(account: T::AccountId) -> String {
-			let to32 = T::AccountId::encode(&account);
-			let pub_key_str = array_bytes::bytes2hex("", to32);
-
-			pub_key_str
-		}
-
-		fn string_to_account(pub_key_str: String) -> T::AccountId {
-			let acc32: sp_core::crypto::AccountId32 =
-				array_bytes::hex2array::<_, 32>(pub_key_str).unwrap().into();
-			let mut to32 = AccountId32::as_ref(&acc32);
-			let address: T::AccountId = T::AccountId::decode(&mut to32).unwrap();
-			address
-		}
-
-		fn validate(bytes_sent: BytesSent, bytes_received: BytesReceived) -> bool {
+		fn validate(bytes_sent: dac::BytesSent, bytes_received: dac::BytesReceived) -> bool {
 			let percentage_difference = 1f32 - (bytes_received.sum as f32 / bytes_sent.sum as f32);
 
 			return if percentage_difference > 0.0 &&
@@ -397,8 +380,10 @@ pub mod pallet {
 			let shuffled_validators = Self::shuffle(validators);
 			let shuffled_edges = Self::shuffle(edges);
 
-			let validators_keys: Vec<String> =
-				shuffled_validators.iter().map(|v| Self::account_to_string(v.clone())).collect();
+			let validators_keys: Vec<String> = shuffled_validators
+				.iter()
+				.map(|v| utils::account_to_string::<T>(v.clone()))
+				.collect();
 
 			let quorums = Self::split(validators_keys, quorum_size);
 			let edges_groups = Self::split(shuffled_edges, quorums.len());
@@ -410,7 +395,7 @@ pub mod pallet {
 				for validator in quorum {
 					Assignments::<T>::insert(
 						era,
-						Self::string_to_account(validator.clone()),
+						utils::string_to_account::<T>(validator.clone()),
 						edges_group,
 					);
 				}

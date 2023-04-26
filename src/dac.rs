@@ -1,11 +1,17 @@
 //! A module with Data Activity Capture (DAC) interaction.
 
-use crate::*;
+use alloc::{format, string::String}; // ToDo: remove String usage
 use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use codec::{Decode, Encode};
+use frame_support::log::{error, info, warn};
 use serde_json::Value;
+use sp_runtime::offchain::{http, Duration};
 use sp_staking::EraIndex;
-use sp_std::collections::btree_map::BTreeMap;
+use sp_std::{collections::btree_map::BTreeMap, prelude::*};
+
+use crate::utils;
+
+pub const HTTP_TIMEOUT_MS: u64 = 30_000;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(crate = "alt_serde")]
@@ -27,7 +33,7 @@ pub enum FtAggregate {
 pub struct BytesSent {
 	node_public_key: String,
 	era: EraIndex,
-	sum: u32,
+	pub sum: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -153,7 +159,7 @@ impl BytesSent {
 pub struct BytesReceived {
 	node_public_key: String,
 	era: EraIndex,
-	sum: u32,
+	pub sum: u32,
 }
 
 impl BytesReceived {
@@ -199,85 +205,82 @@ impl BytesReceived {
 	}
 }
 
-fn fetch_file_request() -> Requests {
-	let url = Self::get_file_request_url();
+fn get_file_request_url(data_provider_url: &String) -> String {
+	let res = format!("{}/JSON.GET/testddc:dac:data", data_provider_url);
 
-	let response: FileRequestWrapper = Self::http_get_json(&url).unwrap();
+	res
+}
+
+pub(crate) fn fetch_file_request(url: &String) -> Requests {
+	let response: FileRequestWrapper = http_get_json(&url).unwrap();
 	let value: Value = serde_json::from_str(response.json.as_str()).unwrap();
 	let map: Requests = serde_json::from_value(value).unwrap();
 
 	map
 }
 
-fn get_file_request_url() -> String {
-	let data_provider_url = Self::get_data_provider_url();
-
-	let res = format!("{}/JSON.GET/testddc:dac:data", data_provider_url.unwrap());
-
-	res
-}
-
-fn fetch_data(era: EraIndex, cdn_node: &T::AccountId) -> (BytesSent, BytesReceived) {
+pub(crate) fn fetch_data<T: frame_system::Config>(
+	data_provider_url: &String,
+	era: EraIndex,
+	cdn_node: &T::AccountId,
+) -> (BytesSent, BytesReceived) {
 	info!("[DAC Validator] DAC Validator is running. Current era is {}", era);
 	// Todo: handle the error
-	let bytes_sent_query = Self::get_bytes_sent_query_url(era);
-	let bytes_sent_res: RedisFtAggregate = Self::http_get_json(&bytes_sent_query).unwrap();
+	let bytes_sent_query = get_bytes_sent_query_url(data_provider_url, era);
+	let bytes_sent_res: RedisFtAggregate = http_get_json(&bytes_sent_query).unwrap();
 	info!("[DAC Validator] Bytes sent sum is fetched: {:?}", bytes_sent_res);
 	let bytes_sent = BytesSent::new(bytes_sent_res);
 
 	// Todo: handle the error
-	let bytes_received_query = Self::get_bytes_received_query_url(era);
-	let bytes_received_res: RedisFtAggregate = Self::http_get_json(&bytes_received_query).unwrap();
+	let bytes_received_query = get_bytes_received_query_url(data_provider_url, era);
+	let bytes_received_res: RedisFtAggregate = http_get_json(&bytes_received_query).unwrap();
 	info!("[DAC Validator] Bytes received sum is fetched:: {:?}", bytes_received_res);
 	let bytes_received = BytesReceived::new(bytes_received_res);
 
 	(bytes_sent, bytes_received)
 }
 
-fn fetch_data1(era: EraIndex) -> (Vec<BytesSent>, Vec<BytesReceived>) {
+pub(crate) fn fetch_data1(
+	data_provider_url: &String,
+	era: EraIndex,
+) -> (Vec<BytesSent>, Vec<BytesReceived>) {
 	info!("[DAC Validator] DAC Validator is running. Current era is {}", era);
 	// Todo: handle the error
-	let bytes_sent_query = Self::get_bytes_sent_query_url(era);
-	let bytes_sent_res: RedisFtAggregate = Self::http_get_json(&bytes_sent_query).unwrap();
+	let bytes_sent_query = get_bytes_sent_query_url(data_provider_url, era);
+	let bytes_sent_res: RedisFtAggregate = http_get_json(&bytes_sent_query).unwrap();
 	info!("[DAC Validator] Bytes sent sum is fetched: {:?}", bytes_sent_res);
 	let bytes_sent = BytesSent::get_all(bytes_sent_res);
 
 	// Todo: handle the error
-	let bytes_received_query = Self::get_bytes_received_query_url(era);
-	let bytes_received_res: RedisFtAggregate = Self::http_get_json(&bytes_received_query).unwrap();
+	let bytes_received_query = get_bytes_received_query_url(data_provider_url, era);
+	let bytes_received_res: RedisFtAggregate = http_get_json(&bytes_received_query).unwrap();
 	info!("[DAC Validator] Bytes received sum is fetched:: {:?}", bytes_received_res);
 	let bytes_received = BytesReceived::get_all(bytes_received_res);
 
 	(bytes_sent, bytes_received)
 }
 
-fn fetch_data2(era: EraIndex) -> (String, Vec<BytesSent>, String, Vec<BytesReceived>) {
-	let bytes_sent_query = Self::get_bytes_sent_query_url(era);
-	let bytes_sent_res: RedisFtAggregate = Self::http_get_json(&bytes_sent_query).unwrap();
+pub(crate) fn fetch_data2(
+	data_provider_url: &String,
+	era: EraIndex,
+) -> (String, Vec<BytesSent>, String, Vec<BytesReceived>) {
+	let bytes_sent_query = get_bytes_sent_query_url(data_provider_url, era);
+	let bytes_sent_res: RedisFtAggregate = http_get_json(&bytes_sent_query).unwrap();
 	let bytes_sent = BytesSent::get_all(bytes_sent_res);
 
-	let bytes_received_query = Self::get_bytes_received_query_url(era);
-	let bytes_received_res: RedisFtAggregate = Self::http_get_json(&bytes_received_query).unwrap();
+	let bytes_received_query = get_bytes_received_query_url(data_provider_url, era);
+	let bytes_received_res: RedisFtAggregate = http_get_json(&bytes_received_query).unwrap();
 	let bytes_received = BytesReceived::get_all(bytes_received_res);
 
 	(bytes_sent_query, bytes_sent, bytes_received_query, bytes_received)
 }
 
-fn get_bytes_received_query_url(era: EraIndex) -> String {
-	let data_provider_url = Self::get_data_provider_url();
-
-	match data_provider_url {
-		Some(url) => {
-			return format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", url, era, era);
-		},
-		None => {
-			return format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", DEFAULT_DATA_PROVIDER_URL, era, era);
-		},
-	}
+fn get_bytes_received_query_url(data_provider_url: &String, era: EraIndex) -> String {
+	format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", data_provider_url, era, era)
 }
 
-fn http_get_json<OUT: DeserializeOwned>(url: &str) -> ResultStr<OUT> {
-	let body = Self::http_get_request(url).map_err(|err| {
+fn http_get_json<OUT: DeserializeOwned>(url: &str) -> crate::ResultStr<OUT> {
+	let body = http_get_request(url).map_err(|err| {
 		error!("[DAC Validator] Error while getting {}: {:?}", url, err);
 		"HTTP GET error"
 	})?;
@@ -312,12 +315,12 @@ fn http_get_request(http_url: &str) -> Result<Vec<u8>, http::Error> {
 	Ok(response.body().collect::<Vec<u8>>())
 }
 
-fn filter_data(
+fn filter_data<T: frame_system::Config>(
 	s: &Vec<BytesSent>,
 	r: &Vec<BytesReceived>,
 	a: &T::AccountId,
 ) -> (BytesSent, BytesReceived) {
-	let ac = Self::account_to_string(a.clone());
+	let ac = utils::account_to_string::<T>(a.clone());
 
 	let filtered_s = &*s.into_iter().find(|bs| bs.node_public_key == ac).unwrap();
 	let filtered_r = &*r.into_iter().find(|br| br.node_public_key == ac).unwrap();
@@ -325,15 +328,6 @@ fn filter_data(
 	(filtered_s.clone(), filtered_r.clone())
 }
 
-fn get_bytes_sent_query_url(era: EraIndex) -> String {
-	let data_provider_url = Self::get_data_provider_url();
-
-	match data_provider_url {
-		Some(url) => {
-			return format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", url, era, era);
-		},
-		None => {
-			return format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", DEFAULT_DATA_PROVIDER_URL, era, era);
-		},
-	}
+fn get_bytes_sent_query_url(data_provider_url: &String, era: EraIndex) -> String {
+	format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", data_provider_url, era, era)
 }
