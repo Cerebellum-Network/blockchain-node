@@ -3936,7 +3936,6 @@ dependencies = [
  "frame-benchmarking-cli",
  "frame-system",
  "futures",
- "impl-trait-for-tuples",
  "jsonrpsee",
  "node-primitives",
  "node-runtime",

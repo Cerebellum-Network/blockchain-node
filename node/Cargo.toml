@@ -87,8 +87,6 @@ try-runtime-cli = { version = "0.10.0-dev", optional = true, git = "https://gith
 
 [dev-dependencies]
 sc-consensus-epochs = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22" }
-codec = { package = "parity-scale-codec", version = "3.0.0" }
-impl-trait-for-tuples = "0.2.2"
 sc-service-test = { version = "2.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22" }
 sp-tracing = { version = "5.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22" }
 
