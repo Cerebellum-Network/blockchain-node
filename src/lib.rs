@@ -48,14 +48,12 @@ pub use pallet_ddc_staking::{self as ddc_staking};
 pub use pallet_session as session;
 pub use pallet_staking::{self as staking};
 pub use scale_info::TypeInfo;
-pub use sp_core::crypto::{KeyTypeId, UncheckedFrom};
+pub use serde_json::Value;
+pub use sp_core::crypto::{AccountId32, KeyTypeId, UncheckedFrom};
 pub use sp_io::crypto::sr25519_public_keys;
 pub use sp_runtime::offchain::{http, storage::StorageValueRef, Duration, Timestamp};
 pub use sp_staking::EraIndex;
-pub use sp_std::prelude::*;
-pub use sp_core::crypto::AccountId32;
-pub use sp_std::collections::btree_map::BTreeMap;
-pub use serde_json::Value;
+pub use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 extern crate alloc;
 
@@ -137,7 +135,7 @@ pub struct FileRequestWrapper {
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct FileRequests {
-	requests: Requests
+	requests: Requests,
 }
 
 pub type Requests = BTreeMap<String, FileRequest>;
@@ -373,14 +371,8 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn assignments)]
-	pub(super) type Assignments<T: Config> = StorageDoubleMap<
-		_,
-		Twox64Concat,
-		EraIndex,
-		Twox64Concat,
-		T::AccountId,
-		Vec<T::AccountId>,
-	>;
+	pub(super) type Assignments<T: Config> =
+		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, Vec<T::AccountId>>;
 
 	/// A signal to start a process on all the validators.
 	#[pallet::storage]
@@ -403,8 +395,7 @@ pub mod pallet {
 	pub enum Event<T: Config>
 	where
 		<T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
-		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
-	{}
+		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode, {}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T>
@@ -443,8 +434,11 @@ pub mod pallet {
 			// info!("fileRequest: {:?}", file_request);
 
 			let data_provider_url = Self::get_data_provider_url();
-			info!("[DAC Validator] data provider url: {:?}", data_provider_url.unwrap_or(String::from("not configured")));
-			
+			info!(
+				"[DAC Validator] data provider url: {:?}",
+				data_provider_url.unwrap_or(String::from("not configured"))
+			);
+
 			// Wait for signal.
 			let signal = Signal::<T>::get().unwrap_or(false);
 			if !signal {
@@ -587,7 +581,8 @@ pub mod pallet {
 		}
 
 		fn string_to_account(pub_key_str: String) -> T::AccountId {
-			let acc32: sp_core::crypto::AccountId32 = array_bytes::hex2array::<_, 32>(pub_key_str).unwrap().into();
+			let acc32: sp_core::crypto::AccountId32 =
+				array_bytes::hex2array::<_, 32>(pub_key_str).unwrap().into();
 			let mut to32 = AccountId32::as_ref(&acc32);
 			let address: T::AccountId = T::AccountId::decode(&mut to32).unwrap();
 			address
@@ -643,10 +638,10 @@ pub mod pallet {
 			match data_provider_url {
 				Some(url) => {
 					return format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", url, era, era);
-				}
+				},
 				None => {
 					return format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", DEFAULT_DATA_PROVIDER_URL, era, era);
-				}
+				},
 			}
 		}
 
@@ -656,10 +651,10 @@ pub mod pallet {
 			match data_provider_url {
 				Some(url) => {
 					return format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", url, era, era);
-				}
+				},
 				None => {
 					return format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesReceived/AS/bytesReceivedSum", DEFAULT_DATA_PROVIDER_URL, era, era);
-				}
+				},
 			}
 		}
 
@@ -731,15 +726,14 @@ pub mod pallet {
 			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
 
 			if edges.len() == 0 {
-				return;
+				return
 			}
 
 			let shuffled_validators = Self::shuffle(validators);
 			let shuffled_edges = Self::shuffle(edges);
 
-			let validators_keys: Vec<String> = shuffled_validators.iter().map( |v| {
-				Self::account_to_string(v.clone())
-			}).collect();
+			let validators_keys: Vec<String> =
+				shuffled_validators.iter().map(|v| Self::account_to_string(v.clone())).collect();
 
 			let quorums = Self::split(validators_keys, quorum_size);
 			let edges_groups = Self::split(shuffled_edges, quorums.len());
@@ -749,7 +743,11 @@ pub mod pallet {
 			for (i, quorum) in quorums.iter().enumerate() {
 				let edges_group = &edges_groups[i];
 				for validator in quorum {
-					Assignments::<T>::insert(era, Self::string_to_account(validator.clone()), edges_group);
+					Assignments::<T>::insert(
+						era,
+						Self::string_to_account(validator.clone()),
+						edges_group,
+					);
 				}
 			}
 		}
