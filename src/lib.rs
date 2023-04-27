@@ -53,7 +53,12 @@ pub use sp_core::crypto::{AccountId32, KeyTypeId, UncheckedFrom};
 pub use sp_io::crypto::sr25519_public_keys;
 pub use sp_runtime::offchain::{http, storage::StorageValueRef, Duration, Timestamp};
 pub use sp_staking::EraIndex;
-pub use sp_std::{collections::btree_map::BTreeMap, prelude::*};
+pub use sp_std::{
+	collections::{
+		btree_map::BTreeMap,
+	},
+	prelude::*
+};
 
 extern crate alloc;
 
@@ -241,7 +246,6 @@ pub mod pallet {
 			log::info!("[DAC Validator] data provider url: {:?}", &data_provider_url);
 
 			let file_request = dac::fetch_file_request(&data_provider_url);
-			// log::info!("fileRequest: {:?}", file_request);
 
 			// Wait for signal.
 			let signal = Signal::<T>::get().unwrap_or(false);

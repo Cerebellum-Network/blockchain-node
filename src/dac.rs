@@ -6,10 +6,18 @@ use codec::{Decode, Encode};
 use serde_json::Value;
 use sp_runtime::offchain::{http, Duration};
 use sp_staking::EraIndex;
-use sp_std::{collections::btree_map::BTreeMap, prelude::*};
+pub use sp_std::{
+	collections::{
+		btree_map::BTreeMap,
+		btree_set::BTreeSet,
+	},
+	prelude::*
+};
+
 
 use crate::utils;
 
+pub type TimestampInSec = u64;
 pub const HTTP_TIMEOUT_MS: u64 = 30_000;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -58,8 +66,8 @@ pub type Requests = BTreeMap<String, FileRequest>;
 pub struct FileRequest {
 	file_request_id: String,
 	file_info: FileInfo,
-	bucket_id: i64,
-	timestamp: i64,
+	bucket_id: u64,
+	timestamp: u64,
 	chunks: BTreeMap<String, Chunk>,
 	user_public_key: String,
 }
@@ -77,8 +85,8 @@ pub struct Chunk {
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct Ack {
-	bytes_received: i64,
-	user_timestamp: i64,
+	bytes_received: u64,
+	user_timestamp: u64,
 	nonce: String,
 	node_public_key: String,
 	user_public_key: String,
@@ -90,16 +98,16 @@ pub struct Ack {
 #[serde(rename_all = "camelCase")]
 pub struct Log {
 	#[serde(rename = "type")]
-	log_type: i64,
+	log_type: u64,
 	session_id: String,
 	user_public_key: String,
-	era: i64,
+	era: u64,
 	user_address: String,
-	bytes_sent: i64,
-	timestamp: i64,
+	bytes_sent: u64,
+	timestamp: u64,
 	node_public_key: String,
 	signature: String,
-	bucket_id: i64,
+	bucket_id: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -202,6 +210,76 @@ impl BytesReceived {
 
 		return res
 	}
+}
+
+fn get_timestamps_with_ack(file_requests: &FileRequests) -> Vec<TimestampInSec> {
+	let mut timestamps:Vec<TimestampInSec> = Vec::new();
+
+	for (_, file_request) in &file_requests.requests {
+		for (_, chunk) in &file_request.chunks {
+			if let Some(ack) = &chunk.ack {
+				timestamps.push(chunk.log.timestamp);
+			}
+		}
+	}
+
+	timestamps.sort();
+
+	timestamps
+}
+
+pub fn get_proved_deliveried_bytes_sum(file_requests: &FileRequests) -> u64 {
+	let ack_timestamps=  get_timestamps_with_ack(file_requests);
+	let mut total_bytes_received = 0u64;
+
+	for (_, file_request) in &file_requests.requests {
+		for (_, chunk) in &file_request.chunks {
+			if let Some(ack) = &chunk.ack {
+				total_bytes_received += ack.bytes_received;
+			} else {
+				total_bytes_received += get_proved_delivered_bytes(chunk, &ack_timestamps);
+			}
+		}
+	}
+
+	total_bytes_received
+}
+
+fn get_proved_delivered_bytes(chunk: &Chunk, ack_timestamps: &Vec<TimestampInSec>) -> u64 {
+	let log_timestamp = chunk.log.timestamp;
+	let neighbors = get_closer_neighbors(log_timestamp, &ack_timestamps);
+	let is_proved = is_lies_within_threshold(log_timestamp, neighbors, 42);
+
+	if is_proved {
+		return chunk.log.bytes_sent;
+	} else {
+		0
+	}
+}
+
+fn get_closer_neighbors(timestamp: TimestampInSec, timestamps: &Vec<TimestampInSec>) -> (TimestampInSec, TimestampInSec) {
+	let mut before = 0;
+	let mut after = TimestampInSec::MAX;
+	for ts in timestamps {
+		if ts < &timestamp {
+			before = before.max(*ts);
+		} else if ts > &timestamp {
+			after = after.min(*ts);
+		}
+	}
+
+	(before, after)
+}
+
+fn is_lies_within_threshold(timestamp: TimestampInSec, borders: (TimestampInSec, TimestampInSec), threshold: TimestampInSec) -> bool {
+	let left_distance = timestamp - borders.0;
+	let right_distance = borders.1 - timestamp;
+
+	if left_distance < threshold || right_distance < threshold {
+		return true;
+	}
+
+	false
 }
 
 fn get_file_request_url(data_provider_url: &String) -> String {
