@@ -3,7 +3,6 @@
 use alloc::{format, string::String}; // ToDo: remove String usage
 use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use codec::{Decode, Encode};
-use frame_support::log::{error, info, warn};
 use serde_json::Value;
 use sp_runtime::offchain::{http, Duration};
 use sp_staking::EraIndex;
@@ -224,17 +223,17 @@ pub(crate) fn fetch_data<T: frame_system::Config>(
 	era: EraIndex,
 	cdn_node: &T::AccountId,
 ) -> (BytesSent, BytesReceived) {
-	info!("[DAC Validator] DAC Validator is running. Current era is {}", era);
+	log::info!("[DAC Validator] DAC Validator is running. Current era is {}", era);
 	// Todo: handle the error
 	let bytes_sent_query = get_bytes_sent_query_url(data_provider_url, era);
 	let bytes_sent_res: RedisFtAggregate = http_get_json(&bytes_sent_query).unwrap();
-	info!("[DAC Validator] Bytes sent sum is fetched: {:?}", bytes_sent_res);
+	log::info!("[DAC Validator] Bytes sent sum is fetched: {:?}", bytes_sent_res);
 	let bytes_sent = BytesSent::new(bytes_sent_res);
 
 	// Todo: handle the error
 	let bytes_received_query = get_bytes_received_query_url(data_provider_url, era);
 	let bytes_received_res: RedisFtAggregate = http_get_json(&bytes_received_query).unwrap();
-	info!("[DAC Validator] Bytes received sum is fetched:: {:?}", bytes_received_res);
+	log::info!("[DAC Validator] Bytes received sum is fetched:: {:?}", bytes_received_res);
 	let bytes_received = BytesReceived::new(bytes_received_res);
 
 	(bytes_sent, bytes_received)
@@ -244,17 +243,17 @@ pub(crate) fn fetch_data1(
 	data_provider_url: &String,
 	era: EraIndex,
 ) -> (Vec<BytesSent>, Vec<BytesReceived>) {
-	info!("[DAC Validator] DAC Validator is running. Current era is {}", era);
+	log::info!("[DAC Validator] DAC Validator is running. Current era is {}", era);
 	// Todo: handle the error
 	let bytes_sent_query = get_bytes_sent_query_url(data_provider_url, era);
 	let bytes_sent_res: RedisFtAggregate = http_get_json(&bytes_sent_query).unwrap();
-	info!("[DAC Validator] Bytes sent sum is fetched: {:?}", bytes_sent_res);
+	log::info!("[DAC Validator] Bytes sent sum is fetched: {:?}", bytes_sent_res);
 	let bytes_sent = BytesSent::get_all(bytes_sent_res);
 
 	// Todo: handle the error
 	let bytes_received_query = get_bytes_received_query_url(data_provider_url, era);
 	let bytes_received_res: RedisFtAggregate = http_get_json(&bytes_received_query).unwrap();
-	info!("[DAC Validator] Bytes received sum is fetched:: {:?}", bytes_received_res);
+	log::info!("[DAC Validator] Bytes received sum is fetched:: {:?}", bytes_received_res);
 	let bytes_received = BytesReceived::get_all(bytes_received_res);
 
 	(bytes_sent, bytes_received)
@@ -281,12 +280,12 @@ fn get_bytes_received_query_url(data_provider_url: &String, era: EraIndex) -> St
 
 fn http_get_json<OUT: DeserializeOwned>(url: &str) -> crate::ResultStr<OUT> {
 	let body = http_get_request(url).map_err(|err| {
-		error!("[DAC Validator] Error while getting {}: {:?}", url, err);
+		log::error!("[DAC Validator] Error while getting {}: {:?}", url, err);
 		"HTTP GET error"
 	})?;
 
 	let parsed = serde_json::from_slice(&body).map_err(|err| {
-		warn!("[DAC Validator] Error while parsing JSON from {}: {:?}", url, err);
+		log::warn!("[DAC Validator] Error while parsing JSON from {}: {:?}", url, err);
 		"HTTP JSON parse error"
 	});
 
@@ -294,7 +293,7 @@ fn http_get_json<OUT: DeserializeOwned>(url: &str) -> crate::ResultStr<OUT> {
 }
 
 fn http_get_request(http_url: &str) -> Result<Vec<u8>, http::Error> {
-	// info!("[DAC Validator] Sending request to: {:?}", http_url);
+	// log::info!("[DAC Validator] Sending request to: {:?}", http_url);
 
 	// Initiate an external HTTP GET request. This is using high-level wrappers from
 	// `sp_runtime`.
@@ -307,7 +306,7 @@ fn http_get_request(http_url: &str) -> Result<Vec<u8>, http::Error> {
 	let response = pending.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
 
 	if response.code != 200 {
-		warn!("[DAC Validator] http_get_request unexpected status code: {}", response.code);
+		log::warn!("[DAC Validator] http_get_request unexpected status code: {}", response.code);
 		return Err(http::Error::Unknown)
 	}
 

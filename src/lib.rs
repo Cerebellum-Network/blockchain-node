@@ -32,7 +32,6 @@ pub use core::fmt::Debug;
 pub use frame_support::{
 	decl_event, decl_module, decl_storage,
 	dispatch::DispatchResult,
-	log::{error, info, warn},
 	pallet_prelude::*,
 	parameter_types, storage,
 	traits::{Currency, Randomness, UnixTime},
@@ -216,10 +215,10 @@ pub mod pallet {
 			}
 
 			let era = Self::get_current_era();
-			info!("current era: {:?}", era);
+			log::info!("current era: {:?}", era);
 
 			if let Some(last_managed_era) = <LastManagedEra<T>>::get() {
-				info!("last_managed_era: {:?}", last_managed_era);
+				log::info!("last_managed_era: {:?}", last_managed_era);
 				if last_managed_era >= era {
 					return 0
 				}
@@ -239,10 +238,10 @@ pub mod pallet {
 
 			let data_provider_url =
 				Self::get_data_provider_url().unwrap_or(String::from(DEFAULT_DATA_PROVIDER_URL));
-			info!("[DAC Validator] data provider url: {:?}", &data_provider_url,);
+			log::info!("[DAC Validator] data provider url: {:?}", &data_provider_url);
 
 			let file_request = dac::fetch_file_request(&data_provider_url);
-			// info!("fileRequest: {:?}", file_request);
+			// log::info!("fileRequest: {:?}", file_request);
 
 			// Wait for signal.
 			let signal = Signal::<T>::get().unwrap_or(false);
@@ -320,7 +319,7 @@ pub mod pallet {
 				None => {
 					let url_key = String::from_utf8(DATA_PROVIDER_URL_KEY.to_vec()).unwrap();
 					let msg = format!("[DAC Validator] Data provider URL is not configured. Please configure it using offchain_localStorageSet with key {:?}. Using default for now.", url_key);
-					warn!("{}", msg);
+					log::warn!("{}", msg);
 					Some(String::from(DEFAULT_DATA_PROVIDER_URL))
 				},
 				Some(url) => Some(String::from_utf8(url).unwrap()),
