@@ -212,10 +212,10 @@ impl BytesReceived {
 	}
 }
 
-fn get_timestamps_with_ack(file_requests: &FileRequests) -> Vec<TimestampInSec> {
+fn get_timestamps_with_ack(file_requests: &Requests) -> Vec<TimestampInSec> {
 	let mut timestamps:Vec<TimestampInSec> = Vec::new();
 
-	for (_, file_request) in &file_requests.requests {
+	for (_, file_request) in file_requests {
 		for (_, chunk) in &file_request.chunks {
 			if let Some(ack) = &chunk.ack {
 				timestamps.push(chunk.log.timestamp);
@@ -228,11 +228,11 @@ fn get_timestamps_with_ack(file_requests: &FileRequests) -> Vec<TimestampInSec> 
 	timestamps
 }
 
-pub fn get_proved_deliveried_bytes_sum(file_requests: &FileRequests) -> u64 {
+pub fn get_proved_deliveried_bytes_sum(file_requests: &Requests) -> u64 {
 	let ack_timestamps=  get_timestamps_with_ack(file_requests);
 	let mut total_bytes_received = 0u64;
 
-	for (_, file_request) in &file_requests.requests {
+	for (_, file_request) in file_requests {
 		for (_, chunk) in &file_request.chunks {
 			if let Some(ack) = &chunk.ack {
 				total_bytes_received += ack.bytes_received;
