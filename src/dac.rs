@@ -3,6 +3,7 @@
 use alloc::{format, string::String}; // ToDo: remove String usage
 use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use codec::{Decode, Encode};
+use lite_json::json::JsonValue;
 use serde_json::Value;
 use sp_runtime::offchain::{http, Duration};
 use sp_staking::EraIndex;
@@ -407,4 +408,30 @@ fn filter_data<T: frame_system::Config>(
 
 fn get_bytes_sent_query_url(data_provider_url: &String, era: EraIndex) -> String {
 	format!("{}/FT.AGGREGATE/ddc:dac:searchCommonIndex/@era:[{}%20{}]/GROUPBY/2/@nodePublicKey/@era/REDUCE/SUM/1/@bytesSent/AS/bytesSentSum", data_provider_url, era, era)
+}
+
+pub(crate) fn fetch_aggregates(
+	data_provider_url: &String,
+	era: EraIndex,
+) -> Result<JsonValue, http::Error> {
+	let deadline = sp_io::offchain::timestamp().add(Duration::from_millis(HTTP_TIMEOUT_MS));
+	let url =
+		format!("{}/JSON.GET/ddc:dac:aggregation:nodes:{}?type=query", data_provider_url, era);
+	let request = http::Request::get(url.as_str());
+	let pending = request.deadline(deadline).send().map_err(|_| http::Error::IoError)?;
+	let response = pending.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
+	if response.code != 200 {
+		log::warn!("Unexpected status code: {}", response.code);
+		return Err(http::Error::Unknown)
+	}
+	let body = response.body().collect::<Vec<u8>>();
+	let body_str = sp_std::str::from_utf8(&body).map_err(|_| {
+		log::warn!("No UTF-8 body");
+		http::Error::Unknown
+	})?;
+	let json = lite_json::parse_json(body_str).map_err(|_| {
+		log::warn!("No JSON body");
+		http::Error::Unknown
+	})?;
+	Ok(json)
 }
