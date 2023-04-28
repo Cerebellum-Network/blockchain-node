@@ -8,13 +8,9 @@ use serde_json::Value;
 use sp_runtime::offchain::{http, Duration};
 use sp_staking::EraIndex;
 pub use sp_std::{
-	collections::{
-		btree_map::BTreeMap,
-		btree_set::BTreeSet,
-	},
-	prelude::*
+	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
+	prelude::*,
 };
-
 
 use crate::utils;
 
@@ -214,7 +210,7 @@ impl BytesReceived {
 }
 
 fn get_timestamps_with_ack(file_requests: &Requests) -> Vec<TimestampInSec> {
-	let mut timestamps:Vec<TimestampInSec> = Vec::new();
+	let mut timestamps: Vec<TimestampInSec> = Vec::new();
 
 	for (_, file_request) in file_requests {
 		for (_, chunk) in &file_request.chunks {
@@ -230,7 +226,7 @@ fn get_timestamps_with_ack(file_requests: &Requests) -> Vec<TimestampInSec> {
 }
 
 pub fn get_proved_delivered_bytes_sum(file_requests: &Requests) -> u64 {
-	let ack_timestamps=  get_timestamps_with_ack(file_requests);
+	let ack_timestamps = get_timestamps_with_ack(file_requests);
 	let mut total_bytes_received = 0u64;
 
 	for (_, file_request) in file_requests {
@@ -252,13 +248,16 @@ fn get_proved_delivered_bytes(chunk: &Chunk, ack_timestamps: &Vec<TimestampInSec
 	let is_proved = is_lies_within_threshold(log_timestamp, neighbors, 42);
 
 	if is_proved {
-		return chunk.log.bytes_sent;
+		return chunk.log.bytes_sent
 	} else {
 		0
 	}
 }
 
-fn get_closer_neighbors(timestamp: TimestampInSec, timestamps: &Vec<TimestampInSec>) -> (TimestampInSec, TimestampInSec) {
+fn get_closer_neighbors(
+	timestamp: TimestampInSec,
+	timestamps: &Vec<TimestampInSec>,
+) -> (TimestampInSec, TimestampInSec) {
 	let mut before = 0;
 	let mut after = TimestampInSec::MAX;
 	for ts in timestamps {
@@ -272,12 +271,16 @@ fn get_closer_neighbors(timestamp: TimestampInSec, timestamps: &Vec<TimestampInS
 	(before, after)
 }
 
-fn is_lies_within_threshold(timestamp: TimestampInSec, borders: (TimestampInSec, TimestampInSec), threshold: TimestampInSec) -> bool {
+fn is_lies_within_threshold(
+	timestamp: TimestampInSec,
+	borders: (TimestampInSec, TimestampInSec),
+	threshold: TimestampInSec,
+) -> bool {
 	let left_distance = timestamp - borders.0;
 	let right_distance = borders.1 - timestamp;
 
 	if left_distance < threshold || right_distance < threshold {
-		return true;
+		return true
 	}
 
 	false

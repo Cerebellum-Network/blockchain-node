@@ -54,12 +54,7 @@ pub use sp_core::crypto::{AccountId32, KeyTypeId, UncheckedFrom};
 pub use sp_io::crypto::sr25519_public_keys;
 pub use sp_runtime::offchain::{http, storage::StorageValueRef, Duration, Timestamp};
 pub use sp_staking::EraIndex;
-pub use sp_std::{
-	collections::{
-		btree_map::BTreeMap,
-	},
-	prelude::*
-};
+pub use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 extern crate alloc;
 
@@ -358,10 +353,9 @@ pub mod pallet {
 			);
 
 			match url_ref {
-				Some(url) => String::from_utf8(url).expect("Data provider URL should be valid UTF-8 string"),
-				None => {
-					String::from(DEFAULT_DATA_PROVIDER_URL)
-				},
+				Some(url) =>
+					String::from_utf8(url).expect("Data provider URL should be valid UTF-8 string"),
+				None => String::from(DEFAULT_DATA_PROVIDER_URL),
 			}
 		}
 
