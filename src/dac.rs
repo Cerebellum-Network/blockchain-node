@@ -228,14 +228,14 @@ fn get_timestamps_with_ack(file_requests: &Requests) -> Vec<TimestampInSec> {
 	timestamps
 }
 
-pub fn get_proved_deliveried_bytes_sum(file_requests: &Requests) -> u64 {
+pub fn get_proved_delivered_bytes_sum(file_requests: &Requests) -> u64 {
 	let ack_timestamps=  get_timestamps_with_ack(file_requests);
 	let mut total_bytes_received = 0u64;
 
 	for (_, file_request) in file_requests {
 		for (_, chunk) in &file_request.chunks {
 			if let Some(ack) = &chunk.ack {
-				total_bytes_received += ack.bytes_received;
+				total_bytes_received += &chunk.log.bytes_sent;
 			} else {
 				total_bytes_received += get_proved_delivered_bytes(chunk, &ack_timestamps);
 			}

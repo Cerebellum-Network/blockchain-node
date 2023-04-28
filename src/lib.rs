@@ -253,7 +253,7 @@ pub mod pallet {
 			let mock_data_url = Self::get_mock_data_url();
 
 			let file_request = dac::fetch_file_request(&mock_data_url);
-			let bytes_sum = dac::get_proved_deliveried_bytes_sum(&file_request);
+			let bytes_sum = dac::get_proved_delivered_bytes_sum(&file_request);
 			info!("Proved bytes sum: {:?}", bytes_sum);
 
 			// Wait for signal.
@@ -338,7 +338,7 @@ pub mod pallet {
 
 		fn get_mock_data_url() -> String {
 			let data_url = Self::get_data_provider_url();
-			let mock_url = "/JSON.GET/testddc:dac:data/INDENT/0";
+			let mock_url = "/JSON.GET/testddc:dac:data";
 			let url = format!("{}{}", data_url, mock_url);
 
 			url
