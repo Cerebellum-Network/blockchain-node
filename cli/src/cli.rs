@@ -1,12 +1,17 @@
-use sc_cli::RunCmd;
-
+#[allow(missing_docs)]
 #[derive(Debug, clap::Parser)]
 pub struct Cli {
 	#[clap(subcommand)]
 	pub subcommand: Option<Subcommand>,
-
 	#[clap(flatten)]
 	pub run: RunCmd,
+}
+
+#[allow(missing_docs)]
+#[derive(Debug, clap::Parser)]
+pub struct RunCmd {
+	#[clap(flatten)]
+	pub base: sc_cli::RunCmd,
 
 	/// Disable automatic hardware benchmarks.
 	///
@@ -19,6 +24,7 @@ pub struct Cli {
 	pub no_hardware_benchmarks: bool,
 }
 
+#[allow(missing_docs)]
 #[derive(Debug, clap::Subcommand)]
 pub enum Subcommand {
 	/// Key management cli utilities
