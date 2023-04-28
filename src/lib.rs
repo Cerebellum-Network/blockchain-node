@@ -248,13 +248,13 @@ pub mod pallet {
 			}
 
 			let data_provider_url = Self::get_data_provider_url();
-			info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
+			log::info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
 
 			let mock_data_url = Self::get_mock_data_url();
 
 			let file_request = dac::fetch_file_request(&mock_data_url);
 			let bytes_sum = dac::get_proved_delivered_bytes_sum(&file_request);
-			info!("Proved bytes sum: {:?}", bytes_sum);
+			log::info!("Proved bytes sum: {:?}", bytes_sum);
 
 			// Wait for signal.
 			let signal = Signal::<T>::get().unwrap_or(false);
