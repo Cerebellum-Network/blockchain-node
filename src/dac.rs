@@ -16,6 +16,7 @@ use crate::utils;
 
 pub type TimestampInSec = u64;
 pub const HTTP_TIMEOUT_MS: u64 = 30_000;
+pub const FAILED_CONTENT_CONSUMER_THRESHOLD: TimestampInSec = 100;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(crate = "alt_serde")]
@@ -245,7 +246,7 @@ pub fn get_proved_delivered_bytes_sum(file_requests: &Requests) -> u64 {
 fn get_proved_delivered_bytes(chunk: &Chunk, ack_timestamps: &Vec<TimestampInSec>) -> u64 {
 	let log_timestamp = chunk.log.timestamp;
 	let neighbors = get_closer_neighbors(log_timestamp, &ack_timestamps);
-	let is_proved = is_lies_within_threshold(log_timestamp, neighbors, 42);
+	let is_proved = is_lies_within_threshold(log_timestamp, neighbors, FAILED_CONTENT_CONSUMER_THRESHOLD);
 
 	if is_proved {
 		return chunk.log.bytes_sent
