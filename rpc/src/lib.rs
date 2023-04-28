@@ -27,7 +27,6 @@ use sp_consensus::SelectChain;
 use sp_consensus_babe::BabeApi;
 use sp_keystore::SyncCryptoStorePtr;
 
-
 /// Extra dependencies for BABE.
 pub struct BabeDeps {
 	/// BABE protocol config.

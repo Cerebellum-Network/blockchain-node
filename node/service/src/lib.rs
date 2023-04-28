@@ -1,77 +1,71 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
-use node_runtime::{self, RuntimeApi};
+#[cfg(feature = "cere-dev-native")]
+pub use cere_dev_runtime;
+#[cfg(feature = "cere-native")]
+pub use cere_runtime;
+
+use futures::prelude::*;
 use sc_client_api::{BlockBackend, ExecutorProvider};
 use sc_consensus_babe::{self, SlotProportion};
-use sc_service::{error::Error as ServiceError, Configuration, TaskManager, RpcHandlers};
+use sc_network::Event;
+use sc_service::{
+	error::Error as ServiceError, Configuration, KeystoreContainer, RpcHandlers, TaskManager,
+};
 use sc_telemetry::{Telemetry, TelemetryWorker};
-use sp_runtime::{traits::Block as BlockT};
+use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
+use sp_trie::PrefixedMemoryDB;
 use std::sync::Arc;
-use sc_network::{Event, NetworkService};
-use futures::prelude::*;
 
+pub use sc_executor::NativeExecutionDispatch;
+pub mod chain_spec;
+pub use cere_client::{
+	AbstractClient, CereDevExecutorDispatch, CereExecutorDispatch, Client, ClientHandle,
+	ExecuteWithClient, FullBackend, FullClient, RuntimeApiCollection,
+};
+pub use chain_spec::{CereChainSpec, CereDevChainSpec};
+pub use node_primitives::{Block, BlockNumber};
 pub use sc_executor::NativeElseWasmExecutor;
-pub use node_primitives::{Block};
+pub use sc_service::ChainSpec;
+pub use sp_api::ConstructRuntimeApi;
 
+type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
+type FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch> = sc_finality_grandpa::GrandpaBlockImport<
+	FullBackend,
+	Block,
+	FullClient<RuntimeApi, ExecutorDispatch>,
+	FullSelectChain,
+>;
 
-// Our native executor instance.
-pub struct ExecutorDispatch;
-
-impl sc_executor::NativeExecutionDispatch for ExecutorDispatch {
-	/// Only enable the benchmarking host functions when we actually want to benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
-
-	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		node_runtime::api::dispatch(method, data)
-	}
-
-	fn native_version() -> sc_executor::NativeVersion {
-		node_runtime::native_version()
-	}
+struct Basics<RuntimeApi, ExecutorDispatch>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, ExecutorDispatch>>
+		+ Send
+		+ Sync
+		+ 'static,
+	RuntimeApi::RuntimeApi:
+		RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	ExecutorDispatch: NativeExecutionDispatch + 'static,
+{
+	task_manager: TaskManager,
+	client: Arc<FullClient<RuntimeApi, ExecutorDispatch>>,
+	backend: Arc<FullBackend>,
+	keystore_container: KeystoreContainer,
+	telemetry: Option<Telemetry>,
 }
 
-pub(crate) type FullClient =
-	sc_service::TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<ExecutorDispatch>>;
-type FullBackend = sc_service::TFullBackend<Block>;
-type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
-type FullGrandpaBlockImport =
-  sc_finality_grandpa::GrandpaBlockImport<FullBackend, Block, FullClient, FullSelectChain>;
-
-pub type TransactionPool = sc_transaction_pool::FullPool<Block, FullClient>;
-
-pub fn new_partial(
+fn new_partial_basics<RuntimeApi, ExecutorDispatch>(
 	config: &Configuration,
-) -> Result<
-sc_service::PartialComponents<
-  FullClient,
-  FullBackend,
-  FullSelectChain,
-  sc_consensus::DefaultImportQueue<Block, FullClient>,
-  sc_transaction_pool::FullPool<Block, FullClient>,
-  (
-    impl Fn(
-      crate::rpc::DenyUnsafe,
-      sc_rpc::SubscriptionTaskExecutor,
-    ) -> Result<jsonrpsee::RpcModule<()>, sc_service::Error>,
-    (
-      sc_consensus_babe::BabeBlockImport<Block, FullClient, FullGrandpaBlockImport>,
-      sc_finality_grandpa::LinkHalf<Block, FullClient, FullSelectChain>,
-      sc_consensus_babe::BabeLink<Block>,
-    ),
-    sc_finality_grandpa::SharedVoterState,
-    Option<Telemetry>,
-  ),
->,
-ServiceError,
-> {
-	if config.keystore_remote.is_some() {
-		return Err(ServiceError::Other("Remote Keystores are not supported.".into()))
-	}
-
+) -> Result<Basics<RuntimeApi, ExecutorDispatch>, ServiceError>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, ExecutorDispatch>>
+		+ Send
+		+ Sync
+		+ 'static,
+	RuntimeApi::RuntimeApi:
+		RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	ExecutorDispatch: NativeExecutionDispatch + 'static,
+{
 	let telemetry = config
 		.telemetry_endpoints
 		.clone()
@@ -92,16 +86,70 @@ ServiceError,
 
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(
-			config,
+			&config,
 			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
 			executor,
 		)?;
+
 	let client = Arc::new(client);
 
 	let telemetry = telemetry.map(|(worker, telemetry)| {
 		task_manager.spawn_handle().spawn("telemetry", None, worker.run());
 		telemetry
 	});
+
+	Ok(Basics { task_manager, client, backend, keystore_container, telemetry })
+}
+
+fn new_partial<RuntimeApi, ExecutorDispatch>(
+	config: &Configuration,
+	Basics { task_manager, backend, client, keystore_container, telemetry }: Basics<
+		RuntimeApi,
+		ExecutorDispatch,
+	>,
+) -> Result<
+	sc_service::PartialComponents<
+		FullClient<RuntimeApi, ExecutorDispatch>,
+		FullBackend,
+		FullSelectChain,
+		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi, ExecutorDispatch>>,
+		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, ExecutorDispatch>>,
+		(
+			impl Fn(
+				cere_rpc::DenyUnsafe,
+				sc_rpc::SubscriptionTaskExecutor,
+			) -> Result<jsonrpsee::RpcModule<()>, sc_service::Error>,
+			(
+				sc_consensus_babe::BabeBlockImport<
+					Block,
+					FullClient<RuntimeApi, ExecutorDispatch>,
+					FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch>,
+				>,
+				sc_finality_grandpa::LinkHalf<
+					Block,
+					FullClient<RuntimeApi, ExecutorDispatch>,
+					FullSelectChain,
+				>,
+				sc_consensus_babe::BabeLink<Block>,
+			),
+			sc_finality_grandpa::SharedVoterState,
+			Option<Telemetry>,
+		),
+	>,
+	ServiceError,
+>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, ExecutorDispatch>>
+		+ Send
+		+ Sync
+		+ 'static,
+	RuntimeApi::RuntimeApi:
+		RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	ExecutorDispatch: NativeExecutionDispatch + 'static,
+{
+	if config.keystore_remote.is_some() {
+		return Err(ServiceError::Other("Remote Keystores are not supported.".into()))
+	}
 
 	let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
@@ -180,18 +228,18 @@ ServiceError,
 
 		let rpc_backend = backend.clone();
 		let rpc_extensions_builder = move |deny_unsafe, subscription_executor| {
-			let deps = crate::rpc::FullDeps {
+			let deps = cere_rpc::FullDeps {
 				client: client.clone(),
 				pool: pool.clone(),
 				select_chain: select_chain.clone(),
 				chain_spec: chain_spec.cloned_box(),
 				deny_unsafe,
-				babe: crate::rpc::BabeDeps {
+				babe: cere_rpc::BabeDeps {
 					babe_config: babe_config.clone(),
 					shared_epoch_changes: shared_epoch_changes.clone(),
 					keystore: keystore.clone(),
 				},
-				grandpa: crate::rpc::GrandpaDeps {
+				grandpa: cere_rpc::GrandpaDeps {
 					shared_voter_state: shared_voter_state.clone(),
 					shared_authority_set: shared_authority_set.clone(),
 					justification_stream: justification_stream.clone(),
@@ -200,7 +248,7 @@ ServiceError,
 				},
 			};
 
-      crate::rpc::create_full(deps, rpc_backend.clone()).map_err(Into::into)
+			cere_rpc::create_full(deps, rpc_backend.clone()).map_err(Into::into)
 		};
 
 		(rpc_extensions_builder, shared_voter_state2)
@@ -218,38 +266,76 @@ ServiceError,
 	})
 }
 
-/// Builds a new service for a full client.
-pub fn new_full(
+pub fn build_full(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
-) -> Result<TaskManager, ServiceError> {
-	new_full_base(config, disable_hardware_benchmarks, |_, _| ())
-		.map(|NewFullBase { task_manager, .. }| task_manager)
+) -> Result<NewFull<Client>, ServiceError> {
+	#[cfg(feature = "cere-dev-native")]
+	if config.chain_spec.is_cere_dev() {
+		return new_full::<cere_dev_runtime::RuntimeApi, CereDevExecutorDispatch>(
+			config,
+			disable_hardware_benchmarks,
+			|_, _| (),
+		)
+		.map(|full| full.with_client(Client::CereDev))
+	}
+
+	#[cfg(feature = "cere-native")]
+	{
+		return new_full::<cere_runtime::RuntimeApi, CereExecutorDispatch>(
+			config,
+			disable_hardware_benchmarks,
+			|_, _| (),
+		)
+		.map(|full| full.with_client(Client::Cere))
+	}
+
+	#[cfg(not(feature = "cere-native"))]
+	Err(ServiceError::NoRuntime)
 }
 
-
-/// Result of [`new_full_base`].
-pub struct NewFullBase {
-	/// The task manager of the node.
+pub struct NewFull<C> {
 	pub task_manager: TaskManager,
-	/// The client instance of the node.
-	pub client: Arc<FullClient>,
-	/// The networking service of the node.
-	pub network: Arc<NetworkService<Block, <Block as BlockT>::Hash>>,
-	/// The transaction pool of the node.
-	pub transaction_pool: Arc<TransactionPool>,
-	/// The rpc handlers of the node.
+	pub client: C,
+	pub network: Arc<sc_network::NetworkService<Block, <Block as BlockT>::Hash>>,
 	pub rpc_handlers: RpcHandlers,
+	pub backend: Arc<FullBackend>,
 }
 
-pub fn new_full_base(
+impl<C> NewFull<C> {
+	/// Convert the client type using the given `func`.
+	pub fn with_client<NC>(self, func: impl FnOnce(C) -> NC) -> NewFull<NC> {
+		NewFull {
+			task_manager: self.task_manager,
+			client: func(self.client),
+			network: self.network,
+			rpc_handlers: self.rpc_handlers,
+			backend: self.backend,
+		}
+	}
+}
+
+pub fn new_full<RuntimeApi, ExecutorDispatch>(
 	mut config: Configuration,
 	disable_hardware_benchmarks: bool,
 	with_startup_data: impl FnOnce(
-		&sc_consensus_babe::BabeBlockImport<Block, FullClient, FullGrandpaBlockImport>,
+		&sc_consensus_babe::BabeBlockImport<
+			Block,
+			FullClient<RuntimeApi, ExecutorDispatch>,
+			FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch>,
+		>,
 		&sc_consensus_babe::BabeLink<Block>,
 	),
-) -> Result<NewFullBase, ServiceError> {
+) -> Result<NewFull<Arc<FullClient<RuntimeApi, ExecutorDispatch>>>, ServiceError>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, ExecutorDispatch>>
+		+ Send
+		+ Sync
+		+ 'static,
+	RuntimeApi::RuntimeApi:
+		RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	ExecutorDispatch: NativeExecutionDispatch + 'static,
+{
 	let hwbench = if !disable_hardware_benchmarks {
 		config.database.path().map(|database_path| {
 			let _ = std::fs::create_dir_all(&database_path);
@@ -258,6 +344,8 @@ pub fn new_full_base(
 	} else {
 		None
 	};
+
+	let basics = new_partial_basics::<RuntimeApi, ExecutorDispatch>(&config)?;
 
 	let sc_service::PartialComponents {
 		client,
@@ -268,7 +356,7 @@ pub fn new_full_base(
 		select_chain,
 		transaction_pool,
 		other: (rpc_builder, import_setup, rpc_setup, mut telemetry),
-	} = new_partial(&config)?;
+	} = new_partial(&config, basics)?;
 
 	let shared_voter_state = rpc_setup;
 	let auth_disc_publish_non_global_ips = config.network.allow_non_globals_in_dht;
@@ -317,7 +405,7 @@ pub fn new_full_base(
 
 	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		config,
-		backend,
+		backend: backend.clone(),
 		client: client.clone(),
 		keystore: keystore_container.sync_keystore(),
 		network: network.clone(),
@@ -484,5 +572,90 @@ pub fn new_full_base(
 	}
 
 	network_starter.start_network();
-	Ok(NewFullBase { task_manager, client, network, transaction_pool, rpc_handlers })
+	Ok(NewFull { task_manager, client, backend, network, rpc_handlers })
+}
+
+struct RevertConsensus {
+	blocks: BlockNumber,
+	backend: Arc<FullBackend>,
+}
+
+impl ExecuteWithClient for RevertConsensus {
+	type Output = sp_blockchain::Result<()>;
+
+	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
+	where
+		<Api as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
+		Backend: sc_client_api::Backend<Block> + 'static,
+		Backend::State: sp_api::StateBackend<BlakeTwo256>,
+		Api: RuntimeApiCollection<StateBackend = Backend::State>,
+		Client: AbstractClient<Block, Backend, Api = Api> + 'static,
+	{
+		sc_consensus_babe::revert(client.clone(), self.backend, self.blocks)?;
+		sc_finality_grandpa::revert(client, self.blocks)?;
+		Ok(())
+	}
+}
+
+macro_rules! chain_ops {
+	($config:expr; $scope:ident, $executor:ident, $variant:ident) => {{
+		let config = $config;
+		let basics = new_partial_basics::<$scope::RuntimeApi, $executor>(config)?;
+
+		let sc_service::PartialComponents { client, backend, import_queue, task_manager, .. } =
+			new_partial::<$scope::RuntimeApi, $executor>(&config, basics)?;
+		Ok((Arc::new(Client::$variant(client)), backend, import_queue, task_manager))
+	}};
+}
+
+pub fn new_chain_ops(
+	config: &Configuration,
+) -> Result<
+	(
+		Arc<Client>,
+		Arc<FullBackend>,
+		sc_consensus::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
+		TaskManager,
+	),
+	ServiceError,
+> {
+	#[cfg(feature = "cere-dev-native")]
+	if config.chain_spec.is_cere_dev() {
+		return chain_ops!(config; cere_dev_runtime, CereDevExecutorDispatch, CereDev)
+	}
+
+	#[cfg(feature = "cere-native")]
+	{
+		return chain_ops!(config; cere_runtime, CereExecutorDispatch, Cere)
+	}
+
+	#[cfg(not(feature = "cere-native"))]
+	Err(Error::NoRuntime)
+}
+
+/// Can be called for a `Configuration` to identify which network the configuration targets.
+pub trait IdentifyVariant {
+	/// Returns if this is a configuration for the `Cere` network.
+	fn is_cere(&self) -> bool;
+
+	/// Returns if this is a configuration for the `Cere Dev` network.
+	fn is_cere_dev(&self) -> bool;
+}
+
+impl IdentifyVariant for Box<dyn sc_service::ChainSpec> {
+	fn is_cere(&self) -> bool {
+		self.id().starts_with("cere")
+	}
+	fn is_cere_dev(&self) -> bool {
+		self.id().starts_with("cere-dev")
+	}
+}
+
+pub fn revert_backend(
+	client: Arc<Client>,
+	backend: Arc<FullBackend>,
+	blocks: BlockNumber,
+) -> Result<(), ServiceError> {
+	client.execute_with(RevertConsensus { blocks, backend })?;
+	Ok(())
 }

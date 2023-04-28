@@ -1,0 +1,42 @@
+[package]
+name = "cere-cli"
+version = "3.0.0-dev"
+edition = "2021"
+
+[package.metadata.wasm-pack.profile.release]
+# `wasm-opt` has some problems on Linux, see
+# https://github.com/rustwasm/wasm-pack/issues/781 etc.
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+clap = { version = "3.1", features = ["derive"], optional = true }
+sc-cli = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.22" }
+sc-service = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.22" }
+frame-benchmarking-cli = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.22" }
+try-runtime-cli = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", optional = true , branch = "polkadot-v0.9.22" }
+
+# Local
+cere-service = { path = "../node/service", default-features = false, optional = true }
+cere-client = { path = "../node/client", optional = true }
+
+[build-dependencies]
+substrate-build-script-utils = { version = "3.0.0", git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
+
+[features]
+default = ["cli", "cere-native"]
+cli = [
+	"clap",
+	"sc-cli",
+	"sc-service",
+	"frame-benchmarking-cli",
+	"try-runtime-cli",
+	"cere-client",
+]
+runtime-benchmarks = ["cere-service/runtime-benchmarks"]
+try-runtime = ["cere-service/try-runtime"]
+
+cere-native = ["cere-service/cere-native"]
+cere-dev-native = ["cere-service/cere-dev-native"]
