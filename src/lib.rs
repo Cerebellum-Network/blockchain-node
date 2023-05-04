@@ -384,7 +384,7 @@ pub mod pallet {
 				.unwrap()
 		}
 
-		fn validate(bytes_sent: dac::BytesSent, bytes_received: dac::BytesReceived) -> bool {
+		fn validate(bytes_sent: &dac::BytesSent, bytes_received: &dac::BytesReceived) -> bool {
 			let percentage_difference = 1f32 - (bytes_received.sum as f32 / bytes_sent.sum as f32);
 
 			return if percentage_difference > 0.0 &&
