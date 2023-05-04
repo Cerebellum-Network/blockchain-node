@@ -311,18 +311,26 @@ pub mod pallet {
 				let edge_pubkey: String = utils::account_to_string::<T>(edge.clone());
 
 				// Get bytes sent and received for the CDN node
-				let Some(node_sent) = sent
+				let node_sent: &dac::BytesSent = match sent
 					.iter()
-					.find(|bytes_sent| bytes_sent.node_public_key == edge_pubkey) else {
+					.find(|bytes_sent| bytes_sent.node_public_key == edge_pubkey)
+				{
+					Some(node_sent) => node_sent,
+					None => {
 						log::warn!("No logs to validate {:?}", edge);
 						continue
-					};
-				let Some(client_received) = received
+					},
+				};
+				let client_received: &dac::BytesReceived = match received
 					.iter()
-					.find(|bytes_received| bytes_received.node_public_key == edge_pubkey) else {
+					.find(|bytes_received| bytes_received.node_public_key == edge_pubkey)
+				{
+					Some(client_received) => client_received,
+					None => {
 						log::warn!("No acks to validate {:?}", edge);
 						continue
-					};
+					},
+				};
 
 				// Proof-of-delivery validation
 				let validation_result = Self::validate(node_sent, client_received);
