@@ -255,6 +255,11 @@ pub mod pallet {
 			let bytes_sum = dac::get_proved_delivered_bytes_sum(&file_request);
 			log::info!("Proved bytes sum: {:?}", bytes_sum);
 
+			let assigned_edge =
+				String::from("0xd4160f567d7265b9de2c7cbf1a5c931e5b3195efb2224f8706bfb53ea6eaacd1");
+			dac::finalize_decisions(&data_provider_url, 123345 as EraIndex, &assigned_edge)
+				.unwrap();
+
 			// Print the number of broken sessions per CDN node.
 			let aggregates_value = dac::fetch_aggregates(&data_provider_url, 77436).unwrap(); // 77436 is for a mock data
 			let aggregates_obj = aggregates_value.as_object().unwrap();

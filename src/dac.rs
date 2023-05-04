@@ -4,8 +4,13 @@ use alloc::{format, string::String}; // ToDo: remove String usage
 use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use codec::{Decode, Encode};
 use lite_json::json::JsonValue;
+use log::info;
 use serde_json::Value;
-use sp_runtime::offchain::{http, Duration};
+use sp_runtime::offchain::{
+	http,
+	http::{Method, Request},
+	Duration,
+};
 use sp_staking::EraIndex;
 pub use sp_std::{
 	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
@@ -118,6 +123,52 @@ pub struct FileInfo {
 	#[serde(rename = "requestedChunkCids")]
 	requested_chunk_cids: Vec<String>,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(crate = "alt_serde")]
+pub(crate) struct ValidationResult {
+	data: String,
+	result: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(crate = "alt_serde")]
+pub(crate) struct ValidationResults(BTreeMap<String, ValidationResult>);
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(crate = "alt_serde")]
+pub(crate) struct Edges(BTreeMap<String, ValidationResults>);
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(crate = "alt_serde")]
+pub(crate) struct Wrapper {
+	#[serde(rename = "HGET")]
+	decisions: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(crate = "alt_serde")]
+pub(crate) struct ResultLog {
+	validator_id: String,
+	data: String,
+	result: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(crate = "alt_serde")]
+pub(crate) struct ResultsLog(Vec<BTreeMap<String, ResultLog>>);
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(crate = "alt_serde")]
+pub(crate) struct FinalDecision {
+	data: String,
+	result: bool,
+	results_log: ResultsLog,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(crate = "alt_serde")]
+pub(crate) struct FinalDecisions(BTreeMap<String, FinalDecision>);
 
 impl BytesSent {
 	pub fn new(aggregate: RedisFtAggregate) -> BytesSent {
@@ -246,7 +297,8 @@ pub fn get_proved_delivered_bytes_sum(file_requests: &Requests) -> u64 {
 fn get_proved_delivered_bytes(chunk: &Chunk, ack_timestamps: &Vec<TimestampInSec>) -> u64 {
 	let log_timestamp = chunk.log.timestamp;
 	let neighbors = get_closer_neighbors(log_timestamp, &ack_timestamps);
-	let is_proved = is_lies_within_threshold(log_timestamp, neighbors, FAILED_CONTENT_CONSUMER_THRESHOLD);
+	let is_proved =
+		is_lies_within_threshold(log_timestamp, neighbors, FAILED_CONTENT_CONSUMER_THRESHOLD);
 
 	if is_proved {
 		return chunk.log.bytes_sent
@@ -438,4 +490,113 @@ pub(crate) fn fetch_aggregates(
 		http::Error::Unknown
 	})?;
 	Ok(json)
+}
+
+pub(crate) fn make_http_put(url: &String, payload: &String) -> Result<(), http::Error> {
+	let deadline = sp_io::offchain::timestamp().add(Duration::from_millis(HTTP_TIMEOUT_MS));
+
+	let request = http::Request::new(url.as_str())
+		.method(Method::Put)
+		.body(vec![payload.as_bytes()]);
+
+	let pending_req = request.deadline(deadline).send().map_err(|_| http::Error::IoError)?;
+	let response = pending_req.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
+
+	if response.code != 200 {
+		log::warn!("Unexpected status code: {}", response.code);
+		return Err(http::Error::Unknown)
+	}
+
+	let body = response.body().collect::<Vec<u8>>();
+	let body_str = sp_std::str::from_utf8(&body).map_err(|_| {
+		log::warn!("No UTF-8 body");
+		http::Error::Unknown
+	})?;
+
+	let json = lite_json::parse_json(body_str).map_err(|_| {
+		log::warn!("No JSON body");
+		http::Error::Unknown
+	})?;
+
+	Ok(())
+}
+
+pub(crate) fn fetch_validators_decisions(
+	data_provider_url: &String,
+	era: EraIndex,
+) -> Result<Wrapper, http::Error> {
+	let url = format!("{}/HGET/mock:ddc:dac:decisions_to_eras/{}", data_provider_url, era);
+	let wrapper: Wrapper = http_get_json(&url).unwrap();
+
+	Ok(wrapper)
+}
+
+pub(crate) fn post_final_decision(
+	data_provider_url: &String,
+	era: EraIndex,
+	decision: FinalDecision,
+) -> Result<(), http::Error> {
+	let url = format!("{}/HSET/mock:ddc:dac:final_decision_to_era/{}", data_provider_url, era);
+
+	let payload_str: String = serde_json::to_string(&decision).unwrap();
+	let res = make_http_put(&url, &payload_str);
+
+	res
+}
+
+pub(crate) fn get_final_decision(decisions: &ValidationResults) -> FinalDecision {
+	let mut validators_on_edge = 0u32;
+	let mut positive_count = 0u32;
+
+	let mut results_log: Vec<BTreeMap<String, ResultLog>> = Vec::new();
+	for (validator_id, decision) in decisions.0.iter() {
+		let result = decision.result;
+
+		if result == true {
+			positive_count += 1;
+		}
+
+		let result_log_value =
+			ResultLog { validator_id: validator_id.clone(), data: String::from("Base64"), result };
+
+		let mut result_log: BTreeMap<String, ResultLog> = BTreeMap::new();
+		result_log.insert(validator_id.clone(), result_log_value);
+		results_log.push(result_log);
+
+		validators_on_edge += 1;
+	}
+
+	let threshold = validators_on_edge / 2;
+
+	let mut validation_result = false;
+	if positive_count > threshold {
+		validation_result = true;
+	}
+
+	let final_decision = FinalDecision {
+		data: String::from("Base64"),
+		result: validation_result,
+		results_log: ResultsLog(results_log),
+	};
+
+	final_decision
+}
+
+pub(crate) fn finalize_decisions(
+	data_provider_url: &String,
+	era: EraIndex,
+	edge: &String,
+) -> Result<(), http::Error> {
+	let wrapper = fetch_validators_decisions(data_provider_url, era).unwrap();
+	let edges: Edges = serde_json::from_str(wrapper.decisions.as_str()).unwrap();
+	let result = edges.0.get(edge).unwrap();
+	info!("decisions: {:?}", result);
+
+	let final_decision = get_final_decision(&result);
+
+	info!("final_decision: {:?}", final_decision);
+
+	let res = post_final_decision(data_provider_url, era, final_decision);
+
+	res
 }
