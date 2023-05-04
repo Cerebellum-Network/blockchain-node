@@ -300,6 +300,45 @@ pub mod pallet {
 				received_query,
 				received,
 			);
+
+			// Create intermediate validation decisions
+			// ========================================
+
+			// All validators validate all CDN nodes.
+			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
+			for edge in edges.iter() {
+				// Get string type CDN node pubkey
+				let edge_pubkey: String = utils::account_to_string::<T>(edge.clone());
+
+				// Get bytes sent and received for the CDN node
+				let Some(node_sent) = sent
+					.iter()
+					.find(|bytes_sent| bytes_sent.node_public_key == edge_pubkey) else {
+						log::warn!("No logs to validate {:?}", edge);
+						continue
+					};
+				let Some(client_received) = received
+					.iter()
+					.find(|bytes_received| bytes_received.node_public_key == edge_pubkey) else {
+						log::warn!("No acks to validate {:?}", edge);
+						continue
+					};
+
+				// Proof-of-delivery validation
+				let validation_result = Self::validate(node_sent, client_received);
+
+				// Prepare an intermediate validation decision
+				let _validation_decision = ValidationDecision {
+					result: validation_result,
+					payload: [0u8; 256], // ToDo: put a hash of the validated data here
+					totals: DacTotalAggregates {
+						sent: node_sent.sum as u64,
+						received: client_received.sum as u64,
+						failed_by_client: 0, // ToDo
+						failure_rate: 0,     // ToDo
+					},
+				};
+			}
 		}
 	}
 
