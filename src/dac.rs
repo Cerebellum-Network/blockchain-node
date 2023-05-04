@@ -36,8 +36,8 @@ pub enum FtAggregate {
 
 #[derive(Clone, Debug, Encode, Decode, scale_info::TypeInfo, PartialEq)]
 pub struct BytesSent {
-	node_public_key: String,
-	era: EraIndex,
+	pub node_public_key: String,
+	pub era: EraIndex,
 	pub sum: u32,
 }
 
@@ -162,8 +162,8 @@ impl BytesSent {
 
 #[derive(Clone, Debug, Encode, Decode, scale_info::TypeInfo, PartialEq)]
 pub struct BytesReceived {
-	node_public_key: String,
-	era: EraIndex,
+	pub node_public_key: String,
+	pub era: EraIndex,
 	pub sum: u32,
 }
 
