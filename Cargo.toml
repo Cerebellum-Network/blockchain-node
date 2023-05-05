@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 array-bytes = "6.0.0"
 alt_serde = { version = "1", default-features = false, features = ["derive"] }
+base64 = { version = "0.21.0", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
 frame-support = { version = "4.0.0-dev", default-features = false, path = "../support" }
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../system" }
