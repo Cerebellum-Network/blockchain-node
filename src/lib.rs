@@ -338,7 +338,7 @@ pub mod pallet {
 				let validation_result = Self::validate(node_sent, client_received);
 
 				// Prepare an intermediate validation decision
-				let _validation_decision = ValidationDecision {
+				let validation_decision = ValidationDecision {
 					result: validation_result,
 					payload: [0u8; 256], // ToDo: put a hash of the validated data here
 					totals: DacTotalAggregates {
@@ -348,7 +348,38 @@ pub mod pallet {
 						failure_rate: 0,     // ToDo
 					},
 				};
+
+				// Encode validation decision to base64
+				let validation_decision_serialized: Vec<u8> = validation_decision.encode();
+				let validation_decision_base64 =
+					shm::base64_encode(&validation_decision_serialized);
+				log::info!(
+					"Intermediate validation decision for CDN node {:?}: , base64 encoded: {:?}",
+					validation_decision,
+					validation_decision_base64,
+				);
+
+				// Prepare values to publish validation decision and publish it
+				let validator_id_string = String::from("validator1"); // ToDo: get validator ID
+				let edge_id_string = utils::account_to_string::<T>(edge.clone());
+				let validation_decision_base64_string =
+					validation_decision_base64.iter().cloned().collect::<String>();
+				let response = shm::share_intermediate_validation_result(
+					&data_provider_url,
+					current_era - 1,
+					&validator_id_string,
+					&edge_id_string,
+					validation_result,
+					&validation_decision_base64_string,
+				);
+				let response_text = response.unwrap().to_string();
+				log::info!("Redis response: {:?}", response_text)
 			}
+			log::info!(
+				"Intermediate validation results published for {} CDN nodes in era {:?}",
+				edges.len(),
+				current_era - 1
+			);
 		}
 	}
 
