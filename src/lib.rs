@@ -222,6 +222,8 @@ pub mod pallet {
 				return 0
 			}
 
+			Signal::<T>::set(Some(false));
+
 			let era = Self::get_current_era();
 			log::info!("current era: {:?}", era);
 
