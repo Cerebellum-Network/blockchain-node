@@ -49,11 +49,12 @@ impl SubstrateCli for Cli {
 			"cere-dev" | "dev" => Box::new(cere_service::chain_spec::cere_dev_config()?),
 			path => {
 				let path = std::path::PathBuf::from(path);
-				let chain_spec =
-					Box::new(cere_service::CereChainSpec::from_json_file(path.clone())?)
-						as Box<dyn cere_service::ChainSpec>;
 
-				chain_spec
+				if self.run.force_cere_dev {
+					Box::new(cere_service::CereDevChainSpec::from_json_file(path)?)
+				} else {
+					Box::new(cere_service::CereChainSpec::from_json_file(path.clone())?)
+				}
 			},
 		})
 	}

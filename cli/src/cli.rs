@@ -13,6 +13,10 @@ pub struct RunCmd {
 	#[clap(flatten)]
 	pub base: sc_cli::RunCmd,
 
+	/// Force using CereDev runtime.
+	#[clap(long = "force-cere-dev")]
+	pub force_cere_dev: bool,
+
 	/// Disable automatic hardware benchmarks.
 	///
 	/// By default these benchmarks are automatically ran at startup and measure
