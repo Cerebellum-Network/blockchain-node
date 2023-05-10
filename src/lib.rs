@@ -16,6 +16,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod dac;
+mod payments;
 mod shm;
 mod utils;
 mod validation;
