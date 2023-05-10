@@ -1,4 +1,9 @@
 //! Validators' "shared memory" module.
+//!
+//! It implements a step of the DAC and Validation sequence when validators share their intermediate
+//! validation results with each other. The design of the "shared memory" is expected to become like
+//! transactions pool or peers list in the future, but for now it works on the centralized Redis
+//! server which we maintain for DAC DataModel.
 
 use alloc::{format, string::String}; // ToDo: remove String usage
 use base64::prelude::*;
