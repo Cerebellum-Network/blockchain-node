@@ -30,7 +30,7 @@ pub fn share_intermediate_validation_result(
 	let validation_result_string = String::from(if validation_result { "true" } else { "false" });
 	let validation_decision_string = String::from(validation_decision_encoded);
 	let url = format!(
-		"{}/FCALL/save_validation_result_by_node/1/{}:{}:{}/{{\"result\":{},\"data\":{}}}",
+		"{}/FCALL/save_validation_result_by_node/1/{}:{}:{}/{{\"result\":{},\"data\":\"{}\"}}",
 		shared_memory_webdis_url,
 		validator,
 		cdn_node,
