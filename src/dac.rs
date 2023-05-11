@@ -6,6 +6,7 @@ use codec::{Decode, Encode};
 use lite_json::json::JsonValue;
 use log::info;
 use serde_json::Value;
+use sp_runtime::generic::Era;
 use sp_runtime::offchain::{
 	http,
 	http::{Method, Request},
@@ -124,20 +125,16 @@ pub struct FileInfo {
 	requested_chunk_cids: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(crate = "alt_serde")]
-pub(crate) struct ValidationResult {
-	data: String,
-	result: bool,
-}
+type EdgeId = String;
+type ValidatorId = String;
+
+// #[derive(Debug, Deserialize, Serialize)]
+// #[serde(crate = "alt_serde")]
+// pub(crate) struct ValidationResults(BTreeMap<ValidatorId, ValidationResult>);
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(crate = "alt_serde")]
-pub(crate) struct ValidationResults(BTreeMap<String, ValidationResult>);
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(crate = "alt_serde")]
-pub(crate) struct Edges(BTreeMap<String, ValidationResults>);
+pub(crate) struct EdgesToResults(BTreeMap<EdgeId, Vec<ValidationResult>>);
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(crate = "alt_serde")]
@@ -148,22 +145,28 @@ pub(crate) struct Wrapper {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(crate = "alt_serde")]
-pub(crate) struct ResultLog {
-	validator_id: String,
-	data: String,
+pub(crate) struct ValidationResult {
+	validator_id: ValidatorId,
+	edge_id: EdgeId,
 	result: bool,
+	received: u64,
+	sent: u64,
+	era: EraIndex,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(crate = "alt_serde")]
-pub(crate) struct ResultsLog(Vec<BTreeMap<String, ResultLog>>);
+// #[derive(Debug, Deserialize, Serialize)]
+// #[serde(crate = "alt_serde")]
+// pub(crate) struct ResultsLogs(Vec<ValidationResult>);
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(crate = "alt_serde")]
 pub(crate) struct FinalDecision {
-	data: String,
 	result: bool,
-	results_log: ResultsLog,
+	edge_id: EdgeId,
+	era: EraIndex,
+	received: u64,
+	sent: u64,
+	results_logs: Vec<ValidationResult>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -544,24 +547,17 @@ pub(crate) fn post_final_decision(
 	res
 }
 
-pub(crate) fn get_final_decision(decisions: &ValidationResults) -> FinalDecision {
+pub(crate) fn get_final_decision(decisions: Vec<ValidationResult>) -> FinalDecision {
 	let mut validators_on_edge = 0u32;
 	let mut positive_count = 0u32;
 
-	let mut results_log: Vec<BTreeMap<String, ResultLog>> = Vec::new();
-	for (validator_id, decision) in decisions.0.iter() {
-		let result = decision.result;
-
-		if result == true {
+	let mut results_logs: Vec<ValidationResult> = Vec::new();
+	for decision in decisions {
+		if decision.result == true {
 			positive_count += 1;
 		}
 
-		let result_log_value =
-			ResultLog { validator_id: validator_id.clone(), data: String::from("Base64"), result };
-
-		let mut result_log: BTreeMap<String, ResultLog> = BTreeMap::new();
-		result_log.insert(validator_id.clone(), result_log_value);
-		results_log.push(result_log);
+		results_logs.push(decision);
 
 		validators_on_edge += 1;
 	}
@@ -574,29 +570,47 @@ pub(crate) fn get_final_decision(decisions: &ValidationResults) -> FinalDecision
 	}
 
 	let final_decision = FinalDecision {
-		data: String::from("Base64"),
 		result: validation_result,
-		results_log: ResultsLog(results_log),
+		edge_id: results_logs[0].edge_id.clone(),
+		results_logs,
+		// Todo: Implement fn to get the values from intermediate decisions
+		received: 0,
+		sent: 0,
+		era: 0,
 	};
 
 	final_decision
 }
 
-pub(crate) fn finalize_decisions(
+// pub(crate) fn finalize_decisions(
+// 	data_provider_url: &String,
+// 	era: EraIndex,
+// 	edge: &String,
+// ) -> Result<(), http::Error> {
+// 	let wrapper = fetch_validators_decisions(data_provider_url, era).unwrap();
+// 	let edges: Edges = serde_json::from_str(wrapper.decisions.as_str()).unwrap();
+// 	let result = edges.0.get(edge).unwrap();
+// 	info!("decisions: {:?}", result);
+//
+// 	let final_decision = get_final_decision(&result);
+//
+// 	info!("final_decision: {:?}", final_decision);
+//
+// 	let res = post_final_decision(data_provider_url, era, final_decision);
+//
+// 	res
+// }
+
+pub(crate) fn get_validation_results(
 	data_provider_url: &String,
 	era: EraIndex,
 	edge: &String,
-) -> Result<(), http::Error> {
+) -> Result<Vec<ValidationResult>, http::Error> {
 	let wrapper = fetch_validators_decisions(data_provider_url, era).unwrap();
-	let edges: Edges = serde_json::from_str(wrapper.decisions.as_str()).unwrap();
-	let result = edges.0.get(edge).unwrap();
-	info!("decisions: {:?}", result);
+	let mut edges: EdgesToResults = serde_json::from_str(wrapper.decisions.as_str()).unwrap();
+	let results = edges.0.remove(edge).unwrap();
 
-	let final_decision = get_final_decision(&result);
-
-	info!("final_decision: {:?}", final_decision);
-
-	let res = post_final_decision(data_provider_url, era, final_decision);
-
-	res
+	Ok(results)
 }
+
+// pub(crate) fn save_final_decision();
