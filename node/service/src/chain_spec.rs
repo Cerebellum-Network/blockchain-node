@@ -119,7 +119,6 @@ pub fn cere_genesis(
 	initial_nominators: Vec<AccountId>,
 	root_key: AccountId,
 	endowed_accounts: Option<Vec<AccountId>>,
-	_enable_println: bool,
 ) -> cere::GenesisConfig {
 	let mut endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
 		vec![
@@ -260,7 +259,6 @@ pub fn cere_dev_genesis(
 	initial_nominators: Vec<AccountId>,
 	root_key: AccountId,
 	endowed_accounts: Option<Vec<AccountId>>,
-	_enable_println: bool,
 ) -> cere_dev::GenesisConfig {
 	let mut endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
 		vec![
@@ -404,7 +402,6 @@ fn cere_config_genesis(wasm_binary: &[u8]) -> cere::GenesisConfig {
 			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
 		]),
-		true,
 	)
 }
 
@@ -425,7 +422,6 @@ fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::GenesisConfig {
 			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
 		]),
-		true,
 	)
 }
 
