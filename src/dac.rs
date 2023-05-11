@@ -144,7 +144,7 @@ pub(crate) struct Wrapper {
 	decisions: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(crate = "alt_serde")]
 pub(crate) struct ValidationResult {
 	validator_id: ValidatorId,
@@ -549,30 +549,12 @@ pub(crate) fn post_final_decision(
 }
 
 pub(crate) fn get_final_decision(decisions: Vec<ValidationResult>) -> ValidationDecision {
-	let mut validators_on_edge = 0u32;
-	let mut positive_count = 0u32;
-
-	let mut results_logs: Vec<ValidationResult> = Vec::new();
-	for decision in decisions {
-		if decision.result == true {
-			positive_count += 1;
-		}
-
-		results_logs.push(decision);
-
-		validators_on_edge += 1;
-	}
-
-	let threshold = validators_on_edge / 2;
-
-	let mut validation_result = false;
-	if positive_count > threshold {
-		validation_result = true;
-	}
+	let common_decisions = find_largest_group(decisions).unwrap();
+	let decision_example = common_decisions.get(0).unwrap();
 
 	let final_decision= ValidationDecision {
-		result: validation_result,
-		payload: utils::get_hashed(&results_logs),
+		result: decision_example.result,
+		payload: utils::get_hashed(&common_decisions),
 		totals: DacTotalAggregates {
 			received: 0,
 			sent: 0,
@@ -594,4 +576,37 @@ pub(crate) fn get_validation_results(
 	let results = edges.0.remove(edge).unwrap();
 
 	Ok(results)
+}
+
+fn find_largest_group(decisions: Vec<ValidationResult>) -> Option<Vec<ValidationResult>> {
+	let mut groups: Vec<Vec<ValidationResult>> = Vec::new();
+	let half = decisions.len() / 2;
+
+	for decision in decisions {
+		let mut found_group = false;
+
+		for group in &mut groups {
+			if group.iter().all(|x| x.result == decision.result && x.received == decision.received && x.sent == decision.sent) {
+				group.push(decision.clone());
+				found_group = true;
+				break;
+			}
+		}
+
+		if !found_group {
+			groups.push(vec![decision]);
+		}
+	}
+
+	let largest_group = groups
+		.into_iter()
+		.max_by_key(|group| group.len())
+		.unwrap_or(Vec::new());
+
+
+	if largest_group.len() > half {
+		Some(largest_group)
+	} else {
+		None
+	}
 }
