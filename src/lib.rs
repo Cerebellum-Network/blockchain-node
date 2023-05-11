@@ -257,8 +257,9 @@ pub mod pallet {
 
 			let assigned_edge =
 				String::from("0xd4160f567d7265b9de2c7cbf1a5c931e5b3195efb2224f8706bfb53ea6eaacd1");
-			let validations_res = dac::get_validation_results(&data_provider_url, 5 as EraIndex, &assigned_edge)
-				.unwrap();
+			let validations_res =
+				dac::get_validation_results(&data_provider_url, 5 as EraIndex, &assigned_edge)
+					.unwrap();
 			let final_res = dac::get_final_decision(validations_res);
 			log::info!("final_res: {:?}", final_res);
 

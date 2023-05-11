@@ -6,11 +6,13 @@ use codec::{Decode, Encode};
 use lite_json::json::JsonValue;
 use log::info;
 use serde_json::Value;
-use sp_runtime::generic::Era;
-use sp_runtime::offchain::{
-	http,
-	http::{Method, Request},
-	Duration,
+use sp_runtime::{
+	generic::Era,
+	offchain::{
+		http,
+		http::{Method, Request},
+		Duration,
+	},
 };
 use sp_staking::EraIndex;
 pub use sp_std::{
