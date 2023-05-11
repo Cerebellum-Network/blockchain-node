@@ -19,8 +19,7 @@ pub use sp_std::{
 	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
 	prelude::*,
 };
-
-use crate::utils;
+use crate::{DacTotalAggregates, utils, ValidationDecision};
 
 pub type TimestampInSec = u64;
 pub const HTTP_TIMEOUT_MS: u64 = 30_000;
@@ -549,7 +548,7 @@ pub(crate) fn post_final_decision(
 	res
 }
 
-pub(crate) fn get_final_decision(decisions: Vec<ValidationResult>) -> FinalDecision {
+pub(crate) fn get_final_decision(decisions: Vec<ValidationResult>) -> ValidationDecision {
 	let mut validators_on_edge = 0u32;
 	let mut positive_count = 0u32;
 
@@ -571,37 +570,19 @@ pub(crate) fn get_final_decision(decisions: Vec<ValidationResult>) -> FinalDecis
 		validation_result = true;
 	}
 
-	let final_decision = FinalDecision {
+	let final_decision= ValidationDecision {
 		result: validation_result,
-		edge_id: results_logs[0].edge_id.clone(),
-		results_logs,
-		// Todo: Implement fn to get the values from intermediate decisions
-		received: 0,
-		sent: 0,
-		era: 0,
+		payload: utils::get_hashed(&results_logs),
+		totals: DacTotalAggregates {
+			received: 0,
+			sent: 0,
+			failed_by_client: 0,
+			failure_rate: 0,
+		},
 	};
 
 	final_decision
 }
-
-// pub(crate) fn finalize_decisions(
-// 	data_provider_url: &String,
-// 	era: EraIndex,
-// 	edge: &String,
-// ) -> Result<(), http::Error> {
-// 	let wrapper = fetch_validators_decisions(data_provider_url, era).unwrap();
-// 	let edges: Edges = serde_json::from_str(wrapper.decisions.as_str()).unwrap();
-// 	let result = edges.0.get(edge).unwrap();
-// 	info!("decisions: {:?}", result);
-//
-// 	let final_decision = get_final_decision(&result);
-//
-// 	info!("final_decision: {:?}", final_decision);
-//
-// 	let res = post_final_decision(data_provider_url, era, final_decision);
-//
-// 	res
-// }
 
 pub(crate) fn get_validation_results(
 	data_provider_url: &String,
@@ -614,5 +595,3 @@ pub(crate) fn get_validation_results(
 
 	Ok(results)
 }
-
-// pub(crate) fn save_final_decision();
