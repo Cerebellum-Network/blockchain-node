@@ -101,7 +101,6 @@ pub fn development_config() -> Result<ChainSpec, String> {
 					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
 				]),
-				true,
 			)
 		},
 		// Bootnodes
@@ -155,7 +154,6 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				]),
-				true,
 			)
 		},
 		// Bootnodes
@@ -187,7 +185,6 @@ fn testnet_genesis(
   initial_nominators: Vec<AccountId>,
 	root_key: AccountId,
 	endowed_accounts: Option<Vec<AccountId>>,
-	_enable_println: bool,
 ) -> GenesisConfig {
 
 	let mut endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
