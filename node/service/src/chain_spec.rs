@@ -405,37 +405,10 @@ fn cere_config_genesis(wasm_binary: &[u8]) -> cere::GenesisConfig {
 	)
 }
 
-// pub fn cere_config() -> Result<CereChainSpec, String> {
-// 	CereChainSpec::from_json_bytes(&include_bytes!("../res/cere.json")[..])
-// }
-
-#[cfg(feature = "cere-native")]
 pub fn cere_config() -> Result<CereChainSpec, String> {
-	let wasm_binary = cere::WASM_BINARY.ok_or("Cere development wasm not available")?;
-
-	Ok(CereChainSpec::from_genesis(
-		// Name
-		"Testnet",
-		// ID
-		"testnet",
-		ChainType::Live,
-		move || cere_config_genesis(wasm_binary),
-		// Bootnodes
-		vec![],
-		// Telemetry
-		None,
-		// Protocol ID
-		None,
-		// Fork ID
-		None,
-		// Properties
-		None,
-		// Extensions
-		Default::default(),
-	))
+	CereChainSpec::from_json_bytes(&include_bytes!("../chain-specs/mainnet.json")[..])
 }
 
 pub fn cere_dev_config() -> Result<CereDevChainSpec, String> {
-	println!("in cere_dev_config");
 	CereDevChainSpec::from_json_bytes(&include_bytes!("../chain-specs/devnet.json")[..])
 }
