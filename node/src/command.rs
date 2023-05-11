@@ -9,6 +9,7 @@ use node_runtime::Block;
 use sc_cli::{ChainSpec, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
 use std::sync::Arc;
+use crate::service::FullClient;
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
@@ -96,9 +97,9 @@ pub fn run() -> sc_cli::Result<()> {
 		Some(Subcommand::Revert(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			runner.async_run(|config| {
-				let PartialComponents { client, task_manager, backend, .. } =
-					service::new_partial(&config)?;
-				let aux_revert = Box::new(|client, _, blocks| {
+				let PartialComponents { client, task_manager, backend, .. } = service::new_partial(&config)?;
+				let aux_revert = Box::new(|client: Arc<FullClient>, backend, blocks| {
+					sc_consensus_babe::revert(client.clone(), backend, blocks)?;
 					sc_finality_grandpa::revert(client, blocks)?;
 					Ok(())
 				});
