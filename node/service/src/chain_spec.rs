@@ -405,26 +405,6 @@ fn cere_config_genesis(wasm_binary: &[u8]) -> cere::GenesisConfig {
 	)
 }
 
-#[cfg(feature = "cere-dev-native")]
-fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::GenesisConfig {
-	cere_dev_genesis(
-		wasm_binary,
-		// Initial authorities
-		vec![authority_keys_from_seed("Alice")],
-		// Initial nominators
-		vec![],
-		// Sudo account
-		get_account_id_from_seed::<sr25519::Public>("Alice"),
-		// Pre-funded accounts
-		Some(vec![
-			get_account_id_from_seed::<sr25519::Public>("Alice"),
-			get_account_id_from_seed::<sr25519::Public>("Bob"),
-			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-		]),
-	)
-}
-
 // pub fn cere_config() -> Result<CereChainSpec, String> {
 // 	CereChainSpec::from_json_bytes(&include_bytes!("../res/cere.json")[..])
 // }
@@ -455,32 +435,7 @@ pub fn cere_config() -> Result<CereChainSpec, String> {
 	))
 }
 
-// pub fn cere_dev_config() -> Result<CereDevChainSpec, String> {
-// 	CereDevChainSpec::from_json_bytes(&include_bytes!("../res/cere_dev.json")[..])
-// }
-
-#[cfg(feature = "cere-dev-native")]
 pub fn cere_dev_config() -> Result<CereDevChainSpec, String> {
-	let wasm_binary = cere_dev::WASM_BINARY.ok_or("CereDev development wasm not available")?;
-
-	Ok(CereDevChainSpec::from_genesis(
-		// Name
-		"Development",
-		// ID
-		"dev",
-		ChainType::Development,
-		move || cere_dev_config_genesis(wasm_binary),
-		// Bootnodes
-		vec![],
-		// Telemetry
-		None,
-		// Protocol ID
-		None,
-		// Fork ID
-		None,
-		// Properties
-		None,
-		// Extensions
-		Default::default(),
-	))
+	println!("in cere_dev_config");
+	CereDevChainSpec::from_json_bytes(&include_bytes!("../chain-specs/devnet.json")[..])
 }
