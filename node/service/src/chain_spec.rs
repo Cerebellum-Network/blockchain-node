@@ -405,10 +405,10 @@ fn cere_config_genesis(wasm_binary: &[u8]) -> cere::GenesisConfig {
 	)
 }
 
-pub fn cere_config() -> Result<CereChainSpec, String> {
+pub fn cere_mainnet_config() -> Result<CereChainSpec, String> {
 	CereChainSpec::from_json_bytes(&include_bytes!("../chain-specs/mainnet.json")[..])
 }
 
-pub fn cere_dev_config() -> Result<CereDevChainSpec, String> {
+pub fn cere_devnet_config() -> Result<CereDevChainSpec, String> {
 	CereDevChainSpec::from_json_bytes(&include_bytes!("../chain-specs/devnet.json")[..])
 }
