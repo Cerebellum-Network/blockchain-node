@@ -51,7 +51,7 @@ impl SubstrateCli for Cli {
 			path => {
 				let path = std::path::PathBuf::from(path);
 
-				if self.run.force_cere_dev {
+				if self.run.force_cere_devnet {
 					Box::new(cere_service::CereDevChainSpec::from_json_file(path)?)
 				} else {
 					Box::new(cere_service::CereChainSpec::from_json_file(path.clone())?)
