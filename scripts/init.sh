@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
-# This script is meant to be run on Unix/Linux based systems
+
 set -e
 
 echo "*** Initializing WASM build environment"
 
-if [ -z $CI_PROJECT_NAME ] ; then
-   rustup update nightly
-   rustup update stable
-fi
+rustup install nightly-2022-07-27
 
-rustup target add wasm32-unknown-unknown --toolchain nightly
+rustup target add wasm32-unknown-unknown --toolchain nightly-2022-07-27
