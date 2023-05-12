@@ -563,7 +563,7 @@ pub(crate) fn get_validation_results(
 	era: EraIndex,
 	edge: &String,
 ) -> Result<Vec<ValidationResult>, http::Error> {
-	let wrapper = fetch_validators_decisions(data_provider_url, era).unwrap();
+	let wrapper = fetch_validators_decisions(data_provider_url, 5 as EraIndex).unwrap(); // Era is mocked for now
 	let mut edges: EdgesToResults = serde_json::from_str(wrapper.decisions.as_str()).unwrap();
 	let results = edges.0.remove(edge).unwrap();
 
