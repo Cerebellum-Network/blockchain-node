@@ -37,9 +37,8 @@ mod multiplier_tests {
 		traits::{Convert, One, Zero},
 		FixedPointNumber,
 	};
-
+	use cere_runtime_constants::{currency::*, time::*};
 	use crate::{
-		constants::{currency::*, time::*},
 		AdjustmentVariable, MinimumMultiplier, Runtime, RuntimeBlockWeights as BlockWeights,
 		System, TargetBlockFullness, TransactionPayment,
 	};
