@@ -1,23 +1,25 @@
 //! A module with Data Activity Capture (DAC) interaction.
 
+use crate::{utils, DacTotalAggregates, ValidationDecision};
 use alloc::{format, string::String}; // ToDo: remove String usage
 use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use codec::{Decode, Encode};
 use lite_json::json::JsonValue;
 use log::info;
 use serde_json::Value;
-use sp_runtime::offchain::{
-	http,
-	http::{Method, Request},
-	Duration,
+use sp_runtime::{
+	generic::Era,
+	offchain::{
+		http,
+		http::{Method, Request},
+		Duration,
+	},
 };
 use sp_staking::EraIndex;
 pub use sp_std::{
 	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
 	prelude::*,
 };
-
-use crate::utils;
 
 pub type TimestampInSec = u64;
 pub const HTTP_TIMEOUT_MS: u64 = 30_000;
@@ -124,20 +126,12 @@ pub struct FileInfo {
 	requested_chunk_cids: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(crate = "alt_serde")]
-pub(crate) struct ValidationResult {
-	data: String,
-	result: bool,
-}
+type EdgeId = String;
+type ValidatorId = String;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(crate = "alt_serde")]
-pub(crate) struct ValidationResults(BTreeMap<String, ValidationResult>);
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(crate = "alt_serde")]
-pub(crate) struct Edges(BTreeMap<String, ValidationResults>);
+pub(crate) struct EdgesToResults(BTreeMap<EdgeId, Vec<ValidationResult>>);
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(crate = "alt_serde")]
@@ -146,24 +140,26 @@ pub(crate) struct Wrapper {
 	decisions: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(crate = "alt_serde")]
-pub(crate) struct ResultLog {
-	validator_id: String,
-	data: String,
+pub(crate) struct ValidationResult {
+	validator_id: ValidatorId,
+	edge_id: EdgeId,
 	result: bool,
+	received: u64,
+	sent: u64,
+	era: EraIndex,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(crate = "alt_serde")]
-pub(crate) struct ResultsLog(Vec<BTreeMap<String, ResultLog>>);
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(crate = "alt_serde")]
 pub(crate) struct FinalDecision {
-	data: String,
 	result: bool,
-	results_log: ResultsLog,
+	edge_id: EdgeId,
+	era: EraIndex,
+	received: u64,
+	sent: u64,
+	results_logs: Vec<ValidationResult>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -544,59 +540,65 @@ pub(crate) fn post_final_decision(
 	res
 }
 
-pub(crate) fn get_final_decision(decisions: &ValidationResults) -> FinalDecision {
-	let mut validators_on_edge = 0u32;
-	let mut positive_count = 0u32;
+pub(crate) fn get_final_decision(decisions: Vec<ValidationResult>) -> ValidationDecision {
+	let common_decisions = find_largest_group(decisions).unwrap();
+	let decision_example = common_decisions.get(0).unwrap();
 
-	let mut results_log: Vec<BTreeMap<String, ResultLog>> = Vec::new();
-	for (validator_id, decision) in decisions.0.iter() {
-		let result = decision.result;
-
-		if result == true {
-			positive_count += 1;
-		}
-
-		let result_log_value =
-			ResultLog { validator_id: validator_id.clone(), data: String::from("Base64"), result };
-
-		let mut result_log: BTreeMap<String, ResultLog> = BTreeMap::new();
-		result_log.insert(validator_id.clone(), result_log_value);
-		results_log.push(result_log);
-
-		validators_on_edge += 1;
-	}
-
-	let threshold = validators_on_edge / 2;
-
-	let mut validation_result = false;
-	if positive_count > threshold {
-		validation_result = true;
-	}
-
-	let final_decision = FinalDecision {
-		data: String::from("Base64"),
-		result: validation_result,
-		results_log: ResultsLog(results_log),
+	let final_decision = ValidationDecision {
+		result: decision_example.result,
+		payload: utils::get_hashed(&common_decisions),
+		totals: DacTotalAggregates {
+			received: decision_example.received,
+			sent: decision_example.sent,
+			failed_by_client: 0,
+			failure_rate: 0,
+		},
 	};
 
 	final_decision
 }
 
-pub(crate) fn finalize_decisions(
+pub(crate) fn get_validation_results(
 	data_provider_url: &String,
 	era: EraIndex,
 	edge: &String,
-) -> Result<(), http::Error> {
-	let wrapper = fetch_validators_decisions(data_provider_url, era).unwrap();
-	let edges: Edges = serde_json::from_str(wrapper.decisions.as_str()).unwrap();
-	let result = edges.0.get(edge).unwrap();
-	info!("decisions: {:?}", result);
+) -> Result<Vec<ValidationResult>, http::Error> {
+	let wrapper = fetch_validators_decisions(data_provider_url, 5 as EraIndex).unwrap(); // Era is mocked for now
+	let mut edges: EdgesToResults = serde_json::from_str(wrapper.decisions.as_str()).unwrap();
+	let results = edges.0.remove(edge).unwrap();
 
-	let final_decision = get_final_decision(&result);
+	Ok(results)
+}
 
-	info!("final_decision: {:?}", final_decision);
+fn find_largest_group(decisions: Vec<ValidationResult>) -> Option<Vec<ValidationResult>> {
+	let mut groups: Vec<Vec<ValidationResult>> = Vec::new();
+	let half = decisions.len() / 2;
 
-	let res = post_final_decision(data_provider_url, era, final_decision);
+	for decision in decisions {
+		let mut found_group = false;
 
-	res
+		for group in &mut groups {
+			if group.iter().all(|x| {
+				x.result == decision.result &&
+					x.received == decision.received &&
+					x.sent == decision.sent
+			}) {
+				group.push(decision.clone());
+				found_group = true;
+				break
+			}
+		}
+
+		if !found_group {
+			groups.push(vec![decision]);
+		}
+	}
+
+	let largest_group = groups.into_iter().max_by_key(|group| group.len()).unwrap_or(Vec::new());
+
+	if largest_group.len() > half {
+		Some(largest_group)
+	} else {
+		None
+	}
 }

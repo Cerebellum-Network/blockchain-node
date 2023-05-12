@@ -247,6 +247,7 @@ pub mod pallet {
 				return
 			}
 
+			let current_era = Self::get_current_era();
 			let data_provider_url = Self::get_data_provider_url();
 			log::info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
 
@@ -258,8 +259,20 @@ pub mod pallet {
 
 			let assigned_edge =
 				String::from("0xd4160f567d7265b9de2c7cbf1a5c931e5b3195efb2224f8706bfb53ea6eaacd1");
-			dac::finalize_decisions(&data_provider_url, 123345 as EraIndex, &assigned_edge)
-				.unwrap();
+			let validations_res =
+				dac::get_validation_results(&data_provider_url, current_era, &assigned_edge)
+					.unwrap();
+			let final_res = dac::get_final_decision(validations_res);
+
+			let signer = Self::get_signer().unwrap();
+
+			let tx_res = signer.send_signed_transaction(|_acct| Call::set_validation_decision {
+				era: current_era,
+				cdn_node: utils::string_to_account::<T>(assigned_edge.clone()),
+				validation_decision: final_res.clone(),
+			});
+
+			log::info!("final_res: {:?}", final_res);
 
 			// Print the number of broken sessions per CDN node.
 			let aggregates_value = dac::fetch_aggregates(&data_provider_url, 77436).unwrap(); // 77436 is for a mock data
@@ -297,7 +310,6 @@ pub mod pallet {
 			}
 
 			// Read from DAC.
-			let current_era = Self::get_current_era();
 			let (sent_query, sent, received_query, received) =
 				dac::fetch_data2(&data_provider_url, current_era - 1);
 			log::info!(
