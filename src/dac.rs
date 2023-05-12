@@ -1,5 +1,6 @@
 //! A module with Data Activity Capture (DAC) interaction.
 
+use crate::{utils, DacTotalAggregates, ValidationDecision};
 use alloc::{format, string::String}; // ToDo: remove String usage
 use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use codec::{Decode, Encode};
@@ -19,7 +20,6 @@ pub use sp_std::{
 	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
 	prelude::*,
 };
-use crate::{DacTotalAggregates, utils, ValidationDecision};
 
 pub type TimestampInSec = u64;
 pub const HTTP_TIMEOUT_MS: u64 = 30_000;
@@ -129,10 +129,6 @@ pub struct FileInfo {
 type EdgeId = String;
 type ValidatorId = String;
 
-// #[derive(Debug, Deserialize, Serialize)]
-// #[serde(crate = "alt_serde")]
-// pub(crate) struct ValidationResults(BTreeMap<ValidatorId, ValidationResult>);
-
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(crate = "alt_serde")]
 pub(crate) struct EdgesToResults(BTreeMap<EdgeId, Vec<ValidationResult>>);
@@ -154,10 +150,6 @@ pub(crate) struct ValidationResult {
 	sent: u64,
 	era: EraIndex,
 }
-
-// #[derive(Debug, Deserialize, Serialize)]
-// #[serde(crate = "alt_serde")]
-// pub(crate) struct ResultsLogs(Vec<ValidationResult>);
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(crate = "alt_serde")]
@@ -552,7 +544,7 @@ pub(crate) fn get_final_decision(decisions: Vec<ValidationResult>) -> Validation
 	let common_decisions = find_largest_group(decisions).unwrap();
 	let decision_example = common_decisions.get(0).unwrap();
 
-	let final_decision= ValidationDecision {
+	let final_decision = ValidationDecision {
 		result: decision_example.result,
 		payload: utils::get_hashed(&common_decisions),
 		totals: DacTotalAggregates {
@@ -586,10 +578,14 @@ fn find_largest_group(decisions: Vec<ValidationResult>) -> Option<Vec<Validation
 		let mut found_group = false;
 
 		for group in &mut groups {
-			if group.iter().all(|x| x.result == decision.result && x.received == decision.received && x.sent == decision.sent) {
+			if group.iter().all(|x| {
+				x.result == decision.result &&
+					x.received == decision.received &&
+					x.sent == decision.sent
+			}) {
 				group.push(decision.clone());
 				found_group = true;
-				break;
+				break
 			}
 		}
 
@@ -598,11 +594,7 @@ fn find_largest_group(decisions: Vec<ValidationResult>) -> Option<Vec<Validation
 		}
 	}
 
-	let largest_group = groups
-		.into_iter()
-		.max_by_key(|group| group.len())
-		.unwrap_or(Vec::new());
-
+	let largest_group = groups.into_iter().max_by_key(|group| group.len()).unwrap_or(Vec::new());
 
 	if largest_group.len() > half {
 		Some(largest_group)

@@ -264,12 +264,10 @@ pub mod pallet {
 
 			let signer = Self::get_signer().unwrap();
 
-			let tx_res = signer.send_signed_transaction(|_acct| {
-				Call::set_validation_decision {
-					era: 5 as EraIndex,
-					cdn_node: utils::string_to_account::<T>(assigned_edge.clone()),
-					validation_decision: final_res.clone(),
-				}
+			let tx_res = signer.send_signed_transaction(|_acct| Call::set_validation_decision {
+				era: 5 as EraIndex,
+				cdn_node: utils::string_to_account::<T>(assigned_edge.clone()),
+				validation_decision: final_res.clone(),
 			});
 
 			log::info!("final_res: {:?}", final_res);

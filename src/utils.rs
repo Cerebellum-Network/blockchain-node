@@ -1,11 +1,9 @@
+use crate::dac::ValidationResult;
 use alloc::string::String;
 use codec::{Decode, Encode};
 use sp_core::crypto::AccountId32;
 use sp_io::hashing::blake2_256;
-use crate::dac::ValidationResult;
-pub use sp_std::{
-	prelude::*,
-};
+pub use sp_std::prelude::*;
 
 pub fn account_to_string<T: frame_system::Config>(account: T::AccountId) -> String {
 	let to32 = T::AccountId::encode(&account);
@@ -32,7 +30,7 @@ pub(crate) fn hash(data: &String) -> [u8; 32] {
 
 pub(crate) fn get_hashed(data: &Vec<ValidationResult>) -> [u8; 256] {
 	let results_log = serde_json::to_string(data).unwrap();
-	let mut payload:[u8; 256] = [0; 256];
+	let mut payload: [u8; 256] = [0; 256];
 	let hashed_results = hash(&results_log);
 	payload[..32].copy_from_slice(&hashed_results);
 
