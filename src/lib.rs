@@ -5,7 +5,7 @@ use codec::{Decode, Encode, HasCompact};
 
 use frame_support::{
 	parameter_types,
-	traits::{Currency, DefensiveSaturating, LockIdentifier, WithdrawReasons, ExistenceRequirement, UnixTime},
+	traits::{Currency, DefensiveSaturating, ExistenceRequirement, UnixTime},
 	BoundedVec,
   PalletId
 };
@@ -155,6 +155,8 @@ pub mod pallet {
 		NotController,
 		/// Not a stash account.
 		NotStash,
+    /// Stash is already bonded.
+		AlreadyBonded,
 		/// Controller is already paired.
 		AlreadyPaired,
 		/// Cannot deposit dust
@@ -182,6 +184,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let stash = ensure_signed(origin)?;
 
+      if <Bonded<T>>::contains_key(&stash) {
+				Err(Error::<T>::AlreadyBonded)?
+			}
+
 			let controller = T::Lookup::lookup(controller)?;
 
 			if <Ledger<T>>::contains_key(&controller) {
@@ -195,12 +201,14 @@ pub mod pallet {
 
 			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
 
+			<Bonded<T>>::insert(&stash, &controller);
+
 			let stash_balance = T::Currency::free_balance(&stash);
 			let value = value.min(stash_balance);
 			Self::deposit_event(Event::<T>::Deposited(stash.clone(), value));
 			let item =
 				AccountsLedger { stash: stash.clone(), total: value, active: value, unlocking: Default::default() };
-			Self::update_ledger_and_deposit( &stash, &controller, &item);
+			Self::update_ledger_and_deposit( &stash, &controller, &item)?;
 			Ok(())
 		}
 
@@ -230,7 +238,7 @@ pub mod pallet {
         Error::<T>::InsufficientDeposit
       );
 
-      Self::update_ledger_and_deposit(&stash, &controller, &ledger);
+      Self::update_ledger_and_deposit(&stash, &controller, &ledger)?;
 
       Self::deposit_event(Event::<T>::Deposited(stash.clone(), extra));
 		
@@ -369,7 +377,7 @@ pub mod pallet {
       stash: &T::AccountId,
 			controller: &T::AccountId,
 			ledger: &AccountsLedger<T::AccountId, BalanceOf<T>>,
-		) {
+		) -> DispatchResult {
       let account_id = Self::account_id();
 
 			T::Currency::transfer(
@@ -379,6 +387,8 @@ pub mod pallet {
 				ExistenceRequirement::KeepAlive,
 			)?;
 			<Ledger<T>>::insert(controller, ledger);
+
+      Ok(())
 		}
 
     /// Update the ledger for a controller.
