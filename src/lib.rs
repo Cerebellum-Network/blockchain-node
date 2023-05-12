@@ -261,6 +261,17 @@ pub mod pallet {
 				dac::get_validation_results(&data_provider_url, 5 as EraIndex, &assigned_edge)
 					.unwrap();
 			let final_res = dac::get_final_decision(validations_res);
+
+			let signer = Self::get_signer().unwrap();
+
+			let tx_res = signer.send_signed_transaction(|_acct| {
+				Call::set_validation_decision {
+					era: 5 as EraIndex,
+					cdn_node: utils::string_to_account::<T>(assigned_edge.clone()),
+					validation_decision: final_res.clone(),
+				}
+			});
+
 			log::info!("final_res: {:?}", final_res);
 
 			// Print the number of broken sessions per CDN node.

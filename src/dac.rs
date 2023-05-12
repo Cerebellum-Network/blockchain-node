@@ -556,8 +556,8 @@ pub(crate) fn get_final_decision(decisions: Vec<ValidationResult>) -> Validation
 		result: decision_example.result,
 		payload: utils::get_hashed(&common_decisions),
 		totals: DacTotalAggregates {
-			received: 0,
-			sent: 0,
+			received: decision_example.received,
+			sent: decision_example.sent,
 			failed_by_client: 0,
 			failure_rate: 0,
 		},
