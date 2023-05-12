@@ -409,6 +409,10 @@ pub fn cere_mainnet_config() -> Result<CereChainSpec, String> {
 	CereChainSpec::from_json_bytes(&include_bytes!("../chain-specs/mainnet.json")[..])
 }
 
+pub fn cere_testnet_config() -> Result<CereChainSpec, String> {
+	CereChainSpec::from_json_bytes(&include_bytes!("../chain-specs/testnet.json")[..])
+}
+
 pub fn cere_qanet_config() -> Result<CereChainSpec, String> {
 	CereChainSpec::from_json_bytes(&include_bytes!("../chain-specs/qanet.json")[..])
 }
