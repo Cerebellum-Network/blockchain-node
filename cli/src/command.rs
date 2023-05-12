@@ -43,7 +43,6 @@ impl SubstrateCli for Cli {
 		};
 
 		Ok(match id {
-			#[cfg(feature = "cere-native")]
 			"cere-mainnet" => Box::new(cere_service::chain_spec::cere_mainnet_config()?),
 			#[cfg(feature = "cere-dev-native")]
 			"cere-devnet" | "devnet" => Box::new(cere_service::chain_spec::cere_devnet_config()?),
