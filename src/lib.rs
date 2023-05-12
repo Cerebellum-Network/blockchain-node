@@ -438,6 +438,34 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Set reward points for CDN participants at the given era.
+		///
+		/// ToDo: remove it when the off-chain worker will be able to set reward points using the
+		/// same call defined in `pallet-ddc-staking`.
+		///
+		/// `stakers_points` is a vector of (stash account ID, reward points) pairs. The rewards
+		/// distribution will be based on total reward points, with each CDN participant receiving a
+		/// proportionate reward based on their individual reward points.
+		///
+		/// See also  [`pallet_ddc_staking::ErasEdgesRewardPoints`].
+		#[pallet::weight(100_000)]
+		pub fn set_era_reward_points(
+			origin: OriginFor<T>,
+			era: EraIndex,
+			stakers_points: Vec<(T::AccountId, u64)>,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
+				for (staker, points) in stakers_points.into_iter() {
+					*era_rewards.individual.entry(staker).or_default() += points;
+					era_rewards.total += points;
+				}
+			});
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T>
