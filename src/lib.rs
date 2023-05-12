@@ -398,6 +398,66 @@ pub mod pallet {
 				edges.len(),
 				current_era - 1
 			);
+
+			// Set CDN nodes' reward points
+			// ============================
+
+			// Let's use a mock data until we have a real final validation decisions for all the CDN
+			// nodes.
+			let mock_final_validation_decisions: Vec<(T::AccountId, ValidationDecision)> = vec![
+				(
+					utils::string_to_account::<T>(
+						"0xd4160f567d7265b9de2c7cbf1a5c931e5b3195efb2224f8706bfb53ea6eaacd1".into(),
+					),
+					ValidationDecision {
+						result: true,
+						payload: [0u8; 256],
+						totals: DacTotalAggregates {
+							sent: 100,
+							received: 100,
+							failed_by_client: 0,
+							failure_rate: 0,
+						},
+					},
+				),
+				(
+					utils::string_to_account::<T>(
+						"0xa2d14e71b52e5695e72c0567926bc68b68bda74df5c1ccf1d4ba612c153ff66b".into(),
+					),
+					ValidationDecision {
+						result: true,
+						payload: [0u8; 256],
+						totals: DacTotalAggregates {
+							sent: 200,
+							received: 200,
+							failed_by_client: 0,
+							failure_rate: 0,
+						},
+					},
+				),
+			];
+
+			// Calculate CDN nodes reward points from validation decision aggregates
+			let cdn_nodes_reward_points: Vec<(T::AccountId, u64)> = mock_final_validation_decisions
+				.into_iter()
+				.filter(|(_, validation_decision)| validation_decision.result) // skip misbehaving
+				.map(|(cdn_node, validation_decision)| {
+					// ToDo: should we use `sent` or `received` or anything else as a reward point?
+					(cdn_node, validation_decision.totals.sent)
+				})
+				.collect();
+
+			// Store CDN node reward points on-chain
+			let signer: Signer<T, T::AuthorityId> = Signer::<_, _>::any_account();
+			if !signer.can_sign() {
+				log::warn!("No local accounts available to set era reward points. Consider adding one via `author_insertKey` RPC.");
+				return
+			}
+			// ToDo: replace local call by a call from `ddc-staking` pallet
+			let _tx_res = signer.send_signed_transaction(|_account| Call::set_era_reward_points {
+				era: current_era - 1,
+				stakers_points: cdn_nodes_reward_points.clone(),
+			});
 		}
 	}
 
