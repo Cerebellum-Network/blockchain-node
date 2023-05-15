@@ -1,0 +1,24 @@
+# ===== FIRST STAGE ======
+ARG DDC_SMART_CONTRACT_VERSION=2.2.3
+ARG ECR_REGISTRY
+FROM phusion/baseimage:0.11 as builder
+LABEL maintainer="team@cere.network"
+LABEL description="This is the build stage to create the binary."
+WORKDIR /cerenetwork
+COPY . /cerenetwork
+
+# ===== SECOND STAGE ======
+FROM $ECR_REGISTRY/ddc-smart-contract:$DDC_SMART_CONTRACT_VERSION as ddc-smart-contract
+
+FROM builder
+# Copy smart-contract artifacts (ddc.wasm and metadata.json)
+COPY --from=ddc-smart-contract /ddc-smart-contract/artifacts/ddc.wasm /cerenetwork/pallets/ddc-metrics-offchain-worker/src/tests/test_data/
+COPY --from=ddc-smart-contract /ddc-smart-contract/artifacts/metadata.json /cerenetwork/pallets/ddc-metrics-offchain-worker/src/tests/test_data/
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y cmake pkg-config libssl-dev git clang
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
+    export PATH=$PATH:$HOME/.cargo/bin && \
+    scripts/init.sh && \
+    TRYBUILD=overwrite cargo +nightly-2022-07-27 test --workspace --locked --release --verbose --features runtime-benchmarks --manifest-path cli/Cargo.toml
