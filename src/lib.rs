@@ -167,6 +167,27 @@ pub mod pallet {
 		BadState,
 	}
 
+	#[pallet::genesis_config]
+  pub struct GenesisConfig;
+
+	#[cfg(feature = "std")]
+	impl Default for GenesisConfig {
+		fn default() -> Self {
+			Self 
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+		fn build(&self) {
+			let account_id = <Pallet<T>>::account_id();
+			let min = T::Currency::minimum_balance();
+			if T::Currency::free_balance(&account_id) < min {
+				let _ = T::Currency::make_free_balance_be(&account_id, min);
+			}
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Take the origin account as a stash and lock up `value` of its balance. `controller` will
