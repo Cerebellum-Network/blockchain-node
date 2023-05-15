@@ -390,8 +390,13 @@ pub mod pallet {
 					validation_result,
 					&validation_decision_base64_string,
 				);
-				let response_text = response.unwrap().to_string();
-				log::info!("Redis response: {:?}", response_text)
+				match response {
+					Ok(response) => log::info!("Shared memory response: {:?}", response.to_string()),
+					Err(e) => {
+						log::error!("Shared memory error: {:?}", e);
+						continue
+					},
+				}
 			}
 			log::info!(
 				"Intermediate validation results published for {} CDN nodes in era {:?}",
