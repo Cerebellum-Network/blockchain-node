@@ -1,0 +1,655 @@
+pub use node_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Index, Signature};
+use sc_client_api::{AuxStore, Backend as BackendT, BlockchainEvents, KeyIterator, UsageProvider};
+pub use sc_executor::NativeElseWasmExecutor;
+use sp_api::{CallApiAt, Encode, NumberFor, ProvideRuntimeApi};
+use sp_blockchain::{HeaderBackend, HeaderMetadata};
+use sp_consensus::BlockStatus;
+use sp_core::Pair;
+use sp_keyring::Sr25519Keyring;
+use sp_runtime::{
+	generic::{BlockId, SignedBlock},
+	traits::{BlakeTwo256, Block as BlockT},
+	Justifications, OpaqueExtrinsic,
+};
+use sp_storage::{ChildInfo, StorageData, StorageKey};
+use std::sync::Arc;
+
+pub type FullBackend = sc_service::TFullBackend<Block>;
+pub type FullClient<RuntimeApi, ExecutorDispatch> =
+	sc_service::TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<ExecutorDispatch>>;
+
+#[cfg(not(any(feature = "cere", feature = "cere-dev",)))]
+compile_error!("at least one runtime feature must be enabled");
+
+/// The native executor instance for Cere.
+#[cfg(feature = "cere")]
+pub struct CereExecutorDispatch;
+
+#[cfg(feature = "cere")]
+impl sc_executor::NativeExecutionDispatch for CereExecutorDispatch {
+	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+
+	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
+		cere_runtime::api::dispatch(method, data)
+	}
+
+	fn native_version() -> sc_executor::NativeVersion {
+		cere_runtime::native_version()
+	}
+}
+
+/// The native executor instance for Cere Dev.
+#[cfg(feature = "cere-dev")]
+pub struct CereDevExecutorDispatch;
+
+#[cfg(feature = "cere-dev")]
+impl sc_executor::NativeExecutionDispatch for CereDevExecutorDispatch {
+	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+
+	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
+		cere_dev_runtime::api::dispatch(method, data)
+	}
+
+	fn native_version() -> sc_executor::NativeVersion {
+		cere_dev_runtime::native_version()
+	}
+}
+
+pub trait AbstractClient<Block, Backend>:
+	BlockchainEvents<Block>
+	+ Sized
+	+ Send
+	+ Sync
+	+ ProvideRuntimeApi<Block>
+	+ HeaderBackend<Block>
+	+ CallApiAt<Block, StateBackend = Backend::State>
+	+ AuxStore
+	+ UsageProvider<Block>
+	+ HeaderMetadata<Block, Error = sp_blockchain::Error>
+where
+	Block: BlockT,
+	Backend: BackendT<Block>,
+	Backend::State: sp_api::StateBackend<BlakeTwo256>,
+	Self::Api: RuntimeApiCollection<StateBackend = Backend::State>,
+{
+}
+
+impl<Block, Backend, Client> AbstractClient<Block, Backend> for Client
+where
+	Block: BlockT,
+	Backend: BackendT<Block>,
+	Backend::State: sp_api::StateBackend<BlakeTwo256>,
+	Client: BlockchainEvents<Block>
+		+ ProvideRuntimeApi<Block>
+		+ HeaderBackend<Block>
+		+ AuxStore
+		+ UsageProvider<Block>
+		+ Sized
+		+ Send
+		+ Sync
+		+ CallApiAt<Block, StateBackend = Backend::State>
+		+ HeaderMetadata<Block, Error = sp_blockchain::Error>,
+	Client::Api: RuntimeApiCollection<StateBackend = Backend::State>,
+{
+}
+
+/// See [`ExecuteWithClient`] for more information.
+#[derive(Clone)]
+pub enum Client {
+	#[cfg(feature = "cere")]
+	Cere(Arc<FullClient<cere_runtime::RuntimeApi, CereExecutorDispatch>>),
+	#[cfg(feature = "cere-dev")]
+	CereDev(Arc<FullClient<cere_dev_runtime::RuntimeApi, CereDevExecutorDispatch>>),
+}
+
+macro_rules! with_client {
+  {
+    $self:ident,
+    $client:ident,
+    {
+      $( $code:tt )*
+    }
+  } => {
+    match $self {
+      #[cfg(feature = "cere")]
+      Self::Cere($client) => { $( $code )* },
+      #[cfg(feature = "cere-dev")]
+      Self::CereDev($client) => { $( $code )* }
+    }
+  }
+}
+
+pub trait ExecuteWithClient {
+	/// The return type when calling this instance.
+	type Output;
+
+	/// Execute whatever should be executed with the given client instance.
+	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
+	where
+		<Api as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
+		Backend: sc_client_api::Backend<Block> + 'static,
+		Backend::State: sp_api::StateBackend<BlakeTwo256>,
+		Api: crate::RuntimeApiCollection<StateBackend = Backend::State>,
+		Client: AbstractClient<Block, Backend, Api = Api> + 'static;
+}
+
+pub trait ClientHandle {
+	/// Execute the given something with the client.
+	fn execute_with<T: ExecuteWithClient>(&self, t: T) -> T::Output;
+}
+
+impl ClientHandle for Client {
+	fn execute_with<T: ExecuteWithClient>(&self, t: T) -> T::Output {
+		with_client! {
+			self,
+			client,
+			{
+				T::execute_with_client::<_, _, FullBackend>(t, client.clone())
+			}
+		}
+	}
+}
+
+impl UsageProvider<Block> for Client {
+	fn usage_info(&self) -> sc_client_api::ClientInfo<Block> {
+		with_client! {
+			self,
+			client,
+			{
+				client.usage_info()
+			}
+		}
+	}
+}
+
+impl sc_client_api::BlockBackend<Block> for Client {
+	fn block_body(
+		&self,
+		id: &BlockId<Block>,
+	) -> sp_blockchain::Result<Option<Vec<<Block as BlockT>::Extrinsic>>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.block_body(id)
+			}
+		}
+	}
+
+	fn block(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<SignedBlock<Block>>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.block(id)
+			}
+		}
+	}
+
+	fn block_status(&self, id: &BlockId<Block>) -> sp_blockchain::Result<BlockStatus> {
+		with_client! {
+			self,
+			client,
+			{
+				client.block_status(id)
+			}
+		}
+	}
+
+	fn justifications(&self, id: &BlockId<Block>) -> sp_blockchain::Result<Option<Justifications>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.justifications(id)
+			}
+		}
+	}
+
+	fn block_hash(
+		&self,
+		number: NumberFor<Block>,
+	) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.block_hash(number)
+			}
+		}
+	}
+
+	fn indexed_transaction(
+		&self,
+		id: &<Block as BlockT>::Hash,
+	) -> sp_blockchain::Result<Option<Vec<u8>>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.indexed_transaction(id)
+			}
+		}
+	}
+
+	fn block_indexed_body(
+		&self,
+		id: &BlockId<Block>,
+	) -> sp_blockchain::Result<Option<Vec<Vec<u8>>>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.block_indexed_body(id)
+			}
+		}
+	}
+
+	fn requires_full_sync(&self) -> bool {
+		with_client! {
+			self,
+			client,
+			{
+				client.requires_full_sync()
+			}
+		}
+	}
+}
+
+impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
+	fn storage(
+		&self,
+		id: &BlockId<Block>,
+		key: &StorageKey,
+	) -> sp_blockchain::Result<Option<StorageData>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.storage(id, key)
+			}
+		}
+	}
+
+	fn storage_keys(
+		&self,
+		id: &BlockId<Block>,
+		key_prefix: &StorageKey,
+	) -> sp_blockchain::Result<Vec<StorageKey>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.storage_keys(id, key_prefix)
+			}
+		}
+	}
+
+	fn storage_hash(
+		&self,
+		id: &BlockId<Block>,
+		key: &StorageKey,
+	) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.storage_hash(id, key)
+			}
+		}
+	}
+
+	fn storage_pairs(
+		&self,
+		id: &BlockId<Block>,
+		key_prefix: &StorageKey,
+	) -> sp_blockchain::Result<Vec<(StorageKey, StorageData)>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.storage_pairs(id, key_prefix)
+			}
+		}
+	}
+
+	fn storage_keys_iter<'a>(
+		&self,
+		id: &BlockId<Block>,
+		prefix: Option<&'a StorageKey>,
+		start_key: Option<&StorageKey>,
+	) -> sp_blockchain::Result<
+		KeyIterator<'a, <crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>,
+	> {
+		with_client! {
+			self,
+			client,
+			{
+				client.storage_keys_iter(id, prefix, start_key)
+			}
+		}
+	}
+
+	fn child_storage(
+		&self,
+		id: &BlockId<Block>,
+		child_info: &ChildInfo,
+		key: &StorageKey,
+	) -> sp_blockchain::Result<Option<StorageData>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.child_storage(id, child_info, key)
+			}
+		}
+	}
+
+	fn child_storage_keys(
+		&self,
+		id: &BlockId<Block>,
+		child_info: &ChildInfo,
+		key_prefix: &StorageKey,
+	) -> sp_blockchain::Result<Vec<StorageKey>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.child_storage_keys(id, child_info, key_prefix)
+			}
+		}
+	}
+
+	fn child_storage_keys_iter<'a>(
+		&self,
+		id: &BlockId<Block>,
+		child_info: ChildInfo,
+		prefix: Option<&'a StorageKey>,
+		start_key: Option<&StorageKey>,
+	) -> sp_blockchain::Result<
+		KeyIterator<'a, <crate::FullBackend as sc_client_api::Backend<Block>>::State, Block>,
+	> {
+		with_client! {
+			self,
+			client,
+			{
+				client.child_storage_keys_iter(id, child_info, prefix, start_key)
+			}
+		}
+	}
+
+	fn child_storage_hash(
+		&self,
+		id: &BlockId<Block>,
+		child_info: &ChildInfo,
+		key: &StorageKey,
+	) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.child_storage_hash(id, child_info, key)
+			}
+		}
+	}
+}
+
+impl sp_blockchain::HeaderBackend<Block> for Client {
+	fn header(&self, id: BlockId<Block>) -> sp_blockchain::Result<Option<Header>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.header(&id)
+			}
+		}
+	}
+
+	fn info(&self) -> sp_blockchain::Info<Block> {
+		with_client! {
+			self,
+			client,
+			{
+				client.info()
+			}
+		}
+	}
+
+	fn status(&self, id: BlockId<Block>) -> sp_blockchain::Result<sp_blockchain::BlockStatus> {
+		with_client! {
+			self,
+			client,
+			{
+				client.status(id)
+			}
+		}
+	}
+
+	fn number(&self, hash: Hash) -> sp_blockchain::Result<Option<BlockNumber>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.number(hash)
+			}
+		}
+	}
+
+	fn hash(&self, number: BlockNumber) -> sp_blockchain::Result<Option<Hash>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.hash(number)
+			}
+		}
+	}
+}
+
+macro_rules! with_signed_payload {
+  {
+    $self:ident,
+    {
+      $extra:ident,
+      $client:ident,
+      $raw_payload:ident
+    },
+    {
+      $( $setup:tt )*
+    },
+    (
+      $period:expr,
+      $current_block:expr,
+      $nonce:expr,
+      $tip:expr,
+      $call:expr,
+      $genesis:expr
+    ),
+    {
+      $( $usage:tt )*
+    }
+  } => {
+    match $self {
+      #[cfg(feature = "cere")]
+      Self::Cere($client) => {
+        use cere_runtime as runtime;
+
+        $( $setup )*
+
+        let $extra: runtime::SignedExtra = (
+          frame_system::CheckNonZeroSender::<runtime::Runtime>::new(),
+          frame_system::CheckSpecVersion::<runtime::Runtime>::new(),
+          frame_system::CheckTxVersion::<runtime::Runtime>::new(),
+          frame_system::CheckGenesis::<runtime::Runtime>::new(),
+          frame_system::CheckMortality::<runtime::Runtime>::from(sp_runtime::generic::Era::mortal(
+            $period,
+            $current_block,
+          )),
+          frame_system::CheckNonce::<runtime::Runtime>::from($nonce),
+          frame_system::CheckWeight::<runtime::Runtime>::new(),
+          pallet_transaction_payment::ChargeTransactionPayment::<runtime::Runtime>::from($tip),
+        );
+
+        let $raw_payload = runtime::SignedPayload::from_raw(
+          $call.clone(),
+          $extra.clone(),
+          (
+            (),
+            runtime::VERSION.spec_version,
+            runtime::VERSION.transaction_version,
+            $genesis.clone(),
+            $genesis,
+            (),
+            (),
+            (),
+          ),
+        );
+
+        $( $usage )*
+      },
+      #[cfg(feature = "cere-dev")]
+      Self::CereDev($client) => {
+        use cere_dev_runtime as runtime;
+
+        $( $setup )*
+
+        signed_payload!($extra, $raw_payload,
+          ($period, $current_block, $nonce, $tip, $call, $genesis));
+
+        $( $usage )*
+      },
+    }
+  }
+}
+
+#[allow(unused_macros)]
+macro_rules! signed_payload {
+	(
+  $extra:ident, $raw_payload:ident,
+  (
+    $period:expr,
+    $current_block:expr,
+    $nonce:expr,
+    $tip:expr,
+    $call:expr,
+    $genesis:expr
+  )
+  ) => {
+		let $extra: runtime::SignedExtra = (
+			frame_system::CheckNonZeroSender::<runtime::Runtime>::new(),
+			frame_system::CheckSpecVersion::<runtime::Runtime>::new(),
+			frame_system::CheckTxVersion::<runtime::Runtime>::new(),
+			frame_system::CheckGenesis::<runtime::Runtime>::new(),
+			frame_system::CheckMortality::<runtime::Runtime>::from(
+				sp_runtime::generic::Era::mortal($period, $current_block),
+			),
+			frame_system::CheckNonce::<runtime::Runtime>::from($nonce),
+			frame_system::CheckWeight::<runtime::Runtime>::new(),
+			pallet_transaction_payment::ChargeTransactionPayment::<runtime::Runtime>::from($tip),
+		);
+
+		let $raw_payload = runtime::SignedPayload::from_raw(
+			$call.clone(),
+			$extra.clone(),
+			(
+				(),
+				runtime::VERSION.spec_version,
+				runtime::VERSION.transaction_version,
+				$genesis.clone(),
+				$genesis,
+				(),
+				(),
+				(),
+			),
+		);
+	};
+}
+
+pub trait RuntimeApiCollection:
+	sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+	+ sp_api::ApiExt<Block>
+	+ sp_consensus_babe::BabeApi<Block>
+	+ sp_finality_grandpa::GrandpaApi<Block>
+	+ sp_block_builder::BlockBuilder<Block>
+	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Index>
+	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
+	+ sp_api::Metadata<Block>
+	+ sp_offchain::OffchainWorkerApi<Block>
+	+ sp_session::SessionKeys<Block>
+	+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
+	+ pallet_contracts_rpc::ContractsRuntimeApi<Block, AccountId, Balance, BlockNumber, Hash>
+where
+	<Self as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
+{
+}
+
+impl<Api> RuntimeApiCollection for Api
+where
+	Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+		+ sp_api::ApiExt<Block>
+		+ sp_consensus_babe::BabeApi<Block>
+		+ sp_finality_grandpa::GrandpaApi<Block>
+		+ sp_block_builder::BlockBuilder<Block>
+		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Index>
+		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
+		+ sp_api::Metadata<Block>
+		+ sp_offchain::OffchainWorkerApi<Block>
+		+ sp_session::SessionKeys<Block>
+		+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
+		+ pallet_contracts_rpc::ContractsRuntimeApi<Block, AccountId, Balance, BlockNumber, Hash>,
+	<Self as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
+{
+}
+
+pub fn benchmark_inherent_data() -> Result<sp_inherents::InherentData, sp_inherents::Error> {
+	use sp_inherents::InherentDataProvider;
+
+	let mut inherent_data = sp_inherents::InherentData::new();
+	let d = std::time::Duration::from_millis(0);
+	let timestamp = sp_timestamp::InherentDataProvider::new(d.into());
+
+	timestamp.provide_inherent_data(&mut inherent_data)?;
+
+	Ok(inherent_data)
+}
+
+impl frame_benchmarking_cli::ExtrinsicBuilder for Client {
+	fn remark(&self, nonce: u32) -> std::result::Result<OpaqueExtrinsic, &'static str> {
+		with_signed_payload! {
+			self,
+			{extra, client, raw_payload},
+			{
+				// First the setup code to init all the variables that are needed
+				// to build the signed extras.
+				use runtime::{Call, SystemCall};
+
+				let call = Call::System(SystemCall::remark { remark: vec![] });
+				let acc = Sr25519Keyring::Bob.pair();
+
+		let period = runtime::BlockHashCount::get()
+		  .checked_next_power_of_two()
+		  .map(|c| c / 2)
+		  .unwrap_or(2) as u64;
+
+				let current_block = 0;
+				let tip = 0;
+				let genesis = client.usage_info().chain.best_hash;
+			},
+			(period, current_block, nonce, tip, call, genesis),
+			/* The SignedPayload is generated here */
+			{
+				// Use the payload to generate a signature.
+				let signature = raw_payload.using_encoded(|payload| acc.sign(payload));
+
+				let ext = runtime::UncheckedExtrinsic::new_signed(
+					call,
+					sp_runtime::AccountId32::from(acc.public()).into(),
+					Signature::Sr25519(signature.clone()),
+					extra,
+				);
+
+				Ok(ext.into())
+			}
+		}
+	}
+}
