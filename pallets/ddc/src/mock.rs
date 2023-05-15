@@ -1,32 +1,38 @@
-use crate as pallet_template;
-use frame_support::traits::{ConstU16, ConstU64};
-use frame_system as system;
+use crate::{Module};
 use sp_core::H256;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+use frame_support::{
+	traits::{Everything},
+	construct_runtime, parameter_types
 };
+use sp_runtime::{
+	traits::{BlakeTwo256, IdentityLookup}, testing::Header,
+};
+use frame_system as system;
+use crate as pallet_cere_ddc;
 
+// Configure a mock runtime to test the pallet.
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
-// Configure a mock runtime to test the pallet.
-frame_support::construct_runtime!(
+construct_runtime!(
 	pub enum Test where
 		Block = Block,
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
+		CereDDCModule: pallet_cere_ddc::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
+parameter_types! {
+	pub const BlockHashCount: u64 = 250;
+}
+
 impl system::Config for Test {
-	type BaseCallFilter = frame_support::traits::Everything;
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
-	type DbWeight = ();
 	type Origin = Origin;
 	type Call = Call;
 	type Index = u64;
@@ -36,21 +42,29 @@ impl system::Config for Test {
 	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
-	type BlockHashCount = ConstU64<250>;
+	type Event = ();
+	type BlockHashCount = BlockHashCount;
+	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
 	type AccountData = ();
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
-	type SS58Prefix = ConstU16<42>;
+	type SS58Prefix = ();
 	type OnSetCode = ();
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-impl pallet_template::Config for Test {
-	type Event = Event;
+parameter_types! {
+	pub const MinLength: usize = 8;
+	pub const MaxLength: usize = 10;
+}
+
+impl pallet_cere_ddc::Config for Test {
+	type Event = ();
+	type MinLength = MinLength;
+	type MaxLength = MaxLength;
 }
 
 // Build genesis storage according to the mock runtime.

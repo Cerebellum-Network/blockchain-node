@@ -3324,6 +3324,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5284f00d480e1c39af34e72f8ad60b94f47007e3481cd3b731c1d67190ddc7b7"
 
 [[package]]
+name = "lite-json"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd0e787ffe1153141a0f6f6d759fdf1cc34b1226e088444523812fd412a5cca2"
+dependencies = [
+ "lite-parser",
+]
+
+[[package]]
+name = "lite-parser"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3d5f9dc37c52d889a21fd701983d02bb6a84f852c5140a6c80ef4557f7dc29e"
+dependencies = [
+ "paste",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4004,6 +4022,40 @@ dependencies = [
  "scale-info",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-chainbridge"
+version = "2.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "lite-json",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-ddc-staking"
+version = "0.1.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-io",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
+ "substrate-test-utils",
 ]
 
 [[package]]
@@ -7224,6 +7276,27 @@ dependencies = [
  "prometheus",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "substrate-test-utils"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.22#616d33ea23bab86cafffaf116fc607b6790fb4eb"
+dependencies = [
+ "futures",
+ "substrate-test-utils-derive",
+ "tokio",
+]
+
+[[package]]
+name = "substrate-test-utils-derive"
+version = "0.10.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.22#616d33ea23bab86cafffaf116fc607b6790fb4eb"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
