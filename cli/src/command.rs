@@ -31,23 +31,12 @@ impl SubstrateCli for Cli {
 	}
 
 	fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
-		let id = if id == "" {
-			let n = get_exec_name().unwrap_or_default();
-			["cere", "cere-dev"]
-				.iter()
-				.cloned()
-				.find(|&chain| n.starts_with(chain))
-				.unwrap_or("cere")
-		} else {
-			id
-		};
-
 		Ok(match id {
 			"cere-mainnet" => Box::new(cere_service::chain_spec::cere_mainnet_config()?),
 			"cere-testnet" => Box::new(cere_service::chain_spec::cere_testnet_config()?),
 			"cere-qanet" => Box::new(cere_service::chain_spec::cere_qanet_config()?),
 			#[cfg(feature = "cere-dev-native")]
-			"cere-devnet" | "devnet" => Box::new(cere_service::chain_spec::cere_devnet_config()?),
+			"cere-devnet" => Box::new(cere_service::chain_spec::cere_devnet_config()?),
 			path => {
 				let path = std::path::PathBuf::from(path);
 
@@ -96,13 +85,6 @@ macro_rules! unwrap_client {
 			))),
 		}
 	};
-}
-
-fn get_exec_name() -> Option<String> {
-	std::env::current_exe()
-		.ok()
-		.and_then(|pb| pb.file_name().map(|s| s.to_os_string()))
-		.and_then(|s| s.into_string().ok())
 }
 
 /// Parse and run command line arguments
