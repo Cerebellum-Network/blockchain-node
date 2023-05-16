@@ -37,6 +37,8 @@ impl SubstrateCli for Cli {
 			"cere-qanet" => Box::new(cere_service::chain_spec::cere_qanet_config()?),
 			#[cfg(feature = "cere-dev-native")]
 			"cere-devnet" => Box::new(cere_service::chain_spec::cere_devnet_config()?),
+			#[cfg(feature = "cere-dev-native")]
+			"dev" => Box::new(cere_service::chain_spec::cere_dev_development_config()?),
 			path => {
 				let path = std::path::PathBuf::from(path);
 
