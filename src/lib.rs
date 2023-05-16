@@ -266,7 +266,13 @@ pub mod pallet {
 						.unwrap();
 				let final_res = dac::get_final_decision(validations_res);
 
-				let signer = Self::get_signer().unwrap();
+				let signer = match Self::get_signer() {
+					Ok(signer) => signer,
+					Err(e) => {
+						log::info!("{}", e);
+						return
+					},
+				};
 
 				let tx_res = signer.send_signed_transaction(|_acct| Call::set_validation_decision {
 					era: current_era,
