@@ -72,6 +72,50 @@ $ ls ./my-chain-state/chains/dev
 db keystore network
 ```
 
+### Custom Chain Spec
+
+The node supports 2 runtimes.
+
+#### Runtime `cere`
+
+Runtime `cere` uses by default in Cere Mainnet/Testnet/QAnet. You can start the node with it by running the command:
+```bash
+./target/release/cere --chain=./target/release/customSpecRaw.json
+```
+
+#### Runtime `cere-dev`
+
+Runtime `cere-dev` uses by default in Cere Devnet. You can start the node with it by running the command:
+```bash
+./target/release/cere --chain=./target/release/customSpecRaw.json --force-cere-dev
+```
+
+### Connect to Cere Networks
+
+#### Mainnet
+
+```bash
+./target/release/cere --chain=cere-mainnet
+```
+
+#### Testnet
+
+```bash
+./target/release/cere --chain=cere-testnet
+```
+
+#### QAnet
+
+```bash
+./target/release/cere --chain=cere-qanet
+```
+
+#### Devnet
+
+```bash
+./target/release/cere --chain=cere-devnet
+```
+
 ## Connect with Cere Explorer Front-end
 
 Once the node template is running locally, you can connect it with **Cere Explorer** front-end
