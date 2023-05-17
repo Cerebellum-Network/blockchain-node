@@ -118,7 +118,7 @@ Runtime `cere-dev` uses by default in Cere Devnet. You can start the node with i
 
 ## Connect with Cere Explorer Front-end
 
-Once the node template is running locally, you can connect it with **Cere Explorer** front-end
+Once the node is running locally, you can connect it with **Cere Explorer** front-end
 to interact with your chain. [Click
-here](https://explorer.cere.network/?rpc=ws://localhost:9944) connecting the Apps to your
+here](https://explorer.cere.network/?rpc=ws://localhost:9944) connecting the Explorer to your
 local node.
