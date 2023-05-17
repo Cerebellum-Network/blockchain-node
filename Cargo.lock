@@ -136,6 +136,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "array-bytes"
+version = "6.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9b1c5a481ec30a5abd8dfbd94ab5cf1bb4e9a66be7f1b3b322f2f1170c200fd"
+
+[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -406,6 +412,12 @@ name = "base64"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
+
+[[package]]
+name = "base64"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4a4ddaa51a5bc52a6948f74c06d20aaaddb71924eab79b8c97a8c556e942d6a"
 
 [[package]]
 name = "beef"
@@ -798,6 +810,7 @@ dependencies = [
  "pallet-contracts-rpc-runtime-api",
  "pallet-ddc-metrics-offchain-worker",
  "pallet-ddc-staking",
+ "pallet-ddc-validator",
  "pallet-democracy",
  "pallet-election-provider-multi-phase",
  "pallet-election-provider-support-benchmarking",
@@ -3266,7 +3279,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a90c989a7c0969c2ab63e898da9bc735e3be53fb4f376e9c045ce516bcc9f928"
 dependencies = [
  "asynchronous-codec",
- "base64",
+ "base64 0.13.0",
  "byteorder",
  "bytes",
  "fnv",
@@ -3649,7 +3662,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0452aac8bab02242429380e9b2f94ea20cea2b37e2c1777a1358799bbe97f37"
 dependencies = [
  "arrayref",
- "base64",
+ "base64 0.13.0",
  "digest 0.9.0",
  "hmac-drbg",
  "libsecp256k1-core",
@@ -4622,6 +4635,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "log",
  "parity-scale-codec",
  "scale-info",
  "sp-io",
@@ -4629,6 +4643,38 @@ dependencies = [
  "sp-staking",
  "sp-std",
  "substrate-test-utils",
+]
+
+[[package]]
+name = "pallet-ddc-validator"
+version = "0.1.0"
+dependencies = [
+ "alt_serde",
+ "array-bytes",
+ "base64 0.21.0",
+ "frame-election-provider-support",
+ "frame-support",
+ "frame-system",
+ "lite-json",
+ "log",
+ "pallet-balances",
+ "pallet-contracts",
+ "pallet-ddc-staking",
+ "pallet-randomness-collective-flip",
+ "pallet-session",
+ "pallet-staking",
+ "pallet-staking-reward-curve",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "serde_json 1.0.44",
+ "sp-core",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
 ]
 
 [[package]]
@@ -6111,7 +6157,7 @@ version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b18820d944b33caa75a71378964ac46f58517c92b6ae5f762636247c09e78fb"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "blake2b_simd 0.5.11",
  "constant_time_eq",
  "crossbeam-utils",
@@ -6173,7 +6219,7 @@ version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35edb675feee39aec9c99fa5ff985081995a06d594114ae14cbe797ad7b7a6d7"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "log",
  "ring",
  "sct 0.6.1",
@@ -6222,7 +6268,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7522c9de787ff061458fe9a829dc790a3f5b22dc571694fc5883f448b94d9a9"
 dependencies = [
- "base64",
+ "base64 0.13.0",
 ]
 
 [[package]]
@@ -7651,7 +7697,7 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41d1c5305e39e09653383c2c7244f2f78b3bcae37cf50c64cb4789c9f5096ec2"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "bytes",
  "flate2",
  "futures",
@@ -9390,7 +9436,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85c6ab24291fa7cb3a181f5669f6c72599b7ef781669759b45c7828c5999d0c0"
 dependencies = [
  "anyhow",
- "base64",
+ "base64 0.13.0",
  "bincode",
  "directories-next",
  "file-per-thread-logger",
