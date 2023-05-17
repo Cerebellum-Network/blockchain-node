@@ -50,6 +50,7 @@ pub use pallet_chainbridge;
 use pallet_contracts::weights::WeightInfo;
 pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_staking;
+pub use pallet_ddc_accounts;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -1241,6 +1242,14 @@ parameter_types! {
 	pub const Ddc_Accounts_Pallet_Id: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
 }
 
+impl pallet_ddc_accounts::Config for Runtime {
+	type BondingDuration = BondingDuration;
+	type Currency = Balances;
+	type Event = Event;
+	type PalletId = Ddc_Accounts_Pallet_Id;
+	type TimeProvider = pallet_timestamp::Pallet<Runtime>;
+}
+
 parameter_types! {
 	pub const DdcValidatorsQuorumSize: u32 = 3;
 	pub const ValidationThreshold: u32 = 5;
@@ -1309,6 +1318,7 @@ construct_runtime!(
 		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
 		DdcStaking: pallet_ddc_staking,
 		DdcValidator: pallet_ddc_validator,
+		DdcAccounts: pallet_ddc_accounts,
 	}
 );
 
