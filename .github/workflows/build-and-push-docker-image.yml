@@ -5,6 +5,8 @@ on:
       - dev-cere
       - master-cere
       - 'feature/**'
+      - 'release/**'
+      - 'hotfix/**'
 env:
   ECR_REPOSITORY: pos-network-node
 jobs:

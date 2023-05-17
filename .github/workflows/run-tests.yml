@@ -5,6 +5,8 @@ on:
       - dev-cere
       - master-cere
       - 'feature/**'
+      - 'release/**'
+      - 'hotfix/**'
     types:
       - opened
       - synchronize
