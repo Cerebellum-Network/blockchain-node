@@ -6,8 +6,7 @@ use codec::{Decode, Encode, HasCompact};
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement, UnixTime},
-	BoundedVec,
-  PalletId
+	BoundedVec, PalletId,
 };
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -45,6 +44,26 @@ pub struct UnlockChunk<Balance: HasCompact> {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct Bucket<AccountId> {
+	bucket_id: u128,
+	owner_id: AccountId,
+	public_availability: bool,
+	resources_reserved: u128,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct BucketsDetails<Balance: HasCompact> {
+	bucket_id: u128,
+	amount: Balance,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct ReceiverDetails<AccountId, Balance: HasCompact> {
+	cdn_owner: AccountId,
+	amount: Balance,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct AccountsLedger<AccountId, Balance: HasCompact> {
 	/// The stash account whose balance is actually locked and can be used for CDN usage.
 	pub stash: AccountId,
@@ -52,13 +71,14 @@ pub struct AccountsLedger<AccountId, Balance: HasCompact> {
 	/// It's just `active` plus all the `unlocking` balances.
 	#[codec(compact)]
 	pub total: Balance,
-	/// The total amount of the stash's balance that will be accessible for CDN payments in any forthcoming
-	/// rounds.
+	/// The total amount of the stash's balance that will be accessible for CDN payments in any
+	/// forthcoming rounds.
 	#[codec(compact)]
 	pub active: Balance,
 	/// Any balance that is becoming free, which may eventually be transferred out of the stash
-	/// (assuming that the content owner has to pay for network usage). It is assumed that this will be treated as a first
-	/// in, first out queue where the new (higher value) eras get pushed on the back.
+	/// (assuming that the content owner has to pay for network usage). It is assumed that this
+	/// will be treated as a first in, first out queue where the new (higher value) eras get pushed
+	/// on the back.
 	pub unlocking: BoundedVec<UnlockChunk<Balance>, MaxUnlockingChunks>,
 }
 
@@ -78,7 +98,7 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 			.unlocking
 			.into_iter()
 			.filter(|chunk| {
-        log::info!("Chunk era: {:?}", chunk.era);
+				log::info!("Chunk era: {:?}", chunk.era);
 				if chunk.era > current_era {
 					true
 				} else {
@@ -112,7 +132,7 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-    /// The accounts's pallet id, used for deriving its sovereign account ID.
+		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
@@ -120,7 +140,7 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain bonded for.
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
-    type TimeProvider: UnixTime;
+		type TimeProvider: UnixTime;
 	}
 
 	/// Map from all locked "stash" accounts to the controller account.
@@ -133,6 +153,21 @@ pub mod pallet {
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, AccountsLedger<T::AccountId, BalanceOf<T>>>;
+
+	#[pallet::type_value]
+	pub fn DefaultBucketCount<T: Config>() -> u128 {
+		0_u128
+	}
+	#[pallet::storage]
+	#[pallet::getter(fn buckets_count)]
+	pub type BucketsCount<T: Config> =
+		StorageValue<Value = u128, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
+
+	/// Map from all locked accounts and their buckets to the bucket structure
+	#[pallet::storage]
+	#[pallet::getter(fn buckets)]
+	pub type Buckets<T: Config> =
+		StorageMap<_, Twox64Concat, u128, Bucket<T::AccountId>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
@@ -155,7 +190,7 @@ pub mod pallet {
 		NotController,
 		/// Not a stash account.
 		NotStash,
-    /// Stash is already bonded.
+		/// Stash is already bonded.
 		AlreadyBonded,
 		/// Controller is already paired.
 		AlreadyPaired,
@@ -168,12 +203,12 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_config]
-  pub struct GenesisConfig;
+	pub struct GenesisConfig;
 
 	#[cfg(feature = "std")]
 	impl Default for GenesisConfig {
 		fn default() -> Self {
-			Self 
+			Self
 		}
 	}
 
@@ -190,6 +225,50 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::weight(10_000)]
+		pub fn charge_payments(
+			origin: OriginFor<T>,
+			paying_accounts: Vec<BucketsDetails<BalanceOf<T>>>,
+		) -> DispatchResult {
+			let validator = ensure_signed(origin)?;
+			let account_id = Self::account_id();
+
+			for bucket_details in paying_accounts.iter() {
+				let bucket: Bucket<T::AccountId> = Self::buckets(bucket_details.bucket_id).unwrap();
+				let content_owner = bucket.owner_id;
+				let amount = bucket_details.amount;
+
+				let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotController)?;
+				ledger.total -= amount;
+				ledger.active -= amount;
+
+				Self::update_ledger(&content_owner, &ledger);
+			}
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn create_bucket(
+			origin: OriginFor<T>,
+			public_availability: bool,
+			resources_reserved: u128,
+		) -> DispatchResult {
+			let bucket_owner = ensure_signed(origin)?;
+			let cur_bucket_id = Self::buckets_count();
+
+			let bucket = Bucket {
+				bucket_id: cur_bucket_id + 1,
+				owner_id: bucket_owner,
+				public_availability,
+				resources_reserved,
+			};
+
+			<BucketsCount<T>>::set(cur_bucket_id + 1);
+			<Buckets<T>>::insert(cur_bucket_id + 1, bucket);
+			Ok(())
+		}
+
 		/// Take the origin account as a stash and lock up `value` of its balance. `controller` will
 		/// be the account that controls it.
 		///
@@ -198,14 +277,15 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the stash account.
 		///
 		/// Emits `Deposited`.
-    #[pallet::weight(10_000)]		pub fn deposit(
+		#[pallet::weight(10_000)]
+		pub fn deposit(
 			origin: OriginFor<T>,
 			controller: <T::Lookup as StaticLookup>::Source,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let stash = ensure_signed(origin)?;
 
-      if <Bonded<T>>::contains_key(&stash) {
+			if <Bonded<T>>::contains_key(&stash) {
 				Err(Error::<T>::AlreadyBonded)?
 			}
 
@@ -227,13 +307,17 @@ pub mod pallet {
 			let stash_balance = T::Currency::free_balance(&stash);
 			let value = value.min(stash_balance);
 			Self::deposit_event(Event::<T>::Deposited(stash.clone(), value));
-			let item =
-				AccountsLedger { stash: stash.clone(), total: value, active: value, unlocking: Default::default() };
-			Self::update_ledger_and_deposit( &stash, &controller, &item)?;
+			let item = AccountsLedger {
+				stash: stash.clone(),
+				total: value,
+				active: value,
+				unlocking: Default::default(),
+			};
+			Self::update_ledger_and_deposit(&stash, &controller, &item)?;
 			Ok(())
 		}
 
-    /// Add some extra amount that have appeared in the stash `free_balance` into the balance up
+		/// Add some extra amount that have appeared in the stash `free_balance` into the balance up
 		/// for CDN payments.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
@@ -250,23 +334,23 @@ pub mod pallet {
 			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 
 			let stash_balance = T::Currency::free_balance(&stash);
-      let extra = stash_balance.min(max_additional);
-      ledger.total += extra;
-      ledger.active += extra;
-      // Last check: the new active amount of ledger must be more than ED.
-      ensure!(
-        ledger.active >= T::Currency::minimum_balance(),
-        Error::<T>::InsufficientDeposit
-      );
+			let extra = stash_balance.min(max_additional);
+			ledger.total += extra;
+			ledger.active += extra;
+			// Last check: the new active amount of ledger must be more than ED.
+			ensure!(
+				ledger.active >= T::Currency::minimum_balance(),
+				Error::<T>::InsufficientDeposit
+			);
 
-      Self::update_ledger_and_deposit(&stash, &controller, &ledger)?;
+			Self::update_ledger_and_deposit(&stash, &controller, &ledger)?;
 
-      Self::deposit_event(Event::<T>::Deposited(stash.clone(), extra));
-		
+			Self::deposit_event(Event::<T>::Deposited(stash.clone(), extra));
+
 			Ok(())
 		}
 
-    /// Schedule a portion of the stash to be unlocked ready for transfer out after the bond
+		/// Schedule a portion of the stash to be unlocked ready for transfer out after the bond
 		/// period ends. If this leaves an amount actively bonded less than
 		/// T::Currency::minimum_balance(), then it is increased to the full amount.
 		///
@@ -307,7 +391,7 @@ pub mod pallet {
 
 				// Note: bonding for extra era to allow for accounting
 				let era = Self::get_current_era() + T::BondingDuration::get();
-        log::info!("Era for the unbond: {:?}", era);
+				log::info!("Era for the unbond: {:?}", era);
 
 				if let Some(mut chunk) =
 					ledger.unlocking.last_mut().filter(|chunk| chunk.era == era)
@@ -330,7 +414,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-
 		/// Remove any unlocked chunks from the `unlocking` queue from our management.
 		///
 		/// This essentially frees up that balance to be used by the stash account to do
@@ -346,40 +429,35 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
-			let current_era = Self::get_current_era(); 
+			let current_era = Self::get_current_era();
 			ledger = ledger.consolidate_unlocked(current_era);
-      log::info!("Current era: {:?}", current_era);
+			log::info!("Current era: {:?}", current_era);
 
 			if ledger.unlocking.is_empty() && ledger.active < T::Currency::minimum_balance() {
-        log::info!("Killing stash");
+				log::info!("Killing stash");
 				// This account must have called `unbond()` with some value that caused the active
 				// portion to fall below existential deposit + will have no more unlocking chunks
 				// left. We can now safely remove all accounts-related information.
 				Self::kill_stash(&stash)?;
 			} else {
-        log::info!("Updating ledger");
+				log::info!("Updating ledger");
 				// This was the consequence of a partial unbond. just update the ledger and move on.
 				Self::update_ledger(&controller, &ledger);
 			};
-      
-      log::info!("Current total: {:?}", ledger.total);
-      log::info!("Old total: {:?}", old_total);
+
+			log::info!("Current total: {:?}", ledger.total);
+			log::info!("Old total: {:?}", old_total);
 
 			// `old_total` should never be less than the new total because
 			// `consolidate_unlocked` strictly subtracts balance.
 			if ledger.total < old_total {
-        log::info!("Preparing for transfer");
+				log::info!("Preparing for transfer");
 				// Already checked that this won't overflow by entry condition.
 				let value = old_total - ledger.total;
 
-        let account_id = Self::account_id();
+				let account_id = Self::account_id();
 
-        T::Currency::transfer(
-          &account_id,
-          &stash,
-          value,
-          ExistenceRequirement::KeepAlive,
-        )?;
+				T::Currency::transfer(&account_id, &stash, value, ExistenceRequirement::KeepAlive)?;
 				Self::deposit_event(Event::<T>::Withdrawn(stash, value));
 			}
 
@@ -388,18 +466,18 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-    pub fn account_id() -> T::AccountId {
-      T::PalletId::get().into_account()
-    }
+		pub fn account_id() -> T::AccountId {
+			T::PalletId::get().into_account()
+		}
 		/// Update the ledger for a controller.
 		///
 		/// This will also deposit the funds to pallet.
 		fn update_ledger_and_deposit(
-      stash: &T::AccountId,
+			stash: &T::AccountId,
 			controller: &T::AccountId,
 			ledger: &AccountsLedger<T::AccountId, BalanceOf<T>>,
 		) -> DispatchResult {
-      let account_id = Self::account_id();
+			let account_id = Self::account_id();
 
 			T::Currency::transfer(
 				stash,
@@ -409,10 +487,10 @@ pub mod pallet {
 			)?;
 			<Ledger<T>>::insert(controller, ledger);
 
-      Ok(())
+			Ok(())
 		}
 
-    /// Update the ledger for a controller.
+		/// Update the ledger for a controller.
 		fn update_ledger(
 			controller: &T::AccountId,
 			ledger: &AccountsLedger<T::AccountId, BalanceOf<T>>,
@@ -420,7 +498,7 @@ pub mod pallet {
 			<Ledger<T>>::insert(controller, ledger);
 		}
 
-    /// Remove all associated data of a stash account from the accounts system.
+		/// Remove all associated data of a stash account from the accounts system.
 		///
 		/// Assumes storage is upgraded before calling.
 		///
@@ -437,7 +515,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-    // Get the current era.
+		// Get the current era.
 		fn get_current_era() -> EraIndex {
 			((T::TimeProvider::now().as_millis() - TIME_START_MS) / ERA_DURATION_MS)
 				.try_into()
