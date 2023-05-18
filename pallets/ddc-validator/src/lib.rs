@@ -248,7 +248,7 @@ pub mod pallet {
 			}
 
 			let current_era = Self::get_current_era();
-			let last_managed_era = Self::last_managed_era().unwrap();
+			let last_managed_era = Self::last_managed_era().unwrap_or(0);
 			let data_provider_url = Self::get_data_provider_url();
 			log::info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
 
