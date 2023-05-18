@@ -259,8 +259,9 @@ pub mod pallet {
 				let bytes_sum = dac::get_proved_delivered_bytes_sum(&file_request);
 				log::info!("Proved bytes sum: {:?}", bytes_sum);
 
-				let assigned_edge =
-					String::from("0xd4160f567d7265b9de2c7cbf1a5c931e5b3195efb2224f8706bfb53ea6eaacd1");
+				let assigned_edge = String::from(
+					"0xd4160f567d7265b9de2c7cbf1a5c931e5b3195efb2224f8706bfb53ea6eaacd1",
+				);
 				let validations_res =
 					dac::get_validation_results(&data_provider_url, current_era, &assigned_edge)
 						.unwrap();
@@ -274,11 +275,12 @@ pub mod pallet {
 					},
 				};
 
-				let tx_res = signer.send_signed_transaction(|_acct| Call::set_validation_decision {
-					era: current_era,
-					cdn_node: utils::string_to_account::<T>(assigned_edge.clone()),
-					validation_decision: final_res.clone(),
-				});
+				let tx_res =
+					signer.send_signed_transaction(|_acct| Call::set_validation_decision {
+						era: current_era,
+						cdn_node: utils::string_to_account::<T>(assigned_edge.clone()),
+						validation_decision: final_res.clone(),
+					});
 
 				log::info!("final_res: {:?}", final_res);
 			}
@@ -400,7 +402,8 @@ pub mod pallet {
 					&validation_decision_base64_string,
 				);
 				match response {
-					Ok(response) => log::info!("Shared memory response: {:?}", response.to_string()),
+					Ok(response) =>
+						log::info!("Shared memory response: {:?}", response.to_string()),
 					Err(e) => {
 						log::error!("Shared memory error: {:?}", e);
 						continue
