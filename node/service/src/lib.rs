@@ -647,7 +647,10 @@ impl IdentifyVariant for Box<dyn sc_service::ChainSpec> {
 		self.id().starts_with("cere_mainnet") || self.id().starts_with("cere_qanet") || self.id().starts_with("cere_testnet")
 	}
 	fn is_cere_dev(&self) -> bool {
-		self.id().starts_with("cere_devnet")
+		// Works for "cere-devnet" and "dev" arms in the load_spec(...) call.
+		// If you are specifying a customSpecRaw.json for "path" arm along with the "--force-cere-dev" flag,
+		// make sure your spec has a compatible "id" field to satisfy this condition
+		self.id().starts_with("cere_dev")
 	}
 }
 
