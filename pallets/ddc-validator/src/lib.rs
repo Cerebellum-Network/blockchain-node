@@ -332,7 +332,7 @@ pub mod pallet {
 			let (sent_query, sent, received_query, received) = match response {
 				Ok(data) => data,
 				Err(_) => {
-					log::info!("🔎 DAC Validator failed to bytes sent and bytes received from DAC");
+					log::info!("🔎 DAC Validator failed to get bytes sent and received from DAC");
 					return
 				},
 			};
