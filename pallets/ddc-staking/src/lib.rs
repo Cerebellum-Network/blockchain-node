@@ -211,6 +211,11 @@ pub mod pallet {
 	pub type ErasEdgesRewardPoints<T: Config> =
 		StorageMap<_, Twox64Concat, EraIndex, EraRewardPoints<T::AccountId>, ValueQuery>;
 
+	/// Price per byte of the bucket traffic in smallest units of the currency.
+	#[pallet::storage]
+	#[pallet::getter(fn pricing)]
+	pub type Pricing<T: Config> = StorageValue<_, u128>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -577,6 +582,16 @@ pub mod pallet {
 
 			Self::reward_by_ids(era, stakers_points);
 
+			Ok(())
+		}
+
+		/// Set price per byte of the bucket traffic in smallest units of the currency.
+		///
+		/// The dispatch origin for this call must be _Root_.
+		#[pallet::weight(10_000)]
+		pub fn set_pricing(origin: OriginFor<T>, price_per_byte: u128) -> DispatchResult {
+			ensure_root(origin)?;
+			<Pricing<T>>::set(Some(price_per_byte));
 			Ok(())
 		}
 	}
