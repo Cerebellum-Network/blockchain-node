@@ -247,6 +247,13 @@ pub mod pallet {
 				return
 			}
 
+			if let Some(pubkey) = sr25519_public_keys(KEY_TYPE).first() {
+				// May not work with some kinds of AccountId. Check
+				// https://substrate.stackexchange.com/questions/1484.
+				let account = T::AccountId::decode(&mut &pubkey.encode()[..]).unwrap();
+				log::debug!("🔎 DAC Validator's local account {:?}", account);
+			}
+
 			let current_era = Self::get_current_era();
 			let last_managed_era = Self::last_managed_era().unwrap_or(0);
 			let data_provider_url = Self::get_data_provider_url();
