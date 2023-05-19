@@ -114,6 +114,33 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 
 		Self { stash: self.stash, total, active: self.active, unlocking }
 	}
+
+	/// Charge funds that were scheduled for unlocking.
+	///
+	/// Returns the updated ledger, and the amount actually charged.
+	fn charge_unlocking(mut self, value: Balance) -> (Self, Balance) {
+		let mut unlocking_balance = Balance::zero();
+
+		while let Some(last) = self.unlocking.last_mut() {
+			if unlocking_balance + last.value <= value {
+				unlocking_balance += last.value;
+				self.active -= last.value;
+				self.unlocking.pop();
+			} else {
+				let diff = value - unlocking_balance;
+
+				unlocking_balance += diff;
+				self.active -= diff;
+				last.value -= diff;
+			}
+
+			if unlocking_balance >= value {
+				break
+			}
+		}
+
+		(self, unlocking_balance)
+	}
 }
 
 #[frame_support::pallet]
@@ -182,6 +209,8 @@ pub mod pallet {
 		/// An account has called `withdraw_unbonded` and removed unbonding chunks worth `Balance`
 		/// from the unlocking queue. \[stash, amount\]
 		Withdrawn(T::AccountId, BalanceOf<T>),
+		/// Total amount charged from all accounts to pay CDN nodes
+    Charged(BalanceOf<T>),
 	}
 
 	#[pallet::error]
@@ -231,19 +260,31 @@ pub mod pallet {
 			paying_accounts: Vec<BucketsDetails<BalanceOf<T>>>,
 		) -> DispatchResult {
 			let validator = ensure_signed(origin)?;
-			let account_id = Self::account_id();
+      let mut total_charged = BalanceOf::<T>::zero();
 
-			for bucket_details in paying_accounts.iter() {
-				let bucket: Bucket<T::AccountId> = Self::buckets(bucket_details.bucket_id).unwrap();
-				let content_owner = bucket.owner_id;
-				let amount = bucket_details.amount;
+      for bucket_details in paying_accounts.iter() {
+        let bucket: Bucket<T::AccountId> = Self::buckets(bucket_details.bucket_id).unwrap();
+        let content_owner = bucket.owner_id;
+        let amount = bucket_details.amount;
 
-				let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotController)?;
-				ledger.total -= amount;
-				ledger.active -= amount;
-
-				Self::update_ledger(&content_owner, &ledger);
-			}
+        let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotController)?;
+        if ledger.active >= amount {
+          ledger.total -= amount;
+          ledger.active -= amount;
+          total_charged += amount;
+          Self::update_ledger(&content_owner, &ledger);
+        } else {
+          let diff = amount - ledger.active;
+          total_charged += ledger.active;
+          ledger.total -= ledger.active;
+          ledger.active = BalanceOf::<T>::zero();
+          let (ledger, charged) = ledger.charge_unlocking(diff);
+          Self::update_ledger(&content_owner, &ledger);
+          total_charged += charged;
+        }
+        
+      }
+      Self::deposit_event(Event::<T>::Charged(total_charged));
 
 			Ok(())
 		}
