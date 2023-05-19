@@ -4676,6 +4676,7 @@ dependencies = [
  "log",
  "pallet-balances",
  "pallet-contracts",
+ "pallet-ddc-accounts",
  "pallet-ddc-staking",
  "pallet-randomness-collective-flip",
  "pallet-session",
