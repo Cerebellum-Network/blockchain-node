@@ -72,23 +72,28 @@ $ ls ./my-chain-state/chains/dev
 db keystore network
 ```
 
-### Custom Chain Spec
+### Runtimes
 
 The node supports 2 runtimes.
 
 #### Runtime `cere`
 
-Runtime `cere` uses by default in Cere Mainnet/Testnet/QAnet. You can start the node with it by running the command:
-```bash
-./target/release/cere --chain=./target/release/customSpecRaw.json
-```
+Runtime `cere` uses by default in Cere Mainnet/Testnet/QAnet. You can start the node with it by:
+1. Running the node connected to [Cere Mainnet](#mainnet), [Cere Testnet](#testnet) or [Cere QAnet](#qanet)
+2. Running the node with a custom spec. Be sure that [id](https://github.com/Cerebellum-Network/blockchain-node/blob/dev-cere/node/service/src/chain_spec.rs#L265) **does not** start with `cere-dev`
+    ```bash
+    ./target/release/cere --chain=./target/release/customSpecRaw.json
+    ```
 
 #### Runtime `cere-dev`
 
-Runtime `cere-dev` uses by default in Cere Devnet. You can start the node with it by running the command:
-```bash
-./target/release/cere --chain=./target/release/customSpecRaw.json --force-cere-dev
-```
+Runtime `cere-dev` uses by default in Cere Devnet. You can start the node with it by:
+1. Running the node connected to [Cere Devnet](#Devnet)
+1. Running the [Single-Node Development Chain](#Single-Node-Development-Chain)
+1. Running the node with a custom spec. Be sure that [id](https://github.com/Cerebellum-Network/blockchain-node/blob/dev-cere/node/service/src/chain_spec.rs#L265) **starts** with `cere-dev` and you pass `--force-cere-dev` parameter
+    ```bash
+    ./target/release/cere --chain=./target/release/customSpecRaw.json --force-cere-dev
+    ```
 
 ### Connect to Cere Networks
 
