@@ -321,8 +321,14 @@ pub mod pallet {
 			}
 
 			// Read from DAC.
-			let (sent_query, sent, received_query, received) =
-				dac::fetch_data2(&data_provider_url, current_era - 1);
+			let response = dac::fetch_data2(&data_provider_url, current_era - 1);
+			let (sent_query, sent, received_query, received) = match response {
+				Ok(data) => data,
+				Err(_) => {
+					log::info!("🔎 DAC Validator failed to bytes sent and bytes received from DAC");
+					return
+				},
+			};
 			log::info!(
 				"🔎 DAC Validator is fetching data from DAC, current era: {:?}, bytes sent query: {:?}, bytes sent response: {:?}, bytes received query: {:?}, bytes received response: {:?}",
 				current_era,

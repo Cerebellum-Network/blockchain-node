@@ -393,16 +393,16 @@ pub(crate) fn fetch_data1(
 pub(crate) fn fetch_data2(
 	data_provider_url: &String,
 	era: EraIndex,
-) -> (String, Vec<BytesSent>, String, Vec<BytesReceived>) {
+) -> Result<(String, Vec<BytesSent>, String, Vec<BytesReceived>), ()> {
 	let bytes_sent_query = get_bytes_sent_query_url(data_provider_url, era);
-	let bytes_sent_res: RedisFtAggregate = http_get_json(&bytes_sent_query).unwrap();
+	let bytes_sent_res: RedisFtAggregate = http_get_json(&bytes_sent_query).map_err(|_|())?;
 	let bytes_sent = BytesSent::get_all(bytes_sent_res);
 
 	let bytes_received_query = get_bytes_received_query_url(data_provider_url, era);
-	let bytes_received_res: RedisFtAggregate = http_get_json(&bytes_received_query).unwrap();
+	let bytes_received_res: RedisFtAggregate = http_get_json(&bytes_received_query).map_err(|_|())?;
 	let bytes_received = BytesReceived::get_all(bytes_received_res);
 
-	(bytes_sent_query, bytes_sent, bytes_received_query, bytes_received)
+	Ok((bytes_sent_query, bytes_sent, bytes_received_query, bytes_received))
 }
 
 fn get_bytes_received_query_url(data_provider_url: &String, era: EraIndex) -> String {
