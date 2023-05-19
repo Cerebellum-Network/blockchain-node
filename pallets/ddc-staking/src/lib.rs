@@ -257,6 +257,10 @@ pub mod pallet {
 		AlreadyInRole,
 		/// Two or more occurrences of a staker account in rewards points list.
 		DuplicateRewardPoints,
+		/// Price per byte of the traffic is unknown.
+		PricingNotSet,
+		/// Impossible budget value that overflows pallet's balance type.
+		BudgetOverflow,
 	}
 
 	#[pallet::call]
@@ -601,19 +605,30 @@ pub mod pallet {
 			// ToDo: check that the era is finished
 			// ToDo: check reward points are set
 
-			// An account we withdraw the funds from and the amount of funds to withdraw.
-			let payout_source_account: T::AccountId = T::StakersPayoutSource::get().into_account();
-			let payout_budget = T::Currency::free_balance(&payout_source_account);
 			let era_reward_points: EraRewardPoints<T::AccountId> =
 				<ErasEdgesRewardPoints<T>>::get(&era);
+
+			let price_per_byte: u128 = match Self::pricing() {
+				Some(pricing) => pricing,
+				None => Err(Error::<T>::PricingNotSet)?,
+			};
+
+			// An account we withdraw the funds from and the amount of funds to withdraw.
+			let payout_source_account: T::AccountId = T::StakersPayoutSource::get().into_account();
+			let payout_budget: BalanceOf<T> =
+				match (price_per_byte * era_reward_points.total as u128).try_into() {
+					Ok(value) => value,
+					Err(_) => Err(Error::<T>::BudgetOverflow)?,
+				};
 			log::debug!(
 				"Will payout to DDC stakers for era {:?} from account {:?} with total budget {:?} \
-				, there are {:?} stakers earned {:?} reward points",
+				, there are {:?} stakers earned {:?} reward points with price per byte {:?}",
 				era,
 				payout_source_account,
 				payout_budget,
 				era_reward_points.individual.len(),
 				era_reward_points.total,
+				price_per_byte,
 			);
 
 			// Transfer a part of the budget to each CDN participant rewarded this era.
