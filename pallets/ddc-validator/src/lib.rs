@@ -57,6 +57,7 @@ pub use sp_io::crypto::sr25519_public_keys;
 pub use sp_runtime::offchain::{http, storage::StorageValueRef, Duration, Timestamp};
 pub use sp_staking::EraIndex;
 pub use sp_std::{collections::btree_map::BTreeMap, prelude::*};
+use log::info;
 
 extern crate alloc;
 
@@ -77,9 +78,11 @@ pub const ERA_IN_BLOCKS: u8 = 20;
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "https://dev-dac-redis.network-dev.aws.cere.io";
 pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
 pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
+pub const QUORUM_SIZE: usize = 1;
 
 /// Aggregated values from DAC that describe CDN node's activity during a certain era.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen, Serialize, Deserialize)]
+#[serde(crate = "alt_serde")]
 pub struct DacTotalAggregates {
 	/// Total bytes received by the client.
 	pub received: u64,
@@ -92,12 +95,15 @@ pub struct DacTotalAggregates {
 }
 
 /// Final DAC Validation decision.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Serialize, Deserialize)]
+#[serde(crate = "alt_serde")]
 pub struct ValidationDecision {
+	/// CDN node public key.
+	pub edge: String,
 	/// Validation result.
 	pub result: bool,
 	/// A hash of the data used to produce validation result.
-	pub payload: [u8; 256],
+	pub payload: [u8; 32],
 	/// Values aggregated from the payload.
 	pub totals: DacTotalAggregates,
 }
@@ -247,78 +253,43 @@ pub mod pallet {
 				return
 			}
 
-			if let Some(pubkey) = sr25519_public_keys(KEY_TYPE).first() {
-				// May not work with some kinds of AccountId. Check
-				// https://substrate.stackexchange.com/questions/1484.
-				let account = T::AccountId::decode(&mut &pubkey.encode()[..]).unwrap();
-				log::debug!("🔎 DAC Validator's local account {:?}", account);
-			}
-
 			let current_era = Self::get_current_era();
 			let last_managed_era = Self::last_managed_era().unwrap_or(0);
 			let data_provider_url = Self::get_data_provider_url();
 			log::info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
 
-			if current_era > last_managed_era {
-				let mock_data_url = Self::get_mock_data_url();
-
-				let file_request = dac::fetch_file_request(&mock_data_url);
-				let bytes_sum = dac::get_proved_delivered_bytes_sum(&file_request);
-				log::info!("Proved bytes sum: {:?}", bytes_sum);
-
-				let assigned_edge = String::from(
-					"0xd4160f567d7265b9de2c7cbf1a5c931e5b3195efb2224f8706bfb53ea6eaacd1",
-				);
-				let validations_res =
-					dac::get_validation_results(&data_provider_url, current_era, &assigned_edge)
-						.unwrap();
-				let final_res = dac::get_final_decision(validations_res);
-
-				let signer = match Self::get_signer() {
-					Ok(signer) => signer,
-					Err(e) => {
-						log::info!("{}", e);
-						return
-					},
-				};
-
-				let tx_res =
-					signer.send_signed_transaction(|_acct| Call::set_validation_decision {
-						era: current_era,
-						cdn_node: utils::string_to_account::<T>(assigned_edge.clone()),
-						validation_decision: final_res.clone(),
-					});
-
-				log::info!("final_res: {:?}", final_res);
-			}
+			// `If` commented for testing purposes
+			// if current_era > last_managed_era {
+			Self::validate_edges();
+			//}
 
 			// Print the number of broken sessions per CDN node.
-			let aggregates_value = dac::fetch_aggregates(&data_provider_url, 77436).unwrap(); // 77436 is for a mock data
-			let aggregates_obj = aggregates_value.as_object().unwrap();
-			aggregates_obj
-				.into_iter()
-				.for_each(|(cdn_node_pubkey, cdn_node_aggregates_value)| {
-					// iterate over aggregates for each node
-					let cdn_node_aggregates_obj = cdn_node_aggregates_value.as_object().unwrap();
-					// Extract `nodeInterruptedSessions` field
-					let (_, cdn_node_interrupted_sessions_value) = cdn_node_aggregates_obj
-						.into_iter()
-						.find(|(key, _)| key.iter().copied().eq("nodeInterruptedSessions".chars()))
-						.unwrap();
-					let cdn_node_interrupted_sessions_obj =
-						cdn_node_interrupted_sessions_value.as_object().unwrap();
-					// Prepare CDN pubkey without heap allocated string
-					let cdn_node_pubkey_vecu8: Vec<u8> =
-						cdn_node_pubkey.iter().map(|c| *c as u8).collect();
-					let cdn_node_pubkey_str =
-						sp_std::str::from_utf8(&cdn_node_pubkey_vecu8).unwrap();
-					log::info!(
-						"Broken sessions per CDN node | Node {}: {} sessions broken",
-						cdn_node_pubkey_str,
-						cdn_node_interrupted_sessions_obj.len(), /* count sessions broken by the
-						                                          * node */
-					);
-				});
+			// let aggregates_value = dac::fetch_aggregates(&data_provider_url, 77436).unwrap(); // 77436 is for a mock data
+			// let aggregates_obj = aggregates_value.as_object().unwrap();
+			// aggregates_obj
+			// 	.into_iter()
+			// 	.for_each(|(cdn_node_pubkey, cdn_node_aggregates_value)| {
+			// 		// iterate over aggregates for each node
+			// 		let cdn_node_aggregates_obj = cdn_node_aggregates_value.as_object().unwrap();
+			// 		// Extract `nodeInterruptedSessions` field
+			// 		let (_, cdn_node_interrupted_sessions_value) = cdn_node_aggregates_obj
+			// 			.into_iter()
+			// 			.find(|(key, _)| key.iter().copied().eq("nodeInterruptedSessions".chars()))
+			// 			.unwrap();
+			// 		let cdn_node_interrupted_sessions_obj =
+			// 			cdn_node_interrupted_sessions_value.as_object().unwrap();
+			// 		// Prepare CDN pubkey without heap allocated string
+			// 		let cdn_node_pubkey_vecu8: Vec<u8> =
+			// 			cdn_node_pubkey.iter().map(|c| *c as u8).collect();
+			// 		let cdn_node_pubkey_str =
+			// 			sp_std::str::from_utf8(&cdn_node_pubkey_vecu8).unwrap();
+			// 		log::info!(
+			// 			"Broken sessions per CDN node | Node {}: {} sessions broken",
+			// 			cdn_node_pubkey_str,
+			// 			cdn_node_interrupted_sessions_obj.len(), /* count sessions broken by the
+			// 			                                          * node */
+			// 		);
+			// 	});
 
 			// Wait for signal.
 			let signal = Signal::<T>::get().unwrap_or(false);
@@ -381,8 +352,9 @@ pub mod pallet {
 
 				// Prepare an intermediate validation decision
 				let validation_decision = ValidationDecision {
+					edge: utils::account_to_string::<T>(edge.clone()),
 					result: validation_result,
-					payload: [0u8; 256], // ToDo: put a hash of the validated data here
+					payload: [0u8; 32], // ToDo: put a hash of the validated data here
 					totals: DacTotalAggregates {
 						sent: node_sent.sum as u64,
 						received: client_received.sum as u64,
@@ -440,8 +412,9 @@ pub mod pallet {
 						"0xd4160f567d7265b9de2c7cbf1a5c931e5b3195efb2224f8706bfb53ea6eaacd1".into(),
 					),
 					ValidationDecision {
+						edge: "test".into(),
 						result: true,
-						payload: [0u8; 256],
+						payload: [0u8; 32],
 						totals: DacTotalAggregates {
 							sent: 100,
 							received: 100,
@@ -455,8 +428,9 @@ pub mod pallet {
 						"0xa2d14e71b52e5695e72c0567926bc68b68bda74df5c1ccf1d4ba612c153ff66b".into(),
 					),
 					ValidationDecision {
+						edge: "test".into(),
 						result: true,
-						payload: [0u8; 256],
+						payload: [0u8; 32],
 						totals: DacTotalAggregates {
 							sent: 200,
 							received: 200,
@@ -612,6 +586,18 @@ pub mod pallet {
 			}
 		}
 
+		fn is_valid(bytes_sent: u64, bytes_received: u64) -> bool {
+			let percentage_difference = 1f32 - (bytes_received as f32 / bytes_sent as f32);
+
+			return if percentage_difference > 0.0 &&
+				(T::ValidationThreshold::get() as f32 - percentage_difference) > 0.0
+			{
+				true
+			} else {
+				false
+			}
+		}
+
 		fn shuffle(mut list: Vec<T::AccountId>) -> Vec<T::AccountId> {
 			let len = list.len();
 			for i in 1..len {
@@ -644,6 +630,9 @@ pub mod pallet {
 
 			let quorums = Self::split(validators_keys, quorum_size);
 			let edges_groups = Self::split(shuffled_edges, quorums.len());
+
+			info!("quorums: {:?}", quorums);
+			info!("edges_groups: {:?}", edges_groups);
 
 			let era = Self::get_current_era();
 
@@ -692,6 +681,113 @@ pub mod pallet {
 				.expect("secure hashes should always be bigger than u32; qed");
 
 			random_number
+		}
+
+		fn find_validators_from_quorum(validator_id: &T::AccountId, era: &EraIndex) -> Vec<String> {
+			let validator_edges = Self::assignments(era, &validator_id).unwrap();
+			let mut quorum_members: Vec<String> = Vec::new();
+
+			<Assignments<T>>::iter_prefix(era).for_each(|(candidate_id, edges)| {
+				if validator_edges == edges {
+					let candidate_id_str = utils::account_to_string::<T>(candidate_id);
+					quorum_members.push(candidate_id_str);
+				}
+			});
+
+			quorum_members
+		}
+
+		fn get_public_key() -> Option<T::AccountId> {
+			match sr25519_public_keys(KEY_TYPE).first() {
+				Some(pubkey) => Some(T::AccountId::decode(&mut &pubkey.encode()[..]).unwrap()),
+				None => None
+			}
+		}
+
+		fn validate_edges() {
+			let current_era = Self::get_current_era();
+			let mock_data_url = Self::get_mock_data_url();
+			let data_provider_url = Self::get_data_provider_url();
+
+			// let signer = Self::get_signer().unwrap();
+			// let validator = signer.get_any_account().unwrap().id;
+			let validator = Self::get_public_key().unwrap();
+
+			info!("validator: {:?}", validator);
+
+			let assigned_edges = Self::assignments(current_era - 1, validator.clone()).unwrap();
+
+			info!("assigned_edges: {:?}", assigned_edges);
+
+			for assigned_edge in assigned_edges.iter() {
+				let file_request = dac::fetch_file_request(&mock_data_url);
+				let (bytes_sent, bytes_received) = dac::get_served_bytes_sum(&file_request);
+				let is_valid = Self::is_valid(bytes_sent, bytes_received);
+
+				info!("bytes_sent, bytes_received: {:?}, {:?}", bytes_sent, bytes_received);
+
+				let payload = serde_json::to_string(&file_request).unwrap();
+				let decision = ValidationDecision {
+					edge: utils::account_to_string::<T>(assigned_edge.clone()),
+					result: is_valid,
+					payload: utils::hash(&payload),
+					totals: DacTotalAggregates {
+						received: bytes_received,
+						sent: bytes_sent,
+						failed_by_client: 0,
+						failure_rate: 0,
+					}
+				};
+
+				info!("decision: {:?}", decision);
+
+				let serialized_decision = serde_json::to_string(&decision).unwrap();
+				let encoded_decision = shm::base64_encode(&serialized_decision.as_bytes().to_vec());
+				let validator_str = utils::account_to_string::<T>(validator.clone());
+				let edge_str = utils::account_to_string::<T>(assigned_edge.clone());
+
+				let encoded_decision_str = encoded_decision.iter().cloned().collect::<String>();
+
+				let response = shm::share_intermediate_validation_result(
+					&data_provider_url,
+					current_era - 1,
+					&validator_str,
+					&edge_str,
+					is_valid,
+					&encoded_decision_str,
+				);
+
+				if let Err(res) = response.clone() {
+					log::error!("share_intermediate_validation_result request failed: {:?}", res);
+				}
+
+				if let Ok(res) = response.clone() {
+					info!("shm res: {:?}", res.to_string());
+				}
+
+				if let Ok(res) = response {
+					let edge = utils::account_to_string::<T>(assigned_edge.clone());
+					let prev_era = (current_era - 1) as EraIndex;
+					let quorum = Self::find_validators_from_quorum(&validator, &prev_era);
+					let validations_res = shm::get_intermediate_decisions(&data_provider_url, &edge_str, &prev_era, quorum);
+
+					log::info!("get_intermediate_decisions result: {:?}", validations_res);
+
+					if validations_res.len() == QUORUM_SIZE {
+						let final_res = dac::get_final_decision(validations_res);
+
+						let signer = Self::get_signer().unwrap();
+
+						let tx_res = signer.send_signed_transaction(|_acct| Call::set_validation_decision {
+							era: current_era,
+							cdn_node: utils::string_to_account::<T>(edge.clone()),
+							validation_decision: final_res.clone(),
+						});
+
+						log::info!("final_res: {:?}", final_res);
+					}
+				}
+			}
 		}
 	}
 }
