@@ -17,7 +17,7 @@ First, complete the [basic Rust setup instructions](./docs/rust-setup.md).
 Use the following command to build the node without launching it:
 
 ```sh
-cargo +nightly-2022-04-07 build --release
+cargo +nightly-2022-07-27 build --release
 ```
 
 ## Run
