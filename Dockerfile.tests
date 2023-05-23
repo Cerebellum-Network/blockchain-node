@@ -21,4 +21,4 @@ RUN apt-get update && \
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
     scripts/init.sh && \
-    TRYBUILD=overwrite cargo +nightly-2022-07-27 test --workspace --locked --release --verbose --features runtime-benchmarks --manifest-path cli/Cargo.toml
+    TRYBUILD=overwrite cargo test --workspace --locked --release --verbose --features runtime-benchmarks --manifest-path cli/Cargo.toml
