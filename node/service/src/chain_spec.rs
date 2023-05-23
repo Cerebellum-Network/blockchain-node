@@ -274,6 +274,44 @@ pub fn cere_dev_development_config() -> Result<CereDevChainSpec, String> {
 	))
 }
 
+#[cfg(feature = "cere-dev-native")]
+fn cere_dev_local_testnet_genesis(wasm_binary: &[u8]) -> cere_dev::GenesisConfig {
+	cere_dev_genesis(
+		wasm_binary,
+		// Initial authorities
+		vec![authority_keys_from_seed("Alice"), authority_keys_from_seed("Bob")],
+		// Initial nominators
+		vec![],
+		// Sudo account
+		get_account_id_from_seed::<sr25519::Public>("Alice"),
+		// Pre-funded accounts
+		Some(vec![
+			get_account_id_from_seed::<sr25519::Public>("Alice"),
+			get_account_id_from_seed::<sr25519::Public>("Bob"),
+			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+		]),
+	)
+}
+
+#[cfg(feature = "cere-dev-native")]
+pub fn cere_dev_local_testnet_config() -> Result<CereDevChainSpec, String> {
+	let wasm_binary = cere_dev::WASM_BINARY.ok_or("Cere Dev development wasm not available")?;
+
+	Ok(CereDevChainSpec::from_genesis(
+		"Local Testnet",
+		"local_testnet",
+		ChainType::Local,
+		move || cere_dev_local_testnet_genesis(wasm_binary),
+		vec![],
+		None,
+		Some(DEFAULT_PROTOCOL_ID),
+		None,
+		None,
+		Default::default(),
+	))
+}
+
 pub fn cere_mainnet_config() -> Result<CereChainSpec, String> {
 	CereChainSpec::from_json_bytes(&include_bytes!("../chain-specs/mainnet.json")[..])
 }
