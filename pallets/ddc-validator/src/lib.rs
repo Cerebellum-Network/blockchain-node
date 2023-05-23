@@ -78,7 +78,7 @@ pub const ERA_IN_BLOCKS: u8 = 20;
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "https://dev-dac-redis.network-dev.aws.cere.io";
 pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
 pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
-pub const QUORUM_SIZE: usize = 1;
+pub const QUORUM_SIZE: usize = 3;
 
 /// Aggregated values from DAC that describe CDN node's activity during a certain era.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen, Serialize, Deserialize)]
@@ -609,7 +609,19 @@ pub mod pallet {
 		}
 
 		fn split<Item: Clone>(list: Vec<Item>, segment_len: usize) -> Vec<Vec<Item>> {
-			list.chunks(segment_len).map(|chunk| chunk.to_vec()).collect()
+			let mut result: Vec<Vec<Item>> = Vec::new();
+
+			if segment_len == 0 {
+				return result;
+			}
+
+			for i in (0..list.len()).step_by(segment_len) {
+				let end = usize::min(i + segment_len, list.len());
+				let chunk = list[i..end].to_vec();
+				result.push(chunk);
+			}
+
+			result
 		}
 
 		fn assign(quorum_size: usize) {
@@ -629,7 +641,7 @@ pub mod pallet {
 				.collect();
 
 			let quorums = Self::split(validators_keys, quorum_size);
-			let edges_groups = Self::split(shuffled_edges, quorums.len());
+			let edges_groups = Self::split(shuffled_edges, quorum_size);
 
 			info!("quorums: {:?}", quorums);
 			info!("edges_groups: {:?}", edges_groups);
