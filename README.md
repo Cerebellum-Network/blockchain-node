@@ -75,7 +75,7 @@ db keystore network
 ### Local Testnet Development Chain
 Purge the Alice's node state:
 ```bash
-./target/release/cere purge-chain --base-path /tmp/alice --chain local
+./target/release/cere purge-chain --base-path /tmp/alice --chain local -y
 ```
 Start Alice's node:
 ```bash
