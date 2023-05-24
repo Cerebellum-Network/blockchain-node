@@ -272,6 +272,7 @@ pub fn build_full(
 ) -> Result<NewFull<Client>, ServiceError> {
 	#[cfg(feature = "cere-dev-native")]
 	if config.chain_spec.is_cere_dev() {
+	    println!("Build Cere Dev");
 		return new_full::<cere_dev_runtime::RuntimeApi, CereDevExecutorDispatch>(
 			config,
 			disable_hardware_benchmarks,
@@ -282,6 +283,7 @@ pub fn build_full(
 
 	#[cfg(feature = "cere-native")]
 	{
+	    println!("Build Cere");
 		return new_full::<cere_runtime::RuntimeApi, CereExecutorDispatch>(
 			config,
 			disable_hardware_benchmarks,
