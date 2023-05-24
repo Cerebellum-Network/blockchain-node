@@ -300,7 +300,7 @@ pub fn cere_dev_local_testnet_config() -> Result<CereDevChainSpec, String> {
 
 	Ok(CereDevChainSpec::from_genesis(
 		"Local Testnet",
-		"local_testnet",
+		"cere_dev_local_testnet",
 		ChainType::Local,
 		move || cere_dev_local_testnet_genesis(wasm_binary),
 		vec![],
