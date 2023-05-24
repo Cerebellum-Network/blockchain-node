@@ -86,32 +86,6 @@ benchmarks! {
 		assert!(Ledger::<T>::contains_key(controller));
 	}
 
-	bond_extra {
-		// clean up any existing state.
-		clear_storages_and_edges::<T>();
-
-		let origin_balance = MinStorageBond::<T>::get().max(T::Currency::minimum_balance()); 
-
-		let scenario = AccountsScenario::<T>::new(origin_balance)?; 
-
-		// Original benchmark staking code (/frame/staking/src/benchmarking.rs)
-		let max_additional = BalanceOf::<T>::try_from(u128::MAX).map_err(|_| "balance expected to be a u128").unwrap() - origin_balance;
-
-		let stash = scenario.origin_stash1.clone();
-		let controller = scenario.origin_controller1.clone();
-		let original_bonded: BalanceOf<T>
-			= Ledger::<T>::get(&controller).map(|l| l.active).ok_or("ledger not created after")?;
-
-		T::Currency::deposit_into_existing(&stash, max_additional).unwrap();
-
-		whitelist_account!(stash);
-	}: _(RawOrigin::Signed(stash), max_additional)
-	verify {
-		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created after")?;
-		let new_bonded: BalanceOf<T> = ledger.active;
-		assert!(original_bonded < new_bonded);
-	}
-
 	unbond {
 		// clean up any existing state.
 		clear_storages_and_edges::<T>();

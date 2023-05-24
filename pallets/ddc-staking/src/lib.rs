@@ -267,45 +267,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add some extra amount that have appeared in the stash `free_balance` into the balance up
-		/// for staking.
-		///
-		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
-		///
-		/// Use this if there are additional funds in your stash account that you wish to bond.
-		/// Unlike [`bond`](Self::bond) or [`unbond`](Self::unbond) this function does not impose
-		/// any limitation on the amount that can be added.
-		///
-		/// Emits `Bonded`.
-		#[pallet::weight(T::WeightInfo::bond_extra())]
-		pub fn bond_extra(
-			origin: OriginFor<T>,
-			#[pallet::compact] max_additional: BalanceOf<T>,
-		) -> DispatchResult {
-			let stash = ensure_signed(origin)?;
-
-			let controller = Self::bonded(&stash).ok_or(Error::<T>::NotStash)?;
-			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
-
-			let stash_balance = T::Currency::free_balance(&stash);
-			if let Some(extra) = stash_balance.checked_sub(&ledger.total) {
-				let extra = extra.min(max_additional);
-				ledger.total += extra;
-				ledger.active += extra;
-				// Last check: the new active amount of ledger must be more than ED.
-				ensure!(
-					ledger.active >= T::Currency::minimum_balance(),
-					Error::<T>::InsufficientBond
-				);
-
-				// NOTE: ledger must be updated prior to calling `Self::weight_of`.
-				Self::update_ledger(&controller, &ledger);
-
-				Self::deposit_event(Event::<T>::Bonded(stash.clone(), extra));
-			}
-			Ok(())
-		}
-
 		/// Schedule a portion of the stash to be unlocked ready for transfer out after the bond
 		/// period ends. If this leaves an amount actively bonded less than
 		/// T::Currency::minimum_balance(), then it is increased to the full amount.
