@@ -13,6 +13,7 @@ use crate::weights::WeightInfo;
 use codec::{Decode, Encode, HasCompact};
 
 use frame_support::{
+	dispatch::Codec,
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, LockIdentifier, WithdrawReasons},
 	BoundedVec,
@@ -126,6 +127,17 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
+
+	/// Possible operations on the configuration values of this pallet.
+	#[derive(TypeInfo, Debug, Clone, Encode, Decode, PartialEq)]
+	pub enum ConfigOp<T: Default + Codec> {
+		/// Don't change.
+		Noop,
+		/// Set the given value.
+		Set(T),
+		/// Remove from storage.
+		Remove,
+	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -462,6 +474,35 @@ pub mod pallet {
 					<Ledger<T>>::insert(&controller, l);
 				}
 			}
+			Ok(())
+		}
+
+		/// Update the DDC staking configurations .
+		///
+		/// * `bond_size`: The active bond needed to be a Storage or Edge node.
+		///
+		/// RuntimeOrigin must be Root to call this function.
+		///
+		/// NOTE: Existing nominators and validators will not be affected by this update.
+		#[pallet::weight(10_000)]
+		pub fn set_staking_configs(
+			origin: OriginFor<T>,
+			bond_size: ConfigOp<BalanceOf<T>>,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			macro_rules! config_op_exp {
+				($storage:ty, $op:ident) => {
+					match $op {
+						ConfigOp::Noop => (),
+						ConfigOp::Set(v) => <$storage>::put(v),
+						ConfigOp::Remove => <$storage>::kill(),
+					}
+				};
+			}
+
+			config_op_exp!(BondSize<T>, bond_size);
+
 			Ok(())
 		}
 	}
