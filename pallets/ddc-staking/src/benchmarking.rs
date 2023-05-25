@@ -78,9 +78,8 @@ benchmarks! {
 		let controller = create_funded_user::<T>("controller", USER_SEED, 100);
 		let controller_lookup: <T::Lookup as StaticLookup>::Source
 			= T::Lookup::unlookup(controller.clone());
-		let amount = T::Currency::minimum_balance() * 10u32.into(); 
 		whitelist_account!(stash);
-	}: _(RawOrigin::Signed(stash.clone()), controller_lookup, amount)
+	}: _(RawOrigin::Signed(stash.clone()), controller_lookup)
 	verify {
 		assert!(Bonded::<T>::contains_key(stash));
 		assert!(Ledger::<T>::contains_key(controller));
@@ -101,12 +100,11 @@ benchmarks! {
 		let stash = scenario.origin_stash1.clone();
 		let controller = scenario.origin_controller1.clone();
 		// unbond half of initial balance
-		let amount = origin_balance / 2u32.into(); 
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_bonded: BalanceOf<T> = ledger.active;
 
 		whitelist_account!(controller);
-	}: _(RawOrigin::Signed(controller.clone()), amount)
+	}: _(RawOrigin::Signed(controller.clone()))
 	verify {
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created after")?;
 		let new_bonded: BalanceOf<T> = ledger.active;
@@ -115,8 +113,7 @@ benchmarks! {
 
 	withdraw_unbonded {
 		let (stash, controller) = create_stash_controller::<T>(0, 100)?;
-		let amount = T::Currency::minimum_balance() * 5u32.into(); // Half of total
-		DddcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into(), amount)?;
+		DddcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into())?;
 		CurrentEra::<T>::put(EraIndex::max_value()); 
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_total: BalanceOf<T> = ledger.total;
@@ -152,7 +149,7 @@ benchmarks! {
 		// clean up any existing state.
 		clear_storages_and_edges::<T>();
 
-		let origin_balance = MinStorageBond::<T>::get().max(T::Currency::minimum_balance());
+		let origin_balance = BondSize::<T>::get().max(T::Currency::minimum_balance());
 
 		let scenario = AccountsScenario::<T>::new(origin_balance)?;
 		let controller = scenario.origin_controller1.clone();
