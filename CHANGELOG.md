@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `rust-toolchain.toml` as a single source of truth on toolchain requirements (except Nix builder)
+- Cere Dev Local Testnet config
 
 ## [3.0.0]
 
