@@ -13,6 +13,7 @@ use crate::weights::WeightInfo;
 use codec::{Decode, Encode, HasCompact};
 
 use frame_support::{
+	dispatch::Codec,
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, LockIdentifier, WithdrawReasons},
 	BoundedVec,
@@ -127,6 +128,17 @@ pub mod pallet {
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
+	/// Possible operations on the configuration values of this pallet.
+	#[derive(TypeInfo, Debug, Clone, Encode, Decode, PartialEq)]
+	pub enum ConfigOp<T: Default + Codec> {
+		/// Don't change.
+		Noop,
+		/// Set the given value.
+		Set(T),
+		/// Remove from storage.
+		Remove,
+	}
+
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
@@ -143,13 +155,10 @@ pub mod pallet {
 	#[pallet::getter(fn bonded)]
 	pub type Bonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
 
-	/// The minimum active bond to become and maintain the role of a storage network participant.
+	/// The bond size required to become and maintain the role of a CDN or storage network
+	/// participant.
 	#[pallet::storage]
-	pub type MinStorageBond<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
-
-	/// The minimum active bond to become and maintain the role of a CDN participant.
-	#[pallet::storage]
-	pub type MinEdgeBond<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+	pub type BondSize<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
 
 	/// Map from all (unlocked) "controller" accounts to the info regarding the staking.
 	#[pallet::storage]
@@ -206,9 +215,9 @@ pub mod pallet {
 		AlreadyBonded,
 		/// Controller is already paired.
 		AlreadyPaired,
-		/// Cannot have a storage network or CDN participant, with value less than the minimum
-		/// defined by governance (see `MinStorageBond` and `MinEdgeBond`). If unbonding is the
-		/// intention, `chill` first to remove one's role as storage/edge.
+		/// Cannot have a storage network or CDN participant, with the size less than defined by
+		/// governance (see `BondSize`). If unbonding is the intention, `chill` first to remove
+		/// one's role as storage/edge.
 		InsufficientBond,
 		/// Can not schedule more unlock chunks.
 		NoMoreChunks,
@@ -233,7 +242,6 @@ pub mod pallet {
 		pub fn bond(
 			origin: OriginFor<T>,
 			controller: <T::Lookup as StaticLookup>::Source,
-			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let stash = ensure_signed(origin)?;
 
@@ -247,68 +255,39 @@ pub mod pallet {
 				Err(Error::<T>::AlreadyPaired)?
 			}
 
+			let stash_free = T::Currency::free_balance(&stash);
+
 			// Reject a bond which is considered to be _dust_.
-			if value < T::Currency::minimum_balance() {
+			if stash_free < T::Currency::minimum_balance() {
+				Err(Error::<T>::InsufficientBond)?
+			}
+
+			let bond_size = BondSize::<T>::get();
+
+			// Reject a bond which is lower then required.
+			if stash_free < bond_size {
 				Err(Error::<T>::InsufficientBond)?
 			}
 
 			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
 
 			// You're auto-bonded forever, here. We might improve this by only bonding when
-			// you actually store/serve and remove once you unbond __everything__.
+			// you actually store/serve and remove once you unbond.
 			<Bonded<T>>::insert(&stash, &controller);
 
-			let stash_balance = T::Currency::free_balance(&stash);
-			let value = value.min(stash_balance);
-			Self::deposit_event(Event::<T>::Bonded(stash.clone(), value));
-			let item =
-				StakingLedger { stash, total: value, active: value, unlocking: Default::default() };
+			Self::deposit_event(Event::<T>::Bonded(stash.clone(), bond_size));
+			let item = StakingLedger {
+				stash,
+				total: bond_size,
+				active: bond_size,
+				unlocking: Default::default(),
+			};
 			Self::update_ledger(&controller, &item);
 			Ok(())
 		}
 
-		/// Add some extra amount that have appeared in the stash `free_balance` into the balance up
-		/// for staking.
-		///
-		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
-		///
-		/// Use this if there are additional funds in your stash account that you wish to bond.
-		/// Unlike [`bond`](Self::bond) or [`unbond`](Self::unbond) this function does not impose
-		/// any limitation on the amount that can be added.
-		///
-		/// Emits `Bonded`.
-		#[pallet::weight(T::WeightInfo::bond_extra())]
-		pub fn bond_extra(
-			origin: OriginFor<T>,
-			#[pallet::compact] max_additional: BalanceOf<T>,
-		) -> DispatchResult {
-			let stash = ensure_signed(origin)?;
-
-			let controller = Self::bonded(&stash).ok_or(Error::<T>::NotStash)?;
-			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
-
-			let stash_balance = T::Currency::free_balance(&stash);
-			if let Some(extra) = stash_balance.checked_sub(&ledger.total) {
-				let extra = extra.min(max_additional);
-				ledger.total += extra;
-				ledger.active += extra;
-				// Last check: the new active amount of ledger must be more than ED.
-				ensure!(
-					ledger.active >= T::Currency::minimum_balance(),
-					Error::<T>::InsufficientBond
-				);
-
-				// NOTE: ledger must be updated prior to calling `Self::weight_of`.
-				Self::update_ledger(&controller, &ledger);
-
-				Self::deposit_event(Event::<T>::Bonded(stash.clone(), extra));
-			}
-			Ok(())
-		}
-
-		/// Schedule a portion of the stash to be unlocked ready for transfer out after the bond
-		/// period ends. If this leaves an amount actively bonded less than
-		/// T::Currency::minimum_balance(), then it is increased to the full amount.
+		/// Schedule a bond of the stash to be unlocked ready for transfer out after the bond
+		/// period ends.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash.
 		///
@@ -317,7 +296,10 @@ pub mod pallet {
 		///
 		/// No more than a limited number of unlocking chunks (see `MaxUnlockingChunks`)
 		/// can co-exists at the same time. In that case, [`Call::withdraw_unbonded`] need
-		/// to be called first to remove some of the chunks (if possible).
+		/// to be called first to remove some of the chunks (if possible). This feature is actually
+		/// not required because we unlock the whole bond at once, means it is impossible to have
+		/// more then one unlocking at time. But this is inherited from the `pallet-staking` and we
+		/// may remove in some future version.
 		///
 		/// If a user encounters the `InsufficientBond` error when calling this extrinsic,
 		/// they should call `chill` first in order to free up their bonded funds.
@@ -328,58 +310,48 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::unbond())]
 		pub fn unbond(
 			origin: OriginFor<T>,
-			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+
+			if ledger.active.is_zero() {
+				// Nothing to unbond.
+				return Ok(())
+			}
+
 			ensure!(
 				ledger.unlocking.len() < MaxUnlockingChunks::get() as usize,
 				Error::<T>::NoMoreChunks,
 			);
 
-			let mut value = value.min(ledger.active);
+			// Make sure that the user maintains enough active bond for their role.
+			// If a user runs into this error, they should chill first.
+			ensure!(!Storages::<T>::contains_key(&ledger.stash), Error::<T>::InsufficientBond);
+			ensure!(!Edges::<T>::contains_key(&ledger.stash), Error::<T>::InsufficientBond);
 
-			if !value.is_zero() {
-				ledger.active -= value;
+			let era = Self::current_era().unwrap_or(0) + T::BondingDuration::get();
 
-				// Avoid there being a dust balance left in the staking system.
-				if ledger.active < T::Currency::minimum_balance() {
-					value += ledger.active;
-					ledger.active = Zero::zero();
-				}
+			// Unbond actual active stake instead of the current `BondSize` to allow users bond and
+			// unbond the same amount regardless of changes of the `BondSize`.
+			let unbond_value = ledger.active.clone();
+			ledger.active = Zero::zero();
 
-				let min_active_bond = if Storages::<T>::contains_key(&ledger.stash) {
-					MinStorageBond::<T>::get()
-				} else if Edges::<T>::contains_key(&ledger.stash) {
-					MinEdgeBond::<T>::get()
-				} else {
-					Zero::zero()
-				};
+			if let Some(mut chunk) = ledger.unlocking.last_mut().filter(|chunk| chunk.era == era) {
+				// To keep the chunk count down, we only keep one chunk per era. Since
+				// `unlocking` is a FiFo queue, if a chunk exists for `era` we know that it will
+				// be the last one.
+				chunk.value = chunk.value.defensive_saturating_add(unbond_value)
+			} else {
+				ledger
+					.unlocking
+					.try_push(UnlockChunk { value: unbond_value, era })
+					.map_err(|_| Error::<T>::NoMoreChunks)?;
+			};
+			// NOTE: ledger must be updated prior to calling `Self::weight_of`.
+			Self::update_ledger(&controller, &ledger);
 
-				// Make sure that the user maintains enough active bond for their role.
-				// If a user runs into this error, they should chill first.
-				ensure!(ledger.active >= min_active_bond, Error::<T>::InsufficientBond);
+			Self::deposit_event(Event::<T>::Unbonded(ledger.stash, unbond_value));
 
-				// Note: in case there is no current era it is fine to bond one era more.
-				let era = Self::current_era().unwrap_or(0) + T::BondingDuration::get();
-				if let Some(mut chunk) =
-					ledger.unlocking.last_mut().filter(|chunk| chunk.era == era)
-				{
-					// To keep the chunk count down, we only keep one chunk per era. Since
-					// `unlocking` is a FiFo queue, if a chunk exists for `era` we know that it will
-					// be the last one.
-					chunk.value = chunk.value.defensive_saturating_add(value)
-				} else {
-					ledger
-						.unlocking
-						.try_push(UnlockChunk { value, era })
-						.map_err(|_| Error::<T>::NoMoreChunks)?;
-				};
-				// NOTE: ledger must be updated prior to calling `Self::weight_of`.
-				Self::update_ledger(&controller, &ledger);
-
-				Self::deposit_event(Event::<T>::Unbonded(ledger.stash, value));
-			}
 			Ok(())
 		}
 
@@ -436,7 +408,7 @@ pub mod pallet {
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 
-			ensure!(ledger.active >= MinStorageBond::<T>::get(), Error::<T>::InsufficientBond);
+			ensure!(ledger.active >= BondSize::<T>::get(), Error::<T>::InsufficientBond);
 			let stash = &ledger.stash;
 
 			// Can't participate in storage network if already participating in CDN.
@@ -457,7 +429,7 @@ pub mod pallet {
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 
-			ensure!(ledger.active >= MinEdgeBond::<T>::get(), Error::<T>::InsufficientBond);
+			ensure!(ledger.active >= BondSize::<T>::get(), Error::<T>::InsufficientBond);
 			let stash = &ledger.stash;
 
 			// Can't participate in CDN if already participating in storage network.
@@ -502,6 +474,35 @@ pub mod pallet {
 					<Ledger<T>>::insert(&controller, l);
 				}
 			}
+			Ok(())
+		}
+
+		/// Update the DDC staking configurations .
+		///
+		/// * `bond_size`: The active bond needed to be a Storage or Edge node.
+		///
+		/// RuntimeOrigin must be Root to call this function.
+		///
+		/// NOTE: Existing nominators and validators will not be affected by this update.
+		#[pallet::weight(10_000)]
+		pub fn set_staking_configs(
+			origin: OriginFor<T>,
+			bond_size: ConfigOp<BalanceOf<T>>,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			macro_rules! config_op_exp {
+				($storage:ty, $op:ident) => {
+					match $op {
+						ConfigOp::Noop => (),
+						ConfigOp::Set(v) => <$storage>::put(v),
+						ConfigOp::Remove => <$storage>::kill(),
+					}
+				};
+			}
+
+			config_op_exp!(BondSize<T>, bond_size);
+
 			Ok(())
 		}
 	}
