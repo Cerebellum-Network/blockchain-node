@@ -29,7 +29,6 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for pallet_staking.
 pub trait WeightInfo {
 	fn bond() -> Weight;
-	fn bond_extra() -> Weight;
 	fn unbond() -> Weight;
 	fn withdraw_unbonded() -> Weight;
 	fn store() -> Weight;
@@ -48,14 +47,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		(51_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	// Storage: DdcStaking Bonded (r:1 w:0)
-	// Storage: DdcStaking Ledger (r:1 w:1)
-	// Storage: Balances Locks (r:1 w:1)
-	fn bond_extra() -> Weight {
-		(54_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: DdcStaking Ledger (r:1 w:0)
 	fn unbond() -> Weight {
