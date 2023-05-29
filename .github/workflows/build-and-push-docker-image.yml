@@ -2,9 +2,11 @@ name: Build and push image to ECR
 on:
   push:
     branches:
-      - dev-cere
-      - master-cere
+      - dev
+      - master
       - 'feature/**'
+      - 'release/**'
+      - 'hotfix/**'
 env:
   ECR_REPOSITORY: pos-network-node
 jobs:
