@@ -2,9 +2,11 @@ name: Run tests
 on:
   pull_request:
     branches:
-      - dev-cere
-      - master-cere
+      - dev
+      - master
       - 'feature/**'
+      - 'release/**'
+      - 'hotfix/**'
     types:
       - opened
       - synchronize
