@@ -40,19 +40,19 @@ struct IntermediateDecision {
 	data: String,
 }
 
-pub fn base64_decode(input: &String) -> Vec<u8> {
+pub fn base64_decode(input: &String) -> Result<Vec<u8>, ()> {
 	let mut buf = Vec::with_capacity(392); // ToDo: calculate capacity
 	buf.resize(392, 0);
-	BASE64_STANDARD.decode_slice(input, &mut buf).unwrap(); // ToDo: handle error
-	buf.iter().map(|&char| char as u8).collect()
+	BASE64_STANDARD.decode_slice(input, &mut buf).map_err(|_| ())?;
+	Ok(buf.iter().map(|&char| char as u8).collect())
 }
 
 /// Encodes a vector of bytes into a vector of characters using base64 encoding.
-pub fn base64_encode(input: &Vec<u8>) -> Vec<char> {
+pub fn base64_encode(input: &Vec<u8>) -> Result<Vec<char>, ()> {
 	let mut buf = Vec::with_capacity(392); // ToDo: calculate capacity
 	buf.resize(392, 0);
-	BASE64_STANDARD.encode_slice(input, &mut buf).unwrap(); // ToDo: handle error
-	buf.iter().map(|&byte| byte as char).collect()
+	BASE64_STANDARD.encode_slice(input, &mut buf).map_err(|_| ())?;
+	Ok(buf.iter().map(|&byte| byte as char).collect())
 }
 
 /// Publish intermediate validation result to redis.
