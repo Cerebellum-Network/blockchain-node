@@ -49,10 +49,24 @@ pub(crate) fn url_encode(input: &str) -> String {
 
 pub(crate) fn unescape(json: &str) -> String {
 	let mut result = String::new();
+	let mut chars = json.chars().peekable();
 
-	for ch in json.chars() {
-		if ch != '\\' {
-			result.push(ch);
+	while let Some(c) = chars.next() {
+		if c == '\\' {
+			match chars.peek() {
+				Some('u') => {
+					// Skip over the next 5 characters
+					for _ in 0..5 {
+						chars.next();
+					}
+				}
+				_ => {
+					// Skip over the next character
+					chars.next();
+				}
+			}
+		} else {
+			result.push(c);
 		}
 	}
 

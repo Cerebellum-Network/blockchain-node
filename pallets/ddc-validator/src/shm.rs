@@ -41,16 +41,16 @@ struct IntermediateDecision {
 }
 
 pub fn base64_decode(input: &String) -> Result<Vec<u8>, ()> {
-	let mut buf = Vec::with_capacity(392); // ToDo: calculate capacity
-	buf.resize(392, 0);
+	let mut buf = Vec::with_capacity(1000); // ToDo: calculate capacity
+	buf.resize(1000, 0);
 	BASE64_STANDARD.decode_slice(input, &mut buf).map_err(|_| ())?;
 	Ok(buf.iter().map(|&char| char as u8).collect())
 }
 
 /// Encodes a vector of bytes into a vector of characters using base64 encoding.
 pub fn base64_encode(input: &Vec<u8>) -> Result<Vec<char>, ()> {
-	let mut buf = Vec::with_capacity(392); // ToDo: calculate capacity
-	buf.resize(392, 0);
+	let mut buf = Vec::with_capacity(1000); // ToDo: calculate capacity
+	buf.resize(1000, 0);
 	BASE64_STANDARD.encode_slice(input, &mut buf).map_err(|_| ())?;
 	Ok(buf.iter().map(|&byte| byte as char).collect())
 }
