@@ -366,7 +366,7 @@ pub mod pallet {
 				// Encode validation decision to base64
 				let validation_decision_serialized: Vec<u8> = validation_decision.encode();
 				let validation_decision_base64 =
-					shm::base64_encode(&validation_decision_serialized);
+					shm::base64_encode(&validation_decision_serialized).unwrap();
 				log::info!(
 					"Intermediate validation decision for CDN node {:?}: , base64 encoded: {:?}",
 					validation_decision,
@@ -748,13 +748,14 @@ pub mod pallet {
 						sent: bytes_sent,
 						failed_by_client: 0,
 						failure_rate: 0,
-					}
+					},
 				};
 
 				info!("decision: {:?}", decision);
 
 				let serialized_decision = serde_json::to_string(&decision).unwrap();
-				let encoded_decision = shm::base64_encode(&serialized_decision.as_bytes().to_vec());
+				let encoded_decision =
+					shm::base64_encode(&serialized_decision.as_bytes().to_vec()).unwrap();
 				let validator_str = utils::account_to_string::<T>(validator.clone());
 				let edge_str = utils::account_to_string::<T>(assigned_edge.clone());
 

@@ -123,11 +123,13 @@ pub(crate) fn get_intermediate_decisions(data_provider_url: &String, edge: &str,
 	decoded_decisions
 }
 
-pub(crate) fn decode_intermediate_decisions(decisions: IntermediateDecisions) -> Vec<ValidationDecision> {
+pub(crate) fn decode_intermediate_decisions(
+	decisions: IntermediateDecisions,
+) -> Vec<ValidationDecision> {
 	let mut decoded_decisions: Vec<ValidationDecision> = Vec::new();
 
 	for (_, decision) in decisions.validators_to_decisions.iter() {
-		let data = base64_decode(&decision.data);
+		let data = base64_decode(&decision.data).unwrap();
 
 		let data_str = String::from_utf8_lossy(&data);
 		let data_trimmed = data_str.trim_end_matches('\0');
