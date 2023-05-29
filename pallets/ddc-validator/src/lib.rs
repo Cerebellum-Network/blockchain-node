@@ -234,15 +234,20 @@ pub mod pallet {
 			let era = Self::get_current_era();
 			log::info!("current era: {:?}", era);
 
-			if let Some(last_managed_era) = <LastManagedEra<T>>::get() {
-				log::info!("last_managed_era: {:?}", last_managed_era);
-				if last_managed_era >= era {
-					return 0
+			match <LastManagedEra<T>>::get(){
+				Some(last_managed_era) => {
+					if last_managed_era > era {
+						return 0
+					} else {
+						Self::assign(3usize, era + 1);
+						<LastManagedEra<T>>::put(era);
+					}
+				}
+				None => {
+					Self::assign(3usize, era);
+					<LastManagedEra<T>>::put(era);
 				}
 			}
-			<LastManagedEra<T>>::put(era);
-
-			Self::assign(3usize);
 
 			0
 		}
@@ -624,7 +629,7 @@ pub mod pallet {
 			result
 		}
 
-		fn assign(quorum_size: usize) {
+		fn assign(quorum_size: usize, era: EraIndex) {
 			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
 			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
 
@@ -645,8 +650,6 @@ pub mod pallet {
 
 			info!("quorums: {:?}", quorums);
 			info!("edges_groups: {:?}", edges_groups);
-
-			let era = Self::get_current_era();
 
 			for (i, quorum) in quorums.iter().enumerate() {
 				let edges_group = &edges_groups[i];
@@ -727,7 +730,7 @@ pub mod pallet {
 
 			info!("validator: {:?}", validator);
 
-			let assigned_edges = Self::assignments(current_era - 1, validator.clone()).unwrap();
+			let assigned_edges = Self::assignments(current_era - 1, validator.clone()).expect("No assignments for the previous era");
 
 			info!("assigned_edges: {:?}", assigned_edges);
 
