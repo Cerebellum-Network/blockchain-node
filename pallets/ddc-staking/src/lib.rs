@@ -166,18 +166,15 @@ pub mod pallet {
 	pub type Ledger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>>>;
 
-	/// The map from (wannabe) storage network participant stash key to the preferences of that
-	/// storage network participant.
+	/// The list of (wannabe) storage network participants stash keys.
 	#[pallet::storage]
 	#[pallet::getter(fn storages)]
-	pub type Storages<T: Config> =
-		CountedStorageMap<_, Twox64Concat, T::AccountId, StoragePrefs, ValueQuery>;
+	pub type Storages<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
-	/// The map from (wannabe) CDN participant stash key to the preferences of that CDN participant.
+	/// The list of (wannabe) CDN participants stash keys.
 	#[pallet::storage]
 	#[pallet::getter(fn edges)]
-	pub type Edges<T: Config> =
-		CountedStorageMap<_, Twox64Concat, T::AccountId, EdgePrefs, ValueQuery>;
+	pub type Edges<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
 	/// The current era index.
 	///
