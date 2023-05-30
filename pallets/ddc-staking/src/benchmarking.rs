@@ -90,7 +90,7 @@ benchmarks! {
 		clear_storages_and_edges::<T>();
 
 		let total_issuance = T::Currency::total_issuance();
-		
+
 		// Constant taken from original benchmark staking code (/frame/staking/src/benchmarking.rs)
 		let origin_balance = BalanceOf::<T>::try_from(952_994_955_240_703u128)
 			.map_err(|_| "balance expected to be a u128")
@@ -114,7 +114,7 @@ benchmarks! {
 	withdraw_unbonded {
 		let (stash, controller) = create_stash_controller::<T>(0, 100)?;
 		DddcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into())?;
-		CurrentEra::<T>::put(EraIndex::max_value()); 
+		CurrentEra::<T>::put(EraIndex::max_value());
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_total: BalanceOf<T> = ledger.total;
 		whitelist_account!(controller);
