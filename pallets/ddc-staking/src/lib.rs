@@ -308,9 +308,7 @@ pub mod pallet {
 		///
 		/// See also [`Call::withdraw_unbonded`].
 		#[pallet::weight(T::WeightInfo::unbond())]
-		pub fn unbond(
-			origin: OriginFor<T>,
-		) -> DispatchResult {
+		pub fn unbond(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 
