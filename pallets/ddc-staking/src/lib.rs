@@ -321,8 +321,8 @@ pub mod pallet {
 
 			// Make sure that the user maintains enough active bond for their role.
 			// If a user runs into this error, they should chill first.
-			ensure!(!Storages::<T>::contains_key(&ledger.stash), Error::<T>::InsufficientBond);
-			ensure!(!Edges::<T>::contains_key(&ledger.stash), Error::<T>::InsufficientBond);
+			ensure!(!Storages::<T>::get().contains(&ledger.stash), Error::<T>::InsufficientBond);
+			ensure!(!Edges::<T>::get().contains(&ledger.stash), Error::<T>::InsufficientBond);
 
 			let era = Self::current_era().unwrap_or(0) + T::BondingDuration::get();
 
@@ -407,7 +407,7 @@ pub mod pallet {
 			let stash = &ledger.stash;
 
 			// Can't participate in storage network if already participating in CDN.
-			ensure!(!Edges::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
+			ensure!(!Edges::<T>::get().contains(&stash), Error::<T>::AlreadyInRole);
 
 			Self::do_add_storage(stash, prefs);
 			Ok(())
@@ -428,7 +428,7 @@ pub mod pallet {
 			let stash = &ledger.stash;
 
 			// Can't participate in CDN if already participating in storage network.
-			ensure!(!Storages::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
+			ensure!(!Storages::<T>::get().contains(&stash), Error::<T>::AlreadyInRole);
 
 			Self::do_add_edge(stash, prefs);
 			Ok(())
@@ -557,10 +557,10 @@ pub mod pallet {
 		/// system. Any access to `Storages` outside of this function is almost certainly
 		/// wrong.
 		pub fn do_add_storage(who: &T::AccountId, prefs: StoragePrefs) {
-			Storages::<T>::insert(who, prefs);
+			Storages::<T>::append(who);
 		}
 
-		/// This function will remove a storage network participant from the `Storages` storage map.
+		/// This function will remove a storage network participant from the `Storages` list.
 		///
 		/// Returns true if `who` was removed from `Storages`, otherwise false.
 		///
@@ -568,14 +568,14 @@ pub mod pallet {
 		/// system. Any access to `Storages` outside of this function is almost certainly
 		/// wrong.
 		pub fn do_remove_storage(who: &T::AccountId) -> bool {
-			let outcome = if Storages::<T>::contains_key(who) {
-				Storages::<T>::remove(who);
-				true
-			} else {
+			Storages::<T>::mutate(|storages| {
+				let maybe_position = storages.iter().position(|s| s == who);
+				if let Some(index) = maybe_position {
+					storages.swap_remove(index);
+					return true
+				};
 				false
-			};
-
-			outcome
+			})
 		}
 
 		/// This function will add a CDN participant to the `Edges` storage map.
@@ -586,10 +586,10 @@ pub mod pallet {
 		/// access to `Edges` outside of this function is almost certainly
 		/// wrong.
 		pub fn do_add_edge(who: &T::AccountId, prefs: EdgePrefs) {
-			Edges::<T>::insert(who, prefs);
+			Edges::<T>::append(who);
 		}
 
-		/// This function will remove a CDN participant from the `Edges` storage map.
+		/// This function will remove a CDN participant from the `Edges` list.
 		///
 		/// Returns true if `who` was removed from `Edges`, otherwise false.
 		///
@@ -597,14 +597,14 @@ pub mod pallet {
 		/// system. Any access to `Edges` outside of this function is almost certainly
 		/// wrong.
 		pub fn do_remove_edge(who: &T::AccountId) -> bool {
-			let outcome = if Edges::<T>::contains_key(who) {
-				Storages::<T>::remove(who);
-				true
-			} else {
+			Edges::<T>::mutate(|storages| {
+				let maybe_position = storages.iter().position(|s| s == who);
+				if let Some(index) = maybe_position {
+					storages.swap_remove(index);
+					return true
+				};
 				false
-			};
-
-			outcome
+			})
 		}
 	}
 }
