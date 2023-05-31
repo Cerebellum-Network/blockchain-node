@@ -47,6 +47,7 @@ pub use frame_system::{
 };
 pub use lite_json::json::JsonValue;
 pub use pallet::*;
+pub use pallet_ddc_accounts::{self as ddc_accounts, BucketsDetails};
 pub use pallet_ddc_staking::{self as ddc_staking};
 pub use pallet_session as session;
 pub use pallet_staking::{self as staking};
@@ -73,12 +74,13 @@ pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
 pub const TIME_START_MS: u128 = 1_672_531_200_000;
 pub const ERA_DURATION_MS: u128 = 120_000;
 pub const ERA_IN_BLOCKS: u8 = 20;
+pub const BYTES_TO_CERE: u64 = 1_000;
 
 /// Webdis in experimental cluster connected to Redis in dev.
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "https://dev-dac-redis.network-dev.aws.cere.io";
 pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
 pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
-pub const QUORUM_SIZE: usize = 3;
+pub const QUORUM_SIZE: usize = 1;
 
 /// Aggregated values from DAC that describe CDN node's activity during a certain era.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen, Serialize, Deserialize)]
@@ -150,6 +152,7 @@ pub mod pallet {
 		+ pallet_contracts::Config
 		+ pallet_session::Config<ValidatorId = <Self as frame_system::Config>::AccountId>
 		+ pallet_staking::Config
+		+ ddc_accounts::Config
 		+ ddc_staking::Config
 		+ CreateSignedTransaction<Call<Self>>
 	where
@@ -574,7 +577,7 @@ pub mod pallet {
 
 		// Get the current era; Shall we start era count from 0 or from 1?
 		fn get_current_era() -> EraIndex {
-			((T::TimeProvider::now().as_millis() - TIME_START_MS) / ERA_DURATION_MS)
+			((<T as pallet::Config>::TimeProvider::now().as_millis() - TIME_START_MS) / ERA_DURATION_MS)
 				.try_into()
 				.unwrap()
 		}
@@ -631,7 +634,10 @@ pub mod pallet {
 
 		fn assign(quorum_size: usize, era: EraIndex) {
 			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
+			log::info!("current validators: {:?}", validators);
+
 			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
+			log::info!("current edges: {:?}", edges);
 
 			if edges.len() == 0 {
 				return
@@ -735,7 +741,10 @@ pub mod pallet {
 			info!("assigned_edges: {:?}", assigned_edges);
 
 			for assigned_edge in assigned_edges.iter() {
+				// Store bucket payments
+				let payments_per_bucket = &mut Vec::new();
 				let file_request = dac::fetch_file_request(&mock_data_url);
+				dac::get_acknowledged_bytes_bucket(&file_request, payments_per_bucket);
 				let (bytes_sent, bytes_received) = dac::get_served_bytes_sum(&file_request);
 				let is_valid = Self::is_valid(bytes_sent, bytes_received);
 
@@ -790,6 +799,18 @@ pub mod pallet {
 					log::info!("get_intermediate_decisions result: {:?}", validations_res);
 
 					if validations_res.len() == QUORUM_SIZE {
+						log::info!("payments per bucket: {:?}", payments_per_bucket);
+
+						let mut payments = vec![];
+						for bucket in payments_per_bucket.into_iter() {
+							let cere_payment: u32 = (bucket.1 / BYTES_TO_CERE) as u32;
+							let bucket_info = BucketsDetails {bucket_id: bucket.0, amount: cere_payment.into()};
+							payments.push(bucket_info);
+						}
+						log::info!("final payments: {:?}", payments);
+
+						ddc_accounts::pallet::Pallet::<T>::charge_payments_new(payments);
+
 						let final_res = dac::get_final_decision(validations_res);
 
 						let signer = Self::get_signer().unwrap();
