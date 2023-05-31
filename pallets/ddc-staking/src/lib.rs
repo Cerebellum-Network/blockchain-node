@@ -102,18 +102,6 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 	}
 }
 
-/// Preference of what happens regarding to participating in storage network.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
-pub struct StoragePrefs {
-	foo: bool, // ToDo
-}
-
-/// Preference of what happens regarding to participating in CDN.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
-pub struct EdgePrefs {
-	foo: bool, // ToDo
-}
-
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
