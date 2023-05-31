@@ -398,7 +398,7 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash.
 		#[pallet::weight(T::WeightInfo::store())]
-		pub fn store(origin: OriginFor<T>, prefs: StoragePrefs) -> DispatchResult {
+		pub fn store(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
@@ -409,7 +409,7 @@ pub mod pallet {
 			// Can't participate in storage network if already participating in CDN.
 			ensure!(!Edges::<T>::get().contains(&stash), Error::<T>::AlreadyInRole);
 
-			Self::do_add_storage(stash, prefs);
+			Self::do_add_storage(stash);
 			Ok(())
 		}
 
@@ -419,7 +419,7 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash.
 		#[pallet::weight(T::WeightInfo::serve())]
-		pub fn serve(origin: OriginFor<T>, prefs: EdgePrefs) -> DispatchResult {
+		pub fn serve(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
@@ -430,7 +430,7 @@ pub mod pallet {
 			// Can't participate in CDN if already participating in storage network.
 			ensure!(!Storages::<T>::get().contains(&stash), Error::<T>::AlreadyInRole);
 
-			Self::do_add_edge(stash, prefs);
+			Self::do_add_edge(stash);
 			Ok(())
 		}
 
@@ -556,7 +556,7 @@ pub mod pallet {
 		/// NOTE: you must ALWAYS use this function to add a storage network participant to the
 		/// system. Any access to `Storages` outside of this function is almost certainly
 		/// wrong.
-		pub fn do_add_storage(who: &T::AccountId, prefs: StoragePrefs) {
+		pub fn do_add_storage(who: &T::AccountId) {
 			Storages::<T>::append(who);
 		}
 
@@ -585,7 +585,7 @@ pub mod pallet {
 		/// NOTE: you must ALWAYS use this function to add a CDN participant to the system. Any
 		/// access to `Edges` outside of this function is almost certainly
 		/// wrong.
-		pub fn do_add_edge(who: &T::AccountId, prefs: EdgePrefs) {
+		pub fn do_add_edge(who: &T::AccountId) {
 			Edges::<T>::append(who);
 		}
 
