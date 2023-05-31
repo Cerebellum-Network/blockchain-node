@@ -71,7 +71,7 @@ pub type Requests = BTreeMap<String, FileRequest>;
 pub struct FileRequest {
 	file_request_id: String,
 	file_info: FileInfo,
-	bucket_id: u64,
+	bucket_id: u128,
 	timestamp: u64,
 	chunks: BTreeMap<String, Chunk>,
 	user_public_key: String,
@@ -112,7 +112,7 @@ pub struct Log {
 	timestamp: u64,
 	node_public_key: String,
 	signature: String,
-	bucket_id: u64,
+	bucket_id: u128,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -271,6 +271,26 @@ fn get_timestamps_with_ack(file_requests: &Requests) -> Vec<TimestampInSec> {
 	timestamps.sort();
 
 	timestamps
+}
+
+pub fn get_acknowledged_bytes_bucket<'a>(file_requests: &'a Requests, acknowledged_bytes_by_bucket: &'a mut Vec<(u128, u64)>) -> &'a Vec<(u128, u64)> {
+	let ack_timestamps = get_timestamps_with_ack(file_requests);
+
+	for (_, file_request) in file_requests {
+		let mut total_bytes_received = 0u64;
+		let bucket_id = file_request.bucket_id;
+		for (_, chunk) in &file_request.chunks {
+
+			if let Some(ack) = &chunk.ack {
+				total_bytes_received += ack.bytes_received;
+			} else {
+				total_bytes_received += get_proved_delivered_bytes(chunk, &ack_timestamps);
+			}
+		}
+		acknowledged_bytes_by_bucket.push((bucket_id, total_bytes_received));
+	}
+
+	acknowledged_bytes_by_bucket
 }
 
 pub fn get_served_bytes_sum(file_requests: &Requests) -> (u64, u64) {

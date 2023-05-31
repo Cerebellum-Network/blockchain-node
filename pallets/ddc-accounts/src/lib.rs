@@ -53,8 +53,8 @@ pub struct Bucket<AccountId> {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct BucketsDetails<Balance: HasCompact> {
-	bucket_id: u128,
-	amount: Balance,
+	pub bucket_id: u128,
+	pub amount: Balance,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -561,6 +561,39 @@ pub mod pallet {
 			((T::TimeProvider::now().as_millis() - TIME_START_MS) / ERA_DURATION_MS)
 				.try_into()
 				.unwrap()
+		}
+
+		// Charge payments from content owners
+		pub fn charge_payments_new(
+			paying_accounts: Vec<BucketsDetails<BalanceOf<T>>>,
+		) -> DispatchResult {
+      let mut total_charged = BalanceOf::<T>::zero();
+
+      for bucket_details in paying_accounts.iter() {
+        let bucket: Bucket<T::AccountId> = Self::buckets(bucket_details.bucket_id).unwrap();
+        let content_owner = bucket.owner_id;
+        let amount = bucket_details.amount;
+
+        let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotController)?;
+        if ledger.active >= amount {
+          ledger.total -= amount;
+          ledger.active -= amount;
+          total_charged += amount;
+          Self::update_ledger(&content_owner, &ledger);
+        } else {
+          let diff = amount - ledger.active;
+          total_charged += ledger.active;
+          ledger.total -= ledger.active;
+          ledger.active = BalanceOf::<T>::zero();
+          let (ledger, charged) = ledger.charge_unlocking(diff);
+          Self::update_ledger(&content_owner, &ledger);
+          total_charged += charged;
+        }
+        
+      }
+      Self::deposit_event(Event::<T>::Charged(total_charged));
+
+			Ok(())
 		}
 	}
 }
