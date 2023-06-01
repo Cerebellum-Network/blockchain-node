@@ -15,7 +15,7 @@ use codec::{Decode, Encode, HasCompact};
 use frame_support::{
 	dispatch::Codec,
 	parameter_types,
-	traits::{Currency, DefensiveSaturating, LockIdentifier, WithdrawReasons},
+	traits::{Currency, DefensiveSaturating, LockIdentifier, UnixTime, WithdrawReasons},
 	BoundedVec,
 };
 use scale_info::TypeInfo;
@@ -136,6 +136,10 @@ pub mod pallet {
 		type BondingDuration: Get<EraIndex>;
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
+
+		/// Time used for computing era index. It is guaranteed to start being called from the first
+		/// `on_finalize`.
+		type UnixTime: UnixTime;
 	}
 
 	/// Map from all locked "stash" accounts to the controller account.
