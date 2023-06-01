@@ -29,6 +29,14 @@ use sp_std::prelude::*;
 
 pub use pallet::*;
 
+/// Two minutes.
+///
+/// If you are changing this, check `on_finalize` hook to ensure `CurrentEra` is capable to hold the
+/// value with the new era duration.
+const DDC_ERA_DURATION_MS: u128 = 120_000;
+
+/// 2023-01-01 00:00:00 UTC
+const DDC_ERA_START_MS: u128 = 1_672_531_200_000;
 const DDC_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC maintainer's stake
 
 /// The balance type of this pallet.
@@ -215,6 +223,21 @@ pub mod pallet {
 		// An account already declared a desire to participate in the network with a certain role
 		// and to take another role it should call `chill` first.
 		AlreadyInRole,
+	}
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_finalize(_n: BlockNumberFor<T>) {
+			// Check if we have a new era and if so bump the current era index.
+			let now_as_millis = T::UnixTime::now().as_millis();
+			let computed_era: EraIndex =
+				((now_as_millis - DDC_ERA_START_MS) / DDC_ERA_DURATION_MS) as u32; // saturated
+			if Self::current_era() >= Some(computed_era) {
+				return
+			}
+			CurrentEra::<T>::put(computed_era);
+			// ToDo: add `on_initialize` hook to track `on_finalize` weight
+		}
 	}
 
 	#[pallet::call]
