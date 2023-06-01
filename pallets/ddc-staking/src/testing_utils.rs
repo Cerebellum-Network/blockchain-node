@@ -12,8 +12,8 @@ const SEED: u32 = 0;
 
 /// This function removes all storage and edge nodes from storage.
 pub fn clear_storages_and_edges<T: Config>() {
-	Storages::<T>::remove_all();
-	Edges::<T>::remove_all();
+	Storages::<T>::kill();
+	Edges::<T>::kill();
 }
 
 /// Grab a funded user.
@@ -98,8 +98,7 @@ pub fn create_storages_with_seed<T: Config>(
 	let mut storages: Vec<<T::Lookup as StaticLookup>::Source> = Vec::with_capacity(max as usize);
 	for i in 0..max {
 		let (stash, controller) = create_stash_controller::<T>(i + seed, balance_factor)?;
-		let storage_prefs = StoragePrefs { foo: true };
-		DddcStaking::<T>::store(RawOrigin::Signed(controller).into(), storage_prefs)?;
+		DddcStaking::<T>::store(RawOrigin::Signed(controller).into())?;
 		let stash_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(stash);
 		storages.push(stash_lookup);
 	}
@@ -123,8 +122,7 @@ pub fn create_edges_with_seed<T: Config>(
 	let mut edges: Vec<<T::Lookup as StaticLookup>::Source> = Vec::with_capacity(max as usize);
 	for i in 0..max {
 		let (stash, controller) = create_stash_controller::<T>(i + seed, balance_factor)?;
-		let edge_prefs = EdgePrefs { foo: true };
-		DddcStaking::<T>::serve(RawOrigin::Signed(controller).into(), edge_prefs)?;
+		DddcStaking::<T>::serve(RawOrigin::Signed(controller).into())?;
 		let stash_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(stash);
 		edges.push(stash_lookup);
 	}
