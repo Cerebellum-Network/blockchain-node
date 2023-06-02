@@ -860,7 +860,7 @@ dependencies = [
 name = "cere-rpc"
 version = "3.0.0-dev"
 dependencies = [
- "jsonrpsee 0.13.1",
+ "jsonrpsee 0.14.0",
  "node-primitives",
  "pallet-contracts-rpc",
  "pallet-transaction-payment-rpc",
