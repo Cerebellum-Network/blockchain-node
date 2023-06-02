@@ -1,6 +1,6 @@
 [package]
 name = "cere-service"
-version = "3.0.0-dev"
+version = "3.0.1"
 edition = "2021"
 
 [dependencies]
