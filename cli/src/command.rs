@@ -7,7 +7,7 @@ use sc_service::error::Error as ServiceError;
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
-		"Substrate Node".into()
+		"Cere Node".into()
 	}
 
 	fn impl_version() -> String {
