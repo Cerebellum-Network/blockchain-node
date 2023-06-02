@@ -1,6 +1,6 @@
 [package]
 name = "cere-runtime-constants"
-version = "3.0.1"
+version = "4.0.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 
