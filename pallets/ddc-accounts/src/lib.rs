@@ -579,6 +579,7 @@ pub mod pallet {
           ledger.total -= amount;
           ledger.active -= amount;
           total_charged += amount;
+					log::info!("Ledger updated state: {:?}", &ledger);
           Self::update_ledger(&content_owner, &ledger);
         } else {
           let diff = amount - ledger.active;
@@ -586,12 +587,15 @@ pub mod pallet {
           ledger.total -= ledger.active;
           ledger.active = BalanceOf::<T>::zero();
           let (ledger, charged) = ledger.charge_unlocking(diff);
+					log::info!("Ledger updated state: {:?}", &ledger);
           Self::update_ledger(&content_owner, &ledger);
           total_charged += charged;
         }
-        
       }
+			log::info!("Total charged: {:?}", &total_charged);
+
       Self::deposit_event(Event::<T>::Charged(total_charged));
+			log::info!("Deposit event executed");
 
 			Ok(())
 		}
