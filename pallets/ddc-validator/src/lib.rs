@@ -74,7 +74,7 @@ pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
 pub const TIME_START_MS: u128 = 1_672_531_200_000;
 pub const ERA_DURATION_MS: u128 = 120_000;
 pub const ERA_IN_BLOCKS: u8 = 20;
-pub const BYTES_TO_CERE: u64 = 1_000;
+pub const BYTES_TO_CERE: u64 = 1; // this should have a logic built on top and adjusted
 
 /// Webdis in experimental cluster connected to Redis in dev.
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "https://dev-dac-redis.network-dev.aws.cere.io";
@@ -538,6 +538,18 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::weight(100_000)]
+		pub fn charge_payments_cdn(
+			origin: OriginFor<T>,
+			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			<ddc_accounts::pallet::Pallet::<T>>::charge_payments_new(paying_accounts);
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T>
@@ -809,7 +821,16 @@ pub mod pallet {
 						}
 						log::info!("final payments: {:?}", payments);
 
-						ddc_accounts::pallet::Pallet::<T>::charge_payments_new(payments);
+						// Store CDN node reward points on-chain
+						let signer: Signer<T, T::AuthorityId> = Signer::<_, _>::any_account();
+						if !signer.can_sign() {
+							log::warn!("No local accounts available to charge payments for CDN. Consider adding one via `author_insertKey` RPC.");
+							return
+						}
+						// ToDo: replace local call by a call from `ddc-staking` pallet
+						let _tx_res: Option<(frame_system::offchain::Account<T>, Result<(), ()>)> = signer.send_signed_transaction(|_account| Call::charge_payments_cdn {
+							paying_accounts: payments.clone(),
+						});
 
 						let final_res = dac::get_final_decision(validations_res);
 
