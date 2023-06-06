@@ -27,7 +27,7 @@ mod mock;
 mod tests;
 
 const DEFAULT_RELAYER_THRESHOLD: u32 = 1;
-const MODULE_ID: PalletId = PalletId(*b"cb/bridg");
+pub const MODULE_ID: PalletId = PalletId(*b"cb/bridg");
 
 pub type ChainId = u8;
 pub type DepositNonce = u64;
@@ -213,7 +213,6 @@ decl_module! {
 
         const ChainIdentity: ChainId = T::ChainId::get();
         const ProposalLifetime: T::BlockNumber = T::ProposalLifetime::get();
-        const BridgeAccountId: T::AccountId = MODULE_ID.into_account();
 
         fn deposit_event() = default;
 
@@ -357,7 +356,7 @@ impl<T: Config> Module<T> {
     /// Provides an AccountId for the pallet.
     /// This is used both as an origin check and deposit/withdrawal account.
     pub fn account_id() -> T::AccountId {
-        MODULE_ID.into_account()
+       AccountIdConversion::<T::AccountId>::into_account_truncating(&MODULE_ID)
     }
 
     /// Asserts if a resource is registered
@@ -624,7 +623,7 @@ pub struct EnsureBridge<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> EnsureOrigin<T::Origin> for EnsureBridge<T> {
     type Success = T::AccountId;
     fn try_origin(o: T::Origin) -> Result<Self::Success, T::Origin> {
-        let bridge_id = MODULE_ID.into_account();
+        let bridge_id = AccountIdConversion::<T::AccountId>::into_account_truncating(&MODULE_ID);
         o.into().and_then(|o| match o {
             system::RawOrigin::Signed(who) if who == bridge_id => Ok(bridge_id),
             r => Err(T::Origin::from(r)),
