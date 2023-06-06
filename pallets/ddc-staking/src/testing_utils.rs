@@ -1,6 +1,6 @@
 //! Testing utils for ddc-staking.
 
-use crate::{Pallet as DddcStaking, *};
+use crate::{Pallet as DdcStaking, *};
 use frame_benchmarking::account;
 use frame_system::RawOrigin;
 
@@ -48,7 +48,7 @@ pub fn create_stash_controller<T: Config>(
 	let controller = create_funded_user::<T>("controller", n, balance_factor);
 	let controller_lookup: <T::Lookup as StaticLookup>::Source =
 		T::Lookup::unlookup(controller.clone());
-	DddcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup)?;
+	DdcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup)?;
 	return Ok((stash, controller))
 }
 
@@ -62,7 +62,7 @@ pub fn create_stash_controller_with_balance<T: Config>(
 	let controller_lookup: <T::Lookup as StaticLookup>::Source =
 		T::Lookup::unlookup(controller.clone());
 
-	DddcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup)?;
+	DdcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup)?;
 	Ok((stash, controller))
 }
 
@@ -77,7 +77,7 @@ pub fn create_stash_and_dead_controller<T: Config>(
 	let controller = create_funded_user::<T>("controller", n, 0);
 	let controller_lookup: <T::Lookup as StaticLookup>::Source =
 		T::Lookup::unlookup(controller.clone());
-	DddcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup)?;
+	DdcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup)?;
 	return Ok((stash, controller))
 }
 
@@ -98,7 +98,7 @@ pub fn create_storages_with_seed<T: Config>(
 	let mut storages: Vec<<T::Lookup as StaticLookup>::Source> = Vec::with_capacity(max as usize);
 	for i in 0..max {
 		let (stash, controller) = create_stash_controller::<T>(i + seed, balance_factor)?;
-		DddcStaking::<T>::store(RawOrigin::Signed(controller).into())?;
+		DdcStaking::<T>::store(RawOrigin::Signed(controller).into())?;
 		let stash_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(stash);
 		storages.push(stash_lookup);
 	}
@@ -122,7 +122,7 @@ pub fn create_edges_with_seed<T: Config>(
 	let mut edges: Vec<<T::Lookup as StaticLookup>::Source> = Vec::with_capacity(max as usize);
 	for i in 0..max {
 		let (stash, controller) = create_stash_controller::<T>(i + seed, balance_factor)?;
-		DddcStaking::<T>::serve(RawOrigin::Signed(controller).into())?;
+		DdcStaking::<T>::serve(RawOrigin::Signed(controller).into())?;
 		let stash_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(stash);
 		edges.push(stash_lookup);
 	}

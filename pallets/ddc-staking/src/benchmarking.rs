@@ -1,7 +1,7 @@
 //! DdcStaking pallet benchmarking.
 
 use super::*;
-use crate::Pallet as DddcStaking;
+use crate::Pallet as DdcStaking;
 use testing_utils::*;
 
 use frame_support::{ensure, traits::Currency};
@@ -31,7 +31,7 @@ pub fn clear_storages_with_edges<T: Config>(
 	for i in 0..n_storages {
 		let (stash, controller) = create_stash_controller::<T>(i + SEED, 100)?;
 		let storage_prefs = StoragePrefs { foo: true };
-		DddcStaking::<T>::store(RawOrigin::Signed(controller).into(), storage_prefs)?;
+		DdcStaking::<T>::store(RawOrigin::Signed(controller).into(), storage_prefs)?;
 		let stash_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(stash);
 		storages.push(stash_lookup);
 	}
@@ -41,7 +41,7 @@ pub fn clear_storages_with_edges<T: Config>(
 	for i in 0..n_edges {
 		let (stash, controller) = create_stash_controller::<T>(i + SEED, 100)?;
 		let edge_prefs = EdgePrefs { foo: true };
-		DddcStaking::<T>::serve(RawOrigin::Signed(controller).into(), edge_prefs)?;
+		DdcStaking::<T>::serve(RawOrigin::Signed(controller).into(), edge_prefs)?;
 		let stash_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(stash);
 		edges.push(stash_lookup);
 	}
@@ -113,7 +113,7 @@ benchmarks! {
 
 	withdraw_unbonded {
 		let (stash, controller) = create_stash_controller::<T>(0, 100)?;
-		DddcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into())?;
+		DdcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into())?;
 		CurrentEra::<T>::put(EraIndex::max_value());
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_total: BalanceOf<T> = ledger.total;
