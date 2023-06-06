@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [vNext]
+## vNext
+
+### Changed
+
+- Updated Substrate to polkadot-v0.9.24
+
+## [4.1.0]
 
 ### Added
 
@@ -17,9 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `pallet-ddc-staking` now requires one fixed size bond for both `Storage` and `Edge` roles instead of the bond limited by the lower boundary only
 - Updated Substrate to polkadot-v0.9.23
-- Updated Substrate to polkadot-v0.9.24
 
-## [3.0.0]
+## [4.0.0]
 
 ### Added
 
