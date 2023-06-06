@@ -213,6 +213,7 @@ decl_module! {
 
         const ChainIdentity: ChainId = T::ChainId::get();
         const ProposalLifetime: T::BlockNumber = T::ProposalLifetime::get();
+        const BridgeAccountId: T::AccountId = AccountIdConversion::<T::AccountId>::into_account_truncating(&MODULE_ID);
 
         fn deposit_event() = default;
 
