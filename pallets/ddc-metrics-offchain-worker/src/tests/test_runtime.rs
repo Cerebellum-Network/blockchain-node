@@ -6,7 +6,7 @@ use crate::{*, self as pallet_ddc_metrics_offchain_worker};
 
 use codec::{Decode, Encode};
 use frame_support::{ parameter_types, traits::Get, weights::Weight };
-use frame_support::traits::{Currency, Everything, Nothing};
+use frame_support::traits::{ConstU32, Currency, Everything, Nothing};
 use sp_core::H256;
 use sp_runtime::{
     generic,
@@ -152,6 +152,8 @@ impl contracts::Config for Test {
     type DepositPerItem = DepositPerItem;
     type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
     type ContractAccessWeight = ();
+    type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
+    type RelaxedMaxCodeLen = ConstU32<{ 256 * 1024 }>;
 }
 
 parameter_types! {
