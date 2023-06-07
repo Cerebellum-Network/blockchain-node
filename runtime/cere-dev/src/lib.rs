@@ -703,12 +703,12 @@ impl pallet_bags_list::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 1 * 24 * 60 * MINUTES;
-	pub const VotingPeriod: BlockNumber = 1 * 24 * 60 * MINUTES;
-	pub const FastTrackVotingPeriod: BlockNumber = 3 * 60 * MINUTES;
-	pub const MinimumDeposit: Balance = 5000 * DOLLARS;
-	pub const EnactmentPeriod: BlockNumber = 1 * 24 * 60 * MINUTES;
-	pub const CooloffPeriod: BlockNumber = 7 * 24 * 60 * MINUTES;
+	pub const LaunchPeriod: BlockNumber = 5 * MINUTES;
+	pub const VotingPeriod: BlockNumber = 5 * MINUTES;
+	pub const FastTrackVotingPeriod: BlockNumber = 5 * MINUTES;
+	pub const MinimumDeposit: Balance = 10 * DOLLARS;
+	pub const EnactmentPeriod: BlockNumber = 5 * MINUTES;
+	pub const CooloffPeriod: BlockNumber = 5 * MINUTES;
 	pub const MaxProposals: u32 = 100;
 }
 
@@ -764,7 +764,7 @@ impl pallet_democracy::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CouncilMotionDuration: BlockNumber = 7 * DAYS;
+	pub const CouncilMotionDuration: BlockNumber = 5 * MINUTES;
 	pub const CouncilMaxProposals: u32 = 100;
 	pub const CouncilMaxMembers: u32 = 100;
 }
@@ -786,7 +786,7 @@ parameter_types! {
 	// 1 storage item created, key size is 32 bytes, value size is 16+16.
 	pub const VotingBondBase: Balance = deposit(1, 64);
 	pub const VotingBondFactor: Balance = 1 * DOLLARS;
-	pub const TermDuration: BlockNumber = 7 * DAYS;
+	pub const TermDuration: BlockNumber = 5 * MINUTES;
 	pub const DesiredMembers: u32 = 13;
 	pub const DesiredRunnersUp: u32 = 20;
 	pub const ElectionsPhragmenPalletId: LockIdentifier = *b"phrelect";
@@ -816,7 +816,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 }
 
 parameter_types! {
-	pub const TechnicalMotionDuration: BlockNumber = 5 * DAYS;
+	pub const TechnicalMotionDuration: BlockNumber = 5 * MINUTES;
 	pub const TechnicalMaxProposals: u32 = 100;
 	pub const TechnicalMaxMembers: u32 = 100;
 }
@@ -853,9 +853,9 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 100 * DOLLARS;
-	pub const SpendPeriod: BlockNumber = 1 * DAYS;
+	pub const SpendPeriod: BlockNumber = 5 * MINUTES;
 	pub const Burn: Permill = Permill::from_percent(0);
-	pub const TipCountdown: BlockNumber = 1 * DAYS;
+	pub const TipCountdown: BlockNumber = 5 * MINUTES;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
 	pub const TipReportDepositBase: Balance = 1 * DOLLARS;
 	pub const DataDepositPerByte: Balance = 1 * CENTS;
@@ -1147,10 +1147,10 @@ parameter_types! {
 	pub const CandidateDeposit: Balance = 10 * DOLLARS;
 	pub const WrongSideDeduction: Balance = 2 * DOLLARS;
 	pub const MaxStrikes: u32 = 10;
-	pub const RotationPeriod: BlockNumber = 80 * HOURS;
+	pub const RotationPeriod: BlockNumber = 5 * MINUTES;
 	pub const PeriodSpend: Balance = 500 * DOLLARS;
 	pub const MaxLockDuration: BlockNumber = 36 * 30 * DAYS;
-	pub const ChallengePeriod: BlockNumber = 7 * DAYS;
+	pub const ChallengePeriod: BlockNumber = 15 * MINUTES;
 	pub const MaxCandidateIntake: u32 = 10;
 	pub const SocietyPalletId: PalletId = PalletId(*b"py/socie");
 }
