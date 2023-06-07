@@ -48,8 +48,7 @@ pub fn create_stash_controller<T: Config>(
 	let controller = create_funded_user::<T>("controller", n, balance_factor);
 	let controller_lookup: <T::Lookup as StaticLookup>::Source =
 		T::Lookup::unlookup(controller.clone());
-	let amount = T::Currency::minimum_balance() * (balance_factor / 10).max(1).into();
-	DddcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup, amount)?;
+	DddcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup)?;
 	return Ok((stash, controller))
 }
 
@@ -63,7 +62,7 @@ pub fn create_stash_controller_with_balance<T: Config>(
 	let controller_lookup: <T::Lookup as StaticLookup>::Source =
 		T::Lookup::unlookup(controller.clone());
 
-	DddcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup, balance)?;
+	DddcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup)?;
 	Ok((stash, controller))
 }
 
@@ -78,8 +77,7 @@ pub fn create_stash_and_dead_controller<T: Config>(
 	let controller = create_funded_user::<T>("controller", n, 0);
 	let controller_lookup: <T::Lookup as StaticLookup>::Source =
 		T::Lookup::unlookup(controller.clone());
-	let amount = T::Currency::minimum_balance() * (balance_factor / 10).max(1).into();
-	DddcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup, amount)?;
+	DddcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup)?;
 	return Ok((stash, controller))
 }
 

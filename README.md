@@ -17,7 +17,7 @@ First, complete the [basic Rust setup instructions](./docs/rust-setup.md).
 Use the following command to build the node without launching it:
 
 ```sh
-cargo +nightly-2022-04-07 build --release
+cargo +nightly-2022-10-09 build --release
 ```
 
 ## Run
@@ -44,7 +44,7 @@ RUST_BACKTRACE=1 ./target/release/cere -ldebug --dev
 
 > Development chain means that the state of our chain will be in a tmp folder while the nodes are
 > running. Also, **alice** account will be authority and sudo account as declared in the
-> [genesis state](https://github.com/Cerebellum-Network/substrate-node-template/blob/dev-cere/node/service/src/chain_spec.rs#L241).
+> [genesis state](https://github.com/Cerebellum-Network/blockchain-node/blob/dev/node/service/src/chain_spec.rs#L241).
 > At the same time the following accounts will be pre-funded:
 > - Alice
 > - Bob
@@ -72,6 +72,51 @@ $ ls ./my-chain-state/chains/dev
 db keystore network
 ```
 
+### Local Testnet Development Chain
+Purge the Alice's node state:
+```bash
+./target/release/cere purge-chain --base-path /tmp/alice --chain local -y
+```
+Start Alice's node:
+```bash
+./target/release/cere \
+  --base-path /tmp/alice \
+  --chain local \
+  --alice \
+  --port 30333 \
+  --ws-port 9945 \
+  --rpc-port 9933 \
+  --rpc-cors "http://localhost:*","http:127.0.0.1:*","https://localhost:*","https:127.0.0.1:*","https://explorer.cere.network","https://polkadot.js.org" \
+  --node-key 0000000000000000000000000000000000000000000000000000000000000001 \
+  --validator
+```
+Purge the Bob's node state:
+```bash
+./target/release/cere purge-chain --base-path /tmp/bob --chain local -y
+```
+Start Bob's node:
+```bash
+./target/release/cere \
+  --base-path /tmp/bob \
+  --chain local \
+  --bob \
+  --port 30334 \
+  --ws-port 9946 \
+  --rpc-port 9934 \
+  --rpc-cors "http://localhost:*","http:127.0.0.1:*","https://localhost:*","https:127.0.0.1:*","https://explorer.cere.network","https://polkadot.js.org" \
+  --validator \
+  --bootnodes /ip4/127.0.0.1/tcp/30333/p2p/12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp
+```
+
+> Development chain means that the state of our chain will be in a tmp folder while the nodes are
+> running. Also, **alice** and **bob** accounts will be authority accounts and **alice** sudo account as declared in the
+> [genesis state](https://github.com/Cerebellum-Network/blockchain-node/blob/dev/node/service/src/chain_spec.rs#279).
+> At the same time the following accounts will be pre-funded:
+> - Alice
+> - Bob
+> - Alice//stash
+> - Bob//stash
+
 ### Runtimes
 
 The node supports 2 runtimes.
@@ -90,6 +135,7 @@ Runtime `cere` uses by default in Cere Mainnet/Testnet/QAnet. You can start the 
 Runtime `cere-dev` uses by default in Cere Devnet. You can start the node with it by:
 1. Running the node connected to [Cere Devnet](#Devnet)
 1. Running the [Single-Node Development Chain](#Single-Node-Development-Chain)
+1. Running the [Local Testnet Development Chain](#local-testnet-development-chain)
 1. Running the node with a custom spec. Be sure that [id](https://github.com/Cerebellum-Network/blockchain-node/blob/dev-cere/node/service/src/chain_spec.rs#L265) **starts** with `cere_dev` and you pass `--force-cere-dev` parameter
     ```bash
     ./target/release/cere --chain=./target/release/customSpecRaw.json --force-cere-dev
