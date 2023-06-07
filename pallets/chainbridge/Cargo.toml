@@ -1,6 +1,6 @@
 [package]
 name = "pallet-chainbridge"
-version = "2.0.0"
+version = "4.2.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 license = "Unlicense"
