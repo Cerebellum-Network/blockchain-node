@@ -1,6 +1,6 @@
 [package]
 name = "pallet-erc20"
-version = "2.0.0"
+version = "4.2.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 license = "Unlicense"
@@ -23,8 +23,8 @@ sp-std = { version = "4.0.0", default-features = false, git = "https://github.co
 sp-io = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25" }
 sp-core = { version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
 sp-arithmetic = { version = "5.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", default-features = false }
-pallet-chainbridge = { version = "2.0.0", default-features = false, path = "../chainbridge" }
-pallet-erc721 = { version = "2.0.0", default-features = false, path = "../erc721" }
+pallet-chainbridge = { version = "4.2.0", default-features = false, path = "../chainbridge" }
+pallet-erc721 = { version = "4.2.0", default-features = false, path = "../erc721" }
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
 
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.25", optional = true }
