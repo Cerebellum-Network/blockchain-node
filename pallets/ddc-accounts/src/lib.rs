@@ -508,7 +508,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		pub fn account_id() -> T::AccountId {
-			T::PalletId::get().into_account()
+			T::PalletId::get().into_account_truncating()
 		}
 		/// Update the ledger for a controller.
 		///
