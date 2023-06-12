@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## vNext
 
-...
+- ...
+
+## [4.3.0]
+
+### Changed
+
+- Updated Substrate to polkadot-v0.9.25
 
 ## [4.2.0]
 
