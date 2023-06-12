@@ -1272,7 +1272,7 @@ construct_runtime!(
 		Authorship: pallet_authorship,
 		Indices: pallet_indices,
 		Balances: pallet_balances,
-		TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>},
+		TransactionPayment: pallet_transaction_payment,
 		ElectionProviderMultiPhase: pallet_election_provider_multi_phase,
 		Staking: pallet_staking,
 		Session: pallet_session,
