@@ -615,7 +615,8 @@ pub mod pallet {
 			};
 
 			// An account we withdraw the funds from and the amount of funds to withdraw.
-			let payout_source_account: T::AccountId = T::StakersPayoutSource::get().into_account();
+			let payout_source_account: T::AccountId =
+				T::StakersPayoutSource::get().into_account_truncating();
 			let payout_budget: BalanceOf<T> =
 				match (price_per_byte * era_reward_points.total as u128).try_into() {
 					Ok(value) => value,
