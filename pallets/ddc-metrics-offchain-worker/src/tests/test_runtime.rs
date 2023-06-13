@@ -154,6 +154,7 @@ impl contracts::Config for Test {
     type ContractAccessWeight = ();
     type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
     type RelaxedMaxCodeLen = ConstU32<{ 256 * 1024 }>;
+    type MaxStorageKeyLen = ConstU32<128>;
 }
 
 parameter_types! {
