@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 
+### Changed
+
+- Updated Substrate to polkadot-v0.9.26
+
+## [4.3.0]
+
+### Changed
+
+- Updated Substrate to polkadot-v0.9.25
+
+## [4.2.0]
+
+### Changed
+
+- Updated Substrate to polkadot-v0.9.24
+
+## [4.1.0]
+
 ### Added
 
 - `rust-toolchain.toml` as a single source of truth on toolchain requirements (except Nix builder)
@@ -17,10 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `pallet-ddc-staking` now requires one fixed size bond for both `Storage` and `Edge` roles instead of the bond limited by the lower boundary only
 - Updated Substrate to polkadot-v0.9.23
-- Updated Substrate to polkadot-v0.9.24
-- Updated Substrate to polkadot-v0.9.26
 
-## [3.0.0]
+## [4.0.0]
 
 ### Added
 
