@@ -4,7 +4,7 @@ use super::*;
 use crate::Pallet as DdcStaking;
 use testing_utils::*;
 
-use frame_support::{ensure, traits::Currency};
+use frame_support::traits::{Currency, Get};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
@@ -25,21 +25,21 @@ benchmarks! {
 		whitelist_account!(stash);
 	}: _(RawOrigin::Signed(stash.clone()), controller_lookup, amount)
 	verify {
-		assert!(Bonded::<T>::get().contains(stash));
-		assert!(Ledger::<T>::get().contains(controller));
+		assert!(Bonded::<T>::contains_key(stash));
+		assert!(Ledger::<T>::contains_key(controller));
 	}
 
 	unbond {
 		// clean up any existing state.
 		clear_storages_and_edges::<T>();
 
-		let amount = 100.into();
-		let (stash, controller) = create_stash_controller::<T>()(0, amount);
+		let (stash, controller) = create_stash_controller::<T>(0, 100)?;
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_bonded: BalanceOf<T> = ledger.active;
+		let amount = T::Currency::minimum_balance() * 5u32.into(); // Half of total
 
 		whitelist_account!(controller);
-	}: _(RawOrigin::Signed(controller.clone()), amount / 2)
+	}: _(RawOrigin::Signed(controller.clone()), amount)
 	verify {
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created after")?;
 		let new_bonded: BalanceOf<T> = ledger.active;
@@ -48,7 +48,8 @@ benchmarks! {
 
 	withdraw_unbonded {
 		let (stash, controller) = create_stash_controller::<T>(0, 100)?;
-		DdcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into())?;
+		let amount = T::Currency::minimum_balance() * 5u32.into(); // Half of total
+		DdcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into(), amount)?;
 		CurrentEra::<T>::put(EraIndex::max_value());
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_total: BalanceOf<T> = ledger.total;
@@ -66,7 +67,7 @@ benchmarks! {
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller))
 	verify {
-		assert!(Storages::<T>::contains_key(&stash));
+		assert!(Storages::<T>::get().contains(&stash));
 	}
 
 	serve {
@@ -75,7 +76,7 @@ benchmarks! {
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller))
 	verify {
-		assert!(Edges::<T>::contains_key(&stash));
+		assert!(Edges::<T>::get().contains(&stash));
 	}
 
 	chill {
@@ -84,12 +85,12 @@ benchmarks! {
 
 		let (edge_stash, edge_controller) = create_stash_controller_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
 		DdcStaking::<T>::serve(RawOrigin::Signed(edge_controller.clone()).into())?;
-		assert!(Edges::<T>::contains_key(&edge_stash));
+		assert!(Edges::<T>::get().contains(&edge_stash));
 
 		whitelist_account!(edge_controller);
-	}: _(RawOrigin::Signed(controller))
+	}: _(RawOrigin::Signed(edge_controller))
 	verify {
-		assert!(!Edges::<T>::contains_key(&edge_stash));
+		assert!(!Edges::<T>::get().contains(&edge_stash));
 	}
 
 	set_controller {
