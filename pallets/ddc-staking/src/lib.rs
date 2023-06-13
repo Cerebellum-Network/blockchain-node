@@ -20,7 +20,7 @@ use frame_support::{
 };
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedSub, Saturating, Zero},
+	traits::{AtLeast32BitUnsigned, Saturating, Zero},
 	RuntimeDebug,
 };
 
