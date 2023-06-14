@@ -4,7 +4,7 @@ version = "4.2.0"
 edition = "2021"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0" }
+codec = { package = "parity-scale-codec", version = "3.1.5" }
 serde = { version = "1.0.136", features = ["derive"] }
 rand = "0.8"
 futures = "0.3.21"
