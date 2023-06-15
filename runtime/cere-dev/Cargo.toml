@@ -92,7 +92,7 @@ pallet-transaction-storage = { version = "4.0.0-dev", default-features = false, 
 pallet-vesting = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
 cere-runtime-common = { path = "../common", default-features = false }
 cere-dev-runtime-constants = { path = "./constants", default-features = false }
-pallet-ddc-staking = { version = "4.2.0", default-features = false, path = "../../pallets/ddc-staking" }
+pallet-ddc-staking = { version = "4.3.0", default-features = false, path = "../../pallets/ddc-staking" }
 pallet-chainbridge = { version = "4.3.0", default-features = false, path = "../../pallets/chainbridge" }
 pallet-cere-ddc = { version = "4.3.0", default-features = false, path = "../../pallets/ddc" }
 pallet-erc721 = { version = "4.3.0", default-features = false, path = "../../pallets/erc721" }
