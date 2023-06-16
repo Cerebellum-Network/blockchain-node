@@ -128,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 43001,
+	spec_version: 43002,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 3,
@@ -1258,10 +1258,18 @@ impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub const DefaultEdgeBondSize: Balance = 100 * DOLLARS;
+	pub const DefaultStorageBondSize: Balance = 100 * DOLLARS;
+}
+
 impl pallet_ddc_staking::Config for Runtime {
 	type BondingDuration = BondingDuration;
 	type Currency = Balances;
+	type DefaultEdgeBondSize = DefaultEdgeBondSize;
+	type DefaultStorageBondSize = DefaultStorageBondSize;
 	type Event = Event;
+	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
 }
 
