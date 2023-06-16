@@ -421,32 +421,14 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Declare the desire to participate in storage network for the origin controller.
-		///
-		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
-		/// bond size must be greater than or equal to the `StorageBondSize`.
-		#[pallet::weight(T::WeightInfo::store())]
-		pub fn store(origin: OriginFor<T>) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
-
-			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
-
-			ensure!(ledger.active >= StorageBondSize::<T>::get(), Error::<T>::InsufficientBond);
-			let stash = &ledger.stash;
-
-			// Can't participate in storage network if already participating in CDN.
-			ensure!(!Edges::<T>::get().contains(&stash), Error::<T>::AlreadyInRole);
-
-			Self::do_add_storage(stash);
-			Ok(())
-		}
-
 		/// Declare the desire to participate in CDN for the origin controller.
+		///
+		/// `cluster` is the ID of the DDC cluster the participant wishes to join.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
 		/// bond size must be greater than or equal to the `EdgeBondSize`.
 		#[pallet::weight(T::WeightInfo::serve())]
-		pub fn serve(origin: OriginFor<T>) -> DispatchResult {
+		pub fn serve(origin: OriginFor<T>, cluster: ClusterId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
@@ -455,9 +437,31 @@ pub mod pallet {
 			let stash = &ledger.stash;
 
 			// Can't participate in CDN if already participating in storage network.
-			ensure!(!Storages::<T>::get().contains(&stash), Error::<T>::AlreadyInRole);
+			ensure!(!Storages::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
-			Self::do_add_edge(stash);
+			Self::do_add_edge(stash, cluster);
+			Ok(())
+		}
+
+		/// Declare the desire to participate in storage network for the origin controller.
+		///
+		/// `cluster` is the ID of the DDC cluster the participant wishes to join.
+		///
+		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
+		/// bond size must be greater than or equal to the `StorageBondSize`.
+		#[pallet::weight(T::WeightInfo::store())]
+		pub fn store(origin: OriginFor<T>, cluster: ClusterId) -> DispatchResult {
+			let controller = ensure_signed(origin)?;
+
+			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+
+			ensure!(ledger.active >= StorageBondSize::<T>::get(), Error::<T>::InsufficientBond);
+			let stash = &ledger.stash;
+
+			// Can't participate in storage network if already participating in CDN.
+			ensure!(!Edges::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
+
+			Self::do_add_storage(stash, cluster);
 			Ok(())
 		}
 
