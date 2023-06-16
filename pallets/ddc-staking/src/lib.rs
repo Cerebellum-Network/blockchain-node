@@ -43,6 +43,8 @@ const DDC_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC maintainer's stake
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+pub type ClusterId = u32;
+
 parameter_types! {
 	/// A limit to the number of pending unlocks an account may have in parallel.
 	pub MaxUnlockingChunks: u32 = 32;
@@ -180,15 +182,17 @@ pub mod pallet {
 	pub type Ledger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>>>;
 
-	/// The list of (wannabe) storage network participants stash keys.
-	#[pallet::storage]
-	#[pallet::getter(fn storages)]
-	pub type Storages<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
-
-	/// The list of (wannabe) CDN participants stash keys.
+	/// The map of (wannabe) CDN participants stash keys to the DDC cluster ID they wish to
+	/// participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn edges)]
-	pub type Edges<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+	pub type Edges<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
+
+	/// The map of (wannabe) storage network participants stash keys to the DDC cluster ID they wish
+	/// to participate into..
+	#[pallet::storage]
+	#[pallet::getter(fn storages)]
+	pub type Storages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
 	/// The current era index.
 	///
@@ -344,9 +348,9 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
-				let min_active_bond = if Edges::<T>::get().contains(&ledger.stash) {
+				let min_active_bond = if Edges::<T>::contains_key(&ledger.stash) {
 					EdgeBondSize::<T>::get()
-				} else if Storages::<T>::get().contains(&ledger.stash) {
+				} else if Storages::<T>::contains_key(&ledger.stash) {
 					StorageBondSize::<T>::get()
 				} else {
 					Zero::zero()
@@ -583,47 +587,18 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// This function will add a storage network participant to the `Storages` storage map.
-		///
-		/// If the storage network participant already exists, their preferences will be updated.
-		///
-		/// NOTE: you must ALWAYS use this function to add a storage network participant to the
-		/// system. Any access to `Storages` outside of this function is almost certainly
-		/// wrong.
-		pub fn do_add_storage(who: &T::AccountId) {
-			Storages::<T>::append(who);
-		}
-
-		/// This function will remove a storage network participant from the `Storages` list.
-		///
-		/// Returns true if `who` was removed from `Storages`, otherwise false.
-		///
-		/// NOTE: you must ALWAYS use this function to remove a storage network participant from the
-		/// system. Any access to `Storages` outside of this function is almost certainly
-		/// wrong.
-		pub fn do_remove_storage(who: &T::AccountId) -> bool {
-			Storages::<T>::mutate(|storages| {
-				let maybe_position = storages.iter().position(|s| s == who);
-				if let Some(index) = maybe_position {
-					storages.swap_remove(index);
-					return true
-				};
-				false
-			})
-		}
-
 		/// This function will add a CDN participant to the `Edges` storage map.
 		///
-		/// If the CDN participant already exists, their preferences will be updated.
+		/// If the CDN participant already exists, their cluster will be updated.
 		///
 		/// NOTE: you must ALWAYS use this function to add a CDN participant to the system. Any
 		/// access to `Edges` outside of this function is almost certainly
 		/// wrong.
-		pub fn do_add_edge(who: &T::AccountId) {
-			Edges::<T>::append(who);
+		pub fn do_add_edge(who: &T::AccountId, cluster: ClusterId) {
+			Edges::<T>::insert(who, cluster);
 		}
 
-		/// This function will remove a CDN participant from the `Edges` list.
+		/// This function will remove a CDN participant from the `Edges` map.
 		///
 		/// Returns true if `who` was removed from `Edges`, otherwise false.
 		///
@@ -631,14 +606,29 @@ pub mod pallet {
 		/// system. Any access to `Edges` outside of this function is almost certainly
 		/// wrong.
 		pub fn do_remove_edge(who: &T::AccountId) -> bool {
-			Edges::<T>::mutate(|storages| {
-				let maybe_position = storages.iter().position(|s| s == who);
-				if let Some(index) = maybe_position {
-					storages.swap_remove(index);
-					return true
-				};
-				false
-			})
+			Edges::<T>::take(who).is_some()
+		}
+
+		/// This function will add a storage network participant to the `Storages` storage map.
+		///
+		/// If the storage network participant already exists, their cluster will be updated.
+		///
+		/// NOTE: you must ALWAYS use this function to add a storage network participant to the
+		/// system. Any access to `Storages` outside of this function is almost certainly
+		/// wrong.
+		pub fn do_add_storage(who: &T::AccountId, cluster: ClusterId) {
+			Storages::<T>::insert(who, cluster);
+		}
+
+		/// This function will remove a storage network participant from the `Storages` map.
+		///
+		/// Returns true if `who` was removed from `Storages`, otherwise false.
+		///
+		/// NOTE: you must ALWAYS use this function to remove a storage network participant from the
+		/// system. Any access to `Storages` outside of this function is almost certainly
+		/// wrong.
+		pub fn do_remove_storage(who: &T::AccountId) -> bool {
+			Storages::<T>::take(who).is_some()
 		}
 	}
 }
