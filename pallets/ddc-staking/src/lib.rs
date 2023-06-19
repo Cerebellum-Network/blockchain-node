@@ -112,6 +112,28 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 	}
 }
 
+/// Cluster staking parameters.
+#[derive(Clone, Decode, Encode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct ClusterSettings<T: Config> {
+	/// The bond size required to become and maintain the role of a CDN participant.
+	#[codec(compact)]
+	pub edge_bond_size: BalanceOf<T>,
+	/// The bond size required to become and maintain the role of a storage network participant.
+	#[codec(compact)]
+	pub storage_bond_size: BalanceOf<T>,
+}
+
+impl<T: pallet::Config> Default for ClusterSettings<T> {
+	/// Default to the values specified in the runtime config.
+	fn default() -> Self {
+		Self {
+			edge_bond_size: T::DefaultEdgeBondSize::get(),
+			storage_bond_size: T::DefaultStorageBondSize::get(),
+		}
+	}
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
