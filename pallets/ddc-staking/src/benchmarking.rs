@@ -65,18 +65,18 @@ benchmarks! {
 		let (stash, controller) = create_stash_controller_with_balance::<T>(0, T::DefaultStorageBondSize::get())?;
 
 		whitelist_account!(controller);
-	}: _(RawOrigin::Signed(controller))
+	}: _(RawOrigin::Signed(controller), 1)
 	verify {
-		assert!(Storages::<T>::get().contains(&stash));
+		assert!(Storages::<T>::contains_key(&stash));
 	}
 
 	serve {
 		let (stash, controller) = create_stash_controller_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
 
 		whitelist_account!(controller);
-	}: _(RawOrigin::Signed(controller))
+	}: _(RawOrigin::Signed(controller), 1)
 	verify {
-		assert!(Edges::<T>::get().contains(&stash));
+		assert!(Edges::<T>::contains_key(&stash));
 	}
 
 	chill {
@@ -84,13 +84,13 @@ benchmarks! {
 		clear_storages_and_edges::<T>();
 
 		let (edge_stash, edge_controller) = create_stash_controller_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
-		DdcStaking::<T>::serve(RawOrigin::Signed(edge_controller.clone()).into())?;
-		assert!(Edges::<T>::get().contains(&edge_stash));
+		DdcStaking::<T>::serve(RawOrigin::Signed(edge_controller.clone()).into(), 1)?;
+		assert!(Edges::<T>::contains_key(&edge_stash));
 
 		whitelist_account!(edge_controller);
 	}: _(RawOrigin::Signed(edge_controller))
 	verify {
-		assert!(!Edges::<T>::get().contains(&edge_stash));
+		assert!(!Edges::<T>::contains_key(&edge_stash));
 	}
 
 	set_controller {
