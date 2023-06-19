@@ -183,6 +183,12 @@ pub mod pallet {
 	#[pallet::getter(fn bonded)]
 	pub type Bonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
 
+	/// DDC clusters staking settings.
+	#[pallet::storage]
+	#[pallet::getter(fn settings)]
+	pub type Settings<T: Config> =
+		StorageMap<_, Identity, ClusterId, ClusterSettings<T>, ValueQuery>;
+
 	/// The bond size required to become and maintain the role of a CDN participant.
 	#[pallet::storage]
 	pub type EdgeBondSize<T: Config> =
