@@ -12,8 +12,11 @@ const SEED: u32 = 0;
 
 /// This function removes all storage and edge nodes from storage.
 pub fn clear_storages_and_edges<T: Config>() {
-	Storages::<T>::kill();
-	Edges::<T>::kill();
+	#[allow(unused_must_use)]
+	{
+		Edges::<T>::clear(u32::MAX, None);
+		Storages::<T>::clear(u32::MAX, None);
+	}
 }
 
 /// Grab a funded user.
