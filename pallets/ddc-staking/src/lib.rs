@@ -11,19 +11,19 @@ pub mod weights;
 use crate::weights::WeightInfo;
 
 use codec::{Decode, Encode, HasCompact};
-
+use frame_system::pallet_prelude::*;
 use frame_support::{
-	dispatch::Codec,
-	parameter_types,
-	traits::{Currency, DefensiveSaturating, LockIdentifier, UnixTime, WithdrawReasons},
 	BoundedVec,
+	dispatch::Codec,
+	pallet_prelude::*,
+	parameter_types,
+	traits::{Currency, DefensiveSaturating, LockableCurrency, LockIdentifier, UnixTime, WithdrawReasons},
 };
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, Saturating, Zero},
+	traits::{AtLeast32BitUnsigned, Saturating, Zero, StaticLookup},
 	RuntimeDebug,
 };
-
 use sp_staking::EraIndex;
 use sp_std::prelude::*;
 
@@ -115,11 +115,6 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::{
-		pallet_prelude::*, sp_runtime::traits::StaticLookup, traits::LockableCurrency,
-		Blake2_128Concat,
-	};
-	use frame_system::pallet_prelude::*;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
