@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 
+- ...
+
+## [4.4.0]
+
 ### Changed
 
 - Updated Substrate to polkadot-v0.9.26
@@ -21,11 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Preferences parameter removed from `pallet-ddc-staking` calls, `value` parameter returned back to `bond` and `unbond` calls
 - Distinct bond size requirements for `Storage` and `Edge` roles with default to 100 CERE
-
-## [4.3.0]
-
-### Changed
-
 - Updated Substrate to polkadot-v0.9.25
 
 ## [4.2.0]
