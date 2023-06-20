@@ -152,9 +152,17 @@ pub mod pallet {
 		#[pallet::constant]
 		type DefaultEdgeBondSize: Get<BalanceOf<Self>>;
 
+		/// Default number or DDC eras required to pass before a CDN participant can chill.
+		#[pallet::constant]
+		type DefaultEdgeChillDelay: Get<EraIndex>;
+
 		/// Default bond size for a storage network participant.
 		#[pallet::constant]
 		type DefaultStorageBondSize: Get<BalanceOf<Self>>;
+
+		/// Default number or DDC eras required to pass before a storage participant can chill.
+		#[pallet::constant]
+		type DefaultStorageChillDelay: Get<EraIndex>;
 
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Number of eras that staked funds must remain bonded for.
