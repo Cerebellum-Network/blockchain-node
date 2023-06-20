@@ -144,17 +144,6 @@ pub mod pallet {
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
-	/// Possible operations on the configuration values of this pallet.
-	#[derive(TypeInfo, Debug, Clone, Encode, Decode, PartialEq)]
-	pub enum ConfigOp<T: Default + Codec> {
-		/// Don't change.
-		Noop,
-		/// Set the given value.
-		Set(T),
-		/// Remove from storage.
-		Remove,
-	}
-
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
@@ -527,34 +516,27 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Update the DDC staking configurations .
+		/// Set custom DDC staking settings for a particular cluster.
 		///
-		/// * `storage_bond_size`: The active bond needed to be a Storage node.
-		/// * `edge_bond_size`: The active bond needed to be an Edge node.
+		/// * `settings` - The new settings for the cluster. If `None`, the settings will be removed
+		///   from the storage and default settings will be used.
 		///
 		/// RuntimeOrigin must be Root to call this function.
 		///
-		/// NOTE: Existing nominators and validators will not be affected by this update.
+		/// NOTE: Existing CDN and storage network participants will not be affected by this
+		/// settings update.
 		#[pallet::weight(10_000)]
-		pub fn set_staking_configs(
+		pub fn set_settings(
 			origin: OriginFor<T>,
-			storage_bond_size: ConfigOp<BalanceOf<T>>,
-			edge_bond_size: ConfigOp<BalanceOf<T>>,
+			cluster: ClusterId,
+			settings: Option<ClusterSettings<T>>,
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
-			macro_rules! config_op_exp {
-				($storage:ty, $op:ident) => {
-					match $op {
-						ConfigOp::Noop => (),
-						ConfigOp::Set(v) => <$storage>::put(v),
-						ConfigOp::Remove => <$storage>::kill(),
-					}
-				};
+			match settings {
+				None => Settings::<T>::remove(cluster),
+				Some(settings) => Settings::<T>::insert(cluster, settings),
 			}
-
-			config_op_exp!(StorageBondSize<T>, storage_bond_size);
-			config_op_exp!(EdgeBondSize<T>, edge_bond_size);
 
 			Ok(())
 		}
