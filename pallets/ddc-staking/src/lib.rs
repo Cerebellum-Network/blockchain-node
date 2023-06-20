@@ -11,17 +11,18 @@ pub mod weights;
 use crate::weights::WeightInfo;
 
 use codec::{Decode, Encode, HasCompact};
-use frame_system::pallet_prelude::*;
 use frame_support::{
-	BoundedVec,
-	dispatch::Codec,
 	pallet_prelude::*,
 	parameter_types,
-	traits::{Currency, DefensiveSaturating, LockableCurrency, LockIdentifier, UnixTime, WithdrawReasons},
+	traits::{
+		Currency, DefensiveSaturating, LockIdentifier, LockableCurrency, UnixTime, WithdrawReasons,
+	},
+	BoundedVec,
 };
+use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, Saturating, Zero, StaticLookup},
+	traits::{AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
 	RuntimeDebug,
 };
 use sp_staking::EraIndex;
