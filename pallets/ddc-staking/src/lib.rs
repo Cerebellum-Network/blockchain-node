@@ -190,16 +190,6 @@ pub mod pallet {
 	pub type Settings<T: Config> =
 		StorageMap<_, Identity, ClusterId, ClusterSettings<T>, ValueQuery>;
 
-	/// The bond size required to become and maintain the role of a CDN participant.
-	#[pallet::storage]
-	pub type EdgeBondSize<T: Config> =
-		StorageValue<_, BalanceOf<T>, ValueQuery, T::DefaultEdgeBondSize>;
-
-	/// The bond size required to become and maintain the role of a storage network participant.
-	#[pallet::storage]
-	pub type StorageBondSize<T: Config> =
-		StorageValue<_, BalanceOf<T>, ValueQuery, T::DefaultStorageBondSize>;
-
 	/// Map from all (unlocked) "controller" accounts to the info regarding the staking.
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
@@ -372,16 +362,16 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
-				let min_active_bond = if Edges::<T>::contains_key(&ledger.stash) {
-					EdgeBondSize::<T>::get()
-				} else if Storages::<T>::contains_key(&ledger.stash) {
-					StorageBondSize::<T>::get()
+				let min_active_bond = if let Some(cluster_id) = Self::edges(&ledger.stash) {
+					Self::settings(cluster_id).edge_bond_size
+				} else if let Some(cluster_id) = Self::storages(&ledger.stash) {
+					Self::settings(cluster_id).storage_bond_size
 				} else {
 					Zero::zero()
 				};
 
-				// Make sure that the user maintains enough active bond for their role.
-				// If a user runs into this error, they should chill first.
+				// Make sure that the user maintains enough active bond for their role in the
+				// cluster. If a user runs into this error, they should chill first.
 				ensure!(ledger.active >= min_active_bond, Error::<T>::InsufficientBond);
 
 				// Note: in case there is no current era it is fine to bond one era more.
@@ -461,7 +451,10 @@ pub mod pallet {
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 
-			ensure!(ledger.active >= EdgeBondSize::<T>::get(), Error::<T>::InsufficientBond);
+			ensure!(
+				ledger.active >= Self::settings(cluster).edge_bond_size,
+				Error::<T>::InsufficientBond
+			);
 			let stash = &ledger.stash;
 
 			// Can't participate in CDN if already participating in storage network.
@@ -483,7 +476,10 @@ pub mod pallet {
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 
-			ensure!(ledger.active >= StorageBondSize::<T>::get(), Error::<T>::InsufficientBond);
+			ensure!(
+				ledger.active >= Self::settings(cluster).storage_bond_size,
+				Error::<T>::InsufficientBond
+			);
 			let stash = &ledger.stash;
 
 			// Can't participate in storage network if already participating in CDN.
