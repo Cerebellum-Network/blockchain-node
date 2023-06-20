@@ -241,8 +241,8 @@ pub mod pallet {
 		NoMoreChunks,
 		/// Internal state has become somehow corrupted and the operation cannot continue.
 		BadState,
-		// An account already declared a desire to participate in the network with a certain role
-		// and to take another role it should call `chill` first.
+		/// An account already declared a desire to participate in the network with a certain role
+		/// and to take another role it should call `chill` first.
 		AlreadyInRole,
 	}
 
