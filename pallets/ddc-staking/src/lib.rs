@@ -120,9 +120,13 @@ pub struct ClusterSettings<T: Config> {
 	/// The bond size required to become and maintain the role of a CDN participant.
 	#[codec(compact)]
 	pub edge_bond_size: BalanceOf<T>,
+	/// Number of eras should pass before a CDN participant can chill.
+	pub edge_chill_delay: EraIndex,
 	/// The bond size required to become and maintain the role of a storage network participant.
 	#[codec(compact)]
 	pub storage_bond_size: BalanceOf<T>,
+	/// Number of eras should pass before a storage network participant can chill.
+	pub storage_chill_delay: EraIndex,
 }
 
 impl<T: pallet::Config> Default for ClusterSettings<T> {
@@ -130,7 +134,9 @@ impl<T: pallet::Config> Default for ClusterSettings<T> {
 	fn default() -> Self {
 		Self {
 			edge_bond_size: T::DefaultEdgeBondSize::get(),
+			edge_chill_delay: T::DefaultEdgeChillDelay::get(),
 			storage_bond_size: T::DefaultStorageBondSize::get(),
+			storage_chill_delay: T::DefaultStorageChillDelay::get(),
 		}
 	}
 }
