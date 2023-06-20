@@ -76,6 +76,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
 };
+use sp_staking::EraIndex;
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -1260,14 +1261,18 @@ impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 
 parameter_types! {
 	pub const DefaultEdgeBondSize: Balance = 100 * DOLLARS;
+	pub const DefaultEdgeChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
 	pub const DefaultStorageBondSize: Balance = 100 * DOLLARS;
+	pub const DefaultStorageChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
 }
 
 impl pallet_ddc_staking::Config for Runtime {
 	type BondingDuration = BondingDuration;
 	type Currency = Balances;
 	type DefaultEdgeBondSize = DefaultEdgeBondSize;
+	type DefaultEdgeChillDelay = DefaultEdgeChillDelay;
 	type DefaultStorageBondSize = DefaultStorageBondSize;
+	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type Event = Event;
 	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
