@@ -1258,10 +1258,18 @@ impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub const DefaultEdgeBondSize: Balance = 100 * DOLLARS;
+	pub const DefaultStorageBondSize: Balance = 100 * DOLLARS;
+}
+
 impl pallet_ddc_staking::Config for Runtime {
 	type BondingDuration = BondingDuration;
 	type Currency = Balances;
+	type DefaultEdgeBondSize = DefaultEdgeBondSize;
+	type DefaultStorageBondSize = DefaultStorageBondSize;
 	type Event = Event;
+	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
 }
 
