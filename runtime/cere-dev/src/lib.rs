@@ -1364,7 +1364,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	(),
+	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
 >;
 
 #[cfg(feature = "runtime-benchmarks")]
