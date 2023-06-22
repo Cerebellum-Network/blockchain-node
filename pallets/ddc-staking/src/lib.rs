@@ -512,9 +512,20 @@ pub mod pallet {
 
 		/// Declare no desire to either participate in storage network or CDN.
 		///
-		/// Effects will be felt at the beginning of the next era.
+		/// Only in case the delay for the role _origin_ maintains in the cluster is set to zero in
+		/// cluster settings, it removes the participant immediately. Otherwise, it requires at
+		/// least two invocations to effectively remove the participant. The first invocation only
+		/// updates the [`Ledger`] to note the DDC era at which the participant may "chill" (current
+		/// era + the delay from the cluster settings). The second invocation made at the noted era
+		/// (or any further era) will remove the participant from the list of CDN or storage network
+		/// participants. If the cluster settings updated significantly decreasing the delay, one
+		/// may invoke it again to decrease the era at with the participant may "chill". But it
+		/// never increases the era at which the participant may "chill" even when the cluster
+		/// settings updated increasing the delay.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash.
+		///
+		/// Emits `ChillSoon`, `Chill`.
 		#[pallet::weight(T::WeightInfo::chill())]
 		pub fn chill(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
