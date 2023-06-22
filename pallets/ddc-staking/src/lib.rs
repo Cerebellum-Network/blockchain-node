@@ -519,7 +519,45 @@ pub mod pallet {
 		pub fn chill(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+			let current_era = match Self::current_era() {
+				Some(era) => era,
+				None => Err(Error::<T>::TooEarly)?, // can't chill before the first era
+			};
+
+			// Extract delay from the cluster settings.
+			let (cluster, delay) = if let Some(cluster) = Self::edges(&ledger.stash) {
+				(cluster, Self::settings(cluster).edge_chill_delay)
+			} else if let Some(cluster) = Self::storages(&ledger.stash) {
+				(cluster, Self::settings(cluster).storage_chill_delay)
+			} else {
+				return Ok(()) // already chilled
+			};
+
+			let can_chill_from = current_era.defensive_saturating_add(delay);
+			match ledger.chilling {
+				None => {
+					// No previous declarations of desire to chill. Note it to allow chilling soon.
+					Self::chill_stash_soon(&ledger.stash, &controller, cluster, can_chill_from);
+					return Ok(())
+				},
+				Some(chilling) if can_chill_from < chilling => {
+					// Time to chill is not reached yet, but it is allowed to chill earlier. Update
+					// to allow chilling sooner.
+					Self::chill_stash_soon(&ledger.stash, &controller, cluster, can_chill_from);
+					return Ok(())
+				},
+				Some(chilling) if chilling > current_era => Err(Error::<T>::TooEarly)?,
+				Some(_) => (),
+			}
+
+			// It's time to chill.
 			Self::chill_stash(&ledger.stash);
+			Ledger::<T>::mutate(&controller, |maybe_ledger| {
+				if let Some(ref mut ledger) = maybe_ledger {
+					ledger.chilling = None // reset for future chilling
+				}
+			});
+
 			Ok(())
 		}
 
