@@ -600,6 +600,21 @@ pub mod pallet {
 			}
 		}
 
+		/// Note a desire of a stash account to chill soon.
+		fn chill_stash_soon(
+			stash: &T::AccountId,
+			controller: &T::AccountId,
+			cluster: ClusterId,
+			can_chill_from: EraIndex,
+		) {
+			Ledger::<T>::mutate(&controller, |maybe_ledger| {
+				if let Some(ref mut ledger) = maybe_ledger {
+					ledger.chilling = Some(can_chill_from)
+				}
+			});
+			Self::deposit_event(Event::<T>::ChillSoon(stash.clone(), cluster, can_chill_from));
+		}
+
 		/// Remove all associated data of a stash account from the staking system.
 		///
 		/// Assumes storage is upgraded before calling.
