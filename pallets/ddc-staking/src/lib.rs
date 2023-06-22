@@ -74,6 +74,8 @@ pub struct StakingLedger<AccountId, Balance: HasCompact> {
 	/// rounds.
 	#[codec(compact)]
 	pub active: Balance,
+	/// Era number at which chilling will be allowed.
+	pub chilling: Option<EraIndex>,
 	/// Any balance that is becoming free, which may eventually be transferred out of the stash
 	/// (assuming it doesn't get slashed first). It is assumed that this will be treated as a first
 	/// in, first out queue where the new (higher value) eras get pushed on the back.
@@ -85,7 +87,13 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 {
 	/// Initializes the default object using the given stash.
 	pub fn default_from(stash: AccountId) -> Self {
-		Self { stash, total: Zero::zero(), active: Zero::zero(), unlocking: Default::default() }
+		Self {
+			stash,
+			total: Zero::zero(),
+			active: Zero::zero(),
+			chilling: Default::default(),
+			unlocking: Default::default(),
+		}
 	}
 
 	/// Remove entries from `unlocking` that are sufficiently old and reduce the
@@ -109,7 +117,7 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 				"filtering items from a bounded vec always leaves length less than bounds. qed",
 			);
 
-		Self { stash: self.stash, total, active: self.active, unlocking }
+		Self { stash: self.stash, total, active: self.active, chilling: self.chilling, unlocking }
 	}
 }
 
@@ -317,8 +325,13 @@ pub mod pallet {
 			let stash_balance = T::Currency::free_balance(&stash);
 			let value = value.min(stash_balance);
 			Self::deposit_event(Event::<T>::Bonded(stash.clone(), value));
-			let item =
-				StakingLedger { stash, total: value, active: value, unlocking: Default::default() };
+			let item = StakingLedger {
+				stash,
+				total: value,
+				active: value,
+				chilling: Default::default(),
+				unlocking: Default::default(),
+			};
 			Self::update_ledger(&controller, &item);
 			Ok(())
 		}
