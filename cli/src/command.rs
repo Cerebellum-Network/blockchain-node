@@ -189,11 +189,11 @@ pub fn run() -> sc_cli::Result<()> {
 				}),
 				BenchmarkCmd::Overhead(_cmd) => {
 					print!("BenchmarkCmd::Overhead is not supported");
-					Ok(())
+					unimplemented!()
 				},
 				BenchmarkCmd::Extrinsic(_cmd) => {
 					print!("BenchmarkCmd::Extrinsic is not supported");
-					Ok(())
+					unimplemented!()
 				},
 				BenchmarkCmd::Machine(cmd) =>
 					runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())),
