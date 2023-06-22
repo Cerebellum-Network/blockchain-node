@@ -533,6 +533,12 @@ pub mod pallet {
 				return Ok(()) // already chilled
 			};
 
+			if delay == 0 {
+				// No delay is set, so we can chill right away.
+				Self::chill_stash(&ledger.stash);
+				return Ok(())
+			}
+
 			let can_chill_from = current_era.defensive_saturating_add(delay);
 			match ledger.chilling {
 				None => {
