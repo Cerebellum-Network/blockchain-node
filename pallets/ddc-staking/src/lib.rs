@@ -269,6 +269,8 @@ pub mod pallet {
 		/// An account already declared a desire to participate in the network with a certain role
 		/// and to take another role it should call `chill` first.
 		AlreadyInRole,
+		/// Action is allowed at some point of time in future not reached yet.
+		TooEarly,
 	}
 
 	#[pallet::hooks]
