@@ -243,6 +243,9 @@ pub mod pallet {
 		/// An account has stopped participating as either a storage network or CDN participant.
 		/// \[stash\]
 		Chilled(T::AccountId),
+		/// An account has declared desire to stop participating in CDN or storage network soon.
+		/// \[stash, cluster, era\]
+		ChillSoon(T::AccountId, ClusterId, EraIndex),
 	}
 
 	#[pallet::error]
