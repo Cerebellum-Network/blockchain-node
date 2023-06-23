@@ -191,6 +191,12 @@ pub mod pallet {
 	pub type Ledger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>>>;
 
+	/// Map from all "stash" accounts to the paid out rewards
+	#[pallet::storage]
+	#[pallet::getter(fn rewards)]
+	pub type Rewards<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>>;
+
 	/// The map from (wannabe) storage network participant stash key to the preferences of that
 	/// storage network participant.
 	#[pallet::storage]
@@ -652,6 +658,9 @@ pub mod pallet {
 					reward,
 					ExistenceRequirement::AllowDeath,
 				)?; // ToDo: all success or noop
+				let mut total_rewards: BalanceOf<T> = Self::rewards(&stash).unwrap();
+				total_rewards += reward;
+				<Rewards<T>>::insert(&stash, total_rewards);
 			}
 			log::debug!(
 				"Balance left on payout source account {:?}",
