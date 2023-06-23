@@ -481,6 +481,13 @@ pub mod pallet {
 			// Can't participate in CDN if already participating in storage network.
 			ensure!(!Storages::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
+			// Cancel previous "chill" attempts
+			Ledger::<T>::mutate(&controller, |maybe_ledger| {
+				if let Some(ref mut ledger) = maybe_ledger {
+					ledger.chilling = None
+				}
+			});
+
 			Self::do_add_edge(stash, cluster);
 			Ok(())
 		}
@@ -506,7 +513,15 @@ pub mod pallet {
 			// Can't participate in storage network if already participating in CDN.
 			ensure!(!Edges::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
+			// Cancel previous "chill" attempts
+			Ledger::<T>::mutate(&controller, |maybe_ledger| {
+				if let Some(ref mut ledger) = maybe_ledger {
+					ledger.chilling = None
+				}
+			});
+
 			Self::do_add_storage(stash, cluster);
+
 			Ok(())
 		}
 
