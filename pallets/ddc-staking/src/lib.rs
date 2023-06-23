@@ -471,7 +471,6 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
-
 			ensure!(
 				ledger.active >= Self::settings(cluster).edge_bond_size,
 				Error::<T>::InsufficientBond
@@ -481,12 +480,18 @@ pub mod pallet {
 			// Can't participate in CDN if already participating in storage network.
 			ensure!(!Storages::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
-			// Cancel previous "chill" attempts
-			Ledger::<T>::mutate(&controller, |maybe_ledger| {
-				if let Some(ref mut ledger) = maybe_ledger {
-					ledger.chilling = None
-				}
-			});
+			// Is it an attempt to cancel a previous "chill"?
+			if let Some(current_cluster) = Self::edges(&stash) {
+				// Switching the cluster is prohibited. The user should chill first.
+				ensure!(current_cluster == cluster, Error::<T>::AlreadyInRole);
+				// Cancel previous "chill" attempts
+				Ledger::<T>::mutate(&controller, |maybe_ledger| {
+					if let Some(ref mut ledger) = maybe_ledger {
+						ledger.chilling = None
+					}
+				});
+				return Ok(())
+			}
 
 			Self::do_add_edge(stash, cluster);
 			Ok(())
@@ -503,7 +508,6 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
-
 			ensure!(
 				ledger.active >= Self::settings(cluster).storage_bond_size,
 				Error::<T>::InsufficientBond
@@ -513,12 +517,18 @@ pub mod pallet {
 			// Can't participate in storage network if already participating in CDN.
 			ensure!(!Edges::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
-			// Cancel previous "chill" attempts
-			Ledger::<T>::mutate(&controller, |maybe_ledger| {
-				if let Some(ref mut ledger) = maybe_ledger {
-					ledger.chilling = None
-				}
-			});
+			// Is it an attempt to cancel a previous "chill"?
+			if let Some(current_cluster) = Self::storages(&stash) {
+				// Switching the cluster is prohibited. The user should chill first.
+				ensure!(current_cluster == cluster, Error::<T>::AlreadyInRole);
+				// Cancel previous "chill" attempts
+				Ledger::<T>::mutate(&controller, |maybe_ledger| {
+					if let Some(ref mut ledger) = maybe_ledger {
+						ledger.chilling = None
+					}
+				});
+				return Ok(())
+			}
 
 			Self::do_add_storage(stash, cluster);
 
