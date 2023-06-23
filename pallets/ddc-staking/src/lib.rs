@@ -460,7 +460,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Declare the desire to participate in CDN for the origin controller.
+		/// Declare the desire to participate in CDN for the origin controller. Also works to cancel
+		/// a previous "chill".
 		///
 		/// `cluster` is the ID of the DDC cluster the participant wishes to join.
 		///
@@ -497,7 +498,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Declare the desire to participate in storage network for the origin controller.
+		/// Declare the desire to participate in storage network for the origin controller. Also
+		/// works to cancel a previous "chill".
 		///
 		/// `cluster` is the ID of the DDC cluster the participant wishes to join.
 		///
