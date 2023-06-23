@@ -209,9 +209,15 @@ pub mod pallet {
 	#[pallet::getter(fn last_managed_era)]
 	pub type LastManagedEra<T: Config> = StorageValue<_, EraIndex>;
 
+	/// The mapping of controller accounts to OCW public keys
+	#[pallet::storage]
+	#[pallet::getter(fn ocw_keys)]
+	pub type OffchainWorkerKeys<T: Config> = 
+	StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
+
 	#[pallet::error]
 	pub enum Error<T> {
-		// TBA
+		NotController
 	}
 
 	#[pallet::event]
@@ -548,6 +554,21 @@ pub mod pallet {
 
 			<ddc_accounts::pallet::Pallet::<T>>::charge_payments_new(paying_accounts);
 
+			Ok(())
+		}
+
+		#[pallet::weight(100_000)]
+		pub fn set_ocw_key(
+			origin: OriginFor<T>,
+			ocw_pub: T::AccountId,
+		) -> DispatchResult {
+			let controller = ensure_signed(origin)?;
+			ensure!(
+				staking::Ledger::<T>::contains_key(&controller),
+				Error::<T>::NotController
+			);
+			
+			OffchainWorkerKeys::<T>::insert(controller, ocw_pub);
 			Ok(())
 		}
 	}
