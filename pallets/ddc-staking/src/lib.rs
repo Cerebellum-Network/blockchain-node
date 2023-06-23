@@ -486,11 +486,7 @@ pub mod pallet {
 				// Switching the cluster is prohibited. The user should chill first.
 				ensure!(current_cluster == cluster, Error::<T>::AlreadyInRole);
 				// Cancel previous "chill" attempts
-				Ledger::<T>::mutate(&controller, |maybe_ledger| {
-					if let Some(ref mut ledger) = maybe_ledger {
-						ledger.chilling = None
-					}
-				});
+				Self::reset_chilling(&controller);
 				return Ok(())
 			}
 
@@ -524,11 +520,7 @@ pub mod pallet {
 				// Switching the cluster is prohibited. The user should chill first.
 				ensure!(current_cluster == cluster, Error::<T>::AlreadyInRole);
 				// Cancel previous "chill" attempts
-				Ledger::<T>::mutate(&controller, |maybe_ledger| {
-					if let Some(ref mut ledger) = maybe_ledger {
-						ledger.chilling = None
-					}
-				});
+				Self::reset_chilling(&controller);
 				return Ok(())
 			}
 
@@ -596,11 +588,7 @@ pub mod pallet {
 
 			// It's time to chill.
 			Self::chill_stash(&ledger.stash);
-			Ledger::<T>::mutate(&controller, |maybe_ledger| {
-				if let Some(ref mut ledger) = maybe_ledger {
-					ledger.chilling = None // reset for future chilling
-				}
-			});
+			Self::reset_chilling(&controller); // for future chilling
 
 			Ok(())
 		}
@@ -760,6 +748,15 @@ pub mod pallet {
 		/// wrong.
 		pub fn do_remove_storage(who: &T::AccountId) -> bool {
 			Storages::<T>::take(who).is_some()
+		}
+
+		/// Reset the chilling era for a controller.
+		pub fn reset_chilling(controller: &T::AccountId) {
+			Ledger::<T>::mutate(&controller, |maybe_ledger| {
+				if let Some(ref mut ledger) = maybe_ledger {
+					ledger.chilling = None
+				}
+			});
 		}
 	}
 }
