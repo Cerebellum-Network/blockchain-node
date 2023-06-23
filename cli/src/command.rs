@@ -187,17 +187,14 @@ pub fn run() -> sc_cli::Result<()> {
 					let storage = backend.expose_storage();
 					unwrap_client!(client, cmd.run(config, client.clone(), db, storage))
 				}),
-				BenchmarkCmd::Overhead(cmd) => runner.sync_run(|config| {
-					use cere_client::benchmark_inherent_data;
-
-					let (client, _, _, _) = cere_service::new_chain_ops(&config)?;
-					let wrapped = client.clone();
-
-					let inherent_data = benchmark_inherent_data()
-						.map_err(|e| format!("generating inherent data: {:?}", e))?;
-
-					unwrap_client!(client, cmd.run(config, client.clone(), inherent_data, wrapped))
-				}),
+				BenchmarkCmd::Overhead(_cmd) => {
+					print!("BenchmarkCmd::Overhead is not supported");
+					unimplemented!()
+				},
+				BenchmarkCmd::Extrinsic(_cmd) => {
+					print!("BenchmarkCmd::Extrinsic is not supported");
+					unimplemented!()
+				},
 				BenchmarkCmd::Machine(cmd) =>
 					runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())),
 			}
