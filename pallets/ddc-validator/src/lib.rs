@@ -217,7 +217,8 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		NotController
+		NotController,
+		OCWKeyNotRegistered,
 	}
 
 	#[pallet::event]
@@ -550,7 +551,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>,
 		) -> DispatchResult {
-			ensure_signed(origin)?;
+			let controller = ensure_signed(origin)?;
+			ensure!(
+				OffchainWorkerKeys::<T>::contains_key(&controller),
+				Error::<T>::OCWKeyNotRegistered
+			);
+			
 
 			<ddc_accounts::pallet::Pallet::<T>>::charge_payments_new(paying_accounts);
 
@@ -563,11 +569,14 @@ pub mod pallet {
 			ocw_pub: T::AccountId,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
+			let ledger = staking::Ledger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
+			let era = staking::Pallet::<T>::current_era().unwrap();
+
 			ensure!(
-				staking::Ledger::<T>::contains_key(&controller),
+				staking::ErasStakers::<T>::contains_key(era, &ledger.stash),
 				Error::<T>::NotController
 			);
-			
+
 			OffchainWorkerKeys::<T>::insert(controller, ocw_pub);
 			Ok(())
 		}
