@@ -73,13 +73,14 @@ use sp_runtime::{
 		SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
+	ApplyExtrinsicResult, FixedU128, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
 };
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
+use cere_runtime_common::{BalanceToU256, U256ToBalance};
 
 #[cfg(any(feature = "std", test))]
 pub use frame_system::Call as SystemCall;
@@ -295,8 +296,9 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::NonTransfer => !matches!(
 				c,
 				Call::Balances(..) |
-					Call::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
-					Call::Indices(pallet_indices::Call::transfer { .. })
+				Call::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
+				Call::Indices(pallet_indices::Call::transfer { .. }) |
+				Call::NominationPools(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
@@ -539,7 +541,7 @@ impl pallet_staking::Config for Runtime {
 	type GenesisElectionProvider = onchain::UnboundedExecution<OnChainSeqPhragmen>;
 	type VoterList = VoterList;
 	type MaxUnlockingChunks = ConstU32<32>;
-	type OnStakerSlash = ();
+	type OnStakerSlash = NominationPools;
 	type WeightInfo = pallet_staking::weights::SubstrateWeight<Runtime>;
 	type BenchmarkingConfig = StakingBenchmarkingConfig;
 }
@@ -793,6 +795,8 @@ parameter_types! {
 	pub const DesiredMembers: u32 = 13;
 	pub const DesiredRunnersUp: u32 = 20;
 	pub const ElectionsPhragmenPalletId: LockIdentifier = *b"phrelect";
+	pub const MaxVoters: u32 = 10 * 1000;
+	pub const MaxCandidates: u32 = 1000;
 }
 
 // Make sure that there are no more than `MaxMembers` members elected via elections-phragmen.
@@ -816,6 +820,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type DesiredRunnersUp = DesiredRunnersUp;
 	type TermDuration = TermDuration;
 	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Runtime>;
+	type MaxVoters = MaxVoters;
+	type MaxCandidates = MaxCandidates;
 }
 
 parameter_types! {
@@ -1248,6 +1254,51 @@ parameter_types! {
 	pub const OcwBlockInterval: u32 = pallet_ddc_metrics_offchain_worker::BLOCK_INTERVAL;
 }
 
+parameter_types! {
+	pub const PoolsPalletId: PalletId = PalletId(*b"py/nopls");
+	// Allow pools that got slashed up to 90% to remain operational.
+	pub const MaxPointsToBalance: u8 = 10;
+}
+
+impl pallet_nomination_pools::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type CurrencyBalance = Balance;
+	type RewardCounter = FixedU128;
+	type BalanceToU256 = cere_runtime_common::BalanceToU256;
+	type U256ToBalance = cere_runtime_common::U256ToBalance;
+	type StakingInterface = Staking;
+	type PostUnbondingPoolsWindow = frame_support::traits::ConstU32<4>;
+	type MaxMetadataLen = frame_support::traits::ConstU32<256>;
+	// we use the same number of allowed unlocking chunks as with staking.
+	type MaxUnbonding = <Self as pallet_staking::Config>::MaxUnlockingChunks;
+	type PalletId = PoolsPalletId;
+	type MaxPointsToBalance = MaxPointsToBalance;
+	type WeightInfo = ();
+}
+
+pub struct InitiateNominationPools;
+impl frame_support::traits::OnRuntimeUpgrade for InitiateNominationPools {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		// we use one as an indicator if this has already been set.
+		if pallet_nomination_pools::MaxPools::<Runtime>::get().is_none() {
+			pallet_nomination_pools::MinJoinBond::<Runtime>::put(250 * DOLLARS);
+			pallet_nomination_pools::MinCreateBond::<Runtime>::put(5000 * DOLLARS);
+
+			// Initialize with limits for now.
+			pallet_nomination_pools::MaxPools::<Runtime>::put(0);
+			pallet_nomination_pools::MaxPoolMembersPerPool::<Runtime>::put(0);
+			pallet_nomination_pools::MaxPoolMembers::<Runtime>::put(0);
+
+			log::info!(target: "runtime::cere", "pools config initiated 🎉");
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 5)
+		} else {
+			log::info!(target: "runtime::cere", "pools config already initiated 😏");
+			<Runtime as frame_system::Config>::DbWeight::get().reads(1)
+		}
+	}
+}
+
 impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 	type BlockInterval = OcwBlockInterval;
 
@@ -1301,6 +1352,7 @@ construct_runtime!(
 		Tips: pallet_tips,
 		VoterList: pallet_bags_list,
 		ChildBounties: pallet_child_bounties,
+		NominationPools: pallet_nomination_pools,
 		CereDDCModule: pallet_cere_ddc::{Pallet, Call, Storage, Event<T>},
 		ChainBridge: pallet_chainbridge::{Pallet, Call, Storage, Event<T>},
 		Erc721: pallet_erc721::{Pallet, Call, Storage, Event<T>},
@@ -1347,7 +1399,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
+	InitiateNominationPools,
 >;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -1375,6 +1427,7 @@ mod benches {
 		[pallet_indices, Indices]
 		[pallet_membership, TechnicalMembership]
 		[pallet_multisig, Multisig]
+		[pallet_nomination_pools, NominationPoolsBench::<Runtime>]
 		[pallet_offences, OffencesBench::<Runtime>]
 		[pallet_proxy, Proxy]
 		[pallet_scheduler, Scheduler]
@@ -1603,6 +1656,17 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentCallApi<Block, Balance, Call>
+		for Runtime
+	{
+		fn query_call_info(call: Call, len: u32) -> RuntimeDispatchInfo<Balance> {
+			TransactionPayment::query_call_info(call, len)
+		}
+		fn query_call_fee_details(call: Call, len: u32) -> FeeDetails<Balance> {
+			TransactionPayment::query_call_fee_details(call, len)
+		}
+	}
+
 	impl sp_session::SessionKeys<Block> for Runtime {
 		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
 			SessionKeys::generate(seed)
@@ -1667,6 +1731,7 @@ impl_runtime_apis! {
 			use pallet_session_benchmarking::Pallet as SessionBench;
 			use pallet_offences_benchmarking::Pallet as OffencesBench;
 			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
 
@@ -1675,6 +1740,7 @@ impl_runtime_apis! {
 			impl pallet_election_provider_support_benchmarking::Config for Runtime {}
 			impl frame_system_benchmarking::Config for Runtime {}
 			impl baseline::Config for Runtime {}
+			impl pallet_nomination_pools_benchmarking::Config for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
