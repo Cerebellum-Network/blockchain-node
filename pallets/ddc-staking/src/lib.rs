@@ -11,19 +11,20 @@ pub mod weights;
 use crate::weights::WeightInfo;
 
 use codec::{Decode, Encode, HasCompact};
-
 use frame_support::{
-	dispatch::Codec,
+	pallet_prelude::*,
 	parameter_types,
-	traits::{Currency, DefensiveSaturating, LockIdentifier, UnixTime, WithdrawReasons},
+	traits::{
+		Currency, DefensiveSaturating, LockIdentifier, LockableCurrency, UnixTime, WithdrawReasons,
+	},
 	BoundedVec,
 };
+use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, Saturating, Zero},
+	traits::{AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
 	RuntimeDebug,
 };
-
 use sp_staking::EraIndex;
 use sp_std::prelude::*;
 
@@ -73,6 +74,8 @@ pub struct StakingLedger<AccountId, Balance: HasCompact> {
 	/// rounds.
 	#[codec(compact)]
 	pub active: Balance,
+	/// Era number at which chilling will be allowed.
+	pub chilling: Option<EraIndex>,
 	/// Any balance that is becoming free, which may eventually be transferred out of the stash
 	/// (assuming it doesn't get slashed first). It is assumed that this will be treated as a first
 	/// in, first out queue where the new (higher value) eras get pushed on the back.
@@ -84,7 +87,13 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 {
 	/// Initializes the default object using the given stash.
 	pub fn default_from(stash: AccountId) -> Self {
-		Self { stash, total: Zero::zero(), active: Zero::zero(), unlocking: Default::default() }
+		Self {
+			stash,
+			total: Zero::zero(),
+			active: Zero::zero(),
+			chilling: Default::default(),
+			unlocking: Default::default(),
+		}
 	}
 
 	/// Remove entries from `unlocking` that are sufficiently old and reduce the
@@ -108,34 +117,46 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 				"filtering items from a bounded vec always leaves length less than bounds. qed",
 			);
 
-		Self { stash: self.stash, total, active: self.active, unlocking }
+		Self { stash: self.stash, total, active: self.active, chilling: self.chilling, unlocking }
+	}
+}
+
+/// Cluster staking parameters.
+#[derive(Clone, Decode, Encode, Eq, PartialEq, RuntimeDebugNoBound, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct ClusterSettings<T: Config> {
+	/// The bond size required to become and maintain the role of a CDN participant.
+	#[codec(compact)]
+	pub edge_bond_size: BalanceOf<T>,
+	/// Number of eras should pass before a CDN participant can chill.
+	pub edge_chill_delay: EraIndex,
+	/// The bond size required to become and maintain the role of a storage network participant.
+	#[codec(compact)]
+	pub storage_bond_size: BalanceOf<T>,
+	/// Number of eras should pass before a storage network participant can chill.
+	pub storage_chill_delay: EraIndex,
+}
+
+impl<T: pallet::Config> Default for ClusterSettings<T> {
+	/// Default to the values specified in the runtime config.
+	fn default() -> Self {
+		Self {
+			edge_bond_size: T::DefaultEdgeBondSize::get(),
+			edge_chill_delay: T::DefaultEdgeChillDelay::get(),
+			storage_bond_size: T::DefaultStorageBondSize::get(),
+			storage_chill_delay: T::DefaultStorageChillDelay::get(),
+		}
 	}
 }
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::{
-		pallet_prelude::*, sp_runtime::traits::StaticLookup, traits::LockableCurrency,
-		Blake2_128Concat,
-	};
-	use frame_system::pallet_prelude::*;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
-
-	/// Possible operations on the configuration values of this pallet.
-	#[derive(TypeInfo, Debug, Clone, Encode, Decode, PartialEq)]
-	pub enum ConfigOp<T: Default + Codec> {
-		/// Don't change.
-		Noop,
-		/// Set the given value.
-		Set(T),
-		/// Remove from storage.
-		Remove,
-	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -145,9 +166,17 @@ pub mod pallet {
 		#[pallet::constant]
 		type DefaultEdgeBondSize: Get<BalanceOf<Self>>;
 
+		/// Default number or DDC eras required to pass before a CDN participant can chill.
+		#[pallet::constant]
+		type DefaultEdgeChillDelay: Get<EraIndex>;
+
 		/// Default bond size for a storage network participant.
 		#[pallet::constant]
 		type DefaultStorageBondSize: Get<BalanceOf<Self>>;
+
+		/// Default number or DDC eras required to pass before a storage participant can chill.
+		#[pallet::constant]
+		type DefaultStorageChillDelay: Get<EraIndex>;
 
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Number of eras that staked funds must remain bonded for.
@@ -166,15 +195,11 @@ pub mod pallet {
 	#[pallet::getter(fn bonded)]
 	pub type Bonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
 
-	/// The bond size required to become and maintain the role of a CDN participant.
+	/// DDC clusters staking settings.
 	#[pallet::storage]
-	pub type EdgeBondSize<T: Config> =
-		StorageValue<_, BalanceOf<T>, ValueQuery, T::DefaultEdgeBondSize>;
-
-	/// The bond size required to become and maintain the role of a storage network participant.
-	#[pallet::storage]
-	pub type StorageBondSize<T: Config> =
-		StorageValue<_, BalanceOf<T>, ValueQuery, T::DefaultStorageBondSize>;
+	#[pallet::getter(fn settings)]
+	pub type Settings<T: Config> =
+		StorageMap<_, Identity, ClusterId, ClusterSettings<T>, ValueQuery>;
 
 	/// Map from all (unlocked) "controller" accounts to the info regarding the staking.
 	#[pallet::storage]
@@ -218,6 +243,9 @@ pub mod pallet {
 		/// An account has stopped participating as either a storage network or CDN participant.
 		/// \[stash\]
 		Chilled(T::AccountId),
+		/// An account has declared desire to stop participating in CDN or storage network soon.
+		/// \[stash, cluster, era\]
+		ChillSoon(T::AccountId, ClusterId, EraIndex),
 	}
 
 	#[pallet::error]
@@ -238,9 +266,11 @@ pub mod pallet {
 		NoMoreChunks,
 		/// Internal state has become somehow corrupted and the operation cannot continue.
 		BadState,
-		// An account already declared a desire to participate in the network with a certain role
-		// and to take another role it should call `chill` first.
+		/// An account already declared a desire to participate in the network with a certain role
+		/// and to take another role it should call `chill` first.
 		AlreadyInRole,
+		/// Action is allowed at some point of time in future not reached yet.
+		TooEarly,
 	}
 
 	#[pallet::hooks]
@@ -300,8 +330,13 @@ pub mod pallet {
 			let stash_balance = T::Currency::free_balance(&stash);
 			let value = value.min(stash_balance);
 			Self::deposit_event(Event::<T>::Bonded(stash.clone(), value));
-			let item =
-				StakingLedger { stash, total: value, active: value, unlocking: Default::default() };
+			let item = StakingLedger {
+				stash,
+				total: value,
+				active: value,
+				chilling: Default::default(),
+				unlocking: Default::default(),
+			};
 			Self::update_ledger(&controller, &item);
 			Ok(())
 		}
@@ -348,16 +383,16 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
-				let min_active_bond = if Edges::<T>::contains_key(&ledger.stash) {
-					EdgeBondSize::<T>::get()
-				} else if Storages::<T>::contains_key(&ledger.stash) {
-					StorageBondSize::<T>::get()
+				let min_active_bond = if let Some(cluster_id) = Self::edges(&ledger.stash) {
+					Self::settings(cluster_id).edge_bond_size
+				} else if let Some(cluster_id) = Self::storages(&ledger.stash) {
+					Self::settings(cluster_id).storage_bond_size
 				} else {
 					Zero::zero()
 				};
 
-				// Make sure that the user maintains enough active bond for their role.
-				// If a user runs into this error, they should chill first.
+				// Make sure that the user maintains enough active bond for their role in the
+				// cluster. If a user runs into this error, they should chill first.
 				ensure!(ledger.active >= min_active_bond, Error::<T>::InsufficientBond);
 
 				// Note: in case there is no current era it is fine to bond one era more.
@@ -425,7 +460,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Declare the desire to participate in CDN for the origin controller.
+		/// Declare the desire to participate in CDN for the origin controller. Also works to cancel
+		/// a previous "chill".
 		///
 		/// `cluster` is the ID of the DDC cluster the participant wishes to join.
 		///
@@ -436,18 +472,30 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
-
-			ensure!(ledger.active >= EdgeBondSize::<T>::get(), Error::<T>::InsufficientBond);
+			ensure!(
+				ledger.active >= Self::settings(cluster).edge_bond_size,
+				Error::<T>::InsufficientBond
+			);
 			let stash = &ledger.stash;
 
 			// Can't participate in CDN if already participating in storage network.
 			ensure!(!Storages::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
+			// Is it an attempt to cancel a previous "chill"?
+			if let Some(current_cluster) = Self::edges(&stash) {
+				// Switching the cluster is prohibited. The user should chill first.
+				ensure!(current_cluster == cluster, Error::<T>::AlreadyInRole);
+				// Cancel previous "chill" attempts
+				Self::reset_chilling(&controller);
+				return Ok(())
+			}
+
 			Self::do_add_edge(stash, cluster);
 			Ok(())
 		}
 
-		/// Declare the desire to participate in storage network for the origin controller.
+		/// Declare the desire to participate in storage network for the origin controller. Also
+		/// works to cancel a previous "chill".
 		///
 		/// `cluster` is the ID of the DDC cluster the participant wishes to join.
 		///
@@ -458,27 +506,90 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
-
-			ensure!(ledger.active >= StorageBondSize::<T>::get(), Error::<T>::InsufficientBond);
+			ensure!(
+				ledger.active >= Self::settings(cluster).storage_bond_size,
+				Error::<T>::InsufficientBond
+			);
 			let stash = &ledger.stash;
 
 			// Can't participate in storage network if already participating in CDN.
 			ensure!(!Edges::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
+			// Is it an attempt to cancel a previous "chill"?
+			if let Some(current_cluster) = Self::storages(&stash) {
+				// Switching the cluster is prohibited. The user should chill first.
+				ensure!(current_cluster == cluster, Error::<T>::AlreadyInRole);
+				// Cancel previous "chill" attempts
+				Self::reset_chilling(&controller);
+				return Ok(())
+			}
+
 			Self::do_add_storage(stash, cluster);
+
 			Ok(())
 		}
 
 		/// Declare no desire to either participate in storage network or CDN.
 		///
-		/// Effects will be felt at the beginning of the next era.
+		/// Only in case the delay for the role _origin_ maintains in the cluster is set to zero in
+		/// cluster settings, it removes the participant immediately. Otherwise, it requires at
+		/// least two invocations to effectively remove the participant. The first invocation only
+		/// updates the [`Ledger`] to note the DDC era at which the participant may "chill" (current
+		/// era + the delay from the cluster settings). The second invocation made at the noted era
+		/// (or any further era) will remove the participant from the list of CDN or storage network
+		/// participants. If the cluster settings updated significantly decreasing the delay, one
+		/// may invoke it again to decrease the era at with the participant may "chill". But it
+		/// never increases the era at which the participant may "chill" even when the cluster
+		/// settings updated increasing the delay.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash.
+		///
+		/// Emits `ChillSoon`, `Chill`.
 		#[pallet::weight(T::WeightInfo::chill())]
 		pub fn chill(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+			let current_era = match Self::current_era() {
+				Some(era) => era,
+				None => Err(Error::<T>::TooEarly)?, // can't chill before the first era
+			};
+
+			// Extract delay from the cluster settings.
+			let (cluster, delay) = if let Some(cluster) = Self::edges(&ledger.stash) {
+				(cluster, Self::settings(cluster).edge_chill_delay)
+			} else if let Some(cluster) = Self::storages(&ledger.stash) {
+				(cluster, Self::settings(cluster).storage_chill_delay)
+			} else {
+				return Ok(()) // already chilled
+			};
+
+			if delay == 0 {
+				// No delay is set, so we can chill right away.
+				Self::chill_stash(&ledger.stash);
+				return Ok(())
+			}
+
+			let can_chill_from = current_era.defensive_saturating_add(delay);
+			match ledger.chilling {
+				None => {
+					// No previous declarations of desire to chill. Note it to allow chilling soon.
+					Self::chill_stash_soon(&ledger.stash, &controller, cluster, can_chill_from);
+					return Ok(())
+				},
+				Some(chilling) if can_chill_from < chilling => {
+					// Time to chill is not reached yet, but it is allowed to chill earlier. Update
+					// to allow chilling sooner.
+					Self::chill_stash_soon(&ledger.stash, &controller, cluster, can_chill_from);
+					return Ok(())
+				},
+				Some(chilling) if chilling > current_era => Err(Error::<T>::TooEarly)?,
+				Some(_) => (),
+			}
+
+			// It's time to chill.
 			Self::chill_stash(&ledger.stash);
+			Self::reset_chilling(&controller); // for future chilling
+
 			Ok(())
 		}
 
@@ -507,34 +618,27 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Update the DDC staking configurations .
+		/// Set custom DDC staking settings for a particular cluster.
 		///
-		/// * `storage_bond_size`: The active bond needed to be a Storage node.
-		/// * `edge_bond_size`: The active bond needed to be an Edge node.
+		/// * `settings` - The new settings for the cluster. If `None`, the settings will be removed
+		///   from the storage and default settings will be used.
 		///
 		/// RuntimeOrigin must be Root to call this function.
 		///
-		/// NOTE: Existing nominators and validators will not be affected by this update.
+		/// NOTE: Existing CDN and storage network participants will not be affected by this
+		/// settings update.
 		#[pallet::weight(10_000)]
-		pub fn set_staking_configs(
+		pub fn set_settings(
 			origin: OriginFor<T>,
-			storage_bond_size: ConfigOp<BalanceOf<T>>,
-			edge_bond_size: ConfigOp<BalanceOf<T>>,
+			cluster: ClusterId,
+			settings: Option<ClusterSettings<T>>,
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
-			macro_rules! config_op_exp {
-				($storage:ty, $op:ident) => {
-					match $op {
-						ConfigOp::Noop => (),
-						ConfigOp::Set(v) => <$storage>::put(v),
-						ConfigOp::Remove => <$storage>::kill(),
-					}
-				};
+			match settings {
+				None => Settings::<T>::remove(cluster),
+				Some(settings) => Settings::<T>::insert(cluster, settings),
 			}
-
-			config_op_exp!(StorageBondSize<T>, storage_bond_size);
-			config_op_exp!(EdgeBondSize<T>, edge_bond_size);
 
 			Ok(())
 		}
@@ -564,6 +668,21 @@ pub mod pallet {
 			if chilled_as_storage || chilled_as_edge {
 				Self::deposit_event(Event::<T>::Chilled(stash.clone()));
 			}
+		}
+
+		/// Note a desire of a stash account to chill soon.
+		fn chill_stash_soon(
+			stash: &T::AccountId,
+			controller: &T::AccountId,
+			cluster: ClusterId,
+			can_chill_from: EraIndex,
+		) {
+			Ledger::<T>::mutate(&controller, |maybe_ledger| {
+				if let Some(ref mut ledger) = maybe_ledger {
+					ledger.chilling = Some(can_chill_from)
+				}
+			});
+			Self::deposit_event(Event::<T>::ChillSoon(stash.clone(), cluster, can_chill_from));
 		}
 
 		/// Remove all associated data of a stash account from the staking system.
@@ -629,6 +748,15 @@ pub mod pallet {
 		/// wrong.
 		pub fn do_remove_storage(who: &T::AccountId) -> bool {
 			Storages::<T>::take(who).is_some()
+		}
+
+		/// Reset the chilling era for a controller.
+		pub fn reset_chilling(controller: &T::AccountId) {
+			Ledger::<T>::mutate(&controller, |maybe_ledger| {
+				if let Some(ref mut ledger) = maybe_ledger {
+					ledger.chilling = None
+				}
+			});
 		}
 	}
 }
