@@ -9,8 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- DDC staking requirements now distinct for each DDC cluster
-- DDC participant stake chilling is delayed if the delay is not explicitly set to zero
+- Updated Substrate to polkadot-v0.9.28
 
 ## [4.5.0]
 
