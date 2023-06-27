@@ -709,10 +709,6 @@ pub mod pallet {
 		/// This function will add a CDN participant to the `Edges` storage map.
 		///
 		/// If the CDN participant already exists, their cluster will be updated.
-		///
-		/// NOTE: you must ALWAYS use this function to add a CDN participant to the system. Any
-		/// access to `Edges` outside of this function is almost certainly
-		/// wrong.
 		pub fn do_add_edge(who: &T::AccountId, cluster: ClusterId) {
 			Edges::<T>::insert(who, cluster);
 		}
@@ -720,10 +716,6 @@ pub mod pallet {
 		/// This function will remove a CDN participant from the `Edges` map.
 		///
 		/// Returns true if `who` was removed from `Edges`, otherwise false.
-		///
-		/// NOTE: you must ALWAYS use this function to remove a storage network participant from the
-		/// system. Any access to `Edges` outside of this function is almost certainly
-		/// wrong.
 		pub fn do_remove_edge(who: &T::AccountId) -> bool {
 			Edges::<T>::take(who).is_some()
 		}
@@ -731,10 +723,6 @@ pub mod pallet {
 		/// This function will add a storage network participant to the `Storages` storage map.
 		///
 		/// If the storage network participant already exists, their cluster will be updated.
-		///
-		/// NOTE: you must ALWAYS use this function to add a storage network participant to the
-		/// system. Any access to `Storages` outside of this function is almost certainly
-		/// wrong.
 		pub fn do_add_storage(who: &T::AccountId, cluster: ClusterId) {
 			Storages::<T>::insert(who, cluster);
 		}
@@ -742,10 +730,6 @@ pub mod pallet {
 		/// This function will remove a storage network participant from the `Storages` map.
 		///
 		/// Returns true if `who` was removed from `Storages`, otherwise false.
-		///
-		/// NOTE: you must ALWAYS use this function to remove a storage network participant from the
-		/// system. Any access to `Storages` outside of this function is almost certainly
-		/// wrong.
 		pub fn do_remove_storage(who: &T::AccountId) -> bool {
 			Storages::<T>::take(who).is_some()
 		}
