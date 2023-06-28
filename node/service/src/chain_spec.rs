@@ -232,6 +232,7 @@ pub fn cere_dev_genesis(
 		},
 		vesting: Default::default(),
 		transaction_payment: Default::default(),
+		nomination_pools: Default::default(),
 	}
 }
 
