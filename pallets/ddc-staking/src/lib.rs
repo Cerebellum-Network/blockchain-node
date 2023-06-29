@@ -20,6 +20,7 @@ use crate::weights::WeightInfo;
 
 use codec::{Decode, Encode, HasCompact};
 use frame_support::{
+	assert_ok,
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
@@ -234,6 +235,83 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn current_era)]
 	pub type CurrentEra<T> = StorageValue<_, EraIndex>;
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub edges: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
+		pub storages: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
+		pub settings: Vec<(ClusterId, BalanceOf<T>, EraIndex, BalanceOf<T>, EraIndex)>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig {
+				edges: Default::default(),
+				storages: Default::default(),
+				settings: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			// clusters' settings
+			for &(
+				cluster,
+				edge_bond_size,
+				edge_chill_delay,
+				storage_bond_size,
+				storage_chill_delay,
+			) in &self.settings
+			{
+				Settings::<T>::insert(
+					cluster,
+					ClusterSettings::<T> {
+						edge_bond_size,
+						edge_chill_delay,
+						storage_bond_size,
+						storage_chill_delay,
+					},
+				);
+			}
+
+			// Add initial CDN participants
+			for &(ref stash, ref controller, balance, cluster) in &self.edges {
+				assert!(
+					T::Currency::free_balance(&stash) >= balance,
+					"Stash do not have enough balance to participate in CDN."
+				);
+				assert_ok!(Pallet::<T>::bond(
+					T::Origin::from(Some(stash.clone()).into()),
+					T::Lookup::unlookup(controller.clone()),
+					balance,
+				));
+				assert_ok!(Pallet::<T>::serve(
+					T::Origin::from(Some(controller.clone()).into()),
+					cluster,
+				));
+			}
+
+			// Add initial storage network participants
+			for &(ref stash, ref controller, balance, cluster) in &self.storages {
+				assert!(
+					T::Currency::free_balance(&stash) >= balance,
+					"Stash do not have enough balance to participate in storage network."
+				);
+				assert_ok!(Pallet::<T>::bond(
+					T::Origin::from(Some(stash.clone()).into()),
+					T::Lookup::unlookup(controller.clone()),
+					balance,
+				));
+				assert_ok!(Pallet::<T>::store(
+					T::Origin::from(Some(controller.clone()).into()),
+					cluster,
+				));
+			}
+		}
+	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
