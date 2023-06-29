@@ -1,3 +1,11 @@
+//! # DDC Staking Pallet
+//!
+//! The DDC Staking pallet is used to manage funds at stake by CDN and storage network maintainers.
+//!
+//! - [`Config`]
+//! - [`Call`]
+//! - [`Pallet`]
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
