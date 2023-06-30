@@ -1,6 +1,6 @@
 [package]
 name = "cere-cli"
-version = "4.6.0"
+version = "4.7.0"
 edition = "2021"
 
 [package.metadata.wasm-pack.profile.release]
