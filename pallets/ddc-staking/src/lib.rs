@@ -5,6 +5,11 @@
 //! - [`Config`]
 //! - [`Call`]
 //! - [`Pallet`]
+//!
+//! ## GenesisConfig
+//!
+//! The DDC Staking pallet depends on the [`GenesisConfig`]. The
+//! `GenesisConfig` is optional and allow to set some initial stakers in DDC.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
