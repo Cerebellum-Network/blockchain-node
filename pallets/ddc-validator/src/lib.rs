@@ -547,7 +547,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100_000)]
-		pub fn charge_payments_cdn(
+		pub fn charge_payments_content_owners(
 			origin: OriginFor<T>,
 			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>,
 		) -> DispatchResult {
@@ -557,8 +557,23 @@ pub mod pallet {
 				Error::<T>::OCWKeyNotRegistered
 			);
 			
-
 			<ddc_accounts::pallet::Pallet::<T>>::charge_payments_new(paying_accounts);
+
+			Ok(())
+		}
+
+		#[pallet::weight(100_000)]
+		pub fn payout_cdn_owners(
+			origin: OriginFor<T>,
+			era: EraIndex,
+		) -> DispatchResult {
+			let controller = ensure_signed(origin)?;
+			ensure!(
+				OffchainWorkerKeys::<T>::contains_key(&controller),
+				Error::<T>::OCWKeyNotRegistered
+			);
+
+			<ddc_staking::pallet::Pallet::<T>>::do_payout_stakers(era);
 
 			Ok(())
 		}
@@ -858,10 +873,14 @@ pub mod pallet {
 							return
 						}
 						// ToDo: replace local call by a call from `ddc-staking` pallet
-						let _tx_res: Option<(frame_system::offchain::Account<T>, Result<(), ()>)> = signer.send_signed_transaction(|_account| Call::charge_payments_cdn {
+						let _tx_res: Option<(frame_system::offchain::Account<T>, Result<(), ()>)> = signer.send_signed_transaction(|_account| Call::charge_payments_content_owners {
 							paying_accounts: payments.clone(),
 						});
 
+						let _payout_tx_res = signer.send_signed_transaction(|_account| Call::payout_cdn_owners {
+							era: current_era,
+						});
+						
 						let final_res = dac::get_final_decision(validations_res);
 
 						let signer = Self::get_signer().unwrap();
