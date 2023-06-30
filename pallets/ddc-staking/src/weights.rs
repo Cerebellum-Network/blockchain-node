@@ -22,7 +22,7 @@
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::{traits::Get, weights::Weight};
+use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use sp_std::marker::PhantomData;
 
 
@@ -95,5 +95,41 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_ref_time(20_000_000)
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(3))
+	}
+}
+
+impl WeightInfo for () {
+	fn bond() -> Weight {
+		Weight::from_ref_time(51_000_000)
+			.saturating_add(RocksDbWeight::get().reads(3))
+			.saturating_add(RocksDbWeight::get().writes(3))
+	}
+	fn unbond() -> Weight {
+		Weight::from_ref_time(10_000_000)
+			.saturating_add(RocksDbWeight::get().reads(1))
+	}
+	fn withdraw_unbonded() -> Weight {
+		Weight::from_ref_time(46_000_000)
+			.saturating_add(RocksDbWeight::get().reads(4))
+			.saturating_add(RocksDbWeight::get().writes(3))
+	}
+	fn store() -> Weight {
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(RocksDbWeight::get().reads(5))
+			.saturating_add(RocksDbWeight::get().writes(2))
+	}
+	fn serve() -> Weight {
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(RocksDbWeight::get().reads(5))
+			.saturating_add(RocksDbWeight::get().writes(2))
+	}
+	fn chill() -> Weight {
+		Weight::from_ref_time(15_000_000)
+			.saturating_add(RocksDbWeight::get().reads(3))
+	}
+	fn set_controller() -> Weight {
+		Weight::from_ref_time(20_000_000)
+			.saturating_add(RocksDbWeight::get().reads(3))
+			.saturating_add(RocksDbWeight::get().writes(3))
 	}
 }
