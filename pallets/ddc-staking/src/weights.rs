@@ -44,23 +44,23 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcStaking Ledger (r:1 w:1)
 	// Storage: Balances Locks (r:1 w:1)
 	fn bond() -> Weight {
-		(51_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(51_000_000)
+			.saturating_add(T::DbWeight::get().reads(3))
+			.saturating_add(T::DbWeight::get().writes(3))
 	}
 	// Storage: DdcStaking Ledger (r:1 w:0)
 	fn unbond() -> Weight {
-		(10_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+		Weight::from_ref_time(10_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
 	}
 	// Storage: DdcStaking Ledger (r:1 w:1)
 	// Storage: DdcStaking CurrentEra (r:1 w:0)
 	// Storage: Balances Locks (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn withdraw_unbonded() -> Weight {
-		(46_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(46_000_000)
+			.saturating_add(T::DbWeight::get().reads(4))
+			.saturating_add(T::DbWeight::get().writes(3))
 	}
 	// Storage: DdcStaking Ledger (r:1 w:0)
 	// Storage: DdcStaking MinStorageBond (r:1 w:0)
@@ -68,9 +68,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcStaking Storages (r:1 w:1)
 	// Storage: DdcStaking CounterForStorages (r:1 w:1)
 	fn store() -> Weight {
-		(22_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(T::DbWeight::get().reads(5))
+			.saturating_add(T::DbWeight::get().writes(2))
 	}
 	// Storage: DdcStaking Ledger (r:1 w:0)
 	// Storage: DdcStaking MinEdgeBond (r:1 w:0)
@@ -78,22 +78,22 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcStaking Edges (r:1 w:1)
 	// Storage: DdcStaking CounterForEdges (r:1 w:1)
 	fn serve() -> Weight {
-		(22_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(T::DbWeight::get().reads(5))
+			.saturating_add(T::DbWeight::get().writes(2))
 	}
 	// Storage: DdcStaking Ledger (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
 	// Storage: DdcStaking Edges (r:1 w:0)
 	fn chill() -> Weight {
-		(15_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
+		Weight::from_ref_time(15_000_000)
+			.saturating_add(T::DbWeight::get().reads(3))
 	}
 	// Storage: DdcStaking Bonded (r:1 w:1)
 	// Storage: DdcStaking Ledger (r:2 w:2)
 	fn set_controller() -> Weight {
-		(20_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(20_000_000)
+			.saturating_add(T::DbWeight::get().reads(3))
+			.saturating_add(T::DbWeight::get().writes(3))
 	}
 }

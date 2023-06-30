@@ -33,6 +33,7 @@ extern crate alloc;
 
 use alloc::string::String;
 use core::fmt::Debug;
+use frame_support::weights::Weight;
 use scale_info::{Type, TypeInfo};
 use sp_runtime::offchain::storage::StorageRetrievalError;
 
@@ -344,7 +345,7 @@ impl<T: Config> Module<T>
             nobody.unwrap(),
             contract_id,
             0u32.into(),
-            100_000_000_000,
+            Weight::from_ref_time(100_000_000_000),
             None,
             call_data,
             false,
@@ -384,7 +385,7 @@ impl<T: Config> Module<T>
             pallet_contracts::Call::call {
                 dest: contract_id_unl.clone(),
                 value: 0u32.into(),
-                gas_limit: 100_000_000_000,
+                gas_limit: Weight::from_ref_time(100_000_000_000),
                 storage_deposit_limit: None,
                 data: call_data.clone(),
             }
@@ -443,7 +444,7 @@ impl<T: Config> Module<T>
                 pallet_contracts::Call::call {
                     dest: contract_id_unl,
                     value: 0u32.into(),
-                    gas_limit: 100_000_000_000,
+                    gas_limit: Weight::from_ref_time(100_000_000_000),
                     storage_deposit_limit: None,
                     data: call_data,
                 }
@@ -493,7 +494,7 @@ impl<T: Config> Module<T>
                 pallet_contracts::Call::call {
                     dest: contract_id_unl,
                     value: 0u32.into(),
-                    gas_limit: 100_000_000_000,
+                    gas_limit: Weight::from_ref_time(100_000_000_000),
                     storage_deposit_limit: None,
                     data: call_data,
                 }
@@ -532,7 +533,7 @@ impl<T: Config> Module<T>
             pallet_contracts::Call::call {
                 dest: contract_id_unl,
                 value: 0u32.into(),
-                gas_limit: 100_000_000_000,
+                gas_limit: Weight::from_ref_time(100_000_000_000),
                 storage_deposit_limit: None,
                 data: call_data,
             }
@@ -593,7 +594,7 @@ impl<T: Config> Module<T>
             nobody.unwrap(),
             contract_id,
             0u32.into(),
-            100_000_000_000,
+            Weight::from_ref_time(100_000_000_000),
             None,
             call_data,
             false
