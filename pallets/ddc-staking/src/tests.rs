@@ -1,7 +1,7 @@
 //! Tests for the module.
 
 use super::{*, mock::*};
-use frame_support::assert_ok;
+use frame_support::{assert_ok, assert_noop};
 
 #[test]
 fn set_settings_works() {
@@ -75,4 +75,27 @@ fn basic_setup_works() {
         // Cluster 1 settings are default
         assert_eq!(DdcStaking::settings(1), Default::default());
     });
+}
+
+#[test]
+fn change_controller_works() {
+	ExtBuilder::default().build_and_execute(|| {
+		// 10 and 11 are bonded as stash controller.
+		assert_eq!(DdcStaking::bonded(&11), Some(10));
+
+		// 10 can control 11 who is initially a validator.
+		assert_ok!(DdcStaking::withdraw_unbonded(Origin::signed(10)));
+
+		// Change controller.
+		assert_ok!(DdcStaking::set_controller(Origin::signed(11), 3));
+		assert_eq!(DdcStaking::bonded(&11), Some(3));
+
+		// 10 is no longer in control.
+		assert_noop!(
+			DdcStaking::serve(Origin::signed(10), 1),
+			Error::<Test>::NotController,
+		);
+        // 3 is a new controller.
+		assert_ok!(DdcStaking::serve(Origin::signed(3), 1));
+	})
 }
