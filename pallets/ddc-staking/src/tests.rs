@@ -1,7 +1,11 @@
 //! Tests for the module.
 
 use super::{mock::*, *};
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
+use pallet_balances::Error as BalancesError;
+
+pub const BLOCK_TIME: u64 = 1000;
+pub const INIT_TIMESTAMP: u64 = 30_000;
 
 #[test]
 fn set_settings_works() {
@@ -93,4 +97,82 @@ fn change_controller_works() {
 		// 3 is a new controller.
 		assert_ok!(DdcStaking::serve(Origin::signed(3), 1));
 	})
+}
+
+#[test]
+fn staking_should_work() {
+	ExtBuilder::default().build_and_execute(|| {
+		// Put some money in account that we'll use.
+		for i in 1..5 {
+			let _ = Balances::make_free_balance_be(&i, 2000);
+		}
+
+		// Add new CDN participant, account 3 controlled by 4.
+		assert_ok!(DdcStaking::bond(Origin::signed(3), 4, 1500));
+		assert_ok!(DdcStaking::serve(Origin::signed(4), 1));
+
+		// Account 4 controls the stash from account 3, which is 1500 units and 3 is a CDN
+		// participant.
+		assert_eq!(DdcStaking::bonded(&3), Some(4));
+		assert_eq!(
+			DdcStaking::ledger(&4),
+			Some(StakingLedger {
+				stash: 3,
+				total: 1500,
+				active: 1500,
+				chilling: Default::default(),
+				unlocking: Default::default(),
+			})
+		);
+		assert_eq!(DdcStaking::edges(3), Some(1));
+
+		// Set `CurrentEra`.
+		Timestamp::set_timestamp(System::block_number() * BLOCK_TIME + INIT_TIMESTAMP);
+		DdcStaking::on_finalize(System::block_number());
+
+		// Schedule CDN participant removal.
+		assert_ok!(DdcStaking::chill(Origin::signed(4)));
+
+		// Removal is scheduled, stashed value of 4 is still lock.
+		let chilling =
+			DdcStaking::current_era().unwrap() + DdcStaking::settings(1).edge_chill_delay;
+		assert_eq!(
+			DdcStaking::ledger(&4),
+			Some(StakingLedger {
+				stash: 3,
+				total: 1500,
+				active: 1500,
+				chilling: Some(chilling),
+				unlocking: Default::default(),
+			})
+		);
+		// It cannot reserve more than 500 that it has free from the total 2000
+		assert_noop!(Balances::reserve(&3, 501), BalancesError::<Test, _>::LiquidityRestrictions);
+		assert_ok!(Balances::reserve(&3, 409));
+
+		// Set `CurrentEra` to the value allows us to chill.
+		while DdcStaking::current_era().unwrap() < chilling {
+			System::set_block_number(System::block_number() + 1);
+			Timestamp::set_timestamp(System::block_number() * BLOCK_TIME + INIT_TIMESTAMP);
+			DdcStaking::on_finalize(System::block_number());
+		}
+
+		// Ledger is not changed until we make another call to `chill`.
+		assert_eq!(
+			DdcStaking::ledger(&4),
+			Some(StakingLedger {
+				stash: 3,
+				total: 1500,
+				active: 1500,
+				chilling: Some(chilling),
+				unlocking: Default::default(),
+			})
+		);
+
+		// Actual CDN participant removal.
+		assert_ok!(DdcStaking::chill(Origin::signed(4)));
+
+		// Account 3 is no longer a CDN participant.
+		assert_eq!(DdcStaking::edges(3), None);
+	});
 }
