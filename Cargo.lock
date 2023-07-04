@@ -169,6 +169,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "array-bytes"
+version = "6.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9b1c5a481ec30a5abd8dfbd94ab5cf1bb4e9a66be7f1b3b322f2f1170c200fd"
+
+[[package]]
 name = "arrayref"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -794,8 +800,10 @@ dependencies = [
  "pallet-contracts",
  "pallet-contracts-primitives",
  "pallet-contracts-rpc-runtime-api",
+ "pallet-ddc-accounts",
  "pallet-ddc-metrics-offchain-worker",
  "pallet-ddc-staking",
+ "pallet-ddc-validator",
  "pallet-democracy",
  "pallet-election-provider-multi-phase",
  "pallet-election-provider-support-benchmarking",
@@ -4820,6 +4828,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-ddc-accounts"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-io",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
+ "substrate-test-utils",
+]
+
+[[package]]
 name = "pallet-ddc-metrics-offchain-worker"
 version = "4.7.0"
 dependencies = [
@@ -4852,6 +4876,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "log",
  "parity-scale-codec",
  "scale-info",
  "sp-io",
@@ -4859,6 +4884,39 @@ dependencies = [
  "sp-staking",
  "sp-std",
  "substrate-test-utils",
+]
+
+[[package]]
+name = "pallet-ddc-validator"
+version = "0.1.0"
+dependencies = [
+ "alt_serde",
+ "array-bytes",
+ "base64 0.21.2",
+ "frame-election-provider-support",
+ "frame-support",
+ "frame-system",
+ "lite-json",
+ "log",
+ "pallet-balances",
+ "pallet-contracts",
+ "pallet-ddc-accounts",
+ "pallet-ddc-staking",
+ "pallet-randomness-collective-flip",
+ "pallet-session",
+ "pallet-staking",
+ "pallet-staking-reward-curve",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "serde_json 1.0.44",
+ "sp-core",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
 ]
 
 [[package]]
