@@ -236,7 +236,7 @@ pub mod pallet {
 	{
 		fn on_initialize(block_number: T::BlockNumber) -> Weight {
 			if block_number <= 1u32.into() {
-				return 0
+				return Weight::from_ref_time(0)
 			}
 
 			Signal::<T>::set(Some(false));
@@ -247,7 +247,7 @@ pub mod pallet {
 			match <LastManagedEra<T>>::get(){
 				Some(last_managed_era) => {
 					if last_managed_era > era {
-						return 0
+						return Weight::from_ref_time(0)
 					} else {
 						Self::assign(3usize, era + 1);
 						<LastManagedEra<T>>::put(era);
@@ -259,7 +259,7 @@ pub mod pallet {
 				}
 			}
 
-			0
+			Weight::from_ref_time(0)
 		}
 
 		fn offchain_worker(block_number: T::BlockNumber) {
