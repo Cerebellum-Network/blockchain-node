@@ -18,6 +18,7 @@ use crate::{
     CURRENT_PERIOD_MS, FINALIZE_METRIC_PERIOD, REPORT_DDN_STATUS_SELECTOR, REPORT_METRICS_SELECTOR,
 };
 use codec::Encode;
+use frame_support::weights::Weight;
 use hex_literal::hex;
 use sp_core::bytes::from_hex;
 
@@ -316,7 +317,7 @@ fn should_run_contract() {
             Origin::signed(alice.clone()),
             contract_id.clone(),
             0,
-            100_000_000_000,
+            Weight::from_ref_time(100_000_000_000),
             None,
             call_data.clone(),
         )
@@ -326,7 +327,7 @@ fn should_run_contract() {
             alice.clone(),
             contract_id,
             0,
-            100_000_000_000,
+            Weight::from_ref_time(100_000_000_000),
             None,
             call_data,
             false,
@@ -364,7 +365,7 @@ fn deploy_contract() -> AccountId {
 
     // Deploy the contract.
     //let endowment = contracts::Config::<T>::subsistence_threshold_uncached();
-    const GAS_LIMIT: frame_support::weights::Weight = 100_000_000_000;
+    const GAS_LIMIT: frame_support::weights::Weight = Weight::from_ref_time(100_000_000_000);
     const ENDOWMENT: Balance = 100_000_000_000;
     Contracts::instantiate_with_code(
         Origin::signed(alice.clone()),
@@ -403,7 +404,7 @@ fn deploy_contract() -> AccountId {
             Origin::signed(alice.clone()),
             contract_id.clone(),
             0,
-            1_000_000_000_000,
+            Weight::from_ref_time(1_000_000_000_000),
             None,
             call_data,
         );

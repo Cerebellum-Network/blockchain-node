@@ -51,7 +51,7 @@ frame_support::construct_runtime!(
 
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
-    pub const MaximumBlockWeight: Weight = 1024;
+    pub const MaximumBlockWeight: Weight = Weight::from_ref_time(1024);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
@@ -154,6 +154,7 @@ impl contracts::Config for Test {
     type ContractAccessWeight = ();
     type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
     type RelaxedMaxCodeLen = ConstU32<{ 256 * 1024 }>;
+    type MaxStorageKeyLen = ConstU32<128>;
 }
 
 parameter_types! {
@@ -164,7 +165,7 @@ parameter_types! {
 
 impl Convert<Weight, BalanceOf<Self>> for Test {
     fn convert(w: Weight) -> BalanceOf<Self> {
-        w.into()
+        w.ref_time().into()
     }
 }
 

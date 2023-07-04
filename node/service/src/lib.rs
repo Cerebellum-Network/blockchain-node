@@ -28,6 +28,7 @@ pub use node_primitives::{Block, BlockNumber};
 pub use sc_executor::NativeElseWasmExecutor;
 pub use sc_service::ChainSpec;
 pub use sp_api::ConstructRuntimeApi;
+use sc_network_common::{service::NetworkEventStream};
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch> = sc_finality_grandpa::GrandpaBlockImport<
@@ -170,7 +171,7 @@ where
 	let justification_import = grandpa_block_import.clone();
 
 	let (block_import, babe_link) = sc_consensus_babe::block_import(
-		sc_consensus_babe::Config::get(&*client)?,
+		sc_consensus_babe::configuration(&*client)?,
 		grandpa_block_import,
 		client.clone(),
 	)?;
