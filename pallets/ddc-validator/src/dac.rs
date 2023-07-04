@@ -273,14 +273,16 @@ fn get_timestamps_with_ack(file_requests: &Requests) -> Vec<TimestampInSec> {
 	timestamps
 }
 
-pub fn get_acknowledged_bytes_bucket<'a>(file_requests: &'a Requests, acknowledged_bytes_by_bucket: &'a mut Vec<(u128, u64)>) -> &'a Vec<(u128, u64)> {
+pub fn get_acknowledged_bytes_bucket<'a>(
+	file_requests: &'a Requests,
+	acknowledged_bytes_by_bucket: &'a mut Vec<(u128, u64)>,
+) -> &'a Vec<(u128, u64)> {
 	let ack_timestamps = get_timestamps_with_ack(file_requests);
 
 	for (_, file_request) in file_requests {
 		let mut total_bytes_received = 0u64;
 		let bucket_id = file_request.bucket_id;
 		for (_, chunk) in &file_request.chunks {
-
 			if let Some(ack) = &chunk.ack {
 				total_bytes_received += ack.bytes_received;
 			} else {
@@ -615,7 +617,7 @@ fn find_largest_group(decisions: Vec<ValidationDecision>) -> Option<Vec<Validati
 			}) {
 				group.push(decision.clone());
 				found_group = true;
-				break;
+				break
 			}
 		}
 

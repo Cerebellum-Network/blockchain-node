@@ -46,6 +46,7 @@ pub use frame_system::{
 	pallet_prelude::*,
 };
 pub use lite_json::json::JsonValue;
+use log::info;
 pub use pallet::*;
 pub use pallet_ddc_accounts::{self as ddc_accounts, BucketsDetails};
 pub use pallet_ddc_staking::{self as ddc_staking};
@@ -58,7 +59,6 @@ pub use sp_io::crypto::sr25519_public_keys;
 pub use sp_runtime::offchain::{http, storage::StorageValueRef, Duration, Timestamp};
 pub use sp_staking::EraIndex;
 pub use sp_std::{collections::btree_map::BTreeMap, prelude::*};
-use log::info;
 
 extern crate alloc;
 
@@ -83,7 +83,18 @@ pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url"
 pub const QUORUM_SIZE: usize = 1;
 
 /// Aggregated values from DAC that describe CDN node's activity during a certain era.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen, Serialize, Deserialize)]
+#[derive(
+	PartialEq,
+	Eq,
+	Clone,
+	Encode,
+	Decode,
+	RuntimeDebug,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
+)]
 #[serde(crate = "alt_serde")]
 pub struct DacTotalAggregates {
 	/// Total bytes received by the client.
@@ -212,8 +223,8 @@ pub mod pallet {
 	/// The mapping of controller accounts to OCW public keys
 	#[pallet::storage]
 	#[pallet::getter(fn ocw_keys)]
-	pub type OffchainWorkerKeys<T: Config> = 
-	StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
+	pub type OffchainWorkerKeys<T: Config> =
+		StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -244,19 +255,18 @@ pub mod pallet {
 			let era = Self::get_current_era();
 			log::info!("current era: {:?}", era);
 
-			match <LastManagedEra<T>>::get(){
-				Some(last_managed_era) => {
+			match <LastManagedEra<T>>::get() {
+				Some(last_managed_era) =>
 					if last_managed_era > era {
 						return Weight::from_ref_time(0)
 					} else {
 						Self::assign(3usize, era + 1);
 						<LastManagedEra<T>>::put(era);
-					}
-				}
+					},
 				None => {
 					Self::assign(3usize, era);
 					<LastManagedEra<T>>::put(era);
-				}
+				},
 			}
 
 			Weight::from_ref_time(0)
@@ -279,8 +289,8 @@ pub mod pallet {
 			//}
 
 			// Print the number of broken sessions per CDN node.
-			// let aggregates_value = dac::fetch_aggregates(&data_provider_url, 77436).unwrap(); // 77436 is for a mock data
-			// let aggregates_obj = aggregates_value.as_object().unwrap();
+			// let aggregates_value = dac::fetch_aggregates(&data_provider_url, 77436).unwrap(); //
+			// 77436 is for a mock data let aggregates_obj = aggregates_value.as_object().unwrap();
 			// aggregates_obj
 			// 	.into_iter()
 			// 	.for_each(|(cdn_node_pubkey, cdn_node_aggregates_value)| {
@@ -556,18 +566,14 @@ pub mod pallet {
 				OffchainWorkerKeys::<T>::contains_key(&controller),
 				Error::<T>::OCWKeyNotRegistered
 			);
-			
 
-			<ddc_accounts::pallet::Pallet::<T>>::charge_payments_new(paying_accounts);
+			<ddc_accounts::pallet::Pallet<T>>::charge_payments_new(paying_accounts);
 
 			Ok(())
 		}
 
 		#[pallet::weight(100_000)]
-		pub fn set_ocw_key(
-			origin: OriginFor<T>,
-			ocw_pub: T::AccountId,
-		) -> DispatchResult {
+		pub fn set_ocw_key(origin: OriginFor<T>, ocw_pub: T::AccountId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			let ledger = staking::Ledger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
 			let era = staking::Pallet::<T>::current_era().unwrap();
@@ -619,7 +625,8 @@ pub mod pallet {
 
 		// Get the current era; Shall we start era count from 0 or from 1?
 		fn get_current_era() -> EraIndex {
-			((<T as pallet::Config>::TimeProvider::now().as_millis() - TIME_START_MS) / ERA_DURATION_MS)
+			((<T as pallet::Config>::TimeProvider::now().as_millis() - TIME_START_MS) /
+				ERA_DURATION_MS)
 				.try_into()
 				.unwrap()
 		}
@@ -662,7 +669,7 @@ pub mod pallet {
 			let mut result: Vec<Vec<Item>> = Vec::new();
 
 			if segment_len == 0 {
-				return result;
+				return result
 			}
 
 			for i in (0..list.len()).step_by(segment_len) {
@@ -763,7 +770,7 @@ pub mod pallet {
 		fn get_public_key() -> Option<T::AccountId> {
 			match sr25519_public_keys(KEY_TYPE).first() {
 				Some(pubkey) => Some(T::AccountId::decode(&mut &pubkey.encode()[..]).unwrap()),
-				None => None
+				None => None,
 			}
 		}
 
@@ -778,7 +785,8 @@ pub mod pallet {
 
 			info!("validator: {:?}", validator);
 
-			let assigned_edges = Self::assignments(current_era - 1, validator.clone()).expect("No assignments for the previous era");
+			let assigned_edges = Self::assignments(current_era - 1, validator.clone())
+				.expect("No assignments for the previous era");
 
 			info!("assigned_edges: {:?}", assigned_edges);
 
@@ -836,7 +844,12 @@ pub mod pallet {
 					let edge = utils::account_to_string::<T>(assigned_edge.clone());
 					let prev_era = (current_era - 1) as EraIndex;
 					let quorum = Self::find_validators_from_quorum(&validator, &prev_era);
-					let validations_res = shm::get_intermediate_decisions(&data_provider_url, &edge_str, &prev_era, quorum);
+					let validations_res = shm::get_intermediate_decisions(
+						&data_provider_url,
+						&edge_str,
+						&prev_era,
+						quorum,
+					);
 
 					log::info!("get_intermediate_decisions result: {:?}", validations_res);
 
@@ -846,7 +859,8 @@ pub mod pallet {
 						let mut payments = vec![];
 						for bucket in payments_per_bucket.into_iter() {
 							let cere_payment: u32 = (bucket.1 / BYTES_TO_CERE) as u32;
-							let bucket_info = BucketsDetails {bucket_id: bucket.0, amount: cere_payment.into()};
+							let bucket_info =
+								BucketsDetails { bucket_id: bucket.0, amount: cere_payment.into() };
 							payments.push(bucket_info);
 						}
 						log::info!("final payments: {:?}", payments);
@@ -858,19 +872,21 @@ pub mod pallet {
 							return
 						}
 						// ToDo: replace local call by a call from `ddc-staking` pallet
-						let _tx_res: Option<(frame_system::offchain::Account<T>, Result<(), ()>)> = signer.send_signed_transaction(|_account| Call::charge_payments_cdn {
-							paying_accounts: payments.clone(),
-						});
+						let _tx_res: Option<(frame_system::offchain::Account<T>, Result<(), ()>)> =
+							signer.send_signed_transaction(|_account| Call::charge_payments_cdn {
+								paying_accounts: payments.clone(),
+							});
 
 						let final_res = dac::get_final_decision(validations_res);
 
 						let signer = Self::get_signer().unwrap();
 
-						let tx_res = signer.send_signed_transaction(|_acct| Call::set_validation_decision {
-							era: current_era,
-							cdn_node: utils::string_to_account::<T>(edge.clone()),
-							validation_decision: final_res.clone(),
-						});
+						let tx_res =
+							signer.send_signed_transaction(|_acct| Call::set_validation_decision {
+								era: current_era,
+								cdn_node: utils::string_to_account::<T>(edge.clone()),
+								validation_decision: final_res.clone(),
+							});
 
 						log::info!("final_res: {:?}", final_res);
 					}
