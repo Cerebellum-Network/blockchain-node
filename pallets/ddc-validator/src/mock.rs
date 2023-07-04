@@ -4,6 +4,7 @@ use frame_support::{
 	parameter_types,
 	traits::{ConstU16, ConstU64, Currency, Everything, Nothing, U128CurrencyToVote},
 	weights::Weight,
+	PalletId,
 };
 use frame_system::{offchain::SendTransactionTypes, EnsureRoot};
 use pallet_contracts as contracts;
@@ -40,6 +41,7 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp,
 		Session: pallet_session,
 		Staking: pallet_staking,
+		DdcAccounts: pallet_ddc_accounts,
 		DdcStaking: pallet_ddc_staking,
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip,
 		DdcValidator: pallet_ddc_validator,
@@ -48,7 +50,7 @@ frame_support::construct_runtime!(
 
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 250;
-	pub const MaximumBlockWeight: Weight = 1024;
+	pub const MaximumBlockWeight: Weight = Weight::from_ref_time(1024);
 	pub const MaximumBlockLength: u32 = 2 * 1024;
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
@@ -106,22 +108,27 @@ impl Convert<u64, u128> for TestWeightToFee {
 }
 
 impl contracts::Config for Test {
-	type Time = Timestamp;
-	type Randomness = RandomnessCollectiveFlip;
-	type Currency = Balances;
-	type Event = Event;
-	type CallStack = [pallet_contracts::Frame<Self>; 31];
-	type WeightPrice = TestWeightToFee; //pallet_transaction_payment::Module<Self>;
-	type WeightInfo = ();
-	type ChainExtension = ();
-	type DeletionQueueDepth = ();
-	type DeletionWeightLimit = ();
-	type Schedule = Schedule;
+	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type Call = Call;
 	type CallFilter = Nothing;
+	type CallStack = [pallet_contracts::Frame<Self>; 31];
+	type ChainExtension = ();
+	// type ContractAccessWeight = pallet_contracts::DefaultContractAccessWeight<RuntimeBlockWeights>;
+	type ContractAccessWeight = ();
+	type Currency = Balances;
+	type DeletionQueueDepth = ();
+	type DeletionWeightLimit = ();
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
-	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type Event = Event;
+	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
+	type MaxStorageKeyLen = ConstU32<128>;
+	type Randomness = RandomnessCollectiveFlip;
+	type RelaxedMaxCodeLen = ConstU32<{ 256 * 1024 }>;
+	type Schedule = Schedule;
+	type Time = Timestamp;
+	type WeightInfo = ();
+	type WeightPrice = ();
 }
 
 parameter_types! {
@@ -236,10 +243,35 @@ impl pallet_staking::Config for Test {
 	type OnStakerSlash = ();
 }
 
-impl pallet_ddc_staking::Config for Test {
+parameter_types! {
+	pub const DdcAccountsPalletId: PalletId = PalletId(*b"accounts");
+}
+
+impl pallet_ddc_accounts::Config for Test {
 	type BondingDuration = BondingDuration;
 	type Currency = Balances;
 	type Event = Event;
+	type PalletId = DdcAccountsPalletId;
+	type TimeProvider = pallet_timestamp::Pallet<Test>;
+}
+
+parameter_types! {
+	pub const DefaultEdgeBondSize: Balance = 100;
+	pub const DefaultEdgeChillDelay: EraIndex = 2;
+	pub const DefaultStorageBondSize: Balance = 100;
+	pub const DefaultStorageChillDelay: EraIndex = 2;
+}
+
+impl pallet_ddc_staking::Config for Test {
+	type BondingDuration = BondingDuration;
+	type Currency = Balances;
+	type DefaultEdgeBondSize = DefaultEdgeBondSize;
+	type DefaultEdgeChillDelay = DefaultEdgeChillDelay;
+	type DefaultStorageBondSize = DefaultStorageBondSize;
+	type DefaultStorageChillDelay = DefaultStorageChillDelay;
+	type Event = Event;
+	type StakersPayoutSource = DdcAccountsPalletId;
+	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Test>;
 }
 
