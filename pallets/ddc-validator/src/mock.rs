@@ -113,7 +113,6 @@ impl contracts::Config for Test {
 	type CallFilter = Nothing;
 	type CallStack = [pallet_contracts::Frame<Self>; 31];
 	type ChainExtension = ();
-	// type ContractAccessWeight = pallet_contracts::DefaultContractAccessWeight<RuntimeBlockWeights>;
 	type ContractAccessWeight = ();
 	type Currency = Balances;
 	type DeletionQueueDepth = ();
