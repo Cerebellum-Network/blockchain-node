@@ -6,16 +6,16 @@
 //! server which we maintain for DAC DataModel.
 
 use alloc::{format, string::String};
-pub use sp_std::{collections::btree_map::BTreeMap};
+pub use sp_std::collections::btree_map::BTreeMap;
 // ToDo: remove String usage
+use crate::{dac, utils, ValidationDecision};
+use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use base64::prelude::*;
 use lite_json::json::JsonValue;
+use log::info;
 use sp_runtime::offchain::{http, Duration};
 use sp_staking::EraIndex;
 use sp_std::prelude::*;
-use crate::{dac, utils, ValidationDecision};
-use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
-use log::info;
 
 const HTTP_TIMEOUT_MS: u64 = 30_000;
 
@@ -78,11 +78,7 @@ pub fn share_intermediate_validation_result(
 
 	let url = format!(
 		"{}/FCALL/save_validation_result_by_node/1/{}:{}:{}/{}",
-		shared_memory_webdis_url,
-		validator,
-		cdn_node,
-		era,
-		url_encoded_json,
+		shared_memory_webdis_url, validator, cdn_node, era, url_encoded_json,
 	);
 
 	log::info!("share_intermediate_validation_result url: {:?}", url);
@@ -108,13 +104,21 @@ pub fn share_intermediate_validation_result(
 	Ok(json)
 }
 
-pub(crate) fn get_intermediate_decisions(data_provider_url: &String, edge: &str, era: &EraIndex, quorum: Vec<String>) -> Vec<ValidationDecision> {
+pub(crate) fn get_intermediate_decisions(
+	data_provider_url: &String,
+	edge: &str,
+	era: &EraIndex,
+	quorum: Vec<String>,
+) -> Vec<ValidationDecision> {
 	let url = format!("{}/JSON.GET/ddc:dac:shared:nodes:{}", data_provider_url, era);
 
 	let response: IntermediateDecisionsWrapper = dac::http_get_json(url.as_str()).unwrap();
-	let mut edges_to_validators_decisions: BTreeMap<String, BTreeMap<String, IntermediateDecision>> = serde_json::from_str(&response.json).unwrap();
+	let mut edges_to_validators_decisions: BTreeMap<
+		String,
+		BTreeMap<String, IntermediateDecision>,
+	> = serde_json::from_str(&response.json).unwrap();
 	let decisions_for_edge = IntermediateDecisions {
-		validators_to_decisions: edges_to_validators_decisions.remove(edge).unwrap()
+		validators_to_decisions: edges_to_validators_decisions.remove(edge).unwrap(),
 	};
 
 	let quorum_decisions = find_quorum_decisions(decisions_for_edge, quorum);
@@ -144,7 +148,10 @@ pub(crate) fn decode_intermediate_decisions(
 	decoded_decisions
 }
 
-pub(crate) fn find_quorum_decisions(all_decisions: IntermediateDecisions, quorum: Vec<String>) -> IntermediateDecisions {
+pub(crate) fn find_quorum_decisions(
+	all_decisions: IntermediateDecisions,
+	quorum: Vec<String>,
+) -> IntermediateDecisions {
 	let mut quorum_decisions: BTreeMap<String, IntermediateDecision> = BTreeMap::new();
 	for (validator_id, decision) in all_decisions.validators_to_decisions.iter() {
 		if quorum.contains(validator_id) {
@@ -152,7 +159,5 @@ pub(crate) fn find_quorum_decisions(all_decisions: IntermediateDecisions, quorum
 		}
 	}
 
-	IntermediateDecisions {
-		validators_to_decisions: quorum_decisions
-	}
+	IntermediateDecisions { validators_to_decisions: quorum_decisions }
 }

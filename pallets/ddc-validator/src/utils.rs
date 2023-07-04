@@ -36,11 +36,11 @@ pub(crate) fn url_encode(input: &str) -> String {
 			// Unreserved characters (alphanumeric and -_.~)
 			b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
 				encoded.push(byte as char);
-			}
+			},
 			_ => {
 				encoded.push('%');
 				encoded.push_str(&format!("{:02X}", byte));
-			}
+			},
 		}
 	}
 
@@ -59,11 +59,11 @@ pub(crate) fn unescape(json: &str) -> String {
 					for _ in 0..5 {
 						chars.next();
 					}
-				}
+				},
 				_ => {
 					// Skip over the next character
 					chars.next();
-				}
+				},
 			}
 		} else {
 			result.push(c);

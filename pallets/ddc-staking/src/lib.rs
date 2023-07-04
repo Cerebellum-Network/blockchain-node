@@ -234,8 +234,7 @@ pub mod pallet {
 	/// Map from all "stash" accounts to the paid out rewards
 	#[pallet::storage]
 	#[pallet::getter(fn rewards)]
-	pub type Rewards<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>>;
+	pub type Rewards<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>>;
 
 	/// The map of (wannabe) CDN participants stash keys to the DDC cluster ID they wish to
 	/// participate into.
