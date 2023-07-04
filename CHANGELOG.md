@@ -5,10 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## vNext
+## [vNext]
 
 ### Changed
 
+- ...
+
+## [4.7.0]
+
+### Changed
+
+- Updated Substrate to polkadot-v0.9.29
+
+## [4.6.0]
+
+### Changed
+
+- Updated Substrate to polkadot-v0.9.28
+
+## [4.5.0]
+
+### Changed
+
+- Updated Substrate to polkadot-v0.9.27
+
+## [4.4.0]
+
+### Changed
+
+- Updated Substrate to polkadot-v0.9.26
+- New `cluster` parameter for `serve` and `store` calls in `pallet-ddc-staking` to specify the DDC cluster ID which the caller is willing to join
+
+## [4.3.0]
+
+### Added
+
+- DDC Staking `CurrentEra` follows DAC era counter
+
+### Changed
+
+- Preferences parameter removed from `pallet-ddc-staking` calls, `value` parameter returned back to `bond` and `unbond` calls
+- Distinct bond size requirements for `Storage` and `Edge` roles with default to 100 CERE
 - Updated Substrate to polkadot-v0.9.25
 
 ## [4.2.0]

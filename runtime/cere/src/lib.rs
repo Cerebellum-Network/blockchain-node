@@ -23,7 +23,9 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_election_provider_support::{onchain, ExtendedBalance, SequentialPhragmen, VoteWeight};
+use frame_election_provider_support::{
+	onchain, ExtendedBalance, SequentialPhragmen, VoteWeight, BalancingConfig
+};
 use frame_support::{
 	construct_runtime,
 	pallet_prelude::Get,
@@ -71,13 +73,14 @@ use sp_runtime::{
 		SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
+	ApplyExtrinsicResult, FixedU128, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
 };
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
+use cere_runtime_common::{BalanceToU256, U256ToBalance};
 
 #[cfg(any(feature = "std", test))]
 pub use frame_system::Call as SystemCall;
@@ -125,10 +128,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 42001,
+	spec_version: 47000,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 3,
+	transaction_version: 4,
 	state_version: 0,
 };
 
@@ -170,7 +173,7 @@ const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
 /// by  Operational  extrinsics.
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 /// We allow for 2 seconds of compute with a 6 second average block time.
-const MAXIMUM_BLOCK_WEIGHT: Weight = 2 * WEIGHT_PER_SECOND;
+const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND.saturating_mul(2);
 
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 2400;
@@ -293,8 +296,9 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::NonTransfer => !matches!(
 				c,
 				Call::Balances(..) |
-					Call::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
-					Call::Indices(pallet_indices::Call::transfer { .. })
+				Call::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
+				Call::Indices(pallet_indices::Call::transfer { .. }) |
+				Call::NominationPools(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
@@ -426,6 +430,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
+    type Event = Event;
 	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees>;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type WeightToFee = IdentityFee<Balance>;
@@ -536,7 +541,7 @@ impl pallet_staking::Config for Runtime {
 	type GenesisElectionProvider = onchain::UnboundedExecution<OnChainSeqPhragmen>;
 	type VoterList = VoterList;
 	type MaxUnlockingChunks = ConstU32<32>;
-	type OnStakerSlash = ();
+	type OnStakerSlash = NominationPools;
 	type WeightInfo = pallet_staking::weights::SubstrateWeight<Runtime>;
 	type BenchmarkingConfig = StakingBenchmarkingConfig;
 }
@@ -601,10 +606,10 @@ pub const MINER_MAX_ITERATIONS: u32 = 10;
 
 /// A source of random balance for NposSolver, which is meant to be run by the OCW election miner.
 pub struct OffchainRandomBalancing;
-impl Get<Option<(usize, ExtendedBalance)>> for OffchainRandomBalancing {
-	fn get() -> Option<(usize, ExtendedBalance)> {
+impl Get<Option<BalancingConfig>> for OffchainRandomBalancing {
+	fn get() -> Option<BalancingConfig> {
 		use sp_runtime::traits::TrailingZeroInput;
-		let iters = match MINER_MAX_ITERATIONS {
+		let iterations = match MINER_MAX_ITERATIONS {
 			0 => 0,
 			max => {
 				let seed = sp_io::offchain::random_seed();
@@ -615,7 +620,8 @@ impl Get<Option<(usize, ExtendedBalance)>> for OffchainRandomBalancing {
 			},
 		};
 
-		Some((iters, 0))
+		let config = BalancingConfig { iterations, tolerance: 0 };
+		Some(config)
 	}
 }
 
@@ -789,6 +795,8 @@ parameter_types! {
 	pub const DesiredMembers: u32 = 13;
 	pub const DesiredRunnersUp: u32 = 20;
 	pub const ElectionsPhragmenPalletId: LockIdentifier = *b"phrelect";
+	pub const MaxVoters: u32 = 10 * 1000;
+	pub const MaxCandidates: u32 = 1000;
 }
 
 // Make sure that there are no more than `MaxMembers` members elected via elections-phragmen.
@@ -812,6 +820,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type DesiredRunnersUp = DesiredRunnersUp;
 	type TermDuration = TermDuration;
 	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Runtime>;
+	type MaxVoters = MaxVoters;
+	type MaxCandidates = MaxCandidates;
 }
 
 parameter_types! {
@@ -946,12 +956,7 @@ parameter_types! {
 		.get(DispatchClass::Normal)
 		.max_total
 		.unwrap_or(RuntimeBlockWeights::get().max_block);
-	// The weight needed for decoding the queue should be less or equal than a fifth
-	// of the overall weight dedicated to the lazy deletion.
-	pub DeletionQueueDepth: u32 = ((DeletionWeightLimit::get() / (
-			<Runtime as pallet_contracts::Config>::WeightInfo::on_initialize_per_queue_item(1) -
-			<Runtime as pallet_contracts::Config>::WeightInfo::on_initialize_per_queue_item(0)
-		)) / 5) as u32;
+	pub DeletionQueueDepth: u32 = 128;
 	pub Schedule: pallet_contracts::Schedule<Runtime> = Default::default();
 }
 
@@ -981,6 +986,7 @@ impl pallet_contracts::Config for Runtime {
 	type ContractAccessWeight = pallet_contracts::DefaultContractAccessWeight<RuntimeBlockWeights>;
 	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
 	type RelaxedMaxCodeLen = ConstU32<{ 256 * 1024 }>;
+	type MaxStorageKeyLen = ConstU32<128>;
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -1243,6 +1249,51 @@ parameter_types! {
 	pub const OcwBlockInterval: u32 = pallet_ddc_metrics_offchain_worker::BLOCK_INTERVAL;
 }
 
+parameter_types! {
+	pub const PoolsPalletId: PalletId = PalletId(*b"py/nopls");
+	// Allow pools that got slashed up to 90% to remain operational.
+	pub const MaxPointsToBalance: u8 = 10;
+}
+
+impl pallet_nomination_pools::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type CurrencyBalance = Balance;
+	type RewardCounter = FixedU128;
+	type BalanceToU256 = cere_runtime_common::BalanceToU256;
+	type U256ToBalance = cere_runtime_common::U256ToBalance;
+	type StakingInterface = Staking;
+	type PostUnbondingPoolsWindow = frame_support::traits::ConstU32<4>;
+	type MaxMetadataLen = frame_support::traits::ConstU32<256>;
+	// we use the same number of allowed unlocking chunks as with staking.
+	type MaxUnbonding = <Self as pallet_staking::Config>::MaxUnlockingChunks;
+	type PalletId = PoolsPalletId;
+	type MaxPointsToBalance = MaxPointsToBalance;
+	type WeightInfo = ();
+}
+
+pub struct InitiateNominationPools;
+impl frame_support::traits::OnRuntimeUpgrade for InitiateNominationPools {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		// we use one as an indicator if this has already been set.
+		if pallet_nomination_pools::MaxPools::<Runtime>::get().is_none() {
+			pallet_nomination_pools::MinJoinBond::<Runtime>::put(250 * DOLLARS);
+			pallet_nomination_pools::MinCreateBond::<Runtime>::put(5000 * DOLLARS);
+
+			// Initialize with limits for now.
+			pallet_nomination_pools::MaxPools::<Runtime>::put(0);
+			pallet_nomination_pools::MaxPoolMembersPerPool::<Runtime>::put(0);
+			pallet_nomination_pools::MaxPoolMembers::<Runtime>::put(0);
+
+			log::info!(target: "runtime::cere", "pools config initiated 🎉");
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 5)
+		} else {
+			log::info!(target: "runtime::cere", "pools config already initiated 😏");
+			<Runtime as frame_system::Config>::DbWeight::get().reads(1)
+		}
+	}
+}
+
 impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 	type BlockInterval = OcwBlockInterval;
 
@@ -1296,6 +1347,7 @@ construct_runtime!(
 		Tips: pallet_tips,
 		VoterList: pallet_bags_list,
 		ChildBounties: pallet_child_bounties,
+		NominationPools: pallet_nomination_pools,
 		CereDDCModule: pallet_cere_ddc::{Pallet, Call, Storage, Event<T>},
 		ChainBridge: pallet_chainbridge::{Pallet, Call, Storage, Event<T>},
 		Erc721: pallet_erc721::{Pallet, Call, Storage, Event<T>},
@@ -1342,7 +1394,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	(),
+	(InitiateNominationPools, pallet_nomination_pools::migration::v3::MigrateToV3<Runtime>),
 >;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -1370,6 +1422,7 @@ mod benches {
 		[pallet_indices, Indices]
 		[pallet_membership, TechnicalMembership]
 		[pallet_multisig, Multisig]
+		[pallet_nomination_pools, NominationPoolsBench::<Runtime>]
 		[pallet_offences, OffencesBench::<Runtime>]
 		[pallet_proxy, Proxy]
 		[pallet_scheduler, Scheduler]
@@ -1476,19 +1529,15 @@ impl_runtime_apis! {
 	}
 
 	impl sp_consensus_babe::BabeApi<Block> for Runtime {
-		fn configuration() -> sp_consensus_babe::BabeGenesisConfiguration {
-			// The choice of `c` parameter (where `1 - c` represents the
-			// probability of a slot being empty), is done in accordance to the
-			// slot duration and expected target block time, for safely
-			// resisting network delays of maximum two seconds.
-			// <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
-			sp_consensus_babe::BabeGenesisConfiguration {
+		fn configuration() -> sp_consensus_babe::BabeConfiguration {
+			let epoch_config = Babe::epoch_config().unwrap_or(BABE_GENESIS_EPOCH_CONFIG);
+			sp_consensus_babe::BabeConfiguration {
 				slot_duration: Babe::slot_duration(),
 				epoch_length: EpochDuration::get(),
-				c: BABE_GENESIS_EPOCH_CONFIG.c,
-				genesis_authorities: Babe::authorities().to_vec(),
+				c: epoch_config.c,
+				authorities: Babe::authorities().to_vec(),
 				randomness: Babe::randomness(),
-				allowed_slots: BABE_GENESIS_EPOCH_CONFIG.allowed_slots,
+				allowed_slots: epoch_config.allowed_slots,
 			}
 		}
 
@@ -1553,7 +1602,7 @@ impl_runtime_apis! {
 			storage_deposit_limit: Option<Balance>,
 			input_data: Vec<u8>,
 		) -> pallet_contracts_primitives::ContractExecResult<Balance> {
-			Contracts::bare_call(origin, dest, value, gas_limit, storage_deposit_limit, input_data, true)
+			Contracts::bare_call(origin, dest, value, Weight::from_ref_time(gas_limit), storage_deposit_limit, input_data, true)
 		}
 
 		fn instantiate(
@@ -1566,7 +1615,7 @@ impl_runtime_apis! {
 			salt: Vec<u8>,
 		) -> pallet_contracts_primitives::ContractInstantiateResult<AccountId, Balance>
 		{
-			Contracts::bare_instantiate(origin, value, gas_limit, storage_deposit_limit, code, data, salt, true)
+			Contracts::bare_instantiate(origin, value, Weight::from_ref_time(gas_limit), storage_deposit_limit, code, data, salt, true)
 		}
 
 		fn upload_code(
@@ -1580,7 +1629,7 @@ impl_runtime_apis! {
 
 		fn get_storage(
 			address: AccountId,
-			key: [u8; 32],
+			key: Vec<u8>,
 		) -> pallet_contracts_primitives::GetStorageResult {
 			Contracts::get_storage(address, key)
 		}
@@ -1598,6 +1647,17 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentCallApi<Block, Balance, Call>
+		for Runtime
+	{
+		fn query_call_info(call: Call, len: u32) -> RuntimeDispatchInfo<Balance> {
+			TransactionPayment::query_call_info(call, len)
+		}
+		fn query_call_fee_details(call: Call, len: u32) -> FeeDetails<Balance> {
+			TransactionPayment::query_call_fee_details(call, len)
+		}
+	}
+
 	impl sp_session::SessionKeys<Block> for Runtime {
 		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
 			SessionKeys::generate(seed)
@@ -1607,6 +1667,16 @@ impl_runtime_apis! {
 			encoded: Vec<u8>,
 		) -> Option<Vec<(Vec<u8>, KeyTypeId)>> {
 			SessionKeys::decode_into_raw_public_keys(&encoded)
+		}
+	}
+
+	impl pallet_nomination_pools_runtime_api::NominationPoolsApi<
+		Block,
+		AccountId,
+		Balance,
+	> for Runtime {
+		fn pending_rewards(member: AccountId) -> Balance {
+			NominationPools::pending_rewards(member).unwrap_or_default()
 		}
 	}
 
@@ -1620,8 +1690,21 @@ impl_runtime_apis! {
 			(weight, RuntimeBlockWeights::get().max_block)
 		}
 
-		fn execute_block_no_check(block: Block) -> Weight {
-			Executive::execute_block_no_check(block)
+		fn execute_block(
+			block: Block,
+			state_root_check: bool,
+			select: frame_try_runtime::TryStateSelect
+		) -> Weight {
+			log::info!(
+				target: "node-runtime",
+				"try-runtime: executing block {:?} / root checks: {:?} / try-state-select: {:?}",
+				block.header.hash(),
+				state_root_check,
+				select,
+			);
+			// NOTE: intentional unwrap: we don't want to propagate the error backwards, and want to
+			// have a backtrace here.
+			Executive::try_execute_block(block, state_root_check, select).unwrap()
 		}
 	}
 
@@ -1640,6 +1723,7 @@ impl_runtime_apis! {
 			use pallet_session_benchmarking::Pallet as SessionBench;
 			use pallet_offences_benchmarking::Pallet as OffencesBench;
 			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
 
@@ -1662,6 +1746,7 @@ impl_runtime_apis! {
 			use pallet_session_benchmarking::Pallet as SessionBench;
 			use pallet_offences_benchmarking::Pallet as OffencesBench;
 			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
 
@@ -1670,6 +1755,7 @@ impl_runtime_apis! {
 			impl pallet_election_provider_support_benchmarking::Config for Runtime {}
 			impl frame_system_benchmarking::Config for Runtime {}
 			impl baseline::Config for Runtime {}
+			impl pallet_nomination_pools_benchmarking::Config for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
