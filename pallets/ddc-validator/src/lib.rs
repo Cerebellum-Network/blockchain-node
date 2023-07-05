@@ -78,7 +78,7 @@ pub const BYTES_TO_CERE: u64 = 1; // this should have a logic built on top and a
 
 /// Webdis in experimental cluster connected to Redis in dev.
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "https://dev-dac-redis.network-dev.aws.cere.io";
-pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://redis:6379";
+pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
 pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
 pub const QUORUM_SIZE: usize = 1;
 
@@ -781,7 +781,7 @@ pub mod pallet {
 		}
 
 		fn validate_edges() {
-			let current_era = Self::get_current_era();
+			let current_era = Self::get_current_era() - 1;
 			let mock_data_url = Self::get_mock_data_url();
 			let data_provider_url = Self::get_data_provider_url();
 
@@ -799,7 +799,7 @@ pub mod pallet {
 				info!("assigned edge: {:?}", assigned_edge);
 
 				// form url for each node
-				let edge_url = format!("{}{}{}", mock_data_url, "ddc:dac:aggregation:nodes:132855/$.", utils::account_to_string::<T>(assigned_edge.clone()));
+				let edge_url = format!("{}{}{}{}{}", mock_data_url, "ddc:dac:aggregation:nodes:", current_era, "/$.", utils::account_to_string::<T>(assigned_edge.clone()));
 				info!("edge url: {:?}", edge_url);
 
 				let node_aggregates = dac::fetch_cdn_node_aggregates_request(&edge_url);
