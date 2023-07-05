@@ -80,7 +80,7 @@ parameter_types! {
 }
 
 impl Config for Test {
-    type Event = Event;
+    type RuntimeEvent = Event;
     type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type Proposal = Call;
     type ChainId = TestChainId;
