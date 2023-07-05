@@ -78,7 +78,7 @@ pub const BYTES_TO_CERE: u64 = 1; // this should have a logic built on top and a
 
 /// Webdis in experimental cluster connected to Redis in dev.
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "https://dev-dac-redis.network-dev.aws.cere.io";
-pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
+pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://redis:6379";
 pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
 pub const QUORUM_SIZE: usize = 1;
 
@@ -244,17 +244,21 @@ pub mod pallet {
 			let era = Self::get_current_era();
 			log::info!("current era: {:?}", era);
 
-			match <LastManagedEra<T>>::get(){
+			match <LastManagedEra<T>>::get() {
 				Some(last_managed_era) => {
 					if last_managed_era > era {
 						return 0
 					} else {
-						Self::assign(3usize, era + 1);
+						log::info!("Assigned era again: {:?}", era);
+
+						Self::assign(1usize, era - 1);
 						<LastManagedEra<T>>::put(era);
 					}
 				}
 				None => {
-					Self::assign(3usize, era);
+					log::info!("Assigned era the first time: {:?}", era);
+
+					Self::assign(1usize, era - 1);
 					<LastManagedEra<T>>::put(era);
 				}
 			}
@@ -552,10 +556,10 @@ pub mod pallet {
 			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			ensure!(
-				OffchainWorkerKeys::<T>::contains_key(&controller),
-				Error::<T>::OCWKeyNotRegistered
-			);
+			// ensure!(
+			// 	OffchainWorkerKeys::<T>::contains_key(&controller),
+			// 	Error::<T>::OCWKeyNotRegistered
+			// );
 			
 			<ddc_accounts::pallet::Pallet::<T>>::charge_payments_new(paying_accounts);
 
@@ -568,10 +572,10 @@ pub mod pallet {
 			era: EraIndex,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			ensure!(
-				OffchainWorkerKeys::<T>::contains_key(&controller),
-				Error::<T>::OCWKeyNotRegistered
-			);
+			// ensure!(
+			// 	OffchainWorkerKeys::<T>::contains_key(&controller),
+			// 	Error::<T>::OCWKeyNotRegistered
+			// );
 
 			<ddc_staking::pallet::Pallet::<T>>::do_payout_stakers(era);
 
@@ -617,7 +621,7 @@ pub mod pallet {
 
 		fn get_mock_data_url() -> String {
 			let data_url = Self::get_data_provider_url();
-			let mock_url = "/JSON.GET/testddc:dac:data";
+			let mock_url = "/JSON.GET/";
 			let url = format!("{}{}", data_url, mock_url);
 
 			url
@@ -716,7 +720,10 @@ pub mod pallet {
 
 			for (i, quorum) in quorums.iter().enumerate() {
 				let edges_group = &edges_groups[i];
+
 				for validator in quorum {
+					info!("edges_groups to be assigned {:?} for validator {:?}", edges_groups.clone(), validator.clone());
+
 					Assignments::<T>::insert(
 						era,
 						utils::string_to_account::<T>(validator.clone()),
@@ -798,16 +805,38 @@ pub mod pallet {
 			info!("assigned_edges: {:?}", assigned_edges);
 
 			for assigned_edge in assigned_edges.iter() {
+				info!("assigned edge: {:?}", assigned_edge);
+
+				// form url for each node
+				let edge_url = format!("{}{}{}", mock_data_url, "ddc:dac:aggregation:nodes:132855/$.", utils::account_to_string::<T>(assigned_edge.clone()));
+				info!("edge url: {:?}", edge_url);
+
+				let node_aggregates = dac::fetch_cdn_node_aggregates_request(&edge_url);
+				info!("node aggregates: {:?}", node_aggregates);
+
+				// No data for node
+				if (node_aggregates.len() == 0) {
+					continue
+				}
+
+				let request_ids = &node_aggregates[0].request_ids;
+				info!("request_ids: {:?}", request_ids);
+
 				// Store bucket payments
 				let payments_per_bucket = &mut Vec::new();
-				let file_request = dac::fetch_file_request(&mock_data_url);
-				dac::get_acknowledged_bytes_bucket(&file_request, payments_per_bucket);
-				let (bytes_sent, bytes_received) = dac::get_served_bytes_sum(&file_request);
+				let requests = &mut dac::Requests::new();
+				for request_id in request_ids.iter() {
+					let request_id_url = format!("{}{}{}", mock_data_url, "ddc:dac:data:file:", request_id.clone());
+					let file_request = dac::fetch_file_request(&request_id_url);
+					requests.insert(file_request.file_request_id.clone(), file_request.clone());
+				}
+				dac::get_acknowledged_bytes_bucket(&requests, payments_per_bucket);
+				let (bytes_sent, bytes_received) = dac::get_served_bytes_sum(&requests);
 				let is_valid = Self::is_valid(bytes_sent, bytes_received);
 
 				info!("bytes_sent, bytes_received: {:?}, {:?}", bytes_sent, bytes_received);
 
-				let payload = serde_json::to_string(&file_request).unwrap();
+				let payload = serde_json::to_string(&requests).unwrap();
 				let decision = ValidationDecision {
 					edge: utils::account_to_string::<T>(assigned_edge.clone()),
 					result: is_valid,

@@ -5,8 +5,9 @@ use alloc::{format, string::String}; // ToDo: remove String usage
 use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use codec::{Decode, Encode};
 use lite_json::json::JsonValue;
+use lite_json::json_parser::parse_json;
 use log::info;
-use serde_json::Value;
+use serde_json::{Value, Map};
 use sp_runtime::{
 	generic::Era,
 	offchain::{
@@ -48,7 +49,7 @@ pub struct BytesSent {
 	pub sum: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct FileRequestWrapper {
@@ -56,7 +57,32 @@ pub struct FileRequestWrapper {
 	json: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(crate = "alt_serde")]
+#[serde(rename_all = "camelCase")]
+pub struct CDNNodeAggregates {
+	aggregate: Vec<CDNNodeAggregate>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(crate = "alt_serde")]
+#[serde(rename_all = "camelCase")]
+pub struct CDNNodeAggregate {
+	total_bytes_sent: u64,
+	total_queries: u64,
+	total_reads: u64,
+	total_reads_acked: u64,
+	total_queries_acked: u64,
+	average_response_time_ms: f64,
+	total_bytes_received: u64,
+	pub request_ids: Vec<String>,
+	total_writes_acked: u64,
+	average_response_time_ms_samples: u64,
+	total_writes: u64,
+}
+
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct FileRequests {
@@ -65,11 +91,11 @@ pub struct FileRequests {
 
 pub type Requests = BTreeMap<String, FileRequest>;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct FileRequest {
-	file_request_id: String,
+	pub file_request_id: String,
 	file_info: FileInfo,
 	bucket_id: u128,
 	timestamp: u64,
@@ -77,7 +103,7 @@ pub struct FileRequest {
 	user_public_key: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct Chunk {
@@ -86,41 +112,44 @@ pub struct Chunk {
 	ack: Option<Ack>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct Ack {
-	bytes_received: u64,
 	user_timestamp: u64,
 	nonce: String,
-	node_public_key: String,
+	signature: Option<String>,
+	aggregated: u64,
 	user_public_key: String,
-	signature: String,
+	bytes_received: u64,
+	requested_chunk_cids: Vec<String>,
+	node_public_key: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct Log {
 	#[serde(rename = "type")]
 	log_type: u64,
-	session_id: String,
+	signature: Option<String>,
+	aggregated: u64,
 	user_public_key: String,
 	era: u64,
+	bucket_id: u128,
 	user_address: String,
 	bytes_sent: u64,
 	timestamp: u64,
 	node_public_key: String,
-	signature: String,
-	bucket_id: u128,
+	session_id: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct FileInfo {
 	#[serde(rename = "chunkCids")]
-	chunk_cids: Vec<String>,
+	chunk_cids: Vec<String> ,
 
 	#[serde(rename = "requestedChunkCids")]
 	requested_chunk_cids: Vec<String>,
@@ -364,13 +393,22 @@ fn get_file_request_url(data_provider_url: &String) -> String {
 	res
 }
 
-pub(crate) fn fetch_file_request(url: &String) -> Requests {
+pub(crate) fn fetch_cdn_node_aggregates_request(url: &String) -> Vec<CDNNodeAggregate> {
 	log::info!("fetch_file_request | url: {:?}", url);
 	let response: FileRequestWrapper = http_get_json(&url).unwrap();
-	let value: Value = serde_json::from_str(response.json.as_str()).unwrap();
-	let map: Requests = serde_json::from_value(value).unwrap();
-
 	log::info!("response.json: {:?}", response.json);
+	let map: Vec<CDNNodeAggregate> = serde_json::from_str(response.json.as_str()).unwrap();
+	// log::info!("response.json: {:?}", response.json);
+
+	map
+}
+
+pub(crate) fn fetch_file_request(url: &String) -> FileRequest {
+	log::info!("fetch_file_request | url: {:?}", url);
+	let response: FileRequestWrapper = http_get_json(&url).unwrap();
+	log::info!("response.json: {:?}", response.json);
+
+	let map: FileRequest = serde_json::from_str(response.json.as_str()).unwrap();
 
 	map
 }
@@ -449,6 +487,20 @@ pub(crate) fn http_get_json<OUT: DeserializeOwned>(url: &str) -> crate::ResultSt
 
 	parsed
 }
+
+// pub(crate) fn http_get_json_lite<OUT: DeserializeOwned>(url: &str) -> crate::ResultStr<OUT> {
+// 	let body = http_get_request(url).map_err(|err| {
+// 		log::error!("[DAC Validator] Error while getting {}: {:?}", url, err);
+// 		"HTTP GET error"
+// 	})?;
+
+// 	let parsed = serde_json::from_slice(&body).map_err(|err| {
+// 		log::warn!("[DAC Validator] Error while parsing JSON from {}: {:?}", url, err);
+// 		"HTTP JSON parse error"
+// 	});
+
+// 	parsed
+// }
 
 fn http_get_request(http_url: &str) -> Result<Vec<u8>, http::Error> {
 	// log::info!("[DAC Validator] Sending request to: {:?}", http_url);
