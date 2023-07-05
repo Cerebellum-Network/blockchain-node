@@ -199,6 +199,7 @@ pub mod pallet {
 		type ValidationThreshold: Get<u32>;
 	}
 
+	/// The map from the era and validator stash key to the list of CDN nodes to validate.
 	#[pallet::storage]
 	#[pallet::getter(fn assignments)]
 	pub(super) type Assignments<T: Config> =
@@ -655,6 +656,7 @@ pub mod pallet {
 			}
 		}
 
+		/// Shuffle the `list` swapping it's random elements `list.len()` times.
 		fn shuffle(mut list: Vec<T::AccountId>) -> Vec<T::AccountId> {
 			let len = list.len();
 			for i in 1..len {
@@ -665,6 +667,10 @@ pub mod pallet {
 			list
 		}
 
+		/// Split the `list` to several chunks `segment_len` length each.
+		///
+		/// The very last chunk will be shorter than `segment_len` if `list.len()` is not divisible
+		/// by `segment_len`.
 		fn split<Item: Clone>(list: Vec<Item>, segment_len: usize) -> Vec<Vec<Item>> {
 			let mut result: Vec<Vec<Item>> = Vec::new();
 
@@ -681,6 +687,10 @@ pub mod pallet {
 			result
 		}
 
+		/// Assign which CDN nodes data each validator shall process.
+		///
+		/// Each CDN node is assigned to `quorum_size` validators randomly picked from the validator
+		/// set.
 		fn assign(quorum_size: usize, era: EraIndex) {
 			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
 			log::info!("current validators: {:?}", validators);
@@ -700,12 +710,17 @@ pub mod pallet {
 				.map(|v| utils::account_to_string::<T>(v.clone()))
 				.collect();
 
+			// Create several groups of validators and edges, both group types contain the same
+			// `quorum_size` number of participants.
 			let quorums = Self::split(validators_keys, quorum_size);
 			let edges_groups = Self::split(shuffled_edges, quorum_size);
 
 			info!("quorums: {:?}", quorums);
 			info!("edges_groups: {:?}", edges_groups);
 
+			// Write an assignment to each validator in each quorum. If the number of edges groups
+			// in higher than the number of validators groups, remaining CDN nodes will not be
+			// assigned to any validator.
 			for (i, quorum) in quorums.iter().enumerate() {
 				let edges_group = &edges_groups[i];
 				for validator in quorum {
