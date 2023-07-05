@@ -3,10 +3,10 @@
 
 use sp_std::marker::PhantomData;
 use frame_support::{
-	dispatch::{DispatchResult}, decl_module, decl_storage, decl_event, decl_error,
-	ensure,
+	dispatch::{DispatchResult, DispatchClass, ClassifyDispatch, WeighData, PaysFee, Pays},
+    decl_module, decl_storage, decl_event, decl_error, ensure,
 	traits::Get,
-	weights::{DispatchClass, ClassifyDispatch, WeighData, Weight, PaysFee, Pays},
+	weights::{Weight},
 };
 use sp_std::prelude::*;
 use frame_system::{self as system, ensure_signed, ensure_root};
@@ -34,7 +34,7 @@ pub struct Erc721Token {
 }
 
 pub trait Config: system::Config {
-    type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
+    type RuntimeEvent: From<Event<Self>> + Into<<Self as system::Config>::RuntimeEvent>;
 
     /// Some identifier for this token type, possibly the originating ethereum address.
     /// This is not explicitly used for anything, but may reflect the bridge's notion of resource ID.
@@ -78,7 +78,7 @@ decl_event!(
 );
 
 decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::RuntimeOrigin {
         type Error = Error<T>;
         fn deposit_event() = default;
 
