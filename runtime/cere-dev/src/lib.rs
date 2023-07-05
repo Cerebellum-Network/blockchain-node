@@ -1218,7 +1218,7 @@ parameter_types! {
 
 /// Configure the send data pallet
 impl pallet_chainbridge::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = Event;
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type Proposal = Call;
 	type ChainId = ChainId;
