@@ -256,19 +256,13 @@ pub mod pallet {
 			let era = Self::get_current_era();
 			log::info!("current era: {:?}", era);
 
-			match <LastManagedEra<T>>::get() {
-				Some(last_managed_era) =>
-					if last_managed_era > era {
-						return Weight::from_ref_time(0)
-					} else {
-						Self::assign(3usize, era + 1);
-						<LastManagedEra<T>>::put(era);
-					},
-				None => {
+			match Self::last_managed_era() {
+				Some(last_managed_era) if era <= last_managed_era => (),
+				_ => {
 					Self::assign(3usize, era);
 					<LastManagedEra<T>>::put(era);
 				},
-			}
+			};
 
 			Weight::from_ref_time(0)
 		}
