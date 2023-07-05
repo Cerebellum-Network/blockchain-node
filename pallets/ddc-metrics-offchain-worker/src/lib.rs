@@ -135,7 +135,7 @@ const MS_PER_DAY: u64 = 24 * 3600 * 1000;
 decl_module! {
     /// A public part of the pallet.
     pub struct Module<T: Config> for enum Call where 
-        origin: T::Origin,
+        origin: T::RuntimeOrigin,
         <T as frame_system::Config>::AccountId: AsRef<[u8]>,
         <T as frame_system::Config>::AccountId: UncheckedFrom<T::Hash>,
         <BalanceOf<T> as HasCompact>::Type: Clone,
@@ -853,9 +853,9 @@ pub trait Config: frame_system::Config + pallet_contracts::Config + CreateSigned
 
     // TODO: remove, or use Event and Call.
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
+    type RuntimeEvent: From<Event<Self>> + Into<<Self as frame_system::Config>::RuntimeEvent>;
     /// The overarching dispatch call type.
-    type Call: From<Call<Self>>;
+    type RuntimeCall: From<Call<Self>>;
 
     type BlockInterval: Get<Self::BlockNumber>;
 }
