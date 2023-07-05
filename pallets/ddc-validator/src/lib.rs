@@ -32,7 +32,7 @@ pub use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 pub use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 pub use core::fmt::Debug;
 pub use frame_support::{
-	decl_event, decl_module, decl_storage,
+	decl_event, decl_module, decl_storage, defensive,
 	dispatch::DispatchResult,
 	pallet_prelude::*,
 	parameter_types, storage,
@@ -244,24 +244,13 @@ pub mod pallet {
 			let era = Self::get_current_era();
 			log::info!("current era: {:?}", era);
 
-			match <LastManagedEra<T>>::get() {
-				Some(last_managed_era) => {
-					if last_managed_era > era {
-						return 0
-					} else {
-						log::info!("Assigned era again: {:?}", era);
-
-						Self::assign(1usize, era - 1);
-						<LastManagedEra<T>>::put(era);
-					}
-				}
-				None => {
-					log::info!("Assigned era the first time: {:?}", era);
-
-					Self::assign(1usize, era - 1);
+			match Self::last_managed_era() {
+				Some(last_managed_era) if era <= last_managed_era => (),
+				_ => {
+					Self::assign(3usize, era);
 					<LastManagedEra<T>>::put(era);
-				}
-			}
+				},
+			};
 
 			0
 		}
@@ -712,24 +701,26 @@ pub mod pallet {
 				.map(|v| utils::account_to_string::<T>(v.clone()))
 				.collect();
 
+			// Create several groups of validators `quorum_size` length each.
 			let quorums = Self::split(validators_keys, quorum_size);
-			let edges_groups = Self::split(shuffled_edges, quorum_size);
 
-			info!("quorums: {:?}", quorums);
-			info!("edges_groups: {:?}", edges_groups);
-
-			for (i, quorum) in quorums.iter().enumerate() {
-				let edges_group = &edges_groups[i];
-
-				for validator in quorum {
-					info!("edges_groups to be assigned {:?} for validator {:?}", edges_groups.clone(), validator.clone());
-
-					Assignments::<T>::insert(
+			// Write an assignment to each validator in each quorum. The difference between the
+			// number of edges assigned to each validator is not higher then 1. If the number of
+			// edges is less then the number of quorums, some quorums will not have any edges
+			// assigned.
+			let mut quorums_cycle = quorums.iter().cycle();
+			for edge in shuffled_edges {
+				let Some(quorum_validators) = quorums_cycle.next() else {
+					defensive!("unexpectedly ran out of quorums");
+					return
+				};
+				quorum_validators.iter().for_each(|validator| {
+					Assignments::<T>::append(
 						era,
 						utils::string_to_account::<T>(validator.clone()),
-						edges_group,
+						edge.clone(),
 					);
-				}
+				});
 			}
 		}
 
