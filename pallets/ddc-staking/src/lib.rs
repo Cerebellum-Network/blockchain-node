@@ -838,7 +838,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(super) fn do_payout_stakers(era: EraIndex) -> DispatchResult {
+		pub fn do_payout_stakers(era: EraIndex) -> DispatchResult {
 			// ToDo: check that the era is finished
 			// ToDo: check reward points are set
 
