@@ -304,10 +304,7 @@ pub mod pallet {
 			let data_provider_url = Self::get_data_provider_url();
 			log::info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
 
-			// `If` commented for testing purposes
-			// if current_era > last_managed_era {
 			Self::validate_edges();
-			//}
 
 			// Print the number of broken sessions per CDN node.
 			// let aggregates_value = dac::fetch_aggregates(&data_provider_url, 77436).unwrap(); //
