@@ -60,7 +60,7 @@ pub struct FileRequestWrapper {
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct CDNNodeAggregates {
-  aggregate: Vec<CDNNodeAggregate>,
+	aggregate: Vec<CDNNodeAggregate>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -79,7 +79,6 @@ pub struct CDNNodeAggregate {
 	average_response_time_ms_samples: u64,
 	total_writes: u64,
 }
-
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(crate = "alt_serde")]
@@ -148,12 +147,11 @@ pub struct Log {
 #[serde(rename_all = "camelCase")]
 pub struct FileInfo {
 	#[serde(rename = "chunkCids")]
-	chunk_cids: Vec<String> ,
+	chunk_cids: Vec<String>,
 
 	#[serde(rename = "requestedChunkCids")]
 	requested_chunk_cids: Vec<String>,
 }
-
 
 type EdgeId = String;
 type ValidatorId = String;
