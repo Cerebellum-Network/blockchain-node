@@ -306,15 +306,11 @@ pub mod pallet {
 			let data_provider_url = Self::get_data_provider_url();
 			log::info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
 
-			if should_validate_because_new_era {
-				Self::validate_edges();
-			}
+			// Validation start forced externally?
+			let should_validate_because_signal = Signal::<T>::get().unwrap_or(false);
 
-			// Wait for signal.
-			let signal = Signal::<T>::get().unwrap_or(false);
-			if !signal {
-				log::info!("🔎 DAC Validator is idle at block {:?}, waiting for a signal, signal state is {:?}", block_number, signal);
-				return
+			if should_validate_because_new_era || should_validate_because_signal {
+				Self::validate_edges();
 			}
 		}
 	}
