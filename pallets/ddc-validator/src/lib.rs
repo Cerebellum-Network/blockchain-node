@@ -578,24 +578,21 @@ pub mod pallet {
 			// 	OffchainWorkerKeys::<T>::contains_key(&controller),
 			// 	Error::<T>::OCWKeyNotRegistered
 			// );
-			
-			<ddc_accounts::pallet::Pallet::<T>>::charge_payments_new(paying_accounts);
+
+			<ddc_accounts::pallet::Pallet<T>>::charge_payments_new(paying_accounts);
 
 			Ok(())
 		}
 
 		#[pallet::weight(100_000)]
-		pub fn payout_cdn_owners(
-			origin: OriginFor<T>,
-			era: EraIndex,
-		) -> DispatchResult {
+		pub fn payout_cdn_owners(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			// ensure!(
 			// 	OffchainWorkerKeys::<T>::contains_key(&controller),
 			// 	Error::<T>::OCWKeyNotRegistered
 			// );
 
-			<ddc_staking::pallet::Pallet::<T>>::do_payout_stakers(era);
+			<ddc_staking::pallet::Pallet<T>>::do_payout_stakers(era);
 
 			Ok(())
 		}
@@ -836,7 +833,12 @@ pub mod pallet {
 				info!("assigned edge: {:?}", assigned_edge);
 
 				// form url for each node
-				let edge_url = format!("{}{}{}", mock_data_url, "ddc:dac:aggregation:nodes:132855/$.", utils::account_to_string::<T>(assigned_edge.clone()));
+				let edge_url = format!(
+					"{}{}{}",
+					mock_data_url,
+					"ddc:dac:aggregation:nodes:132855/$.",
+					utils::account_to_string::<T>(assigned_edge.clone())
+				);
 				info!("edge url: {:?}", edge_url);
 
 				let node_aggregates = dac::fetch_cdn_node_aggregates_request(&edge_url);
@@ -854,7 +856,8 @@ pub mod pallet {
 				let payments_per_bucket = &mut Vec::new();
 				let requests = &mut dac::Requests::new();
 				for request_id in request_ids.iter() {
-					let request_id_url = format!("{}{}{}", mock_data_url, "ddc:dac:data:file:", request_id.clone());
+					let request_id_url =
+						format!("{}{}{}", mock_data_url, "ddc:dac:data:file:", request_id.clone());
 					let file_request = dac::fetch_file_request(&request_id_url);
 					requests.insert(file_request.file_request_id.clone(), file_request.clone());
 				}
@@ -908,7 +911,12 @@ pub mod pallet {
 					let edge = utils::account_to_string::<T>(assigned_edge.clone());
 					let prev_era = (current_era - 1) as EraIndex;
 					let quorum = Self::find_validators_from_quorum(&validator, &prev_era);
-					let validations_res = shm::get_intermediate_decisions(&data_provider_url, &edge_str, &prev_era, quorum);
+					let validations_res = shm::get_intermediate_decisions(
+						&data_provider_url,
+						&edge_str,
+						&prev_era,
+						quorum,
+					);
 
 					log::info!("get_intermediate_decisions result: {:?}", validations_res);
 
@@ -918,7 +926,8 @@ pub mod pallet {
 						let mut payments = vec![];
 						for bucket in payments_per_bucket.into_iter() {
 							let cere_payment: u32 = (bucket.1 / BYTES_TO_CERE) as u32;
-							let bucket_info = BucketsDetails {bucket_id: bucket.0, amount: cere_payment.into()};
+							let bucket_info =
+								BucketsDetails { bucket_id: bucket.0, amount: cere_payment.into() };
 							payments.push(bucket_info);
 						}
 						log::info!("final payments: {:?}", payments);
@@ -930,23 +939,27 @@ pub mod pallet {
 							return
 						}
 						// ToDo: replace local call by a call from `ddc-staking` pallet
-						let _tx_res: Option<(frame_system::offchain::Account<T>, Result<(), ()>)> = signer.send_signed_transaction(|_account| Call::charge_payments_content_owners {
-							paying_accounts: payments.clone(),
+						let _tx_res: Option<(frame_system::offchain::Account<T>, Result<(), ()>)> =
+							signer.send_signed_transaction(|_account| {
+								Call::charge_payments_content_owners {
+									paying_accounts: payments.clone(),
+								}
+							});
+
+						let _payout_tx_res = signer.send_signed_transaction(|_account| {
+							Call::payout_cdn_owners { era: current_era }
 						});
 
-						let _payout_tx_res = signer.send_signed_transaction(|_account| Call::payout_cdn_owners {
-							era: current_era,
-						});
-						
 						let final_res = dac::get_final_decision(validations_res);
 
 						let signer = Self::get_signer().unwrap();
 
-						let tx_res = signer.send_signed_transaction(|_acct| Call::set_validation_decision {
-							era: current_era,
-							cdn_node: utils::string_to_account::<T>(edge.clone()),
-							validation_decision: final_res.clone(),
-						});
+						let tx_res =
+							signer.send_signed_transaction(|_acct| Call::set_validation_decision {
+								era: current_era,
+								cdn_node: utils::string_to_account::<T>(edge.clone()),
+								validation_decision: final_res.clone(),
+							});
 
 						log::info!("final_res: {:?}", final_res);
 					}
