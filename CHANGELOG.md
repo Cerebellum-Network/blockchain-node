@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 
+### Added
+
+- Handlebars template to generate weights file
+- Genesis config for `pallet-ddc-staking` to set genesis DDC participants (empty by default) and staking settings
+- Unit tests in `pallet-ddc-staking` for basic staking scenario
+
 ### Changed
 
 - Updated Substrate to polkadot-v0.9.30
