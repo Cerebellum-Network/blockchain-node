@@ -56,7 +56,9 @@ pub use scale_info::TypeInfo;
 pub use serde_json::Value;
 pub use sp_core::crypto::{AccountId32, KeyTypeId, UncheckedFrom};
 pub use sp_io::crypto::sr25519_public_keys;
-pub use sp_runtime::offchain::{http, storage::StorageValueRef, Duration, Timestamp};
+pub use sp_runtime::offchain::{
+	http, storage::StorageValueRef, storage_lock, storage_lock::StorageLock, Duration, Timestamp,
+};
 pub use sp_staking::EraIndex;
 pub use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
@@ -277,6 +279,14 @@ pub mod pallet {
 			if !sp_io::offchain::is_validator() {
 				return
 			}
+
+			let mut validation_lock =
+				StorageLock::<storage_lock::Time>::new(LAST_VALIDATED_ERA_KEY);
+
+			// Skip if the validation is already in progress.
+			let Ok(_) = validation_lock.try_lock() else {
+				return
+			};
 
 			let last_validated_era_storage = StorageValueRef::persistent(LAST_VALIDATED_ERA_KEY);
 			let last_validated_era = match last_validated_era_storage.get::<EraIndex>() {
