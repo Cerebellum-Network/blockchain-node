@@ -256,11 +256,12 @@ pub mod pallet {
 			let era = Self::get_current_era();
 			log::info!("current era: {:?}", era);
 
+			// Produce an assignment for the next era if it's not produced yet.
 			match Self::last_managed_era() {
-				Some(last_managed_era) if era <= last_managed_era => (),
+				Some(last_managed_era) if era < last_managed_era => (),
 				_ => {
-					Self::assign(3usize, era);
-					<LastManagedEra<T>>::put(era);
+					Self::assign(3usize, era + 1);
+					<LastManagedEra<T>>::put(era + 1);
 				},
 			};
 
