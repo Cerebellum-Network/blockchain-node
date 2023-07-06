@@ -69,6 +69,10 @@ type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
 
 type ResultStr<T> = Result<T, &'static str>;
 
+/// Offchain local storage key that holds the last era in which the validator completed its
+/// assignment.
+const LAST_VALIDATED_ERA_KEY: &[u8; 40] = b"pallet-ddc-validator::last_validated_era";
+
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
 
 pub const TIME_START_MS: u128 = 1_672_531_200_000;
@@ -274,8 +278,19 @@ pub mod pallet {
 				return
 			}
 
+			let last_validated_era_storage = StorageValueRef::persistent(LAST_VALIDATED_ERA_KEY);
+			let last_validated_era = match last_validated_era_storage.get::<EraIndex>() {
+				Ok(Some(last_validated_era)) => last_validated_era,
+				_ => 0, // let's consider an absent or undecodable data as we never did a validation
+			};
+
 			let current_era = Self::get_current_era();
-			let last_managed_era = Self::last_managed_era().unwrap_or(0);
+
+			// Skip if the validation is already complete for the era.
+			if current_era <= last_validated_era {
+				return
+			}
+
 			let data_provider_url = Self::get_data_provider_url();
 			log::info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
 
