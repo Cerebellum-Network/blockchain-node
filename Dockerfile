@@ -7,7 +7,7 @@ COPY . /cerenetwork
 
 RUN apt-get update && \
 	  apt-get upgrade -y && \
-	  apt-get install -y cmake pkg-config libssl-dev git clang
+	  apt-get install -y cmake pkg-config libssl-dev git clang protobuf-compiler build-essential
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
     scripts/init.sh && \

@@ -4854,16 +4854,12 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "pallet-balances",
- "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
- "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-staking",
  "sp-std",
- "sp-tracing",
  "substrate-test-utils",
 ]
 
