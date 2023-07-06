@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- ...
+- Updated Substrate to polkadot-v0.9.30
 
 ## [4.7.0]
 
 ### Changed
 
-- Updated Substrate to polkadot-v0.9.30
+- Updated Substrate to polkadot-v0.9.29
 
 ## [4.6.0]
 
