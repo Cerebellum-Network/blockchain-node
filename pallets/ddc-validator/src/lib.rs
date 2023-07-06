@@ -303,9 +303,6 @@ pub mod pallet {
 				should_validate_because_new_era = false;
 			}
 
-			let data_provider_url = Self::get_data_provider_url();
-			log::info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
-
 			// Validation start forced externally?
 			let should_validate_because_signal = Signal::<T>::get().unwrap_or(false);
 
@@ -646,6 +643,7 @@ pub mod pallet {
 			let current_era = Self::get_current_era();
 			let mock_data_url = Self::get_mock_data_url();
 			let data_provider_url = Self::get_data_provider_url();
+			info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
 
 			// let signer = Self::get_signer().unwrap();
 			// let validator = signer.get_any_account().unwrap().id;
