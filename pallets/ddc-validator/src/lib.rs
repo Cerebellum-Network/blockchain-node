@@ -310,34 +310,6 @@ pub mod pallet {
 				Self::validate_edges();
 			}
 
-			// Print the number of broken sessions per CDN node.
-			// let aggregates_value = dac::fetch_aggregates(&data_provider_url, 77436).unwrap(); //
-			// 77436 is for a mock data let aggregates_obj = aggregates_value.as_object().unwrap();
-			// aggregates_obj
-			// 	.into_iter()
-			// 	.for_each(|(cdn_node_pubkey, cdn_node_aggregates_value)| {
-			// 		// iterate over aggregates for each node
-			// 		let cdn_node_aggregates_obj = cdn_node_aggregates_value.as_object().unwrap();
-			// 		// Extract `nodeInterruptedSessions` field
-			// 		let (_, cdn_node_interrupted_sessions_value) = cdn_node_aggregates_obj
-			// 			.into_iter()
-			// 			.find(|(key, _)| key.iter().copied().eq("nodeInterruptedSessions".chars()))
-			// 			.unwrap();
-			// 		let cdn_node_interrupted_sessions_obj =
-			// 			cdn_node_interrupted_sessions_value.as_object().unwrap();
-			// 		// Prepare CDN pubkey without heap allocated string
-			// 		let cdn_node_pubkey_vecu8: Vec<u8> =
-			// 			cdn_node_pubkey.iter().map(|c| *c as u8).collect();
-			// 		let cdn_node_pubkey_str =
-			// 			sp_std::str::from_utf8(&cdn_node_pubkey_vecu8).unwrap();
-			// 		log::info!(
-			// 			"Broken sessions per CDN node | Node {}: {} sessions broken",
-			// 			cdn_node_pubkey_str,
-			// 			cdn_node_interrupted_sessions_obj.len(), /* count sessions broken by the
-			// 			                                          * node */
-			// 		);
-			// 	});
-
 			// Wait for signal.
 			let signal = Signal::<T>::get().unwrap_or(false);
 			if !signal {
