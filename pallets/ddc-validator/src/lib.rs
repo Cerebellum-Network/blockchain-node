@@ -280,13 +280,15 @@ pub mod pallet {
 				return
 			}
 
+			let mut should_validate_because_new_era = true;
+
 			let mut validation_lock =
 				StorageLock::<storage_lock::Time>::new(LAST_VALIDATED_ERA_KEY);
 
 			// Skip if the validation is already in progress.
-			let Ok(_) = validation_lock.try_lock() else {
-				return
-			};
+			if validation_lock.try_lock().is_err() {
+				should_validate_because_new_era = false;
+			}
 
 			let last_validated_era_storage = StorageValueRef::persistent(LAST_VALIDATED_ERA_KEY);
 			let last_validated_era = match last_validated_era_storage.get::<EraIndex>() {
@@ -298,13 +300,15 @@ pub mod pallet {
 
 			// Skip if the validation is already complete for the era.
 			if current_era <= last_validated_era {
-				return
+				should_validate_because_new_era = false;
 			}
 
 			let data_provider_url = Self::get_data_provider_url();
 			log::info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
 
-			Self::validate_edges();
+			if should_validate_because_new_era {
+				Self::validate_edges();
+			}
 
 			// Print the number of broken sessions per CDN node.
 			// let aggregates_value = dac::fetch_aggregates(&data_provider_url, 77436).unwrap(); //
