@@ -36,6 +36,7 @@ use ddc_traits::{
 	staking::{StakingVisitor, StakingVisitorError},
 };
 
+use core::fmt::Debug;
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
@@ -44,14 +45,13 @@ use frame_support::{
 	BoundedVec,
 };
 use frame_system::pallet_prelude::*;
+pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating, StaticLookup, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
-
-pub use pallet::*;
 
 const DDC_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC maintainer's stake
 
@@ -97,7 +97,7 @@ pub struct StakingLedger<AccountId, Balance: HasCompact, T: Config> {
 	pub unlocking: BoundedVec<UnlockChunk<Balance, T>, MaxUnlockingChunks>,
 }
 
-impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero + std::fmt::Debug>
+impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero + Debug>
 	StakingLedger<AccountId, Balance>
 {
 	/// Initializes the default object using the given stash.

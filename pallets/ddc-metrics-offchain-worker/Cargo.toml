@@ -38,12 +38,13 @@ std = [
   "sp-keystore",
   "frame-support/std",
   "frame-system/std",
+  "serde",
+  "lite-json/std",
   "sp-core/std",
   "sp-io/std",
   "sp-runtime/std",
   "sp-std/std",
   "pallet-contracts/std",
-  # "pallet-contracts-rpc-runtime-api/std",
 ]
 
 [dev-dependencies]
