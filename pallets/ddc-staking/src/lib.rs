@@ -97,11 +97,8 @@ pub struct StakingLedger<AccountId, Balance: HasCompact, T: Config> {
 	pub unlocking: BoundedVec<UnlockChunk<Balance, T>, MaxUnlockingChunks>,
 }
 
-impl<
-		AccountId,
-		Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero,
-		T: Config,
-	> StakingLedger<AccountId, Balance, T>
+impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero + std::fmt::Debug>
+	StakingLedger<AccountId, Balance>
 {
 	/// Initializes the default object using the given stash.
 	pub fn default_from(stash: AccountId) -> Self {
