@@ -26,9 +26,9 @@ pub use cere_client::{
 pub use chain_spec::{CereChainSpec, CereDevChainSpec};
 pub use node_primitives::{Block, BlockNumber};
 pub use sc_executor::NativeElseWasmExecutor;
+use sc_network_common::service::NetworkEventStream;
 pub use sc_service::ChainSpec;
 pub use sp_api::ConstructRuntimeApi;
-use sc_network_common::{service::NetworkEventStream};
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch> = sc_finality_grandpa::GrandpaBlockImport<
@@ -645,12 +645,15 @@ pub trait IdentifyVariant {
 
 impl IdentifyVariant for Box<dyn sc_service::ChainSpec> {
 	fn is_cere(&self) -> bool {
-		self.id().starts_with("cere_mainnet") || self.id().starts_with("cere_qanet") || self.id().starts_with("cere_testnet")
+		self.id().starts_with("cere_mainnet") ||
+			self.id().starts_with("cere_qanet") ||
+			self.id().starts_with("cere_testnet")
 	}
 	fn is_cere_dev(&self) -> bool {
 		// Works for "cere-devnet" and "dev" arms in the load_spec(...) call.
-		// If you are specifying a customSpecRaw.json for "path" arm along with the "--force-cere-dev" flag,
-		// make sure your spec has a compatible "id" field to satisfy this condition
+		// If you are specifying a customSpecRaw.json for "path" arm along with the
+		// "--force-cere-dev" flag, make sure your spec has a compatible "id" field to satisfy this
+		// condition
 		self.id().starts_with("cere_dev")
 	}
 }
