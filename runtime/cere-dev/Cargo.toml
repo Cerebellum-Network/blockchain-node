@@ -59,7 +59,6 @@ pallet-child-bounties = { version = "4.0.0-dev", default-features = false, git =
 pallet-collective = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-contracts = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-contracts-primitives = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-contracts-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-democracy = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-election-provider-multi-phase = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-election-provider-support-benchmarking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", optional = true }
@@ -124,7 +123,6 @@ std = [
 	"pallet-collective/std",
 	"pallet-contracts/std",
 	"pallet-contracts-primitives/std",
-	"pallet-contracts-rpc-runtime-api/std",
 	"pallet-democracy/std",
 	"pallet-fast-unstake/std",
 	"pallet-elections-phragmen/std",

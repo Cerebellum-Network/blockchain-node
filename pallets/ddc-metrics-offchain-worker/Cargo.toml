@@ -26,7 +26,6 @@ pallet-contracts  = { version = '4.0.0-dev', default-features = false, git = "ht
 lite-json = { version = "0.2.0", default-features = false }
 alt_serde = { version = "1", default-features = false, features = ["derive"] }
 serde_json = { version = "1", default-features = false, git = "https://github.com/Cerebellum-Network/json", branch = "no-std-cere", features = ["alloc"] }
-# pallet-contracts-rpc-runtime-api = { version = "0.8.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 hex-literal = "^0.3.1"
 hex = { version = "0.4", default-features = false }
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
@@ -45,7 +44,6 @@ std = [
 	"sp-runtime/std",
 	"sp-std/std",
 	"pallet-contracts/std",
-	# "pallet-contracts-rpc-runtime-api/std",
 ]
 
 [dev-dependencies]

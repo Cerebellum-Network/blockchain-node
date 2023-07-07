@@ -12,7 +12,7 @@ wasm-opt = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-clap = { version = "3.1", features = ["derive"], optional = true }
+clap = { version = "4.0.9", features = ["derive"], optional = true }
 sc-cli = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.31" }
 sc-service = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.31" }
 frame-benchmarking-cli = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.31" }
