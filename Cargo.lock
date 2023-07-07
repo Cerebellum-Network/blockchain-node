@@ -884,7 +884,6 @@ version = "4.7.0"
 dependencies = [
  "jsonrpsee",
  "node-primitives",
- "pallet-contracts-rpc",
  "pallet-transaction-payment-rpc",
  "sc-chain-spec",
  "sc-client-api",
