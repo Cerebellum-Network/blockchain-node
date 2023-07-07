@@ -45,7 +45,7 @@ use sp_runtime::{
 };
 use sp_staking::EraIndex;
 use sp_std::prelude::*;
-
+use core::fmt::Debug;
 pub use pallet::*;
 
 /// Two minutes.
@@ -100,7 +100,7 @@ pub struct StakingLedger<AccountId, Balance: HasCompact> {
 	pub unlocking: BoundedVec<UnlockChunk<Balance>, MaxUnlockingChunks>,
 }
 
-impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero + std::fmt::Debug>
+impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero + Debug>
 	StakingLedger<AccountId, Balance>
 {
 	/// Initializes the default object using the given stash.
