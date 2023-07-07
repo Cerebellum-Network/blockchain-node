@@ -6,8 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 # Legend
-[C] Cere Runtime <br/>
-[D] Cere Dev Runtime
+[C] Changes is `Cere` Runtime <br/>
+[D] Changes is `Cere Dev` Runtime
+
+## [vNext + 1]
+
+### Changed
+
+- [C,D] Updated Substrate to polkadot-v0.9.31
 
 ## [vNext]
 
@@ -19,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [C,D] Updated Substrate to polkadot-v0.9.31
+- [C,D] Updated Substrate to polkadot-v0.9.30
 
 ## [4.7.0]
 
