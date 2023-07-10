@@ -22,9 +22,10 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
+use cere_runtime_common::{BalanceToU256, U256ToBalance};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_election_provider_support::{
-	onchain, ExtendedBalance, SequentialPhragmen, VoteWeight, BalancingConfig
+	onchain, BalancingConfig, ExtendedBalance, SequentialPhragmen, VoteWeight,
 };
 use frame_support::{
 	construct_runtime,
@@ -74,7 +75,7 @@ use sp_runtime::{
 		SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedU128, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
+	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
 };
 use sp_staking::EraIndex;
 use sp_std::prelude::*;
@@ -82,7 +83,6 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
-use cere_runtime_common::{BalanceToU256, U256ToBalance};
 
 #[cfg(any(feature = "std", test))]
 pub use frame_system::Call as SystemCall;

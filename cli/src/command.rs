@@ -40,7 +40,7 @@ impl SubstrateCli for Cli {
 			#[cfg(feature = "cere-dev-native")]
 			"dev" => Box::new(cere_service::chain_spec::cere_dev_development_config()?),
 			#[cfg(feature = "cere-dev-native")]
-            "local" => Box::new(cere_service::chain_spec::cere_dev_local_testnet_config()?),
+			"local" => Box::new(cere_service::chain_spec::cere_dev_local_testnet_config()?),
 			path => {
 				let path = std::path::PathBuf::from(path);
 

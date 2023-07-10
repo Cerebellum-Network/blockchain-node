@@ -93,13 +93,13 @@ where
 	B: sc_client_api::Backend<Block> + Send + Sync + 'static,
 	B::State: sc_client_api::backend::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
-	use pallet_contracts_rpc::{ContractsApiServer, Contracts};
-	use pallet_transaction_payment_rpc::{TransactionPaymentApiServer, TransactionPayment};
-	use sc_consensus_babe_rpc::{BabeApiServer, Babe};
+	use pallet_contracts_rpc::{Contracts, ContractsApiServer};
+	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
+	use sc_consensus_babe_rpc::{Babe, BabeApiServer};
 	use sc_finality_grandpa_rpc::GrandpaApiServer;
 	use sc_rpc::dev::{Dev, DevApiServer};
 	use sc_sync_state_rpc::{SyncState, SyncStateApiServer};
-	use substrate_frame_rpc_system::{SystemApiServer, System};
+	use substrate_frame_rpc_system::{System, SystemApiServer};
 	use substrate_state_trie_migration_rpc::StateMigrationApiServer;
 
 	let mut io = RpcModule::new(());
@@ -148,8 +148,12 @@ where
 	)?;
 
 	io.merge(
-		substrate_state_trie_migration_rpc::StateMigration::new(client.clone(), backend, deny_unsafe)
-			.into_rpc(),
+		substrate_state_trie_migration_rpc::StateMigration::new(
+			client.clone(),
+			backend,
+			deny_unsafe,
+		)
+		.into_rpc(),
 	)?;
 	io.merge(Dev::new(client, deny_unsafe).into_rpc())?;
 
