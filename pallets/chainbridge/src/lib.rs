@@ -10,7 +10,6 @@ use frame_support::{
 	},
 	ensure,
 	traits::{EnsureOrigin, Get},
-	weights::{ClassifyDispatch, DispatchClass, GetDispatchInfo, Pays, PaysFee, WeighData, Weight},
 	PalletId, Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
