@@ -51,9 +51,9 @@ use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 pub use pallet_cere_ddc;
 pub use pallet_chainbridge;
 use pallet_contracts::weights::WeightInfo;
+pub use pallet_ddc_accounts;
 pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_staking;
-pub use pallet_ddc_accounts;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
