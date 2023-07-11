@@ -33,18 +33,22 @@ use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
-		Currency, DefensiveSaturating, LockIdentifier, LockableCurrency, UnixTime, WithdrawReasons,
+		Currency, DefensiveSaturating, ExistenceRequirement, LockIdentifier, LockableCurrency,
+		UnixTime, WithdrawReasons,
 	},
-	BoundedVec,
+	BoundedVec, PalletId,
 };
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
-	RuntimeDebug,
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
+	Perbill, RuntimeDebug,
 };
 use sp_staking::EraIndex;
-use sp_std::prelude::*;
+use sp_std::{
+	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
+	prelude::*,
+};
 
 pub use pallet::*;
 
@@ -58,6 +62,9 @@ const DDC_ERA_DURATION_MS: u128 = 120_000;
 const DDC_ERA_START_MS: u128 = 1_672_531_200_000;
 const DDC_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC maintainer's stake
 
+/// Counter for the number of "reward" points earned by a given staker.
+pub type RewardPoint = u64;
+
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -67,6 +74,21 @@ pub type ClusterId = u32;
 parameter_types! {
 	/// A limit to the number of pending unlocks an account may have in parallel.
 	pub MaxUnlockingChunks: u32 = 32;
+}
+
+/// Reward points of an era. Used to split era total payout between stakers.
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct EraRewardPoints<AccountId: Ord> {
+	/// Total number of points. Equals the sum of reward points for each staker.
+	pub total: RewardPoint,
+	/// The reward points earned by a given staker.
+	pub individual: BTreeMap<AccountId, RewardPoint>,
+}
+
+impl<AccountId: Ord> Default for EraRewardPoints<AccountId> {
+	fn default() -> Self {
+		EraRewardPoints { total: Default::default(), individual: BTreeMap::new() }
+	}
 }
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
@@ -200,6 +222,8 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain bonded for.
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
+		/// To derive an account for withdrawing CDN rewards.
+		type StakersPayoutSource: Get<PalletId>;
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
@@ -225,6 +249,11 @@ pub mod pallet {
 	pub type Ledger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>>>;
 
+	/// Map from all "stash" accounts to the paid out rewards
+	#[pallet::storage]
+	#[pallet::getter(fn rewards)]
+	pub type Rewards<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>>;
+
 	/// The map of (wannabe) CDN participants stash keys to the DDC cluster ID they wish to
 	/// participate into.
 	#[pallet::storage]
@@ -244,6 +273,19 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn current_era)]
 	pub type CurrentEra<T> = StorageValue<_, EraIndex>;
+
+	/// The reward each CDN participant earned in the era.
+	///
+	/// See also [`pallet_staking::ErasRewardPoints`].
+	#[pallet::storage]
+	#[pallet::getter(fn eras_edges_reward_points)]
+	pub type ErasEdgesRewardPoints<T: Config> =
+		StorageMap<_, Twox64Concat, EraIndex, EraRewardPoints<T::AccountId>, ValueQuery>;
+
+	/// Price per byte of the bucket traffic in smallest units of the currency.
+	#[pallet::storage]
+	#[pallet::getter(fn pricing)]
+	pub type Pricing<T: Config> = StorageValue<_, u128>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -366,6 +408,12 @@ pub mod pallet {
 		AlreadyInRole,
 		/// Action is allowed at some point of time in future not reached yet.
 		TooEarly,
+		/// Two or more occurrences of a staker account in rewards points list.
+		DuplicateRewardPoints,
+		/// Price per byte of the traffic is unknown.
+		PricingNotSet,
+		/// Impossible budget value that overflows pallet's balance type.
+		BudgetOverflow,
 	}
 
 	#[pallet::hooks]
@@ -713,6 +761,56 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Pay out all the stakers for a single era.
+		#[pallet::weight(100_000)]
+		pub fn payout_stakers(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
+			ensure_signed(origin)?;
+			Self::do_payout_stakers(era)
+		}
+
+		/// Set reward points for CDN participants at the given era.
+		///
+		/// The dispatch origin for this call must be _Signed_ by the validator.
+		///
+		/// `stakers_points` is a vector of (stash account ID, reward points) pairs. The rewards
+		/// distribution will be based on total reward points, with each CDN participant receiving a
+		/// proportionate reward based on their individual reward points.
+		///
+		/// See also [`ErasEdgesRewardPoints`].
+		#[pallet::weight(100_000)]
+		pub fn set_era_reward_points(
+			origin: OriginFor<T>,
+			era: EraIndex,
+			stakers_points: Vec<(T::AccountId, u64)>,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			// ToDo: ensure origin is a validator eligible to set rewards
+
+			// Check that a staker mentioned only once, fail with an error otherwise.
+			let unique_stakers_count =
+				stakers_points.iter().map(|(staker, _)| staker).collect::<BTreeSet<_>>().len();
+			if unique_stakers_count != stakers_points.len() {
+				Err(Error::<T>::DuplicateRewardPoints)?
+			}
+
+			// ToDo: check that all accounts had an active stake at the era
+
+			Self::reward_by_ids(era, stakers_points);
+
+			Ok(())
+		}
+
+		/// Set price per byte of the bucket traffic in smallest units of the currency.
+		///
+		/// The dispatch origin for this call must be _Root_.
+		#[pallet::weight(10_000)]
+		pub fn set_pricing(origin: OriginFor<T>, price_per_byte: u128) -> DispatchResult {
+			ensure_root(origin)?;
+			<Pricing<T>>::set(Some(price_per_byte));
+			Ok(())
+		}
+
 		/// Set custom DDC staking settings for a particular cluster.
 		///
 		/// * `settings` - The new settings for the cluster. If `None`, the settings will be removed
@@ -740,6 +838,68 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		pub fn do_payout_stakers(era: EraIndex) -> DispatchResult {
+			// ToDo: check that the era is finished
+			// ToDo: check reward points are set
+
+			let era_reward_points: EraRewardPoints<T::AccountId> =
+				<ErasEdgesRewardPoints<T>>::get(&era);
+
+			let price_per_byte: u128 = match Self::pricing() {
+				Some(pricing) => pricing,
+				None => Err(Error::<T>::PricingNotSet)?,
+			};
+
+			// An account we withdraw the funds from and the amount of funds to withdraw.
+			let payout_source_account: T::AccountId =
+				T::StakersPayoutSource::get().into_account_truncating();
+			let payout_budget: BalanceOf<T> =
+				match (price_per_byte * era_reward_points.total as u128).try_into() {
+					Ok(value) => value,
+					Err(_) => Err(Error::<T>::BudgetOverflow)?,
+				};
+			log::debug!(
+				"Will payout to DDC stakers for era {:?} from account {:?} with total budget {:?} \
+				, there are {:?} stakers earned {:?} reward points with price per byte {:?}",
+				era,
+				payout_source_account,
+				payout_budget,
+				era_reward_points.individual.len(),
+				era_reward_points.total,
+				price_per_byte,
+			);
+
+			// Transfer a part of the budget to each CDN participant rewarded this era.
+			for (stash, points) in era_reward_points.individual {
+				let part = Perbill::from_rational(points, era_reward_points.total);
+				let reward: BalanceOf<T> = part * payout_budget;
+				log::debug!(
+					"Rewarding {:?} with {:?} points, its part is {:?}, reward size {:?}, balance \
+					on payout source account {:?}",
+					stash,
+					points,
+					part,
+					reward,
+					T::Currency::free_balance(&payout_source_account)
+				);
+				T::Currency::transfer(
+					&payout_source_account,
+					&stash,
+					reward,
+					ExistenceRequirement::AllowDeath,
+				)?; // ToDo: all success or noop
+				let mut total_rewards: BalanceOf<T> = Self::rewards(&stash).unwrap();
+				total_rewards += reward;
+				<Rewards<T>>::insert(&stash, total_rewards);
+			}
+			log::debug!(
+				"Balance left on payout source account {:?}",
+				T::Currency::free_balance(&payout_source_account),
+			);
+
+			Ok(())
+		}
+
 		/// Update the ledger for a controller.
 		///
 		/// This will also update the stash lock.
@@ -827,6 +987,19 @@ pub mod pallet {
 		/// Returns true if `who` was removed from `Storages`, otherwise false.
 		pub fn do_remove_storage(who: &T::AccountId) -> bool {
 			Storages::<T>::take(who).is_some()
+		}
+
+		/// Add reward points to CDN participants using their stash account ID.
+		pub fn reward_by_ids(
+			era: EraIndex,
+			stakers_points: impl IntoIterator<Item = (T::AccountId, u64)>,
+		) {
+			<ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
+				for (staker, points) in stakers_points.into_iter() {
+					*era_rewards.individual.entry(staker).or_default() += points;
+					era_rewards.total += points;
+				}
+			});
 		}
 
 		/// Reset the chilling era for a controller.

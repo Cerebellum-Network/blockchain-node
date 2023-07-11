@@ -51,6 +51,7 @@ use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 pub use pallet_cere_ddc;
 pub use pallet_chainbridge;
 use pallet_contracts::weights::WeightInfo;
+pub use pallet_ddc_accounts;
 pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
@@ -1320,8 +1321,38 @@ impl pallet_ddc_staking::Config for Runtime {
 	type DefaultStorageBondSize = DefaultStorageBondSize;
 	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type Event = Event;
+	type StakersPayoutSource = Ddc_Accounts_Pallet_Id;
 	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
+	pub const Ddc_Accounts_Pallet_Id: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
+}
+
+impl pallet_ddc_accounts::Config for Runtime {
+	type BondingDuration = BondingDuration;
+	type Currency = Balances;
+	type Event = Event;
+	type PalletId = Ddc_Accounts_Pallet_Id;
+	type TimeProvider = pallet_timestamp::Pallet<Runtime>;
+}
+
+parameter_types! {
+	pub const DdcValidatorsQuorumSize: u32 = 3;
+	pub const ValidationThreshold: u32 = 5;
+	pub const ValidatorsMax: u32 = 64;
+}
+
+impl pallet_ddc_validator::Config for Runtime {
+	type DdcValidatorsQuorumSize = DdcValidatorsQuorumSize;
+	type Event = Event;
+	type Randomness = RandomnessCollectiveFlip;
+	type Call = Call;
+	type AuthorityId = pallet_ddc_validator::crypto::TestAuthId;
+	type TimeProvider = pallet_timestamp::Pallet<Runtime>;
+	type ValidationThreshold = ValidationThreshold;
+	type ValidatorsMax = ValidatorsMax;
 }
 
 construct_runtime!(
@@ -1375,6 +1406,8 @@ construct_runtime!(
 		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
 		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
 		DdcStaking: pallet_ddc_staking,
+		DdcValidator: pallet_ddc_validator,
+		DdcAccounts: pallet_ddc_accounts,
 	}
 );
 
