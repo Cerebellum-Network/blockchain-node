@@ -182,10 +182,9 @@ pub fn run() -> sc_cli::Result<()> {
 					unwrap_client!(client, cmd.run(client.clone()))
 				}),
 				#[cfg(not(feature = "runtime-benchmarks"))]
-				BenchmarkCmd::Storage(_) => Err(
-					"Storage benchmarking can be enabled with `--features runtime-benchmarks`."
-						.into(),
-				),
+				BenchmarkCmd::Storage(_) =>
+					Err("Storage benchmarking can be enabled with `--features runtime-benchmarks`."
+						.into()),
 				#[cfg(feature = "runtime-benchmarks")]
 				BenchmarkCmd::Storage(cmd) => runner.sync_run(|config| {
 					let (client, backend, _, _) = cere_service::new_chain_ops(&config)?;
