@@ -4,10 +4,12 @@
 use codec::{Decode, Encode, EncodeLike};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
-	dispatch::DispatchResult,
+	dispatch::{
+		ClassifyDispatch, DispatchClass, DispatchResult, GetDispatchInfo, Pays, PaysFee, WeighData,
+		Weight,
+	},
 	ensure,
 	traits::{EnsureOrigin, Get},
-	weights::{ClassifyDispatch, DispatchClass, GetDispatchInfo, Pays, PaysFee, WeighData, Weight},
 	PalletId, Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
@@ -104,11 +106,14 @@ impl<AccountId, BlockNumber: Default> Default for ProposalVotes<AccountId, Block
 }
 
 pub trait Config: system::Config {
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
+	type RuntimeEvent: From<Event<Self>> + Into<<Self as frame_system::Config>::RuntimeEvent>;
 	/// Origin used to administer the pallet
-	type AdminOrigin: EnsureOrigin<Self::Origin>;
+	type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 	/// Proposed dispatchable call
-	type Proposal: Parameter + Dispatchable<Origin = Self::Origin> + EncodeLike + GetDispatchInfo;
+	type Proposal: Parameter
+		+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+		+ EncodeLike
+		+ GetDispatchInfo;
 	/// The identifier for this chain.
 	/// This must be unique and must not collide with existing IDs within a set of bridged chains.
 	type ChainId: Get<ChainId>;
@@ -209,7 +214,7 @@ decl_event!(
 );
 
 decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::RuntimeOrigin {
 		type Error = Error<T>;
 
 		const ChainIdentity: ChainId = T::ChainId::get();
@@ -343,7 +348,7 @@ decl_module! {
 impl<T: Config> Module<T> {
 	// *** Utility methods ***
 
-	pub fn ensure_admin(o: T::Origin) -> DispatchResult {
+	pub fn ensure_admin(o: T::RuntimeOrigin) -> DispatchResult {
 		T::AdminOrigin::try_origin(o).map(|_| ()).or_else(ensure_root)?;
 		Ok(())
 	}
@@ -588,18 +593,18 @@ impl<T: Config> Module<T> {
 
 /// Simple ensure origin for the bridge account
 pub struct EnsureBridge<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> EnsureOrigin<T::Origin> for EnsureBridge<T> {
+impl<T: Config> EnsureOrigin<T::RuntimeOrigin> for EnsureBridge<T> {
 	type Success = T::AccountId;
-	fn try_origin(o: T::Origin) -> Result<Self::Success, T::Origin> {
+	fn try_origin(o: T::RuntimeOrigin) -> Result<Self::Success, T::RuntimeOrigin> {
 		let bridge_id = AccountIdConversion::<T::AccountId>::into_account_truncating(&MODULE_ID);
 		o.into().and_then(|o| match o {
 			system::RawOrigin::Signed(who) if who == bridge_id => Ok(bridge_id),
-			r => Err(T::Origin::from(r)),
+			r => Err(T::RuntimeOrigin::from(r)),
 		})
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin() -> T::Origin {
-		T::Origin::from(system::RawOrigin::Signed(<Module<T>>::account_id()))
+	fn successful_origin() -> T::RuntimeOrigin {
+		T::RuntimeOrigin::from(system::RawOrigin::Signed(<Module<T>>::account_id()))
 	}
 }
