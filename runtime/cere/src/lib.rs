@@ -32,7 +32,7 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		ConstU16, ConstU32, ConstU128, Currency, EitherOfDiverse, EqualPrivilegeOnly, Everything,
+		ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly, Everything,
 		Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced,
 		U128CurrencyToVote,
 	},
@@ -296,16 +296,18 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::NonTransfer => !matches!(
 				c,
 				RuntimeCall::Balances(..) |
-				RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
-				RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
-				RuntimeCall::NominationPools(..)
+					RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
+					RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
+					RuntimeCall::NominationPools(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
 				RuntimeCall::Democracy(..) |
-					RuntimeCall::Council(..) | RuntimeCall::Society(..) |
+					RuntimeCall::Council(..) |
+					RuntimeCall::Society(..) |
 					RuntimeCall::TechnicalCommittee(..) |
-					RuntimeCall::Elections(..) | RuntimeCall::Treasury(..)
+					RuntimeCall::Elections(..) |
+					RuntimeCall::Treasury(..)
 			),
 			ProxyType::Staking => matches!(c, RuntimeCall::Staking(..)),
 		}
@@ -430,7 +432,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
+	type RuntimeEvent = RuntimeEvent;
 	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees>;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type WeightToFee = IdentityFee<Balance>;
@@ -1393,7 +1395,6 @@ pub type SignedExtra = (
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 
-
 pub struct StakingMigrationV11OldPallet;
 impl Get<&'static str> for StakingMigrationV11OldPallet {
 	fn get() -> &'static str {
@@ -1402,7 +1403,8 @@ impl Get<&'static str> for StakingMigrationV11OldPallet {
 }
 
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+pub type UncheckedExtrinsic =
+	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
