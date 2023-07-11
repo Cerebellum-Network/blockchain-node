@@ -63,6 +63,7 @@ cere-dev-native = [ "cere-dev-runtime", "cere-dev-runtime-constants", "cere-clie
 runtime-benchmarks = [
 	"cere-runtime/runtime-benchmarks",
 	"cere-dev-runtime/runtime-benchmarks",
+	"sc-service/runtime-benchmarks",
 ]
 
 try-runtime = [
