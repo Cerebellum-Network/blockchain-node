@@ -878,13 +878,21 @@ pub mod pallet {
 					if validations_res.len() == QUORUM_SIZE {
 						log::info!("payments per bucket: {:?}", payments_per_bucket);
 
-						let mut payments = vec![];
+						let mut payments: BTreeMap<u128, BucketsDetails<ddc_accounts::BalanceOf<T>>> = BTreeMap::new();
 						for bucket in payments_per_bucket.into_iter() {
 							let cere_payment: u32 = (bucket.1 / BYTES_TO_CERE) as u32;
-							let bucket_info = BucketsDetails {bucket_id: bucket.0, amount: cere_payment.into()};
-							payments.push(bucket_info);
+							if payments.contains_key(&bucket.0) {
+								payments.entry(bucket.0).and_modify(|bucket_info| bucket_info.amount += cere_payment.into());
+							} else {
+								let bucket_info = BucketsDetails {bucket_id: bucket.0, amount: cere_payment.into()};
+								payments.insert(bucket.0, bucket_info);
+							}
 						}
-						log::info!("final payments: {:?}", payments);
+						let mut final_payments = vec![];
+						for (_, bucket_info) in payments {
+							final_payments.push(bucket_info);
+						}
+						log::info!("final payments: {:?}", final_payments);
 
 						// Store CDN node reward points on-chain
 						let signer: Signer<T, T::AuthorityId> = Signer::<_, _>::any_account();
@@ -894,11 +902,11 @@ pub mod pallet {
 						}
 						// ToDo: replace local call by a call from `ddc-staking` pallet
 						let _tx_res: Option<(frame_system::offchain::Account<T>, Result<(), ()>)> = signer.send_signed_transaction(|_account| Call::charge_payments_content_owners {
-							paying_accounts: payments.clone(),
+							paying_accounts: final_payments.clone(),
 						});
 
 						let _payout_tx_res = signer.send_signed_transaction(|_account| Call::payout_cdn_owners {
-							era: current_era,
+							era: current_era - 1,
 						});
 						
 						let final_res = dac::get_final_decision(validations_res);
@@ -906,7 +914,7 @@ pub mod pallet {
 						let signer = Self::get_signer().unwrap();
 
 						let tx_res = signer.send_signed_transaction(|_acct| Call::set_validation_decision {
-							era: current_era,
+							era: current_era - 1,
 							cdn_node: utils::string_to_account::<T>(edge.clone()),
 							validation_decision: final_res.clone(),
 						});
