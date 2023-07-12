@@ -794,7 +794,7 @@ pub mod pallet {
 					Ok(value) => value,
 					Err(_) => Err(Error::<T>::BudgetOverflow)?,
 				};
-			log::debug!(
+			log::info!(
 				"Will payout to DDC stakers for era {:?} from account {:?} with total budget {:?} \
 				, there are {:?} stakers earned {:?} reward points with price per byte {:?}",
 				era,
@@ -809,7 +809,7 @@ pub mod pallet {
 			for (stash, points) in era_reward_points.clone().individual {
 				let part = Perbill::from_rational(points, era_reward_points.total);
 				let reward: BalanceOf<T> = part * payout_budget;
-				log::debug!(
+				log::info!(
 					"Rewarding {:?} with {:?} points, its part is {:?}, reward size {:?}, balance \
 					on payout source account {:?}",
 					stash,
@@ -826,9 +826,12 @@ pub mod pallet {
 				)?; // ToDo: all success or noop
 				let mut total_rewards: BalanceOf<T> = Self::rewards(&stash).unwrap();
 				total_rewards += reward;
+				log::info!("Total rewards to be inserted: {:?}", total_rewards.clone());
+
 				<Rewards<T>>::insert(&stash, total_rewards);
 			}
 			Self::deposit_event(Event::<T>::PayoutNodes(era, era_reward_points.clone() ,price_per_byte));
+			log::info!("Payout event executed");
 
 			log::debug!(
 				"Balance left on payout source account {:?}",

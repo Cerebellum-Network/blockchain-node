@@ -54,8 +54,10 @@ pub use pallet_staking::{self as staking};
 pub use scale_info::TypeInfo;
 pub use serde_json::Value;
 pub use sp_core::crypto::{AccountId32, KeyTypeId, UncheckedFrom};
-pub use sp_io::crypto::sr25519_public_keys;
-pub use sp_runtime::offchain::{http, storage::StorageValueRef, Duration, Timestamp};
+pub use sp_io::{crypto::sr25519_public_keys, offchain_index};
+pub use sp_runtime::offchain::{
+	http, storage::StorageValueRef, storage_lock, storage_lock::StorageLock,  Duration, Timestamp
+};
 pub use sp_staking::EraIndex;
 pub use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 use log::info;
@@ -76,9 +78,13 @@ pub const ERA_DURATION_MS: u128 = 120_000;
 pub const ERA_IN_BLOCKS: u8 = 20;
 pub const BYTES_TO_CERE: u64 = 1; // this should have a logic built on top and adjusted
 
+/// Offchain local storage key that holds the last era in which the validator completed its
+/// assignment.
+const LAST_VALIDATED_ERA_KEY: &[u8; 40] = b"pallet-ddc-validator::last_validated_era";
 /// Webdis in experimental cluster connected to Redis in dev.
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "https://dev-dac-redis.network-dev.aws.cere.io";
 pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://webdis:7379";
+// pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
 pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
 pub const QUORUM_SIZE: usize = 1;
 
@@ -229,6 +235,8 @@ pub mod pallet {
 		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode, {
 	  // Validator submits decision for an era
 		ValidationDecision(EraIndex, T::AccountId, ValidationDecision),
+		// Set era reward points
+		EraRewardPoints(EraIndex, Vec<(T::AccountId, u64)>),
 	}
 
 	#[pallet::hooks]
@@ -264,215 +272,43 @@ pub mod pallet {
 				return
 			}
 
+			let mut should_validate_because_new_era = true;
+
+			let mut validation_lock =
+				StorageLock::<storage_lock::Time>::new(LAST_VALIDATED_ERA_KEY);
+
+			// Skip if the validation is already in progress.
+			if validation_lock.try_lock().is_err() {
+				should_validate_because_new_era = false;
+			}
+			log::info!("Should validate {:?}", should_validate_because_new_era);
+
+			let last_validated_era_storage = StorageValueRef::persistent(LAST_VALIDATED_ERA_KEY);
+			let last_validated_era = match last_validated_era_storage.get::<EraIndex>() {
+				Ok(Some(last_validated_era)) => last_validated_era,
+				_ => 0, // let's consider an absent or undecodable data as we never did a validation
+			};
+
 			let current_era = Self::get_current_era();
-			let last_managed_era = Self::last_managed_era().unwrap_or(0);
+
+			// Skip if the validation is already complete for the era.
+			if current_era <= last_validated_era {
+				should_validate_because_new_era = false;
+			}
+
+			log::info!("Should validate {:?}", should_validate_because_new_era);
+
 			let data_provider_url = Self::get_data_provider_url();
 			log::info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
 
-			// `If` commented for testing purposes
-			// if current_era > last_managed_era {
-			Self::validate_edges();
-			//}
+			// Validation start forced externally?
+			let should_validate_because_signal = Signal::<T>::get().unwrap_or(false);
 
-			// Print the number of broken sessions per CDN node.
-			// let aggregates_value = dac::fetch_aggregates(&data_provider_url, 77436).unwrap(); // 77436 is for a mock data
-			// let aggregates_obj = aggregates_value.as_object().unwrap();
-			// aggregates_obj
-			// 	.into_iter()
-			// 	.for_each(|(cdn_node_pubkey, cdn_node_aggregates_value)| {
-			// 		// iterate over aggregates for each node
-			// 		let cdn_node_aggregates_obj = cdn_node_aggregates_value.as_object().unwrap();
-			// 		// Extract `nodeInterruptedSessions` field
-			// 		let (_, cdn_node_interrupted_sessions_value) = cdn_node_aggregates_obj
-			// 			.into_iter()
-			// 			.find(|(key, _)| key.iter().copied().eq("nodeInterruptedSessions".chars()))
-			// 			.unwrap();
-			// 		let cdn_node_interrupted_sessions_obj =
-			// 			cdn_node_interrupted_sessions_value.as_object().unwrap();
-			// 		// Prepare CDN pubkey without heap allocated string
-			// 		let cdn_node_pubkey_vecu8: Vec<u8> =
-			// 			cdn_node_pubkey.iter().map(|c| *c as u8).collect();
-			// 		let cdn_node_pubkey_str =
-			// 			sp_std::str::from_utf8(&cdn_node_pubkey_vecu8).unwrap();
-			// 		log::info!(
-			// 			"Broken sessions per CDN node | Node {}: {} sessions broken",
-			// 			cdn_node_pubkey_str,
-			// 			cdn_node_interrupted_sessions_obj.len(), /* count sessions broken by the
-			// 			                                          * node */
-			// 		);
-			// 	});
+			log::info!("Should validate {:?}", should_validate_because_new_era);
 
-			// Wait for signal.
-			let signal = Signal::<T>::get().unwrap_or(false);
-			if !signal {
-				log::info!("🔎 DAC Validator is idle at block {:?}, waiting for a signal, signal state is {:?}", block_number, signal);
-				return
+			if should_validate_because_new_era || should_validate_because_signal {
+				Self::validate_edges();
 			}
-
-			// Read from DAC.
-			let response = dac::fetch_data2(&data_provider_url, current_era - 1);
-			let (sent_query, sent, received_query, received) = match response {
-				Ok(data) => data,
-				Err(_) => {
-					log::info!("🔎 DAC Validator failed to get bytes sent and received from DAC");
-					return
-				},
-			};
-			log::info!(
-				"🔎 DAC Validator is fetching data from DAC, current era: {:?}, bytes sent query: {:?}, bytes sent response: {:?}, bytes received query: {:?}, bytes received response: {:?}",
-				current_era,
-				sent_query,
-				sent,
-				received_query,
-				received,
-			);
-
-			// Create intermediate validation decisions
-			// ========================================
-
-			// All validators validate all CDN nodes.
-			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
-			for edge in edges.iter() {
-				// Get string type CDN node pubkey
-				let edge_pubkey: String = utils::account_to_string::<T>(edge.clone());
-
-				// Get bytes sent and received for the CDN node
-				let node_sent: &dac::BytesSent = match sent
-					.iter()
-					.find(|bytes_sent| bytes_sent.node_public_key == edge_pubkey)
-				{
-					Some(node_sent) => node_sent,
-					None => {
-						log::warn!("No logs to validate {:?}", edge);
-						continue
-					},
-				};
-				let client_received: &dac::BytesReceived = match received
-					.iter()
-					.find(|bytes_received| bytes_received.node_public_key == edge_pubkey)
-				{
-					Some(client_received) => client_received,
-					None => {
-						log::warn!("No acks to validate {:?}", edge);
-						continue
-					},
-				};
-
-				// Proof-of-delivery validation
-				let validation_result = Self::validate(node_sent, client_received);
-
-				// Prepare an intermediate validation decision
-				let validation_decision = ValidationDecision {
-					edge: utils::account_to_string::<T>(edge.clone()),
-					result: validation_result,
-					payload: [0u8; 32], // ToDo: put a hash of the validated data here
-					totals: DacTotalAggregates {
-						sent: node_sent.sum as u64,
-						received: client_received.sum as u64,
-						failed_by_client: 0, // ToDo
-						failure_rate: 0,     // ToDo
-					},
-				};
-
-				// Encode validation decision to base64
-				let validation_decision_serialized: Vec<u8> = validation_decision.encode();
-				let validation_decision_base64 =
-					shm::base64_encode(&validation_decision_serialized).unwrap();
-				log::info!(
-					"Intermediate validation decision for CDN node {:?}: , base64 encoded: {:?}",
-					validation_decision,
-					validation_decision_base64,
-				);
-
-				// Prepare values to publish validation decision and publish it
-				let validator_id_string = String::from("validator1"); // ToDo: get validator ID
-				let edge_id_string = utils::account_to_string::<T>(edge.clone());
-				let validation_decision_base64_string =
-					validation_decision_base64.iter().cloned().collect::<String>();
-				let response = shm::share_intermediate_validation_result(
-					&data_provider_url,
-					current_era - 1,
-					&validator_id_string,
-					&edge_id_string,
-					validation_result,
-					&validation_decision_base64_string,
-				);
-				match response {
-					Ok(response) =>
-						log::info!("Shared memory response: {:?}", response.to_string()),
-					Err(e) => {
-						log::error!("Shared memory error: {:?}", e);
-						continue
-					},
-				}
-			}
-			log::info!(
-				"Intermediate validation results published for {} CDN nodes in era {:?}",
-				edges.len(),
-				current_era - 1
-			);
-
-			// Set CDN nodes' reward points
-			// ============================
-
-			// Let's use a mock data until we have a real final validation decisions for all the CDN
-			// nodes.
-			let mock_final_validation_decisions: Vec<(T::AccountId, ValidationDecision)> = vec![
-				(
-					utils::string_to_account::<T>(
-						"0xd4160f567d7265b9de2c7cbf1a5c931e5b3195efb2224f8706bfb53ea6eaacd1".into(),
-					),
-					ValidationDecision {
-						edge: "test".into(),
-						result: true,
-						payload: [0u8; 32],
-						totals: DacTotalAggregates {
-							sent: 100,
-							received: 100,
-							failed_by_client: 0,
-							failure_rate: 0,
-						},
-					},
-				),
-				(
-					utils::string_to_account::<T>(
-						"0xa2d14e71b52e5695e72c0567926bc68b68bda74df5c1ccf1d4ba612c153ff66b".into(),
-					),
-					ValidationDecision {
-						edge: "test".into(),
-						result: true,
-						payload: [0u8; 32],
-						totals: DacTotalAggregates {
-							sent: 200,
-							received: 200,
-							failed_by_client: 0,
-							failure_rate: 0,
-						},
-					},
-				),
-			];
-
-			// Calculate CDN nodes reward points from validation decision aggregates
-			let cdn_nodes_reward_points: Vec<(T::AccountId, u64)> = mock_final_validation_decisions
-				.into_iter()
-				.filter(|(_, validation_decision)| validation_decision.result) // skip misbehaving
-				.map(|(cdn_node, validation_decision)| {
-					// ToDo: should we use `sent` or `received` or anything else as a reward point?
-					(cdn_node, validation_decision.totals.sent)
-				})
-				.collect();
-
-			// Store CDN node reward points on-chain
-			let signer: Signer<T, T::AuthorityId> = Signer::<_, _>::any_account();
-			if !signer.can_sign() {
-				log::warn!("No local accounts available to set era reward points. Consider adding one via `author_insertKey` RPC.");
-				return
-			}
-			// ToDo: replace local call by a call from `ddc-staking` pallet
-			let _tx_res = signer.send_signed_transaction(|_account| Call::set_era_reward_points {
-				era: current_era - 1,
-				stakers_points: cdn_nodes_reward_points.clone(),
-			});
 		}
 	}
 
@@ -507,9 +343,9 @@ pub mod pallet {
 			// ToDo: check if the validation decision is not set yet.
 			// ToDo: check cdn_node is known to ddc-staking.
 
-			ValidationDecisions::<T>::insert(era, cdn_node, validation_decision);
+			ValidationDecisions::<T>::insert(era, cdn_node.clone(), validation_decision.clone());
 
-			// ToDo: emit event.
+			Self::deposit_event(Event::<T>::ValidationDecision(era, cdn_node, validation_decision));
 
 			Ok(())
 		}
@@ -533,11 +369,13 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
-				for (staker, points) in stakers_points.into_iter() {
+				for (staker, points) in stakers_points.clone().into_iter() {
 					*era_rewards.individual.entry(staker).or_default() += points;
 					era_rewards.total += points;
 				}
 			});
+
+			Self::deposit_event(Event::<T>::EraRewardPoints(era, stakers_points));
 
 			Ok(())
 		}
@@ -798,11 +636,15 @@ pub mod pallet {
 
 			info!("assigned_edges: {:?}", assigned_edges);
 
+			// Calculate CDN nodes reward points from validation decision aggregates
+			let mut cdn_nodes_reward_points: Vec<(T::AccountId, u64)> = vec![];
+
 			for assigned_edge in assigned_edges.iter() {
 				info!("assigned edge: {:?}", assigned_edge);
 
 				// form url for each node
 				let edge_url = format!("{}{}{}{}{}", mock_data_url, "ddc:dac:aggregation:nodes:", current_era, "/$.", utils::account_to_string::<T>(assigned_edge.clone()));
+				// let edge_url = format!("{}{}{}{}{}", mock_data_url, "ddc:dac:aggregation:nodes:", 132855, "/$.", utils::account_to_string::<T>(assigned_edge.clone()));
 				info!("edge url: {:?}", edge_url);
 
 				let node_aggregates = dac::fetch_cdn_node_aggregates_request(&edge_url);
@@ -908,10 +750,6 @@ pub mod pallet {
 							paying_accounts: final_payments.clone(),
 						});
 
-						let _payout_tx_res = signer.send_signed_transaction(|_account| Call::payout_cdn_owners {
-							era: current_era - 1,
-						});
-						
 						let final_res = dac::get_final_decision(validations_res);
 
 						let signer = Self::get_signer().unwrap();
@@ -922,12 +760,22 @@ pub mod pallet {
 							validation_decision: final_res.clone(),
 						});
 
-						Self::deposit_event(Event::<T>::ValidationDecision(current_era - 1, utils::string_to_account::<T>(edge.clone()), final_res.clone()));
-
 						log::info!("final_res: {:?}", final_res);
+
+						cdn_nodes_reward_points.push((utils::string_to_account::<T>(final_res.edge), final_res.totals.sent));
 					}
 				}
 			}
+			let signer = Self::get_signer().unwrap();
+
+			// ToDo: replace local call by a call from `ddc-staking` pallet
+			let _tx_res = signer.send_signed_transaction(|_account| Call::set_era_reward_points {
+				era: current_era - 1,
+				stakers_points: cdn_nodes_reward_points.clone(),
+			});
+
+			// Set era as validated 
+			offchain_index::set(LAST_VALIDATED_ERA_KEY, &(current_era - 1).encode());
 		}
 	}
 }
