@@ -61,7 +61,7 @@ parameter_types! {
 }
 
 /// Reward points of an era. Used to split era total payout between stakers.
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Clone)]
 pub struct EraRewardPoints<AccountId: Ord> {
 	/// Total number of points. Equals the sum of reward points for each staker.
 	pub total: RewardPoint,
@@ -320,6 +320,8 @@ pub mod pallet {
 		/// An account has declared desire to stop participating in CDN or storage network soon.
 		/// \[stash, cluster, era\]
 		ChillSoon(T::AccountId, ClusterId, EraIndex),
+		// Payout CDN nodes' stash accounts
+		PayoutNodes(EraIndex, EraRewardPoints<T::AccountId>, u128)
 	}
 
 	#[pallet::error]
@@ -804,7 +806,7 @@ pub mod pallet {
 			);
 
 			// Transfer a part of the budget to each CDN participant rewarded this era.
-			for (stash, points) in era_reward_points.individual {
+			for (stash, points) in era_reward_points.clone().individual {
 				let part = Perbill::from_rational(points, era_reward_points.total);
 				let reward: BalanceOf<T> = part * payout_budget;
 				log::debug!(
@@ -826,6 +828,8 @@ pub mod pallet {
 				total_rewards += reward;
 				<Rewards<T>>::insert(&stash, total_rewards);
 			}
+			Self::deposit_event(Event::<T>::PayoutNodes(era, era_reward_points.clone() ,price_per_byte));
+
 			log::debug!(
 				"Balance left on payout source account {:?}",
 				T::Currency::free_balance(&payout_source_account),
