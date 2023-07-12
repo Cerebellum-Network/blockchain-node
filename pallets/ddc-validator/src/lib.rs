@@ -261,7 +261,6 @@ pub mod pallet {
 
 			let era = Self::get_current_era();
 			log::info!("current era: {:?}", era);
-
 			// Produce an assignment for the next era if it's not produced yet.
 			match Self::last_managed_era() {
 				Some(last_managed_era) if era < last_managed_era => (),
@@ -495,6 +494,10 @@ pub mod pallet {
 		}
 
 		fn is_valid(bytes_sent: u64, bytes_received: u64) -> bool {
+			if bytes_sent == bytes_received {
+				return true;
+			}
+
 			let percentage_difference = 1f32 - (bytes_received as f32 / bytes_sent as f32);
 
 			return if percentage_difference > 0.0 &&
