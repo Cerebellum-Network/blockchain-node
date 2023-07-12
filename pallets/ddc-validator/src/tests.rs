@@ -3,7 +3,7 @@ use frame_support::{assert_ok, traits::{OffchainWorker, OnInitialize}};
 use sp_runtime::DispatchResult;
 use crate::mock::Timestamp;
 use sp_core::{
-    offchain::{testing, OffchainWorkerExt, OffchainDbExt},
+    offchain::{testing, OffchainWorkerExt, OffchainDbExt, TransactionPoolExt},
 	crypto::{KeyTypeId}
 };
 use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
@@ -28,11 +28,15 @@ fn it_triggers_offchain_worker() {
 	let (offchain, offchain_state) = testing::TestOffchainExt::new();
 	t.register_extension(OffchainDbExt::new(offchain.clone()));
 	t.register_extension(OffchainWorkerExt::new(offchain));
+	
     let keystore = KeyStore::new();
     keystore
         .sr25519_generate_new(KEY_TYPE, Some(PHRASE))
         .unwrap();
     t.register_extension(KeystoreExt(Arc::new(keystore)));
+
+	let (pool, pool_state) = testing::TestTransactionPoolExt::new();
+    t.register_extension(TransactionPoolExt::new(pool));
 
 	{
 		let mut state = offchain_state.write();
