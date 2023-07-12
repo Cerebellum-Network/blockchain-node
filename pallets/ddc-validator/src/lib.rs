@@ -226,7 +226,10 @@ pub mod pallet {
 	pub enum Event<T: Config>
 	where
 		<T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
-		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode, {}
+		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode, {
+	  // Validator submits decision for an era
+		ValidationDecision(EraIndex, T::AccountId, ValidationDecision),
+	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T>
@@ -635,7 +638,7 @@ pub mod pallet {
 		fn validate(bytes_sent: &dac::BytesSent, bytes_received: &dac::BytesReceived) -> bool {
 			let percentage_difference = 1f32 - (bytes_received.sum as f32 / bytes_sent.sum as f32);
 
-			return if percentage_difference > 0.0 &&
+			return if percentage_difference >= 0.0 &&
 				(T::ValidationThreshold::get() as f32 - percentage_difference) > 0.0
 			{
 				true
@@ -647,7 +650,7 @@ pub mod pallet {
 		fn is_valid(bytes_sent: u64, bytes_received: u64) -> bool {
 			let percentage_difference = 1f32 - (bytes_received as f32 / bytes_sent as f32);
 
-			return if percentage_difference > 0.0 &&
+			return if percentage_difference >= 0.0 &&
 				(T::ValidationThreshold::get() as f32 - percentage_difference) > 0.0
 			{
 				true
@@ -918,6 +921,8 @@ pub mod pallet {
 							cdn_node: utils::string_to_account::<T>(edge.clone()),
 							validation_decision: final_res.clone(),
 						});
+
+						Self::deposit_event(Event::<T>::ValidationDecision(current_era - 1, utils::string_to_account::<T>(edge.clone()), final_res.clone()));
 
 						log::info!("final_res: {:?}", final_res);
 					}
