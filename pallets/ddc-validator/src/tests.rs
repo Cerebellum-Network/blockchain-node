@@ -1,13 +1,16 @@
 use crate::mock::*;
+use crate::mock::Timestamp;
+use crate::{ValidationDecision, DacTotalAggregates};
+use pallet_ddc_accounts::BucketsDetails;
 use frame_support::{assert_ok, traits::{OffchainWorker, OnInitialize}};
 use sp_runtime::DispatchResult;
-use crate::mock::Timestamp;
 use sp_core::{
     offchain::{testing, OffchainWorkerExt, OffchainDbExt, TransactionPoolExt},
 	crypto::{KeyTypeId}
 };
 use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
 use std::sync::Arc;
+use codec::Decode;
 
 #[test]
 fn save_validated_data_works() {
@@ -90,8 +93,7 @@ fn it_triggers_offchain_worker() {
 			"http://redis:6379/JSON.GET/ddc:dac:shared:nodes:3",
 			include_bytes!("./mock_data/shared:nodes:era.json")
 		);
-
-	}	
+	}
 
 	t.execute_with(|| {
 
@@ -103,6 +105,58 @@ fn it_triggers_offchain_worker() {
 		Timestamp::set_timestamp(1_672_531_200_000 + 120_000 * 4);
 		DdcValidator::offchain_worker(3);
 
+		// Get the transaction from the worker.
+		let mut transactions = pool_state.read().transactions.clone();
+		transactions.reverse();
+		assert_eq!(transactions.len(), 3);
+
+		let tx = transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		assert!(tx.signature.is_some());
+
+		let bucket_info = BucketsDetails { bucket_id: 5, amount: 160u128 };
+		assert_eq!(tx.call, crate::mock::Call::DdcValidator(
+			crate::Call::charge_payments_content_owners { 
+				paying_accounts: vec![
+					bucket_info.clone(),
+					bucket_info.clone(),
+					bucket_info.clone(),
+					bucket_info.clone(),
+					bucket_info
+				]
+			}
+		));
+
+		let tx = transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		assert!(tx.signature.is_some());
+		assert_eq!(tx.call, crate::mock::Call::DdcValidator(
+			crate::Call::payout_cdn_owners { 
+				era: 4
+			}
+		));
+
+		let tx = transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		assert!(tx.signature.is_some());
+		assert_eq!(tx.call, crate::mock::Call::DdcValidator(
+			crate::Call::set_validation_decision { 
+				era: 4,
+				cdn_node: AccountId::from([0x1; 32]),
+				validation_decision: ValidationDecision {
+					edge: String::from("0101010101010101010101010101010101010101010101010101010101010101"),
+					result: true,
+					payload: [71, 216, 226, 58, 45, 227, 238, 47, 52, 96, 11, 175, 0, 1, 56, 247, 215, 155, 5, 94, 8, 2, 18, 213, 180, 35, 96, 124, 149, 71, 185, 25],
+					totals: DacTotalAggregates {
+						received: 800,
+						sent: 800,
+						failed_by_client: 0,
+						failure_rate: 0
+					}
+				}
+			}
+		));
+		
 	})
 }
 
