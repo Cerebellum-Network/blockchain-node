@@ -664,9 +664,10 @@ pub mod pallet {
 
 				// form url for each node
 				let edge_url = format!(
-					"{}{}{}",
+					"{}{}{}/$.{}",
 					mock_data_url,
-					"ddc:dac:aggregation:nodes:132855/$.",
+					"ddc:dac:aggregation:nodes:",
+					current_era - 1,
 					utils::account_to_string::<T>(assigned_edge.clone())
 				);
 				info!("edge url: {:?}", edge_url);

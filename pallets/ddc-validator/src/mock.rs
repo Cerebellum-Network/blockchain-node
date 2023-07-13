@@ -6,7 +6,7 @@ use frame_support::{
 	weights::Weight,
 	PalletId,
 };
-use frame_system::{offchain::SendTransactionTypes, EnsureRoot};
+use frame_system::{offchain::SendTransactionTypes};
 use pallet_contracts as contracts;
 use pallet_session::ShouldEndSession;
 use sp_core::H256;
@@ -320,80 +320,64 @@ impl pallet_balances::Config for Test {
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
-	let _ = pallet_balances::GenesisConfig::<Test> {
-		balances: vec![
-			// edge controllers
-			(AccountId::from([0x2; 32]), 1000),
-			// storage controllers
-			(AccountId::from([0x4; 32]), 1000),
-			// edge stashes
-			(AccountId::from([0x1; 32]), 1000),
-			// storage stashes
-			(AccountId::from([0x3; 32]), 1000),
+	let balances = vec![
+		// edge stash
+		(AccountId::from([0x1; 32]), 1000),
+		// edge controller
+		(AccountId::from([0x11; 32]), 1000),
 
-			// validators
-			// (AccountId::from([0x5; 32]), 10000),
-			(AccountId::from([0xd2, 0xbf, 0x4b, 0x84, 0x4d, 0xfe, 0xfd, 0x67, 0x72, 0xa8, 0x84, 0x3e, 0x66, 0x9f, 0x94, 0x34, 0x08, 0x96, 0x6a, 0x97, 0x7e, 0x3a, 0xe2, 0xaf, 0x1d, 0xd7, 0x8e, 0x0f, 0x55, 0xf4, 0xdf, 0x67]), 10000),
-			(AccountId::from([0x55; 32]), 10000),
+		// validator1 stash; has to be equal to the OCW key in the current implementation
+		(AccountId::from([0xd2, 0xbf, 0x4b, 0x84, 0x4d, 0xfe, 0xfd, 0x67, 0x72, 0xa8, 0x84, 0x3e, 0x66, 0x9f, 0x94, 0x34, 0x08, 0x96, 0x6a, 0x97, 0x7e, 0x3a, 0xe2, 0xaf, 0x1d, 0xd7, 0x8e, 0x0f, 0x55, 0xf4, 0xdf, 0x67]), 10000),
+		// validator1 controller
+		(AccountId::from([0xaa; 32]), 10000),
 
+		// validator2 stash
+		(AccountId::from([0xb; 32]), 10000),
+		// validator2 controller
+		(AccountId::from([0xbb; 32]), 10000),
 
-			(AccountId::from([0x6; 32]), 10000),
-			(AccountId::from([0x66; 32]), 10000),
+		// validator3 stash
+		(AccountId::from([0xc; 32]), 10000),
+		// validator3 controller
+		(AccountId::from([0xcc; 32]), 10000),
+	];
+	let _ = pallet_balances::GenesisConfig::<Test> { balances }
+		.assimilate_storage(&mut storage);
 
-			(AccountId::from([0x7; 32]), 10000),
-			(AccountId::from([0x77; 32]), 10000),
-		],
-	}
-	.assimilate_storage(&mut storage);
-
-
-	let stakers =  vec![
+	let stakers = vec![
 		(
-			// AccountId::from([0x5; 32]),
 			AccountId::from([0xd2, 0xbf, 0x4b, 0x84, 0x4d, 0xfe, 0xfd, 0x67, 0x72, 0xa8, 0x84, 0x3e, 0x66, 0x9f, 0x94, 0x34, 0x08, 0x96, 0x6a, 0x97, 0x7e, 0x3a, 0xe2, 0xaf, 0x1d, 0xd7, 0x8e, 0x0f, 0x55, 0xf4, 0xdf, 0x67]),
-			AccountId::from([0x55; 32]),
+			AccountId::from([0xaa; 32]),
 			1000,
 			pallet_staking::StakerStatus::Validator
 		),
 
 		(
-			AccountId::from([0x6; 32]),
-			AccountId::from([0x66; 32]),
+			AccountId::from([0xb; 32]),
+			AccountId::from([0xbb; 32]),
 			1000,
 			pallet_staking::StakerStatus::Validator
 		),
 
 		(
-			AccountId::from([0x7; 32]),
-			AccountId::from([0x77; 32]),
+			AccountId::from([0xc; 32]),
+			AccountId::from([0xcc; 32]),
 			1000,
 			pallet_staking::StakerStatus::Validator
 		)
 	];
-
-
 	let _ = pallet_staking::GenesisConfig::<Test> { stakers, ..Default::default() }
 		.assimilate_storage(&mut storage);
-
 
 	let edges = vec![
 		(
 			AccountId::from([0x1; 32]),
-			AccountId::from([0x2; 32]),
+			AccountId::from([0x11; 32]),
 			100,
 			1
 		)
 	];
-
-	let storages = vec![
-		(
-			AccountId::from([0x3; 32]),
-			AccountId::from([0x4; 32]),
-			100,
-			1,
-		)
-	];
-	
+	let storages = vec![];
 	let _ = pallet_ddc_staking::GenesisConfig::<Test> { edges, storages, ..Default::default() }
 		.assimilate_storage(&mut storage);
 
