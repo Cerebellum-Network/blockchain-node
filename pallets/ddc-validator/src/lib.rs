@@ -80,7 +80,8 @@ pub const BYTES_TO_CERE: u64 = 1; // this should have a logic built on top and a
 
 /// Offchain local storage key that holds the last era in which the validator completed its
 /// assignment.
-const LAST_VALIDATED_ERA_KEY: &[u8; 40] = b"pallet-ddc-validator::last_validated_era";
+const LAST_VALIDATED_ERA_LOCK_KEY: &[u8; 45] = b"pallet-ddc-validator::last-validated-era-lock";
+const LAST_VALIDATED_ERA_STORAGE_KEY: &[u8; 48] = b"pallet-ddc-validator::last-validated-era-storage";
 /// Webdis in experimental cluster connected to Redis in dev.
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "https://dev-dac-redis.network-dev.aws.cere.io";
 pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://webdis:7379";
@@ -275,40 +276,47 @@ pub mod pallet {
 			let mut should_validate_because_new_era = true;
 
 			let mut validation_lock =
-				StorageLock::<storage_lock::Time>::new(LAST_VALIDATED_ERA_KEY);
+				StorageLock::<storage_lock::Time>::new(LAST_VALIDATED_ERA_LOCK_KEY);
 
 			// Skip if the validation is already in progress.
-			if validation_lock.try_lock().is_err() {
-				should_validate_because_new_era = false;
-			}
-			log::info!("Should validate {:?}", should_validate_because_new_era);
+			if let Ok(_guard) = validation_lock.try_lock() {
 
-			let last_validated_era_storage = StorageValueRef::persistent(LAST_VALIDATED_ERA_KEY);
-			let last_validated_era = match last_validated_era_storage.get::<EraIndex>() {
-				Ok(Some(last_validated_era)) => last_validated_era,
-				_ => 0, // let's consider an absent or undecodable data as we never did a validation
+				log::info!("Should validate {:?}", should_validate_because_new_era);
+
+				let last_validated_era_storage = StorageValueRef::persistent(LAST_VALIDATED_ERA_STORAGE_KEY);
+				let last_validated_era = match last_validated_era_storage.get::<EraIndex>() {
+					Ok(Some(last_validated_era)) => last_validated_era,
+					_ => 0, // let's consider an absent or undecodable data as we never did a validation
+				};
+	
+				if let Ok(Some(res)) = last_validated_era_storage.get::<EraIndex>() {
+					log::info!("cached result for last validated era: {:?}", res);
+					return ();
+				}
+	
+				let current_era = Self::get_current_era();
+	
+				// Skip if the validation is already complete for the era.
+				if current_era <= last_validated_era {
+					should_validate_because_new_era = false;
+				}
+	
+				log::info!("Should validate {:?}", should_validate_because_new_era);
+	
+				let data_provider_url = Self::get_data_provider_url();
+				log::info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
+	
+				// Validation start forced externally?
+				let should_validate_because_signal = Signal::<T>::get().unwrap_or(false);
+	
+				log::info!("Should validate {:?}", should_validate_because_new_era);
+	
+				if should_validate_because_new_era || should_validate_because_signal {
+					Self::validate_edges();
+				}
+	
+				last_validated_era_storage.set(&(current_era - 1));
 			};
-
-			let current_era = Self::get_current_era();
-
-			// Skip if the validation is already complete for the era.
-			if current_era <= last_validated_era {
-				should_validate_because_new_era = false;
-			}
-
-			log::info!("Should validate {:?}", should_validate_because_new_era);
-
-			let data_provider_url = Self::get_data_provider_url();
-			log::info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
-
-			// Validation start forced externally?
-			let should_validate_because_signal = Signal::<T>::get().unwrap_or(false);
-
-			log::info!("Should validate {:?}", should_validate_because_new_era);
-
-			if should_validate_because_new_era || should_validate_because_signal {
-				Self::validate_edges();
-			}
 		}
 	}
 
@@ -773,9 +781,6 @@ pub mod pallet {
 				era: current_era - 1,
 				stakers_points: cdn_nodes_reward_points.clone(),
 			});
-
-			// Set era as validated 
-			offchain_index::set(LAST_VALIDATED_ERA_KEY, &(current_era - 1).encode());
 		}
 	}
 }
