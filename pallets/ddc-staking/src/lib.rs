@@ -278,7 +278,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn rewards)]
 	pub type Rewards<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>>;
+		StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>, ValueQuery>;
 
 	/// The current era index.
 	///
@@ -824,11 +824,10 @@ pub mod pallet {
 					reward,
 					ExistenceRequirement::AllowDeath,
 				)?; // ToDo: all success or noop
-				let mut total_rewards: BalanceOf<T> = Self::rewards(&stash).unwrap();
-				total_rewards += reward;
-				log::info!("Total rewards to be inserted: {:?}", total_rewards.clone());
-
-				<Rewards<T>>::insert(&stash, total_rewards);
+				Rewards::<T>::mutate(&stash, |current_balance| {
+					*current_balance += reward;
+				});
+				log::info!("Total rewards to be inserted: {:?}", Self::rewards(&stash));
 			}
 			Self::deposit_event(Event::<T>::PayoutNodes(era, era_reward_points.clone() ,price_per_byte));
 			log::info!("Payout event executed");
