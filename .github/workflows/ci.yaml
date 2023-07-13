@@ -1,0 +1,49 @@
+name: 'CI'
+on:
+  pull_request:
+    branches:
+      - '**'
+    types:
+      - opened
+      - synchronize
+      - edited
+  workflow_call:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-image:
+    uses: Cerebellum-Network/reusable-workflows/.github/workflows/deploy-to-ecr.yaml@master
+    needs: ci
+    with:
+      environment: dev
+      aws_account_id: ${{ vars.DEV_NETWORK_AWS_ACCOUNT_ID }}
+      repository: ${{ github.event.repository.name }}
+      file: ./Dockerfile
+    secrets: inherit
+
+  trigger-e2e-tests:
+    runs-on: ubuntu-latest
+    needs: build-image
+    steps:
+      - name: 'Trigger e2e DDC tests'
+        uses: convictional/trigger-workflow-and-wait@v1.6.5
+        with:
+          owner: Cerebellum-Network
+          repo: ddc-api-e2e-simulations
+          github_token: ${{ secrets.GH_E2E_TOKEN }}
+          comment_github_token: ${{ secrets.GH_E2E_TOKEN }}
+          github_user: devops-cere
+          workflow_file_name: run-basic-ddc-tests.yml
+          client_payload: |-
+            {
+              "POS_NODE_VERSION": "${{ needs.build-image.outputs.version }}"
+            }
+          ref: master
+          wait_interval: 30
+          propagate_failure: true
+          trigger_workflow: true
+          wait_workflow: true
+          comment_downstream_url: ${{ github.event.pull_request.comments_url }}
