@@ -1,17 +1,35 @@
+//! # DDC Staking Pallet
+//!
+//! The DDC Staking pallet is used to manage funds at stake by CDN and storage network maintainers.
+//!
+//! - [`Config`]
+//! - [`Call`]
+//! - [`Pallet`]
+//!
+//! ## GenesisConfig
+//!
+//! The DDC Staking pallet depends on the [`GenesisConfig`]. The
+//! `GenesisConfig` is optional and allow to set some initial stakers in DDC.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
-
 #[cfg(any(feature = "runtime-benchmarks", test))]
 pub mod testing_utils;
+
+#[cfg(test)]
+pub(crate) mod mock;
+#[cfg(test)]
+mod tests;
 
 pub mod weights;
 use crate::weights::WeightInfo;
 
 use codec::{Decode, Encode, HasCompact};
 use frame_support::{
+	assert_ok,
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
@@ -178,7 +196,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type DefaultStorageChillDelay: Get<EraIndex>;
 
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Number of eras that staked funds must remain bonded for.
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
@@ -226,6 +244,83 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn current_era)]
 	pub type CurrentEra<T> = StorageValue<_, EraIndex>;
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub edges: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
+		pub storages: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
+		pub settings: Vec<(ClusterId, BalanceOf<T>, EraIndex, BalanceOf<T>, EraIndex)>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig {
+				edges: Default::default(),
+				storages: Default::default(),
+				settings: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			// clusters' settings
+			for &(
+				cluster,
+				edge_bond_size,
+				edge_chill_delay,
+				storage_bond_size,
+				storage_chill_delay,
+			) in &self.settings
+			{
+				Settings::<T>::insert(
+					cluster,
+					ClusterSettings::<T> {
+						edge_bond_size,
+						edge_chill_delay,
+						storage_bond_size,
+						storage_chill_delay,
+					},
+				);
+			}
+
+			// Add initial CDN participants
+			for &(ref stash, ref controller, balance, cluster) in &self.edges {
+				assert!(
+					T::Currency::free_balance(&stash) >= balance,
+					"Stash do not have enough balance to participate in CDN."
+				);
+				assert_ok!(Pallet::<T>::bond(
+					T::RuntimeOrigin::from(Some(stash.clone()).into()),
+					T::Lookup::unlookup(controller.clone()),
+					balance,
+				));
+				assert_ok!(Pallet::<T>::serve(
+					T::RuntimeOrigin::from(Some(controller.clone()).into()),
+					cluster,
+				));
+			}
+
+			// Add initial storage network participants
+			for &(ref stash, ref controller, balance, cluster) in &self.storages {
+				assert!(
+					T::Currency::free_balance(&stash) >= balance,
+					"Stash do not have enough balance to participate in storage network."
+				);
+				assert_ok!(Pallet::<T>::bond(
+					T::RuntimeOrigin::from(Some(stash.clone()).into()),
+					T::Lookup::unlookup(controller.clone()),
+					balance,
+				));
+				assert_ok!(Pallet::<T>::store(
+					T::RuntimeOrigin::from(Some(controller.clone()).into()),
+					cluster,
+				));
+			}
+		}
+	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
@@ -709,10 +804,6 @@ pub mod pallet {
 		/// This function will add a CDN participant to the `Edges` storage map.
 		///
 		/// If the CDN participant already exists, their cluster will be updated.
-		///
-		/// NOTE: you must ALWAYS use this function to add a CDN participant to the system. Any
-		/// access to `Edges` outside of this function is almost certainly
-		/// wrong.
 		pub fn do_add_edge(who: &T::AccountId, cluster: ClusterId) {
 			Edges::<T>::insert(who, cluster);
 		}
@@ -720,10 +811,6 @@ pub mod pallet {
 		/// This function will remove a CDN participant from the `Edges` map.
 		///
 		/// Returns true if `who` was removed from `Edges`, otherwise false.
-		///
-		/// NOTE: you must ALWAYS use this function to remove a storage network participant from the
-		/// system. Any access to `Edges` outside of this function is almost certainly
-		/// wrong.
 		pub fn do_remove_edge(who: &T::AccountId) -> bool {
 			Edges::<T>::take(who).is_some()
 		}
@@ -731,10 +818,6 @@ pub mod pallet {
 		/// This function will add a storage network participant to the `Storages` storage map.
 		///
 		/// If the storage network participant already exists, their cluster will be updated.
-		///
-		/// NOTE: you must ALWAYS use this function to add a storage network participant to the
-		/// system. Any access to `Storages` outside of this function is almost certainly
-		/// wrong.
 		pub fn do_add_storage(who: &T::AccountId, cluster: ClusterId) {
 			Storages::<T>::insert(who, cluster);
 		}
@@ -742,10 +825,6 @@ pub mod pallet {
 		/// This function will remove a storage network participant from the `Storages` map.
 		///
 		/// Returns true if `who` was removed from `Storages`, otherwise false.
-		///
-		/// NOTE: you must ALWAYS use this function to remove a storage network participant from the
-		/// system. Any access to `Storages` outside of this function is almost certainly
-		/// wrong.
 		pub fn do_remove_storage(who: &T::AccountId) -> bool {
 			Storages::<T>::take(who).is_some()
 		}
