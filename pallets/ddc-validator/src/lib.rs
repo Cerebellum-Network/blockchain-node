@@ -84,8 +84,8 @@ const LAST_VALIDATED_ERA_LOCK_KEY: &[u8; 45] = b"pallet-ddc-validator::last-vali
 const LAST_VALIDATED_ERA_STORAGE_KEY: &[u8; 48] = b"pallet-ddc-validator::last-validated-era-storage";
 /// Webdis in experimental cluster connected to Redis in dev.
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "https://dev-dac-redis.network-dev.aws.cere.io";
-pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://webdis:7379";
-// pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
+// pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://webdis:7379";
+pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
 pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
 pub const QUORUM_SIZE: usize = 1;
 
@@ -291,13 +291,12 @@ pub mod pallet {
 	
 				if let Ok(Some(res)) = last_validated_era_storage.get::<EraIndex>() {
 					log::info!("cached result for last validated era: {:?}", res);
-					return ();
 				}
 	
 				let current_era = Self::get_current_era();
 	
 				// Skip if the validation is already complete for the era.
-				if current_era <= last_validated_era {
+				if current_era - 1 <= last_validated_era {
 					should_validate_because_new_era = false;
 				}
 	
@@ -630,7 +629,7 @@ pub mod pallet {
 		}
 
 		fn validate_edges() {
-			let current_era = Self::get_current_era() - 1;
+			let current_era = Self::get_current_era();
 			let mock_data_url = Self::get_mock_data_url();
 			let data_provider_url = Self::get_data_provider_url();
 
@@ -651,8 +650,8 @@ pub mod pallet {
 				info!("assigned edge: {:?}", assigned_edge);
 
 				// form url for each node
-				let edge_url = format!("{}{}{}{}{}", mock_data_url, "ddc:dac:aggregation:nodes:", current_era, "/$.", utils::account_to_string::<T>(assigned_edge.clone()));
-				// let edge_url = format!("{}{}{}{}{}", mock_data_url, "ddc:dac:aggregation:nodes:", 132855, "/$.", utils::account_to_string::<T>(assigned_edge.clone()));
+				// let edge_url = format!("{}{}{}{}{}", mock_data_url, "ddc:dac:aggregation:nodes:", current_era, "/$.", utils::account_to_string::<T>(assigned_edge.clone()));
+				let edge_url = format!("{}{}{}{}{}", mock_data_url, "ddc:dac:aggregation:nodes:", 132855, "/$.", utils::account_to_string::<T>(assigned_edge.clone()));
 				info!("edge url: {:?}", edge_url);
 
 				let node_aggregates = dac::fetch_cdn_node_aggregates_request(&edge_url);
