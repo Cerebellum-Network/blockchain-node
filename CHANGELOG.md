@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- ...
+
+### Changed
+
+- ...
+
+## [4.8.0]
+
+### Added
+
 - [D] Handlebars template to generate weights file
 - [D] Genesis config for `pallet-ddc-staking` to set genesis DDC participants (empty by default) and staking settings
 - [D] Unit tests in `pallet-ddc-staking` for basic staking scenario
