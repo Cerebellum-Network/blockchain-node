@@ -63,9 +63,6 @@ jobs:
       - name: Build
         run: cargo build --release
 
-      - name: Print sccache stats
-        run: sccache --show-stats
-
       - name: Stop sccache server
         run: sccache --stop-server || true
 
