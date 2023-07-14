@@ -45,6 +45,14 @@ jobs:
 
       - run: cargo build --release
 
+      - uses: actions/upload-artifact@v3
+        with:
+          name: cargo
+          path: |
+            target/release/cere
+            target/release/wbuild/cere-runtime/
+            target/release/wbuild/cere-dev-runtime/
+
   deploy-to-ecr:
     uses: Cerebellum-Network/reusable-workflows/.github/workflows/deploy-to-ecr.yaml@master
     needs: build
@@ -53,4 +61,5 @@ jobs:
       aws_account_id: ${{ vars.DEV_NETWORK_AWS_ACCOUNT_ID }}
       repository: pos-network-node
       file: ./Dockerfile-new
+      build_artifact: cargo
     secrets: inherit
