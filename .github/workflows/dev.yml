@@ -17,6 +17,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     concurrency: dev
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -66,22 +69,24 @@ jobs:
       - name: Stop sccache server
         run: sccache --stop-server || true
 
-#      - uses: actions/upload-artifact@v3
-#        with:
-#          name: cargo
-#          path: |
-#            target/${{ env.PROFILE }}/cere
-#            target/${{ env.PROFILE }}/wbuild/cere-runtime/
-#            target/${{ env.PROFILE }}/wbuild/cere-dev-runtime/
-#          if-no-files-found: error
-#
-#  deploy-to-ecr:
-#    uses: Cerebellum-Network/reusable-workflows/.github/workflows/deploy-to-ecr.yaml@master
-#    needs: build
-#    with:
-#      environment: dev
-#      aws_account_id: ${{ vars.DEV_NETWORK_AWS_ACCOUNT_ID }}
-#      repository: pos-network-node
-#      file: ./Dockerfile-new
-#      build_artifact: cargo
-#    secrets: inherit
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.DEV_NETWORK_AWS_ACCOUNT_ID }}:role/github
+          role-session-name: ${{ github.event.repository.name }}
+          aws-region: us-west-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and push docker image to ECR
+        uses: docker/build-push-action@v3
+        with:
+          context: ./
+          file: ./Dockerfile-new
+          push: true
+          no-cache: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
