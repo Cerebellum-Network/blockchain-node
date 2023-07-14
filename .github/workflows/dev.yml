@@ -2,7 +2,7 @@ name: Release to dev
 on:
   push:
     branches:
-      - dev
+      - 'ci/**'
   workflow_dispatch:
 
 permissions:
@@ -17,19 +17,25 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: nightly-2022-10-09
+          override: true
+          components: rustfmt, clippy
 
       - name: Restore cached
-        id: cache-restore
-        uses: actions/cache/restore@v3
+        uses: actions/cache@v3
+        continue-on-error: false
         with:
           path: |
-            target/release/cere
-            target/release/wbuild/cere-runtime
-            target/release/wbuild/cere-dev-runtime
-          key: ${{ runner.os }}-cargo
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Check `cargo fmt` was run
+      - name: Lint
         run: cargo fmt --all -- --check
 
       - name: Install Protoc
@@ -38,16 +44,6 @@ jobs:
           version: "3.15.8"
 
       - run: cargo build --release
-
-      - name: Save cache
-        id: cache-save
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            target/release/cere
-            target/release/wbuild/cere-runtime
-            target/release/wbuild/cere-dev-runtime
-          key: ${{ runner.os }}-cargo
 
   deploy-to-ecr:
     uses: Cerebellum-Network/reusable-workflows/.github/workflows/deploy-to-ecr.yaml@master
