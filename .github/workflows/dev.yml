@@ -5,34 +5,15 @@ on:
       - 'ci/**'
   workflow_dispatch:
 
-permissions:
-  id-token: write
-  contents: read
-
+env:
+  PROFILE: dev
+  # SCCACHE_RECACHE: 1 # Uncomment this to clear cache, then comment it back out
 jobs:
   build:
     runs-on: ubuntu-latest
     concurrency: dev
-    env:
-      RUST_BACKTRACE: full
-      RUSTC_WRAPPER: sccache
-      RUSTV: nightly-2022-10-09
-      SCCACHE_CACHE_SIZE: 2G
-      SCCACHE_DIR: /Users/runner/Library/Caches/Mozilla.sccache
-      # SCCACHE_RECACHE: 1 # Uncomment this to clear cache, then comment it back out
     steps:
       - uses: actions/checkout@v3
-      - name: Install sccache (ubuntu-latest)
-        env:
-          LINK: https://github.com/mozilla/sccache/releases/download
-          SCCACHE_VERSION: v0.5.4
-        run: |
-          SCCACHE_FILE=sccache-$SCCACHE_VERSION-x86_64-unknown-linux-musl
-          mkdir -p $HOME/.local/bin
-          curl -L "$LINK/$SCCACHE_VERSION/$SCCACHE_FILE.tar.gz" | tar xz
-          mv -f $SCCACHE_FILE/sccache $HOME/.local/bin/sccache
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly-2022-10-09
@@ -45,22 +26,14 @@ jobs:
         continue-on-error: false
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
-
-      - name: Save sccache
-        uses: actions/cache@v3
-        continue-on-error: false
-        with:
-          path: /Users/runner/Library/Caches/Mozilla.sccache
-          key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-sccache-
-      - name: Start sccache server
-        run: sccache --start-server
 
       - name: Lint
         run: cargo fmt --all -- --check
@@ -71,18 +44,16 @@ jobs:
           version: "3.15.8"
 
       - name: Build
-        run: cargo build --release
+        run: cargo build --${{ env.PROFILE }}
 
       - uses: actions/upload-artifact@v3
         with:
           name: cargo
           path: |
-            target/release/cere
-            target/release/wbuild/cere-runtime/
-            target/release/wbuild/cere-dev-runtime/
+            target/${{ env.PROFILE }}/cere
+            target/${{ env.PROFILE }}/wbuild/cere-runtime/
+            target/${{ env.PROFILE }}/wbuild/cere-dev-runtime/
           if-no-files-found: error
-      - name: Stop sccache server
-        run: sccache --stop-server || true
 
   deploy-to-ecr:
     uses: Cerebellum-Network/reusable-workflows/.github/workflows/deploy-to-ecr.yaml@master
