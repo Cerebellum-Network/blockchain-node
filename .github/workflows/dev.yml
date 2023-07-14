@@ -46,7 +46,7 @@ jobs:
 
       - name: Build
         env:
-          CARGO_BUILD_INCREMENTAL: 1
+          CARGO_BUILD_INCREMENTAL: 'true'
         run: cargo build --release
 
       - uses: actions/upload-artifact@v3
