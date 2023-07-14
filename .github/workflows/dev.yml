@@ -12,6 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    concurrency: dev
     steps:
       - uses: actions/checkout@v3
 
