@@ -66,6 +66,9 @@ jobs:
       - name: Print sccache stats
         run: sccache --show-stats
 
+      - name: Stop sccache server
+        run: sccache --stop-server || true
+
 #      - uses: actions/upload-artifact@v3
 #        with:
 #          name: cargo
