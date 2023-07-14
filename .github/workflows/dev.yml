@@ -98,10 +98,10 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: cere_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm
-          path: target/${{ var.PROFILE }}/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm
+          path: target/${{ vars.PROFILE }}/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm
 
       - name: Upload cere-dev-runtime wasm artifact
         uses: actions/upload-artifact@v3
         with:
           name: cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm
-          path: target/${{ var.PROFILE }}/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm
+          path: target/${{ vars.PROFILE }}/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm
