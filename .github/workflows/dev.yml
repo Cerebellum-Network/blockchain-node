@@ -11,9 +11,48 @@ permissions:
 
 jobs:
   build:
-    uses: Cerebellum-Network/reusable-workflows/.github/workflows/deploy-to-ecr.yaml@master
-    with:
-      environment: dev
-      aws_account_id: ${{ vars.DEV_NETWORK_AWS_ACCOUNT_ID }}
-      repository: pos-network-node
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly-2022-10-09
+
+      - name: Restore cached
+        id: cache-restore
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            target/release/cere
+            target/release/wbuild/cere-runtime
+            target/release/wbuild/cere-dev-runtime
+          key: ${{ runner.os }}-cargo
+
+      - name: Check `cargo fmt` was run
+        run: cargo fmt --all -- --check
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v2
+        with:
+          version: "15.8"
+
+      - run: cargo build --release
+
+      - name: Save cache
+        id: cache-save
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            target/release/cere
+            target/release/wbuild/cere-runtime
+            target/release/wbuild/cere-dev-runtime
+          key: ${{ runner.os }}-cargo
+
+      - uses: Cerebellum-Network/reusable-workflows/.github/workflows/deploy-to-ecr.yaml@master
+        with:
+          environment: dev
+          aws_account_id: ${{ vars.DEV_NETWORK_AWS_ACCOUNT_ID }}
+          repository: pos-network-node
+          file: ./Dockerfile-new
+        secrets: inherit
