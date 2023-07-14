@@ -6,7 +6,12 @@ on:
   workflow_dispatch:
 
 env:
-  PROFILE: dev
+  PROFILE: release
+  RUST_BACKTRACE: full
+  RUSTC_WRAPPER: sccache
+
+  SCCACHE_CACHE_SIZE: 2G
+  SCCACHE_DIR: /home/runner/.cache/sccache
   # SCCACHE_RECACHE: 1 # Uncomment this to clear cache, then comment it back out
 jobs:
   build:
@@ -21,19 +26,28 @@ jobs:
           override: true
           components: rustfmt, clippy
 
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
       - name: Cache cargo registry
         uses: actions/cache@v3
         continue-on-error: false
         with:
           path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
+            ~/.cargo/registry
+            ~/.cargo/git
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+
+      - name: Save sccache
+        uses: actions/cache@v2
+        continue-on-error: false
+        with:
+          path: ${{ env.SCCACHE_DIR }}
+          key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-sccache-
 
       - name: Lint
         run: cargo fmt --all -- --check
@@ -43,25 +57,31 @@ jobs:
         with:
           version: "3.15.8"
 
+      - name: Start sccache server
+        run: sccache --start-server
+
       - name: Build
-        run: cargo build --${{ env.PROFILE }}
+        run: cargo build --release
 
-      - uses: actions/upload-artifact@v3
-        with:
-          name: cargo
-          path: |
-            target/${{ env.PROFILE }}/cere
-            target/${{ env.PROFILE }}/wbuild/cere-runtime/
-            target/${{ env.PROFILE }}/wbuild/cere-dev-runtime/
-          if-no-files-found: error
+      - name: Print sccache stats
+        run: sccache --show-stats
 
-  deploy-to-ecr:
-    uses: Cerebellum-Network/reusable-workflows/.github/workflows/deploy-to-ecr.yaml@master
-    needs: build
-    with:
-      environment: dev
-      aws_account_id: ${{ vars.DEV_NETWORK_AWS_ACCOUNT_ID }}
-      repository: pos-network-node
-      file: ./Dockerfile-new
-      build_artifact: cargo
-    secrets: inherit
+#      - uses: actions/upload-artifact@v3
+#        with:
+#          name: cargo
+#          path: |
+#            target/${{ env.PROFILE }}/cere
+#            target/${{ env.PROFILE }}/wbuild/cere-runtime/
+#            target/${{ env.PROFILE }}/wbuild/cere-dev-runtime/
+#          if-no-files-found: error
+#
+#  deploy-to-ecr:
+#    uses: Cerebellum-Network/reusable-workflows/.github/workflows/deploy-to-ecr.yaml@master
+#    needs: build
+#    with:
+#      environment: dev
+#      aws_account_id: ${{ vars.DEV_NETWORK_AWS_ACCOUNT_ID }}
+#      repository: pos-network-node
+#      file: ./Dockerfile-new
+#      build_artifact: cargo
+#    secrets: inherit
