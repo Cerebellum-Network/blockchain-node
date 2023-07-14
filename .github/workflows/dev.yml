@@ -81,12 +81,12 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build and push docker image to ECR
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: ./
           file: ./Dockerfile-new
           push: true
           no-cache: true
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ vars.GITHUB_SHA }}
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
