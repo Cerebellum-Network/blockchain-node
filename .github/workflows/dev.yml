@@ -52,6 +52,7 @@ jobs:
             target/release/cere
             target/release/wbuild/cere-runtime/
             target/release/wbuild/cere-dev-runtime/
+          if-no-files-found: error
 
   deploy-to-ecr:
     uses: Cerebellum-Network/reusable-workflows/.github/workflows/deploy-to-ecr.yaml@master
