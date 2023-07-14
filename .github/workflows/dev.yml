@@ -88,5 +88,5 @@ jobs:
           push: true
           no-cache: true
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ vars.GITHUB_SHA }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
