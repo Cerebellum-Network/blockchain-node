@@ -16,7 +16,6 @@ permissions:
 jobs:
   build-image:
     uses: Cerebellum-Network/reusable-workflows/.github/workflows/deploy-to-ecr.yaml@master
-    needs: ci
     with:
       environment: dev
       aws_account_id: ${{ vars.DEV_NETWORK_AWS_ACCOUNT_ID }}
