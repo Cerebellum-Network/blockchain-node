@@ -28,6 +28,7 @@ pub mod weights;
 use crate::weights::WeightInfo;
 
 use codec::{Decode, Encode, HasCompact};
+use core::fmt::Debug;
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
@@ -38,6 +39,7 @@ use frame_support::{
 	BoundedVec,
 };
 use frame_system::pallet_prelude::*;
+pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
@@ -45,8 +47,6 @@ use sp_runtime::{
 };
 use sp_staking::EraIndex;
 use sp_std::prelude::*;
-use core::fmt::Debug;
-pub use pallet::*;
 
 /// Two minutes.
 ///
