@@ -163,7 +163,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Number of eras that staked funds must remain bonded for.
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
