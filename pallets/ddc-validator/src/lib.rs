@@ -177,14 +177,14 @@ pub mod pallet {
 		<BalanceOf<Self> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 	{
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Something that provides randomness in the runtime. Required by the tasks assignment
 		/// procedure.
 		type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 
 		/// A dispatchable call.
-		type Call: From<Call<Self>>;
+		type RuntimeCall: From<Call<Self>>;
 
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 		type TimeProvider: UnixTime;
