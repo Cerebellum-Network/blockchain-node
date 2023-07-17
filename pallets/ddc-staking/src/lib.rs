@@ -218,7 +218,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type DefaultStorageChillDelay: Get<EraIndex>;
 
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Number of eras that staked funds must remain bonded for.
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
@@ -335,12 +335,12 @@ pub mod pallet {
 					"Stash do not have enough balance to participate in CDN."
 				);
 				assert_ok!(Pallet::<T>::bond(
-					T::Origin::from(Some(stash.clone()).into()),
+					T::RuntimeOrigin::from(Some(stash.clone()).into()),
 					T::Lookup::unlookup(controller.clone()),
 					balance,
 				));
 				assert_ok!(Pallet::<T>::serve(
-					T::Origin::from(Some(controller.clone()).into()),
+					T::RuntimeOrigin::from(Some(controller.clone()).into()),
 					cluster,
 				));
 			}
@@ -352,12 +352,12 @@ pub mod pallet {
 					"Stash do not have enough balance to participate in storage network."
 				);
 				assert_ok!(Pallet::<T>::bond(
-					T::Origin::from(Some(stash.clone()).into()),
+					T::RuntimeOrigin::from(Some(stash.clone()).into()),
 					T::Lookup::unlookup(controller.clone()),
 					balance,
 				));
 				assert_ok!(Pallet::<T>::store(
-					T::Origin::from(Some(controller.clone()).into()),
+					T::RuntimeOrigin::from(Some(controller.clone()).into()),
 					cluster,
 				));
 			}

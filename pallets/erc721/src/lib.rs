@@ -4,10 +4,10 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
-	dispatch::DispatchResult,
+	dispatch::{ClassifyDispatch, DispatchClass, DispatchResult, Pays, PaysFee, WeighData},
 	ensure,
 	traits::Get,
-	weights::{ClassifyDispatch, DispatchClass, Pays, PaysFee, WeighData, Weight},
+	weights::Weight,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
 use sp_core::U256;
@@ -32,7 +32,7 @@ pub struct Erc721Token {
 }
 
 pub trait Config: system::Config {
-	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
+	type RuntimeEvent: From<Event<Self>> + Into<<Self as system::Config>::RuntimeEvent>;
 
 	/// Some identifier for this token type, possibly the originating ethereum address.
 	/// This is not explicitly used for anything, but may reflect the bridge's notion of resource
@@ -77,7 +77,7 @@ decl_event!(
 );
 
 decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::RuntimeOrigin {
 		type Error = Error<T>;
 		fn deposit_event() = default;
 

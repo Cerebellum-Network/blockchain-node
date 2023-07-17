@@ -63,17 +63,17 @@ impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
-	type Origin = Origin;
+	type RuntimeOrigin = RuntimeOrigin;
 	type Index = u64;
 	type BlockNumber = BlockNumber;
 	type Hash = H256;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	// u64; // sp_core::sr25519::Public;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = generic::Header<BlockNumber, BlakeTwo256>;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
 	type Version = ();
@@ -90,7 +90,7 @@ impl frame_system::Config for Test {
 impl pallet_balances::Config for Test {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
@@ -142,7 +142,7 @@ impl contracts::Config for Test {
 	type Time = Timestamp;
 	type Randomness = Randomness;
 	type Currency = Balances;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type CallStack = [pallet_contracts::Frame<Self>; 31];
 	type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
 	type WeightInfo = ();
@@ -150,14 +150,13 @@ impl contracts::Config for Test {
 	type DeletionQueueDepth = ();
 	type DeletionWeightLimit = ();
 	type Schedule = Schedule;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type CallFilter = Nothing;
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type ContractAccessWeight = ();
 	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
-	type RelaxedMaxCodeLen = ConstU32<{ 256 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 }
 
@@ -179,7 +178,7 @@ use frame_system::offchain::{
 	AppCrypto, CreateSignedTransaction, SendTransactionTypes, SigningTypes,
 };
 
-pub type Extrinsic = TestXt<Call, ()>;
+pub type Extrinsic = TestXt<RuntimeCall, ()>;
 
 impl SigningTypes for Test {
 	type Public = <Signature as Verify>::Signer;
@@ -188,23 +187,23 @@ impl SigningTypes for Test {
 
 impl<LocalCall> SendTransactionTypes<LocalCall> for Test
 where
-	Call: From<LocalCall>,
+	RuntimeCall: From<LocalCall>,
 {
-	type OverarchingCall = Call;
+	type OverarchingCall = RuntimeCall;
 	type Extrinsic = Extrinsic;
 }
 impl pallet_randomness_collective_flip::Config for Test {}
 
 impl<LocalCall> CreateSignedTransaction<LocalCall> for Test
 where
-	Call: From<LocalCall>,
+	RuntimeCall: From<LocalCall>,
 {
 	fn create_transaction<C: AppCrypto<Self::Public, Self::Signature>>(
-		call: Call,
+		call: RuntimeCall,
 		_public: <Signature as Verify>::Signer,
 		_account: AccountId,
 		nonce: u64,
-	) -> Option<(Call, <Extrinsic as ExtrinsicT>::SignaturePayload)> {
+	) -> Option<(RuntimeCall, <Extrinsic as ExtrinsicT>::SignaturePayload)> {
 		Some((call, (nonce, ())))
 	}
 }
@@ -218,6 +217,6 @@ impl Config for Test {
 
 	type AuthorityId = crypto::TestAuthId;
 
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 }

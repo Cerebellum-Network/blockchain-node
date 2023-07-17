@@ -6,7 +6,7 @@ use sp_core::offchain::{
 };
 use sp_runtime::{traits::Hash, AccountId32, RuntimeAppPublic};
 use test_runtime::{
-	AccountId, Balance, Balances, Contracts, DdcMetricsOffchainWorker, Origin, System, Test,
+	AccountId, Balance, Balances, Contracts, DdcMetricsOffchainWorker, RuntimeOrigin, System, Test,
 	Timestamp,
 };
 
@@ -286,7 +286,7 @@ fn should_run_contract() {
 		let call_data = DdcMetricsOffchainWorker::encode_get_current_period_ms();
 
 		pallet_contracts::Module::<T>::call(
-			Origin::signed(alice.clone()),
+			RuntimeOrigin::signed(alice.clone()),
 			contract_id.clone(),
 			0,
 			Weight::from_ref_time(100_000_000_000),
@@ -340,7 +340,7 @@ fn deploy_contract() -> AccountId {
 	const GAS_LIMIT: frame_support::weights::Weight = Weight::from_ref_time(100_000_000_000);
 	const ENDOWMENT: Balance = 100_000_000_000;
 	Contracts::instantiate_with_code(
-		Origin::signed(alice.clone()),
+		RuntimeOrigin::signed(alice.clone()),
 		ENDOWMENT,
 		GAS_LIMIT,
 		None,
@@ -369,7 +369,7 @@ fn deploy_contract() -> AccountId {
 		permissions.encode_to(&mut call_data);
 
 		let results = Contracts::call(
-			Origin::signed(alice.clone()),
+			RuntimeOrigin::signed(alice.clone()),
 			contract_id.clone(),
 			0,
 			Weight::from_ref_time(1_000_000_000_000),
