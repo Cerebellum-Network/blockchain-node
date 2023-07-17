@@ -52,6 +52,7 @@ pub use pallet_cere_ddc;
 pub use pallet_chainbridge;
 use pallet_contracts::weights::WeightInfo;
 pub use pallet_ddc_metrics_offchain_worker;
+pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -76,6 +77,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
 };
+use sp_staking::EraIndex;
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -1315,6 +1317,25 @@ impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 }
 
+parameter_types! {
+	pub const DefaultEdgeBondSize: Balance = 100 * DOLLARS;
+	pub const DefaultEdgeChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
+	pub const DefaultStorageBondSize: Balance = 100 * DOLLARS;
+	pub const DefaultStorageChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
+}
+
+impl pallet_ddc_staking::Config for Runtime {
+	type BondingDuration = BondingDuration;
+	type Currency = Balances;
+	type DefaultEdgeBondSize = DefaultEdgeBondSize;
+	type DefaultEdgeChillDelay = DefaultEdgeChillDelay;
+	type DefaultStorageBondSize = DefaultStorageBondSize;
+	type DefaultStorageChillDelay = DefaultStorageChillDelay;
+	type RuntimeEvent = RuntimeEvent;
+	type UnixTime = Timestamp;
+	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1366,6 +1387,7 @@ construct_runtime!(
 		Erc721: pallet_erc721::{Pallet, Call, Storage, Event<T>},
 		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
 		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
+		DdcStaking: pallet_ddc_staking,
 	}
 );
 
