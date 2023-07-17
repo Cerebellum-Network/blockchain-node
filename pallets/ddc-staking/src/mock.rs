@@ -48,16 +48,16 @@ impl frame_system::Config for Test {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = RocksDbWeight;
-	type Origin = Origin;
+	type RuntimeOrigin = RuntimeOrigin;
 	type Index = AccountIndex;
 	type BlockNumber = BlockNumber;
-	type Call = Call;
+	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -75,7 +75,7 @@ impl pallet_balances::Config for Test {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type Balance = Balance;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
@@ -104,13 +104,13 @@ impl crate::pallet::Config for Test {
 	type DefaultEdgeChillDelay = DefaultEdgeChillDelay;
 	type DefaultStorageBondSize = DefaultStorageBondSize;
 	type DefaultStorageChillDelay = DefaultStorageChillDelay;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type UnixTime = Timestamp;
 	type WeightInfo = ();
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
-pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::Call;
+pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 
 pub struct ExtBuilder {
 	has_edges: bool,

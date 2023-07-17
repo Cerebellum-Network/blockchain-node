@@ -12,7 +12,7 @@ fn set_settings_works() {
 	ExtBuilder::default().build_and_execute(|| {
 		// setting works
 		assert_ok!(DdcStaking::set_settings(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			1,
 			Some(ClusterSettings {
 				edge_bond_size: 10,
@@ -28,7 +28,7 @@ fn set_settings_works() {
 		assert_eq!(settings.storage_chill_delay, 2);
 
 		// removing works
-		assert_ok!(DdcStaking::set_settings(Origin::root(), 1, None));
+		assert_ok!(DdcStaking::set_settings(RuntimeOrigin::root(), 1, None));
 		let settings = DdcStaking::settings(1);
 		let default_settings: ClusterSettings<Test> = Default::default();
 		assert_eq!(settings.edge_bond_size, default_settings.edge_bond_size);
@@ -86,16 +86,16 @@ fn change_controller_works() {
 		assert_eq!(DdcStaking::bonded(&11), Some(10));
 
 		// 10 can control 11 who is initially a validator.
-		assert_ok!(DdcStaking::withdraw_unbonded(Origin::signed(10)));
+		assert_ok!(DdcStaking::withdraw_unbonded(RuntimeOrigin::signed(10)));
 
 		// Change controller.
-		assert_ok!(DdcStaking::set_controller(Origin::signed(11), 3));
+		assert_ok!(DdcStaking::set_controller(RuntimeOrigin::signed(11), 3));
 		assert_eq!(DdcStaking::bonded(&11), Some(3));
 
 		// 10 is no longer in control.
-		assert_noop!(DdcStaking::serve(Origin::signed(10), 1), Error::<Test>::NotController);
+		assert_noop!(DdcStaking::serve(RuntimeOrigin::signed(10), 1), Error::<Test>::NotController);
 		// 3 is a new controller.
-		assert_ok!(DdcStaking::serve(Origin::signed(3), 1));
+		assert_ok!(DdcStaking::serve(RuntimeOrigin::signed(3), 1));
 	})
 }
 
@@ -108,8 +108,8 @@ fn staking_should_work() {
 		}
 
 		// Add new CDN participant, account 3 controlled by 4.
-		assert_ok!(DdcStaking::bond(Origin::signed(3), 4, 1500));
-		assert_ok!(DdcStaking::serve(Origin::signed(4), 1));
+		assert_ok!(DdcStaking::bond(RuntimeOrigin::signed(3), 4, 1500));
+		assert_ok!(DdcStaking::serve(RuntimeOrigin::signed(4), 1));
 
 		// Account 4 controls the stash from account 3, which is 1500 units and 3 is a CDN
 		// participant.
@@ -131,7 +131,7 @@ fn staking_should_work() {
 		DdcStaking::on_finalize(System::block_number());
 
 		// Schedule CDN participant removal.
-		assert_ok!(DdcStaking::chill(Origin::signed(4)));
+		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(4)));
 
 		// Removal is scheduled, stashed value of 4 is still lock.
 		let chilling =
@@ -170,7 +170,7 @@ fn staking_should_work() {
 		);
 
 		// Actual CDN participant removal.
-		assert_ok!(DdcStaking::chill(Origin::signed(4)));
+		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(4)));
 
 		// Account 3 is no longer a CDN participant.
 		assert_eq!(DdcStaking::edges(3), None);

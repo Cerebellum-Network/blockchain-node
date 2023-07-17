@@ -40,7 +40,7 @@ impl SubstrateCli for Cli {
 			#[cfg(feature = "cere-dev-native")]
 			"dev" => Box::new(cere_service::chain_spec::cere_dev_development_config()?),
 			#[cfg(feature = "cere-dev-native")]
-            "local" => Box::new(cere_service::chain_spec::cere_dev_local_testnet_config()?),
+			"local" => Box::new(cere_service::chain_spec::cere_dev_local_testnet_config()?),
 			path => {
 				let path = std::path::PathBuf::from(path);
 
@@ -182,10 +182,9 @@ pub fn run() -> sc_cli::Result<()> {
 					unwrap_client!(client, cmd.run(client.clone()))
 				}),
 				#[cfg(not(feature = "runtime-benchmarks"))]
-				BenchmarkCmd::Storage(_) => Err(
-					"Storage benchmarking can be enabled with `--features runtime-benchmarks`."
-						.into(),
-				),
+				BenchmarkCmd::Storage(_) =>
+					Err("Storage benchmarking can be enabled with `--features runtime-benchmarks`."
+						.into()),
 				#[cfg(feature = "runtime-benchmarks")]
 				BenchmarkCmd::Storage(cmd) => runner.sync_run(|config| {
 					let (client, backend, _, _) = cere_service::new_chain_ops(&config)?;

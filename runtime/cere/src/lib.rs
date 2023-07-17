@@ -22,16 +22,17 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
+use cere_runtime_common::{BalanceToU256, U256ToBalance};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_election_provider_support::{
-	onchain, ExtendedBalance, SequentialPhragmen, VoteWeight, BalancingConfig
+	onchain, BalancingConfig, ExtendedBalance, SequentialPhragmen, VoteWeight,
 };
 use frame_support::{
 	construct_runtime,
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		ConstU16, ConstU32, ConstU128, Currency, EitherOfDiverse, EqualPrivilegeOnly, Everything,
+		ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly, Everything,
 		Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced,
 		U128CurrencyToVote, WithdrawReasons
 	},
@@ -73,14 +74,13 @@ use sp_runtime::{
 		SaturatedConversion, StaticLookup, Bounded,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedU128, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
+	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
 };
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
-use cere_runtime_common::{BalanceToU256, U256ToBalance};
 
 #[cfg(any(feature = "std", test))]
 pub use frame_system::Call as SystemCall;
@@ -128,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 47002,
+	spec_version: 48001,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 6,
@@ -296,16 +296,18 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::NonTransfer => !matches!(
 				c,
 				RuntimeCall::Balances(..) |
-				RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
-				RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
-				RuntimeCall::NominationPools(..)
+					RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
+					RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
+					RuntimeCall::NominationPools(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
 				RuntimeCall::Democracy(..) |
-					RuntimeCall::Council(..) | RuntimeCall::Society(..) |
+					RuntimeCall::Council(..) |
+					RuntimeCall::Society(..) |
 					RuntimeCall::TechnicalCommittee(..) |
-					RuntimeCall::Elections(..) | RuntimeCall::Treasury(..)
+					RuntimeCall::Elections(..) |
+					RuntimeCall::Treasury(..)
 			),
 			ProxyType::Staking => matches!(c, RuntimeCall::Staking(..)),
 		}
@@ -430,7 +432,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
+	type RuntimeEvent = RuntimeEvent;
 	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees>;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type WeightToFee = IdentityFee<Balance>;
@@ -1400,7 +1402,6 @@ pub type SignedExtra = (
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 
-
 pub struct StakingMigrationV11OldPallet;
 impl Get<&'static str> for StakingMigrationV11OldPallet {
 	fn get() -> &'static str {
@@ -1409,7 +1410,8 @@ impl Get<&'static str> for StakingMigrationV11OldPallet {
 }
 
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+pub type UncheckedExtrinsic =
+	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
