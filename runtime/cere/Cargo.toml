@@ -1,6 +1,6 @@
 [package]
 name = "cere-runtime"
-version = "4.7.0"
+version = "4.8.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 build = "build.rs"
@@ -95,11 +95,11 @@ pallet-transaction-storage = { version = "4.0.0-dev", default-features = false, 
 pallet-vesting = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 cere-runtime-common = { path = "../common", default-features = false }
 cere-runtime-constants = { path = "./constants", default-features = false }
-pallet-chainbridge = { version = "4.7.0", default-features = false, path = "../../pallets/chainbridge" }
-pallet-cere-ddc = { version = "4.7.0", default-features = false, path = "../../pallets/ddc" }
-pallet-erc721 = { version = "4.7.0", default-features = false, path = "../../pallets/erc721" }
-pallet-erc20 = { version = "4.7.0", default-features = false, path = "../../pallets/erc20" }
-pallet-ddc-metrics-offchain-worker = { version = "4.7.0", default-features = false, path = "../../pallets/ddc-metrics-offchain-worker" }
+pallet-chainbridge = { version = "4.8.0", default-features = false, path = "../../pallets/chainbridge" }
+pallet-cere-ddc = { version = "4.8.0", default-features = false, path = "../../pallets/ddc" }
+pallet-erc721 = { version = "4.8.0", default-features = false, path = "../../pallets/erc721" }
+pallet-erc20 = { version = "4.8.0", default-features = false, path = "../../pallets/erc20" }
+pallet-ddc-metrics-offchain-worker = { version = "4.8.0", default-features = false, path = "../../pallets/ddc-metrics-offchain-worker" }
 
 [build-dependencies]
 substrate-wasm-builder = { version = "5.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }

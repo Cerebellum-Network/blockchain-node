@@ -1,6 +1,6 @@
 [package]
 name = "cere-service"
-version = "4.7.0"
+version = "4.8.0"
 edition = "2021"
 
 [dependencies]
@@ -63,6 +63,7 @@ cere-dev-native = [ "cere-dev-runtime", "cere-dev-runtime-constants", "cere-clie
 runtime-benchmarks = [
 	"cere-runtime/runtime-benchmarks",
 	"cere-dev-runtime/runtime-benchmarks",
+	"sc-service/runtime-benchmarks",
 ]
 
 try-runtime = [
