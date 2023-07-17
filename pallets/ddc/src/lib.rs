@@ -25,7 +25,7 @@ mod tests;
 /// Configure the pallet by specifying the parameters and types on which it depends.
 pub trait Config: frame_system::Config {
 	/// Because this pallet emits events, it depends on the runtime's definition of an event.
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
+	type RuntimeEvent: From<Event<Self>> + Into<<Self as frame_system::Config>::RuntimeEvent>;
 
 	/// The minimum length a name may be.
 	type MinLength: Get<usize>;
@@ -76,7 +76,7 @@ decl_error! {
 // Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 decl_module! {
 	/// CereDDCModule declaration.
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::RuntimeOrigin {
 		// Errors must be initialized if they are used by the pallet.
 		type Error = Error<T>;
 
