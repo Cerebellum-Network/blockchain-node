@@ -3,10 +3,6 @@ LABEL maintainer="team@cere.network"
 LABEL description="This is the optimization to create a small image."
 ARG PROFILE=release
 
-# DEBUG
-RUN ls -la ./target/$PROFILE/wbuild
-RUN ls -lR ./target/$PROFILE/wbuild
-
 COPY ./target/$PROFILE/cere /usr/local/bin
 COPY ./target/$PROFILE/wbuild/cere-runtime /home/cere/cere-runtime-artifacts
 COPY ./target/$PROFILE/wbuild/cere-dev-runtime /home/cere/cere-dev-runtime-artifacts
