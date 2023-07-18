@@ -289,7 +289,7 @@ fn should_run_contract() {
 			RuntimeOrigin::signed(alice.clone()),
 			contract_id.clone(),
 			0,
-			Weight::from_ref_time(100_000_000_000),
+			Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX),
 			None,
 			call_data.clone(),
 		)
@@ -299,7 +299,7 @@ fn should_run_contract() {
 			alice.clone(),
 			contract_id,
 			0,
-			Weight::from_ref_time(100_000_000_000),
+			Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX),
 			None,
 			call_data,
 			false,
@@ -337,7 +337,8 @@ fn deploy_contract() -> AccountId {
 
 	// Deploy the contract.
 	//let endowment = contracts::Config::<T>::subsistence_threshold_uncached();
-	const GAS_LIMIT: frame_support::weights::Weight = Weight::from_ref_time(100_000_000_000);
+	const GAS_LIMIT: frame_support::weights::Weight =
+		Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX);
 	const ENDOWMENT: Balance = 100_000_000_000;
 	Contracts::instantiate_with_code(
 		RuntimeOrigin::signed(alice.clone()),
@@ -372,7 +373,7 @@ fn deploy_contract() -> AccountId {
 			RuntimeOrigin::signed(alice.clone()),
 			contract_id.clone(),
 			0,
-			Weight::from_ref_time(1_000_000_000_000),
+			Weight::from_ref_time(1_000_000_000_000).set_proof_size(u64::MAX),
 			None,
 			call_data,
 		);
