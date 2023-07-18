@@ -349,7 +349,7 @@ where
 			nobody.unwrap(),
 			contract_id,
 			0u32.into(),
-			Weight::from_ref_time(100_000_000_000),
+			Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX),
 			None,
 			call_data,
 			false,
@@ -385,7 +385,7 @@ where
 		let results = signer.send_signed_transaction(|_account| pallet_contracts::Call::call {
 			dest: contract_id_unl.clone(),
 			value: 0u32.into(),
-			gas_limit: Weight::from_ref_time(100_000_000_000),
+			gas_limit: Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX),
 			storage_deposit_limit: None,
 			data: call_data.clone(),
 		});
@@ -442,7 +442,7 @@ where
                 pallet_contracts::Call::call {
                     dest: contract_id_unl,
                     value: 0u32.into(),
-                    gas_limit: Weight::from_ref_time(100_000_000_000),
+                    gas_limit: Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX),
                     storage_deposit_limit: None,
                     data: call_data,
                 }
@@ -492,7 +492,7 @@ where
                 pallet_contracts::Call::call {
                     dest: contract_id_unl,
                     value: 0u32.into(),
-                    gas_limit: Weight::from_ref_time(100_000_000_000),
+                    gas_limit: Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX),
                     storage_deposit_limit: None,
                     data: call_data,
                 }
@@ -530,7 +530,7 @@ where
 			pallet_contracts::Call::call {
 				dest: contract_id_unl,
 				value: 0u32.into(),
-				gas_limit: Weight::from_ref_time(100_000_000_000),
+				gas_limit: Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX),
 				storage_deposit_limit: None,
 				data: call_data,
 			}
@@ -585,7 +585,7 @@ where
 			nobody.unwrap(),
 			contract_id,
 			0u32.into(),
-			Weight::from_ref_time(100_000_000_000),
+			Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX),
 			None,
 			call_data,
 			false,
