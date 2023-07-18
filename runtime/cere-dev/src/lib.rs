@@ -1444,6 +1444,7 @@ pub type Executive = frame_executive::Executive<
 			StakingMigrationV11OldPallet,
 		>,
 		pallet_staking::migrations::v12::MigrateToV12<Runtime>,
+		pallet_contracts::Migration<Runtime>,
 	),
 >;
 
