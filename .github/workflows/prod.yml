@@ -36,10 +36,6 @@ jobs:
           role-session-name: ${{ github.event.repository.name }}
           aws-region: us-west-2
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
       - name: Get short SHA
         run: |
           echo "GITHUB_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
@@ -49,6 +45,17 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.PRD_NETWORK_AWS_ACCOUNT_ID }}:role/github
+          role-session-name: ${{ github.event.repository.name }}
+          aws-region: us-west-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build and push docker image to ECR
         uses: docker/build-push-action@v4
