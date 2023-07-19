@@ -24,13 +24,6 @@ RUN wget https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION
     && chmod +x /usr/local/bin/sccache \
     && rm -rf sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl
 ENV RUSTC_WRAPPER=/usr/local/bin/sccache
-ENV SCCACHE_BUCKET=cere-blockchain-sccache
-ENV SCCACHE_REGION=us-west-2
-ENV SCCACHE_S3_USE_SSL=true
-
-ARG AWS_ACCESS_KEY_ID
-ARG AWS_SECRET_ACCESS_KEY
-ARG AWS_SESSION_TOKEN
 
 # Installation script is taken from https://grpc.io/docs/protoc-installation/
 ENV PROTOC_VERSION=3.15.8
@@ -41,13 +34,21 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
     chmod +x /usr/local/protoc/bin/protoc && \
     ln -s /usr/local/protoc/bin/protoc /usr/local/bin
 
+ARG AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY
+ARG AWS_SESSION_TOKEN
+ARG SCCACHE_REGION=us-west-2
+ARG SCCACHE_BUCKET=cere-blockchain-sccache
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
     scripts/init.sh && \
-    AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-    AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-    AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
-      cargo build --$PROFILE
+      AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+      AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+      AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
+      SCCACHE_REGION=$SCCACHE_REGION \
+      SCCACHE_BUCKET=$SCCACHE_BUCKET \
+      SCCACHE_S3_USE_SSL=true \
+    cargo build --$PROFILE
 
 FROM phusion/baseimage:0.11
 LABEL maintainer="team@cere.network"
