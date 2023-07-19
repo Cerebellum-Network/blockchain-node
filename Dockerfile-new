@@ -39,7 +39,7 @@ ARG AWS_SECRET_ACCESS_KEY
 ARG AWS_SESSION_TOKEN
 ARG SCCACHE_REGION=us-west-2
 ARG SCCACHE_BUCKET=cere-blockchain-sccache
-RUN sleep 30m
+
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
     scripts/init.sh && \
