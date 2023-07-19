@@ -43,7 +43,10 @@ jobs:
 
       - name: Get short SHA
         run: |
-          echo GITHUB_SHA=${GITHUB_SHA:0:7} >> $GITHUB_ENV
+          echo "GITHUB_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
+          echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
+          echo "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -54,17 +57,17 @@ jobs:
           context: .
           file: ./Dockerfile-new
           push: true
-          build-args: |
-            "AWS_ACCESS_KEY_ID=${{ secrets.DEV_NETWORK_AWS_ACCESS_KEY_ID }}"
-            "AWS_SECRET_ACCESS_KEY=${{ secrets.DEV_NETWORK_AWS_SECRET_ACCESS_KEY }}"
-            "SCCACHE_REGION=us-west-2"
-            "SCCACHE_BUCKET=cere-blockchain-sccache"
 #          build-args: |
-#            "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
-#            "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
-#            "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN"
+#            "AWS_ACCESS_KEY_ID=${{ secrets.DEV_NETWORK_AWS_ACCESS_KEY_ID }}"
+#            "AWS_SECRET_ACCESS_KEY=${{ secrets.DEV_NETWORK_AWS_SECRET_ACCESS_KEY }}"
 #            "SCCACHE_REGION=us-west-2"
 #            "SCCACHE_BUCKET=cere-blockchain-sccache"
+          build-args: |
+            "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}"
+            "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}"
+            "AWS_SESSION_TOKEN=${{ env.AWS_SESSION_TOKEN }}"
+            "SCCACHE_REGION=us-west-2"
+            "SCCACHE_BUCKET=cere-blockchain-sccache"
 
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}

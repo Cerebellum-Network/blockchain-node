@@ -28,7 +28,7 @@ ENV RUSTC_WRAPPER=/usr/local/bin/sccache
 # Installation script is taken from https://grpc.io/docs/protoc-installation/
 ENV PROTOC_VERSION=3.15.8
 RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
-    curl -LO $PB_REL/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip && \
+    curl -sLO $PB_REL/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip && \
     mkdir -p /usr/local/protoc && \
     unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d /usr/local/protoc && \
     chmod +x /usr/local/protoc/bin/protoc && \
