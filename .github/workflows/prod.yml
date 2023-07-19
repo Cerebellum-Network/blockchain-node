@@ -1,8 +1,8 @@
-name: Release to dev
+name: Release to production
 on:
   push:
     branches:
-      - 'dev'
+      - 'master'
   workflow_dispatch:
 
 env:
@@ -11,7 +11,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    concurrency: dev
+    concurrency: prod
     permissions:
       contents: read
       id-token: write
@@ -64,7 +64,7 @@ jobs:
 
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:prod-latest
 
 #      - name: Upload cere-runtime wasm artifact
 #        uses: actions/upload-artifact@v3
