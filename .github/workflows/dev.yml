@@ -54,17 +54,17 @@ jobs:
           context: .
           file: ./Dockerfile-new
           push: true
-#          build-args: |
-#            "AWS_ACCESS_KEY_ID=${{ secrets.DEV_NETWORK_AWS_ACCESS_KEY_ID }}"
-#            "AWS_SECRET_ACCESS_KEY=${{ secrets.DEV_NETWORK_AWS_SECRET_ACCESS_KEY }}"
-#            "SCCACHE_REGION=us-west-2"
-#            "SCCACHE_BUCKET=cere-blockchain-sccache"
           build-args: |
-            "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
-            "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
-            "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN"
+            "AWS_ACCESS_KEY_ID=${{ secrets.DEV_NETWORK_AWS_ACCESS_KEY_ID }}"
+            "AWS_SECRET_ACCESS_KEY=${{ secrets.DEV_NETWORK_AWS_SECRET_ACCESS_KEY }}"
             "SCCACHE_REGION=us-west-2"
             "SCCACHE_BUCKET=cere-blockchain-sccache"
+#          build-args: |
+#            "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
+#            "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
+#            "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN"
+#            "SCCACHE_REGION=us-west-2"
+#            "SCCACHE_BUCKET=cere-blockchain-sccache"
 
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
