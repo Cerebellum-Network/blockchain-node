@@ -531,7 +531,8 @@ pub mod pallet {
 		}
 
 		fn assign(quorum_size: usize, era: EraIndex) {
-			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
+			let validators: Vec<T::AccountId> = OffchainWorkerKeys::<T>::iter_values().collect();
+			
 			log::info!("current validators: {:?}", validators);
 
 			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
@@ -776,10 +777,12 @@ pub mod pallet {
 			let signer = Self::get_signer().unwrap();
 
 			// ToDo: replace local call by a call from `ddc-staking` pallet
-			let _tx_res = signer.send_signed_transaction(|_account| Call::set_era_reward_points {
-				era: current_era - 1,
-				stakers_points: cdn_nodes_reward_points.clone(),
-			});
+			if cdn_nodes_reward_points.len() > 0 {
+				let _tx_res = signer.send_signed_transaction(|_account| Call::set_era_reward_points {
+					era: current_era - 1,
+					stakers_points: cdn_nodes_reward_points.clone(),
+				});
+			}
 		}
 	}
 }
