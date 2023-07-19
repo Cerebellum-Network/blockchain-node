@@ -49,6 +49,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
       SCCACHE_REGION=$SCCACHE_REGION \
       SCCACHE_BUCKET=$SCCACHE_BUCKET \
       SCCACHE_S3_USE_SSL=true \
+      SCCACHE_LOG=debug SCCACHE_NO_DAEMON=1 \
     cargo build --$PROFILE
 
 FROM phusion/baseimage:0.11
