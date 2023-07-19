@@ -42,6 +42,9 @@ ARG SCCACHE_BUCKET=cere-blockchain-sccache
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
+    echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" && \
+    echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" && \
+    echo "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN" && \
     scripts/init.sh && \
       AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
       AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
