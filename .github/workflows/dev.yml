@@ -55,10 +55,10 @@ jobs:
           file: ./Dockerfile-new
           push: true
           build-args: |
-            "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}"
-            "AWS_SECRET_ACCESS_KEY=${{ env.AWS_ACCESS_KEY_ID }}"
-            "AWS_SESSION_TOKEN=${{ env.AWS_ACCESS_KEY_ID }}"
-            "SCCACHE_REGION=${{ env.AWS_REGION }}"
+            "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID }"
+            "AWS_SECRET_ACCESS_KEY=${AWS_ACCESS_KEY_ID }"
+            "AWS_SESSION_TOKEN=${AWS_ACCESS_KEY_ID}"
+            "SCCACHE_REGION=${AWS_REGION}"
             "SCCACHE_BUCKET=cere-blockchain-sccache"
 
           tags: |
