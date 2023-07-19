@@ -3,16 +3,12 @@ on:
   push:
     branches:
       - 'dev'
+      - 'ci/*'
   workflow_dispatch:
 
 env:
   PROFILE: release
-  RUST_BACKTRACE: full
-  RUSTC_WRAPPER: sccache
 
-  SCCACHE_CACHE_SIZE: 2G
-  SCCACHE_DIR: /home/runner/.cache/sccache
-  # SCCACHE_RECACHE: 1 # Uncomment this to clear cache, then comment it back out
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,6 +18,7 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v3
+
       - name: Cache cargo registry
         uses: actions/cache@v3
         continue-on-error: false
@@ -32,6 +29,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -57,9 +55,9 @@ jobs:
           file: ./Dockerfile-new
           push: true
           build-args: |
-            AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY=${{ env.AWS_ACCESS_KEY_ID }}
-            AWS_SESSION_TOKEN=${{ env.AWS_ACCESS_KEY_ID }}
+            AWS_ACCESS_KEY_ID="${{ env.AWS_ACCESS_KEY_ID }}"
+            AWS_SECRET_ACCESS_KEY="${{ env.AWS_ACCESS_KEY_ID }}"
+            AWS_SESSION_TOKEN="${{ env.AWS_ACCESS_KEY_ID }}"
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
