@@ -18,7 +18,7 @@ RUN apt-get update && \
 
 # Configure sccache
 ENV SCCACHE_VERSION=0.5.4
-RUN wget https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl.tar.gz \
+RUN wget -q https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl.tar.gz \
       -O - | tar -xz \
     && mv sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache \
     && chmod +x /usr/local/bin/sccache \
@@ -39,7 +39,11 @@ ARG AWS_SECRET_ACCESS_KEY
 ARG AWS_SESSION_TOKEN
 ARG SCCACHE_REGION=us-west-2
 ARG SCCACHE_BUCKET=cere-blockchain-sccache
-
+ENV AWS_ACCESS_KEY_ID $AWS_ACCESS_KEY_ID
+ENV AWS_SECRET_ACCESS_KEY $AWS_SECRET_ACCESS_KEY
+ENV AWS_SESSION_TOKEN $AWS_SESSION_TOKEN
+ENV SCCACHE_REGION $SCCACHE_REGION
+ENV SCCACHE_BUCKET $SCCACHE_BUCKET
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
     scripts/init.sh && \
@@ -49,7 +53,6 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
       SCCACHE_REGION=$SCCACHE_REGION \
       SCCACHE_BUCKET=$SCCACHE_BUCKET \
       SCCACHE_S3_USE_SSL=true \
-      SCCACHE_LOG=debug SCCACHE_NO_DAEMON=1 \
     cargo build --$PROFILE
 
 FROM phusion/baseimage:0.11
