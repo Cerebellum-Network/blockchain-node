@@ -1,17 +1,9 @@
-name: CI
-
+name: Release to dev
 on:
-  pull_request:
+  push:
     branches:
-      - dev
-      - master
-      - 'feature/**'
-      - 'release/**'
-      - 'hotfix/**'
-    types:
-      - opened
-      - synchronize
-      - edited
+      - 'dev'
+  workflow_dispatch:
 
 env:
   PROFILE: release
@@ -62,19 +54,6 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: Dockerfile.tests
-          push: false
-          build-args: |
-            "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}"
-            "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}"
-            "AWS_SESSION_TOKEN=${{ env.AWS_SESSION_TOKEN }}"
-            "SCCACHE_REGION=us-west-2"
-            "SCCACHE_BUCKET=cere-blockchain-sccache"
-
-      - name: Build and push docker image to ECR
-        uses: docker/build-push-action@v4
-        with:
-          context: .
           push: true
           build-args: |
             "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}"
@@ -84,7 +63,41 @@ jobs:
             "SCCACHE_BUCKET=cere-blockchain-sccache"
 
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
 
+  #      - name: Upload cere-runtime wasm artifact
+  #        uses: actions/upload-artifact@v3
+  #        with:
+  #          name: cere_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm
+  #          path: target/${{ vars.PROFILE }}/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm
+  #
+  #      - name: Upload cere-dev-runtime wasm artifact
+  #        uses: actions/upload-artifact@v3
+  #        with:
+  #          name: cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm
+  #          path: target/${{ vars.PROFILE }}/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm
 
-      # TODO: paveltabalko to add e2e-tests simulations
+  trigger-e2e-tests:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: 'Trigger e2e DDC tests'
+        uses: convictional/trigger-workflow-and-wait@v1.6.5
+        with:
+          owner: Cerebellum-Network
+          repo: ddc-api-e2e-simulations
+          github_token: ${{ secrets.GH_E2E_TOKEN }}
+          comment_github_token: ${{ secrets.GH_E2E_TOKEN }}
+          github_user: devops-cere
+          workflow_file_name: run-basic-ddc-tests.yml
+          client_payload: |-
+            {
+              "POS_NODE_VERSION": "${{ env.GITHUB_SHA }}"
+            }
+          ref: master
+          wait_interval: 30
+          propagate_failure: true
+          trigger_workflow: true
+          wait_workflow: true
+          comment_downstream_url: ${{ github.event.pull_request.comments_url }}

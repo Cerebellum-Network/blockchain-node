@@ -1,8 +1,10 @@
-name: Release to dev
+name: Release to stage
 on:
   push:
     branches:
-      - 'dev'
+      - 'release/**'
+      - 'hotfix/**'
+      - 'master'
   workflow_dispatch:
 
 env:
@@ -11,7 +13,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    concurrency: dev
+    concurrency: stage
     permissions:
       contents: read
       id-token: write
@@ -63,9 +65,7 @@ jobs:
             "SCCACHE_BUCKET=cere-blockchain-sccache"
 
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
 
 #      - name: Upload cere-runtime wasm artifact
 #        uses: actions/upload-artifact@v3
