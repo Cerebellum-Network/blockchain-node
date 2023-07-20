@@ -2,9 +2,9 @@ name: Release to stage
 on:
   push:
     branches:
-      - 'feature/**'
       - 'release/**'
       - 'hotfix/**'
+      - 'master'
   workflow_dispatch:
 
 env:
@@ -66,7 +66,6 @@ jobs:
 
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:stage-latest
 
 #      - name: Upload cere-runtime wasm artifact
 #        uses: actions/upload-artifact@v3
