@@ -82,6 +82,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Get short SHA
+        run: |
+          echo "GITHUB_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
+          
       - name: 'Trigger e2e DDC tests'
         uses: convictional/trigger-workflow-and-wait@v1.6.5
         with:
