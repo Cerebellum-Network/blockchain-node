@@ -495,7 +495,7 @@ pub mod pallet {
 
 		fn is_valid(bytes_sent: u64, bytes_received: u64) -> bool {
 			if bytes_sent == bytes_received {
-				return true;
+				return true
 			}
 
 			let percentage_difference = 1f32 - (bytes_received as f32 / bytes_sent as f32);
