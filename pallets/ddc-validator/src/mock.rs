@@ -124,7 +124,6 @@ impl contracts::Config for Test {
 	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type Randomness = RandomnessCollectiveFlip;
-	type RelaxedMaxCodeLen = ConstU32<{ 256 * 1024 }>;
 	type Schedule = Schedule;
 	type Time = Timestamp;
 	type WeightInfo = ();
@@ -241,6 +240,8 @@ impl pallet_staking::Config for Test {
 	type BenchmarkingConfig = pallet_staking::TestBenchmarkingConfig;
 	type CurrencyBalance = Balance;
 	type OnStakerSlash = ();
+	type HistoryDepth = ConstU32<84>;
+	type TargetList = pallet_staking::UseValidatorsMap<Self>;
 }
 
 parameter_types! {
