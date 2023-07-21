@@ -145,7 +145,7 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 
 		assert_eq!(
 			tx.call,
-			crate::mock::Call::DdcValidator(crate::Call::charge_payments_content_owners {
+			crate::mock::RuntimeCall::DdcValidator(crate::Call::charge_payments_content_owners {
 				paying_accounts: vec![bucket_info3, bucket_info1, bucket_info2,]
 			})
 		);
@@ -155,7 +155,7 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 		assert!(tx.signature.is_some());
 		assert_eq!(
 			tx.call,
-			crate::mock::Call::DdcValidator(crate::Call::payout_cdn_owners {
+			crate::mock::RuntimeCall::DdcValidator(crate::Call::payout_cdn_owners {
 				era: era_to_validate + 1
 			})
 		);
@@ -172,7 +172,7 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 
 		assert_eq!(
 			tx.call,
-			crate::mock::Call::DdcValidator(crate::Call::set_validation_decision {
+			crate::mock::RuntimeCall::DdcValidator(crate::Call::set_validation_decision {
 				era: era_to_validate + 1,
 				cdn_node: cdn_node_to_validate,
 				validation_decision: ValidationDecision {
