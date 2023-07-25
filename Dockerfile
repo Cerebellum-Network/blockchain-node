@@ -71,6 +71,7 @@ RUN mv /usr/share/ca* /tmp && \
     mkdir -p /cerenetwork/.local/share/cere && \
     chown -R cerenetwork:cerenetwork /cerenetwork/.local && \
     ln -s /cerenetwork/.local/share/cere /data && \
+    mv -t /usr/local/bin /usr/bin/bash /usr/bin/sh && \
     rm -rf /usr/bin /usr/sbin
 
 USER cerenetwork
