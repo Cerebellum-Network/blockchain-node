@@ -54,7 +54,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     cargo build --$PROFILE
 
 # ===== SECOND STAGE ======
-FROM phusion/baseimage:0.11
+FROM phusion/baseimage:jammy-1.0.1
 LABEL maintainer="team@cere.network"
 LABEL description="This is the optimization to create a small image."
 ARG PROFILE=release
