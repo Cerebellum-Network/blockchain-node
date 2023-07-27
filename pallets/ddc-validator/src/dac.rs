@@ -148,8 +148,8 @@ pub struct Log {
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct FileInfo {
-	#[serde(rename = "chunkCids")]
-	chunk_cids: Vec<String> ,
+	#[serde(rename = "chunkCids", skip_deserializing)]
+	chunk_cids: Option<Vec<String>> ,
 
 	#[serde(rename = "requestedChunkCids")]
 	requested_chunk_cids: Vec<String>,
