@@ -393,10 +393,12 @@ pub mod pallet {
 			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			// ensure!(
-			// 	OffchainWorkerKeys::<T>::contains_key(&controller),
-			// 	Error::<T>::OCWKeyNotRegistered
-			// );
+			log::info!("Controller is {:?}", controller);
+
+			ensure!(
+				OffchainWorkerKeys::<T>::contains_key(&controller),
+				Error::<T>::OCWKeyNotRegistered
+			);
 			
 			<ddc_accounts::pallet::Pallet::<T>>::charge_payments_new(paying_accounts);
 
@@ -409,10 +411,10 @@ pub mod pallet {
 			era: EraIndex,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			// ensure!(
-			// 	OffchainWorkerKeys::<T>::contains_key(&controller),
-			// 	Error::<T>::OCWKeyNotRegistered
-			// );
+			ensure!(
+				OffchainWorkerKeys::<T>::contains_key(&controller),
+				Error::<T>::OCWKeyNotRegistered
+			);
 
 			<ddc_staking::pallet::Pallet::<T>>::do_payout_stakers(era);
 
@@ -433,7 +435,7 @@ pub mod pallet {
 				Error::<T>::NotController
 			);
 
-			OffchainWorkerKeys::<T>::insert(controller, ocw_pub);
+			OffchainWorkerKeys::<T>::insert(ocw_pub, controller);
 			Ok(())
 		}
 	}
@@ -531,7 +533,7 @@ pub mod pallet {
 		}
 
 		fn assign(quorum_size: usize, era: EraIndex) {
-			let validators: Vec<T::AccountId> = OffchainWorkerKeys::<T>::iter_values().collect();
+			let validators: Vec<T::AccountId> = OffchainWorkerKeys::<T>::iter_keys().collect();
 			
 			log::info!("current validators: {:?}", validators);
 
@@ -560,7 +562,9 @@ pub mod pallet {
 			let mut quorums_cycle = quorums.iter().cycle();
 			for edge in shuffled_edges {
 				let Some(quorum_validators) = quorums_cycle.next() else {
-					defensive!("unexpectedly ran out of quorums");
+					log::info!("unexpectedly ran out of quorums");
+
+					// defensive!("unexpectedly ran out of quorums");
 					return
 				};
 				quorum_validators.iter().for_each(|validator| {
