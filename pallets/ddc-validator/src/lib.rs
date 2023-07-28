@@ -195,10 +195,17 @@ pub mod pallet {
 		type ValidationThreshold: Get<u32>;
 	}
 
+	// Map of assignments per validator per era
 	#[pallet::storage]
 	#[pallet::getter(fn assignments)]
 	pub(super) type Assignments<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, Vec<T::AccountId>>;
+	
+	// Map to check if validation decision was performed for the era
+	#[pallet::storage]
+	#[pallet::getter(fn contentOwnersCharged)]
+	pub(super) type EraContentOwnersCharged<T: Config> =
+	StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
 
 	/// A signal to start a process on all the validators.
 	#[pallet::storage]
@@ -226,6 +233,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		NotController,
 		OCWKeyNotRegistered,
+		ContentOwnersDoubleSpend
 	}
 
 	#[pallet::event]
@@ -395,12 +403,21 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 			log::info!("Controller is {:?}", controller);
 
+			let era = Self::get_current_era();
+			
+			ensure!(
+				Self::contentOwnersCharged(era, &controller),
+				Error::<T>::ContentOwnersDoubleSpend
+			);
+
 			ensure!(
 				OffchainWorkerKeys::<T>::contains_key(&controller),
 				Error::<T>::OCWKeyNotRegistered
 			);
 			
 			<ddc_accounts::pallet::Pallet::<T>>::charge_payments_new(paying_accounts);
+
+			EraContentOwnersCharged::<T>::insert(era, controller, true);
 
 			Ok(())
 		}
