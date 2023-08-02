@@ -268,13 +268,19 @@ pub mod pallet {
 
 			let era = Self::get_current_era();
 			log::info!("current era: {:?}", era);
+
 			// Produce an assignment for the next era if it's not produced yet.
 			match Self::last_managed_era() {
-				Some(last_managed_era) if era < last_managed_era => (),
-				_ => {
-					Self::assign(3usize, era + 1);
-					<LastManagedEra<T>>::put(era + 1);
+				Some(last_managed_era) if era < last_managed_era => return Weight::from_ref_time(0),
+				_ => (),
+			};
+
+			match Self::assign(3usize, era + 1) {
+				Ok(_) => <LastManagedEra<T>>::put(era + 1),
+				Err(AssignmentError::DefensiveEmptyQuorumsCycle) => {
+					defensive!("unexpectedly empty quorums cycle");
 				},
+				Err(e) => log::debug!("assignment error: {:?}", e),
 			};
 
 			Weight::from_ref_time(0)
