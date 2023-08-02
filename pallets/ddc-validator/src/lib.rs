@@ -88,6 +88,13 @@ pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://redis:6379";
 pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
 pub const QUORUM_SIZE: usize = 1;
 
+#[derive(Debug)]
+pub enum AssignmentError {
+	NoValidators,
+	NotEnoughValidators { requested_quorum: usize, available_validators: usize },
+	DefensiveEmptyQuorumsCycle,
+}
+
 /// Aggregated values from DAC that describe CDN node's activity during a certain era.
 #[derive(
 	PartialEq,
@@ -544,15 +551,26 @@ pub mod pallet {
 		///
 		/// Each CDN node is assigned to `quorum_size` validators randomly picked from the validator
 		/// set.
-		fn assign(quorum_size: usize, era: EraIndex) {
+		fn assign(quorum_size: usize, era: EraIndex) -> Result<(), AssignmentError> {
 			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
 			log::info!("current validators: {:?}", validators);
+
+			if validators.len() == 0 {
+				return Err(AssignmentError::NoValidators)
+			}
+
+			if validators.len() < quorum_size {
+				return Err(AssignmentError::NotEnoughValidators {
+					requested_quorum: quorum_size,
+					available_validators: validators.len(),
+				})
+			}
 
 			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
 			log::info!("current edges: {:?}", edges);
 
 			if edges.len() == 0 {
-				return
+				return Ok(())
 			}
 
 			let shuffled_validators = Self::shuffle(validators);
@@ -573,8 +591,7 @@ pub mod pallet {
 			let mut quorums_cycle = quorums.iter().cycle();
 			for edge in shuffled_edges {
 				let Some(quorum_validators) = quorums_cycle.next() else {
-					defensive!("unexpectedly ran out of quorums");
-					return
+					return Err(AssignmentError::DefensiveEmptyQuorumsCycle);
 				};
 				quorum_validators.iter().for_each(|validator| {
 					Assignments::<T>::append(
@@ -584,6 +601,8 @@ pub mod pallet {
 					);
 				});
 			}
+
+			return Ok(())
 		}
 
 		/// Randomly choose a number in range `[0, total)`.
