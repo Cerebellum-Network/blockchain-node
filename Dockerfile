@@ -5,8 +5,8 @@ ARG PROFILE=release
 WORKDIR /cerenetwork
 COPY . /cerenetwork
 
-RUN apt-get -qq update && \
-	  apt-get -qq install -y \
+RUN apt-get update && \
+	  apt-get install -y \
       clang \
       cmake \
       git \
@@ -51,10 +51,10 @@ ENV \
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
     scripts/init.sh && \
-    cargo build --$PROFILE
+    cargo build --locked --$PROFILE
 
 # ===== SECOND STAGE ======
-FROM phusion/baseimage:0.11
+FROM phusion/baseimage:jammy-1.0.1
 LABEL maintainer="team@cere.network"
 LABEL description="This is the optimization to create a small image."
 ARG PROFILE=release
@@ -71,6 +71,7 @@ RUN mv /usr/share/ca* /tmp && \
     mkdir -p /cerenetwork/.local/share/cere && \
     chown -R cerenetwork:cerenetwork /cerenetwork/.local && \
     ln -s /cerenetwork/.local/share/cere /data && \
+    mv -t /usr/local/bin /usr/bin/bash /usr/bin/sh && \
     rm -rf /usr/bin /usr/sbin
 
 USER cerenetwork

@@ -36,12 +36,16 @@ jobs:
           role-session-name: ${{ github.event.repository.name }}
           aws-region: us-west-2
 
-      - name: Get short SHA
+      - name: Confiure environment variables
         run: |
-          echo "GITHUB_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
-          echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> $GITHUB_ENV
-          echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> $GITHUB_ENV
-          echo "AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN" >> $GITHUB_ENV
+          echo "GITHUB_SHA=${GITHUB_SHA:0:7}" >> ${GITHUB_ENV}
+
+          echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> ${GITHUB_ENV}
+          echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> ${GITHUB_ENV}
+          echo "AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}" >> ${GITHUB_ENV}
+
+          echo "CERE_RUNTIME=cere_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
+          echo "CERE_DEV_RUNTIME=cere_dev_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -66,22 +70,33 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
 
-  #      - name: Upload cere-runtime wasm artifact
-  #        uses: actions/upload-artifact@v3
-  #        with:
-  #          name: cere_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm
-  #          path: target/${{ vars.PROFILE }}/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm
-  #
-  #      - name: Upload cere-dev-runtime wasm artifact
-  #        uses: actions/upload-artifact@v3
-  #        with:
-  #          name: cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm
-  #          path: target/${{ vars.PROFILE }}/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm
+      - name: Copy wasm artifacts from the image
+        run: |
+          CONTAINER_ID=$(docker create ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }})
+
+          docker cp "${CONTAINER_ID}:/home/cere/cere-runtime-artifacts/cere_runtime.compact.compressed.wasm" "./${{ env.CERE_RUNTIME }}"
+          docker cp "${CONTAINER_ID}:/home/cere/cere-dev-runtime-artifacts/cere_dev_runtime.compact.compressed.wasm" "./${{ env.CERE_DEV_RUNTIME }}"
+
+      - name: Upload cere-runtime wasm artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: "cere_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
+          path: "./${{ env.CERE_RUNTIME }}"
+
+      - name: Upload cere-dev-runtime wasm artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: "cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
+          path: "./${{ env.CERE_DEV_RUNTIME }}"
 
   trigger-e2e-tests:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Get short SHA
+        run: |
+          echo "GITHUB_SHA=${GITHUB_SHA:0:7}" >> ${GITHUB_ENV}
+
       - name: 'Trigger e2e DDC tests'
         uses: convictional/trigger-workflow-and-wait@v1.6.5
         with:
