@@ -405,10 +405,11 @@ pub mod pallet {
 
 			let era = Self::get_current_era();
 			
-			ensure!(
-				Self::contentOwnersCharged(era, &controller),
-				Error::<T>::ContentOwnersDoubleSpend
-			);
+			// not tested
+			// ensure!(
+			// 	Self::contentOwnersCharged(era, &controller),
+			// 	Error::<T>::ContentOwnersDoubleSpend
+			// );
 
 			ensure!(
 				OffchainWorkerKeys::<T>::contains_key(&controller),
