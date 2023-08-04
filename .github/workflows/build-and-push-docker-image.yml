@@ -2,54 +2,89 @@ name: Build and push image to ECR
 on:
   push:
     branches:
-      - dev
-      - master
       - 'feature/**'
-      - 'release/**'
-      - 'hotfix/**'
+
 env:
+  PROFILE: release
   ECR_REPOSITORY: pos-network-node
+
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
+    concurrency: dev
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v1
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+      - uses: actions/checkout@v3
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        continue-on-error: false
         with:
-          aws-access-key-id: ${{ secrets.ORG_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.ORG_AWS_SECRET_ACCESS_KEY }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.DEV_NETWORK_AWS_ACCOUNT_ID }}:role/github
+          role-session-name: ${{ github.event.repository.name }}
           aws-region: us-west-2
+
+      - name: Confiure environment variables
+        run: |
+          echo "GITHUB_SHA=${GITHUB_SHA:0:7}" >> ${GITHUB_ENV}
+
+          echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> ${GITHUB_ENV}
+          echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> ${GITHUB_ENV}
+          echo "AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}" >> ${GITHUB_ENV}
+
+          echo "CERE_RUNTIME=cere_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
+          echo "CERE_DEV_RUNTIME=cere_dev_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-      - name: Build and push image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          image_id=$(docker build . -q -t $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA)
-          echo IMAGE_ID=$image_id >> $GITHUB_ENV
-          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA"
-          docker image tag $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Build and push docker image to ECR
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          build-args: |
+            "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}"
+            "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}"
+            "AWS_SESSION_TOKEN=${{ env.AWS_SESSION_TOKEN }}"
+            "SCCACHE_REGION=us-west-2"
+            "SCCACHE_BUCKET=cere-blockchain-sccache"
+
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
+
       - name: Copy wasm artifacts from the image
         run: |
-          container_id=$(docker create ${{ env.IMAGE_ID }})
-          cere_runtime_artifact_name=cere_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm
-          echo CERE_RUNTIME_ARTIFACT_NAME=$cere_runtime_artifact_name >> $GITHUB_ENV
-          docker cp $container_id:/home/cere/cere-runtime-artifacts/cere_runtime.compact.compressed.wasm ./$cere_runtime_artifact_name
-          cere_dev_runtime_artifact_name=cere_dev_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm
-          echo CERE_DEV_RUNTIME_ARTIFACT_NAME=$cere_dev_runtime_artifact_name >> $GITHUB_ENV
-          docker cp $container_id:/home/cere/cere-dev-runtime-artifacts/cere_dev_runtime.compact.compressed.wasm ./$cere_dev_runtime_artifact_name
+          CONTAINER_ID=$(docker create ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }})
+
+          docker cp "${CONTAINER_ID}:/home/cere/cere-runtime-artifacts/cere_runtime.compact.compressed.wasm" "./${{ env.CERE_RUNTIME }}"
+          docker cp "${CONTAINER_ID}:/home/cere/cere-dev-runtime-artifacts/cere_dev_runtime.compact.compressed.wasm" "./${{ env.CERE_DEV_RUNTIME }}"
+
       - name: Upload cere-runtime wasm artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.CERE_RUNTIME_ARTIFACT_NAME }}
-          path: ./${{ env.CERE_RUNTIME_ARTIFACT_NAME }}
+          name: "cere_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
+          path: "./${{ env.CERE_RUNTIME }}"
+
       - name: Upload cere-dev-runtime wasm artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.CERE_DEV_RUNTIME_ARTIFACT_NAME }}
-          path: ./${{ env.CERE_DEV_RUNTIME_ARTIFACT_NAME }}
+          name: "cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
+          path: "./${{ env.CERE_DEV_RUNTIME }}"
