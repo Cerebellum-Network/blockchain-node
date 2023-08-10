@@ -1,13 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
-	decl_error,
-	decl_event,
-	decl_module,
-	decl_storage,
+	decl_error, decl_event, decl_module, decl_storage,
 	// dispatch,
 	ensure,
-	traits::Get,
+	traits::{ Get },
 };
 use frame_system::ensure_signed;
 
@@ -25,7 +22,7 @@ mod tests;
 /// Configure the pallet by specifying the parameters and types on which it depends.
 pub trait Config: frame_system::Config {
 	/// Because this pallet emits events, it depends on the runtime's definition of an event.
-	type RuntimeEvent: From<Event<Self>> + Into<<Self as frame_system::Config>::RuntimeEvent>;
+	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 
 	/// The minimum length a name may be.
 	type MinLength: Get<usize>;
@@ -55,7 +52,7 @@ decl_event!(
 	{
 		/// A data string was set. \[who\]
 		DataStringSet(AccountId),
-
+	
 		/// A data string was changed. \[who\]
 		DataStringChanged(AccountId),
 	}
@@ -76,7 +73,7 @@ decl_error! {
 // Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 decl_module! {
 	/// CereDDCModule declaration.
-	pub struct Module<T: Config> for enum Call where origin: T::RuntimeOrigin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		// Errors must be initialized if they are used by the pallet.
 		type Error = Error<T>;
 

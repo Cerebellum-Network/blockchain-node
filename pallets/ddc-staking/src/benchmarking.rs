@@ -86,9 +86,6 @@ benchmarks! {
 		let (edge_stash, edge_controller) = create_stash_controller_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
 		DdcStaking::<T>::serve(RawOrigin::Signed(edge_controller.clone()).into(), 1)?;
 		assert!(Edges::<T>::contains_key(&edge_stash));
-		CurrentEra::<T>::put(1);
-		DdcStaking::<T>::chill(RawOrigin::Signed(edge_controller.clone()).into())?;
-		CurrentEra::<T>::put(1 + Settings::<T>::get(1).edge_chill_delay);
 
 		whitelist_account!(edge_controller);
 	}: _(RawOrigin::Signed(edge_controller))
