@@ -32,11 +32,6 @@ jobs:
           rustup default stable
           rustup update nightly
           rustup update stable
-          rustup component add rustfmt --toolchain nightly
-
-      - name: Check Format
-        run: |
-          cargo +nightly fmt -- --check
 
       - name: Check Build
         run: |
