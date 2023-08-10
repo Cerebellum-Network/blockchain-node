@@ -1,12 +1,14 @@
-use crate as pallet_cere_ddc;
-use crate::Module;
-use frame_support::{construct_runtime, parameter_types, traits::Everything};
-use frame_system as system;
+use crate::{Module};
 use sp_core::H256;
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+use frame_support::{
+	traits::{Everything},
+	construct_runtime, parameter_types
 };
+use sp_runtime::{
+	traits::{BlakeTwo256, IdentityLookup}, testing::Header,
+};
+use frame_system as system;
+use crate as pallet_cere_ddc;
 
 // Configure a mock runtime to test the pallet.
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -31,8 +33,8 @@ impl system::Config for Test {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
+	type Origin = Origin;
+	type Call = Call;
 	type Index = u64;
 	type BlockNumber = u64;
 	type Hash = H256;
@@ -40,7 +42,7 @@ impl system::Config for Test {
 	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type RuntimeEvent = ();
+	type Event = ();
 	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
 	type Version = ();
@@ -60,7 +62,7 @@ parameter_types! {
 }
 
 impl pallet_cere_ddc::Config for Test {
-	type RuntimeEvent = ();
+	type Event = ();
 	type MinLength = MinLength;
 	type MaxLength = MaxLength;
 }
