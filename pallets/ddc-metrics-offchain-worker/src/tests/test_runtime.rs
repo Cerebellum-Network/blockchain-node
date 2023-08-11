@@ -60,43 +60,43 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type Index = u64;
-    type BlockNumber = BlockNumber;
-    type Hash = H256;
-    type RuntimeCall = RuntimeCall;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    // u64; // sp_core::sr25519::Public;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = generic::Header<BlockNumber, BlakeTwo256>;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type PalletInfo = PalletInfo;
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type BaseCallFilter = Everything;
+	type BlockWeights = ();
+	type BlockLength = ();
+	type RuntimeOrigin = RuntimeOrigin;
+	type Index = u64;
+	type BlockNumber = BlockNumber;
+	type Hash = H256;
+	type RuntimeCall = RuntimeCall;
+	type Hashing = BlakeTwo256;
+	type AccountId = AccountId;
+	// u64; // sp_core::sr25519::Public;
+	type Lookup = IdentityLookup<Self::AccountId>;
+	type Header = generic::Header<BlockNumber, BlakeTwo256>;
+	type RuntimeEvent = RuntimeEvent;
+	type BlockHashCount = BlockHashCount;
+	type DbWeight = ();
+	type Version = ();
+	type PalletInfo = PalletInfo;
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type OnNewAccount = ();
+	type OnKilledAccount = ();
+	type SystemWeightInfo = ();
+	type SS58Prefix = ();
+	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 impl pallet_balances::Config for Test {
-    type Balance = Balance;
-    type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
+	type Balance = Balance;
+	type DustRemoval = ();
+	type RuntimeEvent = RuntimeEvent;
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = System;
+	type WeightInfo = ();
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
 }
 
 thread_local! {
@@ -139,25 +139,25 @@ type BalanceOf<T> =
 	<<T as contractsConfig>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 impl contracts::Config for Test {
-    type Time = Timestamp;
-    type Randomness = Randomness;
-    type Currency = Balances;
-    type RuntimeEvent = RuntimeEvent;
-    type CallStack = [pallet_contracts::Frame<Self>; 31];
-    type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
-    type WeightInfo = ();
-    type ChainExtension = ();
-    type DeletionQueueDepth = ();
-    type DeletionWeightLimit = ();
-    type Schedule = Schedule;
-    type RuntimeCall = RuntimeCall;
-    type CallFilter = Nothing;
-    type DepositPerByte = DepositPerByte;
-    type DepositPerItem = DepositPerItem;
-    type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
-    type ContractAccessWeight = ();
-    type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
-    type MaxStorageKeyLen = ConstU32<128>;
+	type Time = Timestamp;
+	type Randomness = Randomness;
+	type Currency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type CallStack = [pallet_contracts::Frame<Self>; 31];
+	type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
+	type WeightInfo = ();
+	type ChainExtension = ();
+	type DeletionQueueDepth = ();
+	type DeletionWeightLimit = ();
+	type Schedule = Schedule;
+	type RuntimeCall = RuntimeCall;
+	type CallFilter = Nothing;
+	type DepositPerByte = DepositPerByte;
+	type DepositPerItem = DepositPerItem;
+	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type ContractAccessWeight = ();
+	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
+	type MaxStorageKeyLen = ConstU32<128>;
 }
 
 parameter_types! {
@@ -187,26 +187,25 @@ impl SigningTypes for Test {
 
 impl<LocalCall> SendTransactionTypes<LocalCall> for Test
 where
-    RuntimeCall: From<LocalCall>,
+	RuntimeCall: From<LocalCall>,
 {
-    type OverarchingCall = RuntimeCall;
-    type Extrinsic = Extrinsic;
-
+	type OverarchingCall = RuntimeCall;
+	type Extrinsic = Extrinsic;
 }
 impl pallet_randomness_collective_flip::Config for Test {}
 
 impl<LocalCall> CreateSignedTransaction<LocalCall> for Test
 where
-    RuntimeCall: From<LocalCall>,
+	RuntimeCall: From<LocalCall>,
 {
-    fn create_transaction<C: AppCrypto<Self::Public, Self::Signature>>(
-        call: RuntimeCall,
-        _public: <Signature as Verify>::Signer,
-        _account: AccountId,
-        nonce: u64,
-    ) -> Option<(RuntimeCall, <Extrinsic as ExtrinsicT>::SignaturePayload)> {
-        Some((call, (nonce, ())))
-    }
+	fn create_transaction<C: AppCrypto<Self::Public, Self::Signature>>(
+		call: RuntimeCall,
+		_public: <Signature as Verify>::Signer,
+		_account: AccountId,
+		nonce: u64,
+	) -> Option<(RuntimeCall, <Extrinsic as ExtrinsicT>::SignaturePayload)> {
+		Some((call, (nonce, ())))
+	}
 }
 
 parameter_types! {
@@ -218,6 +217,6 @@ impl Config for Test {
 
 	type AuthorityId = crypto::TestAuthId;
 
-    type RuntimeEvent = RuntimeEvent;
-    type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
 }

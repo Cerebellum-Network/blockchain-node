@@ -134,18 +134,18 @@ type ResultStr<T> = Result<T, &'static str>;
 const MS_PER_DAY: u64 = 24 * 3600 * 1000;
 
 decl_module! {
-    /// A public part of the pallet.
-    pub struct Module<T: Config> for enum Call where 
-        origin: T::RuntimeOrigin,
-        <T as frame_system::Config>::AccountId: AsRef<[u8]>,
-        <T as frame_system::Config>::AccountId: UncheckedFrom<T::Hash>,
-        <BalanceOf<T> as HasCompact>::Type: Clone,
-        <BalanceOf<T> as HasCompact>::Type: Eq,
-        <BalanceOf<T> as HasCompact>::Type: PartialEq,
-        <BalanceOf<T> as HasCompact>::Type: Debug,
-        <BalanceOf<T> as HasCompact>::Type: TypeInfo,
-        <BalanceOf<T> as HasCompact>::Type: Encode {
-        //fn deposit_event() = default;
+	/// A public part of the pallet.
+	pub struct Module<T: Config> for enum Call where
+		origin: T::RuntimeOrigin,
+		<T as frame_system::Config>::AccountId: AsRef<[u8]>,
+		<T as frame_system::Config>::AccountId: UncheckedFrom<T::Hash>,
+		<BalanceOf<T> as HasCompact>::Type: Clone,
+		<BalanceOf<T> as HasCompact>::Type: Eq,
+		<BalanceOf<T> as HasCompact>::Type: PartialEq,
+		<BalanceOf<T> as HasCompact>::Type: Debug,
+		<BalanceOf<T> as HasCompact>::Type: TypeInfo,
+		<BalanceOf<T> as HasCompact>::Type: Encode {
+		//fn deposit_event() = default;
 
 		/// Offchain Worker entry point.
 		///
@@ -833,11 +833,11 @@ where
 	/// The identifier type for an offchain worker.
 	type AuthorityId: AppCrypto<<Self as SigningTypes>::Public, <Self as SigningTypes>::Signature>;
 
-    // TODO: remove, or use Event and Call.
-    /// The overarching event type.
-    type RuntimeEvent: From<Event<Self>> + Into<<Self as frame_system::Config>::RuntimeEvent>;
-    /// The overarching dispatch call type.
-    type RuntimeCall: From<Call<Self>>;
+	// TODO: remove, or use Event and Call.
+	/// The overarching event type.
+	type RuntimeEvent: From<Event<Self>> + Into<<Self as frame_system::Config>::RuntimeEvent>;
+	/// The overarching dispatch call type.
+	type RuntimeCall: From<Call<Self>>;
 
 	type BlockInterval: Get<Self::BlockNumber>;
 }

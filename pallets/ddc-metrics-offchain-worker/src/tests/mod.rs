@@ -6,8 +6,8 @@ use sp_core::offchain::{
 };
 use sp_runtime::{traits::Hash, AccountId32, RuntimeAppPublic};
 use test_runtime::{
-    AccountId, Balance, Balances, Contracts, DdcMetricsOffchainWorker, RuntimeOrigin, System, Test,
-    Timestamp,
+	AccountId, Balance, Balances, Contracts, DdcMetricsOffchainWorker, RuntimeOrigin, System, Test,
+	Timestamp,
 };
 
 use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
@@ -285,15 +285,15 @@ fn should_run_contract() {
 		let contract_id = deploy_contract();
 		let call_data = DdcMetricsOffchainWorker::encode_get_current_period_ms();
 
-        pallet_contracts::Module::<T>::call(
-            RuntimeOrigin::signed(alice.clone()),
-            contract_id.clone(),
-            0,
-            Weight::from_ref_time(100_000_000_000),
-            None,
-            call_data.clone(),
-        )
-        .unwrap();
+		pallet_contracts::Module::<T>::call(
+			RuntimeOrigin::signed(alice.clone()),
+			contract_id.clone(),
+			0,
+			Weight::from_ref_time(100_000_000_000),
+			None,
+			call_data.clone(),
+		)
+		.unwrap();
 
 		let contract_exec_result = pallet_contracts::Pallet::<T>::bare_call(
 			alice.clone(),
@@ -335,20 +335,20 @@ fn deploy_contract() -> AccountId {
 	let wasm_hash = <T as FSC>::Hashing::hash(wasm);
 	let contract_args = encode_constructor();
 
-    // Deploy the contract.
-    //let endowment = contracts::Config::<T>::subsistence_threshold_uncached();
-    const GAS_LIMIT: frame_support::weights::Weight = Weight::from_ref_time(100_000_000_000);
-    const ENDOWMENT: Balance = 100_000_000_000;
-    Contracts::instantiate_with_code(
-        RuntimeOrigin::signed(alice.clone()),
-        ENDOWMENT,
-        GAS_LIMIT,
-        None,
-        wasm.to_vec(),
-        contract_args.clone(),
-        vec![]
-    )
-    .unwrap();
+	// Deploy the contract.
+	//let endowment = contracts::Config::<T>::subsistence_threshold_uncached();
+	const GAS_LIMIT: frame_support::weights::Weight = Weight::from_ref_time(100_000_000_000);
+	const ENDOWMENT: Balance = 100_000_000_000;
+	Contracts::instantiate_with_code(
+		RuntimeOrigin::signed(alice.clone()),
+		ENDOWMENT,
+		GAS_LIMIT,
+		None,
+		wasm.to_vec(),
+		contract_args.clone(),
+		vec![],
+	)
+	.unwrap();
 
 	// Configure worker with the contract address.
 	let contract_id = Contracts::contract_address(&alice, &wasm_hash, &vec![]);
@@ -368,16 +368,16 @@ fn deploy_contract() -> AccountId {
 		call_data_item[2].encode_to(&mut call_data);
 		permissions.encode_to(&mut call_data);
 
-        let results = Contracts::call(
-            RuntimeOrigin::signed(alice.clone()),
-            contract_id.clone(),
-            0,
-            Weight::from_ref_time(1_000_000_000_000),
-            None,
-            call_data,
-        );
-        results.unwrap();
-    }
+		let results = Contracts::call(
+			RuntimeOrigin::signed(alice.clone()),
+			contract_id.clone(),
+			0,
+			Weight::from_ref_time(1_000_000_000_000),
+			None,
+			call_data,
+		);
+		results.unwrap();
+	}
 
 	contract_id
 }

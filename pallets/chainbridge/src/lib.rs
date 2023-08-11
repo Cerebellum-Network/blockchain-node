@@ -3,10 +3,12 @@
 
 use codec::{Decode, Encode, EncodeLike};
 use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage,
 	dispatch::{
-        DispatchResult, DispatchClass, ClassifyDispatch, WeighData, Weight, PaysFee, Pays,
-        GetDispatchInfo
-    }, decl_module, decl_storage, decl_event, decl_error, ensure,
+		ClassifyDispatch, DispatchClass, DispatchResult, GetDispatchInfo, Pays, PaysFee, WeighData,
+		Weight,
+	},
+	ensure,
 	traits::{EnsureOrigin, Get},
 	PalletId, Parameter,
 };
@@ -104,14 +106,17 @@ impl<AccountId, BlockNumber: Default> Default for ProposalVotes<AccountId, Block
 }
 
 pub trait Config: system::Config {
-    type RuntimeEvent: From<Event<Self>> + Into<<Self as frame_system::Config>::RuntimeEvent>;
-    /// Origin used to administer the pallet
-    type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
-    /// Proposed dispatchable call
-    type Proposal: Parameter + Dispatchable<RuntimeOrigin = Self::RuntimeOrigin> + EncodeLike + GetDispatchInfo;
-    /// The identifier for this chain.
-    /// This must be unique and must not collide with existing IDs within a set of bridged chains.
-    type ChainId: Get<ChainId>;
+	type RuntimeEvent: From<Event<Self>> + Into<<Self as frame_system::Config>::RuntimeEvent>;
+	/// Origin used to administer the pallet
+	type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+	/// Proposed dispatchable call
+	type Proposal: Parameter
+		+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+		+ EncodeLike
+		+ GetDispatchInfo;
+	/// The identifier for this chain.
+	/// This must be unique and must not collide with existing IDs within a set of bridged chains.
+	type ChainId: Get<ChainId>;
 
 	type ProposalLifetime: Get<Self::BlockNumber>;
 }
@@ -210,7 +215,7 @@ decl_event!(
 
 decl_module! {
 	pub struct Module<T: Config> for enum Call where origin: T::RuntimeOrigin {
-        type Error = Error<T>;
+		type Error = Error<T>;
 
 		const ChainIdentity: ChainId = T::ChainId::get();
 		const ProposalLifetime: T::BlockNumber = T::ProposalLifetime::get();
@@ -343,12 +348,10 @@ decl_module! {
 impl<T: Config> Module<T> {
 	// *** Utility methods ***
 
-    pub fn ensure_admin(o: T::RuntimeOrigin) -> DispatchResult {
-        T::AdminOrigin::try_origin(o)
-            .map(|_| ())
-            .or_else(ensure_root)?;
-        Ok(())
-    }
+	pub fn ensure_admin(o: T::RuntimeOrigin) -> DispatchResult {
+		T::AdminOrigin::try_origin(o).map(|_| ()).or_else(ensure_root)?;
+		Ok(())
+	}
 
 	/// Checks if who is a relayer
 	pub fn is_relayer(who: &T::AccountId) -> bool {
@@ -591,14 +594,14 @@ impl<T: Config> Module<T> {
 /// Simple ensure origin for the bridge account
 pub struct EnsureBridge<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> EnsureOrigin<T::RuntimeOrigin> for EnsureBridge<T> {
-    type Success = T::AccountId;
-    fn try_origin(o: T::RuntimeOrigin) -> Result<Self::Success, T::RuntimeOrigin> {
-        let bridge_id = AccountIdConversion::<T::AccountId>::into_account_truncating(&MODULE_ID);
-        o.into().and_then(|o| match o {
-            system::RawOrigin::Signed(who) if who == bridge_id => Ok(bridge_id),
-            r => Err(T::RuntimeOrigin::from(r)),
-        })
-    }
+	type Success = T::AccountId;
+	fn try_origin(o: T::RuntimeOrigin) -> Result<Self::Success, T::RuntimeOrigin> {
+		let bridge_id = AccountIdConversion::<T::AccountId>::into_account_truncating(&MODULE_ID);
+		o.into().and_then(|o| match o {
+			system::RawOrigin::Signed(who) if who == bridge_id => Ok(bridge_id),
+			r => Err(T::RuntimeOrigin::from(r)),
+		})
+	}
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn successful_origin() -> T::RuntimeOrigin {

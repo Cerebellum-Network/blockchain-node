@@ -3,10 +3,11 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	dispatch::{DispatchResult, DispatchClass, ClassifyDispatch, WeighData, PaysFee, Pays},
-    decl_module, decl_storage, decl_event, decl_error, ensure,
+	decl_error, decl_event, decl_module, decl_storage,
+	dispatch::{ClassifyDispatch, DispatchClass, DispatchResult, Pays, PaysFee, WeighData},
+	ensure,
 	traits::Get,
-	weights::{Weight},
+	weights::Weight,
 };
 use frame_system::{self as system, ensure_root, ensure_signed};
 use sp_core::U256;
@@ -31,7 +32,7 @@ pub struct Erc721Token {
 }
 
 pub trait Config: system::Config {
-    type RuntimeEvent: From<Event<Self>> + Into<<Self as system::Config>::RuntimeEvent>;
+	type RuntimeEvent: From<Event<Self>> + Into<<Self as system::Config>::RuntimeEvent>;
 
 	/// Some identifier for this token type, possibly the originating ethereum address.
 	/// This is not explicitly used for anything, but may reflect the bridge's notion of resource
@@ -76,12 +77,9 @@ decl_event!(
 );
 
 decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::RuntimeOrigin {
 		type Error = Error<T>;
 		fn deposit_event() = default;
-	pub struct Module<T: Config> for enum Call where origin: T::RuntimeOrigin {
-        type Error = Error<T>;
-        fn deposit_event() = default;
 
 		/// Creates a new token with the given token ID and metadata, and gives ownership to owner
 		#[weight = 195_000_000]

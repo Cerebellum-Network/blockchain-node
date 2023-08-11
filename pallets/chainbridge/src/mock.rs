@@ -25,32 +25,32 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
-    type BaseCallFilter = Everything;
-    type BlockWeights = ();
-    type BlockLength = ();
-    type RuntimeOrigin = RuntimeOrigin;
-    type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = u64;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    // type ModuleToIndex = ();
-    type PalletInfo = PalletInfo;
-    // type MaxLocks = MaxLocks;
-    type AccountData = pallet_balances::AccountData<u64>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type SS58Prefix = ();
-    type OnSetCode = ();
-    type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type BaseCallFilter = Everything;
+	type BlockWeights = ();
+	type BlockLength = ();
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
+	type Index = u64;
+	type BlockNumber = u64;
+	type Hash = H256;
+	type Hashing = BlakeTwo256;
+	type AccountId = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
+	type Header = Header;
+	type RuntimeEvent = RuntimeEvent;
+	type BlockHashCount = BlockHashCount;
+	type DbWeight = ();
+	type Version = ();
+	// type ModuleToIndex = ();
+	type PalletInfo = PalletInfo;
+	// type MaxLocks = MaxLocks;
+	type AccountData = pallet_balances::AccountData<u64>;
+	type OnNewAccount = ();
+	type OnKilledAccount = ();
+	type SystemWeightInfo = ();
+	type SS58Prefix = ();
+	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {
@@ -62,15 +62,15 @@ ord_parameter_types! {
 }
 
 impl pallet_balances::Config for Test {
-    type Balance = u64;
-    type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
+	type Balance = u64;
+	type DustRemoval = ();
+	type RuntimeEvent = RuntimeEvent;
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = System;
+	type WeightInfo = ();
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
 }
 
 parameter_types! {
@@ -79,11 +79,11 @@ parameter_types! {
 }
 
 impl Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
-    type Proposal = RuntimeCall;
-    type ChainId = TestChainId;
-    type ProposalLifetime = ProposalLifetime;
+	type RuntimeEvent = RuntimeEvent;
+	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	type Proposal = RuntimeCall;
+	type ChainId = TestChainId;
+	type ProposalLifetime = ProposalLifetime;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -124,31 +124,29 @@ pub fn new_test_ext_initialized(
 	r_id: ResourceId,
 	resource: Vec<u8>,
 ) -> sp_io::TestExternalities {
-    let mut t = new_test_ext();
-    t.execute_with(|| {
-        // Set and check threshold
-        assert_ok!(Bridge::set_threshold(RuntimeOrigin::root(), TEST_THRESHOLD));
-        assert_eq!(Bridge::relayer_threshold(), TEST_THRESHOLD);
-        // Add relayers
-        assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_A));
-        assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_B));
-        assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_C));
-        // Whitelist chain
-        assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), src_id));
-        // Set and check resource ID mapped to some junk data
-        assert_ok!(Bridge::set_resource(RuntimeOrigin::root(), r_id, resource));
-        assert_eq!(Bridge::resource_exists(r_id), true);
-    });
-    t
+	let mut t = new_test_ext();
+	t.execute_with(|| {
+		// Set and check threshold
+		assert_ok!(Bridge::set_threshold(RuntimeOrigin::root(), TEST_THRESHOLD));
+		assert_eq!(Bridge::relayer_threshold(), TEST_THRESHOLD);
+		// Add relayers
+		assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_A));
+		assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_B));
+		assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_C));
+		// Whitelist chain
+		assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), src_id));
+		// Set and check resource ID mapped to some junk data
+		assert_ok!(Bridge::set_resource(RuntimeOrigin::root(), r_id, resource));
+		assert_eq!(Bridge::resource_exists(r_id), true);
+	});
+	t
 }
 
 // Checks events against the latest. A contiguous set of events must be provided. They must
 // include the most recent event, but do not have to include every past event.
 pub fn assert_events(mut expected: Vec<RuntimeEvent>) {
-    let mut actual: Vec<RuntimeEvent> = system::Module::<Test>::events()
-        .iter()
-        .map(|e| e.event.clone())
-        .collect();
+	let mut actual: Vec<RuntimeEvent> =
+		system::Module::<Test>::events().iter().map(|e| e.event.clone()).collect();
 
 	expected.reverse();
 
