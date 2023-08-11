@@ -667,7 +667,7 @@ pub mod pallet {
 			}
 		}
 
-		fn validate_edges() {
+		fn validate_edges() -> Result<(), &'static str> {
 			let current_era = Self::get_current_era();
 			let mock_data_url = Self::get_mock_data_url();
 			let data_provider_url = Self::get_data_provider_url();
@@ -792,7 +792,7 @@ pub mod pallet {
 						let signer: Signer<T, T::AuthorityId> = Signer::<_, _>::any_account();
 						if !signer.can_sign() {
 							log::warn!("No local accounts available to charge payments for CDN. Consider adding one via `author_insertKey` RPC.");
-							return
+							return Err("signing key not set")
 						}
 						// ToDo: replace local call by a call from `ddc-staking` pallet
 						let _tx_res: Option<(frame_system::offchain::Account<T>, Result<(), ()>)> =
@@ -821,6 +821,8 @@ pub mod pallet {
 					}
 				}
 			}
+
+			Ok(())
 		}
 	}
 }
