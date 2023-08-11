@@ -193,6 +193,7 @@ pub fn cere_dev_genesis(
 			stakers,
 			..Default::default()
 		},
+		ddc_staking: cere_dev::DdcStakingConfig::default(),
 		democracy: cere_dev::DemocracyConfig::default(),
 		elections: cere_dev::ElectionsConfig {
 			members: endowed_accounts
