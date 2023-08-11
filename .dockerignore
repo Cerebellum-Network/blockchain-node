@@ -2,3 +2,7 @@
 **target*
 doc
 Dockerfile*
+
+!target/release/cere/
+!target/release/wbuild/cere-runtime/
+!target/release/wbuild/cere-dev-runtime/
