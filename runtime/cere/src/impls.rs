@@ -31,18 +31,18 @@ impl OnUnbalanced<NegativeImbalance> for Author {
 
 #[cfg(test)]
 mod multiplier_tests {
+	use crate::{
+		AdjustmentVariable, MinimumMultiplier, Runtime, RuntimeBlockWeights as BlockWeights,
+		System, TargetBlockFullness, TransactionPayment,
+	};
+	use cere_runtime_constants::{currency::*, time::*};
+	use frame_support::weights::{DispatchClass, Weight, WeightToFee as WeightToFeeT};
 	use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 	use sp_runtime::{
 		assert_eq_error_rate,
 		traits::{Convert, One, Zero},
 		FixedPointNumber,
 	};
-	use cere_runtime_constants::{currency::*, time::*};
-	use crate::{
-		AdjustmentVariable, MinimumMultiplier, Runtime, RuntimeBlockWeights as BlockWeights,
-		System, TargetBlockFullness, TransactionPayment,
-	};
-	use frame_support::weights::{DispatchClass, Weight, WeightToFee as WeightToFeeT};
 
 	fn max_normal() -> Weight {
 		BlockWeights::get()
@@ -197,7 +197,8 @@ mod multiplier_tests {
 		// `cargo test congested_chain_simulation -- --nocapture` to get some insight.
 
 		// almost full. The entire quota of normal transactions is taken.
-		let block_weight = BlockWeights::get().get(DispatchClass::Normal).max_total.unwrap() - Weight::from_ref_time(100);
+		let block_weight = BlockWeights::get().get(DispatchClass::Normal).max_total.unwrap() -
+			Weight::from_ref_time(100);
 
 		// Default substrate weight.
 		let tx_weight = frame_support::weights::constants::ExtrinsicBaseWeight::get();
