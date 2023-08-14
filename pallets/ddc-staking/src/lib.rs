@@ -69,6 +69,24 @@ pub struct EraRewardPoints<AccountId: Ord> {
 	pub individual: BTreeMap<AccountId, RewardPoint>,
 }
 
+/// Reward points of an era. Used to split era total payout between stakers.
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Clone)]
+pub struct EraRewardPointsPerNode {
+	/// Era points accrued
+	pub era: EraIndex,
+	/// Total number of points for node 
+	pub points: RewardPoint
+}
+
+/// Reward paid for some era.
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Clone)]
+pub struct EraRewardsPaid<Balance: HasCompact> {
+	/// Era number
+	pub era: EraIndex,
+	/// Cere tokens paid
+	pub reward: Balance,
+}
+
 impl<AccountId: Ord> Default for EraRewardPoints<AccountId> {
 	fn default() -> Self {
 		EraRewardPoints { total: Default::default(), individual: BTreeMap::new() }
@@ -279,6 +297,12 @@ pub mod pallet {
 	#[pallet::getter(fn rewards)]
 	pub type Rewards<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>, ValueQuery>;
+	
+	/// Map from all "stash" accounts to the paid out rewards
+	#[pallet::storage]
+	#[pallet::getter(fn paideras)]
+	pub type PaidEras<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, Vec<EraRewardsPaid<BalanceOf<T>>>, ValueQuery>;
 
 	/// The current era index.
 	///
@@ -295,6 +319,14 @@ pub mod pallet {
 	#[pallet::getter(fn eras_edges_reward_points)]
 	pub type ErasEdgesRewardPoints<T: Config> =
 		StorageMap<_, Twox64Concat, EraIndex, EraRewardPoints<T::AccountId>, ValueQuery>;
+
+	/// The reward each CDN participant earned in the era.
+	///
+	/// See also [`pallet_staking::ErasRewardPoints`].
+	#[pallet::storage]
+	#[pallet::getter(fn eras_edges_reward_points_per_node)]
+	pub type ErasEdgesRewardPointsPerNode<T: Config> =
+		StorageMap<_, Twox64Concat, T::AccountId, Vec<EraRewardPointsPerNode>, ValueQuery>;
 
 	/// Price per byte of the bucket traffic in smallest units of the currency.
 	#[pallet::storage]
@@ -828,6 +860,10 @@ pub mod pallet {
 					*current_balance += reward;
 				});
 				log::info!("Total rewards to be inserted: {:?}", Self::rewards(&stash));
+				PaidEras::<T>::mutate(&stash, |current_rewards| {
+					let rewards = EraRewardsPaid { era, reward };
+					current_rewards.push(rewards);
+				});
 			}
 			Self::deposit_event(Event::<T>::PayoutNodes(era, era_reward_points.clone() ,price_per_byte));
 			log::info!("Payout event executed");
