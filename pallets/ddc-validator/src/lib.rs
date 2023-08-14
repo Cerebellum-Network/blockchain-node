@@ -203,7 +203,7 @@ pub mod pallet {
 	
 	// Map to check if validation decision was performed for the era
 	#[pallet::storage]
-	#[pallet::getter(fn contentOwnersCharged)]
+	#[pallet::getter(fn content_owners_charged)]
 	pub(super) type EraContentOwnersCharged<T: Config> =
 	StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
 
@@ -410,10 +410,10 @@ pub mod pallet {
 			let era = Self::get_current_era();
 			
 			// not tested
-			// ensure!(
-			// 	Self::contentOwnersCharged(era, &controller),
-			// 	Error::<T>::ContentOwnersDoubleSpend
-			// );
+			ensure!(
+				!Self::content_owners_charged(era, &controller),
+				Error::<T>::ContentOwnersDoubleSpend
+			);
 
 			ensure!(
 				OffchainWorkerKeys::<T>::contains_key(&controller),

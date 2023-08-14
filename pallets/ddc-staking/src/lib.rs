@@ -300,9 +300,22 @@ pub mod pallet {
 	
 	/// Map from all "stash" accounts to the paid out rewards
 	#[pallet::storage]
-	#[pallet::getter(fn paideras)]
-	pub type PaidEras<T: Config> =
+	#[pallet::getter(fn paideraspernode)]
+	pub type PaidErasPerNode<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, Vec<EraRewardsPaid<BalanceOf<T>>>, ValueQuery>;
+	
+	// Map to check if validation decision was performed for the era
+	#[pallet::storage]
+	#[pallet::getter(fn paideras)]
+	pub(super) type PaidEras<T: Config> =
+		StorageMap<_, Twox64Concat, EraIndex, bool, ValueQuery>;
+
+	// Map to check if validation decision was performed for the era
+	#[pallet::storage]
+	#[pallet::getter(fn contentownerscharged)]
+	pub(super) type EraContentOwnersCharged<T: Config> =
+	StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
+
 
 	/// The current era index.
 	///
@@ -380,6 +393,7 @@ pub mod pallet {
 		/// Action is allowed at some point of time in future not reached yet.
 		TooEarly,
 		DuplicateRewardPoints,
+		DoubleSpendRewards,
 		PricingNotSet,
 		BudgetOverflow,
 	}
@@ -758,6 +772,14 @@ pub mod pallet {
 		#[pallet::weight(100_000)]
 		pub fn payout_stakers(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
 			ensure_signed(origin)?;
+
+			// not tested
+			ensure!(
+				!Self::paideras(era),
+				Error::<T>::DoubleSpendRewards
+			);
+
+			PaidEras::<T>::insert(era, true);			
 			Self::do_payout_stakers(era)
 		}
 
@@ -860,7 +882,7 @@ pub mod pallet {
 					*current_balance += reward;
 				});
 				log::info!("Total rewards to be inserted: {:?}", Self::rewards(&stash));
-				PaidEras::<T>::mutate(&stash, |current_rewards| {
+				PaidErasPerNode::<T>::mutate(&stash, |current_rewards| {
 					let rewards = EraRewardsPaid { era, reward };
 					current_rewards.push(rewards);
 				});
