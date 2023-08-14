@@ -21,7 +21,7 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
     scripts/init.sh && \
-    cargo build --$PROFILE
+    cargo build --locked --$PROFILE
 
 # ===== SECOND STAGE ======
 FROM phusion/baseimage:0.11
