@@ -266,17 +266,24 @@ pub mod pallet {
 
 			Signal::<T>::set(Some(false));
 
-			let era = Self::get_current_era();
-			log::info!("current era: {:?}", era);
+			let current_ddc_era = match ddc_staking::pallet::Pallet::<T>::current_era() {
+				Some(era) => era,
+				None => {
+					defensive!("DDC era not set");
+					return Weight::from_ref_time(0)
+				},
+			};
+			log::info!("current DDC era: {:?}", current_ddc_era);
 
 			// Produce an assignment for the next era if it's not produced yet.
 			match Self::last_managed_era() {
-				Some(last_managed_era) if era < last_managed_era => return Weight::from_ref_time(0),
+				Some(last_managed_era) if current_ddc_era < last_managed_era =>
+					return Weight::from_ref_time(0),
 				_ => (),
 			};
 
-			match Self::assign(3usize, era + 1) {
-				Ok(_) => <LastManagedEra<T>>::put(era + 1),
+			match Self::assign(3usize, current_ddc_era + 1) {
+				Ok(_) => <LastManagedEra<T>>::put(current_ddc_era + 1),
 				Err(AssignmentError::DefensiveEmptyQuorumsCycle) => {
 					defensive!("unexpectedly empty quorums cycle");
 				},
@@ -308,10 +315,16 @@ pub mod pallet {
 				_ => 0, // let's consider an absent or undecodable data as we never did a validation
 			};
 
-			let current_era = Self::get_current_era();
+			let current_ddc_era = match ddc_staking::pallet::Pallet::<T>::current_era() {
+				Some(era) => era,
+				None => {
+					defensive!("DDC era not set");
+					return
+				},
+			};
 
 			// Skip if the validation is already complete for the era.
-			if current_era <= last_validated_era {
+			if current_ddc_era <= last_validated_era {
 				should_validate_because_new_era = false;
 			}
 
@@ -484,14 +497,6 @@ pub mod pallet {
 			}
 
 			Ok(signer)
-		}
-
-		// Get the current era; Shall we start era count from 0 or from 1?
-		fn get_current_era() -> EraIndex {
-			((<T as pallet::Config>::TimeProvider::now().as_millis() - TIME_START_MS) /
-				ERA_DURATION_MS)
-				.try_into()
-				.unwrap()
 		}
 
 		fn validate(bytes_sent: &dac::BytesSent, bytes_received: &dac::BytesReceived) -> bool {
@@ -668,7 +673,8 @@ pub mod pallet {
 		}
 
 		fn validate_edges() -> Result<(), &'static str> {
-			let current_era = Self::get_current_era();
+			let current_ddc_era =
+				ddc_staking::pallet::Pallet::<T>::current_era().ok_or("DDC era not set")?;
 			let mock_data_url = Self::get_mock_data_url();
 			let data_provider_url = Self::get_data_provider_url();
 			info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
@@ -679,7 +685,7 @@ pub mod pallet {
 
 			info!("validator: {:?}", validator);
 
-			let assigned_edges = Self::assignments(current_era - 1, validator.clone())
+			let assigned_edges = Self::assignments(current_ddc_era - 1, validator.clone())
 				.expect("No assignments for the previous era");
 
 			info!("assigned_edges: {:?}", assigned_edges);
@@ -692,7 +698,7 @@ pub mod pallet {
 					"{}{}{}/$.{}",
 					mock_data_url,
 					"ddc:dac:aggregation:nodes:",
-					current_era - 1,
+					current_ddc_era - 1,
 					utils::account_to_string::<T>(assigned_edge.clone())
 				);
 				info!("edge url: {:?}", edge_url);
@@ -748,7 +754,7 @@ pub mod pallet {
 
 				let response = shm::share_intermediate_validation_result(
 					&data_provider_url,
-					current_era - 1,
+					current_ddc_era - 1,
 					&validator_str,
 					&edge_str,
 					is_valid,
@@ -765,7 +771,7 @@ pub mod pallet {
 
 				if let Ok(res) = response {
 					let edge = utils::account_to_string::<T>(assigned_edge.clone());
-					let prev_era = (current_era - 1) as EraIndex;
+					let prev_era = (current_ddc_era - 1) as EraIndex;
 					let quorum = Self::find_validators_from_quorum(&validator, &prev_era);
 					let validations_res = shm::get_intermediate_decisions(
 						&data_provider_url,
@@ -803,7 +809,7 @@ pub mod pallet {
 							});
 
 						let _payout_tx_res = signer.send_signed_transaction(|_account| {
-							Call::payout_cdn_owners { era: current_era }
+							Call::payout_cdn_owners { era: current_ddc_era }
 						});
 
 						let final_res = dac::get_final_decision(validations_res);
@@ -812,7 +818,7 @@ pub mod pallet {
 
 						let tx_res =
 							signer.send_signed_transaction(|_acct| Call::set_validation_decision {
-								era: current_era,
+								era: current_ddc_era,
 								cdn_node: utils::string_to_account::<T>(edge.clone()),
 								validation_decision: final_res.clone(),
 							});
