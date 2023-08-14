@@ -385,8 +385,12 @@ pub mod pallet {
 
 			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
 				for (staker, points) in stakers_points.clone().into_iter() {
-					*era_rewards.individual.entry(staker).or_default() += points;
+					*era_rewards.individual.entry(staker.clone()).or_default() += points;
 					era_rewards.total += points;
+					<ddc_staking::pallet::ErasEdgesRewardPointsPerNode<T>>::mutate(staker, |current_reward_points| {
+						let rewards = ddc_staking::EraRewardPointsPerNode { era, points };
+						current_reward_points.push(rewards);
+					});
 				}
 			});
 
@@ -681,9 +685,8 @@ pub mod pallet {
 				info!("node aggregates: {:?}", node_aggregates);
 
 				// No data for node
-				if (node_aggregates.len() == 0) {
-					continue
-				}
+				if node_aggregates.len() == 0 { continue; }
+				
 
 				let request_ids = &node_aggregates[0].request_ids;
 				info!("request_ids: {:?}", request_ids);
@@ -715,11 +718,13 @@ pub mod pallet {
 					},
 				};
 
-				info!("decision: {:?}", decision);
+				info!("decision to be encoded: {:?}", decision);
 
 				let serialized_decision = serde_json::to_string(&decision).unwrap();
 				let encoded_decision =
 					shm::base64_encode(&serialized_decision.as_bytes().to_vec()).unwrap();
+				info!("encoded decision: {:?}", encoded_decision);
+
 				let validator_str = utils::account_to_string::<T>(validator.clone());
 				let edge_str = utils::account_to_string::<T>(assigned_edge.clone());
 
