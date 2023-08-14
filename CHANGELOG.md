@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ...
 
+## [4.8.1]
+
+### Added
+
+- [C,D] Contract migration
+
 ## [4.8.0]
 
 ### Added
