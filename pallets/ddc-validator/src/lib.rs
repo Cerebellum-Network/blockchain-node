@@ -332,7 +332,10 @@ pub mod pallet {
 			let should_validate_because_signal = Signal::<T>::get().unwrap_or(false);
 
 			if should_validate_because_new_era || should_validate_because_signal {
-				Self::validate_edges();
+				let validation_result = Self::validate_edges();
+				if let Err(e) = validation_result {
+					log::warn!("🔎 DDC validation failed. {}", e);
+				}
 			}
 		}
 	}
