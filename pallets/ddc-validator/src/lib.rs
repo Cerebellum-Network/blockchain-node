@@ -681,7 +681,10 @@ pub mod pallet {
 
 			// let signer = Self::get_signer().unwrap();
 			// let validator = signer.get_any_account().unwrap().id;
-			let validator = Self::get_public_key().unwrap();
+			let validator = match Self::get_public_key() {
+				Some(key) => key,
+				None => return Err("No validator public key found."),
+			};
 
 			info!("validator: {:?}", validator);
 
