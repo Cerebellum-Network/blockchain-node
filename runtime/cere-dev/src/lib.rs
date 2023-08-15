@@ -1270,6 +1270,7 @@ impl pallet_ddc_staking::Config for Runtime {
 	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type Event = Event;
 	type UnixTime = Timestamp;
+	type TimeProvider = pallet_timestamp::Pallet<Runtime>;
 	type StakersPayoutSource = Ddc_Accounts_Pallet_Id;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
 }
