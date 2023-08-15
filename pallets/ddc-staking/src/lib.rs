@@ -260,6 +260,8 @@ pub mod pallet {
 		/// Time used for computing era index. It is guaranteed to start being called from the first
 		/// `on_finalize`.
 		type UnixTime: UnixTime;
+
+		type TimeProvider: UnixTime;
 	}
 
 	
@@ -392,6 +394,7 @@ pub mod pallet {
 		AlreadyInRole,
 		/// Action is allowed at some point of time in future not reached yet.
 		TooEarly,
+		EraNotValidated,
 		DuplicateRewardPoints,
 		DoubleSpendRewards,
 		PricingNotSet,
@@ -772,11 +775,16 @@ pub mod pallet {
 		#[pallet::weight(100_000)]
 		pub fn payout_stakers(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
 			ensure_signed(origin)?;
+			let current_era = Self::get_current_era();
 
-			// not tested
 			ensure!(
 				!Self::paideras(era),
 				Error::<T>::DoubleSpendRewards
+			);
+
+			ensure!(
+				current_era >= era + 2,
+				Error::<T>::EraNotValidated
 			);
 
 			PaidEras::<T>::insert(era, true);			
@@ -1021,6 +1029,13 @@ pub mod pallet {
 					era_rewards.total += points;
 				}
 			});
+		}
+
+		// Get the current era; Shall we start era count from 0 or from 1?
+		fn get_current_era() -> EraIndex {
+			((<T as pallet::Config>::TimeProvider::now().as_millis() - DDC_ERA_START_MS) / DDC_ERA_DURATION_MS)
+				.try_into()
+				.unwrap()
 		}
 	}
 }
