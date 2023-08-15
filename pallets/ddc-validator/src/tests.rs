@@ -6,7 +6,7 @@ use crate::{
 use codec::Decode;
 use frame_support::{
 	assert_ok,
-	traits::{OffchainWorker, OnInitialize},
+	traits::{OffchainWorker, OnFinalize, OnInitialize},
 };
 use pallet_ddc_accounts::BucketsDetails;
 use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
@@ -124,11 +124,13 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 		Timestamp::set_timestamp(
 			(TIME_START_MS + ERA_DURATION_MS * (era_to_validate as u128 - 1)) as u64,
 		);
+		DdcStaking::on_finalize(era_block_number - 1); // set DDC era counter
 		DdcValidator::on_initialize(era_block_number - 1); // make assignments
 
 		Timestamp::set_timestamp(
 			(TIME_START_MS + ERA_DURATION_MS * (era_to_validate as u128 + 1)) as u64,
 		);
+		DdcStaking::on_finalize(era_block_number + 1); // inc DDC era counter
 		DdcValidator::offchain_worker(era_block_number + 1); // execute assignments
 
 		let mut transactions = pool_state.read().transactions.clone();
