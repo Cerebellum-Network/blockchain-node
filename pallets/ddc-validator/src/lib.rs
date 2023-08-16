@@ -224,6 +224,12 @@ pub mod pallet {
 	pub(super) type ValidationDecisionSetForNode<T: Config> =
 	StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
 
+	// Map to check if reward points were set for the era
+	#[pallet::storage]
+	#[pallet::getter(fn reward_points_set_for_node)]
+	pub(super) type RewardPointsSetForNode<T: Config> =
+	StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
+
 	/// The last era for which the tasks assignment produced.
 	#[pallet::storage]
 	#[pallet::getter(fn last_managed_era)]
@@ -241,6 +247,7 @@ pub mod pallet {
 		OCWKeyNotRegistered,
 		ContentOwnersDoubleSpend,
 		ValidationDecisionAlreadySet,
+		NodeNotActive
 	}
 
 	#[pallet::event]
@@ -369,8 +376,12 @@ pub mod pallet {
 				!Self::validation_decision_set_for_node(era, &cdn_node),
 				Error::<T>::ValidationDecisionAlreadySet
 			);
+
+			ensure!(
+				<ddc_staking::pallet::Edges<T>>::contains_key(&cdn_node),
+				Error::<T>::NodeNotActive
+			);
 			// ToDo: check if the era is current - 1.
-			// ToDo: check cdn_node is known to ddc-staking.
 
 			ValidationDecisions::<T>::insert(era, cdn_node.clone(), validation_decision.clone());
 
@@ -406,12 +417,17 @@ pub mod pallet {
 
 			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
 				for (staker, points) in stakers_points.clone().into_iter() {
-					*era_rewards.individual.entry(staker.clone()).or_default() += points;
-					era_rewards.total += points;
-					<ddc_staking::pallet::ErasEdgesRewardPointsPerNode<T>>::mutate(staker, |current_reward_points| {
-						let rewards = ddc_staking::EraRewardPointsPerNode { era, points };
-						current_reward_points.push(rewards);
-					});
+					if !Self::reward_points_set_for_node(era, &staker) { // check if rewards were not yet set for era for node
+						if <ddc_staking::pallet::Edges<T>>::contains_key(&staker) { // check if node is active
+							*era_rewards.individual.entry(staker.clone()).or_default() += points;
+							era_rewards.total += points;
+							<ddc_staking::pallet::ErasEdgesRewardPointsPerNode<T>>::mutate(&staker, |current_reward_points| {
+								let rewards = ddc_staking::EraRewardPointsPerNode { era, points };
+								current_reward_points.push(rewards);
+							});
+							RewardPointsSetForNode::<T>::insert(era, staker, true);
+						}
+					}					
 				}
 			});
 
@@ -429,15 +445,15 @@ pub mod pallet {
 			log::info!("Controller is {:?}", controller);
 
 			let era = Self::get_current_era();
-			
-			ensure!(
-				!Self::content_owners_charged(era, &controller),
-				Error::<T>::ContentOwnersDoubleSpend
-			);
 
 			ensure!(
 				OffchainWorkerKeys::<T>::contains_key(&controller),
 				Error::<T>::OCWKeyNotRegistered
+			);
+
+			ensure!(
+				!Self::content_owners_charged(era, &controller),
+				Error::<T>::ContentOwnersDoubleSpend
 			);
 			
 			<ddc_accounts::pallet::Pallet::<T>>::charge_payments_new(paying_accounts);
