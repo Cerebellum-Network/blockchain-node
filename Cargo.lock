@@ -722,7 +722,7 @@ dependencies = [
 
 [[package]]
 name = "cere"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "cere-cli",
  "sc-cli",
@@ -732,7 +732,7 @@ dependencies = [
 
 [[package]]
 name = "cere-cli"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "cere-client",
  "cere-service",
@@ -746,7 +746,7 @@ dependencies = [
 
 [[package]]
 name = "cere-client"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
@@ -781,7 +781,7 @@ dependencies = [
 
 [[package]]
 name = "cere-dev-runtime"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "cere-dev-runtime-constants",
  "cere-runtime-common",
@@ -871,7 +871,7 @@ dependencies = [
 
 [[package]]
 name = "cere-dev-runtime-constants"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "node-primitives",
  "sp-runtime",
@@ -879,7 +879,7 @@ dependencies = [
 
 [[package]]
 name = "cere-rpc"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "jsonrpsee",
  "node-primitives",
@@ -909,7 +909,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "cere-runtime-common",
  "cere-runtime-constants",
@@ -996,7 +996,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime-common"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "frame-support",
  "node-primitives",
@@ -1006,7 +1006,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime-constants"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "node-primitives",
  "sp-runtime",
@@ -1014,7 +1014,7 @@ dependencies = [
 
 [[package]]
 name = "cere-service"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "cere-client",
  "cere-dev-runtime",
@@ -4676,7 +4676,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-cere-ddc"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4691,7 +4691,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-chainbridge"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4844,7 +4844,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-metrics-offchain-worker"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "alt_serde",
  "frame-support",
@@ -4870,7 +4870,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-staking"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4995,7 +4995,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc20"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5015,7 +5015,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc721"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
