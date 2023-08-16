@@ -331,12 +331,17 @@ pub mod pallet {
 			// Validation start forced externally?
 			let should_validate_because_signal = Signal::<T>::get().unwrap_or(false);
 
-			if should_validate_because_new_era || should_validate_because_signal {
-				let validation_result = Self::validate_edges();
-				if let Err(e) = validation_result {
-					log::warn!("🔎 DDC validation failed. {}", e);
-				}
+			if !should_validate_because_new_era && !should_validate_because_signal {
+				return
 			}
+
+			if let Err(e) = Self::validate_edges() {
+				log::warn!("🔎 DDC validation failed. {}", e);
+				return
+			}
+
+			last_validated_era_storage.set(&current_ddc_era);
+			log::info!("🔎 DDC validation complete for {} era.", current_ddc_era);
 		}
 	}
 
