@@ -128,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48000,
+	spec_version: 48001,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 5,
@@ -1423,6 +1423,7 @@ pub type Executive = frame_executive::Executive<
 			StakingMigrationV11OldPallet,
 		>,
 		pallet_staking::migrations::v12::MigrateToV12<Runtime>,
+		pallet_contracts::Migration<Runtime>,
 	),
 >;
 
