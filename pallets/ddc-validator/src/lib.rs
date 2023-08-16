@@ -218,6 +218,12 @@ pub mod pallet {
 	pub type ValidationDecisions<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, ValidationDecision>;
 
+	// Map to check if validation decision was performed for the era
+	#[pallet::storage]
+	#[pallet::getter(fn validation_decision_set_for_node)]
+	pub(super) type ValidationDecisionSetForNode<T: Config> =
+	StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
+
 	/// The last era for which the tasks assignment produced.
 	#[pallet::storage]
 	#[pallet::getter(fn last_managed_era)]
@@ -233,7 +239,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		NotController,
 		OCWKeyNotRegistered,
-		ContentOwnersDoubleSpend
+		ContentOwnersDoubleSpend,
+		ValidationDecisionAlreadySet,
 	}
 
 	#[pallet::event]
@@ -351,16 +358,25 @@ pub mod pallet {
 			cdn_node: T::AccountId,
 			validation_decision: ValidationDecision,
 		) -> DispatchResult {
-			ensure_signed(origin)?;
+			let controller = ensure_signed(origin)?;
 
-			// ToDo: check if origin is a validator.
+			ensure!(
+				OffchainWorkerKeys::<T>::contains_key(&controller),
+				Error::<T>::OCWKeyNotRegistered
+			);
+
+			ensure!(
+				!Self::validation_decision_set_for_node(era, &cdn_node),
+				Error::<T>::ValidationDecisionAlreadySet
+			);
 			// ToDo: check if the era is current - 1.
-			// ToDo: check if the validation decision is not set yet.
 			// ToDo: check cdn_node is known to ddc-staking.
 
 			ValidationDecisions::<T>::insert(era, cdn_node.clone(), validation_decision.clone());
 
-			Self::deposit_event(Event::<T>::ValidationDecision(era, cdn_node, validation_decision));
+			Self::deposit_event(Event::<T>::ValidationDecision(era, cdn_node.clone(), validation_decision));
+
+			ValidationDecisionSetForNode::<T>::insert(era, cdn_node, true);
 
 			Ok(())
 		}
@@ -381,7 +397,12 @@ pub mod pallet {
 			era: EraIndex,
 			stakers_points: Vec<(T::AccountId, u64)>,
 		) -> DispatchResult {
-			ensure_signed(origin)?;
+			let controller = ensure_signed(origin)?;
+
+			ensure!(
+				OffchainWorkerKeys::<T>::contains_key(&controller),
+				Error::<T>::OCWKeyNotRegistered
+			);
 
 			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
 				for (staker, points) in stakers_points.clone().into_iter() {
@@ -409,7 +430,6 @@ pub mod pallet {
 
 			let era = Self::get_current_era();
 			
-			// not tested
 			ensure!(
 				!Self::content_owners_charged(era, &controller),
 				Error::<T>::ContentOwnersDoubleSpend
@@ -432,15 +452,9 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			era: EraIndex,
 		) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
-			ensure!(
-				OffchainWorkerKeys::<T>::contains_key(&controller),
-				Error::<T>::OCWKeyNotRegistered
-			);
+			ensure_signed(origin)?;
 
-			<ddc_staking::pallet::Pallet::<T>>::do_payout_stakers(era);
-
-			Ok(())
+			<ddc_staking::pallet::Pallet::<T>>::do_payout_stakers(era)
 		}
 
 		#[pallet::weight(100_000)]
