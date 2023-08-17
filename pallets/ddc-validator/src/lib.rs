@@ -75,6 +75,10 @@ type ResultStr<T> = Result<T, &'static str>;
 /// assignment.
 const LAST_VALIDATED_ERA_KEY: &[u8; 40] = b"pallet-ddc-validator::last_validated_era";
 
+/// Local storage key that holds the flag to enable DDC validation. Set it to true (0x01) to enable
+/// DDC validation, set it to false (0x00) or delete the key to disable it.
+const ENABLE_DDC_VALIDATION_KEY: &[u8; 21] = b"enable-ddc-validation";
+
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
 
 pub const TIME_START_MS: u128 = 1_672_531_200_000;
@@ -297,6 +301,12 @@ pub mod pallet {
 			// Skip if not a validator.
 			if !sp_io::offchain::is_validator() {
 				return
+			}
+
+			// Skip if DDC validation is not enabled.
+			match StorageValueRef::persistent(ENABLE_DDC_VALIDATION_KEY).get::<bool>() {
+				Ok(Some(enabled)) if enabled == true => (),
+				_ => return,
 			}
 
 			let mut should_validate_because_new_era = true;
