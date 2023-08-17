@@ -12,6 +12,7 @@ use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, Zero},
 	RuntimeDebug,
+	SaturatedConversion,
 };
 
 use sp_staking::EraIndex;
@@ -566,13 +567,14 @@ pub mod pallet {
 		// Charge payments from content owners
 		pub fn charge_payments_new(
 			paying_accounts: Vec<BucketsDetails<BalanceOf<T>>>,
+			pricing: u128,
 		) -> DispatchResult {
       let mut total_charged = BalanceOf::<T>::zero();
 
       for bucket_details in paying_accounts.iter() {
         let bucket: Bucket<T::AccountId> = Self::buckets(bucket_details.bucket_id).unwrap();
         let content_owner = bucket.owner_id;
-        let amount = bucket_details.amount;
+        let amount = bucket_details.amount * pricing.saturated_into::<BalanceOf<T>>();
 
         let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotController)?;
         if ledger.active >= amount {

@@ -456,7 +456,8 @@ pub mod pallet {
 				Error::<T>::ContentOwnersDoubleSpend
 			);
 			
-			<ddc_accounts::pallet::Pallet::<T>>::charge_payments_new(paying_accounts);
+			let pricing: u128 = <ddc_staking::pallet::Pallet::<T>>::pricing().unwrap();
+			<ddc_accounts::pallet::Pallet::<T>>::charge_payments_new(paying_accounts, pricing);
 
 			EraContentOwnersCharged::<T>::insert(era, controller, true);
 
