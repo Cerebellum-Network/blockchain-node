@@ -273,26 +273,23 @@ pub mod pallet {
 			let current_ddc_era = match ddc_staking::pallet::Pallet::<T>::current_era() {
 				Some(era) => era,
 				None => {
-					log::debug!("DDC era not set");
+					log::debug!("DDC era not set.");
 					return Weight::from_ref_time(0)
 				},
 			};
-			log::info!("current DDC era: {:?}", current_ddc_era);
+			log::debug!("Current DDC era: {:?}.", current_ddc_era);
 
 			// Produce an assignment for the next era if it's not produced yet.
 			match Self::last_managed_era() {
 				Some(last_managed_era) if current_ddc_era < last_managed_era =>
 					return Weight::from_ref_time(0),
 				_ => (),
-			};
+			}
 
 			match Self::assign(3usize, current_ddc_era + 1) {
 				Ok(_) => <LastManagedEra<T>>::put(current_ddc_era + 1),
-				Err(AssignmentError::DefensiveEmptyQuorumsCycle) => {
-					log::debug!("unexpectedly empty quorums cycle");
-				},
-				Err(e) => log::debug!("assignment error: {:?}", e),
-			};
+				Err(e) => log::debug!("DDC validation assignment error: {:?}.", e),
+			}
 
 			Weight::from_ref_time(0)
 		}
@@ -582,7 +579,7 @@ pub mod pallet {
 		/// set.
 		fn assign(quorum_size: usize, era: EraIndex) -> Result<(), AssignmentError> {
 			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
-			log::info!("current validators: {:?}", validators);
+			log::debug!("Current validators: {:?}.", validators);
 
 			if validators.len() == 0 {
 				return Err(AssignmentError::NoValidators)
@@ -596,7 +593,7 @@ pub mod pallet {
 			}
 
 			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
-			log::info!("current edges: {:?}", edges);
+			log::debug!("Current edges: {:?}.", edges);
 
 			if edges.len() == 0 {
 				return Ok(())
