@@ -80,8 +80,8 @@ const ENABLE_DDC_VALIDATION_KEY: &[u8; 21] = b"enable-ddc-validation";
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
 
-pub const TIME_START_MS: u128 = 1_672_531_200_000;
-pub const ERA_DURATION_MS: u128 = 120_000;
+pub const DDC_ERA_START_MS: u128 = 1_672_531_200_000;
+pub const DDC_ERA_DURATION_MS: u128 = 120_000;
 pub const ERA_IN_BLOCKS: u8 = 20;
 pub const BYTES_TO_CERE: u64 = 1; // this should have a logic built on top and adjusted
 
@@ -634,7 +634,7 @@ pub mod pallet {
 			result
 		}
 
-		fn assign(quorum_size: usize, era: EraIndex) {
+		fn assign(quorum_size: usize, era: EraIndex) -> Result<(), AssignmentError> {
 			let validators: Vec<T::AccountId> = OffchainWorkerKeys::<T>::iter_keys().collect();
 			log::debug!("Current validators: {:?}.", validators);
 
@@ -744,6 +744,13 @@ pub mod pallet {
 			}
 		}
 
+		fn get_current_era() -> EraIndex {
+			((<T as pallet::Config>::TimeProvider::now().as_millis() - DDC_ERA_START_MS) /
+				DDC_ERA_DURATION_MS)
+				.try_into()
+				.unwrap()
+		}
+
 		fn validate_edges() -> Result<(), &'static str> {
 			let current_ddc_era =
 				ddc_staking::pallet::Pallet::<T>::current_era().ok_or("DDC era not set")?;
@@ -787,7 +794,7 @@ pub mod pallet {
 				log::debug!("node aggregates: {:?}", node_aggregates);
 
 				// No data for node
-				if (node_aggregates.len() == 0) {
+				if node_aggregates.len() == 0 {
 					continue
 				}
 
@@ -911,7 +918,7 @@ pub mod pallet {
 
 						let tx_res =
 							signer.send_signed_transaction(|_acct| Call::set_validation_decision {
-								era: current_era - 1,
+								era: current_ddc_era - 1,
 								cdn_node: utils::string_to_account::<T>(edge.clone()),
 								validation_decision: final_res.clone(),
 							});
@@ -931,7 +938,7 @@ pub mod pallet {
 			if cdn_nodes_reward_points.len() > 0 {
 				let _tx_res =
 					signer.send_signed_transaction(|_account| Call::set_era_reward_points {
-						era: current_era - 1,
+						era: current_ddc_era - 1,
 						stakers_points: cdn_nodes_reward_points.clone(),
 					});
 			}
