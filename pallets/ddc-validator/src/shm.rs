@@ -12,7 +12,6 @@ use crate::{dac, utils, ValidationDecision};
 use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use base64::prelude::*;
 use lite_json::json::JsonValue;
-use log::info;
 use sp_runtime::offchain::{http, Duration};
 use sp_staking::EraIndex;
 use sp_std::prelude::*;
@@ -74,14 +73,14 @@ pub fn share_intermediate_validation_result(
 	let unescaped_json = utils::unescape(&json_str);
 	let url_encoded_json = utils::url_encode(&unescaped_json);
 
-	log::info!("json_str: {:?}", json_str);
+	log::debug!("json_str: {:?}", json_str);
 
 	let url = format!(
 		"{}/FCALL/save_validation_result_by_node/1/{}:{}:{}/{}",
 		shared_memory_webdis_url, validator, cdn_node, era, url_encoded_json,
 	);
 
-	log::info!("share_intermediate_validation_result url: {:?}", url);
+	log::debug!("share_intermediate_validation_result url: {:?}", url);
 	let request = http::Request::get(url.as_str());
 	let pending = request.deadline(deadline).send().map_err(|_| http::Error::IoError)?;
 	let response = pending.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
@@ -95,7 +94,7 @@ pub fn share_intermediate_validation_result(
 		http::Error::Unknown
 	})?;
 
-	log::info!("body_str: {:?}", body_str);
+	log::debug!("body_str: {:?}", body_str);
 
 	let json = lite_json::parse_json(body_str).map_err(|_| {
 		log::warn!("No JSON body");
@@ -138,7 +137,7 @@ pub(crate) fn decode_intermediate_decisions(
 		let data_str = String::from_utf8_lossy(&data);
 		let data_trimmed = data_str.trim_end_matches('\0');
 
-		info!("data_str: {:?}", data_trimmed);
+		log::debug!("data_str: {:?}", data_trimmed);
 
 		let decoded_decision: ValidationDecision = serde_json::from_str(&data_trimmed).unwrap();
 
