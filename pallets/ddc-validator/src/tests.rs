@@ -1,13 +1,6 @@
-use crate::{
-	mock::{Timestamp, *},
-	shm, utils, DacTotalAggregates, EraIndex, ValidationDecision, DEFAULT_DATA_PROVIDER_URL,
-	ENABLE_DDC_VALIDATION_KEY, ERA_DURATION_MS, ERA_IN_BLOCKS, KEY_TYPE, TIME_START_MS,
-};
+use super::*;
+use crate::mock::{Timestamp, *};
 use codec::Decode;
-use frame_support::{
-	assert_ok,
-	traits::{OffchainWorker, OnFinalize, OnInitialize},
-};
 use pallet_ddc_accounts::BucketsDetails;
 use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
 use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
