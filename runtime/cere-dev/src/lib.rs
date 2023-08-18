@@ -1324,12 +1324,6 @@ parameter_types! {
 	pub const DefaultStorageChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
 }
 
-parameter_types! {
-	pub const DefaultEdgeBondSize: Balance = 100 * DOLLARS;
-	pub const DefaultEdgeChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
-	pub const DefaultStorageBondSize: Balance = 100 * DOLLARS;
-	pub const DefaultStorageChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
-}
 impl pallet_ddc_staking::Config for Runtime {
 	type BondingDuration = BondingDuration;
 	type Currency = Balances;
@@ -1338,7 +1332,6 @@ impl pallet_ddc_staking::Config for Runtime {
 	type DefaultStorageBondSize = DefaultStorageBondSize;
 	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
-	type Event = Event;
 	type TimeProvider = pallet_timestamp::Pallet<Runtime>;
 	type StakersPayoutSource = Ddc_Accounts_Pallet_Id;
 	type UnixTime = Timestamp;

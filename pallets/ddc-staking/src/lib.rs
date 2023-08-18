@@ -240,7 +240,6 @@ pub mod pallet {
 		type DefaultStorageChillDelay: Get<EraIndex>;
 
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Number of eras that staked funds must remain bonded for.
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
@@ -898,6 +897,7 @@ pub mod pallet {
 			<Pricing<T>>::set(Some(price_per_byte));
 			Ok(())
 		}
+	}
 
 	impl<T: Config> Pallet<T> {
 		pub fn do_payout_stakers(era: EraIndex) -> DispatchResult {
@@ -1059,28 +1059,6 @@ pub mod pallet {
 		/// This function will remove a storage network participant from the `Storages` map.
 		///
 		/// Returns true if `who` was removed from `Storages`, otherwise false.
-		pub fn do_remove_storage(who: &T::AccountId) -> bool {
-			Storages::<T>::take(who).is_some()
-		}
-
-		/// This function will add a storage network participant to the `Storages` storage map.
-		///
-		/// If the storage network participant already exists, their cluster will be updated.
-		///
-		/// NOTE: you must ALWAYS use this function to add a storage network participant to the
-		/// system. Any access to `Storages` outside of this function is almost certainly
-		/// wrong.
-		pub fn do_add_storage(who: &T::AccountId, cluster: ClusterId) {
-			Storages::<T>::insert(who, cluster);
-		}
-
-		/// This function will remove a storage network participant from the `Storages` map.
-		///
-		/// Returns true if `who` was removed from `Storages`, otherwise false.
-		///
-		/// NOTE: you must ALWAYS use this function to remove a storage network participant from the
-		/// system. Any access to `Storages` outside of this function is almost certainly
-		/// wrong.
 		pub fn do_remove_storage(who: &T::AccountId) -> bool {
 			Storages::<T>::take(who).is_some()
 		}
