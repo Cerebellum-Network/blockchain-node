@@ -46,7 +46,6 @@ pub use frame_system::{
 	pallet_prelude::*,
 };
 pub use lite_json::json::JsonValue;
-use log::info;
 pub use pallet::*;
 pub use pallet_ddc_accounts::{self as ddc_accounts, BucketsDetails};
 pub use pallet_ddc_staking::{self as ddc_staking};
@@ -381,7 +380,7 @@ pub mod pallet {
 			}
 
 			last_validated_era_storage.set(&current_ddc_era);
-			log::info!("🔎 DDC validation complete for {} era.", current_ddc_era);
+			log::debug!("🔎 DDC validation complete for {} era.", current_ddc_era);
 		}
 	}
 
@@ -496,7 +495,7 @@ pub mod pallet {
 			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			log::info!("Controller is {:?}", controller);
+			log::debug!("Controller is {:?}", controller);
 
 			let era = Self::get_current_era();
 
@@ -750,7 +749,7 @@ pub mod pallet {
 				ddc_staking::pallet::Pallet::<T>::current_era().ok_or("DDC era not set")?;
 			let mock_data_url = Self::get_mock_data_url();
 			let data_provider_url = Self::get_data_provider_url();
-			info!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
+			log::debug!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
 
 			// let signer = Self::get_signer().unwrap();
 			// let validator = signer.get_any_account().unwrap().id;
@@ -759,20 +758,20 @@ pub mod pallet {
 				None => return Err("No validator public key found."),
 			};
 
-			info!("validator: {:?}", validator);
+			log::debug!("validator: {:?}", validator);
 
 			let assigned_edges = match Self::assignments(current_ddc_era - 1, validator.clone()) {
 				Some(edges) => edges,
 				None => return Err("No assignments for the previous era."),
 			};
 
-			info!("assigned_edges: {:?}", assigned_edges);
+			log::debug!("assigned_edges: {:?}", assigned_edges);
 
 			// Calculate CDN nodes reward points from validation decision aggregates
 			let mut cdn_nodes_reward_points: Vec<(T::AccountId, u64)> = vec![];
 
 			for assigned_edge in assigned_edges.iter() {
-				info!("assigned edge: {:?}", assigned_edge);
+				log::debug!("assigned edge: {:?}", assigned_edge);
 
 				// form url for each node
 				let edge_url = format!(
@@ -782,10 +781,10 @@ pub mod pallet {
 					current_ddc_era - 1,
 					utils::account_to_string::<T>(assigned_edge.clone())
 				);
-				info!("edge url: {:?}", edge_url);
+				log::debug!("edge url: {:?}", edge_url);
 
 				let node_aggregates = dac::fetch_cdn_node_aggregates_request(&edge_url);
-				info!("node aggregates: {:?}", node_aggregates);
+				log::debug!("node aggregates: {:?}", node_aggregates);
 
 				// No data for node
 				if (node_aggregates.len() == 0) {
@@ -793,7 +792,7 @@ pub mod pallet {
 				}
 
 				let request_ids = &node_aggregates[0].request_ids;
-				info!("request_ids: {:?}", request_ids);
+				log::debug!("request_ids: {:?}", request_ids);
 
 				// Store bucket payments
 				let payments_per_bucket = &mut Vec::new();
@@ -808,7 +807,7 @@ pub mod pallet {
 				let (bytes_sent, bytes_received) = dac::get_served_bytes_sum(&requests);
 				let is_valid = Self::is_valid(bytes_sent, bytes_received);
 
-				info!("bytes_sent, bytes_received: {:?}, {:?}", bytes_sent, bytes_received);
+				log::debug!("bytes_sent, bytes_received: {:?}, {:?}", bytes_sent, bytes_received);
 
 				let payload = serde_json::to_string(&requests).unwrap();
 				let decision = ValidationDecision {
@@ -823,12 +822,12 @@ pub mod pallet {
 					},
 				};
 
-				info!("decision to be encoded: {:?}", decision);
+				log::debug!("decision to be encoded: {:?}", decision);
 
 				let serialized_decision = serde_json::to_string(&decision).unwrap();
 				let encoded_decision =
 					shm::base64_encode(&serialized_decision.as_bytes().to_vec()).unwrap();
-				info!("encoded decision: {:?}", encoded_decision);
+				log::debug!("encoded decision: {:?}", encoded_decision);
 
 				let validator_str = utils::account_to_string::<T>(validator.clone());
 				let edge_str = utils::account_to_string::<T>(assigned_edge.clone());
@@ -849,7 +848,7 @@ pub mod pallet {
 				}
 
 				if let Ok(res) = response.clone() {
-					info!("shm res: {:?}", res.to_string());
+					log::debug!("shm res: {:?}", res.to_string());
 				}
 
 				if let Ok(res) = response {
@@ -863,10 +862,10 @@ pub mod pallet {
 						quorum,
 					);
 
-					log::info!("get_intermediate_decisions result: {:?}", validations_res);
+					log::debug!("get_intermediate_decisions result: {:?}", validations_res);
 
 					if validations_res.len() == QUORUM_SIZE {
-						log::info!("payments per bucket: {:?}", payments_per_bucket);
+						log::debug!("payments per bucket: {:?}", payments_per_bucket);
 
 						let mut payments: BTreeMap<
 							u128,
@@ -890,7 +889,7 @@ pub mod pallet {
 						for (_, bucket_info) in payments {
 							final_payments.push(bucket_info);
 						}
-						log::info!("final payments: {:?}", final_payments);
+						log::debug!("final payments: {:?}", final_payments);
 
 						// Store CDN node reward points on-chain
 						let signer: Signer<T, T::AuthorityId> = Signer::<_, _>::any_account();
@@ -917,7 +916,7 @@ pub mod pallet {
 								validation_decision: final_res.clone(),
 							});
 
-						log::info!("final_res: {:?}", final_res);
+						log::debug!("final_res: {:?}", final_res);
 
 						cdn_nodes_reward_points.push((
 							utils::string_to_account::<T>(final_res.edge),

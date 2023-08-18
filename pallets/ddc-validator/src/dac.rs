@@ -5,7 +5,7 @@ use alloc::{format, string::String}; // ToDo: remove String usage
 use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use codec::{Decode, Encode};
 use lite_json::{json::JsonValue, json_parser::parse_json};
-use log::info;
+use log::debug;
 use serde_json::{Map, Value};
 use sp_runtime::{
 	generic::Era,
@@ -394,19 +394,19 @@ fn get_file_request_url(data_provider_url: &String) -> String {
 }
 
 pub(crate) fn fetch_cdn_node_aggregates_request(url: &String) -> Vec<CDNNodeAggregate> {
-	log::info!("fetch_file_request | url: {:?}", url);
+	log::debug!("fetch_file_request | url: {:?}", url);
 	let response: FileRequestWrapper = http_get_json(&url).unwrap();
-	log::info!("response.json: {:?}", response.json);
+	log::debug!("response.json: {:?}", response.json);
 	let map: Vec<CDNNodeAggregate> = serde_json::from_str(response.json.as_str()).unwrap();
-	// log::info!("response.json: {:?}", response.json);
+	// log::debug!("response.json: {:?}", response.json);
 
 	map
 }
 
 pub(crate) fn fetch_file_request(url: &String) -> FileRequest {
-	log::info!("fetch_file_request | url: {:?}", url);
+	log::debug!("fetch_file_request | url: {:?}", url);
 	let response: FileRequestWrapper = http_get_json(&url).unwrap();
-	log::info!("response.json: {:?}", response.json);
+	log::debug!("response.json: {:?}", response.json);
 
 	let map: FileRequest = serde_json::from_str(response.json.as_str()).unwrap();
 
@@ -418,17 +418,17 @@ pub(crate) fn fetch_data<T: frame_system::Config>(
 	era: EraIndex,
 	cdn_node: &T::AccountId,
 ) -> (BytesSent, BytesReceived) {
-	log::info!("[DAC Validator] DAC Validator is running. Current era is {}", era);
+	log::debug!("[DAC Validator] DAC Validator is running. Current era is {}", era);
 	// Todo: handle the error
 	let bytes_sent_query = get_bytes_sent_query_url(data_provider_url, era);
 	let bytes_sent_res: RedisFtAggregate = http_get_json(&bytes_sent_query).unwrap();
-	log::info!("[DAC Validator] Bytes sent sum is fetched: {:?}", bytes_sent_res);
+	log::debug!("[DAC Validator] Bytes sent sum is fetched: {:?}", bytes_sent_res);
 	let bytes_sent = BytesSent::new(bytes_sent_res);
 
 	// Todo: handle the error
 	let bytes_received_query = get_bytes_received_query_url(data_provider_url, era);
 	let bytes_received_res: RedisFtAggregate = http_get_json(&bytes_received_query).unwrap();
-	log::info!("[DAC Validator] Bytes received sum is fetched:: {:?}", bytes_received_res);
+	log::debug!("[DAC Validator] Bytes received sum is fetched:: {:?}", bytes_received_res);
 	let bytes_received = BytesReceived::new(bytes_received_res);
 
 	(bytes_sent, bytes_received)
@@ -438,17 +438,17 @@ pub(crate) fn fetch_data1(
 	data_provider_url: &String,
 	era: EraIndex,
 ) -> (Vec<BytesSent>, Vec<BytesReceived>) {
-	log::info!("[DAC Validator] DAC Validator is running. Current era is {}", era);
+	log::debug!("[DAC Validator] DAC Validator is running. Current era is {}", era);
 	// Todo: handle the error
 	let bytes_sent_query = get_bytes_sent_query_url(data_provider_url, era);
 	let bytes_sent_res: RedisFtAggregate = http_get_json(&bytes_sent_query).unwrap();
-	log::info!("[DAC Validator] Bytes sent sum is fetched: {:?}", bytes_sent_res);
+	log::debug!("[DAC Validator] Bytes sent sum is fetched: {:?}", bytes_sent_res);
 	let bytes_sent = BytesSent::get_all(bytes_sent_res);
 
 	// Todo: handle the error
 	let bytes_received_query = get_bytes_received_query_url(data_provider_url, era);
 	let bytes_received_res: RedisFtAggregate = http_get_json(&bytes_received_query).unwrap();
-	log::info!("[DAC Validator] Bytes received sum is fetched:: {:?}", bytes_received_res);
+	log::debug!("[DAC Validator] Bytes received sum is fetched:: {:?}", bytes_received_res);
 	let bytes_received = BytesReceived::get_all(bytes_received_res);
 
 	(bytes_sent, bytes_received)
@@ -503,7 +503,7 @@ pub(crate) fn http_get_json<OUT: DeserializeOwned>(url: &str) -> crate::ResultSt
 // }
 
 fn http_get_request(http_url: &str) -> Result<Vec<u8>, http::Error> {
-	// log::info!("[DAC Validator] Sending request to: {:?}", http_url);
+	// log::debug!("[DAC Validator] Sending request to: {:?}", http_url);
 
 	// Initiate an external HTTP GET request. This is using high-level wrappers from
 	// `sp_runtime`.
