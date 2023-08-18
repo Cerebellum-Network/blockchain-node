@@ -761,8 +761,10 @@ pub mod pallet {
 
 			info!("validator: {:?}", validator);
 
-			let assigned_edges = Self::assignments(current_ddc_era - 1, validator.clone())
-				.expect("No assignments for the previous era");
+			let assigned_edges = match Self::assignments(current_ddc_era - 1, validator.clone()) {
+				Some(edges) => edges,
+				None => return Err("No assignments for the previous era."),
+			};
 
 			info!("assigned_edges: {:?}", assigned_edges);
 
