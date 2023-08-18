@@ -4,9 +4,9 @@ use crate::{utils, DacTotalAggregates, ValidationDecision};
 use alloc::{format, string::String}; // ToDo: remove String usage
 use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use codec::{Decode, Encode};
-use lite_json::json::JsonValue;
+use lite_json::{json::JsonValue, json_parser::parse_json};
 use log::info;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use sp_runtime::{
 	generic::Era,
 	offchain::{
@@ -146,8 +146,8 @@ pub struct Log {
 #[serde(crate = "alt_serde")]
 #[serde(rename_all = "camelCase")]
 pub struct FileInfo {
-	#[serde(rename = "chunkCids")]
-	chunk_cids: Vec<String>,
+	#[serde(rename = "chunkCids", skip_deserializing)]
+	chunk_cids: Option<Vec<String>>,
 
 	#[serde(rename = "requestedChunkCids")]
 	requested_chunk_cids: Vec<String>,
@@ -487,6 +487,20 @@ pub(crate) fn http_get_json<OUT: DeserializeOwned>(url: &str) -> crate::ResultSt
 
 	parsed
 }
+
+// pub(crate) fn http_get_json_lite<OUT: DeserializeOwned>(url: &str) -> crate::ResultStr<OUT> {
+// 	let body = http_get_request(url).map_err(|err| {
+// 		log::error!("[DAC Validator] Error while getting {}: {:?}", url, err);
+// 		"HTTP GET error"
+// 	})?;
+
+// 	let parsed = serde_json::from_slice(&body).map_err(|err| {
+// 		log::warn!("[DAC Validator] Error while parsing JSON from {}: {:?}", url, err);
+// 		"HTTP JSON parse error"
+// 	});
+
+// 	parsed
+// }
 
 fn http_get_request(http_url: &str) -> Result<Vec<u8>, http::Error> {
 	// log::info!("[DAC Validator] Sending request to: {:?}", http_url);

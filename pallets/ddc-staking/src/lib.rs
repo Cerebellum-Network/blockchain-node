@@ -30,6 +30,7 @@ use crate::weights::WeightInfo;
 use codec::{Decode, Encode, HasCompact};
 use frame_support::{
 	assert_ok,
+	dispatch::Codec,
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
@@ -41,7 +42,9 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
+	traits::{
+		AccountIdConversion, AtLeast32BitUnsigned, CheckedSub, Saturating, StaticLookup, Zero,
+	},
 	Perbill, RuntimeDebug,
 };
 use sp_staking::EraIndex;
@@ -77,12 +80,30 @@ parameter_types! {
 }
 
 /// Reward points of an era. Used to split era total payout between stakers.
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Clone)]
 pub struct EraRewardPoints<AccountId: Ord> {
 	/// Total number of points. Equals the sum of reward points for each staker.
 	pub total: RewardPoint,
 	/// The reward points earned by a given staker.
 	pub individual: BTreeMap<AccountId, RewardPoint>,
+}
+
+/// Reward points of an era. Used to split era total payout between stakers.
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Clone)]
+pub struct EraRewardPointsPerNode {
+	/// Era points accrued
+	pub era: EraIndex,
+	/// Total number of points for node
+	pub points: RewardPoint,
+}
+
+/// Reward paid for some era.
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Clone)]
+pub struct EraRewardsPaid<Balance: HasCompact> {
+	/// Era number
+	pub era: EraIndex,
+	/// Cere tokens paid
+	pub reward: Balance,
 }
 
 impl<AccountId: Ord> Default for EraRewardPoints<AccountId> {
@@ -219,6 +240,7 @@ pub mod pallet {
 		type DefaultStorageChillDelay: Get<EraIndex>;
 
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		/// Number of eras that staked funds must remain bonded for.
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
@@ -230,6 +252,8 @@ pub mod pallet {
 		/// Time used for computing era index. It is guaranteed to start being called from the first
 		/// `on_finalize`.
 		type UnixTime: UnixTime;
+
+		type TimeProvider: UnixTime;
 	}
 
 	/// Map from all locked "stash" accounts to the controller account.
@@ -249,11 +273,6 @@ pub mod pallet {
 	pub type Ledger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>>>;
 
-	/// Map from all "stash" accounts to the paid out rewards
-	#[pallet::storage]
-	#[pallet::getter(fn rewards)]
-	pub type Rewards<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>>;
-
 	/// The map of (wannabe) CDN participants stash keys to the DDC cluster ID they wish to
 	/// participate into.
 	#[pallet::storage]
@@ -265,6 +284,34 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn storages)]
 	pub type Storages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
+
+	/// Map from all "stash" accounts to the paid out rewards
+	#[pallet::storage]
+	#[pallet::getter(fn rewards)]
+	pub type Rewards<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>, ValueQuery>;
+
+	/// Map from all "stash" accounts to the paid out rewards
+	#[pallet::storage]
+	#[pallet::getter(fn paideraspernode)]
+	pub type PaidErasPerNode<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		Vec<EraRewardsPaid<BalanceOf<T>>>,
+		ValueQuery,
+	>;
+
+	// Map to check if validation decision was performed for the era
+	#[pallet::storage]
+	#[pallet::getter(fn paideras)]
+	pub(super) type PaidEras<T: Config> = StorageMap<_, Twox64Concat, EraIndex, bool, ValueQuery>;
+
+	// Map to check if validation decision was performed for the era
+	#[pallet::storage]
+	#[pallet::getter(fn contentownerscharged)]
+	pub(super) type EraContentOwnersCharged<T: Config> =
+		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
 
 	/// The current era index.
 	///
@@ -281,6 +328,14 @@ pub mod pallet {
 	#[pallet::getter(fn eras_edges_reward_points)]
 	pub type ErasEdgesRewardPoints<T: Config> =
 		StorageMap<_, Twox64Concat, EraIndex, EraRewardPoints<T::AccountId>, ValueQuery>;
+
+	/// The reward each CDN participant earned in the era.
+	///
+	/// See also [`pallet_staking::ErasRewardPoints`].
+	#[pallet::storage]
+	#[pallet::getter(fn eras_edges_reward_points_per_node)]
+	pub type ErasEdgesRewardPointsPerNode<T: Config> =
+		StorageMap<_, Twox64Concat, T::AccountId, Vec<EraRewardPointsPerNode>, ValueQuery>;
 
 	/// Price per byte of the bucket traffic in smallest units of the currency.
 	#[pallet::storage]
@@ -383,6 +438,8 @@ pub mod pallet {
 		/// An account has declared desire to stop participating in CDN or storage network soon.
 		/// \[stash, cluster, era\]
 		ChillSoon(T::AccountId, ClusterId, EraIndex),
+		// Payout CDN nodes' stash accounts
+		PayoutNodes(EraIndex, EraRewardPoints<T::AccountId>, u128),
 	}
 
 	#[pallet::error]
@@ -408,11 +465,10 @@ pub mod pallet {
 		AlreadyInRole,
 		/// Action is allowed at some point of time in future not reached yet.
 		TooEarly,
-		/// Two or more occurrences of a staker account in rewards points list.
+		EraNotValidated,
 		DuplicateRewardPoints,
-		/// Price per byte of the traffic is unknown.
+		DoubleSpendRewards,
 		PricingNotSet,
-		/// Impossible budget value that overflows pallet's balance type.
 		BudgetOverflow,
 	}
 
@@ -761,10 +817,42 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set custom DDC staking settings for a particular cluster.
+		///
+		/// * `settings` - The new settings for the cluster. If `None`, the settings will be removed
+		///   from the storage and default settings will be used.
+		///
+		/// RuntimeOrigin must be Root to call this function.
+		///
+		/// NOTE: Existing CDN and storage network participants will not be affected by this
+		/// settings update.
+		#[pallet::weight(10_000)]
+		pub fn set_settings(
+			origin: OriginFor<T>,
+			cluster: ClusterId,
+			settings: Option<ClusterSettings<T>>,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			match settings {
+				None => Settings::<T>::remove(cluster),
+				Some(settings) => Settings::<T>::insert(cluster, settings),
+			}
+
+			Ok(())
+		}
+
 		/// Pay out all the stakers for a single era.
 		#[pallet::weight(100_000)]
 		pub fn payout_stakers(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
 			ensure_signed(origin)?;
+			let current_era = Self::get_current_era();
+
+			ensure!(!Self::paideras(era), Error::<T>::DoubleSpendRewards);
+
+			ensure!(current_era >= era + 2, Error::<T>::EraNotValidated);
+
+			PaidEras::<T>::insert(era, true);
 			Self::do_payout_stakers(era)
 		}
 
@@ -811,32 +899,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Set custom DDC staking settings for a particular cluster.
-		///
-		/// * `settings` - The new settings for the cluster. If `None`, the settings will be removed
-		///   from the storage and default settings will be used.
-		///
-		/// RuntimeOrigin must be Root to call this function.
-		///
-		/// NOTE: Existing CDN and storage network participants will not be affected by this
-		/// settings update.
-		#[pallet::weight(10_000)]
-		pub fn set_settings(
-			origin: OriginFor<T>,
-			cluster: ClusterId,
-			settings: Option<ClusterSettings<T>>,
-		) -> DispatchResult {
-			ensure_root(origin)?;
-
-			match settings {
-				None => Settings::<T>::remove(cluster),
-				Some(settings) => Settings::<T>::insert(cluster, settings),
-			}
-
-			Ok(())
-		}
-	}
-
 	impl<T: Config> Pallet<T> {
 		pub fn do_payout_stakers(era: EraIndex) -> DispatchResult {
 			// ToDo: check that the era is finished
@@ -858,7 +920,7 @@ pub mod pallet {
 					Ok(value) => value,
 					Err(_) => Err(Error::<T>::BudgetOverflow)?,
 				};
-			log::debug!(
+			log::info!(
 				"Will payout to DDC stakers for era {:?} from account {:?} with total budget {:?} \
 				, there are {:?} stakers earned {:?} reward points with price per byte {:?}",
 				era,
@@ -870,10 +932,10 @@ pub mod pallet {
 			);
 
 			// Transfer a part of the budget to each CDN participant rewarded this era.
-			for (stash, points) in era_reward_points.individual {
+			for (stash, points) in era_reward_points.clone().individual {
 				let part = Perbill::from_rational(points, era_reward_points.total);
 				let reward: BalanceOf<T> = part * payout_budget;
-				log::debug!(
+				log::info!(
 					"Rewarding {:?} with {:?} points, its part is {:?}, reward size {:?}, balance \
 					on payout source account {:?}",
 					stash,
@@ -888,10 +950,22 @@ pub mod pallet {
 					reward,
 					ExistenceRequirement::AllowDeath,
 				)?; // ToDo: all success or noop
-				let mut total_rewards: BalanceOf<T> = Self::rewards(&stash).unwrap();
-				total_rewards += reward;
-				<Rewards<T>>::insert(&stash, total_rewards);
+				Rewards::<T>::mutate(&stash, |current_balance| {
+					*current_balance += reward;
+				});
+				log::info!("Total rewards to be inserted: {:?}", Self::rewards(&stash));
+				PaidErasPerNode::<T>::mutate(&stash, |current_rewards| {
+					let rewards = EraRewardsPaid { era, reward };
+					current_rewards.push(rewards);
+				});
 			}
+			Self::deposit_event(Event::<T>::PayoutNodes(
+				era,
+				era_reward_points.clone(),
+				price_per_byte,
+			));
+			log::info!("Payout event executed");
+
 			log::debug!(
 				"Balance left on payout source account {:?}",
 				T::Currency::free_balance(&payout_source_account),
@@ -989,6 +1063,36 @@ pub mod pallet {
 			Storages::<T>::take(who).is_some()
 		}
 
+		/// This function will add a storage network participant to the `Storages` storage map.
+		///
+		/// If the storage network participant already exists, their cluster will be updated.
+		///
+		/// NOTE: you must ALWAYS use this function to add a storage network participant to the
+		/// system. Any access to `Storages` outside of this function is almost certainly
+		/// wrong.
+		pub fn do_add_storage(who: &T::AccountId, cluster: ClusterId) {
+			Storages::<T>::insert(who, cluster);
+		}
+
+		/// This function will remove a storage network participant from the `Storages` map.
+		///
+		/// Returns true if `who` was removed from `Storages`, otherwise false.
+		///
+		/// NOTE: you must ALWAYS use this function to remove a storage network participant from the
+		/// system. Any access to `Storages` outside of this function is almost certainly
+		/// wrong.
+		pub fn do_remove_storage(who: &T::AccountId) -> bool {
+			Storages::<T>::take(who).is_some()
+		}
+
+		/// Reset the chilling era for a controller.
+		pub fn reset_chilling(controller: &T::AccountId) {
+			Ledger::<T>::mutate(&controller, |maybe_ledger| {
+				if let Some(ref mut ledger) = maybe_ledger {
+					ledger.chilling = None
+				}
+			});
+		}
 		/// Add reward points to CDN participants using their stash account ID.
 		pub fn reward_by_ids(
 			era: EraIndex,
@@ -1002,13 +1106,12 @@ pub mod pallet {
 			});
 		}
 
-		/// Reset the chilling era for a controller.
-		pub fn reset_chilling(controller: &T::AccountId) {
-			Ledger::<T>::mutate(&controller, |maybe_ledger| {
-				if let Some(ref mut ledger) = maybe_ledger {
-					ledger.chilling = None
-				}
-			});
+		// Get the current era; Shall we start era count from 0 or from 1?
+		fn get_current_era() -> EraIndex {
+			((<T as pallet::Config>::TimeProvider::now().as_millis() - DDC_ERA_START_MS) /
+				DDC_ERA_DURATION_MS)
+				.try_into()
+				.unwrap()
 		}
 	}
 }
