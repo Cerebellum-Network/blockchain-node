@@ -98,7 +98,7 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 			.unlocking
 			.into_iter()
 			.filter(|chunk| {
-				log::info!("Chunk era: {:?}", chunk.era);
+				log::debug!("Chunk era: {:?}", chunk.era);
 				if chunk.era > current_era {
 					true
 				} else {
@@ -175,7 +175,7 @@ pub mod pallet {
 	#[pallet::getter(fn bonded)]
 	pub type Bonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
 
-	/// Map from all (unlocked) "controller" accounts to the info regarding the staking.
+	/// Map from all (unlocked) "controller" accounts to the debug regarding the staking.
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config> =
@@ -431,7 +431,7 @@ pub mod pallet {
 
 				// Note: bonding for extra era to allow for accounting
 				let era = Self::get_current_era() + T::BondingDuration::get();
-				log::info!("Era for the unbond: {:?}", era);
+				log::debug!("Era for the unbond: {:?}", era);
 
 				if let Some(mut chunk) =
 					ledger.unlocking.last_mut().filter(|chunk| chunk.era == era)
@@ -471,27 +471,27 @@ pub mod pallet {
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
 			let current_era = Self::get_current_era();
 			ledger = ledger.consolidate_unlocked(current_era);
-			log::info!("Current era: {:?}", current_era);
+			log::debug!("Current era: {:?}", current_era);
 
 			if ledger.unlocking.is_empty() && ledger.active < T::Currency::minimum_balance() {
-				log::info!("Killing stash");
+				log::debug!("Killing stash");
 				// This account must have called `unbond()` with some value that caused the active
 				// portion to fall below existential deposit + will have no more unlocking chunks
 				// left. We can now safely remove all accounts-related information.
 				Self::kill_stash(&stash)?;
 			} else {
-				log::info!("Updating ledger");
+				log::debug!("Updating ledger");
 				// This was the consequence of a partial unbond. just update the ledger and move on.
 				Self::update_ledger(&controller, &ledger);
 			};
 
-			log::info!("Current total: {:?}", ledger.total);
-			log::info!("Old total: {:?}", old_total);
+			log::debug!("Current total: {:?}", ledger.total);
+			log::debug!("Old total: {:?}", old_total);
 
 			// `old_total` should never be less than the new total because
 			// `consolidate_unlocked` strictly subtracts balance.
 			if ledger.total < old_total {
-				log::info!("Preparing for transfer");
+				log::debug!("Preparing for transfer");
 				// Already checked that this won't overflow by entry condition.
 				let value = old_total - ledger.total;
 
@@ -579,7 +579,7 @@ pub mod pallet {
 					ledger.total -= amount;
 					ledger.active -= amount;
 					total_charged += amount;
-					log::info!("Ledger updated state: {:?}", &ledger);
+					log::debug!("Ledger updated state: {:?}", &ledger);
 					Self::update_ledger(&content_owner, &ledger);
 				} else {
 					let diff = amount - ledger.active;
@@ -587,15 +587,15 @@ pub mod pallet {
 					ledger.total -= ledger.active;
 					ledger.active = BalanceOf::<T>::zero();
 					let (ledger, charged) = ledger.charge_unlocking(diff);
-					log::info!("Ledger updated state: {:?}", &ledger);
+					log::debug!("Ledger updated state: {:?}", &ledger);
 					Self::update_ledger(&content_owner, &ledger);
 					total_charged += charged;
 				}
 			}
-			log::info!("Total charged: {:?}", &total_charged);
+			log::debug!("Total charged: {:?}", &total_charged);
 
 			Self::deposit_event(Event::<T>::Charged(total_charged));
-			log::info!("Deposit event executed");
+			log::debug!("Deposit event executed");
 
 			Ok(())
 		}
