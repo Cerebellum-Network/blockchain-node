@@ -55,7 +55,7 @@ pub use pallet_staking::{self as staking};
 pub use scale_info::TypeInfo;
 pub use serde_json::Value;
 pub use sp_core::crypto::{AccountId32, KeyTypeId, UncheckedFrom};
-pub use sp_io::crypto::sr25519_public_keys;
+pub use sp_io::{crypto::sr25519_public_keys, offchain_index};
 pub use sp_runtime::offchain::{
 	http, storage::StorageValueRef, storage_lock, storage_lock::StorageLock, Duration, Timestamp,
 };
@@ -86,9 +86,15 @@ pub const ERA_DURATION_MS: u128 = 120_000;
 pub const ERA_IN_BLOCKS: u8 = 20;
 pub const BYTES_TO_CERE: u64 = 1; // this should have a logic built on top and adjusted
 
+/// Offchain local storage key that holds the last era in which the validator completed its
+/// assignment.
+const LAST_VALIDATED_ERA_LOCK_KEY: &[u8; 45] = b"pallet-ddc-validator::last-validated-era-lock";
+const LAST_VALIDATED_ERA_STORAGE_KEY: &[u8; 48] =
+	b"pallet-ddc-validator::last-validated-era-storage";
 /// Webdis in experimental cluster connected to Redis in dev.
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "https://dev-dac-redis.network-dev.aws.cere.io";
-pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://redis:6379";
+pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://webdis:7379";
+// pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
 pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
 pub const QUORUM_SIZE: usize = 1;
 
@@ -222,6 +228,12 @@ pub mod pallet {
 	pub(super) type Assignments<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, Vec<T::AccountId>>;
 
+	// Map to check if validation decision was performed for the era
+	#[pallet::storage]
+	#[pallet::getter(fn content_owners_charged)]
+	pub(super) type EraContentOwnersCharged<T: Config> =
+		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
+
 	/// A signal to start a process on all the validators.
 	#[pallet::storage]
 	#[pallet::getter(fn signal)]
@@ -232,6 +244,18 @@ pub mod pallet {
 	#[pallet::getter(fn validation_decisions)]
 	pub type ValidationDecisions<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, ValidationDecision>;
+
+	// Map to check if validation decision was performed for the era
+	#[pallet::storage]
+	#[pallet::getter(fn validation_decision_set_for_node)]
+	pub(super) type ValidationDecisionSetForNode<T: Config> =
+		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
+
+	// Map to check if reward points were set for the era
+	#[pallet::storage]
+	#[pallet::getter(fn reward_points_set_for_node)]
+	pub(super) type RewardPointsSetForNode<T: Config> =
+		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
 
 	/// The last era for which the tasks assignment produced.
 	#[pallet::storage]
@@ -248,6 +272,9 @@ pub mod pallet {
 	pub enum Error<T> {
 		NotController,
 		OCWKeyNotRegistered,
+		ContentOwnersDoubleSpend,
+		ValidationDecisionAlreadySet,
+		NodeNotActive,
 	}
 
 	#[pallet::event]
@@ -255,7 +282,13 @@ pub mod pallet {
 	pub enum Event<T: Config>
 	where
 		<T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
-		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode, {}
+		<BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
+	{
+		// Validator submits decision for an era
+		ValidationDecision(EraIndex, T::AccountId, ValidationDecision),
+		// Set era reward points
+		EraRewardPoints(EraIndex, Vec<(T::AccountId, u64)>),
+	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T>
@@ -376,16 +409,33 @@ pub mod pallet {
 			cdn_node: T::AccountId,
 			validation_decision: ValidationDecision,
 		) -> DispatchResult {
-			ensure_signed(origin)?;
+			let controller = ensure_signed(origin)?;
 
-			// ToDo: check if origin is a validator.
+			ensure!(
+				OffchainWorkerKeys::<T>::contains_key(&controller),
+				Error::<T>::OCWKeyNotRegistered
+			);
+
+			ensure!(
+				!Self::validation_decision_set_for_node(era, &cdn_node),
+				Error::<T>::ValidationDecisionAlreadySet
+			);
+
+			ensure!(
+				<ddc_staking::pallet::Edges<T>>::contains_key(&cdn_node),
+				Error::<T>::NodeNotActive
+			);
 			// ToDo: check if the era is current - 1.
-			// ToDo: check if the validation decision is not set yet.
-			// ToDo: check cdn_node is known to ddc-staking.
 
-			ValidationDecisions::<T>::insert(era, cdn_node, validation_decision);
+			ValidationDecisions::<T>::insert(era, cdn_node.clone(), validation_decision.clone());
 
-			// ToDo: emit event.
+			Self::deposit_event(Event::<T>::ValidationDecision(
+				era,
+				cdn_node.clone(),
+				validation_decision,
+			));
+
+			ValidationDecisionSetForNode::<T>::insert(era, cdn_node, true);
 
 			Ok(())
 		}
@@ -406,30 +456,36 @@ pub mod pallet {
 			era: EraIndex,
 			stakers_points: Vec<(T::AccountId, u64)>,
 		) -> DispatchResult {
-			ensure_signed(origin)?;
-
-			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
-				for (staker, points) in stakers_points.into_iter() {
-					*era_rewards.individual.entry(staker).or_default() += points;
-					era_rewards.total += points;
-				}
-			});
-
-			Ok(())
-		}
-
-		#[pallet::weight(100_000)]
-		pub fn charge_payments_cdn(
-			origin: OriginFor<T>,
-			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>,
-		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
+
 			ensure!(
 				OffchainWorkerKeys::<T>::contains_key(&controller),
 				Error::<T>::OCWKeyNotRegistered
 			);
 
-			<ddc_accounts::pallet::Pallet<T>>::charge_payments_new(paying_accounts);
+			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
+				for (staker, points) in stakers_points.clone().into_iter() {
+					if !Self::reward_points_set_for_node(era, &staker) {
+						// check if rewards were not yet set for era for node
+						if <ddc_staking::pallet::Edges<T>>::contains_key(&staker) {
+							// check if node is active
+							*era_rewards.individual.entry(staker.clone()).or_default() += points;
+							era_rewards.total += points;
+							<ddc_staking::pallet::ErasEdgesRewardPointsPerNode<T>>::mutate(
+								&staker,
+								|current_reward_points| {
+									let rewards =
+										ddc_staking::EraRewardPointsPerNode { era, points };
+									current_reward_points.push(rewards);
+								},
+							);
+							RewardPointsSetForNode::<T>::insert(era, staker, true);
+						}
+					}
+				}
+			});
+
+			Self::deposit_event(Event::<T>::EraRewardPoints(era, stakers_points));
 
 			Ok(())
 		}
@@ -440,27 +496,33 @@ pub mod pallet {
 			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			// ensure!(
-			// 	OffchainWorkerKeys::<T>::contains_key(&controller),
-			// 	Error::<T>::OCWKeyNotRegistered
-			// );
+			log::info!("Controller is {:?}", controller);
 
-			<ddc_accounts::pallet::Pallet<T>>::charge_payments_new(paying_accounts);
+			let era = Self::get_current_era();
+
+			ensure!(
+				OffchainWorkerKeys::<T>::contains_key(&controller),
+				Error::<T>::OCWKeyNotRegistered
+			);
+
+			ensure!(
+				!Self::content_owners_charged(era, &controller),
+				Error::<T>::ContentOwnersDoubleSpend
+			);
+
+			let pricing: u128 = <ddc_staking::pallet::Pallet<T>>::pricing().unwrap();
+			<ddc_accounts::pallet::Pallet<T>>::charge_payments_new(paying_accounts, pricing);
+
+			EraContentOwnersCharged::<T>::insert(era, controller, true);
 
 			Ok(())
 		}
 
 		#[pallet::weight(100_000)]
 		pub fn payout_cdn_owners(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
-			// ensure!(
-			// 	OffchainWorkerKeys::<T>::contains_key(&controller),
-			// 	Error::<T>::OCWKeyNotRegistered
-			// );
+			ensure_signed(origin)?;
 
-			<ddc_staking::pallet::Pallet<T>>::do_payout_stakers(era);
-
-			Ok(())
+			<ddc_staking::pallet::Pallet<T>>::do_payout_stakers(era)
 		}
 
 		#[pallet::weight(100_000)]
@@ -474,7 +536,7 @@ pub mod pallet {
 				Error::<T>::NotController
 			);
 
-			OffchainWorkerKeys::<T>::insert(controller, ocw_pub);
+			OffchainWorkerKeys::<T>::insert(ocw_pub, controller);
 			Ok(())
 		}
 	}
@@ -517,7 +579,7 @@ pub mod pallet {
 		fn validate(bytes_sent: &dac::BytesSent, bytes_received: &dac::BytesReceived) -> bool {
 			let percentage_difference = 1f32 - (bytes_received.sum as f32 / bytes_sent.sum as f32);
 
-			return if percentage_difference > 0.0 &&
+			return if percentage_difference >= 0.0 &&
 				(T::ValidationThreshold::get() as f32 - percentage_difference) > 0.0
 			{
 				true
@@ -533,7 +595,7 @@ pub mod pallet {
 
 			let percentage_difference = 1f32 - (bytes_received as f32 / bytes_sent as f32);
 
-			return if percentage_difference > 0.0 &&
+			return if percentage_difference >= 0.0 &&
 				(T::ValidationThreshold::get() as f32 - percentage_difference) > 0.0
 			{
 				true
@@ -573,12 +635,8 @@ pub mod pallet {
 			result
 		}
 
-		/// Assign which CDN nodes data each validator shall process.
-		///
-		/// Each CDN node is assigned to `quorum_size` validators randomly picked from the validator
-		/// set.
-		fn assign(quorum_size: usize, era: EraIndex) -> Result<(), AssignmentError> {
-			let validators: Vec<T::AccountId> = <staking::Validators<T>>::iter_keys().collect();
+		fn assign(quorum_size: usize, era: EraIndex) {
+			let validators: Vec<T::AccountId> = OffchainWorkerKeys::<T>::iter_keys().collect();
 			log::debug!("Current validators: {:?}.", validators);
 
 			if validators.len() == 0 {
@@ -708,6 +766,9 @@ pub mod pallet {
 
 			info!("assigned_edges: {:?}", assigned_edges);
 
+			// Calculate CDN nodes reward points from validation decision aggregates
+			let mut cdn_nodes_reward_points: Vec<(T::AccountId, u64)> = vec![];
+
 			for assigned_edge in assigned_edges.iter() {
 				info!("assigned edge: {:?}", assigned_edge);
 
@@ -760,11 +821,13 @@ pub mod pallet {
 					},
 				};
 
-				info!("decision: {:?}", decision);
+				info!("decision to be encoded: {:?}", decision);
 
 				let serialized_decision = serde_json::to_string(&decision).unwrap();
 				let encoded_decision =
 					shm::base64_encode(&serialized_decision.as_bytes().to_vec()).unwrap();
+				info!("encoded decision: {:?}", encoded_decision);
+
 				let validator_str = utils::account_to_string::<T>(validator.clone());
 				let edge_str = utils::account_to_string::<T>(assigned_edge.clone());
 
@@ -803,14 +866,29 @@ pub mod pallet {
 					if validations_res.len() == QUORUM_SIZE {
 						log::info!("payments per bucket: {:?}", payments_per_bucket);
 
-						let mut payments = vec![];
+						let mut payments: BTreeMap<
+							u128,
+							BucketsDetails<ddc_accounts::BalanceOf<T>>,
+						> = BTreeMap::new();
 						for bucket in payments_per_bucket.into_iter() {
 							let cere_payment: u32 = (bucket.1 / BYTES_TO_CERE) as u32;
-							let bucket_info =
-								BucketsDetails { bucket_id: bucket.0, amount: cere_payment.into() };
-							payments.push(bucket_info);
+							if payments.contains_key(&bucket.0) {
+								payments.entry(bucket.0).and_modify(|bucket_info| {
+									bucket_info.amount += cere_payment.into()
+								});
+							} else {
+								let bucket_info = BucketsDetails {
+									bucket_id: bucket.0,
+									amount: cere_payment.into(),
+								};
+								payments.insert(bucket.0, bucket_info);
+							}
 						}
-						log::info!("final payments: {:?}", payments);
+						let mut final_payments = vec![];
+						for (_, bucket_info) in payments {
+							final_payments.push(bucket_info);
+						}
+						log::info!("final payments: {:?}", final_payments);
 
 						// Store CDN node reward points on-chain
 						let signer: Signer<T, T::AuthorityId> = Signer::<_, _>::any_account();
@@ -822,13 +900,9 @@ pub mod pallet {
 						let _tx_res: Option<(frame_system::offchain::Account<T>, Result<(), ()>)> =
 							signer.send_signed_transaction(|_account| {
 								Call::charge_payments_content_owners {
-									paying_accounts: payments.clone(),
+									paying_accounts: final_payments.clone(),
 								}
 							});
-
-						let _payout_tx_res = signer.send_signed_transaction(|_account| {
-							Call::payout_cdn_owners { era: current_ddc_era }
-						});
 
 						let final_res = dac::get_final_decision(validations_res);
 
@@ -836,14 +910,29 @@ pub mod pallet {
 
 						let tx_res =
 							signer.send_signed_transaction(|_acct| Call::set_validation_decision {
-								era: current_ddc_era,
+								era: current_era - 1,
 								cdn_node: utils::string_to_account::<T>(edge.clone()),
 								validation_decision: final_res.clone(),
 							});
 
 						log::info!("final_res: {:?}", final_res);
+
+						cdn_nodes_reward_points.push((
+							utils::string_to_account::<T>(final_res.edge),
+							final_res.totals.sent,
+						));
 					}
 				}
+			}
+			let signer = Self::get_signer().unwrap();
+
+			// ToDo: replace local call by a call from `ddc-staking` pallet
+			if cdn_nodes_reward_points.len() > 0 {
+				let _tx_res =
+					signer.send_signed_transaction(|_account| Call::set_era_reward_points {
+						era: current_era - 1,
+						stakers_points: cdn_nodes_reward_points.clone(),
+					});
 			}
 
 			Ok(())
