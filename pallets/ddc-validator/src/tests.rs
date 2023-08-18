@@ -1,7 +1,7 @@
 use crate::{
 	mock::{Timestamp, *},
 	shm, utils, DacTotalAggregates, EraIndex, ValidationDecision, DEFAULT_DATA_PROVIDER_URL,
-	ERA_DURATION_MS, ERA_IN_BLOCKS, KEY_TYPE, TIME_START_MS,
+	ENABLE_DDC_VALIDATION_KEY, ERA_DURATION_MS, ERA_IN_BLOCKS, KEY_TYPE, TIME_START_MS,
 };
 use codec::Decode;
 use frame_support::{
@@ -11,6 +11,7 @@ use frame_support::{
 use pallet_ddc_accounts::BucketsDetails;
 use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
 use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
+use sp_runtime::offchain::storage::StorageValueRef;
 use std::sync::Arc;
 
 const OCW_PUB_KEY_STR: &str = "d2bf4b844dfefd6772a8843e669f943408966a977e3ae2af1dd78e0f55f4df67";
@@ -131,6 +132,7 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 			(TIME_START_MS + ERA_DURATION_MS * (era_to_validate as u128 + 1)) as u64,
 		);
 		DdcStaking::on_finalize(era_block_number + 1); // inc DDC era counter
+		StorageValueRef::persistent(ENABLE_DDC_VALIDATION_KEY).set(&true); // enable validation
 		DdcValidator::offchain_worker(era_block_number + 1); // execute assignments
 
 		let mut transactions = pool_state.read().transactions.clone();
