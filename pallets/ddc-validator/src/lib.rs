@@ -273,7 +273,7 @@ pub mod pallet {
 			let current_ddc_era = match ddc_staking::pallet::Pallet::<T>::current_era() {
 				Some(era) => era,
 				None => {
-					defensive!("DDC era not set");
+					log::debug!("DDC era not set");
 					return Weight::from_ref_time(0)
 				},
 			};
@@ -289,7 +289,7 @@ pub mod pallet {
 			match Self::assign(3usize, current_ddc_era + 1) {
 				Ok(_) => <LastManagedEra<T>>::put(current_ddc_era + 1),
 				Err(AssignmentError::DefensiveEmptyQuorumsCycle) => {
-					defensive!("unexpectedly empty quorums cycle");
+					log::debug!("unexpectedly empty quorums cycle");
 				},
 				Err(e) => log::debug!("assignment error: {:?}", e),
 			};
