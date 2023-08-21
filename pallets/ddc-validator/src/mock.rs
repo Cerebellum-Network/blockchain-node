@@ -273,6 +273,7 @@ impl pallet_ddc_staking::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type StakersPayoutSource = DdcAccountsPalletId;
 	type UnixTime = Timestamp;
+	type TimeProvider = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Test>;
 }
 
