@@ -107,6 +107,7 @@ impl crate::pallet::Config for Test {
 	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
 	type UnixTime = Timestamp;
+	type TimeProvider = Timestamp;
 	type WeightInfo = ();
 	type StakersPayoutSource = DdcAccountsPalletId;
 }

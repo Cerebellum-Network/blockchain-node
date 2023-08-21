@@ -116,13 +116,13 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 		System::set_block_number(era_block_number); // required for randomness
 
 		Timestamp::set_timestamp(
-			(TIME_START_MS + ERA_DURATION_MS * (era_to_validate as u128 - 1)) as u64,
+			(DDC_ERA_START_MS + DDC_ERA_DURATION_MS * (era_to_validate as u128 - 1)) as u64,
 		);
 		DdcStaking::on_finalize(era_block_number - 1); // set DDC era counter
 		DdcValidator::on_initialize(era_block_number - 1); // make assignments
 
 		Timestamp::set_timestamp(
-			(TIME_START_MS + ERA_DURATION_MS * (era_to_validate as u128 + 1)) as u64,
+			(DDC_ERA_START_MS + DDC_ERA_DURATION_MS * (era_to_validate as u128 + 1)) as u64,
 		);
 		DdcStaking::on_finalize(era_block_number + 1); // inc DDC era counter
 		StorageValueRef::persistent(ENABLE_DDC_VALIDATION_KEY).set(&true); // enable validation
