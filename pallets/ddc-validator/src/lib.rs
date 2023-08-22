@@ -380,7 +380,7 @@ pub mod pallet {
 			}
 
 			last_validated_era_storage.set(&current_ddc_era);
-			log::debug!("🔎 DDC validation complete for {} era.", current_ddc_era);
+			log::info!("🔎 DDC validation complete for {} era.", current_ddc_era);
 		}
 	}
 

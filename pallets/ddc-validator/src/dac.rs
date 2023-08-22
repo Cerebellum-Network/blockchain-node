@@ -5,7 +5,6 @@ use alloc::{format, string::String}; // ToDo: remove String usage
 use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use codec::{Decode, Encode};
 use lite_json::{json::JsonValue, json_parser::parse_json};
-use log::debug;
 use serde_json::{Map, Value};
 use sp_runtime::{
 	generic::Era,
