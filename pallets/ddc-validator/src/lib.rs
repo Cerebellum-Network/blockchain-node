@@ -511,14 +511,7 @@ pub mod pallet {
 				<ddc_staking::pallet::Pallet<T>>::pricing().ok_or(Error::<T>::PricingNotSet)?;
 			EraContentOwnersCharged::<T>::insert(current_era, controller, true);
 
-			<ddc_accounts::pallet::Pallet<T>>::charge_content_owners(paying_accounts, pricing) 
-		}
-
-		#[pallet::weight(100_000)]
-		pub fn payout_cdn_owners(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
-			ensure_signed(origin)?;
-
-			<ddc_staking::pallet::Pallet<T>>::do_payout_stakers(era)
+			<ddc_accounts::pallet::Pallet<T>>::charge_content_owners(paying_accounts, pricing)
 		}
 
 		#[pallet::weight(100_000)]
