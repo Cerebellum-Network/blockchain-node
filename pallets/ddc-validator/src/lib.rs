@@ -200,7 +200,6 @@ pub mod pallet {
 		type RuntimeCall: From<Call<Self>>;
 
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
-		type TimeProvider: UnixTime;
 
 		/// Number of validators expected to produce an individual validation decision to form a
 		/// consensus. Tasks assignment procedure use this value to determine the number of

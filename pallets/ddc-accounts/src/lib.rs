@@ -163,7 +163,6 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain bonded for.
 		#[pallet::constant]
 		type BondingDuration: Get<EraIndex>;
-		type TimeProvider: UnixTime;
 	}
 
 	/// Map from all locked "stash" accounts to the controller account.
