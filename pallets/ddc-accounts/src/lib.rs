@@ -225,6 +225,8 @@ pub mod pallet {
 		NoMoreChunks,
 		/// Internal state has become somehow corrupted and the operation cannot continue.
 		BadState,
+		/// Current era not set
+		DDCEraNotSet,
 	}
 
 	#[pallet::genesis_config]
@@ -425,8 +427,8 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
-				let current_era =
-					ddc_staking::pallet::Pallet::<T>::current_era().ok_or("DDC era not set")?;
+				let current_era = ddc_staking::pallet::Pallet::<T>::current_era()
+					.ok_or(Error::<T>::DDCEraNotSet)?;
 				// Note: bonding for extra era to allow for accounting
 				let era = current_era + <T as pallet::Config>::BondingDuration::get();
 				log::debug!("Era for the unbond: {:?}", era);
@@ -468,7 +470,7 @@ pub mod pallet {
 			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
 			let current_era =
-				ddc_staking::pallet::Pallet::<T>::current_era().ok_or("DDC era not set")?;
+				ddc_staking::pallet::Pallet::<T>::current_era().ok_or(Error::<T>::DDCEraNotSet)?;
 			ledger = ledger.consolidate_unlocked(current_era);
 			log::debug!("Current era: {:?}", current_era);
 
