@@ -463,6 +463,7 @@ pub mod pallet {
 		DoubleSpendRewards,
 		PricingNotSet,
 		BudgetOverflow,
+		DDCEraNotSet,
 	}
 
 	#[pallet::hooks]
@@ -839,10 +840,12 @@ pub mod pallet {
 		#[pallet::weight(100_000)]
 		pub fn payout_stakers(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
 			ensure_signed(origin)?;
-			let current_era = Self::current_era().ok_or("DDC era not set")?;
+			let current_era = Self::current_era().ok_or(Error::<T>::DDCEraNotSet)?;
 
+			// Makes sure this era hasn't been paid out yet
 			ensure!(!Self::paideras(era), Error::<T>::DoubleSpendRewards);
 
+			// This should be adjusted based on the finality of validation
 			ensure!(current_era >= era + 2, Error::<T>::EraNotValidated);
 
 			PaidEras::<T>::insert(era, true);

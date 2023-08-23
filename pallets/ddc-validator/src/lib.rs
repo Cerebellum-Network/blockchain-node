@@ -265,11 +265,13 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		DDCEraNotSet,
 		NotController,
 		OCWKeyNotRegistered,
 		ContentOwnersDoubleSpend,
 		ValidationDecisionAlreadySet,
 		NodeNotActive,
+		PricingNotSet,
 	}
 
 	#[pallet::event]
@@ -494,7 +496,7 @@ pub mod pallet {
 			log::debug!("Controller is {:?}", controller);
 
 			let current_era =
-				ddc_staking::pallet::Pallet::<T>::current_era().ok_or("DDC era not set")?;
+				ddc_staking::pallet::Pallet::<T>::current_era().ok_or(Error::<T>::DDCEraNotSet)?;
 
 			ensure!(
 				OffchainWorkerKeys::<T>::contains_key(&controller),
@@ -506,12 +508,11 @@ pub mod pallet {
 				Error::<T>::ContentOwnersDoubleSpend
 			);
 
-			let pricing: u128 = <ddc_staking::pallet::Pallet<T>>::pricing().unwrap();
-			<ddc_accounts::pallet::Pallet<T>>::charge_payments_new(paying_accounts, pricing);
-
+			let pricing: u128 =
+				<ddc_staking::pallet::Pallet<T>>::pricing().ok_or(Error::<T>::PricingNotSet)?;
 			EraContentOwnersCharged::<T>::insert(current_era, controller, true);
 
-			Ok(())
+			<ddc_accounts::pallet::Pallet<T>>::charge_payments_new(paying_accounts, pricing) 
 		}
 
 		#[pallet::weight(100_000)]
@@ -525,7 +526,7 @@ pub mod pallet {
 		pub fn set_ocw_key(origin: OriginFor<T>, ocw_pub: T::AccountId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			let ledger = staking::Ledger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
-			let era = staking::Pallet::<T>::current_era().unwrap();
+			let era = staking::Pallet::<T>::current_era().ok_or(Error::<T>::DDCEraNotSet)?;
 
 			ensure!(
 				staking::ErasStakers::<T>::contains_key(era, &ledger.stash),
