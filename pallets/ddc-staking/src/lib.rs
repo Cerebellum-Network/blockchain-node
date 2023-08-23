@@ -845,7 +845,7 @@ pub mod pallet {
 		#[pallet::weight(100_000)]
 		pub fn payout_stakers(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
 			ensure_signed(origin)?;
-			let current_era = Self::get_current_era();
+			let current_era = Self::current_era().ok_or("DDC era not set")?;
 
 			ensure!(!Self::paideras(era), Error::<T>::DoubleSpendRewards);
 
@@ -1082,14 +1082,6 @@ pub mod pallet {
 					era_rewards.total += points;
 				}
 			});
-		}
-
-		// Get the current era; Shall we start era count from 0 or from 1?
-		fn get_current_era() -> EraIndex {
-			((<T as pallet::Config>::TimeProvider::now().as_millis() - DDC_ERA_START_MS) /
-				DDC_ERA_DURATION_MS)
-				.try_into()
-				.unwrap()
 		}
 	}
 }

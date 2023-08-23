@@ -8,20 +8,16 @@ use frame_support::{
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement, UnixTime},
 	BoundedVec, PalletId,
 };
+pub use pallet_ddc_staking::{self as ddc_staking};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
-
 use sp_staking::EraIndex;
 use sp_std::prelude::*;
 
 pub use pallet::*;
-
-pub const TIME_START_MS: u128 = 1_672_531_200_000;
-pub const ERA_DURATION_MS: u128 = 120_000;
-pub const ERA_IN_BLOCKS: u8 = 20;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
@@ -158,7 +154,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + ddc_staking::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -245,9 +241,9 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
 			let account_id = <Pallet<T>>::account_id();
-			let min = T::Currency::minimum_balance();
-			if T::Currency::free_balance(&account_id) < min {
-				let _ = T::Currency::make_free_balance_be(&account_id, min);
+			let min = <T as pallet::Config>::Currency::minimum_balance();
+			if <T as pallet::Config>::Currency::free_balance(&account_id) < min {
+				let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
 			}
 		}
 	}
@@ -336,7 +332,7 @@ pub mod pallet {
 			}
 
 			// Reject a deposit which is considered to be _dust_.
-			if value < T::Currency::minimum_balance() {
+			if value < <T as pallet::Config>::Currency::minimum_balance() {
 				Err(Error::<T>::InsufficientDeposit)?
 			}
 
@@ -344,7 +340,7 @@ pub mod pallet {
 
 			<Bonded<T>>::insert(&stash, &controller);
 
-			let stash_balance = T::Currency::free_balance(&stash);
+			let stash_balance = <T as pallet::Config>::Currency::free_balance(&stash);
 			let value = value.min(stash_balance);
 			Self::deposit_event(Event::<T>::Deposited(stash.clone(), value));
 			let item = AccountsLedger {
@@ -373,13 +369,13 @@ pub mod pallet {
 			let controller = Self::bonded(&stash).ok_or(Error::<T>::NotStash)?;
 			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 
-			let stash_balance = T::Currency::free_balance(&stash);
+			let stash_balance = <T as pallet::Config>::Currency::free_balance(&stash);
 			let extra = stash_balance.min(max_additional);
 			ledger.total += extra;
 			ledger.active += extra;
 			// Last check: the new active amount of ledger must be more than ED.
 			ensure!(
-				ledger.active >= T::Currency::minimum_balance(),
+				ledger.active >= <T as pallet::Config>::Currency::minimum_balance(),
 				Error::<T>::InsufficientDeposit
 			);
 
@@ -424,13 +420,15 @@ pub mod pallet {
 				ledger.active -= value;
 
 				// Avoid there being a dust balance left in the accounts system.
-				if ledger.active < T::Currency::minimum_balance() {
+				if ledger.active < <T as pallet::Config>::Currency::minimum_balance() {
 					value += ledger.active;
 					ledger.active = Zero::zero();
 				}
 
+				let current_era =
+					ddc_staking::pallet::Pallet::<T>::current_era().ok_or("DDC era not set")?;
 				// Note: bonding for extra era to allow for accounting
-				let era = Self::get_current_era() + T::BondingDuration::get();
+				let era = current_era + <T as pallet::Config>::BondingDuration::get();
 				log::debug!("Era for the unbond: {:?}", era);
 
 				if let Some(mut chunk) =
@@ -469,11 +467,14 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
-			let current_era = Self::get_current_era();
+			let current_era =
+				ddc_staking::pallet::Pallet::<T>::current_era().ok_or("DDC era not set")?;
 			ledger = ledger.consolidate_unlocked(current_era);
 			log::debug!("Current era: {:?}", current_era);
 
-			if ledger.unlocking.is_empty() && ledger.active < T::Currency::minimum_balance() {
+			if ledger.unlocking.is_empty() &&
+				ledger.active < <T as pallet::Config>::Currency::minimum_balance()
+			{
 				log::debug!("Killing stash");
 				// This account must have called `unbond()` with some value that caused the active
 				// portion to fall below existential deposit + will have no more unlocking chunks
@@ -497,7 +498,12 @@ pub mod pallet {
 
 				let account_id = Self::account_id();
 
-				T::Currency::transfer(&account_id, &stash, value, ExistenceRequirement::KeepAlive)?;
+				<T as pallet::Config>::Currency::transfer(
+					&account_id,
+					&stash,
+					value,
+					ExistenceRequirement::KeepAlive,
+				)?;
 				Self::deposit_event(Event::<T>::Withdrawn(stash, value));
 			}
 
@@ -519,7 +525,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let account_id = Self::account_id();
 
-			T::Currency::transfer(
+			<T as pallet::Config>::Currency::transfer(
 				stash,
 				&account_id,
 				ledger.total,
@@ -553,13 +559,6 @@ pub mod pallet {
 			frame_system::Pallet::<T>::dec_consumers(stash);
 
 			Ok(())
-		}
-
-		// Get the current era.
-		fn get_current_era() -> EraIndex {
-			((T::TimeProvider::now().as_millis() - TIME_START_MS) / ERA_DURATION_MS)
-				.try_into()
-				.unwrap()
 		}
 
 		// Charge payments from content owners

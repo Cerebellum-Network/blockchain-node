@@ -80,9 +80,6 @@ const ENABLE_DDC_VALIDATION_KEY: &[u8; 21] = b"enable-ddc-validation";
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
 
-pub const DDC_ERA_START_MS: u128 = 1_672_531_200_000;
-pub const DDC_ERA_DURATION_MS: u128 = 120_000;
-pub const ERA_IN_BLOCKS: u8 = 20;
 pub const BYTES_TO_CERE: u64 = 1; // this should have a logic built on top and adjusted
 
 /// Offchain local storage key that holds the last era in which the validator completed its
@@ -497,7 +494,8 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 			log::debug!("Controller is {:?}", controller);
 
-			let era = Self::get_current_era();
+			let current_era =
+				ddc_staking::pallet::Pallet::<T>::current_era().ok_or("DDC era not set")?;
 
 			ensure!(
 				OffchainWorkerKeys::<T>::contains_key(&controller),
@@ -505,14 +503,14 @@ pub mod pallet {
 			);
 
 			ensure!(
-				!Self::content_owners_charged(era, &controller),
+				!Self::content_owners_charged(current_era, &controller),
 				Error::<T>::ContentOwnersDoubleSpend
 			);
 
 			let pricing: u128 = <ddc_staking::pallet::Pallet<T>>::pricing().unwrap();
 			<ddc_accounts::pallet::Pallet<T>>::charge_payments_new(paying_accounts, pricing);
 
-			EraContentOwnersCharged::<T>::insert(era, controller, true);
+			EraContentOwnersCharged::<T>::insert(current_era, controller, true);
 
 			Ok(())
 		}
@@ -742,13 +740,6 @@ pub mod pallet {
 				Some(pubkey) => Some(T::AccountId::decode(&mut &pubkey.encode()[..]).unwrap()),
 				None => None,
 			}
-		}
-
-		fn get_current_era() -> EraIndex {
-			((<T as pallet::Config>::TimeProvider::now().as_millis() - DDC_ERA_START_MS) /
-				DDC_ERA_DURATION_MS)
-				.try_into()
-				.unwrap()
 		}
 
 		fn validate_edges() -> Result<(), &'static str> {
