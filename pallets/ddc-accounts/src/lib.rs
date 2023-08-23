@@ -252,40 +252,6 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
-		pub fn charge_payments(
-			origin: OriginFor<T>,
-			paying_accounts: Vec<BucketsDetails<BalanceOf<T>>>,
-		) -> DispatchResult {
-			let validator = ensure_signed(origin)?;
-			let mut total_charged = BalanceOf::<T>::zero();
-
-			for bucket_details in paying_accounts.iter() {
-				let bucket: Bucket<T::AccountId> = Self::buckets(bucket_details.bucket_id).unwrap();
-				let content_owner = bucket.owner_id;
-				let amount = bucket_details.amount;
-
-				let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotController)?;
-				if ledger.active >= amount {
-					ledger.total -= amount;
-					ledger.active -= amount;
-					total_charged += amount;
-					Self::update_ledger(&content_owner, &ledger);
-				} else {
-					let diff = amount - ledger.active;
-					total_charged += ledger.active;
-					ledger.total -= ledger.active;
-					ledger.active = BalanceOf::<T>::zero();
-					let (ledger, charged) = ledger.charge_unlocking(diff);
-					Self::update_ledger(&content_owner, &ledger);
-					total_charged += charged;
-				}
-			}
-			Self::deposit_event(Event::<T>::Charged(total_charged));
-
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
 		pub fn create_bucket(
 			origin: OriginFor<T>,
 			public_availability: bool,
@@ -563,7 +529,7 @@ pub mod pallet {
 		}
 
 		// Charge payments from content owners
-		pub fn charge_payments_new(
+		pub fn charge_content_owners(
 			paying_accounts: Vec<BucketsDetails<BalanceOf<T>>>,
 			pricing: u128,
 		) -> DispatchResult {

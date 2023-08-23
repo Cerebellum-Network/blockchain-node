@@ -511,7 +511,7 @@ pub mod pallet {
 				<ddc_staking::pallet::Pallet<T>>::pricing().ok_or(Error::<T>::PricingNotSet)?;
 			EraContentOwnersCharged::<T>::insert(current_era, controller, true);
 
-			<ddc_accounts::pallet::Pallet<T>>::charge_payments_new(paying_accounts, pricing) 
+			<ddc_accounts::pallet::Pallet<T>>::charge_content_owners(paying_accounts, pricing) 
 		}
 
 		#[pallet::weight(100_000)]
