@@ -258,7 +258,7 @@ pub mod pallet {
 	/// Map from all locked "stash" accounts to the controller account.
 	#[pallet::storage]
 	#[pallet::getter(fn bonded)]
-	pub type Bonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
+	pub type Bonded<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
 	/// DDC clusters staking settings.
 	#[pallet::storage]
@@ -270,36 +270,30 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>>>;
+		StorageMap<_, Identity, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>>>;
 
 	/// The map of (wannabe) CDN participants stash keys to the DDC cluster ID they wish to
 	/// participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn edges)]
-	pub type Edges<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
+	pub type Edges<T: Config> = StorageMap<_, Identity, T::AccountId, ClusterId>;
 
 	/// The map of (wannabe) storage network participants stash keys to the DDC cluster ID they wish
 	/// to participate into..
 	#[pallet::storage]
 	#[pallet::getter(fn storages)]
-	pub type Storages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
+	pub type Storages<T: Config> = StorageMap<_, Identity, T::AccountId, ClusterId>;
 
 	/// Map from all "stash" accounts to the paid out rewards
 	#[pallet::storage]
 	#[pallet::getter(fn rewards)]
-	pub type Rewards<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>, ValueQuery>;
+	pub type Rewards<T: Config> = StorageMap<_, Identity, T::AccountId, BalanceOf<T>, ValueQuery>;
 
 	/// Map from all "stash" accounts to the paid out rewards
 	#[pallet::storage]
 	#[pallet::getter(fn paideraspernode)]
-	pub type PaidErasPerNode<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		Vec<EraRewardsPaid<BalanceOf<T>>>,
-		ValueQuery,
-	>;
+	pub type PaidErasPerNode<T: Config> =
+		StorageMap<_, Identity, T::AccountId, Vec<EraRewardsPaid<BalanceOf<T>>>, ValueQuery>;
 
 	// Map to check if validation decision was performed for the era
 	#[pallet::storage]
@@ -310,7 +304,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn contentownerscharged)]
 	pub(super) type EraContentOwnersCharged<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
+		StorageDoubleMap<_, Identity, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
 
 	/// The current era index.
 	///
@@ -334,7 +328,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn eras_edges_reward_points_per_node)]
 	pub type ErasEdgesRewardPointsPerNode<T: Config> =
-		StorageMap<_, Twox64Concat, T::AccountId, Vec<EraRewardPointsPerNode>, ValueQuery>;
+		StorageMap<_, Identity, T::AccountId, Vec<EraRewardPointsPerNode>, ValueQuery>;
 
 	/// Price per byte of the bucket traffic in smallest units of the currency.
 	#[pallet::storage]

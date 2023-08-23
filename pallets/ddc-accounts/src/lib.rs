@@ -169,13 +169,13 @@ pub mod pallet {
 	/// Map from all locked "stash" accounts to the controller account.
 	#[pallet::storage]
 	#[pallet::getter(fn bonded)]
-	pub type Bonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
+	pub type Bonded<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
 	/// Map from all (unlocked) "controller" accounts to the debug regarding the staking.
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, AccountsLedger<T::AccountId, BalanceOf<T>>>;
+		StorageMap<_, Identity, T::AccountId, AccountsLedger<T::AccountId, BalanceOf<T>>>;
 
 	#[pallet::type_value]
 	pub fn DefaultBucketCount<T: Config>() -> u128 {

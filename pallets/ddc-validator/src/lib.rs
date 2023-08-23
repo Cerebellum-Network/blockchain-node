@@ -222,13 +222,13 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn assignments)]
 	pub(super) type Assignments<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, Vec<T::AccountId>>;
+		StorageDoubleMap<_, Twox64Concat, EraIndex, Identity, T::AccountId, Vec<T::AccountId>>;
 
 	// Map to check if validation decision was performed for the era
 	#[pallet::storage]
 	#[pallet::getter(fn content_owners_charged)]
 	pub(super) type EraContentOwnersCharged<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
+		StorageDoubleMap<_, Twox64Concat, EraIndex, Identity, T::AccountId, bool, ValueQuery>;
 
 	/// A signal to start a process on all the validators.
 	#[pallet::storage]
@@ -239,19 +239,19 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn validation_decisions)]
 	pub type ValidationDecisions<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, ValidationDecision>;
+		StorageDoubleMap<_, Twox64Concat, EraIndex, Identity, T::AccountId, ValidationDecision>;
 
 	// Map to check if validation decision was performed for the era
 	#[pallet::storage]
 	#[pallet::getter(fn validation_decision_set_for_node)]
 	pub(super) type ValidationDecisionSetForNode<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
+		StorageDoubleMap<_, Twox64Concat, EraIndex, Identity, T::AccountId, bool, ValueQuery>;
 
 	// Map to check if reward points were set for the era
 	#[pallet::storage]
 	#[pallet::getter(fn reward_points_set_for_node)]
 	pub(super) type RewardPointsSetForNode<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
+		StorageDoubleMap<_, Twox64Concat, EraIndex, Identity, T::AccountId, bool, ValueQuery>;
 
 	/// The last era for which the tasks assignment produced.
 	#[pallet::storage]
@@ -261,8 +261,7 @@ pub mod pallet {
 	/// The mapping of controller accounts to OCW public keys
 	#[pallet::storage]
 	#[pallet::getter(fn ocw_keys)]
-	pub type OffchainWorkerKeys<T: Config> =
-		StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
+	pub type OffchainWorkerKeys<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
 	#[pallet::error]
 	pub enum Error<T> {
