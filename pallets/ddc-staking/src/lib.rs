@@ -251,8 +251,6 @@ pub mod pallet {
 		/// Time used for computing era index. It is guaranteed to start being called from the first
 		/// `on_finalize`.
 		type UnixTime: UnixTime;
-
-		type TimeProvider: UnixTime;
 	}
 
 	/// Map from all locked "stash" accounts to the controller account.

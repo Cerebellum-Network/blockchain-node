@@ -253,7 +253,6 @@ impl pallet_ddc_accounts::Config for Test {
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = DdcAccountsPalletId;
-	type TimeProvider = pallet_timestamp::Pallet<Test>;
 }
 
 parameter_types! {
@@ -273,7 +272,6 @@ impl pallet_ddc_staking::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type StakersPayoutSource = DdcAccountsPalletId;
 	type UnixTime = Timestamp;
-	type TimeProvider = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Test>;
 }
 
@@ -288,7 +286,6 @@ impl pallet_ddc_validator::Config for Test {
 	type Randomness = RandomnessCollectiveFlip;
 	type RuntimeCall = RuntimeCall;
 	type AuthorityId = pallet_ddc_validator::crypto::TestAuthId;
-	type TimeProvider = pallet_timestamp::Pallet<Test>;
 	type ValidationThreshold = ValidationThreshold;
 	type ValidatorsMax = ();
 }

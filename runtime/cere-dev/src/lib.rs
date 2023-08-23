@@ -1332,7 +1332,6 @@ impl pallet_ddc_staking::Config for Runtime {
 	type DefaultStorageBondSize = DefaultStorageBondSize;
 	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
-	type TimeProvider = pallet_timestamp::Pallet<Runtime>;
 	type StakersPayoutSource = Ddc_Accounts_Pallet_Id;
 	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
@@ -1347,7 +1346,6 @@ impl pallet_ddc_accounts::Config for Runtime {
 	type Currency = Balances;
 	type PalletId = Ddc_Accounts_Pallet_Id;
 	type RuntimeEvent = RuntimeEvent;
-	type TimeProvider = pallet_timestamp::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1362,7 +1360,6 @@ impl pallet_ddc_validator::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type AuthorityId = pallet_ddc_validator::crypto::TestAuthId;
-	type TimeProvider = pallet_timestamp::Pallet<Runtime>;
 	type ValidationThreshold = ValidationThreshold;
 	type ValidatorsMax = ValidatorsMax;
 }
