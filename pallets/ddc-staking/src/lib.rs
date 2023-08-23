@@ -850,39 +850,6 @@ pub mod pallet {
 			Self::do_payout_stakers(era)
 		}
 
-		/// Set reward points for CDN participants at the given era.
-		///
-		/// The dispatch origin for this call must be _Signed_ by the validator.
-		///
-		/// `stakers_points` is a vector of (stash account ID, reward points) pairs. The rewards
-		/// distribution will be based on total reward points, with each CDN participant receiving a
-		/// proportionate reward based on their individual reward points.
-		///
-		/// See also [`ErasEdgesRewardPoints`].
-		#[pallet::weight(100_000)]
-		pub fn set_era_reward_points(
-			origin: OriginFor<T>,
-			era: EraIndex,
-			stakers_points: Vec<(T::AccountId, u64)>,
-		) -> DispatchResult {
-			ensure_signed(origin)?;
-
-			// ToDo: ensure origin is a validator eligible to set rewards
-
-			// Check that a staker mentioned only once, fail with an error otherwise.
-			let unique_stakers_count =
-				stakers_points.iter().map(|(staker, _)| staker).collect::<BTreeSet<_>>().len();
-			if unique_stakers_count != stakers_points.len() {
-				Err(Error::<T>::DuplicateRewardPoints)?
-			}
-
-			// ToDo: check that all accounts had an active stake at the era
-
-			Self::reward_by_ids(era, stakers_points);
-
-			Ok(())
-		}
-
 		/// Set price per byte of the bucket traffic in smallest units of the currency.
 		///
 		/// The dispatch origin for this call must be _Root_.
