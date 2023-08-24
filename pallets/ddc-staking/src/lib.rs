@@ -88,7 +88,7 @@ pub struct EraRewardPoints<AccountId: Ord> {
 	pub individual: BTreeMap<AccountId, RewardPoint>,
 }
 
-/// Reward points of an era. Used to split era total payout between stakers.
+/// Reward points for particular era. To be used in a mapping.
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Clone)]
 pub struct EraRewardPointsPerNode {
 	/// Era points accrued
@@ -282,27 +282,27 @@ pub mod pallet {
 	#[pallet::getter(fn storages)]
 	pub type Storages<T: Config> = StorageMap<_, Identity, T::AccountId, ClusterId>;
 
-	/// Map from all "stash" accounts to the paid out rewards
+	/// Map from all "stash" accounts to the total paid out rewards
+	///
+	/// P.S. Not part of Mainnet
 	#[pallet::storage]
 	#[pallet::getter(fn rewards)]
 	pub type Rewards<T: Config> = StorageMap<_, Identity, T::AccountId, BalanceOf<T>, ValueQuery>;
 
-	/// Map from all "stash" accounts to the paid out rewards
+	/// Map from all "stash" accounts to the paid out rewards per era
+	///
+	/// P.S. Not part of Mainnet
 	#[pallet::storage]
 	#[pallet::getter(fn paideraspernode)]
 	pub type PaidErasPerNode<T: Config> =
 		StorageMap<_, Identity, T::AccountId, Vec<EraRewardsPaid<BalanceOf<T>>>, ValueQuery>;
 
-	// Map to check if validation decision was performed for the era
+	/// Map to check if CDN participants received payments for specific era
+	///
+	/// Used to avoid double-spend in method [payout_stakers]
 	#[pallet::storage]
 	#[pallet::getter(fn paideras)]
 	pub(super) type PaidEras<T: Config> = StorageMap<_, Twox64Concat, EraIndex, bool, ValueQuery>;
-
-	// Map to check if validation decision was performed for the era
-	#[pallet::storage]
-	#[pallet::getter(fn contentownerscharged)]
-	pub(super) type EraContentOwnersCharged<T: Config> =
-		StorageDoubleMap<_, Identity, EraIndex, Twox64Concat, T::AccountId, bool, ValueQuery>;
 
 	/// The current era index.
 	///
@@ -313,6 +313,7 @@ pub mod pallet {
 	pub type CurrentEra<T> = StorageValue<_, EraIndex>;
 
 	/// The reward each CDN participant earned in the era.
+	/// Mapping from Era to vector of CDN participants and respective rewards
 	///
 	/// See also [`pallet_staking::ErasRewardPoints`].
 	#[pallet::storage]
@@ -321,8 +322,9 @@ pub mod pallet {
 		StorageMap<_, Twox64Concat, EraIndex, EraRewardPoints<T::AccountId>, ValueQuery>;
 
 	/// The reward each CDN participant earned in the era.
+	/// Mapping from each CDN participant to vector of eras and rewards
 	///
-	/// See also [`pallet_staking::ErasRewardPoints`].
+	/// P.S. Not part of Mainnet
 	#[pallet::storage]
 	#[pallet::getter(fn eras_edges_reward_points_per_node)]
 	pub type ErasEdgesRewardPointsPerNode<T: Config> =
@@ -456,11 +458,17 @@ pub mod pallet {
 		AlreadyInRole,
 		/// Action is allowed at some point of time in future not reached yet.
 		TooEarly,
+		/// We are not yet sure that era has been valdiated by this time
 		EraNotValidated,
+		/// Attempt to assign reward point for some era more than once
 		DuplicateRewardPoints,
+		/// Attempt to double spend the assigned rewards per era
 		DoubleSpendRewards,
+		/// Pricing has not been set by sudo
 		PricingNotSet,
+		/// Payout amount overflows
 		BudgetOverflow,
+		/// Current era not set during runtime
 		DDCEraNotSet,
 	}
 

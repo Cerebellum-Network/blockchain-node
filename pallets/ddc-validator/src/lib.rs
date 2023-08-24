@@ -223,7 +223,8 @@ pub mod pallet {
 	pub(super) type Assignments<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, EraIndex, Identity, T::AccountId, Vec<T::AccountId>>;
 
-	// Map to check if validation decision was performed for the era
+	/// Map to from era and account ID to bool indicateing that a particular content owner was
+	/// charged for the era
 	#[pallet::storage]
 	#[pallet::getter(fn content_owners_charged)]
 	pub(super) type EraContentOwnersCharged<T: Config> =
@@ -264,13 +265,20 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		DDCEraNotSet,
+		/// Caller is not controller of validator node
 		NotController,
+		/// OCW key has not been registered by validator
 		OCWKeyNotRegistered,
+		/// Attempt to charge content owners twice
 		ContentOwnersDoubleSpend,
+		/// Validation decision has been already set for CDN node for some era
 		ValidationDecisionAlreadySet,
+		/// Node is not participating in the network
 		NodeNotActive,
+		/// Pricing has not been set by sudo
 		PricingNotSet,
+		/// Current era not set during runtime
+		DDCEraNotSet,
 	}
 
 	#[pallet::event]
@@ -398,6 +406,10 @@ pub mod pallet {
 		}
 
 		/// Set validation decision for a given CDN node in an era.
+		///
+		/// Only registered validator keys can call this exstrinsic.
+		/// Validation decision can be set only once per era per CDN node.
+		/// CDN node should be active.
 		#[pallet::weight(10_000)]
 		pub fn set_validation_decision(
 			origin: OriginFor<T>,
@@ -438,14 +450,13 @@ pub mod pallet {
 
 		/// Set reward points for CDN participants at the given era.
 		///
-		/// ToDo: remove it when the off-chain worker will be able to set reward points using the
-		/// same call defined in `pallet-ddc-staking`.
+		/// Only registered validator keys can call this exstrinsic.
+		/// Reward points can be set only once per era per CDN node.
+		///	CDN node should be active.
 		///
 		/// `stakers_points` is a vector of (stash account ID, reward points) pairs. The rewards
 		/// distribution will be based on total reward points, with each CDN participant receiving a
 		/// proportionate reward based on their individual reward points.
-		///
-		/// See also  [`pallet_ddc_staking::ErasEdgesRewardPoints`].
 		#[pallet::weight(100_000)]
 		pub fn set_era_reward_points(
 			origin: OriginFor<T>,
@@ -462,9 +473,7 @@ pub mod pallet {
 			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
 				for (staker, points) in stakers_points.clone().into_iter() {
 					if !Self::reward_points_set_for_node(era, &staker) {
-						// check if rewards were not yet set for era for node
 						if <ddc_staking::pallet::Edges<T>>::contains_key(&staker) {
-							// check if node is active
 							*era_rewards.individual.entry(staker.clone()).or_default() += points;
 							era_rewards.total += points;
 							<ddc_staking::pallet::ErasEdgesRewardPointsPerNode<T>>::mutate(
@@ -486,30 +495,34 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Exstrinsic deducts balances of content owners
+		///
+		/// Only registered validator keys can call this exstrinsic.
+		/// Reward points can be set only once per era per validator.
 		#[pallet::weight(100_000)]
 		pub fn charge_payments_content_owners(
 			origin: OriginFor<T>,
 			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>,
 		) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
-			log::debug!("Controller is {:?}", controller);
+			let validator_ocw = ensure_signed(origin)?;
+			log::debug!("validator is {:?}", validator_ocw);
 
 			let current_era =
 				ddc_staking::pallet::Pallet::<T>::current_era().ok_or(Error::<T>::DDCEraNotSet)?;
 
 			ensure!(
-				OffchainWorkerKeys::<T>::contains_key(&controller),
+				OffchainWorkerKeys::<T>::contains_key(&validator_ocw),
 				Error::<T>::OCWKeyNotRegistered
 			);
 
 			ensure!(
-				!Self::content_owners_charged(current_era, &controller),
+				!Self::content_owners_charged(current_era, &validator_ocw),
 				Error::<T>::ContentOwnersDoubleSpend
 			);
 
 			let pricing: u128 =
 				<ddc_staking::pallet::Pallet<T>>::pricing().ok_or(Error::<T>::PricingNotSet)?;
-			EraContentOwnersCharged::<T>::insert(current_era, controller, true);
+			EraContentOwnersCharged::<T>::insert(current_era, validator_ocw, true);
 
 			<ddc_accounts::pallet::Pallet<T>>::charge_content_owners(paying_accounts, pricing)
 		}
@@ -563,18 +576,6 @@ pub mod pallet {
 			}
 
 			Ok(signer)
-		}
-
-		fn validate(bytes_sent: &dac::BytesSent, bytes_received: &dac::BytesReceived) -> bool {
-			let percentage_difference = 1f32 - (bytes_received.sum as f32 / bytes_sent.sum as f32);
-
-			return if percentage_difference >= 0.0 &&
-				(T::ValidationThreshold::get() as f32 - percentage_difference) > 0.0
-			{
-				true
-			} else {
-				false
-			}
 		}
 
 		fn is_valid(bytes_sent: u64, bytes_received: u64) -> bool {
