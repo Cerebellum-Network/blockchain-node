@@ -82,13 +82,7 @@ pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
 
 pub const BYTES_TO_CERE: u64 = 1; // this should have a logic built on top and adjusted
 
-/// Offchain local storage key that holds the last era in which the validator completed its
-/// assignment.
-const LAST_VALIDATED_ERA_LOCK_KEY: &[u8; 45] = b"pallet-ddc-validator::last-validated-era-lock";
-const LAST_VALIDATED_ERA_STORAGE_KEY: &[u8; 48] =
-	b"pallet-ddc-validator::last-validated-era-storage";
 /// Webdis in experimental cluster connected to Redis in dev.
-// pub const DEFAULT_DATA_PROVIDER_URL: &str = "https://dev-dac-redis.network-dev.aws.cere.io";
 pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://webdis:7379";
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
 pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
@@ -258,15 +252,17 @@ pub mod pallet {
 	#[pallet::getter(fn last_managed_era)]
 	pub type LastManagedEra<T: Config> = StorageValue<_, EraIndex>;
 
-	/// The mapping of controller accounts to OCW public keys
+	/// The mapping of ddc validator keys to validator stash keys
 	#[pallet::storage]
-	#[pallet::getter(fn ocw_keys)]
+	#[pallet::getter(fn get_stash_for_ddc_validator)]
 	pub type OffchainWorkerKeys<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Caller is not controller of validator node
 		NotController,
+		/// Checked stash is not an active validator
+		NotValidatorStash,
 		/// OCW key has not been registered by validator
 		DDCValidatorKeyNotRegistered,
 		/// Attempt to charge content owners twice
@@ -408,6 +404,7 @@ pub mod pallet {
 		/// Set validation decision for a given CDN node in an era.
 		///
 		/// Only registered validator keys can call this exstrinsic.
+		/// Validator should be in the active set.
 		/// Validation decision can be set only once per era per CDN node.
 		/// CDN node should be active.
 		#[pallet::weight(10_000)]
@@ -417,11 +414,18 @@ pub mod pallet {
 			cdn_node: T::AccountId,
 			validation_decision: ValidationDecision,
 		) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
+			let ddc_valitor_key = ensure_signed(origin)?;
 
 			ensure!(
-				OffchainWorkerKeys::<T>::contains_key(&controller),
+				OffchainWorkerKeys::<T>::contains_key(&ddc_valitor_key),
 				Error::<T>::DDCValidatorKeyNotRegistered
+			);
+
+			ensure!(
+				staking::Validators::<T>::contains_key(Self::get_stash_for_ddc_validator(
+					&ddc_valitor_key).unwrap()
+				),
+				Error::<T>::NotValidatorStash
 			);
 
 			ensure!(
@@ -433,7 +437,6 @@ pub mod pallet {
 				<ddc_staking::pallet::Edges<T>>::contains_key(&cdn_node),
 				Error::<T>::NodeNotActive
 			);
-			// ToDo: check if the era is current - 1.
 
 			ValidationDecisions::<T>::insert(era, cdn_node.clone(), validation_decision.clone());
 
@@ -451,6 +454,7 @@ pub mod pallet {
 		/// Set reward points for CDN participants at the given era.
 		///
 		/// Only registered validator keys can call this exstrinsic.
+		/// Validator should be in the active set.
 		/// Reward points can be set only once per era per CDN node.
 		///	CDN node should be active.
 		///
@@ -463,11 +467,18 @@ pub mod pallet {
 			era: EraIndex,
 			stakers_points: Vec<(T::AccountId, u64)>,
 		) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
+			let ddc_valitor_key = ensure_signed(origin)?;
 
 			ensure!(
-				OffchainWorkerKeys::<T>::contains_key(&controller),
+				OffchainWorkerKeys::<T>::contains_key(&ddc_valitor_key),
 				Error::<T>::DDCValidatorKeyNotRegistered
+			);
+
+			ensure!(
+				staking::Validators::<T>::contains_key(Self::get_stash_for_ddc_validator(
+					&ddc_valitor_key).unwrap()
+				),
+				Error::<T>::NotValidatorStash
 			);
 
 			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
@@ -504,42 +515,54 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>,
 		) -> DispatchResult {
-			let validator_ocw = ensure_signed(origin)?;
-			log::debug!("validator is {:?}", validator_ocw);
+			let ddc_valitor_key = ensure_signed(origin)?;
+			log::debug!("validator is {:?}", &ddc_valitor_key);
 
 			let current_era =
 				ddc_staking::pallet::Pallet::<T>::current_era().ok_or(Error::<T>::DDCEraNotSet)?;
 
 			ensure!(
-				OffchainWorkerKeys::<T>::contains_key(&validator_ocw),
+				OffchainWorkerKeys::<T>::contains_key(&ddc_valitor_key),
 				Error::<T>::DDCValidatorKeyNotRegistered
 			);
 
-			// ToDo check that key is in active validator set
+			ensure!(
+				staking::Validators::<T>::contains_key(Self::get_stash_for_ddc_validator(
+					&ddc_valitor_key).unwrap()
+				),
+				Error::<T>::NotValidatorStash
+			);
 
 			ensure!(
-				!Self::content_owners_charged(current_era, &validator_ocw),
+				!Self::content_owners_charged(current_era, &ddc_valitor_key),
 				Error::<T>::ContentOwnersDoubleSpend
 			);
 
 			let pricing: u128 =
 				<ddc_staking::pallet::Pallet<T>>::pricing().ok_or(Error::<T>::PricingNotSet)?;
-			EraContentOwnersCharged::<T>::insert(current_era, validator_ocw, true);
+			EraContentOwnersCharged::<T>::insert(current_era, ddc_valitor_key, true);
 
 			<ddc_accounts::pallet::Pallet<T>>::charge_content_owners(paying_accounts, pricing)
 		}
 
+		/// Exstrinsic registers a ddc validator key for future use
+		/// 
+		/// Only controller of validator can call this exstrinsic 
+		/// Validator has to be in the active set
 		#[pallet::weight(100_000)]
-		pub fn set_validator_key(origin: OriginFor<T>, ocw_pub: T::AccountId) -> DispatchResult {
+		pub fn set_validator_key(
+			origin: OriginFor<T>,
+			ddc_validator_pub: T::AccountId,
+		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			let ledger = staking::Ledger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
 
 			ensure!(
 				staking::Validators::<T>::contains_key(&ledger.stash),
-				Error::<T>::NotController // ToDo change error type
+				Error::<T>::NotValidatorStash
 			);
 
-			OffchainWorkerKeys::<T>::insert(ocw_pub, controller);
+			OffchainWorkerKeys::<T>::insert(ddc_validator_pub, &ledger.stash);
 			Ok(())
 		}
 	}
@@ -901,7 +924,7 @@ pub mod pallet {
 
 						let signer = Self::get_signer().unwrap();
 
-						let tx_res =
+						let _tx_res =
 							signer.send_signed_transaction(|_acct| Call::set_validation_decision {
 								era: current_ddc_era - 1,
 								cdn_node: utils::string_to_account::<T>(edge.clone()),
