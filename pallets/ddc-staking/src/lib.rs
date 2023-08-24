@@ -871,8 +871,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		pub fn do_payout_stakers(era: EraIndex) -> DispatchResult {
-			// ToDo: check that the era is finished
-			// ToDo: check reward points are set
+			// ToDo: check that validation is finalised for era
 
 			let era_reward_points: EraRewardPoints<T::AccountId> =
 				<ErasEdgesRewardPoints<T>>::get(&era);
@@ -885,32 +884,18 @@ pub mod pallet {
 			// An account we withdraw the funds from and the amount of funds to withdraw.
 			let payout_source_account: T::AccountId =
 				T::StakersPayoutSource::get().into_account_truncating();
-			let payout_budget: BalanceOf<T> =
-				match (price_per_byte * era_reward_points.total as u128).try_into() {
-					Ok(value) => value,
-					Err(_) => Err(Error::<T>::BudgetOverflow)?,
-				};
-			log::debug!(
-				"Will payout to DDC stakers for era {:?} from account {:?} with total budget {:?} \
-				, there are {:?} stakers earned {:?} reward points with price per byte {:?}",
-				era,
-				payout_source_account,
-				payout_budget,
-				era_reward_points.individual.len(),
-				era_reward_points.total,
-				price_per_byte,
-			);
 
 			// Transfer a part of the budget to each CDN participant rewarded this era.
 			for (stash, points) in era_reward_points.clone().individual {
-				let part = Perbill::from_rational(points, era_reward_points.total);
-				let reward: BalanceOf<T> = part * payout_budget;
+				let reward: BalanceOf<T> = match (points as u128 * price_per_byte).try_into() {
+					Ok(value) => value,
+					Err(_) => Err(Error::<T>::BudgetOverflow)?,
+				};
 				log::debug!(
-					"Rewarding {:?} with {:?} points, its part is {:?}, reward size {:?}, balance \
+					"Rewarding {:?} with {:?} points, reward size {:?}, balance \
 					on payout source account {:?}",
 					stash,
 					points,
-					part,
 					reward,
 					T::Currency::free_balance(&payout_source_account)
 				);
