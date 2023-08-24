@@ -2,6 +2,7 @@ use super::*;
 use crate::mock::{Timestamp, *};
 use codec::Decode;
 use pallet_ddc_accounts::BucketsDetails;
+use pallet_ddc_staking::{DDC_ERA_DURATION_MS, DDC_ERA_START_MS};
 use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
 use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
 use sp_runtime::offchain::storage::StorageValueRef;
@@ -112,7 +113,7 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 	}
 
 	t.execute_with(|| {
-		let era_block_number = ERA_IN_BLOCKS as u32 * era_to_validate;
+		let era_block_number = 20 as u32 * era_to_validate;
 		System::set_block_number(era_block_number); // required for randomness
 
 		Timestamp::set_timestamp(
@@ -152,7 +153,7 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 		assert!(tx.signature.is_some());
 		assert_eq!(
 			tx.call,
-			crate::mock::RuntimeCall::DdcValidator(crate::Call::payout_cdn_owners {
+			crate::mock::RuntimeCall::DdcStaking(pallet_ddc_staking::Call::payout_stakers {
 				era: era_to_validate + 1
 			})
 		);

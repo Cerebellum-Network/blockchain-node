@@ -59,10 +59,10 @@ pub use pallet::*;
 ///
 /// If you are changing this, check `on_finalize` hook to ensure `CurrentEra` is capable to hold the
 /// value with the new era duration.
-const DDC_ERA_DURATION_MS: u128 = 120_000;
+pub const DDC_ERA_DURATION_MS: u128 = 120_000;
 
 /// 2023-01-01 00:00:00 UTC
-const DDC_ERA_START_MS: u128 = 1_672_531_200_000;
+pub const DDC_ERA_START_MS: u128 = 1_672_531_200_000;
 const DDC_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC maintainer's stake
 
 /// Counter for the number of "reward" points earned by a given staker.
