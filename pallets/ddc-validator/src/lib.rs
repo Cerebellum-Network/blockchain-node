@@ -268,7 +268,7 @@ pub mod pallet {
 		/// Caller is not controller of validator node
 		NotController,
 		/// OCW key has not been registered by validator
-		OCWKeyNotRegistered,
+		DDCValidatorKeyNotRegistered,
 		/// Attempt to charge content owners twice
 		ContentOwnersDoubleSpend,
 		/// Validation decision has been already set for CDN node for some era
@@ -316,7 +316,7 @@ pub mod pallet {
 			};
 			log::debug!("Current DDC era: {:?}.", current_ddc_era);
 
-			// Produce an assignment for the next era if it's not produced yet.
+			// Skip assignment if already exists for current era
 			match Self::last_managed_era() {
 				Some(last_managed_era) if current_ddc_era < last_managed_era =>
 					return Weight::from_ref_time(0),
@@ -331,7 +331,7 @@ pub mod pallet {
 			Weight::from_ref_time(0)
 		}
 
-		fn offchain_worker(block_number: T::BlockNumber) {
+		fn offchain_worker(_block_number: T::BlockNumber) {
 			// Skip if not a validator.
 			if !sp_io::offchain::is_validator() {
 				return
@@ -421,7 +421,7 @@ pub mod pallet {
 
 			ensure!(
 				OffchainWorkerKeys::<T>::contains_key(&controller),
-				Error::<T>::OCWKeyNotRegistered
+				Error::<T>::DDCValidatorKeyNotRegistered
 			);
 
 			ensure!(
@@ -467,7 +467,7 @@ pub mod pallet {
 
 			ensure!(
 				OffchainWorkerKeys::<T>::contains_key(&controller),
-				Error::<T>::OCWKeyNotRegistered
+				Error::<T>::DDCValidatorKeyNotRegistered
 			);
 
 			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
@@ -512,8 +512,10 @@ pub mod pallet {
 
 			ensure!(
 				OffchainWorkerKeys::<T>::contains_key(&validator_ocw),
-				Error::<T>::OCWKeyNotRegistered
+				Error::<T>::DDCValidatorKeyNotRegistered
 			);
+
+			// ToDo check that key is in active validator set
 
 			ensure!(
 				!Self::content_owners_charged(current_era, &validator_ocw),
@@ -528,14 +530,13 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100_000)]
-		pub fn set_ocw_key(origin: OriginFor<T>, ocw_pub: T::AccountId) -> DispatchResult {
+		pub fn set_validator_key(origin: OriginFor<T>, ocw_pub: T::AccountId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			let ledger = staking::Ledger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
-			let era = staking::Pallet::<T>::current_era().ok_or(Error::<T>::DDCEraNotSet)?;
 
 			ensure!(
-				staking::ErasStakers::<T>::contains_key(era, &ledger.stash),
-				Error::<T>::NotController
+				staking::Validators::<T>::contains_key(&ledger.stash),
+				Error::<T>::NotController // ToDo change error type
 			);
 
 			OffchainWorkerKeys::<T>::insert(ocw_pub, controller);
