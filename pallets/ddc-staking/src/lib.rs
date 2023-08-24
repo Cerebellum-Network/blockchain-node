@@ -293,7 +293,7 @@ pub mod pallet {
 	///
 	/// P.S. Not part of Mainnet
 	#[pallet::storage]
-	#[pallet::getter(fn paideraspernode)]
+	#[pallet::getter(fn paid_eras_per_node)]
 	pub type PaidErasPerNode<T: Config> =
 		StorageMap<_, Identity, T::AccountId, Vec<EraRewardsPaid<BalanceOf<T>>>, ValueQuery>;
 
@@ -301,7 +301,7 @@ pub mod pallet {
 	///
 	/// Used to avoid double-spend in method [payout_stakers]
 	#[pallet::storage]
-	#[pallet::getter(fn paideras)]
+	#[pallet::getter(fn paid_eras)]
 	pub(super) type PaidEras<T: Config> = StorageMap<_, Twox64Concat, EraIndex, bool, ValueQuery>;
 
 	/// The current era index.
@@ -849,7 +849,7 @@ pub mod pallet {
 			let current_era = Self::current_era().ok_or(Error::<T>::DDCEraNotSet)?;
 
 			// Makes sure this era hasn't been paid out yet
-			ensure!(!Self::paideras(era), Error::<T>::DoubleSpendRewards);
+			ensure!(!Self::paid_eras(era), Error::<T>::DoubleSpendRewards);
 
 			// This should be adjusted based on the finality of validation
 			ensure!(current_era >= era + 2, Error::<T>::EraNotValidated);
