@@ -185,7 +185,7 @@ pub mod pallet {
 	pub type BucketsCount<T: Config> =
 		StorageValue<Value = u128, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
 
-	/// Map from all locked accounts and their buckets to the bucket structure
+	/// Map from bucket ID to to the bucket structure
 	#[pallet::storage]
 	#[pallet::getter(fn buckets)]
 	pub type Buckets<T: Config> =
@@ -224,7 +224,7 @@ pub mod pallet {
 		NoMoreChunks,
 		/// Internal state has become somehow corrupted and the operation cannot continue.
 		BadState,
-		/// Current era not set
+		/// Current era not set during runtime
 		DDCEraNotSet,
 	}
 
