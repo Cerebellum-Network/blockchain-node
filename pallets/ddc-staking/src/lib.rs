@@ -528,15 +528,15 @@ pub mod pallet {
 
 			let stash_balance = T::Currency::free_balance(&stash);
 			let value = value.min(stash_balance);
-			Self::deposit_event(Event::<T>::Bonded(stash.clone(), value));
 			let item = StakingLedger {
-				stash,
+				stash: stash.clone(),
 				total: value,
 				active: value,
 				chilling: Default::default(),
 				unlocking: Default::default(),
 			};
 			Self::update_ledger(&controller, &item);
+			Self::deposit_event(Event::<T>::Bonded(stash, value));
 			Ok(())
 		}
 

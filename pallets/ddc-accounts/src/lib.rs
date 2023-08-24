@@ -54,12 +54,6 @@ pub struct BucketsDetails<Balance: HasCompact> {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct ReceiverDetails<AccountId, Balance: HasCompact> {
-	cdn_owner: AccountId,
-	amount: Balance,
-}
-
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct AccountsLedger<AccountId, Balance: HasCompact> {
 	/// The stash account whose balance is actually locked and can be used for CDN usage.
 	pub stash: AccountId,
@@ -251,6 +245,9 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Create new bucket with provided public availability & reserved resources
+		///
+		/// Anyone can create a bucket
 		#[pallet::weight(10_000)]
 		pub fn create_bucket(
 			origin: OriginFor<T>,
@@ -309,7 +306,6 @@ pub mod pallet {
 
 			let stash_balance = <T as pallet::Config>::Currency::free_balance(&stash);
 			let value = value.min(stash_balance);
-			Self::deposit_event(Event::<T>::Deposited(stash.clone(), value));
 			let item = AccountsLedger {
 				stash: stash.clone(),
 				total: value,
@@ -317,6 +313,7 @@ pub mod pallet {
 				unlocking: Default::default(),
 			};
 			Self::update_ledger_and_deposit(&stash, &controller, &item)?;
+			Self::deposit_event(Event::<T>::Deposited(stash.clone(), value));
 			Ok(())
 		}
 
