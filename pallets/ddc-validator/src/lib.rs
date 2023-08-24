@@ -422,8 +422,8 @@ pub mod pallet {
 			);
 
 			ensure!(
-				staking::Validators::<T>::contains_key(Self::get_stash_for_ddc_validator(
-					&ddc_valitor_key).unwrap()
+				staking::Validators::<T>::contains_key(
+					Self::get_stash_for_ddc_validator(&ddc_valitor_key).unwrap()
 				),
 				Error::<T>::NotValidatorStash
 			);
@@ -440,13 +440,13 @@ pub mod pallet {
 
 			ValidationDecisions::<T>::insert(era, cdn_node.clone(), validation_decision.clone());
 
+			ValidationDecisionSetForNode::<T>::insert(era, cdn_node.clone(), true);
+
 			Self::deposit_event(Event::<T>::ValidationDecision(
 				era,
-				cdn_node.clone(),
+				cdn_node,
 				validation_decision,
 			));
-
-			ValidationDecisionSetForNode::<T>::insert(era, cdn_node, true);
 
 			Ok(())
 		}
@@ -475,8 +475,8 @@ pub mod pallet {
 			);
 
 			ensure!(
-				staking::Validators::<T>::contains_key(Self::get_stash_for_ddc_validator(
-					&ddc_valitor_key).unwrap()
+				staking::Validators::<T>::contains_key(
+					Self::get_stash_for_ddc_validator(&ddc_valitor_key).unwrap()
 				),
 				Error::<T>::NotValidatorStash
 			);
@@ -527,8 +527,8 @@ pub mod pallet {
 			);
 
 			ensure!(
-				staking::Validators::<T>::contains_key(Self::get_stash_for_ddc_validator(
-					&ddc_valitor_key).unwrap()
+				staking::Validators::<T>::contains_key(
+					Self::get_stash_for_ddc_validator(&ddc_valitor_key).unwrap()
 				),
 				Error::<T>::NotValidatorStash
 			);
@@ -546,8 +546,8 @@ pub mod pallet {
 		}
 
 		/// Exstrinsic registers a ddc validator key for future use
-		/// 
-		/// Only controller of validator can call this exstrinsic 
+		///
+		/// Only controller of validator can call this exstrinsic
 		/// Validator has to be in the active set
 		#[pallet::weight(100_000)]
 		pub fn set_validator_key(
