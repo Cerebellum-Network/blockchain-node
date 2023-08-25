@@ -262,19 +262,19 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config> =
-		StorageMap<_, Identity, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>>>;
+		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>>>;
 
 	/// The map of (wannabe) CDN participants stash keys to the DDC cluster ID they wish to
 	/// participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn edges)]
-	pub type Edges<T: Config> = StorageMap<_, Identity, T::AccountId, ClusterId>;
+	pub type Edges<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
 	/// The map of (wannabe) storage network participants stash keys to the DDC cluster ID they wish
 	/// to participate into..
 	#[pallet::storage]
 	#[pallet::getter(fn storages)]
-	pub type Storages<T: Config> = StorageMap<_, Identity, T::AccountId, ClusterId>;
+	pub type Storages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
 	/// Map from all "stash" accounts to the total paid out rewards
 	///
