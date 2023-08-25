@@ -251,9 +251,14 @@ pub mod pallet {
 	pub type LastManagedEra<T: Config> = StorageValue<_, EraIndex>;
 
 	/// The mapping of ddc validator keys to validator stash keys
+	///
+	/// Keys registered by validators are mapped to validator stash accounts.
+	/// The mapping is formed in the way that facilitates fast checking that storage contains key.
+	/// Similarly the validator stash is checked if he is still in the list of validators.
 	#[pallet::storage]
 	#[pallet::getter(fn get_stash_for_ddc_validator)]
-	pub type OffchainWorkerKeys<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
+	pub type DDCValidatorToStashKeys<T: Config> =
+		StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -402,7 +407,6 @@ pub mod pallet {
 		/// Set validation decision for a given CDN node in an era.
 		///
 		/// Only registered validator keys can call this exstrinsic.
-		/// Validator should be in the active set.
 		/// Validation decision can be set only once per era per CDN node.
 		/// CDN node should be active.
 		#[pallet::weight(10_000)]
@@ -415,7 +419,7 @@ pub mod pallet {
 			let ddc_valitor_key = ensure_signed(origin)?;
 
 			ensure!(
-				OffchainWorkerKeys::<T>::contains_key(&ddc_valitor_key),
+				DDCValidatorToStashKeys::<T>::contains_key(&ddc_valitor_key),
 				Error::<T>::DDCValidatorKeyNotRegistered
 			);
 
@@ -448,7 +452,6 @@ pub mod pallet {
 		/// Set reward points for CDN participants at the given era.
 		///
 		/// Only registered validator keys can call this exstrinsic.
-		/// Validator should be in the active set.
 		/// Reward points can be set only once per era per CDN node.
 		///	CDN node should be active.
 		///
@@ -464,7 +467,7 @@ pub mod pallet {
 			let ddc_valitor_key = ensure_signed(origin)?;
 
 			ensure!(
-				OffchainWorkerKeys::<T>::contains_key(&ddc_valitor_key),
+				DDCValidatorToStashKeys::<T>::contains_key(&ddc_valitor_key),
 				Error::<T>::DDCValidatorKeyNotRegistered
 			);
 
@@ -478,6 +481,7 @@ pub mod pallet {
 			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
 				for (staker, points) in stakers_points.clone().into_iter() {
 					if !Self::reward_points_set_for_node(era, &staker) {
+						// ToDo deal with edge case when node is chilling
 						if <ddc_staking::pallet::Edges<T>>::contains_key(&staker) {
 							*era_rewards.individual.entry(staker.clone()).or_default() += points;
 							era_rewards.total += points;
@@ -507,7 +511,9 @@ pub mod pallet {
 		#[pallet::weight(100_000)]
 		pub fn charge_payments_content_owners(
 			origin: OriginFor<T>,
-			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>,
+			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>, /* ToDo check if
+			                                                                   * bounded vec
+			                                                                   * should be used */
 		) -> DispatchResult {
 			let ddc_valitor_key = ensure_signed(origin)?;
 			log::debug!("validator is {:?}", &ddc_valitor_key);
@@ -516,7 +522,7 @@ pub mod pallet {
 				ddc_staking::pallet::Pallet::<T>::current_era().ok_or(Error::<T>::DDCEraNotSet)?;
 
 			ensure!(
-				OffchainWorkerKeys::<T>::contains_key(&ddc_valitor_key),
+				DDCValidatorToStashKeys::<T>::contains_key(&ddc_valitor_key),
 				Error::<T>::DDCValidatorKeyNotRegistered
 			);
 
@@ -556,7 +562,7 @@ pub mod pallet {
 				Error::<T>::NotValidatorStash
 			);
 
-			OffchainWorkerKeys::<T>::insert(ddc_validator_pub, &ledger.stash);
+			DDCValidatorToStashKeys::<T>::insert(ddc_validator_pub, &ledger.stash);
 			Ok(())
 		}
 	}
@@ -644,7 +650,7 @@ pub mod pallet {
 		}
 
 		fn assign(quorum_size: usize, era: EraIndex) -> Result<(), AssignmentError> {
-			let validators: Vec<T::AccountId> = OffchainWorkerKeys::<T>::iter_keys().collect();
+			let validators: Vec<T::AccountId> = DDCValidatorToStashKeys::<T>::iter_keys().collect();
 			log::debug!("Current validators: {:?}.", validators);
 
 			if validators.len() == 0 {
