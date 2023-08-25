@@ -30,7 +30,6 @@ use crate::weights::WeightInfo;
 use codec::{Decode, Encode, HasCompact};
 use frame_support::{
 	assert_ok,
-	dispatch::Codec,
 	pallet_prelude::*,
 	parameter_types,
 	traits::{
@@ -42,16 +41,11 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{
-		AccountIdConversion, AtLeast32BitUnsigned, CheckedSub, Saturating, StaticLookup, Zero,
-	},
-	Perbill, RuntimeDebug,
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
+	RuntimeDebug,
 };
 use sp_staking::EraIndex;
-use sp_std::{
-	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
-	prelude::*,
-};
+use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub use pallet::*;
 
@@ -528,15 +522,15 @@ pub mod pallet {
 
 			let stash_balance = T::Currency::free_balance(&stash);
 			let value = value.min(stash_balance);
+			Self::deposit_event(Event::<T>::Bonded(stash.clone(), value));
 			let item = StakingLedger {
-				stash: stash.clone(),
+				stash,
 				total: value,
 				active: value,
 				chilling: Default::default(),
 				unlocking: Default::default(),
 			};
 			Self::update_ledger(&controller, &item);
-			Self::deposit_event(Event::<T>::Bonded(stash, value));
 			Ok(())
 		}
 

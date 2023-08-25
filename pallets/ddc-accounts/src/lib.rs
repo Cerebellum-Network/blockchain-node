@@ -5,7 +5,7 @@ use codec::{Decode, Encode, HasCompact};
 
 use frame_support::{
 	parameter_types,
-	traits::{Currency, DefensiveSaturating, ExistenceRequirement, UnixTime},
+	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
 	BoundedVec, PalletId,
 };
 pub use pallet_ddc_staking::{self as ddc_staking};
@@ -138,7 +138,6 @@ pub mod pallet {
 	use super::*;
 	use frame_support::{
 		pallet_prelude::*, sp_runtime::traits::StaticLookup, traits::LockableCurrency,
-		Blake2_128Concat,
 	};
 	use frame_system::pallet_prelude::*;
 
@@ -164,7 +163,7 @@ pub mod pallet {
 	#[pallet::getter(fn bonded)]
 	pub type Bonded<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
-	/// Map from all (unlocked) "controller" accounts to the debug regarding the staking.
+	/// Map from all (unlocked) "controller" accounts to the info regarding the staking.
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config> =

@@ -1,4 +1,3 @@
-use crate::dac::ValidationResult;
 use alloc::{format, string::String};
 use codec::{Decode, Encode};
 use sp_core::crypto::AccountId32;
