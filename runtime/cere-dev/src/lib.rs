@@ -22,13 +22,11 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
-use cere_runtime_common::{BalanceToU256, U256ToBalance};
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_election_provider_support::{
-	onchain, BalancingConfig, ExtendedBalance, SequentialPhragmen, VoteWeight,
-};
+use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragmen, VoteWeight};
 use frame_support::{
 	construct_runtime,
+	dispatch::DispatchClass,
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
@@ -38,7 +36,7 @@ use frame_support::{
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
-		ConstantMultiplier, DispatchClass, IdentityFee, Weight,
+		ConstantMultiplier, IdentityFee, Weight,
 	},
 	PalletId, RuntimeDebug,
 };
@@ -50,7 +48,6 @@ pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 pub use pallet_cere_ddc;
 pub use pallet_chainbridge;
-use pallet_contracts::weights::WeightInfo;
 pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;

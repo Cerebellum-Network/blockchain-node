@@ -4,10 +4,7 @@
 use codec::{Decode, Encode, EncodeLike};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
-	dispatch::{
-		ClassifyDispatch, DispatchClass, DispatchResult, GetDispatchInfo, Pays, PaysFee, WeighData,
-		Weight,
-	},
+	dispatch::{DispatchResult, GetDispatchInfo, Pays, Weight},
 	ensure,
 	traits::{EnsureOrigin, Get},
 	PalletId, Parameter,
@@ -15,16 +12,10 @@ use frame_support::{
 use frame_system::{self as system, ensure_root, ensure_signed};
 use sp_core::U256;
 use sp_runtime::{
-	traits::{
-		AccountIdConversion, Bounded, DispatchInfoOf, Dispatchable, SaturatedConversion,
-		SignedExtension,
-	},
-	transaction_validity::{
-		InvalidTransaction, TransactionValidity, TransactionValidityError, ValidTransaction,
-	},
+	traits::{AccountIdConversion, Dispatchable},
 	RuntimeDebug,
 };
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::prelude::*;
 
 mod mock;
 mod tests;
