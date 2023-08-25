@@ -80,8 +80,6 @@ const ENABLE_DDC_VALIDATION_KEY: &[u8; 21] = b"enable-ddc-validation";
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
 
-pub const BYTES_TO_CERE: u64 = 1; // this should have a logic built on top and adjusted
-
 /// Webdis in experimental cluster connected to Redis in dev.
 pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://webdis:7379";
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
@@ -442,11 +440,7 @@ pub mod pallet {
 
 			ValidationDecisionSetForNode::<T>::insert(era, cdn_node.clone(), true);
 
-			Self::deposit_event(Event::<T>::ValidationDecision(
-				era,
-				cdn_node,
-				validation_decision,
-			));
+			Self::deposit_event(Event::<T>::ValidationDecision(era, cdn_node, validation_decision));
 
 			Ok(())
 		}
@@ -585,10 +579,10 @@ pub mod pallet {
 			}
 		}
 
-		fn get_mock_data_url() -> String {
+		fn get_data_url() -> String {
 			let data_url = Self::get_data_provider_url();
-			let mock_url = "/JSON.GET/";
-			let url = format!("{}{}", data_url, mock_url);
+			let json_getter = "/JSON.GET/";
+			let url = format!("{}{}", data_url, json_getter);
 
 			url
 		}
@@ -762,12 +756,10 @@ pub mod pallet {
 		fn validate_edges() -> Result<(), &'static str> {
 			let current_ddc_era =
 				ddc_staking::pallet::Pallet::<T>::current_era().ok_or("DDC era not set")?;
-			let mock_data_url = Self::get_mock_data_url();
+			let data_url = Self::get_data_url();
 			let data_provider_url = Self::get_data_provider_url();
 			log::debug!("[DAC Validator] Data provider URL: {:?}", &data_provider_url);
 
-			// let signer = Self::get_signer().unwrap();
-			// let validator = signer.get_any_account().unwrap().id;
 			let validator = match Self::get_public_key() {
 				Some(key) => key,
 				None => return Err("No validator public key found."),
@@ -791,7 +783,7 @@ pub mod pallet {
 				// form url for each node
 				let edge_url = format!(
 					"{}{}{}/$.{}",
-					mock_data_url,
+					data_url,
 					"ddc:dac:aggregation:nodes:",
 					current_ddc_era - 1,
 					utils::account_to_string::<T>(assigned_edge.clone())
@@ -814,7 +806,7 @@ pub mod pallet {
 				let requests = &mut dac::Requests::new();
 				for request_id in request_ids.iter() {
 					let request_id_url =
-						format!("{}{}{}", mock_data_url, "ddc:dac:data:file:", request_id.clone());
+						format!("{}{}{}", data_url, "ddc:dac:data:file:", request_id.clone());
 					let file_request = dac::fetch_file_request(&request_id_url);
 					requests.insert(file_request.file_request_id.clone(), file_request.clone());
 				}
@@ -866,7 +858,7 @@ pub mod pallet {
 					log::debug!("shm res: {:?}", res.to_string());
 				}
 
-				if let Ok(res) = response {
+				if let Ok(_res) = response {
 					let edge = utils::account_to_string::<T>(assigned_edge.clone());
 					let prev_era = (current_ddc_era - 1) as EraIndex;
 					let quorum = Self::find_validators_from_quorum(&validator, &prev_era);
@@ -887,7 +879,7 @@ pub mod pallet {
 							BucketsDetails<ddc_accounts::BalanceOf<T>>,
 						> = BTreeMap::new();
 						for bucket in payments_per_bucket.into_iter() {
-							let cere_payment: u32 = (bucket.1 / BYTES_TO_CERE) as u32;
+							let cere_payment = bucket.1 as u32;
 							if payments.contains_key(&bucket.0) {
 								payments.entry(bucket.0).and_modify(|bucket_info| {
 									bucket_info.amount += cere_payment.into()

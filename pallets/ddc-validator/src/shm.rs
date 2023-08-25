@@ -9,7 +9,7 @@ use alloc::{format, string::String};
 pub use sp_std::collections::btree_map::BTreeMap;
 // ToDo: remove String usage
 use crate::{dac, utils, ValidationDecision};
-use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
+use alt_serde::{Deserialize, Serialize};
 use base64::prelude::*;
 use lite_json::json::JsonValue;
 use sp_runtime::offchain::{http, Duration};
