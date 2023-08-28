@@ -30,6 +30,12 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 	let era_to_validate: EraIndex = 3;
 	let cdn_node_to_validate = AccountId::from([0x1; 32]);
 	let cdn_node_to_validate_str = utils::account_to_string::<Test>(cdn_node_to_validate.clone());
+	let validator_stash = AccountId::from([
+		0xd2, 0xbf, 0x4b, 0x84, 0x4d, 0xfe, 0xfd, 0x67, 0x72, 0xa8, 0x84, 0x3e, 0x66, 0x9f, 0x94,
+		0x34, 0x08, 0x96, 0x6a, 0x97, 0x7e, 0x3a, 0xe2, 0xaf, 0x1d, 0xd7, 0x8e, 0x0f, 0x55, 0xf4,
+		0xdf, 0x67,
+	]);
+	let validator_controller = AccountId::from([0xaa; 32]);
 
 	{
 		let mut state = offchain_state.write();
@@ -115,7 +121,11 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 	t.execute_with(|| {
 		let era_block_number = 20 as u32 * era_to_validate;
 		System::set_block_number(era_block_number); // required for randomness
-
+		DdcValidator::set_validator_key(
+			RuntimeOrigin::signed(validator_controller),
+			validator_stash,
+		)
+		.unwrap();
 		Timestamp::set_timestamp(
 			(DDC_ERA_START_MS + DDC_ERA_DURATION_MS * (era_to_validate as u128 - 1)) as u64,
 		);
@@ -137,24 +147,12 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
 		assert!(tx.signature.is_some());
 
-		let bucket_info1 = BucketsDetails { bucket_id: 5, amount: 100u128 };
-		let bucket_info2 = BucketsDetails { bucket_id: 5, amount: 200u128 };
-		let bucket_info3 = BucketsDetails { bucket_id: 5, amount: 300u128 };
+		let bucket_info = BucketsDetails { bucket_id: 5, amount: 600u128 };
 
 		assert_eq!(
 			tx.call,
 			crate::mock::RuntimeCall::DdcValidator(crate::Call::charge_payments_content_owners {
-				paying_accounts: vec![bucket_info3, bucket_info1, bucket_info2,]
-			})
-		);
-
-		let tx = transactions.pop().unwrap();
-		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		assert!(tx.signature.is_some());
-		assert_eq!(
-			tx.call,
-			crate::mock::RuntimeCall::DdcStaking(pallet_ddc_staking::Call::payout_stakers {
-				era: era_to_validate + 1
+				paying_accounts: vec![bucket_info]
 			})
 		);
 
@@ -162,17 +160,18 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
 		assert!(tx.signature.is_some());
 
-		let common_decision: ValidationDecision =
-			serde_json::from_slice(include_bytes!("./mock-data/set-1/validation-decision.json"))
-				.unwrap();
+		let common_decision: ValidationDecision = serde_json::from_slice(include_bytes!(
+			"./mock-data/set-1/final-validation-decision.json"
+		))
+		.unwrap();
 		let common_decisions = vec![common_decision.clone()];
 		let serialized_decisions = serde_json::to_string(&common_decisions).unwrap();
 
 		assert_eq!(
 			tx.call,
 			crate::mock::RuntimeCall::DdcValidator(crate::Call::set_validation_decision {
-				era: era_to_validate + 1,
-				cdn_node: cdn_node_to_validate,
+				era: era_to_validate,
+				cdn_node: cdn_node_to_validate.clone(),
 				validation_decision: ValidationDecision {
 					edge: cdn_node_to_validate_str,
 					result: true,
@@ -184,6 +183,20 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 						failure_rate: common_decision.totals.failure_rate,
 					}
 				}
+			})
+		);
+
+		let tx = transactions.pop().unwrap();
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+
+		let stakers_points = vec![(cdn_node_to_validate, common_decision.totals.sent)];
+
+		assert!(tx.signature.is_some());
+		assert_eq!(
+			tx.call,
+			crate::mock::RuntimeCall::DdcValidator(crate::Call::set_era_reward_points {
+				era: era_to_validate,
+				stakers_points,
 			})
 		);
 	})
