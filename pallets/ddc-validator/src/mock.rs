@@ -2,7 +2,7 @@ use crate::{self as pallet_ddc_validator, *};
 use frame_election_provider_support::{onchain, SequentialPhragmen};
 use frame_support::{
 	parameter_types,
-	traits::{ConstU16, ConstU64, Currency, Everything, Nothing, U128CurrencyToVote},
+	traits::{Everything, Nothing, U128CurrencyToVote},
 	weights::Weight,
 	PalletId,
 };
@@ -12,16 +12,14 @@ use pallet_session::ShouldEndSession;
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
-	curve,
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
-	testing::{Header, TestXt, UintAuthorityId},
+	testing::{TestXt, UintAuthorityId},
 	traits::{
 		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
 	},
 	MultiSignature, Perbill,
 };
-use sp_staking::SessionIndex;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type Balance = u128;
@@ -95,11 +93,6 @@ parameter_types! {
 	pub const MaxValueSize: u32 = 16_384;
 	pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
 }
-
-use contracts::Config as contractsConfig;
-
-type BalanceOf<T> =
-	<<T as contractsConfig>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 pub struct TestWeightToFee;
 impl Convert<u64, u128> for TestWeightToFee {

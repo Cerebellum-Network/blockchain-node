@@ -322,7 +322,7 @@ pub mod pallet {
 				_ => (),
 			}
 
-			match Self::assign(3usize, current_ddc_era + 1) {
+			match Self::assign(1usize, current_ddc_era + 1) {
 				Ok(_) => <LastManagedEra<T>>::put(current_ddc_era + 1),
 				Err(e) => log::debug!("DDC validation assignment error: {:?}.", e),
 			}
