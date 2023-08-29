@@ -30,12 +30,16 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 	let era_to_validate: EraIndex = 3;
 	let cdn_node_to_validate = AccountId::from([0x1; 32]);
 	let cdn_node_to_validate_str = utils::account_to_string::<Test>(cdn_node_to_validate.clone());
-	let validator_stash = AccountId::from([
+	let validator_1_stash = AccountId::from([
 		0xd2, 0xbf, 0x4b, 0x84, 0x4d, 0xfe, 0xfd, 0x67, 0x72, 0xa8, 0x84, 0x3e, 0x66, 0x9f, 0x94,
 		0x34, 0x08, 0x96, 0x6a, 0x97, 0x7e, 0x3a, 0xe2, 0xaf, 0x1d, 0xd7, 0x8e, 0x0f, 0x55, 0xf4,
 		0xdf, 0x67,
 	]);
-	let validator_controller = AccountId::from([0xaa; 32]);
+	let validator_1_controller = AccountId::from([0xaa; 32]);
+	let validator_2_stash = AccountId::from([0xb; 32]);
+	let validator_2_controller = AccountId::from([0xbb; 32]);
+	let validator_3_stash = AccountId::from([0xc; 32]);
+	let validator_3_controller = AccountId::from([0xcc; 32]);
 
 	{
 		let mut state = offchain_state.write();
@@ -122,8 +126,21 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 		let era_block_number = 20 as u32 * era_to_validate;
 		System::set_block_number(era_block_number); // required for randomness
 		DdcValidator::set_validator_key(
-			RuntimeOrigin::signed(validator_controller),
-			validator_stash,
+			// register validator 1
+			RuntimeOrigin::signed(validator_1_controller),
+			validator_1_stash,
+		)
+		.unwrap();
+		DdcValidator::set_validator_key(
+			// register validator 2
+			RuntimeOrigin::signed(validator_2_controller),
+			validator_2_stash,
+		)
+		.unwrap();
+		DdcValidator::set_validator_key(
+			// register validator 3
+			RuntimeOrigin::signed(validator_3_controller),
+			validator_3_stash,
 		)
 		.unwrap();
 		Timestamp::set_timestamp(
