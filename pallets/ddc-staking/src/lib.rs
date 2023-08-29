@@ -250,7 +250,7 @@ pub mod pallet {
 	/// Map from all locked "stash" accounts to the controller account.
 	#[pallet::storage]
 	#[pallet::getter(fn bonded)]
-	pub type Bonded<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
+	pub type Bonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
 
 	/// DDC clusters staking settings.
 	#[pallet::storage]
