@@ -1,6 +1,5 @@
 use frame_support::traits::{Currency, OffchainWorker};
 use frame_system::Config as FSC;
-use pallet_contracts::{self as contracts, Config as CC};
 use sp_core::offchain::{
 	testing, OffchainDbExt, OffchainWorkerExt, Timestamp as OCWTimestamp, TransactionPoolExt,
 };
@@ -285,7 +284,7 @@ fn should_run_contract() {
 		let contract_id = deploy_contract();
 		let call_data = DdcMetricsOffchainWorker::encode_get_current_period_ms();
 
-		pallet_contracts::Module::<T>::call(
+		pallet_contracts::Pallet::<T>::call(
 			RuntimeOrigin::signed(alice.clone()),
 			contract_id.clone(),
 			0,
