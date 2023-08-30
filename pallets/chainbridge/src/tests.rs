@@ -10,7 +10,6 @@ use super::{
 };
 use crate::mock::new_test_ext_initialized;
 use frame_support::{assert_noop, assert_ok};
-use frame_system::Origin;
 
 #[test]
 fn derive_ids() {

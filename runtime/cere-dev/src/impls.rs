@@ -36,7 +36,10 @@ mod multiplier_tests {
 		System, TargetBlockFullness, TransactionPayment,
 	};
 	use cere_dev_runtime_constants::{currency::*, time::*};
-	use frame_support::weights::{DispatchClass, Weight, WeightToFee as WeightToFeeT};
+	use frame_support::{
+		dispatch::DispatchClass,
+		weights::{Weight, WeightToFee as WeightToFeeT},
+	};
 	use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 	use sp_runtime::{
 		assert_eq_error_rate,
