@@ -329,6 +329,11 @@ pub mod pallet {
 	#[pallet::getter(fn pricing)]
 	pub type Pricing<T: Config> = StorageValue<_, u128>;
 
+	/// A list of accounts allowed to become cluster managers.
+	#[pallet::storage]
+	#[pallet::getter(fn cluster_managers)]
+	pub type ClusterManagers<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub edges: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
