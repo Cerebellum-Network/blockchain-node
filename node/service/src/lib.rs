@@ -6,7 +6,7 @@ pub use cere_dev_runtime;
 pub use cere_runtime;
 
 use futures::prelude::*;
-use sc_client_api::BlockBackend;
+use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_babe::{self, SlotProportion};
 use sc_network::Event;
 use sc_service::{
@@ -29,6 +29,7 @@ pub use sc_executor::NativeElseWasmExecutor;
 use sc_network_common::service::NetworkEventStream;
 pub use sc_service::ChainSpec;
 pub use sp_api::ConstructRuntimeApi;
+pub use sp_core::offchain::OffchainStorage;
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch> = sc_finality_grandpa::GrandpaBlockImport<
@@ -269,12 +270,14 @@ where
 pub fn build_full(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
+	enable_ddc_validation: bool,
 ) -> Result<NewFull<Client>, ServiceError> {
 	#[cfg(feature = "cere-dev-native")]
 	if config.chain_spec.is_cere_dev() {
 		return new_full::<cere_dev_runtime::RuntimeApi, CereDevExecutorDispatch>(
 			config,
 			disable_hardware_benchmarks,
+			enable_ddc_validation,
 			|_, _| (),
 		)
 		.map(|full| full.with_client(Client::CereDev))
@@ -285,6 +288,7 @@ pub fn build_full(
 		return new_full::<cere_runtime::RuntimeApi, CereExecutorDispatch>(
 			config,
 			disable_hardware_benchmarks,
+			enable_ddc_validation,
 			|_, _| (),
 		)
 		.map(|full| full.with_client(Client::Cere))
@@ -318,6 +322,7 @@ impl<C> NewFull<C> {
 pub fn new_full<RuntimeApi, ExecutorDispatch>(
 	mut config: Configuration,
 	disable_hardware_benchmarks: bool,
+	enable_ddc_validation: bool,
 	with_startup_data: impl FnOnce(
 		&sc_consensus_babe::BabeBlockImport<
 			Block,
@@ -346,6 +351,16 @@ where
 	};
 
 	let basics = new_partial_basics::<RuntimeApi, ExecutorDispatch>(&config)?;
+
+	basics
+		.backend
+		.offchain_storage()
+		.expect("no off-chain storage, DDC validation is not possible")
+		.set(
+			sp_core::offchain::STORAGE_PREFIX,
+			b"enable-ddc-validation",
+			if enable_ddc_validation { &[1] } else { &[0] },
+		);
 
 	let sc_service::PartialComponents {
 		client,

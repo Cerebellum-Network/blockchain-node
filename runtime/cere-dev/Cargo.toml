@@ -99,6 +99,8 @@ cere-dev-runtime-constants = { path = "./constants", default-features = false }
 pallet-ddc-staking = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-staking" }
 pallet-chainbridge = { version = "4.8.1", default-features = false, path = "../../pallets/chainbridge" }
 pallet-cere-ddc = { version = "4.8.1", default-features = false, path = "../../pallets/ddc" }
+pallet-ddc-accounts = { version = "0.1.0", default-features = false, path = "../../pallets/ddc-accounts" }
+pallet-ddc-validator = { version = "0.1.0", default-features = false, path = "../../pallets/ddc-validator" }
 pallet-erc721 = { version = "4.8.1", default-features = false, path = "../../pallets/erc721" }
 pallet-erc20 = { version = "4.8.1", default-features = false, path = "../../pallets/erc20" }
 pallet-ddc-metrics-offchain-worker = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-metrics-offchain-worker" }
@@ -180,7 +182,9 @@ std = [
 	"pallet-ddc-metrics-offchain-worker/std",
 	"pallet-ddc-staking/std",
 	"cere-runtime-common/std",
-	"cere-dev-runtime-constants/std"
+	"cere-dev-runtime-constants/std",
+	"pallet-ddc-validator/std",
+	"pallet-ddc-accounts/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
