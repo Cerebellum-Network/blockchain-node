@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- ...
+- [D] New `pallet-ddc-validator` which implements DDC CDN nodes validation and rewarding. You can enable DDC validation providing `--enable-ddc-validation` argument. It will only work on the nodes with validation and offchain workers enabled as well.
+- [D] Several calls for `pallet-ddc-staking` to distribute rewards.
 
 ### Changed
 

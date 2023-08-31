@@ -48,6 +48,7 @@ pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 pub use pallet_cere_ddc;
 pub use pallet_chainbridge;
+pub use pallet_ddc_accounts;
 pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
@@ -127,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48001,
+	spec_version: 48002,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 5,
@@ -1328,8 +1329,36 @@ impl pallet_ddc_staking::Config for Runtime {
 	type DefaultStorageBondSize = DefaultStorageBondSize;
 	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
+	type StakersPayoutSource = Ddc_Accounts_Pallet_Id;
 	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
+	pub const Ddc_Accounts_Pallet_Id: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
+}
+
+impl pallet_ddc_accounts::Config for Runtime {
+	type BondingDuration = BondingDuration;
+	type Currency = Balances;
+	type PalletId = Ddc_Accounts_Pallet_Id;
+	type RuntimeEvent = RuntimeEvent;
+}
+
+parameter_types! {
+	pub const DdcValidatorsQuorumSize: u32 = 3;
+	pub const ValidationThreshold: u32 = 5;
+	pub const ValidatorsMax: u32 = 64;
+}
+
+impl pallet_ddc_validator::Config for Runtime {
+	type DdcValidatorsQuorumSize = DdcValidatorsQuorumSize;
+	type Randomness = RandomnessCollectiveFlip;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type AuthorityId = pallet_ddc_validator::crypto::TestAuthId;
+	type ValidationThreshold = ValidationThreshold;
+	type ValidatorsMax = ValidatorsMax;
 }
 
 construct_runtime!(
@@ -1384,6 +1413,8 @@ construct_runtime!(
 		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
 		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
 		DdcStaking: pallet_ddc_staking,
+		DdcValidator: pallet_ddc_validator,
+		DdcAccounts: pallet_ddc_accounts,
 	}
 );
 

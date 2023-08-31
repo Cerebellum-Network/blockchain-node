@@ -95,6 +95,7 @@ parameter_types! {
 	pub const DefaultEdgeChillDelay: EraIndex = 1;
 	pub const DefaultStorageBondSize: Balance = 100;
 	pub const DefaultStorageChillDelay: EraIndex = 1;
+	pub const DdcAccountsPalletId: PalletId = PalletId(*b"accounts");
 }
 
 impl crate::pallet::Config for Test {
@@ -107,6 +108,7 @@ impl crate::pallet::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type UnixTime = Timestamp;
 	type WeightInfo = ();
+	type StakersPayoutSource = DdcAccountsPalletId;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
