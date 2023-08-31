@@ -1,6 +1,10 @@
 use super::*;
-use crate::mock::{Timestamp, *};
+use crate::{
+	mock::{Timestamp, *},
+	Error as ValidatorError,
+};
 use codec::Decode;
+use frame_support::{assert_noop, assert_ok};
 use pallet_ddc_accounts::BucketsDetails;
 use pallet_ddc_staking::{DDC_ERA_DURATION_MS, DDC_ERA_START_MS};
 use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
@@ -215,6 +219,97 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 				era: era_to_validate,
 				stakers_points,
 			})
+		);
+	})
+}
+
+#[test]
+fn send_signal_works_as_expected() {
+	let mut t = new_test_ext();
+
+	let validator_controller = AccountId::from([0xaa; 32]);
+
+	t.execute_with(|| {
+		assert_eq!(DdcValidator::signal(), None);
+		assert_ok!(DdcValidator::send_signal(RuntimeOrigin::signed(validator_controller)));
+		assert_eq!(DdcValidator::signal().unwrap(), true);
+	})
+}
+
+#[test]
+fn set_validation_decision_works_as_expected() {
+	let mut t = new_test_ext();
+
+	let era_to_validate: EraIndex = 3;
+	let cdn_node_to_validate = AccountId::from([0x1; 32]);
+	let not_a_cdn_node = AccountId::from([0x2; 32]);
+	let validator_1_stash = AccountId::from([
+		0xd2, 0xbf, 0x4b, 0x84, 0x4d, 0xfe, 0xfd, 0x67, 0x72, 0xa8, 0x84, 0x3e, 0x66, 0x9f, 0x94,
+		0x34, 0x08, 0x96, 0x6a, 0x97, 0x7e, 0x3a, 0xe2, 0xaf, 0x1d, 0xd7, 0x8e, 0x0f, 0x55, 0xf4,
+		0xdf, 0x67,
+	]);
+	let validator_1_controller = AccountId::from([0xaa; 32]);
+
+	let decision: ValidationDecision =
+		serde_json::from_slice(include_bytes!("./mock-data/set-1/validation-decision.json"))
+			.unwrap();
+
+	sp_std::if_std! {
+		println!("events");
+	}
+
+	t.execute_with(|| {
+		System::set_block_number(1);
+
+		assert_ok!(DdcValidator::set_validator_key(
+			// register validator 1
+			RuntimeOrigin::signed(validator_1_controller.clone()),
+			validator_1_stash.clone(),
+		));
+
+		assert_noop!(
+			DdcValidator::set_validation_decision(
+				RuntimeOrigin::signed(validator_1_controller),
+				era_to_validate,
+				cdn_node_to_validate.clone(),
+				decision.clone(),
+			),
+			ValidatorError::<Test>::DDCValidatorKeyNotRegistered
+		);
+
+		assert_noop!(
+			DdcValidator::set_validation_decision(
+				RuntimeOrigin::signed(validator_1_stash.clone()),
+				era_to_validate,
+				not_a_cdn_node.clone(),
+				decision.clone()
+			),
+			ValidatorError::<Test>::NodeNotActive
+		);
+
+		assert_ok!(DdcValidator::set_validation_decision(
+			RuntimeOrigin::signed(validator_1_stash.clone()),
+			era_to_validate,
+			cdn_node_to_validate.clone(),
+			decision.clone()
+		));
+
+		assert_noop!(
+			DdcValidator::set_validation_decision(
+				RuntimeOrigin::signed(validator_1_stash),
+				era_to_validate,
+				cdn_node_to_validate.clone(),
+				decision.clone()
+			),
+			ValidatorError::<Test>::ValidationDecisionAlreadySet
+		);
+
+		let evt = System::events().into_iter().map(|evt| evt.event).collect::<Vec<_>>();
+		assert_eq!(evt.len(), 1);
+		assert_eq!(
+			evt[0],
+			crate::Event::ValidationDecision(era_to_validate, cdn_node_to_validate, decision)
+				.into()
 		);
 	})
 }
