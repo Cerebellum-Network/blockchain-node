@@ -922,14 +922,23 @@ pub mod pallet {
 
 						let signer = Self::get_signer().unwrap();
 
-						let _tx_res =
+						let tx_res =
 							signer.send_signed_transaction(|_acct| Call::set_validation_decision {
 								era: current_ddc_era - 1,
 								cdn_node: utils::string_to_account::<T>(edge.clone()),
 								validation_decision: final_res.clone(),
 							});
 
-						log::debug!("final_res: {:?}", final_res);
+						match &tx_res {
+							None | Some((_, Err(()))) => return Err("Error:"),
+							Some((_, Ok(()))) => {},
+						}
+
+						// match tx_res.result {
+						// 	Ok(tx_res) => println!("successfull tx: {:?}", tx_res),
+						// 	Err(error) => println!("failed tx: {:?}", error),
+						// }
+						// log::debug!("final_res: {:?}", final_res);
 
 						cdn_nodes_reward_points.push((
 							utils::string_to_account::<T>(final_res.edge),
