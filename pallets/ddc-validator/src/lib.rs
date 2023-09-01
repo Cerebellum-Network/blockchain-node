@@ -465,6 +465,7 @@ pub mod pallet {
 			stakers_points: Vec<(T::AccountId, u64)>,
 		) -> DispatchResult {
 			let ddc_valitor_key = ensure_signed(origin)?;
+			let mut rewards_counter = 0;
 
 			ensure!(
 				DDCValidatorToStashKeys::<T>::contains_key(&ddc_valitor_key),
@@ -488,18 +489,21 @@ pub mod pallet {
 							<ddc_staking::pallet::ErasEdgesRewardPointsPerNode<T>>::mutate(
 								&staker,
 								|current_reward_points| {
-									let rewards =
+									let rewards: ddc_staking::EraRewardPointsPerNode =
 										ddc_staking::EraRewardPointsPerNode { era, points };
 									current_reward_points.push(rewards);
 								},
 							);
 							RewardPointsSetForNode::<T>::insert(era, staker, true);
+							rewards_counter += 1;
 						}
 					}
 				}
 			});
 
-			Self::deposit_event(Event::<T>::EraRewardPoints(era, stakers_points));
+			if rewards_counter > 0 {
+				Self::deposit_event(Event::<T>::EraRewardPoints(era, stakers_points));
+			}
 
 			Ok(())
 		}
@@ -911,12 +915,24 @@ pub mod pallet {
 							return Err("signing key not set")
 						}
 						// ToDo: replace local call by a call from `ddc-staking` pallet
-						let _tx_res: Option<(frame_system::offchain::Account<T>, Result<(), ()>)> =
+						let tx_res: Option<(frame_system::offchain::Account<T>, Result<(), ()>)> =
 							signer.send_signed_transaction(|_account| {
 								Call::charge_payments_content_owners {
 									paying_accounts: final_payments.clone(),
 								}
 							});
+
+						for (acc, res) in &tx_res {
+							match res {
+								Ok(()) =>
+									log::debug!("[{:?}]: submit transaction success.", acc.id),
+								Err(e) => log::debug!(
+									"[{:?}]: submit transaction failure. Reason: {:?}",
+									acc.id,
+									e
+								),
+							}
+						}
 
 						let final_res = dac::get_final_decision(validations_res);
 
@@ -929,16 +945,17 @@ pub mod pallet {
 								validation_decision: final_res.clone(),
 							});
 
-						match &tx_res {
-							None | Some((_, Err(()))) => return Err("Error:"),
-							Some((_, Ok(()))) => {},
+						for (acc, res) in &tx_res {
+							match res {
+								Ok(()) =>
+									log::debug!("[{:?}]: submit transaction success.", acc.id),
+								Err(e) => log::debug!(
+									"[{:?}]: submit transaction failure. Reason: {:?}",
+									acc.id,
+									e
+								),
+							}
 						}
-
-						// match tx_res.result {
-						// 	Ok(tx_res) => println!("successfull tx: {:?}", tx_res),
-						// 	Err(error) => println!("failed tx: {:?}", error),
-						// }
-						// log::debug!("final_res: {:?}", final_res);
 
 						cdn_nodes_reward_points.push((
 							utils::string_to_account::<T>(final_res.edge),
@@ -951,11 +968,22 @@ pub mod pallet {
 
 			// ToDo: replace local call by a call from `ddc-staking` pallet
 			if cdn_nodes_reward_points.len() > 0 {
-				let _tx_res =
+				let tx_res =
 					signer.send_signed_transaction(|_account| Call::set_era_reward_points {
 						era: current_ddc_era - 1,
 						stakers_points: cdn_nodes_reward_points.clone(),
 					});
+
+				for (acc, res) in &tx_res {
+					match res {
+						Ok(()) => log::debug!("[{:?}]: submit transaction success.", acc.id),
+						Err(e) => log::debug!(
+							"[{:?}]: submit transaction failure. Reason: {:?}",
+							acc.id,
+							e
+						),
+					}
+				}
 			}
 
 			Ok(())

@@ -219,6 +219,8 @@ pub mod pallet {
 		BadState,
 		/// Current era not set during runtime
 		DDCEraNotSet,
+		/// Bucket with specified id doesn't exist
+		BucketDoesNotExist,
 	}
 
 	#[pallet::genesis_config]
@@ -532,7 +534,8 @@ pub mod pallet {
 			let mut total_charged = BalanceOf::<T>::zero();
 
 			for bucket_details in paying_accounts.iter() {
-				let bucket: Bucket<T::AccountId> = Self::buckets(bucket_details.bucket_id).unwrap();
+				let bucket: Bucket<T::AccountId> = Self::buckets(bucket_details.bucket_id)
+					.ok_or(Error::<T>::BucketDoesNotExist)?;
 				let content_owner = bucket.owner_id;
 				let amount = bucket_details.amount * pricing.saturated_into::<BalanceOf<T>>();
 
