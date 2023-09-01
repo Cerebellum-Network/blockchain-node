@@ -105,4 +105,22 @@ benchmarks! {
 	verify {
 		assert!(Ledger::<T>::contains_key(&new_controller));
 	}
+
+	allow_cluster_manager {
+		let new_cluster_manager = create_funded_user::<T>("cluster_manager", USER_SEED, 100);
+		let new_cluster_manager_lookup = T::Lookup::unlookup(new_cluster_manager.clone());
+	}: _(RawOrigin::Root, new_cluster_manager_lookup)
+	verify {
+		assert!(ClusterManagers::<T>::get().contains(&new_cluster_manager));
+	}
+
+	disallow_cluster_manager {
+		let new_cluster_manager = create_funded_user::<T>("cluster_manager", USER_SEED, 100);
+		let new_cluster_manager_lookup = T::Lookup::unlookup(new_cluster_manager.clone());
+		DdcStaking::<T>::allow_cluster_manager(RawOrigin::Root.into(), new_cluster_manager_lookup.clone())?;
+		assert!(ClusterManagers::<T>::get().contains(&new_cluster_manager));
+	}: _(RawOrigin::Root, new_cluster_manager_lookup)
+	verify {
+		assert!(!ClusterManagers::<T>::get().contains(&new_cluster_manager));
+	}
 }
