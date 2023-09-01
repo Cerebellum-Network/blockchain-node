@@ -866,6 +866,46 @@ pub mod pallet {
 			<Pricing<T>>::set(Some(price_per_byte));
 			Ok(())
 		}
+
+		/// Add a new account to the list of cluster managers.
+		///
+		/// RuntimeOrigin must be Root to call this function.
+		#[pallet::weight(10_000)]
+		pub fn allow_cluster_manager(
+			origin: OriginFor<T>,
+			grantee: <T::Lookup as StaticLookup>::Source,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			let grantee = T::Lookup::lookup(grantee)?;
+			ClusterManagers::<T>::mutate(|grantees| {
+				if !grantees.contains(&grantee) {
+					grantees.push(grantee);
+				}
+			});
+
+			Ok(())
+		}
+
+		/// Remove an account from the list of cluster managers.
+		///
+		/// RuntimeOrigin must be Root to call this function.
+		#[pallet::weight(10_000)]
+		pub fn disallow_cluster_manager(
+			origin: OriginFor<T>,
+			revokee: <T::Lookup as StaticLookup>::Source,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			let revokee = T::Lookup::lookup(revokee)?;
+			ClusterManagers::<T>::mutate(|grantees| {
+				if let Some(pos) = grantees.iter().position(|g| g == &revokee) {
+					grantees.remove(pos);
+				}
+			});
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
