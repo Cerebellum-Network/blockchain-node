@@ -329,6 +329,11 @@ pub mod pallet {
 	#[pallet::getter(fn pricing)]
 	pub type Pricing<T: Config> = StorageValue<_, u128>;
 
+	/// A list of accounts allowed to become cluster managers.
+	#[pallet::storage]
+	#[pallet::getter(fn cluster_managers)]
+	pub type ClusterManagers<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub edges: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
@@ -859,6 +864,46 @@ pub mod pallet {
 		pub fn set_pricing(origin: OriginFor<T>, price_per_byte: u128) -> DispatchResult {
 			ensure_root(origin)?;
 			<Pricing<T>>::set(Some(price_per_byte));
+			Ok(())
+		}
+
+		/// Add a new account to the list of cluster managers.
+		///
+		/// RuntimeOrigin must be Root to call this function.
+		#[pallet::weight(T::WeightInfo::allow_cluster_manager())]
+		pub fn allow_cluster_manager(
+			origin: OriginFor<T>,
+			grantee: <T::Lookup as StaticLookup>::Source,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			let grantee = T::Lookup::lookup(grantee)?;
+			ClusterManagers::<T>::mutate(|grantees| {
+				if !grantees.contains(&grantee) {
+					grantees.push(grantee);
+				}
+			});
+
+			Ok(())
+		}
+
+		/// Remove an account from the list of cluster managers.
+		///
+		/// RuntimeOrigin must be Root to call this function.
+		#[pallet::weight(T::WeightInfo::disallow_cluster_manager())]
+		pub fn disallow_cluster_manager(
+			origin: OriginFor<T>,
+			revokee: <T::Lookup as StaticLookup>::Source,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			let revokee = T::Lookup::lookup(revokee)?;
+			ClusterManagers::<T>::mutate(|grantees| {
+				if let Some(pos) = grantees.iter().position(|g| g == &revokee) {
+					grantees.remove(pos);
+				}
+			});
+
 			Ok(())
 		}
 	}
