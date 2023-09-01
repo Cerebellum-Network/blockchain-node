@@ -1,7 +1,9 @@
 //! Tests for the module.
 
 use super::{mock::*, *};
-use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
+use frame_support::{
+	assert_noop, assert_ok, assert_storage_noop, error::BadOrigin, traits::ReservableCurrency,
+};
 use pallet_balances::Error as BalancesError;
 
 pub const BLOCK_TIME: u64 = 1000;
@@ -174,5 +176,34 @@ fn staking_should_work() {
 
 		// Account 3 is no longer a CDN participant.
 		assert_eq!(DdcStaking::edges(3), None);
+	});
+}
+
+#[test]
+fn cluster_managers_list_can_be_managed_by_governance_only() {
+	ExtBuilder::default().build_and_execute(|| {
+		// Governance can allow an account to become cluster manager.
+		assert_ok!(DdcStaking::allow_cluster_manager(RuntimeOrigin::root(), 1));
+
+		// Repeat call does nothing.
+		assert_storage_noop!(assert_ok!(DdcStaking::allow_cluster_manager(
+			RuntimeOrigin::root(),
+			1,
+		)));
+
+		// Non-governance can't allow an account to become a cluster manager.
+		assert_noop!(DdcStaking::allow_cluster_manager(RuntimeOrigin::signed(1), 2), BadOrigin);
+
+		// Non-governance can't disallow an account to become a cluster manager.
+		assert_noop!(DdcStaking::disallow_cluster_manager(RuntimeOrigin::signed(1), 1), BadOrigin);
+
+		// Governance can disallow an account to become a cluster manager.
+		assert_ok!(DdcStaking::disallow_cluster_manager(RuntimeOrigin::root(), 1));
+
+		// Repeat call does nothing.
+		assert_storage_noop!(assert_ok!(DdcStaking::disallow_cluster_manager(
+			RuntimeOrigin::root(),
+			1,
+		)));
 	});
 }
