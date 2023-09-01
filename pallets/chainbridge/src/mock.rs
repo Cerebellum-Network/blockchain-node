@@ -3,13 +3,13 @@
 use super::*;
 
 use frame_support::{
-	assert_ok, ord_parameter_types, parameter_types, traits::Everything, weights::Weight, PalletId,
+	assert_ok, ord_parameter_types, parameter_types, traits::Everything, weights::Weight,
 };
 use frame_system::{self as system};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup},
+	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
 	Perbill,
 };
 
@@ -146,7 +146,7 @@ pub fn new_test_ext_initialized(
 // include the most recent event, but do not have to include every past event.
 pub fn assert_events(mut expected: Vec<RuntimeEvent>) {
 	let mut actual: Vec<RuntimeEvent> =
-		system::Module::<Test>::events().iter().map(|e| e.event.clone()).collect();
+		system::Pallet::<Test>::events().iter().map(|e| e.event.clone()).collect();
 
 	expected.reverse();
 

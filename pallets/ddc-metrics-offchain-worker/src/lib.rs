@@ -34,8 +34,7 @@ extern crate alloc;
 use alloc::string::String;
 use core::fmt::Debug;
 use frame_support::weights::Weight;
-use scale_info::{Type, TypeInfo};
-use sp_runtime::offchain::storage::StorageRetrievalError;
+use scale_info::TypeInfo;
 
 pub const BLOCK_INTERVAL: u32 = 100; // TODO: Change to 1200 later [1h]. Now - 200 [10 minutes] for testing purposes.
 

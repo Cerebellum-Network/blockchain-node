@@ -4,7 +4,6 @@
 
 use crate::{self as pallet_ddc_metrics_offchain_worker, *};
 
-use codec::{Decode, Encode};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, Currency, Everything, Get, Nothing},
@@ -30,8 +29,6 @@ pub type Moment = u64;
 // -- Implement a contracts runtime for testing --
 
 // Macro hack: Give names to the pallets.
-use frame_system as system;
-use pallet_balances as balances;
 use pallet_contracts as contracts;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;

@@ -1,15 +1,13 @@
 pub use node_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Index, Signature};
 use sc_client_api::{AuxStore, Backend as BackendT, BlockchainEvents, KeyIterator, UsageProvider};
 pub use sc_executor::NativeElseWasmExecutor;
-use sp_api::{CallApiAt, Encode, NumberFor, ProvideRuntimeApi};
+use sp_api::{CallApiAt, NumberFor, ProvideRuntimeApi};
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_consensus::BlockStatus;
-use sp_core::Pair;
-use sp_keyring::Sr25519Keyring;
 use sp_runtime::{
 	generic::{BlockId, SignedBlock},
 	traits::{BlakeTwo256, Block as BlockT},
-	Justifications, OpaqueExtrinsic,
+	Justifications,
 };
 use sp_storage::{ChildInfo, StorageData, StorageKey};
 use std::sync::Arc;
@@ -444,82 +442,6 @@ impl sp_blockchain::HeaderBackend<Block> for Client {
 			}
 		}
 	}
-}
-
-macro_rules! with_signed_payload {
-  {
-    $self:ident,
-    {
-      $extra:ident,
-      $client:ident,
-      $raw_payload:ident
-    },
-    {
-      $( $setup:tt )*
-    },
-    (
-      $period:expr,
-      $current_block:expr,
-      $nonce:expr,
-      $tip:expr,
-      $call:expr,
-      $genesis:expr
-    ),
-    {
-      $( $usage:tt )*
-    }
-  } => {
-    match $self {
-      #[cfg(feature = "cere")]
-      Self::Cere($client) => {
-        use cere_runtime as runtime;
-
-        $( $setup )*
-
-        let $extra: runtime::SignedExtra = (
-          frame_system::CheckNonZeroSender::<runtime::Runtime>::new(),
-          frame_system::CheckSpecVersion::<runtime::Runtime>::new(),
-          frame_system::CheckTxVersion::<runtime::Runtime>::new(),
-          frame_system::CheckGenesis::<runtime::Runtime>::new(),
-          frame_system::CheckMortality::<runtime::Runtime>::from(sp_runtime::generic::Era::mortal(
-            $period,
-            $current_block,
-          )),
-          frame_system::CheckNonce::<runtime::Runtime>::from($nonce),
-          frame_system::CheckWeight::<runtime::Runtime>::new(),
-          pallet_transaction_payment::ChargeTransactionPayment::<runtime::Runtime>::from($tip),
-        );
-
-        let $raw_payload = runtime::SignedPayload::from_raw(
-          $call.clone(),
-          $extra.clone(),
-          (
-            (),
-            runtime::VERSION.spec_version,
-            runtime::VERSION.transaction_version,
-            $genesis.clone(),
-            $genesis,
-            (),
-            (),
-            (),
-          ),
-        );
-
-        $( $usage )*
-      },
-      #[cfg(feature = "cere-dev")]
-      Self::CereDev($client) => {
-        use cere_dev_runtime as runtime;
-
-        $( $setup )*
-
-        signed_payload!($extra, $raw_payload,
-          ($period, $current_block, $nonce, $tip, $call, $genesis));
-
-        $( $usage )*
-      },
-    }
-  }
 }
 
 #[allow(unused_macros)]

@@ -4,24 +4,16 @@
 use pallet_chainbridge as bridge;
 use pallet_erc721 as erc721;
 
-use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
 	dispatch::DispatchResult,
 	ensure,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get},
-	weights::{ClassifyDispatch, DispatchClass, Pays, PaysFee, WeighData, Weight},
 };
-use frame_system::{self as system, ensure_root, ensure_signed};
+use frame_system::{self as system, ensure_signed};
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_core::U256;
-use sp_runtime::{
-	traits::{Bounded, DispatchInfoOf, SignedExtension, UniqueSaturatedInto},
-	transaction_validity::{
-		InvalidTransaction, TransactionValidity, TransactionValidityError, ValidTransaction,
-	},
-};
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::prelude::*;
 
 type ResourceId = bridge::ResourceId;
 
