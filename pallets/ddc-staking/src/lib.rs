@@ -870,7 +870,7 @@ pub mod pallet {
 		/// Add a new account to the list of cluster managers.
 		///
 		/// RuntimeOrigin must be Root to call this function.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::allow_cluster_manager())]
 		pub fn allow_cluster_manager(
 			origin: OriginFor<T>,
 			grantee: <T::Lookup as StaticLookup>::Source,
@@ -890,7 +890,7 @@ pub mod pallet {
 		/// Remove an account from the list of cluster managers.
 		///
 		/// RuntimeOrigin must be Root to call this function.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::disallow_cluster_manager())]
 		pub fn disallow_cluster_manager(
 			origin: OriginFor<T>,
 			revokee: <T::Lookup as StaticLookup>::Source,
