@@ -235,7 +235,10 @@ fn send_signal_works_as_expected() {
 	t.execute_with(|| {
 		assert_eq!(DdcValidator::signal(), None);
 		assert_ok!(DdcValidator::send_signal(RuntimeOrigin::signed(validator_controller)));
-		assert_eq!(DdcValidator::signal().unwrap(), true);
+		assert_eq!(DdcValidator::signal(), Some(true));
+		DdcValidator::on_initialize(2);
+		System::set_block_number(2);
+		assert_eq!(DdcValidator::signal(), Some(false));
 	})
 }
 
