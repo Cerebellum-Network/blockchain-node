@@ -36,7 +36,7 @@ jobs:
 
       - name: Check Format
         run: |
-          cargo +nightly fmt -- --check
+          cargo fmt -- --check
 
       - name: Check Build
         run: |
