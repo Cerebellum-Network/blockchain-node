@@ -922,16 +922,15 @@ pub mod pallet {
 								}
 							});
 
-						for (acc, res) in &tx_res {
-							match res {
-								Ok(()) =>
-									log::debug!("[{:?}]: submit transaction success.", acc.id),
-								Err(e) => log::debug!(
-									"[{:?}]: submit transaction failure. Reason: {:?}",
-									acc.id,
-									e
-								),
-							}
+						let (acc, res) = &tx_res.unwrap();
+
+						match res {
+							Ok(()) => log::debug!("[{:?}]: submit transaction success.", acc.id),
+							Err(e) => log::debug!(
+								"[{:?}]: submit transaction failure. Reason: {:?}",
+								acc.id,
+								e
+							),
 						}
 
 						let final_res = dac::get_final_decision(validations_res);
@@ -945,16 +944,15 @@ pub mod pallet {
 								validation_decision: final_res.clone(),
 							});
 
-						for (acc, res) in &tx_res {
-							match res {
-								Ok(()) =>
-									log::debug!("[{:?}]: submit transaction success.", acc.id),
-								Err(e) => log::debug!(
-									"[{:?}]: submit transaction failure. Reason: {:?}",
-									acc.id,
-									e
-								),
-							}
+						let (acc, res) = &tx_res.unwrap();
+
+						match res {
+							Ok(()) => log::debug!("[{:?}]: submit transaction success.", acc.id),
+							Err(e) => log::debug!(
+								"[{:?}]: submit transaction failure. Reason: {:?}",
+								acc.id,
+								e
+							),
 						}
 
 						cdn_nodes_reward_points.push((
@@ -974,15 +972,12 @@ pub mod pallet {
 						stakers_points: cdn_nodes_reward_points.clone(),
 					});
 
-				for (acc, res) in &tx_res {
-					match res {
-						Ok(()) => log::debug!("[{:?}]: submit transaction success.", acc.id),
-						Err(e) => log::debug!(
-							"[{:?}]: submit transaction failure. Reason: {:?}",
-							acc.id,
-							e
-						),
-					}
+				let (acc, res) = &tx_res.unwrap();
+
+				match res {
+					Ok(()) => log::debug!("[{:?}]: submit transaction success.", acc.id),
+					Err(e) =>
+						log::debug!("[{:?}]: submit transaction failure. Reason: {:?}", acc.id, e),
 				}
 			}
 
