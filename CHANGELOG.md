@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [D] New `pallet-ddc-validator` which implements DDC CDN nodes validation and rewarding. You can enable DDC validation providing `--enable-ddc-validation` argument. It will only work on the nodes with validation and offchain workers enabled as well.
 - [D] Several calls for `pallet-ddc-staking` to distribute rewards.
 - [D] DDC cluster managers access control list in `pallet-ddc-staking` managed by governance.
+- [Zombienet](https://github.com/paritytech/zombienet) configurations to test block building and spawn a network for DDC validation debugging.
 
 ### Changed
 
