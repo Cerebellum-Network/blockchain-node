@@ -117,6 +117,28 @@ Start Bob's node:
 > - Alice//stash
 > - Bob//stash
 
+### Zombienet
+
+Zombienet is a cli tool to easily spawn ephemeral networks and perform tests against them. Its installation and usage guide is available [here](https://github.com/paritytech/zombienet#usage).
+
+The following scenarios expect the node binary available at `./target/release/cere`.
+
+#### Test block building
+
+Spawn 2 nodes network and test if it produces blocks and finalized transaction.
+
+```console
+zombienet -p native test zombienet/0000-block-building/block-building.zndsl
+```
+
+#### Spawn 5 DDC validation nodes
+
+The following command spawns 5 validator nodes with DDC validation enabled as well as 1 non-validator node to check it is not affected.
+
+```console
+zombienet -p native test zombienet/0001-ddc-validation/ddc-validation.toml
+```
+
 ### Runtimes
 
 The node supports 2 runtimes.
