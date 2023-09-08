@@ -271,6 +271,7 @@ pub fn build_full(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
 	enable_ddc_validation: bool,
+	dac_url: String,
 ) -> Result<NewFull<Client>, ServiceError> {
 	#[cfg(feature = "cere-dev-native")]
 	if config.chain_spec.is_cere_dev() {
@@ -278,6 +279,7 @@ pub fn build_full(
 			config,
 			disable_hardware_benchmarks,
 			enable_ddc_validation,
+			dac_url,
 			|_, _| (),
 		)
 		.map(|full| full.with_client(Client::CereDev))
@@ -289,6 +291,7 @@ pub fn build_full(
 			config,
 			disable_hardware_benchmarks,
 			enable_ddc_validation,
+			dac_url,
 			|_, _| (),
 		)
 		.map(|full| full.with_client(Client::Cere))
@@ -323,6 +326,7 @@ pub fn new_full<RuntimeApi, ExecutorDispatch>(
 	mut config: Configuration,
 	disable_hardware_benchmarks: bool,
 	enable_ddc_validation: bool,
+	dac_url: String,
 	with_startup_data: impl FnOnce(
 		&sc_consensus_babe::BabeBlockImport<
 			Block,
@@ -352,15 +356,17 @@ where
 
 	let basics = new_partial_basics::<RuntimeApi, ExecutorDispatch>(&config)?;
 
-	basics
+	let mut offchain_storage = basics
 		.backend
 		.offchain_storage()
-		.expect("no off-chain storage, DDC validation is not possible")
-		.set(
-			sp_core::offchain::STORAGE_PREFIX,
-			b"enable-ddc-validation",
-			if enable_ddc_validation { &[1] } else { &[0] },
-		);
+		.expect("no off-chain storage, DDC validation is not possible");
+
+	offchain_storage.set(
+		sp_core::offchain::STORAGE_PREFIX,
+		b"enable-ddc-validation",
+		if enable_ddc_validation { &[1] } else { &[0] },
+	);
+	offchain_storage.set(sp_core::offchain::STORAGE_PREFIX, b"dac-url", dac_url.as_bytes());
 
 	let sc_service::PartialComponents {
 		client,
