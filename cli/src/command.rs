@@ -249,6 +249,7 @@ pub fn run() -> sc_cli::Result<()> {
 					config,
 					cli.run.no_hardware_benchmarks,
 					cli.run.enable_ddc_validation,
+					cli.run.dac_url,
 				)
 				.map(|full| full.task_manager)
 				.map_err(Error::Service)
