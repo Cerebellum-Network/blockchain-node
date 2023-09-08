@@ -133,9 +133,10 @@ zombienet -p native test zombienet/0000-block-building/block-building.zndsl
 
 #### Spawn 5 DDC validation nodes
 
-The following command spawns 5 validator nodes with DDC validation enabled as well as 1 non-validator node to check it is not affected.
+The following command spawns 5 validator nodes with DDC validation enabled as well as 1 non-validator node to check it is not affected. Set `DAC_URL` environment variable with an address to [webdis](https://webd.is/) which will proxy validator's requests for DDC activity data to DAC DataModel Redis.
 
 ```console
+export DAC_URL=http://localhost:7379/
 zombienet -p native test zombienet/0001-ddc-validation/ddc-validation.toml
 ```
 
