@@ -2,10 +2,15 @@ name: Publish docker image to DockerHub
 on:
   pull_request:
     branches:
-      - 'featur/**'
+      - dev
+      - master
+      - 'feature/**'
+      - 'release/**'
+      - 'hotfix/**'
     types:
-      - push
-
+      - opened
+      - synchronize
+      - edited
 env:
   ECR_REPOSITORY: pos-network-node
   DOCKERHUB_REPOSITORY: cerebellumnetwork
