@@ -1,8 +1,10 @@
 name: Publish docker image to DockerHub
 on:
-  release:
+  pull_request:
+    branches:
+      - 'featur/**'
     types:
-      - published
+      - push
 
 env:
   ECR_REPOSITORY: pos-network-node
@@ -12,6 +14,10 @@ jobs:
   tag-and-push:
     runs-on: [self-hosted, cere-network-xlarge-workers]
     steps:
+      - name: Debug
+        run: | 
+          echo GITHUB_SHA is $GITHUB_SHA
+          echo GITHUB_REF is ${GITHUB_REF##*/}
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
