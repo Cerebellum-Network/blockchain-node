@@ -216,10 +216,13 @@ pub fn get_acknowledged_bytes_bucket<'a>(
 		let mut total_bytes_received = 0u64;
 		let bucket_id = file_request.bucket_id;
 		for (_, chunk) in &file_request.chunks {
-			if let Some(ack) = &chunk.ack {
-				total_bytes_received += ack.bytes_received;
-			} else {
-				total_bytes_received += get_proved_delivered_bytes(chunk, &ack_timestamps);
+			// Only check reads
+			if chunk.log.log_type == 1u64 {
+				if let Some(ack) = &chunk.ack {
+					total_bytes_received += ack.bytes_received;
+				} else {
+					total_bytes_received += get_proved_delivered_bytes(chunk, &ack_timestamps);
+				}
 			}
 		}
 		acknowledged_bytes_by_bucket.push((bucket_id, total_bytes_received));
