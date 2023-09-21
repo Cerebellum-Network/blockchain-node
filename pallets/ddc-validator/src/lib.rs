@@ -73,6 +73,8 @@ type ResultStr<T> = Result<T, &'static str>;
 /// Offchain local storage key that holds the last era in which the validator completed its
 /// assignment.
 const LAST_VALIDATED_ERA_KEY: &[u8; 40] = b"pallet-ddc-validator::last_validated_era";
+/// Offchain local storage that holds the validation lock
+const VALIDATION_LOCK: &[u8; 40] = b"pallet-ddc-validator::validation_lock";
 
 /// Local storage key that holds the flag to enable DDC validation. Set it to true (0x01) to enable
 /// DDC validation, set it to false (0x00) or delete the key to disable it.
@@ -344,8 +346,7 @@ pub mod pallet {
 
 			let mut should_validate_because_new_era = true;
 
-			let mut validation_lock =
-				StorageLock::<storage_lock::Time>::new(LAST_VALIDATED_ERA_KEY);
+			let mut validation_lock = StorageLock::<storage_lock::Time>::new(VALIDATION_LOCK);
 
 			// Skip if the validation is already in progress.
 			if validation_lock.try_lock().is_err() {
@@ -382,7 +383,6 @@ pub mod pallet {
 				log::warn!("🔎 DDC validation failed. {}", e);
 				return
 			}
-
 			last_validated_era_storage.set(&current_ddc_era);
 			log::info!("🔎 DDC validation complete for {} era.", current_ddc_era);
 		}
@@ -478,6 +478,8 @@ pub mod pallet {
 				Error::<T>::NotValidatorStash
 			);
 
+			let mut rewards_counter = 0;
+
 			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
 				for (staker, points) in stakers_points.clone().into_iter() {
 					if !Self::reward_points_set_for_node(era, &staker) {
@@ -494,12 +496,15 @@ pub mod pallet {
 								},
 							);
 							RewardPointsSetForNode::<T>::insert(era, staker, true);
+							rewards_counter += 1;
 						}
 					}
 				}
 			});
 
-			Self::deposit_event(Event::<T>::EraRewardPoints(era, stakers_points));
+			if rewards_counter > 0 {
+				Self::deposit_event(Event::<T>::EraRewardPoints(era, stakers_points));
+			}
 
 			Ok(())
 		}
