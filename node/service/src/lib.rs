@@ -271,7 +271,7 @@ pub fn build_full(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
 	enable_ddc_validation: bool,
-	dac_url: String,
+	dac_url: Option<String>,
 ) -> Result<NewFull<Client>, ServiceError> {
 	#[cfg(feature = "cere-dev-native")]
 	if config.chain_spec.is_cere_dev() {
@@ -326,7 +326,7 @@ pub fn new_full<RuntimeApi, ExecutorDispatch>(
 	mut config: Configuration,
 	disable_hardware_benchmarks: bool,
 	enable_ddc_validation: bool,
-	dac_url: String,
+	dac_url: Option<String>,
 	with_startup_data: impl FnOnce(
 		&sc_consensus_babe::BabeBlockImport<
 			Block,
@@ -366,7 +366,9 @@ where
 		b"enable-ddc-validation",
 		if enable_ddc_validation { &[1] } else { &[0] },
 	);
-	offchain_storage.set(sp_core::offchain::STORAGE_PREFIX, b"dac-url", dac_url.as_bytes());
+	if let Some(dac_url) = dac_url {
+		offchain_storage.set(sp_core::offchain::STORAGE_PREFIX, b"dac-url", dac_url.as_bytes());
+	};
 
 	let sc_service::PartialComponents {
 		client,
