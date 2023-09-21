@@ -637,7 +637,8 @@ pub mod pallet {
 
 			let percentage_difference = 1f32 - (bytes_received as f32 / bytes_sent as f32);
 
-			percentage_difference >= 0.0 && (T::ValidationThreshold::get() as f32 - percentage_difference) > 0.0
+			percentage_difference >= 0.0 &&
+				(T::ValidationThreshold::get() as f32 - percentage_difference) > 0.0
 		}
 
 		/// Shuffle the `list` swapping it's random elements `list.len()` times.
@@ -775,7 +776,9 @@ pub mod pallet {
 		}
 
 		fn get_public_key() -> Option<T::AccountId> {
-			sr25519_public_keys(KEY_TYPE).first().map(|pubkey| T::AccountId::decode(&mut &pubkey.encode()[..]).unwrap())
+			sr25519_public_keys(KEY_TYPE)
+				.first()
+				.map(|pubkey| T::AccountId::decode(&mut &pubkey.encode()[..]).unwrap())
 		}
 
 		fn validate_edges() -> Result<(), &'static str> {

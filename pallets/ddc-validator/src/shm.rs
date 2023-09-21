@@ -121,7 +121,6 @@ pub(crate) fn get_intermediate_decisions(
 	};
 
 	let quorum_decisions = find_quorum_decisions(decisions_for_edge, quorum);
-	
 
 	decode_intermediate_decisions(quorum_decisions)
 }

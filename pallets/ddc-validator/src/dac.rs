@@ -329,8 +329,6 @@ pub(crate) fn http_get_json<OUT: DeserializeOwned>(url: &str) -> crate::ResultSt
 		"HTTP GET error"
 	})?;
 
-	
-
 	serde_json::from_slice(&body).map_err(|err| {
 		log::warn!("[DAC Validator] Error while parsing JSON from {}: {:?}", url, err);
 		"HTTP JSON parse error"
@@ -364,8 +362,6 @@ pub(crate) fn get_final_decision(decisions: Vec<ValidationDecision>) -> Validati
 	let decision_example = common_decisions.get(0).unwrap();
 
 	let serialized_decisions = serde_json::to_string(&common_decisions).unwrap();
-
-	
 
 	ValidationDecision {
 		edge: decision_example.edge.clone(),

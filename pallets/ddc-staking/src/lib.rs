@@ -989,11 +989,7 @@ pub mod pallet {
 					current_rewards.push(rewards);
 				});
 			}
-			Self::deposit_event(Event::<T>::PayoutNodes(
-				era,
-				era_reward_points,
-				price_per_byte,
-			));
+			Self::deposit_event(Event::<T>::PayoutNodes(era, era_reward_points, price_per_byte));
 			log::debug!("Payout event executed");
 
 			log::debug!(
