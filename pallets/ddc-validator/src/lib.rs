@@ -59,7 +59,10 @@ pub use sp_runtime::offchain::{
 	http, storage::StorageValueRef, storage_lock, storage_lock::StorageLock, Duration, Timestamp,
 };
 pub use sp_staking::EraIndex;
-pub use sp_std::{collections::btree_map::BTreeMap, prelude::*};
+pub use sp_std::{
+	collections::{btree_map, btree_map::BTreeMap},
+	prelude::*,
+};
 
 extern crate alloc;
 
@@ -909,7 +912,7 @@ pub mod pallet {
 						> = BTreeMap::new();
 						for bucket in payments_per_bucket.iter_mut() {
 							let cere_payment = bucket.1 as u32;
-							if let std::collections::btree_map::Entry::Vacant(e) = payments.entry(bucket.0) {
+							if let btree_map::Entry::Vacant(e) = payments.entry(bucket.0) {
 								let bucket_info = BucketsDetails {
 									bucket_id: bucket.0,
 									amount: cere_payment.into(),
