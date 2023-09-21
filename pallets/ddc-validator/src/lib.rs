@@ -90,8 +90,8 @@ pub const QUORUM_SIZE: usize = 1;
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub enum LogType {
-	Write = 1,
-	Read = 2,
+	Read = 1,
+	Write = 2,
 	Query = 3,
 }
 
