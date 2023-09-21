@@ -193,9 +193,7 @@ pub mod pallet {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
-			cluster
-				.set_params(cluster_params)
-				.map_err(Into::<Error<T>>::into)?;
+			cluster.set_params(cluster_params).map_err(Into::<Error<T>>::into)?;
 			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
 

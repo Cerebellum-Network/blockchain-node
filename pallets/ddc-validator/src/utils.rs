@@ -6,7 +6,6 @@ pub use sp_std::prelude::*;
 
 pub fn account_to_string<T: frame_system::Config>(account: T::AccountId) -> String {
 	let to32 = T::AccountId::encode(&account);
-	
 
 	array_bytes::bytes2hex("", to32)
 }

@@ -92,12 +92,10 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn delete_node(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let node = Self::get(node_pub_key.clone())
-				.map_err(Into::<Error<T>>::into)?;
+			let node = Self::get(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAssignedToCluster);
-			Self::delete(node_pub_key.clone())
-				.map_err(Into::<Error<T>>::into)?;
+			Self::delete(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::NodeDeleted { node_pub_key });
 			Ok(())
 		}
@@ -109,11 +107,9 @@ pub mod pallet {
 			node_params: NodeParams,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let mut node = Self::get(node_pub_key.clone())
-				.map_err(Into::<Error<T>>::into)?;
+			let mut node = Self::get(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
-			node.set_params(node_params)
-				.map_err(Into::<Error<T>>::into)?;
+			node.set_params(node_params).map_err(Into::<Error<T>>::into)?;
 			Self::update(node).map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::NodeParamsChanged { node_pub_key });
 			Ok(())
