@@ -97,10 +97,10 @@ decl_module! {
 			ensure!(data.len() >= T::MinLength::get(), Error::<T>::TooShort);
 			ensure!(data.len() <= T::MaxLength::get(), Error::<T>::TooLong);
 
-			if let Some(_) = <StringDataOf<T>>::get(&sender) {
-				Self::deposit_event(RawEvent::DataStringChanged(sender.clone()));
+			if <StringDataOf<T>>::get(&sender).is_some() {
+				Self::deposit_event(RawEvent::DataStringChanged(sender));
 			} else {
-				Self::deposit_event(RawEvent::DataStringSet(sender.clone()));
+				Self::deposit_event(RawEvent::DataStringSet(sender));
 			};
 
 			<StringDataOf<T>>::insert(send_to, data);

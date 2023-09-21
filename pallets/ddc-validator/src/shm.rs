@@ -43,7 +43,7 @@ pub fn base64_decode(input: &String) -> Result<Vec<u8>, ()> {
 	let mut buf = Vec::with_capacity(1000); // ToDo: calculate capacity
 	buf.resize(1000, 0);
 	BASE64_STANDARD.decode_slice(input, &mut buf).map_err(|_| ())?;
-	Ok(buf.iter().map(|&char| char as u8).collect())
+	Ok(buf.to_vec())
 }
 
 /// Encodes a vector of bytes into a vector of characters using base64 encoding.
@@ -121,9 +121,9 @@ pub(crate) fn get_intermediate_decisions(
 	};
 
 	let quorum_decisions = find_quorum_decisions(decisions_for_edge, quorum);
-	let decoded_decisions = decode_intermediate_decisions(quorum_decisions);
+	
 
-	decoded_decisions
+	decode_intermediate_decisions(quorum_decisions)
 }
 
 pub(crate) fn decode_intermediate_decisions(
@@ -139,7 +139,7 @@ pub(crate) fn decode_intermediate_decisions(
 
 		log::debug!("data_str: {:?}", data_trimmed);
 
-		let decoded_decision: ValidationDecision = serde_json::from_str(&data_trimmed).unwrap();
+		let decoded_decision: ValidationDecision = serde_json::from_str(data_trimmed).unwrap();
 
 		decoded_decisions.push(decoded_decision);
 	}

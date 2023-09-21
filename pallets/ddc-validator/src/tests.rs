@@ -20,7 +20,7 @@ const OCW_SEED: &str =
 	"news slush supreme milk chapter athlete soap sausage put clutch what kitten";
 
 fn last_event() -> RuntimeEvent {
-	System::events().pop().expect("Event expected").event.into()
+	System::events().pop().expect("Event expected").event
 }
 
 #[test]
@@ -137,7 +137,7 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 	}
 
 	t.execute_with(|| {
-		let era_block_number = 20 as u32 * era_to_validate;
+		let era_block_number = 20_u32 * era_to_validate;
 		System::set_block_number(era_block_number); // required for randomness
 		assert_ok!(DdcValidator::set_validator_key(
 			// register validator 1
@@ -470,7 +470,7 @@ fn charge_payments_content_owners_works_as_expected() {
 			ValidatorError::<Test>::DDCEraNotSet
 		);
 
-		let era_block_number = 20 as u32 * era_to_validate;
+		let era_block_number = 20_u32 * era_to_validate;
 		System::set_block_number(era_block_number);
 		Timestamp::set_timestamp(
 			(DDC_ERA_START_MS + DDC_ERA_DURATION_MS * (era_to_validate as u128 - 1)) as u64,

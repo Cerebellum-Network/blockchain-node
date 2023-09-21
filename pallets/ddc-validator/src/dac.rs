@@ -260,12 +260,12 @@ pub fn get_served_bytes_sum(file_requests: &Requests) -> (u64, u64) {
 
 fn get_proved_delivered_bytes(chunk: &Chunk, ack_timestamps: &Vec<TimestampInSec>) -> u64 {
 	let log_timestamp = chunk.log.timestamp;
-	let neighbors = get_closer_neighbors(log_timestamp, &ack_timestamps);
+	let neighbors = get_closer_neighbors(log_timestamp, ack_timestamps);
 	let is_proved =
 		is_lies_within_threshold(log_timestamp, neighbors, FAILED_CONTENT_CONSUMER_THRESHOLD);
 
 	if is_proved {
-		return chunk.log.bytes_sent
+		chunk.log.bytes_sent
 	} else {
 		0
 	}
@@ -305,7 +305,7 @@ fn is_lies_within_threshold(
 
 pub(crate) fn fetch_cdn_node_aggregates_request(url: &String) -> Vec<CDNNodeAggregate> {
 	log::debug!("fetch_file_request | url: {:?}", url);
-	let response: FileRequestWrapper = http_get_json(&url).unwrap();
+	let response: FileRequestWrapper = http_get_json(url).unwrap();
 	log::debug!("response.json: {:?}", response.json);
 	let map: Vec<CDNNodeAggregate> = serde_json::from_str(response.json.as_str()).unwrap();
 	// log::debug!("response.json: {:?}", response.json);
@@ -315,7 +315,7 @@ pub(crate) fn fetch_cdn_node_aggregates_request(url: &String) -> Vec<CDNNodeAggr
 
 pub(crate) fn fetch_file_request(url: &String) -> FileRequest {
 	log::debug!("fetch_file_request | url: {:?}", url);
-	let response: FileRequestWrapper = http_get_json(&url).unwrap();
+	let response: FileRequestWrapper = http_get_json(url).unwrap();
 	log::debug!("response.json: {:?}", response.json);
 
 	let map: FileRequest = serde_json::from_str(response.json.as_str()).unwrap();
@@ -329,12 +329,12 @@ pub(crate) fn http_get_json<OUT: DeserializeOwned>(url: &str) -> crate::ResultSt
 		"HTTP GET error"
 	})?;
 
-	let parsed = serde_json::from_slice(&body).map_err(|err| {
+	
+
+	serde_json::from_slice(&body).map_err(|err| {
 		log::warn!("[DAC Validator] Error while parsing JSON from {}: {:?}", url, err);
 		"HTTP JSON parse error"
-	});
-
-	parsed
+	})
 }
 
 fn http_get_request(http_url: &str) -> Result<Vec<u8>, http::Error> {
@@ -365,7 +365,9 @@ pub(crate) fn get_final_decision(decisions: Vec<ValidationDecision>) -> Validati
 
 	let serialized_decisions = serde_json::to_string(&common_decisions).unwrap();
 
-	let final_decision = ValidationDecision {
+	
+
+	ValidationDecision {
 		edge: decision_example.edge.clone(),
 		result: decision_example.result,
 		payload: utils::hash(&serialized_decisions),
@@ -375,9 +377,7 @@ pub(crate) fn get_final_decision(decisions: Vec<ValidationDecision>) -> Validati
 			failed_by_client: 0,
 			failure_rate: 0,
 		},
-	};
-
-	final_decision
+	}
 }
 
 fn find_largest_group(decisions: Vec<ValidationDecision>) -> Option<Vec<ValidationDecision>> {
@@ -404,7 +404,7 @@ fn find_largest_group(decisions: Vec<ValidationDecision>) -> Option<Vec<Validati
 		}
 	}
 
-	let largest_group = groups.into_iter().max_by_key(|group| group.len()).unwrap_or(Vec::new());
+	let largest_group = groups.into_iter().max_by_key(|group| group.len()).unwrap_or_default();
 
 	if largest_group.len() > half {
 		Some(largest_group)

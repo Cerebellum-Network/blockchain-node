@@ -88,7 +88,7 @@ where
 
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(
-			&config,
+			config,
 			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
 			executor,
 		)?;
@@ -287,7 +287,7 @@ pub fn build_full(
 
 	#[cfg(feature = "cere-native")]
 	{
-		return new_full::<cere_runtime::RuntimeApi, CereExecutorDispatch>(
+		new_full::<cere_runtime::RuntimeApi, CereExecutorDispatch>(
 			config,
 			disable_hardware_benchmarks,
 			enable_ddc_validation,
@@ -347,7 +347,7 @@ where
 {
 	let hwbench = if !disable_hardware_benchmarks {
 		config.database.path().map(|database_path| {
-			let _ = std::fs::create_dir_all(&database_path);
+			let _ = std::fs::create_dir_all(database_path);
 			sc_sysinfo::gather_hwbench(Some(database_path))
 		})
 	} else {
@@ -461,7 +461,7 @@ where
 		let proposer = sc_basic_authorship::ProposerFactory::new(
 			task_manager.spawn_handle(),
 			client.clone(),
-			transaction_pool.clone(),
+			transaction_pool,
 			prometheus_registry.as_ref(),
 			telemetry.as_ref().map(|x| x.handle()),
 		);
@@ -646,7 +646,7 @@ pub fn new_chain_ops(
 
 	#[cfg(feature = "cere-native")]
 	{
-		return chain_ops!(config; cere_runtime, CereExecutorDispatch, Cere)
+		chain_ops!(config; cere_runtime, CereExecutorDispatch, Cere)
 	}
 
 	#[cfg(not(feature = "cere-native"))]
