@@ -83,7 +83,7 @@ pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
 /// Webdis in experimental cluster connected to Redis in dev.
 pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://webdis:7379";
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
-pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url";
+pub const DATA_PROVIDER_URL_KEY: &[u8; 7] = b"dac-url";
 pub const QUORUM_SIZE: usize = 1;
 
 #[derive(Debug)]
