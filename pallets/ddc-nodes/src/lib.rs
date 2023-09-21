@@ -83,8 +83,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let node = Node::<T::AccountId>::new(node_pub_key.clone(), caller_id, node_params)
-				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
-			Self::create(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+				.map_err(Into::<Error<T>>::into)?;
+			Self::create(node).map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::NodeCreated { node_pub_key });
 			Ok(())
 		}
@@ -93,11 +93,11 @@ pub mod pallet {
 		pub fn delete_node(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let node = Self::get(node_pub_key.clone())
-				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+				.map_err(Into::<Error<T>>::into)?;
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAssignedToCluster);
 			Self::delete(node_pub_key.clone())
-				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+				.map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::NodeDeleted { node_pub_key });
 			Ok(())
 		}
@@ -110,11 +110,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let mut node = Self::get(node_pub_key.clone())
-				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+				.map_err(Into::<Error<T>>::into)?;
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
 			node.set_params(node_params)
-				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
-			Self::update(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+				.map_err(Into::<Error<T>>::into)?;
+			Self::update(node).map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::NodeParamsChanged { node_pub_key });
 			Ok(())
 		}

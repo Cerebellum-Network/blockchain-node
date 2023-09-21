@@ -382,7 +382,7 @@ pub mod pallet {
 			// Add initial CDN participants
 			for &(ref stash, ref controller, ref node, balance, cluster) in &self.edges {
 				assert!(
-					T::Currency::free_balance(&stash) >= balance,
+					T::Currency::free_balance(stash) >= balance,
 					"Stash do not have enough balance to participate in CDN."
 				);
 				assert_ok!(Pallet::<T>::bond(
@@ -400,7 +400,7 @@ pub mod pallet {
 			// Add initial storage network participants
 			for &(ref stash, ref controller, ref node, balance, cluster) in &self.storages {
 				assert!(
-					T::Currency::free_balance(&stash) >= balance,
+					T::Currency::free_balance(stash) >= balance,
 					"Stash do not have enough balance to participate in storage network."
 				);
 				assert_ok!(Pallet::<T>::bond(
@@ -691,10 +691,10 @@ pub mod pallet {
 			let stash = &ledger.stash;
 
 			// Can't participate in CDN if already participating in storage network.
-			ensure!(!Storages::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
+			ensure!(!Storages::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
 
 			// Is it an attempt to cancel a previous "chill"?
-			if let Some(current_cluster) = Self::edges(&stash) {
+			if let Some(current_cluster) = Self::edges(stash) {
 				// Switching the cluster is prohibited. The user should chill first.
 				ensure!(current_cluster == cluster, Error::<T>::AlreadyInRole);
 				// Cancel previous "chill" attempts
@@ -725,10 +725,10 @@ pub mod pallet {
 			let stash = &ledger.stash;
 
 			// Can't participate in storage network if already participating in CDN.
-			ensure!(!Edges::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
+			ensure!(!Edges::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
 
 			// Is it an attempt to cancel a previous "chill"?
-			if let Some(current_cluster) = Self::storages(&stash) {
+			if let Some(current_cluster) = Self::storages(stash) {
 				// Switching the cluster is prohibited. The user should chill first.
 				ensure!(current_cluster == cluster, Error::<T>::AlreadyInRole);
 				// Cancel previous "chill" attempts
@@ -949,7 +949,7 @@ pub mod pallet {
 			// ToDo: check that validation is finalised for era
 
 			let era_reward_points: EraRewardPoints<T::AccountId> =
-				<ErasEdgesRewardPoints<T>>::get(&era);
+				<ErasEdgesRewardPoints<T>>::get(era);
 
 			let price_per_byte: u128 = match Self::pricing() {
 				Some(pricing) => pricing,
@@ -991,7 +991,7 @@ pub mod pallet {
 			}
 			Self::deposit_event(Event::<T>::PayoutNodes(
 				era,
-				era_reward_points.clone(),
+				era_reward_points,
 				price_per_byte,
 			));
 			log::debug!("Payout event executed");
@@ -1036,7 +1036,7 @@ pub mod pallet {
 			cluster: ClusterId,
 			can_chill_from: EraIndex,
 		) {
-			Ledger::<T>::mutate(&controller, |maybe_ledger| {
+			Ledger::<T>::mutate(controller, |maybe_ledger| {
 				if let Some(ref mut ledger) = maybe_ledger {
 					ledger.chilling = Some(can_chill_from)
 				}
@@ -1099,7 +1099,7 @@ pub mod pallet {
 
 		/// Reset the chilling era for a controller.
 		pub fn reset_chilling(controller: &T::AccountId) {
-			Ledger::<T>::mutate(&controller, |maybe_ledger| {
+			Ledger::<T>::mutate(controller, |maybe_ledger| {
 				if let Some(ref mut ledger) = maybe_ledger {
 					ledger.chilling = None
 				}

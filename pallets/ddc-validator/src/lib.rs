@@ -360,7 +360,7 @@ pub mod pallet {
 
 			// Skip if DDC validation is not enabled.
 			match StorageValueRef::persistent(ENABLE_DDC_VALIDATION_KEY).get::<bool>() {
-				Ok(Some(enabled)) if enabled == true => (),
+				Ok(Some(enabled)) if enabled => (),
 				_ => return,
 			}
 
@@ -634,13 +634,7 @@ pub mod pallet {
 
 			let percentage_difference = 1f32 - (bytes_received as f32 / bytes_sent as f32);
 
-			return if percentage_difference >= 0.0 &&
-				(T::ValidationThreshold::get() as f32 - percentage_difference) > 0.0
-			{
-				true
-			} else {
-				false
-			}
+			percentage_difference >= 0.0 && (T::ValidationThreshold::get() as f32 - percentage_difference) > 0.0
 		}
 
 		/// Shuffle the `list` swapping it's random elements `list.len()` times.
@@ -678,7 +672,7 @@ pub mod pallet {
 			let validators: Vec<T::AccountId> = DDCValidatorToStashKeys::<T>::iter_keys().collect();
 			log::debug!("Current validators: {:?}.", validators);
 
-			if validators.len() == 0 {
+			if validators.is_empty() {
 				return Err(AssignmentError::NoValidators)
 			}
 
@@ -692,7 +686,7 @@ pub mod pallet {
 			let edges: Vec<T::AccountId> = <ddc_staking::pallet::Edges<T>>::iter_keys().collect();
 			log::debug!("Current edges: {:?}.", edges);
 
-			if edges.len() == 0 {
+			if edges.is_empty() {
 				return Ok(())
 			}
 
@@ -725,7 +719,7 @@ pub mod pallet {
 				});
 			}
 
-			return Ok(())
+			Ok(())
 		}
 
 		/// Randomly choose a number in range `[0, total)`.
@@ -764,7 +758,7 @@ pub mod pallet {
 		}
 
 		fn find_validators_from_quorum(validator_id: &T::AccountId, era: &EraIndex) -> Vec<String> {
-			let validator_edges = Self::assignments(era, &validator_id).unwrap();
+			let validator_edges = Self::assignments(era, validator_id).unwrap();
 			let mut quorum_members: Vec<String> = Vec::new();
 
 			<Assignments<T>>::iter_prefix(era).for_each(|(candidate_id, edges)| {
@@ -778,10 +772,7 @@ pub mod pallet {
 		}
 
 		fn get_public_key() -> Option<T::AccountId> {
-			match sr25519_public_keys(KEY_TYPE).first() {
-				Some(pubkey) => Some(T::AccountId::decode(&mut &pubkey.encode()[..]).unwrap()),
-				None => None,
-			}
+			sr25519_public_keys(KEY_TYPE).first().map(|pubkey| T::AccountId::decode(&mut &pubkey.encode()[..]).unwrap())
 		}
 
 		fn validate_edges() -> Result<(), &'static str> {
@@ -832,7 +823,7 @@ pub mod pallet {
 				log::debug!("node aggregates: {:?}", node_aggregates);
 
 				// No data for node
-				if node_aggregates.len() == 0 {
+				if node_aggregates.is_empty() {
 					continue
 				}
 
@@ -848,8 +839,8 @@ pub mod pallet {
 					let file_request = dac::fetch_file_request(&request_id_url);
 					requests.insert(file_request.file_request_id.clone(), file_request.clone());
 				}
-				dac::get_acknowledged_bytes_bucket(&requests, payments_per_bucket);
-				let (bytes_sent, bytes_received) = dac::get_served_bytes_sum(&requests);
+				dac::get_acknowledged_bytes_bucket(requests, payments_per_bucket);
+				let (bytes_sent, bytes_received) = dac::get_served_bytes_sum(requests);
 				let is_valid = Self::is_valid(bytes_sent, bytes_received);
 
 				log::debug!("bytes_sent, bytes_received: {:?}, {:?}", bytes_sent, bytes_received);
@@ -916,18 +907,18 @@ pub mod pallet {
 							u128,
 							BucketsDetails<ddc_accounts::BalanceOf<T>>,
 						> = BTreeMap::new();
-						for bucket in payments_per_bucket.into_iter() {
+						for bucket in payments_per_bucket.iter_mut() {
 							let cere_payment = bucket.1 as u32;
-							if payments.contains_key(&bucket.0) {
-								payments.entry(bucket.0).and_modify(|bucket_info| {
-									bucket_info.amount += cere_payment.into()
-								});
-							} else {
+							if let std::collections::btree_map::Entry::Vacant(e) = payments.entry(bucket.0) {
 								let bucket_info = BucketsDetails {
 									bucket_id: bucket.0,
 									amount: cere_payment.into(),
 								};
-								payments.insert(bucket.0, bucket_info);
+								e.insert(bucket_info);
+							} else {
+								payments.entry(bucket.0).and_modify(|bucket_info| {
+									bucket_info.amount += cere_payment.into()
+								});
 							}
 						}
 						let mut final_payments = vec![];
@@ -993,7 +984,7 @@ pub mod pallet {
 			let signer = Self::get_signer().unwrap();
 
 			// ToDo: replace local call by a call from `ddc-staking` pallet
-			if cdn_nodes_reward_points.len() > 0 {
+			if !cdn_nodes_reward_points.is_empty() {
 				let tx_res =
 					signer.send_signed_transaction(|_account| Call::set_era_reward_points {
 						era: current_ddc_era - 1,

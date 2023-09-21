@@ -314,7 +314,7 @@ pub mod pallet {
 				unlocking: Default::default(),
 			};
 			Self::update_ledger_and_deposit(&stash, &controller, &item)?;
-			Self::deposit_event(Event::<T>::Deposited(stash.clone(), value));
+			Self::deposit_event(Event::<T>::Deposited(stash, value));
 			Ok(())
 		}
 
@@ -346,7 +346,7 @@ pub mod pallet {
 
 			Self::update_ledger_and_deposit(&stash, &controller, &ledger)?;
 
-			Self::deposit_event(Event::<T>::Deposited(stash.clone(), extra));
+			Self::deposit_event(Event::<T>::Deposited(stash, extra));
 
 			Ok(())
 		}

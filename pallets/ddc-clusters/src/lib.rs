@@ -104,10 +104,10 @@ pub mod pallet {
 			cluster_params: ClusterParams<T::AccountId>,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let cluster = Cluster::new(cluster_id.clone(), caller_id, cluster_params)
-				.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
-			ensure!(!Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterAlreadyExists);
-			Clusters::<T>::insert(cluster_id.clone(), cluster);
+			let cluster = Cluster::new(cluster_id, caller_id, cluster_params)
+				.map_err(Into::<Error<T>>::into)?;
+			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
+			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
 			Ok(())
 		}
@@ -120,7 +120,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
-				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 			let mut node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
@@ -152,9 +152,9 @@ pub mod pallet {
 				.is_some_and(|staking_cluster| staking_cluster == cluster_id);
 			ensure!(has_stake, Error::<T>::NoStake);
 
-			node.set_cluster_id(Some(cluster_id.clone()));
+			node.set_cluster_id(Some(cluster_id));
 			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
-			ClustersNodes::<T>::insert(cluster_id.clone(), node_pub_key.clone(), true);
+			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), true);
 			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
 
 			Ok(())
@@ -168,7 +168,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
-				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 			let mut node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
@@ -176,7 +176,7 @@ pub mod pallet {
 			node.set_cluster_id(None);
 			T::NodeRepository::update(node)
 				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
-			ClustersNodes::<T>::remove(cluster_id.clone(), node_pub_key.clone());
+			ClustersNodes::<T>::remove(cluster_id, node_pub_key.clone());
 			Self::deposit_event(Event::<T>::ClusterNodeRemoved { cluster_id, node_pub_key });
 
 			Ok(())
@@ -191,12 +191,12 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let mut cluster =
-				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 			cluster
 				.set_params(cluster_params)
-				.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
-			Clusters::<T>::insert(cluster_id.clone(), cluster);
+				.map_err(Into::<Error<T>>::into)?;
+			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
 
 			Ok(())

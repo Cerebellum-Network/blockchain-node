@@ -19,7 +19,7 @@ use frame_system::offchain::{
 };
 
 use hex_literal::hex;
-use pallet_contracts;
+
 use sp_core::crypto::{KeyTypeId, UncheckedFrom};
 use sp_runtime::{
 	offchain::{http, storage::StorageValueRef, Duration},
@@ -194,7 +194,7 @@ where
 		};
 
 		let should_proceed = Self::check_if_should_proceed(block_number);
-		if should_proceed == false {
+		if !should_proceed {
 			return Ok(())
 		}
 
@@ -246,7 +246,7 @@ where
 		let block_timestamp = sp_io::offchain::timestamp().unix_millis();
 
 		if day_end_ms < block_timestamp {
-			Self::finalize_metric_period(contract_address.clone(), &signer, day_start_ms).map_err(
+			Self::finalize_metric_period(contract_address, &signer, day_start_ms).map_err(
 				|err| {
 					error!("[OCW] Contract error occurred: {:?}", err);
 					"could not call finalize_metric_period TX"
@@ -327,8 +327,8 @@ where
 
 	fn get_start_of_day_ms() -> u64 {
 		let now = sp_io::offchain::timestamp();
-		let day_start_ms = (now.unix_millis() / MS_PER_DAY) * MS_PER_DAY;
-		day_start_ms
+		
+		(now.unix_millis() / MS_PER_DAY) * MS_PER_DAY
 	}
 
 	fn get_signer() -> ResultStr<Signer<T, T::AuthorityId>> {
@@ -520,7 +520,7 @@ where
 				account.id, p2p_id, is_online,
 			);
 
-			let call_data = Self::encode_report_ddn_status(&p2p_id, is_online);
+			let call_data = Self::encode_report_ddn_status(p2p_id, is_online);
 
 			let contract_id_unl = <<T as frame_system::Config>::Lookup as StaticLookup>::unlookup(
 				contract_id.clone(),
@@ -641,12 +641,12 @@ where
 			"HTTP GET error"
 		})?;
 
-		let parsed = serde_json::from_slice(&body).map_err(|err| {
+		
+
+		serde_json::from_slice(&body).map_err(|err| {
 			warn!("[OCW] Error while parsing JSON from {}: {:?}", url, err);
 			"HTTP JSON parse error"
-		});
-
-		parsed
+		})
 	}
 
 	fn http_get_request(http_url: &str) -> Result<Vec<u8>, http::Error> {

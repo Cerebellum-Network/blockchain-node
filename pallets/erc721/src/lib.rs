@@ -114,8 +114,8 @@ impl<T: Config> Module<T> {
 
 		let new_token = Erc721Token { id, metadata };
 
-		<Tokens>::insert(&id, new_token);
-		<TokenOwner<T>>::insert(&id, owner.clone());
+		<Tokens>::insert(id, new_token);
+		<TokenOwner<T>>::insert(id, owner.clone());
 		let new_total = <TokenCount>::get().saturating_add(U256::one());
 		<TokenCount>::put(new_total);
 
@@ -130,7 +130,7 @@ impl<T: Config> Module<T> {
 		let owner = Self::owner_of(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
 		ensure!(owner == from, Error::<T>::NotOwner);
 		// Update owner
-		<TokenOwner<T>>::insert(&id, to.clone());
+		<TokenOwner<T>>::insert(id, to.clone());
 
 		Self::deposit_event(RawEvent::Transferred(from, to, id));
 
@@ -142,8 +142,8 @@ impl<T: Config> Module<T> {
 		let owner = Self::owner_of(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
 		ensure!(owner == from, Error::<T>::NotOwner);
 
-		<Tokens>::remove(&id);
-		<TokenOwner<T>>::remove(&id);
+		<Tokens>::remove(id);
+		<TokenOwner<T>>::remove(id);
 		let new_total = <TokenCount>::get().saturating_sub(U256::one());
 		<TokenCount>::put(new_total);
 

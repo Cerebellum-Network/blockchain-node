@@ -239,7 +239,7 @@ impl ExtBuilder {
 
 		TestExternalities::new(storage)
 	}
-	pub fn build_and_execute(self, test: impl FnOnce() -> ()) {
+	pub fn build_and_execute(self, test: impl FnOnce()) {
 		sp_tracing::try_init_simple();
 		let mut ext = self.build();
 		ext.execute_with(test);
