@@ -19,7 +19,7 @@ pub struct RunCmd {
 	pub enable_ddc_validation: bool,
 
 	/// DAC DataModel HTTP endpoint to retrieve DDC activity data for validation.
-	#[clap(long, requires = "enable-ddc-validation")]
+	#[clap(long, requires = "enable-ddc-validation", validator = url::Url::parse)]
 	pub dac_url: Option<String>,
 
 	/// Force using Cere Dev runtime.
