@@ -1329,19 +1329,19 @@ impl pallet_ddc_staking::Config for Runtime {
 	type DefaultStorageBondSize = DefaultStorageBondSize;
 	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
-	type StakersPayoutSource = Ddc_Accounts_Pallet_Id;
+	type StakersPayoutSource = DdcAccountsPalletId;
 	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
-	pub const Ddc_Accounts_Pallet_Id: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
+	pub const DdcAccountsPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
 }
 
 impl pallet_ddc_accounts::Config for Runtime {
 	type BondingDuration = BondingDuration;
 	type Currency = Balances;
-	type PalletId = Ddc_Accounts_Pallet_Id;
+	type PalletId = DdcAccountsPalletId;
 	type RuntimeEvent = RuntimeEvent;
 }
 
