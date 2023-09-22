@@ -102,7 +102,7 @@ impl TryFrom<u64> for opCode {
 		match v {
 			x if x == opCode::Write as u64 => Ok(opCode::Write),
 			x if x == opCode::Read as u64 => Ok(opCode::Read),
-			x if x == opCode::Query as u64 => Ok(opCode::Query),
+			x if x == opCode::Search as u64 => Ok(opCode::Search),
 			_ => Err("Invalid value to for log type"),
 		}
 	}
