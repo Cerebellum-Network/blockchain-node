@@ -32,6 +32,9 @@ jobs:
         run: |
           cargo fmt -- --check
 
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
       - name: Check Build
         run: |
           SKIP_WASM_BUILD=1 cargo check --release
