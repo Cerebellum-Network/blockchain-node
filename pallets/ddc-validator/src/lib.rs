@@ -89,20 +89,20 @@ pub const DATA_PROVIDER_URL_KEY: &[u8; 32] = b"ddc-validator::data-provider-url"
 pub const QUORUM_SIZE: usize = 1;
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub enum LogType {
+pub enum opCode {
 	Read = 1,
 	Write = 2,
-	Query = 3,
+	Search = 3,
 }
 
-impl TryFrom<u64> for LogType {
+impl TryFrom<u64> for opCode {
 	type Error = &'static str;
 
 	fn try_from(v: u64) -> Result<Self, Self::Error> {
 		match v {
-			x if x == LogType::Write as u64 => Ok(LogType::Write),
-			x if x == LogType::Read as u64 => Ok(LogType::Read),
-			x if x == LogType::Query as u64 => Ok(LogType::Query),
+			x if x == opCode::Write as u64 => Ok(opCode::Write),
+			x if x == opCode::Read as u64 => Ok(opCode::Read),
+			x if x == opCode::Query as u64 => Ok(opCode::Query),
 			_ => Err("Invalid value to for log type"),
 		}
 	}
