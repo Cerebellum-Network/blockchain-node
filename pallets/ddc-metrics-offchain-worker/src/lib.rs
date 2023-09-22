@@ -304,11 +304,10 @@ where
 					);
 					Err("Skipping")
 				} else {
-					let block_interval_configured = Self::get_block_interval();
 					let mut block_interval = T::BlockInterval::get();
-					if block_interval_configured.is_some() {
+					if let Some(block_interval_configured) = Self::get_block_interval() {
 						block_interval = <T as frame_system::Config>::BlockNumber::from(
-							block_interval_configured.unwrap(),
+							block_interval_configured,
 						);
 					}
 
@@ -753,7 +752,12 @@ impl MetricsAggregator {
 		let existing_pubkey_index =
 			self.0.iter().position(|one_result_obj| metric.app_id == one_result_obj.app_id);
 
-		if existing_pubkey_index.is_none() {
+		if let Some(existing_pubkey_index) = existing_pubkey_index {
+			// Add to metrics of an existing app.
+			self.0[existing_pubkey_index].storage_bytes += metric.storage_bytes;
+			self.0[existing_pubkey_index].wcu_used += metric.wcu_used;
+			self.0[existing_pubkey_index].rcu_used += metric.rcu_used;
+		} else {
 			// New app.
 			let new_metric_obj = Metric {
 				app_id: metric.app_id.clone(),
@@ -762,11 +766,6 @@ impl MetricsAggregator {
 				rcu_used: metric.rcu_used,
 			};
 			self.0.push(new_metric_obj);
-		} else {
-			// Add to metrics of an existing app.
-			self.0[existing_pubkey_index.unwrap()].storage_bytes += metric.storage_bytes;
-			self.0[existing_pubkey_index.unwrap()].wcu_used += metric.wcu_used;
-			self.0[existing_pubkey_index.unwrap()].rcu_used += metric.rcu_used;
 		}
 	}
 
