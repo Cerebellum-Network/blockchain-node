@@ -23,14 +23,10 @@ jobs:
       - name: Set-Up
         run: sudo apt install -y git clang curl libssl-dev llvm libudev-dev
 
-      - name: Install Rustup
+      - name: Install Rust
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          source ~/.cargo/env
-          rustup default stable
-          rustup update nightly
-          rustup update stable
-          rustup component add rustfmt --toolchain nightly
+          rustup update stable --no-self-update
+          rustup target add wasm32-unknown-unknown
 
       - name: Check Format
         run: |
