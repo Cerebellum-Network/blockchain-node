@@ -95,7 +95,7 @@ pub enum opCode {
 	Search = 3,
 }
 
-impl TryFrom<u64> for opCode {
+impl TryFrom<u64> for OpCode {
 	type Error = &'static str;
 
 	fn try_from(v: u64) -> Result<Self, Self::Error> {
