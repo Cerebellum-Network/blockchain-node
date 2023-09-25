@@ -1,6 +1,6 @@
 //! A module with Data Activity Capture (DAC) interaction.
 
-use crate::{opCode, utils, DacTotalAggregates, ValidationDecision};
+use crate::{utils, DacTotalAggregates, OpCode, ValidationDecision};
 use alloc::string::String; // ToDo: remove String usage
 use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 use codec::{Decode, Encode};
@@ -218,7 +218,7 @@ pub fn get_acknowledged_bytes_bucket<'a>(
 		for (_, chunk) in &file_request.chunks {
 			// Only check reads
 			match chunk.log.log_type.try_into() {
-				Ok(opCode::Read) =>
+				Ok(OpCode::Read) =>
 					if let Some(ack) = &chunk.ack {
 						total_bytes_received += ack.bytes_received;
 					} else {
