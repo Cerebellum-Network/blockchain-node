@@ -171,7 +171,7 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
 		assert!(tx.signature.is_some());
 
-		let bucket_info = BucketsDetails { bucket_id: 5, amount: 600u128 };
+		let bucket_info = BucketsDetails { bucket_id: 5, amount: 400u128 };
 
 		assert_eq!(
 			tx.call,
