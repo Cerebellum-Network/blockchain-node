@@ -73,6 +73,8 @@ type ResultStr<T> = Result<T, &'static str>;
 /// Offchain local storage key that holds the last era in which the validator completed its
 /// assignment.
 const LAST_VALIDATED_ERA_KEY: &[u8; 40] = b"pallet-ddc-validator::last_validated_era";
+/// Offchain local storage that holds the validation lock
+const VALIDATION_LOCK: &[u8; 37] = b"pallet-ddc-validator::validation_lock";
 
 /// Local storage key that holds the flag to enable DDC validation. Set it to true (0x01) to enable
 /// DDC validation, set it to false (0x00) or delete the key to disable it.
@@ -85,6 +87,26 @@ pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://webdis:7379";
 // pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
 pub const DATA_PROVIDER_URL_KEY: &[u8; 7] = b"dac-url";
 pub const QUORUM_SIZE: usize = 1;
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub enum OpCode {
+	Read = 1,
+	Write = 2,
+	Search = 3,
+}
+
+impl TryFrom<u64> for OpCode {
+	type Error = &'static str;
+
+	fn try_from(v: u64) -> Result<Self, Self::Error> {
+		match v {
+			x if x == OpCode::Write as u64 => Ok(OpCode::Write),
+			x if x == OpCode::Read as u64 => Ok(OpCode::Read),
+			x if x == OpCode::Search as u64 => Ok(OpCode::Search),
+			_ => Err("Invalid value to for log type"),
+		}
+	}
+}
 
 #[derive(Debug)]
 pub enum AssignmentError {
@@ -344,8 +366,7 @@ pub mod pallet {
 
 			let mut should_validate_because_new_era = true;
 
-			let mut validation_lock =
-				StorageLock::<storage_lock::Time>::new(LAST_VALIDATED_ERA_KEY);
+			let mut validation_lock = StorageLock::<storage_lock::Time>::new(VALIDATION_LOCK);
 
 			// Skip if the validation is already in progress.
 			if validation_lock.try_lock().is_err() {
@@ -382,7 +403,6 @@ pub mod pallet {
 				log::warn!("🔎 DDC validation failed. {}", e);
 				return
 			}
-
 			last_validated_era_storage.set(&current_ddc_era);
 			log::info!("🔎 DDC validation complete for {} era.", current_ddc_era);
 		}
@@ -478,6 +498,8 @@ pub mod pallet {
 				),
 				Error::<T>::NotValidatorStash
 			);
+
+			let mut rewards_counter = 0;
 
 			<ddc_staking::pallet::ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
 				for (staker, points) in stakers_points.clone().into_iter() {
