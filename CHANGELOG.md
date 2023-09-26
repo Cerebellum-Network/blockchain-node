@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ...
 
+## [4.7.1]
+
+### Changed
+
+- Updated governance related constants
+
 ## [4.7.0]
 
 ### Changed
