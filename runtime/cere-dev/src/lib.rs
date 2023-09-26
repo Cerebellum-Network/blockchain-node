@@ -724,7 +724,7 @@ parameter_types! {
 	pub const LaunchPeriod: BlockNumber = 1 * 24 * 60 * MINUTES;
 	pub const VotingPeriod: BlockNumber = 1 * 24 * 60 * MINUTES;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * 60 * MINUTES;
-	pub const MinimumDeposit: Balance = 5000 * DOLLARS;
+	pub const MinimumDeposit: Balance = 5_000_000 * DOLLARS;
 	pub const EnactmentPeriod: BlockNumber = 1 * 24 * 60 * MINUTES;
 	pub const CooloffPeriod: BlockNumber = 7 * 24 * 60 * MINUTES;
 	pub const MaxProposals: u32 = 100;
