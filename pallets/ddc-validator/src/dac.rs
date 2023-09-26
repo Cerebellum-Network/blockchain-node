@@ -240,12 +240,17 @@ pub fn get_served_bytes_sum(file_requests: &Requests) -> (u64, u64) {
 
 	for (_, file_request) in file_requests {
 		for (_, chunk) in &file_request.chunks {
-			total_bytes_sent += chunk.log.bytes_sent;
+			match chunk.log.log_type.try_into() {
+				Ok(OpCode::Read) => {
+					total_bytes_sent += chunk.log.bytes_sent;
 
-			if let Some(ack) = &chunk.ack {
-				total_bytes_received += ack.bytes_received;
-			} else {
-				total_bytes_received += get_proved_delivered_bytes(chunk, &ack_timestamps);
+					if let Some(ack) = &chunk.ack {
+						total_bytes_received += ack.bytes_received;
+					} else {
+						total_bytes_received += get_proved_delivered_bytes(chunk, &ack_timestamps);
+					}
+				},
+				_ => (),
 			}
 		}
 	}
