@@ -812,6 +812,7 @@ dependencies = [
  "pallet-contracts-rpc-runtime-api",
  "pallet-ddc-accounts",
  "pallet-ddc-metrics-offchain-worker",
+ "pallet-ddc-nodes",
  "pallet-ddc-staking",
  "pallet-ddc-validator",
  "pallet-democracy",
@@ -4868,6 +4869,25 @@ dependencies = [
  "sp-keystore",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-ddc-nodes"
+version = "4.8.1"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
+ "sp-tracing",
+ "substrate-test-utils",
 ]
 
 [[package]]
