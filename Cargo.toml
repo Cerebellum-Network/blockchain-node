@@ -34,6 +34,7 @@ members = [
     "pallets/ddc-validator",
     "pallets/ddc-accounts",
     "pallets/ddc-nodes",
+    "pallets/ddc-clusters",
 ]
 
 [profile.release]

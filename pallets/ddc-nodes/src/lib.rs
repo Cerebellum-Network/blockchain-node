@@ -14,21 +14,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-// #[cfg(feature = "runtime-benchmarks")]
-// pub mod benchmarking;
-// #[cfg(any(feature = "runtime-benchmarks", test))]
-// pub mod testing_utils;
-
-// #[cfg(test)]
-// pub(crate) mod mock;
-// #[cfg(test)]
-// mod tests;
-
-// pub mod weights;
-// use crate::weights::WeightInfo;
-
-use codec::{Decode, Encode, HasCompact};
-use frame_support::{pallet_prelude::*, BoundedVec, PalletId};
+use codec::{Decode, Encode};
+use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
@@ -46,35 +33,20 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {}
+	pub trait Config: frame_system::Config {
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+	}
 
-	// #[pallet::genesis_config]
-	// pub struct GenesisConfig<T: Config> {
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	pub enum Event<T: Config> {
+		NodeCreated(NodeType, OwnableNodePubKey),
+	}
 
-	// }
-
-	// #[cfg(feature = "std")]
-	// impl<T: Config> Default for GenesisConfig<T> {
-	// 	fn default() -> Self {
-	// 		GenesisConfig {}
-	// 	}
-	// }
-
-	// #[pallet::genesis_build]
-	// impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-	// 	fn build(&self) {}
-	// }
-
-	// #[pallet::event]
-	// #[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	// pub enum Event<T: Config> {
-
-	// }
-
-	// #[pallet::error]
-	// pub enum Error<T> {
-
-	// }
+	#[pallet::error]
+	pub enum Error<T> {
+		NodeAlreadyExists,
+	}
 
 	/// Map from all (unlocked) "controller" accounts to the info regarding the staking.
 	#[pallet::storage]
@@ -164,6 +136,12 @@ pub mod pallet {
 		CDNPubKey(&'a CDNNodePubKey),
 	}
 
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+	pub enum OwnableNodePubKey {
+		StoragePubKey(StorageNodePubKey),
+		CDNPubKey(CDNNodePubKey),
+	}
+
 	#[derive(Debug, PartialEq)]
 	pub enum NodeProps<'a> {
 		StorageProps(&'a StorageNodeProps),
@@ -245,11 +223,30 @@ pub mod pallet {
 			match node_params {
 				NodeParams::StorageParams(storage_params) => {
 					let storage_node = StorageNode::from_params(storage_params);
-					StorageNodes::<T>::insert(storage_node.key.clone(), storage_node);
+					let node_key = storage_node.key.clone();
+
+					ensure!(
+						!StorageNodes::<T>::contains_key(&node_key),
+						Error::<T>::NodeAlreadyExists
+					);
+
+					StorageNodes::<T>::insert(node_key.clone(), storage_node);
+					Self::deposit_event(Event::<T>::NodeCreated(
+						NodeType::Storage,
+						OwnableNodePubKey::StoragePubKey(node_key),
+					));
 				},
 				NodeParams::CDNParams(cdn_params) => {
 					let cdn_node = CDNNode::from_params(cdn_params);
+					let node_key = cdn_node.key.clone();
+
+					ensure!(!CDNNodes::<T>::contains_key(&node_key), Error::<T>::NodeAlreadyExists);
+
 					CDNNodes::<T>::insert(cdn_node.key.clone(), cdn_node);
+					Self::deposit_event(Event::<T>::NodeCreated(
+						NodeType::CDN,
+						OwnableNodePubKey::CDNPubKey(node_key),
+					));
 				},
 			}
 
