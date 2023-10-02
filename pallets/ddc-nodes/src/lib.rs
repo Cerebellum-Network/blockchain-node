@@ -91,26 +91,26 @@ pub mod pallet {
 	pub struct StorageNode {
 		key: StorageNodePubKey,
 		status: u8,
-		props: StorageProps,
+		props: StorageNodeProps,
 	}
 
 	impl StorageNode {
-		fn from_params(params: StorageParams) -> StorageNode {
+		fn from_params(params: StorageNodeParams) -> StorageNode {
 			StorageNode {
 				key: params.pub_key,
 				status: 1,
-				props: StorageProps { capacity: params.capacity },
+				props: StorageNodeProps { capacity: params.capacity },
 			}
 		}
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub struct StorageProps {
+	pub struct StorageNodeProps {
 		capacity: u32,
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub struct StorageParams {
+	pub struct StorageNodeParams {
 		pub_key: StorageNodePubKey,
 		capacity: u32,
 	}
@@ -120,27 +120,27 @@ pub mod pallet {
 	pub struct CDNNode {
 		key: CDNNodePubKey,
 		status: u8,
-		props: CDNProps,
+		props: CDNNodeProps,
 	}
 
 	impl CDNNode {
-		fn from_params(params: CDNParams) -> CDNNode {
+		fn from_params(params: CDNNodeParams) -> CDNNode {
 			CDNNode {
 				key: params.pub_key,
 				status: 1,
-				props: CDNProps { url: params.url, location: params.location },
+				props: CDNNodeProps { url: params.url, location: params.location },
 			}
 		}
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub struct CDNProps {
+	pub struct CDNNodeProps {
 		url: Vec<u8>,
 		location: [u8; 2],
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub struct CDNParams {
+	pub struct CDNNodeParams {
 		pub_key: CDNNodePubKey,
 		url: Vec<u8>,
 		location: [u8; 2],
@@ -148,8 +148,8 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub enum NodeParams {
-		StorageParams(StorageParams),
-		CDNParams(CDNParams),
+		StorageParams(StorageNodeParams),
+		CDNParams(CDNNodeParams),
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -166,8 +166,8 @@ pub mod pallet {
 
 	#[derive(Debug, PartialEq)]
 	pub enum NodeProps<'a> {
-		StorageProps(&'a StorageProps),
-		CDNProps(&'a CDNProps),
+		StorageProps(&'a StorageNodeProps),
+		CDNProps(&'a CDNNodeProps),
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
