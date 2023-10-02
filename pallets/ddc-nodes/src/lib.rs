@@ -40,12 +40,13 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		NodeCreated(NodeType, OwnableNodePubKey),
+		NodeCreated(NodeType),
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
 		NodeAlreadyExists,
+		InvalidNodeParams,
 	}
 
 	/// Map from all (unlocked) "controller" accounts to the info regarding the staking.
@@ -64,16 +65,6 @@ pub mod pallet {
 		key: StorageNodePubKey,
 		status: u8,
 		props: StorageNodeProps,
-	}
-
-	impl StorageNode {
-		fn from_params(params: StorageNodeParams) -> StorageNode {
-			StorageNode {
-				key: params.pub_key,
-				status: 1,
-				props: StorageNodeProps { capacity: params.capacity },
-			}
-		}
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -95,16 +86,6 @@ pub mod pallet {
 		props: CDNNodeProps,
 	}
 
-	impl CDNNode {
-		fn from_params(params: CDNNodeParams) -> CDNNode {
-			CDNNode {
-				key: params.pub_key,
-				status: 1,
-				props: CDNNodeProps { url: params.url, location: params.location },
-			}
-		}
-	}
-
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct CDNNodeProps {
 		url: Vec<u8>,
@@ -119,18 +100,18 @@ pub mod pallet {
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub enum NodeParams {
-		StorageParams(StorageNodeParams),
-		CDNParams(CDNNodeParams),
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub enum Node {
 		Storage(StorageNode),
 		CDN(CDNNode),
 	}
 
-	#[derive(Debug, PartialEq)]
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+	pub enum NodeParams {
+		StorageParams(StorageNodeParams),
+		CDNParams(CDNNodeParams),
+	}
+
+	#[derive(Clone, RuntimeDebug, PartialEq)]
 	pub enum NodePubKey<'a> {
 		StoragePubKey(&'a StorageNodePubKey),
 		CDNPubKey(&'a CDNNodePubKey),
@@ -142,7 +123,7 @@ pub mod pallet {
 		CDNPubKey(CDNNodePubKey),
 	}
 
-	#[derive(Debug, PartialEq)]
+	#[derive(Clone, RuntimeDebug, PartialEq)]
 	pub enum NodeProps<'a> {
 		StorageProps(&'a StorageNodeProps),
 		CDNProps(&'a CDNNodeProps),
@@ -155,40 +136,79 @@ pub mod pallet {
 	}
 
 	pub trait NodeTrait {
-		fn get_key<'a>(&'a self) -> NodePubKey<'a>;
+		fn get_pub_key<'a>(&'a self) -> NodePubKey<'a>;
 		fn get_props<'a>(&'a self) -> NodeProps<'a>;
+		fn get_type(&self) -> NodeType;
+		fn from_params<T: Config>(params: NodeParams) -> Result<Node, pallet::Error<T>>;
 	}
 
 	impl NodeTrait for StorageNode {
-		fn get_key<'a>(&'a self) -> NodePubKey<'a> {
+		fn get_pub_key<'a>(&'a self) -> NodePubKey<'a> {
 			NodePubKey::StoragePubKey(&self.key)
 		}
 		fn get_props<'a>(&'a self) -> NodeProps<'a> {
 			NodeProps::StorageProps(&self.props)
 		}
+		fn get_type(&self) -> NodeType {
+			NodeType::Storage
+		}
+		fn from_params<T: Config>(params: NodeParams) -> Result<Node, pallet::Error<T>> {
+			match params {
+				NodeParams::StorageParams(params) => Ok(Node::Storage(StorageNode {
+					key: params.pub_key,
+					status: 1,
+					props: StorageNodeProps { capacity: params.capacity },
+				})),
+				_ => Err(Error::<T>::NodeAlreadyExists),
+			}
+		}
 	}
 
 	impl NodeTrait for CDNNode {
-		fn get_key<'a>(&'a self) -> NodePubKey<'a> {
+		fn get_pub_key<'a>(&'a self) -> NodePubKey<'a> {
 			NodePubKey::CDNPubKey(&self.key)
 		}
 		fn get_props<'a>(&'a self) -> NodeProps<'a> {
 			NodeProps::CDNProps(&self.props)
 		}
+		fn get_type(&self) -> NodeType {
+			NodeType::CDN
+		}
+		fn from_params<T: Config>(params: NodeParams) -> Result<Node, pallet::Error<T>> {
+			match params {
+				NodeParams::CDNParams(params) => Ok(Node::CDN(CDNNode {
+					key: params.pub_key,
+					status: 1,
+					props: CDNNodeProps { url: params.url, location: params.location },
+				})),
+				_ => Err(Error::<T>::NodeAlreadyExists),
+			}
+		}
 	}
 
 	impl NodeTrait for Node {
-		fn get_key<'a>(&'a self) -> NodePubKey<'a> {
+		fn get_pub_key<'a>(&'a self) -> NodePubKey<'a> {
 			match &self {
-				Node::Storage(node) => node.get_key(),
-				Node::CDN(node) => node.get_key(),
+				Node::Storage(node) => node.get_pub_key(),
+				Node::CDN(node) => node.get_pub_key(),
 			}
 		}
-
 		fn get_props<'a>(&'a self) -> NodeProps<'a> {
 			match &self {
 				Node::Storage(node) => node.get_props(),
 				Node::CDN(node) => node.get_props(),
+			}
+		}
+		fn get_type(&self) -> NodeType {
+			match &self {
+				Node::Storage(node) => node.get_type(),
+				Node::CDN(node) => node.get_type(),
+			}
+		}
+		fn from_params<T: Config>(params: NodeParams) -> Result<Node, pallet::Error<T>> {
+			match params {
+				NodeParams::StorageParams(_) => StorageNode::from_params(params),
+				NodeParams::CDNParams(_) => CDNNode::from_params(params),
 			}
 		}
 	}
@@ -204,7 +224,6 @@ pub mod pallet {
 
 	impl TryFrom<u8> for NodeType {
 		type Error = ();
-
 		fn try_from(value: u8) -> Result<Self, Self::Error> {
 			match value {
 				1 => Ok(NodeType::Storage),
@@ -214,42 +233,41 @@ pub mod pallet {
 		}
 	}
 
+	pub trait NodeRepositoryTrait {
+		fn save<T: Config>(node: Node) -> Result<(), pallet::Error<T>>;
+	}
+
+	struct NodeRepository;
+	impl NodeRepositoryTrait for NodeRepository {
+		fn save<T: Config>(node: Node) -> Result<(), pallet::Error<T>> {
+			match node {
+				Node::Storage(storage_node) => {
+					if StorageNodes::<T>::contains_key(&storage_node.key) {
+						return Err(Error::<T>::NodeAlreadyExists)
+					}
+					StorageNodes::<T>::insert(storage_node.key.clone(), storage_node);
+					Ok(())
+				},
+				Node::CDN(cdn_node) => {
+					if CDNNodes::<T>::contains_key(&cdn_node.key) {
+						return Err(Error::<T>::NodeAlreadyExists)
+					}
+					CDNNodes::<T>::insert(cdn_node.key.clone(), cdn_node);
+					Ok(())
+				},
+			}
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
 		pub fn create_node(origin: OriginFor<T>, node_params: NodeParams) -> DispatchResult {
-			let _node_provider = ensure_signed(origin)?;
-
-			match node_params {
-				NodeParams::StorageParams(storage_params) => {
-					let storage_node = StorageNode::from_params(storage_params);
-					let node_key = storage_node.key.clone();
-
-					ensure!(
-						!StorageNodes::<T>::contains_key(&node_key),
-						Error::<T>::NodeAlreadyExists
-					);
-
-					StorageNodes::<T>::insert(node_key.clone(), storage_node);
-					Self::deposit_event(Event::<T>::NodeCreated(
-						NodeType::Storage,
-						OwnableNodePubKey::StoragePubKey(node_key),
-					));
-				},
-				NodeParams::CDNParams(cdn_params) => {
-					let cdn_node = CDNNode::from_params(cdn_params);
-					let node_key = cdn_node.key.clone();
-
-					ensure!(!CDNNodes::<T>::contains_key(&node_key), Error::<T>::NodeAlreadyExists);
-
-					CDNNodes::<T>::insert(cdn_node.key.clone(), cdn_node);
-					Self::deposit_event(Event::<T>::NodeCreated(
-						NodeType::CDN,
-						OwnableNodePubKey::CDNPubKey(node_key),
-					));
-				},
-			}
-
+			let node_provider = ensure_signed(origin)?;
+			let node = Node::from_params::<T>(node_params)?;
+			let node_type = node.get_type();
+			NodeRepository::save::<T>(node)?;
+			Self::deposit_event(Event::<T>::NodeCreated(node_type));
 			Ok(())
 		}
 	}
