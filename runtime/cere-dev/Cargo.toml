@@ -105,6 +105,7 @@ pallet-erc721 = { version = "4.8.1", default-features = false, path = "../../pal
 pallet-erc20 = { version = "4.8.1", default-features = false, path = "../../pallets/erc20" }
 pallet-ddc-metrics-offchain-worker = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-metrics-offchain-worker" }
 pallet-ddc-nodes = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-nodes" }
+pallet-ddc-clusters = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-clusters" }
 
 [build-dependencies]
 substrate-wasm-builder = { version = "5.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
