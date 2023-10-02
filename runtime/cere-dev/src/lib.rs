@@ -1369,6 +1369,7 @@ impl pallet_ddc_nodes::Config for Runtime {
 
 impl pallet_ddc_clusters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
 construct_runtime!(

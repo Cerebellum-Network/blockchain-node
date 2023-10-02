@@ -4854,6 +4854,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
+ "pallet-ddc-nodes",
  "parity-scale-codec",
  "scale-info",
  "sp-core",

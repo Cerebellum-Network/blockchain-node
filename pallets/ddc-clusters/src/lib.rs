@@ -23,6 +23,8 @@ use sp_core::hash::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
+use pallet_ddc_nodes::{NodePubKey, NodeRepository};
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -35,6 +37,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type NodeRepository: NodeRepository;
 	}
 
 	#[pallet::event]
@@ -86,6 +89,18 @@ pub mod pallet {
 
 			Clusters::<T>::insert(cluster_id.clone(), cluster);
 			Self::deposit_event(Event::<T>::ClusterCreated(cluster_id));
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn add_node(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+			let node = T::NodeRepository::get(node_pub_key)?;
 
 			Ok(())
 		}
