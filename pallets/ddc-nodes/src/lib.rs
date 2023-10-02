@@ -40,7 +40,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		NodeCreated(NodeType),
+		NodeCreated(NodePubKey),
 	}
 
 	#[pallet::error]
@@ -49,7 +49,6 @@ pub mod pallet {
 		InvalidNodeParams,
 	}
 
-	/// Map from all (unlocked) "controller" accounts to the info regarding the staking.
 	#[pallet::storage]
 	#[pallet::getter(fn storage_nodes)]
 	pub type StorageNodes<T: Config> =
@@ -62,7 +61,7 @@ pub mod pallet {
 	type StorageNodePubKey = sp_runtime::AccountId32;
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct StorageNode {
-		key: StorageNodePubKey,
+		pub_key: StorageNodePubKey,
 		status: u8,
 		props: StorageNodeProps,
 	}
@@ -81,7 +80,7 @@ pub mod pallet {
 	type CDNNodePubKey = sp_runtime::AccountId32;
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct CDNNode {
-		key: CDNNodePubKey,
+		pub_key: CDNNodePubKey,
 		status: u8,
 		props: CDNNodeProps,
 	}
@@ -111,22 +110,33 @@ pub mod pallet {
 		CDNParams(CDNNodeParams),
 	}
 
-	#[derive(Clone, RuntimeDebug, PartialEq)]
-	pub enum NodePubKey<'a> {
-		StoragePubKey(&'a StorageNodePubKey),
-		CDNPubKey(&'a CDNNodePubKey),
-	}
-
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub enum OwnableNodePubKey {
+	pub enum NodePubKey {
 		StoragePubKey(StorageNodePubKey),
 		CDNPubKey(CDNNodePubKey),
 	}
 
 	#[derive(Clone, RuntimeDebug, PartialEq)]
-	pub enum NodeProps<'a> {
-		StorageProps(&'a StorageNodeProps),
-		CDNProps(&'a CDNNodeProps),
+	pub enum NodePubKeyRef<'a> {
+		StoragePubKeyRef(&'a StorageNodePubKey),
+		CDNPubKeyRef(&'a CDNNodePubKey),
+	}
+
+	impl<'a> NodePubKeyRef<'a> {
+		pub fn to_owned(&self) -> NodePubKey {
+			match &self {
+				NodePubKeyRef::StoragePubKeyRef(pub_key_ref) =>
+					NodePubKey::StoragePubKey((**pub_key_ref).clone()),
+				NodePubKeyRef::CDNPubKeyRef(pub_key_ref) =>
+					NodePubKey::CDNPubKey((**pub_key_ref).clone()),
+			}
+		}
+	}
+
+	#[derive(Clone, RuntimeDebug, PartialEq)]
+	pub enum NodePropsRef<'a> {
+		StoragePropsRef(&'a StorageNodeProps),
+		CDNPropsRef(&'a CDNNodeProps),
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -136,18 +146,18 @@ pub mod pallet {
 	}
 
 	pub trait NodeTrait {
-		fn get_pub_key<'a>(&'a self) -> NodePubKey<'a>;
-		fn get_props<'a>(&'a self) -> NodeProps<'a>;
+		fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a>;
+		fn get_props<'a>(&'a self) -> NodePropsRef<'a>;
 		fn get_type(&self) -> NodeType;
 		fn from_params<T: Config>(params: NodeParams) -> Result<Node, pallet::Error<T>>;
 	}
 
 	impl NodeTrait for StorageNode {
-		fn get_pub_key<'a>(&'a self) -> NodePubKey<'a> {
-			NodePubKey::StoragePubKey(&self.key)
+		fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
+			NodePubKeyRef::StoragePubKeyRef(&self.pub_key)
 		}
-		fn get_props<'a>(&'a self) -> NodeProps<'a> {
-			NodeProps::StorageProps(&self.props)
+		fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
+			NodePropsRef::StoragePropsRef(&self.props)
 		}
 		fn get_type(&self) -> NodeType {
 			NodeType::Storage
@@ -155,7 +165,7 @@ pub mod pallet {
 		fn from_params<T: Config>(params: NodeParams) -> Result<Node, pallet::Error<T>> {
 			match params {
 				NodeParams::StorageParams(params) => Ok(Node::Storage(StorageNode {
-					key: params.pub_key,
+					pub_key: params.pub_key,
 					status: 1,
 					props: StorageNodeProps { capacity: params.capacity },
 				})),
@@ -165,11 +175,11 @@ pub mod pallet {
 	}
 
 	impl NodeTrait for CDNNode {
-		fn get_pub_key<'a>(&'a self) -> NodePubKey<'a> {
-			NodePubKey::CDNPubKey(&self.key)
+		fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
+			NodePubKeyRef::CDNPubKeyRef(&self.pub_key)
 		}
-		fn get_props<'a>(&'a self) -> NodeProps<'a> {
-			NodeProps::CDNProps(&self.props)
+		fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
+			NodePropsRef::CDNPropsRef(&self.props)
 		}
 		fn get_type(&self) -> NodeType {
 			NodeType::CDN
@@ -177,7 +187,7 @@ pub mod pallet {
 		fn from_params<T: Config>(params: NodeParams) -> Result<Node, pallet::Error<T>> {
 			match params {
 				NodeParams::CDNParams(params) => Ok(Node::CDN(CDNNode {
-					key: params.pub_key,
+					pub_key: params.pub_key,
 					status: 1,
 					props: CDNNodeProps { url: params.url, location: params.location },
 				})),
@@ -187,13 +197,13 @@ pub mod pallet {
 	}
 
 	impl NodeTrait for Node {
-		fn get_pub_key<'a>(&'a self) -> NodePubKey<'a> {
+		fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
 			match &self {
 				Node::Storage(node) => node.get_pub_key(),
 				Node::CDN(node) => node.get_pub_key(),
 			}
 		}
-		fn get_props<'a>(&'a self) -> NodeProps<'a> {
+		fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
 			match &self {
 				Node::Storage(node) => node.get_props(),
 				Node::CDN(node) => node.get_props(),
@@ -242,17 +252,17 @@ pub mod pallet {
 		fn save<T: Config>(node: Node) -> Result<(), pallet::Error<T>> {
 			match node {
 				Node::Storage(storage_node) => {
-					if StorageNodes::<T>::contains_key(&storage_node.key) {
+					if StorageNodes::<T>::contains_key(&storage_node.pub_key) {
 						return Err(Error::<T>::NodeAlreadyExists)
 					}
-					StorageNodes::<T>::insert(storage_node.key.clone(), storage_node);
+					StorageNodes::<T>::insert(storage_node.pub_key.clone(), storage_node);
 					Ok(())
 				},
 				Node::CDN(cdn_node) => {
-					if CDNNodes::<T>::contains_key(&cdn_node.key) {
+					if CDNNodes::<T>::contains_key(&cdn_node.pub_key) {
 						return Err(Error::<T>::NodeAlreadyExists)
 					}
-					CDNNodes::<T>::insert(cdn_node.key.clone(), cdn_node);
+					CDNNodes::<T>::insert(cdn_node.pub_key.clone(), cdn_node);
 					Ok(())
 				},
 			}
@@ -263,11 +273,11 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
 		pub fn create_node(origin: OriginFor<T>, node_params: NodeParams) -> DispatchResult {
-			let node_provider = ensure_signed(origin)?;
-			let node = Node::from_params::<T>(node_params)?;
-			let node_type = node.get_type();
+			ensure_signed(origin)?;
+			let node: Node = Node::from_params::<T>(node_params)?;
+			let node_pub_key = node.get_pub_key().to_owned();
 			NodeRepository::save::<T>(node)?;
-			Self::deposit_event(Event::<T>::NodeCreated(node_type));
+			Self::deposit_event(Event::<T>::NodeCreated(node_pub_key));
 			Ok(())
 		}
 	}

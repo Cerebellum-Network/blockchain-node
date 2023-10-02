@@ -48,7 +48,6 @@ pub mod pallet {
 		ClusterAlreadyExists,
 	}
 
-	/// Map from all (unlocked) "controller" accounts to the info regarding the staking.
 	#[pallet::storage]
 	#[pallet::getter(fn storage_nodes)]
 	pub type Clusters<T: Config> = StorageMap<_, Blake2_128Concat, ClusterId, Cluster>;
@@ -78,7 +77,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_params: ClusterParams,
 		) -> DispatchResult {
-			let _cluster_manager = ensure_signed(origin)?;
+			ensure_signed(origin)?;
 
 			let cluster = Cluster::from_params(cluster_params);
 			let cluster_id = cluster.id.clone();
