@@ -46,6 +46,7 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		NodeAlreadyExists,
+		NodeDoesNotExist,
 		InvalidNodeParams,
 	}
 
@@ -245,28 +246,7 @@ pub mod pallet {
 
 	pub trait NodeRepositoryTrait {
 		fn save<T: Config>(node: Node) -> Result<(), pallet::Error<T>>;
-	}
-
-	struct NodeRepository;
-	impl NodeRepositoryTrait for NodeRepository {
-		fn save<T: Config>(node: Node) -> Result<(), pallet::Error<T>> {
-			match node {
-				Node::Storage(storage_node) => {
-					if StorageNodes::<T>::contains_key(&storage_node.pub_key) {
-						return Err(Error::<T>::NodeAlreadyExists)
-					}
-					StorageNodes::<T>::insert(storage_node.pub_key.clone(), storage_node);
-					Ok(())
-				},
-				Node::CDN(cdn_node) => {
-					if CDNNodes::<T>::contains_key(&cdn_node.pub_key) {
-						return Err(Error::<T>::NodeAlreadyExists)
-					}
-					CDNNodes::<T>::insert(cdn_node.pub_key.clone(), cdn_node);
-					Ok(())
-				},
-			}
-		}
+		fn get<T: Config>(pub_key: NodePubKey) -> Result<Node, pallet::Error<T>>;
 	}
 
 	#[pallet::call]
@@ -276,9 +256,48 @@ pub mod pallet {
 			ensure_signed(origin)?;
 			let node: Node = Node::from_params::<T>(node_params)?;
 			let node_pub_key = node.get_pub_key().to_owned();
-			NodeRepository::save::<T>(node)?;
+			Self::save(node)?;
 			Self::deposit_event(Event::<T>::NodeCreated(node_pub_key));
 			Ok(())
+		}
+	}
+
+	pub trait NodeRepository {
+		fn save(node: Node) -> Result<(), &'static str>;
+		fn get(pub_key: NodePubKey) -> Result<Node, &'static str>;
+	}
+
+	impl<T: Config> NodeRepository for Pallet<T> {
+		fn save(node: Node) -> Result<(), &'static str> {
+			match node {
+				Node::Storage(storage_node) => {
+					if StorageNodes::<T>::contains_key(&storage_node.pub_key) {
+						return Err("Node already exists")
+					}
+					StorageNodes::<T>::insert(storage_node.pub_key.clone(), storage_node);
+					Ok(())
+				},
+				Node::CDN(cdn_node) => {
+					if CDNNodes::<T>::contains_key(&cdn_node.pub_key) {
+						return Err("Node already exists")
+					}
+					CDNNodes::<T>::insert(cdn_node.pub_key.clone(), cdn_node);
+					Ok(())
+				},
+			}
+		}
+
+		fn get(node_pub_key: NodePubKey) -> Result<Node, &'static str> {
+			match node_pub_key {
+				NodePubKey::StoragePubKey(pub_key) => match StorageNodes::<T>::try_get(pub_key) {
+					Ok(node) => Ok(Node::Storage(node)),
+					Err(_) => Err("Node does not exist"),
+				},
+				NodePubKey::CDNPubKey(pub_key) => match CDNNodes::<T>::try_get(pub_key) {
+					Ok(node) => Ok(Node::CDN(node)),
+					Err(_) => Err("Node does not exist"),
+				},
+			}
 		}
 	}
 }
