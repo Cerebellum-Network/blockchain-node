@@ -18,6 +18,7 @@ use codec::{Decode, Encode};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
+use sp_core::hash::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
@@ -59,11 +60,14 @@ pub mod pallet {
 	#[pallet::getter(fn cdn_nodes)]
 	pub type CDNNodes<T: Config> = StorageMap<_, Blake2_128Concat, CDNNodePubKey, CDNNode>;
 
+	// todo: add the type to the Config
+	type ClusterId = H160;
+
 	type StorageNodePubKey = sp_runtime::AccountId32;
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct StorageNode {
 		pub_key: StorageNodePubKey,
-		status: u8,
+		cluster_id: Option<ClusterId>,
 		props: StorageNodeProps,
 	}
 
@@ -82,7 +86,7 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct CDNNode {
 		pub_key: CDNNodePubKey,
-		status: u8,
+		cluster_id: Option<ClusterId>,
 		props: CDNNodeProps,
 	}
 
@@ -167,7 +171,7 @@ pub mod pallet {
 			match params {
 				NodeParams::StorageParams(params) => Ok(Node::Storage(StorageNode {
 					pub_key: params.pub_key,
-					status: 1,
+					cluster_id: None,
 					props: StorageNodeProps { capacity: params.capacity },
 				})),
 				_ => Err(Error::<T>::NodeAlreadyExists),
@@ -189,7 +193,7 @@ pub mod pallet {
 			match params {
 				NodeParams::CDNParams(params) => Ok(Node::CDN(CDNNode {
 					pub_key: params.pub_key,
-					status: 1,
+					cluster_id: None,
 					props: CDNNodeProps { url: params.url, location: params.location },
 				})),
 				_ => Err(Error::<T>::NodeAlreadyExists),
@@ -245,7 +249,7 @@ pub mod pallet {
 	}
 
 	pub trait NodeRepositoryTrait {
-		fn save<T: Config>(node: Node) -> Result<(), pallet::Error<T>>;
+		fn create<T: Config>(node: Node) -> Result<(), pallet::Error<T>>;
 		fn get<T: Config>(pub_key: NodePubKey) -> Result<Node, pallet::Error<T>>;
 	}
 
@@ -256,19 +260,20 @@ pub mod pallet {
 			ensure_signed(origin)?;
 			let node: Node = Node::from_params::<T>(node_params)?;
 			let node_pub_key = node.get_pub_key().to_owned();
-			Self::save(node)?;
+			Self::create(node)?;
 			Self::deposit_event(Event::<T>::NodeCreated(node_pub_key));
 			Ok(())
 		}
 	}
 
 	pub trait NodeRepository {
-		fn save(node: Node) -> Result<(), &'static str>;
+		fn create(node: Node) -> Result<(), &'static str>;
 		fn get(pub_key: NodePubKey) -> Result<Node, &'static str>;
+		fn add_to_cluster(pub_key: NodePubKey, cluster_id: ClusterId) -> Result<(), &'static str>;
 	}
 
 	impl<T: Config> NodeRepository for Pallet<T> {
-		fn save(node: Node) -> Result<(), &'static str> {
+		fn create(node: Node) -> Result<(), &'static str> {
 			match node {
 				Node::Storage(storage_node) => {
 					if StorageNodes::<T>::contains_key(&storage_node.pub_key) {
@@ -298,6 +303,21 @@ pub mod pallet {
 					Err(_) => Err("Node does not exist"),
 				},
 			}
+		}
+
+		fn add_to_cluster(pub_key: NodePubKey, cluster_id: ClusterId) -> Result<(), &'static str> {
+			let mut node = Self::get(pub_key)?;
+			match node {
+				Node::Storage(mut storage_node) => {
+					storage_node.cluster_id = Some(cluster_id);
+					StorageNodes::<T>::insert(storage_node.pub_key.clone(), storage_node);
+				},
+				Node::CDN(mut cdn_node) => {
+					cdn_node.cluster_id = Some(cluster_id);
+					CDNNodes::<T>::insert(cdn_node.pub_key.clone(), cdn_node);
+				},
+			}
+			Ok(())
 		}
 	}
 }

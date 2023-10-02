@@ -100,7 +100,8 @@ pub mod pallet {
 			node_pub_key: NodePubKey,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
-			let node = T::NodeRepository::get(node_pub_key)?;
+
+			T::NodeRepository::add_to_cluster(node_pub_key, cluster_id)?;
 
 			Ok(())
 		}
