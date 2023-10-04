@@ -41,7 +41,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		NodeCreated(NodePubKey),
+		NodeCreated(NodeType, NodePubKey),
 	}
 
 	#[pallet::error]
@@ -260,8 +260,9 @@ pub mod pallet {
 			ensure_signed(origin)?;
 			let node: Node = Node::from_params::<T>(node_params)?;
 			let node_pub_key = node.get_pub_key().to_owned();
+			let node_type = node.get_type();
 			Self::create(node)?;
-			Self::deposit_event(Event::<T>::NodeCreated(node_pub_key));
+			Self::deposit_event(Event::<T>::NodeCreated(node_type, node_pub_key));
 			Ok(())
 		}
 	}
