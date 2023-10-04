@@ -41,7 +41,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		NodeCreated(NodeType, NodePubKey),
+		NodeCreated { node_type: u8, node_pub_key: NodePubKey },
 	}
 
 	#[pallet::error]
@@ -144,12 +144,6 @@ pub mod pallet {
 		CDNPropsRef(&'a CDNNodeProps),
 	}
 
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub enum NodeType {
-		Storage = 1,
-		CDN = 2,
-	}
-
 	pub trait NodeTrait {
 		fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a>;
 		fn get_props<'a>(&'a self) -> NodePropsRef<'a>;
@@ -228,6 +222,12 @@ pub mod pallet {
 		}
 	}
 
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+	pub enum NodeType {
+		Storage = 1,
+		CDN = 2,
+	}
+
 	impl From<NodeType> for u8 {
 		fn from(node_type: NodeType) -> Self {
 			match node_type {
@@ -259,10 +259,13 @@ pub mod pallet {
 		pub fn create_node(origin: OriginFor<T>, node_params: NodeParams) -> DispatchResult {
 			ensure_signed(origin)?;
 			let node: Node = Node::from_params::<T>(node_params)?;
-			let node_pub_key = node.get_pub_key().to_owned();
 			let node_type = node.get_type();
+			let node_pub_key = node.get_pub_key().to_owned();
 			Self::create(node)?;
-			Self::deposit_event(Event::<T>::NodeCreated(node_type, node_pub_key));
+			Self::deposit_event(Event::<T>::NodeCreated {
+				node_type: node_type.into(),
+				node_pub_key,
+			});
 			Ok(())
 		}
 	}
@@ -307,7 +310,7 @@ pub mod pallet {
 		}
 
 		fn add_to_cluster(pub_key: NodePubKey, cluster_id: ClusterId) -> Result<(), &'static str> {
-			let mut node = Self::get(pub_key)?;
+			let node = Self::get(pub_key)?;
 			match node {
 				Node::Storage(mut storage_node) => {
 					storage_node.cluster_id = Some(cluster_id);
