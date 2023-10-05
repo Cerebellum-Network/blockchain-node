@@ -23,7 +23,7 @@ use sp_core::hash::H160;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
-use pallet_ddc_nodes::{NodePubKey, NodeRepository};
+use pallet_ddc_nodes::{NodePubKey, NodeRepository, NodeTrait};
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -43,7 +43,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		ClusterCreated(ClusterId),
+		ClusterCreated { cluster_id: ClusterId },
 	}
 
 	#[pallet::error]
@@ -59,17 +59,17 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct Cluster {
-		id: ClusterId,
+		cluster_id: ClusterId,
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct ClusterParams {
-		id: ClusterId,
+		cluster_id: ClusterId,
 	}
 
 	impl Cluster {
 		fn from_params(params: ClusterParams) -> Cluster {
-			Cluster { id: params.id }
+			Cluster { cluster_id: params.cluster_id }
 		}
 	}
 
@@ -83,12 +83,12 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			let cluster = Cluster::from_params(cluster_params);
-			let cluster_id = cluster.id.clone();
+			let cluster_id = cluster.cluster_id.clone();
 
 			ensure!(!Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterAlreadyExists);
 
 			Clusters::<T>::insert(cluster_id.clone(), cluster);
-			Self::deposit_event(Event::<T>::ClusterCreated(cluster_id));
+			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
 
 			Ok(())
 		}
@@ -101,6 +101,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
+			let node = T::NodeRepository::get(node_pub_key.clone())?;
 			T::NodeRepository::add_to_cluster(node_pub_key, cluster_id)?;
 
 			Ok(())

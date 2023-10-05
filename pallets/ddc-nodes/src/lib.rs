@@ -23,6 +23,15 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
 pub use pallet::*;
+mod cdn_node;
+mod node;
+mod storage_node;
+
+pub use crate::{
+	cdn_node::{CDNNode, CDNNodePubKey},
+	node::{Node, NodeParams, NodePubKey, NodeTrait},
+	storage_node::{StorageNode, StorageNodePubKey},
+};
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -61,197 +70,7 @@ pub mod pallet {
 	pub type CDNNodes<T: Config> = StorageMap<_, Blake2_128Concat, CDNNodePubKey, CDNNode>;
 
 	// todo: add the type to the Config
-	type ClusterId = H160;
-
-	type StorageNodePubKey = sp_runtime::AccountId32;
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub struct StorageNode {
-		pub_key: StorageNodePubKey,
-		cluster_id: Option<ClusterId>,
-		props: StorageNodeProps,
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub struct StorageNodeProps {
-		capacity: u32,
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub struct StorageNodeParams {
-		pub_key: StorageNodePubKey,
-		capacity: u32,
-	}
-
-	type CDNNodePubKey = sp_runtime::AccountId32;
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub struct CDNNode {
-		pub_key: CDNNodePubKey,
-		cluster_id: Option<ClusterId>,
-		props: CDNNodeProps,
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub struct CDNNodeProps {
-		url: Vec<u8>,
-		location: [u8; 2],
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub struct CDNNodeParams {
-		pub_key: CDNNodePubKey,
-		url: Vec<u8>,
-		location: [u8; 2],
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub enum Node {
-		Storage(StorageNode),
-		CDN(CDNNode),
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub enum NodeParams {
-		StorageParams(StorageNodeParams),
-		CDNParams(CDNNodeParams),
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub enum NodePubKey {
-		StoragePubKey(StorageNodePubKey),
-		CDNPubKey(CDNNodePubKey),
-	}
-
-	#[derive(Clone, RuntimeDebug, PartialEq)]
-	pub enum NodePubKeyRef<'a> {
-		StoragePubKeyRef(&'a StorageNodePubKey),
-		CDNPubKeyRef(&'a CDNNodePubKey),
-	}
-
-	impl<'a> NodePubKeyRef<'a> {
-		pub fn to_owned(&self) -> NodePubKey {
-			match &self {
-				NodePubKeyRef::StoragePubKeyRef(pub_key_ref) =>
-					NodePubKey::StoragePubKey((**pub_key_ref).clone()),
-				NodePubKeyRef::CDNPubKeyRef(pub_key_ref) =>
-					NodePubKey::CDNPubKey((**pub_key_ref).clone()),
-			}
-		}
-	}
-
-	#[derive(Clone, RuntimeDebug, PartialEq)]
-	pub enum NodePropsRef<'a> {
-		StoragePropsRef(&'a StorageNodeProps),
-		CDNPropsRef(&'a CDNNodeProps),
-	}
-
-	pub trait NodeTrait {
-		fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a>;
-		fn get_props<'a>(&'a self) -> NodePropsRef<'a>;
-		fn get_type(&self) -> NodeType;
-		fn from_params<T: Config>(params: NodeParams) -> Result<Node, pallet::Error<T>>;
-	}
-
-	impl NodeTrait for StorageNode {
-		fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
-			NodePubKeyRef::StoragePubKeyRef(&self.pub_key)
-		}
-		fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
-			NodePropsRef::StoragePropsRef(&self.props)
-		}
-		fn get_type(&self) -> NodeType {
-			NodeType::Storage
-		}
-		fn from_params<T: Config>(params: NodeParams) -> Result<Node, pallet::Error<T>> {
-			match params {
-				NodeParams::StorageParams(params) => Ok(Node::Storage(StorageNode {
-					pub_key: params.pub_key,
-					cluster_id: None,
-					props: StorageNodeProps { capacity: params.capacity },
-				})),
-				_ => Err(Error::<T>::NodeAlreadyExists),
-			}
-		}
-	}
-
-	impl NodeTrait for CDNNode {
-		fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
-			NodePubKeyRef::CDNPubKeyRef(&self.pub_key)
-		}
-		fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
-			NodePropsRef::CDNPropsRef(&self.props)
-		}
-		fn get_type(&self) -> NodeType {
-			NodeType::CDN
-		}
-		fn from_params<T: Config>(params: NodeParams) -> Result<Node, pallet::Error<T>> {
-			match params {
-				NodeParams::CDNParams(params) => Ok(Node::CDN(CDNNode {
-					pub_key: params.pub_key,
-					cluster_id: None,
-					props: CDNNodeProps { url: params.url, location: params.location },
-				})),
-				_ => Err(Error::<T>::NodeAlreadyExists),
-			}
-		}
-	}
-
-	impl NodeTrait for Node {
-		fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
-			match &self {
-				Node::Storage(node) => node.get_pub_key(),
-				Node::CDN(node) => node.get_pub_key(),
-			}
-		}
-		fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
-			match &self {
-				Node::Storage(node) => node.get_props(),
-				Node::CDN(node) => node.get_props(),
-			}
-		}
-		fn get_type(&self) -> NodeType {
-			match &self {
-				Node::Storage(node) => node.get_type(),
-				Node::CDN(node) => node.get_type(),
-			}
-		}
-		fn from_params<T: Config>(params: NodeParams) -> Result<Node, pallet::Error<T>> {
-			match params {
-				NodeParams::StorageParams(_) => StorageNode::from_params(params),
-				NodeParams::CDNParams(_) => CDNNode::from_params(params),
-			}
-		}
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub enum NodeType {
-		Storage = 1,
-		CDN = 2,
-	}
-
-	impl From<NodeType> for u8 {
-		fn from(node_type: NodeType) -> Self {
-			match node_type {
-				NodeType::Storage => 1,
-				NodeType::CDN => 2,
-			}
-		}
-	}
-
-	impl TryFrom<u8> for NodeType {
-		type Error = ();
-		fn try_from(value: u8) -> Result<Self, Self::Error> {
-			match value {
-				1 => Ok(NodeType::Storage),
-				2 => Ok(NodeType::CDN),
-				_ => Err(()),
-			}
-		}
-	}
-
-	pub trait NodeRepositoryTrait {
-		fn create<T: Config>(node: Node) -> Result<(), pallet::Error<T>>;
-		fn get<T: Config>(pub_key: NodePubKey) -> Result<Node, pallet::Error<T>>;
-	}
+	pub type ClusterId = H160;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
