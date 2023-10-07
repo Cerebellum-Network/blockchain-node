@@ -1,7 +1,7 @@
 use crate::{
-	node::{Node, NodeParams, NodePropsRef, NodePubKeyRef, NodeTrait, NodeType},
+	node::{Node, NodeError, NodeParams, NodePropsRef, NodePubKeyRef, NodeTrait, NodeType},
 	pallet::Error,
-	ClusterId, Config,
+	ClusterId,
 };
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
@@ -10,8 +10,9 @@ use sp_runtime::RuntimeDebug;
 pub type StorageNodePubKey = sp_runtime::AccountId32;
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct StorageNode {
+pub struct StorageNode<ProviderId> {
 	pub pub_key: StorageNodePubKey,
+	pub provider_id: ProviderId,
 	pub cluster_id: Option<ClusterId>,
 	pub props: StorageNodeProps,
 }
@@ -27,7 +28,7 @@ pub struct StorageNodeParams {
 	pub capacity: u32,
 }
 
-impl NodeTrait for StorageNode {
+impl<ProviderId> NodeTrait<ProviderId> for StorageNode<ProviderId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
 		NodePubKeyRef::StoragePubKeyRef(&self.pub_key)
 	}
@@ -37,14 +38,18 @@ impl NodeTrait for StorageNode {
 	fn get_type(&self) -> NodeType {
 		NodeType::Storage
 	}
-	fn from_params<T: Config>(params: NodeParams) -> Result<Node, Error<T>> {
+	fn from_params(
+		provider_id: ProviderId,
+		params: NodeParams,
+	) -> Result<Node<ProviderId>, NodeError> {
 		match params {
-			NodeParams::StorageParams(params) => Ok(Node::Storage(StorageNode {
+			NodeParams::StorageParams(params) => Ok(Node::Storage(StorageNode::<ProviderId> {
+				provider_id,
 				pub_key: params.pub_key,
 				cluster_id: None,
 				props: StorageNodeProps { capacity: params.capacity },
 			})),
-			_ => Err(Error::<T>::NodeAlreadyExists),
+			_ => Err(NodeError::InvalidStorageNodeParams),
 		}
 	}
 }

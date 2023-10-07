@@ -1,7 +1,7 @@
 use crate::{
-	node::{Node, NodeParams, NodePropsRef, NodePubKeyRef, NodeTrait, NodeType},
+	node::{Node, NodeError, NodeParams, NodePropsRef, NodePubKeyRef, NodeTrait, NodeType},
 	pallet::Error,
-	ClusterId, Config,
+	ClusterId,
 };
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
@@ -11,8 +11,9 @@ use sp_std::prelude::*;
 pub type CDNNodePubKey = sp_runtime::AccountId32;
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct CDNNode {
+pub struct CDNNode<ProviderId> {
 	pub pub_key: CDNNodePubKey,
+	pub provider_id: ProviderId,
 	pub cluster_id: Option<ClusterId>,
 	pub props: CDNNodeProps,
 }
@@ -30,7 +31,7 @@ pub struct CDNNodeParams {
 	pub location: [u8; 2],
 }
 
-impl NodeTrait for CDNNode {
+impl<ProviderId> NodeTrait<ProviderId> for CDNNode<ProviderId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
 		NodePubKeyRef::CDNPubKeyRef(&self.pub_key)
 	}
@@ -40,14 +41,18 @@ impl NodeTrait for CDNNode {
 	fn get_type(&self) -> NodeType {
 		NodeType::CDN
 	}
-	fn from_params<T: Config>(params: NodeParams) -> Result<Node, Error<T>> {
+	fn from_params(
+		provider_id: ProviderId,
+		params: NodeParams,
+	) -> Result<Node<ProviderId>, NodeError> {
 		match params {
-			NodeParams::CDNParams(params) => Ok(Node::CDN(CDNNode {
+			NodeParams::CDNParams(params) => Ok(Node::CDN(CDNNode::<ProviderId> {
+				provider_id,
 				pub_key: params.pub_key,
 				cluster_id: None,
 				props: CDNNodeProps { url: params.url, location: params.location },
 			})),
-			_ => Err(Error::<T>::NodeAlreadyExists),
+			_ => Err(NodeError::InvalidCDNNodeParams),
 		}
 	}
 }
