@@ -94,7 +94,7 @@ pub mod pallet {
 	pub trait NodeRepository<T: frame_system::Config> {
 		fn create(node: Node<T::AccountId>) -> Result<(), &'static str>;
 		fn get(pub_key: NodePubKey) -> Result<Node<T::AccountId>, &'static str>;
-		fn add_to_cluster(pub_key: NodePubKey, cluster_id: ClusterId) -> Result<(), &'static str>;
+		fn update(node: Node<T::AccountId>) -> Result<(), &'static str>;
 	}
 
 	impl<T: Config> NodeRepository<T> for Pallet<T> {
@@ -102,14 +102,14 @@ pub mod pallet {
 			match node {
 				Node::Storage(storage_node) => {
 					if StorageNodes::<T>::contains_key(&storage_node.pub_key) {
-						return Err("Node already exists")
+						return Err("Storage node already exists")
 					}
 					StorageNodes::<T>::insert(storage_node.pub_key.clone(), storage_node);
 					Ok(())
 				},
 				Node::CDN(cdn_node) => {
 					if CDNNodes::<T>::contains_key(&cdn_node.pub_key) {
-						return Err("Node already exists")
+						return Err("CDN node already exists")
 					}
 					CDNNodes::<T>::insert(cdn_node.pub_key.clone(), cdn_node);
 					Ok(())
@@ -120,25 +120,28 @@ pub mod pallet {
 		fn get(node_pub_key: NodePubKey) -> Result<Node<T::AccountId>, &'static str> {
 			match node_pub_key {
 				NodePubKey::StoragePubKey(pub_key) => match StorageNodes::<T>::try_get(pub_key) {
-					Ok(node) => Ok(Node::Storage(node)),
-					Err(_) => Err("Node does not exist"),
+					Ok(storage_node) => Ok(Node::Storage(storage_node)),
+					Err(_) => Err("Storage node does not exist"),
 				},
 				NodePubKey::CDNPubKey(pub_key) => match CDNNodes::<T>::try_get(pub_key) {
-					Ok(node) => Ok(Node::CDN(node)),
-					Err(_) => Err("Node does not exist"),
+					Ok(cdn_node) => Ok(Node::CDN(cdn_node)),
+					Err(_) => Err("CDN node does not exist"),
 				},
 			}
 		}
 
-		fn add_to_cluster(pub_key: NodePubKey, cluster_id: ClusterId) -> Result<(), &'static str> {
-			let node = Self::get(pub_key)?;
+		fn update(node: Node<T::AccountId>) -> Result<(), &'static str> {
 			match node {
-				Node::Storage(mut storage_node) => {
-					storage_node.cluster_id = Some(cluster_id);
+				Node::Storage(storage_node) => {
+					if !StorageNodes::<T>::contains_key(&storage_node.pub_key) {
+						return Err("Storage node does not exist")
+					}
 					StorageNodes::<T>::insert(storage_node.pub_key.clone(), storage_node);
 				},
-				Node::CDN(mut cdn_node) => {
-					cdn_node.cluster_id = Some(cluster_id);
+				Node::CDN(cdn_node) => {
+					if !CDNNodes::<T>::contains_key(&cdn_node.pub_key) {
+						return Err("CDN node does not exist")
+					}
 					CDNNodes::<T>::insert(cdn_node.pub_key.clone(), cdn_node);
 				},
 			}

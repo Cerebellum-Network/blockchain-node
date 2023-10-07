@@ -40,6 +40,9 @@ impl<ProviderId> NodeTrait<ProviderId> for StorageNode<ProviderId> {
 	fn get_cluster_id(&self) -> &Option<ClusterId> {
 		&self.cluster_id
 	}
+	fn set_cluster_id(&mut self, cluster_id: ClusterId) {
+		self.cluster_id = Some(cluster_id);
+	}
 	fn get_type(&self) -> NodeType {
 		NodeType::Storage
 	}
