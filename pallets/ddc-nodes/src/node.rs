@@ -2,7 +2,6 @@ use crate::{
 	cdn_node::{CDNNode, CDNNodeParams, CDNNodeProps, CDNNodePubKey},
 	pallet::Error,
 	storage_node::{StorageNode, StorageNodeParams, StorageNodeProps, StorageNodePubKey},
-	Config,
 };
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
