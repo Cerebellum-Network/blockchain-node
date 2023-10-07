@@ -20,19 +20,22 @@ pub struct CDNNode<ProviderId> {
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct CDNNodeProps {
 	pub url: Vec<u8>,
-	pub location: [u8; 2],
+	pub location: Vec<u8>,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct CDNNodeParams {
 	pub pub_key: CDNNodePubKey,
 	pub url: Vec<u8>,
-	pub location: [u8; 2],
+	pub location: Vec<u8>,
 }
 
 impl<ProviderId> NodeTrait<ProviderId> for CDNNode<ProviderId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
 		NodePubKeyRef::CDNPubKeyRef(&self.pub_key)
+	}
+	fn get_provider_id(&self) -> &ProviderId {
+		&self.provider_id
 	}
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
 		NodePropsRef::CDNPropsRef(&self.props)

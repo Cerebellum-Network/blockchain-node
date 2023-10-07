@@ -50,6 +50,7 @@ pub enum NodePropsRef<'a> {
 
 pub trait NodeTrait<ProviderId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a>;
+	fn get_provider_id(&self) -> &ProviderId;
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a>;
 	fn get_type(&self) -> NodeType;
 	fn from_params(
@@ -63,6 +64,12 @@ impl<ProviderId> NodeTrait<ProviderId> for Node<ProviderId> {
 		match &self {
 			Node::Storage(node) => node.get_pub_key(),
 			Node::CDN(node) => node.get_pub_key(),
+		}
+	}
+	fn get_provider_id(&self) -> &ProviderId {
+		match &self {
+			Node::Storage(node) => node.get_provider_id(),
+			Node::CDN(node) => node.get_provider_id(),
 		}
 	}
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
