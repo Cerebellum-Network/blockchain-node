@@ -2,6 +2,7 @@ use crate::{
 	cdn_node::{CDNNode, CDNNodeParams, CDNNodeProps, CDNNodePubKey},
 	pallet::Error,
 	storage_node::{StorageNode, StorageNodeParams, StorageNodeProps, StorageNodePubKey},
+	ClusterId,
 };
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
@@ -52,6 +53,7 @@ pub trait NodeTrait<ProviderId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a>;
 	fn get_provider_id(&self) -> &ProviderId;
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a>;
+	fn get_cluster_id(&self) -> &Option<ClusterId>;
 	fn get_type(&self) -> NodeType;
 	fn from_params(
 		provider_id: ProviderId,
@@ -76,6 +78,12 @@ impl<ProviderId> NodeTrait<ProviderId> for Node<ProviderId> {
 		match &self {
 			Node::Storage(node) => node.get_props(),
 			Node::CDN(node) => node.get_props(),
+		}
+	}
+	fn get_cluster_id(&self) -> &Option<ClusterId> {
+		match &self {
+			Node::Storage(node) => node.get_cluster_id(),
+			Node::CDN(node) => node.get_cluster_id(),
 		}
 	}
 	fn get_type(&self) -> NodeType {

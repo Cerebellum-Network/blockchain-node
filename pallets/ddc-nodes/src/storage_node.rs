@@ -37,6 +37,9 @@ impl<ProviderId> NodeTrait<ProviderId> for StorageNode<ProviderId> {
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
 		NodePropsRef::StoragePropsRef(&self.props)
 	}
+	fn get_cluster_id(&self) -> &Option<ClusterId> {
+		&self.cluster_id
+	}
 	fn get_type(&self) -> NodeType {
 		NodeType::Storage
 	}
