@@ -1,14 +1,13 @@
 use crate::{
 	node::{Node, NodeError, NodeParams, NodePropsRef, NodePubKeyRef, NodeTrait, NodeType},
-	pallet::Error,
 	ClusterId,
 };
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
-use sp_runtime::RuntimeDebug;
+use sp_runtime::{AccountId32, RuntimeDebug};
 use sp_std::prelude::*;
 
-pub type CDNNodePubKey = sp_runtime::AccountId32;
+pub type CDNNodePubKey = AccountId32;
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct CDNNode<ProviderId> {
