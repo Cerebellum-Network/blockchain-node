@@ -29,7 +29,7 @@ mod storage_node;
 
 pub use crate::{
 	cdn_node::{CDNNode, CDNNodePubKey},
-	node::{Node, NodeParams, NodePubKey, NodeTrait},
+	node::{Node, NodeError, NodeParams, NodePubKey, NodeTrait},
 	storage_node::{StorageNode, StorageNodePubKey},
 };
 
@@ -63,11 +63,12 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn storage_nodes)]
 	pub type StorageNodes<T: Config> =
-		StorageMap<_, Blake2_128Concat, StorageNodePubKey, StorageNode>;
+		StorageMap<_, Blake2_128Concat, StorageNodePubKey, StorageNode<T::AccountId>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn cdn_nodes)]
-	pub type CDNNodes<T: Config> = StorageMap<_, Blake2_128Concat, CDNNodePubKey, CDNNode>;
+	pub type CDNNodes<T: Config> =
+		StorageMap<_, Blake2_128Concat, CDNNodePubKey, CDNNode<T::AccountId>>;
 
 	// todo: add the type to the Config
 	pub type ClusterId = H160;
@@ -76,8 +77,9 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
 		pub fn create_node(origin: OriginFor<T>, node_params: NodeParams) -> DispatchResult {
-			ensure_signed(origin)?;
-			let node: Node = Node::from_params::<T>(node_params)?;
+			let provider_id = ensure_signed(origin)?;
+			let node = Node::<T::AccountId>::from_params(provider_id, node_params)
+				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
 			let node_type = node.get_type();
 			let node_pub_key = node.get_pub_key().to_owned();
 			Self::create(node)?;
@@ -89,14 +91,14 @@ pub mod pallet {
 		}
 	}
 
-	pub trait NodeRepository {
-		fn create(node: Node) -> Result<(), &'static str>;
-		fn get(pub_key: NodePubKey) -> Result<Node, &'static str>;
+	pub trait NodeRepository<T: frame_system::Config> {
+		fn create(node: Node<T::AccountId>) -> Result<(), &'static str>;
+		fn get(pub_key: NodePubKey) -> Result<Node<T::AccountId>, &'static str>;
 		fn add_to_cluster(pub_key: NodePubKey, cluster_id: ClusterId) -> Result<(), &'static str>;
 	}
 
-	impl<T: Config> NodeRepository for Pallet<T> {
-		fn create(node: Node) -> Result<(), &'static str> {
+	impl<T: Config> NodeRepository<T> for Pallet<T> {
+		fn create(node: Node<T::AccountId>) -> Result<(), &'static str> {
 			match node {
 				Node::Storage(storage_node) => {
 					if StorageNodes::<T>::contains_key(&storage_node.pub_key) {
@@ -115,7 +117,7 @@ pub mod pallet {
 			}
 		}
 
-		fn get(node_pub_key: NodePubKey) -> Result<Node, &'static str> {
+		fn get(node_pub_key: NodePubKey) -> Result<Node<T::AccountId>, &'static str> {
 			match node_pub_key {
 				NodePubKey::StoragePubKey(pub_key) => match StorageNodes::<T>::try_get(pub_key) {
 					Ok(node) => Ok(Node::Storage(node)),

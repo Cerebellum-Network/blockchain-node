@@ -9,9 +9,9 @@ use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum Node {
-	Storage(StorageNode),
-	CDN(CDNNode),
+pub enum Node<ProviderId> {
+	Storage(StorageNode<ProviderId>),
+	CDN(CDNNode<ProviderId>),
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -49,14 +49,17 @@ pub enum NodePropsRef<'a> {
 	CDNPropsRef(&'a CDNNodeProps),
 }
 
-pub trait NodeTrait {
+pub trait NodeTrait<ProviderId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a>;
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a>;
 	fn get_type(&self) -> NodeType;
-	fn from_params<T: Config>(params: NodeParams) -> Result<Node, Error<T>>;
+	fn from_params(
+		provider_id: ProviderId,
+		params: NodeParams,
+	) -> Result<Node<ProviderId>, NodeError>;
 }
 
-impl NodeTrait for Node {
+impl<ProviderId> NodeTrait<ProviderId> for Node<ProviderId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
 		match &self {
 			Node::Storage(node) => node.get_pub_key(),
@@ -75,10 +78,13 @@ impl NodeTrait for Node {
 			Node::CDN(node) => node.get_type(),
 		}
 	}
-	fn from_params<T: Config>(params: NodeParams) -> Result<Node, Error<T>> {
+	fn from_params(
+		provider_id: ProviderId,
+		params: NodeParams,
+	) -> Result<Node<ProviderId>, NodeError> {
 		match params {
-			NodeParams::StorageParams(_) => StorageNode::from_params(params),
-			NodeParams::CDNParams(_) => CDNNode::from_params(params),
+			NodeParams::StorageParams(_) => StorageNode::from_params(provider_id, params),
+			NodeParams::CDNParams(_) => CDNNode::from_params(provider_id, params),
 		}
 	}
 }
@@ -105,6 +111,20 @@ impl TryFrom<u8> for NodeType {
 			1 => Ok(NodeType::Storage),
 			2 => Ok(NodeType::CDN),
 			_ => Err(()),
+		}
+	}
+}
+
+pub enum NodeError {
+	InvalidStorageNodeParams,
+	InvalidCDNNodeParams,
+}
+
+impl<T> From<NodeError> for Error<T> {
+	fn from(error: NodeError) -> Self {
+		match error {
+			NodeError::InvalidStorageNodeParams => Error::<T>::InvalidNodeParams,
+			NodeError::InvalidCDNNodeParams => Error::<T>::InvalidNodeParams,
 		}
 	}
 }
