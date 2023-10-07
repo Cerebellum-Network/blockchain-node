@@ -31,6 +31,9 @@ impl<ProviderId> NodeTrait<ProviderId> for StorageNode<ProviderId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
 		NodePubKeyRef::StoragePubKeyRef(&self.pub_key)
 	}
+	fn get_provider_id(&self) -> &ProviderId {
+		&self.provider_id
+	}
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
 		NodePropsRef::StoragePropsRef(&self.props)
 	}
