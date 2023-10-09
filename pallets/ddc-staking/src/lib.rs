@@ -271,7 +271,7 @@ pub mod pallet {
 	pub type Edges<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
 	/// The map of (wannabe) storage network participants stash keys to the DDC cluster ID they wish
-	/// to participate into..
+	/// to participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn storages)]
 	pub type Storages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
