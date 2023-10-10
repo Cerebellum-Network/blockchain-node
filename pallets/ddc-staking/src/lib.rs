@@ -927,7 +927,7 @@ pub mod pallet {
 		/// (Re-)set the node operator stash account of a DDC node.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_node())]
 		pub fn set_node(
 			origin: OriginFor<T>,
 			node: <T::Lookup as StaticLookup>::Source,
