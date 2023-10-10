@@ -921,6 +921,29 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// (Re-)set the node operator stash account of a DDC node.
+		///
+		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
+		#[pallet::weight(10_000)]
+		pub fn set_node(
+			origin: OriginFor<T>,
+			node: <T::Lookup as StaticLookup>::Source,
+		) -> DispatchResult {
+			let stash = ensure_signed(origin)?;
+
+			let node = T::Lookup::lookup(node)?;
+
+			if let Some(existing_node_stash) = Nodes::<T>::get(&node) {
+				if existing_node_stash != stash {
+					Err(Error::<T>::AlreadyPaired)?
+				}
+			}
+
+			<Nodes<T>>::insert(node, stash);
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
