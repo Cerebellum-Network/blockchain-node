@@ -109,6 +109,16 @@ benchmarks! {
 		assert!(Ledger::<T>::contains_key(&new_controller));
 	}
 
+	set_node {
+		let (stash, _, _) = create_stash_controller_node::<T>(USER_SEED, 100)?;
+		let new_node = create_funded_user::<T>("new_node", USER_SEED, 100);
+		let new_node_lookup = T::Lookup::unlookup(new_node.clone());
+		whitelist_account!(stash);
+	}: _(RawOrigin::Signed(stash), new_node_lookup)
+	verify {
+		assert!(Nodes::<T>::contains_key(&new_node));
+	}
+
 	allow_cluster_manager {
 		let new_cluster_manager = create_funded_user::<T>("cluster_manager", USER_SEED, 100);
 		let new_cluster_manager_lookup = T::Lookup::unlookup(new_cluster_manager.clone());
