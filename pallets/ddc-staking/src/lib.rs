@@ -341,8 +341,8 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub edges: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
-		pub storages: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
+		pub edges: Vec<(T::AccountId, T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
+		pub storages: Vec<(T::AccountId, T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
 		pub settings: Vec<(ClusterId, BalanceOf<T>, EraIndex, BalanceOf<T>, EraIndex)>,
 	}
 
@@ -381,7 +381,7 @@ pub mod pallet {
 			}
 
 			// Add initial CDN participants
-			for &(ref stash, ref controller, balance, cluster) in &self.edges {
+			for &(ref stash, ref controller, ref node, balance, cluster) in &self.edges {
 				assert!(
 					T::Currency::free_balance(&stash) >= balance,
 					"Stash do not have enough balance to participate in CDN."
@@ -389,6 +389,7 @@ pub mod pallet {
 				assert_ok!(Pallet::<T>::bond(
 					T::RuntimeOrigin::from(Some(stash.clone()).into()),
 					T::Lookup::unlookup(controller.clone()),
+					T::Lookup::unlookup(node.clone()),
 					balance,
 				));
 				assert_ok!(Pallet::<T>::serve(
@@ -398,7 +399,7 @@ pub mod pallet {
 			}
 
 			// Add initial storage network participants
-			for &(ref stash, ref controller, balance, cluster) in &self.storages {
+			for &(ref stash, ref controller, ref node, balance, cluster) in &self.storages {
 				assert!(
 					T::Currency::free_balance(&stash) >= balance,
 					"Stash do not have enough balance to participate in storage network."
@@ -406,6 +407,7 @@ pub mod pallet {
 				assert_ok!(Pallet::<T>::bond(
 					T::RuntimeOrigin::from(Some(stash.clone()).into()),
 					T::Lookup::unlookup(controller.clone()),
+					T::Lookup::unlookup(node.clone()),
 					balance,
 				));
 				assert_ok!(Pallet::<T>::store(
