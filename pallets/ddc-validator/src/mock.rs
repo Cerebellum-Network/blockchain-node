@@ -366,7 +366,13 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let _ = pallet_staking::GenesisConfig::<Test> { stakers, ..Default::default() }
 		.assimilate_storage(&mut storage);
 
-	let edges = vec![(AccountId::from([0x1; 32]), AccountId::from([0x11; 32]), 100, 1)];
+	let edges = vec![(
+		AccountId::from([0x1; 32]),
+		AccountId::from([0x11; 32]),
+		AccountId::from([0x21; 32]),
+		100,
+		1,
+	)];
 	let storages = vec![];
 	let _ = pallet_ddc_staking::GenesisConfig::<Test> { edges, storages, ..Default::default() }
 		.assimilate_storage(&mut storage);
