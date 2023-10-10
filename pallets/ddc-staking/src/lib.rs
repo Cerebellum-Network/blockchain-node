@@ -1036,6 +1036,10 @@ pub mod pallet {
 			<Bonded<T>>::remove(stash);
 			<Ledger<T>>::remove(&controller);
 
+			if let Some((node, _)) = <Nodes<T>>::iter().find(|(_, v)| v == stash) {
+				<Nodes<T>>::remove(node);
+			}
+
 			Self::do_remove_storage(stash);
 			Self::do_remove_edge(stash);
 
