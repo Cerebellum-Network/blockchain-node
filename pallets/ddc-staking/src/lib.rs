@@ -505,6 +505,7 @@ pub mod pallet {
 		pub fn bond(
 			origin: OriginFor<T>,
 			controller: <T::Lookup as StaticLookup>::Source,
+			node: <T::Lookup as StaticLookup>::Source,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let stash = ensure_signed(origin)?;
@@ -524,7 +525,16 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientBond)?
 			}
 
+			let node = T::Lookup::lookup(node)?;
+
+			// Reject a bond with a known DDC node.
+			if Nodes::<T>::contains_key(&node) {
+				Err(Error::<T>::AlreadyPaired)?
+			}
+
 			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
+
+			Nodes::<T>::insert(&node, &stash);
 
 			// You're auto-bonded forever, here. We might improve this by only bonding when
 			// you actually store/serve and remove once you unbond __everything__.
