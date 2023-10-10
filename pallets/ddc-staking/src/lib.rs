@@ -334,6 +334,11 @@ pub mod pallet {
 	#[pallet::getter(fn cluster_managers)]
 	pub type ClusterManagers<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
+	/// Map from DDC node ID to the node operator stash account.
+	#[pallet::storage]
+	#[pallet::getter(fn nodes)]
+	pub type Nodes<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub edges: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
