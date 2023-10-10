@@ -447,7 +447,7 @@ pub mod pallet {
 		NotStash,
 		/// Stash is already bonded.
 		AlreadyBonded,
-		/// Controller is already paired.
+		/// Controller or node is already paired.
 		AlreadyPaired,
 		/// Cannot have a storage network or CDN participant, with the size less than defined by
 		/// governance (see `BondSize`). If unbonding is the intention, `chill` first to remove
