@@ -3,11 +3,15 @@ use crate::{
 	ClusterId,
 };
 use codec::{Decode, Encode};
+use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
 use sp_runtime::{AccountId32, RuntimeDebug};
 use sp_std::prelude::*;
 
 pub type CDNNodePubKey = AccountId32;
+parameter_types! {
+	pub MaxCDNNodeParamsLen: u16 = 2048;
+}
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct CDNNode<ProviderId> {
@@ -19,15 +23,15 @@ pub struct CDNNode<ProviderId> {
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct CDNNodeProps {
-	pub url: Vec<u8>,
-	pub location: Vec<u8>,
+	// this is a temporal way of storing node parameters as a stringified json,
+	// should be replaced with specific properties for this type of node once they are defined
+	pub params: BoundedVec<u8, MaxCDNNodeParamsLen>,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct CDNNodeParams {
 	pub pub_key: CDNNodePubKey,
-	pub url: Vec<u8>,
-	pub location: Vec<u8>,
+	pub params: Vec<u8>, // should be replaced with specific parameters for this type of node
 }
 
 impl<ProviderId> NodeTrait<ProviderId> for CDNNode<ProviderId> {
@@ -51,14 +55,19 @@ impl<ProviderId> NodeTrait<ProviderId> for CDNNode<ProviderId> {
 	}
 	fn from_params(
 		provider_id: ProviderId,
-		params: NodeParams,
+		node_params: NodeParams,
 	) -> Result<Node<ProviderId>, NodeError> {
-		match params {
-			NodeParams::CDNParams(params) => Ok(Node::CDN(CDNNode::<ProviderId> {
+		match node_params {
+			NodeParams::CDNParams(node_params) => Ok(Node::CDN(CDNNode::<ProviderId> {
 				provider_id,
-				pub_key: params.pub_key,
+				pub_key: node_params.pub_key,
 				cluster_id: None,
-				props: CDNNodeProps { url: params.url, location: params.location },
+				props: CDNNodeProps {
+					params: match node_params.params.try_into() {
+						Ok(vec) => vec,
+						Err(_) => return Err(NodeError::CDNNodeParamsExceedsLimit),
+					},
+				},
 			})),
 			_ => Err(NodeError::InvalidCDNNodeParams),
 		}

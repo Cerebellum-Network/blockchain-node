@@ -14,12 +14,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-use codec::{Decode, Encode};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
-use scale_info::TypeInfo;
 use sp_core::hash::H160;
-use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
 pub use pallet::*;
@@ -58,6 +55,7 @@ pub mod pallet {
 		NodeAlreadyExists,
 		NodeDoesNotExist,
 		InvalidNodeParams,
+		NodeParamsExceedsLimit,
 	}
 
 	#[pallet::storage]

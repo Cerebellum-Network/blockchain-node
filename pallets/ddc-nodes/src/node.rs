@@ -139,6 +139,8 @@ impl TryFrom<u8> for NodeType {
 pub enum NodeError {
 	InvalidStorageNodeParams,
 	InvalidCDNNodeParams,
+	StorageNodeParamsExceedsLimit,
+	CDNNodeParamsExceedsLimit,
 }
 
 impl<T> From<NodeError> for Error<T> {
@@ -146,6 +148,8 @@ impl<T> From<NodeError> for Error<T> {
 		match error {
 			NodeError::InvalidStorageNodeParams => Error::<T>::InvalidNodeParams,
 			NodeError::InvalidCDNNodeParams => Error::<T>::InvalidNodeParams,
+			NodeError::StorageNodeParamsExceedsLimit => Error::<T>::NodeParamsExceedsLimit,
+			NodeError::CDNNodeParamsExceedsLimit => Error::<T>::NodeParamsExceedsLimit,
 		}
 	}
 }

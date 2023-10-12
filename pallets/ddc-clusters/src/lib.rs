@@ -14,16 +14,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-use codec::{Decode, Encode};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
-pub use pallet::*;
-use scale_info::TypeInfo;
-use sp_core::hash::H160;
-use sp_runtime::RuntimeDebug;
+use pallet_ddc_nodes::{NodePubKey, NodeRepository, NodeTrait};
 use sp_std::prelude::*;
 
-use pallet_ddc_nodes::{NodePubKey, NodeRepository, NodeTrait};
+pub use pallet::*;
+mod cluster;
+
+pub use crate::cluster::{Cluster, ClusterError, ClusterId, ClusterParams};
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -49,40 +48,25 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		ClusterAlreadyExists,
+		ClusterParamsExceedsLimit,
 	}
 
 	#[pallet::storage]
 	#[pallet::getter(fn storage_nodes)]
-	pub type Clusters<T: Config> = StorageMap<_, Blake2_128Concat, ClusterId, Cluster>;
-
-	type ClusterId = H160;
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub struct Cluster {
-		cluster_id: ClusterId,
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub struct ClusterParams {
-		cluster_id: ClusterId,
-	}
-
-	impl Cluster {
-		fn from_params(params: ClusterParams) -> Cluster {
-			Cluster { cluster_id: params.cluster_id }
-		}
-	}
+	pub type Clusters<T: Config> =
+		StorageMap<_, Blake2_128Concat, ClusterId, Cluster<T::AccountId>>;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
 		pub fn create_cluster(
 			origin: OriginFor<T>,
+			cluster_id: ClusterId,
 			cluster_params: ClusterParams,
 		) -> DispatchResult {
-			ensure_signed(origin)?;
-
-			let cluster = Cluster::from_params(cluster_params);
+			let manager_id = ensure_signed(origin)?;
+			let cluster = Cluster::from_params(cluster_id, manager_id, cluster_params)
+				.map_err(|e| Into::<Error<T>>::into(ClusterError::from(e)))?;
 			let cluster_id = cluster.cluster_id.clone();
 
 			ensure!(!Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterAlreadyExists);
