@@ -38,8 +38,11 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 	t.register_extension(TransactionPoolExt::new(pool));
 
 	let era_to_validate: EraIndex = 3;
-	let cdn_node_to_validate = AccountId::from([0x1; 32]);
-	let cdn_node_to_validate_str = utils::account_to_string::<Test>(cdn_node_to_validate.clone());
+	let edge_stash_to_validate = AccountId::from([0x1; 32]);
+	let edge_stash_to_validate_str =
+		utils::account_to_string::<Test>(edge_stash_to_validate.clone());
+	let edge_node_to_validate = AccountId::from([0x21; 32]);
+	let edge_node_to_validate_str = utils::account_to_string::<Test>(edge_node_to_validate.clone());
 	let validator_1_stash = AccountId::from([
 		0xd2, 0xbf, 0x4b, 0x84, 0x4d, 0xfe, 0xfd, 0x67, 0x72, 0xa8, 0x84, 0x3e, 0x66, 0x9f, 0x94,
 		0x34, 0x08, 0x96, 0x6a, 0x97, 0x7e, 0x3a, 0xe2, 0xaf, 0x1d, 0xd7, 0x8e, 0x0f, 0x55, 0xf4,
@@ -67,7 +70,7 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 		expect_request(
 			&format!(
 				"{}/JSON.GET/ddc:dac:aggregation:nodes:{}/$.{}",
-				DEFAULT_DATA_PROVIDER_URL, era_to_validate, cdn_node_to_validate_str
+				DEFAULT_DATA_PROVIDER_URL, era_to_validate, edge_node_to_validate_str
 			),
 			include_bytes!("./mock-data/set-1/aggregated-node-data-for-era.json"),
 		);
@@ -116,7 +119,7 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 				"{}/FCALL/save_validation_result_by_node/1/{}:{}:{}/{}",
 				DEFAULT_DATA_PROVIDER_URL,
 				OCW_PUB_KEY_STR,
-				cdn_node_to_validate_str,
+				edge_stash_to_validate_str,
 				era_to_validate,
 				url_encoded_result_json,
 			),
@@ -195,9 +198,9 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 			tx.call,
 			crate::mock::RuntimeCall::DdcValidator(crate::Call::set_validation_decision {
 				era: era_to_validate,
-				cdn_node: cdn_node_to_validate.clone(),
+				cdn_node: edge_stash_to_validate.clone(),
 				validation_decision: ValidationDecision {
-					edge: cdn_node_to_validate_str,
+					edge: edge_stash_to_validate_str,
 					result: true,
 					payload: utils::hash(&serialized_decisions),
 					totals: DacTotalAggregates {
@@ -213,7 +216,7 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 		let tx = transactions.pop().unwrap();
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
 
-		let stakers_points = vec![(cdn_node_to_validate, common_decision.totals.sent)];
+		let stakers_points = vec![(edge_stash_to_validate, common_decision.totals.sent)];
 
 		assert!(tx.signature.is_some());
 		assert_eq!(
