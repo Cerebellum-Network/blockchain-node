@@ -998,14 +998,7 @@ pub mod pallet {
 				let tx_res =
 					signer.send_signed_transaction(|_account| Call::set_era_reward_points {
 						era: current_ddc_era - 1,
-						// Vec<(ddc_node_account), reward) -> Vec<(stash_account, reward)>
-						stakers_points: cdn_nodes_reward_points
-							.iter()
-							.filter_map(|(node_acc, reward)| {
-								ddc_staking::pallet::Pallet::<T>::nodes(node_acc)
-									.and_then(|stash_acc| Some((stash_acc, *reward)))
-							})
-							.collect::<Vec<_>>(),
+						stakers_points: cdn_nodes_reward_points.clone(),
 					});
 
 				match tx_res {
