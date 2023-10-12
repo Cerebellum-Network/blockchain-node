@@ -56,10 +56,7 @@ pub trait NodeTrait<ProviderId> {
 	fn get_cluster_id(&self) -> &Option<ClusterId>;
 	fn set_cluster_id(&mut self, cluster_id: ClusterId);
 	fn get_type(&self) -> NodeType;
-	fn from_params(
-		provider_id: ProviderId,
-		params: NodeParams,
-	) -> Result<Node<ProviderId>, NodeError>;
+	fn new(provider_id: ProviderId, params: NodeParams) -> Result<Node<ProviderId>, NodeError>;
 }
 
 impl<ProviderId> NodeTrait<ProviderId> for Node<ProviderId> {
@@ -99,13 +96,10 @@ impl<ProviderId> NodeTrait<ProviderId> for Node<ProviderId> {
 			Node::CDN(node) => node.get_type(),
 		}
 	}
-	fn from_params(
-		provider_id: ProviderId,
-		params: NodeParams,
-	) -> Result<Node<ProviderId>, NodeError> {
+	fn new(provider_id: ProviderId, params: NodeParams) -> Result<Node<ProviderId>, NodeError> {
 		match params {
-			NodeParams::StorageParams(_) => StorageNode::from_params(provider_id, params),
-			NodeParams::CDNParams(_) => CDNNode::from_params(provider_id, params),
+			NodeParams::StorageParams(_) => StorageNode::new(provider_id, params),
+			NodeParams::CDNParams(_) => CDNNode::new(provider_id, params),
 		}
 	}
 }

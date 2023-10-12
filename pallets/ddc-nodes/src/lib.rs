@@ -76,11 +76,11 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn create_node(origin: OriginFor<T>, node_params: NodeParams) -> DispatchResult {
 			let provider_id = ensure_signed(origin)?;
-			let node = Node::<T::AccountId>::from_params(provider_id, node_params)
+			let node = Node::<T::AccountId>::new(provider_id, node_params)
 				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
 			let node_type = node.get_type();
 			let node_pub_key = node.get_pub_key().to_owned();
-			Self::create(node)?;
+			Self::create(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
 			Self::deposit_event(Event::<T>::NodeCreated {
 				node_type: node_type.into(),
 				node_pub_key,
@@ -90,24 +90,42 @@ pub mod pallet {
 	}
 
 	pub trait NodeRepository<T: frame_system::Config> {
-		fn create(node: Node<T::AccountId>) -> Result<(), &'static str>;
-		fn get(pub_key: NodePubKey) -> Result<Node<T::AccountId>, &'static str>;
-		fn update(node: Node<T::AccountId>) -> Result<(), &'static str>;
+		fn create(node: Node<T::AccountId>) -> Result<(), NodeRepositoryError>;
+		fn get(pub_key: NodePubKey) -> Result<Node<T::AccountId>, NodeRepositoryError>;
+		fn update(node: Node<T::AccountId>) -> Result<(), NodeRepositoryError>;
+	}
+
+	pub enum NodeRepositoryError {
+		StorageNodeAlreadyExists,
+		CDNNodeAlreadyExists,
+		StorageNodeDoesNotExist,
+		CDNNodeDoesNotExist,
+	}
+
+	impl<T> From<NodeRepositoryError> for Error<T> {
+		fn from(error: NodeRepositoryError) -> Self {
+			match error {
+				NodeRepositoryError::StorageNodeAlreadyExists => Error::<T>::NodeAlreadyExists,
+				NodeRepositoryError::CDNNodeAlreadyExists => Error::<T>::NodeAlreadyExists,
+				NodeRepositoryError::StorageNodeDoesNotExist => Error::<T>::NodeDoesNotExist,
+				NodeRepositoryError::CDNNodeDoesNotExist => Error::<T>::NodeDoesNotExist,
+			}
+		}
 	}
 
 	impl<T: Config> NodeRepository<T> for Pallet<T> {
-		fn create(node: Node<T::AccountId>) -> Result<(), &'static str> {
+		fn create(node: Node<T::AccountId>) -> Result<(), NodeRepositoryError> {
 			match node {
 				Node::Storage(storage_node) => {
 					if StorageNodes::<T>::contains_key(&storage_node.pub_key) {
-						return Err("Storage node already exists")
+						return Err(NodeRepositoryError::StorageNodeAlreadyExists)
 					}
 					StorageNodes::<T>::insert(storage_node.pub_key.clone(), storage_node);
 					Ok(())
 				},
 				Node::CDN(cdn_node) => {
 					if CDNNodes::<T>::contains_key(&cdn_node.pub_key) {
-						return Err("CDN node already exists")
+						return Err(NodeRepositoryError::CDNNodeAlreadyExists)
 					}
 					CDNNodes::<T>::insert(cdn_node.pub_key.clone(), cdn_node);
 					Ok(())
@@ -115,30 +133,30 @@ pub mod pallet {
 			}
 		}
 
-		fn get(node_pub_key: NodePubKey) -> Result<Node<T::AccountId>, &'static str> {
+		fn get(node_pub_key: NodePubKey) -> Result<Node<T::AccountId>, NodeRepositoryError> {
 			match node_pub_key {
 				NodePubKey::StoragePubKey(pub_key) => match StorageNodes::<T>::try_get(pub_key) {
 					Ok(storage_node) => Ok(Node::Storage(storage_node)),
-					Err(_) => Err("Storage node does not exist"),
+					Err(_) => Err(NodeRepositoryError::StorageNodeDoesNotExist),
 				},
 				NodePubKey::CDNPubKey(pub_key) => match CDNNodes::<T>::try_get(pub_key) {
 					Ok(cdn_node) => Ok(Node::CDN(cdn_node)),
-					Err(_) => Err("CDN node does not exist"),
+					Err(_) => Err(NodeRepositoryError::CDNNodeDoesNotExist),
 				},
 			}
 		}
 
-		fn update(node: Node<T::AccountId>) -> Result<(), &'static str> {
+		fn update(node: Node<T::AccountId>) -> Result<(), NodeRepositoryError> {
 			match node {
 				Node::Storage(storage_node) => {
 					if !StorageNodes::<T>::contains_key(&storage_node.pub_key) {
-						return Err("Storage node does not exist")
+						return Err(NodeRepositoryError::StorageNodeDoesNotExist)
 					}
 					StorageNodes::<T>::insert(storage_node.pub_key.clone(), storage_node);
 				},
 				Node::CDN(cdn_node) => {
 					if !CDNNodes::<T>::contains_key(&cdn_node.pub_key) {
-						return Err("CDN node does not exist")
+						return Err(NodeRepositoryError::CDNNodeDoesNotExist)
 					}
 					CDNNodes::<T>::insert(cdn_node.pub_key.clone(), cdn_node);
 				},

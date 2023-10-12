@@ -49,6 +49,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		ClusterAlreadyExists,
 		ClusterParamsExceedsLimit,
+		AttemptToAddNonExistentNode,
 	}
 
 	#[pallet::storage]
@@ -65,15 +66,12 @@ pub mod pallet {
 			cluster_params: ClusterParams,
 		) -> DispatchResult {
 			let manager_id = ensure_signed(origin)?;
-			let cluster = Cluster::from_params(cluster_id, manager_id, cluster_params)
+			let cluster = Cluster::new(cluster_id, manager_id, cluster_params)
 				.map_err(|e| Into::<Error<T>>::into(ClusterError::from(e)))?;
 			let cluster_id = cluster.cluster_id.clone();
-
 			ensure!(!Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterAlreadyExists);
-
 			Clusters::<T>::insert(cluster_id.clone(), cluster);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
-
 			Ok(())
 		}
 
@@ -84,11 +82,10 @@ pub mod pallet {
 			node_pub_key: NodePubKey,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
-
-			let mut node = T::NodeRepository::get(node_pub_key.clone())?;
+			let mut node = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			node.set_cluster_id(cluster_id);
-			T::NodeRepository::update(node)?;
-
+			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			Ok(())
 		}
 	}

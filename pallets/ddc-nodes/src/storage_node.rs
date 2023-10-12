@@ -53,7 +53,7 @@ impl<ProviderId> NodeTrait<ProviderId> for StorageNode<ProviderId> {
 	fn get_type(&self) -> NodeType {
 		NodeType::Storage
 	}
-	fn from_params(
+	fn new(
 		provider_id: ProviderId,
 		node_params: NodeParams,
 	) -> Result<Node<ProviderId>, NodeError> {

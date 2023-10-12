@@ -30,7 +30,7 @@ pub struct ClusterParams {
 }
 
 impl<ManagerId> Cluster<ManagerId> {
-	pub fn from_params(
+	pub fn new(
 		cluster_id: ClusterId,
 		manager_id: ManagerId,
 		cluster_params: ClusterParams,
