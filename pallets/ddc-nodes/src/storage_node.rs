@@ -3,10 +3,15 @@ use crate::{
 	ClusterId,
 };
 use codec::{Decode, Encode};
+use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
 use sp_runtime::{AccountId32, RuntimeDebug};
+use sp_std::prelude::Vec;
 
 pub type StorageNodePubKey = AccountId32;
+parameter_types! {
+	pub MaxStorageNodeParamsLen: u16 = 2048;
+}
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNode<ProviderId> {
@@ -18,13 +23,15 @@ pub struct StorageNode<ProviderId> {
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNodeProps {
-	pub capacity: u32,
+	// this is a temporal way of storing node parameters as a stringified json,
+	// should be replaced with specific properties for this type of node once they are defined
+	pub params: BoundedVec<u8, MaxStorageNodeParamsLen>,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNodeParams {
 	pub pub_key: StorageNodePubKey,
-	pub capacity: u32,
+	pub params: Vec<u8>, // should be replaced with specific parameters for this type of node
 }
 
 impl<ProviderId> NodeTrait<ProviderId> for StorageNode<ProviderId> {
@@ -48,15 +55,21 @@ impl<ProviderId> NodeTrait<ProviderId> for StorageNode<ProviderId> {
 	}
 	fn from_params(
 		provider_id: ProviderId,
-		params: NodeParams,
+		node_params: NodeParams,
 	) -> Result<Node<ProviderId>, NodeError> {
-		match params {
-			NodeParams::StorageParams(params) => Ok(Node::Storage(StorageNode::<ProviderId> {
-				provider_id,
-				pub_key: params.pub_key,
-				cluster_id: None,
-				props: StorageNodeProps { capacity: params.capacity },
-			})),
+		match node_params {
+			NodeParams::StorageParams(node_params) =>
+				Ok(Node::Storage(StorageNode::<ProviderId> {
+					provider_id,
+					pub_key: node_params.pub_key,
+					cluster_id: None,
+					props: StorageNodeProps {
+						params: match node_params.params.try_into() {
+							Ok(vec) => vec,
+							Err(_) => return Err(NodeError::StorageNodeParamsExceedsLimit),
+						},
+					},
+				})),
 			_ => Err(NodeError::InvalidStorageNodeParams),
 		}
 	}
