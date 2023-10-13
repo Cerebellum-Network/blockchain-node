@@ -1,5 +1,7 @@
 use crate::{
-	node::{Node, NodeError, NodeParams, NodePropsRef, NodePubKeyRef, NodeTrait, NodeType},
+	node::{
+		Node, NodeError, NodeParams, NodeProps, NodePropsRef, NodePubKeyRef, NodeTrait, NodeType,
+	},
 	ClusterId,
 };
 use codec::{Decode, Encode};
@@ -43,6 +45,13 @@ impl<ProviderId> NodeTrait<ProviderId> for StorageNode<ProviderId> {
 	}
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
 		NodePropsRef::StoragePropsRef(&self.props)
+	}
+	fn set_props<'a>(&mut self, props: NodeProps) -> Result<(), NodeError> {
+		self.props = match props {
+			NodeProps::StorageProps(props) => props,
+			_ => return Err(NodeError::InvalidStorageNodeProps),
+		};
+		Ok(())
 	}
 	fn get_cluster_id(&self) -> &Option<ClusterId> {
 		&self.cluster_id
