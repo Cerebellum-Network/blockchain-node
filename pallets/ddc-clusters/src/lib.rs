@@ -42,6 +42,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		ClusterCreated { cluster_id: ClusterId },
 		ClusterNodeAdded { cluster_id: ClusterId, node_pub_key: NodePubKey },
+		ClusterNodeRemoved { cluster_id: ClusterId, node_pub_key: NodePubKey },
 	}
 
 	#[pallet::error]
@@ -50,7 +51,9 @@ pub mod pallet {
 		ClusterDoesNotExist,
 		ClusterParamsExceedsLimit,
 		AttemptToAddNonExistentNode,
+		AttemptToRemoveNonExistentNode,
 		NodeIsAlreadyAssigned,
+		NodeIsNotAssigned,
 	}
 
 	#[pallet::storage]
@@ -102,10 +105,30 @@ pub mod pallet {
 			// todo: check that node is authorized by the 'NodeProviderAuthSC' contract
 			// todo: check that node provider has a bond for this 'cluster_id' and 'node_pub_key'
 
-			node.set_cluster_id(cluster_id.clone());
+			node.set_cluster_id(Some(cluster_id.clone()));
 			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			ClustersNodes::<T>::insert(cluster_id.clone(), node_pub_key.clone(), true);
 			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn remove_node(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+			ensure!(Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterDoesNotExist);
+			let mut node = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
+			ensure!(node.get_cluster_id() == &Some(cluster_id), Error::<T>::NodeIsNotAssigned);
+			node.set_cluster_id(None);
+			T::NodeRepository::update(node)
+				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
+			ClustersNodes::<T>::remove(cluster_id.clone(), node_pub_key.clone());
+			Self::deposit_event(Event::<T>::ClusterNodeRemoved { cluster_id, node_pub_key });
 
 			Ok(())
 		}
