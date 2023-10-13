@@ -48,7 +48,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		NodeCreated { node_pub_key: NodePubKey },
-		NodeRemoved { node_pub_key: NodePubKey },
+		NodeDeleted { node_pub_key: NodePubKey },
 		NodeParamsChanged { node_pub_key: NodePubKey },
 	}
 
@@ -93,15 +93,15 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn remove_node(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
+		pub fn delete_node(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let node = Self::get(node_pub_key.clone())
 				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAssignedToCluster);
-			Self::remove(node_pub_key.clone())
+			Self::delete(node_pub_key.clone())
 				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
-			Self::deposit_event(Event::<T>::NodeRemoved { node_pub_key });
+			Self::deposit_event(Event::<T>::NodeDeleted { node_pub_key });
 			Ok(())
 		}
 
@@ -127,7 +127,7 @@ pub mod pallet {
 		fn create(node: Node<T::AccountId>) -> Result<(), NodeRepositoryError>;
 		fn get(node_pub_key: NodePubKey) -> Result<Node<T::AccountId>, NodeRepositoryError>;
 		fn update(node: Node<T::AccountId>) -> Result<(), NodeRepositoryError>;
-		fn remove(node_pub_key: NodePubKey) -> Result<(), NodeRepositoryError>;
+		fn delete(node_pub_key: NodePubKey) -> Result<(), NodeRepositoryError>;
 	}
 
 	pub enum NodeRepositoryError {
@@ -199,7 +199,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn remove(node_pub_key: NodePubKey) -> Result<(), NodeRepositoryError> {
+		fn delete(node_pub_key: NodePubKey) -> Result<(), NodeRepositoryError> {
 			match node_pub_key {
 				NodePubKey::StoragePubKey(pub_key) => {
 					StorageNodes::<T>::remove(pub_key);
