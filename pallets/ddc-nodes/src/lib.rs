@@ -47,15 +47,16 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		NodeCreated { node_type: u8, node_pub_key: NodePubKey },
-		NodeRemoved { node_type: u8, node_pub_key: NodePubKey },
-		NodeParamsChanged { node_type: u8, node_pub_key: NodePubKey },
+		NodeCreated { node_pub_key: NodePubKey },
+		NodeRemoved { node_pub_key: NodePubKey },
+		NodeParamsChanged { node_pub_key: NodePubKey },
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
 		NodeAlreadyExists,
 		NodeDoesNotExist,
+		InvalidNodePubKey,
 		InvalidNodeParams,
 		NodeParamsExceedsLimit,
 		OnlyNodeProvider,
@@ -78,17 +79,16 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
-		pub fn create_node(origin: OriginFor<T>, node_params: NodeParams) -> DispatchResult {
+		pub fn create_node(
+			origin: OriginFor<T>,
+			node_pub_key: NodePubKey,
+			node_params: NodeParams,
+		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let node = Node::<T::AccountId>::new(caller_id, node_params)
+			let node = Node::<T::AccountId>::new(node_pub_key.clone(), caller_id, node_params)
 				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
-			let node_type = node.get_type();
-			let node_pub_key = node.get_pub_key().to_owned();
 			Self::create(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
-			Self::deposit_event(Event::<T>::NodeCreated {
-				node_pub_key,
-				node_type: node_type.into(),
-			});
+			Self::deposit_event(Event::<T>::NodeCreated { node_pub_key });
 			Ok(())
 		}
 
@@ -101,10 +101,7 @@ pub mod pallet {
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAssignedToCluster);
 			Self::remove(node_pub_key.clone())
 				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
-			Self::deposit_event(Event::<T>::NodeRemoved {
-				node_pub_key,
-				node_type: node.get_type().into(),
-			});
+			Self::deposit_event(Event::<T>::NodeRemoved { node_pub_key });
 			Ok(())
 		}
 
@@ -120,12 +117,8 @@ pub mod pallet {
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
 			node.set_params(node_params)
 				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
-			let node_type = node.get_type();
 			Self::update(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
-			Self::deposit_event(Event::<T>::NodeParamsChanged {
-				node_pub_key,
-				node_type: node_type.into(),
-			});
+			Self::deposit_event(Event::<T>::NodeParamsChanged { node_pub_key });
 			Ok(())
 		}
 	}

@@ -66,7 +66,11 @@ pub trait NodeTrait<ProviderId> {
 	fn get_cluster_id(&self) -> &Option<ClusterId>;
 	fn set_cluster_id(&mut self, cluster_id: ClusterId);
 	fn get_type(&self) -> NodeType;
-	fn new(provider_id: ProviderId, params: NodeParams) -> Result<Node<ProviderId>, NodeError>;
+	fn new(
+		node_pub_key: NodePubKey,
+		provider_id: ProviderId,
+		params: NodeParams,
+	) -> Result<Node<ProviderId>, NodeError>;
 }
 
 impl<ProviderId> NodeTrait<ProviderId> for Node<ProviderId> {
@@ -118,10 +122,15 @@ impl<ProviderId> NodeTrait<ProviderId> for Node<ProviderId> {
 			Node::CDN(node) => node.get_type(),
 		}
 	}
-	fn new(provider_id: ProviderId, params: NodeParams) -> Result<Node<ProviderId>, NodeError> {
-		match params {
-			NodeParams::StorageParams(_) => StorageNode::new(provider_id, params),
-			NodeParams::CDNParams(_) => CDNNode::new(provider_id, params),
+	fn new(
+		node_pub_key: NodePubKey,
+		provider_id: ProviderId,
+		node_params: NodeParams,
+	) -> Result<Node<ProviderId>, NodeError> {
+		match node_pub_key {
+			NodePubKey::StoragePubKey(_) =>
+				StorageNode::new(node_pub_key, provider_id, node_params),
+			NodePubKey::CDNPubKey(_) => CDNNode::new(node_pub_key, provider_id, node_params),
 		}
 	}
 }
@@ -153,6 +162,8 @@ impl TryFrom<u8> for NodeType {
 }
 
 pub enum NodeError {
+	InvalidStorageNodePubKey,
+	InvalidCDNNodePubKey,
 	InvalidStorageNodeParams,
 	InvalidCDNNodeParams,
 	StorageNodeParamsExceedsLimit,
@@ -164,6 +175,8 @@ pub enum NodeError {
 impl<T> From<NodeError> for Error<T> {
 	fn from(error: NodeError) -> Self {
 		match error {
+			NodeError::InvalidStorageNodePubKey => Error::<T>::InvalidNodePubKey,
+			NodeError::InvalidCDNNodePubKey => Error::<T>::InvalidNodePubKey,
 			NodeError::InvalidStorageNodeParams => Error::<T>::InvalidNodeParams,
 			NodeError::InvalidCDNNodeParams => Error::<T>::InvalidNodeParams,
 			NodeError::StorageNodeParamsExceedsLimit => Error::<T>::NodeParamsExceedsLimit,

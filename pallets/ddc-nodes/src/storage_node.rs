@@ -1,6 +1,7 @@
 use crate::{
 	node::{
-		Node, NodeError, NodeParams, NodeProps, NodePropsRef, NodePubKeyRef, NodeTrait, NodeType,
+		Node, NodeError, NodeParams, NodeProps, NodePropsRef, NodePubKey, NodePubKeyRef, NodeTrait,
+		NodeType,
 	},
 	ClusterId,
 };
@@ -32,7 +33,6 @@ pub struct StorageNodeProps {
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNodeParams {
-	pub pub_key: StorageNodePubKey,
 	pub params: Vec<u8>, // should be replaced with specific parameters for this type of node
 }
 
@@ -73,23 +73,27 @@ impl<ProviderId> NodeTrait<ProviderId> for StorageNode<ProviderId> {
 		NodeType::Storage
 	}
 	fn new(
+		node_pub_key: NodePubKey,
 		provider_id: ProviderId,
 		node_params: NodeParams,
 	) -> Result<Node<ProviderId>, NodeError> {
-		match node_params {
-			NodeParams::StorageParams(node_params) =>
-				Ok(Node::Storage(StorageNode::<ProviderId> {
-					provider_id,
-					pub_key: node_params.pub_key,
-					cluster_id: None,
-					props: StorageNodeProps {
-						params: match node_params.params.try_into() {
-							Ok(vec) => vec,
-							Err(_) => return Err(NodeError::StorageNodeParamsExceedsLimit),
+		match node_pub_key {
+			NodePubKey::StoragePubKey(pub_key) => match node_params {
+				NodeParams::StorageParams(node_params) =>
+					Ok(Node::Storage(StorageNode::<ProviderId> {
+						provider_id,
+						pub_key,
+						cluster_id: None,
+						props: StorageNodeProps {
+							params: match node_params.params.try_into() {
+								Ok(vec) => vec,
+								Err(_) => return Err(NodeError::StorageNodeParamsExceedsLimit),
+							},
 						},
-					},
-				})),
-			_ => Err(NodeError::InvalidStorageNodeParams),
+					})),
+				_ => Err(NodeError::InvalidStorageNodeParams),
+			},
+			_ => Err(NodeError::InvalidStorageNodePubKey),
 		}
 	}
 }
