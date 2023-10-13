@@ -1,6 +1,7 @@
 use crate::{
 	node::{
-		Node, NodeError, NodeParams, NodeProps, NodePropsRef, NodePubKeyRef, NodeTrait, NodeType,
+		Node, NodeError, NodeParams, NodeProps, NodePropsRef, NodePubKey, NodePubKeyRef, NodeTrait,
+		NodeType,
 	},
 	ClusterId,
 };
@@ -32,7 +33,6 @@ pub struct CDNNodeProps {
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct CDNNodeParams {
-	pub pub_key: CDNNodePubKey,
 	pub params: Vec<u8>, // should be replaced with specific parameters for this type of node
 }
 
@@ -73,22 +73,26 @@ impl<ProviderId> NodeTrait<ProviderId> for CDNNode<ProviderId> {
 		NodeType::CDN
 	}
 	fn new(
+		node_pub_key: NodePubKey,
 		provider_id: ProviderId,
 		node_params: NodeParams,
 	) -> Result<Node<ProviderId>, NodeError> {
-		match node_params {
-			NodeParams::CDNParams(node_params) => Ok(Node::CDN(CDNNode::<ProviderId> {
-				provider_id,
-				pub_key: node_params.pub_key,
-				cluster_id: None,
-				props: CDNNodeProps {
-					params: match node_params.params.try_into() {
-						Ok(vec) => vec,
-						Err(_) => return Err(NodeError::CDNNodeParamsExceedsLimit),
+		match node_pub_key {
+			NodePubKey::CDNPubKey(pub_key) => match node_params {
+				NodeParams::CDNParams(node_params) => Ok(Node::CDN(CDNNode::<ProviderId> {
+					provider_id,
+					pub_key,
+					cluster_id: None,
+					props: CDNNodeProps {
+						params: match node_params.params.try_into() {
+							Ok(vec) => vec,
+							Err(_) => return Err(NodeError::CDNNodeParamsExceedsLimit),
+						},
 					},
-				},
-			})),
-			_ => Err(NodeError::InvalidCDNNodeParams),
+				})),
+				_ => Err(NodeError::InvalidCDNNodeParams),
+			},
+			_ => Err(NodeError::InvalidCDNNodePubKey),
 		}
 	}
 }
