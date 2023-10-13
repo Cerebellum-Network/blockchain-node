@@ -46,10 +46,20 @@ impl<ProviderId> NodeTrait<ProviderId> for CDNNode<ProviderId> {
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
 		NodePropsRef::CDNPropsRef(&self.props)
 	}
-	fn set_props<'a>(&mut self, props: NodeProps) -> Result<(), NodeError> {
+	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError> {
 		self.props = match props {
 			NodeProps::CDNProps(props) => props,
 			_ => return Err(NodeError::InvalidCDNNodeProps),
+		};
+		Ok(())
+	}
+	fn set_params(&mut self, node_params: NodeParams) -> Result<(), NodeError> {
+		self.props.params = match node_params {
+			NodeParams::CDNParams(cdn_params) => match cdn_params.params.try_into() {
+				Ok(vec) => vec,
+				Err(_) => return Err(NodeError::CDNNodeParamsExceedsLimit),
+			},
+			_ => return Err(NodeError::InvalidCDNNodeParams),
 		};
 		Ok(())
 	}

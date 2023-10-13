@@ -46,10 +46,20 @@ impl<ProviderId> NodeTrait<ProviderId> for StorageNode<ProviderId> {
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
 		NodePropsRef::StoragePropsRef(&self.props)
 	}
-	fn set_props<'a>(&mut self, props: NodeProps) -> Result<(), NodeError> {
+	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError> {
 		self.props = match props {
 			NodeProps::StorageProps(props) => props,
 			_ => return Err(NodeError::InvalidStorageNodeProps),
+		};
+		Ok(())
+	}
+	fn set_params(&mut self, node_params: NodeParams) -> Result<(), NodeError> {
+		self.props.params = match node_params {
+			NodeParams::StorageParams(cdn_params) => match cdn_params.params.try_into() {
+				Ok(vec) => vec,
+				Err(_) => return Err(NodeError::StorageNodeParamsExceedsLimit),
+			},
+			_ => return Err(NodeError::InvalidStorageNodeParams),
 		};
 		Ok(())
 	}

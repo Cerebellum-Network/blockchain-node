@@ -14,12 +14,14 @@ pub enum Node<ProviderId> {
 	CDN(CDNNode<ProviderId>),
 }
 
+// Params fields are always coming from extrinsic input
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodeParams {
 	StorageParams(StorageNodeParams),
 	CDNParams(CDNNodeParams),
 }
 
+// Props fields may include internal protocol properties
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodeProps {
 	StorageProps(StorageNodeProps),
@@ -59,7 +61,8 @@ pub trait NodeTrait<ProviderId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a>;
 	fn get_provider_id(&self) -> &ProviderId;
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a>;
-	fn set_props<'a>(&mut self, props: NodeProps) -> Result<(), NodeError>;
+	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError>;
+	fn set_params(&mut self, props: NodeParams) -> Result<(), NodeError>;
 	fn get_cluster_id(&self) -> &Option<ClusterId>;
 	fn set_cluster_id(&mut self, cluster_id: ClusterId);
 	fn get_type(&self) -> NodeType;
@@ -89,6 +92,12 @@ impl<ProviderId> NodeTrait<ProviderId> for Node<ProviderId> {
 		match self {
 			Node::Storage(node) => node.set_props(props),
 			Node::CDN(node) => node.set_props(props),
+		}
+	}
+	fn set_params(&mut self, params: NodeParams) -> Result<(), NodeError> {
+		match self {
+			Node::Storage(node) => node.set_params(params),
+			Node::CDN(node) => node.set_params(params),
 		}
 	}
 	fn get_cluster_id(&self) -> &Option<ClusterId> {
