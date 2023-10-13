@@ -64,7 +64,7 @@ pub trait NodeTrait<ProviderId> {
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError>;
 	fn set_params(&mut self, props: NodeParams) -> Result<(), NodeError>;
 	fn get_cluster_id(&self) -> &Option<ClusterId>;
-	fn set_cluster_id(&mut self, cluster_id: ClusterId);
+	fn set_cluster_id(&mut self, cluster_id: Option<ClusterId>);
 	fn get_type(&self) -> NodeType;
 	fn new(
 		node_pub_key: NodePubKey,
@@ -110,7 +110,7 @@ impl<ProviderId> NodeTrait<ProviderId> for Node<ProviderId> {
 			Node::CDN(node) => node.get_cluster_id(),
 		}
 	}
-	fn set_cluster_id(&mut self, cluster_id: ClusterId) {
+	fn set_cluster_id(&mut self, cluster_id: Option<ClusterId>) {
 		match self {
 			Node::Storage(node) => node.set_cluster_id(cluster_id),
 			Node::CDN(node) => node.set_cluster_id(cluster_id),
