@@ -49,6 +49,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		NodeCreated { node_type: u8, node_pub_key: NodePubKey },
 		NodeRemoved { node_type: u8, node_pub_key: NodePubKey },
+		NodeParamsChanged { node_type: u8, node_pub_key: NodePubKey },
 	}
 
 	#[pallet::error]
@@ -78,8 +79,8 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
 		pub fn create_node(origin: OriginFor<T>, node_params: NodeParams) -> DispatchResult {
-			let provider_id = ensure_signed(origin)?;
-			let node = Node::<T::AccountId>::new(provider_id, node_params)
+			let caller_id = ensure_signed(origin)?;
+			let node = Node::<T::AccountId>::new(caller_id, node_params)
 				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
 			let node_type = node.get_type();
 			let node_pub_key = node.get_pub_key().to_owned();
@@ -93,16 +94,37 @@ pub mod pallet {
 
 		#[pallet::weight(10_000)]
 		pub fn remove_node(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
-			let provider_id = ensure_signed(origin)?;
+			let caller_id = ensure_signed(origin)?;
 			let node = Self::get(node_pub_key.clone())
 				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
-			ensure!(node.get_provider_id() == &provider_id, Error::<T>::OnlyNodeProvider);
+			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAssignedToCluster);
 			Self::remove(node_pub_key.clone())
 				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
-			Self::deposit_event(Event::<T>::NodeCreated {
+			Self::deposit_event(Event::<T>::NodeRemoved {
 				node_pub_key,
 				node_type: node.get_type().into(),
+			});
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn set_node_params(
+			origin: OriginFor<T>,
+			node_pub_key: NodePubKey,
+			node_params: NodeParams,
+		) -> DispatchResult {
+			let caller_id = ensure_signed(origin)?;
+			let mut node = Self::get(node_pub_key.clone())
+				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
+			node.set_params(node_params)
+				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
+			let node_type = node.get_type();
+			Self::update(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+			Self::deposit_event(Event::<T>::NodeParamsChanged {
+				node_pub_key,
+				node_type: node_type.into(),
 			});
 			Ok(())
 		}
