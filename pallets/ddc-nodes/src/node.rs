@@ -21,6 +21,12 @@ pub enum NodeParams {
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub enum NodeProps {
+	StorageProps(StorageNodeProps),
+	CDNProps(CDNNodeProps),
+}
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodePubKey {
 	StoragePubKey(StorageNodePubKey),
 	CDNPubKey(CDNNodePubKey),
@@ -53,6 +59,7 @@ pub trait NodeTrait<ProviderId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a>;
 	fn get_provider_id(&self) -> &ProviderId;
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a>;
+	fn set_props<'a>(&mut self, props: NodeProps) -> Result<(), NodeError>;
 	fn get_cluster_id(&self) -> &Option<ClusterId>;
 	fn set_cluster_id(&mut self, cluster_id: ClusterId);
 	fn get_type(&self) -> NodeType;
@@ -76,6 +83,12 @@ impl<ProviderId> NodeTrait<ProviderId> for Node<ProviderId> {
 		match &self {
 			Node::Storage(node) => node.get_props(),
 			Node::CDN(node) => node.get_props(),
+		}
+	}
+	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError> {
+		match self {
+			Node::Storage(node) => node.set_props(props),
+			Node::CDN(node) => node.set_props(props),
 		}
 	}
 	fn get_cluster_id(&self) -> &Option<ClusterId> {
@@ -135,6 +148,8 @@ pub enum NodeError {
 	InvalidCDNNodeParams,
 	StorageNodeParamsExceedsLimit,
 	CDNNodeParamsExceedsLimit,
+	InvalidCDNNodeProps,
+	InvalidStorageNodeProps,
 }
 
 impl<T> From<NodeError> for Error<T> {
@@ -143,7 +158,9 @@ impl<T> From<NodeError> for Error<T> {
 			NodeError::InvalidStorageNodeParams => Error::<T>::InvalidNodeParams,
 			NodeError::InvalidCDNNodeParams => Error::<T>::InvalidNodeParams,
 			NodeError::StorageNodeParamsExceedsLimit => Error::<T>::NodeParamsExceedsLimit,
-			NodeError::CDNNodeParamsExceedsLimit => Error::<T>::NodeParamsExceedsLimit,
+			NodeError::CDNNodeParamsExceedsLimit => Error::<T>::InvalidNodeParams,
+			NodeError::InvalidStorageNodeProps => Error::<T>::InvalidNodeParams,
+			NodeError::InvalidCDNNodeProps => Error::<T>::InvalidNodeParams,
 		}
 	}
 }

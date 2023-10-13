@@ -48,6 +48,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		NodeCreated { node_type: u8, node_pub_key: NodePubKey },
+		NodeRemoved { node_type: u8, node_pub_key: NodePubKey },
 	}
 
 	#[pallet::error]
@@ -56,6 +57,8 @@ pub mod pallet {
 		NodeDoesNotExist,
 		InvalidNodeParams,
 		NodeParamsExceedsLimit,
+		OnlyNodeProvider,
+		NodeIsAssignedToCluster,
 	}
 
 	#[pallet::storage]
@@ -82,8 +85,24 @@ pub mod pallet {
 			let node_pub_key = node.get_pub_key().to_owned();
 			Self::create(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
 			Self::deposit_event(Event::<T>::NodeCreated {
-				node_type: node_type.into(),
 				node_pub_key,
+				node_type: node_type.into(),
+			});
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn remove_node(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
+			let provider_id = ensure_signed(origin)?;
+			let node = Self::get(node_pub_key.clone())
+				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+			ensure!(node.get_provider_id() == &provider_id, Error::<T>::OnlyNodeProvider);
+			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAssignedToCluster);
+			Self::remove(node_pub_key.clone())
+				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+			Self::deposit_event(Event::<T>::NodeCreated {
+				node_pub_key,
+				node_type: node.get_type().into(),
 			});
 			Ok(())
 		}
@@ -91,8 +110,9 @@ pub mod pallet {
 
 	pub trait NodeRepository<T: frame_system::Config> {
 		fn create(node: Node<T::AccountId>) -> Result<(), NodeRepositoryError>;
-		fn get(pub_key: NodePubKey) -> Result<Node<T::AccountId>, NodeRepositoryError>;
+		fn get(node_pub_key: NodePubKey) -> Result<Node<T::AccountId>, NodeRepositoryError>;
 		fn update(node: Node<T::AccountId>) -> Result<(), NodeRepositoryError>;
+		fn remove(node_pub_key: NodePubKey) -> Result<(), NodeRepositoryError>;
 	}
 
 	pub enum NodeRepositoryError {
@@ -162,6 +182,19 @@ pub mod pallet {
 				},
 			}
 			Ok(())
+		}
+
+		fn remove(node_pub_key: NodePubKey) -> Result<(), NodeRepositoryError> {
+			match node_pub_key {
+				NodePubKey::StoragePubKey(pub_key) => {
+					StorageNodes::<T>::remove(pub_key);
+					Ok(())
+				},
+				NodePubKey::CDNPubKey(pub_key) => {
+					CDNNodes::<T>::remove(pub_key);
+					Ok(())
+				},
+			}
 		}
 	}
 }
