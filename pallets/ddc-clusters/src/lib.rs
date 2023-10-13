@@ -48,6 +48,7 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		ClusterAlreadyExists,
+		ClusterDoesNotExist,
 		ClusterParamsExceedsLimit,
 		AttemptToAddNonExistentNode,
 	}
@@ -82,6 +83,7 @@ pub mod pallet {
 			node_pub_key: NodePubKey,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
+			ensure!(Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterDoesNotExist);
 			let mut node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			node.set_cluster_id(cluster_id);
