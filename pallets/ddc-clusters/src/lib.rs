@@ -43,6 +43,7 @@ pub mod pallet {
 		ClusterCreated { cluster_id: ClusterId },
 		ClusterNodeAdded { cluster_id: ClusterId, node_pub_key: NodePubKey },
 		ClusterNodeRemoved { cluster_id: ClusterId, node_pub_key: NodePubKey },
+		ClusterParamsSet { cluster_id: ClusterId },
 	}
 
 	#[pallet::error]
@@ -54,6 +55,7 @@ pub mod pallet {
 		AttemptToRemoveNonExistentNode,
 		NodeIsAlreadyAssigned,
 		NodeIsNotAssigned,
+		OnlyClusterManager,
 	}
 
 	#[pallet::storage]
@@ -79,11 +81,11 @@ pub mod pallet {
 		pub fn create_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_params: ClusterParams,
+			cluster_params: ClusterParams<T::AccountId>,
 		) -> DispatchResult {
-			let manager_id = ensure_signed(origin)?;
-			let cluster = Cluster::new(cluster_id.clone(), manager_id, cluster_params)
-				.map_err(|e| Into::<Error<T>>::into(ClusterError::from(e)))?;
+			let caller_id = ensure_signed(origin)?;
+			let cluster = Cluster::new(cluster_id.clone(), caller_id, cluster_params)
+				.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
 			ensure!(!Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterAlreadyExists);
 			Clusters::<T>::insert(cluster_id.clone(), cluster);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
@@ -129,6 +131,26 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
 			ClustersNodes::<T>::remove(cluster_id.clone(), node_pub_key.clone());
 			Self::deposit_event(Event::<T>::ClusterNodeRemoved { cluster_id, node_pub_key });
+
+			Ok(())
+		}
+
+		// Sets Governance non-sensetive parameters only
+		#[pallet::weight(10_000)]
+		pub fn set_cluster_params(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			cluster_params: ClusterParams<T::AccountId>,
+		) -> DispatchResult {
+			let caller_id = ensure_signed(origin)?;
+			let mut cluster =
+				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
+			cluster
+				.set_params(cluster_params)
+				.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
+			Clusters::<T>::insert(cluster_id.clone(), cluster);
+			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
 
 			Ok(())
 		}
