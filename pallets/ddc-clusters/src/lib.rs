@@ -16,10 +16,8 @@
 
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
-use pallet_ddc_nodes::{NodePubKey, NodeRepository, NodeTrait};
-use sp_std::prelude::*;
-
 pub use pallet::*;
+use pallet_ddc_nodes::{NodePubKey, NodeRepository, NodeTrait};
 mod cluster;
 
 pub use crate::cluster::{Cluster, ClusterError, ClusterId, ClusterParams};
@@ -43,6 +41,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		ClusterCreated { cluster_id: ClusterId },
+		ClusterNodeAdded { cluster_id: ClusterId, node_pub_key: NodePubKey },
 	}
 
 	#[pallet::error]
@@ -51,12 +50,25 @@ pub mod pallet {
 		ClusterDoesNotExist,
 		ClusterParamsExceedsLimit,
 		AttemptToAddNonExistentNode,
+		NodeIsAlreadyAssigned,
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn storage_nodes)]
+	#[pallet::getter(fn clusters)]
 	pub type Clusters<T: Config> =
 		StorageMap<_, Blake2_128Concat, ClusterId, Cluster<T::AccountId>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn clusters_nodes)]
+	pub type ClustersNodes<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		ClusterId,
+		Blake2_128Concat,
+		NodePubKey,
+		bool,
+		ValueQuery,
+	>;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -67,9 +79,8 @@ pub mod pallet {
 			cluster_params: ClusterParams,
 		) -> DispatchResult {
 			let manager_id = ensure_signed(origin)?;
-			let cluster = Cluster::new(cluster_id, manager_id, cluster_params)
+			let cluster = Cluster::new(cluster_id.clone(), manager_id, cluster_params)
 				.map_err(|e| Into::<Error<T>>::into(ClusterError::from(e)))?;
-			let cluster_id = cluster.cluster_id.clone();
 			ensure!(!Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterAlreadyExists);
 			Clusters::<T>::insert(cluster_id.clone(), cluster);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
@@ -86,8 +97,16 @@ pub mod pallet {
 			ensure!(Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterDoesNotExist);
 			let mut node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
-			node.set_cluster_id(cluster_id);
+			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAlreadyAssigned);
+
+			// todo: check that node is authorized by the 'NodeProviderAuthSC' contract
+			// todo: check that node provider has a bond for this 'cluster_id' and 'node_pub_key'
+
+			node.set_cluster_id(cluster_id.clone());
 			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+			ClustersNodes::<T>::insert(cluster_id.clone(), node_pub_key.clone(), true);
+			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
+
 			Ok(())
 		}
 	}
