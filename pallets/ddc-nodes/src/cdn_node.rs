@@ -17,9 +17,9 @@ parameter_types! {
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct CDNNode<ProviderId> {
+pub struct CDNNode<AccountId> {
 	pub pub_key: CDNNodePubKey,
-	pub provider_id: ProviderId,
+	pub provider_id: AccountId,
 	pub cluster_id: Option<ClusterId>,
 	pub props: CDNNodeProps,
 }
@@ -36,11 +36,11 @@ pub struct CDNNodeParams {
 	pub params: Vec<u8>, // should be replaced with specific parameters for this type of node
 }
 
-impl<ProviderId> NodeTrait<ProviderId> for CDNNode<ProviderId> {
+impl<AccountId> NodeTrait<AccountId> for CDNNode<AccountId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
 		NodePubKeyRef::CDNPubKeyRef(&self.pub_key)
 	}
-	fn get_provider_id(&self) -> &ProviderId {
+	fn get_provider_id(&self) -> &AccountId {
 		&self.provider_id
 	}
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
@@ -74,12 +74,12 @@ impl<ProviderId> NodeTrait<ProviderId> for CDNNode<ProviderId> {
 	}
 	fn new(
 		node_pub_key: NodePubKey,
-		provider_id: ProviderId,
+		provider_id: AccountId,
 		node_params: NodeParams,
-	) -> Result<Node<ProviderId>, NodeError> {
+	) -> Result<Node<AccountId>, NodeError> {
 		match node_pub_key {
 			NodePubKey::CDNPubKey(pub_key) => match node_params {
-				NodeParams::CDNParams(node_params) => Ok(Node::CDN(CDNNode::<ProviderId> {
+				NodeParams::CDNParams(node_params) => Ok(Node::CDN(CDNNode::<AccountId> {
 					provider_id,
 					pub_key,
 					cluster_id: None,

@@ -98,8 +98,10 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
 		) -> DispatchResult {
-			ensure_signed(origin)?;
-			ensure!(Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterDoesNotExist);
+			let caller_id = ensure_signed(origin)?;
+			let cluster =
+				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 			let mut node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAlreadyAssigned);
@@ -121,8 +123,10 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
 		) -> DispatchResult {
-			ensure_signed(origin)?;
-			ensure!(Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterDoesNotExist);
+			let caller_id = ensure_signed(origin)?;
+			let cluster =
+				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 			let mut node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
 			ensure!(node.get_cluster_id() == &Some(cluster_id), Error::<T>::NodeIsNotAssigned);
