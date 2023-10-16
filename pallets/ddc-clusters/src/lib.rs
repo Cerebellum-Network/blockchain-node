@@ -25,6 +25,7 @@ pub use crate::cluster::{Cluster, ClusterError, ClusterId, ClusterParams};
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use pallet_contracts::chain_extension::UncheckedFrom;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -32,7 +33,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_contracts::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>;
 	}
@@ -76,7 +77,10 @@ pub mod pallet {
 	>;
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	{
 		#[pallet::weight(10_000)]
 		pub fn create_cluster(
 			origin: OriginFor<T>,
