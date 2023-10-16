@@ -9,9 +9,9 @@ use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum Node<ProviderId> {
-	Storage(StorageNode<ProviderId>),
-	CDN(CDNNode<ProviderId>),
+pub enum Node<AccountId> {
+	Storage(StorageNode<AccountId>),
+	CDN(CDNNode<AccountId>),
 }
 
 // Params fields are always coming from extrinsic input
@@ -57,9 +57,9 @@ pub enum NodePropsRef<'a> {
 	CDNPropsRef(&'a CDNNodeProps),
 }
 
-pub trait NodeTrait<ProviderId> {
+pub trait NodeTrait<AccountId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a>;
-	fn get_provider_id(&self) -> &ProviderId;
+	fn get_provider_id(&self) -> &AccountId;
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a>;
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError>;
 	fn set_params(&mut self, props: NodeParams) -> Result<(), NodeError>;
@@ -68,19 +68,19 @@ pub trait NodeTrait<ProviderId> {
 	fn get_type(&self) -> NodeType;
 	fn new(
 		node_pub_key: NodePubKey,
-		provider_id: ProviderId,
+		provider_id: AccountId,
 		params: NodeParams,
-	) -> Result<Node<ProviderId>, NodeError>;
+	) -> Result<Node<AccountId>, NodeError>;
 }
 
-impl<ProviderId> NodeTrait<ProviderId> for Node<ProviderId> {
+impl<AccountId> NodeTrait<AccountId> for Node<AccountId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
 		match &self {
 			Node::Storage(node) => node.get_pub_key(),
 			Node::CDN(node) => node.get_pub_key(),
 		}
 	}
-	fn get_provider_id(&self) -> &ProviderId {
+	fn get_provider_id(&self) -> &AccountId {
 		match &self {
 			Node::Storage(node) => node.get_provider_id(),
 			Node::CDN(node) => node.get_provider_id(),
@@ -124,9 +124,9 @@ impl<ProviderId> NodeTrait<ProviderId> for Node<ProviderId> {
 	}
 	fn new(
 		node_pub_key: NodePubKey,
-		provider_id: ProviderId,
+		provider_id: AccountId,
 		node_params: NodeParams,
-	) -> Result<Node<ProviderId>, NodeError> {
+	) -> Result<Node<AccountId>, NodeError> {
 		match node_pub_key {
 			NodePubKey::StoragePubKey(_) =>
 				StorageNode::new(node_pub_key, provider_id, node_params),

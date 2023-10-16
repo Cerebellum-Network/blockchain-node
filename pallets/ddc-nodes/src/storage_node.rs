@@ -17,9 +17,9 @@ parameter_types! {
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct StorageNode<ProviderId> {
+pub struct StorageNode<AccountId> {
 	pub pub_key: StorageNodePubKey,
-	pub provider_id: ProviderId,
+	pub provider_id: AccountId,
 	pub cluster_id: Option<ClusterId>,
 	pub props: StorageNodeProps,
 }
@@ -36,11 +36,11 @@ pub struct StorageNodeParams {
 	pub params: Vec<u8>, // should be replaced with specific parameters for this type of node
 }
 
-impl<ProviderId> NodeTrait<ProviderId> for StorageNode<ProviderId> {
+impl<AccountId> NodeTrait<AccountId> for StorageNode<AccountId> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
 		NodePubKeyRef::StoragePubKeyRef(&self.pub_key)
 	}
-	fn get_provider_id(&self) -> &ProviderId {
+	fn get_provider_id(&self) -> &AccountId {
 		&self.provider_id
 	}
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
@@ -74,13 +74,13 @@ impl<ProviderId> NodeTrait<ProviderId> for StorageNode<ProviderId> {
 	}
 	fn new(
 		node_pub_key: NodePubKey,
-		provider_id: ProviderId,
+		provider_id: AccountId,
 		node_params: NodeParams,
-	) -> Result<Node<ProviderId>, NodeError> {
+	) -> Result<Node<AccountId>, NodeError> {
 		match node_pub_key {
 			NodePubKey::StoragePubKey(pub_key) => match node_params {
 				NodeParams::StorageParams(node_params) =>
-					Ok(Node::Storage(StorageNode::<ProviderId> {
+					Ok(Node::Storage(StorageNode::<AccountId> {
 						provider_id,
 						pub_key,
 						cluster_id: None,
