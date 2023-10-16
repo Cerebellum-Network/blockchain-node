@@ -15,6 +15,7 @@ pub struct Cluster<AccountId> {
 	pub cluster_id: ClusterId,
 	pub manager_id: AccountId,
 	pub props: ClusterProps<AccountId>,
+	pub extension_smart_contract: AccountId,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -37,6 +38,7 @@ impl<AccountId> Cluster<AccountId> {
 		cluster_id: ClusterId,
 		manager_id: AccountId,
 		cluster_params: ClusterParams<AccountId>,
+		extension_smart_contract: AccountId,
 	) -> Result<Cluster<AccountId>, ClusterError> {
 		Ok(Cluster {
 			cluster_id,
@@ -48,6 +50,7 @@ impl<AccountId> Cluster<AccountId> {
 				},
 				node_provider_auth_contract: cluster_params.node_provider_auth_contract,
 			},
+			extension_smart_contract,
 		})
 	}
 

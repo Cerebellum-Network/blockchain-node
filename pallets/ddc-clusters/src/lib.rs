@@ -82,10 +82,16 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			cluster_params: ClusterParams<T::AccountId>,
+			extension_smart_contract: T::AccountId,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let cluster = Cluster::new(cluster_id.clone(), caller_id, cluster_params)
-				.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
+			let cluster = Cluster::new(
+				cluster_id.clone(),
+				caller_id,
+				cluster_params,
+				extension_smart_contract,
+			)
+			.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
 			ensure!(!Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterAlreadyExists);
 			Clusters::<T>::insert(cluster_id.clone(), cluster);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
