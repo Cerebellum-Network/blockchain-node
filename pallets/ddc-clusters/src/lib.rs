@@ -19,6 +19,7 @@ use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodePubKey, NodeRepository, NodeTrait};
+use sp_std::prelude::*;
 mod cluster;
 
 pub use crate::cluster::{Cluster, ClusterError, ClusterId, ClusterParams};
