@@ -43,29 +43,43 @@ pub fn create_funded_user_with_balance<T: Config>(
 }
 
 /// Create a stash and controller pair.
-pub fn create_stash_controller<T: Config>(
+pub fn create_stash_controller_node<T: Config>(
 	n: u32,
 	balance_factor: u32,
-) -> Result<(T::AccountId, T::AccountId), &'static str> {
+) -> Result<(T::AccountId, T::AccountId, T::AccountId), &'static str> {
 	let stash = create_funded_user::<T>("stash", n, balance_factor);
 	let controller = create_funded_user::<T>("controller", n, balance_factor);
 	let controller_lookup: <T::Lookup as StaticLookup>::Source =
 		T::Lookup::unlookup(controller.clone());
+	let node = create_funded_user::<T>("node", n, balance_factor);
+	let node_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(node.clone());
 	let amount = T::Currency::minimum_balance() * (balance_factor / 10).max(1).into();
-	DdcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup, amount)?;
-	return Ok((stash, controller))
+	DdcStaking::<T>::bond(
+		RawOrigin::Signed(stash.clone()).into(),
+		controller_lookup,
+		node_lookup,
+		amount,
+	)?;
+	return Ok((stash, controller, node))
 }
 
 /// Create a stash and controller pair with fixed balance.
-pub fn create_stash_controller_with_balance<T: Config>(
+pub fn create_stash_controller_node_with_balance<T: Config>(
 	n: u32,
 	balance: crate::BalanceOf<T>,
-) -> Result<(T::AccountId, T::AccountId), &'static str> {
+) -> Result<(T::AccountId, T::AccountId, T::AccountId), &'static str> {
 	let stash = create_funded_user_with_balance::<T>("stash", n, balance);
 	let controller = create_funded_user_with_balance::<T>("controller", n, balance);
 	let controller_lookup: <T::Lookup as StaticLookup>::Source =
 		T::Lookup::unlookup(controller.clone());
+	let node = create_funded_user_with_balance::<T>("node", n, balance);
+	let node_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(node.clone());
 
-	DdcStaking::<T>::bond(RawOrigin::Signed(stash.clone()).into(), controller_lookup, balance)?;
-	Ok((stash, controller))
+	DdcStaking::<T>::bond(
+		RawOrigin::Signed(stash.clone()).into(),
+		controller_lookup,
+		node_lookup,
+		balance,
+	)?;
+	Ok((stash, controller, node))
 }

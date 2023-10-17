@@ -195,17 +195,17 @@ impl ExtBuilder {
 		let mut edges = vec![];
 		if self.has_edges {
 			edges = vec![
-				// (stash, controller, stake, cluster)
-				(11, 10, 100, 1),
-				(21, 20, 100, 1),
+				// (stash, controller, node, stake, cluster)
+				(11, 10, 12, 100, 1),
+				(21, 20, 22, 100, 1),
 			];
 		}
 		let mut storages = vec![];
 		if self.has_storages {
 			storages = vec![
-				// (stash, controller, stake, cluster)
-				(31, 30, 100, 1),
-				(41, 40, 100, 1),
+				// (stash, controller, node, stake, cluster)
+				(31, 30, 32, 100, 1),
+				(41, 40, 42, 100, 1),
 			];
 		}
 

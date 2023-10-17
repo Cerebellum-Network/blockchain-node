@@ -271,7 +271,7 @@ pub mod pallet {
 	pub type Edges<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
 	/// The map of (wannabe) storage network participants stash keys to the DDC cluster ID they wish
-	/// to participate into..
+	/// to participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn storages)]
 	pub type Storages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
@@ -334,10 +334,15 @@ pub mod pallet {
 	#[pallet::getter(fn cluster_managers)]
 	pub type ClusterManagers<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
+	/// Map from DDC node ID to the node operator stash account.
+	#[pallet::storage]
+	#[pallet::getter(fn nodes)]
+	pub type Nodes<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub edges: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
-		pub storages: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
+		pub edges: Vec<(T::AccountId, T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
+		pub storages: Vec<(T::AccountId, T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
 		pub settings: Vec<(ClusterId, BalanceOf<T>, EraIndex, BalanceOf<T>, EraIndex)>,
 	}
 
@@ -376,7 +381,7 @@ pub mod pallet {
 			}
 
 			// Add initial CDN participants
-			for &(ref stash, ref controller, balance, cluster) in &self.edges {
+			for &(ref stash, ref controller, ref node, balance, cluster) in &self.edges {
 				assert!(
 					T::Currency::free_balance(&stash) >= balance,
 					"Stash do not have enough balance to participate in CDN."
@@ -384,6 +389,7 @@ pub mod pallet {
 				assert_ok!(Pallet::<T>::bond(
 					T::RuntimeOrigin::from(Some(stash.clone()).into()),
 					T::Lookup::unlookup(controller.clone()),
+					T::Lookup::unlookup(node.clone()),
 					balance,
 				));
 				assert_ok!(Pallet::<T>::serve(
@@ -393,7 +399,7 @@ pub mod pallet {
 			}
 
 			// Add initial storage network participants
-			for &(ref stash, ref controller, balance, cluster) in &self.storages {
+			for &(ref stash, ref controller, ref node, balance, cluster) in &self.storages {
 				assert!(
 					T::Currency::free_balance(&stash) >= balance,
 					"Stash do not have enough balance to participate in storage network."
@@ -401,6 +407,7 @@ pub mod pallet {
 				assert_ok!(Pallet::<T>::bond(
 					T::RuntimeOrigin::from(Some(stash.clone()).into()),
 					T::Lookup::unlookup(controller.clone()),
+					T::Lookup::unlookup(node.clone()),
 					balance,
 				));
 				assert_ok!(Pallet::<T>::store(
@@ -442,7 +449,7 @@ pub mod pallet {
 		NotStash,
 		/// Stash is already bonded.
 		AlreadyBonded,
-		/// Controller is already paired.
+		/// Controller or node is already paired.
 		AlreadyPaired,
 		/// Cannot have a storage network or CDN participant, with the size less than defined by
 		/// governance (see `BondSize`). If unbonding is the intention, `chill` first to remove
@@ -500,6 +507,7 @@ pub mod pallet {
 		pub fn bond(
 			origin: OriginFor<T>,
 			controller: <T::Lookup as StaticLookup>::Source,
+			node: <T::Lookup as StaticLookup>::Source,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let stash = ensure_signed(origin)?;
@@ -519,7 +527,16 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientBond)?
 			}
 
+			let node = T::Lookup::lookup(node)?;
+
+			// Reject a bond with a known DDC node.
+			if Nodes::<T>::contains_key(&node) {
+				Err(Error::<T>::AlreadyPaired)?
+			}
+
 			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
+
+			Nodes::<T>::insert(&node, &stash);
 
 			// You're auto-bonded forever, here. We might improve this by only bonding when
 			// you actually store/serve and remove once you unbond __everything__.
@@ -906,6 +923,33 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// (Re-)set the DDC node of a node operator stash account. Requires to chill first.
+		///
+		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
+		#[pallet::weight(T::WeightInfo::set_node())]
+		pub fn set_node(
+			origin: OriginFor<T>,
+			new_node: <T::Lookup as StaticLookup>::Source,
+		) -> DispatchResult {
+			let stash = ensure_signed(origin)?;
+
+			let new_node = T::Lookup::lookup(new_node)?;
+
+			if let Some(existing_node_stash) = Nodes::<T>::get(&new_node) {
+				if existing_node_stash != stash {
+					Err(Error::<T>::AlreadyPaired)?
+				}
+			}
+
+			// Ensure only one node per stash during the DDC era.
+			ensure!(!<Edges<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
+			ensure!(!<Storages<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
+
+			<Nodes<T>>::insert(new_node, stash);
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -1020,6 +1064,10 @@ pub mod pallet {
 
 			<Bonded<T>>::remove(stash);
 			<Ledger<T>>::remove(&controller);
+
+			if let Some((node, _)) = <Nodes<T>>::iter().find(|(_, v)| v == stash) {
+				<Nodes<T>>::remove(node);
+			}
 
 			Self::do_remove_storage(stash);
 			Self::do_remove_edge(stash);
