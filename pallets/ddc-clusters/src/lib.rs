@@ -57,6 +57,7 @@ pub mod pallet {
 		NodeIsAlreadyAssigned,
 		NodeIsNotAssigned,
 		OnlyClusterManager,
+		NotAuthorized,
 	}
 
 	#[pallet::storage]
@@ -116,7 +117,21 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAlreadyAssigned);
 
-			// todo: check that node is authorized by the 'NodeProviderAuthSC' contract
+			let is_authorized: bool = pallet_contracts::Pallet::<T>::bare_call(
+				caller_id,
+				cluster.extension_smart_contract,
+				Default::default(),
+				Default::default(),
+				None,
+				Vec::from([0x96, 0xb0, 0x45, 0x3e]), // blake2("is_authorized"), https://use.ink/basics/selectors#selector-calculation
+				false,
+			)
+			.result?
+			.data
+			.first()
+			.is_some_and(|x| *x == 1);
+			ensure!(is_authorized, Error::<T>::NotAuthorized);
+
 			// todo: check that node provider has a bond for this 'cluster_id' and 'node_pub_key'
 
 			node.set_cluster_id(Some(cluster_id.clone()));
