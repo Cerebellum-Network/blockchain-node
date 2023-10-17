@@ -930,13 +930,13 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::set_node())]
 		pub fn set_node(
 			origin: OriginFor<T>,
-			node: <T::Lookup as StaticLookup>::Source,
+			new_node: <T::Lookup as StaticLookup>::Source,
 		) -> DispatchResult {
 			let stash = ensure_signed(origin)?;
 
-			let node = T::Lookup::lookup(node)?;
+			let new_node = T::Lookup::lookup(new_node)?;
 
-			if let Some(existing_node_stash) = Nodes::<T>::get(&node) {
+			if let Some(existing_node_stash) = Nodes::<T>::get(&new_node) {
 				if existing_node_stash != stash {
 					Err(Error::<T>::AlreadyPaired)?
 				}
@@ -946,7 +946,7 @@ pub mod pallet {
 			ensure!(!<Edges<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 			ensure!(!<Storages<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
-			<Nodes<T>>::insert(node, stash);
+			<Nodes<T>>::insert(new_node, stash);
 
 			Ok(())
 		}
