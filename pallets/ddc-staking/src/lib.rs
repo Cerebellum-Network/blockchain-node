@@ -924,7 +924,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// (Re-)set the node operator stash account of a DDC node.
+		/// (Re-)set the DDC node of a node operator stash account. Requires to chill first.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
 		#[pallet::weight(T::WeightInfo::set_node())]
@@ -941,6 +941,10 @@ pub mod pallet {
 					Err(Error::<T>::AlreadyPaired)?
 				}
 			}
+
+			// Ensure only one node per stash during the DDC era.
+			ensure!(!<Edges<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
+			ensure!(!<Storages<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
 			<Nodes<T>>::insert(node, stash);
 
