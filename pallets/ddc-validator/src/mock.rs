@@ -317,6 +317,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		(AccountId::from([0x1; 32]), 1000),
 		// edge controller
 		(AccountId::from([0x11; 32]), 1000),
+		// edge node
+		(AccountId::from([0x21; 32]), 1000),
 		// validator1 stash; has to be equal to the OCW key in the current implementation
 		(
 			AccountId::from([
@@ -366,7 +368,13 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let _ = pallet_staking::GenesisConfig::<Test> { stakers, ..Default::default() }
 		.assimilate_storage(&mut storage);
 
-	let edges = vec![(AccountId::from([0x1; 32]), AccountId::from([0x11; 32]), 100, 1)];
+	let edges = vec![(
+		AccountId::from([0x1; 32]),
+		AccountId::from([0x11; 32]),
+		AccountId::from([0x21; 32]),
+		100,
+		1,
+	)];
 	let storages = vec![];
 	let _ = pallet_ddc_staking::GenesisConfig::<Test> { edges, storages, ..Default::default() }
 		.assimilate_storage(&mut storage);

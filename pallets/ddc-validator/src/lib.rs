@@ -812,13 +812,20 @@ pub mod pallet {
 			for assigned_edge in assigned_edges.iter() {
 				log::debug!("assigned edge: {:?}", assigned_edge);
 
+				let Some((node, _)) = <ddc_staking::pallet::Nodes<T>>::iter().find(|(n, s)| assigned_edge == s) else {
+					log::debug!("no known node for: {:?}", assigned_edge);
+					continue;
+				};
+
+				log::debug!("assigned edge node: {:?}", assigned_edge);
+
 				// form url for each node
 				let edge_url = format!(
 					"{}{}{}/$.{}",
 					data_url,
 					"ddc:dac:aggregation:nodes:",
 					current_ddc_era - 1,
-					utils::account_to_string::<T>(assigned_edge.clone())
+					utils::account_to_string::<T>(node)
 				);
 				log::debug!("edge url: {:?}", edge_url);
 

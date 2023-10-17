@@ -21,19 +21,22 @@ benchmarks! {
 		let controller = create_funded_user::<T>("controller", USER_SEED, 100);
 		let controller_lookup: <T::Lookup as StaticLookup>::Source
 			= T::Lookup::unlookup(controller.clone());
+		let node = create_funded_user::<T>("node", USER_SEED, 100);
+		let node_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(node.clone());
 		let amount = T::Currency::minimum_balance() * 10u32.into();
 		whitelist_account!(stash);
-	}: _(RawOrigin::Signed(stash.clone()), controller_lookup, amount)
+	}: _(RawOrigin::Signed(stash.clone()), controller_lookup, node_lookup, amount)
 	verify {
 		assert!(Bonded::<T>::contains_key(stash));
 		assert!(Ledger::<T>::contains_key(controller));
+		assert!(Nodes::<T>::contains_key(node));
 	}
 
 	unbond {
 		// clean up any existing state.
 		clear_storages_and_edges::<T>();
 
-		let (stash, controller) = create_stash_controller::<T>(0, 100)?;
+		let (stash, controller, _) = create_stash_controller_node::<T>(0, 100)?;
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_bonded: BalanceOf<T> = ledger.active;
 		let amount = T::Currency::minimum_balance() * 5u32.into(); // Half of total
@@ -47,7 +50,7 @@ benchmarks! {
 	}
 
 	withdraw_unbonded {
-		let (stash, controller) = create_stash_controller::<T>(0, 100)?;
+		let (stash, controller, _) = create_stash_controller_node::<T>(0, 100)?;
 		let amount = T::Currency::minimum_balance() * 5u32.into(); // Half of total
 		DdcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into(), amount)?;
 		CurrentEra::<T>::put(EraIndex::max_value());
@@ -62,7 +65,7 @@ benchmarks! {
 	}
 
 	store {
-		let (stash, controller) = create_stash_controller_with_balance::<T>(0, T::DefaultStorageBondSize::get())?;
+		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultStorageBondSize::get())?;
 
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller), 1)
@@ -71,7 +74,7 @@ benchmarks! {
 	}
 
 	serve {
-		let (stash, controller) = create_stash_controller_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
+		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
 
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller), 1)
@@ -83,7 +86,7 @@ benchmarks! {
 		// clean up any existing state.
 		clear_storages_and_edges::<T>();
 
-		let (edge_stash, edge_controller) = create_stash_controller_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
+		let (edge_stash, edge_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
 		DdcStaking::<T>::serve(RawOrigin::Signed(edge_controller.clone()).into(), 1)?;
 		assert!(Edges::<T>::contains_key(&edge_stash));
 		CurrentEra::<T>::put(1);
@@ -97,13 +100,23 @@ benchmarks! {
 	}
 
 	set_controller {
-		let (stash, _) = create_stash_controller::<T>(USER_SEED, 100)?;
+		let (stash, _, _) = create_stash_controller_node::<T>(USER_SEED, 100)?;
 		let new_controller = create_funded_user::<T>("new_controller", USER_SEED, 100);
 		let new_controller_lookup = T::Lookup::unlookup(new_controller.clone());
 		whitelist_account!(stash);
 	}: _(RawOrigin::Signed(stash), new_controller_lookup)
 	verify {
 		assert!(Ledger::<T>::contains_key(&new_controller));
+	}
+
+	set_node {
+		let (stash, _, _) = create_stash_controller_node::<T>(USER_SEED, 100)?;
+		let new_node = create_funded_user::<T>("new_node", USER_SEED, 100);
+		let new_node_lookup = T::Lookup::unlookup(new_node.clone());
+		whitelist_account!(stash);
+	}: _(RawOrigin::Signed(stash), new_node_lookup)
+	verify {
+		assert!(Nodes::<T>::contains_key(&new_node));
 	}
 
 	allow_cluster_manager {

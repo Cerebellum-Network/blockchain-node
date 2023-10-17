@@ -109,12 +109,12 @@ fn staking_should_work() {
 			let _ = Balances::make_free_balance_be(&i, 2000);
 		}
 
-		// Add new CDN participant, account 3 controlled by 4.
-		assert_ok!(DdcStaking::bond(RuntimeOrigin::signed(3), 4, 1500));
+		// Add new CDN participant, account 3 controlled by 4 with node 5.
+		assert_ok!(DdcStaking::bond(RuntimeOrigin::signed(3), 4, 5, 1500));
 		assert_ok!(DdcStaking::serve(RuntimeOrigin::signed(4), 1));
 
-		// Account 4 controls the stash from account 3, which is 1500 units and 3 is a CDN
-		// participant.
+		// Account 4 controls the stash from account 3, which is 1500 units, 3 is a CDN
+		// participant, 5 is a DDC node.
 		assert_eq!(DdcStaking::bonded(&3), Some(4));
 		assert_eq!(
 			DdcStaking::ledger(&4),
@@ -127,6 +127,7 @@ fn staking_should_work() {
 			})
 		);
 		assert_eq!(DdcStaking::edges(3), Some(1));
+		assert_eq!(DdcStaking::nodes(5), Some(3));
 
 		// Set `CurrentEra`.
 		Timestamp::set_timestamp(System::block_number() * BLOCK_TIME + INIT_TIMESTAMP);
