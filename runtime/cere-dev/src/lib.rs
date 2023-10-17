@@ -49,7 +49,9 @@ use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 pub use pallet_cere_ddc;
 pub use pallet_chainbridge;
 pub use pallet_ddc_accounts;
+pub use pallet_ddc_clusters;
 pub use pallet_ddc_metrics_offchain_worker;
+pub use pallet_ddc_nodes;
 pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
@@ -1361,6 +1363,15 @@ impl pallet_ddc_validator::Config for Runtime {
 	type ValidatorsMax = ValidatorsMax;
 }
 
+impl pallet_ddc_nodes::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+}
+
+impl pallet_ddc_clusters::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1415,6 +1426,8 @@ construct_runtime!(
 		DdcStaking: pallet_ddc_staking,
 		DdcValidator: pallet_ddc_validator,
 		DdcAccounts: pallet_ddc_accounts,
+		DdcNodes: pallet_ddc_nodes,
+		DdcClusters: pallet_ddc_clusters
 	}
 );
 
