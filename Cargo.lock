@@ -4856,6 +4856,7 @@ dependencies = [
  "log",
  "pallet-contracts",
  "pallet-ddc-nodes",
+ "pallet-ddc-staking",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
