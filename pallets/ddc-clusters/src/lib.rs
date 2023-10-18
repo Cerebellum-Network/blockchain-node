@@ -24,6 +24,11 @@ mod cluster;
 
 pub use crate::cluster::{Cluster, ClusterError, ClusterId, ClusterParams};
 
+/// ink! 4.x selector for the "is_authorized" message, equals to the first four bytes of the
+/// blake2("is_authorized"). See also: https://use.ink/basics/selectors#selector-calculation/,
+/// https://use.ink/macros-attributes/selector/.
+const INK_SELECTOR_IS_AUTHORIZED: [u8; 4] = [0x96, 0xb0, 0x45, 0x3e];
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -119,7 +124,7 @@ pub mod pallet {
 				Default::default(),
 				Default::default(),
 				None,
-				Vec::from([0x96, 0xb0, 0x45, 0x3e]), // blake2("is_authorized"), https://use.ink/basics/selectors#selector-calculation
+				Vec::from(INK_SELECTOR_IS_AUTHORIZED),
 				false,
 			)
 			.result?
