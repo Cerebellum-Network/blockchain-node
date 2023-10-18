@@ -71,6 +71,7 @@ pub mod pallet {
 		NodeIsNotAssigned,
 		OnlyClusterManager,
 		NotAuthorized,
+		NoStake,
 	}
 
 	#[pallet::storage]
@@ -139,7 +140,16 @@ pub mod pallet {
 			.is_some_and(|x| *x == 1);
 			ensure!(is_authorized, Error::<T>::NotAuthorized);
 
-			// todo: check that node provider has a bond for this 'cluster_id' and 'node_pub_key'
+			let node_provider_stash =
+				<pallet_ddc_staking::Pallet<T>>::nodes(&node_pub_key).ok_or(Error::<T>::NoStake)?;
+			let maybe_edge_in_cluster =
+				<pallet_ddc_staking::Pallet<T>>::edges(&node_provider_stash);
+			let maybe_storage_in_cluster =
+				<pallet_ddc_staking::Pallet<T>>::storages(&node_provider_stash);
+			let has_stake = maybe_edge_in_cluster
+				.or(maybe_storage_in_cluster)
+				.is_some_and(|staking_cluster| staking_cluster == cluster_id);
+			ensure!(has_stake, Error::<T>::NoStake);
 
 			node.set_cluster_id(Some(cluster_id.clone()));
 			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
