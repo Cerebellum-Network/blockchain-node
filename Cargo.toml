@@ -35,6 +35,7 @@ members = [
     "pallets/ddc-accounts",
     "pallets/ddc-nodes",
     "pallets/ddc-clusters",
+    "primitives",
 ]
 
 [profile.release]
