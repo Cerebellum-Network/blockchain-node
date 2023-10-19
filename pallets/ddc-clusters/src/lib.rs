@@ -13,18 +13,30 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
+#![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodePubKey, NodeRepository, NodeTrait};
+use sp_std::prelude::*;
 mod cluster;
 
 pub use crate::cluster::{Cluster, ClusterError, ClusterId, ClusterParams};
 
+/// ink! 4.x selector for the "is_authorized" message, equals to the first four bytes of the
+/// blake2("is_authorized"). See also: https://use.ink/basics/selectors#selector-calculation/,
+/// https://use.ink/macros-attributes/selector/.
+const INK_SELECTOR_IS_AUTHORIZED: [u8; 4] = [0x96, 0xb0, 0x45, 0x3e];
+
+/// The maximum amount of weight that the cluster extension contract call is allowed to consume.
+/// See also https://github.com/paritytech/substrate/blob/a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d/frame/contracts/rpc/src/lib.rs#L63.
+const EXTENSION_CALL_GAS_LIMIT: Weight = Weight::from_ref_time(5_000_000_000_000);
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use pallet_contracts::chain_extension::UncheckedFrom;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -32,7 +44,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_contracts::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>;
 	}
@@ -56,6 +68,7 @@ pub mod pallet {
 		NodeIsAlreadyAssigned,
 		NodeIsNotAssigned,
 		OnlyClusterManager,
+		NotAuthorized,
 	}
 
 	#[pallet::storage]
@@ -76,7 +89,10 @@ pub mod pallet {
 	>;
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	{
 		#[pallet::weight(10_000)]
 		pub fn create_cluster(
 			origin: OriginFor<T>,
@@ -106,7 +122,21 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAlreadyAssigned);
 
-			// todo: check that node is authorized by the 'NodeProviderAuthSC' contract
+			let is_authorized: bool = pallet_contracts::Pallet::<T>::bare_call(
+				caller_id,
+				cluster.props.node_provider_auth_contract,
+				Default::default(),
+				EXTENSION_CALL_GAS_LIMIT,
+				None,
+				Vec::from(INK_SELECTOR_IS_AUTHORIZED),
+				false,
+			)
+			.result?
+			.data
+			.first()
+			.is_some_and(|x| *x == 1);
+			ensure!(is_authorized, Error::<T>::NotAuthorized);
+
 			// todo: check that node provider has a bond for this 'cluster_id' and 'node_pub_key'
 
 			node.set_cluster_id(Some(cluster_id.clone()));
