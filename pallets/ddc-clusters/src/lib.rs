@@ -29,6 +29,10 @@ pub use crate::cluster::{Cluster, ClusterError, ClusterId, ClusterParams};
 /// https://use.ink/macros-attributes/selector/.
 const INK_SELECTOR_IS_AUTHORIZED: [u8; 4] = [0x96, 0xb0, 0x45, 0x3e];
 
+/// The maximum amount of weight that the cluster extension contract call is allowed to consume.
+/// See also https://github.com/paritytech/substrate/blob/a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d/frame/contracts/rpc/src/lib.rs#L63.
+const EXTENSION_CALL_GAS_LIMIT: Weight = Weight::from_ref_time(5_000_000_000_000);
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -122,7 +126,7 @@ pub mod pallet {
 				caller_id,
 				cluster.props.node_provider_auth_contract,
 				Default::default(),
-				Default::default(),
+				EXTENSION_CALL_GAS_LIMIT,
 				None,
 				Vec::from(INK_SELECTOR_IS_AUTHORIZED),
 				false,
