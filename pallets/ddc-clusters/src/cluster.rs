@@ -1,11 +1,10 @@
 use crate::pallet::Error;
 use codec::{Decode, Encode};
+use ddc_primitives::ClusterId;
 use frame_support::{pallet_prelude::*, parameter_types, BoundedVec};
 use scale_info::TypeInfo;
-use sp_core::hash::H160;
 use sp_std::vec::Vec;
 
-pub type ClusterId = H160;
 parameter_types! {
 	pub MaxClusterParamsLen: u16 = 2048;
 }

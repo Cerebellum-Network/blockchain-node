@@ -15,14 +15,15 @@
 #![recursion_limit = "256"]
 #![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
+use ddc_primitives::{ClusterId, NodePubKey};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
-use pallet_ddc_nodes::{NodePubKey, NodeRepository, NodeTrait};
+use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_std::prelude::*;
 mod cluster;
 
-pub use crate::cluster::{Cluster, ClusterError, ClusterId, ClusterParams};
+pub use crate::cluster::{Cluster, ClusterError, ClusterParams};
 
 /// ink! 4.x selector for the "is_authorized" message, equals to the first four bytes of the
 /// blake2("is_authorized"). See also: https://use.ink/basics/selectors#selector-calculation/,
