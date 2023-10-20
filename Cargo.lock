@@ -4955,6 +4955,7 @@ dependencies = [
  "alt_serde",
  "array-bytes 6.1.0",
  "base64 0.21.2",
+ "ddc-primitives",
  "frame-election-provider-support",
  "frame-support",
  "frame-system",

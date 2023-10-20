@@ -28,7 +28,7 @@ pub mod weights;
 use crate::weights::WeightInfo;
 
 use codec::{Decode, Encode, HasCompact};
-use ddc_primitives::{ClusterId, NodePubKey};
+pub use ddc_primitives::{ClusterId, NodePubKey};
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,

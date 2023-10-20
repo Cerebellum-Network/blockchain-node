@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::Pallet as DdcStaking;
+use ddc_primitives::CDNNodePubKey;
 use testing_utils::*;
 
 use frame_support::traits::{Currency, Get};
@@ -21,11 +22,10 @@ benchmarks! {
 		let controller = create_funded_user::<T>("controller", USER_SEED, 100);
 		let controller_lookup: <T::Lookup as StaticLookup>::Source
 			= T::Lookup::unlookup(controller.clone());
-		let node = create_funded_user::<T>("node", USER_SEED, 100);
-		let node_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(node.clone());
+		let node = NodePubKey::CDNPubKey(CDNNodePubKey::new([0; 32]));
 		let amount = T::Currency::minimum_balance() * 10u32.into();
 		whitelist_account!(stash);
-	}: _(RawOrigin::Signed(stash.clone()), controller_lookup, node_lookup, amount)
+	}: _(RawOrigin::Signed(stash.clone()), controller_lookup, node.clone(), amount)
 	verify {
 		assert!(Bonded::<T>::contains_key(stash));
 		assert!(Ledger::<T>::contains_key(controller));
@@ -68,7 +68,7 @@ benchmarks! {
 		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultStorageBondSize::get())?;
 
 		whitelist_account!(controller);
-	}: _(RawOrigin::Signed(controller), 1)
+	}: _(RawOrigin::Signed(controller), ClusterId::from([1; 20]))
 	verify {
 		assert!(Storages::<T>::contains_key(&stash));
 	}
@@ -77,7 +77,7 @@ benchmarks! {
 		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
 
 		whitelist_account!(controller);
-	}: _(RawOrigin::Signed(controller), 1)
+	}: _(RawOrigin::Signed(controller), ClusterId::from([1; 20]))
 	verify {
 		assert!(Edges::<T>::contains_key(&stash));
 	}
@@ -87,11 +87,11 @@ benchmarks! {
 		clear_storages_and_edges::<T>();
 
 		let (edge_stash, edge_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
-		DdcStaking::<T>::serve(RawOrigin::Signed(edge_controller.clone()).into(), 1)?;
+		DdcStaking::<T>::serve(RawOrigin::Signed(edge_controller.clone()).into(), ClusterId::from([1; 20]))?;
 		assert!(Edges::<T>::contains_key(&edge_stash));
 		CurrentEra::<T>::put(1);
 		DdcStaking::<T>::chill(RawOrigin::Signed(edge_controller.clone()).into())?;
-		CurrentEra::<T>::put(1 + Settings::<T>::get(1).edge_chill_delay);
+		CurrentEra::<T>::put(1 + Settings::<T>::get(ClusterId::from([1; 20])).edge_chill_delay);
 
 		whitelist_account!(edge_controller);
 	}: _(RawOrigin::Signed(edge_controller))
@@ -111,10 +111,9 @@ benchmarks! {
 
 	set_node {
 		let (stash, _, _) = create_stash_controller_node::<T>(USER_SEED, 100)?;
-		let new_node = create_funded_user::<T>("new_node", USER_SEED, 100);
-		let new_node_lookup = T::Lookup::unlookup(new_node.clone());
+		let new_node = NodePubKey::CDNPubKey(CDNNodePubKey::new([1; 32]));
 		whitelist_account!(stash);
-	}: _(RawOrigin::Signed(stash), new_node_lookup)
+	}: _(RawOrigin::Signed(stash), new_node.clone())
 	verify {
 		assert!(Nodes::<T>::contains_key(&new_node));
 	}
