@@ -1,17 +1,13 @@
-use crate::{
-	node::{
-		Node, NodeError, NodeParams, NodeProps, NodePropsRef, NodePubKey, NodePubKeyRef, NodeTrait,
-		NodeType,
-	},
-	ClusterId,
+use crate::node::{
+	Node, NodeError, NodeParams, NodeProps, NodePropsRef, NodePubKeyRef, NodeTrait, NodeType,
 };
 use codec::{Decode, Encode};
+use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey};
 use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
-use sp_runtime::{AccountId32, RuntimeDebug};
+use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
-pub type CDNNodePubKey = AccountId32;
 parameter_types! {
 	pub MaxCDNNodeParamsLen: u16 = 2048;
 }

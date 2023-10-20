@@ -14,9 +14,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
+use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey, StorageNodePubKey};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
-use sp_core::hash::H160;
 use sp_std::prelude::*;
 
 pub use pallet::*;
@@ -25,9 +25,9 @@ mod node;
 mod storage_node;
 
 pub use crate::{
-	cdn_node::{CDNNode, CDNNodePubKey},
-	node::{Node, NodeError, NodeParams, NodePubKey, NodeTrait},
-	storage_node::{StorageNode, StorageNodePubKey},
+	cdn_node::CDNNode,
+	node::{Node, NodeError, NodeParams, NodeTrait},
+	storage_node::StorageNode,
 };
 
 #[frame_support::pallet]
@@ -72,9 +72,6 @@ pub mod pallet {
 	#[pallet::getter(fn cdn_nodes)]
 	pub type CDNNodes<T: Config> =
 		StorageMap<_, Blake2_128Concat, CDNNodePubKey, CDNNode<T::AccountId>>;
-
-	// todo: add the type to the Config
-	pub type ClusterId = H160;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
