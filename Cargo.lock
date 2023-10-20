@@ -1613,6 +1613,7 @@ version = "0.1.0"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
+ "serde",
  "sp-core",
  "sp-runtime",
 ]
@@ -4860,6 +4861,7 @@ dependencies = [
 name = "pallet-ddc-clusters"
 version = "4.8.1"
 dependencies = [
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -4908,6 +4910,7 @@ dependencies = [
 name = "pallet-ddc-nodes"
 version = "4.8.1"
 dependencies = [
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -4927,6 +4930,7 @@ dependencies = [
 name = "pallet-ddc-staking"
 version = "4.8.1"
 dependencies = [
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
