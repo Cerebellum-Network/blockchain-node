@@ -825,7 +825,7 @@ pub mod pallet {
 					data_url,
 					"ddc:dac:aggregation:nodes:",
 					current_ddc_era - 1,
-					utils::account_to_string::<T>(node)
+					array_bytes::bytes2hex("", node.encode()),
 				);
 				log::debug!("edge url: {:?}", edge_url);
 
