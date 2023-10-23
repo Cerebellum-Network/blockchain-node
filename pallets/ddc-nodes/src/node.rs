@@ -1,3 +1,5 @@
+#![allow(clippy::needless_lifetimes)] // ToDo
+
 use crate::{
 	cdn_node::{CDNNode, CDNNodeParams, CDNNodeProps},
 	pallet::Error,
