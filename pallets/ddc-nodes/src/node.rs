@@ -1,10 +1,11 @@
 use crate::{
-	cdn_node::{CDNNode, CDNNodeParams, CDNNodeProps, CDNNodePubKey},
+	cdn_node::{CDNNode, CDNNodeParams, CDNNodeProps},
 	pallet::Error,
-	storage_node::{StorageNode, StorageNodeParams, StorageNodeProps, StorageNodePubKey},
+	storage_node::{StorageNode, StorageNodeParams, StorageNodeProps},
 	ClusterId,
 };
 use codec::{Decode, Encode};
+use ddc_primitives::{CDNNodePubKey, NodePubKey, StorageNodePubKey};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
@@ -26,12 +27,6 @@ pub enum NodeParams {
 pub enum NodeProps {
 	StorageProps(StorageNodeProps),
 	CDNProps(CDNNodeProps),
-}
-
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum NodePubKey {
-	StoragePubKey(StorageNodePubKey),
-	CDNPubKey(CDNNodePubKey),
 }
 
 #[derive(Clone, RuntimeDebug, PartialEq)]

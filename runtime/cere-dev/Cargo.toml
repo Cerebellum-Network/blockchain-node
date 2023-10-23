@@ -188,6 +188,7 @@ std = [
 	"pallet-ddc-validator/std",
 	"pallet-ddc-accounts/std",
 	"pallet-ddc-nodes/std",
+	"pallet-ddc-clusters/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",

@@ -15,14 +15,15 @@
 #![recursion_limit = "256"]
 #![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
+use ddc_primitives::{ClusterId, NodePubKey};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
-use pallet_ddc_nodes::{NodePubKey, NodeRepository, NodeTrait};
+use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_std::prelude::*;
 mod cluster;
 
-pub use crate::cluster::{Cluster, ClusterError, ClusterId, ClusterParams};
+pub use crate::cluster::{Cluster, ClusterError, ClusterParams};
 
 /// ink! 4.x selector for the "is_authorized" message, equals to the first four bytes of the
 /// blake2("is_authorized"). See also: https://use.ink/basics/selectors#selector-calculation/,
@@ -44,7 +45,9 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_contracts::Config {
+	pub trait Config:
+		frame_system::Config + pallet_contracts::Config + pallet_ddc_staking::Config
+	{
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>;
 	}
@@ -69,6 +72,7 @@ pub mod pallet {
 		NodeIsNotAssigned,
 		OnlyClusterManager,
 		NotAuthorized,
+		NoStake,
 	}
 
 	#[pallet::storage]
@@ -137,7 +141,16 @@ pub mod pallet {
 			.is_some_and(|x| *x == 1);
 			ensure!(is_authorized, Error::<T>::NotAuthorized);
 
-			// todo: check that node provider has a bond for this 'cluster_id' and 'node_pub_key'
+			let node_provider_stash =
+				<pallet_ddc_staking::Pallet<T>>::nodes(&node_pub_key).ok_or(Error::<T>::NoStake)?;
+			let maybe_edge_in_cluster =
+				<pallet_ddc_staking::Pallet<T>>::edges(&node_provider_stash);
+			let maybe_storage_in_cluster =
+				<pallet_ddc_staking::Pallet<T>>::storages(&node_provider_stash);
+			let has_stake = maybe_edge_in_cluster
+				.or(maybe_storage_in_cluster)
+				.is_some_and(|staking_cluster| staking_cluster == cluster_id);
+			ensure!(has_stake, Error::<T>::NoStake);
 
 			node.set_cluster_id(Some(cluster_id.clone()));
 			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
