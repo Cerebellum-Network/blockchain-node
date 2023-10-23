@@ -1,3 +1,5 @@
+#![allow(clippy::needless_lifetimes)] // ToDo
+
 use crate::node::{
 	Node, NodeError, NodeParams, NodeProps, NodePropsRef, NodePubKeyRef, NodeTrait, NodeType,
 };
