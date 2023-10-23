@@ -28,6 +28,7 @@ pub mod weights;
 use crate::weights::WeightInfo;
 
 use codec::{Decode, Encode, HasCompact};
+pub use ddc_primitives::{ClusterId, NodePubKey};
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
@@ -65,8 +66,6 @@ pub type RewardPoint = u64;
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
-pub type ClusterId = u32;
 
 parameter_types! {
 	/// A limit to the number of pending unlocks an account may have in parallel.
@@ -337,12 +336,12 @@ pub mod pallet {
 	/// Map from DDC node ID to the node operator stash account.
 	#[pallet::storage]
 	#[pallet::getter(fn nodes)]
-	pub type Nodes<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
+	pub type Nodes<T: Config> = StorageMap<_, Twox64Concat, NodePubKey, T::AccountId>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub edges: Vec<(T::AccountId, T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
-		pub storages: Vec<(T::AccountId, T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
+		pub edges: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
+		pub storages: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
 		pub settings: Vec<(ClusterId, BalanceOf<T>, EraIndex, BalanceOf<T>, EraIndex)>,
 	}
 
@@ -389,7 +388,7 @@ pub mod pallet {
 				assert_ok!(Pallet::<T>::bond(
 					T::RuntimeOrigin::from(Some(stash.clone()).into()),
 					T::Lookup::unlookup(controller.clone()),
-					T::Lookup::unlookup(node.clone()),
+					node.clone(),
 					balance,
 				));
 				assert_ok!(Pallet::<T>::serve(
@@ -407,7 +406,7 @@ pub mod pallet {
 				assert_ok!(Pallet::<T>::bond(
 					T::RuntimeOrigin::from(Some(stash.clone()).into()),
 					T::Lookup::unlookup(controller.clone()),
-					T::Lookup::unlookup(node.clone()),
+					node.clone(),
 					balance,
 				));
 				assert_ok!(Pallet::<T>::store(
@@ -507,7 +506,7 @@ pub mod pallet {
 		pub fn bond(
 			origin: OriginFor<T>,
 			controller: <T::Lookup as StaticLookup>::Source,
-			node: <T::Lookup as StaticLookup>::Source,
+			node: NodePubKey,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let stash = ensure_signed(origin)?;
@@ -526,8 +525,6 @@ pub mod pallet {
 			if value < T::Currency::minimum_balance() {
 				Err(Error::<T>::InsufficientBond)?
 			}
-
-			let node = T::Lookup::lookup(node)?;
 
 			// Reject a bond with a known DDC node.
 			if Nodes::<T>::contains_key(&node) {
@@ -928,13 +925,8 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
 		#[pallet::weight(T::WeightInfo::set_node())]
-		pub fn set_node(
-			origin: OriginFor<T>,
-			new_node: <T::Lookup as StaticLookup>::Source,
-		) -> DispatchResult {
+		pub fn set_node(origin: OriginFor<T>, new_node: NodePubKey) -> DispatchResult {
 			let stash = ensure_signed(origin)?;
-
-			let new_node = T::Lookup::lookup(new_node)?;
 
 			if let Some(existing_node_stash) = Nodes::<T>::get(&new_node) {
 				if existing_node_stash != stash {

@@ -485,7 +485,6 @@ pub mod pallet {
 			stakers_points: Vec<(T::AccountId, u64)>,
 		) -> DispatchResult {
 			let ddc_valitor_key = ensure_signed(origin)?;
-			let mut rewards_counter = 0;
 
 			ensure!(
 				DDCValidatorToStashKeys::<T>::contains_key(&ddc_valitor_key),
@@ -812,7 +811,7 @@ pub mod pallet {
 			for assigned_edge in assigned_edges.iter() {
 				log::debug!("assigned edge: {:?}", assigned_edge);
 
-				let Some((node, _)) = <ddc_staking::pallet::Nodes<T>>::iter().find(|(n, s)| assigned_edge == s) else {
+				let Some((node, _)) = <ddc_staking::pallet::Nodes<T>>::iter().find(|(_, s)| assigned_edge == s) else {
 					log::debug!("no known node for: {:?}", assigned_edge);
 					continue;
 				};
@@ -825,7 +824,7 @@ pub mod pallet {
 					data_url,
 					"ddc:dac:aggregation:nodes:",
 					current_ddc_era - 1,
-					utils::account_to_string::<T>(node)
+					array_bytes::bytes2hex("", node.encode()),
 				);
 				log::debug!("edge url: {:?}", edge_url);
 

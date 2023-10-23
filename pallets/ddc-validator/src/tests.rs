@@ -6,6 +6,7 @@ use crate::{
 	Error as ValidatorError,
 };
 use codec::Decode;
+use ddc_primitives::{CDNNodePubKey, NodePubKey};
 use frame_support::{assert_noop, assert_ok};
 use pallet_ddc_accounts::{BucketsDetails, Error as AccountsError};
 use pallet_ddc_staking::{DDC_ERA_DURATION_MS, DDC_ERA_START_MS};
@@ -41,8 +42,8 @@ fn it_sets_validation_decision_with_one_validator_in_quorum() {
 	let edge_stash_to_validate = AccountId::from([0x1; 32]);
 	let edge_stash_to_validate_str =
 		utils::account_to_string::<Test>(edge_stash_to_validate.clone());
-	let edge_node_to_validate = AccountId::from([0x21; 32]);
-	let edge_node_to_validate_str = utils::account_to_string::<Test>(edge_node_to_validate.clone());
+	let edge_node_to_validate = NodePubKey::CDNPubKey(CDNNodePubKey::new([0x21; 32]));
+	let edge_node_to_validate_str = array_bytes::bytes2hex("", edge_node_to_validate.encode());
 	let validator_1_stash = AccountId::from([
 		0xd2, 0xbf, 0x4b, 0x84, 0x4d, 0xfe, 0xfd, 0x67, 0x72, 0xa8, 0x84, 0x3e, 0x66, 0x9f, 0x94,
 		0x34, 0x08, 0x96, 0x6a, 0x97, 0x7e, 0x3a, 0xe2, 0xaf, 0x1d, 0xd7, 0x8e, 0x0f, 0x55, 0xf4,

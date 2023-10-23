@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [D] Third kind of account in DDC Staking for DDC nodes (along with stash and controller).
 - [D] DDC cluster managers access control list in `pallet-ddc-staking` managed by governance.
 - [Zombienet](https://github.com/paritytech/zombienet) configurations to test block building and spawn a network for DDC validation debugging.
+- New `ddc-primitives` crate with DDC common types definition
 
 ### Changed
 

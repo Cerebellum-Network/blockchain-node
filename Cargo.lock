@@ -1608,6 +1608,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ddc-primitives"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-runtime",
+]
+
+[[package]]
 name = "der"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4850,12 +4861,14 @@ dependencies = [
 name = "pallet-ddc-clusters"
 version = "4.8.1"
 dependencies = [
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "log",
  "pallet-contracts",
  "pallet-ddc-nodes",
+ "pallet-ddc-staking",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
@@ -4897,6 +4910,7 @@ dependencies = [
 name = "pallet-ddc-nodes"
 version = "4.8.1"
 dependencies = [
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -4916,6 +4930,7 @@ dependencies = [
 name = "pallet-ddc-staking"
 version = "4.8.1"
 dependencies = [
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -4940,6 +4955,7 @@ dependencies = [
  "alt_serde",
  "array-bytes 6.1.0",
  "base64 0.21.2",
+ "ddc-primitives",
  "frame-election-provider-support",
  "frame-support",
  "frame-system",

@@ -1,4 +1,5 @@
 use crate::{self as pallet_ddc_validator, *};
+use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey};
 use frame_election_provider_support::{onchain, SequentialPhragmen};
 use frame_support::{
 	parameter_types,
@@ -317,8 +318,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		(AccountId::from([0x1; 32]), 1000),
 		// edge controller
 		(AccountId::from([0x11; 32]), 1000),
-		// edge node
-		(AccountId::from([0x21; 32]), 1000),
 		// validator1 stash; has to be equal to the OCW key in the current implementation
 		(
 			AccountId::from([
@@ -371,9 +370,9 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let edges = vec![(
 		AccountId::from([0x1; 32]),
 		AccountId::from([0x11; 32]),
-		AccountId::from([0x21; 32]),
+		NodePubKey::CDNPubKey(CDNNodePubKey::new([0x21; 32])),
 		100,
-		1,
+		ClusterId::from([1; 20]),
 	)];
 	let storages = vec![];
 	let _ = pallet_ddc_staking::GenesisConfig::<Test> { edges, storages, ..Default::default() }

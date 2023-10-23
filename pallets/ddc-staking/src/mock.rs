@@ -3,6 +3,7 @@
 #![allow(dead_code)]
 
 use crate::{self as pallet_ddc_staking, *};
+use ddc_primitives::{CDNNodePubKey, StorageNodePubKey};
 use frame_support::{
 	construct_runtime,
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
@@ -196,16 +197,40 @@ impl ExtBuilder {
 		if self.has_edges {
 			edges = vec![
 				// (stash, controller, node, stake, cluster)
-				(11, 10, 12, 100, 1),
-				(21, 20, 22, 100, 1),
+				(
+					11,
+					10,
+					NodePubKey::CDNPubKey(CDNNodePubKey::new([12; 32])),
+					100,
+					ClusterId::from([1; 20]),
+				),
+				(
+					21,
+					20,
+					NodePubKey::CDNPubKey(CDNNodePubKey::new([22; 32])),
+					100,
+					ClusterId::from([1; 20]),
+				),
 			];
 		}
 		let mut storages = vec![];
 		if self.has_storages {
 			storages = vec![
 				// (stash, controller, node, stake, cluster)
-				(31, 30, 32, 100, 1),
-				(41, 40, 42, 100, 1),
+				(
+					31,
+					30,
+					NodePubKey::StoragePubKey(StorageNodePubKey::new([32; 32])),
+					100,
+					ClusterId::from([1; 20]),
+				),
+				(
+					41,
+					40,
+					NodePubKey::StoragePubKey(StorageNodePubKey::new([42; 32])),
+					100,
+					ClusterId::from([1; 20]),
+				),
 			];
 		}
 
