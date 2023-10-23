@@ -1,7 +1,7 @@
 // Offchain worker for DDC metrics.
 //
 // Inspired from https://github.com/paritytech/substrate/tree/master/frame/example-offchain-worker
-
+#![allow(clippy::all)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
