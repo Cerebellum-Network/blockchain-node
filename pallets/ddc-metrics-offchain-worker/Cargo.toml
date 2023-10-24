@@ -1,6 +1,6 @@
 [package]
 name = "pallet-ddc-metrics-offchain-worker"
-version = "4.7.1"
+version = "4.7.2"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 license = "Unlicense"

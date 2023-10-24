@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ...
 
+## [4.7.2]
+
+### Changed
+
+- Reduce by 2 orders of magnitude the constants changed in v4.7.1
+
 ## [4.7.1]
 
 ### Changed
