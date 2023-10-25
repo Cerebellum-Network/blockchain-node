@@ -47,7 +47,7 @@ pub use frame_system::{
 };
 pub use lite_json::json::JsonValue;
 pub use pallet::*;
-pub use pallet_ddc_accounts::{self as ddc_accounts, BucketsDetails};
+pub use pallet_ddc_customer_accounts::{self as ddc_accounts, BucketsDetails};
 pub use pallet_ddc_staking::{self as ddc_staking};
 pub use pallet_session as session;
 pub use pallet_staking::{self as staking};
