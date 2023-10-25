@@ -8,7 +8,7 @@ use crate::{
 use codec::Decode;
 use ddc_primitives::{CDNNodePubKey, NodePubKey};
 use frame_support::{assert_noop, assert_ok};
-use pallet_ddc_accounts::{BucketsDetails, Error as AccountsError};
+use pallet_ddc_customer_accounts::{BucketsDetails, Error as AccountsError};
 use pallet_ddc_staking::{DDC_ERA_DURATION_MS, DDC_ERA_START_MS};
 use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
 use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
