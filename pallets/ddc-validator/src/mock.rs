@@ -41,7 +41,7 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp,
 		Session: pallet_session,
 		Staking: pallet_staking,
-		DdcAccounts: pallet_ddc_accounts,
+		DdcAccounts: pallet_ddc_customer_accounts,
 		DdcStaking: pallet_ddc_staking,
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip,
 		DdcValidator: pallet_ddc_validator,
@@ -242,7 +242,7 @@ parameter_types! {
 	pub const DdcAccountsPalletId: PalletId = PalletId(*b"accounts");
 }
 
-impl pallet_ddc_accounts::Config for Test {
+impl pallet_ddc_customer_accounts::Config for Test {
 	type BondingDuration = BondingDuration;
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;

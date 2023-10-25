@@ -48,8 +48,8 @@ pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 pub use pallet_cere_ddc;
 pub use pallet_chainbridge;
-pub use pallet_ddc_accounts;
 pub use pallet_ddc_clusters;
+pub use pallet_ddc_customer_accounts;
 pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_nodes;
 pub use pallet_ddc_staking;
@@ -1340,7 +1340,7 @@ parameter_types! {
 	pub const DdcAccountsPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
 }
 
-impl pallet_ddc_accounts::Config for Runtime {
+impl pallet_ddc_customer_accounts::Config for Runtime {
 	type BondingDuration = BondingDuration;
 	type Currency = Balances;
 	type PalletId = DdcAccountsPalletId;
@@ -1425,7 +1425,7 @@ construct_runtime!(
 		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
 		DdcStaking: pallet_ddc_staking,
 		DdcValidator: pallet_ddc_validator,
-		DdcAccounts: pallet_ddc_accounts,
+		DdcAccounts: pallet_ddc_customer_accounts,
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters
 	}
