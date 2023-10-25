@@ -43,6 +43,7 @@ pub struct UnlockChunk<Balance: HasCompact> {
 pub struct Bucket<AccountId> {
 	bucket_id: u128,
 	owner_id: AccountId,
+	cluster_id: Option<u128>,
 	public_availability: bool,
 	resources_reserved: u128,
 }
@@ -198,12 +199,16 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Not a owner account.
 		NotOwner,
+		/// Not an owner of bucket
+		NotBucketOwner,
 		/// Owner is already bonded.
 		AlreadyPaired,
 		/// Cannot deposit dust
 		InsufficientDeposit,
 		/// Can not schedule more unlock chunks.
 		NoMoreChunks,
+		/// Bucket with speicifed id doesn't exist.
+		NoBucketWithId,
 		/// Internal state has become somehow corrupted and the operation cannot continue.
 		BadState,
 		/// Current era not set during runtime
@@ -250,12 +255,33 @@ pub mod pallet {
 			let bucket = Bucket {
 				bucket_id: cur_bucket_id + 1,
 				owner_id: bucket_owner,
+				cluster_id: None,
 				public_availability,
 				resources_reserved,
 			};
 
 			<BucketsCount<T>>::set(cur_bucket_id + 1);
 			<Buckets<T>>::insert(cur_bucket_id + 1, bucket);
+			Ok(())
+		}
+
+		/// Allocates specified bucket into specified cluster
+		///
+		/// Only bucket owner can call this method
+		#[pallet::weight(10_000)]
+		pub fn allocate_bucket_to_cluster(
+			origin: OriginFor<T>,
+			bucket_id: u128,
+			cluster_id: u128,
+		) -> DispatchResult {
+			let bucket_owner = ensure_signed(origin)?;
+
+			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+
+			ensure!(bucket.owner_id == bucket_owner, Error::<T>::NotBucketOwner);
+
+			bucket.cluster_id = Some(cluster_id);
+
 			Ok(())
 		}
 
