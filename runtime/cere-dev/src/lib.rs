@@ -1338,10 +1338,11 @@ impl pallet_ddc_staking::Config for Runtime {
 
 parameter_types! {
 	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
+	pub const LockingDuration: sp_staking::EraIndex = 30 * 24; // 1 hour * 24 = 1 day; (1 era is 2 mins)
 }
 
 impl pallet_ddc_customers::Config for Runtime {
-	type BondingDuration = BondingDuration;
+	type LockingDuration = LockingDuration;
 	type Currency = Balances;
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
