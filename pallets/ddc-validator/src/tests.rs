@@ -8,7 +8,7 @@ use crate::{
 use codec::Decode;
 use ddc_primitives::{CDNNodePubKey, NodePubKey};
 use frame_support::{assert_noop, assert_ok};
-use pallet_ddc_customer_accounts::{BucketsDetails, Error as AccountsError};
+use pallet_ddc_customers::{BucketsDetails, Error as AccountsError};
 use pallet_ddc_staking::{DDC_ERA_DURATION_MS, DDC_ERA_START_MS};
 use sp_core::offchain::{testing, OffchainDbExt, OffchainWorkerExt, TransactionPoolExt};
 use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
@@ -539,13 +539,12 @@ fn charge_payments_content_owners_works_as_expected() {
 				RuntimeOrigin::signed(validator_1_stash.clone()),
 				vec![bucket_info.clone()]
 			),
-			AccountsError::<Test>::NotController
+			AccountsError::<Test>::NotOwner
 		);
 
 		// Deposit funds for account
 		assert_ok!(ddc_customers::Pallet::<Test>::deposit(
 			RuntimeOrigin::signed(validator_1_stash.clone()),
-			validator_1_stash.clone(),
 			1_000,
 		));
 

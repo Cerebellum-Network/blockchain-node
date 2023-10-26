@@ -41,10 +41,12 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp,
 		Session: pallet_session,
 		Staking: pallet_staking,
-		DdcAccounts: pallet_ddc_customer_accounts,
+		DdcAccounts: pallet_ddc_customers,
 		DdcStaking: pallet_ddc_staking,
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip,
 		DdcValidator: pallet_ddc_validator,
+		DdcClusters: pallet_ddc_clusters,
+		DdcNodes: pallet_ddc_nodes,
 	}
 );
 
@@ -240,10 +242,11 @@ impl pallet_staking::Config for Test {
 
 parameter_types! {
 	pub const DdcAccountsPalletId: PalletId = PalletId(*b"accounts");
+	pub const LockingDuration: sp_staking::EraIndex = 30 * 24;
 }
 
-impl pallet_ddc_customer_accounts::Config for Test {
-	type BondingDuration = BondingDuration;
+impl pallet_ddc_customers::Config for Test {
+	type LockingDuration = LockingDuration;
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = DdcAccountsPalletId;
@@ -267,6 +270,15 @@ impl pallet_ddc_staking::Config for Test {
 	type StakersPayoutSource = DdcAccountsPalletId;
 	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Test>;
+}
+
+impl pallet_ddc_clusters::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type NodeRepository = pallet_ddc_nodes::Pallet<Test>;
+}
+
+impl pallet_ddc_nodes::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
 }
 
 parameter_types! {
