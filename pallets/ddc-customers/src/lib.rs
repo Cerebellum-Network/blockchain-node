@@ -154,9 +154,9 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		/// Number of eras that staked funds must remain bonded for.
+		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
-		type BondingDuration: Get<EraIndex>;
+		type LockingDuration: Get<EraIndex>;
 	}
 
 	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
@@ -183,15 +183,15 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// An account has bonded this amount. \[owner, amount\]
+		/// An account has deposited this amount. \[owner, amount\]
 		///
-		/// NOTE: This event is only emitted when funds are bonded via a dispatchable. Notably,
+		/// NOTE: This event is only emitted when funds are deposited via a dispatchable. Notably,
 		/// it will not be emitted for staking rewards when they are added to stake.
 		Deposited(T::AccountId, BalanceOf<T>),
-		/// An account has unbonded this amount. \[owner, amount\]
-		Unbonded(T::AccountId, BalanceOf<T>),
-		/// An account has called `withdraw_unbonded` and removed unbonding chunks worth `Balance`
-		/// from the unlocking queue. \[owner, amount\]
+		/// An account has initiated unlock for amount. \[owner, amount\]
+		InitiatDepositUnlock(T::AccountId, BalanceOf<T>),
+		/// An account has called `withdraw_unlocked_deposit` and removed unlocking chunks worth
+		/// `Balance` from the unlocking queue. \[owner, amount\]
 		Withdrawn(T::AccountId, BalanceOf<T>),
 		/// Total amount charged from all accounts to pay CDN nodes
 		Charged(BalanceOf<T>),
@@ -203,7 +203,7 @@ pub mod pallet {
 		NotOwner,
 		/// Not an owner of bucket
 		NotBucketOwner,
-		/// Owner is already bonded.
+		/// Owner is already paired with structure representing account.
 		AlreadyPaired,
 		/// Cannot deposit dust
 		InsufficientDeposit,
@@ -364,24 +364,24 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Schedule a portion of the owner to be unlocked ready for transfer out after the bond
-		/// period ends. If this leaves an amount actively bonded less than
+		/// Schedule a portion of the owner deposited funds to be unlocked ready for transfer out
+		/// after the lock period ends. If this leaves an amount actively locked less than
 		/// T::Currency::minimum_balance(), then it is increased to the full amount.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the owner.
 		///
-		/// Once the unlock period is done, you can call `withdraw_unbonded` to actually move
-		/// the funds out of management ready for transfer.
+		/// Once the unlock period is done, you can call `withdraw_unlocked_deposit` to actually
+		/// move the funds out of management ready for transfer.
 		///
 		/// No more than a limited number of unlocking chunks (see `MaxUnlockingChunks`)
-		/// can co-exists at the same time. In that case, [`Call::withdraw_unbonded`] need
+		/// can co-exists at the same time. In that case, [`Call::withdraw_unlocked_deposit`] need
 		/// to be called first to remove some of the chunks (if possible).
 		///
-		/// Emits `Unbonded`.
+		/// Emits `InitiatDepositUnlock`.
 		///
-		/// See also [`Call::withdraw_unbonded`].
+		/// See also [`Call::withdraw_unlocked_deposit`].
 		#[pallet::weight(10_000)]
-		pub fn unbond(
+		pub fn unlock_deposit(
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
@@ -405,9 +405,9 @@ pub mod pallet {
 
 				let current_era = ddc_staking::pallet::Pallet::<T>::current_era()
 					.ok_or(Error::<T>::DDCEraNotSet)?;
-				// Note: bonding for extra era to allow for accounting
-				let era = current_era + <T as pallet::Config>::BondingDuration::get();
-				log::debug!("Era for the unbond: {:?}", era);
+				// Note: locking for extra era to allow for accounting
+				let era = current_era + <T as pallet::Config>::LockingDuration::get();
+				log::debug!("Era for the unlock: {:?}", era);
 
 				if let Some(chunk) = ledger.unlocking.last_mut().filter(|chunk| chunk.era == era) {
 					// To keep the chunk count down, we only keep one chunk per era. Since
@@ -423,7 +423,7 @@ pub mod pallet {
 
 				Self::update_ledger(&owner, &ledger);
 
-				Self::deposit_event(Event::<T>::Unbonded(ledger.owner, value));
+				Self::deposit_event(Event::<T>::InitiatDepositUnlock(ledger.owner, value));
 			}
 			Ok(())
 		}
@@ -437,9 +437,9 @@ pub mod pallet {
 		///
 		/// Emits `Withdrawn`.
 		///
-		/// See also [`Call::unbond`].
+		/// See also [`Call::unlock_deposit`].
 		#[pallet::weight(10_000)]
-		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResult {
+		pub fn withdraw_unlocked_deposit(origin: OriginFor<T>) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
 			let (owner, old_total) = (ledger.owner.clone(), ledger.total);
@@ -452,13 +452,14 @@ pub mod pallet {
 				ledger.active < <T as pallet::Config>::Currency::minimum_balance()
 			{
 				log::debug!("Killing owner");
-				// This account must have called `unbond()` with some value that caused the active
-				// portion to fall below existential deposit + will have no more unlocking chunks
-				// left. We can now safely remove all accounts-related information.
+				// This account must have called `unlock_deposit()` with some value that caused the
+				// active portion to fall below existential deposit + will have no more unlocking
+				// chunks left. We can now safely remove all accounts-related information.
 				Self::kill_owner(&owner)?;
 			} else {
 				log::debug!("Updating ledger");
-				// This was the consequence of a partial unbond. just update the ledger and move on.
+				// This was the consequence of a partial deposit unlock. just update the ledger and
+				// move on.
 				Self::update_ledger(&owner, &ledger);
 			};
 
@@ -524,7 +525,7 @@ pub mod pallet {
 		/// Assumes storage is upgraded before calling.
 		///
 		/// This is called:
-		/// - after a `withdraw_unbonded()` call that frees all of a owner's bonded balance.
+		/// - after a `withdraw_unlocked_deposit()` call that frees all of a owner's locked balance.
 		fn kill_owner(owner: &T::AccountId) -> DispatchResult {
 			<Ledger<T>>::remove(&owner);
 
