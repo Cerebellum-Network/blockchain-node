@@ -3,11 +3,13 @@
 
 use codec::{Decode, Encode, HasCompact};
 
+use ddc_primitives::ClusterId;
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
 	BoundedVec, PalletId,
 };
+pub use pallet_ddc_clusters::{self as ddc_clusters};
 pub use pallet_ddc_staking::{self as ddc_staking};
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -43,7 +45,7 @@ pub struct UnlockChunk<Balance: HasCompact> {
 pub struct Bucket<AccountId> {
 	bucket_id: u128,
 	owner_id: AccountId,
-	cluster_id: Option<u128>,
+	cluster_id: Option<ClusterId>,
 	public_availability: bool,
 	resources_reserved: u128,
 }
@@ -146,7 +148,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + ddc_staking::Config {
+	pub trait Config: frame_system::Config + ddc_staking::Config + ddc_clusters::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -215,6 +217,8 @@ pub mod pallet {
 		DDCEraNotSet,
 		/// Bucket with specified id doesn't exist
 		BucketDoesNotExist,
+		/// DDC Cluster with provided id doesn't exist
+		ClusterDoesNotExist,
 	}
 
 	#[pallet::genesis_config]
@@ -272,7 +276,7 @@ pub mod pallet {
 		pub fn allocate_bucket_to_cluster(
 			origin: OriginFor<T>,
 			bucket_id: u128,
-			cluster_id: u128,
+			cluster_id: ClusterId,
 		) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
 
@@ -280,6 +284,10 @@ pub mod pallet {
 
 			ensure!(bucket.owner_id == bucket_owner, Error::<T>::NotBucketOwner);
 
+			ensure!(
+				ddc_clusters::pallet::Clusters::<T>::contains_key(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
 			bucket.cluster_id = Some(cluster_id);
 
 			Ok(())
