@@ -131,6 +131,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAlreadyAssigned);
 
+			// Cluster extension smart contract allows joining.
 			let is_authorized: bool = pallet_contracts::Pallet::<T>::bare_call(
 				caller_id,
 				cluster.props.node_provider_auth_contract,
@@ -146,6 +147,7 @@ pub mod pallet {
 			.is_some_and(|x| *x == 1);
 			ensure!(is_authorized, Error::<T>::NotAuthorized);
 
+			// Sufficient funds are locked at the DDC Staking module.
 			let node_provider_stash =
 				<pallet_ddc_staking::Pallet<T>>::nodes(&node_pub_key).ok_or(Error::<T>::NoStake)?;
 			let maybe_edge_in_cluster =
@@ -156,6 +158,16 @@ pub mod pallet {
 				.or(maybe_storage_in_cluster)
 				.is_some_and(|staking_cluster| staking_cluster == cluster_id);
 			ensure!(has_stake, Error::<T>::NoStake);
+
+			// Candidate is not planning to pause operations any time soon.
+			let node_provider_controller =
+				<pallet_ddc_staking::Pallet<T>>::bonded(&node_provider_stash)
+					.ok_or(<pallet_ddc_staking::Error<T>>::BadState)?;
+			let chilling = <pallet_ddc_staking::Pallet<T>>::ledger(&node_provider_controller)
+				.ok_or(<pallet_ddc_staking::Error<T>>::BadState)?
+				.chilling
+				.is_some();
+			ensure!(!chilling, Error::<T>::ChillingProhibited);
 
 			node.set_cluster_id(Some(cluster_id.clone()));
 			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
