@@ -16,6 +16,8 @@ log = { version = "0.4.17", default-features = false }
 pallet-contracts = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 pallet-ddc-customers = { version = "0.1.0", default-features = false, path = "../ddc-customers" }
 pallet-ddc-staking = { version = "4.7.0", default-features = false, path = "../ddc-staking" }
+pallet-ddc-clusters = { version = "4.7.0", default-features = false, path = "../ddc-clusters" }
+pallet-ddc-nodes = { version = "4.7.0", default-features = false, path = "../ddc-nodes" }
 pallet-session = { version = "4.0.0-dev", features = [ "historical" ], git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", default-features = false }
 pallet-staking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
@@ -46,6 +48,8 @@ std = [
     "pallet-contracts/std",
     "pallet-ddc-customers/std",
     "pallet-ddc-staking/std",
+    "pallet-ddc-clusters/std",
+    "pallet-ddc-nodes/std",
     "pallet-session/std",
     "pallet-staking/std",
     "scale-info/std",
