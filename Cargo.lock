@@ -830,7 +830,7 @@ dependencies = [
  "pallet-contracts-primitives",
  "pallet-contracts-rpc-runtime-api",
  "pallet-ddc-clusters",
- "pallet-ddc-customer-accounts",
+ "pallet-ddc-customers",
  "pallet-ddc-metrics-offchain-worker",
  "pallet-ddc-nodes",
  "pallet-ddc-staking",
@@ -4910,7 +4910,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-ddc-customer-accounts"
+name = "pallet-ddc-customers"
 version = "0.1.0"
 dependencies = [
  "ddc-primitives",
@@ -5011,7 +5011,7 @@ dependencies = [
  "log",
  "pallet-balances",
  "pallet-contracts",
- "pallet-ddc-customer-accounts",
+ "pallet-ddc-customers",
  "pallet-ddc-staking",
  "pallet-randomness-collective-flip",
  "pallet-session",
