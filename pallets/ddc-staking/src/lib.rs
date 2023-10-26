@@ -1030,7 +1030,7 @@ pub mod pallet {
 		}
 
 		/// Note a desire of a stash account to chill soon.
-		fn chill_stash_soon(
+		pub fn chill_stash_soon(
 			stash: &T::AccountId,
 			controller: &T::AccountId,
 			cluster: ClusterId,
