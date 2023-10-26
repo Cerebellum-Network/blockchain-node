@@ -526,7 +526,7 @@ fn charge_payments_content_owners_works_as_expected() {
 
 		// Create buckets
 		for range in 1..6 {
-			assert_ok!(ddc_accounts::Pallet::<Test>::create_bucket(
+			assert_ok!(ddc_customers::Pallet::<Test>::create_bucket(
 				RuntimeOrigin::signed(validator_1_stash.clone()),
 				true,
 				range
@@ -543,7 +543,7 @@ fn charge_payments_content_owners_works_as_expected() {
 		);
 
 		// Deposit funds for account
-		assert_ok!(ddc_accounts::Pallet::<Test>::deposit(
+		assert_ok!(ddc_customers::Pallet::<Test>::deposit(
 			RuntimeOrigin::signed(validator_1_stash.clone()),
 			validator_1_stash.clone(),
 			1_000,
@@ -564,7 +564,7 @@ fn charge_payments_content_owners_works_as_expected() {
 		);
 
 		let last_evt = System::events().pop().expect("Event expected").event;
-		assert_eq!(last_evt, ddc_accounts::Event::Charged(bucket_info.amount).into());
+		assert_eq!(last_evt, ddc_customers::Event::Charged(bucket_info.amount).into());
 	})
 }
 

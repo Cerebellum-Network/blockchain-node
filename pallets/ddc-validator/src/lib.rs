@@ -47,7 +47,7 @@ pub use frame_system::{
 };
 pub use lite_json::json::JsonValue;
 pub use pallet::*;
-pub use pallet_ddc_customer_accounts::{self as ddc_accounts, BucketsDetails};
+pub use pallet_ddc_customers::{self as ddc_customers, BucketsDetails};
 pub use pallet_ddc_staking::{self as ddc_staking};
 pub use pallet_session as session;
 pub use pallet_staking::{self as staking};
@@ -196,7 +196,7 @@ pub mod pallet {
 		+ pallet_contracts::Config
 		+ pallet_session::Config<ValidatorId = <Self as frame_system::Config>::AccountId>
 		+ pallet_staking::Config
-		+ ddc_accounts::Config
+		+ ddc_customers::Config
 		+ ddc_staking::Config
 		+ CreateSignedTransaction<Call<Self>>
 	where
@@ -536,9 +536,9 @@ pub mod pallet {
 		#[pallet::weight(100_000)]
 		pub fn charge_payments_content_owners(
 			origin: OriginFor<T>,
-			paying_accounts: Vec<BucketsDetails<ddc_accounts::BalanceOf<T>>>, /* ToDo check if
-			                                                                   * bounded vec
-			                                                                   * should be used */
+			paying_accounts: Vec<BucketsDetails<ddc_customers::BalanceOf<T>>>, /* ToDo check if
+			                                                                    * bounded vec
+			                                                                    * should be used */
 		) -> DispatchResult {
 			let ddc_valitor_key = ensure_signed(origin)?;
 			log::debug!("validator is {:?}", &ddc_valitor_key);
@@ -567,7 +567,7 @@ pub mod pallet {
 				<ddc_staking::pallet::Pallet<T>>::pricing().ok_or(Error::<T>::PricingNotSet)?;
 			EraContentOwnersCharged::<T>::insert(current_era, ddc_valitor_key, true);
 
-			<ddc_accounts::pallet::Pallet<T>>::charge_content_owners(paying_accounts, pricing)
+			<ddc_customers::pallet::Pallet<T>>::charge_content_owners(paying_accounts, pricing)
 		}
 
 		/// Exstrinsic registers a ddc validator key for future use
@@ -914,7 +914,7 @@ pub mod pallet {
 
 						let mut payments: BTreeMap<
 							u128,
-							BucketsDetails<ddc_accounts::BalanceOf<T>>,
+							BucketsDetails<ddc_customers::BalanceOf<T>>,
 						> = BTreeMap::new();
 						for bucket in payments_per_bucket.into_iter() {
 							let cere_payment = bucket.1 as u32;

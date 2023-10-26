@@ -14,7 +14,7 @@ frame-system = { version = "4.0.0-dev", default-features = false, git = "https:/
 lite-json = { version = "0.2.0", default-features = false }
 log = { version = "0.4.17", default-features = false }
 pallet-contracts = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-pallet-ddc-customer-accounts = { version = "0.1.0", default-features = false, path = "../ddc-customer-accounts" }
+pallet-ddc-customers = { version = "0.1.0", default-features = false, path = "../ddc-customers" }
 pallet-ddc-staking = { version = "4.7.0", default-features = false, path = "../ddc-staking" }
 pallet-session = { version = "4.0.0-dev", features = [ "historical" ], git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", default-features = false }
 pallet-staking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
@@ -44,7 +44,7 @@ std = [
     "frame-system/std",
     "lite-json/std",
     "pallet-contracts/std",
-    "pallet-ddc-customer-accounts/std",
+    "pallet-ddc-customers/std",
     "pallet-ddc-staking/std",
     "pallet-session/std",
     "pallet-staking/std",
