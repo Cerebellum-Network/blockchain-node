@@ -52,6 +52,7 @@ pub use pallet_ddc_accounts;
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_nodes;
+pub use pallet_ddc_payouts;
 pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
@@ -1372,6 +1373,10 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
+impl pallet_ddc_payouts::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1427,7 +1432,8 @@ construct_runtime!(
 		DdcValidator: pallet_ddc_validator,
 		DdcAccounts: pallet_ddc_accounts,
 		DdcNodes: pallet_ddc_nodes,
-		DdcClusters: pallet_ddc_clusters
+		DdcClusters: pallet_ddc_clusters,
+		DdcPayouts: pallet_ddc_payouts
 	}
 );
 

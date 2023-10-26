@@ -9,6 +9,7 @@ use sp_core::hash::H160;
 use sp_runtime::{AccountId32, RuntimeDebug};
 
 pub type ClusterId = H160;
+pub type DdcEra = u64;
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
