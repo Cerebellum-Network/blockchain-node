@@ -3,11 +3,13 @@
 
 use codec::{Decode, Encode, HasCompact};
 
+use ddc_primitives::ClusterId;
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
 	BoundedVec, PalletId,
 };
+pub use pallet_ddc_clusters::{self as ddc_clusters};
 pub use pallet_ddc_staking::{self as ddc_staking};
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -43,6 +45,7 @@ pub struct UnlockChunk<Balance: HasCompact> {
 pub struct Bucket<AccountId> {
 	bucket_id: u128,
 	owner_id: AccountId,
+	cluster_id: Option<ClusterId>,
 	public_availability: bool,
 	resources_reserved: u128,
 }
@@ -55,17 +58,17 @@ pub struct BucketsDetails<Balance: HasCompact> {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct AccountsLedger<AccountId, Balance: HasCompact> {
-	/// The stash account whose balance is actually locked and can be used for CDN usage.
-	pub stash: AccountId,
-	/// The total amount of the stash's balance that we are currently accounting for.
+	/// The owner account whose balance is actually locked and can be used for CDN usage.
+	pub owner: AccountId,
+	/// The total amount of the owner's balance that we are currently accounting for.
 	/// It's just `active` plus all the `unlocking` balances.
 	#[codec(compact)]
 	pub total: Balance,
-	/// The total amount of the stash's balance that will be accessible for CDN payments in any
+	/// The total amount of the owner's balance that will be accessible for CDN payments in any
 	/// forthcoming rounds.
 	#[codec(compact)]
 	pub active: Balance,
-	/// Any balance that is becoming free, which may eventually be transferred out of the stash
+	/// Any balance that is becoming free, which may eventually be transferred out of the owner
 	/// (assuming that the content owner has to pay for network usage). It is assumed that this
 	/// will be treated as a first in, first out queue where the new (higher value) eras get pushed
 	/// on the back.
@@ -75,9 +78,9 @@ pub struct AccountsLedger<AccountId, Balance: HasCompact> {
 impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero>
 	AccountsLedger<AccountId, Balance>
 {
-	/// Initializes the default object using the given stash.
-	pub fn default_from(stash: AccountId) -> Self {
-		Self { stash, total: Zero::zero(), active: Zero::zero(), unlocking: Default::default() }
+	/// Initializes the default object using the given owner.
+	pub fn default_from(owner: AccountId) -> Self {
+		Self { owner, total: Zero::zero(), active: Zero::zero(), unlocking: Default::default() }
 	}
 
 	/// Remove entries from `unlocking` that are sufficiently old and reduce the
@@ -102,7 +105,7 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 				"filtering items from a bounded vec always leaves length less than bounds. qed",
 			);
 
-		Self { stash: self.stash, total, active: self.active, unlocking }
+		Self { owner: self.owner, total, active: self.active, unlocking }
 	}
 
 	/// Charge funds that were scheduled for unlocking.
@@ -136,9 +139,7 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::{
-		pallet_prelude::*, sp_runtime::traits::StaticLookup, traits::LockableCurrency,
-	};
+	use frame_support::{pallet_prelude::*, traits::LockableCurrency};
 	use frame_system::pallet_prelude::*;
 
 	#[pallet::pallet]
@@ -147,23 +148,18 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + ddc_staking::Config {
+	pub trait Config: frame_system::Config + ddc_staking::Config + ddc_clusters::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		/// Number of eras that staked funds must remain bonded for.
+		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
-		type BondingDuration: Get<EraIndex>;
+		type LockingDuration: Get<EraIndex>;
 	}
 
-	/// Map from all locked "stash" accounts to the controller account.
-	#[pallet::storage]
-	#[pallet::getter(fn bonded)]
-	pub type Bonded<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
-
-	/// Map from all (unlocked) "controller" accounts to the info regarding the staking.
+	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config> =
@@ -187,15 +183,15 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// An account has bonded this amount. \[stash, amount\]
+		/// An account has deposited this amount. \[owner, amount\]
 		///
-		/// NOTE: This event is only emitted when funds are bonded via a dispatchable. Notably,
+		/// NOTE: This event is only emitted when funds are deposited via a dispatchable. Notably,
 		/// it will not be emitted for staking rewards when they are added to stake.
 		Deposited(T::AccountId, BalanceOf<T>),
-		/// An account has unbonded this amount. \[stash, amount\]
-		Unbonded(T::AccountId, BalanceOf<T>),
-		/// An account has called `withdraw_unbonded` and removed unbonding chunks worth `Balance`
-		/// from the unlocking queue. \[stash, amount\]
+		/// An account has initiated unlock for amount. \[owner, amount\]
+		InitiatDepositUnlock(T::AccountId, BalanceOf<T>),
+		/// An account has called `withdraw_unlocked_deposit` and removed unlocking chunks worth
+		/// `Balance` from the unlocking queue. \[owner, amount\]
 		Withdrawn(T::AccountId, BalanceOf<T>),
 		/// Total amount charged from all accounts to pay CDN nodes
 		Charged(BalanceOf<T>),
@@ -203,24 +199,26 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Not a controller account.
-		NotController,
-		/// Not a stash account.
-		NotStash,
-		/// Stash is already bonded.
-		AlreadyBonded,
-		/// Controller is already paired.
+		/// Not a owner account.
+		NotOwner,
+		/// Not an owner of bucket
+		NotBucketOwner,
+		/// Owner is already paired with structure representing account.
 		AlreadyPaired,
 		/// Cannot deposit dust
 		InsufficientDeposit,
 		/// Can not schedule more unlock chunks.
 		NoMoreChunks,
+		/// Bucket with speicifed id doesn't exist.
+		NoBucketWithId,
 		/// Internal state has become somehow corrupted and the operation cannot continue.
 		BadState,
 		/// Current era not set during runtime
 		DDCEraNotSet,
 		/// Bucket with specified id doesn't exist
 		BucketDoesNotExist,
+		/// DDC Cluster with provided id doesn't exist
+		ClusterDoesNotExist,
 	}
 
 	#[pallet::genesis_config]
@@ -261,6 +259,7 @@ pub mod pallet {
 			let bucket = Bucket {
 				bucket_id: cur_bucket_id + 1,
 				owner_id: bucket_owner,
+				cluster_id: None,
 				public_availability,
 				resources_reserved,
 			};
@@ -270,29 +269,46 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Take the origin account as a stash and lock up `value` of its balance. `controller` will
+		/// Allocates specified bucket into specified cluster
+		///
+		/// Only bucket owner can call this method
+		#[pallet::weight(10_000)]
+		pub fn allocate_bucket_to_cluster(
+			origin: OriginFor<T>,
+			bucket_id: u128,
+			cluster_id: ClusterId,
+		) -> DispatchResult {
+			let bucket_owner = ensure_signed(origin)?;
+
+			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+
+			ensure!(bucket.owner_id == bucket_owner, Error::<T>::NotBucketOwner);
+
+			ensure!(
+				ddc_clusters::pallet::Clusters::<T>::contains_key(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
+			bucket.cluster_id = Some(cluster_id);
+
+			Ok(())
+		}
+
+		/// Take the origin account as a owner and lock up `value` of its balance. `Owner` will
 		/// be the account that controls it.
 		///
 		/// `value` must be more than the `minimum_balance` specified by `T::Currency`.
 		///
-		/// The dispatch origin for this call must be _Signed_ by the stash account.
+		/// The dispatch origin for this call must be _Signed_ by the owner account.
 		///
 		/// Emits `Deposited`.
 		#[pallet::weight(10_000)]
 		pub fn deposit(
 			origin: OriginFor<T>,
-			controller: <T::Lookup as StaticLookup>::Source,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
-			let stash = ensure_signed(origin)?;
+			let owner = ensure_signed(origin)?;
 
-			if <Bonded<T>>::contains_key(&stash) {
-				Err(Error::<T>::AlreadyBonded)?
-			}
-
-			let controller = T::Lookup::lookup(controller)?;
-
-			if <Ledger<T>>::contains_key(&controller) {
+			if <Ledger<T>>::contains_key(&owner) {
 				Err(Error::<T>::AlreadyPaired)?
 			}
 
@@ -301,27 +317,25 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientDeposit)?
 			}
 
-			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
+			frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::BadState)?;
 
-			<Bonded<T>>::insert(&stash, &controller);
-
-			let stash_balance = <T as pallet::Config>::Currency::free_balance(&stash);
-			let value = value.min(stash_balance);
+			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
+			let value = value.min(owner_balance);
 			let item = AccountsLedger {
-				stash: stash.clone(),
+				owner: owner.clone(),
 				total: value,
 				active: value,
 				unlocking: Default::default(),
 			};
-			Self::update_ledger_and_deposit(&stash, &controller, &item)?;
-			Self::deposit_event(Event::<T>::Deposited(stash.clone(), value));
+			Self::update_ledger_and_deposit(&owner, &item)?;
+			Self::deposit_event(Event::<T>::Deposited(owner, value));
 			Ok(())
 		}
 
-		/// Add some extra amount that have appeared in the stash `free_balance` into the balance up
+		/// Add some extra amount that have appeared in the owner `free_balance` into the balance up
 		/// for CDN payments.
 		///
-		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
+		/// The dispatch origin for this call must be _Signed_ by the owner.
 		///
 		/// Emits `Deposited`.
 		#[pallet::weight(10_000)]
@@ -329,13 +343,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			#[pallet::compact] max_additional: BalanceOf<T>,
 		) -> DispatchResult {
-			let stash = ensure_signed(origin)?;
+			let owner = ensure_signed(origin)?;
 
-			let controller = Self::bonded(&stash).ok_or(Error::<T>::NotStash)?;
-			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
 
-			let stash_balance = <T as pallet::Config>::Currency::free_balance(&stash);
-			let extra = stash_balance.min(max_additional);
+			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
+			let extra = owner_balance.min(max_additional);
 			ledger.total += extra;
 			ledger.active += extra;
 			// Last check: the new active amount of ledger must be more than ED.
@@ -344,36 +357,36 @@ pub mod pallet {
 				Error::<T>::InsufficientDeposit
 			);
 
-			Self::update_ledger_and_deposit(&stash, &controller, &ledger)?;
+			Self::update_ledger_and_deposit(&owner, &ledger)?;
 
-			Self::deposit_event(Event::<T>::Deposited(stash.clone(), extra));
+			Self::deposit_event(Event::<T>::Deposited(owner.clone(), extra));
 
 			Ok(())
 		}
 
-		/// Schedule a portion of the stash to be unlocked ready for transfer out after the bond
-		/// period ends. If this leaves an amount actively bonded less than
+		/// Schedule a portion of the owner deposited funds to be unlocked ready for transfer out
+		/// after the lock period ends. If this leaves an amount actively locked less than
 		/// T::Currency::minimum_balance(), then it is increased to the full amount.
 		///
-		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash.
+		/// The dispatch origin for this call must be _Signed_ by the owner.
 		///
-		/// Once the unlock period is done, you can call `withdraw_unbonded` to actually move
-		/// the funds out of management ready for transfer.
+		/// Once the unlock period is done, you can call `withdraw_unlocked_deposit` to actually
+		/// move the funds out of management ready for transfer.
 		///
 		/// No more than a limited number of unlocking chunks (see `MaxUnlockingChunks`)
-		/// can co-exists at the same time. In that case, [`Call::withdraw_unbonded`] need
+		/// can co-exists at the same time. In that case, [`Call::withdraw_unlocked_deposit`] need
 		/// to be called first to remove some of the chunks (if possible).
 		///
-		/// Emits `Unbonded`.
+		/// Emits `InitiatDepositUnlock`.
 		///
-		/// See also [`Call::withdraw_unbonded`].
+		/// See also [`Call::withdraw_unlocked_deposit`].
 		#[pallet::weight(10_000)]
-		pub fn unbond(
+		pub fn unlock_deposit(
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
-			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+			let owner = ensure_signed(origin)?;
+			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
 			ensure!(
 				ledger.unlocking.len() < MaxUnlockingChunks::get() as usize,
 				Error::<T>::NoMoreChunks,
@@ -392,13 +405,11 @@ pub mod pallet {
 
 				let current_era = ddc_staking::pallet::Pallet::<T>::current_era()
 					.ok_or(Error::<T>::DDCEraNotSet)?;
-				// Note: bonding for extra era to allow for accounting
-				let era = current_era + <T as pallet::Config>::BondingDuration::get();
-				log::debug!("Era for the unbond: {:?}", era);
+				// Note: locking for extra era to allow for accounting
+				let era = current_era + <T as pallet::Config>::LockingDuration::get();
+				log::debug!("Era for the unlock: {:?}", era);
 
-				if let Some(mut chunk) =
-					ledger.unlocking.last_mut().filter(|chunk| chunk.era == era)
-				{
+				if let Some(chunk) = ledger.unlocking.last_mut().filter(|chunk| chunk.era == era) {
 					// To keep the chunk count down, we only keep one chunk per era. Since
 					// `unlocking` is a FiFo queue, if a chunk exists for `era` we know that it will
 					// be the last one.
@@ -410,28 +421,28 @@ pub mod pallet {
 						.map_err(|_| Error::<T>::NoMoreChunks)?;
 				};
 
-				Self::update_ledger(&controller, &ledger);
+				Self::update_ledger(&owner, &ledger);
 
-				Self::deposit_event(Event::<T>::Unbonded(ledger.stash, value));
+				Self::deposit_event(Event::<T>::InitiatDepositUnlock(ledger.owner, value));
 			}
 			Ok(())
 		}
 
 		/// Remove any unlocked chunks from the `unlocking` queue from our management.
 		///
-		/// This essentially frees up that balance to be used by the stash account to do
+		/// This essentially frees up that balance to be used by the owner account to do
 		/// whatever it wants.
 		///
-		/// The dispatch origin for this call must be _Signed_ by the controller.
+		/// The dispatch origin for this call must be _Signed_ by the owner.
 		///
 		/// Emits `Withdrawn`.
 		///
-		/// See also [`Call::unbond`].
+		/// See also [`Call::unlock_deposit`].
 		#[pallet::weight(10_000)]
-		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
-			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
-			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
+		pub fn withdraw_unlocked_deposit(origin: OriginFor<T>) -> DispatchResult {
+			let owner = ensure_signed(origin)?;
+			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
+			let (owner, old_total) = (ledger.owner.clone(), ledger.total);
 			let current_era =
 				ddc_staking::pallet::Pallet::<T>::current_era().ok_or(Error::<T>::DDCEraNotSet)?;
 			ledger = ledger.consolidate_unlocked(current_era);
@@ -440,15 +451,16 @@ pub mod pallet {
 			if ledger.unlocking.is_empty() &&
 				ledger.active < <T as pallet::Config>::Currency::minimum_balance()
 			{
-				log::debug!("Killing stash");
-				// This account must have called `unbond()` with some value that caused the active
-				// portion to fall below existential deposit + will have no more unlocking chunks
-				// left. We can now safely remove all accounts-related information.
-				Self::kill_stash(&stash)?;
+				log::debug!("Killing owner");
+				// This account must have called `unlock_deposit()` with some value that caused the
+				// active portion to fall below existential deposit + will have no more unlocking
+				// chunks left. We can now safely remove all accounts-related information.
+				Self::kill_owner(&owner)?;
 			} else {
 				log::debug!("Updating ledger");
-				// This was the consequence of a partial unbond. just update the ledger and move on.
-				Self::update_ledger(&controller, &ledger);
+				// This was the consequence of a partial deposit unlock. just update the ledger and
+				// move on.
+				Self::update_ledger(&owner, &ledger);
 			};
 
 			log::debug!("Current total: {:?}", ledger.total);
@@ -465,11 +477,11 @@ pub mod pallet {
 
 				<T as pallet::Config>::Currency::transfer(
 					&account_id,
-					&stash,
+					&owner,
 					value,
 					ExistenceRequirement::KeepAlive,
 				)?;
-				Self::deposit_event(Event::<T>::Withdrawn(stash, value));
+				Self::deposit_event(Event::<T>::Withdrawn(owner, value));
 			}
 
 			Ok(())
@@ -480,48 +492,44 @@ pub mod pallet {
 		pub fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
-		/// Update the ledger for a controller.
+		/// Update the ledger for a owner.
 		///
 		/// This will also deposit the funds to pallet.
 		fn update_ledger_and_deposit(
-			stash: &T::AccountId,
-			controller: &T::AccountId,
+			owner: &T::AccountId,
 			ledger: &AccountsLedger<T::AccountId, BalanceOf<T>>,
 		) -> DispatchResult {
 			let account_id = Self::account_id();
 
 			<T as pallet::Config>::Currency::transfer(
-				stash,
+				owner,
 				&account_id,
 				ledger.total,
 				ExistenceRequirement::KeepAlive,
 			)?;
-			<Ledger<T>>::insert(controller, ledger);
+			<Ledger<T>>::insert(owner, ledger);
 
 			Ok(())
 		}
 
-		/// Update the ledger for a controller.
+		/// Update the ledger for a owner.
 		fn update_ledger(
-			controller: &T::AccountId,
+			owner: &T::AccountId,
 			ledger: &AccountsLedger<T::AccountId, BalanceOf<T>>,
 		) {
-			<Ledger<T>>::insert(controller, ledger);
+			<Ledger<T>>::insert(owner, ledger);
 		}
 
-		/// Remove all associated data of a stash account from the accounts system.
+		/// Remove all associated data of a owner account from the accounts system.
 		///
 		/// Assumes storage is upgraded before calling.
 		///
 		/// This is called:
-		/// - after a `withdraw_unbonded()` call that frees all of a stash's bonded balance.
-		fn kill_stash(stash: &T::AccountId) -> DispatchResult {
-			let controller = <Bonded<T>>::get(stash).ok_or(Error::<T>::NotStash)?;
+		/// - after a `withdraw_unlocked_deposit()` call that frees all of a owner's locked balance.
+		fn kill_owner(owner: &T::AccountId) -> DispatchResult {
+			<Ledger<T>>::remove(&owner);
 
-			<Bonded<T>>::remove(stash);
-			<Ledger<T>>::remove(&controller);
-
-			frame_system::Pallet::<T>::dec_consumers(stash);
+			frame_system::Pallet::<T>::dec_consumers(owner);
 
 			Ok(())
 		}
@@ -539,7 +547,7 @@ pub mod pallet {
 				let content_owner = bucket.owner_id;
 				let amount = bucket_details.amount * pricing.saturated_into::<BalanceOf<T>>();
 
-				let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotController)?;
+				let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotOwner)?;
 				if ledger.active >= amount {
 					ledger.total -= amount;
 					ledger.active -= amount;
