@@ -17,5 +17,14 @@ pub enum NodePubKey {
 	CDNPubKey(CDNNodePubKey),
 }
 
+impl NodePubKey {
+	pub fn variant_as_number(&self) -> u8 {
+		match self {
+			NodePubKey::CDNPubKey(_) => 0,
+			NodePubKey::StoragePubKey(_) => 1,
+		}
+	}
+}
+
 pub type StorageNodePubKey = AccountId32;
 pub type CDNNodePubKey = AccountId32;
