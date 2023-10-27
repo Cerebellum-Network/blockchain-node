@@ -710,7 +710,7 @@ impl pallet_bags_list::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 5 * MINUTES;
+	pub const LaunchPeriod: BlockNumber = 8 * MINUTES;
 	pub const VotingPeriod: BlockNumber = 5 * MINUTES;
 	pub const FastTrackVotingPeriod: BlockNumber = 5 * MINUTES;
 	pub const MinimumDeposit: Balance = 50_000 * DOLLARS;
