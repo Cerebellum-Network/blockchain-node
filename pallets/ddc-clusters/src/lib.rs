@@ -78,6 +78,8 @@ pub mod pallet {
 		FastChillProhibited,
 		/// Cluster candidate should not plan to chill.
 		ChillingProhibited,
+		/// Origin of the call is not a controller of the stake associated with the provided node.
+		NotNodeController,
 	}
 
 	#[pallet::storage]
@@ -223,16 +225,16 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller.
 		#[pallet::weight(10_000)]
-		pub fn fast_chill(origin: OriginFor<T>) -> DispatchResult {
+		pub fn fast_chill(origin: OriginFor<T>, node: NodePubKey) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 
 			let stash = <pallet_ddc_staking::Pallet<T>>::ledger(&controller)
 				.ok_or(<pallet_ddc_staking::Error<T>>::NotController)?
 				.stash;
-			let node = <pallet_ddc_staking::pallet::Nodes<T>>::iter()
-				.find(|(_, v)| *v == stash)
-				.ok_or(<pallet_ddc_staking::Error<T>>::BadState)?
-				.0;
+			let node_stash = <pallet_ddc_staking::Pallet<T>>::nodes(&node)
+				.ok_or(<pallet_ddc_staking::Error<T>>::BadState)?;
+			ensure!(stash == node_stash, Error::<T>::NotNodeController);
+
 			let cluster = <pallet_ddc_staking::Pallet<T>>::edges(&stash)
 				.or(<pallet_ddc_staking::Pallet<T>>::storages(&stash))
 				.ok_or(Error::<T>::NoStake)?;
