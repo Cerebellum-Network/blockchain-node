@@ -48,8 +48,8 @@ pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 pub use pallet_cere_ddc;
 pub use pallet_chainbridge;
-pub use pallet_ddc_accounts;
 pub use pallet_ddc_clusters;
+pub use pallet_ddc_customers;
 pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_nodes;
 pub use pallet_ddc_payouts;
@@ -1332,19 +1332,20 @@ impl pallet_ddc_staking::Config for Runtime {
 	type DefaultStorageBondSize = DefaultStorageBondSize;
 	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
-	type StakersPayoutSource = DdcAccountsPalletId;
+	type StakersPayoutSource = DdcCustomersPalletId;
 	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
-	pub const DdcAccountsPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
+	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
+	pub const LockingDuration: sp_staking::EraIndex = 30 * 24; // 1 hour * 24 = 1 day; (1 era is 2 mins)
 }
 
-impl pallet_ddc_accounts::Config for Runtime {
-	type BondingDuration = BondingDuration;
+impl pallet_ddc_customers::Config for Runtime {
+	type LockingDuration = LockingDuration;
 	type Currency = Balances;
-	type PalletId = DdcAccountsPalletId;
+	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
 }
 
@@ -1430,7 +1431,7 @@ construct_runtime!(
 		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
 		DdcStaking: pallet_ddc_staking,
 		DdcValidator: pallet_ddc_validator,
-		DdcAccounts: pallet_ddc_accounts,
+		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
 		DdcPayouts: pallet_ddc_payouts
