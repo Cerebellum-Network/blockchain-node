@@ -73,6 +73,13 @@ pub mod pallet {
 		OnlyClusterManager,
 		NotAuthorized,
 		NoStake,
+		/// Conditions for fast chill are not met, try the regular `chill` from
+		/// `pallet-ddc-staking`.
+		FastChillProhibited,
+		/// Cluster candidate should not plan to chill.
+		ChillingProhibited,
+		/// Origin of the call is not a controller of the stake associated with the provided node.
+		NotNodeController,
 	}
 
 	#[pallet::storage]
@@ -126,6 +133,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAlreadyAssigned);
 
+			// Cluster extension smart contract allows joining.
 			let is_authorized: bool = pallet_contracts::Pallet::<T>::bare_call(
 				caller_id,
 				cluster.props.node_provider_auth_contract,
@@ -141,6 +149,7 @@ pub mod pallet {
 			.is_some_and(|x| *x == 1);
 			ensure!(is_authorized, Error::<T>::NotAuthorized);
 
+			// Sufficient funds are locked at the DDC Staking module.
 			let node_provider_stash =
 				<pallet_ddc_staking::Pallet<T>>::nodes(&node_pub_key).ok_or(Error::<T>::NoStake)?;
 			let maybe_edge_in_cluster =
@@ -151,6 +160,16 @@ pub mod pallet {
 				.or(maybe_storage_in_cluster)
 				.is_some_and(|staking_cluster| staking_cluster == cluster_id);
 			ensure!(has_stake, Error::<T>::NoStake);
+
+			// Candidate is not planning to pause operations any time soon.
+			let node_provider_controller =
+				<pallet_ddc_staking::Pallet<T>>::bonded(&node_provider_stash)
+					.ok_or(<pallet_ddc_staking::Error<T>>::BadState)?;
+			let chilling = <pallet_ddc_staking::Pallet<T>>::ledger(&node_provider_controller)
+				.ok_or(<pallet_ddc_staking::Error<T>>::BadState)?
+				.chilling
+				.is_some();
+			ensure!(!chilling, Error::<T>::ChillingProhibited);
 
 			node.set_cluster_id(Some(cluster_id.clone()));
 			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
@@ -198,6 +217,37 @@ pub mod pallet {
 				.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
 			Clusters::<T>::insert(cluster_id.clone(), cluster);
 			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
+
+			Ok(())
+		}
+
+		/// Allow cluster node candidate to chill in the next DDC era.
+		///
+		/// The dispatch origin for this call must be _Signed_ by the controller.
+		#[pallet::weight(10_000)]
+		pub fn fast_chill(origin: OriginFor<T>, node: NodePubKey) -> DispatchResult {
+			let controller = ensure_signed(origin)?;
+
+			let stash = <pallet_ddc_staking::Pallet<T>>::ledger(&controller)
+				.ok_or(<pallet_ddc_staking::Error<T>>::NotController)?
+				.stash;
+			let node_stash = <pallet_ddc_staking::Pallet<T>>::nodes(&node)
+				.ok_or(<pallet_ddc_staking::Error<T>>::BadState)?;
+			ensure!(stash == node_stash, Error::<T>::NotNodeController);
+
+			let cluster = <pallet_ddc_staking::Pallet<T>>::edges(&stash)
+				.or(<pallet_ddc_staking::Pallet<T>>::storages(&stash))
+				.ok_or(Error::<T>::NoStake)?;
+			let is_cluster_node = ClustersNodes::<T>::get(cluster, node);
+			ensure!(!is_cluster_node, Error::<T>::FastChillProhibited);
+
+			let can_chill_from = <pallet_ddc_staking::Pallet<T>>::current_era().unwrap_or(0) + 1;
+			<pallet_ddc_staking::Pallet<T>>::chill_stash_soon(
+				&stash,
+				&controller,
+				cluster,
+				can_chill_from,
+			);
 
 			Ok(())
 		}
