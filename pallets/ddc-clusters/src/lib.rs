@@ -156,13 +156,17 @@ pub mod pallet {
 			ensure!(!chilling, Error::<T>::ChillingProhibited);
 
 			// Cluster extension smart contract allows joining.
-			// is_authorized(node_provider: AccountId, node: Vec<u8>, node_variant: u8) -> bool
-			let mut call_data = Vec::new();
-			call_data.extend_from_slice(&INK_SELECTOR_IS_AUTHORIZED);
-			call_data.append(&mut node_provider_stash.encode());
-			call_data.append(&mut node_pub_key.encode());
-			call_data.push(node_pub_key.variant_as_number());
-			let is_authorized: bool = pallet_contracts::Pallet::<T>::bare_call(
+			let call_data = {
+				// is_authorized(node_provider: AccountId, node: Vec<u8>, node_variant: u8) -> bool
+				let args: ([u8; 4], T::AccountId, Vec<u8>, u8) = (
+					INK_SELECTOR_IS_AUTHORIZED,
+					node_provider_stash,
+					node_pub_key.encode()[1..].to_vec(), // remove the first byte added by SCALE
+					node_pub_key.variant_as_number(),
+				);
+				args.encode()
+			};
+			let is_authorized = pallet_contracts::Pallet::<T>::bare_call(
 				caller_id,
 				cluster.props.node_provider_auth_contract,
 				Default::default(),
