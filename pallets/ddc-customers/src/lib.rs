@@ -19,6 +19,8 @@ use sp_runtime::{
 use sp_staking::EraIndex;
 use sp_std::prelude::*;
 
+mod migration;
+
 pub use pallet::*;
 
 /// The balance type of this pallet.
@@ -43,7 +45,7 @@ pub struct UnlockChunk<Balance: HasCompact> {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Bucket<AccountId> {
-	bucket_id: u128,
+	bucket_id: u64,
 	owner_id: AccountId,
 	cluster_id: Option<ClusterId>,
 	public_availability: bool,
@@ -52,7 +54,7 @@ pub struct Bucket<AccountId> {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct BucketsDetails<Balance: HasCompact> {
-	pub bucket_id: u128,
+	pub bucket_id: u64,
 	pub amount: Balance,
 }
 
@@ -147,6 +149,13 @@ pub mod pallet {
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_runtime_upgrade() -> frame_support::weights::Weight {
+			migration::migrate_to_v2::<T>()
+		}
+	}
+
 	#[pallet::config]
 	pub trait Config: frame_system::Config + ddc_staking::Config + ddc_clusters::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
@@ -166,19 +175,19 @@ pub mod pallet {
 		StorageMap<_, Identity, T::AccountId, AccountsLedger<T::AccountId, BalanceOf<T>>>;
 
 	#[pallet::type_value]
-	pub fn DefaultBucketCount<T: Config>() -> u128 {
-		0_u128
+	pub fn DefaultBucketCount<T: Config>() -> u64 {
+		0_u64
 	}
 	#[pallet::storage]
 	#[pallet::getter(fn buckets_count)]
 	pub type BucketsCount<T: Config> =
-		StorageValue<Value = u128, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
+		StorageValue<Value = u64, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
 
 	/// Map from bucket ID to to the bucket structure
 	#[pallet::storage]
 	#[pallet::getter(fn buckets)]
 	pub type Buckets<T: Config> =
-		StorageMap<_, Twox64Concat, u128, Bucket<T::AccountId>, OptionQuery>;
+		StorageMap<_, Twox64Concat, u64, Bucket<T::AccountId>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
@@ -275,7 +284,7 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn allocate_bucket_to_cluster(
 			origin: OriginFor<T>,
-			bucket_id: u128,
+			bucket_id: u64,
 			cluster_id: ClusterId,
 		) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
