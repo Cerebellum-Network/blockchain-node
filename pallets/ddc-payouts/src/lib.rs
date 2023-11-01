@@ -31,6 +31,9 @@ parameter_types! {
 pub mod pallet {
 
 	use super::*;
+	use frame_support::PalletId;
+	use sp_io::hashing::blake2_128;
+	use sp_runtime::traits::{AccountIdConversion, Zero};
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -40,6 +43,8 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
 	}
 
 	#[pallet::event]
@@ -73,13 +78,15 @@ pub mod pallet {
 		ClusterId,
 		Blake2_128Concat,
 		DdcEra,
-		BillingReport,
+		BillingReport<T>,
 		ValueQuery,
 	>;
 
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
-	pub struct BillingReport {
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+	#[scale_info(skip_type_params(T))]
+	pub struct BillingReport<T: Config> {
 		state: State,
+		vault: T::AccountId,
 		total_balance: u128,
 		distributed_balance: u128,
 		// stage 1
@@ -88,6 +95,21 @@ pub mod pallet {
 		// stage 2
 		rewarding_max_batch_index: BatchIndex,
 		rewarding_processed_batches: BoundedVec<BatchIndex, MaxBatchesCount>,
+	}
+
+	impl<T: pallet::Config> Default for BillingReport<T> {
+		fn default() -> Self {
+			Self {
+				state: State::default(),
+				vault: T::PalletId::get().into_account_truncating(),
+				total_balance: Zero::zero(),
+				distributed_balance: Zero::zero(),
+				charging_max_batch_index: Zero::zero(),
+				charging_processed_batches: BoundedVec::default(),
+				rewarding_max_batch_index: Zero::zero(),
+				rewarding_processed_batches: BoundedVec::default(),
+			}
+		}
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
@@ -113,6 +135,7 @@ pub mod pallet {
 			ensure_signed(origin)?; // todo: check that the caller is DAC account
 
 			let mut billing_report = BillingReport::default();
+			billing_report.vault = Self::sub_account_id(cluster_id.clone(), era);
 			billing_report.state = State::Initialized;
 			ActiveBillingReports::<T>::insert(cluster_id.clone(), era, billing_report);
 
@@ -340,6 +363,23 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::BillingReportFinalized { cluster_id, era });
 
 			Ok(())
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		fn account_id() -> T::AccountId {
+			T::PalletId::get().into_account_truncating()
+		}
+
+		fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
+			let mut bytes = Vec::new();
+			bytes.extend_from_slice(&cluster_id[..]);
+			bytes.extend_from_slice(&era.encode());
+			let hash = blake2_128(&bytes);
+			// "modl" + "payouts_" + hash is 28 bytes, the T::AccountId is 32 bytes, so we should be
+			// safe from the truncation and possible collisions caused by it. The rest 4 bytes will
+			// be fulfilled with trailing zeros.
+			T::PalletId::get().into_sub_account_truncating(hash)
 		}
 	}
 }
