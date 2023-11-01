@@ -1374,8 +1374,13 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
+parameter_types! {
+	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
+}
+
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type PalletId = PayoutsPalletId;
 }
 
 construct_runtime!(
