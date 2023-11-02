@@ -13,6 +13,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
+#![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
@@ -29,6 +30,11 @@ use crate::weights::WeightInfo;
 
 use codec::{Decode, Encode, HasCompact};
 pub use ddc_primitives::{ClusterId, NodePubKey};
+use ddc_traits::{
+	cluster::{ClusterVisitor, ClusterVisitorError},
+	staking::{StakingVisitor, StakingVisitorError},
+};
+
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
@@ -244,6 +250,8 @@ pub mod pallet {
 		/// Time used for computing era index. It is guaranteed to start being called from the first
 		/// `on_finalize`.
 		type UnixTime: UnixTime;
+
+		type ClusterVisitor: ClusterVisitor<Self>;
 	}
 
 	/// Map from all locked "stash" accounts to the controller account.
@@ -475,6 +483,12 @@ pub mod pallet {
 		BudgetOverflow,
 		/// Current era not set during runtime
 		DDCEraNotSet,
+		/// Origin of the call is not a controller of the stake associated with the provided node.
+		NotNodeController,
+		/// No stake found associated with the provided node.
+		NodeHasNoStake,
+		/// Conditions for fast chill are not met, try the regular `chill` from
+		FastChillProhibited,
 	}
 
 	#[pallet::hooks]
@@ -678,12 +692,15 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
 		/// bond size must be greater than or equal to the `EdgeBondSize`.
 		#[pallet::weight(T::WeightInfo::serve())]
-		pub fn serve(origin: OriginFor<T>, cluster: ClusterId) -> DispatchResult {
+		pub fn serve(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
+
+			T::ClusterVisitor::ensure_cluster(&cluster_id)
+				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			ensure!(
-				ledger.active >= Self::settings(cluster).edge_bond_size,
+				ledger.active >= Self::settings(cluster_id).edge_bond_size,
 				Error::<T>::InsufficientBond
 			);
 			let stash = &ledger.stash;
@@ -694,13 +711,13 @@ pub mod pallet {
 			// Is it an attempt to cancel a previous "chill"?
 			if let Some(current_cluster) = Self::edges(&stash) {
 				// Switching the cluster is prohibited. The user should chill first.
-				ensure!(current_cluster == cluster, Error::<T>::AlreadyInRole);
+				ensure!(current_cluster == cluster_id, Error::<T>::AlreadyInRole);
 				// Cancel previous "chill" attempts
 				Self::reset_chilling(&controller);
 				return Ok(())
 			}
 
-			Self::do_add_edge(stash, cluster);
+			Self::do_add_edge(stash, cluster_id);
 			Ok(())
 		}
 
@@ -712,12 +729,15 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
 		/// bond size must be greater than or equal to the `StorageBondSize`.
 		#[pallet::weight(T::WeightInfo::store())]
-		pub fn store(origin: OriginFor<T>, cluster: ClusterId) -> DispatchResult {
+		pub fn store(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
+
+			T::ClusterVisitor::ensure_cluster(&cluster_id)
+				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			ensure!(
-				ledger.active >= Self::settings(cluster).storage_bond_size,
+				ledger.active >= Self::settings(cluster_id).storage_bond_size,
 				Error::<T>::InsufficientBond
 			);
 			let stash = &ledger.stash;
@@ -728,13 +748,13 @@ pub mod pallet {
 			// Is it an attempt to cancel a previous "chill"?
 			if let Some(current_cluster) = Self::storages(&stash) {
 				// Switching the cluster is prohibited. The user should chill first.
-				ensure!(current_cluster == cluster, Error::<T>::AlreadyInRole);
+				ensure!(current_cluster == cluster_id, Error::<T>::AlreadyInRole);
 				// Cancel previous "chill" attempts
 				Self::reset_chilling(&controller);
 				return Ok(())
 			}
 
-			Self::do_add_storage(stash, cluster);
+			Self::do_add_storage(stash, cluster_id);
 
 			Ok(())
 		}
@@ -940,6 +960,30 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Allow cluster node candidate to chill in the next DDC era.
+		///
+		/// The dispatch origin for this call must be _Signed_ by the controller.
+		#[pallet::weight(10_000)]
+		pub fn fast_chill(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
+			let controller = ensure_signed(origin)?;
+
+			let stash = <Ledger<T>>::get(&controller).ok_or(Error::<T>::NotController)?.stash;
+			let node_stash = <Nodes<T>>::get(&node_pub_key).ok_or(Error::<T>::BadState)?;
+			ensure!(stash == node_stash, Error::<T>::NotNodeController);
+
+			let cluster_id = <Edges<T>>::get(&stash)
+				.or(<Storages<T>>::get(&stash))
+				.ok_or(Error::<T>::NodeHasNoStake)?;
+
+			let is_cluster_node = T::ClusterVisitor::cluster_has_node(&cluster_id, &node_pub_key);
+			ensure!(!is_cluster_node, Error::<T>::FastChillProhibited);
+
+			let can_chill_from = Self::current_era().unwrap_or(0) + 1;
+			Self::chill_stash_soon(&stash, &controller, cluster_id, can_chill_from);
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -1114,6 +1158,46 @@ pub mod pallet {
 					era_rewards.total += points;
 				}
 			});
+		}
+	}
+
+	impl<T: Config> StakingVisitor<T> for Pallet<T> {
+		fn node_has_stake(
+			node_pub_key: &NodePubKey,
+			cluster_id: &ClusterId,
+		) -> Result<bool, StakingVisitorError> {
+			let stash =
+				<Nodes<T>>::get(&node_pub_key).ok_or(StakingVisitorError::NodeStakeDoesNotExist)?;
+			let maybe_edge_in_cluster = Edges::<T>::get(&stash);
+			let maybe_storage_in_cluster = Storages::<T>::get(&stash);
+
+			let has_stake: bool = maybe_edge_in_cluster
+				.or(maybe_storage_in_cluster)
+				.is_some_and(|staking_cluster| staking_cluster == *cluster_id);
+
+			Ok(has_stake)
+		}
+
+		fn node_is_chilling(node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
+			let stash =
+				<Nodes<T>>::get(&node_pub_key).ok_or(StakingVisitorError::NodeStakeDoesNotExist)?;
+			let controller =
+				<Bonded<T>>::get(&stash).ok_or(StakingVisitorError::NodeStakeIsInBadState)?;
+
+			let is_chilling = <Ledger<T>>::get(&controller)
+				.ok_or(StakingVisitorError::NodeStakeIsInBadState)?
+				.chilling
+				.is_some();
+
+			Ok(is_chilling)
+		}
+	}
+
+	impl<T> From<ClusterVisitorError> for Error<T> {
+		fn from(error: ClusterVisitorError) -> Self {
+			match error {
+				ClusterVisitorError::ClusterDoesNotExist => Error::<T>::NodeHasNoStake,
+			}
 		}
 	}
 }
