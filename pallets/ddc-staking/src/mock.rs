@@ -4,6 +4,7 @@
 
 use crate::{self as pallet_ddc_staking, *};
 use ddc_primitives::{CDNNodePubKey, StorageNodePubKey};
+use ddc_traits::cluster::{ClusterVisitor, ClusterVisitorError};
 use frame_support::{
 	construct_runtime,
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
@@ -110,11 +111,20 @@ impl crate::pallet::Config for Test {
 	type UnixTime = Timestamp;
 	type WeightInfo = ();
 	type StakersPayoutSource = DdcAccountsPalletId;
+	type ClusterVisitor = TestClusterVisitor;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
-
+pub struct TestClusterVisitor {}
+impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
+	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
+		true
+	}
+	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
+		Ok(())
+	}
+}
 pub struct ExtBuilder {
 	has_edges: bool,
 	has_storages: bool,
