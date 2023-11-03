@@ -1,5 +1,10 @@
 use crate::{self as pallet_ddc_validator, *};
 use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey};
+use ddc_traits::{
+	cluster::{ClusterVisitor, ClusterVisitorError},
+	staking::{StakingVisitor, StakingVisitorError},
+};
+
 use frame_election_provider_support::{onchain, SequentialPhragmen};
 use frame_support::{
 	parameter_types,
@@ -270,11 +275,37 @@ impl pallet_ddc_staking::Config for Test {
 	type StakersPayoutSource = DdcAccountsPalletId;
 	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Test>;
+	type ClusterVisitor = TestClusterVisitor;
+}
+
+pub struct TestClusterVisitor;
+impl<T: frame_system::Config + pallet_contracts::Config> ClusterVisitor<T> for TestClusterVisitor {
+	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
+		true
+	}
+	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
+		Ok(())
+	}
 }
 
 impl pallet_ddc_clusters::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type NodeRepository = pallet_ddc_nodes::Pallet<Test>;
+	type StakingVisitor = TestStakingVisitor;
+}
+
+pub struct TestStakingVisitor;
+impl<T: frame_system::Config + pallet_contracts::Config> StakingVisitor<T> for TestStakingVisitor {
+	fn node_has_stake(
+		_node_pub_key: &NodePubKey,
+		_cluster_id: &ClusterId,
+	) -> Result<bool, StakingVisitorError> {
+		Ok(true)
+	}
+
+	fn node_is_chilling(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
+		Ok(true)
+	}
 }
 
 impl pallet_ddc_nodes::Config for Test {
