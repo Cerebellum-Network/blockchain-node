@@ -95,7 +95,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		NodePubKey,
 		bool,
-		ValueQuery,
+		OptionQuery,
 	>;
 
 	#[pallet::call]
@@ -147,11 +147,12 @@ pub mod pallet {
 			// Cluster extension smart contract allows joining.
 			let call_data = {
 				// is_authorized(node_provider: AccountId, node: Vec<u8>, node_variant: u8) -> bool
-				let args: ([u8; 4], /* T::AccountId, */ Vec<u8>, u8) = (
+				let args: ([u8; 4], T::AccountId, Vec<u8>, u8) = (
 					INK_SELECTOR_IS_AUTHORIZED,
-					// *node.get_provider_id(),
-					node_pub_key.encode()[1..].to_vec(), // remove the first byte added by SCALE
-					node_pub_key.variant_as_number(),
+					node.get_provider_id().to_owned(),
+					/* remove the first byte* added by SCALE */
+					node.get_pub_key().to_owned().encode()[1..].to_vec(),
+					node.get_type().into(),
 				);
 				args.encode()
 			};
@@ -223,7 +224,7 @@ pub mod pallet {
 
 	impl<T: Config> ClusterVisitor<T> for Pallet<T> {
 		fn cluster_has_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> bool {
-			ClustersNodes::<T>::get(cluster_id, node_pub_key)
+			ClustersNodes::<T>::get(cluster_id, node_pub_key).is_some()
 		}
 
 		fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {

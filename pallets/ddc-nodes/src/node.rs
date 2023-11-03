@@ -10,9 +10,9 @@ use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum Node<AccountId> {
-	Storage(StorageNode<AccountId>),
-	CDN(CDNNode<AccountId>),
+pub enum Node<T: frame_system::Config> {
+	Storage(StorageNode<T>),
+	CDN(CDNNode<T>),
 }
 
 // Params fields are always coming from extrinsic input
@@ -52,9 +52,9 @@ pub enum NodePropsRef<'a> {
 	CDNPropsRef(&'a CDNNodeProps),
 }
 
-pub trait NodeTrait<AccountId> {
+pub trait NodeTrait<T: frame_system::Config> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a>;
-	fn get_provider_id(&self) -> &AccountId;
+	fn get_provider_id(&self) -> &T::AccountId;
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a>;
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError>;
 	fn set_params(&mut self, props: NodeParams) -> Result<(), NodeError>;
@@ -63,19 +63,19 @@ pub trait NodeTrait<AccountId> {
 	fn get_type(&self) -> NodeType;
 	fn new(
 		node_pub_key: NodePubKey,
-		provider_id: AccountId,
+		provider_id: T::AccountId,
 		params: NodeParams,
-	) -> Result<Node<AccountId>, NodeError>;
+	) -> Result<Node<T>, NodeError>;
 }
 
-impl<AccountId> NodeTrait<AccountId> for Node<AccountId> {
+impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
 		match &self {
 			Node::Storage(node) => node.get_pub_key(),
 			Node::CDN(node) => node.get_pub_key(),
 		}
 	}
-	fn get_provider_id(&self) -> &AccountId {
+	fn get_provider_id(&self) -> &T::AccountId {
 		match &self {
 			Node::Storage(node) => node.get_provider_id(),
 			Node::CDN(node) => node.get_provider_id(),
@@ -119,9 +119,9 @@ impl<AccountId> NodeTrait<AccountId> for Node<AccountId> {
 	}
 	fn new(
 		node_pub_key: NodePubKey,
-		provider_id: AccountId,
+		provider_id: T::AccountId,
 		node_params: NodeParams,
-	) -> Result<Node<AccountId>, NodeError> {
+	) -> Result<Node<T>, NodeError> {
 		match node_pub_key {
 			NodePubKey::StoragePubKey(_) =>
 				StorageNode::new(node_pub_key, provider_id, node_params),
@@ -175,7 +175,7 @@ impl<T> From<NodeError> for Error<T> {
 			NodeError::InvalidStorageNodeParams => Error::<T>::InvalidNodeParams,
 			NodeError::InvalidCDNNodeParams => Error::<T>::InvalidNodeParams,
 			NodeError::StorageNodeParamsExceedsLimit => Error::<T>::NodeParamsExceedsLimit,
-			NodeError::CDNNodeParamsExceedsLimit => Error::<T>::InvalidNodeParams,
+			NodeError::CDNNodeParamsExceedsLimit => Error::<T>::NodeParamsExceedsLimit,
 			NodeError::InvalidStorageNodeProps => Error::<T>::InvalidNodeParams,
 			NodeError::InvalidCDNNodeProps => Error::<T>::InvalidNodeParams,
 		}
