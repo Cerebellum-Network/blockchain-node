@@ -13,7 +13,7 @@ pub mod v1 {
 
 	#[storage_alias]
 	pub(super) type Buckets<T: Config> =
-		StorageMap<Pallet<T>, Twox64Concat, u64, Bucket<<T as frame_system::Config>::AccountId>>;
+		StorageMap<Pallet<T>, Twox64Concat, u128, Bucket<<T as frame_system::Config>::AccountId>>;
 }
 
 // contains checks and transforms storage to V2 format
