@@ -1,8 +1,6 @@
-use crate::node::{
-	Node, NodeError, NodeParams, NodeProps, NodePropsRef, NodePubKeyRef, NodeTrait, NodeType,
-};
+use crate::node::{Node, NodeError, NodeParams, NodeProps, NodePropsRef, NodePubKeyRef, NodeTrait};
 use codec::{Decode, Encode};
-use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey};
+use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey, NodeType};
 use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
