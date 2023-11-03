@@ -13,9 +13,10 @@ parameter_types! {
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct StorageNode<AccountId> {
+#[scale_info(skip_type_params(T))]
+pub struct StorageNode<T: frame_system::Config> {
 	pub pub_key: StorageNodePubKey,
-	pub provider_id: AccountId,
+	pub provider_id: T::AccountId,
 	pub cluster_id: Option<ClusterId>,
 	pub props: StorageNodeProps,
 }
@@ -32,11 +33,11 @@ pub struct StorageNodeParams {
 	pub params: Vec<u8>, // should be replaced with specific parameters for this type of node
 }
 
-impl<AccountId> NodeTrait<AccountId> for StorageNode<AccountId> {
+impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
 		NodePubKeyRef::StoragePubKeyRef(&self.pub_key)
 	}
-	fn get_provider_id(&self) -> &AccountId {
+	fn get_provider_id(&self) -> &T::AccountId {
 		&self.provider_id
 	}
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
@@ -70,23 +71,22 @@ impl<AccountId> NodeTrait<AccountId> for StorageNode<AccountId> {
 	}
 	fn new(
 		node_pub_key: NodePubKey,
-		provider_id: AccountId,
+		provider_id: T::AccountId,
 		node_params: NodeParams,
-	) -> Result<Node<AccountId>, NodeError> {
+	) -> Result<Node<T>, NodeError> {
 		match node_pub_key {
 			NodePubKey::StoragePubKey(pub_key) => match node_params {
-				NodeParams::StorageParams(node_params) =>
-					Ok(Node::Storage(StorageNode::<AccountId> {
-						provider_id,
-						pub_key,
-						cluster_id: None,
-						props: StorageNodeProps {
-							params: match node_params.params.try_into() {
-								Ok(vec) => vec,
-								Err(_) => return Err(NodeError::StorageNodeParamsExceedsLimit),
-							},
+				NodeParams::StorageParams(node_params) => Ok(Node::Storage(StorageNode::<T> {
+					provider_id,
+					pub_key,
+					cluster_id: None,
+					props: StorageNodeProps {
+						params: match node_params.params.try_into() {
+							Ok(vec) => vec,
+							Err(_) => return Err(NodeError::StorageNodeParamsExceedsLimit),
 						},
-					})),
+					},
+				})),
 				_ => Err(NodeError::InvalidStorageNodeParams),
 			},
 			_ => Err(NodeError::InvalidStorageNodePubKey),
