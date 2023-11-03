@@ -15,6 +15,10 @@
 #![recursion_limit = "256"]
 #![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
+use crate::{
+	cluster::{Cluster, ClusterError, ClusterParams},
+	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
+};
 use ddc_primitives::{ClusterId, NodePubKey};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
@@ -25,18 +29,9 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_std::prelude::*;
+
 mod cluster;
-
-pub use crate::cluster::{Cluster, ClusterError, ClusterParams};
-
-/// ink! 4.x selector for the "is_authorized" message, equals to the first four bytes of the
-/// blake2("is_authorized"). See also: https://use.ink/basics/selectors#selector-calculation/,
-/// https://use.ink/macros-attributes/selector/.
-const INK_SELECTOR_IS_AUTHORIZED: [u8; 4] = [0x96, 0xb0, 0x45, 0x3e];
-
-/// The maximum amount of weight that the cluster extension contract call is allowed to consume.
-/// See also https://github.com/paritytech/substrate/blob/a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d/frame/contracts/rpc/src/lib.rs#L63.
-const EXTENSION_CALL_GAS_LIMIT: Weight = Weight::from_ref_time(5_000_000_000_000);
+mod node_provider_auth;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -79,6 +74,7 @@ pub mod pallet {
 		NodeStakeIsInvalid,
 		/// Cluster candidate should not plan to chill.
 		NodeChillingIsProhibited,
+		NodeAuthContractCallFailed,
 	}
 
 	#[pallet::storage]
@@ -129,7 +125,7 @@ pub mod pallet {
 				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
-			// Node with this node with this public key exists
+			// Node with this node with this public key exists.
 			let mut node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAlreadyAssigned);
@@ -145,32 +141,20 @@ pub mod pallet {
 			ensure!(!is_chilling, Error::<T>::NodeChillingIsProhibited);
 
 			// Cluster extension smart contract allows joining.
-			let call_data = {
-				// is_authorized(node_provider: AccountId, node: Vec<u8>, node_variant: u8) -> bool
-				let args: ([u8; 4], T::AccountId, Vec<u8>, u8) = (
-					INK_SELECTOR_IS_AUTHORIZED,
-					node.get_provider_id().to_owned(),
-					/* remove the first byte* added by SCALE */
-					node.get_pub_key().to_owned().encode()[1..].to_vec(),
-					node.get_type().into(),
-				);
-				args.encode()
-			};
-			let is_authorized = pallet_contracts::Pallet::<T>::bare_call(
-				caller_id,
+			let auth_contract = NodeProviderAuthContract::<T>::new(
 				cluster.props.node_provider_auth_contract,
-				Default::default(),
-				EXTENSION_CALL_GAS_LIMIT,
-				None,
-				call_data,
-				false,
-			)
-			.result?
-			.data
-			.first()
-			.is_some_and(|x| *x == 1);
+				caller_id,
+			);
+			let is_authorized = auth_contract
+				.is_authorized(
+					node.get_provider_id().to_owned(),
+					node.get_pub_key().to_owned(),
+					node.get_type(),
+				)
+				.map_err(|e| Into::<Error<T>>::into(NodeProviderAuthContractError::from(e)))?;
 			ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
 
+			// Add node to the cluster.
 			node.set_cluster_id(Some(cluster_id.clone()));
 			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			ClustersNodes::<T>::insert(cluster_id.clone(), node_pub_key.clone(), true);
@@ -239,6 +223,15 @@ pub mod pallet {
 			match error {
 				StakingVisitorError::NodeStakeDoesNotExist => Error::<T>::NodeHasNoStake,
 				StakingVisitorError::NodeStakeIsInBadState => Error::<T>::NodeStakeIsInvalid,
+			}
+		}
+	}
+
+	impl<T> From<NodeProviderAuthContractError> for Error<T> {
+		fn from(error: NodeProviderAuthContractError) -> Self {
+			match error {
+				NodeProviderAuthContractError::ContractCallFailed =>
+					Error::<T>::NodeAuthContractCallFailed,
 			}
 		}
 	}

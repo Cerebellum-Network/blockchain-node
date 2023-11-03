@@ -5,7 +5,7 @@ use crate::{
 	ClusterId,
 };
 use codec::{Decode, Encode};
-use ddc_primitives::{CDNNodePubKey, NodePubKey, StorageNodePubKey};
+use ddc_primitives::{CDNNodePubKey, NodePubKey, NodeType, StorageNodePubKey};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
@@ -126,32 +126,6 @@ impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
 			NodePubKey::StoragePubKey(_) =>
 				StorageNode::new(node_pub_key, provider_id, node_params),
 			NodePubKey::CDNPubKey(_) => CDNNode::new(node_pub_key, provider_id, node_params),
-		}
-	}
-}
-
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum NodeType {
-	Storage = 1,
-	CDN = 2,
-}
-
-impl From<NodeType> for u8 {
-	fn from(node_type: NodeType) -> Self {
-		match node_type {
-			NodeType::Storage => 1,
-			NodeType::CDN => 2,
-		}
-	}
-}
-
-impl TryFrom<u8> for NodeType {
-	type Error = ();
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
-		match value {
-			1 => Ok(NodeType::Storage),
-			2 => Ok(NodeType::CDN),
-			_ => Err(()),
 		}
 	}
 }
