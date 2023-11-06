@@ -1477,9 +1477,7 @@ pub type Executive = frame_executive::Executive<
 >;
 
 mod custom_migration {
-	use super::*;
-
-	use frame_support::{traits::OnRuntimeUpgrade, weights::Weight, Twox128};
+	use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
 	use sp_io::{hashing::twox_128, storage::clear_prefix};
 
 	pub struct Upgrade;
