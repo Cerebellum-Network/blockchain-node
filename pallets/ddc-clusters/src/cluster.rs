@@ -12,11 +12,10 @@ parameter_types! {
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct Cluster<AccountId, Balance> {
+pub struct Cluster<AccountId> {
 	pub cluster_id: ClusterId,
 	pub manager_id: AccountId,
 	pub props: ClusterProps<AccountId>,
-	pub gov_params: ClusterGovParams<Balance>,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -54,13 +53,12 @@ pub struct ClusterGovParams<Balance> {
 	pub unit_per_get_request: u128,
 }
 
-impl<AccountId, Balance> Cluster<AccountId, Balance> {
+impl<AccountId> Cluster<AccountId> {
 	pub fn new(
 		cluster_id: ClusterId,
 		manager_id: AccountId,
 		cluster_params: ClusterParams<AccountId>,
-		gov_params: ClusterGovParams<Balance>,
-	) -> Result<Cluster<AccountId, Balance>, ClusterError> {
+	) -> Result<Cluster<AccountId>, ClusterError> {
 		Ok(Cluster {
 			cluster_id,
 			manager_id,
@@ -71,7 +69,6 @@ impl<AccountId, Balance> Cluster<AccountId, Balance> {
 				},
 				node_provider_auth_contract: cluster_params.node_provider_auth_contract,
 			},
-			gov_params,
 		})
 	}
 
@@ -86,14 +83,6 @@ impl<AccountId, Balance> Cluster<AccountId, Balance> {
 			},
 			node_provider_auth_contract: cluster_params.node_provider_auth_contract,
 		};
-		Ok(())
-	}
-
-	pub fn set_gov_params(
-		&mut self,
-		cluster_gov_params: ClusterGovParams<Balance>,
-	) -> Result<(), ClusterError> {
-		self.gov_params = cluster_gov_params;
 		Ok(())
 	}
 }

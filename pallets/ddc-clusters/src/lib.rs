@@ -89,7 +89,12 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn clusters)]
 	pub type Clusters<T: Config> =
-		StorageMap<_, Blake2_128Concat, ClusterId, Cluster<T::AccountId, BalanceOf<T>>>;
+		StorageMap<_, Blake2_128Concat, ClusterId, Cluster<T::AccountId>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn clusters_gov_params)]
+	pub type ClustersGovParams<T: Config> =
+		StorageMap<_, Twox64Concat, ClusterId, ClusterGovParams<BalanceOf<T>>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_nodes)]
@@ -113,12 +118,10 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			cluster_params: ClusterParams<T::AccountId>,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>>,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let cluster =
-				Cluster::new(cluster_id.clone(), caller_id, cluster_params, cluster_gov_params)
-					.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
+			let cluster = Cluster::new(cluster_id.clone(), caller_id, cluster_params)
+				.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
 			ensure!(!Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterAlreadyExists);
 			Clusters::<T>::insert(cluster_id.clone(), cluster);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
@@ -224,13 +227,10 @@ pub mod pallet {
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>>,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let mut cluster =
+			let cluster =
 				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
-			cluster
-				.set_gov_params(cluster_gov_params)
-				.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
-			Clusters::<T>::insert(cluster_id.clone(), cluster);
+			ClustersGovParams::<T>::insert(cluster_id.clone(), cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
 
 			Ok(())
