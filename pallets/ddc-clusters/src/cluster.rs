@@ -3,6 +3,8 @@ use codec::{Decode, Encode};
 use ddc_primitives::ClusterId;
 use frame_support::{pallet_prelude::*, parameter_types, BoundedVec};
 use scale_info::TypeInfo;
+use sp_runtime::Perbill;
+use sp_staking::EraIndex;
 use sp_std::vec::Vec;
 
 parameter_types! {
@@ -10,10 +12,11 @@ parameter_types! {
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct Cluster<AccountId> {
+pub struct Cluster<AccountId, Balance> {
 	pub cluster_id: ClusterId,
 	pub manager_id: AccountId,
 	pub props: ClusterProps<AccountId>,
+	pub gov_params: ClusterGovParams<Balance>,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -31,12 +34,33 @@ pub struct ClusterParams<AccountId> {
 	pub node_provider_auth_contract: AccountId,
 }
 
-impl<AccountId> Cluster<AccountId> {
+// ClusterGovParams includes Governance sensetive parameters
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct ClusterGovParams<Balance> {
+	pub treasury_share: Perbill,
+	pub validators_share: Perbill,
+	pub cluster_reserve_share: Perbill,
+	#[codec(compact)]
+	pub edge_bond_size: Balance,
+	pub edge_chill_delay: EraIndex,
+	pub edge_unbonding_delay: EraIndex,
+	#[codec(compact)]
+	pub storage_bond_size: Balance,
+	pub storage_chill_delay: EraIndex,
+	pub storage_unbonding_delay: EraIndex,
+	pub unit_per_mb_stored: u128,
+	pub unit_per_mb_streamed: u128,
+	pub unit_per_put_request: u128,
+	pub unit_per_get_request: u128,
+}
+
+impl<AccountId, Balance> Cluster<AccountId, Balance> {
 	pub fn new(
 		cluster_id: ClusterId,
 		manager_id: AccountId,
 		cluster_params: ClusterParams<AccountId>,
-	) -> Result<Cluster<AccountId>, ClusterError> {
+		gov_params: ClusterGovParams<Balance>,
+	) -> Result<Cluster<AccountId, Balance>, ClusterError> {
 		Ok(Cluster {
 			cluster_id,
 			manager_id,
@@ -47,6 +71,7 @@ impl<AccountId> Cluster<AccountId> {
 				},
 				node_provider_auth_contract: cluster_params.node_provider_auth_contract,
 			},
+			gov_params,
 		})
 	}
 
@@ -61,6 +86,14 @@ impl<AccountId> Cluster<AccountId> {
 			},
 			node_provider_auth_contract: cluster_params.node_provider_auth_contract,
 		};
+		Ok(())
+	}
+
+	pub fn set_gov_params(
+		&mut self,
+		cluster_gov_params: ClusterGovParams<Balance>,
+	) -> Result<(), ClusterError> {
+		self.gov_params = cluster_gov_params;
 		Ok(())
 	}
 }
