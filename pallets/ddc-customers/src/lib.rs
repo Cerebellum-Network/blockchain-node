@@ -218,6 +218,8 @@ pub mod pallet {
 		BucketDoesNotExist,
 		/// DDC Cluster with provided id doesn't exist
 		ClusterDoesNotExist,
+		/// Bucket already allocated to cluster
+		BucketAlreadyInCluster,
 	}
 
 	#[pallet::genesis_config]
@@ -276,6 +278,7 @@ pub mod pallet {
 
 			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 
+			ensure!(bucket.cluster_id == None, Error::<T>::BucketAlreadyInCluster);
 			ensure!(bucket.owner_id == bucket_owner, Error::<T>::NotBucketOwner);
 
 			ensure!(
