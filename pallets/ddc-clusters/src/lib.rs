@@ -15,24 +15,23 @@
 #![recursion_limit = "256"]
 #![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
+use crate::{
+	cluster::{Cluster, ClusterError, ClusterParams},
+	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
+};
 use ddc_primitives::{ClusterId, NodePubKey};
+use ddc_traits::{
+	cluster::{ClusterVisitor, ClusterVisitorError},
+	staking::{StakingVisitor, StakingVisitorError},
+};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_std::prelude::*;
+
 mod cluster;
-
-pub use crate::cluster::{Cluster, ClusterError, ClusterParams};
-
-/// ink! 4.x selector for the "is_authorized" message, equals to the first four bytes of the
-/// blake2("is_authorized"). See also: https://use.ink/basics/selectors#selector-calculation/,
-/// https://use.ink/macros-attributes/selector/.
-const INK_SELECTOR_IS_AUTHORIZED: [u8; 4] = [0x96, 0xb0, 0x45, 0x3e];
-
-/// The maximum amount of weight that the cluster extension contract call is allowed to consume.
-/// See also https://github.com/paritytech/substrate/blob/a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d/frame/contracts/rpc/src/lib.rs#L63.
-const EXTENSION_CALL_GAS_LIMIT: Weight = Weight::from_ref_time(5_000_000_000_000);
+mod node_provider_auth;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -45,11 +44,10 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config:
-		frame_system::Config + pallet_contracts::Config + pallet_ddc_staking::Config
-	{
+	pub trait Config: frame_system::Config + pallet_contracts::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		type NodeRepository: NodeRepository<Self>;
+		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
+		type StakingVisitor: StakingVisitor<Self>;
 	}
 
 	#[pallet::event]
@@ -71,15 +69,12 @@ pub mod pallet {
 		NodeIsAlreadyAssigned,
 		NodeIsNotAssigned,
 		OnlyClusterManager,
-		NotAuthorized,
-		NoStake,
-		/// Conditions for fast chill are not met, try the regular `chill` from
-		/// `pallet-ddc-staking`.
-		FastChillProhibited,
+		NodeIsNotAuthorized,
+		NodeHasNoStake,
+		NodeStakeIsInvalid,
 		/// Cluster candidate should not plan to chill.
-		ChillingProhibited,
-		/// Origin of the call is not a controller of the stake associated with the provided node.
-		NotNodeController,
+		NodeChillingIsProhibited,
+		NodeAuthContractCallFailed,
 	}
 
 	#[pallet::storage]
@@ -96,7 +91,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		NodePubKey,
 		bool,
-		ValueQuery,
+		OptionQuery,
 	>;
 
 	#[pallet::call]
@@ -129,58 +124,37 @@ pub mod pallet {
 			let cluster =
 				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
+
+			// Node with this node with this public key exists.
 			let mut node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAlreadyAssigned);
 
 			// Sufficient funds are locked at the DDC Staking module.
-			let node_provider_stash =
-				<pallet_ddc_staking::Pallet<T>>::nodes(&node_pub_key).ok_or(Error::<T>::NoStake)?;
-			let maybe_edge_in_cluster =
-				<pallet_ddc_staking::Pallet<T>>::edges(&node_provider_stash);
-			let maybe_storage_in_cluster =
-				<pallet_ddc_staking::Pallet<T>>::storages(&node_provider_stash);
-			let has_stake = maybe_edge_in_cluster
-				.or(maybe_storage_in_cluster)
-				.is_some_and(|staking_cluster| staking_cluster == cluster_id);
-			ensure!(has_stake, Error::<T>::NoStake);
+			let has_stake = T::StakingVisitor::node_has_stake(&node_pub_key, &cluster_id)
+				.map_err(|e| Into::<Error<T>>::into(StakingVisitorError::from(e)))?;
+			ensure!(has_stake, Error::<T>::NodeHasNoStake);
 
 			// Candidate is not planning to pause operations any time soon.
-			let node_provider_controller =
-				<pallet_ddc_staking::Pallet<T>>::bonded(&node_provider_stash)
-					.ok_or(<pallet_ddc_staking::Error<T>>::BadState)?;
-			let chilling = <pallet_ddc_staking::Pallet<T>>::ledger(&node_provider_controller)
-				.ok_or(<pallet_ddc_staking::Error<T>>::BadState)?
-				.chilling
-				.is_some();
-			ensure!(!chilling, Error::<T>::ChillingProhibited);
+			let is_chilling = T::StakingVisitor::node_is_chilling(&node_pub_key)
+				.map_err(|e| Into::<Error<T>>::into(StakingVisitorError::from(e)))?;
+			ensure!(!is_chilling, Error::<T>::NodeChillingIsProhibited);
 
 			// Cluster extension smart contract allows joining.
-			let call_data = {
-				// is_authorized(node_provider: AccountId, node: Vec<u8>, node_variant: u8) -> bool
-				let args: ([u8; 4], T::AccountId, Vec<u8>, u8) = (
-					INK_SELECTOR_IS_AUTHORIZED,
-					node_provider_stash,
-					node_pub_key.encode()[1..].to_vec(), // remove the first byte added by SCALE
-					node_pub_key.variant_as_number(),
-				);
-				args.encode()
-			};
-			let is_authorized = pallet_contracts::Pallet::<T>::bare_call(
-				caller_id,
+			let auth_contract = NodeProviderAuthContract::<T>::new(
 				cluster.props.node_provider_auth_contract,
-				Default::default(),
-				EXTENSION_CALL_GAS_LIMIT,
-				None,
-				call_data,
-				false,
-			)
-			.result?
-			.data
-			.first()
-			.is_some_and(|x| *x == 1);
-			ensure!(is_authorized, Error::<T>::NotAuthorized);
+				caller_id,
+			);
+			let is_authorized = auth_contract
+				.is_authorized(
+					node.get_provider_id().to_owned(),
+					node.get_pub_key().to_owned(),
+					node.get_type(),
+				)
+				.map_err(|e| Into::<Error<T>>::into(NodeProviderAuthContractError::from(e)))?;
+			ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
 
+			// Add node to the cluster.
 			node.set_cluster_id(Some(cluster_id.clone()));
 			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 			ClustersNodes::<T>::insert(cluster_id.clone(), node_pub_key.clone(), true);
@@ -230,36 +204,35 @@ pub mod pallet {
 
 			Ok(())
 		}
+	}
 
-		/// Allow cluster node candidate to chill in the next DDC era.
-		///
-		/// The dispatch origin for this call must be _Signed_ by the controller.
-		#[pallet::weight(10_000)]
-		pub fn fast_chill(origin: OriginFor<T>, node: NodePubKey) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
+	impl<T: Config> ClusterVisitor<T> for Pallet<T> {
+		fn cluster_has_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> bool {
+			ClustersNodes::<T>::get(cluster_id, node_pub_key).is_some()
+		}
 
-			let stash = <pallet_ddc_staking::Pallet<T>>::ledger(&controller)
-				.ok_or(<pallet_ddc_staking::Error<T>>::NotController)?
-				.stash;
-			let node_stash = <pallet_ddc_staking::Pallet<T>>::nodes(&node)
-				.ok_or(<pallet_ddc_staking::Error<T>>::BadState)?;
-			ensure!(stash == node_stash, Error::<T>::NotNodeController);
+		fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
+			Clusters::<T>::get(&cluster_id)
+				.map(|_| ())
+				.ok_or(ClusterVisitorError::ClusterDoesNotExist)
+		}
+	}
 
-			let cluster = <pallet_ddc_staking::Pallet<T>>::edges(&stash)
-				.or(<pallet_ddc_staking::Pallet<T>>::storages(&stash))
-				.ok_or(Error::<T>::NoStake)?;
-			let is_cluster_node = ClustersNodes::<T>::get(cluster, node);
-			ensure!(!is_cluster_node, Error::<T>::FastChillProhibited);
+	impl<T> From<StakingVisitorError> for Error<T> {
+		fn from(error: StakingVisitorError) -> Self {
+			match error {
+				StakingVisitorError::NodeStakeDoesNotExist => Error::<T>::NodeHasNoStake,
+				StakingVisitorError::NodeStakeIsInBadState => Error::<T>::NodeStakeIsInvalid,
+			}
+		}
+	}
 
-			let can_chill_from = <pallet_ddc_staking::Pallet<T>>::current_era().unwrap_or(0) + 1;
-			<pallet_ddc_staking::Pallet<T>>::chill_stash_soon(
-				&stash,
-				&controller,
-				cluster,
-				can_chill_from,
-			);
-
-			Ok(())
+	impl<T> From<NodeProviderAuthContractError> for Error<T> {
+		fn from(error: NodeProviderAuthContractError) -> Self {
+			match error {
+				NodeProviderAuthContractError::ContractCallFailed =>
+					Error::<T>::NodeAuthContractCallFailed,
+			}
 		}
 	}
 }
