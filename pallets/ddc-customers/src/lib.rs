@@ -3,7 +3,7 @@
 
 use codec::{Decode, Encode, HasCompact};
 
-use ddc_primitives::ClusterId;
+use ddc_primitives::{BucketId, ClusterId};
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
@@ -43,7 +43,7 @@ pub struct UnlockChunk<Balance: HasCompact> {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Bucket<AccountId> {
-	bucket_id: u64,
+	bucket_id: BucketId,
 	owner_id: AccountId,
 	cluster_id: Option<ClusterId>,
 	public_availability: bool,
@@ -51,7 +51,7 @@ pub struct Bucket<AccountId> {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct BucketsDetails<Balance: HasCompact> {
-	pub bucket_id: u64,
+	pub bucket_id: BucketId,
 	pub amount: Balance,
 }
 
@@ -165,19 +165,19 @@ pub mod pallet {
 		StorageMap<_, Identity, T::AccountId, AccountsLedger<T::AccountId, BalanceOf<T>>>;
 
 	#[pallet::type_value]
-	pub fn DefaultBucketCount<T: Config>() -> u64 {
-		0_u64
+	pub fn DefaultBucketCount<T: Config>() -> BucketId {
+		0
 	}
 	#[pallet::storage]
 	#[pallet::getter(fn buckets_count)]
 	pub type BucketsCount<T: Config> =
-		StorageValue<Value = u64, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
+		StorageValue<Value = BucketId, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
 
 	/// Map from bucket ID to to the bucket structure
 	#[pallet::storage]
 	#[pallet::getter(fn buckets)]
 	pub type Buckets<T: Config> =
-		StorageMap<_, Twox64Concat, u64, Bucket<T::AccountId>, OptionQuery>;
+		StorageMap<_, Twox64Concat, BucketId, Bucket<T::AccountId>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
@@ -269,7 +269,7 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn allocate_bucket_to_cluster(
 			origin: OriginFor<T>,
-			bucket_id: u64,
+			bucket_id: BucketId,
 			cluster_id: ClusterId,
 		) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
