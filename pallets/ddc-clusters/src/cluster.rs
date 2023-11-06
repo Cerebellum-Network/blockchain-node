@@ -3,6 +3,8 @@ use codec::{Decode, Encode};
 use ddc_primitives::ClusterId;
 use frame_support::{pallet_prelude::*, parameter_types, BoundedVec};
 use scale_info::TypeInfo;
+use sp_runtime::Perbill;
+use sp_staking::EraIndex;
 use sp_std::vec::Vec;
 
 parameter_types! {
@@ -29,6 +31,26 @@ pub struct ClusterProps<AccountId> {
 pub struct ClusterParams<AccountId> {
 	pub params: Vec<u8>,
 	pub node_provider_auth_contract: AccountId,
+}
+
+// ClusterGovParams includes Governance sensetive parameters
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct ClusterGovParams<Balance> {
+	pub treasury_share: Perbill,
+	pub validators_share: Perbill,
+	pub cluster_reserve_share: Perbill,
+	#[codec(compact)]
+	pub cdn_bond_size: Balance,
+	pub cdn_chill_delay: EraIndex,
+	pub cdn_unbonding_delay: EraIndex,
+	#[codec(compact)]
+	pub storage_bond_size: Balance,
+	pub storage_chill_delay: EraIndex,
+	pub storage_unbonding_delay: EraIndex,
+	pub unit_per_mb_stored: u128,
+	pub unit_per_mb_streamed: u128,
+	pub unit_per_put_request: u128,
+	pub unit_per_get_request: u128,
 }
 
 impl<AccountId> Cluster<AccountId> {

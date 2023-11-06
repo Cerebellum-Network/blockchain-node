@@ -16,7 +16,7 @@
 #![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
 use crate::{
-	cluster::{Cluster, ClusterError, ClusterParams},
+	cluster::{Cluster, ClusterError, ClusterGovParams, ClusterParams},
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
 };
 use ddc_primitives::{ClusterId, NodePubKey};
@@ -24,7 +24,10 @@ use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
 	staking::{StakingVisitor, StakingVisitorError},
 };
-use frame_support::pallet_prelude::*;
+use frame_support::{
+	pallet_prelude::*,
+	traits::{Currency, LockableCurrency},
+};
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
@@ -32,6 +35,10 @@ use sp_std::prelude::*;
 
 mod cluster;
 mod node_provider_auth;
+
+/// The balance type of this pallet.
+pub type BalanceOf<T> =
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -48,6 +55,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
 		type StakingVisitor: StakingVisitor<Self>;
+		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 	}
 
 	#[pallet::event]
@@ -57,6 +65,7 @@ pub mod pallet {
 		ClusterNodeAdded { cluster_id: ClusterId, node_pub_key: NodePubKey },
 		ClusterNodeRemoved { cluster_id: ClusterId, node_pub_key: NodePubKey },
 		ClusterParamsSet { cluster_id: ClusterId },
+		ClusterGovParamsSet { cluster_id: ClusterId },
 	}
 
 	#[pallet::error]
@@ -81,6 +90,11 @@ pub mod pallet {
 	#[pallet::getter(fn clusters)]
 	pub type Clusters<T: Config> =
 		StorageMap<_, Blake2_128Concat, ClusterId, Cluster<T::AccountId>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn clusters_gov_params)]
+	pub type ClustersGovParams<T: Config> =
+		StorageMap<_, Twox64Concat, ClusterId, ClusterGovParams<BalanceOf<T>>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_nodes)]
@@ -201,6 +215,23 @@ pub mod pallet {
 				.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
 			Clusters::<T>::insert(cluster_id.clone(), cluster);
 			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
+
+			Ok(())
+		}
+
+		// Sets Governance sensetive parameters
+		#[pallet::weight(10_000)]
+		pub fn set_cluster_gov_params(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>>,
+		) -> DispatchResult {
+			let caller_id = ensure_signed(origin)?;
+			let cluster =
+				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
+			ClustersGovParams::<T>::insert(cluster_id.clone(), cluster_gov_params);
+			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
 
 			Ok(())
 		}
