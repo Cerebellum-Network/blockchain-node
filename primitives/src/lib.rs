@@ -17,14 +17,31 @@ pub enum NodePubKey {
 	CDNPubKey(CDNNodePubKey),
 }
 
-impl NodePubKey {
-	pub fn variant_as_number(&self) -> u8 {
-		match self {
-			NodePubKey::CDNPubKey(_) => 0,
-			NodePubKey::StoragePubKey(_) => 1,
+pub type StorageNodePubKey = AccountId32;
+pub type CDNNodePubKey = AccountId32;
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub enum NodeType {
+	Storage = 1,
+	CDN = 2,
+}
+
+impl From<NodeType> for u8 {
+	fn from(node_type: NodeType) -> Self {
+		match node_type {
+			NodeType::Storage => 1,
+			NodeType::CDN => 2,
 		}
 	}
 }
 
-pub type StorageNodePubKey = AccountId32;
-pub type CDNNodePubKey = AccountId32;
+impl TryFrom<u8> for NodeType {
+	type Error = ();
+	fn try_from(value: u8) -> Result<Self, Self::Error> {
+		match value {
+			1 => Ok(NodeType::Storage),
+			2 => Ok(NodeType::CDN),
+			_ => Err(()),
+		}
+	}
+}
