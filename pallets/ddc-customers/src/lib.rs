@@ -19,8 +19,6 @@ use sp_runtime::{
 use sp_staking::EraIndex;
 use sp_std::prelude::*;
 
-mod migration;
-
 pub use pallet::*;
 
 /// The balance type of this pallet.
@@ -49,7 +47,6 @@ pub struct Bucket<AccountId> {
 	owner_id: AccountId,
 	cluster_id: Option<ClusterId>,
 	public_availability: bool,
-	resources_reserved: u128,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -148,13 +145,6 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		fn on_runtime_upgrade() -> frame_support::weights::Weight {
-			migration::migrate_to_v2::<T>()
-		}
-	}
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + ddc_staking::Config + ddc_clusters::Config {
@@ -257,11 +247,7 @@ pub mod pallet {
 		///
 		/// Anyone can create a bucket
 		#[pallet::weight(10_000)]
-		pub fn create_bucket(
-			origin: OriginFor<T>,
-			public_availability: bool,
-			resources_reserved: u128,
-		) -> DispatchResult {
+		pub fn create_bucket(origin: OriginFor<T>, public_availability: bool) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
 			let cur_bucket_id = Self::buckets_count();
 
@@ -270,7 +256,6 @@ pub mod pallet {
 				owner_id: bucket_owner,
 				cluster_id: None,
 				public_availability,
-				resources_reserved,
 			};
 
 			<BucketsCount<T>>::set(cur_bucket_id + 1);
