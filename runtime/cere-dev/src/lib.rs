@@ -1349,22 +1349,6 @@ impl pallet_ddc_customers::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 }
 
-parameter_types! {
-	pub const DdcValidatorsQuorumSize: u32 = 3;
-	pub const ValidationThreshold: u32 = 5;
-	pub const ValidatorsMax: u32 = 64;
-}
-
-impl pallet_ddc_validator::Config for Runtime {
-	type DdcValidatorsQuorumSize = DdcValidatorsQuorumSize;
-	type Randomness = RandomnessCollectiveFlip;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type AuthorityId = pallet_ddc_validator::crypto::TestAuthId;
-	type ValidationThreshold = ValidationThreshold;
-	type ValidatorsMax = ValidatorsMax;
-}
-
 impl pallet_ddc_nodes::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 }
@@ -1427,7 +1411,6 @@ construct_runtime!(
 		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
 		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
 		DdcStaking: pallet_ddc_staking,
-		DdcValidator: pallet_ddc_validator,
 		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters
@@ -1489,8 +1472,24 @@ pub type Executive = frame_executive::Executive<
 		>,
 		pallet_staking::migrations::v12::MigrateToV12<Runtime>,
 		pallet_contracts::Migration<Runtime>,
+		custom_migration::Upgrade,
 	),
 >;
+
+mod custom_migration {
+	use super::*;
+
+	use frame_support::{traits::OnRuntimeUpgrade, weights::Weight, Twox128};
+	use sp_io::{hashing::twox_128, storage::clear_prefix};
+
+	pub struct Upgrade;
+	impl OnRuntimeUpgrade for Upgrade {
+		fn on_runtime_upgrade() -> Weight {
+			clear_prefix(&twox_128(b"DdcValidator"), None);
+			Weight::from_ref_time(0)
+		}
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]

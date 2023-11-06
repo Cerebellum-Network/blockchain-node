@@ -166,12 +166,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f52f63c5c1316a16a4b35eaac8b76a98248961a533f061684cb2a7cb0eafb6c6"
 
 [[package]]
-name = "array-bytes"
-version = "6.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b1c5a481ec30a5abd8dfbd94ab5cf1bb4e9a66be7f1b3b322f2f1170c200fd"
-
-[[package]]
 name = "arrayref"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -834,7 +828,6 @@ dependencies = [
  "pallet-ddc-metrics-offchain-worker",
  "pallet-ddc-nodes",
  "pallet-ddc-staking",
- "pallet-ddc-validator",
  "pallet-democracy",
  "pallet-election-provider-multi-phase",
  "pallet-election-provider-support-benchmarking",
@@ -2160,7 +2153,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
  "Inflector",
- "array-bytes 4.2.0",
+ "array-bytes",
  "chrono",
  "clap",
  "comfy-table",
@@ -5009,43 +5002,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-ddc-validator"
-version = "0.1.0"
-dependencies = [
- "alt_serde",
- "array-bytes 6.1.0",
- "base64 0.21.5",
- "ddc-primitives",
- "ddc-traits",
- "frame-election-provider-support",
- "frame-support",
- "frame-system",
- "lite-json",
- "log",
- "pallet-balances",
- "pallet-contracts",
- "pallet-ddc-clusters",
- "pallet-ddc-customers",
- "pallet-ddc-nodes",
- "pallet-ddc-staking",
- "pallet-randomness-collective-flip",
- "pallet-session",
- "pallet-staking",
- "pallet-staking-reward-curve",
- "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "serde_json 1.0.44",
- "sp-core",
- "sp-io",
- "sp-keystore",
- "sp-runtime",
- "sp-staking",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-democracy"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
@@ -6947,7 +6903,7 @@ name = "sc-cli"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "chrono",
  "clap",
  "fdlimit",
@@ -7255,7 +7211,7 @@ version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
  "ahash",
- "array-bytes 4.2.0",
+ "array-bytes",
  "async-trait",
  "dyn-clone",
  "finality-grandpa",
@@ -7333,7 +7289,7 @@ name = "sc-keystore"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "async-trait",
  "parking_lot 0.12.1",
  "serde_json 1.0.107",
@@ -7348,7 +7304,7 @@ name = "sc-network"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "async-trait",
  "asynchronous-codec",
  "bitflags 1.3.2",
@@ -7459,7 +7415,7 @@ name = "sc-network-light"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "futures",
  "libp2p",
  "log",
@@ -7480,7 +7436,7 @@ name = "sc-network-sync"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "fork-tree",
  "futures",
  "libp2p",
@@ -7508,7 +7464,7 @@ name = "sc-network-transactions"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "futures",
  "hex",
  "libp2p",
@@ -7527,7 +7483,7 @@ name = "sc-offchain"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "bytes",
  "fnv",
  "futures",
@@ -8461,7 +8417,7 @@ name = "sp-core"
 version = "6.0.0"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "base58",
  "bitflags 1.3.2",
  "blake2",
