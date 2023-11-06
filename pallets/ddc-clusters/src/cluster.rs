@@ -40,9 +40,9 @@ pub struct ClusterGovParams<Balance> {
 	pub validators_share: Perbill,
 	pub cluster_reserve_share: Perbill,
 	#[codec(compact)]
-	pub edge_bond_size: Balance,
-	pub edge_chill_delay: EraIndex,
-	pub edge_unbonding_delay: EraIndex,
+	pub cdn_bond_size: Balance,
+	pub cdn_chill_delay: EraIndex,
+	pub cdn_unbonding_delay: EraIndex,
 	#[codec(compact)]
 	pub storage_bond_size: Balance,
 	pub storage_chill_delay: EraIndex,
