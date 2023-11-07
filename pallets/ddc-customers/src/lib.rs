@@ -3,13 +3,13 @@
 
 use codec::{Decode, Encode, HasCompact};
 
-use ddc_primitives::ClusterId;
+use ddc_primitives::{BucketId, ClusterId};
+use ddc_traits::cluster::ClusterVisitor;
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
 	BoundedVec, PalletId,
 };
-pub use pallet_ddc_clusters::{self as ddc_clusters};
 pub use pallet_ddc_staking::{self as ddc_staking};
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -43,16 +43,14 @@ pub struct UnlockChunk<Balance: HasCompact> {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Bucket<AccountId> {
-	bucket_id: u128,
+	bucket_id: BucketId,
 	owner_id: AccountId,
-	cluster_id: Option<ClusterId>,
-	public_availability: bool,
-	resources_reserved: u128,
+	cluster_id: ClusterId,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct BucketsDetails<Balance: HasCompact> {
-	pub bucket_id: u128,
+	pub bucket_id: BucketId,
 	pub amount: Balance,
 }
 
@@ -148,7 +146,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + ddc_staking::Config + ddc_clusters::Config {
+	pub trait Config: frame_system::Config + ddc_staking::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -157,6 +155,7 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type LockingDuration: Get<EraIndex>;
+		type ClusterVisitor: ClusterVisitor<Self>;
 	}
 
 	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
@@ -166,19 +165,19 @@ pub mod pallet {
 		StorageMap<_, Identity, T::AccountId, AccountsLedger<T::AccountId, BalanceOf<T>>>;
 
 	#[pallet::type_value]
-	pub fn DefaultBucketCount<T: Config>() -> u128 {
-		0_u128
+	pub fn DefaultBucketCount<T: Config>() -> BucketId {
+		0
 	}
 	#[pallet::storage]
 	#[pallet::getter(fn buckets_count)]
 	pub type BucketsCount<T: Config> =
-		StorageValue<Value = u128, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
+		StorageValue<Value = BucketId, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
 
 	/// Map from bucket ID to to the bucket structure
 	#[pallet::storage]
 	#[pallet::getter(fn buckets)]
 	pub type Buckets<T: Config> =
-		StorageMap<_, Twox64Concat, u128, Bucket<T::AccountId>, OptionQuery>;
+		StorageMap<_, Twox64Concat, BucketId, Bucket<T::AccountId>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
@@ -195,6 +194,8 @@ pub mod pallet {
 		Withdrawn(T::AccountId, BalanceOf<T>),
 		/// Total amount charged from all accounts to pay CDN nodes
 		Charged(BalanceOf<T>),
+		/// Bucket with specific id created
+		BucketCreated(BucketId),
 	}
 
 	#[pallet::error]
@@ -244,51 +245,23 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Create new bucket with provided public availability & reserved resources
+		/// Create new bucket with specified cluster id
 		///
 		/// Anyone can create a bucket
 		#[pallet::weight(10_000)]
-		pub fn create_bucket(
-			origin: OriginFor<T>,
-			public_availability: bool,
-			resources_reserved: u128,
-		) -> DispatchResult {
+		pub fn create_bucket(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
-			let cur_bucket_id = Self::buckets_count();
+			let cur_bucket_id = Self::buckets_count() + 1;
 
-			let bucket = Bucket {
-				bucket_id: cur_bucket_id + 1,
-				owner_id: bucket_owner,
-				cluster_id: None,
-				public_availability,
-				resources_reserved,
-			};
+			<T as pallet::Config>::ClusterVisitor::ensure_cluster(&cluster_id)
+				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 
-			<BucketsCount<T>>::set(cur_bucket_id + 1);
-			<Buckets<T>>::insert(cur_bucket_id + 1, bucket);
-			Ok(())
-		}
+			let bucket = Bucket { bucket_id: cur_bucket_id, owner_id: bucket_owner, cluster_id };
 
-		/// Allocates specified bucket into specified cluster
-		///
-		/// Only bucket owner can call this method
-		#[pallet::weight(10_000)]
-		pub fn allocate_bucket_to_cluster(
-			origin: OriginFor<T>,
-			bucket_id: u128,
-			cluster_id: ClusterId,
-		) -> DispatchResult {
-			let bucket_owner = ensure_signed(origin)?;
+			<BucketsCount<T>>::set(cur_bucket_id);
+			<Buckets<T>>::insert(cur_bucket_id, bucket);
 
-			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
-
-			ensure!(bucket.owner_id == bucket_owner, Error::<T>::NotBucketOwner);
-
-			ensure!(
-				ddc_clusters::pallet::Clusters::<T>::contains_key(&cluster_id),
-				Error::<T>::ClusterDoesNotExist
-			);
-			bucket.cluster_id = Some(cluster_id);
+			Self::deposit_event(Event::<T>::BucketCreated(cur_bucket_id));
 
 			Ok(())
 		}
