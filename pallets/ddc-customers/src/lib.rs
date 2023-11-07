@@ -46,7 +46,6 @@ pub struct Bucket<AccountId> {
 	bucket_id: BucketId,
 	owner_id: AccountId,
 	cluster_id: Option<ClusterId>,
-	public_availability: bool,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -245,48 +244,27 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Create new bucket with provided public availability & reserved resources
+		/// Create new bucket with specified cluster id
 		///
 		/// Anyone can create a bucket
 		#[pallet::weight(10_000)]
-		pub fn create_bucket(origin: OriginFor<T>, public_availability: bool) -> DispatchResult {
+		pub fn create_bucket(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
 			let cur_bucket_id = Self::buckets_count();
-
-			let bucket = Bucket {
-				bucket_id: cur_bucket_id + 1,
-				owner_id: bucket_owner,
-				cluster_id: None,
-				public_availability,
-			};
-
-			<BucketsCount<T>>::set(cur_bucket_id + 1);
-			<Buckets<T>>::insert(cur_bucket_id + 1, bucket);
-			Ok(())
-		}
-
-		/// Allocates specified bucket into specified cluster
-		///
-		/// Only bucket owner can call this method
-		#[pallet::weight(10_000)]
-		pub fn allocate_bucket_to_cluster(
-			origin: OriginFor<T>,
-			bucket_id: BucketId,
-			cluster_id: ClusterId,
-		) -> DispatchResult {
-			let bucket_owner = ensure_signed(origin)?;
-
-			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
-
-			ensure!(bucket.cluster_id == None, Error::<T>::BucketAlreadyInCluster);
-			ensure!(bucket.owner_id == bucket_owner, Error::<T>::NotBucketOwner);
 
 			ensure!(
 				ddc_clusters::pallet::Clusters::<T>::contains_key(&cluster_id),
 				Error::<T>::ClusterDoesNotExist
 			);
-			bucket.cluster_id = Some(cluster_id);
 
+			let bucket = Bucket {
+				bucket_id: cur_bucket_id + 1,
+				owner_id: bucket_owner,
+				cluster_id: Some(cluster_id),
+			};
+
+			<BucketsCount<T>>::set(cur_bucket_id + 1);
+			<Buckets<T>>::insert(cur_bucket_id + 1, bucket);
 			Ok(())
 		}
 
