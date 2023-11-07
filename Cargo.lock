@@ -4942,7 +4942,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "pallet-ddc-clusters",
  "pallet-ddc-staking",
  "parity-scale-codec",
  "scale-info",
