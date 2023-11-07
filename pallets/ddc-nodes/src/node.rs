@@ -137,6 +137,7 @@ pub enum NodeError {
 	InvalidCDNNodeParams,
 	StorageNodeParamsExceedsLimit,
 	CDNNodeParamsExceedsLimit,
+	CDNHostLenExceedsLimit,
 	InvalidCDNNodeProps,
 	InvalidStorageNodeProps,
 }
@@ -150,6 +151,7 @@ impl<T> From<NodeError> for Error<T> {
 			NodeError::InvalidCDNNodeParams => Error::<T>::InvalidNodeParams,
 			NodeError::StorageNodeParamsExceedsLimit => Error::<T>::NodeParamsExceedsLimit,
 			NodeError::CDNNodeParamsExceedsLimit => Error::<T>::NodeParamsExceedsLimit,
+			NodeError::CDNHostLenExceedsLimit => Error::<T>::HostLenExceedsLimit,
 			NodeError::InvalidStorageNodeProps => Error::<T>::InvalidNodeParams,
 			NodeError::InvalidCDNNodeProps => Error::<T>::InvalidNodeParams,
 		}
