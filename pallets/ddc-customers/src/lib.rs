@@ -46,7 +46,7 @@ pub struct UnlockChunk<Balance: HasCompact> {
 pub struct Bucket<AccountId> {
 	bucket_id: BucketId,
 	owner_id: AccountId,
-	cluster_id: Option<ClusterId>,
+	cluster_id: ClusterId,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -257,11 +257,8 @@ pub mod pallet {
 			<T as pallet::Config>::ClusterVisitor::ensure_cluster(&cluster_id)
 				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 
-			let bucket = Bucket {
-				bucket_id: cur_bucket_id + 1,
-				owner_id: bucket_owner,
-				cluster_id: Some(cluster_id),
-			};
+			let bucket =
+				Bucket { bucket_id: cur_bucket_id + 1, owner_id: bucket_owner, cluster_id };
 
 			<BucketsCount<T>>::set(cur_bucket_id + 1);
 			<Buckets<T>>::insert(cur_bucket_id + 1, bucket);
