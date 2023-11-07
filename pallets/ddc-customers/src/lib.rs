@@ -4,6 +4,7 @@
 use codec::{Decode, Encode, HasCompact};
 
 use ddc_primitives::{BucketId, ClusterId};
+use ddc_traits::cluster::ClusterVisitor;
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
@@ -146,7 +147,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + ddc_staking::Config + ddc_clusters::Config {
+	pub trait Config: frame_system::Config + ddc_staking::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -155,6 +156,7 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type LockingDuration: Get<EraIndex>;
+		type ClusterVisitor: ClusterVisitor<Self>;
 	}
 
 	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
@@ -252,10 +254,8 @@ pub mod pallet {
 			let bucket_owner = ensure_signed(origin)?;
 			let cur_bucket_id = Self::buckets_count();
 
-			ensure!(
-				ddc_clusters::pallet::Clusters::<T>::contains_key(&cluster_id),
-				Error::<T>::ClusterDoesNotExist
-			);
+			<T as pallet::Config>::ClusterVisitor::ensure_cluster(&cluster_id)
+				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 
 			let bucket = Bucket {
 				bucket_id: cur_bucket_id + 1,
