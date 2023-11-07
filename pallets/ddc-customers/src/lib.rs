@@ -10,7 +10,6 @@ use frame_support::{
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
 	BoundedVec, PalletId,
 };
-pub use pallet_ddc_clusters::{self as ddc_clusters};
 pub use pallet_ddc_staking::{self as ddc_staking};
 use scale_info::TypeInfo;
 use sp_runtime::{
