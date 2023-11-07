@@ -124,6 +124,12 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
 		Ok(())
 	}
+	fn get_bond_size(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<u128, ClusterVisitorError> {
+		Ok(10)
+	}
 }
 pub struct ExtBuilder {
 	has_edges: bool,
