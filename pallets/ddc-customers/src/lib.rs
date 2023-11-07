@@ -194,6 +194,8 @@ pub mod pallet {
 		Withdrawn(T::AccountId, BalanceOf<T>),
 		/// Total amount charged from all accounts to pay CDN nodes
 		Charged(BalanceOf<T>),
+		/// Bucket with specific id created
+		BucketCreated(BucketId),
 	}
 
 	#[pallet::error]
@@ -218,8 +220,6 @@ pub mod pallet {
 		BucketDoesNotExist,
 		/// DDC Cluster with provided id doesn't exist
 		ClusterDoesNotExist,
-		/// Bucket already allocated to cluster
-		BucketAlreadyInCluster,
 	}
 
 	#[pallet::genesis_config]
@@ -251,16 +251,18 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn create_bucket(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
-			let cur_bucket_id = Self::buckets_count();
+			let cur_bucket_id = Self::buckets_count() + 1;
 
 			<T as pallet::Config>::ClusterVisitor::ensure_cluster(&cluster_id)
 				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 
-			let bucket =
-				Bucket { bucket_id: cur_bucket_id + 1, owner_id: bucket_owner, cluster_id };
+			let bucket = Bucket { bucket_id: cur_bucket_id, owner_id: bucket_owner, cluster_id };
 
-			<BucketsCount<T>>::set(cur_bucket_id + 1);
-			<Buckets<T>>::insert(cur_bucket_id + 1, bucket);
+			<BucketsCount<T>>::set(cur_bucket_id);
+			<Buckets<T>>::insert(cur_bucket_id, bucket);
+
+			Self::deposit_event(Event::<T>::BucketCreated(cur_bucket_id));
+
 			Ok(())
 		}
 
