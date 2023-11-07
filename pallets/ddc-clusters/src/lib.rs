@@ -19,7 +19,7 @@ use crate::{
 	cluster::{Cluster, ClusterError, ClusterGovParams, ClusterParams},
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
 };
-use ddc_primitives::{ClusterId, NodePubKey};
+use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
 	staking::{StakingVisitor, StakingVisitorError},
@@ -251,17 +251,16 @@ pub mod pallet {
 
 		fn get_bond_size(
 			cluster_id: &ClusterId,
-			node_pub_key: &NodePubKey,
+			node_pub_key: NodeType,
 		) -> Result<u128, ClusterVisitorError> {
 			// ensure!(ClustersNodes::<T>::contains_key(cluster_id),
 			// Error::<T>::ClusterDoesNotExist);
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
 			match node_pub_key {
-				NodePubKey::StoragePubKey(_node_pub_key) =>
+				NodeType::Storage =>
 					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
-				NodePubKey::CDNPubKey(_node_pub_key) =>
-					Ok(cluster_gov_params.cdn_bond_size.saturated_into::<u128>()),
+				NodeType::CDN => Ok(cluster_gov_params.cdn_bond_size.saturated_into::<u128>()),
 			}
 		}
 	}

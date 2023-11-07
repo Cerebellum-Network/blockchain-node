@@ -29,7 +29,7 @@ pub mod weights;
 use crate::weights::WeightInfo;
 
 use codec::{Decode, Encode, HasCompact};
-pub use ddc_primitives::{ClusterId, NodePubKey};
+pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
 	staking::{StakingVisitor, StakingVisitorError},
@@ -49,7 +49,7 @@ use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
-	AccountId32, RuntimeDebug, SaturatedConversion,
+	RuntimeDebug, SaturatedConversion,
 };
 use sp_staking::EraIndex;
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
@@ -592,7 +592,6 @@ pub mod pallet {
 		pub fn unbond(
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T>,
-			node_pub_key: NodePubKey,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
@@ -612,14 +611,14 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
-				// Check if stash is mapped to the node
-				let node_stash = <Nodes<T>>::get(&node_pub_key).ok_or(Error::<T>::BadState)?;
-				ensure!(ledger.stash.clone() == node_stash, Error::<T>::NotNodeController);
-
 				let min_active_bond = if let Some(cluster_id) = Self::edges(&ledger.stash) {
-					// Retrieve the respective bond size from Cluster Visitor
-					let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, &node_pub_key)
+					let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::CDN)
 						.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+					bond_size.saturated_into::<BalanceOf<T>>()
+				} else if let Some(cluster_id) = Self::storages(&ledger.stash) {
+					let bond_size =
+						T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::Storage)
+							.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 					bond_size.saturated_into::<BalanceOf<T>>()
 				} else {
 					Zero::zero()
@@ -702,16 +701,14 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::serve())]
 		pub fn serve(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			let account = AccountId32::new([0; 32]);
 
 			T::ClusterVisitor::ensure_cluster(&cluster_id)
 				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			// Retrieve the respective bond size from Cluster Visitor
-			let bond_size =
-				T::ClusterVisitor::get_bond_size(&cluster_id, &NodePubKey::CDNPubKey(account))
-					.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+			let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::CDN)
+				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 
 			ensure!(
 				ledger.active >= bond_size.saturated_into::<BalanceOf<T>>(),
@@ -745,16 +742,14 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::store())]
 		pub fn store(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			let account = AccountId32::new([0; 32]);
 
 			T::ClusterVisitor::ensure_cluster(&cluster_id)
 				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			// Retrieve the respective bond size from Cluster Visitor
-			let bond_size =
-				T::ClusterVisitor::get_bond_size(&cluster_id, &NodePubKey::StoragePubKey(account))
-					.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+			let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::Storage)
+				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 			ensure!(
 				ledger.active >= bond_size.saturated_into::<BalanceOf<T>>(),
 				Error::<T>::InsufficientBond

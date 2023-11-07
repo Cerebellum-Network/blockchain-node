@@ -1,4 +1,4 @@
-use ddc_primitives::{ClusterId, NodePubKey};
+use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 use frame_system::Config;
 
 pub trait ClusterVisitor<T: Config> {
@@ -8,7 +8,7 @@ pub trait ClusterVisitor<T: Config> {
 
 	fn get_bond_size(
 		cluster_id: &ClusterId,
-		node_pub_key: &NodePubKey,
+		node_pub_key: NodeType,
 	) -> Result<u128, ClusterVisitorError>;
 }
 
