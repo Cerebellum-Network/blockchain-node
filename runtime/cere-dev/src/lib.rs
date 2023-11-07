@@ -1347,6 +1347,7 @@ impl pallet_ddc_customers::Config for Runtime {
 	type Currency = Balances;
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 }
 
 impl pallet_ddc_nodes::Config for Runtime {
