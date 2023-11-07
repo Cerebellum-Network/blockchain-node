@@ -8,6 +8,7 @@ use sp_std::prelude::*;
 
 parameter_types! {
 	pub MaxCDNNodeParamsLen: u16 = 2048;
+	pub MaxHostLen: u8 = 255;
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -21,14 +22,18 @@ pub struct CDNNode<T: frame_system::Config> {
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct CDNNodeProps {
-	// this is a temporal way of storing node parameters as a stringified json,
-	// should be replaced with specific properties for this type of node once they are defined
-	pub params: BoundedVec<u8, MaxCDNNodeParamsLen>,
+	pub host: BoundedVec<u8, MaxHostLen>,
+	pub http_port: u16,
+	pub grpc_port: u16,
+	pub p2p_port: u16,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct CDNNodeParams {
-	pub params: Vec<u8>, // should be replaced with specific parameters for this type of node
+	pub host: Vec<u8>,
+	pub http_port: u16,
+	pub grpc_port: u16,
+	pub p2p_port: u16,
 }
 
 impl<T: frame_system::Config> NodeTrait<T> for CDNNode<T> {
@@ -49,10 +54,15 @@ impl<T: frame_system::Config> NodeTrait<T> for CDNNode<T> {
 		Ok(())
 	}
 	fn set_params(&mut self, node_params: NodeParams) -> Result<(), NodeError> {
-		self.props.params = match node_params {
-			NodeParams::CDNParams(cdn_params) => match cdn_params.params.try_into() {
-				Ok(vec) => vec,
-				Err(_) => return Err(NodeError::CDNNodeParamsExceedsLimit),
+		match node_params {
+			NodeParams::CDNParams(cdn_params) => {
+				self.props.host = match cdn_params.host.try_into() {
+					Ok(vec) => vec,
+					Err(_) => return Err(NodeError::CDNHostLenExceedsLimit),
+				};
+				self.props.http_port = cdn_params.http_port;
+				self.props.grpc_port = cdn_params.grpc_port;
+				self.props.p2p_port = cdn_params.p2p_port;
 			},
 			_ => return Err(NodeError::InvalidCDNNodeParams),
 		};
@@ -79,10 +89,13 @@ impl<T: frame_system::Config> NodeTrait<T> for CDNNode<T> {
 					pub_key,
 					cluster_id: None,
 					props: CDNNodeProps {
-						params: match node_params.params.try_into() {
+						host: match node_params.host.try_into() {
 							Ok(vec) => vec,
-							Err(_) => return Err(NodeError::CDNNodeParamsExceedsLimit),
+							Err(_) => return Err(NodeError::CDNHostLenExceedsLimit),
 						},
+						http_port: node_params.http_port,
+						grpc_port: node_params.grpc_port,
+						p2p_port: node_params.p2p_port,
 					},
 				})),
 				_ => Err(NodeError::InvalidCDNNodeParams),
