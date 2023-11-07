@@ -29,7 +29,7 @@ pub mod weights;
 use crate::weights::WeightInfo;
 
 use codec::{Decode, Encode, HasCompact};
-pub use ddc_primitives::{ClusterId, NodePubKey};
+pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
 	staking::{StakingVisitor, StakingVisitorError},
@@ -49,7 +49,7 @@ use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
-	RuntimeDebug,
+	RuntimeDebug, SaturatedConversion,
 };
 use sp_staking::EraIndex;
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
@@ -487,6 +487,8 @@ pub mod pallet {
 		NotNodeController,
 		/// No stake found associated with the provided node.
 		NodeHasNoStake,
+		/// No cluster governance params found for cluster
+		NoClusterGovParams,
 		/// Conditions for fast chill are not met, try the regular `chill` from
 		FastChillProhibited,
 	}
@@ -610,9 +612,14 @@ pub mod pallet {
 				}
 
 				let min_active_bond = if let Some(cluster_id) = Self::edges(&ledger.stash) {
-					Self::settings(cluster_id).edge_bond_size
+					let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::CDN)
+						.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+					bond_size.saturated_into::<BalanceOf<T>>()
 				} else if let Some(cluster_id) = Self::storages(&ledger.stash) {
-					Self::settings(cluster_id).storage_bond_size
+					let bond_size =
+						T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::Storage)
+							.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+					bond_size.saturated_into::<BalanceOf<T>>()
 				} else {
 					Zero::zero()
 				};
@@ -699,8 +706,12 @@ pub mod pallet {
 				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+			// Retrieve the respective bond size from Cluster Visitor
+			let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::CDN)
+				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+
 			ensure!(
-				ledger.active >= Self::settings(cluster_id).edge_bond_size,
+				ledger.active >= bond_size.saturated_into::<BalanceOf<T>>(),
 				Error::<T>::InsufficientBond
 			);
 			let stash = &ledger.stash;
@@ -736,8 +747,11 @@ pub mod pallet {
 				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+			// Retrieve the respective bond size from Cluster Visitor
+			let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::Storage)
+				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 			ensure!(
-				ledger.active >= Self::settings(cluster_id).storage_bond_size,
+				ledger.active >= bond_size.saturated_into::<BalanceOf<T>>(),
 				Error::<T>::InsufficientBond
 			);
 			let stash = &ledger.stash;
@@ -1197,6 +1211,7 @@ pub mod pallet {
 		fn from(error: ClusterVisitorError) -> Self {
 			match error {
 				ClusterVisitorError::ClusterDoesNotExist => Error::<T>::NodeHasNoStake,
+				ClusterVisitorError::ClusterGovParamsNotSet => Error::<T>::NoClusterGovParams,
 			}
 		}
 	}
