@@ -257,7 +257,7 @@ pub mod pallet {
 			// Error::<T>::ClusterDoesNotExist);
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
-			match node_pub_key {
+			match node_type {
 				NodeType::Storage =>
 					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
 				NodeType::CDN => Ok(cluster_gov_params.cdn_bond_size.saturated_into::<u128>()),
