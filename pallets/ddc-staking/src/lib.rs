@@ -49,7 +49,7 @@ use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
-	RuntimeDebug,
+	RuntimeDebug, SaturatedConversion,
 };
 use sp_staking::EraIndex;
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
@@ -402,6 +402,7 @@ pub mod pallet {
 				assert_ok!(Pallet::<T>::serve(
 					T::RuntimeOrigin::from(Some(controller.clone()).into()),
 					cluster,
+					node.clone()
 				));
 			}
 
@@ -420,6 +421,7 @@ pub mod pallet {
 				assert_ok!(Pallet::<T>::store(
 					T::RuntimeOrigin::from(Some(controller.clone()).into()),
 					cluster,
+					node.clone(),
 				));
 			}
 		}
@@ -487,6 +489,8 @@ pub mod pallet {
 		NotNodeController,
 		/// No stake found associated with the provided node.
 		NodeHasNoStake,
+		/// No cluster governance params found for cluster
+		NoClusterGovParams,
 		/// Conditions for fast chill are not met, try the regular `chill` from
 		FastChillProhibited,
 	}
@@ -590,6 +594,7 @@ pub mod pallet {
 		pub fn unbond(
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T>,
+			node_pub_key: NodePubKey,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
@@ -609,10 +614,15 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
+				// Check if stash is mapped to the node
+				let node_stash = <Nodes<T>>::get(&node_pub_key).ok_or(Error::<T>::BadState)?;
+				ensure!(ledger.stash.clone() == node_stash, Error::<T>::NotNodeController);
+
 				let min_active_bond = if let Some(cluster_id) = Self::edges(&ledger.stash) {
-					Self::settings(cluster_id).edge_bond_size
-				} else if let Some(cluster_id) = Self::storages(&ledger.stash) {
-					Self::settings(cluster_id).storage_bond_size
+					// Retrieve the respective bond size from Cluster Visitor
+					let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, &node_pub_key)
+						.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+					bond_size.saturated_into::<BalanceOf<T>>()
 				} else {
 					Zero::zero()
 				};
@@ -692,18 +702,30 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
 		/// bond size must be greater than or equal to the `EdgeBondSize`.
 		#[pallet::weight(T::WeightInfo::serve())]
-		pub fn serve(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
+		pub fn serve(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 
 			T::ClusterVisitor::ensure_cluster(&cluster_id)
 				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+			// Retrieve the respective bond size from Cluster Visitor
+			let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, &node_pub_key)
+				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+
 			ensure!(
-				ledger.active >= Self::settings(cluster_id).edge_bond_size,
+				ledger.active >= bond_size.saturated_into::<BalanceOf<T>>(),
 				Error::<T>::InsufficientBond
 			);
 			let stash = &ledger.stash;
+
+			// Check if stash is mapped to the node
+			let node_stash = <Nodes<T>>::get(&node_pub_key).ok_or(Error::<T>::BadState)?;
+			ensure!(*stash == node_stash, Error::<T>::NotNodeController);
 
 			// Can't participate in CDN if already participating in storage network.
 			ensure!(!Storages::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
@@ -729,18 +751,29 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
 		/// bond size must be greater than or equal to the `StorageBondSize`.
 		#[pallet::weight(T::WeightInfo::store())]
-		pub fn store(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
+		pub fn store(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 
 			T::ClusterVisitor::ensure_cluster(&cluster_id)
 				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+			// Retrieve the respective bond size from Cluster Visitor
+			let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, &node_pub_key)
+				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 			ensure!(
-				ledger.active >= Self::settings(cluster_id).storage_bond_size,
+				ledger.active >= bond_size.saturated_into::<BalanceOf<T>>(),
 				Error::<T>::InsufficientBond
 			);
 			let stash = &ledger.stash;
+
+			// Check if stash is mapped to the node
+			let node_stash = <Nodes<T>>::get(&node_pub_key).ok_or(Error::<T>::BadState)?;
+			ensure!(*stash == node_stash, Error::<T>::NotNodeController);
 
 			// Can't participate in storage network if already participating in CDN.
 			ensure!(!Edges::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
@@ -1197,6 +1230,7 @@ pub mod pallet {
 		fn from(error: ClusterVisitorError) -> Self {
 			match error {
 				ClusterVisitorError::ClusterDoesNotExist => Error::<T>::NodeHasNoStake,
+				ClusterVisitorError::ClusterGovParamsNotSet => Error::<T>::NoClusterGovParams,
 			}
 		}
 	}
