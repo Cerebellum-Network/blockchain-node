@@ -8,7 +8,7 @@ pub trait ClusterVisitor<T: Config> {
 
 	fn get_bond_size(
 		cluster_id: &ClusterId,
-		node_pub_key: NodeType,
+		node_type: NodeType,
 	) -> Result<u128, ClusterVisitorError>;
 }
 
