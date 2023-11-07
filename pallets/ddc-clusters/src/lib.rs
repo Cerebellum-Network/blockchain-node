@@ -251,7 +251,7 @@ pub mod pallet {
 
 		fn get_bond_size(
 			cluster_id: &ClusterId,
-			node_pub_key: NodeType,
+			node_type: NodeType,
 		) -> Result<u128, ClusterVisitorError> {
 			// ensure!(ClustersNodes::<T>::contains_key(cluster_id),
 			// Error::<T>::ClusterDoesNotExist);

@@ -126,7 +126,7 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	}
 	fn get_bond_size(
 		_cluster_id: &ClusterId,
-		_node_pub_key: NodeType,
+		_node_type: NodeType,
 	) -> Result<u128, ClusterVisitorError> {
 		Ok(10)
 	}
