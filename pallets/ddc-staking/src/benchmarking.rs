@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::Pallet as DdcStaking;
-use ddc_primitives::CDNNodePubKey;
+use ddc_primitives::{CDNNodePubKey, NodeType};
 use testing_utils::*;
 
 use frame_support::traits::{Currency, Get};
@@ -91,7 +91,7 @@ benchmarks! {
 		assert!(CDNs::<T>::contains_key(&cdn_stash));
 		CurrentEra::<T>::put(1);
 		DdcStaking::<T>::chill(RawOrigin::Signed(cdn_controller.clone()).into())?;
-		CurrentEra::<T>::put(1 + Settings::<T>::get(ClusterId::from([1; 20])).cdn_chill_delay);
+		CurrentEra::<T>::put(1 + T::ClusterVisitor::get_chill_delay(ClusterId::from([1; 20]), NodeType::CDN));
 
 		whitelist_account!(cdn_controller);
 	}: _(RawOrigin::Signed(cdn_controller))
@@ -116,23 +116,5 @@ benchmarks! {
 	}: _(RawOrigin::Signed(stash), new_node.clone())
 	verify {
 		assert!(Nodes::<T>::contains_key(&new_node));
-	}
-
-	allow_cluster_manager {
-		let new_cluster_manager = create_funded_user::<T>("cluster_manager", USER_SEED, 100);
-		let new_cluster_manager_lookup = T::Lookup::unlookup(new_cluster_manager.clone());
-	}: _(RawOrigin::Root, new_cluster_manager_lookup)
-	verify {
-		assert!(ClusterManagers::<T>::get().contains(&new_cluster_manager));
-	}
-
-	disallow_cluster_manager {
-		let new_cluster_manager = create_funded_user::<T>("cluster_manager", USER_SEED, 100);
-		let new_cluster_manager_lookup = T::Lookup::unlookup(new_cluster_manager.clone());
-		DdcStaking::<T>::allow_cluster_manager(RawOrigin::Root.into(), new_cluster_manager_lookup.clone())?;
-		assert!(ClusterManagers::<T>::get().contains(&new_cluster_manager));
-	}: _(RawOrigin::Root, new_cluster_manager_lookup)
-	verify {
-		assert!(!ClusterManagers::<T>::get().contains(&new_cluster_manager));
 	}
 }

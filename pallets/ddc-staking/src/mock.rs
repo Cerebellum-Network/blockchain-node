@@ -17,6 +17,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use sp_staking::EraIndex;
 use sp_std::collections::btree_map::BTreeMap;
 
 /// The AccountId alias in this test module.
@@ -93,20 +94,12 @@ impl pallet_timestamp::Config for Test {
 
 parameter_types! {
 	pub const BondingDuration: EraIndex = 10;
-	pub const DefaultCDNBondSize: Balance = 100;
-	pub const DefaultCDNChillDelay: EraIndex = 1;
-	pub const DefaultStorageBondSize: Balance = 100;
-	pub const DefaultStorageChillDelay: EraIndex = 1;
 	pub const DdcAccountsPalletId: PalletId = PalletId(*b"accounts");
 }
 
 impl crate::pallet::Config for Test {
 	type BondingDuration = BondingDuration;
 	type Currency = Balances;
-	type DefaultCDNBondSize = DefaultCDNBondSize;
-	type DefaultCDNChillDelay = DefaultCDNChillDelay;
-	type DefaultStorageBondSize = DefaultStorageBondSize;
-	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
 	type UnixTime = Timestamp;
 	type WeightInfo = ();
@@ -128,6 +121,12 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
 	) -> Result<u128, ClusterVisitorError> {
+		Ok(10)
+	}
+	fn get_chill_delay(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<EraIndex, ClusterVisitorError> {
 		Ok(10)
 	}
 }
@@ -250,7 +249,7 @@ impl ExtBuilder {
 			];
 		}
 
-		let _ = pallet_ddc_staking::GenesisConfig::<Test> { cdns, storages, ..Default::default() }
+		let _ = pallet_ddc_staking::GenesisConfig::<Test> { cdns, storages }
 			.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)

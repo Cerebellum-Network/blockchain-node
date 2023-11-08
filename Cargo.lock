@@ -1654,6 +1654,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "sp-core",
+ "sp-staking",
  "sp-std",
 ]
 

@@ -181,34 +181,6 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 	}
 }
 
-/// Cluster staking parameters.
-#[derive(Clone, Decode, Encode, Eq, PartialEq, RuntimeDebugNoBound, TypeInfo)]
-#[scale_info(skip_type_params(T))]
-pub struct ClusterSettings<T: Config> {
-	/// The bond size required to become and maintain the role of a CDN participant.
-	#[codec(compact)]
-	pub cdn_bond_size: BalanceOf<T>,
-	/// Number of eras should pass before a CDN participant can chill.
-	pub cdn_chill_delay: EraIndex,
-	/// The bond size required to become and maintain the role of a storage network participant.
-	#[codec(compact)]
-	pub storage_bond_size: BalanceOf<T>,
-	/// Number of eras should pass before a storage network participant can chill.
-	pub storage_chill_delay: EraIndex,
-}
-
-impl<T: pallet::Config> Default for ClusterSettings<T> {
-	/// Default to the values specified in the runtime config.
-	fn default() -> Self {
-		Self {
-			cdn_bond_size: T::DefaultCDNBondSize::get(),
-			cdn_chill_delay: T::DefaultCDNChillDelay::get(),
-			storage_bond_size: T::DefaultStorageBondSize::get(),
-			storage_chill_delay: T::DefaultStorageChillDelay::get(),
-		}
-	}
-}
-
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -221,22 +193,6 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
-
-		/// Default bond size for a CDN participant.
-		#[pallet::constant]
-		type DefaultCDNBondSize: Get<BalanceOf<Self>>;
-
-		/// Default number or DDC eras required to pass before a CDN participant can chill.
-		#[pallet::constant]
-		type DefaultCDNChillDelay: Get<EraIndex>;
-
-		/// Default bond size for a storage network participant.
-		#[pallet::constant]
-		type DefaultStorageBondSize: Get<BalanceOf<Self>>;
-
-		/// Default number or DDC eras required to pass before a storage participant can chill.
-		#[pallet::constant]
-		type DefaultStorageChillDelay: Get<EraIndex>;
 
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Number of eras that staked funds must remain bonded for.
@@ -258,12 +214,6 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn bonded)]
 	pub type Bonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
-
-	/// DDC clusters staking settings.
-	#[pallet::storage]
-	#[pallet::getter(fn settings)]
-	pub type Settings<T: Config> =
-		StorageMap<_, Identity, ClusterId, ClusterSettings<T>, ValueQuery>;
 
 	/// Map from all (unlocked) "controller" accounts to the info regarding the staking.
 	#[pallet::storage]
@@ -336,11 +286,6 @@ pub mod pallet {
 	#[pallet::getter(fn pricing)]
 	pub type Pricing<T: Config> = StorageValue<_, u128>;
 
-	/// A list of accounts allowed to become cluster managers.
-	#[pallet::storage]
-	#[pallet::getter(fn cluster_managers)]
-	pub type ClusterManagers<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
-
 	/// Map from DDC node ID to the node operator stash account.
 	#[pallet::storage]
 	#[pallet::getter(fn nodes)]
@@ -350,43 +295,18 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub cdns: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
 		pub storages: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
-		pub settings: Vec<(ClusterId, BalanceOf<T>, EraIndex, BalanceOf<T>, EraIndex)>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			GenesisConfig {
-				cdns: Default::default(),
-				storages: Default::default(),
-				settings: Default::default(),
-			}
+			GenesisConfig { cdns: Default::default(), storages: Default::default() }
 		}
 	}
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			// clusters' settings
-			for &(
-				cluster,
-				cdn_bond_size,
-				cdn_chill_delay,
-				storage_bond_size,
-				storage_chill_delay,
-			) in &self.settings
-			{
-				Settings::<T>::insert(
-					cluster,
-					ClusterSettings::<T> {
-						cdn_bond_size,
-						cdn_chill_delay,
-						storage_bond_size,
-						storage_chill_delay,
-					},
-				);
-			}
-
 			// Add initial CDN participants
 			for &(ref stash, ref controller, ref node, balance, cluster) in &self.cdns {
 				assert!(
@@ -800,9 +720,14 @@ pub mod pallet {
 
 			// Extract delay from the cluster settings.
 			let (cluster, delay) = if let Some(cluster) = Self::cdns(&ledger.stash) {
-				(cluster, Self::settings(cluster).cdn_chill_delay)
+				let chill_delay = T::ClusterVisitor::get_chill_delay(&cluster, NodeType::CDN)
+					.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+				(cluster, chill_delay)
 			} else if let Some(cluster) = Self::storages(&ledger.stash) {
-				(cluster, Self::settings(cluster).storage_chill_delay)
+				let chill_delay =
+					T::ClusterVisitor::get_chill_delay(&cluster, NodeType::Storage)
+						.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+				(cluster, chill_delay)
 			} else {
 				return Ok(()) // already chilled
 			};
@@ -862,31 +787,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Set custom DDC staking settings for a particular cluster.
-		///
-		/// * `settings` - The new settings for the cluster. If `None`, the settings will be removed
-		///   from the storage and default settings will be used.
-		///
-		/// RuntimeOrigin must be Root to call this function.
-		///
-		/// NOTE: Existing CDN and storage network participants will not be affected by this
-		/// settings update.
-		#[pallet::weight(10_000)]
-		pub fn set_settings(
-			origin: OriginFor<T>,
-			cluster: ClusterId,
-			settings: Option<ClusterSettings<T>>,
-		) -> DispatchResult {
-			ensure_root(origin)?;
-
-			match settings {
-				None => Settings::<T>::remove(cluster),
-				Some(settings) => Settings::<T>::insert(cluster, settings),
-			}
-
-			Ok(())
-		}
-
 		/// Pay out all the stakers for a single era.
 		#[pallet::weight(100_000)]
 		pub fn payout_stakers(origin: OriginFor<T>, era: EraIndex) -> DispatchResult {
@@ -901,56 +801,6 @@ pub mod pallet {
 
 			PaidEras::<T>::insert(era, true);
 			Self::do_payout_stakers(era)
-		}
-
-		/// Set price per byte of the bucket traffic in smallest units of the currency.
-		///
-		/// The dispatch origin for this call must be _Root_.
-		#[pallet::weight(10_000)]
-		pub fn set_pricing(origin: OriginFor<T>, price_per_byte: u128) -> DispatchResult {
-			ensure_root(origin)?;
-			<Pricing<T>>::set(Some(price_per_byte));
-			Ok(())
-		}
-
-		/// Add a new account to the list of cluster managers.
-		///
-		/// RuntimeOrigin must be Root to call this function.
-		#[pallet::weight(T::WeightInfo::allow_cluster_manager())]
-		pub fn allow_cluster_manager(
-			origin: OriginFor<T>,
-			grantee: <T::Lookup as StaticLookup>::Source,
-		) -> DispatchResult {
-			ensure_root(origin)?;
-
-			let grantee = T::Lookup::lookup(grantee)?;
-			ClusterManagers::<T>::mutate(|grantees| {
-				if !grantees.contains(&grantee) {
-					grantees.push(grantee);
-				}
-			});
-
-			Ok(())
-		}
-
-		/// Remove an account from the list of cluster managers.
-		///
-		/// RuntimeOrigin must be Root to call this function.
-		#[pallet::weight(T::WeightInfo::disallow_cluster_manager())]
-		pub fn disallow_cluster_manager(
-			origin: OriginFor<T>,
-			revokee: <T::Lookup as StaticLookup>::Source,
-		) -> DispatchResult {
-			ensure_root(origin)?;
-
-			let revokee = T::Lookup::lookup(revokee)?;
-			ClusterManagers::<T>::mutate(|grantees| {
-				if let Some(pos) = grantees.iter().position(|g| g == &revokee) {
-					grantees.remove(pos);
-				}
-			});
-
-			Ok(())
 		}
 
 		/// (Re-)set the DDC node of a node operator stash account. Requires to chill first.
