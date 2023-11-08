@@ -1332,11 +1332,11 @@ impl pallet_ddc_staking::Config for Runtime {
 
 parameter_types! {
 	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
-	pub const LockingDuration: sp_staking::EraIndex = 30 * 24; // 1 hour * 24 = 1 day; (1 era is 2 mins)
+	pub const UnlockingDelay: BlockNumber = 5256000u32; // 1 hour * 24 * 365 = 1 day; (1 hour is 600 blocks)
 }
 
 impl pallet_ddc_customers::Config for Runtime {
-	type LockingDuration = LockingDuration;
+	type UnlockingDelay = UnlockingDelay;
 	type Currency = Balances;
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;

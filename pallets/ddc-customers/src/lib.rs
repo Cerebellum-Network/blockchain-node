@@ -10,13 +10,11 @@ use frame_support::{
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
 	BoundedVec, PalletId,
 };
-pub use pallet_ddc_staking::{self as ddc_staking};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
-use sp_staking::EraIndex;
 use sp_std::prelude::*;
 
 pub use pallet::*;
@@ -32,13 +30,14 @@ parameter_types! {
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct UnlockChunk<Balance: HasCompact> {
+#[scale_info(skip_type_params(T))]
+pub struct UnlockChunk<Balance: HasCompact, T: Config> {
 	/// Amount of funds to be unlocked.
 	#[codec(compact)]
 	value: Balance,
-	/// Era number at which point it'll be unlocked.
+	/// Block number at which point it'll be unlocked.
 	#[codec(compact)]
-	era: EraIndex,
+	block: T::BlockNumber,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -55,7 +54,8 @@ pub struct BucketsDetails<Balance: HasCompact> {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct AccountsLedger<AccountId, Balance: HasCompact> {
+#[scale_info(skip_type_params(T))]
+pub struct AccountsLedger<AccountId, Balance: HasCompact, T: Config> {
 	/// The owner account whose balance is actually locked and can be used for CDN usage.
 	pub owner: AccountId,
 	/// The total amount of the owner's balance that we are currently accounting for.
@@ -70,11 +70,14 @@ pub struct AccountsLedger<AccountId, Balance: HasCompact> {
 	/// (assuming that the content owner has to pay for network usage). It is assumed that this
 	/// will be treated as a first in, first out queue where the new (higher value) eras get pushed
 	/// on the back.
-	pub unlocking: BoundedVec<UnlockChunk<Balance>, MaxUnlockingChunks>,
+	pub unlocking: BoundedVec<UnlockChunk<Balance, T>, MaxUnlockingChunks>,
 }
 
-impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero>
-	AccountsLedger<AccountId, Balance>
+impl<
+		AccountId,
+		Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero,
+		T: Config,
+	> AccountsLedger<AccountId, Balance, T>
 {
 	/// Initializes the default object using the given owner.
 	pub fn default_from(owner: AccountId) -> Self {
@@ -83,14 +86,14 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 
 	/// Remove entries from `unlocking` that are sufficiently old and reduce the
 	/// total by the sum of their balances.
-	fn consolidate_unlocked(self, current_era: EraIndex) -> Self {
+	fn consolidate_unlocked(self, current_block: T::BlockNumber) -> Self {
 		let mut total = self.total;
 		let unlocking: BoundedVec<_, _> = self
 			.unlocking
 			.into_iter()
 			.filter(|chunk| {
-				log::debug!("Chunk era: {:?}", chunk.era);
-				if chunk.era > current_era {
+				log::debug!("Chunk era: {:?}", chunk.block);
+				if chunk.block > current_block {
 					true
 				} else {
 					total = total.saturating_sub(chunk.value);
@@ -146,7 +149,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + ddc_staking::Config {
+	pub trait Config: frame_system::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -154,7 +157,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
-		type LockingDuration: Get<EraIndex>;
+		type UnlockingDelay: Get<<Self as frame_system::Config>::BlockNumber>;
 		type ClusterVisitor: ClusterVisitor<Self>;
 	}
 
@@ -162,7 +165,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config> =
-		StorageMap<_, Identity, T::AccountId, AccountsLedger<T::AccountId, BalanceOf<T>>>;
+		StorageMap<_, Identity, T::AccountId, AccountsLedger<T::AccountId, BalanceOf<T>, T>>;
 
 	#[pallet::type_value]
 	pub fn DefaultBucketCount<T: Config>() -> BucketId {
@@ -214,8 +217,6 @@ pub mod pallet {
 		NoBucketWithId,
 		/// Internal state has become somehow corrupted and the operation cannot continue.
 		BadState,
-		/// Current era not set during runtime
-		DDCEraNotSet,
 		/// Bucket with specified id doesn't exist
 		BucketDoesNotExist,
 		/// DDC Cluster with provided id doesn't exist
@@ -376,12 +377,14 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
-				let current_era = 0;
-				// Note: locking for extra era to allow for accounting
-				let era = current_era + <T as pallet::Config>::LockingDuration::get();
-				log::debug!("Era for the unlock: {:?}", era);
+				let current_block = <frame_system::Pallet<T>>::block_number();
+				// Note: locking for extra block to allow for accounting
+				let block = current_block + <T as pallet::Config>::UnlockingDelay::get();
+				log::debug!("Block for the unlock: {:?}", block);
 
-				if let Some(chunk) = ledger.unlocking.last_mut().filter(|chunk| chunk.era == era) {
+				if let Some(chunk) =
+					ledger.unlocking.last_mut().filter(|chunk| chunk.block == block)
+				{
 					// To keep the chunk count down, we only keep one chunk per era. Since
 					// `unlocking` is a FiFo queue, if a chunk exists for `era` we know that it will
 					// be the last one.
@@ -389,7 +392,7 @@ pub mod pallet {
 				} else {
 					ledger
 						.unlocking
-						.try_push(UnlockChunk { value, era })
+						.try_push(UnlockChunk { value, block })
 						.map_err(|_| Error::<T>::NoMoreChunks)?;
 				};
 
@@ -415,9 +418,8 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
 			let (owner, old_total) = (ledger.owner.clone(), ledger.total);
-			let current_era = 0;
-			ledger = ledger.consolidate_unlocked(current_era);
-			log::debug!("Current era: {:?}", current_era);
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			ledger = ledger.consolidate_unlocked(current_block);
 
 			if ledger.unlocking.is_empty() &&
 				ledger.active < <T as pallet::Config>::Currency::minimum_balance()
@@ -468,7 +470,7 @@ pub mod pallet {
 		/// This will also deposit the funds to pallet.
 		fn update_ledger_and_deposit(
 			owner: &T::AccountId,
-			ledger: &AccountsLedger<T::AccountId, BalanceOf<T>>,
+			ledger: &AccountsLedger<T::AccountId, BalanceOf<T>, T>,
 		) -> DispatchResult {
 			let account_id = Self::account_id();
 
@@ -486,7 +488,7 @@ pub mod pallet {
 		/// Update the ledger for a owner.
 		fn update_ledger(
 			owner: &T::AccountId,
-			ledger: &AccountsLedger<T::AccountId, BalanceOf<T>>,
+			ledger: &AccountsLedger<T::AccountId, BalanceOf<T>, T>,
 		) {
 			<Ledger<T>>::insert(owner, ledger);
 		}
@@ -523,7 +525,6 @@ pub mod pallet {
 					ledger.total -= amount;
 					ledger.active -= amount;
 					total_charged += amount;
-					log::debug!("Ledger updated state: {:?}", &ledger);
 					Self::update_ledger(&content_owner, &ledger);
 				} else {
 					let diff = amount - ledger.active;
@@ -531,7 +532,6 @@ pub mod pallet {
 					ledger.total -= ledger.active;
 					ledger.active = BalanceOf::<T>::zero();
 					let (ledger, charged) = ledger.charge_unlocking(diff);
-					log::debug!("Ledger updated state: {:?}", &ledger);
 					Self::update_ledger(&content_owner, &ledger);
 					total_charged += charged;
 				}

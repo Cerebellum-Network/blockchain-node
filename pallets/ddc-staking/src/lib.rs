@@ -39,19 +39,16 @@ use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
 	parameter_types,
-	traits::{
-		Currency, DefensiveSaturating, ExistenceRequirement, LockIdentifier, LockableCurrency,
-		WithdrawReasons,
-	},
-	BoundedVec, PalletId,
+	traits::{Currency, DefensiveSaturating, LockIdentifier, LockableCurrency, WithdrawReasons},
+	BoundedVec,
 };
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
+	traits::{AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
-use sp_std::{collections::btree_map::BTreeMap, prelude::*};
+use sp_std::prelude::*;
 
 pub use pallet::*;
 
