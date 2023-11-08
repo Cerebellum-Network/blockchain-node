@@ -1381,6 +1381,7 @@ parameter_types! {
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = PayoutsPalletId;
+	type Currency = Balances;
 }
 
 construct_runtime!(
