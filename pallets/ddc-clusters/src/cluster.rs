@@ -4,7 +4,6 @@ use ddc_primitives::ClusterId;
 use frame_support::{pallet_prelude::*, parameter_types, BoundedVec};
 use scale_info::TypeInfo;
 use sp_runtime::Perbill;
-use sp_staking::EraIndex;
 use sp_std::vec::Vec;
 
 parameter_types! {
@@ -35,18 +34,17 @@ pub struct ClusterParams<AccountId> {
 
 // ClusterGovParams includes Governance sensetive parameters
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct ClusterGovParams<Balance> {
+#[scale_info(skip_type_params(Balance, BlockNumber, T))]
+pub struct ClusterGovParams<Balance, BlockNumber> {
 	pub treasury_share: Perbill,
 	pub validators_share: Perbill,
 	pub cluster_reserve_share: Perbill,
-	#[codec(compact)]
 	pub cdn_bond_size: Balance,
-	pub cdn_chill_delay: EraIndex,
-	pub cdn_unbonding_delay: EraIndex,
-	#[codec(compact)]
+	pub cdn_chill_delay: BlockNumber,
+	pub cdn_unbonding_delay: BlockNumber,
 	pub storage_bond_size: Balance,
-	pub storage_chill_delay: EraIndex,
-	pub storage_unbonding_delay: EraIndex,
+	pub storage_chill_delay: BlockNumber,
+	pub storage_unbonding_delay: BlockNumber,
 	pub unit_per_mb_stored: u128,
 	pub unit_per_mb_streamed: u128,
 	pub unit_per_put_request: u128,

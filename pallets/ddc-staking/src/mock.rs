@@ -91,26 +91,10 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const BondingDuration: EraIndex = 10;
-	pub const DefaultEdgeBondSize: Balance = 100;
-	pub const DefaultEdgeChillDelay: EraIndex = 1;
-	pub const DefaultStorageBondSize: Balance = 100;
-	pub const DefaultStorageChillDelay: EraIndex = 1;
-	pub const DdcAccountsPalletId: PalletId = PalletId(*b"accounts");
-}
-
 impl crate::pallet::Config for Test {
-	type BondingDuration = BondingDuration;
 	type Currency = Balances;
-	type DefaultEdgeBondSize = DefaultEdgeBondSize;
-	type DefaultEdgeChillDelay = DefaultEdgeChillDelay;
-	type DefaultStorageBondSize = DefaultStorageBondSize;
-	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
-	type UnixTime = Timestamp;
 	type WeightInfo = ();
-	type StakersPayoutSource = DdcAccountsPalletId;
 	type ClusterVisitor = TestClusterVisitor;
 }
 
@@ -130,30 +114,42 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	) -> Result<u128, ClusterVisitorError> {
 		Ok(10)
 	}
+	fn get_chill_delay(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<T::BlockNumber, ClusterVisitorError> {
+		Ok(T::BlockNumber::from(10u32))
+	}
+	fn get_unbonding_delay(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<T::BlockNumber, ClusterVisitorError> {
+		Ok(T::BlockNumber::from(10u32))
+	}
 }
 pub struct ExtBuilder {
-	has_edges: bool,
+	has_cdns: bool,
 	has_storages: bool,
 	stakes: BTreeMap<AccountId, Balance>,
-	edges: Vec<(AccountId, AccountId, Balance, ClusterId)>,
+	cdns: Vec<(AccountId, AccountId, Balance, ClusterId)>,
 	storages: Vec<(AccountId, AccountId, Balance, ClusterId)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			has_edges: true,
+			has_cdns: true,
 			has_storages: true,
 			stakes: Default::default(),
-			edges: Default::default(),
+			cdns: Default::default(),
 			storages: Default::default(),
 		}
 	}
 }
 
 impl ExtBuilder {
-	pub fn has_edges(mut self, has: bool) -> Self {
-		self.has_edges = has;
+	pub fn has_cdns(mut self, has: bool) -> Self {
+		self.has_cdns = has;
 		self
 	}
 	pub fn has_storages(mut self, has: bool) -> Self {
@@ -164,14 +160,14 @@ impl ExtBuilder {
 		self.stakes.insert(who, stake);
 		self
 	}
-	pub fn add_edge(
+	pub fn add_cdn(
 		mut self,
 		stash: AccountId,
 		controller: AccountId,
 		stake: Balance,
 		cluster: ClusterId,
 	) -> Self {
-		self.edges.push((stash, controller, stake, cluster));
+		self.cdns.push((stash, controller, stake, cluster));
 		self
 	}
 	pub fn add_storage(
@@ -194,13 +190,13 @@ impl ExtBuilder {
 				(2, 100),
 				(3, 100),
 				(4, 100),
-				// edge controllers
+				// cdn controllers
 				(10, 100),
 				(20, 100),
 				// storage controllers
 				(30, 100),
 				(40, 100),
-				// edge stashes
+				// cdn stashes
 				(11, 100),
 				(21, 100),
 				// storage stashes
@@ -209,9 +205,9 @@ impl ExtBuilder {
 			],
 		}
 		.assimilate_storage(&mut storage);
-		let mut edges = vec![];
-		if self.has_edges {
-			edges = vec![
+		let mut cdns = vec![];
+		if self.has_cdns {
+			cdns = vec![
 				// (stash, controller, node, stake, cluster)
 				(
 					11,
@@ -250,7 +246,7 @@ impl ExtBuilder {
 			];
 		}
 
-		let _ = pallet_ddc_staking::GenesisConfig::<Test> { edges, storages, ..Default::default() }
+		let _ = pallet_ddc_staking::GenesisConfig::<Test> { cdns, storages }
 			.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
