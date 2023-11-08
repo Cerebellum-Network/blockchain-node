@@ -32,6 +32,7 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_runtime::SaturatedConversion;
+use sp_staking::EraIndex;
 use sp_std::prelude::*;
 
 mod cluster;
@@ -253,14 +254,24 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			node_type: NodeType,
 		) -> Result<u128, ClusterVisitorError> {
-			// ensure!(ClustersNodes::<T>::contains_key(cluster_id),
-			// Error::<T>::ClusterDoesNotExist);
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
 			match node_type {
 				NodeType::Storage =>
 					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
 				NodeType::CDN => Ok(cluster_gov_params.cdn_bond_size.saturated_into::<u128>()),
+			}
+		}
+
+		fn get_chill_delay(
+			cluster_id: &ClusterId,
+			node_type: NodeType,
+		) -> Result<EraIndex, ClusterVisitorError> {
+			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+			match node_type {
+				NodeType::Storage => Ok(cluster_gov_params.storage_chill_delay),
+				NodeType::CDN => Ok(cluster_gov_params.cdn_chill_delay),
 			}
 		}
 	}

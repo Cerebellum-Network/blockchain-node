@@ -1326,10 +1326,6 @@ parameter_types! {
 impl pallet_ddc_staking::Config for Runtime {
 	type BondingDuration = BondingDuration;
 	type Currency = Balances;
-	type DefaultCDNBondSize = DefaultCDNBondSize;
-	type DefaultCDNChillDelay = DefaultCDNChillDelay;
-	type DefaultStorageBondSize = DefaultStorageBondSize;
-	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
 	type StakersPayoutSource = DdcCustomersPalletId;
 	type UnixTime = Timestamp;
