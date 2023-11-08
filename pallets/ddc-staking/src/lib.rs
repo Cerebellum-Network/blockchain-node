@@ -187,9 +187,9 @@ impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned +
 pub struct ClusterSettings<T: Config> {
 	/// The bond size required to become and maintain the role of a CDN participant.
 	#[codec(compact)]
-	pub edge_bond_size: BalanceOf<T>,
+	pub cdn_bond_size: BalanceOf<T>,
 	/// Number of eras should pass before a CDN participant can chill.
-	pub edge_chill_delay: EraIndex,
+	pub cdn_chill_delay: EraIndex,
 	/// The bond size required to become and maintain the role of a storage network participant.
 	#[codec(compact)]
 	pub storage_bond_size: BalanceOf<T>,
@@ -201,8 +201,8 @@ impl<T: pallet::Config> Default for ClusterSettings<T> {
 	/// Default to the values specified in the runtime config.
 	fn default() -> Self {
 		Self {
-			edge_bond_size: T::DefaultEdgeBondSize::get(),
-			edge_chill_delay: T::DefaultEdgeChillDelay::get(),
+			cdn_bond_size: T::DefaultCDNBondSize::get(),
+			cdn_chill_delay: T::DefaultCDNChillDelay::get(),
 			storage_bond_size: T::DefaultStorageBondSize::get(),
 			storage_chill_delay: T::DefaultStorageChillDelay::get(),
 		}
@@ -224,11 +224,11 @@ pub mod pallet {
 
 		/// Default bond size for a CDN participant.
 		#[pallet::constant]
-		type DefaultEdgeBondSize: Get<BalanceOf<Self>>;
+		type DefaultCDNBondSize: Get<BalanceOf<Self>>;
 
 		/// Default number or DDC eras required to pass before a CDN participant can chill.
 		#[pallet::constant]
-		type DefaultEdgeChillDelay: Get<EraIndex>;
+		type DefaultCDNChillDelay: Get<EraIndex>;
 
 		/// Default bond size for a storage network participant.
 		#[pallet::constant]
@@ -274,8 +274,8 @@ pub mod pallet {
 	/// The map of (wannabe) CDN participants stash keys to the DDC cluster ID they wish to
 	/// participate into.
 	#[pallet::storage]
-	#[pallet::getter(fn edges)]
-	pub type Edges<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
+	#[pallet::getter(fn cdns)]
+	pub type CDNs<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
 	/// The map of (wannabe) storage network participants stash keys to the DDC cluster ID they wish
 	/// to participate into.
@@ -318,8 +318,8 @@ pub mod pallet {
 	///
 	/// See also [`pallet_staking::ErasRewardPoints`].
 	#[pallet::storage]
-	#[pallet::getter(fn eras_edges_reward_points)]
-	pub type ErasEdgesRewardPoints<T: Config> =
+	#[pallet::getter(fn eras_cdns_reward_points)]
+	pub type ErasCDNsRewardPoints<T: Config> =
 		StorageMap<_, Twox64Concat, EraIndex, EraRewardPoints<T::AccountId>, ValueQuery>;
 
 	/// The reward each CDN participant earned in the era.
@@ -327,8 +327,8 @@ pub mod pallet {
 	///
 	/// P.S. Not part of Mainnet
 	#[pallet::storage]
-	#[pallet::getter(fn eras_edges_reward_points_per_node)]
-	pub type ErasEdgesRewardPointsPerNode<T: Config> =
+	#[pallet::getter(fn eras_cdns_reward_points_per_node)]
+	pub type ErasCDNsRewardPointsPerNode<T: Config> =
 		StorageMap<_, Identity, T::AccountId, Vec<EraRewardPointsPerNode>, ValueQuery>;
 
 	/// Price per byte of the bucket traffic in smallest units of the currency.
@@ -348,7 +348,7 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub edges: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
+		pub cdns: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
 		pub storages: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
 		pub settings: Vec<(ClusterId, BalanceOf<T>, EraIndex, BalanceOf<T>, EraIndex)>,
 	}
@@ -357,7 +357,7 @@ pub mod pallet {
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig {
-				edges: Default::default(),
+				cdns: Default::default(),
 				storages: Default::default(),
 				settings: Default::default(),
 			}
@@ -370,8 +370,8 @@ pub mod pallet {
 			// clusters' settings
 			for &(
 				cluster,
-				edge_bond_size,
-				edge_chill_delay,
+				cdn_bond_size,
+				cdn_chill_delay,
 				storage_bond_size,
 				storage_chill_delay,
 			) in &self.settings
@@ -379,8 +379,8 @@ pub mod pallet {
 				Settings::<T>::insert(
 					cluster,
 					ClusterSettings::<T> {
-						edge_bond_size,
-						edge_chill_delay,
+						cdn_bond_size,
+						cdn_chill_delay,
 						storage_bond_size,
 						storage_chill_delay,
 					},
@@ -388,7 +388,7 @@ pub mod pallet {
 			}
 
 			// Add initial CDN participants
-			for &(ref stash, ref controller, ref node, balance, cluster) in &self.edges {
+			for &(ref stash, ref controller, ref node, balance, cluster) in &self.cdns {
 				assert!(
 					T::Currency::free_balance(&stash) >= balance,
 					"Stash do not have enough balance to participate in CDN."
@@ -460,7 +460,7 @@ pub mod pallet {
 		AlreadyPaired,
 		/// Cannot have a storage network or CDN participant, with the size less than defined by
 		/// governance (see `BondSize`). If unbonding is the intention, `chill` first to remove
-		/// one's role as storage/edge.
+		/// one's role as storage/cdn node.
 		InsufficientBond,
 		/// Can not schedule more unlock chunks.
 		NoMoreChunks,
@@ -611,7 +611,7 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
-				let min_active_bond = if let Some(cluster_id) = Self::edges(&ledger.stash) {
+				let min_active_bond = if let Some(cluster_id) = Self::cdns(&ledger.stash) {
 					let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::CDN)
 						.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
 					bond_size.saturated_into::<BalanceOf<T>>()
@@ -697,7 +697,7 @@ pub mod pallet {
 		/// `cluster` is the ID of the DDC cluster the participant wishes to join.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
-		/// bond size must be greater than or equal to the `EdgeBondSize`.
+		/// bond size must be greater than or equal to the `CDNBondSize`.
 		#[pallet::weight(T::WeightInfo::serve())]
 		pub fn serve(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
@@ -720,7 +720,7 @@ pub mod pallet {
 			ensure!(!Storages::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
 			// Is it an attempt to cancel a previous "chill"?
-			if let Some(current_cluster) = Self::edges(&stash) {
+			if let Some(current_cluster) = Self::cdns(&stash) {
 				// Switching the cluster is prohibited. The user should chill first.
 				ensure!(current_cluster == cluster_id, Error::<T>::AlreadyInRole);
 				// Cancel previous "chill" attempts
@@ -728,7 +728,7 @@ pub mod pallet {
 				return Ok(())
 			}
 
-			Self::do_add_edge(stash, cluster_id);
+			Self::do_add_cdn(stash, cluster_id);
 			Ok(())
 		}
 
@@ -757,7 +757,7 @@ pub mod pallet {
 			let stash = &ledger.stash;
 
 			// Can't participate in storage network if already participating in CDN.
-			ensure!(!Edges::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
+			ensure!(!CDNs::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
 			// Is it an attempt to cancel a previous "chill"?
 			if let Some(current_cluster) = Self::storages(&stash) {
@@ -799,8 +799,8 @@ pub mod pallet {
 			};
 
 			// Extract delay from the cluster settings.
-			let (cluster, delay) = if let Some(cluster) = Self::edges(&ledger.stash) {
-				(cluster, Self::settings(cluster).edge_chill_delay)
+			let (cluster, delay) = if let Some(cluster) = Self::cdns(&ledger.stash) {
+				(cluster, Self::settings(cluster).cdn_chill_delay)
 			} else if let Some(cluster) = Self::storages(&ledger.stash) {
 				(cluster, Self::settings(cluster).storage_chill_delay)
 			} else {
@@ -967,7 +967,7 @@ pub mod pallet {
 			}
 
 			// Ensure only one node per stash during the DDC era.
-			ensure!(!<Edges<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
+			ensure!(!<CDNs<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 			ensure!(!<Storages<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
 			<Nodes<T>>::insert(new_node, stash);
@@ -986,7 +986,7 @@ pub mod pallet {
 			let node_stash = <Nodes<T>>::get(&node_pub_key).ok_or(Error::<T>::BadState)?;
 			ensure!(stash == node_stash, Error::<T>::NotNodeController);
 
-			let cluster_id = <Edges<T>>::get(&stash)
+			let cluster_id = <CDNs<T>>::get(&stash)
 				.or(<Storages<T>>::get(&stash))
 				.ok_or(Error::<T>::NodeHasNoStake)?;
 
@@ -1005,7 +1005,7 @@ pub mod pallet {
 			// ToDo: check that validation is finalised for era
 
 			let era_reward_points: EraRewardPoints<T::AccountId> =
-				<ErasEdgesRewardPoints<T>>::get(&era);
+				<ErasCDNsRewardPoints<T>>::get(&era);
 
 			let price_per_byte: u128 = match Self::pricing() {
 				Some(pricing) => pricing,
@@ -1079,8 +1079,8 @@ pub mod pallet {
 		/// Chill a stash account.
 		fn chill_stash(stash: &T::AccountId) {
 			let chilled_as_storage = Self::do_remove_storage(stash);
-			let chilled_as_edge = Self::do_remove_edge(stash);
-			if chilled_as_storage || chilled_as_edge {
+			let chilled_as_cdn = Self::do_remove_cdn(stash);
+			if chilled_as_storage || chilled_as_cdn {
 				Self::deposit_event(Event::<T>::Chilled(stash.clone()));
 			}
 		}
@@ -1118,25 +1118,25 @@ pub mod pallet {
 			}
 
 			Self::do_remove_storage(stash);
-			Self::do_remove_edge(stash);
+			Self::do_remove_cdn(stash);
 
 			frame_system::Pallet::<T>::dec_consumers(stash);
 
 			Ok(())
 		}
 
-		/// This function will add a CDN participant to the `Edges` storage map.
+		/// This function will add a CDN participant to the `CDNs` storage map.
 		///
 		/// If the CDN participant already exists, their cluster will be updated.
-		pub fn do_add_edge(who: &T::AccountId, cluster: ClusterId) {
-			Edges::<T>::insert(who, cluster);
+		pub fn do_add_cdn(who: &T::AccountId, cluster: ClusterId) {
+			CDNs::<T>::insert(who, cluster);
 		}
 
-		/// This function will remove a CDN participant from the `Edges` map.
+		/// This function will remove a CDN participant from the `CDNs` map.
 		///
-		/// Returns true if `who` was removed from `Edges`, otherwise false.
-		pub fn do_remove_edge(who: &T::AccountId) -> bool {
-			Edges::<T>::take(who).is_some()
+		/// Returns true if `who` was removed from `CDNs`, otherwise false.
+		pub fn do_remove_cdn(who: &T::AccountId) -> bool {
+			CDNs::<T>::take(who).is_some()
 		}
 
 		/// This function will add a storage network participant to the `Storages` storage map.
@@ -1166,7 +1166,7 @@ pub mod pallet {
 			era: EraIndex,
 			stakers_points: impl IntoIterator<Item = (T::AccountId, u64)>,
 		) {
-			<ErasEdgesRewardPoints<T>>::mutate(era, |era_rewards| {
+			<ErasCDNsRewardPoints<T>>::mutate(era, |era_rewards| {
 				for (staker, points) in stakers_points.into_iter() {
 					*era_rewards.individual.entry(staker).or_default() += points;
 					era_rewards.total += points;
@@ -1182,10 +1182,10 @@ pub mod pallet {
 		) -> Result<bool, StakingVisitorError> {
 			let stash =
 				<Nodes<T>>::get(&node_pub_key).ok_or(StakingVisitorError::NodeStakeDoesNotExist)?;
-			let maybe_edge_in_cluster = Edges::<T>::get(&stash);
+			let maybe_cdn_in_cluster = CDNs::<T>::get(&stash);
 			let maybe_storage_in_cluster = Storages::<T>::get(&stash);
 
-			let has_stake: bool = maybe_edge_in_cluster
+			let has_stake: bool = maybe_cdn_in_cluster
 				.or(maybe_storage_in_cluster)
 				.is_some_and(|staking_cluster| staking_cluster == *cluster_id);
 

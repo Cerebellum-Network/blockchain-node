@@ -34,7 +34,7 @@ benchmarks! {
 
 	unbond {
 		// clean up any existing state.
-		clear_storages_and_edges::<T>();
+		clear_storages_and_cdns::<T>();
 
 		let (stash, controller, _) = create_stash_controller_node::<T>(0, 100)?;
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
@@ -74,29 +74,29 @@ benchmarks! {
 	}
 
 	serve {
-		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
+		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultCDNBondSize::get())?;
 
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller), ClusterId::from([1; 20]))
 	verify {
-		assert!(Edges::<T>::contains_key(&stash));
+		assert!(CDNs::<T>::contains_key(&stash));
 	}
 
 	chill {
 		// clean up any existing state.
-		clear_storages_and_edges::<T>();
+		clear_storages_and_cdns::<T>();
 
-		let (edge_stash, edge_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
-		DdcStaking::<T>::serve(RawOrigin::Signed(edge_controller.clone()).into(), ClusterId::from([1; 20]))?;
-		assert!(Edges::<T>::contains_key(&edge_stash));
+		let (cdn_stash, cdn_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultCDNBondSize::get())?;
+		DdcStaking::<T>::serve(RawOrigin::Signed(cdn_controller.clone()).into(), ClusterId::from([1; 20]))?;
+		assert!(CDNs::<T>::contains_key(&cdn_stash));
 		CurrentEra::<T>::put(1);
-		DdcStaking::<T>::chill(RawOrigin::Signed(edge_controller.clone()).into())?;
-		CurrentEra::<T>::put(1 + Settings::<T>::get(ClusterId::from([1; 20])).edge_chill_delay);
+		DdcStaking::<T>::chill(RawOrigin::Signed(cdn_controller.clone()).into())?;
+		CurrentEra::<T>::put(1 + Settings::<T>::get(ClusterId::from([1; 20])).cdn_chill_delay);
 
-		whitelist_account!(edge_controller);
-	}: _(RawOrigin::Signed(edge_controller))
+		whitelist_account!(cdn_controller);
+	}: _(RawOrigin::Signed(cdn_controller))
 	verify {
-		assert!(!Edges::<T>::contains_key(&edge_stash));
+		assert!(!CDNs::<T>::contains_key(&cdn_stash));
 	}
 
 	set_controller {
