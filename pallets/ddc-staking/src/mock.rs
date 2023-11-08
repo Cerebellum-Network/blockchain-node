@@ -91,18 +91,10 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const BondingDuration: EraIndex = 10;
-	pub const DdcAccountsPalletId: PalletId = PalletId(*b"accounts");
-}
-
 impl crate::pallet::Config for Test {
-	type BondingDuration = BondingDuration;
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
-	type UnixTime = Timestamp;
 	type WeightInfo = ();
-	type StakersPayoutSource = DdcAccountsPalletId;
 	type ClusterVisitor = TestClusterVisitor;
 }
 
@@ -125,8 +117,14 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_chill_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<EraIndex, ClusterVisitorError> {
-		Ok(10)
+	) -> Result<T::BlockNumber, ClusterVisitorError> {
+		Ok(T::BlockNumber::from(10u32))
+	}
+	fn get_unbonding_delay(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<T::BlockNumber, ClusterVisitorError> {
+		Ok(T::BlockNumber::from(10u32))
 	}
 }
 pub struct ExtBuilder {
