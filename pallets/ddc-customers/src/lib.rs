@@ -376,8 +376,7 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
-				let current_era = ddc_staking::pallet::Pallet::<T>::current_era()
-					.ok_or(Error::<T>::DDCEraNotSet)?;
+				let current_era = 0;
 				// Note: locking for extra era to allow for accounting
 				let era = current_era + <T as pallet::Config>::LockingDuration::get();
 				log::debug!("Era for the unlock: {:?}", era);
@@ -416,8 +415,7 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
 			let (owner, old_total) = (ledger.owner.clone(), ledger.total);
-			let current_era =
-				ddc_staking::pallet::Pallet::<T>::current_era().ok_or(Error::<T>::DDCEraNotSet)?;
+			let current_era = 0;
 			ledger = ledger.consolidate_unlocked(current_era);
 			log::debug!("Current era: {:?}", current_era);
 

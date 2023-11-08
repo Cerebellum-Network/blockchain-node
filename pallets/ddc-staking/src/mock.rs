@@ -17,7 +17,6 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
-use sp_staking::EraIndex;
 use sp_std::collections::btree_map::BTreeMap;
 
 /// The AccountId alias in this test module.

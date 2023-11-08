@@ -113,9 +113,9 @@ fn staking_should_work() {
 		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(4)));
 
 		// Removal is scheduled, stashed value of 4 is still lock.
-		let chilling = DdcStaking::current_era().unwrap() + 10u32;
-		// ClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::CDN)
-		// 	.unwrap_or(10_u32);
+		let chilling = DdcStaking::current_era().unwrap() +
+			TestClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::CDN)
+				.unwrap_or(10_u32);
 		assert_eq!(
 			DdcStaking::ledger(&4),
 			Some(StakingLedger {
