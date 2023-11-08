@@ -1317,8 +1317,8 @@ impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 }
 
 parameter_types! {
-	pub const DefaultEdgeBondSize: Balance = 100 * DOLLARS;
-	pub const DefaultEdgeChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
+	pub const DefaultCDNBondSize: Balance = 100 * DOLLARS;
+	pub const DefaultCDNChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
 	pub const DefaultStorageBondSize: Balance = 100 * DOLLARS;
 	pub const DefaultStorageChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
 }
@@ -1326,8 +1326,8 @@ parameter_types! {
 impl pallet_ddc_staking::Config for Runtime {
 	type BondingDuration = BondingDuration;
 	type Currency = Balances;
-	type DefaultEdgeBondSize = DefaultEdgeBondSize;
-	type DefaultEdgeChillDelay = DefaultEdgeChillDelay;
+	type DefaultCDNBondSize = DefaultCDNBondSize;
+	type DefaultCDNChillDelay = DefaultCDNChillDelay;
 	type DefaultStorageBondSize = DefaultStorageBondSize;
 	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;

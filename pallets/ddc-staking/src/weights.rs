@@ -53,7 +53,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(4 as u64))
 	}
 	// Storage: DdcStaking Ledger (r:1 w:1)
-	// Storage: DdcStaking Edges (r:1 w:0)
+	// Storage: DdcStaking CDNs (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
 	// Storage: DdcStaking CurrentEra (r:1 w:0)
 	// Storage: Balances Locks (r:1 w:1)
@@ -74,7 +74,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	// Storage: DdcStaking Ledger (r:1 w:0)
 	// Storage: DdcStaking Settings (r:1 w:0)
-	// Storage: DdcStaking Edges (r:1 w:0)
+	// Storage: DdcStaking CDNs (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:1)
 	fn store() -> Weight {
 		Weight::from_ref_time(26_112_000 as u64)
@@ -84,7 +84,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcStaking Ledger (r:1 w:0)
 	// Storage: DdcStaking Settings (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
-	// Storage: DdcStaking Edges (r:1 w:1)
+	// Storage: DdcStaking CDNs (r:1 w:1)
 	fn serve() -> Weight {
 		Weight::from_ref_time(19_892_000 as u64)
 			.saturating_add(T::DbWeight::get().reads(4 as u64))
@@ -92,7 +92,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	// Storage: DdcStaking Ledger (r:1 w:1)
 	// Storage: DdcStaking CurrentEra (r:1 w:0)
-	// Storage: DdcStaking Edges (r:1 w:1)
+	// Storage: DdcStaking CDNs (r:1 w:1)
 	// Storage: DdcStaking Settings (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
 	fn chill() -> Weight {
@@ -139,7 +139,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(4 as u64))
 	}
 	// Storage: DdcStaking Ledger (r:1 w:1)
-	// Storage: DdcStaking Edges (r:1 w:0)
+	// Storage: DdcStaking CDNs (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
 	// Storage: DdcStaking CurrentEra (r:1 w:0)
 	// Storage: Balances Locks (r:1 w:1)
@@ -160,7 +160,7 @@ impl WeightInfo for () {
 	}
 	// Storage: DdcStaking Ledger (r:1 w:0)
 	// Storage: DdcStaking Settings (r:1 w:0)
-	// Storage: DdcStaking Edges (r:1 w:0)
+	// Storage: DdcStaking CDNs (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:1)
 	fn store() -> Weight {
 		Weight::from_ref_time(26_112_000 as u64)
@@ -170,7 +170,7 @@ impl WeightInfo for () {
 	// Storage: DdcStaking Ledger (r:1 w:0)
 	// Storage: DdcStaking Settings (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
-	// Storage: DdcStaking Edges (r:1 w:1)
+	// Storage: DdcStaking CDNs (r:1 w:1)
 	fn serve() -> Weight {
 		Weight::from_ref_time(19_892_000 as u64)
 			.saturating_add(RocksDbWeight::get().reads(4 as u64))
@@ -178,7 +178,7 @@ impl WeightInfo for () {
 	}
 	// Storage: DdcStaking Ledger (r:1 w:1)
 	// Storage: DdcStaking CurrentEra (r:1 w:0)
-	// Storage: DdcStaking Edges (r:1 w:1)
+	// Storage: DdcStaking CDNs (r:1 w:1)
 	// Storage: DdcStaking Settings (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
 	fn chill() -> Weight {

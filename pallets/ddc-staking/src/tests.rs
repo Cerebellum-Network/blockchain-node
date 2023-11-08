@@ -18,15 +18,15 @@ fn set_settings_works() {
 			RuntimeOrigin::root(),
 			ClusterId::from([1; 20]),
 			Some(ClusterSettings {
-				edge_bond_size: 10,
-				edge_chill_delay: 2,
+				cdn_bond_size: 10,
+				cdn_chill_delay: 2,
 				storage_bond_size: 10,
 				storage_chill_delay: 2,
 			}),
 		));
 		let settings = DdcStaking::settings(ClusterId::from([1; 20]));
-		assert_eq!(settings.edge_bond_size, 10);
-		assert_eq!(settings.edge_chill_delay, 2);
+		assert_eq!(settings.cdn_bond_size, 10);
+		assert_eq!(settings.cdn_chill_delay, 2);
 		assert_eq!(settings.storage_bond_size, 10);
 		assert_eq!(settings.storage_chill_delay, 2);
 
@@ -34,8 +34,8 @@ fn set_settings_works() {
 		assert_ok!(DdcStaking::set_settings(RuntimeOrigin::root(), ClusterId::from([1; 20]), None));
 		let settings = DdcStaking::settings(ClusterId::from([1; 20]));
 		let default_settings: ClusterSettings<Test> = Default::default();
-		assert_eq!(settings.edge_bond_size, default_settings.edge_bond_size);
-		assert_eq!(settings.edge_chill_delay, default_settings.edge_chill_delay);
+		assert_eq!(settings.cdn_bond_size, default_settings.cdn_bond_size);
+		assert_eq!(settings.cdn_chill_delay, default_settings.cdn_chill_delay);
 		assert_eq!(settings.storage_bond_size, default_settings.storage_bond_size);
 		assert_eq!(settings.storage_chill_delay, default_settings.storage_chill_delay);
 	});
@@ -135,7 +135,7 @@ fn staking_should_work() {
 				unlocking: Default::default(),
 			})
 		);
-		assert_eq!(DdcStaking::edges(3), Some(ClusterId::from([0; 20])));
+		assert_eq!(DdcStaking::cdns(3), Some(ClusterId::from([0; 20])));
 		assert_eq!(DdcStaking::nodes(NodePubKey::CDNPubKey(CDNNodePubKey::new([5; 32]))), Some(3));
 
 		// Set `CurrentEra`.
@@ -147,7 +147,7 @@ fn staking_should_work() {
 
 		// Removal is scheduled, stashed value of 4 is still lock.
 		let chilling = DdcStaking::current_era().unwrap() +
-			DdcStaking::settings(ClusterId::from([0; 20])).edge_chill_delay;
+			DdcStaking::settings(ClusterId::from([0; 20])).cdn_chill_delay;
 		assert_eq!(
 			DdcStaking::ledger(&4),
 			Some(StakingLedger {
@@ -185,7 +185,7 @@ fn staking_should_work() {
 		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(4)));
 
 		// Account 3 is no longer a CDN participant.
-		assert_eq!(DdcStaking::edges(3), None);
+		assert_eq!(DdcStaking::cdns(3), None);
 	});
 }
 
