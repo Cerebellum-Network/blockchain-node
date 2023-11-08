@@ -77,7 +77,6 @@ use sp_runtime::{
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
 };
-use sp_staking::EraIndex;
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -1314,13 +1313,6 @@ impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
-}
-
-parameter_types! {
-	pub const DefaultCDNBondSize: Balance = 100 * DOLLARS;
-	pub const DefaultCDNChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
-	pub const DefaultStorageBondSize: Balance = 100 * DOLLARS;
-	pub const DefaultStorageChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
 }
 
 impl pallet_ddc_staking::Config for Runtime {
