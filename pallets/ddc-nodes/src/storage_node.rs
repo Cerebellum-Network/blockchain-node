@@ -8,6 +8,7 @@ use sp_std::prelude::Vec;
 
 parameter_types! {
 	pub MaxStorageNodeParamsLen: u16 = 2048;
+	pub MaxHostLen: u8 = 255;
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -21,14 +22,18 @@ pub struct StorageNode<T: frame_system::Config> {
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNodeProps {
-	// this is a temporal way of storing node parameters as a stringified json,
-	// should be replaced with specific properties for this type of node once they are defined
-	pub params: BoundedVec<u8, MaxStorageNodeParamsLen>,
+	pub host: BoundedVec<u8, MaxHostLen>,
+	pub http_port: u16,
+	pub grpc_port: u16,
+	pub p2p_port: u16,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNodeParams {
-	pub params: Vec<u8>, // should be replaced with specific parameters for this type of node
+	pub host: Vec<u8>,
+	pub http_port: u16,
+	pub grpc_port: u16,
+	pub p2p_port: u16,
 }
 
 impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
@@ -49,10 +54,15 @@ impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 		Ok(())
 	}
 	fn set_params(&mut self, node_params: NodeParams) -> Result<(), NodeError> {
-		self.props.params = match node_params {
-			NodeParams::StorageParams(cdn_params) => match cdn_params.params.try_into() {
-				Ok(vec) => vec,
-				Err(_) => return Err(NodeError::StorageNodeParamsExceedsLimit),
+		match node_params {
+			NodeParams::StorageParams(storage_params) => {
+				self.props.host = match storage_params.host.try_into() {
+					Ok(vec) => vec,
+					Err(_) => return Err(NodeError::CDNHostLenExceedsLimit),
+				};
+				self.props.http_port = storage_params.http_port;
+				self.props.grpc_port = storage_params.grpc_port;
+				self.props.p2p_port = storage_params.p2p_port;
 			},
 			_ => return Err(NodeError::InvalidStorageNodeParams),
 		};
@@ -79,10 +89,13 @@ impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 					pub_key,
 					cluster_id: None,
 					props: StorageNodeProps {
-						params: match node_params.params.try_into() {
+						host: match node_params.host.try_into() {
 							Ok(vec) => vec,
-							Err(_) => return Err(NodeError::StorageNodeParamsExceedsLimit),
+							Err(_) => return Err(NodeError::StorageHostLenExceedsLimit),
 						},
+						http_port: node_params.http_port,
+						grpc_port: node_params.grpc_port,
+						p2p_port: node_params.p2p_port,
 					},
 				})),
 				_ => Err(NodeError::InvalidStorageNodeParams),
