@@ -53,7 +53,7 @@ benchmarks! {
 		let (stash, controller, _) = create_stash_controller_node::<T>(0, 100)?;
 		let amount = T::Currency::minimum_balance() * 5u32.into(); // Half of total
 		DdcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into(), amount)?;
-		CurrentEra::<T>::put(EraIndex::max_value());
+		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1000u32));
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_total: BalanceOf<T> = ledger.total;
 		whitelist_account!(controller);
@@ -65,7 +65,7 @@ benchmarks! {
 	}
 
 	store {
-		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultStorageBondSize::get())?;
+		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or(10u128).saturated_into::<BalanceOf<T>>())?;
 
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller), ClusterId::from([1; 20]))
@@ -74,7 +74,7 @@ benchmarks! {
 	}
 
 	serve {
-		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultCDNBondSize::get())?;
+		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or(10u128).saturated_into::<BalanceOf<T>>())?;
 
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller), ClusterId::from([1; 20]))
@@ -86,12 +86,12 @@ benchmarks! {
 		// clean up any existing state.
 		clear_storages_and_cdns::<T>();
 
-		let (cdn_stash, cdn_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultCDNBondSize::get())?;
+		let (cdn_stash, cdn_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or(10u128).saturated_into::<BalanceOf<T>>())?;
 		DdcStaking::<T>::serve(RawOrigin::Signed(cdn_controller.clone()).into(), ClusterId::from([1; 20]))?;
 		assert!(CDNs::<T>::contains_key(&cdn_stash));
-		CurrentEra::<T>::put(1);
+		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32));
 		DdcStaking::<T>::chill(RawOrigin::Signed(cdn_controller.clone()).into())?;
-		CurrentEra::<T>::put(1 + T::ClusterVisitor::get_chill_delay(ClusterId::from([1; 20]), NodeType::CDN));
+		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32) + T::ClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or(T::BlockNumber::from(10u32)));
 
 		whitelist_account!(cdn_controller);
 	}: _(RawOrigin::Signed(cdn_controller))
