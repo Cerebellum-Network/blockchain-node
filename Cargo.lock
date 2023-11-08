@@ -1654,6 +1654,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "sp-core",
+ "sp-staking",
  "sp-std",
 ]
 
@@ -4942,7 +4943,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "pallet-ddc-staking",
  "parity-scale-codec",
  "scale-info",
  "sp-io",
