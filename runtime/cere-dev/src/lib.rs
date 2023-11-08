@@ -1324,11 +1324,8 @@ parameter_types! {
 }
 
 impl pallet_ddc_staking::Config for Runtime {
-	type BondingDuration = BondingDuration;
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
-	type StakersPayoutSource = DdcCustomersPalletId;
-	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 }
