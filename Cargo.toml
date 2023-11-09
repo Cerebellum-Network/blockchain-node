@@ -31,7 +31,6 @@ members = [
     "pallets/erc721",
     "pallets/erc20",
     "pallets/ddc-metrics-offchain-worker",
-    "pallets/ddc-validator",
     "pallets/ddc-customers",
     "pallets/ddc-nodes",
     "pallets/ddc-clusters",

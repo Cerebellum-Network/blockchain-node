@@ -78,7 +78,6 @@ use sp_runtime::{
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
 };
-use sp_staking::EraIndex;
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -131,7 +130,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48009,
+	spec_version: 48012,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 5,
@@ -1317,52 +1316,24 @@ impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 }
 
-parameter_types! {
-	pub const DefaultEdgeBondSize: Balance = 100 * DOLLARS;
-	pub const DefaultEdgeChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
-	pub const DefaultStorageBondSize: Balance = 100 * DOLLARS;
-	pub const DefaultStorageChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
-}
-
 impl pallet_ddc_staking::Config for Runtime {
-	type BondingDuration = BondingDuration;
 	type Currency = Balances;
-	type DefaultEdgeBondSize = DefaultEdgeBondSize;
-	type DefaultEdgeChillDelay = DefaultEdgeChillDelay;
-	type DefaultStorageBondSize = DefaultStorageBondSize;
-	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
-	type StakersPayoutSource = DdcCustomersPalletId;
-	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 }
 
 parameter_types! {
 	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
-	pub const LockingDuration: sp_staking::EraIndex = 30 * 24; // 1 hour * 24 = 1 day; (1 era is 2 mins)
+	pub const UnlockingDelay: BlockNumber = 5256000u32; // 1 hour * 24 * 365 = 1 day; (1 hour is 600 blocks)
 }
 
 impl pallet_ddc_customers::Config for Runtime {
-	type LockingDuration = LockingDuration;
+	type UnlockingDelay = UnlockingDelay;
 	type Currency = Balances;
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
-}
-
-parameter_types! {
-	pub const DdcValidatorsQuorumSize: u32 = 3;
-	pub const ValidationThreshold: u32 = 5;
-	pub const ValidatorsMax: u32 = 64;
-}
-
-impl pallet_ddc_validator::Config for Runtime {
-	type DdcValidatorsQuorumSize = DdcValidatorsQuorumSize;
-	type Randomness = RandomnessCollectiveFlip;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type AuthorityId = pallet_ddc_validator::crypto::TestAuthId;
-	type ValidationThreshold = ValidationThreshold;
-	type ValidatorsMax = ValidatorsMax;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 }
 
 impl pallet_ddc_nodes::Config for Runtime {
@@ -1372,6 +1343,8 @@ impl pallet_ddc_nodes::Config for Runtime {
 impl pallet_ddc_clusters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
+	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type Currency = Balances;
 }
 
 parameter_types! {
@@ -1436,7 +1409,6 @@ construct_runtime!(
 		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
 		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
 		DdcStaking: pallet_ddc_staking,
-		DdcValidator: pallet_ddc_validator,
 		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
@@ -1499,8 +1471,22 @@ pub type Executive = frame_executive::Executive<
 		>,
 		pallet_staking::migrations::v12::MigrateToV12<Runtime>,
 		pallet_contracts::Migration<Runtime>,
+		custom_migration::Upgrade,
 	),
 >;
+
+mod custom_migration {
+	use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+	use sp_io::{hashing::twox_128, storage::clear_prefix};
+
+	pub struct Upgrade;
+	impl OnRuntimeUpgrade for Upgrade {
+		fn on_runtime_upgrade() -> Weight {
+			clear_prefix(&twox_128(b"DdcValidator"), None);
+			Weight::from_ref_time(0)
+		}
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]

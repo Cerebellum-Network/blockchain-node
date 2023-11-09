@@ -1,1 +1,0 @@
-# DDC Validator
