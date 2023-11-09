@@ -14,6 +14,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
+#[cfg(test)]
+pub(crate) mod mock;
+#[cfg(test)]
+mod tests;
+
 use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey, StorageNodePubKey};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
