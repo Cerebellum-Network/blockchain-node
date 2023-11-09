@@ -61,6 +61,7 @@ pub mod pallet {
 		NodeParamsExceedsLimit,
 		OnlyNodeProvider,
 		NodeIsAssignedToCluster,
+		HostLenExceedsLimit,
 	}
 
 	#[pallet::storage]
