@@ -423,7 +423,7 @@ pub mod pallet {
 					T::ClusterVisitor::get_unbonding_delay(&cluster_id, NodeType::Storage)
 						.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?
 				} else {
-					T::BlockNumber::from(100_00u32)
+					T::BlockNumber::from(0u32)
 				};
 
 				let block = <frame_system::Pallet<T>>::block_number() + unbonding_delay_in_blocks;
