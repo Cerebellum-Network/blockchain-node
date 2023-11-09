@@ -7,14 +7,14 @@ use crate::{
 	ClusterId,
 };
 use codec::{Decode, Encode};
-use ddc_primitives::{CDNNodePubKey, NodePubKey, StorageNodePubKey};
+use ddc_primitives::{CDNNodePubKey, NodePubKey, NodeType, StorageNodePubKey};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum Node<AccountId> {
-	Storage(StorageNode<AccountId>),
-	CDN(CDNNode<AccountId>),
+pub enum Node<T: frame_system::Config> {
+	Storage(StorageNode<T>),
+	CDN(CDNNode<T>),
 }
 
 // Params fields are always coming from extrinsic input
@@ -54,9 +54,9 @@ pub enum NodePropsRef<'a> {
 	CDNPropsRef(&'a CDNNodeProps),
 }
 
-pub trait NodeTrait<AccountId> {
+pub trait NodeTrait<T: frame_system::Config> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a>;
-	fn get_provider_id(&self) -> &AccountId;
+	fn get_provider_id(&self) -> &T::AccountId;
 	fn get_props<'a>(&'a self) -> NodePropsRef<'a>;
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError>;
 	fn set_params(&mut self, props: NodeParams) -> Result<(), NodeError>;
@@ -65,19 +65,19 @@ pub trait NodeTrait<AccountId> {
 	fn get_type(&self) -> NodeType;
 	fn new(
 		node_pub_key: NodePubKey,
-		provider_id: AccountId,
+		provider_id: T::AccountId,
 		params: NodeParams,
-	) -> Result<Node<AccountId>, NodeError>;
+	) -> Result<Node<T>, NodeError>;
 }
 
-impl<AccountId> NodeTrait<AccountId> for Node<AccountId> {
+impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
 	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
 		match &self {
 			Node::Storage(node) => node.get_pub_key(),
 			Node::CDN(node) => node.get_pub_key(),
 		}
 	}
-	fn get_provider_id(&self) -> &AccountId {
+	fn get_provider_id(&self) -> &T::AccountId {
 		match &self {
 			Node::Storage(node) => node.get_provider_id(),
 			Node::CDN(node) => node.get_provider_id(),
@@ -121,39 +121,13 @@ impl<AccountId> NodeTrait<AccountId> for Node<AccountId> {
 	}
 	fn new(
 		node_pub_key: NodePubKey,
-		provider_id: AccountId,
+		provider_id: T::AccountId,
 		node_params: NodeParams,
-	) -> Result<Node<AccountId>, NodeError> {
+	) -> Result<Node<T>, NodeError> {
 		match node_pub_key {
 			NodePubKey::StoragePubKey(_) =>
 				StorageNode::new(node_pub_key, provider_id, node_params),
 			NodePubKey::CDNPubKey(_) => CDNNode::new(node_pub_key, provider_id, node_params),
-		}
-	}
-}
-
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum NodeType {
-	Storage = 1,
-	CDN = 2,
-}
-
-impl From<NodeType> for u8 {
-	fn from(node_type: NodeType) -> Self {
-		match node_type {
-			NodeType::Storage => 1,
-			NodeType::CDN => 2,
-		}
-	}
-}
-
-impl TryFrom<u8> for NodeType {
-	type Error = ();
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
-		match value {
-			1 => Ok(NodeType::Storage),
-			2 => Ok(NodeType::CDN),
-			_ => Err(()),
 		}
 	}
 }
@@ -163,8 +137,8 @@ pub enum NodeError {
 	InvalidCDNNodePubKey,
 	InvalidStorageNodeParams,
 	InvalidCDNNodeParams,
-	StorageNodeParamsExceedsLimit,
-	CDNNodeParamsExceedsLimit,
+	StorageHostLenExceedsLimit,
+	CDNHostLenExceedsLimit,
 	InvalidCDNNodeProps,
 	InvalidStorageNodeProps,
 }
@@ -176,8 +150,8 @@ impl<T> From<NodeError> for Error<T> {
 			NodeError::InvalidCDNNodePubKey => Error::<T>::InvalidNodePubKey,
 			NodeError::InvalidStorageNodeParams => Error::<T>::InvalidNodeParams,
 			NodeError::InvalidCDNNodeParams => Error::<T>::InvalidNodeParams,
-			NodeError::StorageNodeParamsExceedsLimit => Error::<T>::NodeParamsExceedsLimit,
-			NodeError::CDNNodeParamsExceedsLimit => Error::<T>::InvalidNodeParams,
+			NodeError::StorageHostLenExceedsLimit => Error::<T>::HostLenExceedsLimit,
+			NodeError::CDNHostLenExceedsLimit => Error::<T>::HostLenExceedsLimit,
 			NodeError::InvalidStorageNodeProps => Error::<T>::InvalidNodeParams,
 			NodeError::InvalidCDNNodeProps => Error::<T>::InvalidNodeParams,
 		}

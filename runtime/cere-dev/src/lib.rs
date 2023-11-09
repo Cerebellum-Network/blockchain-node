@@ -48,8 +48,8 @@ pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 pub use pallet_cere_ddc;
 pub use pallet_chainbridge;
-pub use pallet_ddc_accounts;
 pub use pallet_ddc_clusters;
+pub use pallet_ddc_customers;
 pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_nodes;
 pub use pallet_ddc_staking;
@@ -77,7 +77,6 @@ use sp_runtime::{
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
 };
-use sp_staking::EraIndex;
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -130,7 +129,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48007,
+	spec_version: 48012,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 5,
@@ -406,7 +405,7 @@ impl pallet_indices::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = DOLLARS;
+	pub const ExistentialDeposit: Balance = 1 * DOLLARS;
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
@@ -566,9 +565,9 @@ parameter_types! {
 	pub const UnsignedPhase: u32 = EPOCH_DURATION_IN_BLOCKS / 4;
 
 	// signed config
-	pub const SignedRewardBase: Balance = DOLLARS;
-	pub const SignedDepositBase: Balance = DOLLARS;
-	pub const SignedDepositByte: Balance = CENTS;
+	pub const SignedRewardBase: Balance = 1 * DOLLARS;
+	pub const SignedDepositBase: Balance = 1 * DOLLARS;
+	pub const SignedDepositByte: Balance = 1 * CENTS;
 
 	pub BetterUnsignedThreshold: Perbill = Perbill::from_rational(1u32, 10_000);
 
@@ -723,11 +722,11 @@ impl pallet_bags_list::Config<VoterBagsListInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 24 * 60 * MINUTES;
-	pub const VotingPeriod: BlockNumber = 24 * 60 * MINUTES;
+	pub const LaunchPeriod: BlockNumber = 1 * 24 * 60 * MINUTES;
+	pub const VotingPeriod: BlockNumber = 1 * 24 * 60 * MINUTES;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * 60 * MINUTES;
-	pub const MinimumDeposit: Balance = 5_000_000 * DOLLARS;
-	pub const EnactmentPeriod: BlockNumber = 24 * 60 * MINUTES;
+	pub const MinimumDeposit: Balance = 50_000 * DOLLARS;
+	pub const EnactmentPeriod: BlockNumber = 1 * 24 * 60 * MINUTES;
 	pub const CooloffPeriod: BlockNumber = 7 * 24 * 60 * MINUTES;
 	pub const MaxProposals: u32 = 100;
 }
@@ -802,10 +801,10 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 }
 
 parameter_types! {
-	pub const CandidacyBond: Balance = 500_000_000 * DOLLARS;
+	pub const CandidacyBond: Balance = 5_000_000 * DOLLARS;
 	// 1 storage item created, key size is 32 bytes, value size is 16+16.
 	pub const VotingBondBase: Balance = deposit(1, 64);
-	pub const VotingBondFactor: Balance = DOLLARS;
+	pub const VotingBondFactor: Balance = 1 * DOLLARS;
 	pub const TermDuration: BlockNumber = 182 * DAYS;
 	pub const DesiredMembers: u32 = 13;
 	pub const DesiredRunnersUp: u32 = 20;
@@ -876,13 +875,13 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
 
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
-	pub const ProposalBondMinimum: Balance = 5_000_000 * DOLLARS;
-	pub const SpendPeriod: BlockNumber = DAYS;
+	pub const ProposalBondMinimum: Balance = 50_000 * DOLLARS;
+	pub const SpendPeriod: BlockNumber = 1 * DAYS;
 	pub const Burn: Permill = Permill::from_percent(0);
-	pub const TipCountdown: BlockNumber = DAYS;
+	pub const TipCountdown: BlockNumber = 1 * DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
-	pub const TipReportDepositBase: Balance = 5_000_000 * DOLLARS;
-	pub const DataDepositPerByte: Balance = DOLLARS;
+	pub const TipReportDepositBase: Balance = 50_000 * DOLLARS;
+	pub const DataDepositPerByte: Balance = 1 * DOLLARS;
 	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
 	pub const MaximumReasonLength: u32 = 16384;
 	pub const MaxApprovals: u32 = 100;
@@ -916,9 +915,9 @@ impl pallet_treasury::Config for Runtime {
 parameter_types! {
 	pub const BountyCuratorDeposit: Permill = Permill::from_percent(50);
 	pub const BountyValueMinimum: Balance = 10 * DOLLARS;
-	pub const BountyDepositBase: Balance = 5_000_000 * DOLLARS;
+	pub const BountyDepositBase: Balance = 50_000 * DOLLARS;
 	pub const CuratorDepositMultiplier: Permill = Permill::from_percent(50);
-	pub const CuratorDepositMin: Balance = DOLLARS;
+	pub const CuratorDepositMin: Balance = 1 * DOLLARS;
 	pub const CuratorDepositMax: Balance = 100 * DOLLARS;
 	pub const BountyDepositPayoutDelay: BlockNumber = 8 * DAYS;
 	pub const BountyUpdatePeriod: BlockNumber = 90 * DAYS;
@@ -940,7 +939,7 @@ impl pallet_bounties::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ChildBountyValueMinimum: Balance = DOLLARS;
+	pub const ChildBountyValueMinimum: Balance = 1 * DOLLARS;
 }
 
 impl pallet_child_bounties::Config for Runtime {
@@ -1193,7 +1192,7 @@ impl pallet_society::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = DOLLARS;
+	pub const MinVestedTransfer: Balance = 1 * DOLLARS;
 }
 
 impl pallet_vesting::Config for Runtime {
@@ -1316,51 +1315,24 @@ impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 }
 
-parameter_types! {
-	pub const DefaultEdgeBondSize: Balance = 100 * DOLLARS;
-	pub const DefaultEdgeChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
-	pub const DefaultStorageBondSize: Balance = 100 * DOLLARS;
-	pub const DefaultStorageChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
-}
-
 impl pallet_ddc_staking::Config for Runtime {
-	type BondingDuration = BondingDuration;
 	type Currency = Balances;
-	type DefaultEdgeBondSize = DefaultEdgeBondSize;
-	type DefaultEdgeChillDelay = DefaultEdgeChillDelay;
-	type DefaultStorageBondSize = DefaultStorageBondSize;
-	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
-	type StakersPayoutSource = DdcAccountsPalletId;
-	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 }
 
 parameter_types! {
-	pub const DdcAccountsPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
+	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
+	pub const UnlockingDelay: BlockNumber = 5256000u32; // 1 hour * 24 * 365 = 1 day; (1 hour is 600 blocks)
 }
 
-impl pallet_ddc_accounts::Config for Runtime {
-	type BondingDuration = BondingDuration;
+impl pallet_ddc_customers::Config for Runtime {
+	type UnlockingDelay = UnlockingDelay;
 	type Currency = Balances;
-	type PalletId = DdcAccountsPalletId;
+	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
-}
-
-parameter_types! {
-	pub const DdcValidatorsQuorumSize: u32 = 3;
-	pub const ValidationThreshold: u32 = 5;
-	pub const ValidatorsMax: u32 = 64;
-}
-
-impl pallet_ddc_validator::Config for Runtime {
-	type DdcValidatorsQuorumSize = DdcValidatorsQuorumSize;
-	type Randomness = RandomnessCollectiveFlip;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type AuthorityId = pallet_ddc_validator::crypto::TestAuthId;
-	type ValidationThreshold = ValidationThreshold;
-	type ValidatorsMax = ValidatorsMax;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 }
 
 impl pallet_ddc_nodes::Config for Runtime {
@@ -1370,6 +1342,8 @@ impl pallet_ddc_nodes::Config for Runtime {
 impl pallet_ddc_clusters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
+	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type Currency = Balances;
 }
 
 construct_runtime!(
@@ -1424,8 +1398,7 @@ construct_runtime!(
 		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
 		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
 		DdcStaking: pallet_ddc_staking,
-		DdcValidator: pallet_ddc_validator,
-		DdcAccounts: pallet_ddc_accounts,
+		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters
 	}
@@ -1486,8 +1459,22 @@ pub type Executive = frame_executive::Executive<
 		>,
 		pallet_staking::migrations::v12::MigrateToV12<Runtime>,
 		pallet_contracts::Migration<Runtime>,
+		custom_migration::Upgrade,
 	),
 >;
+
+mod custom_migration {
+	use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+	use sp_io::{hashing::twox_128, storage::clear_prefix};
+
+	pub struct Upgrade;
+	impl OnRuntimeUpgrade for Upgrade {
+		fn on_runtime_upgrade() -> Weight {
+			clear_prefix(&twox_128(b"DdcValidator"), None);
+			Weight::from_ref_time(0)
+		}
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
