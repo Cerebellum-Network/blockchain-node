@@ -118,14 +118,25 @@ pub mod pallet {
 		pub fn create_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
+			cluster_manager_id: T::AccountId,
+			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
-			let caller_id = ensure_signed(origin)?;
-			let cluster = Cluster::new(cluster_id.clone(), caller_id, cluster_params)
-				.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
+			ensure_root(origin)?; // requires Governance approval
+			let cluster = Cluster::new(
+				cluster_id.clone(),
+				cluster_manager_id,
+				cluster_reserve_id,
+				cluster_params,
+			)
+			.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
 			ensure!(!Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterAlreadyExists);
+
 			Clusters::<T>::insert(cluster_id.clone(), cluster);
+			ClustersGovParams::<T>::insert(cluster_id.clone(), cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
+
 			Ok(())
 		}
 
@@ -220,17 +231,16 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// Sets Governance sensetive parameters
+		// Requires Governance approval
 		#[pallet::weight(10_000)]
 		pub fn set_cluster_gov_params(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
-			let caller_id = ensure_signed(origin)?;
-			let cluster =
+			ensure_root(origin)?; // requires Governance approval
+			let _cluster =
 				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 			ClustersGovParams::<T>::insert(cluster_id.clone(), cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
 
