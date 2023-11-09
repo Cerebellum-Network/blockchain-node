@@ -77,7 +77,6 @@ use sp_runtime::{
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
 };
-use sp_staking::EraIndex;
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -1316,37 +1315,24 @@ impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 }
 
-parameter_types! {
-	pub const DefaultEdgeBondSize: Balance = 100 * DOLLARS;
-	pub const DefaultEdgeChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
-	pub const DefaultStorageBondSize: Balance = 100 * DOLLARS;
-	pub const DefaultStorageChillDelay: EraIndex = 7 * 24 * 60 / 2; // approx. 1 week with 2 min DDC era
-}
-
 impl pallet_ddc_staking::Config for Runtime {
-	type BondingDuration = BondingDuration;
 	type Currency = Balances;
-	type DefaultEdgeBondSize = DefaultEdgeBondSize;
-	type DefaultEdgeChillDelay = DefaultEdgeChillDelay;
-	type DefaultStorageBondSize = DefaultStorageBondSize;
-	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
-	type StakersPayoutSource = DdcCustomersPalletId;
-	type UnixTime = Timestamp;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 }
 
 parameter_types! {
 	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
-	pub const LockingDuration: sp_staking::EraIndex = 30 * 24; // 1 hour * 24 = 1 day; (1 era is 2 mins)
+	pub const UnlockingDelay: BlockNumber = 5256000u32; // 1 hour * 24 * 365 = 1 day; (1 hour is 600 blocks)
 }
 
 impl pallet_ddc_customers::Config for Runtime {
-	type LockingDuration = LockingDuration;
+	type UnlockingDelay = UnlockingDelay;
 	type Currency = Balances;
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 }
 
 impl pallet_ddc_nodes::Config for Runtime {

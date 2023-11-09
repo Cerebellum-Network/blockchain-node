@@ -95,7 +95,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_gov_params)]
 	pub type ClustersGovParams<T: Config> =
-		StorageMap<_, Twox64Concat, ClusterId, ClusterGovParams<BalanceOf<T>>>;
+		StorageMap<_, Twox64Concat, ClusterId, ClusterGovParams<BalanceOf<T>, T::BlockNumber>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_nodes)]
@@ -121,7 +121,7 @@ pub mod pallet {
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			ensure_root(origin)?; // requires Governance approval
 			let cluster = Cluster::new(
@@ -236,7 +236,7 @@ pub mod pallet {
 		pub fn set_cluster_gov_params(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			ensure_root(origin)?; // requires Governance approval
 			let _cluster =
@@ -269,6 +269,30 @@ pub mod pallet {
 				NodeType::Storage =>
 					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
 				NodeType::CDN => Ok(cluster_gov_params.cdn_bond_size.saturated_into::<u128>()),
+			}
+		}
+
+		fn get_chill_delay(
+			cluster_id: &ClusterId,
+			node_type: NodeType,
+		) -> Result<T::BlockNumber, ClusterVisitorError> {
+			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+			match node_type {
+				NodeType::Storage => Ok(cluster_gov_params.storage_chill_delay),
+				NodeType::CDN => Ok(cluster_gov_params.cdn_chill_delay),
+			}
+		}
+
+		fn get_unbonding_delay(
+			cluster_id: &ClusterId,
+			node_type: NodeType,
+		) -> Result<T::BlockNumber, ClusterVisitorError> {
+			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+			match node_type {
+				NodeType::Storage => Ok(cluster_gov_params.storage_unbonding_delay),
+				NodeType::CDN => Ok(cluster_gov_params.cdn_unbonding_delay),
 			}
 		}
 	}

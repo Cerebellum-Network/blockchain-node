@@ -1654,6 +1654,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "sp-core",
+ "sp-staking",
  "sp-std",
 ]
 
@@ -4938,11 +4939,10 @@ name = "pallet-ddc-customers"
 version = "0.1.0"
 dependencies = [
  "ddc-primitives",
+ "ddc-traits",
  "frame-support",
  "frame-system",
  "log",
- "pallet-ddc-clusters",
- "pallet-ddc-staking",
  "parity-scale-codec",
  "scale-info",
  "sp-io",
