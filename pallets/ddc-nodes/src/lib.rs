@@ -61,17 +61,17 @@ pub mod pallet {
 		NodeParamsExceedsLimit,
 		OnlyNodeProvider,
 		NodeIsAssignedToCluster,
+		HostLenExceedsLimit,
 	}
 
 	#[pallet::storage]
 	#[pallet::getter(fn storage_nodes)]
 	pub type StorageNodes<T: Config> =
-		StorageMap<_, Blake2_128Concat, StorageNodePubKey, StorageNode<T::AccountId>>;
+		StorageMap<_, Blake2_128Concat, StorageNodePubKey, StorageNode<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn cdn_nodes)]
-	pub type CDNNodes<T: Config> =
-		StorageMap<_, Blake2_128Concat, CDNNodePubKey, CDNNode<T::AccountId>>;
+	pub type CDNNodes<T: Config> = StorageMap<_, Blake2_128Concat, CDNNodePubKey, CDNNode<T>>;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -82,9 +82,9 @@ pub mod pallet {
 			node_params: NodeParams,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let node = Node::<T::AccountId>::new(node_pub_key.clone(), caller_id, node_params)
-				.map_err(Into::<Error<T>>::into)?;
-			Self::create(node).map_err(Into::<Error<T>>::into)?;
+			let node = Node::<T>::new(node_pub_key.clone(), caller_id, node_params)
+				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
+			Self::create(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
 			Self::deposit_event(Event::<T>::NodeCreated { node_pub_key });
 			Ok(())
 		}
@@ -92,10 +92,12 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn delete_node(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let node = Self::get(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
+			let node = Self::get(node_pub_key.clone())
+				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAssignedToCluster);
-			Self::delete(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
+			Self::delete(node_pub_key.clone())
+				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
 			Self::deposit_event(Event::<T>::NodeDeleted { node_pub_key });
 			Ok(())
 		}
@@ -107,19 +109,21 @@ pub mod pallet {
 			node_params: NodeParams,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let mut node = Self::get(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
+			let mut node = Self::get(node_pub_key.clone())
+				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
-			node.set_params(node_params).map_err(Into::<Error<T>>::into)?;
-			Self::update(node).map_err(Into::<Error<T>>::into)?;
+			node.set_params(node_params)
+				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
+			Self::update(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
 			Self::deposit_event(Event::<T>::NodeParamsChanged { node_pub_key });
 			Ok(())
 		}
 	}
 
 	pub trait NodeRepository<T: frame_system::Config> {
-		fn create(node: Node<T::AccountId>) -> Result<(), NodeRepositoryError>;
-		fn get(node_pub_key: NodePubKey) -> Result<Node<T::AccountId>, NodeRepositoryError>;
-		fn update(node: Node<T::AccountId>) -> Result<(), NodeRepositoryError>;
+		fn create(node: Node<T>) -> Result<(), NodeRepositoryError>;
+		fn get(node_pub_key: NodePubKey) -> Result<Node<T>, NodeRepositoryError>;
+		fn update(node: Node<T>) -> Result<(), NodeRepositoryError>;
 		fn delete(node_pub_key: NodePubKey) -> Result<(), NodeRepositoryError>;
 	}
 
@@ -142,7 +146,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> NodeRepository<T> for Pallet<T> {
-		fn create(node: Node<T::AccountId>) -> Result<(), NodeRepositoryError> {
+		fn create(node: Node<T>) -> Result<(), NodeRepositoryError> {
 			match node {
 				Node::Storage(storage_node) => {
 					if StorageNodes::<T>::contains_key(&storage_node.pub_key) {
@@ -161,7 +165,7 @@ pub mod pallet {
 			}
 		}
 
-		fn get(node_pub_key: NodePubKey) -> Result<Node<T::AccountId>, NodeRepositoryError> {
+		fn get(node_pub_key: NodePubKey) -> Result<Node<T>, NodeRepositoryError> {
 			match node_pub_key {
 				NodePubKey::StoragePubKey(pub_key) => match StorageNodes::<T>::try_get(pub_key) {
 					Ok(storage_node) => Ok(Node::Storage(storage_node)),
@@ -174,7 +178,7 @@ pub mod pallet {
 			}
 		}
 
-		fn update(node: Node<T::AccountId>) -> Result<(), NodeRepositoryError> {
+		fn update(node: Node<T>) -> Result<(), NodeRepositoryError> {
 			match node {
 				Node::Storage(storage_node) => {
 					if !StorageNodes::<T>::contains_key(&storage_node.pub_key) {
