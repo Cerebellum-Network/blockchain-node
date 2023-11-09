@@ -32,6 +32,7 @@ use codec::{Decode, Encode, HasCompact};
 pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
+	node::NodeVisitor,
 	staking::{StakingVisitor, StakingVisitorError},
 };
 
@@ -157,6 +158,8 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 
 		type ClusterVisitor: ClusterVisitor<Self>;
+
+		type NodeVisitor: NodeVisitor<Self>;
 	}
 
 	/// Map from all locked "stash" accounts to the controller account.
@@ -186,6 +189,11 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn nodes)]
 	pub type Nodes<T: Config> = StorageMap<_, Twox64Concat, NodePubKey, T::AccountId>;
+
+	/// Map from operator stash account to DDC node ID.
+	#[pallet::storage]
+	#[pallet::getter(fn providers)]
+	pub type Providers<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, NodePubKey>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -330,13 +338,14 @@ pub mod pallet {
 			}
 
 			// Reject a bond with a known DDC node.
-			if Nodes::<T>::contains_key(&node) {
+			if Nodes::<T>::contains_key(&node) || Providers::<T>::contains_key(&stash) {
 				Err(Error::<T>::AlreadyPaired)?
 			}
 
 			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
 
 			Nodes::<T>::insert(&node, &stash);
+			Providers::<T>::insert(&stash, &node);
 
 			// You're auto-bonded forever, here. We might improve this by only bonding when
 			// you actually store/serve and remove once you unbond __everything__.
@@ -423,7 +432,27 @@ pub mod pallet {
 					T::ClusterVisitor::get_unbonding_delay(&cluster_id, NodeType::Storage)
 						.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?
 				} else {
-					T::BlockNumber::from(100_00u32)
+					let node_pub_key =
+						<Providers<T>>::get(&ledger.stash).ok_or(Error::<T>::BadState)?;
+
+					match T::NodeVisitor::get_cluster_id(&node_pub_key) {
+						// If node is chilling within some cluster, the unbonding period should be
+						// set according to the cluster's settings
+						Ok(Some(cluster_id)) => match node_pub_key {
+							NodePubKey::CDNPubKey(_) =>
+								T::ClusterVisitor::get_unbonding_delay(&cluster_id, NodeType::CDN)
+									.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?,
+							NodePubKey::StoragePubKey(_) => T::ClusterVisitor::get_unbonding_delay(
+								&cluster_id,
+								NodeType::Storage,
+							)
+							.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?,
+						},
+						// If node is not a member of any cluster, allow immediate unbonding.
+						// It is possible if node provider hasn't called 'store/serve' yet, or after
+						// the 'fast_chill' and subsequent 'chill' calls.
+						_ => T::BlockNumber::from(0u32),
+					}
 				};
 
 				let block = <frame_system::Pallet<T>>::block_number() + unbonding_delay_in_blocks;
@@ -679,7 +708,8 @@ pub mod pallet {
 			ensure!(!<CDNs<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 			ensure!(!<Storages<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
-			<Nodes<T>>::insert(new_node, stash);
+			<Nodes<T>>::insert(new_node.clone(), stash.clone());
+			<Providers<T>>::insert(stash, new_node);
 
 			Ok(())
 		}
@@ -688,10 +718,11 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller.
 		#[pallet::weight(10_000)]
-		pub fn fast_chill(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
+		pub fn fast_chill(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 
 			let stash = <Ledger<T>>::get(&controller).ok_or(Error::<T>::NotController)?.stash;
+			let node_pub_key = <Providers<T>>::get(&stash).ok_or(Error::<T>::BadState)?;
 			let node_stash = <Nodes<T>>::get(&node_pub_key).ok_or(Error::<T>::BadState)?;
 			ensure!(stash == node_stash, Error::<T>::NotNodeController);
 
@@ -764,9 +795,9 @@ pub mod pallet {
 			<Bonded<T>>::remove(stash);
 			<Ledger<T>>::remove(&controller);
 
-			if let Some((node, _)) = <Nodes<T>>::iter().find(|(_, v)| v == stash) {
-				<Nodes<T>>::remove(node);
-			}
+			if let Some(node_pub_key) = <Providers<T>>::take(stash) {
+				<Nodes<T>>::remove(node_pub_key);
+			};
 
 			Self::do_remove_storage(stash);
 			Self::do_remove_cdn(stash);
