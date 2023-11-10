@@ -32,6 +32,9 @@ jobs:
         run: |
           cargo fmt -- --check
 
+      - name: Unused dependencies
+        uses: bnjbvr/cargo-machete@main
+
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
