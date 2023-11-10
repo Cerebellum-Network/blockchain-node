@@ -435,10 +435,8 @@ pub mod pallet {
 					let node_pub_key =
 						<Providers<T>>::get(&ledger.stash).ok_or(Error::<T>::BadState)?;
 
-					match T::NodeVisitor::get_cluster_id(&node_pub_key) {
-						// If node is chilling within some cluster, the unbonding period should be
-						// set according to the cluster's settings
-						Ok(Some(cluster_id)) => match node_pub_key {
+					if let Ok(Some(cluster_id)) = T::NodeVisitor::get_cluster_id(&node_pub_key) {
+						match node_pub_key {
 							NodePubKey::CDNPubKey(_) =>
 								T::ClusterVisitor::get_unbonding_delay(&cluster_id, NodeType::CDN)
 									.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?,
@@ -447,11 +445,10 @@ pub mod pallet {
 								NodeType::Storage,
 							)
 							.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?,
-						},
+						}
+					} else {
 						// If node is not a member of any cluster, allow immediate unbonding.
-						// It is possible if node provider hasn't called 'store/serve' yet, or after
-						// the 'fast_chill' and subsequent 'chill' calls.
-						_ => T::BlockNumber::from(0u32),
+						T::BlockNumber::from(0u32)
 					}
 				};
 
