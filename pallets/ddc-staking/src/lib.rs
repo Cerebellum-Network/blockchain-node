@@ -434,7 +434,8 @@ pub mod pallet {
 				} else {
 					let node_pub_key =
 						<Providers<T>>::get(&ledger.stash).ok_or(Error::<T>::BadState)?;
-
+					// If node is chilling within some cluster, the unbonding period should be
+					// set according to the cluster's settings
 					if let Ok(Some(cluster_id)) = T::NodeVisitor::get_cluster_id(&node_pub_key) {
 						match node_pub_key {
 							NodePubKey::CDNPubKey(_) =>
@@ -448,6 +449,8 @@ pub mod pallet {
 						}
 					} else {
 						// If node is not a member of any cluster, allow immediate unbonding.
+						// It is possible if node provider hasn't called 'store/serve' yet, or after
+						// the 'fast_chill' and subsequent 'chill' calls.
 						T::BlockNumber::from(0u32)
 					}
 				};
