@@ -1,4 +1,4 @@
-use crate::pallet::Error;
+use crate::{pallet, pallet::Error};
 use codec::{Decode, Encode};
 use ddc_primitives::ClusterId;
 use frame_support::{pallet_prelude::*, parameter_types};

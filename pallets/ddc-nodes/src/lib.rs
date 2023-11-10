@@ -80,10 +80,10 @@ pub mod pallet {
 		pub fn create_node(
 			origin: OriginFor<T>,
 			node_pub_key: NodePubKey,
-			node_params: NodeParams,
+			node_params: Box<NodeParams>,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let node = Node::<T>::new(node_pub_key.clone(), caller_id, node_params)
+			let node = Node::<T>::new(node_pub_key.clone(), caller_id, *node_params)
 				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
 			Self::create(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
 			Self::deposit_event(Event::<T>::NodeCreated { node_pub_key });
@@ -107,13 +107,13 @@ pub mod pallet {
 		pub fn set_node_params(
 			origin: OriginFor<T>,
 			node_pub_key: NodePubKey,
-			node_params: NodeParams,
+			node_params: Box<NodeParams>,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let mut node = Self::get(node_pub_key.clone())
 				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
-			node.set_params(node_params)
+			node.set_params(*node_params)
 				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
 			Self::update(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
 			Self::deposit_event(Event::<T>::NodeParamsChanged { node_pub_key });

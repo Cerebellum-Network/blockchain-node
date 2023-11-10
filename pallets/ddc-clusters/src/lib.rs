@@ -32,7 +32,7 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_runtime::SaturatedConversion;
-use sp_std::prelude::*;
+use sp_std::{boxed::Box, prelude::*};
 
 mod cluster;
 mod node_provider_auth;
@@ -120,21 +120,21 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
-			cluster_params: ClusterParams<T::AccountId>,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_params: Box<ClusterParams<T::AccountId>>,
+			cluster_gov_params: Box<ClusterGovParams<BalanceOf<T>, T::BlockNumber>>,
 		) -> DispatchResult {
 			ensure_root(origin)?; // requires Governance approval
 			let cluster = Cluster::new(
 				cluster_id.clone(),
 				cluster_manager_id,
 				cluster_reserve_id,
-				cluster_params,
+				*cluster_params,
 			)
 			.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
 			ensure!(!Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterAlreadyExists);
 
 			Clusters::<T>::insert(cluster_id.clone(), cluster);
-			ClustersGovParams::<T>::insert(cluster_id.clone(), cluster_gov_params);
+			ClustersGovParams::<T>::insert(cluster_id.clone(), *cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
 
 			Ok(())
@@ -216,14 +216,14 @@ pub mod pallet {
 		pub fn set_cluster_params(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_params: ClusterParams<T::AccountId>,
+			cluster_params: Box<ClusterParams<T::AccountId>>,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let mut cluster =
 				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 			cluster
-				.set_params(cluster_params)
+				.set_params(*cluster_params)
 				.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
 			Clusters::<T>::insert(cluster_id.clone(), cluster);
 			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
@@ -236,12 +236,12 @@ pub mod pallet {
 		pub fn set_cluster_gov_params(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_gov_params: Box<ClusterGovParams<BalanceOf<T>, T::BlockNumber>>,
 		) -> DispatchResult {
 			ensure_root(origin)?; // requires Governance approval
 			let _cluster =
 				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			ClustersGovParams::<T>::insert(cluster_id.clone(), cluster_gov_params);
+			ClustersGovParams::<T>::insert(cluster_id.clone(), *cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
 
 			Ok(())
