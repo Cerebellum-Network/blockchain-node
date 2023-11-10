@@ -103,6 +103,7 @@ where
 	Ok(Basics { task_manager, client, backend, keystore_container, telemetry })
 }
 
+#[allow(clippy::type_complexity)]
 fn new_partial<RuntimeApi, ExecutorDispatch>(
 	config: &Configuration,
 	Basics { task_manager, backend, client, keystore_container, telemetry }: Basics<
@@ -628,6 +629,7 @@ macro_rules! chain_ops {
 	}};
 }
 
+#[allow(clippy::type_complexity)]
 pub fn new_chain_ops(
 	config: &Configuration,
 ) -> Result<
