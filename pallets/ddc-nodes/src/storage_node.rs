@@ -1,4 +1,4 @@
-use crate::node::{NodeError, NodeParams, NodeProps, NodePropsRef, NodeTrait};
+use crate::node::{NodeError, NodeParams, NodeProps, NodeTrait};
 use codec::{Decode, Encode};
 use ddc_primitives::{ClusterId, NodePubKey, NodeType, StorageNodePubKey};
 use frame_support::{parameter_types, BoundedVec};
@@ -72,8 +72,8 @@ impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 	fn get_provider_id(&self) -> &T::AccountId {
 		&self.provider_id
 	}
-	fn get_props(&self) -> NodePropsRef {
-		NodePropsRef::StoragePropsRef(self.props.clone())
+	fn get_props(&self) -> NodeProps {
+		NodeProps::StorageProps(self.props.clone())
 	}
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError> {
 		self.props = match props {
