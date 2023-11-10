@@ -170,7 +170,7 @@ pub mod pallet {
 			let is_authorized = auth_contract
 				.is_authorized(
 					node.get_provider_id().to_owned(),
-					node.get_pub_key().to_owned(),
+					node.get_pub_key(),
 					node.get_type(),
 				)
 				.map_err(Into::<Error<T>>::into)?;
