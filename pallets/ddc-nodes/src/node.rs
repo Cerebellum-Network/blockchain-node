@@ -31,16 +31,10 @@ pub enum NodeProps {
 	CDNProps(CDNNodeProps),
 }
 
-#[derive(Clone, RuntimeDebug, PartialEq)]
-pub enum NodePropsRef {
-	StoragePropsRef(StorageNodeProps),
-	CDNPropsRef(CDNNodeProps),
-}
-
 pub trait NodeTrait<T: frame_system::Config> {
 	fn get_pub_key(&self) -> NodePubKey;
 	fn get_provider_id(&self) -> &T::AccountId;
-	fn get_props(&self) -> NodePropsRef;
+	fn get_props(&self) -> NodeProps;
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError>;
 	fn set_params(&mut self, props: NodeParams) -> Result<(), NodeError>;
 	fn get_cluster_id(&self) -> &Option<ClusterId>;
@@ -76,7 +70,7 @@ impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
 			Node::CDN(node) => node.get_provider_id(),
 		}
 	}
-	fn get_props(&self) -> NodePropsRef {
+	fn get_props(&self) -> NodeProps {
 		match &self {
 			Node::Storage(node) => node.get_props(),
 			Node::CDN(node) => node.get_props(),
