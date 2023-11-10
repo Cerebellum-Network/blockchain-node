@@ -5,7 +5,7 @@ use crate::Pallet as DdcStaking;
 use ddc_primitives::{CDNNodePubKey, NodeType};
 use testing_utils::*;
 
-use frame_support::traits::{Currency, Get};
+use frame_support::traits::Currency;
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
@@ -91,7 +91,7 @@ benchmarks! {
 		assert!(CDNs::<T>::contains_key(&cdn_stash));
 		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32));
 		DdcStaking::<T>::chill(RawOrigin::Signed(cdn_controller.clone()).into())?;
-		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32) + T::ClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or(T::BlockNumber::from(10u32)));
+		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32) + T::ClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or_else(|_| T::BlockNumber::from(10u32)));
 
 		whitelist_account!(cdn_controller);
 	}: _(RawOrigin::Signed(cdn_controller))

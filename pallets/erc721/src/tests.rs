@@ -22,7 +22,7 @@ fn mint_burn_tokens() {
 		);
 		assert_eq!(Erc721::token_count(), 1.into());
 		assert_noop!(
-			Erc721::mint(RuntimeOrigin::root(), USER_A, id_a, metadata_a.clone()),
+			Erc721::mint(RuntimeOrigin::root(), USER_A, id_a, metadata_a),
 			Error::<Test>::TokenAlreadyExists
 		);
 
@@ -33,19 +33,19 @@ fn mint_burn_tokens() {
 		);
 		assert_eq!(Erc721::token_count(), 2.into());
 		assert_noop!(
-			Erc721::mint(RuntimeOrigin::root(), USER_A, id_b, metadata_b.clone()),
+			Erc721::mint(RuntimeOrigin::root(), USER_A, id_b, metadata_b),
 			Error::<Test>::TokenAlreadyExists
 		);
 
 		assert_ok!(Erc721::burn(RuntimeOrigin::root(), id_a));
 		assert_eq!(Erc721::token_count(), 1.into());
-		assert!(!<Tokens>::contains_key(&id_a));
-		assert!(!<TokenOwner<Test>>::contains_key(&id_a));
+		assert!(!<Tokens>::contains_key(id_a));
+		assert!(!<TokenOwner<Test>>::contains_key(id_a));
 
 		assert_ok!(Erc721::burn(RuntimeOrigin::root(), id_b));
 		assert_eq!(Erc721::token_count(), 0.into());
-		assert!(!<Tokens>::contains_key(&id_b));
-		assert!(!<TokenOwner<Test>>::contains_key(&id_b));
+		assert!(!<Tokens>::contains_key(id_b));
+		assert!(!<TokenOwner<Test>>::contains_key(id_b));
 	})
 }
 
@@ -57,8 +57,8 @@ fn transfer_tokens() {
 		let metadata_a: Vec<u8> = vec![1, 2, 3];
 		let metadata_b: Vec<u8> = vec![4, 5, 6];
 
-		assert_ok!(Erc721::mint(RuntimeOrigin::root(), USER_A, id_a, metadata_a.clone()));
-		assert_ok!(Erc721::mint(RuntimeOrigin::root(), USER_A, id_b, metadata_b.clone()));
+		assert_ok!(Erc721::mint(RuntimeOrigin::root(), USER_A, id_a, metadata_a));
+		assert_ok!(Erc721::mint(RuntimeOrigin::root(), USER_A, id_b, metadata_b));
 
 		assert_ok!(Erc721::transfer(RuntimeOrigin::signed(USER_A), USER_B, id_a));
 		assert_eq!(Erc721::owner_of(id_a).unwrap(), USER_B);

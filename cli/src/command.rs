@@ -67,7 +67,7 @@ impl SubstrateCli for Cli {
 
 		#[cfg(feature = "cere-native")]
 		{
-			return &cere_service::cere_runtime::VERSION
+			&cere_service::cere_runtime::VERSION
 		}
 
 		#[cfg(not(feature = "cere-native"))]
@@ -161,17 +161,17 @@ pub fn run() -> sc_cli::Result<()> {
 
 					#[cfg(feature = "cere-dev-native")]
 					if chain_spec.is_cere_dev() {
-						return Ok(runner.sync_run(|config| {
+						return runner.sync_run(|config| {
 							cmd.run::<cere_service::cere_dev_runtime::Block, cere_client::CereDevExecutorDispatch>(config)
-						})?)
+						})
 					}
 
 					// else we assume it is Cere
 					#[cfg(feature = "cere-native")]
 					{
-						return Ok(runner.sync_run(|config| {
+						runner.sync_run(|config| {
 							cmd.run::<cere_service::cere_runtime::Block, cere_client::CereExecutorDispatch>(config)
-						})?)
+						})
 					}
 
 					#[cfg(not(feature = "cere-native"))]
