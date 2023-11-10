@@ -37,7 +37,7 @@ jobs:
 
       - name: Check with Clippy
         run: |
-          cargo clippy --all --all-targets -- -D warnings
+          cargo clippy --no-deps --all-targets --features runtime-benchmarks --workspace -- --deny warnings
 
       - name: Check Build
         run: |

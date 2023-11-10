@@ -333,7 +333,7 @@ pub mod pallet {
 
 			Self::update_ledger_and_deposit(&owner, &ledger)?;
 
-			Self::deposit_event(Event::<T>::Deposited(owner.clone(), extra));
+			Self::deposit_event(Event::<T>::Deposited(owner, extra));
 
 			Ok(())
 		}
@@ -500,7 +500,7 @@ pub mod pallet {
 		/// This is called:
 		/// - after a `withdraw_unlocked_deposit()` call that frees all of a owner's locked balance.
 		fn kill_owner(owner: &T::AccountId) -> DispatchResult {
-			<Ledger<T>>::remove(&owner);
+			<Ledger<T>>::remove(owner);
 
 			frame_system::Pallet::<T>::dec_consumers(owner);
 

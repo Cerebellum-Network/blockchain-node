@@ -206,7 +206,7 @@ pub mod pallet {
 			// Add initial CDN participants
 			for &(ref stash, ref controller, ref node, balance, cluster) in &self.cdns {
 				assert!(
-					T::Currency::free_balance(&stash) >= balance,
+					T::Currency::free_balance(stash) >= balance,
 					"Stash do not have enough balance to participate in CDN."
 				);
 				assert_ok!(Pallet::<T>::bond(
@@ -224,7 +224,7 @@ pub mod pallet {
 			// Add initial storage network participants
 			for &(ref stash, ref controller, ref node, balance, cluster) in &self.storages {
 				assert!(
-					T::Currency::free_balance(&stash) >= balance,
+					T::Currency::free_balance(stash) >= balance,
 					"Stash do not have enough balance to participate in storage network."
 				);
 				assert_ok!(Pallet::<T>::bond(
@@ -400,12 +400,12 @@ pub mod pallet {
 
 				let min_active_bond = if let Some(cluster_id) = Self::cdns(&ledger.stash) {
 					let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::CDN)
-						.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+						.map_err(Into::<Error<T>>::into)?;
 					bond_size.saturated_into::<BalanceOf<T>>()
 				} else if let Some(cluster_id) = Self::storages(&ledger.stash) {
 					let bond_size =
 						T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::Storage)
-							.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+							.map_err(Into::<Error<T>>::into)?;
 					bond_size.saturated_into::<BalanceOf<T>>()
 				} else {
 					Zero::zero()
@@ -418,12 +418,12 @@ pub mod pallet {
 				let unbonding_delay_in_blocks = if let Some(cluster_id) = Self::cdns(&ledger.stash)
 				{
 					T::ClusterVisitor::get_unbonding_delay(&cluster_id, NodeType::CDN)
-						.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?
+						.map_err(Into::<Error<T>>::into)?
 				} else if let Some(cluster_id) = Self::storages(&ledger.stash) {
 					T::ClusterVisitor::get_unbonding_delay(&cluster_id, NodeType::Storage)
-						.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?
+						.map_err(Into::<Error<T>>::into)?
 				} else {
-					T::BlockNumber::from(100_00u32)
+					T::BlockNumber::from(10_000_u32)
 				};
 
 				let block = <frame_system::Pallet<T>>::block_number() + unbonding_delay_in_blocks;
@@ -500,13 +500,12 @@ pub mod pallet {
 		pub fn serve(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 
-			T::ClusterVisitor::ensure_cluster(&cluster_id)
-				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+			T::ClusterVisitor::ensure_cluster(&cluster_id).map_err(Into::<Error<T>>::into)?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			// Retrieve the respective bond size from Cluster Visitor
 			let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::CDN)
-				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+				.map_err(Into::<Error<T>>::into)?;
 
 			ensure!(
 				ledger.active >= bond_size.saturated_into::<BalanceOf<T>>(),
@@ -515,10 +514,10 @@ pub mod pallet {
 			let stash = &ledger.stash;
 
 			// Can't participate in CDN if already participating in storage network.
-			ensure!(!Storages::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
+			ensure!(!Storages::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
 
 			// Is it an attempt to cancel a previous "chill"?
-			if let Some(current_cluster) = Self::cdns(&stash) {
+			if let Some(current_cluster) = Self::cdns(stash) {
 				// Switching the cluster is prohibited. The user should chill first.
 				ensure!(current_cluster == cluster_id, Error::<T>::AlreadyInRole);
 				// Cancel previous "chill" attempts
@@ -541,13 +540,12 @@ pub mod pallet {
 		pub fn store(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 
-			T::ClusterVisitor::ensure_cluster(&cluster_id)
-				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+			T::ClusterVisitor::ensure_cluster(&cluster_id).map_err(Into::<Error<T>>::into)?;
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			// Retrieve the respective bond size from Cluster Visitor
 			let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::Storage)
-				.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+				.map_err(Into::<Error<T>>::into)?;
 			ensure!(
 				ledger.active >= bond_size.saturated_into::<BalanceOf<T>>(),
 				Error::<T>::InsufficientBond
@@ -555,10 +553,10 @@ pub mod pallet {
 			let stash = &ledger.stash;
 
 			// Can't participate in storage network if already participating in CDN.
-			ensure!(!CDNs::<T>::contains_key(&stash), Error::<T>::AlreadyInRole);
+			ensure!(!CDNs::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
 
 			// Is it an attempt to cancel a previous "chill"?
-			if let Some(current_cluster) = Self::storages(&stash) {
+			if let Some(current_cluster) = Self::storages(stash) {
 				// Switching the cluster is prohibited. The user should chill first.
 				ensure!(current_cluster == cluster_id, Error::<T>::AlreadyInRole);
 				// Cancel previous "chill" attempts
@@ -596,12 +594,11 @@ pub mod pallet {
 			// Extract delay from the cluster settings.
 			let (cluster, delay) = if let Some(cluster) = Self::cdns(&ledger.stash) {
 				let chill_delay = T::ClusterVisitor::get_chill_delay(&cluster, NodeType::CDN)
-					.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+					.map_err(Into::<Error<T>>::into)?;
 				(cluster, chill_delay)
 			} else if let Some(cluster) = Self::storages(&ledger.stash) {
-				let chill_delay =
-					T::ClusterVisitor::get_chill_delay(&cluster, NodeType::Storage)
-						.map_err(|e| Into::<Error<T>>::into(ClusterVisitorError::from(e)))?;
+				let chill_delay = T::ClusterVisitor::get_chill_delay(&cluster, NodeType::Storage)
+					.map_err(Into::<Error<T>>::into)?;
 				(cluster, chill_delay)
 			} else {
 				return Ok(()) // already chilled
@@ -743,7 +740,7 @@ pub mod pallet {
 			cluster: ClusterId,
 			can_chill_from: T::BlockNumber,
 		) {
-			Ledger::<T>::mutate(&controller, |maybe_ledger| {
+			Ledger::<T>::mutate(controller, |maybe_ledger| {
 				if let Some(ref mut ledger) = maybe_ledger {
 					ledger.chilling = Some(can_chill_from)
 				}
@@ -806,7 +803,7 @@ pub mod pallet {
 
 		/// Reset the chilling block for a controller.
 		pub fn reset_chilling(controller: &T::AccountId) {
-			Ledger::<T>::mutate(&controller, |maybe_ledger| {
+			Ledger::<T>::mutate(controller, |maybe_ledger| {
 				if let Some(ref mut ledger) = maybe_ledger {
 					ledger.chilling = None
 				}
@@ -820,7 +817,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<bool, StakingVisitorError> {
 			let stash =
-				<Nodes<T>>::get(&node_pub_key).ok_or(StakingVisitorError::NodeStakeDoesNotExist)?;
+				<Nodes<T>>::get(node_pub_key).ok_or(StakingVisitorError::NodeStakeDoesNotExist)?;
 			let maybe_cdn_in_cluster = CDNs::<T>::get(&stash);
 			let maybe_storage_in_cluster = Storages::<T>::get(&stash);
 
@@ -833,7 +830,7 @@ pub mod pallet {
 
 		fn node_is_chilling(node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
 			let stash =
-				<Nodes<T>>::get(&node_pub_key).ok_or(StakingVisitorError::NodeStakeDoesNotExist)?;
+				<Nodes<T>>::get(node_pub_key).ok_or(StakingVisitorError::NodeStakeDoesNotExist)?;
 			let controller =
 				<Bonded<T>>::get(&stash).ok_or(StakingVisitorError::NodeStakeIsInBadState)?;
 
