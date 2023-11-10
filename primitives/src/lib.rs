@@ -11,15 +11,15 @@ use sp_runtime::{AccountId32, RuntimeDebug};
 pub type ClusterId = H160;
 pub type BucketId = u64;
 
+pub type StorageNodePubKey = AccountId32;
+pub type CDNNodePubKey = AccountId32;
+
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodePubKey {
 	StoragePubKey(StorageNodePubKey),
 	CDNPubKey(CDNNodePubKey),
 }
-
-pub type StorageNodePubKey = AccountId32;
-pub type CDNNodePubKey = AccountId32;
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodeType {

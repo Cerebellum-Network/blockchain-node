@@ -60,7 +60,7 @@ pub fn create_stash_controller_node<T: Config>(
 		node.clone(),
 		amount,
 	)?;
-	return Ok((stash, controller, node))
+	Ok((stash, controller, node))
 }
 
 /// Create a stash and controller pair with fixed balance.

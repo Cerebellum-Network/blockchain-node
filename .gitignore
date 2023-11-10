@@ -7,7 +7,8 @@
 .DS_Store
 
 # The cache for docker container dependency
-.cargo
+.cargo/**
+!/.cargo/config.toml
 
 # The cache for chain data in container
 .local
@@ -19,5 +20,3 @@
 
 # ddc-metrics-offchain-worker mock files
 pallets/ddc-metrics-offchain-worker/src/tests/test_data/ddc.contract
-pallets/ddc-metrics-offchain-worker/src/tests/test_data/ddc.wasm
-pallets/ddc-metrics-offchain-worker/src/tests/test_data/metadata.json

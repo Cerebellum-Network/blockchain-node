@@ -13,7 +13,6 @@ readme = "README.md"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-serde = { version = "1.0.136", optional = true }
 codec = { package = "parity-scale-codec", version = "3.1.5", default-features = false }
 frame-support = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
@@ -27,15 +26,11 @@ pallet-chainbridge = { version = "4.2.0", default-features = false, path = "../c
 pallet-erc721 = { version = "4.2.0", default-features = false, path = "../erc721" }
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
 
-frame-benchmarking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", optional = true }
-
 [features]
 default = ["std"]
 std = [
-	"serde",
 	"codec/std",
 	"sp-runtime/std",
-	"frame-benchmarking/std",
 	"frame-support/std",
 	"frame-system/std",
 	"pallet-balances/std",
@@ -46,4 +41,6 @@ std = [
 	"pallet-chainbridge/std",
 	"pallet-erc721/std"
 ]
-runtime-benchmarks = ["frame-benchmarking"]
+
+[package.metadata.cargo-machete]
+ignored = ["scale-info"]
