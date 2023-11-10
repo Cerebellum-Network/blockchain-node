@@ -15,6 +15,7 @@
 #![recursion_limit = "256"]
 
 use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey, StorageNodePubKey};
+use ddc_traits::node::{NodeVisitor, NodeVisitorError};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 use sp_std::prelude::*;
@@ -207,6 +208,16 @@ pub mod pallet {
 					Ok(())
 				},
 			}
+		}
+	}
+
+	impl<T: Config> NodeVisitor<T> for Pallet<T> {
+		fn get_cluster_id(
+			node_pub_key: &NodePubKey,
+		) -> Result<Option<ClusterId>, NodeVisitorError> {
+			let node =
+				Self::get(node_pub_key.clone()).map_err(|_| NodeVisitorError::NodeDoesNotExist)?;
+			Ok(*node.get_cluster_id())
 		}
 	}
 }
