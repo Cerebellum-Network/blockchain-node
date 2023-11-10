@@ -16,7 +16,7 @@
 #![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
 use crate::{
-	cluster::{Cluster, ClusterError, ClusterGovParams, ClusterParams},
+	cluster::{Cluster, ClusterGovParams, ClusterParams},
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
 };
 use ddc_primitives::{ClusterId, NodePubKey, NodeType};
@@ -124,17 +124,13 @@ pub mod pallet {
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			ensure_root(origin)?; // requires Governance approval
-			let cluster = Cluster::new(
-				cluster_id.clone(),
-				cluster_manager_id,
-				cluster_reserve_id,
-				cluster_params,
-			)
-			.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
-			ensure!(!Clusters::<T>::contains_key(&cluster_id), Error::<T>::ClusterAlreadyExists);
+			let cluster =
+				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params)
+					.map_err(Into::<Error<T>>::into)?;
+			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
 
-			Clusters::<T>::insert(cluster_id.clone(), cluster);
-			ClustersGovParams::<T>::insert(cluster_id.clone(), cluster_gov_params);
+			Clusters::<T>::insert(cluster_id, cluster);
+			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
 
 			Ok(())
@@ -148,7 +144,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
-				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
 			// Node with this node with this public key exists.
@@ -158,12 +154,12 @@ pub mod pallet {
 
 			// Sufficient funds are locked at the DDC Staking module.
 			let has_stake = T::StakingVisitor::node_has_stake(&node_pub_key, &cluster_id)
-				.map_err(|e| Into::<Error<T>>::into(StakingVisitorError::from(e)))?;
+				.map_err(Into::<Error<T>>::into)?;
 			ensure!(has_stake, Error::<T>::NodeHasNoStake);
 
 			// Candidate is not planning to pause operations any time soon.
 			let is_chilling = T::StakingVisitor::node_is_chilling(&node_pub_key)
-				.map_err(|e| Into::<Error<T>>::into(StakingVisitorError::from(e)))?;
+				.map_err(Into::<Error<T>>::into)?;
 			ensure!(!is_chilling, Error::<T>::NodeChillingIsProhibited);
 
 			// Cluster extension smart contract allows joining.
@@ -177,13 +173,13 @@ pub mod pallet {
 					node.get_pub_key().to_owned(),
 					node.get_type(),
 				)
-				.map_err(|e| Into::<Error<T>>::into(NodeProviderAuthContractError::from(e)))?;
+				.map_err(Into::<Error<T>>::into)?;
 			ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
 
 			// Add node to the cluster.
-			node.set_cluster_id(Some(cluster_id.clone()));
+			node.set_cluster_id(Some(cluster_id));
 			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
-			ClustersNodes::<T>::insert(cluster_id.clone(), node_pub_key.clone(), true);
+			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), true);
 			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
 
 			Ok(())
@@ -197,7 +193,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
-				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 			let mut node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
@@ -205,7 +201,7 @@ pub mod pallet {
 			node.set_cluster_id(None);
 			T::NodeRepository::update(node)
 				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
-			ClustersNodes::<T>::remove(cluster_id.clone(), node_pub_key.clone());
+			ClustersNodes::<T>::remove(cluster_id, node_pub_key.clone());
 			Self::deposit_event(Event::<T>::ClusterNodeRemoved { cluster_id, node_pub_key });
 
 			Ok(())
@@ -220,12 +216,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let mut cluster =
-				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
-			cluster
-				.set_params(cluster_params)
-				.map_err(|e: ClusterError| Into::<Error<T>>::into(ClusterError::from(e)))?;
-			Clusters::<T>::insert(cluster_id.clone(), cluster);
+			cluster.set_params(cluster_params).map_err(Into::<Error<T>>::into)?;
+			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
 
 			Ok(())
@@ -240,8 +234,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?; // requires Governance approval
 			let _cluster =
-				Clusters::<T>::try_get(&cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			ClustersGovParams::<T>::insert(cluster_id.clone(), cluster_gov_params);
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
 
 			Ok(())
@@ -254,7 +248,7 @@ pub mod pallet {
 		}
 
 		fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
-			Clusters::<T>::get(&cluster_id)
+			Clusters::<T>::get(cluster_id)
 				.map(|_| ())
 				.ok_or(ClusterVisitorError::ClusterDoesNotExist)
 		}
