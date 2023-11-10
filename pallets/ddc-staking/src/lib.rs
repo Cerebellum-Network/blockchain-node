@@ -189,7 +189,9 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
+		#[allow(clippy::type_complexity)]
 		pub cdns: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
+		#[allow(clippy::type_complexity)]
 		pub storages: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
 	}
 
@@ -693,7 +695,7 @@ pub mod pallet {
 			ensure!(stash == node_stash, Error::<T>::NotNodeController);
 
 			let cluster_id = <CDNs<T>>::get(&stash)
-				.or(<Storages<T>>::get(&stash))
+				.or_else(|| <Storages<T>>::get(&stash))
 				.ok_or(Error::<T>::NodeHasNoStake)?;
 
 			let is_cluster_node = T::ClusterVisitor::cluster_has_node(&cluster_id, &node_pub_key);
