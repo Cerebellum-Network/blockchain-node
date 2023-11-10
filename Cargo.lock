@@ -4938,6 +4938,7 @@ name = "pallet-ddc-nodes"
 version = "4.8.1"
 dependencies = [
  "ddc-primitives",
+ "ddc-traits",
  "frame-support",
  "frame-system",
  "parity-scale-codec",

@@ -129,7 +129,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48012,
+	spec_version: 48013,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 5,
@@ -1320,6 +1320,7 @@ impl pallet_ddc_staking::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
 parameter_types! {
