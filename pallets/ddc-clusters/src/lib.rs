@@ -15,6 +15,11 @@
 #![recursion_limit = "256"]
 #![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
+#[cfg(test)]
+pub(crate) mod mock;
+#[cfg(test)]
+mod tests;
+
 use crate::{
 	cluster::{Cluster, ClusterError, ClusterGovParams, ClusterParams},
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},

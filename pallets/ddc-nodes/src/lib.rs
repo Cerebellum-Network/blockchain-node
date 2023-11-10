@@ -30,7 +30,7 @@ mod node;
 mod storage_node;
 
 pub use crate::{
-	cdn_node::CDNNode,
+	cdn_node::{CDNNode, CDNNodeParams},
 	node::{Node, NodeError, NodeParams, NodeTrait},
 	storage_node::StorageNode,
 };
