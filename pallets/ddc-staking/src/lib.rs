@@ -441,12 +441,12 @@ pub mod pallet {
 						match node_pub_key {
 							NodePubKey::CDNPubKey(_) =>
 								T::ClusterVisitor::get_unbonding_delay(&cluster_id, NodeType::CDN)
-									.map_err(|e| Into::<Error<T>>::into(e))?,
+									.map_err(Into::<Error<T>>::into)?,
 							NodePubKey::StoragePubKey(_) => T::ClusterVisitor::get_unbonding_delay(
 								&cluster_id,
 								NodeType::Storage,
 							)
-							.map_err(|e| Into::<Error<T>>::into(e))?,
+							.map_err(Into::<Error<T>>::into)?,
 						}
 					} else {
 						// If node is not a member of any cluster, allow immediate unbonding.
