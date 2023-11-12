@@ -1,42 +1,13 @@
 //! Tests for the module.
 
 use super::{mock::*, *};
+use ddc_primitives::CDNNodePubKey;
+
 use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
 use pallet_balances::Error as BalancesError;
 
 pub const BLOCK_TIME: u64 = 1000;
 pub const INIT_TIMESTAMP: u64 = 30_000;
-
-#[test]
-fn set_settings_works() {
-	ExtBuilder::default().build_and_execute(|| {
-		// setting works
-		assert_ok!(DdcStaking::set_settings(
-			RuntimeOrigin::root(),
-			1,
-			Some(ClusterSettings {
-				edge_bond_size: 10,
-				edge_chill_delay: 2,
-				storage_bond_size: 10,
-				storage_chill_delay: 2,
-			}),
-		));
-		let settings = DdcStaking::settings(1);
-		assert_eq!(settings.edge_bond_size, 10);
-		assert_eq!(settings.edge_chill_delay, 2);
-		assert_eq!(settings.storage_bond_size, 10);
-		assert_eq!(settings.storage_chill_delay, 2);
-
-		// removing works
-		assert_ok!(DdcStaking::set_settings(RuntimeOrigin::root(), 1, None));
-		let settings = DdcStaking::settings(1);
-		let default_settings: ClusterSettings<Test> = Default::default();
-		assert_eq!(settings.edge_bond_size, default_settings.edge_bond_size);
-		assert_eq!(settings.edge_chill_delay, default_settings.edge_chill_delay);
-		assert_eq!(settings.storage_bond_size, default_settings.storage_bond_size);
-		assert_eq!(settings.storage_chill_delay, default_settings.storage_chill_delay);
-	});
-}
 
 #[test]
 fn basic_setup_works() {
@@ -73,9 +44,6 @@ fn basic_setup_works() {
 		);
 		// Account 1 does not control any stash
 		assert_eq!(DdcStaking::ledger(&1), None);
-
-		// Cluster 1 settings are default
-		assert_eq!(DdcStaking::settings(1), Default::default());
 	});
 }
 
@@ -93,9 +61,12 @@ fn change_controller_works() {
 		assert_eq!(DdcStaking::bonded(&11), Some(3));
 
 		// 10 is no longer in control.
-		assert_noop!(DdcStaking::serve(RuntimeOrigin::signed(10), 1), Error::<Test>::NotController);
+		assert_noop!(
+			DdcStaking::serve(RuntimeOrigin::signed(10), ClusterId::from([1; 20])),
+			Error::<Test>::NotController
+		);
 		// 3 is a new controller.
-		assert_ok!(DdcStaking::serve(RuntimeOrigin::signed(3), 1));
+		assert_ok!(DdcStaking::serve(RuntimeOrigin::signed(3), ClusterId::from([1; 20])));
 	})
 }
 
@@ -107,12 +78,17 @@ fn staking_should_work() {
 			let _ = Balances::make_free_balance_be(&i, 2000);
 		}
 
-		// Add new CDN participant, account 3 controlled by 4.
-		assert_ok!(DdcStaking::bond(RuntimeOrigin::signed(3), 4, 1500));
-		assert_ok!(DdcStaking::serve(RuntimeOrigin::signed(4), 1));
+		// Add new CDN participant, account 3 controlled by 4 with node 5.
+		assert_ok!(DdcStaking::bond(
+			RuntimeOrigin::signed(3),
+			4,
+			NodePubKey::CDNPubKey(CDNNodePubKey::new([5; 32])),
+			1500
+		));
+		assert_ok!(DdcStaking::serve(RuntimeOrigin::signed(4), ClusterId::from([0; 20])));
 
-		// Account 4 controls the stash from account 3, which is 1500 units and 3 is a CDN
-		// participant.
+		// Account 4 controls the stash from account 3, which is 1500 units, 3 is a CDN
+		// participant, 5 is a DDC node.
 		assert_eq!(DdcStaking::bonded(&3), Some(4));
 		assert_eq!(
 			DdcStaking::ledger(&4),
@@ -124,7 +100,8 @@ fn staking_should_work() {
 				unlocking: Default::default(),
 			})
 		);
-		assert_eq!(DdcStaking::edges(3), Some(1));
+		assert_eq!(DdcStaking::cdns(3), Some(ClusterId::from([0; 20])));
+		assert_eq!(DdcStaking::nodes(NodePubKey::CDNPubKey(CDNNodePubKey::new([5; 32]))), Some(3));
 
 		// Set `CurrentEra`.
 		Timestamp::set_timestamp(System::block_number() * BLOCK_TIME + INIT_TIMESTAMP);
@@ -134,8 +111,9 @@ fn staking_should_work() {
 		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(4)));
 
 		// Removal is scheduled, stashed value of 4 is still lock.
-		let chilling =
-			DdcStaking::current_era().unwrap() + DdcStaking::settings(1).edge_chill_delay;
+		let chilling = System::block_number() + 10u64;
+		// TestClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::CDN)
+		// 	.unwrap_or(10_u64);
 		assert_eq!(
 			DdcStaking::ledger(&4),
 			Some(StakingLedger {
@@ -151,7 +129,7 @@ fn staking_should_work() {
 		assert_ok!(Balances::reserve(&3, 409));
 
 		// Set `CurrentEra` to the value allows us to chill.
-		while DdcStaking::current_era().unwrap() < chilling {
+		while System::block_number() < chilling {
 			System::set_block_number(System::block_number() + 1);
 			Timestamp::set_timestamp(System::block_number() * BLOCK_TIME + INIT_TIMESTAMP);
 			DdcStaking::on_finalize(System::block_number());
@@ -173,6 +151,6 @@ fn staking_should_work() {
 		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(4)));
 
 		// Account 3 is no longer a CDN participant.
-		assert_eq!(DdcStaking::edges(3), None);
+		assert_eq!(DdcStaking::cdns(3), None);
 	});
 }

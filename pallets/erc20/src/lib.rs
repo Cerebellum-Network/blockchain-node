@@ -1,27 +1,20 @@
+#![allow(clippy::all)]
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use pallet_chainbridge as bridge;
 use pallet_erc721 as erc721;
 
-use codec::{Decode, Encode};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
 	dispatch::DispatchResult,
 	ensure,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get},
-	weights::{ClassifyDispatch, DispatchClass, Pays, PaysFee, WeighData, Weight},
 };
-use frame_system::{self as system, ensure_root, ensure_signed};
+use frame_system::{self as system, ensure_signed};
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_core::U256;
-use sp_runtime::{
-	traits::{Bounded, DispatchInfoOf, SignedExtension, UniqueSaturatedInto},
-	transaction_validity::{
-		InvalidTransaction, TransactionValidity, TransactionValidityError, ValidTransaction,
-	},
-};
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::prelude::*;
 
 type ResourceId = bridge::ResourceId;
 
@@ -89,7 +82,7 @@ decl_module! {
 			let source = ensure_signed(origin)?;
 			ensure!(<bridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
 			let bridge_id = <bridge::Module<T>>::account_id();
-			T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
+			T::Currency::transfer(&source, &bridge_id, amount, AllowDeath)?;
 
 			let resource_id = T::NativeTokenId::get();
 			let number_amount: u128 = amount.saturated_into();
@@ -103,7 +96,7 @@ decl_module! {
 		pub fn transfer_erc721(origin, recipient: Vec<u8>, token_id: U256, dest_id: bridge::ChainId) -> DispatchResult {
 			let source = ensure_signed(origin)?;
 			ensure!(<bridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
-			match <erc721::Module<T>>::tokens(&token_id) {
+			match <erc721::Module<T>>::tokens(token_id) {
 				Some(token) => {
 					<erc721::Module<T>>::burn_token(source, token_id)?;
 					let resource_id = T::Erc721Id::get();
@@ -123,7 +116,7 @@ decl_module! {
 		#[weight = 195_000_000]
 		pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
 			let source = T::BridgeOrigin::ensure_origin(origin)?;
-			<T as Config>::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
+			<T as Config>::Currency::transfer(&source, &to, amount, AllowDeath)?;
 			Ok(())
 		}
 
