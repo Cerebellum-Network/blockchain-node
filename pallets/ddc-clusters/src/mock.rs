@@ -42,7 +42,7 @@ construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-	  DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
+		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
 		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Event<T>},
 		Randomness: pallet_randomness_collective_flip::{Pallet, Storage},
 	}
