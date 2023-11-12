@@ -3,11 +3,11 @@ name = "pallet-chainbridge"
 version = "4.8.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
-license = "Unlicense"
 homepage = "https://substrate.io"
+license = "Unlicense"
+readme = "README.md"
 repository = "https://github.com/paritytech/substrate/"
 description = ""
-readme = "README.md"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -16,22 +16,22 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "3.1.5", default-features = false }
 frame-support = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
+pallet-balances = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
+scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
 sp-core = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-io = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-runtime = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-std = { version = "4.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-pallet-balances = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
-	"sp-runtime/std",
-	"frame-support/std",
-	"frame-system/std",
-	"pallet-balances/std",
-	"sp-io/std",
-	"sp-std/std",
-	"sp-core/std",
+  "codec/std",
+  "sp-runtime/std",
+  "frame-support/std",
+  "frame-system/std",
+  "pallet-balances/std",
+  "sp-io/std",
+  "sp-std/std",
+  "sp-core/std",
 ]

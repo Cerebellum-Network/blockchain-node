@@ -10,5 +10,5 @@ node-primitives = { version = "2.0.0", default-features = false, git = "https://
 [features]
 default = ["std"]
 std = [
-	"node-primitives/std"
+  "node-primitives/std",
 ]

@@ -3,49 +3,49 @@ name = "pallet-ddc-metrics-offchain-worker"
 version = "4.8.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
-license = "Unlicense"
 homepage = "https://substrate.dev"
+license = "Unlicense"
+readme = "README.md"
 repository = "https://github.com/paritytech/substrate/"
 description = "FRAME example pallet for offchain worker"
-readme = "README.md"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+alt_serde = { version = "1", default-features = false, features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.1.5", default-features = false, features = ["full"] }
 frame-support = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sp-keystore = { version = "0.12.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", optional = true }
-sp-core = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sp-io = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sp-runtime = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sp-std = { version = "4.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-pallet-contracts  = { version = '4.0.0-dev', default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-alt_serde = { version = "1", default-features = false, features = ["derive"] }
-serde_json = { version = "1", default-features = false, git = "https://github.com/Cerebellum-Network/json", branch = "no-std-cere", features = ["alloc"] }
+hex = { version = "0.4", default-features = false }
 # pallet-contracts-rpc-runtime-api = { version = "0.8.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 hex-literal = "^0.3.1"
-hex = { version = "0.4", default-features = false }
+pallet-contracts = { version = '4.0.0-dev', default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
+serde_json = { version = "1", default-features = false, git = "https://github.com/Cerebellum-Network/json", branch = "no-std-cere", features = ["alloc"] }
+sp-core = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
+sp-io = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
+sp-keystore = { version = "0.12.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", optional = true }
+sp-runtime = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
+sp-std = { version = "4.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 
 [features]
 default = ["std"]
 std = [
-	"codec/std",
-	"sp-keystore",
-	"frame-support/std",
-	"frame-system/std",
-	"sp-core/std",
-	"sp-io/std",
-	"sp-runtime/std",
-	"sp-std/std",
-	"pallet-contracts/std",
-	# "pallet-contracts-rpc-runtime-api/std",
+  "codec/std",
+  "sp-keystore",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-core/std",
+  "sp-io/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "pallet-contracts/std",
+  # "pallet-contracts-rpc-runtime-api/std",
 ]
 
 [dev-dependencies]
 pallet-balances = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-pallet-timestamp = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 pallet-randomness-collective-flip = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
+pallet-timestamp = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 pretty_assertions = "0.6.1"
