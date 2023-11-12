@@ -1205,13 +1205,9 @@ impl pallet_society::Config for Runtime {
 }
 
 parameter_types! {
-<<<<<<< HEAD
-	pub const MinVestedTransfer: Balance = DOLLARS;
-=======
 	pub const MinVestedTransfer: Balance = 1 * DOLLARS;
 	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons =
 		WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
->>>>>>> 9202b90 (Update to polkadot-v0.9.31)
 }
 
 impl pallet_vesting::Config for Runtime {
