@@ -35,6 +35,10 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Check with Clippy
+        run: |
+          cargo clippy --no-deps --all-targets --features runtime-benchmarks --workspace -- --deny warnings
+
       - name: Check Build
         run: |
           SKIP_WASM_BUILD=1 cargo check --release

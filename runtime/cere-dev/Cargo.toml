@@ -92,7 +92,6 @@ pallet-treasury = { version = "4.0.0-dev", default-features = false, git = "http
 pallet-utility = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 pallet-transaction-payment = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 pallet-transaction-payment-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-pallet-transaction-storage = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 pallet-vesting = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 cere-runtime-common = { path = "../common", default-features = false }
 cere-dev-runtime-constants = { path = "./constants", default-features = false }
@@ -100,7 +99,6 @@ pallet-ddc-staking = { version = "4.8.1", default-features = false, path = "../.
 pallet-chainbridge = { version = "4.8.1", default-features = false, path = "../../pallets/chainbridge" }
 pallet-cere-ddc = { version = "4.8.1", default-features = false, path = "../../pallets/ddc" }
 pallet-ddc-customers = { version = "0.1.0", default-features = false, path = "../../pallets/ddc-customers" }
-pallet-ddc-validator = { version = "0.1.0", default-features = false, path = "../../pallets/ddc-validator" }
 pallet-erc721 = { version = "4.8.1", default-features = false, path = "../../pallets/erc721" }
 pallet-erc20 = { version = "4.8.1", default-features = false, path = "../../pallets/erc20" }
 pallet-ddc-metrics-offchain-worker = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-metrics-offchain-worker" }
@@ -186,7 +184,6 @@ std = [
 	"pallet-ddc-staking/std",
 	"cere-runtime-common/std",
 	"cere-dev-runtime-constants/std",
-	"pallet-ddc-validator/std",
 	"pallet-ddc-customers/std",
 	"pallet-ddc-nodes/std",
 	"pallet-ddc-clusters/std",
@@ -201,7 +198,6 @@ runtime-benchmarks = [
 	"pallet-bags-list/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-bounties/runtime-benchmarks",
-	"pallet-chainbridge/runtime-benchmarks",
 	"pallet-child-bounties/runtime-benchmarks",
 	"pallet-collective/runtime-benchmarks",
 	"pallet-contracts/runtime-benchmarks",
