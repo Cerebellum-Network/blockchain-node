@@ -1,13 +1,11 @@
+#![allow(clippy::all)]
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode, EncodeLike};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
-	dispatch::{
-		ClassifyDispatch, DispatchClass, DispatchResult, GetDispatchInfo, Pays, PaysFee, WeighData,
-		Weight,
-	},
+	dispatch::{DispatchResult, GetDispatchInfo, Pays, Weight},
 	ensure,
 	traits::{EnsureOrigin, Get},
 	PalletId, Parameter,
@@ -15,16 +13,10 @@ use frame_support::{
 use frame_system::{self as system, ensure_root, ensure_signed};
 use sp_core::U256;
 use sp_runtime::{
-	traits::{
-		AccountIdConversion, Bounded, DispatchInfoOf, Dispatchable, SaturatedConversion,
-		SignedExtension,
-	},
-	transaction_validity::{
-		InvalidTransaction, TransactionValidity, TransactionValidityError, ValidTransaction,
-	},
+	traits::{AccountIdConversion, Dispatchable},
 	RuntimeDebug,
 };
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::prelude::*;
 
 mod mock;
 mod tests;
@@ -45,7 +37,7 @@ pub fn derive_resource_id(chain: u8, id: &[u8]) -> ResourceId {
 	for i in 0..range {
 		r_id[30 - i] = id[range - 1 - i]; // Ensure left padding for eth compatibility
 	}
-	return r_id
+	r_id
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
@@ -85,7 +77,7 @@ impl<A: PartialEq, B: PartialOrd + Default> ProposalVotes<A, B> {
 
 	/// Returns true if `who` has voted for or against the proposal
 	fn has_voted(&self, who: &A) -> bool {
-		self.votes_for.contains(&who) || self.votes_against.contains(&who)
+		self.votes_for.contains(who) || self.votes_against.contains(who)
 	}
 
 	/// Return true if the expiry time has been reached
@@ -303,7 +295,7 @@ decl_module! {
 		/// # <weight>
 		/// - weight of proposed call, regardless of whether execution is performed
 		/// # </weight>
-		#[weight = (call.get_dispatch_info().weight + Weight::from_ref_time(195_000_000 as u64), call.get_dispatch_info().class, Pays::Yes)]
+		#[weight = (call.get_dispatch_info().weight + Weight::from_ref_time(195_000_000_u64), call.get_dispatch_info().class, Pays::Yes)]
 		pub fn acknowledge_proposal(origin, nonce: DepositNonce, src_id: ChainId, r_id: ResourceId, call: Box<<T as Config>::Proposal>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(Self::is_relayer(&who), Error::<T>::MustBeRelayer);
@@ -336,7 +328,7 @@ decl_module! {
 		/// # <weight>
 		/// - weight of proposed call, regardless of whether execution is performed
 		/// # </weight>
-		#[weight = (prop.get_dispatch_info().weight + Weight::from_ref_time(195_000_000 as u64), prop.get_dispatch_info().class, Pays::Yes)]
+		#[weight = (prop.get_dispatch_info().weight + Weight::from_ref_time(195_000_000_u64), prop.get_dispatch_info().class, Pays::Yes)]
 		pub fn eval_vote_state(origin, nonce: DepositNonce, src_id: ChainId, prop: Box<<T as Config>::Proposal>) -> DispatchResult {
 			ensure_signed(origin)?;
 
@@ -366,12 +358,12 @@ impl<T: Config> Module<T> {
 
 	/// Asserts if a resource is registered
 	pub fn resource_exists(id: ResourceId) -> bool {
-		return Self::resources(id) != None
+		Self::resources(id).is_some()
 	}
 
 	/// Checks if a chain exists as a whitelisted destination
 	pub fn chain_whitelisted(id: ChainId) -> bool {
-		return Self::chains(id) != None
+		Self::chains(id).is_some()
 	}
 
 	/// Increments the deposit nonce for the specified chain ID
@@ -409,7 +401,7 @@ impl<T: Config> Module<T> {
 		ensure!(id != T::ChainId::get(), Error::<T>::InvalidChainId);
 		// Cannot whitelist with an existing entry
 		ensure!(!Self::chain_whitelisted(id), Error::<T>::ChainAlreadyWhitelisted);
-		<ChainNonces>::insert(&id, 0);
+		<ChainNonces>::insert(id, 0);
 		Self::deposit_event(RawEvent::ChainWhitelisted(id));
 		Ok(())
 	}
@@ -460,13 +452,13 @@ impl<T: Config> Module<T> {
 
 		if in_favour {
 			votes.votes_for.push(who.clone());
-			Self::deposit_event(RawEvent::VoteFor(src_id, nonce, who.clone()));
+			Self::deposit_event(RawEvent::VoteFor(src_id, nonce, who));
 		} else {
 			votes.votes_against.push(who.clone());
-			Self::deposit_event(RawEvent::VoteAgainst(src_id, nonce, who.clone()));
+			Self::deposit_event(RawEvent::VoteAgainst(src_id, nonce, who));
 		}
 
-		<Votes<T>>::insert(src_id, (nonce, prop.clone()), votes.clone());
+		<Votes<T>>::insert(src_id, (nonce, prop), votes.clone());
 
 		Ok(())
 	}

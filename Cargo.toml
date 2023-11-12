@@ -5,14 +5,13 @@ path = "src/main.rs"
 [package]
 name = "cere"
 license = "GPL-3.0-or-later WITH Classpath-exception-2.0"
-version = "4.8.0"
+version = "4.8.1"
 edition = "2021"
 build = "build.rs"
 
 [dependencies]
 cere-cli = { path = "cli", features = [ "cere-dev-native" ] }
 sc-cli = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-ss58-registry = { version = "1.38.0", default-features = false }
 
 [build-dependencies]
 substrate-build-script-utils = { version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
@@ -31,6 +30,10 @@ members = [
     "pallets/erc721",
     "pallets/erc20",
     "pallets/ddc-metrics-offchain-worker",
+    "pallets/ddc-customers",
+    "pallets/ddc-nodes",
+    "pallets/ddc-clusters",
+    "primitives",
 ]
 
 [profile.release]

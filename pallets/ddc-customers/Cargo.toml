@@ -1,0 +1,30 @@
+[package]
+name = "pallet-ddc-customers"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+ddc-primitives = { version = "0.1.0", default-features = false, path = "../../primitives" }
+ddc-traits = { version = "0.1.0", default-features = false, path = "../../traits" }
+frame-support = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
+frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
+scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
+sp-runtime = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
+sp-std = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
+log = { version = "0.4.17", default-features = false }
+
+[dev-dependencies]
+substrate-test-utils = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
+
+[features]
+default = ["std"]
+std = [
+  "codec/std",
+  "ddc-primitives/std",
+  "frame-support/std",
+  "frame-system/std",
+  "scale-info/std",
+  "sp-runtime/std",
+  "sp-std/std",
+]

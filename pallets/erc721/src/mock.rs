@@ -5,7 +5,7 @@ use frame_system::{self as system};
 use sp_core::{hashing::blake2_128, H256};
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, Block as BlockT, IdentityLookup},
+	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage, Perbill,
 };
 

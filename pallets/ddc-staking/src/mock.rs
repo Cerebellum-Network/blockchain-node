@@ -3,6 +3,12 @@
 #![allow(dead_code)]
 
 use crate::{self as pallet_ddc_staking, *};
+use ddc_primitives::{CDNNodePubKey, StorageNodePubKey};
+use ddc_traits::{
+	cluster::{ClusterVisitor, ClusterVisitorError},
+	node::{NodeVisitor, NodeVisitorError},
+};
+
 use frame_support::{
 	construct_runtime,
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
@@ -89,52 +95,74 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const BondingDuration: EraIndex = 10;
-	pub const DefaultEdgeBondSize: Balance = 100;
-	pub const DefaultEdgeChillDelay: EraIndex = 1;
-	pub const DefaultStorageBondSize: Balance = 100;
-	pub const DefaultStorageChillDelay: EraIndex = 1;
-}
-
 impl crate::pallet::Config for Test {
-	type BondingDuration = BondingDuration;
 	type Currency = Balances;
-	type DefaultEdgeBondSize = DefaultEdgeBondSize;
-	type DefaultEdgeChillDelay = DefaultEdgeChillDelay;
-	type DefaultStorageBondSize = DefaultStorageBondSize;
-	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
-	type UnixTime = Timestamp;
 	type WeightInfo = ();
+	type ClusterVisitor = TestClusterVisitor;
+	type NodeVisitor = TestNodeVisitor;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
+pub struct TestClusterVisitor;
+impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
+	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
+		true
+	}
+	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
+		Ok(())
+	}
+	fn get_bond_size(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<u128, ClusterVisitorError> {
+		Ok(10)
+	}
+	fn get_chill_delay(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<T::BlockNumber, ClusterVisitorError> {
+		Ok(T::BlockNumber::from(10u32))
+	}
+	fn get_unbonding_delay(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<T::BlockNumber, ClusterVisitorError> {
+		Ok(T::BlockNumber::from(10u32))
+	}
+}
+
+pub struct TestNodeVisitor;
+impl<T: Config> NodeVisitor<T> for TestNodeVisitor {
+	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, NodeVisitorError> {
+		Ok(None)
+	}
+}
 
 pub struct ExtBuilder {
-	has_edges: bool,
+	has_cdns: bool,
 	has_storages: bool,
 	stakes: BTreeMap<AccountId, Balance>,
-	edges: Vec<(AccountId, AccountId, Balance, ClusterId)>,
+	cdns: Vec<(AccountId, AccountId, Balance, ClusterId)>,
 	storages: Vec<(AccountId, AccountId, Balance, ClusterId)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
-			has_edges: true,
+			has_cdns: true,
 			has_storages: true,
 			stakes: Default::default(),
-			edges: Default::default(),
+			cdns: Default::default(),
 			storages: Default::default(),
 		}
 	}
 }
 
 impl ExtBuilder {
-	pub fn has_edges(mut self, has: bool) -> Self {
-		self.has_edges = has;
+	pub fn has_cdns(mut self, has: bool) -> Self {
+		self.has_cdns = has;
 		self
 	}
 	pub fn has_storages(mut self, has: bool) -> Self {
@@ -145,14 +173,14 @@ impl ExtBuilder {
 		self.stakes.insert(who, stake);
 		self
 	}
-	pub fn add_edge(
+	pub fn add_cdn(
 		mut self,
 		stash: AccountId,
 		controller: AccountId,
 		stake: Balance,
 		cluster: ClusterId,
 	) -> Self {
-		self.edges.push((stash, controller, stake, cluster));
+		self.cdns.push((stash, controller, stake, cluster));
 		self
 	}
 	pub fn add_storage(
@@ -175,13 +203,13 @@ impl ExtBuilder {
 				(2, 100),
 				(3, 100),
 				(4, 100),
-				// edge controllers
+				// cdn controllers
 				(10, 100),
 				(20, 100),
 				// storage controllers
 				(30, 100),
 				(40, 100),
-				// edge stashes
+				// cdn stashes
 				(11, 100),
 				(21, 100),
 				// storage stashes
@@ -190,29 +218,53 @@ impl ExtBuilder {
 			],
 		}
 		.assimilate_storage(&mut storage);
-		let mut edges = vec![];
-		if self.has_edges {
-			edges = vec![
-				// (stash, controller, stake, cluster)
-				(11, 10, 100, 1),
-				(21, 20, 100, 1),
+		let mut cdns = vec![];
+		if self.has_cdns {
+			cdns = vec![
+				// (stash, controller, node, stake, cluster)
+				(
+					11,
+					10,
+					NodePubKey::CDNPubKey(CDNNodePubKey::new([12; 32])),
+					100,
+					ClusterId::from([1; 20]),
+				),
+				(
+					21,
+					20,
+					NodePubKey::CDNPubKey(CDNNodePubKey::new([22; 32])),
+					100,
+					ClusterId::from([1; 20]),
+				),
 			];
 		}
 		let mut storages = vec![];
 		if self.has_storages {
 			storages = vec![
-				// (stash, controller, stake, cluster)
-				(31, 30, 100, 1),
-				(41, 40, 100, 1),
+				// (stash, controller, node, stake, cluster)
+				(
+					31,
+					30,
+					NodePubKey::StoragePubKey(StorageNodePubKey::new([32; 32])),
+					100,
+					ClusterId::from([1; 20]),
+				),
+				(
+					41,
+					40,
+					NodePubKey::StoragePubKey(StorageNodePubKey::new([42; 32])),
+					100,
+					ClusterId::from([1; 20]),
+				),
 			];
 		}
 
-		let _ = pallet_ddc_staking::GenesisConfig::<Test> { edges, storages, ..Default::default() }
+		let _ = pallet_ddc_staking::GenesisConfig::<Test> { cdns, storages }
 			.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}
-	pub fn build_and_execute(self, test: impl FnOnce() -> ()) {
+	pub fn build_and_execute(self, test: impl FnOnce()) {
 		sp_tracing::try_init_simple();
 		let mut ext = self.build();
 		ext.execute_with(test);
