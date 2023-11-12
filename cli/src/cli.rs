@@ -13,6 +13,15 @@ pub struct RunCmd {
 	#[clap(flatten)]
 	pub base: sc_cli::RunCmd,
 
+	/// Enable DDC validation (disabled by default). Works only on validator nodes with enabled
+	/// offchain workers.
+	#[clap(long, requires = "dac-url")]
+	pub enable_ddc_validation: bool,
+
+	/// DAC DataModel HTTP endpoint to retrieve DDC activity data for validation.
+	#[clap(long, requires = "enable-ddc-validation", value_parser = url::Url::parse)]
+	pub dac_url: Option<String>,
+
 	/// Force using Cere Dev runtime.
 	#[clap(long = "force-cere-dev")]
 	pub force_cere_dev: bool,

@@ -36,7 +36,10 @@ mod multiplier_tests {
 		RuntimeBlockWeights as BlockWeights, System, TargetBlockFullness, TransactionPayment,
 	};
 	use cere_dev_runtime_constants::{currency::*, time::*};
-	use frame_support::weights::{DispatchClass, Weight, WeightToFee as WeightToFeeT};
+	use frame_support::{
+		dispatch::DispatchClass,
+		weights::{Weight, WeightToFee as WeightToFeeT},
+	};
 	use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 	use sp_runtime::{
 		assert_eq_error_rate,
@@ -96,7 +99,7 @@ mod multiplier_tests {
 
 	fn run_with_system_weight<F>(w: Weight, assertions: F)
 	where
-		F: Fn() -> (),
+		F: Fn(),
 	{
 		let mut t: sp_io::TestExternalities = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
@@ -112,12 +115,12 @@ mod multiplier_tests {
 	fn truth_value_update_poc_works() {
 		let fm = Multiplier::saturating_from_rational(1, 2);
 		let test_set = vec![
-			(0, fm.clone()),
-			(100, fm.clone()),
-			(1000, fm.clone()),
-			(target().ref_time(), fm.clone()),
-			(max_normal().ref_time() / 2, fm.clone()),
-			(max_normal().ref_time(), fm.clone()),
+			(0, fm),
+			(100, fm),
+			(1000, fm),
+			(target().ref_time(), fm),
+			(max_normal().ref_time() / 2, fm),
+			(max_normal().ref_time(), fm),
 		];
 		test_set.into_iter().for_each(|(w, fm)| {
 			run_with_system_weight(Weight::from_ref_time(w), || {
@@ -323,7 +326,7 @@ mod multiplier_tests {
 
 	#[test]
 	fn weight_to_fee_should_not_overflow_on_large_weights() {
-		let kb = 1024 as u64;
+		let kb = 1024_u64;
 		let mb = kb * kb;
 		let max_fm = Multiplier::saturating_from_integer(i128::MAX);
 

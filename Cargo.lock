@@ -767,17 +767,16 @@ dependencies = [
 
 [[package]]
 name = "cere"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "cere-cli",
  "sc-cli",
- "ss58-registry",
  "substrate-build-script-utils",
 ]
 
 [[package]]
 name = "cere-cli"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "cere-client",
  "cere-service",
@@ -787,16 +786,16 @@ dependencies = [
  "sc-service",
  "substrate-build-script-utils",
  "try-runtime-cli",
+ "url",
 ]
 
 [[package]]
 name = "cere-client"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
  "frame-benchmarking",
- "frame-benchmarking-cli",
  "frame-system",
  "frame-system-rpc-runtime-api",
  "node-primitives",
@@ -811,10 +810,8 @@ dependencies = [
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-babe",
- "sp-core",
  "sp-finality-grandpa",
  "sp-inherents",
- "sp-keyring",
  "sp-offchain",
  "sp-runtime",
  "sp-session",
@@ -825,7 +822,7 @@ dependencies = [
 
 [[package]]
 name = "cere-dev-runtime"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "cere-dev-runtime-constants",
  "cere-runtime-common",
@@ -852,7 +849,10 @@ dependencies = [
  "pallet-collective",
  "pallet-contracts",
  "pallet-contracts-primitives",
+ "pallet-ddc-clusters",
+ "pallet-ddc-customers",
  "pallet-ddc-metrics-offchain-worker",
+ "pallet-ddc-nodes",
  "pallet-ddc-staking",
  "pallet-democracy",
  "pallet-election-provider-multi-phase",
@@ -886,7 +886,6 @@ dependencies = [
  "pallet-tips",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
- "pallet-transaction-storage",
  "pallet-treasury",
  "pallet-utility",
  "pallet-vesting",
@@ -912,15 +911,14 @@ dependencies = [
 
 [[package]]
 name = "cere-dev-runtime-constants"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "node-primitives",
- "sp-runtime",
 ]
 
 [[package]]
 name = "cere-rpc"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "jsonrpsee",
  "node-primitives",
@@ -949,7 +947,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "cere-runtime-common",
  "cere-runtime-constants",
@@ -1009,7 +1007,6 @@ dependencies = [
  "pallet-tips",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
- "pallet-transaction-storage",
  "pallet-treasury",
  "pallet-utility",
  "pallet-vesting",
@@ -1035,7 +1032,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime-common"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "frame-support",
  "node-primitives",
@@ -1045,32 +1042,28 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime-constants"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "node-primitives",
- "sp-runtime",
 ]
 
 [[package]]
 name = "cere-service"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "cere-client",
  "cere-dev-runtime",
  "cere-dev-runtime-constants",
  "cere-rpc",
  "cere-runtime",
- "cere-runtime-constants",
  "futures",
  "jsonrpsee",
  "node-primitives",
  "pallet-im-online",
- "parity-scale-codec",
  "rand 0.8.5",
  "sc-authority-discovery",
  "sc-basic-authorship",
  "sc-chain-spec",
- "sc-cli",
  "sc-client-api",
  "sc-consensus",
  "sc-consensus-babe",
@@ -1091,7 +1084,6 @@ dependencies = [
  "sp-authority-discovery",
  "sp-authorship",
  "sp-blockchain",
- "sp-consensus",
  "sp-consensus-babe",
  "sp-core",
  "sp-finality-grandpa",
@@ -1619,6 +1611,25 @@ checksum = "8fdf3fce3ce863539ec1d7fd1b6dcc3c645663376b43ed376bbf887733e4f772"
 dependencies = [
  "data-encoding",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "ddc-primitives"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-runtime",
+]
+
+[[package]]
+name = "ddc-traits"
+version = "0.1.0"
+dependencies = [
+ "ddc-primitives",
+ "frame-system",
 ]
 
 [[package]]
@@ -3768,24 +3779,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09fc20d2ca12cb9f044c93e3bd6d32d523e6e2ec3db4f7b2939cd99026ecd3f0"
 
 [[package]]
-name = "lite-json"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd0e787ffe1153141a0f6f6d759fdf1cc34b1226e088444523812fd412a5cca2"
-dependencies = [
- "lite-parser",
-]
-
-[[package]]
-name = "lite-parser"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3d5f9dc37c52d889a21fd701983d02bb6a84f852c5140a6c80ef4557f7dc29e"
-dependencies = [
- "paste",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4520,7 +4513,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-cere-ddc"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4535,18 +4528,15 @@ dependencies = [
 
 [[package]]
 name = "pallet-chainbridge"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
- "frame-benchmarking",
  "frame-support",
  "frame-system",
- "lite-json",
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
  "sp-io",
- "sp-keystore",
  "sp-runtime",
  "sp-std",
 ]
@@ -4639,15 +4629,49 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-ddc-clusters"
+version = "4.8.1"
+dependencies = [
+ "ddc-primitives",
+ "ddc-traits",
+ "frame-support",
+ "frame-system",
+ "pallet-contracts",
+ "pallet-ddc-nodes",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+ "sp-tracing",
+ "substrate-test-utils",
+]
+
+[[package]]
+name = "pallet-ddc-customers"
+version = "0.1.0"
+dependencies = [
+ "ddc-primitives",
+ "ddc-traits",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-runtime",
+ "sp-std",
+ "substrate-test-utils",
+]
+
+[[package]]
 name = "pallet-ddc-metrics-offchain-worker"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
  "alt_serde",
  "frame-support",
  "frame-system",
  "hex",
  "hex-literal",
- "lite-json",
  "pallet-balances",
  "pallet-contracts",
  "pallet-randomness-collective-flip",
@@ -4655,7 +4679,6 @@ dependencies = [
  "parity-scale-codec",
  "pretty_assertions",
  "scale-info",
- "serde",
  "serde_json 1.0.44",
  "sp-core",
  "sp-io",
@@ -4665,9 +4688,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-ddc-staking"
-version = "4.8.0"
+name = "pallet-ddc-nodes"
+version = "4.8.1"
 dependencies = [
+ "ddc-primitives",
+ "ddc-traits",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+ "sp-tracing",
+ "substrate-test-utils",
+]
+
+[[package]]
+name = "pallet-ddc-staking"
+version = "4.8.1"
+dependencies = [
+ "ddc-primitives",
+ "ddc-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -4678,7 +4720,6 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
- "sp-staking",
  "sp-std",
  "sp-tracing",
  "substrate-test-utils",
@@ -4759,9 +4800,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc20"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-balances",
@@ -4769,7 +4809,6 @@ dependencies = [
  "pallet-erc721",
  "parity-scale-codec",
  "scale-info",
- "serde",
  "sp-arithmetic",
  "sp-core",
  "sp-io",
@@ -4779,16 +4818,14 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc721"
-version = "4.8.0"
+version = "4.8.1"
 dependencies = [
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-balances",
  "pallet-chainbridge",
  "parity-scale-codec",
  "scale-info",
- "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -5248,24 +5285,6 @@ dependencies = [
  "parity-scale-codec",
  "sp-api",
  "sp-runtime",
-]
-
-[[package]]
-name = "pallet-transaction-storage"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.31#7a4e5163091384c4c10b6d76f5cb80dac0834f38"
-dependencies = [
- "frame-support",
- "frame-system",
- "log",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "sp-inherents",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "sp-transaction-storage-proof",
 ]
 
 [[package]]
@@ -9396,9 +9415,9 @@ checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "url"
-version = "2.4.0"
+version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50bff7831e19200a85b17131d085c25d7811bc4e186efdaf54bbd132994a88cb"
+checksum = "143b538f18257fac9cad154828a57c6bf5157e1aa604d4816b5995bf6de87ae5"
 dependencies = [
  "form_urlencoded",
  "idna 0.4.0",

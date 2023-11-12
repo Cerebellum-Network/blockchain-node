@@ -1,7 +1,7 @@
 // Offchain worker for DDC metrics.
 //
 // Inspired from https://github.com/paritytech/substrate/tree/master/frame/example-offchain-worker
-
+#![allow(clippy::all)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
@@ -19,7 +19,7 @@ use frame_system::offchain::{
 };
 
 use hex_literal::hex;
-use pallet_contracts;
+
 use sp_core::crypto::{KeyTypeId, UncheckedFrom};
 use sp_runtime::{
 	offchain::{http, storage::StorageValueRef, Duration},
@@ -34,8 +34,7 @@ extern crate alloc;
 use alloc::string::String;
 use core::fmt::Debug;
 use frame_support::weights::Weight;
-use scale_info::{Type, TypeInfo};
-use sp_runtime::offchain::storage::StorageRetrievalError;
+use scale_info::TypeInfo;
 
 pub const BLOCK_INTERVAL: u32 = 100; // TODO: Change to 1200 later [1h]. Now - 200 [10 minutes] for testing purposes.
 
@@ -195,7 +194,7 @@ where
 		};
 
 		let should_proceed = Self::check_if_should_proceed(block_number);
-		if should_proceed == false {
+		if !should_proceed {
 			return Ok(())
 		}
 
@@ -247,7 +246,7 @@ where
 		let block_timestamp = sp_io::offchain::timestamp().unix_millis();
 
 		if day_end_ms < block_timestamp {
-			Self::finalize_metric_period(contract_address.clone(), &signer, day_start_ms).map_err(
+			Self::finalize_metric_period(contract_address, &signer, day_start_ms).map_err(
 				|err| {
 					error!("[OCW] Contract error occurred: {:?}", err);
 					"could not call finalize_metric_period TX"
@@ -305,11 +304,10 @@ where
 					);
 					Err("Skipping")
 				} else {
-					let block_interval_configured = Self::get_block_interval();
 					let mut block_interval = T::BlockInterval::get();
-					if block_interval_configured.is_some() {
+					if let Some(block_interval_configured) = Self::get_block_interval() {
 						block_interval = <T as frame_system::Config>::BlockNumber::from(
-							block_interval_configured.unwrap(),
+							block_interval_configured,
 						);
 					}
 
@@ -328,8 +326,8 @@ where
 
 	fn get_start_of_day_ms() -> u64 {
 		let now = sp_io::offchain::timestamp();
-		let day_start_ms = (now.unix_millis() / MS_PER_DAY) * MS_PER_DAY;
-		day_start_ms
+		
+		(now.unix_millis() / MS_PER_DAY) * MS_PER_DAY
 	}
 
 	fn get_signer() -> ResultStr<Signer<T, T::AuthorityId>> {
@@ -521,7 +519,7 @@ where
 				account.id, p2p_id, is_online,
 			);
 
-			let call_data = Self::encode_report_ddn_status(&p2p_id, is_online);
+			let call_data = Self::encode_report_ddn_status(p2p_id, is_online);
 
 			let contract_id_unl = <<T as frame_system::Config>::Lookup as StaticLookup>::unlookup(
 				contract_id.clone(),
@@ -642,12 +640,12 @@ where
 			"HTTP GET error"
 		})?;
 
-		let parsed = serde_json::from_slice(&body).map_err(|err| {
+		
+
+		serde_json::from_slice(&body).map_err(|err| {
 			warn!("[OCW] Error while parsing JSON from {}: {:?}", url, err);
 			"HTTP JSON parse error"
-		});
-
-		parsed
+		})
 	}
 
 	fn http_get_request(http_url: &str) -> Result<Vec<u8>, http::Error> {
@@ -754,7 +752,12 @@ impl MetricsAggregator {
 		let existing_pubkey_index =
 			self.0.iter().position(|one_result_obj| metric.app_id == one_result_obj.app_id);
 
-		if existing_pubkey_index.is_none() {
+		if let Some(existing_pubkey_index) = existing_pubkey_index {
+			// Add to metrics of an existing app.
+			self.0[existing_pubkey_index].storage_bytes += metric.storage_bytes;
+			self.0[existing_pubkey_index].wcu_used += metric.wcu_used;
+			self.0[existing_pubkey_index].rcu_used += metric.rcu_used;
+		} else {
 			// New app.
 			let new_metric_obj = Metric {
 				app_id: metric.app_id.clone(),
@@ -763,11 +766,6 @@ impl MetricsAggregator {
 				rcu_used: metric.rcu_used,
 			};
 			self.0.push(new_metric_obj);
-		} else {
-			// Add to metrics of an existing app.
-			self.0[existing_pubkey_index.unwrap()].storage_bytes += metric.storage_bytes;
-			self.0[existing_pubkey_index.unwrap()].wcu_used += metric.wcu_used;
-			self.0[existing_pubkey_index.unwrap()].rcu_used += metric.rcu_used;
 		}
 	}
 

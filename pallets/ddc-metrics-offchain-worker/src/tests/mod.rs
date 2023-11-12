@@ -1,6 +1,5 @@
 use frame_support::traits::{Currency, OffchainWorker};
 use frame_system::Config as FSC;
-use pallet_contracts::{self as contracts, Config as CC};
 use sp_core::offchain::{
 	testing, OffchainDbExt, OffchainWorkerExt, Timestamp as OCWTimestamp, TransactionPoolExt,
 };
@@ -285,7 +284,7 @@ fn should_run_contract() {
 		let contract_id = deploy_contract();
 		let call_data = DdcMetricsOffchainWorker::encode_get_current_period_ms();
 
-		pallet_contracts::Module::<T>::call(
+		pallet_contracts::Pallet::<T>::call(
 			RuntimeOrigin::signed(alice.clone()),
 			contract_id.clone(),
 			0,
@@ -296,7 +295,7 @@ fn should_run_contract() {
 		.unwrap();
 
 		let contract_exec_result = pallet_contracts::Pallet::<T>::bare_call(
-			alice.clone(),
+			alice,
 			contract_id,
 			0,
 			Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX),
@@ -318,7 +317,7 @@ pub const CTOR_SELECTOR: [u8; 4] = hex!("9bae9d5e");
 
 fn encode_constructor() -> Vec<u8> {
 	let mut call_data = CTOR_SELECTOR.to_vec();
-	let x = 0 as u128;
+	let x = 0_u128;
 	for _ in 0..9 {
 		x.encode_to(&mut call_data);
 	}
@@ -346,13 +345,13 @@ fn deploy_contract() -> AccountId {
 		GAS_LIMIT,
 		None,
 		wasm.to_vec(),
-		contract_args.clone(),
+		contract_args,
 		vec![],
 	)
 	.unwrap();
 
 	// Configure worker with the contract address.
-	let contract_id = Contracts::contract_address(&alice, &wasm_hash, &vec![]);
+	let contract_id = Contracts::contract_address(&alice, &wasm_hash, &[]);
 
 	pub const ADD_DDC_NODE_SELECTOR: [u8; 4] = hex!("11a9e1b9");
 

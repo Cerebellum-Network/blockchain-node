@@ -43,11 +43,14 @@ impl SubstrateCli for Cli {
 			"local" => Box::new(cere_service::chain_spec::cere_dev_local_testnet_config()?),
 			path => {
 				let path = std::path::PathBuf::from(path);
+				let chain_spec =
+					Box::new(cere_service::CereChainSpec::from_json_file(path.clone())?)
+						as Box<dyn cere_service::ChainSpec>;
 
-				if self.run.force_cere_dev {
+				if self.run.force_cere_dev || chain_spec.is_cere_dev() {
 					Box::new(cere_service::CereDevChainSpec::from_json_file(path)?)
 				} else {
-					Box::new(cere_service::CereChainSpec::from_json_file(path)?)
+					chain_spec
 				}
 			},
 		})
@@ -64,7 +67,7 @@ impl SubstrateCli for Cli {
 
 		#[cfg(feature = "cere-native")]
 		{
-			return &cere_service::cere_runtime::VERSION
+			&cere_service::cere_runtime::VERSION
 		}
 
 		#[cfg(not(feature = "cere-native"))]
@@ -158,17 +161,17 @@ pub fn run() -> sc_cli::Result<()> {
 
 					#[cfg(feature = "cere-dev-native")]
 					if chain_spec.is_cere_dev() {
-						return Ok(runner.sync_run(|config| {
+						return runner.sync_run(|config| {
 							cmd.run::<cere_service::cere_dev_runtime::Block, cere_client::CereDevExecutorDispatch>(config)
-						})?)
+						})
 					}
 
 					// else we assume it is Cere
 					#[cfg(feature = "cere-native")]
 					{
-						return Ok(runner.sync_run(|config| {
+						runner.sync_run(|config| {
 							cmd.run::<cere_service::cere_runtime::Block, cere_client::CereExecutorDispatch>(config)
-						})?)
+						})
 					}
 
 					#[cfg(not(feature = "cere-native"))]
@@ -242,9 +245,14 @@ pub fn run() -> sc_cli::Result<()> {
 		None => {
 			let runner = cli.create_runner(&cli.run.base)?;
 			runner.run_node_until_exit(|config| async move {
-				cere_service::build_full(config, cli.run.no_hardware_benchmarks)
-					.map(|full| full.task_manager)
-					.map_err(Error::Service)
+				cere_service::build_full(
+					config,
+					cli.run.no_hardware_benchmarks,
+					cli.run.enable_ddc_validation,
+					cli.run.dac_url,
+				)
+				.map(|full| full.task_manager)
+				.map_err(Error::Service)
 			})
 		},
 	}
