@@ -7,16 +7,11 @@ edition = "2021"
 codec = { package = "parity-scale-codec", version = "3.1.5", default-features = false, features = ["derive"] }
 ddc-primitives = { version = "0.1.0", default-features = false, path = "../../primitives" }
 ddc-traits = { version = "0.1.0", default-features = false, path = "../../traits" }
-frame-benchmarking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", optional = true }
 frame-support = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-log = { version = "0.4.17", default-features = false }
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
-sp-io = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-runtime = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sp-staking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-std = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sp-core = { version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", default-features = false }
 pallet-contracts = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 pallet-ddc-nodes = { version = "4.7.0", default-features = false, path = "../ddc-nodes" }
 hex-literal = "^0.3.1"
@@ -37,14 +32,10 @@ std = [
   "ddc-primitives/std",
   "frame-support/std",
   "frame-system/std",
-  "frame-benchmarking/std",
   "pallet-contracts/std",
   "pallet-ddc-nodes/std",
   "scale-info/std",
   "sp-core/std",
-  "sp-io/std",
   "sp-runtime/std",
-  "sp-staking/std",
   "sp-std/std",
 ]
-runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
