@@ -1,11 +1,9 @@
 //! Tests for the module.
 
 use super::{mock::*, *};
-use ddc_primitives::{CDNNodePubKey, NodeType};
-use ddc_traits::cluster::{ClusterVisitor, ClusterVisitorError};
-use frame_support::{
-	assert_noop, assert_ok, assert_storage_noop, error::BadOrigin, traits::ReservableCurrency,
-};
+use ddc_primitives::CDNNodePubKey;
+
+use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
 use pallet_balances::Error as BalancesError;
 
 pub const BLOCK_TIME: u64 = 1000;
@@ -113,7 +111,7 @@ fn staking_should_work() {
 		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(4)));
 
 		// Removal is scheduled, stashed value of 4 is still lock.
-		let chilling = System::block_number() + BlockNumber::from(10u64);
+		let chilling = System::block_number() + 10u64;
 		// TestClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::CDN)
 		// 	.unwrap_or(10_u64);
 		assert_eq!(
