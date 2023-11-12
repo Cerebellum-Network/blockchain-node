@@ -11,11 +11,11 @@ use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 
-/// This function removes all storage and edge nodes from storage.
-pub fn clear_storages_and_edges<T: Config>() {
+/// This function removes all storage and CDN nodes from storage.
+pub fn clear_storages_and_cdns<T: Config>() {
 	#[allow(unused_must_use)]
 	{
-		Edges::<T>::clear(u32::MAX, None);
+		CDNs::<T>::clear(u32::MAX, None);
 		Storages::<T>::clear(u32::MAX, None);
 	}
 }
@@ -60,7 +60,7 @@ pub fn create_stash_controller_node<T: Config>(
 		node.clone(),
 		amount,
 	)?;
-	return Ok((stash, controller, node))
+	Ok((stash, controller, node))
 }
 
 /// Create a stash and controller pair with fixed balance.

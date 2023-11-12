@@ -2,44 +2,12 @@
 
 use super::{mock::*, *};
 use ddc_primitives::CDNNodePubKey;
-use frame_support::{
-	assert_noop, assert_ok, assert_storage_noop, error::BadOrigin, traits::ReservableCurrency,
-};
+
+use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
 use pallet_balances::Error as BalancesError;
 
 pub const BLOCK_TIME: u64 = 1000;
 pub const INIT_TIMESTAMP: u64 = 30_000;
-
-#[test]
-fn set_settings_works() {
-	ExtBuilder::default().build_and_execute(|| {
-		// setting works
-		assert_ok!(DdcStaking::set_settings(
-			RuntimeOrigin::root(),
-			ClusterId::from([1; 20]),
-			Some(ClusterSettings {
-				edge_bond_size: 10,
-				edge_chill_delay: 2,
-				storage_bond_size: 10,
-				storage_chill_delay: 2,
-			}),
-		));
-		let settings = DdcStaking::settings(ClusterId::from([1; 20]));
-		assert_eq!(settings.edge_bond_size, 10);
-		assert_eq!(settings.edge_chill_delay, 2);
-		assert_eq!(settings.storage_bond_size, 10);
-		assert_eq!(settings.storage_chill_delay, 2);
-
-		// removing works
-		assert_ok!(DdcStaking::set_settings(RuntimeOrigin::root(), ClusterId::from([1; 20]), None));
-		let settings = DdcStaking::settings(ClusterId::from([1; 20]));
-		let default_settings: ClusterSettings<Test> = Default::default();
-		assert_eq!(settings.edge_bond_size, default_settings.edge_bond_size);
-		assert_eq!(settings.edge_chill_delay, default_settings.edge_chill_delay);
-		assert_eq!(settings.storage_bond_size, default_settings.storage_bond_size);
-		assert_eq!(settings.storage_chill_delay, default_settings.storage_chill_delay);
-	});
-}
 
 #[test]
 fn basic_setup_works() {
@@ -76,9 +44,6 @@ fn basic_setup_works() {
 		);
 		// Account 1 does not control any stash
 		assert_eq!(DdcStaking::ledger(&1), None);
-
-		// Cluster 1 settings are default
-		assert_eq!(DdcStaking::settings(ClusterId::from([1; 20])), Default::default());
 	});
 }
 
@@ -135,7 +100,7 @@ fn staking_should_work() {
 				unlocking: Default::default(),
 			})
 		);
-		assert_eq!(DdcStaking::edges(3), Some(ClusterId::from([0; 20])));
+		assert_eq!(DdcStaking::cdns(3), Some(ClusterId::from([0; 20])));
 		assert_eq!(DdcStaking::nodes(NodePubKey::CDNPubKey(CDNNodePubKey::new([5; 32]))), Some(3));
 
 		// Set `CurrentEra`.
@@ -146,8 +111,9 @@ fn staking_should_work() {
 		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(4)));
 
 		// Removal is scheduled, stashed value of 4 is still lock.
-		let chilling = DdcStaking::current_era().unwrap() +
-			DdcStaking::settings(ClusterId::from([0; 20])).edge_chill_delay;
+		let chilling = System::block_number() + 10u64;
+		// TestClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::CDN)
+		// 	.unwrap_or(10_u64);
 		assert_eq!(
 			DdcStaking::ledger(&4),
 			Some(StakingLedger {
@@ -163,7 +129,7 @@ fn staking_should_work() {
 		assert_ok!(Balances::reserve(&3, 409));
 
 		// Set `CurrentEra` to the value allows us to chill.
-		while DdcStaking::current_era().unwrap() < chilling {
+		while System::block_number() < chilling {
 			System::set_block_number(System::block_number() + 1);
 			Timestamp::set_timestamp(System::block_number() * BLOCK_TIME + INIT_TIMESTAMP);
 			DdcStaking::on_finalize(System::block_number());
@@ -185,35 +151,6 @@ fn staking_should_work() {
 		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(4)));
 
 		// Account 3 is no longer a CDN participant.
-		assert_eq!(DdcStaking::edges(3), None);
-	});
-}
-
-#[test]
-fn cluster_managers_list_can_be_managed_by_governance_only() {
-	ExtBuilder::default().build_and_execute(|| {
-		// Governance can allow an account to become cluster manager.
-		assert_ok!(DdcStaking::allow_cluster_manager(RuntimeOrigin::root(), 1));
-
-		// Repeat call does nothing.
-		assert_storage_noop!(assert_ok!(DdcStaking::allow_cluster_manager(
-			RuntimeOrigin::root(),
-			1,
-		)));
-
-		// Non-governance can't allow an account to become a cluster manager.
-		assert_noop!(DdcStaking::allow_cluster_manager(RuntimeOrigin::signed(1), 2), BadOrigin);
-
-		// Non-governance can't disallow an account to become a cluster manager.
-		assert_noop!(DdcStaking::disallow_cluster_manager(RuntimeOrigin::signed(1), 1), BadOrigin);
-
-		// Governance can disallow an account to become a cluster manager.
-		assert_ok!(DdcStaking::disallow_cluster_manager(RuntimeOrigin::root(), 1));
-
-		// Repeat call does nothing.
-		assert_storage_noop!(assert_ok!(DdcStaking::disallow_cluster_manager(
-			RuntimeOrigin::root(),
-			1,
-		)));
+		assert_eq!(DdcStaking::cdns(3), None);
 	});
 }

@@ -2,10 +2,10 @@
 
 use super::*;
 use crate::Pallet as DdcStaking;
-use ddc_primitives::CDNNodePubKey;
+use ddc_primitives::{CDNNodePubKey, NodeType};
 use testing_utils::*;
 
-use frame_support::traits::{Currency, Get};
+use frame_support::traits::Currency;
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
@@ -34,7 +34,7 @@ benchmarks! {
 
 	unbond {
 		// clean up any existing state.
-		clear_storages_and_edges::<T>();
+		clear_storages_and_cdns::<T>();
 
 		let (stash, controller, _) = create_stash_controller_node::<T>(0, 100)?;
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
@@ -53,7 +53,7 @@ benchmarks! {
 		let (stash, controller, _) = create_stash_controller_node::<T>(0, 100)?;
 		let amount = T::Currency::minimum_balance() * 5u32.into(); // Half of total
 		DdcStaking::<T>::unbond(RawOrigin::Signed(controller.clone()).into(), amount)?;
-		CurrentEra::<T>::put(EraIndex::max_value());
+		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1000u32));
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
 		let original_total: BalanceOf<T> = ledger.total;
 		whitelist_account!(controller);
@@ -65,7 +65,7 @@ benchmarks! {
 	}
 
 	store {
-		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultStorageBondSize::get())?;
+		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or(10u128).saturated_into::<BalanceOf<T>>())?;
 
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller), ClusterId::from([1; 20]))
@@ -74,29 +74,29 @@ benchmarks! {
 	}
 
 	serve {
-		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
+		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or(10u128).saturated_into::<BalanceOf<T>>())?;
 
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller), ClusterId::from([1; 20]))
 	verify {
-		assert!(Edges::<T>::contains_key(&stash));
+		assert!(CDNs::<T>::contains_key(&stash));
 	}
 
 	chill {
 		// clean up any existing state.
-		clear_storages_and_edges::<T>();
+		clear_storages_and_cdns::<T>();
 
-		let (edge_stash, edge_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::DefaultEdgeBondSize::get())?;
-		DdcStaking::<T>::serve(RawOrigin::Signed(edge_controller.clone()).into(), ClusterId::from([1; 20]))?;
-		assert!(Edges::<T>::contains_key(&edge_stash));
-		CurrentEra::<T>::put(1);
-		DdcStaking::<T>::chill(RawOrigin::Signed(edge_controller.clone()).into())?;
-		CurrentEra::<T>::put(1 + Settings::<T>::get(ClusterId::from([1; 20])).edge_chill_delay);
+		let (cdn_stash, cdn_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or(10u128).saturated_into::<BalanceOf<T>>())?;
+		DdcStaking::<T>::serve(RawOrigin::Signed(cdn_controller.clone()).into(), ClusterId::from([1; 20]))?;
+		assert!(CDNs::<T>::contains_key(&cdn_stash));
+		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32));
+		DdcStaking::<T>::chill(RawOrigin::Signed(cdn_controller.clone()).into())?;
+		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32) + T::ClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or_else(|_| T::BlockNumber::from(10u32)));
 
-		whitelist_account!(edge_controller);
-	}: _(RawOrigin::Signed(edge_controller))
+		whitelist_account!(cdn_controller);
+	}: _(RawOrigin::Signed(cdn_controller))
 	verify {
-		assert!(!Edges::<T>::contains_key(&edge_stash));
+		assert!(!CDNs::<T>::contains_key(&cdn_stash));
 	}
 
 	set_controller {
@@ -116,23 +116,5 @@ benchmarks! {
 	}: _(RawOrigin::Signed(stash), new_node.clone())
 	verify {
 		assert!(Nodes::<T>::contains_key(&new_node));
-	}
-
-	allow_cluster_manager {
-		let new_cluster_manager = create_funded_user::<T>("cluster_manager", USER_SEED, 100);
-		let new_cluster_manager_lookup = T::Lookup::unlookup(new_cluster_manager.clone());
-	}: _(RawOrigin::Root, new_cluster_manager_lookup)
-	verify {
-		assert!(ClusterManagers::<T>::get().contains(&new_cluster_manager));
-	}
-
-	disallow_cluster_manager {
-		let new_cluster_manager = create_funded_user::<T>("cluster_manager", USER_SEED, 100);
-		let new_cluster_manager_lookup = T::Lookup::unlookup(new_cluster_manager.clone());
-		DdcStaking::<T>::allow_cluster_manager(RawOrigin::Root.into(), new_cluster_manager_lookup.clone())?;
-		assert!(ClusterManagers::<T>::get().contains(&new_cluster_manager));
-	}: _(RawOrigin::Root, new_cluster_manager_lookup)
-	verify {
-		assert!(!ClusterManagers::<T>::get().contains(&new_cluster_manager));
 	}
 }

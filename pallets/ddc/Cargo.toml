@@ -35,3 +35,6 @@ std = [
     'frame-support/std',
     'frame-system/std',
 ]
+
+[package.metadata.cargo-machete]
+ignored = ["scale-info", "codec"]

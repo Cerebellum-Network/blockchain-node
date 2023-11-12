@@ -1,3 +1,5 @@
+#![allow(clippy::needless_lifetimes)] // ToDo
+
 use crate::{
 	cdn_node::{CDNNode, CDNNodeParams, CDNNodeProps},
 	pallet::Error,
@@ -5,14 +7,14 @@ use crate::{
 	ClusterId,
 };
 use codec::{Decode, Encode};
-use ddc_primitives::{CDNNodePubKey, NodePubKey, StorageNodePubKey};
+use ddc_primitives::{NodePubKey, NodeType};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum Node<AccountId> {
-	Storage(StorageNode<AccountId>),
-	CDN(CDNNode<AccountId>),
+pub enum Node<T: frame_system::Config> {
+	Storage(StorageNode<T>),
+	CDN(CDNNode<T>),
 }
 
 // Params fields are always coming from extrinsic input
@@ -29,59 +31,46 @@ pub enum NodeProps {
 	CDNProps(CDNNodeProps),
 }
 
-#[derive(Clone, RuntimeDebug, PartialEq)]
-pub enum NodePubKeyRef<'a> {
-	StoragePubKeyRef(&'a StorageNodePubKey),
-	CDNPubKeyRef(&'a CDNNodePubKey),
-}
-
-impl<'a> NodePubKeyRef<'a> {
-	pub fn to_owned(&self) -> NodePubKey {
-		match &self {
-			NodePubKeyRef::StoragePubKeyRef(pub_key_ref) =>
-				NodePubKey::StoragePubKey((**pub_key_ref).clone()),
-			NodePubKeyRef::CDNPubKeyRef(pub_key_ref) =>
-				NodePubKey::CDNPubKey((**pub_key_ref).clone()),
-		}
-	}
-}
-
-#[derive(Clone, RuntimeDebug, PartialEq)]
-pub enum NodePropsRef<'a> {
-	StoragePropsRef(&'a StorageNodeProps),
-	CDNPropsRef(&'a CDNNodeProps),
-}
-
-pub trait NodeTrait<AccountId> {
-	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a>;
-	fn get_provider_id(&self) -> &AccountId;
-	fn get_props<'a>(&'a self) -> NodePropsRef<'a>;
+pub trait NodeTrait<T: frame_system::Config> {
+	fn get_pub_key(&self) -> NodePubKey;
+	fn get_provider_id(&self) -> &T::AccountId;
+	fn get_props(&self) -> NodeProps;
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError>;
 	fn set_params(&mut self, props: NodeParams) -> Result<(), NodeError>;
 	fn get_cluster_id(&self) -> &Option<ClusterId>;
 	fn set_cluster_id(&mut self, cluster_id: Option<ClusterId>);
 	fn get_type(&self) -> NodeType;
-	fn new(
-		node_pub_key: NodePubKey,
-		provider_id: AccountId,
-		params: NodeParams,
-	) -> Result<Node<AccountId>, NodeError>;
 }
 
-impl<AccountId> NodeTrait<AccountId> for Node<AccountId> {
-	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
+impl<T: frame_system::Config> Node<T> {
+	pub fn new(
+		node_pub_key: NodePubKey,
+		provider_id: T::AccountId,
+		node_params: NodeParams,
+	) -> Result<Self, NodeError> {
+		match node_pub_key {
+			NodePubKey::StoragePubKey(_) =>
+				StorageNode::new(node_pub_key, provider_id, node_params).map(|n| Node::Storage(n)),
+			NodePubKey::CDNPubKey(_) =>
+				CDNNode::new(node_pub_key, provider_id, node_params).map(|n| Node::CDN(n)),
+		}
+	}
+}
+
+impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
+	fn get_pub_key(&self) -> NodePubKey {
 		match &self {
 			Node::Storage(node) => node.get_pub_key(),
 			Node::CDN(node) => node.get_pub_key(),
 		}
 	}
-	fn get_provider_id(&self) -> &AccountId {
+	fn get_provider_id(&self) -> &T::AccountId {
 		match &self {
 			Node::Storage(node) => node.get_provider_id(),
 			Node::CDN(node) => node.get_provider_id(),
 		}
 	}
-	fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
+	fn get_props(&self) -> NodeProps {
 		match &self {
 			Node::Storage(node) => node.get_props(),
 			Node::CDN(node) => node.get_props(),
@@ -117,43 +106,6 @@ impl<AccountId> NodeTrait<AccountId> for Node<AccountId> {
 			Node::CDN(node) => node.get_type(),
 		}
 	}
-	fn new(
-		node_pub_key: NodePubKey,
-		provider_id: AccountId,
-		node_params: NodeParams,
-	) -> Result<Node<AccountId>, NodeError> {
-		match node_pub_key {
-			NodePubKey::StoragePubKey(_) =>
-				StorageNode::new(node_pub_key, provider_id, node_params),
-			NodePubKey::CDNPubKey(_) => CDNNode::new(node_pub_key, provider_id, node_params),
-		}
-	}
-}
-
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum NodeType {
-	Storage = 1,
-	CDN = 2,
-}
-
-impl From<NodeType> for u8 {
-	fn from(node_type: NodeType) -> Self {
-		match node_type {
-			NodeType::Storage => 1,
-			NodeType::CDN => 2,
-		}
-	}
-}
-
-impl TryFrom<u8> for NodeType {
-	type Error = ();
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
-		match value {
-			1 => Ok(NodeType::Storage),
-			2 => Ok(NodeType::CDN),
-			_ => Err(()),
-		}
-	}
 }
 
 pub enum NodeError {
@@ -161,8 +113,8 @@ pub enum NodeError {
 	InvalidCDNNodePubKey,
 	InvalidStorageNodeParams,
 	InvalidCDNNodeParams,
-	StorageNodeParamsExceedsLimit,
-	CDNNodeParamsExceedsLimit,
+	StorageHostLenExceedsLimit,
+	CDNHostLenExceedsLimit,
 	InvalidCDNNodeProps,
 	InvalidStorageNodeProps,
 }
@@ -174,8 +126,8 @@ impl<T> From<NodeError> for Error<T> {
 			NodeError::InvalidCDNNodePubKey => Error::<T>::InvalidNodePubKey,
 			NodeError::InvalidStorageNodeParams => Error::<T>::InvalidNodeParams,
 			NodeError::InvalidCDNNodeParams => Error::<T>::InvalidNodeParams,
-			NodeError::StorageNodeParamsExceedsLimit => Error::<T>::NodeParamsExceedsLimit,
-			NodeError::CDNNodeParamsExceedsLimit => Error::<T>::InvalidNodeParams,
+			NodeError::StorageHostLenExceedsLimit => Error::<T>::HostLenExceedsLimit,
+			NodeError::CDNHostLenExceedsLimit => Error::<T>::HostLenExceedsLimit,
 			NodeError::InvalidStorageNodeProps => Error::<T>::InvalidNodeParams,
 			NodeError::InvalidCDNNodeProps => Error::<T>::InvalidNodeParams,
 		}
