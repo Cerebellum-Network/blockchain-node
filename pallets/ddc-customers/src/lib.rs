@@ -459,7 +459,7 @@ pub mod pallet {
 				<T as pallet::Config>::Currency::transfer(
 					&account_id,
 					&owner,
-					value.clone(),
+					value,
 					ExistenceRequirement::KeepAlive,
 				)?;
 				Self::deposit_event(Event::<T>::Withdrawn(owner, value));
