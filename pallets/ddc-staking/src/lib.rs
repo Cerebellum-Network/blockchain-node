@@ -549,7 +549,7 @@ pub mod pallet {
 			ensure!(!Storages::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
 
 			// Only CDN node can perform serving (i.e. streaming content)
-			let node_pub_key = <Providers<T>>::get(&stash).ok_or(Error::<T>::BadState)?;
+			let node_pub_key = <Providers<T>>::get(stash).ok_or(Error::<T>::BadState)?;
 			ensure!(
 				matches!(node_pub_key, NodePubKey::CDNPubKey(_)),
 				Error::<T>::ServingProhibited
@@ -595,7 +595,7 @@ pub mod pallet {
 			ensure!(!CDNs::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
 
 			// Only Storage node can perform storing (i.e. saving content)
-			let node_pub_key = <Providers<T>>::get(&stash).ok_or(Error::<T>::BadState)?;
+			let node_pub_key = <Providers<T>>::get(stash).ok_or(Error::<T>::BadState)?;
 			ensure!(
 				matches!(node_pub_key, NodePubKey::StoragePubKey(_)),
 				Error::<T>::StoringProhibited
