@@ -15,6 +15,7 @@
 #![recursion_limit = "256"]
 
 use ddc_primitives::{ClusterId, DdcEra};
+use ddc_traits::customer::CustomerCharger;
 use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
@@ -88,19 +89,55 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+
+		type CustomerCharger: CustomerCharger<Self>;
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		BillingReportInitialized { cluster_id: ClusterId, era: DdcEra },
-		ChargingStarted { cluster_id: ClusterId, era: DdcEra },
-		Charged { cluster_id: ClusterId, era: DdcEra, customer_id: T::AccountId, amount: u128 },
-		ChargingFinished { cluster_id: ClusterId, era: DdcEra },
-		RewardingStarted { cluster_id: ClusterId, era: DdcEra },
-		Rewarded { cluster_id: ClusterId, era: DdcEra, node_id: T::AccountId, amount: u128 },
-		RewardingFinished { cluster_id: ClusterId, era: DdcEra },
-		BillingReportFinalized { cluster_id: ClusterId, era: DdcEra },
+		BillingReportInitialized {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		ChargingStarted {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		Charged {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			customer_id: T::AccountId,
+			amount: u128,
+		},
+		ChargeFailed {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			customer_id: T::AccountId,
+			amount: u128,
+		},
+		ChargingFinished {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		RewardingStarted {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		Rewarded {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			node_provider_id: T::AccountId,
+			amount: u128,
+		},
+		RewardingFinished {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		BillingReportFinalized {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
 	}
 
 	#[pallet::error]
@@ -131,7 +168,7 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn dac_account)]
+	#[pallet::getter(fn authorised_caller)]
 	pub type DACAccount<T: Config> = StorageValue<_, T::AccountId>;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -139,7 +176,7 @@ pub mod pallet {
 	pub struct BillingReport<T: Config> {
 		state: State,
 		vault: T::AccountId,
-		dac_account: Option<T::AccountId>,
+		authorised_caller: Option<T::AccountId>,
 		total_charged_balance: u128,
 		total_distributed_balance: u128,
 		total_node_expected_reward: NodeReward,
@@ -157,7 +194,7 @@ pub mod pallet {
 			Self {
 				state: State::default(),
 				vault: T::PalletId::get().into_account_truncating(),
-				dac_account: Option::None,
+				authorised_caller: Option::None,
 				total_charged_balance: Zero::zero(),
 				total_distributed_balance: Zero::zero(),
 				total_node_expected_usage: NodeUsage::default(),
@@ -192,7 +229,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
@@ -215,7 +252,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
@@ -248,7 +285,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
@@ -278,15 +315,45 @@ pub mod pallet {
 				})()
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-				// todo: charge customer
 				let customer_id = payer.0;
 
-				updated_billing_report
-					.total_charged_balance
-					.checked_add(amount)
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
+				// todo: decouple AccountId from [u8; 32]
+				let vault_temp: Vec<u8> = vec![0; 32];
+				let customer_temp: Vec<u8> = vec![0; 32];
+				let mut customer_addr: [u8; 32] = [0; 32];
+				customer_addr.copy_from_slice(&customer_temp[0..32]);
+				let mut vault_addr: [u8; 32] = [0; 32];
+				vault_addr.copy_from_slice(&vault_temp[0..32]);
 
-				Self::deposit_event(Event::<T>::Charged { cluster_id, era, customer_id, amount });
+				match T::CustomerCharger::charge_content_owner(
+					customer_id.clone(),
+					updated_billing_report.vault.clone(),
+					amount,
+				) {
+					Ok(_) => {
+						updated_billing_report
+							.total_charged_balance
+							.checked_add(amount)
+							.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+						Self::deposit_event(Event::<T>::Charged {
+							cluster_id,
+							era,
+							customer_id,
+							amount,
+						});
+					},
+					Err(e) => {
+						// todo: save problematic charge
+						// todo: add logs
+						Self::deposit_event(Event::<T>::ChargeFailed {
+							cluster_id,
+							era,
+							customer_id,
+							amount,
+						});
+					},
+				}
 			}
 
 			updated_billing_report
@@ -307,7 +374,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
@@ -338,7 +405,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
@@ -376,7 +443,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
@@ -412,12 +479,12 @@ pub mod pallet {
 				})()
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-				let node_id = payee.0;
+				let node_provider_id = payee.0;
 				let charge: BalanceOf<T> = amount.saturated_into::<BalanceOf<T>>();
 
 				<T as pallet::Config>::Currency::transfer(
 					&updated_billing_report.vault,
-					&node_id,
+					&node_provider_id,
 					charge,
 					ExistenceRequirement::KeepAlive,
 				)?;
@@ -427,7 +494,12 @@ pub mod pallet {
 					.checked_add(amount)
 					.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-				Self::deposit_event(Event::<T>::Rewarded { cluster_id, era, node_id, amount });
+				Self::deposit_event(Event::<T>::Rewarded {
+					cluster_id,
+					era,
+					node_provider_id,
+					amount,
+				});
 			}
 
 			updated_billing_report
@@ -448,7 +520,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
@@ -481,7 +553,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
@@ -574,6 +646,8 @@ pub mod pallet {
 			bytes.extend_from_slice(&cluster_id[..]);
 			bytes.extend_from_slice(&era.encode());
 			let hash = blake2_128(&bytes);
+			// todo: assumes AccountId is 32 bytes, which is not ideal
+
 			// "modl" + "payouts_" + hash is 28 bytes, the T::AccountId is 32 bytes, so we should be
 			// safe from the truncation and possible collisions caused by it. The rest 4 bytes will
 			// be fulfilled with trailing zeros.

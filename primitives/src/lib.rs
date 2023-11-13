@@ -4,7 +4,6 @@ use codec::{Decode, Encode};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-
 use sp_core::hash::H160;
 use sp_runtime::{AccountId32, RuntimeDebug};
 
