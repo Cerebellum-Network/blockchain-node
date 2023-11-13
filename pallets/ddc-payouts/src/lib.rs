@@ -15,13 +15,13 @@
 #![recursion_limit = "256"]
 
 use ddc_primitives::{ClusterId, DdcEra};
-use ddc_traits::{cluster::ClusterVisitor, customer::CustomerCharger};
+use ddc_traits::{cluster::ClusterVisitor, customer::CustomerCharger as ICustomerCharger};
 use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	sp_runtime::SaturatedConversion,
 	traits::{Currency, ExistenceRequirement, LockableCurrency},
-	BoundedBTreeMap, BoundedBTreeSet,
+	BoundedBTreeSet,
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -98,7 +98,7 @@ pub mod pallet {
 
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 
-		type CustomerCharger: CustomerCharger<Self>;
+		type CustomerCharger: ICustomerCharger<Self>;
 		type ClusterVisitor: ClusterVisitor<Self>;
 	}
 
@@ -254,14 +254,18 @@ pub mod pallet {
 			);
 
 			ensure!(
-				ActiveBillingReports::<T>::try_get(cluster_id.clone(), era).is_ok() == false,
+				ActiveBillingReports::<T>::try_get(cluster_id, era).is_err(),
 				Error::<T>::NotExpectedState
 			);
 
-			let mut billing_report = BillingReport::default();
-			billing_report.vault = Self::sub_account_id(cluster_id.clone(), era);
+			let mut billing_report = BillingReport::<T> {
+				vault: Self::sub_account_id(cluster_id, era),
+				state: State::Initialized,
+				..Default::default()
+			};
+			billing_report.vault = Self::sub_account_id(cluster_id, era);
 			billing_report.state = State::Initialized;
-			ActiveBillingReports::<T>::insert(cluster_id.clone(), era, billing_report);
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::BillingReportInitialized { cluster_id, era });
 
@@ -286,14 +290,14 @@ pub mod pallet {
 				Error::<T>::BatchIndexOverflow
 			);
 
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::Initialized, Error::<T>::NotExpectedState);
 
 			billing_report.charging_max_batch_index = max_batch_index;
 			billing_report.state = State::ChargingCustomers;
-			ActiveBillingReports::<T>::insert(cluster_id.clone(), era, billing_report);
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::ChargingStarted { cluster_id, era });
 
@@ -314,7 +318,7 @@ pub mod pallet {
 				Error::<T>::Unauthorised
 			);
 
-			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::ChargingCustomers, Error::<T>::NotExpectedState);
@@ -327,7 +331,7 @@ pub mod pallet {
 				Error::<T>::BatchIndexAlreadyProcessed
 			);
 
-			let mut updated_billing_report = billing_report.clone();
+			let mut updated_billing_report = billing_report;
 			for payer in payers {
 				let customer_charge = get_customer_charge::<T>(cluster_id, &payer.1)?;
 				let total_customer_charge = (|| -> Option<u128> {
@@ -386,16 +390,10 @@ pub mod pallet {
 							amount: total_customer_charge,
 						});
 					},
-					Err(e) => {
-						let customer_debt = BillingReportDebt {
-							cluster_id,
-							era,
-							batch_index,
-							amount: total_customer_charge,
-						};
+					Err(_e) => {
 						let mut customer_dept =
 							DebtorCustomers::<T>::try_get(cluster_id, customer_id.clone())
-								.unwrap_or(Zero::zero());
+								.unwrap_or_else(|_| Zero::zero());
 
 						customer_dept = customer_dept
 							.checked_add(total_customer_charge)
@@ -438,7 +436,7 @@ pub mod pallet {
 				Error::<T>::Unauthorised
 			);
 
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::ChargingCustomers, Error::<T>::NotExpectedState);
@@ -448,7 +446,7 @@ pub mod pallet {
 			)?;
 
 			billing_report.state = State::CustomersCharged;
-			ActiveBillingReports::<T>::insert(cluster_id.clone(), era, billing_report);
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
 
@@ -474,7 +472,7 @@ pub mod pallet {
 				Error::<T>::BatchIndexOverflow
 			);
 
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::CustomersCharged, Error::<T>::NotExpectedState);
@@ -482,7 +480,7 @@ pub mod pallet {
 			billing_report.total_node_usage = total_node_usage;
 			billing_report.rewarding_max_batch_index = max_batch_index;
 			billing_report.state = State::RewardingProviders;
-			ActiveBillingReports::<T>::insert(cluster_id.clone(), era, billing_report);
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::RewardingStarted { cluster_id, era });
 
@@ -503,7 +501,7 @@ pub mod pallet {
 				Error::<T>::Unauthorised
 			);
 
-			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(
@@ -581,7 +579,7 @@ pub mod pallet {
 				Error::<T>::Unauthorised
 			);
 
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(
@@ -595,7 +593,7 @@ pub mod pallet {
 			)?;
 
 			billing_report.state = State::ProvidersRewarded;
-			ActiveBillingReports::<T>::insert(cluster_id.clone(), era, billing_report);
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::RewardingFinished { cluster_id, era });
 
@@ -614,7 +612,7 @@ pub mod pallet {
 				Error::<T>::Unauthorised
 			);
 
-			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::ProvidersRewarded, Error::<T>::NotExpectedState);
@@ -633,7 +631,7 @@ pub mod pallet {
 				Error::<T>::NotDistributedBalance
 			);
 
-			ActiveBillingReports::<T>::remove(cluster_id.clone(), era);
+			ActiveBillingReports::<T>::remove(cluster_id, era);
 			Self::deposit_event(Event::<T>::BillingReportFinalized { cluster_id, era });
 
 			Ok(())
@@ -651,16 +649,16 @@ pub mod pallet {
 			node_usage.transferred_bytes,
 			total_nodes_usage.transferred_bytes,
 		);
-		node_reward.transfer = (ratio * total_customer_charge.transfer) as u128;
+		node_reward.transfer = ratio * total_customer_charge.transfer;
 
 		ratio = Perbill::from_rational(node_usage.stored_bytes, total_nodes_usage.stored_bytes);
-		node_reward.storage = (ratio * total_customer_charge.storage) as u128;
+		node_reward.storage = ratio * total_customer_charge.storage;
 
 		ratio = Perbill::from_rational(node_usage.number_of_puts, total_nodes_usage.number_of_puts);
-		node_reward.puts = (ratio * total_customer_charge.puts) as u128;
+		node_reward.puts = ratio * total_customer_charge.puts;
 
 		ratio = Perbill::from_rational(node_usage.number_of_gets, total_nodes_usage.number_of_gets);
-		node_reward.gets = (ratio * total_customer_charge.gets) as u128;
+		node_reward.gets = ratio * total_customer_charge.gets;
 
 		Some(node_reward)
 	}
@@ -720,10 +718,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn account_id() -> T::AccountId {
-			T::PalletId::get().into_account_truncating()
-		}
-
 		fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
 			let mut bytes = Vec::new();
 			bytes.extend_from_slice(&cluster_id[..]);
