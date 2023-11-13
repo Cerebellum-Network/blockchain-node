@@ -183,11 +183,13 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn debtor_customers)]
-	pub type DebtorCustomers<T: Config> = StorageMap<
+	pub type DebtorCustomers<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
+		ClusterId,
+		Blake2_128Concat,
 		T::AccountId,
-		BoundedBTreeMap<BatchIndex, BillingReportDebt, MaxBatchesCount>,
+		u128,
 		ValueQuery,
 	>;
 
@@ -361,7 +363,7 @@ pub mod pallet {
 					.checked_add(customer_charge.gets)
 					.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-				let customer_id = payer.0;
+				let customer_id = payer.0.clone();
 				match T::CustomerCharger::charge_content_owner(
 					customer_id.clone(),
 					updated_billing_report.vault.clone(),
@@ -385,28 +387,24 @@ pub mod pallet {
 						});
 					},
 					Err(e) => {
-						// todo: save problematic charge
-						// todo: add logs
-						updated_billing_report
-							.charging_processed_batches
-							.try_insert(batch_index)
-							.map_err(|_| Error::<T>::BoundedVecOverflow)?;
+						let customer_debt = BillingReportDebt {
+							cluster_id,
+							era,
+							batch_index,
+							amount: total_customer_charge,
+						};
+						let mut customer_dept =
+							DebtorCustomers::<T>::try_get(cluster_id, customer_id.clone())
+								.unwrap_or(Zero::zero());
 
-						/* ---
-							DebtorCustomers<T: Config> = StorageMap<
-							_,
-						Blake2_128Concat,
-						T::AccountId,
-						BoundedBTreeMap<BatchIndex, BillingReportDebt, MaxBatchesCount>,
-						let mut debtor_customers = DebtorCustomers::<T>::try_get(cluster_id.clone(), era)
-							.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
-
-						ensure!(billing_report.state == State::Initialized, Error::<T>::NotExpectedState);
-
-						billing_report.charging_max_batch_index = max_batch_index;
-						billing_report.state = State::ChargingCustomers;
-						ActiveBillingReports::<T>::insert(cluster_id.clone(), era, billing_report);
-						--- */
+						customer_dept = customer_dept
+							.checked_add(total_customer_charge)
+							.ok_or(Error::<T>::ArithmeticOverflow)?;
+						DebtorCustomers::<T>::insert(
+							cluster_id,
+							customer_id.clone(),
+							customer_dept,
+						);
 
 						Self::deposit_event(Event::<T>::ChargeFailed {
 							cluster_id,
