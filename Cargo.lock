@@ -166,12 +166,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f52f63c5c1316a16a4b35eaac8b76a98248961a533f061684cb2a7cb0eafb6c6"
 
 [[package]]
-name = "array-bytes"
-version = "6.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b1c5a481ec30a5abd8dfbd94ab5cf1bb4e9a66be7f1b3b322f2f1170c200fd"
-
-[[package]]
 name = "arrayref"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -745,7 +739,6 @@ version = "4.8.1"
 dependencies = [
  "cere-cli",
  "sc-cli",
- "ss58-registry",
  "substrate-build-script-utils",
 ]
 
@@ -771,7 +764,6 @@ dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
  "frame-benchmarking",
- "frame-benchmarking-cli",
  "frame-system",
  "frame-system-rpc-runtime-api",
  "node-primitives",
@@ -787,10 +779,8 @@ dependencies = [
  "sp-blockchain",
  "sp-consensus",
  "sp-consensus-babe",
- "sp-core",
  "sp-finality-grandpa",
  "sp-inherents",
- "sp-keyring",
  "sp-offchain",
  "sp-runtime",
  "sp-session",
@@ -835,7 +825,6 @@ dependencies = [
  "pallet-ddc-nodes",
  "pallet-ddc-payouts",
  "pallet-ddc-staking",
- "pallet-ddc-validator",
  "pallet-democracy",
  "pallet-election-provider-multi-phase",
  "pallet-election-provider-support-benchmarking",
@@ -868,7 +857,6 @@ dependencies = [
  "pallet-tips",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
- "pallet-transaction-storage",
  "pallet-treasury",
  "pallet-utility",
  "pallet-vesting",
@@ -897,7 +885,6 @@ name = "cere-dev-runtime-constants"
 version = "4.8.1"
 dependencies = [
  "node-primitives",
- "sp-runtime",
 ]
 
 [[package]]
@@ -993,7 +980,6 @@ dependencies = [
  "pallet-tips",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
- "pallet-transaction-storage",
  "pallet-treasury",
  "pallet-utility",
  "pallet-vesting",
@@ -1032,7 +1018,6 @@ name = "cere-runtime-constants"
 version = "4.8.1"
 dependencies = [
  "node-primitives",
- "sp-runtime",
 ]
 
 [[package]]
@@ -1044,17 +1029,14 @@ dependencies = [
  "cere-dev-runtime-constants",
  "cere-rpc",
  "cere-runtime",
- "cere-runtime-constants",
  "futures",
  "jsonrpsee",
  "node-primitives",
  "pallet-im-online",
- "parity-scale-codec",
  "rand 0.8.5",
  "sc-authority-discovery",
  "sc-basic-authorship",
  "sc-chain-spec",
- "sc-cli",
  "sc-client-api",
  "sc-consensus",
  "sc-consensus-babe",
@@ -1075,7 +1057,6 @@ dependencies = [
  "sp-authority-discovery",
  "sp-authorship",
  "sp-blockchain",
- "sp-consensus",
  "sp-consensus-babe",
  "sp-core",
  "sp-finality-grandpa",
@@ -1635,6 +1616,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ddc-traits"
+version = "0.1.0"
+dependencies = [
+ "ddc-primitives",
+ "frame-system",
+]
+
+[[package]]
 name = "der"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2150,7 +2139,7 @@ version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
  "Inflector",
- "array-bytes 4.2.0",
+ "array-bytes",
  "chrono",
  "clap",
  "comfy-table",
@@ -4022,24 +4011,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da2479e8c062e40bf0066ffa0bc823de0a9368974af99c9f6df941d2c231e03f"
 
 [[package]]
-name = "lite-json"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd0e787ffe1153141a0f6f6d759fdf1cc34b1226e088444523812fd412a5cca2"
-dependencies = [
- "lite-parser",
-]
-
-[[package]]
-name = "lite-parser"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3d5f9dc37c52d889a21fd701983d02bb6a84f852c5140a6c80ef4557f7dc29e"
-dependencies = [
- "paste",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4754,16 +4725,13 @@ dependencies = [
 name = "pallet-chainbridge"
 version = "4.8.1"
 dependencies = [
- "frame-benchmarking",
  "frame-support",
  "frame-system",
- "lite-json",
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
  "sp-io",
- "sp-keystore",
  "sp-runtime",
  "sp-std",
 ]
@@ -4892,19 +4860,15 @@ name = "pallet-ddc-clusters"
 version = "4.8.1"
 dependencies = [
  "ddc-primitives",
- "frame-benchmarking",
+ "ddc-traits",
  "frame-support",
  "frame-system",
- "log",
  "pallet-contracts",
  "pallet-ddc-nodes",
- "pallet-ddc-staking",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
- "sp-io",
  "sp-runtime",
- "sp-staking",
  "sp-std",
  "sp-tracing",
  "substrate-test-utils",
@@ -4915,16 +4879,13 @@ name = "pallet-ddc-customers"
 version = "0.1.0"
 dependencies = [
  "ddc-primitives",
+ "ddc-traits",
  "frame-support",
  "frame-system",
  "log",
- "pallet-ddc-clusters",
- "pallet-ddc-staking",
  "parity-scale-codec",
  "scale-info",
- "sp-io",
  "sp-runtime",
- "sp-staking",
  "sp-std",
  "substrate-test-utils",
 ]
@@ -4938,7 +4899,6 @@ dependencies = [
  "frame-system",
  "hex",
  "hex-literal",
- "lite-json",
  "pallet-balances",
  "pallet-contracts",
  "pallet-randomness-collective-flip",
@@ -4946,7 +4906,6 @@ dependencies = [
  "parity-scale-codec",
  "pretty_assertions",
  "scale-info",
- "serde",
  "serde_json 1.0.44",
  "sp-core",
  "sp-io",
@@ -4960,16 +4919,13 @@ name = "pallet-ddc-nodes"
 version = "4.8.1"
 dependencies = [
  "ddc-primitives",
- "frame-benchmarking",
+ "ddc-traits",
  "frame-support",
  "frame-system",
- "log",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
- "sp-io",
  "sp-runtime",
- "sp-staking",
  "sp-std",
  "sp-tracing",
  "substrate-test-utils",
@@ -5000,10 +4956,10 @@ name = "pallet-ddc-staking"
 version = "4.8.1"
 dependencies = [
  "ddc-primitives",
+ "ddc-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "log",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -5011,46 +4967,9 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
- "sp-staking",
  "sp-std",
  "sp-tracing",
  "substrate-test-utils",
-]
-
-[[package]]
-name = "pallet-ddc-validator"
-version = "0.1.0"
-dependencies = [
- "alt_serde",
- "array-bytes 6.1.0",
- "base64 0.21.5",
- "ddc-primitives",
- "frame-election-provider-support",
- "frame-support",
- "frame-system",
- "lite-json",
- "log",
- "pallet-balances",
- "pallet-contracts",
- "pallet-ddc-clusters",
- "pallet-ddc-customers",
- "pallet-ddc-nodes",
- "pallet-ddc-staking",
- "pallet-randomness-collective-flip",
- "pallet-session",
- "pallet-staking",
- "pallet-staking-reward-curve",
- "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "serde_json 1.0.44",
- "sp-core",
- "sp-io",
- "sp-keystore",
- "sp-runtime",
- "sp-staking",
- "sp-std",
 ]
 
 [[package]]
@@ -5128,7 +5047,6 @@ dependencies = [
 name = "pallet-erc20"
 version = "4.8.1"
 dependencies = [
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-balances",
@@ -5136,7 +5054,6 @@ dependencies = [
  "pallet-erc721",
  "parity-scale-codec",
  "scale-info",
- "serde",
  "sp-arithmetic",
  "sp-core",
  "sp-io",
@@ -5148,14 +5065,12 @@ dependencies = [
 name = "pallet-erc721"
 version = "4.8.1"
 dependencies = [
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-balances",
  "pallet-chainbridge",
  "parity-scale-codec",
  "scale-info",
- "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -5614,24 +5529,6 @@ dependencies = [
  "parity-scale-codec",
  "sp-api",
  "sp-runtime",
-]
-
-[[package]]
-name = "pallet-transaction-storage"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
-dependencies = [
- "frame-support",
- "frame-system",
- "log",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "sp-inherents",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "sp-transaction-storage-proof",
 ]
 
 [[package]]
@@ -6955,7 +6852,7 @@ name = "sc-cli"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "chrono",
  "clap",
  "fdlimit",
@@ -7263,7 +7160,7 @@ version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
  "ahash",
- "array-bytes 4.2.0",
+ "array-bytes",
  "async-trait",
  "dyn-clone",
  "finality-grandpa",
@@ -7341,7 +7238,7 @@ name = "sc-keystore"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "async-trait",
  "parking_lot 0.12.1",
  "serde_json 1.0.107",
@@ -7356,7 +7253,7 @@ name = "sc-network"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "async-trait",
  "asynchronous-codec",
  "bitflags 1.3.2",
@@ -7467,7 +7364,7 @@ name = "sc-network-light"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "futures",
  "libp2p",
  "log",
@@ -7488,7 +7385,7 @@ name = "sc-network-sync"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "fork-tree",
  "futures",
  "libp2p",
@@ -7516,7 +7413,7 @@ name = "sc-network-transactions"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "futures",
  "hex",
  "libp2p",
@@ -7535,7 +7432,7 @@ name = "sc-offchain"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "bytes",
  "fnv",
  "futures",
@@ -8469,7 +8366,7 @@ name = "sp-core"
 version = "6.0.0"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.30#a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d"
 dependencies = [
- "array-bytes 4.2.0",
+ "array-bytes",
  "base58",
  "bitflags 1.3.2",
  "blake2",
