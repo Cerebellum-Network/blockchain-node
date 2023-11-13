@@ -303,6 +303,10 @@ pub mod pallet {
 		NoClusterGovParams,
 		/// Conditions for fast chill are not met, try the regular `chill` from
 		FastChillProhibited,
+		/// Serving operation is called for non-CDN node
+		ServingProhibited,
+		/// Storing operation is called for non-Storage node
+		StoringProhibited,
 	}
 
 	#[pallet::call]
@@ -544,6 +548,13 @@ pub mod pallet {
 			// Can't participate in CDN if already participating in storage network.
 			ensure!(!Storages::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
 
+			// Only CDN node can perform serving (i.e. streaming content)
+			let node_pub_key = <Providers<T>>::get(&stash).ok_or(Error::<T>::BadState)?;
+			ensure!(
+				matches!(node_pub_key, NodePubKey::CDNPubKey(_)),
+				Error::<T>::ServingProhibited
+			);
+
 			// Is it an attempt to cancel a previous "chill"?
 			if let Some(current_cluster) = Self::cdns(stash) {
 				// Switching the cluster is prohibited. The user should chill first.
@@ -582,6 +593,13 @@ pub mod pallet {
 
 			// Can't participate in storage network if already participating in CDN.
 			ensure!(!CDNs::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
+
+			// Only Storage node can perform storing (i.e. saving content)
+			let node_pub_key = <Providers<T>>::get(&stash).ok_or(Error::<T>::BadState)?;
+			ensure!(
+				matches!(node_pub_key, NodePubKey::StoragePubKey(_)),
+				Error::<T>::StoringProhibited
+			);
 
 			// Is it an attempt to cancel a previous "chill"?
 			if let Some(current_cluster) = Self::storages(stash) {
