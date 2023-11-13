@@ -1655,6 +1655,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "sp-core",
+ "sp-runtime",
  "sp-staking",
  "sp-std",
 ]
@@ -5004,6 +5005,7 @@ name = "pallet-ddc-payouts"
 version = "4.8.1"
 dependencies = [
  "ddc-primitives",
+ "ddc-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
