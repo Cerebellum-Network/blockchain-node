@@ -130,7 +130,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48012,
+	spec_version: 48013,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 5,
@@ -406,7 +406,7 @@ impl pallet_indices::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = 1 * DOLLARS;
+	pub const ExistentialDeposit: Balance = DOLLARS;
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
@@ -566,9 +566,9 @@ parameter_types! {
 	pub const UnsignedPhase: u32 = EPOCH_DURATION_IN_BLOCKS / 4;
 
 	// signed config
-	pub const SignedRewardBase: Balance = 1 * DOLLARS;
-	pub const SignedDepositBase: Balance = 1 * DOLLARS;
-	pub const SignedDepositByte: Balance = 1 * CENTS;
+	pub const SignedRewardBase: Balance = DOLLARS;
+	pub const SignedDepositBase: Balance = DOLLARS;
+	pub const SignedDepositByte: Balance = CENTS;
 
 	pub BetterUnsignedThreshold: Perbill = Perbill::from_rational(1u32, 10_000);
 
@@ -723,11 +723,11 @@ impl pallet_bags_list::Config<VoterBagsListInstance> for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 1 * 24 * 60 * MINUTES;
-	pub const VotingPeriod: BlockNumber = 1 * 24 * 60 * MINUTES;
+	pub const LaunchPeriod: BlockNumber = 24 * 60 * MINUTES;
+	pub const VotingPeriod: BlockNumber = 24 * 60 * MINUTES;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * 60 * MINUTES;
 	pub const MinimumDeposit: Balance = 50_000 * DOLLARS;
-	pub const EnactmentPeriod: BlockNumber = 1 * 24 * 60 * MINUTES;
+	pub const EnactmentPeriod: BlockNumber = 24 * 60 * MINUTES;
 	pub const CooloffPeriod: BlockNumber = 7 * 24 * 60 * MINUTES;
 	pub const MaxProposals: u32 = 100;
 }
@@ -805,7 +805,7 @@ parameter_types! {
 	pub const CandidacyBond: Balance = 5_000_000 * DOLLARS;
 	// 1 storage item created, key size is 32 bytes, value size is 16+16.
 	pub const VotingBondBase: Balance = deposit(1, 64);
-	pub const VotingBondFactor: Balance = 1 * DOLLARS;
+	pub const VotingBondFactor: Balance = DOLLARS;
 	pub const TermDuration: BlockNumber = 182 * DAYS;
 	pub const DesiredMembers: u32 = 13;
 	pub const DesiredRunnersUp: u32 = 20;
@@ -877,12 +877,12 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 50_000 * DOLLARS;
-	pub const SpendPeriod: BlockNumber = 1 * DAYS;
+	pub const SpendPeriod: BlockNumber = DAYS;
 	pub const Burn: Permill = Permill::from_percent(0);
-	pub const TipCountdown: BlockNumber = 1 * DAYS;
+	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
 	pub const TipReportDepositBase: Balance = 50_000 * DOLLARS;
-	pub const DataDepositPerByte: Balance = 1 * DOLLARS;
+	pub const DataDepositPerByte: Balance = DOLLARS;
 	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
 	pub const MaximumReasonLength: u32 = 16384;
 	pub const MaxApprovals: u32 = 100;
@@ -918,7 +918,7 @@ parameter_types! {
 	pub const BountyValueMinimum: Balance = 10 * DOLLARS;
 	pub const BountyDepositBase: Balance = 50_000 * DOLLARS;
 	pub const CuratorDepositMultiplier: Permill = Permill::from_percent(50);
-	pub const CuratorDepositMin: Balance = 1 * DOLLARS;
+	pub const CuratorDepositMin: Balance = DOLLARS;
 	pub const CuratorDepositMax: Balance = 100 * DOLLARS;
 	pub const BountyDepositPayoutDelay: BlockNumber = 8 * DAYS;
 	pub const BountyUpdatePeriod: BlockNumber = 90 * DAYS;
@@ -940,7 +940,7 @@ impl pallet_bounties::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ChildBountyValueMinimum: Balance = 1 * DOLLARS;
+	pub const ChildBountyValueMinimum: Balance = DOLLARS;
 }
 
 impl pallet_child_bounties::Config for Runtime {
@@ -1193,7 +1193,7 @@ impl pallet_society::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = 1 * DOLLARS;
+	pub const MinVestedTransfer: Balance = DOLLARS;
 }
 
 impl pallet_vesting::Config for Runtime {
@@ -1321,6 +1321,7 @@ impl pallet_ddc_staking::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1911,8 +1912,8 @@ mod tests {
 	fn call_size() {
 		let size = core::mem::size_of::<RuntimeCall>();
 		assert!(
-			size <= 208,
-			"size of RuntimeCall {} is more than 208 bytes: some calls have too big arguments, use Box to reduce the
+			size <= 256,
+			"size of RuntimeCall {} is more than 256 bytes: some calls have too big arguments, use Box to reduce the
 			size of RuntimeCall.
 			If the limit is too strong, maybe consider increase the limit to 300.",
 			size,

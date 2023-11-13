@@ -4,7 +4,11 @@
 
 use crate::{self as pallet_ddc_staking, *};
 use ddc_primitives::{CDNNodePubKey, StorageNodePubKey};
-use ddc_traits::cluster::{ClusterVisitor, ClusterVisitorError};
+use ddc_traits::{
+	cluster::{ClusterVisitor, ClusterVisitorError},
+	node::{NodeVisitor, NodeVisitorError},
+};
+
 use frame_support::{
 	construct_runtime,
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
@@ -96,6 +100,7 @@ impl crate::pallet::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type ClusterVisitor = TestClusterVisitor;
+	type NodeVisitor = TestNodeVisitor;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
@@ -127,6 +132,14 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		Ok(T::BlockNumber::from(10u32))
 	}
 }
+
+pub struct TestNodeVisitor;
+impl<T: Config> NodeVisitor<T> for TestNodeVisitor {
+	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, NodeVisitorError> {
+		Ok(None)
+	}
+}
+
 pub struct ExtBuilder {
 	has_cdns: bool,
 	has_storages: bool,
@@ -251,7 +264,7 @@ impl ExtBuilder {
 
 		TestExternalities::new(storage)
 	}
-	pub fn build_and_execute(self, test: impl FnOnce() -> ()) {
+	pub fn build_and_execute(self, test: impl FnOnce()) {
 		sp_tracing::try_init_simple();
 		let mut ext = self.build();
 		ext.execute_with(test);

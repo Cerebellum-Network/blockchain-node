@@ -3,47 +3,44 @@ name = "pallet-erc20"
 version = "4.8.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
-license = "Unlicense"
 homepage = "https://substrate.dev"
+license = "Unlicense"
+readme = "README.md"
 repository = "https://github.com/paritytech/substrate/"
 description = "FRAME example pallet"
-readme = "README.md"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-serde = { version = "1.0.136", optional = true }
 codec = { package = "parity-scale-codec", version = "3.1.5", default-features = false }
 frame-support = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 pallet-balances = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sp-runtime = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sp-std = { version = "4.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sp-io = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sp-core = { version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", default-features = false }
-sp-arithmetic = { version = "5.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", default-features = false }
 pallet-chainbridge = { version = "4.2.0", default-features = false, path = "../chainbridge" }
 pallet-erc721 = { version = "4.2.0", default-features = false, path = "../erc721" }
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
-
-frame-benchmarking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", optional = true }
+sp-arithmetic = { version = "5.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", default-features = false }
+sp-core = { version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", default-features = false }
+sp-io = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
+sp-runtime = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
+sp-std = { version = "4.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 
 [features]
 default = ["std"]
 std = [
-	"serde",
-	"codec/std",
-	"sp-runtime/std",
-	"frame-benchmarking/std",
-	"frame-support/std",
-	"frame-system/std",
-	"pallet-balances/std",
-	"sp-io/std",
-	"sp-std/std",
-	"sp-core/std",
-	"sp-arithmetic/std",
-	"pallet-chainbridge/std",
-	"pallet-erc721/std"
+  "codec/std",
+  "sp-runtime/std",
+  "frame-support/std",
+  "frame-system/std",
+  "pallet-balances/std",
+  "sp-io/std",
+  "sp-std/std",
+  "sp-core/std",
+  "sp-arithmetic/std",
+  "pallet-chainbridge/std",
+  "pallet-erc721/std",
 ]
-runtime-benchmarks = ["frame-benchmarking"]
+
+[package.metadata.cargo-machete]
+ignored = ["scale-info"]

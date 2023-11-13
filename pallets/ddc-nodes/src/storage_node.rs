@@ -1,4 +1,4 @@
-use crate::node::{Node, NodeError, NodeParams, NodeProps, NodePropsRef, NodePubKeyRef, NodeTrait};
+use crate::node::{NodeError, NodeParams, NodeProps, NodeTrait};
 use codec::{Decode, Encode};
 use ddc_primitives::{ClusterId, NodePubKey, NodeType, StorageNodePubKey};
 use frame_support::{parameter_types, BoundedVec};
@@ -36,15 +36,44 @@ pub struct StorageNodeParams {
 	pub p2p_port: u16,
 }
 
+impl<T: frame_system::Config> StorageNode<T> {
+	pub fn new(
+		node_pub_key: NodePubKey,
+		provider_id: T::AccountId,
+		node_params: NodeParams,
+	) -> Result<Self, NodeError> {
+		match node_pub_key {
+			NodePubKey::StoragePubKey(pub_key) => match node_params {
+				NodeParams::StorageParams(node_params) => Ok(StorageNode::<T> {
+					provider_id,
+					pub_key,
+					cluster_id: None,
+					props: StorageNodeProps {
+						host: match node_params.host.try_into() {
+							Ok(vec) => vec,
+							Err(_) => return Err(NodeError::StorageHostLenExceedsLimit),
+						},
+						http_port: node_params.http_port,
+						grpc_port: node_params.grpc_port,
+						p2p_port: node_params.p2p_port,
+					},
+				}),
+				_ => Err(NodeError::InvalidStorageNodeParams),
+			},
+			_ => Err(NodeError::InvalidStorageNodePubKey),
+		}
+	}
+}
+
 impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
-	fn get_pub_key<'a>(&'a self) -> NodePubKeyRef<'a> {
-		NodePubKeyRef::StoragePubKeyRef(&self.pub_key)
+	fn get_pub_key(&self) -> NodePubKey {
+		NodePubKey::StoragePubKey(self.pub_key.clone())
 	}
 	fn get_provider_id(&self) -> &T::AccountId {
 		&self.provider_id
 	}
-	fn get_props<'a>(&'a self) -> NodePropsRef<'a> {
-		NodePropsRef::StoragePropsRef(&self.props)
+	fn get_props(&self) -> NodeProps {
+		NodeProps::StorageProps(self.props.clone())
 	}
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError> {
 		self.props = match props {
@@ -76,31 +105,5 @@ impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 	}
 	fn get_type(&self) -> NodeType {
 		NodeType::Storage
-	}
-	fn new(
-		node_pub_key: NodePubKey,
-		provider_id: T::AccountId,
-		node_params: NodeParams,
-	) -> Result<Node<T>, NodeError> {
-		match node_pub_key {
-			NodePubKey::StoragePubKey(pub_key) => match node_params {
-				NodeParams::StorageParams(node_params) => Ok(Node::Storage(StorageNode::<T> {
-					provider_id,
-					pub_key,
-					cluster_id: None,
-					props: StorageNodeProps {
-						host: match node_params.host.try_into() {
-							Ok(vec) => vec,
-							Err(_) => return Err(NodeError::StorageHostLenExceedsLimit),
-						},
-						http_port: node_params.http_port,
-						grpc_port: node_params.grpc_port,
-						p2p_port: node_params.p2p_port,
-					},
-				})),
-				_ => Err(NodeError::InvalidStorageNodeParams),
-			},
-			_ => Err(NodeError::InvalidStorageNodePubKey),
-		}
 	}
 }
