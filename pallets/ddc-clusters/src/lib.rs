@@ -19,7 +19,7 @@ use crate::{
 	cluster::{Cluster, ClusterError, ClusterGovParams, ClusterParams},
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
 };
-use ddc_primitives::{ClusterId, NodePubKey, NodeType};
+use ddc_primitives::{ClusterId, ClusterPricingParams, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
 	staking::{StakingVisitor, StakingVisitorError},
@@ -270,6 +270,14 @@ pub mod pallet {
 					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
 				NodeType::CDN => Ok(cluster_gov_params.cdn_bond_size.saturated_into::<u128>()),
 			}
+		}
+
+		fn get_pricing_params(
+			cluster_id: &ClusterId,
+		) -> Result<ClusterPricingParams, ClusterVisitorError> {
+			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+			Ok(cluster_gov_params.pricing)
 		}
 
 		fn get_chill_delay(
