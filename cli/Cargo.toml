@@ -13,15 +13,15 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 clap = { version = "4.0.9", features = ["derive"], optional = true }
+frame-benchmarking-cli = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.31" }
 sc-cli = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.31" }
 sc-service = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.31" }
-frame-benchmarking-cli = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.31" }
-try-runtime-cli = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", optional = true , branch = "polkadot-v0.9.31" }
+try-runtime-cli = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.31" }
 url = "2.4.1"
 
 # Local
-cere-service = { path = "../node/service", default-features = false, optional = true }
 cere-client = { path = "../node/client", optional = true }
+cere-service = { path = "../node/service", default-features = false, optional = true }
 
 [build-dependencies]
 substrate-build-script-utils = { version = "3.0.0", git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
@@ -29,12 +29,12 @@ substrate-build-script-utils = { version = "3.0.0", git = "https://github.com/pa
 [features]
 default = ["cli", "cere-native"]
 cli = [
-	"clap",
-	"sc-cli",
-	"sc-service",
-	"frame-benchmarking-cli",
-	"try-runtime-cli",
-	"cere-client",
+  "clap",
+  "sc-cli",
+  "sc-service",
+  "frame-benchmarking-cli",
+  "try-runtime-cli",
+  "cere-client",
 ]
 runtime-benchmarks = ["cere-service/runtime-benchmarks"]
 try-runtime = ["cere-service/try-runtime"]
