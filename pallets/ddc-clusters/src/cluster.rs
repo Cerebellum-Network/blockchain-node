@@ -1,6 +1,6 @@
 use crate::pallet::Error;
 use codec::{Decode, Encode};
-use ddc_primitives::ClusterId;
+use ddc_primitives::{ClusterId, ClusterPricingParams};
 use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
 use sp_runtime::Perbill;
@@ -41,10 +41,7 @@ pub struct ClusterGovParams<Balance, BlockNumber> {
 	pub storage_bond_size: Balance,
 	pub storage_chill_delay: BlockNumber,
 	pub storage_unbonding_delay: BlockNumber,
-	pub unit_per_mb_stored: u128,
-	pub unit_per_mb_streamed: u128,
-	pub unit_per_put_request: u128,
-	pub unit_per_get_request: u128,
+	pub pricing: ClusterPricingParams,
 }
 
 impl<AccountId> Cluster<AccountId> {

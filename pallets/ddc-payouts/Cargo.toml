@@ -17,6 +17,7 @@ sp-runtime = { version = "6.0.0", default-features = false, git = "https://githu
 sp-staking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-std = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-core = { version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30", default-features = false }
+byte-unit = { version = "4.0.19", default-features = false, features = ["u128"]  }
 
 [dev-dependencies]
 sp-core = { version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
@@ -25,17 +26,5 @@ substrate-test-utils = { version = "4.0.0-dev", git = "https://github.com/parity
 
 [features]
 default = ["std"]
-std = [
-  "codec/std",
-  "ddc-primitives/std",
-  "frame-support/std",
-  "frame-system/std",
-  "frame-benchmarking/std",
-  "scale-info/std",
-  "sp-io/std",
-  "sp-runtime/std",
-  "sp-staking/std",
-  "sp-std/std",
-  "sp-core/std",
-]
+std = ["codec/std", "ddc-primitives/std", "frame-support/std", "frame-system/std", "frame-benchmarking/std", "scale-info/std", "sp-io/std", "sp-runtime/std", "sp-staking/std", "sp-std/std", "sp-core/std"]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]

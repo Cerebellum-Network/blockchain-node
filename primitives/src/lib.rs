@@ -11,6 +11,13 @@ pub type ClusterId = H160;
 pub type DdcEra = u32;
 pub type BucketId = u64;
 
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct ClusterPricingParams {
+	pub unit_per_mb_stored: u128,
+	pub unit_per_mb_streamed: u128,
+	pub unit_per_put_request: u128,
+	pub unit_per_get_request: u128,
+}
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodePubKey {
