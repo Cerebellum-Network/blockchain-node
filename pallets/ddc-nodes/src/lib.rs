@@ -15,6 +15,7 @@
 #![recursion_limit = "256"]
 
 use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey, StorageNodePubKey};
+use ddc_traits::node::{NodeVisitor, NodeVisitorError};
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 use sp_std::prelude::*;
@@ -83,8 +84,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let node = Node::<T>::new(node_pub_key.clone(), caller_id, node_params)
-				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
-			Self::create(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+				.map_err(Into::<Error<T>>::into)?;
+			Self::create(node).map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::NodeCreated { node_pub_key });
 			Ok(())
 		}
@@ -92,12 +93,10 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn delete_node(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let node = Self::get(node_pub_key.clone())
-				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+			let node = Self::get(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAssignedToCluster);
-			Self::delete(node_pub_key.clone())
-				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+			Self::delete(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::NodeDeleted { node_pub_key });
 			Ok(())
 		}
@@ -109,12 +108,10 @@ pub mod pallet {
 			node_params: NodeParams,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let mut node = Self::get(node_pub_key.clone())
-				.map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+			let mut node = Self::get(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
-			node.set_params(node_params)
-				.map_err(|e| Into::<Error<T>>::into(NodeError::from(e)))?;
-			Self::update(node).map_err(|e| Into::<Error<T>>::into(NodeRepositoryError::from(e)))?;
+			node.set_params(node_params).map_err(Into::<Error<T>>::into)?;
+			Self::update(node).map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::NodeParamsChanged { node_pub_key });
 			Ok(())
 		}
@@ -207,6 +204,16 @@ pub mod pallet {
 					Ok(())
 				},
 			}
+		}
+	}
+
+	impl<T: Config> NodeVisitor<T> for Pallet<T> {
+		fn get_cluster_id(
+			node_pub_key: &NodePubKey,
+		) -> Result<Option<ClusterId>, NodeVisitorError> {
+			let node =
+				Self::get(node_pub_key.clone()).map_err(|_| NodeVisitorError::NodeDoesNotExist)?;
+			Ok(*node.get_cluster_id())
 		}
 	}
 }
