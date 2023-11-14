@@ -173,14 +173,14 @@ pub mod pallet {
 	pub type Ledger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>, T>>;
 
-	/// The map of (wannabe) CDN participants stash keys to the DDC cluster ID they wish to
+	/// The map of (wannable) CDN participants stash keys to the DDC cluster ID they wish to
 	/// participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn cdns)]
 	pub type CDNs<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
-	/// The map of (wannabe) storage network participants stash keys to the DDC cluster ID they wish
-	/// to participate into.
+	/// The map of (wannable) storage network participants stash keys to the DDC cluster ID they
+	/// wish to participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn storages)]
 	pub type Storages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
@@ -270,6 +270,9 @@ pub mod pallet {
 		/// An account has declared desire to stop participating in CDN or storage network soon.
 		/// \[stash, cluster, block\]
 		ChillSoon(T::AccountId, ClusterId, T::BlockNumber),
+		/// An account that started participating as either a storage network or CDN participant.
+		/// \[stash\]
+		Activated(T::AccountId),
 	}
 
 	#[pallet::error]
@@ -564,7 +567,9 @@ pub mod pallet {
 				return Ok(())
 			}
 
-			Self::do_add_cdn(stash, cluster_id);
+			Self::do_add_cdn(&stash, cluster_id);
+			Self::deposit_event(Event::<T>::Activated(stash.clone()));
+
 			Ok(())
 		}
 
@@ -610,7 +615,8 @@ pub mod pallet {
 				return Ok(())
 			}
 
-			Self::do_add_storage(stash, cluster_id);
+			Self::do_add_storage(&stash, cluster_id);
+			Self::deposit_event(Event::<T>::Activated(stash.clone()));
 
 			Ok(())
 		}
