@@ -3,21 +3,21 @@ default_command = "./target/release/cere"
 default_args = ["--enable-ddc-validation --dac-url {{DAC_URL}}"]
 chain = "local"
 
-  [[relaychain.nodes]]
-  name = "alice"
+[[relaychain.nodes]]
+name = "alice"
 
-  [[relaychain.nodes]]
-  name = "bob"
+[[relaychain.nodes]]
+name = "bob"
 
-  [[relaychain.nodes]]
-  name = "charlie"
+[[relaychain.nodes]]
+name = "charlie"
 
-  [[relaychain.nodes]]
-  name = "dave"
+[[relaychain.nodes]]
+name = "dave"
 
-  [[relaychain.nodes]]
-  name = "eve"
+[[relaychain.nodes]]
+name = "eve"
 
-  [[relaychain.nodes]]
-  name = "ferdie"
-  validator = false
+[[relaychain.nodes]]
+name = "ferdie"
+validator = false
