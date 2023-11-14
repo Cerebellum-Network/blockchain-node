@@ -148,8 +148,8 @@ fn add_and_delete_node_works() {
 		// Node created
 		assert_ok!(DdcNodes::create_node(
 			RuntimeOrigin::signed(AccountId::from([1; 32])),
-			NodePubKey::CDNPubKey(node_pub_key.clone()),
-			NodeParams::CDNParams(cdn_node_params.clone())
+			NodePubKey::CDNPubKey(node_pub_key),
+			NodeParams::CDNParams(cdn_node_params)
 		));
 
 		// Node doesn't exist
@@ -225,7 +225,7 @@ fn add_and_delete_node_works() {
 
 		fn encode_constructor() -> Vec<u8> {
 			let mut call_data = CTOR_SELECTOR.to_vec();
-			let x = 0 as u128;
+			let x = 0_u128;
 			for _ in 0..9 {
 				x.encode_to(&mut call_data);
 			}
@@ -252,13 +252,13 @@ fn add_and_delete_node_works() {
 				GAS_LIMIT,
 				None,
 				wasm.to_vec(),
-				contract_args.clone(),
+				contract_args,
 				vec![],
 			)
 			.unwrap();
 
 			// Configure worker with the contract address.
-			let contract_id = Contracts::contract_address(&alice, &wasm_hash, &vec![]);
+			let contract_id = Contracts::contract_address(&alice, &wasm_hash, &[]);
 
 			pub const ADD_DDC_NODE_SELECTOR: [u8; 4] = hex!("7a04093d");
 			let node_pub_key = NodePubKey::CDNPubKey(AccountId::from([4; 32]));
@@ -271,7 +271,7 @@ fn add_and_delete_node_works() {
 			};
 
 			let results = Contracts::call(
-				RuntimeOrigin::signed(alice.clone()),
+				RuntimeOrigin::signed(alice),
 				contract_id.clone(),
 				0,
 				Weight::from_ref_time(1_000_000_000_000),

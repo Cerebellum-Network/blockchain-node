@@ -117,7 +117,7 @@ fn set_node_params_works() {
 			DdcNodes::set_node_params(
 				RuntimeOrigin::signed(2),
 				NodePubKey::CDNPubKey(node_pub_key.clone()),
-				NodeParams::CDNParams(cdn_node_params.clone())
+				NodeParams::CDNParams(cdn_node_params)
 			),
 			Error::<Test>::OnlyNodeProvider
 		);
@@ -156,7 +156,7 @@ fn set_delete_node_works() {
 		assert_ok!(DdcNodes::create_node(
 			RuntimeOrigin::signed(1),
 			NodePubKey::CDNPubKey(node_pub_key.clone()),
-			NodeParams::CDNParams(cdn_node_params.clone())
+			NodeParams::CDNParams(cdn_node_params)
 		));
 
 		// Only node provider can delete
