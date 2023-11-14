@@ -173,13 +173,13 @@ pub mod pallet {
 	pub type Ledger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>, T>>;
 
-	/// The map of (wannable) CDN participants stash keys to the DDC cluster ID they wish to
+	/// The map of (wannabe) CDN nodes participants stash keys to the DDC cluster ID they wish to
 	/// participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn cdns)]
 	pub type CDNs<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
-	/// The map of (wannable) storage network participants stash keys to the DDC cluster ID they
+	/// The map of (wannabe) Storage nodes participants stash keys to the DDC cluster ID they
 	/// wish to participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn storages)]
