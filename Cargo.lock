@@ -4902,10 +4902,15 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
+ "pallet-balances",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
+ "sp-tracing",
  "substrate-test-utils",
 ]
 
