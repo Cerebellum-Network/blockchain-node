@@ -271,7 +271,12 @@ pub mod pallet {
 		) -> Result<ClusterPricingParams, ClusterVisitorError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
-			Ok(cluster_gov_params.pricing)
+			Ok(ClusterPricingParams {
+				unit_per_mb_stored: cluster_gov_params.unit_per_mb_stored,
+				unit_per_mb_streamed: cluster_gov_params.unit_per_mb_streamed,
+				unit_per_put_request: cluster_gov_params.unit_per_put_request,
+				unit_per_get_request: cluster_gov_params.unit_per_get_request,
+			})
 		}
 
 		fn get_chill_delay(
