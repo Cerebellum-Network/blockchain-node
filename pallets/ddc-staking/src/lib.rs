@@ -567,7 +567,7 @@ pub mod pallet {
 				return Ok(())
 			}
 
-			Self::do_add_cdn(&stash, cluster_id);
+			Self::do_add_cdn(stash, cluster_id);
 			Self::deposit_event(Event::<T>::Activated(stash.clone()));
 
 			Ok(())
@@ -615,7 +615,7 @@ pub mod pallet {
 				return Ok(())
 			}
 
-			Self::do_add_storage(&stash, cluster_id);
+			Self::do_add_storage(stash, cluster_id);
 			Self::deposit_event(Event::<T>::Activated(stash.clone()));
 
 			Ok(())
