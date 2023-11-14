@@ -200,7 +200,7 @@ pub mod pallet {
 		/// An account has called `withdraw_unlocked_deposit` and removed unlocking chunks worth
 		/// `Balance` from the unlocking queue. \[owner, amount\]
 		Withdrawn(T::AccountId, BalanceOf<T>),
-		/// The acconut has been charged for the usage
+		/// The account has been charged for the usage
 		Charged(T::AccountId, BalanceOf<T>),
 		/// Bucket with specific id created
 		BucketCreated(BucketId),
