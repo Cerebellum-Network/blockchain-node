@@ -15,6 +15,7 @@
 #![recursion_limit = "256"]
 
 use ddc_primitives::{ClusterId, DdcEra};
+use ddc_traits::{cluster::ClusterVisitor, customer::CustomerCharger as ICustomerCharger};
 use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
@@ -54,6 +55,14 @@ pub struct NodeReward {
 }
 
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
+pub struct BillingReportDebt {
+	pub cluster_id: ClusterId,
+	pub era: DdcEra,
+	pub batch_index: BatchIndex,
+	pub amount: u128,
+}
+
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct CustomerCharge {
 	pub transfer: u128,
 	pub storage: u128,
@@ -88,19 +97,56 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+
+		type CustomerCharger: ICustomerCharger<Self>;
+		type ClusterVisitor: ClusterVisitor<Self>;
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		BillingReportInitialized { cluster_id: ClusterId, era: DdcEra },
-		ChargingStarted { cluster_id: ClusterId, era: DdcEra },
-		Charged { cluster_id: ClusterId, era: DdcEra, customer_id: T::AccountId, amount: u128 },
-		ChargingFinished { cluster_id: ClusterId, era: DdcEra },
-		RewardingStarted { cluster_id: ClusterId, era: DdcEra },
-		Rewarded { cluster_id: ClusterId, era: DdcEra, node_id: T::AccountId, amount: u128 },
-		RewardingFinished { cluster_id: ClusterId, era: DdcEra },
-		BillingReportFinalized { cluster_id: ClusterId, era: DdcEra },
+		BillingReportInitialized {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		ChargingStarted {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		Charged {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			customer_id: T::AccountId,
+			amount: u128,
+		},
+		ChargeFailed {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			customer_id: T::AccountId,
+			amount: u128,
+		},
+		ChargingFinished {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		RewardingStarted {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		Rewarded {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			node_provider_id: T::AccountId,
+			amount: u128,
+		},
+		RewardingFinished {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		BillingReportFinalized {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
 	}
 
 	#[pallet::error]
@@ -116,6 +162,7 @@ pub mod pallet {
 		BatchIndexOverflow,
 		BoundedVecOverflow,
 		ArithmeticOverflow,
+		NotExpectedClusterState,
 	}
 
 	#[pallet::storage]
@@ -131,19 +178,30 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn dac_account)]
+	#[pallet::getter(fn authorised_caller)]
 	pub type DACAccount<T: Config> = StorageValue<_, T::AccountId>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn debtor_customers)]
+	pub type DebtorCustomers<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		ClusterId,
+		Blake2_128Concat,
+		T::AccountId,
+		u128,
+		ValueQuery,
+	>;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct BillingReport<T: Config> {
 		state: State,
 		vault: T::AccountId,
-		dac_account: Option<T::AccountId>,
-		total_charged_balance: u128,
-		total_distributed_balance: u128,
-		total_node_expected_reward: NodeReward,
-		total_node_expected_usage: NodeUsage,
+		authorised_caller: Option<T::AccountId>,
+		total_customer_charge: CustomerCharge,
+		total_distributed_reward: u128,
+		total_node_usage: NodeUsage,
 		// stage 1
 		charging_max_batch_index: BatchIndex,
 		charging_processed_batches: BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
@@ -157,11 +215,10 @@ pub mod pallet {
 			Self {
 				state: State::default(),
 				vault: T::PalletId::get().into_account_truncating(),
-				dac_account: Option::None,
-				total_charged_balance: Zero::zero(),
-				total_distributed_balance: Zero::zero(),
-				total_node_expected_usage: NodeUsage::default(),
-				total_node_expected_reward: NodeReward::default(),
+				authorised_caller: Option::None,
+				total_customer_charge: CustomerCharge::default(),
+				total_distributed_reward: Zero::zero(),
+				total_node_usage: NodeUsage::default(),
 				charging_max_batch_index: Zero::zero(),
 				charging_processed_batches: BoundedBTreeSet::default(),
 				rewarding_max_batch_index: Zero::zero(),
@@ -177,6 +234,7 @@ pub mod pallet {
 		Initialized,
 		ChargingCustomers,
 		CustomersCharged,
+		DeductingFees,
 		RewardingProviders,
 		ProvidersRewarded,
 		Finalized,
@@ -192,14 +250,23 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
-			let mut billing_report = BillingReport::default();
-			billing_report.vault = Self::sub_account_id(cluster_id.clone(), era);
+			ensure!(
+				ActiveBillingReports::<T>::try_get(cluster_id, era).is_err(),
+				Error::<T>::NotExpectedState
+			);
+
+			let mut billing_report = BillingReport::<T> {
+				vault: Self::sub_account_id(cluster_id, era),
+				state: State::Initialized,
+				..Default::default()
+			};
+			billing_report.vault = Self::sub_account_id(cluster_id, era);
 			billing_report.state = State::Initialized;
-			ActiveBillingReports::<T>::insert(cluster_id.clone(), era, billing_report);
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::BillingReportInitialized { cluster_id, era });
 
@@ -215,7 +282,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
@@ -224,14 +291,14 @@ pub mod pallet {
 				Error::<T>::BatchIndexOverflow
 			);
 
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::Initialized, Error::<T>::NotExpectedState);
 
 			billing_report.charging_max_batch_index = max_batch_index;
 			billing_report.state = State::ChargingCustomers;
-			ActiveBillingReports::<T>::insert(cluster_id.clone(), era, billing_report);
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::ChargingStarted { cluster_id, era });
 
@@ -248,11 +315,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
-			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::ChargingCustomers, Error::<T>::NotExpectedState);
@@ -265,11 +332,10 @@ pub mod pallet {
 				Error::<T>::BatchIndexAlreadyProcessed
 			);
 
-			let mut updated_billing_report = billing_report.clone();
+			let mut updated_billing_report = billing_report;
 			for payer in payers {
-				let customer_charge =
-					get_customer_charge(&payer.1).ok_or(Error::<T>::ArithmeticOverflow)?;
-				let amount = (|| -> Option<u128> {
+				let customer_charge = get_customer_charge::<T>(cluster_id, &payer.1)?;
+				let total_customer_charge = (|| -> Option<u128> {
 					customer_charge
 						.transfer
 						.checked_add(customer_charge.storage)?
@@ -278,15 +344,75 @@ pub mod pallet {
 				})()
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-				// todo: charge customer
-				let customer_id = payer.0;
-
-				updated_billing_report
-					.total_charged_balance
-					.checked_add(amount)
+				let temp_total_customer_storage_charge = updated_billing_report
+					.total_customer_charge
+					.storage
+					.checked_add(customer_charge.storage)
 					.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-				Self::deposit_event(Event::<T>::Charged { cluster_id, era, customer_id, amount });
+				let temp_total_customer_transfer_charge = updated_billing_report
+					.total_customer_charge
+					.transfer
+					.checked_add(customer_charge.transfer)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				let temp_total_customer_puts_charge = updated_billing_report
+					.total_customer_charge
+					.puts
+					.checked_add(customer_charge.puts)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				let temp_total_customer_gets_charge = updated_billing_report
+					.total_customer_charge
+					.gets
+					.checked_add(customer_charge.gets)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				let customer_id = payer.0.clone();
+				match T::CustomerCharger::charge_content_owner(
+					customer_id.clone(),
+					updated_billing_report.vault.clone(),
+					total_customer_charge,
+				) {
+					Ok(_) => {
+						updated_billing_report.total_customer_charge.storage =
+							temp_total_customer_storage_charge;
+						updated_billing_report.total_customer_charge.transfer =
+							temp_total_customer_transfer_charge;
+						updated_billing_report.total_customer_charge.puts =
+							temp_total_customer_puts_charge;
+						updated_billing_report.total_customer_charge.gets =
+							temp_total_customer_gets_charge;
+
+						Self::deposit_event(Event::<T>::Charged {
+							cluster_id,
+							era,
+							customer_id,
+							amount: total_customer_charge,
+						});
+					},
+					Err(_e) => {
+						let mut customer_dept =
+							DebtorCustomers::<T>::try_get(cluster_id, customer_id.clone())
+								.unwrap_or_else(|_| Zero::zero());
+
+						customer_dept = customer_dept
+							.checked_add(total_customer_charge)
+							.ok_or(Error::<T>::ArithmeticOverflow)?;
+						DebtorCustomers::<T>::insert(
+							cluster_id,
+							customer_id.clone(),
+							customer_dept,
+						);
+
+						Self::deposit_event(Event::<T>::ChargeFailed {
+							cluster_id,
+							era,
+							customer_id,
+							amount: total_customer_charge,
+						});
+					},
+				}
 			}
 
 			updated_billing_report
@@ -307,11 +433,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::ChargingCustomers, Error::<T>::NotExpectedState);
@@ -321,7 +447,7 @@ pub mod pallet {
 			)?;
 
 			billing_report.state = State::CustomersCharged;
-			ActiveBillingReports::<T>::insert(cluster_id.clone(), era, billing_report);
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
 
@@ -338,7 +464,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
@@ -347,19 +473,15 @@ pub mod pallet {
 				Error::<T>::BatchIndexOverflow
 			);
 
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::CustomersCharged, Error::<T>::NotExpectedState);
 
-			let total =
-				get_total_usage_reward(&total_node_usage).ok_or(Error::<T>::ArithmeticOverflow)?;
-
-			billing_report.total_node_expected_usage = total_node_usage;
+			billing_report.total_node_usage = total_node_usage;
 			billing_report.rewarding_max_batch_index = max_batch_index;
-			billing_report.total_node_expected_reward = total;
 			billing_report.state = State::RewardingProviders;
-			ActiveBillingReports::<T>::insert(cluster_id.clone(), era, billing_report);
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::RewardingStarted { cluster_id, era });
 
@@ -376,11 +498,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
-			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(
@@ -398,12 +520,13 @@ pub mod pallet {
 
 			let mut updated_billing_report = billing_report.clone();
 			for payee in payees {
-				let node_reward = get_node_reward(
+				let node_reward = get_node_reward::<T>(
 					&payee.1,
-					&billing_report.total_node_expected_usage,
-					&billing_report.total_node_expected_reward,
-				);
-				let amount = (|| -> Option<u128> {
+					&billing_report.total_node_usage,
+					&billing_report.total_customer_charge,
+				)
+				.ok_or(Error::<T>::ArithmeticOverflow)?;
+				let amount_to_reward = (|| -> Option<u128> {
 					node_reward
 						.transfer
 						.checked_add(node_reward.storage)?
@@ -412,22 +535,27 @@ pub mod pallet {
 				})()
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-				let node_id = payee.0;
-				let charge: BalanceOf<T> = amount.saturated_into::<BalanceOf<T>>();
+				let node_provider_id = payee.0;
+				let reward: BalanceOf<T> = amount_to_reward.saturated_into::<BalanceOf<T>>();
 
 				<T as pallet::Config>::Currency::transfer(
 					&updated_billing_report.vault,
-					&node_id,
-					charge,
+					&node_provider_id,
+					reward,
 					ExistenceRequirement::KeepAlive,
 				)?;
 
 				updated_billing_report
-					.total_distributed_balance
-					.checked_add(amount)
+					.total_distributed_reward
+					.checked_add(amount_to_reward)
 					.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-				Self::deposit_event(Event::<T>::Rewarded { cluster_id, era, node_id, amount });
+				Self::deposit_event(Event::<T>::Rewarded {
+					cluster_id,
+					era,
+					node_provider_id,
+					amount: amount_to_reward,
+				});
 			}
 
 			updated_billing_report
@@ -448,11 +576,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(
@@ -466,7 +594,7 @@ pub mod pallet {
 			)?;
 
 			billing_report.state = State::ProvidersRewarded;
-			ActiveBillingReports::<T>::insert(cluster_id.clone(), era, billing_report);
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::RewardingFinished { cluster_id, era });
 
@@ -481,71 +609,97 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(
-				Self::dac_account().ok_or(Error::<T>::Unauthorised)? == caller,
+				Self::authorised_caller().ok_or(Error::<T>::Unauthorised)? == caller,
 				Error::<T>::Unauthorised
 			);
 
-			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id.clone(), era)
+			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::ProvidersRewarded, Error::<T>::NotExpectedState);
+			let expected_amount_to_reward = (|| -> Option<u128> {
+				billing_report
+					.total_customer_charge
+					.transfer
+					.checked_add(billing_report.total_customer_charge.storage)?
+					.checked_add(billing_report.total_customer_charge.puts)?
+					.checked_add(billing_report.total_customer_charge.gets)
+			})()
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
+
 			ensure!(
-				billing_report.total_charged_balance == billing_report.total_distributed_balance,
+				expected_amount_to_reward == billing_report.total_distributed_reward,
 				Error::<T>::NotDistributedBalance
 			);
 
-			ActiveBillingReports::<T>::remove(cluster_id.clone(), era);
+			ActiveBillingReports::<T>::remove(cluster_id, era);
 			Self::deposit_event(Event::<T>::BillingReportFinalized { cluster_id, era });
 
 			Ok(())
 		}
 	}
 
-	fn get_node_reward(
+	fn get_node_reward<T: Config>(
 		node_usage: &NodeUsage,
-		total_usage: &NodeUsage,
-		total_reward: &NodeReward,
-	) -> NodeReward {
+		total_nodes_usage: &NodeUsage,
+		total_customer_charge: &CustomerCharge,
+	) -> Option<NodeReward> {
 		let mut node_reward = NodeReward::default();
 
-		let mut ratio =
-			Perbill::from_rational(node_usage.transferred_bytes, total_usage.transferred_bytes);
-		node_reward.transfer = (ratio * total_reward.transfer) as u128;
+		let mut ratio = Perbill::from_rational(
+			node_usage.transferred_bytes,
+			total_nodes_usage.transferred_bytes,
+		);
+		node_reward.transfer = ratio * total_customer_charge.transfer;
 
-		ratio = Perbill::from_rational(node_usage.stored_bytes, total_usage.stored_bytes);
-		node_reward.storage = (ratio * total_reward.storage) as u128;
+		ratio = Perbill::from_rational(node_usage.stored_bytes, total_nodes_usage.stored_bytes);
+		node_reward.storage = ratio * total_customer_charge.storage;
 
-		ratio = Perbill::from_rational(node_usage.number_of_puts, total_usage.number_of_puts);
-		node_reward.puts = (ratio * total_reward.puts) as u128;
+		ratio = Perbill::from_rational(node_usage.number_of_puts, total_nodes_usage.number_of_puts);
+		node_reward.puts = ratio * total_customer_charge.puts;
 
-		ratio = Perbill::from_rational(node_usage.number_of_gets, total_usage.number_of_gets);
-		node_reward.gets = (ratio * total_reward.gets) as u128;
+		ratio = Perbill::from_rational(node_usage.number_of_gets, total_nodes_usage.number_of_gets);
+		node_reward.gets = ratio * total_customer_charge.gets;
 
-		node_reward
+		Some(node_reward)
 	}
 
-	// todo: to calculate actual charge based on the metrics
-	fn get_total_usage_reward(total_usage: &NodeUsage) -> Option<NodeReward> {
-		let mut total = NodeReward::default();
-
-		total.transfer = 1;
-		total.storage = 2;
-		total.puts = 3;
-		total.gets = 4;
-
-		Option::Some(total)
-	}
-
-	// todo: to calculate actual charge based on the metrics
-	fn get_customer_charge(usage: &CustomerUsage) -> Option<CustomerCharge> {
+	fn get_customer_charge<T: Config>(
+		cluster_id: ClusterId,
+		usage: &CustomerUsage,
+	) -> Result<CustomerCharge, Error<T>> {
 		let mut total = CustomerCharge::default();
 
-		total.transfer = 1;
-		total.storage = 2;
-		total.puts = 3;
-		total.gets = 4;
+		let pricing = T::ClusterVisitor::get_pricing_params(&cluster_id)
+			.map_err(|_| Error::<T>::NotExpectedClusterState)?;
 
-		Option::Some(total)
+		total.transfer = (|| -> Option<u128> {
+			usage
+				.transferred_bytes
+				.checked_mul(pricing.unit_per_mb_streamed)?
+				.checked_div(byte_unit::MEBIBYTE)
+		})()
+		.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+		total.storage = (|| -> Option<u128> {
+			usage
+				.stored_bytes
+				.checked_mul(pricing.unit_per_mb_stored)?
+				.checked_div(byte_unit::MEBIBYTE)
+		})()
+		.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+		total.gets = usage
+			.number_of_gets
+			.checked_mul(pricing.unit_per_get_request)
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+		total.puts = usage
+			.number_of_puts
+			.checked_mul(pricing.unit_per_put_request)
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+		Ok(total)
 	}
 
 	fn validate_batches<T: Config>(
@@ -565,15 +719,13 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn account_id() -> T::AccountId {
-			T::PalletId::get().into_account_truncating()
-		}
-
 		fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
 			let mut bytes = Vec::new();
 			bytes.extend_from_slice(&cluster_id[..]);
 			bytes.extend_from_slice(&era.encode());
 			let hash = blake2_128(&bytes);
+			// todo: assumes AccountId is 32 bytes, which is not ideal -> rewrite it
+
 			// "modl" + "payouts_" + hash is 28 bytes, the T::AccountId is 32 bytes, so we should be
 			// safe from the truncation and possible collisions caused by it. The rest 4 bytes will
 			// be fulfilled with trailing zeros.
