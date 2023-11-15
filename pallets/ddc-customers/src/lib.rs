@@ -12,7 +12,7 @@ use frame_support::{
 };
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, Zero},
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
@@ -112,20 +112,28 @@ impl<
 	/// Charge funds that were scheduled for unlocking.
 	///
 	/// Returns the updated ledger, and the amount actually charged.
-	fn charge_unlocking(mut self, value: Balance) -> (Self, Balance) {
+	fn charge_unlocking(mut self, value: Balance) -> Result<(Self, Balance), Error<T>> {
 		let mut unlocking_balance = Balance::zero();
 
 		while let Some(last) = self.unlocking.last_mut() {
-			if unlocking_balance + last.value <= value {
-				unlocking_balance += last.value;
-				self.active -= last.value;
+			let temp = unlocking_balance
+				.checked_add(&last.value)
+				.ok_or(Error::<T>::ArithmeticOverflow)?;
+			if temp <= value {
+				unlocking_balance = temp;
+				self.active =
+					self.active.checked_sub(&last.value).ok_or(Error::<T>::ArithmeticUnderflow)?;
 				self.unlocking.pop();
 			} else {
-				let diff = value - unlocking_balance;
+				let diff =
+					value.checked_sub(&unlocking_balance).ok_or(Error::<T>::ArithmeticUnderflow)?;
 
-				unlocking_balance += diff;
-				self.active -= diff;
-				last.value -= diff;
+				unlocking_balance =
+					unlocking_balance.checked_add(&diff).ok_or(Error::<T>::ArithmeticOverflow)?;
+				self.active =
+					self.active.checked_sub(&diff).ok_or(Error::<T>::ArithmeticUnderflow)?;
+				last.value =
+					last.value.checked_sub(&diff).ok_or(Error::<T>::ArithmeticUnderflow)?;
 			}
 
 			if unlocking_balance >= value {
@@ -133,7 +141,7 @@ impl<
 			}
 		}
 
-		(self, unlocking_balance)
+		Ok((self, unlocking_balance))
 	}
 }
 
@@ -224,6 +232,8 @@ pub mod pallet {
 		ClusterDoesNotExist,
 		// unauthorised operation
 		Unauthorised,
+		// Arithmetic overflow
+		ArithmeticOverflow,
 		// Arithmetic underflow
 		ArithmeticUnderflow,
 	}
@@ -257,7 +267,8 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn create_bucket(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
-			let cur_bucket_id = Self::buckets_count() + 1;
+			let cur_bucket_id =
+				Self::buckets_count().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
 
 			<T as pallet::Config>::ClusterVisitor::ensure_cluster(&cluster_id)
 				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
@@ -328,8 +339,11 @@ pub mod pallet {
 
 			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
 			let extra = owner_balance.min(max_additional);
-			ledger.total += extra;
-			ledger.active += extra;
+			ledger.total =
+				ledger.total.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
+			ledger.active =
+				ledger.active.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
+
 			// Last check: the new active amount of ledger must be more than ED.
 			ensure!(
 				ledger.active >= <T as pallet::Config>::Currency::minimum_balance(),
@@ -374,16 +388,19 @@ pub mod pallet {
 			let mut value = value.min(ledger.active);
 
 			if !value.is_zero() {
-				ledger.active -= value;
+				ledger.active =
+					ledger.active.checked_sub(&value).ok_or(Error::<T>::ArithmeticUnderflow)?;
 
 				// Avoid there being a dust balance left in the accounts system.
 				if ledger.active < <T as pallet::Config>::Currency::minimum_balance() {
-					value += ledger.active;
+					value =
+						value.checked_add(&ledger.active).ok_or(Error::<T>::ArithmeticOverflow)?;
 					ledger.active = Zero::zero();
 				}
 
 				let current_block = <frame_system::Pallet<T>>::block_number();
 				// Note: locking for extra block to allow for accounting
+				// block + configurable value - shouldn't overflow
 				let block = current_block + <T as pallet::Config>::UnlockingDelay::get();
 
 				if let Some(chunk) =
@@ -448,7 +465,8 @@ pub mod pallet {
 			if ledger.total < old_total {
 				log::debug!("Preparing for transfer");
 				// Already checked that this won't overflow by entry condition.
-				let value = old_total - ledger.total;
+				let value =
+					old_total.checked_sub(&ledger.total).ok_or(Error::<T>::ArithmeticUnderflow)?;
 
 				let account_id = Self::account_id();
 
@@ -523,15 +541,26 @@ pub mod pallet {
 
 			ensure!(ledger.total >= ledger.active, Error::<T>::ArithmeticUnderflow);
 			if ledger.active >= amount_to_deduct {
-				ledger.active -= amount_to_deduct;
-				ledger.total -= amount_to_deduct;
+				ledger.active = ledger
+					.active
+					.checked_sub(&amount_to_deduct)
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+				ledger.total = ledger
+					.total
+					.checked_sub(&amount_to_deduct)
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
 				Self::update_ledger(&content_owner, &ledger);
 			} else {
-				let diff = amount_to_deduct - ledger.active;
-				ledger.total -= ledger.active;
+				let diff = amount_to_deduct
+					.checked_sub(&ledger.active)
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+				ledger.total = ledger
+					.total
+					.checked_sub(&ledger.active)
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
 				amount_to_deduct = ledger.active;
 				ledger.active = BalanceOf::<T>::zero();
-				let (ledger, _charged) = ledger.charge_unlocking(diff);
+				let (ledger, _charged) = ledger.charge_unlocking(diff)?;
 				Self::update_ledger(&content_owner, &ledger);
 			};
 

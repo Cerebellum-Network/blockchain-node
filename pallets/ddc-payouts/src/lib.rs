@@ -15,7 +15,7 @@
 #![recursion_limit = "256"]
 
 use ddc_primitives::{ClusterId, DdcEra};
-use ddc_traits::{cluster::ClusterVisitor, customer::CustomerCharger as ICustomerCharger};
+use ddc_traits::{cluster::ClusterVisitor, customer::CustomerCharger as CustomerChargerType};
 use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
@@ -30,6 +30,7 @@ use sp_std::prelude::*;
 
 type BatchIndex = u16;
 
+/// Stores usage of customers
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct CustomerUsage {
 	pub transferred_bytes: u128,
@@ -38,6 +39,7 @@ pub struct CustomerUsage {
 	pub number_of_gets: u128,
 }
 
+/// Stores usage of node provider
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct NodeUsage {
 	pub transferred_bytes: u128,
@@ -46,12 +48,13 @@ pub struct NodeUsage {
 	pub number_of_gets: u128,
 }
 
+/// Stores reward in tokens(units) of node provider as per NodeUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct NodeReward {
-	pub transfer: u128,
-	pub storage: u128,
-	pub puts: u128,
-	pub gets: u128,
+	pub transfer: u128, // for transferred_bytes
+	pub storage: u128,  // for stored_bytes
+	pub puts: u128,     // for number_of_puts
+	pub gets: u128,     // for number_of_gets
 }
 
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
@@ -62,12 +65,13 @@ pub struct BillingReportDebt {
 	pub amount: u128,
 }
 
+/// Stores charge in tokens(units) of customer as per CustomerUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct CustomerCharge {
-	pub transfer: u128,
-	pub storage: u128,
-	pub puts: u128,
-	pub gets: u128,
+	pub transfer: u128, // for transferred_bytes
+	pub storage: u128,  // for stored_bytes
+	pub puts: u128,     // for number_of_puts
+	pub gets: u128,     // for number_of_gets
 }
 
 /// The balance type of this pallet.
@@ -98,7 +102,7 @@ pub mod pallet {
 
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 
-		type CustomerCharger: ICustomerCharger<Self>;
+		type CustomerCharger: CustomerChargerType<Self>;
 		type ClusterVisitor: ClusterVisitor<Self>;
 	}
 
@@ -636,6 +640,7 @@ pub mod pallet {
 			node_usage.transferred_bytes,
 			total_nodes_usage.transferred_bytes,
 		);
+		// ratio multiplied by X will be > 0, < X no overflow
 		node_reward.transfer = ratio * total_customer_charge.transfer;
 
 		ratio = Perbill::from_rational(node_usage.stored_bytes, total_nodes_usage.stored_bytes);
