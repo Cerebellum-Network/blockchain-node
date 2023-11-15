@@ -173,14 +173,14 @@ pub mod pallet {
 	pub type Ledger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>, T>>;
 
-	/// The map of (wannabe) CDN participants stash keys to the DDC cluster ID they wish to
+	/// The map of (wannabe) CDN nodes participants stash keys to the DDC cluster ID they wish to
 	/// participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn cdns)]
 	pub type CDNs<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
-	/// The map of (wannabe) storage network participants stash keys to the DDC cluster ID they wish
-	/// to participate into.
+	/// The map of (wannabe) Storage nodes participants stash keys to the DDC cluster ID they
+	/// wish to participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn storages)]
 	pub type Storages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
@@ -270,6 +270,9 @@ pub mod pallet {
 		/// An account has declared desire to stop participating in CDN or storage network soon.
 		/// \[stash, cluster, block\]
 		ChillSoon(T::AccountId, ClusterId, T::BlockNumber),
+		/// An account that started participating as either a storage network or CDN participant.
+		/// \[stash\]
+		Activated(T::AccountId),
 	}
 
 	#[pallet::error]
@@ -303,6 +306,10 @@ pub mod pallet {
 		NoClusterGovParams,
 		/// Conditions for fast chill are not met, try the regular `chill` from
 		FastChillProhibited,
+		/// Serving operation is called for non-CDN node
+		ServingProhibited,
+		/// Storing operation is called for non-Storage node
+		StoringProhibited,
 	}
 
 	#[pallet::call]
@@ -544,6 +551,13 @@ pub mod pallet {
 			// Can't participate in CDN if already participating in storage network.
 			ensure!(!Storages::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
 
+			// Only CDN node can perform serving (i.e. streaming content)
+			let node_pub_key = <Providers<T>>::get(stash).ok_or(Error::<T>::BadState)?;
+			ensure!(
+				matches!(node_pub_key, NodePubKey::CDNPubKey(_)),
+				Error::<T>::ServingProhibited
+			);
+
 			// Is it an attempt to cancel a previous "chill"?
 			if let Some(current_cluster) = Self::cdns(stash) {
 				// Switching the cluster is prohibited. The user should chill first.
@@ -554,6 +568,8 @@ pub mod pallet {
 			}
 
 			Self::do_add_cdn(stash, cluster_id);
+			Self::deposit_event(Event::<T>::Activated(stash.clone()));
+
 			Ok(())
 		}
 
@@ -583,6 +599,13 @@ pub mod pallet {
 			// Can't participate in storage network if already participating in CDN.
 			ensure!(!CDNs::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
 
+			// Only Storage node can perform storing (i.e. saving content)
+			let node_pub_key = <Providers<T>>::get(stash).ok_or(Error::<T>::BadState)?;
+			ensure!(
+				matches!(node_pub_key, NodePubKey::StoragePubKey(_)),
+				Error::<T>::StoringProhibited
+			);
+
 			// Is it an attempt to cancel a previous "chill"?
 			if let Some(current_cluster) = Self::storages(stash) {
 				// Switching the cluster is prohibited. The user should chill first.
@@ -593,6 +616,7 @@ pub mod pallet {
 			}
 
 			Self::do_add_storage(stash, cluster_id);
+			Self::deposit_event(Event::<T>::Activated(stash.clone()));
 
 			Ok(())
 		}
