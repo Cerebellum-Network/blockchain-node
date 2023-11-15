@@ -1,7 +1,5 @@
 //! Test utilities
 
-#![allow(dead_code)]
-
 use crate::{self as pallet_ddc_customers, *};
 use ddc_primitives::{NodePubKey, NodeType};
 use ddc_traits::cluster::{ClusterVisitor, ClusterVisitorError};
@@ -131,8 +129,6 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		Ok(T::BlockNumber::from(10u32))
 	}
 }
-
-pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 
 pub struct ExtBuilder;
 
