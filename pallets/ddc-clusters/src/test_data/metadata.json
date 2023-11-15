@@ -1,0 +1,365 @@
+{
+  "source": {
+    "hash": "0x26d3338336a945f457e19992f37947659b0b7e4b2962369fe2f97ca7ebb95a09",
+    "language": "ink! 3.4.0",
+    "compiler": "rustc 1.69.0-nightly"
+  },
+  "contract": {
+    "name": "node_provider_auth_white_list",
+    "version": "0.1.0",
+    "authors": [
+      "Yahor Tsaryk <yahor.tsaryk@cere.io>"
+    ],
+    "description": "Node provider authorization layer based on admin approval",
+    "license": "Apache-2.0"
+  },
+  "V3": {
+    "spec": {
+      "constructors": [
+        {
+          "args": [],
+          "docs": [],
+          "label": "new",
+          "payable": false,
+          "selector": "0x9bae9d5e"
+        }
+      ],
+      "docs": [],
+      "events": [],
+      "messages": [
+        {
+          "args": [
+            {
+              "label": "_node_provider",
+              "type": {
+                "displayName": [
+                  "AccountId"
+                ],
+                "type": 0
+              }
+            },
+            {
+              "label": "node_pub_key",
+              "type": {
+                "displayName": [
+                  "NodePubKey"
+                ],
+                "type": 4
+              }
+            },
+            {
+              "label": "_node_variant",
+              "type": {
+                "displayName": [
+                  "NodeType"
+                ],
+                "type": 2
+              }
+            }
+          ],
+          "docs": [],
+          "label": "is_authorized",
+          "mutates": false,
+          "payable": false,
+          "returnType": {
+            "displayName": [
+              "bool"
+            ],
+            "type": 5
+          },
+          "selector": "0x96b0453e"
+        },
+        {
+          "args": [
+            {
+              "label": "node_pub_key",
+              "type": {
+                "displayName": [
+                  "NodePubKey"
+                ],
+                "type": 4
+              }
+            }
+          ],
+          "docs": [],
+          "label": "add_node_pub_key",
+          "mutates": true,
+          "payable": false,
+          "returnType": {
+            "displayName": [
+              "Result"
+            ],
+            "type": 7
+          },
+          "selector": "0x7a04093d"
+        },
+        {
+          "args": [
+            {
+              "label": "node_pub_key",
+              "type": {
+                "displayName": [
+                  "NodePubKey"
+                ],
+                "type": 4
+              }
+            }
+          ],
+          "docs": [],
+          "label": "remove_node_pub_key",
+          "mutates": true,
+          "payable": false,
+          "returnType": {
+            "displayName": [
+              "Result"
+            ],
+            "type": 7
+          },
+          "selector": "0xed3668b6"
+        },
+        {
+          "args": [
+            {
+              "label": "node_pub_key",
+              "type": {
+                "displayName": [
+                  "NodePubKey"
+                ],
+                "type": 4
+              }
+            }
+          ],
+          "docs": [],
+          "label": "has_node_pub_key",
+          "mutates": false,
+          "payable": false,
+          "returnType": {
+            "displayName": [
+              "bool"
+            ],
+            "type": 5
+          },
+          "selector": "0x9b868ecf"
+        },
+        {
+          "args": [],
+          "docs": [],
+          "label": "get_admin",
+          "mutates": false,
+          "payable": false,
+          "returnType": {
+            "displayName": [
+              "AccountId"
+            ],
+            "type": 0
+          },
+          "selector": "0x57b8a8a7"
+        }
+      ]
+    },
+    "storage": {
+      "struct": {
+        "fields": [
+          {
+            "layout": {
+              "cell": {
+                "key": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "ty": 0
+              }
+            },
+            "name": "admin"
+          },
+          {
+            "layout": {
+              "cell": {
+                "key": "0x0100000000000000000000000000000000000000000000000000000000000000",
+                "ty": 3
+              }
+            },
+            "name": "list"
+          }
+        ]
+      }
+    },
+    "types": [
+      {
+        "id": 0,
+        "type": {
+          "def": {
+            "composite": {
+              "fields": [
+                {
+                  "type": 1,
+                  "typeName": "[u8; 32]"
+                }
+              ]
+            }
+          },
+          "path": [
+            "ink_env",
+            "types",
+            "AccountId"
+          ]
+        }
+      },
+      {
+        "id": 1,
+        "type": {
+          "def": {
+            "array": {
+              "len": 32,
+              "type": 2
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "type": {
+          "def": {
+            "primitive": "u8"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "type": {
+          "def": {
+            "composite": {
+              "fields": [
+                {
+                  "name": "offset_key",
+                  "type": 6,
+                  "typeName": "Key"
+                }
+              ]
+            }
+          },
+          "params": [
+            {
+              "name": "K",
+              "type": 4
+            },
+            {
+              "name": "V",
+              "type": 5
+            }
+          ],
+          "path": [
+            "ink_storage",
+            "lazy",
+            "mapping",
+            "Mapping"
+          ]
+        }
+      },
+      {
+        "id": 4,
+        "type": {
+          "def": {
+            "sequence": {
+              "type": 2
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "type": {
+          "def": {
+            "primitive": "bool"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "type": {
+          "def": {
+            "composite": {
+              "fields": [
+                {
+                  "type": 1,
+                  "typeName": "[u8; 32]"
+                }
+              ]
+            }
+          },
+          "path": [
+            "ink_primitives",
+            "Key"
+          ]
+        }
+      },
+      {
+        "id": 7,
+        "type": {
+          "def": {
+            "variant": {
+              "variants": [
+                {
+                  "fields": [
+                    {
+                      "type": 8
+                    }
+                  ],
+                  "index": 0,
+                  "name": "Ok"
+                },
+                {
+                  "fields": [
+                    {
+                      "type": 9
+                    }
+                  ],
+                  "index": 1,
+                  "name": "Err"
+                }
+              ]
+            }
+          },
+          "params": [
+            {
+              "name": "T",
+              "type": 8
+            },
+            {
+              "name": "E",
+              "type": 9
+            }
+          ],
+          "path": [
+            "Result"
+          ]
+        }
+      },
+      {
+        "id": 8,
+        "type": {
+          "def": {
+            "tuple": []
+          }
+        }
+      },
+      {
+        "id": 9,
+        "type": {
+          "def": {
+            "variant": {
+              "variants": [
+                {
+                  "index": 0,
+                  "name": "OnlyAdmin"
+                }
+              ]
+            }
+          },
+          "path": [
+            "node_provider_auth_white_list",
+            "node_provider_auth_white_list",
+            "Error"
+          ]
+        }
+      }
+    ]
+  }
+}
