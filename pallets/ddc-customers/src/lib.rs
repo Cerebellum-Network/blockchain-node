@@ -12,7 +12,7 @@ use frame_support::{
 };
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedSub, Saturating, Zero, CheckedAdd},
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
