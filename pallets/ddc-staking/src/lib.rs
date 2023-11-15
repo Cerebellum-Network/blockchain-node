@@ -724,6 +724,11 @@ pub mod pallet {
 				}
 			}
 
+			// Remove previously owned node from storage
+			if let Some(current_node) = Providers::<T>::get(&stash) {
+				<Nodes<T>>::remove(current_node);
+			}
+
 			// Ensure only one node per stash.
 			ensure!(!<CDNs<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 			ensure!(!<Storages<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
