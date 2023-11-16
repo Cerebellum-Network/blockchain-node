@@ -175,7 +175,11 @@ std = [
   "sp-io/std",
   "pallet-child-bounties/std",
   "pallet-ddc-metrics-offchain-worker/std",
+<<<<<<< HEAD
   "pallet-ddc-payouts/std",
+=======
+  "pallet-ddc-nodes/std",
+>>>>>>> 36d18bf (benchmarking & weights for ddc-nodes)
   "pallet-ddc-staking/std",
   "cere-runtime-common/std",
   "cere-dev-runtime-constants/std",
@@ -215,6 +219,7 @@ runtime-benchmarks = [
   "pallet-society/runtime-benchmarks",
   "pallet-staking/runtime-benchmarks",
   "pallet-ddc-customers/runtime-benchmarks",
+  "pallet-ddc-nodes/runtime-benchmarks",
   "pallet-ddc-staking/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "pallet-tips/runtime-benchmarks",
