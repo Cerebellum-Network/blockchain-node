@@ -52,6 +52,7 @@ pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
 pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_nodes;
+pub use pallet_ddc_payouts;
 pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
@@ -129,7 +130,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48014,
+	spec_version: 48015,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 5,
@@ -1347,6 +1348,18 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type Currency = Balances;
 }
 
+parameter_types! {
+	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
+}
+
+impl pallet_ddc_payouts::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = PayoutsPalletId;
+	type Currency = Balances;
+	type CustomerCharger = DdcCustomers;
+	type ClusterVisitor = DdcClusters;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1401,7 +1414,8 @@ construct_runtime!(
 		DdcStaking: pallet_ddc_staking,
 		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
-		DdcClusters: pallet_ddc_clusters
+		DdcClusters: pallet_ddc_clusters,
+		DdcPayouts: pallet_ddc_payouts
 	}
 );
 
