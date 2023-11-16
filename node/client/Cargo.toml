@@ -12,11 +12,11 @@ pallet-contracts-rpc = { git = "https://github.com/paritytech/substrate.git", br
 pallet-transaction-payment = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 pallet-transaction-payment-rpc-runtime-api = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sc-client-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sc-executor = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30" }
-sc-service = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.30" }
+sc-executor = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
+sc-service = { git = "https://github.com/paritytech/substrate.git", default-features = false, branch = "polkadot-v0.9.30" }
 sp-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-authority-discovery = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30" }
+sp-block-builder = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-blockchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-consensus = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
@@ -25,7 +25,7 @@ sp-inherents = { git = "https://github.com/paritytech/substrate.git", branch = "
 sp-offchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-session = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
-sp-storage = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30" }
+sp-storage = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 
