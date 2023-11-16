@@ -14,9 +14,9 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 clap = { version = "3.1", features = ["derive"], optional = true }
 frame-benchmarking-cli = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.30" }
-sc-cli = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.30" }
-sc-service = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.30" }
-try-runtime-cli = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.30" }
+sc-cli = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.30" }
+sc-service = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.30" }
+try-runtime-cli = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.30" }
 url = "2.4.1"
 
 # Local
