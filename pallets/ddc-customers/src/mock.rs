@@ -1,7 +1,7 @@
 //! Test utilities
 
 use crate::{self as pallet_ddc_customers, *};
-use ddc_primitives::{NodePubKey, NodeType};
+use ddc_primitives::{ClusterPricingParams, NodePubKey, NodeType};
 use ddc_traits::cluster::{ClusterVisitor, ClusterVisitorError};
 
 use frame_support::{
@@ -130,7 +130,7 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	}
 
 	fn get_pricing_params(
-		cluster_id: &ClusterId,
+		_cluster_id: &ClusterId,
 	) -> Result<ClusterPricingParams, ClusterVisitorError> {
 		Ok(ClusterPricingParams {
 			unit_per_mb_stored: 1,
