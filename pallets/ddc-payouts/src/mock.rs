@@ -10,6 +10,7 @@ use ddc_traits::{
 	pallet::PalletVisitor,
 };
 use frame_election_provider_support::SortedListProvider;
+
 use frame_support::{
 	construct_runtime,
 	error::BadOrigin,
@@ -236,6 +237,7 @@ impl<T: frame_system::Config> ValidatorVisitor<T> for TestValidatorVisitor {
 	}
 }
 */
+
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
