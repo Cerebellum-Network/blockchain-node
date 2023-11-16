@@ -128,6 +128,17 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	) -> Result<T::BlockNumber, ClusterVisitorError> {
 		Ok(T::BlockNumber::from(10u32))
 	}
+
+	fn get_pricing_params(
+		cluster_id: &ClusterId,
+	) -> Result<ClusterPricingParams, ClusterVisitorError> {
+		Ok(ClusterPricingParams {
+			unit_per_mb_stored: 1,
+			unit_per_mb_streamed: 2,
+			unit_per_put_request: 3,
+			unit_per_get_request: 4,
+		})
+	}
 }
 
 pub struct ExtBuilder;
