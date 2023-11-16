@@ -1,10 +1,7 @@
 //! DdcStaking pallet benchmarking.
 
 use super::*;
-use crate::{
-	cdn_node::{ CDNNodeProps},
-	Pallet as DdcNodes,
-};
+use crate::{cdn_node::CDNNodeProps, Pallet as DdcNodes};
 use ddc_primitives::CDNNodePubKey;
 use testing_utils::*;
 
