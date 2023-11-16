@@ -14,6 +14,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
+#[cfg(test)]
+pub(crate) mod mock;
+#[cfg(test)]
+mod tests;
+
 use ddc_primitives::{ClusterId, DdcEra};
 use ddc_traits::{cluster::ClusterVisitor, customer::CustomerCharger as CustomerChargerType};
 use frame_support::{
