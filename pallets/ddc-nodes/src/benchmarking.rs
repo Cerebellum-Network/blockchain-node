@@ -1,8 +1,9 @@
 //! DdcStaking pallet benchmarking.
 
 use super::*;
-use crate::{cdn_node::CDNNodeParams, node::NodeParams, Pallet as DdcNodes};
+use crate::{cdn_node::CDNNodeProps, Pallet as DdcNodes};
 use ddc_primitives::CDNNodePubKey;
+use testing_utils::*;
 
 use sp_std::prelude::*;
 
@@ -15,60 +16,40 @@ const USER_SEED: u32 = 999666;
 
 benchmarks! {
 	create_node {
-	let user: T::AccountId = account("user", USER_SEED, 0u32);
-		let node = NodePubKey::CDNPubKey(CDNNodePubKey::new([0; 32]));
-	let cdn_node_params = NodeParams::CDNParams(CDNNodeParams {
-	  host: vec![1u8, 255],
-	  http_port: 35000u16,
-	  grpc_port: 25000u16,
-	  p2p_port: 15000u16,
-	});
+		let (user, node, cdn_node_params, _) = create_user_and_config::<T>("user", USER_SEED);
 
-	whitelist_account!(user);
+	  whitelist_account!(user);
 	}: _(RawOrigin::Signed(user.clone()), node, cdn_node_params)
 	verify {
 		assert!(CDNNodes::<T>::contains_key(CDNNodePubKey::new([0; 32])));
 	}
 
 	delete_node {
-	let user: T::AccountId = account("user", USER_SEED, 0u32);
-		let node = NodePubKey::CDNPubKey(CDNNodePubKey::new([0; 32]));
+		let (user, node, cdn_node_params, _) = create_user_and_config::<T>("user", USER_SEED);
 
-	let cdn_node_params =  NodeParams::CDNParams(CDNNodeParams {
-	  host: vec![1u8, 255],
-	  http_port: 35000u16,
-	  grpc_port: 25000u16,
-	  p2p_port: 15000u16,
-	});
-
-	DdcNodes::<T>::create_node(RawOrigin::Signed(user.clone()).into(),node.clone(), cdn_node_params)?;
+	  DdcNodes::<T>::create_node(RawOrigin::Signed(user.clone()).into(),node.clone(), cdn_node_params)?;
 
 		whitelist_account!(user);
 	}: _(RawOrigin::Signed(user.clone()), node)
 	verify {
-	assert!(!CDNNodes::<T>::contains_key(CDNNodePubKey::new([0; 32])));
+	  assert!(!CDNNodes::<T>::contains_key(CDNNodePubKey::new([0; 32])));
 	}
 
 	set_node_params {
-	let user: T::AccountId = account("user", USER_SEED, 0u32);
-		let node = NodePubKey::CDNPubKey(CDNNodePubKey::new([0; 32]));
-	let cdn_node_params =  NodeParams::CDNParams(CDNNodeParams {
-	  host: vec![1u8, 255],
-	  http_port: 35000u16,
-	  grpc_port: 25000u16,
-	  p2p_port: 15000u16,
-	});
+	  let (user, node, cdn_node_params, cdn_node_params_new) = create_user_and_config::<T>("user", USER_SEED);
 
-	let cdn_node_params_new =  NodeParams::CDNParams(CDNNodeParams {
-	  host: vec![2u8, 255],
+	DdcNodes::<T>::create_node(RawOrigin::Signed(user.clone()).into(),node.clone(), cdn_node_params)?;
+
+	whitelist_account!(user);
+	}: _(RawOrigin::Signed(user.clone()), node, cdn_node_params_new)
+	verify {
+	  assert_eq!(CDNNodes::<T>::try_get(
+	  CDNNodePubKey::new([0; 32])).unwrap().props,
+	CDNNodeProps {
+	  host: vec![2u8, 255].try_into().unwrap(),
 	  http_port: 45000u16,
 	  grpc_port: 55000u16,
 	  p2p_port: 65000u16,
 	});
-  DdcNodes::<T>::create_node(RawOrigin::Signed(user.clone()).into(),node.clone(), cdn_node_params)?;
-
-  whitelist_account!(user);
-	}: _(RawOrigin::Signed(user.clone()), node, cdn_node_params_new)
-	verify {
 	}
 }

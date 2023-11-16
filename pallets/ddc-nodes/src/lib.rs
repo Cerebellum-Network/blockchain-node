@@ -14,18 +14,18 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-<<<<<<< HEAD
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
-=======
+
 pub mod weights;
 use crate::weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
->>>>>>> 36d18bf (benchmarking & weights for ddc-nodes)
+#[cfg(any(feature = "runtime-benchmarks", test))]
+pub mod testing_utils;
 
 use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey, StorageNodePubKey};
 use ddc_traits::{
