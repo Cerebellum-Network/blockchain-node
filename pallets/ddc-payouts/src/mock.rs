@@ -3,10 +3,17 @@
 #![allow(dead_code)]
 
 use crate::{self as pallet_ddc_payouts, *};
+use ddc_primitives::{ClusterPricingParams, NodePubKey, NodeType};
+use ddc_traits::{
+	cluster::{ClusterVisitor, ClusterVisitorError},
+	customer::CustomerCharger,
+};
+
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
 	weights::constants::RocksDbWeight,
+	PalletId,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_core::H256;
@@ -17,7 +24,7 @@ use sp_runtime::{
 };
 
 /// The AccountId alias in this test module.
-pub(crate) type AccountId = u64;
+pub type AccountId = u64;
 pub(crate) type AccountIndex = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
@@ -32,7 +39,6 @@ construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcPayouts: pallet_ddc_payouts::{Pallet, Call, Storage, Event<T>},
 	}
@@ -81,15 +87,66 @@ impl pallet_balances::Config for Test {
 	type WeightInfo = ();
 }
 
-impl pallet_timestamp::Config for Test {
-	type Moment = u64;
-	type OnTimestampSet = ();
-	type MinimumPeriod = ConstU64<5>;
-	type WeightInfo = ();
+parameter_types! {
+	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
 }
 
 impl crate::pallet::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
+	type PalletId = PayoutsPalletId;
+	type Currency = Balances;
+	type CustomerCharger = TestCustomerCharger;
+	type ClusterVisitor = TestClusterVisitor;
+}
+
+pub struct TestCustomerCharger;
+impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
+	fn charge_content_owner(
+		_content_owner: T::AccountId,
+		_billing_vault: T::AccountId,
+		_amount: u128,
+	) -> sp_runtime::DispatchResult {
+		Ok(())
+	}
+}
+
+pub struct TestClusterVisitor;
+impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
+	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
+		true
+	}
+	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
+		Ok(())
+	}
+	fn get_bond_size(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<u128, ClusterVisitorError> {
+		Ok(10)
+	}
+	fn get_chill_delay(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<T::BlockNumber, ClusterVisitorError> {
+		Ok(T::BlockNumber::from(10u32))
+	}
+	fn get_unbonding_delay(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<T::BlockNumber, ClusterVisitorError> {
+		Ok(T::BlockNumber::from(10u32))
+	}
+
+	fn get_pricing_params(
+		_cluster_id: &ClusterId,
+	) -> Result<ClusterPricingParams, ClusterVisitorError> {
+		Ok(ClusterPricingParams {
+			unit_per_mb_stored: 1,
+			unit_per_mb_streamed: 2,
+			unit_per_put_request: 3,
+			unit_per_get_request: 4,
+		})
+	}
 }
 
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;

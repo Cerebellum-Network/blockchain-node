@@ -205,17 +205,17 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct BillingReport<T: Config> {
-		state: State,
-		vault: T::AccountId,
-		total_customer_charge: CustomerCharge,
-		total_distributed_reward: u128,
-		total_node_usage: NodeUsage,
+		pub state: State,
+		pub vault: T::AccountId,
+		pub total_customer_charge: CustomerCharge,
+		pub total_distributed_reward: u128,
+		pub total_node_usage: NodeUsage,
 		// stage 1
-		charging_max_batch_index: BatchIndex,
-		charging_processed_batches: BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
+		pub charging_max_batch_index: BatchIndex,
+		pub charging_processed_batches: BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
 		// stage 2
-		rewarding_max_batch_index: BatchIndex,
-		rewarding_processed_batches: BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
+		pub rewarding_max_batch_index: BatchIndex,
+		pub rewarding_processed_batches: BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
 	}
 
 	impl<T: pallet::Config> Default for BillingReport<T> {
@@ -705,7 +705,7 @@ pub mod pallet {
 		// Check if the Vec contains all integers between 1 and rewarding_max_batch_index
 		ensure!(!batches.is_empty(), Error::<T>::BatchesMissed);
 
-		ensure!(*max_batch_index as usize == batches.len() - 1usize, Error::<T>::BatchesMissed);
+		ensure!(*max_batch_index as usize == batches.len(), Error::<T>::BatchesMissed);
 
 		for index in 0..*max_batch_index {
 			ensure!(batches.contains(&index), Error::<T>::BatchesMissed);
