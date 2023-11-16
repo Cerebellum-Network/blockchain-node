@@ -1,7 +1,10 @@
 //! DdcStaking pallet benchmarking.
 
 use super::*;
-use crate::{cdn_node::CDNNodeProps, Pallet as DdcNodes};
+use crate::{
+	cdn_node::{ CDNNodeProps},
+	Pallet as DdcNodes,
+};
 use ddc_primitives::CDNNodePubKey;
 use testing_utils::*;
 
@@ -45,11 +48,11 @@ benchmarks! {
 	verify {
 	  assert_eq!(CDNNodes::<T>::try_get(
 	  CDNNodePubKey::new([0; 32])).unwrap().props,
-	CDNNodeProps {
-	  host: vec![2u8, 255].try_into().unwrap(),
-	  http_port: 45000u16,
-	  grpc_port: 55000u16,
-	  p2p_port: 65000u16,
-	});
+		CDNNodeProps {
+			host: vec![2u8, 255].try_into().unwrap(),
+			http_port: 45000u16,
+			grpc_port: 55000u16,
+			p2p_port: 65000u16,
+		});
 	}
 }
