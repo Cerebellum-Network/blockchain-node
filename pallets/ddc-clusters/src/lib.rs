@@ -39,7 +39,7 @@ use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
-mod cluster;
+pub mod cluster;
 mod node_provider_auth;
 
 /// The balance type of this pallet.

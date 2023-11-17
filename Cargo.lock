@@ -4910,6 +4910,8 @@ dependencies = [
  "frame-system",
  "log",
  "pallet-balances",
+ "pallet-contracts",
+ "pallet-ddc-clusters",
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
