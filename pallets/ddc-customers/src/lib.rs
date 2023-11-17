@@ -1,13 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-// pub mod weights;
-// use crate::weights::WeightInfo;
+pub mod weights;
+use crate::weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
-// #[cfg(any(feature = "runtime-benchmarks", test))]
-// pub mod testing_utils;
 
 #[cfg(test)]
 pub(crate) mod mock;
@@ -172,6 +170,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type UnlockingDelay: Get<<Self as frame_system::Config>::BlockNumber>;
 		type ClusterVisitor: ClusterVisitor<Self>;
+		type WeightInfo: WeightInfo;
 	}
 
 	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
@@ -262,7 +261,7 @@ pub mod pallet {
 		/// Create new bucket with specified cluster id
 		///
 		/// Anyone can create a bucket
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_bucket())]
 		pub fn create_bucket(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
 			let cur_bucket_id = Self::buckets_count() + 1;
@@ -288,7 +287,7 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the owner account.
 		///
 		/// Emits `Deposited`.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T>,
@@ -325,7 +324,7 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the owner.
 		///
 		/// Emits `Deposited`.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit_extra())]
 		pub fn deposit_extra(
 			origin: OriginFor<T>,
 			#[pallet::compact] max_additional: BalanceOf<T>,
@@ -367,7 +366,7 @@ pub mod pallet {
 		/// Emits `InitiatDepositUnlock`.
 		///
 		/// See also [`Call::withdraw_unlocked_deposit`].
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::unlock_deposit())]
 		pub fn unlock_deposit(
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T>,
@@ -426,15 +425,15 @@ pub mod pallet {
 		/// Emits `Withdrawn`.
 		///
 		/// See also [`Call::unlock_deposit`].
-		#[pallet::weight(10_000)]
-		pub fn withdraw_unlocked_deposit(origin: OriginFor<T>) -> DispatchResult {
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::withdraw_unlocked_deposit_kill())]
+		pub fn withdraw_unlocked_deposit(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
 			let (owner, old_total) = (ledger.owner.clone(), ledger.total);
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
 
-			if ledger.unlocking.is_empty() &&
+			let post_info_weight = if ledger.unlocking.is_empty() &&
 				ledger.active < <T as pallet::Config>::Currency::minimum_balance()
 			{
 				log::debug!("Killing owner");
@@ -442,11 +441,15 @@ pub mod pallet {
 				// active portion to fall below existential deposit + will have no more unlocking
 				// chunks left. We can now safely remove all accounts-related information.
 				Self::kill_owner(&owner)?;
+				// This is worst case scenario, so we use the full weight and return None
+				None
 			} else {
 				log::debug!("Updating ledger");
 				// This was the consequence of a partial deposit unlock. just update the ledger and
 				// move on.
 				Self::update_ledger(&owner, &ledger);
+				// This is only an update, so we use less overall weight.
+				Some(<T as pallet::Config>::WeightInfo::withdraw_unlocked_deposit_update())
 			};
 
 			log::debug!("Current total: {:?}", ledger.total);
@@ -470,7 +473,7 @@ pub mod pallet {
 				Self::deposit_event(Event::<T>::Withdrawn(owner, value));
 			}
 
-			Ok(())
+			Ok(post_info_weight.into())
 		}
 	}
 

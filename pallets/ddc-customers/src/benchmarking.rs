@@ -1,32 +1,25 @@
 //! DdcStaking pallet benchmarking.
+#![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
 use crate::Pallet as DdcCustomers;
-use ddc_primitives::{BucketId, ClusterId};
-use pallet_ddc_clusters::{Pallet as DdcClusters, 	cluster::{Cluster, ClusterGovParams, ClusterParams}};
-use sp_runtime::{
-	traits::{Bounded, One, StaticLookup, TrailingZeroInput, Zero},
-	Perbill, Percent, Saturating,
+use ddc_primitives::ClusterId;
+use frame_benchmarking::{account, benchmarks, whitelist_account};
+use frame_support::traits::Currency;
+use pallet_ddc_clusters::{
+	cluster::{ClusterGovParams, ClusterParams},
+	Pallet as DdcClusters,
 };
+use sp_runtime::Perbill;
 use sp_std::prelude::*;
-use frame_support::{
-	pallet_prelude::*,
-	traits::{Currency, Get, Imbalance, UnfilteredDispatchable},
-};
 
 use pallet_contracts::chain_extension::UncheckedFrom;
 
-pub type BalanceOf<T> =
-	<<T as pallet_ddc_clusters::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+pub type BalanceOf<T> = <<T as pallet_ddc_clusters::Config>::Currency as Currency<
+	<T as frame_system::Config>::AccountId,
+>>::Balance;
 
-// use testing_utils::*;
-
-use sp_std::prelude::*;
-
-pub use frame_benchmarking::{
-	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
-};
-use frame_system::RawOrigin;
+use frame_system::{Pallet as System, RawOrigin};
 
 const USER_SEED: u32 = 999666;
 
@@ -36,7 +29,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
 
-    let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
+	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
 			treasury_share: Perbill::default(),
 			validators_share: Perbill::default(),
 			cluster_reserve_share: Perbill::default(),
@@ -52,14 +45,14 @@ benchmarks! {
 			unit_per_get_request: 10,
 		};
 
-    pallet_ddc_clusters::Pallet::<T>::create_cluster(
-      RawOrigin::Root.into(),
-      ClusterId::from([1; 20]),
-      user.clone(),
-      user.clone(),
-      ClusterParams { node_provider_auth_contract: user.clone() },
-      cluster_gov_params
-    ).unwrap();
+	DdcClusters::<T>::create_cluster(
+	  RawOrigin::Root.into(),
+	  ClusterId::from([1; 20]),
+	  user.clone(),
+	  user.clone(),
+	  ClusterParams { node_provider_auth_contract: user.clone() },
+	  cluster_gov_params
+	).unwrap();
 
 		whitelist_account!(user);
 	}: _(RawOrigin::Signed(user), cluster_id)
@@ -85,7 +78,7 @@ benchmarks! {
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 		let amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
 
-    DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount.clone());
+	let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount);
 
 		whitelist_account!(user);
 	}: _(RawOrigin::Signed(user.clone()), amount)
@@ -93,43 +86,72 @@ benchmarks! {
 		assert!(Ledger::<T>::contains_key(user));
 	}
 
-	unlock_deposit_benchmark {
+	unlock_deposit {
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-		let balance = <T as pallet::Config>::Currency::minimum_balance() * 2000u32.into();
+		let balance = <T as pallet::Config>::Currency::minimum_balance() * 200u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let amount = <T as pallet::Config>::Currency::minimum_balance() * 1950u32.into();
+		let amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
 
-    DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount.clone());
+	let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount);
 
-    let int in 1 .. 100 as u32;
-    whitelist_account!(user);
-	}: unlock_deposit(RawOrigin::Signed(user.clone()), int.into())
+	whitelist_account!(user);
+	}: unlock_deposit(RawOrigin::Signed(user.clone()), amount)
 	verify {
 		assert!(Ledger::<T>::contains_key(user));
 	}
 
+  // Worst case scenario, 31/32 chunks unlocked after the unlocking duration
+	withdraw_unlocked_deposit_update {
 
-	// set_node_params {
-	//   let (user, node, cdn_node_params, cdn_node_params_new) = create_user_and_config::<T>("user", USER_SEED);
+	System::<T>::set_block_number(1u32.into());
 
-	// DdcNodes::<T>::create_node(RawOrigin::Signed(user.clone()).into(),node.clone(), cdn_node_params)?;
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let balance = <T as pallet::Config>::Currency::minimum_balance() * 2000u32.into();
+		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
+		let amount = <T as pallet::Config>::Currency::minimum_balance() * 32u32.into();
 
-	// whitelist_account!(user);
-	// }: _(RawOrigin::Signed(user.clone()), node, cdn_node_params_new)
-	// verify {
-	//   assert_eq!(CDNNodes::<T>::try_get(
-	//   CDNNodePubKey::new([0; 32])).unwrap().props,
-	// 	CDNNodeProps {
-	// 		host: vec![2u8, 255].try_into().unwrap(),
-	// 		http_port: 45000u16,
-	// 		grpc_port: 55000u16,
-	// 		p2p_port: 65000u16,
-	// 	});
-	// }
+	let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount);
+
+	for _k in 1 .. 32 {
+	  let _ = DdcCustomers::<T>::unlock_deposit(RawOrigin::Signed(user.clone()).into(), <T as pallet::Config>::Currency::minimum_balance() * 1u32.into());
+	}
+
+	System::<T>::set_block_number(12u32.into());
+
+	whitelist_account!(user);
+	}: withdraw_unlocked_deposit(RawOrigin::Signed(user.clone()))
+	verify {
+	let legder = Ledger::<T>::try_get(user).unwrap();
+		assert_eq!(legder.unlocking.len(), 1);
+	}
+
+  // Worst case scenario, everything is removed after the unlocking duration
+	withdraw_unlocked_deposit_kill {
+
+	System::<T>::set_block_number(1u32.into());
+
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let balance = <T as pallet::Config>::Currency::minimum_balance() * 2000u32.into();
+		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
+		let amount = <T as pallet::Config>::Currency::minimum_balance() * 32u32.into();
+
+	let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount);
+
+	for _k in 1 .. 33 {
+	  let _ = DdcCustomers::<T>::unlock_deposit(RawOrigin::Signed(user.clone()).into(), <T as pallet::Config>::Currency::minimum_balance() * 1u32.into());
+	}
+
+	System::<T>::set_block_number(5256001u32.into());
+
+	whitelist_account!(user);
+	}: withdraw_unlocked_deposit(RawOrigin::Signed(user.clone()))
+	verify {
+	assert!(!Ledger::<T>::contains_key(user));
+	}
 
   impl_benchmark_test_suite!(
-    DdcCustomers,
-    crate::mock::ExtBuilder::default().build(),
-    crate::mock::Test,
+	DdcCustomers,
+	crate::mock::ExtBuilder::default().build(),
+	crate::mock::Test,
   );
 }

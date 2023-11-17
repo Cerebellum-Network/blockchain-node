@@ -4914,6 +4914,7 @@ dependencies = [
  "pallet-ddc-clusters",
  "pallet-timestamp",
  "parity-scale-codec",
+ "rand_chacha 0.2.2",
  "scale-info",
  "sp-core",
  "sp-io",

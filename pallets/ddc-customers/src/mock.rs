@@ -130,11 +130,10 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	}
 }
 
-#[derive(Default)]
 pub struct ExtBuilder;
 
 impl ExtBuilder {
-	pub(crate) fn build(self) -> TestExternalities {
+	fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
@@ -143,7 +142,7 @@ impl ExtBuilder {
 
 		TestExternalities::new(storage)
 	}
-	pub(crate) fn build_and_execute(self, test: impl FnOnce()) {
+	pub fn build_and_execute(self, test: impl FnOnce()) {
 		sp_tracing::try_init_simple();
 		let mut ext = self.build();
 		ext.execute_with(test);
