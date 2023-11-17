@@ -1,7 +1,7 @@
 //! DdcStaking pallet benchmarking.
 
 use super::*;
-use crate::Pallet as DdcCustomers;
+use crate::Pallet;
 use ddc_primitives::{BucketId, ClusterId};
 // use testing_utils::*;
 
@@ -16,22 +16,22 @@ const USER_SEED: u32 = 999666;
 
 benchmarks! {
 	create_bucket {
-    let cluster_id = ClusterId::from([1; 20]);
-    let user = account("user", USER_SEED, 0u32);
+		let cluster_id = ClusterId::from([1; 20]);
+		let user = account("user", USER_SEED, 0u32);
 
-	  whitelist_account!(user);
+		whitelist_account!(user);
 	}: _(RawOrigin::Signed(user), cluster_id)
 	verify {
-		assert_eq!(DdcCustomers::<T>::buckets_count(), 1);
+		assert_eq!(Pallet::<T>::buckets_count(), 1);
 	}
 
 	deposit {
-    let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-    let balance = T::Currency::minimum_balance() * 100u32.into();
-    let _ = T::Currency::make_free_balance_be(&user, balance);
-    let amount = T::Currency::minimum_balance() * 50u32.into();
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let balance = T::Currency::minimum_balance() * 100u32.into();
+		let _ = T::Currency::make_free_balance_be(&user, balance);
+		let amount = T::Currency::minimum_balance() * 50u32.into();
 
-	  whitelist_account!(user);
+		whitelist_account!(user);
 	}: _(RawOrigin::Signed(user.clone()), amount)
 	verify {
 		assert!(Ledger::<T>::contains_key(user));
@@ -57,8 +57,8 @@ benchmarks! {
 	// }
 
   impl_benchmark_test_suite!(
-    DdcCustomers,
-    crate::mock::ExtBuilder::default().build(),
-    crate::mock::Test,
+	Pallet,
+	crate::mock::ExtBuilder::default().build(),
+	crate::mock::Test,
   );
 }
