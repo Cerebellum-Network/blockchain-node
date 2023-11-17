@@ -4,7 +4,16 @@ use super::*;
 use crate::Pallet as DdcCustomers;
 use ddc_primitives::{BucketId, ClusterId};
 use pallet_ddc_clusters::{Pallet as DdcClusters, 	cluster::{Cluster, ClusterGovParams, ClusterParams}};
-use sp_runtime::Perbill;
+use sp_runtime::{
+	traits::{Bounded, One, StaticLookup, TrailingZeroInput, Zero},
+	Perbill, Percent, Saturating,
+};
+use sp_std::prelude::*;
+use frame_support::{
+	pallet_prelude::*,
+	traits::{Currency, Get, Imbalance, UnfilteredDispatchable},
+};
+
 use pallet_contracts::chain_extension::UncheckedFrom;
 
 pub type BalanceOf<T> =
@@ -44,7 +53,7 @@ benchmarks! {
 		};
 
     pallet_ddc_clusters::Pallet::<T>::create_cluster(
-      RawOrigin::Signed(user.clone()).into(),
+      RawOrigin::Root.into(),
       ClusterId::from([1; 20]),
       user.clone(),
       user.clone(),
@@ -66,6 +75,35 @@ benchmarks! {
 
 		whitelist_account!(user);
 	}: _(RawOrigin::Signed(user.clone()), amount)
+	verify {
+		assert!(Ledger::<T>::contains_key(user));
+	}
+
+	deposit_extra {
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let balance = <T as pallet::Config>::Currency::minimum_balance() * 200u32.into();
+		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
+		let amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
+
+    DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount.clone());
+
+		whitelist_account!(user);
+	}: _(RawOrigin::Signed(user.clone()), amount)
+	verify {
+		assert!(Ledger::<T>::contains_key(user));
+	}
+
+	unlock_deposit_benchmark {
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let balance = <T as pallet::Config>::Currency::minimum_balance() * 2000u32.into();
+		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
+		let amount = <T as pallet::Config>::Currency::minimum_balance() * 1950u32.into();
+
+    DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount.clone());
+
+    let int in 1 .. 100 as u32;
+    whitelist_account!(user);
+	}: unlock_deposit(RawOrigin::Signed(user.clone()), int.into())
 	verify {
 		assert!(Ledger::<T>::contains_key(user));
 	}
