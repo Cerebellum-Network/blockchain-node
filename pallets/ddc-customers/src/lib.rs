@@ -177,8 +177,12 @@ pub mod pallet {
 	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
-	pub type Ledger<T: Config> =
-		StorageMap<_, Identity, T::AccountId, AccountsLedger<T::AccountId, BalanceOf<T>, T>>;
+	pub type Ledger<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		AccountsLedger<T::AccountId, BalanceOf<T>, T>,
+	>;
 
 	#[pallet::type_value]
 	pub fn DefaultBucketCount<T: Config>() -> BucketId {
