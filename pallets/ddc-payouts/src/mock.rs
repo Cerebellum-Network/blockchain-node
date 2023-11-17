@@ -10,7 +10,9 @@ use ddc_traits::{
 };
 
 use frame_support::{
-	construct_runtime, parameter_types,
+	construct_runtime,
+	error::BadOrigin,
+	parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
 	weights::constants::RocksDbWeight,
 	PalletId,
@@ -104,11 +106,19 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 	fn charge_content_owner(
 		_content_owner: T::AccountId,
 		_billing_vault: T::AccountId,
-		_amount: u128,
+		amount: u128,
 	) -> sp_runtime::DispatchResult {
+		ensure!(amount > 1_000_000_000, BadOrigin); //  any error will do
 		Ok(())
 	}
 }
+
+pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
+	unit_per_mb_streamed: 2_000_000,
+	unit_per_mb_stored: 3_000_000,
+	unit_per_put_request: 4_000_000,
+	unit_per_get_request: 5_000_000,
+};
 
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
@@ -140,12 +150,7 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_pricing_params(
 		_cluster_id: &ClusterId,
 	) -> Result<ClusterPricingParams, ClusterVisitorError> {
-		Ok(ClusterPricingParams {
-			unit_per_mb_stored: 1,
-			unit_per_mb_streamed: 2,
-			unit_per_put_request: 3,
-			unit_per_get_request: 4,
-		})
+		Ok(PRICING_PARAMS)
 	}
 }
 

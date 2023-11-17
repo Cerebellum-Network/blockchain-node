@@ -38,8 +38,8 @@ type BatchIndex = u16;
 /// Stores usage of customers
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct CustomerUsage {
-	pub transferred_bytes: u128,
-	pub stored_bytes: u128,
+	pub transferred_bytes: u64,
+	pub stored_bytes: u64,
 	pub number_of_puts: u128,
 	pub number_of_gets: u128,
 }
@@ -47,8 +47,8 @@ pub struct CustomerUsage {
 /// Stores usage of node provider
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct NodeUsage {
-	pub transferred_bytes: u128,
-	pub stored_bytes: u128,
+	pub transferred_bytes: u64,
+	pub stored_bytes: u64,
 	pub number_of_puts: u128,
 	pub number_of_gets: u128,
 }
@@ -56,10 +56,10 @@ pub struct NodeUsage {
 /// Stores reward in tokens(units) of node provider as per NodeUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct NodeReward {
-	pub transfer: u128, // for transferred_bytes
-	pub storage: u128,  // for stored_bytes
-	pub puts: u128,     // for number_of_puts
-	pub gets: u128,     // for number_of_gets
+	pub transfer: u128, // tokens for transferred_bytes
+	pub storage: u128,  // tokens for stored_bytes
+	pub puts: u128,     // tokens for number_of_puts
+	pub gets: u128,     // tokens for number_of_gets
 }
 
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
@@ -73,10 +73,10 @@ pub struct BillingReportDebt {
 /// Stores charge in tokens(units) of customer as per CustomerUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct CustomerCharge {
-	pub transfer: u128, // for transferred_bytes
-	pub storage: u128,  // for stored_bytes
-	pub puts: u128,     // for number_of_puts
-	pub gets: u128,     // for number_of_gets
+	pub transfer: u128, // tokens for transferred_bytes
+	pub storage: u128,  // tokens for stored_bytes
+	pub puts: u128,     // tokens for number_of_puts
+	pub gets: u128,     // tokens for number_of_gets
 }
 
 /// The balance type of this pallet.
@@ -156,6 +156,9 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 		},
+		AuthorisedCaller {
+			authorised_caller: T::AccountId,
+		},
 	}
 
 	#[pallet::error]
@@ -183,7 +186,6 @@ pub mod pallet {
 		Blake2_128Concat,
 		DdcEra,
 		BillingReport<T>,
-		ValueQuery,
 	>;
 
 	#[pallet::storage]
@@ -192,15 +194,8 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn debtor_customers)]
-	pub type DebtorCustomers<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		ClusterId,
-		Blake2_128Concat,
-		T::AccountId,
-		u128,
-		ValueQuery,
-	>;
+	pub type DebtorCustomers<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(T))]
@@ -256,7 +251,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?; // requires Governance approval
 
-			AuthorisedCaller::<T>::put(authorised_caller);
+			AuthorisedCaller::<T>::put(authorised_caller.clone());
+
+			Self::deposit_event(Event::<T>::AuthorisedCaller { authorised_caller });
 
 			Ok(())
 		}
@@ -670,16 +667,14 @@ pub mod pallet {
 			.map_err(|_| Error::<T>::NotExpectedClusterState)?;
 
 		total.transfer = (|| -> Option<u128> {
-			usage
-				.transferred_bytes
+			(usage.transferred_bytes as u128)
 				.checked_mul(pricing.unit_per_mb_streamed)?
 				.checked_div(byte_unit::MEBIBYTE)
 		})()
 		.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 		total.storage = (|| -> Option<u128> {
-			usage
-				.stored_bytes
+			(usage.stored_bytes as u128)
 				.checked_mul(pricing.unit_per_mb_stored)?
 				.checked_div(byte_unit::MEBIBYTE)
 		})()
