@@ -180,6 +180,7 @@ impl pallet_timestamp::Config for Test {
 
 impl pallet_ddc_nodes::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
+	type StakingVisitor = TestStakingVisitor;
 }
 
 impl crate::pallet::Config for Test {
@@ -193,13 +194,16 @@ pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 pub struct TestStakingVisitor;
 impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
-	fn node_has_stake(
+	fn has_activated_stake(
 		_node_pub_key: &NodePubKey,
 		_cluster_id: &ClusterId,
 	) -> Result<bool, StakingVisitorError> {
 		Ok(true)
 	}
-	fn node_is_chilling(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
+	fn has_stake(_node_pub_key: &NodePubKey) -> bool {
+		true
+	}
+	fn has_chilling_attempt(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
 		Ok(false)
 	}
 }
