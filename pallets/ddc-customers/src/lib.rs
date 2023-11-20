@@ -6,6 +6,8 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+use core::fmt::Debug;
+
 use codec::{Decode, Encode, HasCompact};
 
 use ddc_primitives::{BucketId, ClusterId};
@@ -36,13 +38,17 @@ parameter_types! {
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub struct UnlockChunk<Balance: HasCompact, T: Config> {
+pub struct UnlockChunk<Balance, BlockNumber>
+where
+	Balance: HasCompact,
+	BlockNumber: Clone,
+{
 	/// Amount of funds to be unlocked.
 	#[codec(compact)]
 	value: Balance,
 	/// Block number at which point it'll be unlocked.
 	#[codec(compact)]
-	block: T::BlockNumber,
+	block: BlockNumber,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -75,12 +81,12 @@ pub struct AccountsLedger<AccountId, Balance: HasCompact, T: Config> {
 	/// (assuming that the content owner has to pay for network usage). It is assumed that this
 	/// will be treated as a first in, first out queue where the new (higher value) eras get pushed
 	/// on the back.
-	pub unlocking: BoundedVec<UnlockChunk<Balance, T>, MaxUnlockingChunks>,
+	pub unlocking: BoundedVec<UnlockChunk<Balance, T::BlockNumber>, MaxUnlockingChunks>,
 }
 
 impl<
 		AccountId,
-		Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero,
+		Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero + Debug,
 		T: Config,
 	> AccountsLedger<AccountId, Balance, T>
 {

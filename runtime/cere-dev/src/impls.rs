@@ -32,8 +32,8 @@ impl OnUnbalanced<NegativeImbalance> for Author {
 #[cfg(test)]
 mod multiplier_tests {
 	use crate::{
-		AdjustmentVariable, MinimumMultiplier, Runtime, RuntimeBlockWeights as BlockWeights,
-		System, TargetBlockFullness, TransactionPayment,
+		AdjustmentVariable, MaximumMultiplier, MinimumMultiplier, Runtime,
+		RuntimeBlockWeights as BlockWeights, System, TargetBlockFullness, TransactionPayment,
 	};
 	use cere_dev_runtime_constants::{currency::*, time::*};
 	use frame_support::{
@@ -69,6 +69,7 @@ mod multiplier_tests {
 			TargetBlockFullness,
 			AdjustmentVariable,
 			MinimumMultiplier,
+			MaximumMultiplier,
 		>::convert(fm)
 	}
 
