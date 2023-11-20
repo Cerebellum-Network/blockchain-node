@@ -4,6 +4,7 @@ use super::{mock::*, *};
 use ddc_primitives::ClusterId;
 
 use frame_support::{assert_noop, assert_ok};
+use frame_system::Config;
 use pallet_balances::Error as BalancesError;
 
 #[test]
@@ -144,8 +145,10 @@ fn unlock_and_withdraw_deposit_works() {
 		assert_ok!(DdcCustomers::unlock_deposit(RuntimeOrigin::signed(account_1), 1_u128));
 		System::set_block_number(2);
 
-		let mut unlocking_chunks: BoundedVec<UnlockChunk<Balance, Test>, MaxUnlockingChunks> =
-			Default::default();
+		let mut unlocking_chunks: BoundedVec<
+			UnlockChunk<Balance, <Test as Config>::BlockNumber>,
+			MaxUnlockingChunks,
+		> = Default::default();
 		match unlocking_chunks.try_push(UnlockChunk { value: 1, block: 11 }) {
 			Ok(_) => (),
 			Err(_) => println!("No more chunks"),
