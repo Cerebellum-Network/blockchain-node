@@ -2,7 +2,7 @@ let
   mozillaOverlay =
     import (builtins.fetchGit {
       url = "https://github.com/mozilla/nixpkgs-mozilla.git";
-      rev = "57c8084c7ef41366993909c20491e359bbb90f54";
+      rev = "6eabade97bc28d707a8b9d82ad13ef143836736e";
     });
   pinned = builtins.fetchGit {
     # Descriptive name to make the store path easier to identify
@@ -13,7 +13,7 @@ let
     rev = "1fe6ed37fd9beb92afe90671c0c2a662a03463dd";
   };
   nixpkgs = import pinned { overlays = [ mozillaOverlay ]; };
-  toolchain = with nixpkgs; (rustChannelOf { date = "2021-09-14"; channel = "nightly"; });
+  toolchain = with nixpkgs; (rustChannelOf { date = "2023-10-22"; channel = "nightly"; });
   rust-wasm = toolchain.rust.override {
     targets = [ "wasm32-unknown-unknown" ];
   };
@@ -23,8 +23,6 @@ with nixpkgs; pkgs.mkShell {
     clang
     pkg-config
     rust-wasm
-  ] ++ stdenv.lib.optionals stdenv.isDarwin [
-    darwin.apple_sdk.frameworks.Security
   ];
 
   LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
