@@ -33,7 +33,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
-use sp_runtime::Perbill;
+use sp_runtime::{PerThing, Perbill};
 use sp_std::prelude::*;
 
 type BatchIndex = u16;
@@ -140,6 +140,21 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 		},
+		TreasuryFeesCharged {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			amount: u128,
+		},
+		ClusterReserveFeesCharged {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			amount: u128,
+		},
+		ValidatorFeesCharged {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			amount: u128,
+		},
 		RewardingStarted {
 			cluster_id: ClusterId,
 			era: DdcEra,
@@ -237,8 +252,7 @@ pub mod pallet {
 		NotInitialized,
 		Initialized,
 		ChargingCustomers,
-		CustomersCharged,
-		FeesDeducted,
+		CustomersChargedWithFees,
 		RewardingProviders,
 		ProvidersRewarded,
 		Finalized,
@@ -452,30 +466,64 @@ pub mod pallet {
 				&billing_report.charging_max_batch_index,
 			)?;
 
-			billing_report.state = State::CustomersCharged;
-			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
-
 			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
 
 			// deduct fees
-			let _fees = T::ClusterVisitor::get_fees_params(&cluster_id)
+			let fees = T::ClusterVisitor::get_fees_params(&cluster_id)
 				.map_err(|_| Error::<T>::NotExpectedClusterState)?;
 
-			/*
-			billing_report.total_customer_charge.storage =
-				temp_total_customer_storage_charge;
+			let total_customer_charge = (|| -> Option<u128> {
+				billing_report
+					.total_customer_charge
+					.transfer
+					.checked_add(billing_report.total_customer_charge.storage)?
+					.checked_add(billing_report.total_customer_charge.puts)?
+					.checked_add(billing_report.total_customer_charge.gets)
+			})()
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+			let treasury_fee = fees.treasury_share * total_customer_charge;
+			let validators_fee = fees.validators_share * total_customer_charge;
+			let cluster_reserve_fee = fees.cluster_reserve_share * total_customer_charge;
+
+			charge_treasury_fees::<T>(treasury_fee)?;
+			Self::deposit_event(Event::<T>::TreasuryFeesCharged {
+				cluster_id,
+				era,
+				amount: treasury_fee,
+			});
+
+			charge_cluster_reserve_fees::<T>(cluster_reserve_fee)?;
+			Self::deposit_event(Event::<T>::ClusterReserveFeesCharged {
+				cluster_id,
+				era,
+				amount: cluster_reserve_fee,
+			});
+
+			charge_validator_fees::<T>(validators_fee)?;
+			Self::deposit_event(Event::<T>::ValidatorFeesCharged {
+				cluster_id,
+				era,
+				amount: validators_fee,
+			});
+
+			// 1 - (X + Y + Z) > 0, 0 < X + Y + Z < 1
+			let total_left_from_one =
+				(fees.treasury_share + fees.validators_share + fees.cluster_reserve_share)
+					.left_from_one();
+
+			// X * Z < X, 0 < Z < 1
 			billing_report.total_customer_charge.transfer =
-				temp_total_customer_transfer_charge;
+				total_left_from_one * billing_report.total_customer_charge.transfer;
+			billing_report.total_customer_charge.storage =
+				total_left_from_one * billing_report.total_customer_charge.storage;
 			billing_report.total_customer_charge.puts =
-				temp_total_customer_puts_charge;
+				total_left_from_one * billing_report.total_customer_charge.puts;
 			billing_report.total_customer_charge.gets =
-				temp_total_customer_gets_charge;
+				total_left_from_one * billing_report.total_customer_charge.gets;
 
-			billing_report.state = State::FeesDeducted;
+			billing_report.state = State::CustomersChargedWithFees;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
-			*/
-
-			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
 
 			Ok(())
 		}
@@ -499,7 +547,10 @@ pub mod pallet {
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
-			ensure!(billing_report.state == State::CustomersCharged, Error::<T>::NotExpectedState);
+			ensure!(
+				billing_report.state == State::CustomersChargedWithFees,
+				Error::<T>::NotExpectedState
+			);
 
 			billing_report.total_node_usage = total_node_usage;
 			billing_report.rewarding_max_batch_index = max_batch_index;
@@ -651,6 +702,18 @@ pub mod pallet {
 
 			Ok(())
 		}
+	}
+
+	fn charge_treasury_fees<T: Config>(_treasury_fee: u128) -> DispatchResult {
+		Ok(())
+	}
+
+	fn charge_cluster_reserve_fees<T: Config>(_cluster_reserve_fee: u128) -> DispatchResult {
+		Ok(())
+	}
+
+	fn charge_validator_fees<T: Config>(_validators_fee: u128) -> DispatchResult {
+		Ok(())
 	}
 
 	fn get_node_reward<T: Config>(

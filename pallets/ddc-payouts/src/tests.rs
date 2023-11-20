@@ -502,7 +502,7 @@ fn end_charging_customers_works() {
 		System::assert_last_event(Event::ChargingFinished { cluster_id, era }.into());
 
 		let report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(report.state, State::CustomersCharged);
+		assert_eq!(report.state, State::CustomersChargedWithFees);
 	})
 }
 
