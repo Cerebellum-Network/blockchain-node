@@ -6,6 +6,12 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+<<<<<<< HEAD
+use codec::{Decode, Encode, HasCompact};
+=======
+use core::fmt::Debug;
+>>>>>>> a2afbf5 (Fix compilation)
+
 use codec::{Decode, Encode, HasCompact};
 
 use ddc_primitives::{BucketId, ClusterId};
@@ -36,7 +42,15 @@ parameter_types! {
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
+<<<<<<< HEAD
 pub struct UnlockChunk<Balance: HasCompact, T: Config> {
+=======
+pub struct UnlockChunk<Balance, BlockNumber>
+where
+	Balance: HasCompact,
+	BlockNumber: HasCompact,
+{
+>>>>>>> a2afbf5 (Fix compilation)
 	/// Amount of funds to be unlocked.
 	#[codec(compact)]
 	value: Balance,
@@ -80,7 +94,11 @@ pub struct AccountsLedger<AccountId, Balance: HasCompact, T: Config> {
 
 impl<
 		AccountId,
+<<<<<<< HEAD
 		Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero,
+=======
+		Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero + Debug,
+>>>>>>> a2afbf5 (Fix compilation)
 		T: Config,
 	> AccountsLedger<AccountId, Balance, T>
 {
@@ -245,8 +263,11 @@ pub mod pallet {
 		ArithmeticOverflow,
 		// Arithmetic underflow
 		ArithmeticUnderflow,
+<<<<<<< HEAD
 		// Amount is too small
 		InsufficientAmount,
+=======
+>>>>>>> a2afbf5 (Fix compilation)
 	}
 
 	#[pallet::genesis_config]
@@ -548,6 +569,7 @@ pub mod pallet {
 			amount: u128,
 		) -> DispatchResult {
 			let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotOwner)?;
+<<<<<<< HEAD
 			ensure!(amount > 0, Error::<T>::InsufficientAmount);
 
 			let mut amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
@@ -577,6 +599,35 @@ pub mod pallet {
 				Self::update_ledger(&content_owner, &ledger);
 			};
 
+=======
+			let mut amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
+
+			ensure!(ledger.total >= ledger.active, Error::<T>::ArithmeticUnderflow);
+			if ledger.active >= amount_to_deduct {
+				ledger.active = ledger
+					.active
+					.checked_sub(&amount_to_deduct)
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+				ledger.total = ledger
+					.total
+					.checked_sub(&amount_to_deduct)
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+				Self::update_ledger(&content_owner, &ledger);
+			} else {
+				let diff = amount_to_deduct
+					.checked_sub(&ledger.active)
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+				ledger.total = ledger
+					.total
+					.checked_sub(&ledger.active)
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+				amount_to_deduct = ledger.active;
+				ledger.active = BalanceOf::<T>::zero();
+				let (ledger, _charged) = ledger.charge_unlocking(diff)?;
+				Self::update_ledger(&content_owner, &ledger);
+			};
+
+>>>>>>> a2afbf5 (Fix compilation)
 			<T as pallet::Config>::Currency::transfer(
 				&Self::account_id(),
 				&billing_vault,
