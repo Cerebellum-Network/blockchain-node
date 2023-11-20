@@ -470,7 +470,7 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
 
 			// deduct fees
-			let fees = T::ClusterVisitor::get_fees_params(&cluster_id)
+			let _fees = T::ClusterVisitor::get_fees_params(&cluster_id)
 				.map_err(|_| Error::<T>::NotExpectedClusterState)?;
 
 			let total_customer_charge = (|| -> Option<u128> {

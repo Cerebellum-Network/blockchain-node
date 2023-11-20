@@ -840,6 +840,7 @@ version = "4.8.1"
 dependencies = [
  "cere-dev-runtime-constants",
  "cere-runtime-common",
+ "ddc-traits",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",

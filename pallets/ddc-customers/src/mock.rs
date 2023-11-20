@@ -6,7 +6,6 @@ use ddc_primitives::{
 	NodePubKey, NodeType,
 };
 use ddc_traits::cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError};
-
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},

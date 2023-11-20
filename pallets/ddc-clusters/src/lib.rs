@@ -311,6 +311,7 @@ pub mod pallet {
 		) -> Result<ClusterFeesParams, ClusterVisitorError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+
 			Ok(ClusterFeesParams {
 				treasury_share: cluster_gov_params.treasury_share,
 				validators_share: cluster_gov_params.validators_share,

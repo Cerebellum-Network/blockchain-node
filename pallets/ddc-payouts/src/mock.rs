@@ -132,7 +132,6 @@ pub const TREASURY_ACCOUNT_ID: AccountId = 888;
 pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
 pub const VALIDATOR2_ACCOUNT_ID: AccountId = 222;
 pub const VALIDATOR3_ACCOUNT_ID: AccountId = 333;
-
 pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_streamed: 2_000_000,
 	unit_per_mb_stored: 3_000_000,
