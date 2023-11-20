@@ -19,12 +19,12 @@ sc-consensus = { git = "https://github.com/paritytech/substrate.git", branch = "
 sc-consensus-babe = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34" }
 sc-consensus-slots = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34" }
 sc-consensus-uncles = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34" }
-sc-executor = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34", features = ["wasmtime"] }
+sc-executor = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34" }
 sc-finality-grandpa = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34" }
 sc-network = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34" }
 sc-network-common = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.34" }
 sc-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34" }
-sc-service = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34", features = ["wasmtime"] }
+sc-service = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34" }
 sc-sync-state-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34" }
 sc-sysinfo = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34" }
 sc-telemetry = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.34" }
