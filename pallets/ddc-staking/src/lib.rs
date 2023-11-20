@@ -48,7 +48,7 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, Saturating, StaticLookup, Zero},
+	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating, StaticLookup, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
@@ -183,14 +183,14 @@ pub mod pallet {
 	pub type Ledger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>, T>>;
 
-	/// The map of (wannabe) CDN participants stash keys to the DDC cluster ID they wish to
+	/// The map of (wannabe) CDN nodes participants stash keys to the DDC cluster ID they wish to
 	/// participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn cdns)]
 	pub type CDNs<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
-	/// The map of (wannabe) storage network participants stash keys to the DDC cluster ID they wish
-	/// to participate into.
+	/// The map of (wannabe) Storage nodes participants stash keys to the DDC cluster ID they
+	/// wish to participate into.
 	#[pallet::storage]
 	#[pallet::getter(fn storages)]
 	pub type Storages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
@@ -280,6 +280,9 @@ pub mod pallet {
 		/// An account has declared desire to stop participating in CDN or storage network soon.
 		/// \[stash, cluster, block\]
 		ChillSoon(T::AccountId, ClusterId, T::BlockNumber),
+		/// An account that started participating as either a storage network or CDN participant.
+		/// \[stash\]
+		Activated(T::AccountId),
 	}
 
 	#[pallet::error]
@@ -313,6 +316,14 @@ pub mod pallet {
 		NoClusterGovParams,
 		/// Conditions for fast chill are not met, try the regular `chill` from
 		FastChillProhibited,
+		/// Serving operation is called for non-CDN node
+		ServingProhibited,
+		/// Storing operation is called for non-Storage node
+		StoringProhibited,
+		/// Arithmetic overflow occurred
+		ArithmeticOverflow,
+		/// Arithmetic underflow occurred
+		ArithmeticUnderflow,
 	}
 
 	#[pallet::call]
@@ -411,11 +422,13 @@ pub mod pallet {
 			let mut value = value.min(ledger.active);
 
 			if !value.is_zero() {
-				ledger.active -= value;
+				ledger.active =
+					ledger.active.checked_sub(&value).ok_or(Error::<T>::ArithmeticUnderflow)?;
 
 				// Avoid there being a dust balance left in the staking system.
 				if ledger.active < T::Currency::minimum_balance() {
-					value += ledger.active;
+					value =
+						value.checked_add(&ledger.active).ok_or(Error::<T>::ArithmeticOverflow)?;
 					ledger.active = Zero::zero();
 				}
 
@@ -464,6 +477,7 @@ pub mod pallet {
 					}
 				};
 
+				// block number + configuration -> no overflow
 				let block = <frame_system::Pallet<T>>::block_number() + unbonding_delay_in_blocks;
 				if let Some(chunk) =
 					ledger.unlocking.last_mut().filter(|chunk| chunk.block == block)
@@ -520,7 +534,8 @@ pub mod pallet {
 			// `consolidate_unlocked` strictly subtracts balance.
 			if ledger.total < old_total {
 				// Already checked that this won't overflow by entry condition.
-				let value = old_total - ledger.total;
+				let value =
+					old_total.checked_sub(&ledger.total).ok_or(Error::<T>::ArithmeticUnderflow)?;
 				Self::deposit_event(Event::<T>::Withdrawn(stash, value));
 			}
 
@@ -554,6 +569,13 @@ pub mod pallet {
 			// Can't participate in CDN if already participating in storage network.
 			ensure!(!Storages::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
 
+			// Only CDN node can perform serving (i.e. streaming content)
+			let node_pub_key = <Providers<T>>::get(stash).ok_or(Error::<T>::BadState)?;
+			ensure!(
+				matches!(node_pub_key, NodePubKey::CDNPubKey(_)),
+				Error::<T>::ServingProhibited
+			);
+
 			// Is it an attempt to cancel a previous "chill"?
 			if let Some(current_cluster) = Self::cdns(stash) {
 				// Switching the cluster is prohibited. The user should chill first.
@@ -564,6 +586,8 @@ pub mod pallet {
 			}
 
 			Self::do_add_cdn(stash, cluster_id);
+			Self::deposit_event(Event::<T>::Activated(stash.clone()));
+
 			Ok(())
 		}
 
@@ -593,6 +617,13 @@ pub mod pallet {
 			// Can't participate in storage network if already participating in CDN.
 			ensure!(!CDNs::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
 
+			// Only Storage node can perform storing (i.e. saving content)
+			let node_pub_key = <Providers<T>>::get(stash).ok_or(Error::<T>::BadState)?;
+			ensure!(
+				matches!(node_pub_key, NodePubKey::StoragePubKey(_)),
+				Error::<T>::StoringProhibited
+			);
+
 			// Is it an attempt to cancel a previous "chill"?
 			if let Some(current_cluster) = Self::storages(stash) {
 				// Switching the cluster is prohibited. The user should chill first.
@@ -603,6 +634,7 @@ pub mod pallet {
 			}
 
 			Self::do_add_storage(stash, cluster_id);
+			Self::deposit_event(Event::<T>::Activated(stash.clone()));
 
 			Ok(())
 		}
@@ -710,6 +742,11 @@ pub mod pallet {
 				}
 			}
 
+			// Remove previously owned node from storage
+			if let Some(current_node) = Providers::<T>::get(&stash) {
+				<Nodes<T>>::remove(current_node);
+			}
+
 			// Ensure only one node per stash.
 			ensure!(!<CDNs<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 			ensure!(!<Storages<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
@@ -739,6 +776,7 @@ pub mod pallet {
 			let is_cluster_node = T::ClusterVisitor::cluster_has_node(&cluster_id, &node_pub_key);
 			ensure!(!is_cluster_node, Error::<T>::FastChillProhibited);
 
+			// block number + 1 => no overflow
 			let can_chill_from =
 				<frame_system::Pallet<T>>::block_number() + T::BlockNumber::from(1u32);
 			Self::chill_stash_soon(&stash, &controller, cluster_id, can_chill_from);
