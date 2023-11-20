@@ -64,6 +64,7 @@ pallet-ddc-clusters = { version = "4.8.1", default-features = false, path = "../
 pallet-ddc-customers = { version = "0.1.0", default-features = false, path = "../../pallets/ddc-customers" }
 pallet-ddc-metrics-offchain-worker = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-metrics-offchain-worker" }
 pallet-ddc-nodes = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-nodes" }
+pallet-ddc-payouts = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-payouts" }
 pallet-ddc-staking = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-staking" }
 pallet-democracy = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 pallet-election-provider-multi-phase = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
@@ -182,6 +183,7 @@ std = [
   "pallet-ddc-customers/std",
   "pallet-ddc-nodes/std",
   "pallet-ddc-clusters/std",
+  "pallet-ddc-payouts/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
