@@ -33,6 +33,7 @@ members = [
   "pallets/ddc-customers",
   "pallets/ddc-nodes",
   "pallets/ddc-clusters",
+  "pallets/ddc-payouts",
   "primitives",
 ]
 
