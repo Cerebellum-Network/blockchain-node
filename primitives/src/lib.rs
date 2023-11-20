@@ -4,13 +4,11 @@ use codec::{Decode, Encode};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-
 use sp_core::hash::H160;
 use sp_runtime::{AccountId32, Perbill, RuntimeDebug};
-
 pub type ClusterId = H160;
+pub type DdcEra = u32;
 pub type BucketId = u64;
-
 pub type StorageNodePubKey = AccountId32;
 pub type CDNNodePubKey = AccountId32;
 
@@ -33,6 +31,9 @@ pub struct ClusterGovParams<Balance, BlockNumber> {
 	pub storage_bond_size: Balance,
 	pub storage_chill_delay: BlockNumber,
 	pub storage_unbonding_delay: BlockNumber,
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct ClusterPricingParams {
 	pub unit_per_mb_stored: u128,
 	pub unit_per_mb_streamed: u128,
 	pub unit_per_put_request: u128,
