@@ -41,7 +41,7 @@ parameter_types! {
 pub struct UnlockChunk<Balance, BlockNumber>
 where
 	Balance: HasCompact,
-	BlockNumber: HasCompact,
+	BlockNumber: Clone,
 {
 	/// Amount of funds to be unlocked.
 	#[codec(compact)]
