@@ -260,6 +260,8 @@ pub mod pallet {
 		ArithmeticOverflow,
 		// Arithmetic underflow
 		ArithmeticUnderflow,
+		// Amount is too small
+		InsufficientAmount,
 	}
 
 	#[pallet::genesis_config]
@@ -565,6 +567,8 @@ pub mod pallet {
 			amount: u128,
 		) -> DispatchResult {
 			let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotOwner)?;
+			ensure!(amount > 0, Error::<T>::InsufficientAmount);
+
 			let mut amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
 
 			ensure!(ledger.total >= ledger.active, Error::<T>::ArithmeticUnderflow);

@@ -255,6 +255,8 @@ pub mod pallet {
 		Initialized,
 		ChargingCustomers,
 		CustomersChargedWithFees,
+		CustomersCharged,
+		FeesDeducted,
 		RewardingProviders,
 		ProvidersRewarded,
 		Finalized,
