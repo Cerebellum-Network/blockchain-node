@@ -14,6 +14,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
+#[cfg(test)]
+pub(crate) mod mock;
+#[cfg(test)]
+mod tests;
+
 use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey, StorageNodePubKey};
 use ddc_traits::node::{NodeVisitor, NodeVisitorError};
 use frame_support::pallet_prelude::*;
@@ -26,7 +31,7 @@ mod node;
 mod storage_node;
 
 pub use crate::{
-	cdn_node::CDNNode,
+	cdn_node::{CDNNode, CDNNodeParams},
 	node::{Node, NodeError, NodeParams, NodeTrait},
 	storage_node::StorageNode,
 };

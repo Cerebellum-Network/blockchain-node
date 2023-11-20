@@ -1,4 +1,4 @@
-use ddc_primitives::{ClusterId, NodePubKey, NodeType};
+use ddc_primitives::{ClusterId, ClusterPricingParams, NodePubKey, NodeType};
 use frame_system::Config;
 
 pub trait ClusterVisitor<T: Config> {
@@ -10,6 +10,10 @@ pub trait ClusterVisitor<T: Config> {
 		cluster_id: &ClusterId,
 		node_type: NodeType,
 	) -> Result<u128, ClusterVisitorError>;
+
+	fn get_pricing_params(
+		cluster_id: &ClusterId,
+	) -> Result<ClusterPricingParams, ClusterVisitorError>;
 
 	fn get_chill_delay(
 		cluster_id: &ClusterId,

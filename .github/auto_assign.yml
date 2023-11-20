@@ -1,0 +1,12 @@
+addReviewers: true
+addAssignees: author
+reviewers:
+  - rakanalh
+  - MRamanenkau
+  - Raid5594
+  - aie0
+  - yahortsaryk
+  - khssnv
+skipKeywords:
+  - wip
+numberOfReviewers: 2
