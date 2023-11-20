@@ -15,11 +15,16 @@
 #![recursion_limit = "256"]
 #![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
+#[cfg(test)]
+pub(crate) mod mock;
+#[cfg(test)]
+mod tests;
+
 use crate::{
 	cluster::{Cluster, ClusterGovParams, ClusterParams},
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
 };
-use ddc_primitives::{ClusterId, NodePubKey, NodeType};
+use ddc_primitives::{ClusterId, ClusterPricingParams, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
 	staking::{StakingVisitor, StakingVisitorError},
@@ -264,6 +269,19 @@ pub mod pallet {
 					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
 				NodeType::CDN => Ok(cluster_gov_params.cdn_bond_size.saturated_into::<u128>()),
 			}
+		}
+
+		fn get_pricing_params(
+			cluster_id: &ClusterId,
+		) -> Result<ClusterPricingParams, ClusterVisitorError> {
+			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+			Ok(ClusterPricingParams {
+				unit_per_mb_stored: cluster_gov_params.unit_per_mb_stored,
+				unit_per_mb_streamed: cluster_gov_params.unit_per_mb_streamed,
+				unit_per_put_request: cluster_gov_params.unit_per_put_request,
+				unit_per_get_request: cluster_gov_params.unit_per_get_request,
+			})
 		}
 
 		fn get_chill_delay(
