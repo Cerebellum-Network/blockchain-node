@@ -1,11 +1,17 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
+#[cfg(test)]
+pub(crate) mod mock;
+#[cfg(test)]
+mod tests;
+
 use core::fmt::Debug;
 
+use codec::{Decode, Encode, HasCompact};
+
 use ddc_primitives::{BucketId, ClusterId};
-use ddc_traits::cluster::ClusterVisitor;
+use ddc_traits::{cluster::ClusterVisitor, customer::CustomerCharger};
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
@@ -13,7 +19,7 @@ use frame_support::{
 };
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, Saturating, Zero},
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
@@ -30,12 +36,12 @@ parameter_types! {
 }
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct UnlockChunk<Balance, BlockNumber>
 where
-	Balance: HasCompact + MaxEncodedLen,
-	BlockNumber: HasCompact + MaxEncodedLen,
+	Balance: HasCompact,
+	BlockNumber: HasCompact,
 {
 	/// Amount of funds to be unlocked.
 	#[codec(compact)]
@@ -45,26 +51,22 @@ where
 	block: BlockNumber,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Bucket<AccountId> {
 	bucket_id: BucketId,
 	owner_id: AccountId,
 	cluster_id: ClusterId,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct BucketsDetails<Balance: HasCompact> {
 	pub bucket_id: BucketId,
 	pub amount: Balance,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub struct AccountsLedger<AccountId, Balance, T>
-where
-	Balance: HasCompact + MaxEncodedLen,
-	T: Config,
-{
+pub struct AccountsLedger<AccountId, Balance: HasCompact, T: Config> {
 	/// The owner account whose balance is actually locked and can be used for CDN usage.
 	pub owner: AccountId,
 	/// The total amount of the owner's balance that we are currently accounting for.
@@ -84,7 +86,7 @@ where
 
 impl<
 		AccountId,
-		Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero + MaxEncodedLen + Debug,
+		Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero + Debug,
 		T: Config,
 	> AccountsLedger<AccountId, Balance, T>
 {
@@ -121,20 +123,28 @@ impl<
 	/// Charge funds that were scheduled for unlocking.
 	///
 	/// Returns the updated ledger, and the amount actually charged.
-	fn charge_unlocking(mut self, value: Balance) -> (Self, Balance) {
+	fn charge_unlocking(mut self, value: Balance) -> Result<(Self, Balance), Error<T>> {
 		let mut unlocking_balance = Balance::zero();
 
 		while let Some(last) = self.unlocking.last_mut() {
-			if unlocking_balance + last.value <= value {
-				unlocking_balance += last.value;
-				self.active -= last.value;
+			let temp = unlocking_balance
+				.checked_add(&last.value)
+				.ok_or(Error::<T>::ArithmeticOverflow)?;
+			if temp <= value {
+				unlocking_balance = temp;
+				self.active =
+					self.active.checked_sub(&last.value).ok_or(Error::<T>::ArithmeticUnderflow)?;
 				self.unlocking.pop();
 			} else {
-				let diff = value - unlocking_balance;
+				let diff =
+					value.checked_sub(&unlocking_balance).ok_or(Error::<T>::ArithmeticUnderflow)?;
 
-				unlocking_balance += diff;
-				self.active -= diff;
-				last.value -= diff;
+				unlocking_balance =
+					unlocking_balance.checked_add(&diff).ok_or(Error::<T>::ArithmeticOverflow)?;
+				self.active =
+					self.active.checked_sub(&diff).ok_or(Error::<T>::ArithmeticUnderflow)?;
+				last.value =
+					last.value.checked_sub(&diff).ok_or(Error::<T>::ArithmeticUnderflow)?;
 			}
 
 			if unlocking_balance >= value {
@@ -142,7 +152,7 @@ impl<
 			}
 		}
 
-		(self, unlocking_balance)
+		Ok((self, unlocking_balance))
 	}
 }
 
@@ -173,13 +183,18 @@ pub mod pallet {
 	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
-	pub type Ledger<T: Config> =
-		StorageMap<_, Identity, T::AccountId, AccountsLedger<T::AccountId, BalanceOf<T>, T>>;
+	pub type Ledger<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		AccountsLedger<T::AccountId, BalanceOf<T>, T>,
+	>;
 
 	#[pallet::type_value]
 	pub fn DefaultBucketCount<T: Config>() -> BucketId {
 		0
 	}
+
 	#[pallet::storage]
 	#[pallet::getter(fn buckets_count)]
 	pub type BucketsCount<T: Config> =
@@ -200,12 +215,12 @@ pub mod pallet {
 		/// it will not be emitted for staking rewards when they are added to stake.
 		Deposited(T::AccountId, BalanceOf<T>),
 		/// An account has initiated unlock for amount. \[owner, amount\]
-		InitiatDepositUnlock(T::AccountId, BalanceOf<T>),
+		InitialDepositUnlock(T::AccountId, BalanceOf<T>),
 		/// An account has called `withdraw_unlocked_deposit` and removed unlocking chunks worth
 		/// `Balance` from the unlocking queue. \[owner, amount\]
 		Withdrawn(T::AccountId, BalanceOf<T>),
-		/// Total amount charged from all accounts to pay CDN nodes
-		Charged(BalanceOf<T>),
+		/// The account has been charged for the usage
+		Charged(T::AccountId, BalanceOf<T>),
 		/// Bucket with specific id created
 		BucketCreated(BucketId),
 	}
@@ -230,6 +245,12 @@ pub mod pallet {
 		BucketDoesNotExist,
 		/// DDC Cluster with provided id doesn't exist
 		ClusterDoesNotExist,
+		// unauthorised operation
+		Unauthorised,
+		// Arithmetic overflow
+		ArithmeticOverflow,
+		// Arithmetic underflow
+		ArithmeticUnderflow,
 	}
 
 	#[pallet::genesis_config]
@@ -261,7 +282,8 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn create_bucket(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
-			let cur_bucket_id = Self::buckets_count() + 1;
+			let cur_bucket_id =
+				Self::buckets_count().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
 
 			<T as pallet::Config>::ClusterVisitor::ensure_cluster(&cluster_id)
 				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
@@ -332,8 +354,11 @@ pub mod pallet {
 
 			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
 			let extra = owner_balance.min(max_additional);
-			ledger.total += extra;
-			ledger.active += extra;
+			ledger.total =
+				ledger.total.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
+			ledger.active =
+				ledger.active.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
+
 			// Last check: the new active amount of ledger must be more than ED.
 			ensure!(
 				ledger.active >= <T as pallet::Config>::Currency::minimum_balance(),
@@ -360,7 +385,7 @@ pub mod pallet {
 		/// can co-exists at the same time. In that case, [`Call::withdraw_unlocked_deposit`] need
 		/// to be called first to remove some of the chunks (if possible).
 		///
-		/// Emits `InitiatDepositUnlock`.
+		/// Emits `InitialDepositUnlock`.
 		///
 		/// See also [`Call::withdraw_unlocked_deposit`].
 		#[pallet::weight(10_000)]
@@ -378,18 +403,20 @@ pub mod pallet {
 			let mut value = value.min(ledger.active);
 
 			if !value.is_zero() {
-				ledger.active -= value;
+				ledger.active =
+					ledger.active.checked_sub(&value).ok_or(Error::<T>::ArithmeticUnderflow)?;
 
 				// Avoid there being a dust balance left in the accounts system.
 				if ledger.active < <T as pallet::Config>::Currency::minimum_balance() {
-					value += ledger.active;
+					value =
+						value.checked_add(&ledger.active).ok_or(Error::<T>::ArithmeticOverflow)?;
 					ledger.active = Zero::zero();
 				}
 
 				let current_block = <frame_system::Pallet<T>>::block_number();
 				// Note: locking for extra block to allow for accounting
+				// block + configurable value - shouldn't overflow
 				let block = current_block + <T as pallet::Config>::UnlockingDelay::get();
-				log::debug!("Block for the unlock: {:?}", block);
 
 				if let Some(chunk) =
 					ledger.unlocking.last_mut().filter(|chunk| chunk.block == block)
@@ -407,7 +434,7 @@ pub mod pallet {
 
 				Self::update_ledger(&owner, &ledger);
 
-				Self::deposit_event(Event::<T>::InitiatDepositUnlock(ledger.owner, value));
+				Self::deposit_event(Event::<T>::InitialDepositUnlock(ledger.owner, value));
 			}
 			Ok(())
 		}
@@ -453,7 +480,8 @@ pub mod pallet {
 			if ledger.total < old_total {
 				log::debug!("Preparing for transfer");
 				// Already checked that this won't overflow by entry condition.
-				let value = old_total - ledger.total;
+				let value =
+					old_total.checked_sub(&ledger.total).ok_or(Error::<T>::ArithmeticUnderflow)?;
 
 				let account_id = Self::account_id();
 
@@ -515,40 +543,49 @@ pub mod pallet {
 
 			Ok(())
 		}
+	}
 
-		// Charge payments from content owners
-		pub fn charge_content_owners(
-			paying_accounts: Vec<BucketsDetails<BalanceOf<T>>>,
-			pricing: u128,
+	impl<T: Config> CustomerCharger<T> for Pallet<T> {
+		fn charge_content_owner(
+			content_owner: T::AccountId,
+			billing_vault: T::AccountId,
+			amount: u128,
 		) -> DispatchResult {
-			let mut total_charged = BalanceOf::<T>::zero();
+			let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotOwner)?;
+			let mut amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
 
-			for bucket_details in paying_accounts.iter() {
-				let bucket: Bucket<T::AccountId> = Self::buckets(bucket_details.bucket_id)
-					.ok_or(Error::<T>::BucketDoesNotExist)?;
-				let content_owner = bucket.owner_id;
-				let amount = bucket_details.amount * pricing.saturated_into::<BalanceOf<T>>();
+			ensure!(ledger.total >= ledger.active, Error::<T>::ArithmeticUnderflow);
+			if ledger.active >= amount_to_deduct {
+				ledger.active = ledger
+					.active
+					.checked_sub(&amount_to_deduct)
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+				ledger.total = ledger
+					.total
+					.checked_sub(&amount_to_deduct)
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+				Self::update_ledger(&content_owner, &ledger);
+			} else {
+				let diff = amount_to_deduct
+					.checked_sub(&ledger.active)
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+				ledger.total = ledger
+					.total
+					.checked_sub(&ledger.active)
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+				amount_to_deduct = ledger.active;
+				ledger.active = BalanceOf::<T>::zero();
+				let (ledger, _charged) = ledger.charge_unlocking(diff)?;
+				Self::update_ledger(&content_owner, &ledger);
+			};
 
-				let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotOwner)?;
-				if ledger.active >= amount {
-					ledger.total -= amount;
-					ledger.active -= amount;
-					total_charged += amount;
-					Self::update_ledger(&content_owner, &ledger);
-				} else {
-					let diff = amount - ledger.active;
-					total_charged += ledger.active;
-					ledger.total -= ledger.active;
-					ledger.active = BalanceOf::<T>::zero();
-					let (ledger, charged) = ledger.charge_unlocking(diff);
-					Self::update_ledger(&content_owner, &ledger);
-					total_charged += charged;
-				}
-			}
-			log::debug!("Total charged: {:?}", &total_charged);
-
-			Self::deposit_event(Event::<T>::Charged(total_charged));
-			log::debug!("Deposit event executed");
+			<T as pallet::Config>::Currency::transfer(
+				&Self::account_id(),
+				&billing_vault,
+				amount_to_deduct,
+				ExistenceRequirement::KeepAlive,
+			)?;
+			Self::deposit_event(Event::<T>::Charged(content_owner, amount_to_deduct));
 
 			Ok(())
 		}
