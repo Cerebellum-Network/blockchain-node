@@ -24,7 +24,7 @@ use crate::{
 	cluster::{Cluster, ClusterGovParams, ClusterParams},
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
 };
-use ddc_primitives::{ClusterId, ClusterPricingParams, ClusterFeesParams, NodePubKey, NodeType};
+use ddc_primitives::{ClusterFeesParams, ClusterId, ClusterPricingParams, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
 	staking::{StakingVisitor, StakingVisitorError},
@@ -289,11 +289,20 @@ pub mod pallet {
 		) -> Result<ClusterFeesParams, ClusterVisitorError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+
 			Ok(ClusterFeesParams {
 				treasury_share: cluster_gov_params.treasury_share,
 				validators_share: cluster_gov_params.validators_share,
 				cluster_reserve_share: cluster_gov_params.cluster_reserve_share,
 			})
+		}
+
+		fn get_reserve_account_id(
+			cluster_id: &ClusterId,
+		) -> Result<T::AccountId, ClusterVisitorError> {
+			let cluster = Clusters::<T>::try_get(cluster_id)
+				.map_err(|_| ClusterVisitorError::ClusterDoesNotExist)?;
+			Ok(cluster.reserve_id)
 		}
 
 		fn get_chill_delay(

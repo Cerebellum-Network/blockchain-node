@@ -20,7 +20,10 @@ pub(crate) mod mock;
 mod tests;
 
 use ddc_primitives::{ClusterId, DdcEra};
-use ddc_traits::{cluster::ClusterVisitor, customer::CustomerCharger as CustomerChargerType};
+use ddc_traits::{
+	cluster::ClusterVisitor as ClusterVisitorType,
+	customer::CustomerCharger as CustomerChargerType, pallet::PalletVisitor as PalletVisitorType,
+};
 use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
@@ -104,11 +107,10 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
-
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
-
 		type CustomerCharger: CustomerChargerType<Self>;
-		type ClusterVisitor: ClusterVisitor<Self>;
+		type TreasuryVisitor: PalletVisitorType<Self>;
+		type ClusterVisitor: ClusterVisitorType<Self>;
 	}
 
 	#[pallet::event]
@@ -456,11 +458,10 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
 
 			// deduct fees
-			let fees = T::ClusterVisitor::get_fees_params(&cluster_id)
+			let _fees = T::ClusterVisitor::get_fees_params(&cluster_id)
 				.map_err(|_| Error::<T>::NotExpectedClusterState)?;
 
-
-
+			/*
 			billing_report.total_customer_charge.storage =
 				temp_total_customer_storage_charge;
 			billing_report.total_customer_charge.transfer =
@@ -472,6 +473,7 @@ pub mod pallet {
 
 			billing_report.state = State::FeesDeducted;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
+			*/
 
 			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
 

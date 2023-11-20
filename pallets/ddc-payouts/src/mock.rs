@@ -3,10 +3,11 @@
 #![allow(dead_code)]
 
 use crate::{self as pallet_ddc_payouts, *};
-use ddc_primitives::{ClusterPricingParams, NodePubKey, NodeType};
+use ddc_primitives::{ClusterFeesParams, ClusterPricingParams, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
 	customer::CustomerCharger,
+	pallet::PalletVisitor,
 };
 
 use frame_support::{
@@ -99,6 +100,8 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type CustomerCharger = TestCustomerCharger;
 	type ClusterVisitor = TestClusterVisitor;
+
+	type TreasuryVisitor = TestTreasuryVisitor;
 }
 
 pub struct TestCustomerCharger;
@@ -113,12 +116,29 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 	}
 }
 
+pub const RESERVE_ACCOUNT_ID: AccountId = 999;
+pub const TREASURY_ACCOUNT_ID: AccountId = 888;
+
 pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_streamed: 2_000_000,
 	unit_per_mb_stored: 3_000_000,
 	unit_per_put_request: 4_000_000,
 	unit_per_get_request: 5_000_000,
 };
+
+pub const PRICING_FEES: ClusterFeesParams = ClusterFeesParams {
+	treasury_share: Perbill::from_percent(1),
+	validators_share: Perbill::from_percent(10),
+	cluster_reserve_share: Perbill::from_percent(2),
+};
+
+pub struct TestTreasuryVisitor;
+impl<T: frame_system::Config> PalletVisitor<T> for TestTreasuryVisitor {
+	fn get_account_id() -> T::AccountId {
+		let reserve_account = TREASURY_ACCOUNT_ID.to_be_bytes();
+		T::AccountId::decode(&mut &reserve_account[..]).unwrap()
+	}
+}
 
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
@@ -151,6 +171,17 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		_cluster_id: &ClusterId,
 	) -> Result<ClusterPricingParams, ClusterVisitorError> {
 		Ok(PRICING_PARAMS)
+	}
+
+	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
+		Ok(PRICING_FEES)
+	}
+
+	fn get_reserve_account_id(
+		_cluster_id: &ClusterId,
+	) -> Result<T::AccountId, ClusterVisitorError> {
+		let reserve_account = RESERVE_ACCOUNT_ID.to_be_bytes();
+		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
 	}
 }
 
