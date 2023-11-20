@@ -48,7 +48,7 @@ pub struct UnlockChunk<Balance: HasCompact, T: Config> {
 pub struct UnlockChunk<Balance, BlockNumber>
 where
 	Balance: HasCompact,
-	BlockNumber: HasCompact,
+	BlockNumber: Clone,
 {
 >>>>>>> a2afbf5 (Fix compilation)
 	/// Amount of funds to be unlocked.
