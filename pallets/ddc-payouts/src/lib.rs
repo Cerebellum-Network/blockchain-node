@@ -236,7 +236,7 @@ pub mod pallet {
 		Initialized,
 		ChargingCustomers,
 		CustomersCharged,
-		DeductingFees,
+		FeesDeducted,
 		RewardingProviders,
 		ProvidersRewarded,
 		Finalized,
@@ -451,6 +451,26 @@ pub mod pallet {
 			)?;
 
 			billing_report.state = State::CustomersCharged;
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
+
+			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
+
+			// deduct fees
+			let fees = T::ClusterVisitor::get_fees_params(&cluster_id)
+				.map_err(|_| Error::<T>::NotExpectedClusterState)?;
+
+
+
+			billing_report.total_customer_charge.storage =
+				temp_total_customer_storage_charge;
+			billing_report.total_customer_charge.transfer =
+				temp_total_customer_transfer_charge;
+			billing_report.total_customer_charge.puts =
+				temp_total_customer_puts_charge;
+			billing_report.total_customer_charge.gets =
+				temp_total_customer_gets_charge;
+
+			billing_report.state = State::FeesDeducted;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });

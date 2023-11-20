@@ -24,7 +24,7 @@ use crate::{
 	cluster::{Cluster, ClusterGovParams, ClusterParams},
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
 };
-use ddc_primitives::{ClusterId, ClusterPricingParams, NodePubKey, NodeType};
+use ddc_primitives::{ClusterId, ClusterPricingParams, ClusterFeesParams, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
 	staking::{StakingVisitor, StakingVisitorError},
@@ -281,6 +281,18 @@ pub mod pallet {
 				unit_per_mb_streamed: cluster_gov_params.unit_per_mb_streamed,
 				unit_per_put_request: cluster_gov_params.unit_per_put_request,
 				unit_per_get_request: cluster_gov_params.unit_per_get_request,
+			})
+		}
+
+		fn get_fees_params(
+			cluster_id: &ClusterId,
+		) -> Result<ClusterFeesParams, ClusterVisitorError> {
+			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+			Ok(ClusterFeesParams {
+				treasury_share: cluster_gov_params.treasury_share,
+				validators_share: cluster_gov_params.validators_share,
+				cluster_reserve_share: cluster_gov_params.cluster_reserve_share,
 			})
 		}
 
