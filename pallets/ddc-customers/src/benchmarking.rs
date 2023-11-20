@@ -3,28 +3,20 @@
 
 use super::*;
 use crate::Pallet as DdcCustomers;
-use ddc_primitives::ClusterId;
+use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams};
 use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_support::traits::Currency;
-use pallet_ddc_clusters::{
-	cluster::{ClusterGovParams, ClusterParams},
-	Pallet as DdcClusters,
-};
 use sp_runtime::Perbill;
 use sp_std::prelude::*;
 
-use pallet_contracts::chain_extension::UncheckedFrom;
-
-pub type BalanceOf<T> = <<T as pallet_ddc_clusters::Config>::Currency as Currency<
-	<T as frame_system::Config>::AccountId,
->>::Balance;
+pub type BalanceOf<T> =
+	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 use frame_system::{Pallet as System, RawOrigin};
 
 const USER_SEED: u32 = 999666;
 
 benchmarks! {
-  where_clause { where T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]> }
 	create_bucket {
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
@@ -45,14 +37,13 @@ benchmarks! {
 			unit_per_get_request: 10,
 		};
 
-	DdcClusters::<T>::create_cluster(
-	  RawOrigin::Root.into(),
+	let _ = <T as pallet::Config>::ClusterCreator::create_new_cluster(
 	  ClusterId::from([1; 20]),
 	  user.clone(),
 	  user.clone(),
 	  ClusterParams { node_provider_auth_contract: user.clone() },
 	  cluster_gov_params
-	).unwrap();
+	);
 
 		whitelist_account!(user);
 	}: _(RawOrigin::Signed(user), cluster_id)
@@ -151,7 +142,7 @@ benchmarks! {
 
   impl_benchmark_test_suite!(
 	DdcCustomers,
-	crate::mock::ExtBuilder::default().build(),
+	crate::mock::ExtBuilder.build(),
 	crate::mock::Test,
   );
 }

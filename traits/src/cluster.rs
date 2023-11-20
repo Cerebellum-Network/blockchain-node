@@ -1,4 +1,5 @@
-use ddc_primitives::{ClusterId, NodePubKey, NodeType};
+use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams, NodePubKey, NodeType};
+use frame_support::dispatch::DispatchResult;
 use frame_system::Config;
 
 pub trait ClusterVisitor<T: Config> {
@@ -20,6 +21,16 @@ pub trait ClusterVisitor<T: Config> {
 		cluster_id: &ClusterId,
 		node_type: NodeType,
 	) -> Result<T::BlockNumber, ClusterVisitorError>;
+}
+
+pub trait ClusterCreator<T: Config, Balance> {
+	fn create_new_cluster(
+		cluster_id: ClusterId,
+		cluster_manager_id: T::AccountId,
+		cluster_reserve_id: T::AccountId,
+		cluster_params: ClusterParams<T::AccountId>,
+		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+	) -> DispatchResult;
 }
 
 pub enum ClusterVisitorError {

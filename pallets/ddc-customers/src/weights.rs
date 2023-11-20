@@ -27,7 +27,7 @@
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::{traits::Get, weights::Weight};
+use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_ddc_nodes.
@@ -83,5 +83,50 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_ref_time(31_000_000_u64)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
+	}
+}
+
+// For backwards compatibility and tests
+impl WeightInfo for () {
+	// Storage: DdcCustomers BucketsCount (r:1 w:1)
+	// Storage: DdcClusters Clusters (r:1 w:0)
+	// Storage: DdcCustomers Buckets (r:0 w:1)
+	fn create_bucket() -> Weight {
+		Weight::from_ref_time(18_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
+	}
+	// Storage: DdcCustomers Ledger (r:1 w:1)
+	// Storage: System Account (r:1 w:1)
+	fn deposit() -> Weight {
+		Weight::from_ref_time(26_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
+	}
+	// Storage: DdcCustomers Ledger (r:1 w:1)
+	// Storage: System Account (r:1 w:1)
+	fn deposit_extra() -> Weight {
+		Weight::from_ref_time(28_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
+	}
+	// Storage: DdcCustomers Ledger (r:1 w:1)
+	fn unlock_deposit() -> Weight {
+		Weight::from_ref_time(16_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+	// Storage: DdcCustomers Ledger (r:1 w:1)
+	fn withdraw_unlocked_deposit_update() -> Weight {
+		Weight::from_ref_time(14_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+	// Storage: DdcCustomers Ledger (r:1 w:1)
+	// Storage: System Account (r:1 w:1)
+	fn withdraw_unlocked_deposit_kill() -> Weight {
+		Weight::from_ref_time(31_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 }

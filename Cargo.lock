@@ -1639,6 +1639,7 @@ name = "ddc-traits"
 version = "0.1.0"
 dependencies = [
  "ddc-primitives",
+ "frame-support",
  "frame-system",
 ]
 
@@ -4910,8 +4911,6 @@ dependencies = [
  "frame-system",
  "log",
  "pallet-balances",
- "pallet-contracts",
- "pallet-ddc-clusters",
  "pallet-timestamp",
  "parity-scale-codec",
  "rand_chacha 0.2.2",

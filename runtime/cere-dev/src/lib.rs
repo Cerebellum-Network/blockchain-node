@@ -1334,6 +1334,7 @@ impl pallet_ddc_customers::Config for Runtime {
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
 }
 

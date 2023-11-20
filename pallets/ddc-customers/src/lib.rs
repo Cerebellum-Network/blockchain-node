@@ -15,7 +15,7 @@ mod tests;
 use codec::{Decode, Encode, HasCompact};
 
 use ddc_primitives::{BucketId, ClusterId};
-use ddc_traits::cluster::ClusterVisitor;
+use ddc_traits::cluster::{ClusterCreator, ClusterVisitor};
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
@@ -160,7 +160,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_ddc_clusters::Config {
+	pub trait Config: frame_system::Config {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -170,6 +170,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type UnlockingDelay: Get<<Self as frame_system::Config>::BlockNumber>;
 		type ClusterVisitor: ClusterVisitor<Self>;
+		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
 	}
 
@@ -261,7 +262,7 @@ pub mod pallet {
 		/// Create new bucket with specified cluster id
 		///
 		/// Anyone can create a bucket
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_bucket())]
+		#[pallet::weight(T::WeightInfo::create_bucket())]
 		pub fn create_bucket(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
 			let cur_bucket_id = Self::buckets_count() + 1;
@@ -287,7 +288,7 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the owner account.
 		///
 		/// Emits `Deposited`.
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit())]
+		#[pallet::weight(T::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T>,
@@ -324,7 +325,7 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the owner.
 		///
 		/// Emits `Deposited`.
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::deposit_extra())]
+		#[pallet::weight(T::WeightInfo::deposit_extra())]
 		pub fn deposit_extra(
 			origin: OriginFor<T>,
 			#[pallet::compact] max_additional: BalanceOf<T>,
@@ -366,7 +367,7 @@ pub mod pallet {
 		/// Emits `InitiatDepositUnlock`.
 		///
 		/// See also [`Call::withdraw_unlocked_deposit`].
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::unlock_deposit())]
+		#[pallet::weight(T::WeightInfo::unlock_deposit())]
 		pub fn unlock_deposit(
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T>,
@@ -425,7 +426,7 @@ pub mod pallet {
 		/// Emits `Withdrawn`.
 		///
 		/// See also [`Call::unlock_deposit`].
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::withdraw_unlocked_deposit_kill())]
+		#[pallet::weight(T::WeightInfo::withdraw_unlocked_deposit_kill())]
 		pub fn withdraw_unlocked_deposit(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
