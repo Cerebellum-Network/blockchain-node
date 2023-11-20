@@ -1,7 +1,9 @@
 //! Test utilities
 
 use crate::{self as pallet_ddc_customers, *};
-use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodePubKey, NodeType};
+use ddc_primitives::{
+	ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
+};
 use ddc_traits::cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError};
 
 use frame_support::{

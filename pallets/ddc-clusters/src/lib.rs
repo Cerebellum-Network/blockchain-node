@@ -24,7 +24,9 @@ use crate::{
 	cluster::Cluster,
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
 };
-use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodePubKey, NodeType};
+use ddc_primitives::{
+	ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
+};
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
 	staking::{StakingVisitor, StakingVisitorError},

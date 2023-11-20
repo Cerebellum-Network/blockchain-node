@@ -1,4 +1,6 @@
-use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodePubKey, NodeType};
+use ddc_primitives::{
+	ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
+};
 use frame_support::dispatch::DispatchResult;
 use frame_system::Config;
 

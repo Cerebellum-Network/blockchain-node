@@ -15,7 +15,10 @@ mod tests;
 use codec::{Decode, Encode, HasCompact};
 
 use ddc_primitives::{BucketId, ClusterId};
-use ddc_traits::{cluster::{ClusterCreator, ClusterVisitor}, customer::CustomerCharger};
+use ddc_traits::{
+	cluster::{ClusterCreator, ClusterVisitor},
+	customer::CustomerCharger,
+};
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},

@@ -31,6 +31,11 @@ pub struct ClusterGovParams<Balance, BlockNumber> {
 	pub storage_bond_size: Balance,
 	pub storage_chill_delay: BlockNumber,
 	pub storage_unbonding_delay: BlockNumber,
+	pub unit_per_mb_stored: u128,
+	pub unit_per_mb_streamed: u128,
+	pub unit_per_put_request: u128,
+	pub unit_per_get_request: u128,
+}
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterPricingParams {
