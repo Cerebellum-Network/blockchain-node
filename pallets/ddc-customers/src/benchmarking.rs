@@ -107,26 +107,31 @@ benchmarks! {
 	  let _ = DdcCustomers::<T>::unlock_deposit(RawOrigin::Signed(user.clone()).into(), <T as pallet::Config>::Currency::minimum_balance() * 1u32.into());
 	}
 
-	System::<T>::set_block_number(12u32.into());
+	System::<T>::set_block_number(5256001u32.into());
 
 	whitelist_account!(user);
 	}: withdraw_unlocked_deposit(RawOrigin::Signed(user.clone()))
 	verify {
-	let legder = Ledger::<T>::try_get(user).unwrap();
-		assert_eq!(legder.unlocking.len(), 1);
+	  let ledger = Ledger::<T>::try_get(user).unwrap();
+		assert_eq!(ledger.active, amount / 32u32.into());
 	}
 
   // Worst case scenario, everything is removed after the unlocking duration
 	withdraw_unlocked_deposit_kill {
 
-	System::<T>::set_block_number(1u32.into());
+	  System::<T>::set_block_number(1u32.into());
 
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+	let user2 = account::<T::AccountId>("user", USER_SEED, 1u32);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 2000u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
+	let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user2, balance);
 		let amount = <T as pallet::Config>::Currency::minimum_balance() * 32u32.into();
 
 	let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount);
+	// To keep the balance of pallet positive
+	let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user2).into(), amount);
+
 
 	for _k in 1 .. 33 {
 	  let _ = DdcCustomers::<T>::unlock_deposit(RawOrigin::Signed(user.clone()).into(), <T as pallet::Config>::Currency::minimum_balance() * 1u32.into());
@@ -137,7 +142,7 @@ benchmarks! {
 	whitelist_account!(user);
 	}: withdraw_unlocked_deposit(RawOrigin::Signed(user.clone()))
 	verify {
-	assert!(!Ledger::<T>::contains_key(user));
+	  assert!(!Ledger::<T>::contains_key(user));
 	}
 
   impl_benchmark_test_suite!(
