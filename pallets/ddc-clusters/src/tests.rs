@@ -274,7 +274,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(alice),
 				contract_id.clone(),
 				0,
-				Weight::from_ref_time(1_000_000_000_000),
+				Weight::from_ref_time(1_000_000_000_000).set_proof_size(u64::MAX),
 				None,
 				call_data,
 			);

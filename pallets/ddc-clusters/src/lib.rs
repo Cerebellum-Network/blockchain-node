@@ -131,7 +131,7 @@ pub mod pallet {
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			ensure_root(origin)?; // requires Governance approval
-			Self::do_create_clusters(
+			Self::do_create_cluster(
 				cluster_id,
 				cluster_manager_id,
 				cluster_reserve_id,
@@ -247,7 +247,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub fn do_create_clusters(
+		fn do_create_cluster(
 			cluster_id: ClusterId,
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
@@ -340,7 +340,7 @@ pub mod pallet {
 			cluster_params: ClusterParams<T::AccountId>,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
-			Self::do_create_clusters(
+			Self::do_create_cluster(
 				cluster_id,
 				cluster_manager_id,
 				cluster_reserve_id,
