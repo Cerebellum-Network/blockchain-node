@@ -269,11 +269,11 @@ fn send_charging_customers_batch_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = 2u64;
-		let user1 = 3u64;
-		let user2_debtor = 4u64;
-		let user3_debtor = 5u64;
-		let user4 = 6u64;
+		let dac_account = 123u64;
+		let user1 = 1u64;
+		let user2_debtor = 2u64;
+		let user3_debtor = 3u64;
+		let user4 = 4u64;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 4;
@@ -315,8 +315,9 @@ fn send_charging_customers_batch_works() {
 			era,
 			max_batch_index,
 		));
+		assert_eq!(System::events().len(), 3);
 
-		// batch 3
+		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
@@ -324,6 +325,10 @@ fn send_charging_customers_batch_works() {
 			batch_index,
 			payers3,
 		));
+
+		let usage4_charge = calculate_charge(usage4);
+		let balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+		assert_eq!(balance, usage4_charge);
 
 		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
 		let mut debt = calculate_charge(usage3);
@@ -333,17 +338,12 @@ fn send_charging_customers_batch_works() {
 			Event::ChargeFailed { cluster_id, era, customer_id: user3_debtor, amount: debt }.into(),
 		);
 		System::assert_last_event(
-			Event::Charged {
-				cluster_id,
-				era,
-				customer_id: user4,
-				amount: calculate_charge(usage4),
-			}
-			.into(),
+			Event::Charged { cluster_id, era, customer_id: user4, amount: usage4_charge }.into(),
 		);
-		assert_eq!(System::events().len(), 5);
 
-		// batch 1
+		assert_eq!(System::events().len(), 5 + 3); // 3 for Currency::transfer
+
+		// batch 2
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
@@ -389,9 +389,9 @@ fn send_charging_customers_batch_works() {
 #[test]
 fn end_charging_customers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = 1u64;
-		let dac_account = 2u64;
-		let user1 = 3u64;
+		let root_account = 100u64;
+		let dac_account = 123u64;
+		let user1 = 1u64;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
@@ -462,13 +462,19 @@ fn end_charging_customers_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = 2u64;
-		let user1 = 3u64;
+		let dac_account = 123u64;
+		let user1 = 1u64;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 1;
 		let batch_index = 0;
-		let payers = vec![(user1, CustomerUsage::default())];
+		let usage1 = CustomerUsage {
+			transferred_bytes: 23452345,
+			stored_bytes: 3345234523,
+			number_of_puts: 4456456345234523,
+			number_of_gets: 523423,
+		};
+		let payers = vec![(user1, usage1.clone())];
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 
@@ -493,16 +499,82 @@ fn end_charging_customers_works() {
 			payers,
 		));
 
+		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge = calculate_charge(usage1);
+		System::assert_last_event(
+			Event::Charged { cluster_id, era, customer_id: user1, amount: charge }.into(),
+		);
+
+		let mut balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+		assert_eq!(balance, charge);
+		assert_eq!(System::events().len(), 4 + 3); // 3 for Currency::transfer
+
 		assert_ok!(DdcPayouts::end_charging_customers(
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
 		));
 
-		System::assert_last_event(Event::ChargingFinished { cluster_id, era }.into());
+		System::assert_has_event(Event::ChargingFinished { cluster_id, era }.into());
 
-		let report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(report.state, State::CustomersChargedWithFees);
+		let treasury_fee = PRICING_FEES.treasury_share * charge;
+		let reserve_fee = PRICING_FEES.cluster_reserve_share * charge;
+		let validator_fee = PRICING_FEES.validators_share * charge;
+
+		System::assert_has_event(
+			Event::TreasuryFeesCharged { cluster_id, era, amount: treasury_fee }.into(),
+		);
+
+		System::assert_has_event(
+			Event::ClusterReserveFeesCharged { cluster_id, era, amount: reserve_fee }.into(),
+		);
+
+		System::assert_has_event(
+			Event::ValidatorFeesCharged { cluster_id, era, amount: validator_fee }.into(),
+		);
+
+		let transfers = 3 + 3 + 3 * 3; // for Currency::transfer
+		assert_eq!(System::events().len(), 7 + 1 + 3 + transfers);
+
+		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		assert_eq!(report_after.state, State::CustomersChargedWithFees);
+
+		let total_left_from_one = (PRICING_FEES.treasury_share +
+			PRICING_FEES.validators_share +
+			PRICING_FEES.cluster_reserve_share)
+			.left_from_one();
+
+		balance = Balances::free_balance(TREASURY_ACCOUNT_ID);
+		assert_eq!(balance, PRICING_FEES.treasury_share * charge);
+
+		balance = Balances::free_balance(RESERVE_ACCOUNT_ID);
+		assert_eq!(balance, PRICING_FEES.cluster_reserve_share * charge);
+
+		balance = Balances::free_balance(VALIDATOR1_ACCOUNT_ID);
+		assert_eq!(balance, PRICING_FEES.validators_share * charge / 3);
+
+		balance = Balances::free_balance(VALIDATOR2_ACCOUNT_ID);
+		assert_eq!(balance, PRICING_FEES.validators_share * charge / 3);
+
+		balance = Balances::free_balance(VALIDATOR3_ACCOUNT_ID);
+		assert_eq!(balance, PRICING_FEES.validators_share * charge / 3);
+
+		assert_eq!(
+			report_after.total_customer_charge.transfer,
+			total_left_from_one * report_before.total_customer_charge.transfer
+		);
+		assert_eq!(
+			report_after.total_customer_charge.storage,
+			total_left_from_one * report_before.total_customer_charge.storage
+		);
+		assert_eq!(
+			report_after.total_customer_charge.puts,
+			total_left_from_one * report_before.total_customer_charge.puts
+		);
+		assert_eq!(
+			report_after.total_customer_charge.gets,
+			total_left_from_one * report_before.total_customer_charge.gets
+		);
 	})
 }
 
@@ -634,8 +706,8 @@ fn begin_rewarding_providers_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = 2u64;
-		let user1 = 3u64;
+		let dac_account = 123u64;
+		let user1 = 1u64;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 1;

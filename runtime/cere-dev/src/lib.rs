@@ -1367,6 +1367,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type CustomerCharger = DdcCustomers;
 	type ClusterVisitor = DdcClusters;
 	type TreasuryVisitor = TreasureWrapper;
+	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
 }
 
 construct_runtime!(

@@ -1667,6 +1667,7 @@ dependencies = [
  "ddc-primitives",
  "frame-system",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -5021,6 +5022,7 @@ dependencies = [
  "ddc-primitives",
  "ddc-traits",
  "frame-benchmarking",
+ "frame-election-provider-support",
  "frame-support",
  "frame-system",
  "log",

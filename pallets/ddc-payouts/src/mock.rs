@@ -9,7 +9,7 @@ use ddc_traits::{
 	customer::CustomerCharger,
 	pallet::PalletVisitor,
 };
-
+use frame_election_provider_support::SortedListProvider;
 use frame_support::{
 	construct_runtime,
 	error::BadOrigin,
@@ -34,6 +34,8 @@ pub(crate) type Balance = u128;
 
 type UncheckedExtrinsic = MockUncheckedExtrinsic<Test>;
 type Block = MockBlock<Test>;
+pub type BalanceOf<T> =
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 construct_runtime!(
 	pub enum Test where
@@ -100,8 +102,8 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type CustomerCharger = TestCustomerCharger;
 	type ClusterVisitor = TestClusterVisitor;
-
 	type TreasuryVisitor = TestTreasuryVisitor;
+	type ValidatorList = TestValidatorVisitor;
 }
 
 pub struct TestCustomerCharger;
@@ -112,12 +114,23 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		amount: u128,
 	) -> sp_runtime::DispatchResult {
 		ensure!(amount > 1_000_000_000, BadOrigin); //  any error will do
+		let charge = amount.saturated_into::<BalanceOf<T>>();
+
+		<T as pallet::Config>::Currency::transfer(
+			&_content_owner,
+			&_billing_vault,
+			charge,
+			ExistenceRequirement::KeepAlive,
+		)?;
 		Ok(())
 	}
 }
 
 pub const RESERVE_ACCOUNT_ID: AccountId = 999;
 pub const TREASURY_ACCOUNT_ID: AccountId = 888;
+pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
+pub const VALIDATOR2_ACCOUNT_ID: AccountId = 222;
+pub const VALIDATOR3_ACCOUNT_ID: AccountId = 333;
 
 pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_streamed: 2_000_000,
@@ -135,8 +148,23 @@ pub const PRICING_FEES: ClusterFeesParams = ClusterFeesParams {
 pub struct TestTreasuryVisitor;
 impl<T: frame_system::Config> PalletVisitor<T> for TestTreasuryVisitor {
 	fn get_account_id() -> T::AccountId {
-		let reserve_account = TREASURY_ACCOUNT_ID.to_be_bytes();
+		let reserve_account = TREASURY_ACCOUNT_ID.to_ne_bytes();
 		T::AccountId::decode(&mut &reserve_account[..]).unwrap()
+	}
+}
+
+pub struct TestValidatorVisitor;
+impl<T: frame_system::Config> ValidatorVisitor<T> for TestValidatorVisitor {
+	fn get_active_validators() -> Vec<T::AccountId> {
+		let mut validators: Vec<T::AccountId> = Vec::new();
+		let mut validator = VALIDATOR1_ACCOUNT_ID.to_ne_bytes();
+		validators.push(T::AccountId::decode(&mut &validator[..]).unwrap());
+		validator = VALIDATOR2_ACCOUNT_ID.to_ne_bytes();
+		validators.push(T::AccountId::decode(&mut &validator[..]).unwrap());
+		validator = VALIDATOR3_ACCOUNT_ID.to_ne_bytes();
+		validators.push(T::AccountId::decode(&mut &validator[..]).unwrap());
+
+		validators
 	}
 }
 
@@ -180,7 +208,7 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_reserve_account_id(
 		_cluster_id: &ClusterId,
 	) -> Result<T::AccountId, ClusterVisitorError> {
-		let reserve_account = RESERVE_ACCOUNT_ID.to_be_bytes();
+		let reserve_account = RESERVE_ACCOUNT_ID.to_ne_bytes();
 		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
 	}
 }
@@ -194,8 +222,15 @@ impl ExtBuilder {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
-		let _ = pallet_balances::GenesisConfig::<Test> { balances: vec![(1, 100), (2, 100)] }
-			.assimilate_storage(&mut storage);
+		let _ = pallet_balances::GenesisConfig::<Test> {
+			balances: vec![
+				(1, 1000000000000000000000000),
+				(2, 100),
+				(3, 100),
+				(4, 1000000000000000000000000),
+			],
+		}
+		.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}

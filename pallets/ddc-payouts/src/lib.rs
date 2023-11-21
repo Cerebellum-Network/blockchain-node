@@ -22,8 +22,9 @@ mod tests;
 use ddc_primitives::{ClusterId, DdcEra};
 use ddc_traits::{
 	cluster::ClusterVisitor as ClusterVisitorType,
-	customer::CustomerCharger as CustomerChargerType, pallet::PalletVisitor as PalletVisitorType,
+	customer::CustomerCharger as CustomerChargerType, pallet::PalletVisitor as PalletVisitorType
 };
+use frame_election_provider_support::SortedListProvider;
 use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
@@ -111,6 +112,7 @@ pub mod pallet {
 		type CustomerCharger: CustomerChargerType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
 		type ClusterVisitor: ClusterVisitorType<Self>;
+		type ValidatorList: SortedListProvider<Self::AccountId>;
 	}
 
 	#[pallet::event]
@@ -312,10 +314,7 @@ pub mod pallet {
 			let caller = ensure_signed(origin)?;
 			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
 
-			ensure!(
-				max_batch_index > 0 && max_batch_index < MaxBatchesCount::get(),
-				Error::<T>::BatchIndexOverflow
-			);
+			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
@@ -486,21 +485,30 @@ pub mod pallet {
 			let validators_fee = fees.validators_share * total_customer_charge;
 			let cluster_reserve_fee = fees.cluster_reserve_share * total_customer_charge;
 
-			charge_treasury_fees::<T>(treasury_fee)?;
+			charge_treasury_fees::<T>(
+				treasury_fee,
+				&billing_report.vault,
+				&T::TreasuryVisitor::get_account_id(),
+			)?;
 			Self::deposit_event(Event::<T>::TreasuryFeesCharged {
 				cluster_id,
 				era,
 				amount: treasury_fee,
 			});
 
-			charge_cluster_reserve_fees::<T>(cluster_reserve_fee)?;
+			charge_cluster_reserve_fees::<T>(
+				cluster_reserve_fee,
+				&billing_report.vault,
+				&T::ClusterVisitor::get_reserve_account_id(&cluster_id)
+					.map_err(|_| Error::<T>::NotExpectedClusterState)?,
+			)?;
 			Self::deposit_event(Event::<T>::ClusterReserveFeesCharged {
 				cluster_id,
 				era,
 				amount: cluster_reserve_fee,
 			});
 
-			charge_validator_fees::<T>(validators_fee)?;
+			charge_validator_fees::<T>(validators_fee, &billing_report.vault)?;
 			Self::deposit_event(Event::<T>::ValidatorFeesCharged {
 				cluster_id,
 				era,
@@ -539,10 +547,7 @@ pub mod pallet {
 			let caller = ensure_signed(origin)?;
 			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
 
-			ensure!(
-				max_batch_index > 0 && max_batch_index < MaxBatchesCount::get(),
-				Error::<T>::BatchIndexOverflow
-			);
+			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
@@ -704,15 +709,52 @@ pub mod pallet {
 		}
 	}
 
-	fn charge_treasury_fees<T: Config>(_treasury_fee: u128) -> DispatchResult {
-		Ok(())
+	fn charge_treasury_fees<T: Config>(
+		treasury_fee: u128,
+		vault: &T::AccountId,
+		treasury_vault: &T::AccountId,
+	) -> DispatchResult {
+		let amount_to_deduct = treasury_fee.saturated_into::<BalanceOf<T>>();
+		<T as pallet::Config>::Currency::transfer(
+			vault,
+			treasury_vault,
+			amount_to_deduct,
+			ExistenceRequirement::KeepAlive,
+		)
 	}
 
-	fn charge_cluster_reserve_fees<T: Config>(_cluster_reserve_fee: u128) -> DispatchResult {
-		Ok(())
+	fn charge_cluster_reserve_fees<T: Config>(
+		cluster_reserve_fee: u128,
+		vault: &T::AccountId,
+		reserve_vault: &T::AccountId,
+	) -> DispatchResult {
+		let amount_to_deduct = cluster_reserve_fee.saturated_into::<BalanceOf<T>>();
+		<T as pallet::Config>::Currency::transfer(
+			vault,
+			reserve_vault,
+			amount_to_deduct,
+			ExistenceRequirement::KeepAlive,
+		)
 	}
 
-	fn charge_validator_fees<T: Config>(_validators_fee: u128) -> DispatchResult {
+	fn charge_validator_fees<T: Config>(
+		validators_fee: u128,
+		vault: &T::AccountId,
+	) -> DispatchResult {
+		let amount_to_deduct = validators_fee
+			.checked_div(T::ValidatorList::count().try_into().unwrap())
+			.ok_or(Error::<T>::ArithmeticOverflow)?
+			.saturated_into::<BalanceOf<T>>();
+
+		for validator_account_id in T::ValidatorList::iter() {
+			<T as pallet::Config>::Currency::transfer(
+				vault,
+				&validator_account_id,
+				amount_to_deduct,
+				ExistenceRequirement::KeepAlive,
+			)?;
+		}
+
 		Ok(())
 	}
 
@@ -795,7 +837,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
+		pub fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
 			let mut bytes = Vec::new();
 			bytes.extend_from_slice(&cluster_id[..]);
 			bytes.extend_from_slice(&era.encode());
