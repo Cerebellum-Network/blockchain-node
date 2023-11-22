@@ -326,7 +326,7 @@ where
 
 	fn get_start_of_day_ms() -> u64 {
 		let now = sp_io::offchain::timestamp();
-		
+
 		(now.unix_millis() / MS_PER_DAY) * MS_PER_DAY
 	}
 
@@ -351,6 +351,7 @@ where
 			None,
 			call_data,
 			false,
+			pallet_contracts::Determinism::Deterministic,
 		);
 
 		let mut data = match &contract_exec_result.result {
@@ -587,6 +588,7 @@ where
 			None,
 			call_data,
 			false,
+			pallet_contracts::Determinism::Deterministic,
 		);
 
 		let mut data = match &contract_exec_result.result {
@@ -639,8 +641,6 @@ where
 			error!("[OCW] Error while getting {}: {:?}", url, err);
 			"HTTP GET error"
 		})?;
-
-		
 
 		serde_json::from_slice(&body).map_err(|err| {
 			warn!("[OCW] Error while parsing JSON from {}: {:?}", url, err);
