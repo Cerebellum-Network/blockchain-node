@@ -1,6 +1,6 @@
 [package]
 name = 'pallet-cere-ddc'
-version = '4.8.1'
+version = '4.8.2'
 authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
 edition = '2021'
 homepage = 'https://www.cere.network/'
