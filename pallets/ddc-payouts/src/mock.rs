@@ -153,24 +153,26 @@ impl<T: frame_system::Config> PalletVisitor<T> for TestTreasuryVisitor {
 	}
 }
 
-pub struct TestValidatorVisitor<T: frame_system::Config> {
-	type Validators: Vec<T::AccountId>
+fn create_account_id_from_u64<T: frame_system::Config>(id: u64) -> T::AccountId {
+	let bytes = id.to_ne_bytes();
+	T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
+
+pub struct TestValidatorVisitor<T>(sp_std::marker::PhantomData<T>);
 impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidatorVisitor<T> {
 	type Score = u64;
 	type Error = ();
 
 	/// Returns iterator over voter list, which can have `take` called on it.
 	fn iter() -> Box<dyn Iterator<Item = T::AccountId>> {
-		Self::validators = Vec::new();
-		let mut validator = VALIDATOR1_ACCOUNT_ID.to_ne_bytes();
-		Self::validators.push(T::AccountId::decode(&mut &validator[..]).unwrap());
-		validator = VALIDATOR2_ACCOUNT_ID.to_ne_bytes();
-		Self::validators.push(T::AccountId::decode(&mut &validator[..]).unwrap());
-		validator = VALIDATOR3_ACCOUNT_ID.to_ne_bytes();
-		Self::validators.push(T::AccountId::decode(&mut &validator[..]).unwrap());
-
-		Box::new(Self::validators.iter().map(|x| x.clone()))
+		Box::new(
+			vec![
+				create_account_id_from_u64::<T>(VALIDATOR1_ACCOUNT_ID),
+				create_account_id_from_u64::<T>(VALIDATOR2_ACCOUNT_ID),
+				create_account_id_from_u64::<T>(VALIDATOR3_ACCOUNT_ID),
+			]
+			.into_iter(),
+		)
 	}
 	fn iter_from(
 		_start: &T::AccountId,

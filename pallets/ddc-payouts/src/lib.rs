@@ -22,7 +22,7 @@ mod tests;
 use ddc_primitives::{ClusterId, DdcEra};
 use ddc_traits::{
 	cluster::ClusterVisitor as ClusterVisitorType,
-	customer::CustomerCharger as CustomerChargerType, pallet::PalletVisitor as PalletVisitorType
+	customer::CustomerCharger as CustomerChargerType, pallet::PalletVisitor as PalletVisitorType,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
