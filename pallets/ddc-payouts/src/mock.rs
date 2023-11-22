@@ -103,7 +103,7 @@ impl crate::pallet::Config for Test {
 	type CustomerCharger = TestCustomerCharger;
 	type ClusterVisitor = TestClusterVisitor;
 	type TreasuryVisitor = TestTreasuryVisitor;
-	type ValidatorList = TestValidatorVisitor;
+	type ValidatorList = TestValidatorVisitor<Self>;
 }
 
 pub struct TestCustomerCharger;
@@ -153,7 +153,73 @@ impl<T: frame_system::Config> PalletVisitor<T> for TestTreasuryVisitor {
 	}
 }
 
-pub struct TestValidatorVisitor;
+pub struct TestValidatorVisitor<T: frame_system::Config> {
+	type Validators: Vec<T::AccountId>
+}
+impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidatorVisitor<T> {
+	type Score = u64;
+	type Error = ();
+
+	/// Returns iterator over voter list, which can have `take` called on it.
+	fn iter() -> Box<dyn Iterator<Item = T::AccountId>> {
+		Self::validators = Vec::new();
+		let mut validator = VALIDATOR1_ACCOUNT_ID.to_ne_bytes();
+		Self::validators.push(T::AccountId::decode(&mut &validator[..]).unwrap());
+		validator = VALIDATOR2_ACCOUNT_ID.to_ne_bytes();
+		Self::validators.push(T::AccountId::decode(&mut &validator[..]).unwrap());
+		validator = VALIDATOR3_ACCOUNT_ID.to_ne_bytes();
+		Self::validators.push(T::AccountId::decode(&mut &validator[..]).unwrap());
+
+		Box::new(Self::validators.iter().map(|x| x.clone()))
+	}
+	fn iter_from(
+		_start: &T::AccountId,
+	) -> Result<Box<dyn Iterator<Item = T::AccountId>>, Self::Error> {
+		unimplemented!()
+	}
+	fn count() -> u32 {
+		3
+	}
+	fn contains(_id: &T::AccountId) -> bool {
+		unimplemented!()
+	}
+	fn on_insert(_: T::AccountId, _weight: Self::Score) -> Result<(), Self::Error> {
+		// nothing to do on insert.
+		Ok(())
+	}
+	fn get_score(_id: &T::AccountId) -> Result<Self::Score, Self::Error> {
+		unimplemented!()
+	}
+	fn on_update(_: &T::AccountId, _weight: Self::Score) -> Result<(), Self::Error> {
+		// nothing to do on update.
+		Ok(())
+	}
+	fn on_remove(_: &T::AccountId) -> Result<(), Self::Error> {
+		// nothing to do on remove.
+		Ok(())
+	}
+	fn unsafe_regenerate(
+		_: impl IntoIterator<Item = T::AccountId>,
+		_: Box<dyn Fn(&T::AccountId) -> Self::Score>,
+	) -> u32 {
+		// nothing to do upon regenerate.
+		0
+	}
+
+	fn try_state() -> Result<(), &'static str> {
+		unimplemented!()
+	}
+
+	fn unsafe_clear() {
+		unimplemented!()
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn score_update_worst_case(_who: &T::AccountId, _is_increase: bool) -> Self::Score {
+		unimplemented!()
+	}
+}
+/*
 impl<T: frame_system::Config> ValidatorVisitor<T> for TestValidatorVisitor {
 	fn get_active_validators() -> Vec<T::AccountId> {
 		let mut validators: Vec<T::AccountId> = Vec::new();
@@ -167,7 +233,7 @@ impl<T: frame_system::Config> ValidatorVisitor<T> for TestValidatorVisitor {
 		validators
 	}
 }
-
+*/
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
