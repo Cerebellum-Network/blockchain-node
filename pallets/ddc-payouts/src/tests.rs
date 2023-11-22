@@ -928,21 +928,24 @@ fn send_rewarding_providers_batch_works() {
 			number_of_gets: 523423,
 		};
 
-		let node_usage1 = NodeUsage { // CDN
+		let node_usage1 = NodeUsage {
+			// CDN
 			transferred_bytes: usage1.transferred_bytes * 2 / 3,
 			stored_bytes: 0,
 			number_of_puts: usage1.number_of_puts * 2 / 3,
 			number_of_gets: usage1.number_of_gets * 2 / 3,
 		};
 
-		let node_usage2 = NodeUsage { // Storage
+		let node_usage2 = NodeUsage {
+			// Storage
 			transferred_bytes: 0,
 			stored_bytes: usage1.stored_bytes * 2,
 			number_of_puts: 0,
 			number_of_gets: 0,
 		};
 
-		let node_usage3 = NodeUsage { // CDN + Storage
+		let node_usage3 = NodeUsage {
+			// CDN + Storage
 			transferred_bytes: usage1.transferred_bytes * 2,
 			stored_bytes: usage1.stored_bytes * 3,
 			number_of_puts: usage1.number_of_puts * 2,
@@ -950,10 +953,18 @@ fn send_rewarding_providers_batch_works() {
 		};
 
 		let total_nodes_usage = NodeUsage {
-			transferred_bytes: node_usage1.transferred_bytes + node_usage2.transferred_bytes + node_usage3.transferred_bytes,
-			stored_bytes: node_usage1.stored_bytes + node_usage2.stored_bytes + node_usage3.stored_bytes,
-			number_of_puts: node_usage1.number_of_puts + node_usage2.number_of_puts + node_usage3.number_of_puts,
-			number_of_gets: node_usage1.number_of_gets + node_usage2.number_of_gets + node_usage3.number_of_gets,
+			transferred_bytes: node_usage1.transferred_bytes +
+				node_usage2.transferred_bytes +
+				node_usage3.transferred_bytes,
+			stored_bytes: node_usage1.stored_bytes +
+				node_usage2.stored_bytes +
+				node_usage3.stored_bytes,
+			number_of_puts: node_usage1.number_of_puts +
+				node_usage2.number_of_puts +
+				node_usage3.number_of_puts,
+			number_of_gets: node_usage1.number_of_gets +
+				node_usage2.number_of_gets +
+				node_usage3.number_of_gets,
 		};
 
 		let payers = vec![(user1, usage1.clone())];
@@ -1038,10 +1049,12 @@ fn send_rewarding_providers_batch_works() {
 		ratio = Perbill::from_rational(node_usage1.stored_bytes, total_nodes_usage.stored_bytes);
 		let mut storage_charge = ratio * report_after.total_customer_charge.storage;
 
-		ratio = Perbill::from_rational(node_usage1.number_of_puts, total_nodes_usage.number_of_puts);
+		ratio =
+			Perbill::from_rational(node_usage1.number_of_puts, total_nodes_usage.number_of_puts);
 		let mut puts_charge = ratio * report_after.total_customer_charge.puts;
 
-		ratio = Perbill::from_rational(node_usage1.number_of_gets, total_nodes_usage.number_of_gets);
+		ratio =
+			Perbill::from_rational(node_usage1.number_of_gets, total_nodes_usage.number_of_gets);
 		let mut gets_charge = ratio * report_after.total_customer_charge.gets;
 
 		let mut balance = Balances::free_balance(node1);
@@ -1056,10 +1069,12 @@ fn send_rewarding_providers_batch_works() {
 		ratio = Perbill::from_rational(node_usage2.stored_bytes, total_nodes_usage.stored_bytes);
 		storage_charge = ratio * report_after.total_customer_charge.storage;
 
-		ratio = Perbill::from_rational(node_usage2.number_of_puts, total_nodes_usage.number_of_puts);
+		ratio =
+			Perbill::from_rational(node_usage2.number_of_puts, total_nodes_usage.number_of_puts);
 		puts_charge = ratio * report_after.total_customer_charge.puts;
 
-		ratio = Perbill::from_rational(node_usage2.number_of_gets, total_nodes_usage.number_of_gets);
+		ratio =
+			Perbill::from_rational(node_usage2.number_of_gets, total_nodes_usage.number_of_gets);
 		gets_charge = ratio * report_after.total_customer_charge.gets;
 
 		balance = Balances::free_balance(node2);
@@ -1082,10 +1097,12 @@ fn send_rewarding_providers_batch_works() {
 		ratio = Perbill::from_rational(node_usage3.stored_bytes, total_nodes_usage.stored_bytes);
 		storage_charge = ratio * report_after.total_customer_charge.storage;
 
-		ratio = Perbill::from_rational(node_usage3.number_of_puts, total_nodes_usage.number_of_puts);
+		ratio =
+			Perbill::from_rational(node_usage3.number_of_puts, total_nodes_usage.number_of_puts);
 		puts_charge = ratio * report_after.total_customer_charge.puts;
 
-		ratio = Perbill::from_rational(node_usage3.number_of_gets, total_nodes_usage.number_of_gets);
+		ratio =
+			Perbill::from_rational(node_usage3.number_of_gets, total_nodes_usage.number_of_gets);
 		gets_charge = ratio * report_after.total_customer_charge.gets;
 
 		balance = Balances::free_balance(node3);
