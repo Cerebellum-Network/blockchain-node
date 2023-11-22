@@ -1,6 +1,6 @@
 use crate::pallet::Error;
 use codec::{Decode, Encode};
-use ddc_primitives::{ClusterId, ClusterParams};
+use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams};
 use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
 
