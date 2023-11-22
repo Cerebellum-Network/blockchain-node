@@ -516,7 +516,7 @@ pub mod pallet {
 
 			let mut updated_billing_report = billing_report.clone();
 			for payee in payees {
-				let node_reward = get_node_reward::<T>(
+				let node_reward = get_node_reward(
 					&payee.1,
 					&billing_report.total_node_usage,
 					&billing_report.total_customer_charge,
