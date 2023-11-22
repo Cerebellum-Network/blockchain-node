@@ -1,8 +1,10 @@
 //! Test utilities
 
 use crate::{self as pallet_ddc_customers, *};
-use ddc_primitives::{ClusterPricingParams, NodePubKey, NodeType};
-use ddc_traits::cluster::{ClusterVisitor, ClusterVisitorError};
+use ddc_primitives::{
+	ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
+};
+use ddc_traits::cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError};
 
 use frame_support::{
 	construct_runtime, parameter_types,
@@ -15,6 +17,7 @@ use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	DispatchResult,
 };
 
 /// The AccountId alias in this test module.
@@ -100,6 +103,8 @@ impl crate::pallet::Config for Test {
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type ClusterVisitor = TestClusterVisitor;
+	type ClusterCreator = TestClusterCreator;
+	type WeightInfo = ();
 }
 
 pub struct TestClusterVisitor;
@@ -141,10 +146,23 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	}
 }
 
+pub struct TestClusterCreator;
+impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
+	fn create_new_cluster(
+		_cluster_id: ClusterId,
+		_cluster_manager_id: T::AccountId,
+		_cluster_reserve_id: T::AccountId,
+		_cluster_params: ClusterParams<T::AccountId>,
+		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
 pub struct ExtBuilder;
 
 impl ExtBuilder {
-	fn build(self) -> TestExternalities {
+	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 

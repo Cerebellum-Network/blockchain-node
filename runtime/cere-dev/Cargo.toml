@@ -214,6 +214,7 @@ runtime-benchmarks = [
   "pallet-session-benchmarking/runtime-benchmarks",
   "pallet-society/runtime-benchmarks",
   "pallet-staking/runtime-benchmarks",
+  "pallet-ddc-customers/runtime-benchmarks",
   "pallet-ddc-staking/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "pallet-tips/runtime-benchmarks",
