@@ -35,9 +35,9 @@ use ddc_traits::{
 	node::NodeVisitor,
 	staking::{StakingVisitor, StakingVisitorError},
 };
-
+#[cfg(feature = "std")]
+use frame_support::assert_ok;
 use frame_support::{
-	assert_ok,
 	pallet_prelude::*,
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, LockIdentifier, LockableCurrency, WithdrawReasons},
