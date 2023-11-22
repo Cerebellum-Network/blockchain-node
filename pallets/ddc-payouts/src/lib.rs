@@ -829,9 +829,9 @@ pub mod pallet {
 		// Check if the Vec contains all integers between 1 and rewarding_max_batch_index
 		ensure!(!batches.is_empty(), Error::<T>::BatchesMissed);
 
-		ensure!(*max_batch_index as usize == batches.len(), Error::<T>::BatchesMissed);
+		ensure!((*max_batch_index + 1) as usize == batches.len(), Error::<T>::BatchesMissed);
 
-		for index in 0..*max_batch_index {
+		for index in 0..*max_batch_index + 1 {
 			ensure!(batches.contains(&index), Error::<T>::BatchesMissed);
 		}
 

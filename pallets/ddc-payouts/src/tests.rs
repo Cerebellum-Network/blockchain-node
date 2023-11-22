@@ -466,7 +466,7 @@ fn end_charging_customers_works() {
 		let user1 = 1u64;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
-		let max_batch_index = 1;
+		let max_batch_index = 0;
 		let batch_index = 0;
 		let usage1 = CustomerUsage {
 			transferred_bytes: 23452345,
@@ -710,7 +710,7 @@ fn begin_rewarding_providers_works() {
 		let user1 = 1u64;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
-		let max_batch_index = 1;
+		let max_batch_index = 0;
 		let batch_index = 0;
 		let total_node_usage = NodeUsage::default();
 		let payers = vec![(user1, CustomerUsage::default())];
@@ -772,7 +772,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		let node1 = 33u64;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
-		let max_batch_index = 2;
+		let max_batch_index = 1;
 		let batch_index = 0;
 		let payers1 = vec![(user1, CustomerUsage::default())];
 		let payers2 = vec![(user2, CustomerUsage::default())];
@@ -906,6 +906,200 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 }
 
 #[test]
+fn send_rewarding_providers_batch_works() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let dac_account = 123u64;
+		let user1 = 1u64;
+		let node1 = 10u64;
+		let node2 = 11u64;
+		let node3 = 12u64;
+		let cluster_id = ClusterId::from([12; 20]);
+		let era = 100;
+		let max_batch_index = 0;
+		let max_node_batch_index = 1;
+		let batch_index = 0;
+		let batch_node_index = 0;
+		let usage1 = CustomerUsage {
+			transferred_bytes: 23452345,
+			stored_bytes: 3345234523,
+			number_of_puts: 4456456345234523,
+			number_of_gets: 523423,
+		};
+
+		let node_usage1 = NodeUsage { // CDN
+			transferred_bytes: usage1.transferred_bytes * 2 / 3,
+			stored_bytes: 0,
+			number_of_puts: usage1.number_of_puts * 2 / 3,
+			number_of_gets: usage1.number_of_gets * 2 / 3,
+		};
+
+		let node_usage2 = NodeUsage { // Storage
+			transferred_bytes: 0,
+			stored_bytes: usage1.stored_bytes * 2,
+			number_of_puts: 0,
+			number_of_gets: 0,
+		};
+
+		let node_usage3 = NodeUsage { // CDN + Storage
+			transferred_bytes: usage1.transferred_bytes * 2,
+			stored_bytes: usage1.stored_bytes * 3,
+			number_of_puts: usage1.number_of_puts * 2,
+			number_of_gets: usage1.number_of_gets * 2,
+		};
+
+		let total_nodes_usage = NodeUsage {
+			transferred_bytes: node_usage1.transferred_bytes + node_usage2.transferred_bytes + node_usage3.transferred_bytes,
+			stored_bytes: node_usage1.stored_bytes + node_usage2.stored_bytes + node_usage3.stored_bytes,
+			number_of_puts: node_usage1.number_of_puts + node_usage2.number_of_puts + node_usage3.number_of_puts,
+			number_of_gets: node_usage1.number_of_gets + node_usage2.number_of_gets + node_usage3.number_of_gets,
+		};
+
+		let payers = vec![(user1, usage1.clone())];
+		let payees1 = vec![(node1, node_usage1.clone()), (node2, node_usage2.clone())];
+		let payees2 = vec![(node3, node_usage3.clone())];
+
+		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
+
+		assert_ok!(DdcPayouts::begin_billing_report(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+		));
+
+		assert_ok!(DdcPayouts::begin_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			max_batch_index,
+		));
+
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers,
+		));
+
+		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		assert_ok!(DdcPayouts::end_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+		));
+
+		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let total_left_from_one = (PRICING_FEES.treasury_share +
+			PRICING_FEES.validators_share +
+			PRICING_FEES.cluster_reserve_share)
+			.left_from_one();
+
+		assert_eq!(
+			report_after.total_customer_charge.transfer,
+			total_left_from_one * report_before.total_customer_charge.transfer
+		);
+		assert_eq!(
+			report_after.total_customer_charge.storage,
+			total_left_from_one * report_before.total_customer_charge.storage
+		);
+		assert_eq!(
+			report_after.total_customer_charge.puts,
+			total_left_from_one * report_before.total_customer_charge.puts
+		);
+		assert_eq!(
+			report_after.total_customer_charge.gets,
+			total_left_from_one * report_before.total_customer_charge.gets
+		);
+
+		assert_ok!(DdcPayouts::begin_rewarding_providers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			max_node_batch_index,
+			total_nodes_usage.clone(),
+		));
+
+		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_node_index,
+			payees1,
+		));
+
+		let mut ratio = Perbill::from_rational(
+			node_usage1.transferred_bytes,
+			total_nodes_usage.transferred_bytes,
+		);
+		let mut transfer_charge = ratio * report_after.total_customer_charge.transfer;
+
+		ratio = Perbill::from_rational(node_usage1.stored_bytes, total_nodes_usage.stored_bytes);
+		let mut storage_charge = ratio * report_after.total_customer_charge.storage;
+
+		ratio = Perbill::from_rational(node_usage1.number_of_puts, total_nodes_usage.number_of_puts);
+		let mut puts_charge = ratio * report_after.total_customer_charge.puts;
+
+		ratio = Perbill::from_rational(node_usage1.number_of_gets, total_nodes_usage.number_of_gets);
+		let mut gets_charge = ratio * report_after.total_customer_charge.gets;
+
+		let mut balance = Balances::free_balance(node1);
+		assert_eq!(balance, transfer_charge + storage_charge + puts_charge + gets_charge);
+
+		ratio = Perbill::from_rational(
+			node_usage2.transferred_bytes,
+			total_nodes_usage.transferred_bytes,
+		);
+		transfer_charge = ratio * report_after.total_customer_charge.transfer;
+
+		ratio = Perbill::from_rational(node_usage2.stored_bytes, total_nodes_usage.stored_bytes);
+		storage_charge = ratio * report_after.total_customer_charge.storage;
+
+		ratio = Perbill::from_rational(node_usage2.number_of_puts, total_nodes_usage.number_of_puts);
+		puts_charge = ratio * report_after.total_customer_charge.puts;
+
+		ratio = Perbill::from_rational(node_usage2.number_of_gets, total_nodes_usage.number_of_gets);
+		gets_charge = ratio * report_after.total_customer_charge.gets;
+
+		balance = Balances::free_balance(node2);
+		assert_eq!(balance, transfer_charge + storage_charge + puts_charge + gets_charge);
+
+		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_node_index + 1,
+			payees2,
+		));
+
+		ratio = Perbill::from_rational(
+			node_usage3.transferred_bytes,
+			total_nodes_usage.transferred_bytes,
+		);
+		transfer_charge = ratio * report_after.total_customer_charge.transfer;
+
+		ratio = Perbill::from_rational(node_usage3.stored_bytes, total_nodes_usage.stored_bytes);
+		storage_charge = ratio * report_after.total_customer_charge.storage;
+
+		ratio = Perbill::from_rational(node_usage3.number_of_puts, total_nodes_usage.number_of_puts);
+		puts_charge = ratio * report_after.total_customer_charge.puts;
+
+		ratio = Perbill::from_rational(node_usage3.number_of_gets, total_nodes_usage.number_of_gets);
+		gets_charge = ratio * report_after.total_customer_charge.gets;
+
+		balance = Balances::free_balance(node3);
+		assert_eq!(balance, transfer_charge + storage_charge + puts_charge + gets_charge);
+
+		assert_ok!(DdcPayouts::end_rewarding_providers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+		));
+	})
+}
+
+#[test]
 fn end_rewarding_providers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = 1u64;
@@ -915,7 +1109,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 		let node1 = 33u64;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
-		let max_batch_index = 2;
+		let max_batch_index = 1;
 		let batch_index = 0;
 		let payers1 = vec![(user1, CustomerUsage::default())];
 		let payers2 = vec![(user2, CustomerUsage::default())];
@@ -1073,7 +1267,7 @@ fn end_rewarding_providers_works() {
 		let node1 = 33u64;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
-		let max_batch_index = 1;
+		let max_batch_index = 0;
 		let batch_index = 0;
 		let total_node_usage = NodeUsage::default();
 		let payers = vec![(user1, CustomerUsage::default())];
@@ -1150,7 +1344,7 @@ fn end_billing_report_fails_uninitialised() {
 		let node1 = 33u64;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
-		let max_batch_index = 2;
+		let max_batch_index = 1;
 		let batch_index = 0;
 		let payers1 = vec![(user1, CustomerUsage::default())];
 		let payers2 = vec![(user2, CustomerUsage::default())];
@@ -1285,7 +1479,7 @@ fn end_billing_report_works() {
 		let node1 = 33u64;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
-		let max_batch_index = 1;
+		let max_batch_index = 0;
 		let batch_index = 0;
 		let total_node_usage = NodeUsage::default();
 		let payers = vec![(user1, CustomerUsage::default())];
