@@ -85,7 +85,7 @@ fn deposit_and_deposit_extra_works() {
 
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(&account_1),
+			DdcCustomers::ledger(account_1),
 			Some(AccountsLedger {
 				owner: 1,
 				total: 10_u128,
@@ -114,7 +114,7 @@ fn deposit_and_deposit_extra_works() {
 
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(&account_1),
+			DdcCustomers::ledger(account_1),
 			Some(AccountsLedger {
 				owner: 1,
 				total: 30_u128,
@@ -155,7 +155,7 @@ fn unlock_and_withdraw_deposit_works() {
 		};
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(&1),
+			DdcCustomers::ledger(1),
 			Some(AccountsLedger {
 				owner: account_1,
 				total: 35_u128,
@@ -182,7 +182,7 @@ fn unlock_and_withdraw_deposit_works() {
 		assert_ok!(DdcCustomers::withdraw_unlocked_deposit(RuntimeOrigin::signed(account_1)));
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(&1),
+			DdcCustomers::ledger(1),
 			Some(AccountsLedger {
 				owner: account_1,
 				total: 3_u128,
@@ -197,6 +197,6 @@ fn unlock_and_withdraw_deposit_works() {
 		assert_ok!(DdcCustomers::withdraw_unlocked_deposit(RuntimeOrigin::signed(account_1)));
 
 		// Check storage
-		assert_eq!(DdcCustomers::ledger(&account_1), None);
+		assert_eq!(DdcCustomers::ledger(account_1), None);
 	})
 }
