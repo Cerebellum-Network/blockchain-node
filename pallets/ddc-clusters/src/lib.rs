@@ -21,12 +21,14 @@ pub(crate) mod mock;
 mod tests;
 
 use crate::{
-	cluster::{Cluster, ClusterGovParams, ClusterParams},
+	cluster::Cluster,
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
 };
-use ddc_primitives::{ClusterId, ClusterPricingParams, NodePubKey, NodeType};
+use ddc_primitives::{
+	ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
+};
 use ddc_traits::{
-	cluster::{ClusterVisitor, ClusterVisitorError},
+	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
 	staking::{StakingVisitor, StakingVisitorError},
 };
 use frame_support::{
@@ -39,7 +41,7 @@ use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
-mod cluster;
+pub mod cluster;
 mod node_provider_auth;
 
 /// The balance type of this pallet.
@@ -129,16 +131,13 @@ pub mod pallet {
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			ensure_root(origin)?; // requires Governance approval
-			let cluster =
-				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params)
-					.map_err(Into::<Error<T>>::into)?;
-			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
-
-			Clusters::<T>::insert(cluster_id, cluster);
-			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
-			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
-
-			Ok(())
+			Self::do_create_cluster(
+				cluster_id,
+				cluster_manager_id,
+				cluster_reserve_id,
+				cluster_params,
+				cluster_gov_params,
+			)
 		}
 
 		#[pallet::weight(10_000)]
@@ -247,6 +246,27 @@ pub mod pallet {
 		}
 	}
 
+	impl<T: Config> Pallet<T> {
+		fn do_create_cluster(
+			cluster_id: ClusterId,
+			cluster_manager_id: T::AccountId,
+			cluster_reserve_id: T::AccountId,
+			cluster_params: ClusterParams<T::AccountId>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+		) -> DispatchResult {
+			let cluster =
+				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params)
+					.map_err(Into::<Error<T>>::into)?;
+			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
+
+			Clusters::<T>::insert(cluster_id, cluster);
+			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
+			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
+
+			Ok(())
+		}
+	}
+
 	impl<T: Config> ClusterVisitor<T> for Pallet<T> {
 		fn cluster_has_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> bool {
 			ClustersNodes::<T>::get(cluster_id, node_pub_key).is_some()
@@ -306,6 +326,27 @@ pub mod pallet {
 				NodeType::Storage => Ok(cluster_gov_params.storage_unbonding_delay),
 				NodeType::CDN => Ok(cluster_gov_params.cdn_unbonding_delay),
 			}
+		}
+	}
+
+	impl<T: Config> ClusterCreator<T, BalanceOf<T>> for Pallet<T>
+	where
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	{
+		fn create_new_cluster(
+			cluster_id: ClusterId,
+			cluster_manager_id: T::AccountId,
+			cluster_reserve_id: T::AccountId,
+			cluster_params: ClusterParams<T::AccountId>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+		) -> DispatchResult {
+			Self::do_create_cluster(
+				cluster_id,
+				cluster_manager_id,
+				cluster_reserve_id,
+				cluster_params,
+				cluster_gov_params,
+			)
 		}
 	}
 

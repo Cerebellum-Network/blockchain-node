@@ -1,7 +1,7 @@
 //! Tests for the module.
 
 use super::{mock::*, *};
-use ddc_primitives::{ClusterId, NodePubKey};
+use ddc_primitives::{ClusterId, ClusterParams, NodePubKey};
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
 use frame_system::Config;
 use hex_literal::hex;
@@ -166,7 +166,7 @@ fn add_and_delete_node_works() {
 		assert_ok!(DdcClusters::set_cluster_params(
 			RuntimeOrigin::signed(AccountId::from([1; 32])),
 			ClusterId::from([1; 20]),
-			cluster::ClusterParams { node_provider_auth_contract: contract_id },
+			ClusterParams { node_provider_auth_contract: contract_id },
 		));
 
 		// Node doesn't exist
@@ -244,7 +244,7 @@ fn add_and_delete_node_works() {
 
 			// Deploy the contract.
 			const GAS_LIMIT: frame_support::weights::Weight =
-				Weight::from_ref_time(100_000_000_000);
+				Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX);
 			const ENDOWMENT: Balance = 0;
 			Contracts::instantiate_with_code(
 				RuntimeOrigin::signed(alice.clone()),
@@ -274,7 +274,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(alice),
 				contract_id.clone(),
 				0,
-				Weight::from_ref_time(1_000_000_000_000),
+				Weight::from_ref_time(1_000_000_000_000).set_proof_size(u64::MAX),
 				None,
 				call_data,
 			);
