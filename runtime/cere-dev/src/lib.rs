@@ -131,7 +131,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 47002,
+	spec_version: 48015,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 6,
@@ -919,13 +919,6 @@ impl pallet_treasury::Config for Runtime {
 	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 }
 
-pub struct TreasureWrapper;
-impl<T: frame_system::Config> PalletVisitor<T> for TreasureWrapper {
-	fn get_account_id() -> T::AccountId {
-		TreasuryPalletId::get().into_account_truncating()
-	}
-}
-
 parameter_types! {
 	pub const BountyCuratorDeposit: Permill = Permill::from_percent(50);
 	pub const BountyValueMinimum: Balance = 10 * DOLLARS;
@@ -1205,7 +1198,7 @@ impl pallet_society::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = 1 * DOLLARS;
+	pub const MinVestedTransfer: Balance = DOLLARS;
 	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons =
 		WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
 }
@@ -1369,6 +1362,13 @@ parameter_types! {
 	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
 }
 
+pub struct TreasureWrapper;
+impl<T: frame_system::Config> PalletVisitor<T> for TreasureWrapper {
+	fn get_account_id() -> T::AccountId {
+		TreasuryPalletId::get().into_account_truncating()
+	}
+}
+
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = PayoutsPalletId;
@@ -1486,12 +1486,9 @@ pub type Executive = frame_executive::Executive<
 	Runtime,
 	AllPalletsWithSystem,
 	(
-		pallet_staking::migrations::v11::MigrateToV11<
-			Runtime,
-			VoterList,
-			StakingMigrationV11OldPallet,
-		>,
-		pallet_staking::migrations::v12::MigrateToV12<Runtime>,
+		pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
+		pallet_democracy::migrations::v1::Migration<Runtime>,
+		pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
 		pallet_contracts::Migration<Runtime>,
 	),
 >;
@@ -1919,7 +1916,7 @@ mod tests {
 	#[test]
 	fn perbill_as_onchain_accuracy() {
 		type OnChainAccuracy =
-			<<Runtime as pallet_election_provider_multi_phase::MinerConfig>::Solution as NposSolution>::Accuracy;
+		<<Runtime as pallet_election_provider_multi_phase::MinerConfig>::Solution as NposSolution>::Accuracy;
 		let maximum_chain_accuracy: Vec<UpperOf<OnChainAccuracy>> = (0..MaxNominations::get())
 			.map(|_| <UpperOf<OnChainAccuracy>>::from(OnChainAccuracy::one().deconstruct()))
 			.collect();

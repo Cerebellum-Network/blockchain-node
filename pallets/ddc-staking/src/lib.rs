@@ -29,6 +29,7 @@ pub mod weights;
 use crate::weights::WeightInfo;
 
 use codec::{Decode, Encode, HasCompact};
+use core::fmt::Debug;
 pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
@@ -36,7 +37,6 @@ use ddc_traits::{
 	staking::{StakingVisitor, StakingVisitorError},
 };
 
-use core::fmt::Debug;
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
@@ -53,6 +53,8 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 
+pub use pallet::*;
+
 const DDC_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC maintainer's stake
 
 /// The balance type of this pallet.
@@ -65,20 +67,28 @@ parameter_types! {
 }
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
-pub struct UnlockChunk<Balance: HasCompact, T: Config> {
+pub struct UnlockChunk<Balance, BlockNumber>
+where
+	Balance: HasCompact + MaxEncodedLen,
+	BlockNumber: HasCompact + MaxEncodedLen,
+{
 	/// Amount of funds to be unlocked.
 	#[codec(compact)]
 	value: Balance,
 	/// Block number at which point it'll be unlocked.
 	#[codec(compact)]
-	block: T::BlockNumber,
+	block: BlockNumber,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
-pub struct StakingLedger<AccountId, Balance: HasCompact, T: Config> {
+pub struct StakingLedger<AccountId, Balance, T>
+where
+	Balance: HasCompact + MaxEncodedLen,
+	T: Config,
+{
 	/// The stash account whose balance is actually locked and at stake.
 	pub stash: AccountId,
 	/// The total amount of the stash's balance that we are currently accounting for.
@@ -94,11 +104,14 @@ pub struct StakingLedger<AccountId, Balance: HasCompact, T: Config> {
 	/// Any balance that is becoming free, which may eventually be transferred out of the stash
 	/// (assuming it doesn't get slashed first). It is assumed that this will be treated as a first
 	/// in, first out queue where the new (higher value) blocks get pushed on the back.
-	pub unlocking: BoundedVec<UnlockChunk<Balance, T>, MaxUnlockingChunks>,
+	pub unlocking: BoundedVec<UnlockChunk<Balance, T::BlockNumber>, MaxUnlockingChunks>,
 }
 
-impl<AccountId, Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero + Debug>
-	StakingLedger<AccountId, Balance>
+impl<
+		AccountId,
+		Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero + MaxEncodedLen + Debug,
+		T: Config,
+	> StakingLedger<AccountId, Balance, T>
 {
 	/// Initializes the default object using the given stash.
 	pub fn default_from(stash: AccountId) -> Self {

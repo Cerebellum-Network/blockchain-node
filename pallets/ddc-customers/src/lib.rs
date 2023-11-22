@@ -12,6 +12,8 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+use core::fmt::Debug;
+
 use codec::{Decode, Encode, HasCompact};
 
 use ddc_primitives::{BucketId, ClusterId};
@@ -55,7 +57,7 @@ where
 	value: Balance,
 	/// Block number at which point it'll be unlocked.
 	#[codec(compact)]
-	block: T::BlockNumber,
+	block: BlockNumber,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -88,7 +90,7 @@ pub struct AccountsLedger<AccountId, Balance: HasCompact, T: Config> {
 	/// (assuming that the content owner has to pay for network usage). It is assumed that this
 	/// will be treated as a first in, first out queue where the new (higher value) eras get pushed
 	/// on the back.
-	pub unlocking: BoundedVec<UnlockChunk<Balance, T>, MaxUnlockingChunks>,
+	pub unlocking: BoundedVec<UnlockChunk<Balance, T::BlockNumber>, MaxUnlockingChunks>,
 }
 
 impl<
@@ -246,7 +248,7 @@ pub mod pallet {
 		InsufficientDeposit,
 		/// Can not schedule more unlock chunks.
 		NoMoreChunks,
-		/// Bucket with speicified id doesn't exist.
+		/// Bucket with speicifed id doesn't exist.
 		NoBucketWithId,
 		/// Internal state has become somehow corrupted and the operation cannot continue.
 		BadState,
@@ -260,8 +262,6 @@ pub mod pallet {
 		ArithmeticOverflow,
 		// Arithmetic underflow
 		ArithmeticUnderflow,
-		// Amount is too small
-		InsufficientAmount,
 	}
 
 	#[pallet::genesis_config]
@@ -567,8 +567,6 @@ pub mod pallet {
 			amount: u128,
 		) -> DispatchResult {
 			let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotOwner)?;
-			ensure!(amount > 0, Error::<T>::InsufficientAmount);
-
 			let mut amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
 
 			ensure!(ledger.total >= ledger.active, Error::<T>::ArithmeticUnderflow);
