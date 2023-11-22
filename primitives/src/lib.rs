@@ -11,8 +11,26 @@ pub type DdcEra = u32;
 pub type BucketId = u64;
 pub type StorageNodePubKey = AccountId32;
 pub type CDNNodePubKey = AccountId32;
+
+// ClusterParams includes Governance non-sensetive parameters only
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct ClusterPricingParams {
+pub struct ClusterParams<AccountId> {
+	pub node_provider_auth_contract: AccountId,
+}
+
+// ClusterGovParams includes Governance sensetive parameters
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[scale_info(skip_type_params(Balance, BlockNumber, T))]
+pub struct ClusterGovParams<Balance, BlockNumber> {
+	pub treasury_share: Perbill,
+	pub validators_share: Perbill,
+	pub cluster_reserve_share: Perbill,
+	pub cdn_bond_size: Balance,
+	pub cdn_chill_delay: BlockNumber,
+	pub cdn_unbonding_delay: BlockNumber,
+	pub storage_bond_size: Balance,
+	pub storage_chill_delay: BlockNumber,
+	pub storage_unbonding_delay: BlockNumber,
 	pub unit_per_mb_stored: u128,
 	pub unit_per_mb_streamed: u128,
 	pub unit_per_put_request: u128,
@@ -20,11 +38,19 @@ pub struct ClusterPricingParams {
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct ClusterPricingParams {
+	pub unit_per_mb_stored: u128,
+	pub unit_per_mb_streamed: u128,
+	pub unit_per_put_request: u128,
+	pub unit_per_get_request: u128,
+}
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterFeesParams {
 	pub treasury_share: Perbill,
 	pub validators_share: Perbill,
 	pub cluster_reserve_share: Perbill,
 }
+
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodePubKey {
