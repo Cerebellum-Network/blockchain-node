@@ -1531,6 +1531,7 @@ mod benches {
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_staking, Staking]
 		[pallet_ddc_customers, DdcCustomers]
+		[pallet_ddc_clusters, DdcClusters]
 		[pallet_ddc_staking, DdcStaking]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
