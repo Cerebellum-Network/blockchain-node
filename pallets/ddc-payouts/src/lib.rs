@@ -629,7 +629,7 @@ pub mod pallet {
 		}
 	}
 
-	fn get_node_reward<T: Config>(
+	fn get_node_reward(
 		node_usage: &NodeUsage,
 		total_nodes_usage: &NodeUsage,
 		total_customer_charge: &CustomerCharge,
