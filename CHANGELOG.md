@@ -9,16 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
-## [vNext + 1]
-
-### Changed
-
-- [C,D] Updated Substrate to polkadot-v0.9.31
-
 ## [vNext]
 
 ### Added
 
+### Changed
+
+- ...
+
+## [4.8.2]
+
+### Added
+
+### Changed
+
+- [C,D] Updated Substrate to polkadot-v0.9.33
+
+## [4.8.1]
+
+### Added
+
+- [C,D] Contract migration
 - [D] New `pallet-ddc-validator` which implements DDC CDN nodes validation and rewarding. You can enable DDC validation providing `--enable-ddc-validation` argument and `--dac-url` argument to specify DAC endpoint. It will only work on the nodes with validation and offchain workers enabled as well.
 - [D] Several calls for `pallet-ddc-staking` to distribute rewards.
 - [D] Third kind of account in DDC Staking for DDC nodes (along with stash and controller).
@@ -28,13 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- ...
-
-## [4.8.1]
-
-### Added
-
-- [C,D] Contract migration
+- [C,D] Updated Substrate to polkadot-v0.9.31
 
 ## [4.8.0]
 
