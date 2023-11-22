@@ -965,7 +965,33 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> StakingVisitor<T> for Pallet<T> {
+	impl<T: Config> StakingVisitor<T, BalanceOf<T>> for Pallet<T> {
+		fn bond_stake_and_serve(
+			stash: T::AccountId,
+			controller: T::AccountId,
+			node: NodePubKey,
+			value: BalanceOf<T>,
+			cluster_id: ClusterId,
+		) -> DispatchResult {
+			Nodes::<T>::insert(&node, &stash);
+			Providers::<T>::insert(&stash, &node);
+			<Bonded<T>>::insert(&stash, &controller);
+			let stash_balance = T::Currency::free_balance(&stash);
+			let value = value.min(stash_balance);
+			Self::deposit_event(Event::<T>::Bonded(stash.clone(), value));
+			let item = StakingLedger {
+				stash: stash.clone(),
+				total: value,
+				active: value,
+				chilling: Default::default(),
+				unlocking: Default::default(),
+			};
+			Self::update_ledger(&controller, &item);
+			Self::do_add_cdn(&stash, cluster_id);
+
+			Ok(())
+		}
+		
 		fn has_activated_stake(
 			node_pub_key: &NodePubKey,
 			cluster_id: &ClusterId,

@@ -1,7 +1,15 @@
 use ddc_primitives::{ClusterId, NodePubKey};
 use frame_system::Config;
 
-pub trait StakingVisitor<T: Config> {
+pub trait StakingVisitor<T: Config, Balance> {
+	fn bond_stake_and_serve(
+		stash: T::AccountId,
+		controller: T::AccountId,
+		node: NodePubKey,
+		value: Balance,
+		cluster_id: ClusterId,
+	) -> sp_runtime::DispatchResult;
+
 	fn has_activated_stake(
 		node_pub_key: &NodePubKey,
 		cluster_id: &ClusterId,

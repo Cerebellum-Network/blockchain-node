@@ -18,7 +18,7 @@ const EXTENSION_CALL_GAS_LIMIT: Weight =
 	Weight::from_ref_time(5_000_000_000_000).set_proof_size(u64::MAX);
 
 pub struct NodeProviderAuthContract<T: Config> {
-	contract_id: T::AccountId,
+	pub contract_id: T::AccountId,
 	caller_id: T::AccountId,
 }
 
@@ -65,7 +65,7 @@ where
 	pub fn deploy_contract(
 		&self,
 		caller_id: T::AccountId,
-	) -> Result<bool, NodeProviderAuthContractError> {
+	) -> Result<Self, NodeProviderAuthContractError> {
 		pub const CTOR_SELECTOR: [u8; 4] = hex!("9bae9d5e");
 
 		fn encode_constructor() -> Vec<u8> {
@@ -94,12 +94,10 @@ where
 			false,
 		)
 		.result
-		.map_err(|_| NodeProviderAuthContractError::ContractCallFailed)?
+		.map_err(|_| NodeProviderAuthContractError::ContractDeployFailed)?
 		.account_id;
 
-		Self::new(contract_id, caller_id);
-
-		Ok(true)
+		Ok(Self::new(contract_id, caller_id))
 	}
 
 	pub fn authorize_node(
@@ -119,13 +117,13 @@ where
 			self.caller_id.clone(),
 			self.contract_id.clone(),
 			Default::default(),
-			Weight::from_ref_time(1_000_000_000_000),
+			EXTENSION_CALL_GAS_LIMIT,
 			None,
 			call_data,
 			false,
 		)
 		.result
-		.map_err(|_| NodeProviderAuthContractError::ContractCallFailed)?;
+		.map_err(|_| NodeProviderAuthContractError::NodeAuthorizationFailed)?;
 
 		Ok(true)
 	}
@@ -137,4 +135,6 @@ where
 
 pub enum NodeProviderAuthContractError {
 	ContractCallFailed,
+	ContractDeployFailed,
+	NodeAuthorizationFailed,
 }

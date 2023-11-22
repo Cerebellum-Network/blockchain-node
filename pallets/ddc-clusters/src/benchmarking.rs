@@ -10,7 +10,7 @@ use pallet_contracts::chain_extension::UncheckedFrom;
 use pallet_ddc_nodes::{Node, NodeParams, CDNNodeParams};
 
 pub use frame_benchmarking::{
-	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
+	account, benchmarks, BenchmarkError, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 };
 use frame_system::RawOrigin;
 
@@ -52,6 +52,8 @@ benchmarks! {
     let node_pub_key = NodePubKey::CDNPubKey(AccountId32::from(bytes));
     let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+    let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
+    let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
     let cluster_params = ClusterParams { node_provider_auth_contract: user.clone() };
 		let cdn_node_params = CDNNodeParams {
 			host: vec![1u8, 255],
@@ -88,15 +90,24 @@ benchmarks! {
     if let Ok(new_node) = Node::<T>::new(node_pub_key.clone(), user.clone(), pallet_ddc_nodes::NodeParams::CDNParams(cdn_node_params)) {
       T::NodeRepository::create(new_node);
     } 
+
+    T::StakingVisitor::bond_stake_and_serve(user.clone(), user.clone(), node_pub_key.clone(), 10_000u32.into(), cluster_id.clone()).unwrap();
     
-    let auth_contract = NodeProviderAuthContract::<T>::new(
+    let mut auth_contract = NodeProviderAuthContract::<T>::new(
       user.clone(),
       user.clone(),
     );
-    auth_contract.deploy_contract(user.clone());
-    auth_contract.authorize_node(node_pub_key.clone());
+    auth_contract = auth_contract.deploy_contract(user.clone())?;
+    auth_contract.authorize_node(node_pub_key.clone())?;
 
+    let updated_cluster_params = ClusterParams { node_provider_auth_contract: auth_contract.contract_id.clone() };
 
+    // Register auth contract
+    DdcClusters::<T>::set_cluster_params(
+      RawOrigin::Signed(user.clone()).into(), 
+      cluster_id.clone().clone(), 
+      updated_cluster_params, 
+    );
   }: _(RawOrigin::Signed(user.clone()), cluster_id.clone(), node_pub_key) 
   verify {
     assert!(Clusters::<T>::contains_key(cluster_id));
@@ -130,4 +141,17 @@ benchmarks! {
 	// 		p2p_port: 65000u16,
 	// 	});
 	// }
+}
+
+impl From<NodeProviderAuthContractError> for BenchmarkError {
+  fn from(error: NodeProviderAuthContractError) -> Self {
+    match error {
+      NodeProviderAuthContractError::ContractCallFailed =>
+       BenchmarkError::Stop("NodeAuthContractCallFailed"),
+      NodeProviderAuthContractError::ContractDeployFailed =>
+       BenchmarkError::Stop("NodeAuthContractDeployFailed"),
+      NodeProviderAuthContractError::NodeAuthorizationFailed =>
+       BenchmarkError::Stop("NodeAuthNodeAuthorizationFailed"),
+    }
+  }
 }

@@ -67,7 +67,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_contracts::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
-		type StakingVisitor: StakingVisitor<Self>;
+		type StakingVisitor: StakingVisitor<Self, BalanceOf<Self>>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 	}
 
@@ -97,6 +97,8 @@ pub mod pallet {
 		/// Cluster candidate should not plan to chill.
 		NodeChillingIsProhibited,
 		NodeAuthContractCallFailed,
+		NodeAuthContractDeployFailed,
+		NodeAuthNodeAuthorizationFailed,
 	}
 
 	#[pallet::storage]
@@ -427,6 +429,10 @@ pub mod pallet {
 			match error {
 				NodeProviderAuthContractError::ContractCallFailed =>
 					Error::<T>::NodeAuthContractCallFailed,
+				NodeProviderAuthContractError::ContractDeployFailed =>
+					Error::<T>::NodeAuthContractDeployFailed,
+				NodeProviderAuthContractError::NodeAuthorizationFailed =>
+					Error::<T>::NodeAuthNodeAuthorizationFailed,
 			}
 		}
 	}
