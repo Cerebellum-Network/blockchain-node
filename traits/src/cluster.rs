@@ -2,11 +2,6 @@ use ddc_primitives::{
 	ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams,
 	NodePubKey, NodeType,
 };
-
-use ddc_primitives::{
-	ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams,
-	NodePubKey, NodeType,
-};
 use frame_support::dispatch::DispatchResult;
 use frame_system::Config;
 
@@ -27,6 +22,7 @@ pub trait ClusterVisitor<T: Config> {
 	fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError>;
 
 	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, ClusterVisitorError>;
+
 	fn get_chill_delay(
 		cluster_id: &ClusterId,
 		node_type: NodeType,
