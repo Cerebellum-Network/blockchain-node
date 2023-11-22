@@ -49,6 +49,7 @@ where
 			None,
 			call_data,
 			false,
+			pallet_contracts::Determinism::Deterministic,
 		)
 		.result
 		.map_err(|_| NodeProviderAuthContractError::ContractCallFailed)?

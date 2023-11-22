@@ -302,6 +302,7 @@ fn should_run_contract() {
 			None,
 			call_data,
 			false,
+			pallet_contracts::Determinism::Deterministic,
 		);
 		match &contract_exec_result.result {
 			Ok(res) => {
