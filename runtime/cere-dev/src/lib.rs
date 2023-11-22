@@ -1348,6 +1348,8 @@ impl pallet_ddc_customers::Config for Runtime {
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
+	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_ddc_nodes::Config for Runtime {
@@ -1532,6 +1534,7 @@ mod benches {
 		[pallet_scheduler, Scheduler]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_staking, Staking]
+		[pallet_ddc_customers, DdcCustomers]
 		[pallet_ddc_staking, DdcStaking]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
