@@ -1,11 +1,8 @@
 //! DdcStaking pallet benchmarking.
 
 use super::*;
-use crate::{
-	cluster::{ClusterGovParams, ClusterParams, ClusterProps},
-	Pallet as DdcClusters,
-};
-use ddc_primitives::{ClusterId, NodePubKey};
+use crate::{cluster::ClusterProps, Pallet as DdcClusters};
+use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams, NodePubKey};
 
 use pallet_contracts::chain_extension::UncheckedFrom;
 use sp_runtime::{AccountId32, Perbill};
@@ -29,52 +26,52 @@ benchmarks! {
 	  let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
 	  let cluster_params = ClusterParams { node_provider_auth_contract: user.clone() };
-    let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
-      treasury_share: Perbill::default(),
-      validators_share: Perbill::default(),
-      cluster_reserve_share: Perbill::default(),
-      cdn_bond_size: 100u32.into(),
-      cdn_chill_delay: 50u32.into(),
-      cdn_unbonding_delay: 50u32.into(),
-      storage_bond_size: 100u32.into(),
-      storage_chill_delay: 50u32.into(),
-      storage_unbonding_delay: 50u32.into(),
-      unit_per_mb_stored: 10,
-      unit_per_mb_streamed: 10,
-      unit_per_put_request: 10,
-      unit_per_get_request: 10,
-    };
+	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
+	  treasury_share: Perbill::default(),
+	  validators_share: Perbill::default(),
+	  cluster_reserve_share: Perbill::default(),
+	  cdn_bond_size: 100u32.into(),
+	  cdn_chill_delay: 50u32.into(),
+	  cdn_unbonding_delay: 50u32.into(),
+	  storage_bond_size: 100u32.into(),
+	  storage_chill_delay: 50u32.into(),
+	  storage_unbonding_delay: 50u32.into(),
+	  unit_per_mb_stored: 10,
+	  unit_per_mb_streamed: 10,
+	  unit_per_put_request: 10,
+	  unit_per_get_request: 10,
+	};
 	}: _(RawOrigin::Root, cluster_id, user.clone(), user, cluster_params, cluster_gov_params)
 	verify {
 		assert!(Clusters::<T>::contains_key(cluster_id));
 	}
 
   add_node {
-    let bytes = [0u8; 32];
-    let node_pub_key = NodePubKey::CDNPubKey(AccountId32::from(bytes));
-    let cluster_id = ClusterId::from([1; 20]);
+	let bytes = [0u8; 32];
+	let node_pub_key = NodePubKey::CDNPubKey(AccountId32::from(bytes));
+	let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-    let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
-    let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-    let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
+	let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
+	let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
+	let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
   }: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key.clone())
   verify {
 	  assert!(ClustersNodes::<T>::contains_key(cluster_id, node_pub_key));
   }
 
   remove_node {
-    let bytes = [0u8; 32];
-    let node_pub_key = NodePubKey::CDNPubKey(AccountId32::from(bytes));
-    let cluster_id = ClusterId::from([1; 20]);
+	let bytes = [0u8; 32];
+	let node_pub_key = NodePubKey::CDNPubKey(AccountId32::from(bytes));
+	let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-    let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
-    let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-    let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
-    let _ = DdcClusters::<T>::add_node(
-      RawOrigin::Signed(user.clone()).into(),
-      cluster_id,
-      node_pub_key.clone()
-    );
+	let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
+	let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
+	let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
+	let _ = DdcClusters::<T>::add_node(
+	  RawOrigin::Signed(user.clone()).into(),
+	  cluster_id,
+	  node_pub_key.clone()
+	);
   }: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key.clone())
   verify {
 	  assert!(!ClustersNodes::<T>::contains_key(cluster_id, node_pub_key));
@@ -94,22 +91,22 @@ benchmarks! {
 	set_cluster_gov_params {
 	  let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-	  let _ = config_cluster::<T>(user.clone(), cluster_id);
-    let new_cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
-      treasury_share: Perbill::default(),
-      validators_share: Perbill::default(),
-      cluster_reserve_share: Perbill::default(),
-      cdn_bond_size: 10u32.into(),
-      cdn_chill_delay: 5u32.into(),
-      cdn_unbonding_delay: 5u32.into(),
-      storage_bond_size: 10u32.into(),
-      storage_chill_delay: 5u32.into(),
-      storage_unbonding_delay: 5u32.into(),
-      unit_per_mb_stored: 1,
-      unit_per_mb_streamed: 1,
-      unit_per_put_request: 1,
-      unit_per_get_request: 1,
-    };
+	  let _ = config_cluster::<T>(user, cluster_id);
+	let new_cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
+	  treasury_share: Perbill::default(),
+	  validators_share: Perbill::default(),
+	  cluster_reserve_share: Perbill::default(),
+	  cdn_bond_size: 10u32.into(),
+	  cdn_chill_delay: 5u32.into(),
+	  cdn_unbonding_delay: 5u32.into(),
+	  storage_bond_size: 10u32.into(),
+	  storage_chill_delay: 5u32.into(),
+	  storage_unbonding_delay: 5u32.into(),
+	  unit_per_mb_stored: 1,
+	  unit_per_mb_streamed: 1,
+	  unit_per_put_request: 1,
+	  unit_per_get_request: 1,
+	};
 	}: _(RawOrigin::Root, cluster_id, new_cluster_gov_params.clone())
 	verify {
 	  assert_eq!(ClustersGovParams::<T>::try_get(cluster_id).unwrap(), new_cluster_gov_params);

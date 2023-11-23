@@ -1,10 +1,7 @@
 //! DdcStaking pallet benchmarking.
 
-use crate::{
-	cluster::{ClusterGovParams, ClusterParams},
-	Pallet as DdcClusters, *,
-};
-use ddc_primitives::{ClusterId, NodePubKey};
+use crate::{Pallet as DdcClusters, *};
+use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams, NodePubKey};
 
 use pallet_contracts::chain_extension::UncheckedFrom;
 use pallet_ddc_nodes::{CDNNodeParams, Node};
