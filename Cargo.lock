@@ -840,6 +840,7 @@ version = "4.8.1"
 dependencies = [
  "cere-dev-runtime-constants",
  "cere-runtime-common",
+ "ddc-traits",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -929,6 +930,7 @@ name = "cere-dev-runtime-constants"
 version = "4.8.1"
 dependencies = [
  "node-primitives",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -1635,6 +1637,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -4813,9 +4816,11 @@ dependencies = [
  "ddc-primitives",
  "ddc-traits",
  "frame-benchmarking",
+ "frame-election-provider-support",
  "frame-support",
  "frame-system",
  "log",
+ "pallet-balances",
  "parity-scale-codec",
  "scale-info",
  "sp-core",

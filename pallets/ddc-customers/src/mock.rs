@@ -2,10 +2,10 @@
 
 use crate::{self as pallet_ddc_customers, *};
 use ddc_primitives::{
-	ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
+	ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams,
+	NodePubKey, NodeType,
 };
 use ddc_traits::cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError};
-
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
@@ -17,7 +17,7 @@ use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchResult,
+	DispatchResult, Perbill,
 };
 
 /// The AccountId alias in this test module.
@@ -143,6 +143,20 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 			unit_per_put_request: 3,
 			unit_per_get_request: 4,
 		})
+	}
+
+	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
+		Ok(ClusterFeesParams {
+			treasury_share: Perbill::from_percent(1),
+			validators_share: Perbill::from_percent(10),
+			cluster_reserve_share: Perbill::from_percent(2),
+		})
+	}
+
+	fn get_reserve_account_id(
+		_cluster_id: &ClusterId,
+	) -> Result<T::AccountId, ClusterVisitorError> {
+		Err(ClusterVisitorError::ClusterDoesNotExist)
 	}
 }
 
