@@ -94,7 +94,7 @@ where
 		let _ = T::NodeRepository::create(new_node);
 	}
 
-	T::StakingVisitor::bond_stake_and_serve(
+	T::Staker::bond_stake_and_serve(
 		user.clone(),
 		user.clone(),
 		node_pub_key.clone(),

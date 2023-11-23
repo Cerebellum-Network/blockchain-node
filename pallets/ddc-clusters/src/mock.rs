@@ -4,7 +4,7 @@
 
 use crate::{self as pallet_ddc_clusters, *};
 use ddc_primitives::{ClusterId, NodePubKey};
-use ddc_traits::staking::{StakingVisitor, StakingVisitorError};
+use ddc_traits::staking::{Staker, StakingVisitor, StakingVisitorError};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything, Nothing},
@@ -188,23 +188,16 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type NodeRepository = DdcNodes;
 	type StakingVisitor = TestStakingVisitor;
+	type Staker = TestStaker;
 	type WeightInfo = ();
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 pub struct TestStakingVisitor;
+pub struct TestStaker;
 
-impl<T: Config> StakingVisitor<T, BalanceOf<T>> for TestStakingVisitor {
-	fn bond_stake_and_serve(
-		_stash: T::AccountId,
-		_controller: T::AccountId,
-		_node: NodePubKey,
-		_value: BalanceOf<T>,
-		_cluster_id: ClusterId,
-	) -> sp_runtime::DispatchResult {
-		Ok(())
-	}
+impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
 	fn has_activated_stake(
 		_node_pub_key: &NodePubKey,
 		_cluster_id: &ClusterId,
@@ -216,6 +209,18 @@ impl<T: Config> StakingVisitor<T, BalanceOf<T>> for TestStakingVisitor {
 	}
 	fn has_chilling_attempt(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
 		Ok(false)
+	}
+}
+
+impl<T: Config> Staker<T, BalanceOf<T>> for TestStaker {
+	fn bond_stake_and_serve(
+		_stash: T::AccountId,
+		_controller: T::AccountId,
+		_node: NodePubKey,
+		_value: BalanceOf<T>,
+		_cluster_id: ClusterId,
+	) -> sp_runtime::DispatchResult {
+		Ok(())
 	}
 }
 

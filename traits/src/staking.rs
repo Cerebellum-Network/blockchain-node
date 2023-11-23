@@ -1,15 +1,7 @@
 use ddc_primitives::{ClusterId, NodePubKey};
 use frame_system::Config;
 
-pub trait StakingVisitor<T: Config, Balance> {
-	fn bond_stake_and_serve(
-		stash: T::AccountId,
-		controller: T::AccountId,
-		node: NodePubKey,
-		value: Balance,
-		cluster_id: ClusterId,
-	) -> sp_runtime::DispatchResult;
-
+pub trait StakingVisitor<T: Config> {
 	fn has_activated_stake(
 		node_pub_key: &NodePubKey,
 		cluster_id: &ClusterId,
@@ -18,6 +10,16 @@ pub trait StakingVisitor<T: Config, Balance> {
 	fn has_stake(node_pub_key: &NodePubKey) -> bool;
 
 	fn has_chilling_attempt(node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError>;
+}
+
+pub trait Staker<T: Config, Balance> {
+	fn bond_stake_and_serve(
+		stash: T::AccountId,
+		controller: T::AccountId,
+		node: NodePubKey,
+		value: Balance,
+		cluster_id: ClusterId,
+	) -> sp_runtime::DispatchResult;
 }
 
 pub enum StakingVisitorError {

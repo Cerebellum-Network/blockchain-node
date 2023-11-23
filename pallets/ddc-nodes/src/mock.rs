@@ -95,16 +95,7 @@ impl crate::pallet::Config for Test {
 }
 
 pub struct TestStakingVisitor;
-impl<T: Config> StakingVisitor<T, u128> for TestStakingVisitor {
-	fn bond_stake_and_serve(
-		_stash: T::AccountId,
-		_controller: T::AccountId,
-		_node: NodePubKey,
-		_value: u128,
-		_cluster_id: ClusterId,
-	) -> sp_runtime::DispatchResult {
-		Ok(())
-	}
+impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
 	fn has_activated_stake(
 		_node_pub_key: &NodePubKey,
 		_cluster_id: &ClusterId,

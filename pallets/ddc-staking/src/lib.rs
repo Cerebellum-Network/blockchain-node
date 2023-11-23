@@ -34,7 +34,7 @@ pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
 	node::NodeVisitor,
-	staking::{StakingVisitor, StakingVisitorError},
+	staking::{Staker, StakingVisitor, StakingVisitorError},
 };
 
 use frame_support::{
@@ -965,7 +965,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> StakingVisitor<T, BalanceOf<T>> for Pallet<T> {
+	impl<T: Config> Staker<T, BalanceOf<T>> for Pallet<T> {
 		fn bond_stake_and_serve(
 			stash: T::AccountId,
 			controller: T::AccountId,
@@ -991,7 +991,9 @@ pub mod pallet {
 
 			Ok(())
 		}
+	}
 
+	impl<T: Config> StakingVisitor<T> for Pallet<T> {
 		fn has_activated_stake(
 			node_pub_key: &NodePubKey,
 			cluster_id: &ClusterId,
