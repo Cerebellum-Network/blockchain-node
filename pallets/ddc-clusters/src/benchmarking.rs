@@ -13,6 +13,7 @@ pub use frame_benchmarking::{
 	account, benchmarks, BenchmarkError, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 };
 use frame_system::RawOrigin;
+use testing_utils::config_cluster_and_node;
 
 const USER_SEED: u32 = 999666;
 
@@ -54,61 +55,26 @@ benchmarks! {
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
     let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
     let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-    let cluster_params = ClusterParams { node_provider_auth_contract: user.clone() };
-		let cdn_node_params = CDNNodeParams {
-			host: vec![1u8, 255],
-			http_port: 35000u16,
-			grpc_port: 25000u16,
-			p2p_port: 15000u16,
-		};
+    let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id.clone());
+  }: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key) 
+  verify {
+    assert!(Clusters::<T>::contains_key(cluster_id));
+  }
 
-    let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
-      treasury_share: Perbill::default(),
-      validators_share: Perbill::default(),
-      cluster_reserve_share: Perbill::default(),
-      cdn_bond_size: 100u32.into(),
-      cdn_chill_delay: 50u32.into(),
-      cdn_unbonding_delay: 50u32.into(),
-      storage_bond_size: 100u32.into(),
-      storage_chill_delay: 50u32.into(),
-      storage_unbonding_delay: 50u32.into(),
-      unit_per_mb_stored: 10,
-      unit_per_mb_streamed: 10,
-      unit_per_put_request: 10,
-      unit_per_get_request: 10,
-    };
-
-    DdcClusters::<T>::create_cluster(
-      RawOrigin::Root.into(), 
-      cluster_id.clone(), 
-      user.clone(), 
-      user.clone(), 
-      cluster_params, 
-      cluster_gov_params
-    );
-
-    if let Ok(new_node) = Node::<T>::new(node_pub_key.clone(), user.clone(), pallet_ddc_nodes::NodeParams::CDNParams(cdn_node_params)) {
-      T::NodeRepository::create(new_node);
-    } 
-
-    T::StakingVisitor::bond_stake_and_serve(user.clone(), user.clone(), node_pub_key.clone(), 10_000u32.into(), cluster_id.clone()).unwrap();
-    
-    let mut auth_contract = NodeProviderAuthContract::<T>::new(
-      user.clone(),
-      user.clone(),
-    );
-    auth_contract = auth_contract.deploy_contract(user.clone())?;
-    auth_contract.authorize_node(node_pub_key.clone())?;
-
-    let updated_cluster_params = ClusterParams { node_provider_auth_contract: auth_contract.contract_id.clone() };
-
-    // Register auth contract
-    DdcClusters::<T>::set_cluster_params(
+  remove_node {
+    let bytes = [0u8; 32];
+    let node_pub_key = NodePubKey::CDNPubKey(AccountId32::from(bytes));
+    let cluster_id = ClusterId::from([1; 20]);
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+    let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
+    let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
+    let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id.clone());
+    let _ = DdcClusters::<T>::add_node(
       RawOrigin::Signed(user.clone()).into(), 
-      cluster_id.clone().clone(), 
-      updated_cluster_params, 
+      cluster_id.clone(),
+      node_pub_key.clone()
     );
-  }: _(RawOrigin::Signed(user.clone()), cluster_id.clone(), node_pub_key) 
+  }: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key) 
   verify {
     assert!(Clusters::<T>::contains_key(cluster_id));
   }
@@ -141,17 +107,4 @@ benchmarks! {
 	// 		p2p_port: 65000u16,
 	// 	});
 	// }
-}
-
-impl From<NodeProviderAuthContractError> for BenchmarkError {
-  fn from(error: NodeProviderAuthContractError) -> Self {
-    match error {
-      NodeProviderAuthContractError::ContractCallFailed =>
-       BenchmarkError::Stop("NodeAuthContractCallFailed"),
-      NodeProviderAuthContractError::ContractDeployFailed =>
-       BenchmarkError::Stop("NodeAuthContractDeployFailed"),
-      NodeProviderAuthContractError::NodeAuthorizationFailed =>
-       BenchmarkError::Stop("NodeAuthNodeAuthorizationFailed"),
-    }
-  }
 }
