@@ -1357,6 +1357,7 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
 	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
 	type Currency = Balances;
+	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {

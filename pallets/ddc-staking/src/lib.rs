@@ -991,7 +991,7 @@ pub mod pallet {
 
 			Ok(())
 		}
-		
+
 		fn has_activated_stake(
 			node_pub_key: &NodePubKey,
 			cluster_id: &ClusterId,

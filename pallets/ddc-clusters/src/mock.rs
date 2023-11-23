@@ -188,12 +188,23 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type NodeRepository = DdcNodes;
 	type StakingVisitor = TestStakingVisitor;
+	type WeightInfo = ();
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 pub struct TestStakingVisitor;
-impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
+
+impl<T: Config> StakingVisitor<T, BalanceOf<T>> for TestStakingVisitor {
+	fn bond_stake_and_serve(
+		_stash: T::AccountId,
+		_controller: T::AccountId,
+		_node: NodePubKey,
+		_value: BalanceOf<T>,
+		_cluster_id: ClusterId,
+	) -> sp_runtime::DispatchResult {
+		Ok(())
+	}
 	fn has_activated_stake(
 		_node_pub_key: &NodePubKey,
 		_cluster_id: &ClusterId,

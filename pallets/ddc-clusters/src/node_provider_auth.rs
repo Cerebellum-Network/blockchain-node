@@ -2,10 +2,10 @@ use crate::Config;
 use codec::Encode;
 use ddc_primitives::{NodePubKey, NodeType};
 use frame_support::weights::Weight;
-use pallet_contracts::chain_extension::UncheckedFrom;
-use sp_std::{prelude::Vec, vec};
 use hex_literal::hex;
+use pallet_contracts::chain_extension::UncheckedFrom;
 use sp_runtime::traits::Hash;
+use sp_std::{prelude::Vec, vec};
 
 /// ink! 4.x selector for the "is_authorized" message, equals to the first four bytes of the
 /// blake2("is_authorized"). See also: https://use.ink/basics/selectors#selector-calculation/,
@@ -54,7 +54,7 @@ where
 			false,
 		)
 		.result
-		.map_err(|_| NodeProviderAuthContractError::ContractCallFailed)?
+		.map_err(|_| NodeProviderAuthContractError::ContractCall)?
 		.data
 		.first()
 		.is_some_and(|x| *x == 1);
@@ -79,7 +79,7 @@ where
 
 		// Load the contract code.
 		let wasm = &include_bytes!("./test_data/node_provider_auth_white_list.wasm")[..];
-		let wasm_hash = <T as frame_system::Config>::Hashing::hash(wasm);
+		let _wasm_hash = <T as frame_system::Config>::Hashing::hash(wasm);
 		let contract_args = encode_constructor();
 
 		// Deploy the contract.
@@ -94,7 +94,7 @@ where
 			false,
 		)
 		.result
-		.map_err(|_| NodeProviderAuthContractError::ContractDeployFailed)?
+		.map_err(|_| NodeProviderAuthContractError::ContractDeploy)?
 		.account_id;
 
 		Ok(Self::new(contract_id, caller_id))
@@ -123,7 +123,7 @@ where
 			false,
 		)
 		.result
-		.map_err(|_| NodeProviderAuthContractError::NodeAuthorizationFailed)?;
+		.map_err(|_| NodeProviderAuthContractError::NodeAuthorization)?;
 
 		Ok(true)
 	}
@@ -134,7 +134,7 @@ where
 }
 
 pub enum NodeProviderAuthContractError {
-	ContractCallFailed,
-	ContractDeployFailed,
-	NodeAuthorizationFailed,
+	ContractCall,
+	ContractDeploy,
+	NodeAuthorization,
 }

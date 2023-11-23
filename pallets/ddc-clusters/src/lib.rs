@@ -15,6 +15,9 @@
 #![recursion_limit = "256"]
 #![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
+pub mod weights;
+use crate::weights::WeightInfo;
+
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
 #[cfg(any(feature = "runtime-benchmarks", test))]
@@ -71,6 +74,7 @@ pub mod pallet {
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
 		type StakingVisitor: StakingVisitor<Self, BalanceOf<Self>>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
@@ -130,7 +134,7 @@ pub mod pallet {
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_cluster())]
 		pub fn create_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -149,7 +153,7 @@ pub mod pallet {
 			)
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::add_node())]
 		pub fn add_node(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -199,7 +203,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_node())]
 		pub fn remove_node(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -220,7 +224,7 @@ pub mod pallet {
 		}
 
 		// Sets Governance non-sensetive parameters only
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_params())]
 		pub fn set_cluster_params(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -238,7 +242,7 @@ pub mod pallet {
 		}
 
 		// Requires Governance approval
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_gov_params())]
 		pub fn set_cluster_gov_params(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -429,11 +433,11 @@ pub mod pallet {
 	impl<T> From<NodeProviderAuthContractError> for Error<T> {
 		fn from(error: NodeProviderAuthContractError) -> Self {
 			match error {
-				NodeProviderAuthContractError::ContractCallFailed =>
+				NodeProviderAuthContractError::ContractCall =>
 					Error::<T>::NodeAuthContractCallFailed,
-				NodeProviderAuthContractError::ContractDeployFailed =>
+				NodeProviderAuthContractError::ContractDeploy =>
 					Error::<T>::NodeAuthContractDeployFailed,
-				NodeProviderAuthContractError::NodeAuthorizationFailed =>
+				NodeProviderAuthContractError::NodeAuthorization =>
 					Error::<T>::NodeAuthNodeAuthorizationFailed,
 			}
 		}
