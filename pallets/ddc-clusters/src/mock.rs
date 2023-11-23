@@ -181,6 +181,7 @@ impl pallet_timestamp::Config for Test {
 impl pallet_ddc_nodes::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type StakingVisitor = TestStakingVisitor;
+	type WeightInfo = ();
 }
 
 impl crate::pallet::Config for Test {
