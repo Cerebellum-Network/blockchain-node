@@ -2,7 +2,7 @@ name: Release to dev
 on:
   push:
     branches:
-      - 'dev'
+      - 'ci-test'
   workflow_dispatch:
 
 env:
