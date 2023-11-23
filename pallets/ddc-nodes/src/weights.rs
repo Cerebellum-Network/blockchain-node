@@ -27,7 +27,7 @@
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::{traits::Get, weights::Weight};
+use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_ddc_nodes.
@@ -57,5 +57,27 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T>  {
 		Weight::from_ref_time(15_000_000u64)
 			.saturating_add(T::DbWeight::get().reads(1u64))
 			.saturating_add(T::DbWeight::get().writes(1u64))
+	}
+}
+
+// For backwards compatibility and tests
+impl WeightInfo for () {
+	// Storage: DdcNodes CDNNodes (r:1 w:1)
+	fn create_node() -> Weight {
+		Weight::from_ref_time(12_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(1u64))
+			.saturating_add(RocksDbWeight::get().writes(1u64))
+	}
+	// Storage: DdcNodes CDNNodes (r:1 w:1)
+	fn delete_node() -> Weight {
+		Weight::from_ref_time(14_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(1u64))
+			.saturating_add(RocksDbWeight::get().writes(1u64))
+	}
+	// Storage: DdcNodes CDNNodes (r:1 w:1)
+	fn set_node_params() -> Weight {
+		Weight::from_ref_time(15_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(1u64))
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 }

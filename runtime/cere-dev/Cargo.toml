@@ -175,11 +175,8 @@ std = [
   "sp-io/std",
   "pallet-child-bounties/std",
   "pallet-ddc-metrics-offchain-worker/std",
-<<<<<<< HEAD
   "pallet-ddc-payouts/std",
-=======
   "pallet-ddc-nodes/std",
->>>>>>> 36d18bf (benchmarking & weights for ddc-nodes)
   "pallet-ddc-staking/std",
   "cere-runtime-common/std",
   "cere-dev-runtime-constants/std",
