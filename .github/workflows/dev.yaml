@@ -5,9 +5,6 @@ on:
       - 'ci-test'
   workflow_dispatch:
 
-
-
-
 env:
   PROFILE: release
 
@@ -20,8 +17,7 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
+
       - name: Cache cargo registry
         uses: actions/cache@v3
         continue-on-error: false
