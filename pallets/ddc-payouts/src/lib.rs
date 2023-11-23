@@ -142,17 +142,17 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 		},
-		TreasuryFeesCharged {
+		TreasuryFeesCollected {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			amount: u128,
 		},
-		ClusterReserveFeesCharged {
+		ClusterReserveFeesCollected {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			amount: u128,
 		},
-		ValidatorFeesCharged {
+		ValidatorFeesCollected {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			amount: u128,
@@ -393,49 +393,52 @@ pub mod pallet {
 					.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 				let customer_id = payer.0.clone();
-				match T::CustomerCharger::charge_content_owner(
+				let amount_actually_charged = match T::CustomerCharger::charge_content_owner(
 					customer_id.clone(),
 					updated_billing_report.vault.clone(),
 					total_customer_charge,
 				) {
-					Ok(_) => {
-						updated_billing_report.total_customer_charge.storage =
-							temp_total_customer_storage_charge;
-						updated_billing_report.total_customer_charge.transfer =
-							temp_total_customer_transfer_charge;
-						updated_billing_report.total_customer_charge.puts =
-							temp_total_customer_puts_charge;
-						updated_billing_report.total_customer_charge.gets =
-							temp_total_customer_gets_charge;
+					Ok(actually_charged) => actually_charged,
+					Err(_e) => 0,
+				};
 
-						Self::deposit_event(Event::<T>::Charged {
-							cluster_id,
-							era,
-							customer_id,
-							amount: total_customer_charge,
-						});
-					},
-					Err(_e) => {
-						let mut customer_dept =
-							DebtorCustomers::<T>::try_get(cluster_id, customer_id.clone())
-								.unwrap_or_else(|_| Zero::zero());
+				if amount_actually_charged < total_customer_charge {
+					// debt
+					let mut customer_debt =
+						DebtorCustomers::<T>::try_get(cluster_id, customer_id.clone())
+							.unwrap_or_else(|_| Zero::zero());
 
-						customer_dept = customer_dept
-							.checked_add(total_customer_charge)
-							.ok_or(Error::<T>::ArithmeticOverflow)?;
-						DebtorCustomers::<T>::insert(
-							cluster_id,
-							customer_id.clone(),
-							customer_dept,
-						);
+					customer_debt = (|| -> Option<u128> {
+						customer_debt
+							.checked_add(total_customer_charge)?
+							.checked_sub(amount_actually_charged)
+					})()
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-						Self::deposit_event(Event::<T>::ChargeFailed {
-							cluster_id,
-							era,
-							customer_id,
-							amount: total_customer_charge,
-						});
-					},
+					DebtorCustomers::<T>::insert(cluster_id, customer_id.clone(), customer_debt);
+
+					Self::deposit_event(Event::<T>::ChargeFailed {
+						cluster_id,
+						era,
+						customer_id,
+						amount: total_customer_charge,
+					});
+				} else {
+					updated_billing_report.total_customer_charge.storage =
+						temp_total_customer_storage_charge;
+					updated_billing_report.total_customer_charge.transfer =
+						temp_total_customer_transfer_charge;
+					updated_billing_report.total_customer_charge.puts =
+						temp_total_customer_puts_charge;
+					updated_billing_report.total_customer_charge.gets =
+						temp_total_customer_gets_charge;
+
+					Self::deposit_event(Event::<T>::Charged {
+						cluster_id,
+						era,
+						customer_id,
+						amount: total_customer_charge,
+					});
 				}
 			}
 
@@ -492,7 +495,7 @@ pub mod pallet {
 				&billing_report.vault,
 				&T::TreasuryVisitor::get_account_id(),
 			)?;
-			Self::deposit_event(Event::<T>::TreasuryFeesCharged {
+			Self::deposit_event(Event::<T>::TreasuryFeesCollected {
 				cluster_id,
 				era,
 				amount: treasury_fee,
@@ -504,14 +507,14 @@ pub mod pallet {
 				&T::ClusterVisitor::get_reserve_account_id(&cluster_id)
 					.map_err(|_| Error::<T>::NotExpectedClusterState)?,
 			)?;
-			Self::deposit_event(Event::<T>::ClusterReserveFeesCharged {
+			Self::deposit_event(Event::<T>::ClusterReserveFeesCollected {
 				cluster_id,
 				era,
 				amount: cluster_reserve_fee,
 			});
 
 			charge_validator_fees::<T>(validators_fee, &billing_report.vault)?;
-			Self::deposit_event(Event::<T>::ValidatorFeesCharged {
+			Self::deposit_event(Event::<T>::ValidatorFeesCollected {
 				cluster_id,
 				era,
 				amount: validators_fee,

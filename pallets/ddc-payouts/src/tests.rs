@@ -276,31 +276,39 @@ fn send_charging_customers_batch_works() {
 		let user4 = 4u64;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
-		let max_batch_index = 4;
+		let max_batch_index = 3;
 		let batch_index = 0;
 		let usage1 = CustomerUsage {
+			// should pass without debt
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 4456456345234523,
 			number_of_gets: 523423,
 		};
-		let usage2 = CustomerUsage::default(); // should fail
+		let usage2 = CustomerUsage {
+			// should fail as not enough balance
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
 		let usage3 = CustomerUsage {
-			// should fail
+			// should pass but with debt
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
 		let usage4 = CustomerUsage {
+			// should pass without debt
 			transferred_bytes: 467457,
 			stored_bytes: 45674567456,
 			number_of_puts: 3456345,
 			number_of_gets: 242334563456423,
 		};
-		let payers1 = vec![(user1, usage1.clone())];
-		let payers2 = vec![(user2_debtor, usage2.clone())];
-		let payers3 = vec![(user3_debtor, usage3.clone()), (user4, usage4.clone())];
+		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
+		let payers2 = vec![(user1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, usage3.clone())];
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 		assert_ok!(DdcPayouts::begin_billing_report(
@@ -323,19 +331,19 @@ fn send_charging_customers_batch_works() {
 			cluster_id,
 			era,
 			batch_index,
-			payers3,
+			payers1,
 		));
 
 		let usage4_charge = calculate_charge(usage4);
-		let balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+		let mut balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
 		assert_eq!(balance, usage4_charge);
 
-		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
-		let mut debt = calculate_charge(usage3);
-		assert_eq!(user3_debt, debt);
+		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor).unwrap();
+		let mut debt = calculate_charge(usage2);
+		assert_eq!(user2_debt, debt);
 
 		System::assert_has_event(
-			Event::ChargeFailed { cluster_id, era, customer_id: user3_debtor, amount: debt }.into(),
+			Event::ChargeFailed { cluster_id, era, customer_id: user2_debtor, amount: debt }.into(),
 		);
 		System::assert_last_event(
 			Event::Charged { cluster_id, era, customer_id: user4, amount: usage4_charge }.into(),
@@ -349,7 +357,7 @@ fn send_charging_customers_batch_works() {
 			cluster_id,
 			era,
 			batch_index + 1,
-			payers1,
+			payers2,
 		));
 
 		System::assert_last_event(
@@ -367,21 +375,33 @@ fn send_charging_customers_batch_works() {
 		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
+		let balance_before = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
 		// batch 3
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
 			batch_index + 2,
-			payers2,
+			payers3,
 		));
 
-		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor).unwrap();
-		debt = calculate_charge(usage2);
-		assert_eq!(user2_debt, debt);
+		let user3_charge = calculate_charge(usage3);
+		balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
+
+		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
+
+		debt = user3_charge - PARTIAL_CHARGE;
+		assert_eq!(user3_debt, debt);
 
 		System::assert_last_event(
-			Event::ChargeFailed { cluster_id, era, customer_id: user2_debtor, amount: debt }.into(),
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				customer_id: user3_debtor,
+				amount: user3_charge,
+			}
+			.into(),
 		);
 	})
 }
@@ -522,15 +542,15 @@ fn end_charging_customers_works() {
 		let validator_fee = PRICING_FEES.validators_share * charge;
 
 		System::assert_has_event(
-			Event::TreasuryFeesCharged { cluster_id, era, amount: treasury_fee }.into(),
+			Event::TreasuryFeesCollected { cluster_id, era, amount: treasury_fee }.into(),
 		);
 
 		System::assert_has_event(
-			Event::ClusterReserveFeesCharged { cluster_id, era, amount: reserve_fee }.into(),
+			Event::ClusterReserveFeesCollected { cluster_id, era, amount: reserve_fee }.into(),
 		);
 
 		System::assert_has_event(
-			Event::ValidatorFeesCharged { cluster_id, era, amount: validator_fee }.into(),
+			Event::ValidatorFeesCollected { cluster_id, era, amount: validator_fee }.into(),
 		);
 
 		let transfers = 3 + 3 + 3 * 3; // for Currency::transfer

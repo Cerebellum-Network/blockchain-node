@@ -6,15 +6,13 @@ use crate::{self as pallet_ddc_payouts, *};
 use ddc_primitives::{ClusterFeesParams, ClusterPricingParams, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
-	customer::CustomerCharger,
+	customer::{CustomerCharger, CustomerChargerError},
 	pallet::PalletVisitor,
 };
 use frame_election_provider_support::SortedListProvider;
 
 use frame_support::{
-	construct_runtime,
-	error::BadOrigin,
-	parameter_types,
+	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
 	weights::constants::RocksDbWeight,
 	PalletId,
@@ -26,6 +24,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use sp_std::prelude::*;
 
 /// The AccountId alias in this test module.
 pub type AccountId = u64;
@@ -110,20 +109,27 @@ impl crate::pallet::Config for Test {
 pub struct TestCustomerCharger;
 impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 	fn charge_content_owner(
-		_content_owner: T::AccountId,
-		_billing_vault: T::AccountId,
+		content_owner: T::AccountId,
+		billing_vault: T::AccountId,
 		amount: u128,
-	) -> sp_runtime::DispatchResult {
-		ensure!(amount > 1_000_000_000, BadOrigin); //  any error will do
-		let charge = amount.saturated_into::<BalanceOf<T>>();
+	) -> Result<u128, CustomerChargerError> {
+		ensure!(amount > 1_000_000, CustomerChargerError::TransferFailed); //  any error will do
+
+		let mut amount_to_charge = amount;
+		if amount_to_charge < 50_000_000 {
+			amount_to_charge = PARTIAL_CHARGE;
+		}
+
+		let charge = amount_to_charge.saturated_into::<BalanceOf<T>>();
 
 		<T as pallet::Config>::Currency::transfer(
-			&_content_owner,
-			&_billing_vault,
+			&content_owner,
+			&billing_vault,
 			charge,
 			ExistenceRequirement::KeepAlive,
-		)?;
-		Ok(())
+		)
+		.map_err(|_| CustomerChargerError::TransferFailed)?;
+		Ok(amount_to_charge)
 	}
 }
 
@@ -132,6 +138,7 @@ pub const TREASURY_ACCOUNT_ID: AccountId = 888;
 pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
 pub const VALIDATOR2_ACCOUNT_ID: AccountId = 222;
 pub const VALIDATOR3_ACCOUNT_ID: AccountId = 333;
+pub const PARTIAL_CHARGE: u128 = 100;
 
 pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_streamed: 2_000_000,
@@ -223,23 +230,6 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 	}
 }
 
-/*
-pub struct TestValidatorVisitor;
-impl<T: frame_system::Config> ValidatorVisitor<T> for TestValidatorVisitor {
-	fn get_active_validators() -> Vec<T::AccountId> {
-		let mut validators: Vec<T::AccountId> = Vec::new();
-		let mut validator = VALIDATOR1_ACCOUNT_ID.to_ne_bytes();
-		validators.push(T::AccountId::decode(&mut &validator[..]).unwrap());
-		validator = VALIDATOR2_ACCOUNT_ID.to_ne_bytes();
-		validators.push(T::AccountId::decode(&mut &validator[..]).unwrap());
-		validator = VALIDATOR3_ACCOUNT_ID.to_ne_bytes();
-		validators.push(T::AccountId::decode(&mut &validator[..]).unwrap());
-
-		validators
-	}
-}
-*/
-
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
@@ -297,8 +287,8 @@ impl ExtBuilder {
 		let _ = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
 				(1, 1000000000000000000000000),
-				(2, 100),
-				(3, 100),
+				(2, 10),   // < PARTIAL_CHARGE
+				(3, 1000), // > PARTIAL_CHARGE
 				(4, 1000000000000000000000000),
 			],
 		}
