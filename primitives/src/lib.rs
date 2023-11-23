@@ -53,6 +53,16 @@ pub struct ClusterFeesParams {
 	pub cluster_reserve_share: Perquintill,
 }
 
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct ClusterBondingParams<BlockNumber> {
+	pub cdn_bond_size: u128,
+	pub cdn_chill_delay: BlockNumber,
+	pub cdn_unbonding_delay: BlockNumber,
+	pub storage_bond_size: u128,
+	pub storage_chill_delay: BlockNumber,
+	pub storage_unbonding_delay: BlockNumber,
+}
+
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodePubKey {

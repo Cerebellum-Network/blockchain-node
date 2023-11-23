@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use crate::{self as pallet_ddc_payouts, *};
-use ddc_primitives::{ClusterFeesParams, ClusterPricingParams, NodePubKey, NodeType};
+use ddc_primitives::{ClusterBondingParams, ClusterFeesParams, ClusterPricingParams, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
 	customer::CustomerCharger,
@@ -261,9 +261,6 @@ pub fn get_fees(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisi
 
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
-	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
-		true
-	}
 	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
 		Ok(())
 	}
@@ -305,6 +302,12 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	) -> Result<T::AccountId, ClusterVisitorError> {
 		let reserve_account = RESERVE_ACCOUNT_ID.to_ne_bytes();
 		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
+	}
+
+	fn get_bonding_params(
+		_cluster_id: &ClusterId,
+	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+		unimplemented!()
 	}
 }
 

@@ -21,6 +21,8 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 sp-tracing = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 substrate-test-utils = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
+lazy_static = "1.4.0"
+parking_lot = "0.12.1"
 
 [features]
 default = ["std"]

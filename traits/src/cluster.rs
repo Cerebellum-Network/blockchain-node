@@ -1,7 +1,7 @@
 use codec::{Decode, Encode};
 use ddc_primitives::{
-	ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams,
-	NodePubKey, NodeType,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
+	ClusterPricingParams, NodePubKey, NodeType,
 };
 use frame_support::dispatch::DispatchResult;
 use frame_system::Config;
@@ -9,8 +9,6 @@ use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
 pub trait ClusterVisitor<T: Config> {
-	fn cluster_has_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> bool;
-
 	fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError>;
 
 	fn get_bond_size(
@@ -35,6 +33,10 @@ pub trait ClusterVisitor<T: Config> {
 		cluster_id: &ClusterId,
 		node_type: NodeType,
 	) -> Result<T::BlockNumber, ClusterVisitorError>;
+
+	fn get_bonding_params(
+		cluster_id: &ClusterId,
+	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError>;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {
@@ -51,4 +53,23 @@ pub trait ClusterCreator<T: Config, Balance> {
 pub enum ClusterVisitorError {
 	ClusterDoesNotExist,
 	ClusterGovParamsNotSet,
+}
+
+pub trait ClusterManager<T: Config> {
+	fn contains_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> bool;
+	fn add_node(
+		cluster_id: &ClusterId,
+		node_pub_key: &NodePubKey,
+	) -> Result<(), ClusterManagerError>;
+	fn remove_node(
+		cluster_id: &ClusterId,
+		node_pub_key: &NodePubKey,
+	) -> Result<(), ClusterManagerError>;
+}
+
+pub enum ClusterManagerError {
+	AttemptToAddNonExistentNode,
+	AttemptToAddAlreadyAssignedNode,
+	AttemptToRemoveNotAssignedNode,
+	AttemptToRemoveNonExistentNode,
 }

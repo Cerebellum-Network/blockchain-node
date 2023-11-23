@@ -183,7 +183,7 @@ fn add_and_delete_node_works() {
 				ClusterId::from([1; 20]),
 				NodePubKey::CDNPubKey(AccountId::from([4; 32])),
 			),
-			Error::<Test>::NodeIsAlreadyAssigned
+			Error::<Test>::AttemptToAddAlreadyAssignedNode
 		);
 
 		// Checking that event was emitted
@@ -218,7 +218,7 @@ fn add_and_delete_node_works() {
 				ClusterId::from([1; 20]),
 				NodePubKey::CDNPubKey(AccountId::from([4; 32])),
 			),
-			Error::<Test>::NodeIsNotAssigned
+			Error::<Test>::AttemptToRemoveNotAssignedNode
 		);
 
 		pub const CTOR_SELECTOR: [u8; 4] = hex!("9bae9d5e");
