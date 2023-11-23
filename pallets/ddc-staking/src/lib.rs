@@ -151,6 +151,8 @@ impl<
 
 #[frame_support::pallet]
 pub mod pallet {
+	use ddc_traits::{cluster::ClusterManager, node::NodeVisitorError};
+
 	use super::*;
 
 	#[pallet::pallet]
@@ -168,6 +170,8 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 
 		type ClusterVisitor: ClusterVisitor<Self>;
+
+		type ClusterManager: ClusterManager<Self>;
 
 		type NodeVisitor: NodeVisitor<Self>;
 	}
@@ -204,6 +208,16 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn providers)]
 	pub type Providers<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, NodePubKey>;
+
+	/// Map of Storage node provider stash accounts that aim to leave a cluster
+	#[pallet::storage]
+	#[pallet::getter(fn leaving_storages)]
+	pub type LeavingStorages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
+
+	// Map of CDN node provider stash accounts that aim to leave a cluster
+	#[pallet::storage]
+	#[pallet::getter(fn leaving_cdns)]
+	pub type LeavingCDNs<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -283,6 +297,12 @@ pub mod pallet {
 		/// An account that started participating as either a storage network or CDN participant.
 		/// \[stash\]
 		Activated(T::AccountId),
+		/// An account that started unbonding tokens below the minimum value set for the cluster
+		/// his CDN or Storage node is assigned to \[stash\]
+		LeaveSoon(T::AccountId),
+		/// An account that unbonded tokens below the minimum value set for the cluster his
+		/// CDN or Storage node was assigned to \[stash\]
+		Left(T::AccountId),
 	}
 
 	#[pallet::error]
@@ -312,6 +332,8 @@ pub mod pallet {
 		NotNodeController,
 		/// No stake found associated with the provided node.
 		NodeHasNoStake,
+		/// No cluster found
+		NoCluster,
 		/// No cluster governance params found for cluster
 		NoClusterGovParams,
 		/// Conditions for fast chill are not met, try the regular `chill` from
@@ -324,6 +346,11 @@ pub mod pallet {
 		ArithmeticOverflow,
 		/// Arithmetic underflow occurred
 		ArithmeticUnderflow,
+		/// Attempt to associate stake with non-existing node
+		NodeIsNotFound,
+		/// Action is prohibited for a node provider stash account that is in the process of
+		/// leaving a cluster
+		NodeIsLeaving,
 	}
 
 	#[pallet::call]
@@ -364,6 +391,9 @@ pub mod pallet {
 			if Nodes::<T>::contains_key(&node) || Providers::<T>::contains_key(&stash) {
 				Err(Error::<T>::AlreadyPaired)?
 			}
+
+			// Checks that the node is registered in the network
+			ensure!(T::NodeVisitor::exists(&node), Error::<T>::NodeIsNotFound);
 
 			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
 
@@ -414,6 +444,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+
 			ensure!(
 				ledger.unlocking.len() < MaxUnlockingChunks::get() as usize,
 				Error::<T>::NoMoreChunks,
@@ -442,6 +473,8 @@ pub mod pallet {
 							.map_err(Into::<Error<T>>::into)?;
 					bond_size.saturated_into::<BalanceOf<T>>()
 				} else {
+					// If node is not assigned to a cluster or node is chilling, allow to unbond
+					// any available amount.
 					Zero::zero()
 				};
 
@@ -449,36 +482,50 @@ pub mod pallet {
 				// cluster. If a user runs into this error, they should chill first.
 				ensure!(ledger.active >= min_active_bond, Error::<T>::InsufficientBond);
 
-				let unbonding_delay_in_blocks = if let Some(cluster_id) = Self::cdns(&ledger.stash)
-				{
-					T::ClusterVisitor::get_unbonding_delay(&cluster_id, NodeType::CDN)
-						.map_err(Into::<Error<T>>::into)?
-				} else if let Some(cluster_id) = Self::storages(&ledger.stash) {
-					T::ClusterVisitor::get_unbonding_delay(&cluster_id, NodeType::Storage)
-						.map_err(Into::<Error<T>>::into)?
-				} else {
-					let node_pub_key =
-						<Providers<T>>::get(&ledger.stash).ok_or(Error::<T>::BadState)?;
+				let node_pub_key =
+					<Providers<T>>::get(&ledger.stash).ok_or(Error::<T>::BadState)?;
 
-					if let Ok(Some(cluster_id)) = T::NodeVisitor::get_cluster_id(&node_pub_key) {
+				let unbonding_delay = if T::NodeVisitor::exists(&node_pub_key) {
+					let node_cluster_id = T::NodeVisitor::get_cluster_id(&node_pub_key)
+						.map_err(Into::<Error<T>>::into)?;
+
+					if let Some(cluster_id) = node_cluster_id {
+						let bonding_params = T::ClusterVisitor::get_bonding_params(&cluster_id)
+							.map_err(Into::<Error<T>>::into)?;
+
+						let min_bond_size = match node_pub_key {
+							NodePubKey::CDNPubKey(_) => bonding_params.cdn_bond_size,
+							NodePubKey::StoragePubKey(_) => bonding_params.storage_bond_size,
+						};
+
+						// If provider is trying to unbond after chilling and aims to leave the
+						// cluster eventually, we keep its stake till the end of unbonding period.
+						if ledger.active < min_bond_size.saturated_into::<BalanceOf<T>>() {
+							match node_pub_key {
+								NodePubKey::CDNPubKey(_) =>
+									LeavingCDNs::<T>::insert(ledger.stash.clone(), cluster_id),
+								NodePubKey::StoragePubKey(_) =>
+									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id),
+							};
+
+							Self::deposit_event(Event::<T>::LeaveSoon(ledger.stash.clone()));
+						};
+
 						match node_pub_key {
-							NodePubKey::CDNPubKey(_) =>
-								T::ClusterVisitor::get_unbonding_delay(&cluster_id, NodeType::CDN)
-									.map_err(Into::<Error<T>>::into)?,
-							NodePubKey::StoragePubKey(_) => T::ClusterVisitor::get_unbonding_delay(
-								&cluster_id,
-								NodeType::Storage,
-							)
-							.map_err(Into::<Error<T>>::into)?,
+							NodePubKey::CDNPubKey(_) => bonding_params.cdn_unbonding_delay,
+							NodePubKey::StoragePubKey(_) => bonding_params.storage_unbonding_delay,
 						}
 					} else {
 						// If node is not a member of any cluster, allow immediate unbonding.
 						T::BlockNumber::from(0u32)
 					}
+				} else {
+					// If node was deleted, allow immediate unbonding.
+					T::BlockNumber::from(0u32)
 				};
 
 				// block number + configuration -> no overflow
-				let block = <frame_system::Pallet<T>>::block_number() + unbonding_delay_in_blocks;
+				let block = <frame_system::Pallet<T>>::block_number() + unbonding_delay;
 				if let Some(chunk) =
 					ledger.unlocking.last_mut().filter(|chunk| chunk.block == block)
 				{
@@ -515,6 +562,7 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
+			let node_pub_key = <Providers<T>>::get(stash.clone()).ok_or(Error::<T>::BadState)?;
 
 			ledger = ledger.consolidate_unlocked(<frame_system::Pallet<T>>::block_number());
 
@@ -536,7 +584,22 @@ pub mod pallet {
 				// Already checked that this won't overflow by entry condition.
 				let value =
 					old_total.checked_sub(&ledger.total).ok_or(Error::<T>::ArithmeticUnderflow)?;
-				Self::deposit_event(Event::<T>::Withdrawn(stash, value));
+				Self::deposit_event(Event::<T>::Withdrawn(stash.clone(), value));
+
+				// If provider aimed to leave the cluster and the unbonding period ends, remove
+				// the node from the cluster
+				if let Some(cluster_id) =
+					<LeavingCDNs<T>>::get(&stash).or_else(|| <LeavingStorages<T>>::get(&stash))
+				{
+					// Cluster manager could remove the node from cluster by this moment already, so
+					// it is ok to ignore result.
+					let _ = T::ClusterManager::remove_node(&cluster_id, &node_pub_key);
+
+					<LeavingStorages<T>>::remove(&stash);
+					<LeavingCDNs<T>>::remove(&stash);
+
+					Self::deposit_event(Event::<T>::Left(stash));
+				}
 			}
 
 			Ok(())
@@ -583,6 +646,10 @@ pub mod pallet {
 				// Cancel previous "chill" attempts
 				Self::reset_chilling(&controller);
 				return Ok(())
+			} else {
+				// Can't participate in new CDN network if provider hasn't left the previous cluster
+				// yet
+				ensure!(!LeavingCDNs::<T>::contains_key(stash), Error::<T>::NodeIsLeaving);
 			}
 
 			Self::do_add_cdn(stash, cluster_id);
@@ -631,6 +698,10 @@ pub mod pallet {
 				// Cancel previous "chill" attempts
 				Self::reset_chilling(&controller);
 				return Ok(())
+			} else {
+				// Can't participate in new Storage network if provider hasn't left the previous
+				// cluster yet
+				ensure!(!LeavingStorages::<T>::contains_key(stash), Error::<T>::NodeIsLeaving);
 			}
 
 			Self::do_add_storage(stash, cluster_id);
@@ -671,7 +742,7 @@ pub mod pallet {
 					.map_err(Into::<Error<T>>::into)?;
 				(cluster, chill_delay)
 			} else {
-				return Ok(()) // already chilled
+				return Ok(()) // node is already chilling or leaving the cluster
 			};
 
 			if delay == T::BlockNumber::from(0u32) {
@@ -751,6 +822,11 @@ pub mod pallet {
 			ensure!(!<CDNs<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 			ensure!(!<Storages<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
+			// Ensure that provider is not about leaving the cluster as it may cause the removal
+			// of an unexpected node after unbonding.
+			ensure!(!<LeavingCDNs<T>>::contains_key(&stash), Error::<T>::NodeIsLeaving);
+			ensure!(!<LeavingStorages<T>>::contains_key(&stash), Error::<T>::NodeIsLeaving);
+
 			<Nodes<T>>::insert(new_node.clone(), stash.clone());
 			<Providers<T>>::insert(stash, new_node);
 
@@ -773,7 +849,7 @@ pub mod pallet {
 				.or_else(|| <Storages<T>>::get(&stash))
 				.ok_or(Error::<T>::NodeHasNoStake)?;
 
-			let is_cluster_node = T::ClusterVisitor::cluster_has_node(&cluster_id, &node_pub_key);
+			let is_cluster_node = T::ClusterManager::contains_node(&cluster_id, &node_pub_key);
 			ensure!(!is_cluster_node, Error::<T>::FastChillProhibited);
 
 			// block number + 1 => no overflow
@@ -890,7 +966,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> StakingVisitor<T> for Pallet<T> {
-		fn node_has_stake(
+		fn has_activated_stake(
 			node_pub_key: &NodePubKey,
 			cluster_id: &ClusterId,
 		) -> Result<bool, StakingVisitorError> {
@@ -899,33 +975,45 @@ pub mod pallet {
 			let maybe_cdn_in_cluster = CDNs::<T>::get(&stash);
 			let maybe_storage_in_cluster = Storages::<T>::get(&stash);
 
-			let has_stake: bool = maybe_cdn_in_cluster
+			let has_activated_stake: bool = maybe_cdn_in_cluster
 				.or(maybe_storage_in_cluster)
 				.is_some_and(|staking_cluster| staking_cluster == *cluster_id);
 
-			Ok(has_stake)
+			Ok(has_activated_stake)
 		}
 
-		fn node_is_chilling(node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
+		fn has_stake(node_pub_key: &NodePubKey) -> bool {
+			<Nodes<T>>::get(node_pub_key).is_some()
+		}
+
+		fn has_chilling_attempt(node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
 			let stash =
 				<Nodes<T>>::get(node_pub_key).ok_or(StakingVisitorError::NodeStakeDoesNotExist)?;
 			let controller =
 				<Bonded<T>>::get(&stash).ok_or(StakingVisitorError::NodeStakeIsInBadState)?;
 
-			let is_chilling = <Ledger<T>>::get(&controller)
+			let is_chilling_attempt = <Ledger<T>>::get(&controller)
 				.ok_or(StakingVisitorError::NodeStakeIsInBadState)?
 				.chilling
 				.is_some();
 
-			Ok(is_chilling)
+			Ok(is_chilling_attempt)
 		}
 	}
 
 	impl<T> From<ClusterVisitorError> for Error<T> {
 		fn from(error: ClusterVisitorError) -> Self {
 			match error {
-				ClusterVisitorError::ClusterDoesNotExist => Error::<T>::NodeHasNoStake,
+				ClusterVisitorError::ClusterDoesNotExist => Error::<T>::NoCluster,
 				ClusterVisitorError::ClusterGovParamsNotSet => Error::<T>::NoClusterGovParams,
+			}
+		}
+	}
+
+	impl<T> From<NodeVisitorError> for Error<T> {
+		fn from(error: NodeVisitorError) -> Self {
+			match error {
+				NodeVisitorError::NodeDoesNotExist => Error::<T>::NodeIsNotFound,
 			}
 		}
 	}

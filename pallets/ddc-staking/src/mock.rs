@@ -3,9 +3,11 @@
 #![allow(dead_code)]
 
 use crate::{self as pallet_ddc_staking, *};
-use ddc_primitives::{CDNNodePubKey, ClusterPricingParams, StorageNodePubKey};
+use ddc_primitives::{
+	CDNNodePubKey, ClusterBondingParams, ClusterPricingParams, StorageNodePubKey,
+};
 use ddc_traits::{
-	cluster::{ClusterVisitor, ClusterVisitorError},
+	cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
 	node::{NodeVisitor, NodeVisitorError},
 };
 
@@ -15,6 +17,8 @@ use frame_support::{
 	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
+use lazy_static::lazy_static;
+use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -22,6 +26,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 use sp_std::collections::btree_map::BTreeMap;
+use std::cell::RefCell;
 
 /// The AccountId alias in this test module.
 pub(crate) type AccountId = u64;
@@ -100,16 +105,14 @@ impl crate::pallet::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type ClusterVisitor = TestClusterVisitor;
-	type NodeVisitor = TestNodeVisitor;
+	type ClusterManager = TestClusterManager;
+	type NodeVisitor = MockNodeVisitor;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
-	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
-		true
-	}
 	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
 		Ok(())
 	}
@@ -142,12 +145,113 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 			unit_per_get_request: 5,
 		})
 	}
+
+	fn get_bonding_params(
+		cluster_id: &ClusterId,
+	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+		Ok(ClusterBondingParams {
+			cdn_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
+				cluster_id,
+				NodeType::CDN,
+			)
+			.unwrap_or_default(),
+			cdn_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
+				cluster_id,
+				NodeType::CDN,
+			)
+			.unwrap_or_default(),
+			cdn_unbonding_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
+				cluster_id,
+				NodeType::CDN,
+			)
+			.unwrap_or_default(),
+			storage_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
+				cluster_id,
+				NodeType::Storage,
+			)
+			.unwrap_or_default(),
+			storage_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
+				cluster_id,
+				NodeType::Storage,
+			)
+			.unwrap_or_default(),
+			storage_unbonding_delay:
+				<TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
+					cluster_id,
+					NodeType::Storage,
+				)
+				.unwrap_or_default(),
+		})
+	}
 }
 
-pub struct TestNodeVisitor;
-impl<T: Config> NodeVisitor<T> for TestNodeVisitor {
+pub struct TestClusterManager;
+impl<T: Config> ClusterManager<T> for TestClusterManager {
+	fn contains_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
+		true
+	}
+
+	fn add_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<(), ClusterManagerError> {
+		Ok(())
+	}
+
+	fn remove_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<(), ClusterManagerError> {
+		Ok(())
+	}
+}
+
+lazy_static! {
+	// We have to use the ReentrantMutex as every test's thread that needs to perform some configuration on the mock acquires the lock at least 2 times:
+	// the first time when the mock configuration happens, and
+	// the second time when the pallet calls the MockNodeVisitor during execution
+	static ref MOCK_NODE: ReentrantMutex<RefCell<MockNode>> =
+		ReentrantMutex::new(RefCell::new(MockNode::default()));
+}
+
+pub struct MockNode {
+	pub cluster_id: Option<ClusterId>,
+	pub exists: bool,
+}
+
+impl Default for MockNode {
+	fn default() -> Self {
+		Self { cluster_id: None, exists: true }
+	}
+}
+
+pub struct MockNodeVisitor;
+
+impl MockNodeVisitor {
+	// Every test's thread must hold the lock till the end of its test
+	pub fn set_and_hold_lock(mock: MockNode) -> ReentrantMutexGuard<'static, RefCell<MockNode>> {
+		let lock = MOCK_NODE.lock();
+		*lock.borrow_mut() = mock;
+		lock
+	}
+
+	// Every test's thread must release the lock that it previously acquired in the end of its
+	// test
+	pub fn reset_and_release_lock(lock: ReentrantMutexGuard<'static, RefCell<MockNode>>) {
+		*lock.borrow_mut() = MockNode::default();
+	}
+}
+
+impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, NodeVisitorError> {
-		Ok(None)
+		let lock = MOCK_NODE.lock();
+		let mock_ref = lock.borrow();
+		Ok(mock_ref.cluster_id)
+	}
+	fn exists(_node_pub_key: &NodePubKey) -> bool {
+		let lock = MOCK_NODE.lock();
+		let mock_ref = lock.borrow();
+		mock_ref.exists
 	}
 }
 

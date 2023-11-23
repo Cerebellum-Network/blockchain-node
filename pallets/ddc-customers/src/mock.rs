@@ -2,9 +2,12 @@
 
 use crate::{self as pallet_ddc_customers, *};
 use ddc_primitives::{
-	ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
+	ClusterBondingParams, ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams,
+	NodePubKey, NodeType,
 };
-use ddc_traits::cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError};
+use ddc_traits::cluster::{
+	ClusterCreator, ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError,
+};
 
 use frame_support::{
 	construct_runtime, parameter_types,
@@ -109,9 +112,6 @@ impl crate::pallet::Config for Test {
 
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
-	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
-		true
-	}
 	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
 		Ok(())
 	}
@@ -143,6 +143,64 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 			unit_per_put_request: 3,
 			unit_per_get_request: 4,
 		})
+	}
+
+	fn get_bonding_params(
+		cluster_id: &ClusterId,
+	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+		Ok(ClusterBondingParams {
+			cdn_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
+				cluster_id,
+				NodeType::CDN,
+			)
+			.unwrap_or_default(),
+			cdn_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
+				cluster_id,
+				NodeType::CDN,
+			)
+			.unwrap_or_default(),
+			cdn_unbonding_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
+				cluster_id,
+				NodeType::CDN,
+			)
+			.unwrap_or_default(),
+			storage_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
+				cluster_id,
+				NodeType::Storage,
+			)
+			.unwrap_or_default(),
+			storage_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
+				cluster_id,
+				NodeType::Storage,
+			)
+			.unwrap_or_default(),
+			storage_unbonding_delay:
+				<TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
+					cluster_id,
+					NodeType::Storage,
+				)
+				.unwrap_or_default(),
+		})
+	}
+}
+
+pub struct TestClusterManager;
+impl<T: Config> ClusterManager<T> for TestClusterManager {
+	fn contains_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
+		true
+	}
+	fn add_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<(), ClusterManagerError> {
+		Ok(())
+	}
+
+	fn remove_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<(), ClusterManagerError> {
+		Ok(())
 	}
 }
 
