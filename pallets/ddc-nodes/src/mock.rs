@@ -3,6 +3,7 @@
 #![allow(dead_code)]
 
 use crate::{self as pallet_ddc_nodes, *};
+use ddc_traits::staking::{StakingVisitor, StakingVisitorError};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
@@ -90,6 +91,23 @@ impl pallet_timestamp::Config for Test {
 
 impl crate::pallet::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
+	type StakingVisitor = TestStakingVisitor;
+}
+
+pub struct TestStakingVisitor;
+impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
+	fn has_activated_stake(
+		_node_pub_key: &NodePubKey,
+		_cluster_id: &ClusterId,
+	) -> Result<bool, StakingVisitorError> {
+		Ok(false)
+	}
+	fn has_stake(_node_pub_key: &NodePubKey) -> bool {
+		false
+	}
+	fn has_chilling_attempt(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
+		Ok(false)
+	}
 }
 
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;

@@ -25,7 +25,8 @@ use crate::{
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
 };
 use ddc_primitives::{
-	ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
+	ClusterBondingParams, ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams,
+	NodePubKey, NodeType,
 };
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
@@ -51,6 +52,7 @@ pub type BalanceOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use ddc_traits::cluster::{ClusterManager, ClusterManagerError};
 	use pallet_contracts::chain_extension::UncheckedFrom;
 
 	#[pallet::pallet]
@@ -82,12 +84,12 @@ pub mod pallet {
 		ClusterDoesNotExist,
 		ClusterParamsExceedsLimit,
 		AttemptToAddNonExistentNode,
+		AttemptToAddAlreadyAssignedNode,
 		AttemptToRemoveNonExistentNode,
-		NodeIsAlreadyAssigned,
-		NodeIsNotAssigned,
+		AttemptToRemoveNotAssignedNode,
 		OnlyClusterManager,
 		NodeIsNotAuthorized,
-		NodeHasNoStake,
+		NodeHasNoActivatedStake,
 		NodeStakeIsInvalid,
 		/// Cluster candidate should not plan to chill.
 		NodeChillingIsProhibited,
@@ -149,28 +151,30 @@ pub mod pallet {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
-			// Node with this node with this public key exists.
-			let mut node = T::NodeRepository::get(node_pub_key.clone())
-				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
-			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAlreadyAssigned);
-
 			// Sufficient funds are locked at the DDC Staking module.
-			let has_stake = T::StakingVisitor::node_has_stake(&node_pub_key, &cluster_id)
-				.map_err(Into::<Error<T>>::into)?;
-			ensure!(has_stake, Error::<T>::NodeHasNoStake);
+			let has_activated_stake =
+				T::StakingVisitor::has_activated_stake(&node_pub_key, &cluster_id)
+					.map_err(Into::<Error<T>>::into)?;
+			ensure!(has_activated_stake, Error::<T>::NodeHasNoActivatedStake);
 
 			// Candidate is not planning to pause operations any time soon.
-			let is_chilling = T::StakingVisitor::node_is_chilling(&node_pub_key)
+			let has_chilling_attempt = T::StakingVisitor::has_chilling_attempt(&node_pub_key)
 				.map_err(Into::<Error<T>>::into)?;
-			ensure!(!is_chilling, Error::<T>::NodeChillingIsProhibited);
+			ensure!(!has_chilling_attempt, Error::<T>::NodeChillingIsProhibited);
 
 			// Cluster extension smart contract allows joining.
 			let auth_contract = NodeProviderAuthContract::<T>::new(
 				cluster.props.node_provider_auth_contract,
 				caller_id,
 			);
+
+			// Node with this node with this public key exists.
+			let node = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+
 			let is_authorized = auth_contract
 				.is_authorized(
 					node.get_provider_id().to_owned(),
@@ -181,9 +185,8 @@ pub mod pallet {
 			ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
 
 			// Add node to the cluster.
-			node.set_cluster_id(Some(cluster_id));
-			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
-			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), true);
+			<Self as ClusterManager<T>>::add_node(&cluster_id, &node_pub_key)
+				.map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
 
 			Ok(())
@@ -198,14 +201,12 @@ pub mod pallet {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
-			let mut node = T::NodeRepository::get(node_pub_key.clone())
-				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
-			ensure!(node.get_cluster_id() == &Some(cluster_id), Error::<T>::NodeIsNotAssigned);
-			node.set_cluster_id(None);
-			T::NodeRepository::update(node)
-				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
-			ClustersNodes::<T>::remove(cluster_id, node_pub_key.clone());
+
+			// Remove node from the cluster.
+			<Self as ClusterManager<T>>::remove_node(&cluster_id, &node_pub_key)
+				.map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::ClusterNodeRemoved { cluster_id, node_pub_key });
 
 			Ok(())
@@ -268,10 +269,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> ClusterVisitor<T> for Pallet<T> {
-		fn cluster_has_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> bool {
-			ClustersNodes::<T>::get(cluster_id, node_pub_key).is_some()
-		}
-
 		fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
 			Clusters::<T>::get(cluster_id)
 				.map(|_| ())
@@ -327,6 +324,69 @@ pub mod pallet {
 				NodeType::CDN => Ok(cluster_gov_params.cdn_unbonding_delay),
 			}
 		}
+
+		fn get_bonding_params(
+			cluster_id: &ClusterId,
+		) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+			Ok(ClusterBondingParams {
+				cdn_bond_size: cluster_gov_params.cdn_bond_size.saturated_into::<u128>(),
+				cdn_chill_delay: cluster_gov_params.cdn_chill_delay,
+				cdn_unbonding_delay: cluster_gov_params.cdn_unbonding_delay,
+				storage_bond_size: cluster_gov_params.storage_bond_size.saturated_into::<u128>(),
+				storage_chill_delay: cluster_gov_params.storage_chill_delay,
+				storage_unbonding_delay: cluster_gov_params.storage_unbonding_delay,
+			})
+		}
+	}
+
+	impl<T: Config> ClusterManager<T> for Pallet<T> {
+		fn contains_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> bool {
+			ClustersNodes::<T>::get(cluster_id, node_pub_key).is_some()
+		}
+
+		fn add_node(
+			cluster_id: &ClusterId,
+			node_pub_key: &NodePubKey,
+		) -> Result<(), ClusterManagerError> {
+			let mut node = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| ClusterManagerError::AttemptToAddNonExistentNode)?;
+
+			ensure!(
+				node.get_cluster_id().is_none(),
+				ClusterManagerError::AttemptToAddAlreadyAssignedNode
+			);
+
+			node.set_cluster_id(Some(*cluster_id));
+			T::NodeRepository::update(node)
+				.map_err(|_| ClusterManagerError::AttemptToAddNonExistentNode)?;
+
+			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), true);
+
+			Ok(())
+		}
+
+		fn remove_node(
+			cluster_id: &ClusterId,
+			node_pub_key: &NodePubKey,
+		) -> Result<(), ClusterManagerError> {
+			let mut node = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| ClusterManagerError::AttemptToRemoveNonExistentNode)?;
+
+			ensure!(
+				node.get_cluster_id() == &Some(*cluster_id),
+				ClusterManagerError::AttemptToRemoveNotAssignedNode
+			);
+
+			node.set_cluster_id(None);
+			T::NodeRepository::update(node)
+				.map_err(|_| ClusterManagerError::AttemptToRemoveNonExistentNode)?;
+
+			ClustersNodes::<T>::remove(cluster_id, node_pub_key.clone());
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> ClusterCreator<T, BalanceOf<T>> for Pallet<T>
@@ -353,7 +413,7 @@ pub mod pallet {
 	impl<T> From<StakingVisitorError> for Error<T> {
 		fn from(error: StakingVisitorError) -> Self {
 			match error {
-				StakingVisitorError::NodeStakeDoesNotExist => Error::<T>::NodeHasNoStake,
+				StakingVisitorError::NodeStakeDoesNotExist => Error::<T>::NodeHasNoActivatedStake,
 				StakingVisitorError::NodeStakeIsInBadState => Error::<T>::NodeStakeIsInvalid,
 			}
 		}
@@ -364,6 +424,21 @@ pub mod pallet {
 			match error {
 				NodeProviderAuthContractError::ContractCallFailed =>
 					Error::<T>::NodeAuthContractCallFailed,
+			}
+		}
+	}
+
+	impl<T> From<ClusterManagerError> for Error<T> {
+		fn from(error: ClusterManagerError) -> Self {
+			match error {
+				ClusterManagerError::AttemptToRemoveNotAssignedNode =>
+					Error::<T>::AttemptToRemoveNotAssignedNode,
+				ClusterManagerError::AttemptToRemoveNonExistentNode =>
+					Error::<T>::AttemptToRemoveNonExistentNode,
+				ClusterManagerError::AttemptToAddNonExistentNode =>
+					Error::<T>::AttemptToAddNonExistentNode,
+				ClusterManagerError::AttemptToAddAlreadyAssignedNode =>
+					Error::<T>::AttemptToAddAlreadyAssignedNode,
 			}
 		}
 	}
