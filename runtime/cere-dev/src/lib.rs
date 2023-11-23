@@ -1329,6 +1329,7 @@ impl pallet_ddc_staking::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
@@ -1349,6 +1350,8 @@ impl pallet_ddc_customers::Config for Runtime {
 
 impl pallet_ddc_nodes::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type WeightInfo = pallet_ddc_nodes::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_ddc_clusters::Config for Runtime {
@@ -1540,6 +1543,7 @@ mod benches {
 		[pallet_staking, Staking]
 		[pallet_ddc_customers, DdcCustomers]
 		[pallet_ddc_staking, DdcStaking]
+		[pallet_ddc_nodes, DdcNodes]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
 		[pallet_tips, Tips]
