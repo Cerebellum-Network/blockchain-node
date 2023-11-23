@@ -7,6 +7,7 @@ edition = "2021"
 codec = { package = "parity-scale-codec", version = "3.1.5", default-features = false, features = ["derive"] }
 ddc-primitives = { version = "0.1.0", default-features = false, path = "../../primitives" }
 ddc-traits = { version = "0.1.0", default-features = false, path = "../../traits" }
+frame-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", optional = true }
 frame-support = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 frame-system = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
@@ -26,10 +27,18 @@ default = ["std"]
 std = [
   "codec/std",
   "ddc-primitives/std",
+  "frame-benchmarking/std",
   "frame-support/std",
   "frame-system/std",
   "scale-info/std",
   "sp-runtime/std",
   "sp-std/std",
   "sp-core/std",
+]
+runtime-benchmarks = [
+  "ddc-primitives/runtime-benchmarks",
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]

@@ -19,6 +19,14 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod weights;
+use crate::weights::WeightInfo;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
+#[cfg(any(feature = "runtime-benchmarks", test))]
+pub mod testing_utils;
+
 use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey, StorageNodePubKey};
 use ddc_traits::{
 	node::{NodeVisitor, NodeVisitorError},
@@ -53,6 +61,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type StakingVisitor: StakingVisitor<Self>;
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
@@ -87,7 +96,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::create_node())]
 		pub fn create_node(
 			origin: OriginFor<T>,
 			node_pub_key: NodePubKey,
@@ -101,7 +110,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::delete_node())]
 		pub fn delete_node(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let node = Self::get(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
@@ -114,7 +123,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_node_params())]
 		pub fn set_node_params(
 			origin: OriginFor<T>,
 			node_pub_key: NodePubKey,

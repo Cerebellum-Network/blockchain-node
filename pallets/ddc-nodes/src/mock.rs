@@ -92,6 +92,7 @@ impl pallet_timestamp::Config for Test {
 impl crate::pallet::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type StakingVisitor = TestStakingVisitor;
+	type WeightInfo = ();
 }
 
 pub struct TestStakingVisitor;
