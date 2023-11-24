@@ -1,7 +1,7 @@
 //! Testing utils for ddc-staking.
 
-use crate::{cdn_node::CDNNodeParams, node::NodeParams, Config, NodePubKey};
-use ddc_primitives::CDNNodePubKey;
+use crate::{Config, NodePubKey};
+use ddc_primitives::{CDNNodeParams, CDNNodePubKey, NodeParams};
 use frame_benchmarking::account;
 use sp_std::vec;
 
