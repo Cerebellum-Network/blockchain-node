@@ -19,7 +19,7 @@ pub struct ClusterParams<AccountId> {
 	pub node_provider_auth_contract: AccountId,
 }
 
-// ClusterGovParams includes Governance sensetive parameters
+// ClusterGovParams includes Governance sensitive parameters
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 #[scale_info(skip_type_params(Balance, BlockNumber, T))]
 pub struct ClusterGovParams<Balance, BlockNumber> {
@@ -47,6 +47,12 @@ pub struct ClusterPricingParams {
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct ClusterFeesParams {
+	pub treasury_share: Perbill,
+	pub validators_share: Perbill,
+	pub cluster_reserve_share: Perbill,
+}
+
 pub struct ClusterBondingParams<BlockNumber> {
 	pub cdn_bond_size: u128,
 	pub cdn_chill_delay: BlockNumber,
