@@ -25,8 +25,8 @@ use crate::{
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
 };
 use ddc_primitives::{
-	ClusterBondingParams, ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams,
-	NodePubKey, NodeType,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
+	ClusterPricingParams, NodePubKey, NodeType,
 };
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
@@ -299,6 +299,27 @@ pub mod pallet {
 				unit_per_put_request: cluster_gov_params.unit_per_put_request,
 				unit_per_get_request: cluster_gov_params.unit_per_get_request,
 			})
+		}
+
+		fn get_fees_params(
+			cluster_id: &ClusterId,
+		) -> Result<ClusterFeesParams, ClusterVisitorError> {
+			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+
+			Ok(ClusterFeesParams {
+				treasury_share: cluster_gov_params.treasury_share,
+				validators_share: cluster_gov_params.validators_share,
+				cluster_reserve_share: cluster_gov_params.cluster_reserve_share,
+			})
+		}
+
+		fn get_reserve_account_id(
+			cluster_id: &ClusterId,
+		) -> Result<T::AccountId, ClusterVisitorError> {
+			let cluster = Clusters::<T>::try_get(cluster_id)
+				.map_err(|_| ClusterVisitorError::ClusterDoesNotExist)?;
+			Ok(cluster.reserve_id)
 		}
 
 		fn get_chill_delay(
