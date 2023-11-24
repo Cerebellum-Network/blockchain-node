@@ -191,7 +191,7 @@ fn unlock_and_withdraw_deposit_works() {
 			})
 		);
 
-		// Unlock remaining chuncks & withdraw
+		// Unlock remaining chunks & withdraw
 		assert_ok!(DdcCustomers::unlock_deposit(RuntimeOrigin::signed(account_1), 3_u128));
 		System::set_block_number(52);
 		assert_ok!(DdcCustomers::withdraw_unlocked_deposit(RuntimeOrigin::signed(account_1)));

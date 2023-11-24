@@ -2,4 +2,6 @@
 pub mod cluster;
 pub mod customer;
 pub mod node;
+pub mod pallet;
 pub mod staking;
+pub mod validator;
