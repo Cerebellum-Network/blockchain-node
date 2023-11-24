@@ -36,7 +36,7 @@ fn create_cluster_works() {
 				ClusterId::from([1; 20]),
 				AccountId::from([1; 32]),
 				AccountId::from([2; 32]),
-				ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
+				ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
 				cluster_gov_params.clone()
 			),
 			BadOrigin
@@ -48,7 +48,7 @@ fn create_cluster_works() {
 			ClusterId::from([1; 20]),
 			AccountId::from([1; 32]),
 			AccountId::from([2; 32]),
-			ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
+			ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
 			cluster_gov_params.clone()
 		));
 
@@ -59,7 +59,7 @@ fn create_cluster_works() {
 				ClusterId::from([1; 20]),
 				AccountId::from([1; 32]),
 				AccountId::from([2; 32]),
-				ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
+				ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
 				cluster_gov_params
 			),
 			Error::<Test>::ClusterAlreadyExists
@@ -96,7 +96,7 @@ fn add_and_delete_node_works() {
 			ClusterId::from([1; 20]),
 			AccountId::from([1; 32]),
 			AccountId::from([2; 32]),
-			ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
+			ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
 			ClusterGovParams {
 				treasury_share: Perbill::from_float(0.05),
 				validators_share: Perbill::from_float(0.01),
@@ -166,7 +166,7 @@ fn add_and_delete_node_works() {
 		assert_ok!(DdcClusters::set_cluster_params(
 			RuntimeOrigin::signed(AccountId::from([1; 32])),
 			ClusterId::from([1; 20]),
-			ClusterParams { node_provider_auth_contract: contract_id },
+			ClusterParams { node_provider_auth_contract: Some(contract_id) },
 		));
 
 		// Node doesn't exist
@@ -296,7 +296,7 @@ fn set_cluster_params_works() {
 			DdcClusters::set_cluster_params(
 				RuntimeOrigin::signed(AccountId::from([2; 32])),
 				ClusterId::from([2; 20]),
-				ClusterParams { node_provider_auth_contract: AccountId::from([2; 32]) },
+				ClusterParams { node_provider_auth_contract: Some(AccountId::from([2; 32])) },
 			),
 			Error::<Test>::ClusterDoesNotExist
 		);
@@ -307,7 +307,7 @@ fn set_cluster_params_works() {
 			ClusterId::from([1; 20]),
 			AccountId::from([1; 32]),
 			AccountId::from([2; 32]),
-			ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
+			ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
 			ClusterGovParams {
 				treasury_share: Perbill::from_float(0.05),
 				validators_share: Perbill::from_float(0.01),
@@ -329,7 +329,7 @@ fn set_cluster_params_works() {
 			DdcClusters::set_cluster_params(
 				RuntimeOrigin::signed(AccountId::from([2; 32])),
 				ClusterId::from([1; 20]),
-				ClusterParams { node_provider_auth_contract: AccountId::from([2; 32]) },
+				ClusterParams { node_provider_auth_contract: Some(AccountId::from([2; 32])) },
 			),
 			Error::<Test>::OnlyClusterManager
 		);
@@ -337,7 +337,7 @@ fn set_cluster_params_works() {
 		assert_ok!(DdcClusters::set_cluster_params(
 			RuntimeOrigin::signed(AccountId::from([1; 32])),
 			ClusterId::from([1; 20]),
-			ClusterParams { node_provider_auth_contract: AccountId::from([2; 32]) },
+			ClusterParams { node_provider_auth_contract: Some(AccountId::from([2; 32])) },
 		));
 
 		// Checking that event was emitted
@@ -384,7 +384,7 @@ fn set_cluster_gov_params_works() {
 			ClusterId::from([1; 20]),
 			AccountId::from([1; 32]),
 			AccountId::from([2; 32]),
-			ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
+			ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
 			cluster_gov_params.clone()
 		));
 
