@@ -9,6 +9,7 @@ codec = { package = "parity-scale-codec", version = "3.1.5", default-features = 
 ddc-primitives = { version = "0.1.0", default-features = false, path = "../../primitives" }
 ddc-traits = { version = "0.1.0", default-features = false, path = "../../traits" }
 frame-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", optional = true }
+frame-election-provider-support = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 frame-support = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 frame-system = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 log = { version = "0.4.17", default-features = false }
@@ -20,6 +21,7 @@ sp-staking = { default-features = false, git = "https://github.com/paritytech/su
 sp-std = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 
 [dev-dependencies]
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 sp-tracing = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 substrate-test-utils = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
@@ -38,5 +40,6 @@ std = [
   "sp-staking/std",
   "sp-std/std",
   "sp-core/std",
+  "frame-election-provider-support/std",
 ]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
