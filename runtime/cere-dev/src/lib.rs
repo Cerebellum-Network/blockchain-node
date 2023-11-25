@@ -23,6 +23,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
+use ddc_traits::pallet::PalletVisitor;
 use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragmen, VoteWeight};
 use frame_support::{
 	construct_runtime,
@@ -72,8 +73,8 @@ use sp_runtime::{
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	traits::{
-		self, BlakeTwo256, Block as BlockT, ConvertInto, NumberFor, OpaqueKeys,
-		SaturatedConversion, StaticLookup,
+		self, AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto, NumberFor,
+		OpaqueKeys, SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
@@ -1352,12 +1353,21 @@ parameter_types! {
 	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
 }
 
+pub struct TreasureWrapper;
+impl<T: frame_system::Config> PalletVisitor<T> for TreasureWrapper {
+	fn get_account_id() -> T::AccountId {
+		TreasuryPalletId::get().into_account_truncating()
+	}
+}
+
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
 	type ClusterVisitor = DdcClusters;
+	type TreasuryVisitor = TreasureWrapper;
+	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
 }
 
 construct_runtime!(
