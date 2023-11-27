@@ -1,10 +1,12 @@
 //! DdcStaking pallet benchmarking.
 
 use crate::{Pallet as DdcClusters, *};
-use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams, NodePubKey};
+use ddc_primitives::{
+	CDNNodeParams, ClusterGovParams, ClusterId, ClusterParams, NodeParams, NodePubKey,
+};
 
 use pallet_contracts::chain_extension::UncheckedFrom;
-use pallet_ddc_nodes::{CDNNodeParams, Node};
+use pallet_ddc_nodes::Node;
 use sp_runtime::Perbill;
 use sp_std::prelude::*;
 
@@ -18,7 +20,7 @@ pub fn config_cluster<T: Config>(user: T::AccountId, cluster_id: ClusterId)
 where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
-	let cluster_params = ClusterParams { node_provider_auth_contract: user.clone() };
+	let cluster_params = ClusterParams { node_provider_auth_contract: Some(user.clone()) };
 	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
 		treasury_share: Perbill::default(),
 		validators_share: Perbill::default(),
@@ -53,7 +55,7 @@ pub fn config_cluster_and_node<T: Config>(
 where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
-	let cluster_params = ClusterParams { node_provider_auth_contract: user.clone() };
+	let cluster_params = ClusterParams { node_provider_auth_contract: Some(user.clone()) };
 	let cdn_node_params = CDNNodeParams {
 		host: vec![1u8, 255],
 		http_port: 35000u16,
@@ -86,11 +88,9 @@ where
 		cluster_gov_params,
 	);
 
-	if let Ok(new_node) = Node::<T>::new(
-		node_pub_key.clone(),
-		user.clone(),
-		pallet_ddc_nodes::NodeParams::CDNParams(cdn_node_params),
-	) {
+	if let Ok(new_node) =
+		Node::<T>::new(node_pub_key.clone(), user.clone(), NodeParams::CDNParams(cdn_node_params))
+	{
 		let _ = T::NodeRepository::create(new_node);
 	}
 
@@ -108,7 +108,7 @@ where
 	auth_contract.authorize_node(node_pub_key)?;
 
 	let updated_cluster_params =
-		ClusterParams { node_provider_auth_contract: auth_contract.contract_id };
+		ClusterParams { node_provider_auth_contract: Some(auth_contract.contract_id) };
 
 	// Register auth contract
 	let _ = DdcClusters::<T>::set_cluster_params(
