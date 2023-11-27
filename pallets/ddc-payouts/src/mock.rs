@@ -117,7 +117,7 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 
 		let mut amount_to_charge = amount;
 		if amount_to_charge < 50_000_000 {
-			amount_to_charge = PARTIAL_CHARGE;
+			amount_to_charge = PARTIAL_CHARGE; // for user 3
 		}
 
 		let charge = amount_to_charge.saturated_into::<BalanceOf<T>>();
@@ -139,6 +139,7 @@ pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
 pub const VALIDATOR2_ACCOUNT_ID: AccountId = 222;
 pub const VALIDATOR3_ACCOUNT_ID: AccountId = 333;
 pub const PARTIAL_CHARGE: u128 = 100;
+pub const USER3_BALANCE: u128 = 1000;
 
 pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_streamed: 2_000_000,
@@ -288,7 +289,7 @@ impl ExtBuilder {
 			balances: vec![
 				(1, 1000000000000000000000000),
 				(2, 10),   // < PARTIAL_CHARGE
-				(3, 1000), // > PARTIAL_CHARGE
+				(3, USER3_BALANCE), // > PARTIAL_CHARGE
 				(4, 1000000000000000000000000),
 			],
 		}
