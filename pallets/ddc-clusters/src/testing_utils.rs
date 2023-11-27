@@ -1,20 +1,19 @@
 //! DdcStaking pallet benchmarking.
 
-use crate::{Pallet as DdcClusters, *};
 use ddc_primitives::{
 	CDNNodeParams, ClusterGovParams, ClusterId, ClusterParams, NodeParams, NodePubKey,
 };
-
-use pallet_contracts::chain_extension::UncheckedFrom;
-use pallet_ddc_nodes::Node;
-use sp_runtime::Perbill;
-use sp_std::prelude::*;
-
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 	BenchmarkError,
 };
 use frame_system::RawOrigin;
+use pallet_contracts::chain_extension::UncheckedFrom;
+use pallet_ddc_nodes::Node;
+use sp_runtime::Perbill;
+use sp_std::prelude::*;
+
+use crate::{Pallet as DdcClusters, *};
 
 pub fn config_cluster<T: Config>(user: T::AccountId, cluster_id: ClusterId)
 where

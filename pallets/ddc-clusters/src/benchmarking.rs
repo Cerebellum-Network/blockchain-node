@@ -1,19 +1,18 @@
 //! DdcStaking pallet benchmarking.
 
-use super::*;
-use crate::{cluster::ClusterProps, Pallet as DdcClusters};
 use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams, NodePubKey};
-
-use pallet_contracts::chain_extension::UncheckedFrom;
-use sp_runtime::{AccountId32, Perbill};
-use sp_std::prelude::*;
-
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 	BenchmarkError,
 };
 use frame_system::RawOrigin;
+use pallet_contracts::chain_extension::UncheckedFrom;
+use sp_runtime::{AccountId32, Perbill};
+use sp_std::prelude::*;
 use testing_utils::*;
+
+use super::*;
+use crate::{cluster::ClusterProps, Pallet as DdcClusters};
 
 const USER_SEED: u32 = 999666;
 const USER_SEED_2: u32 = 999555;
