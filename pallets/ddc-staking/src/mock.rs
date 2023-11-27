@@ -4,7 +4,8 @@
 
 use crate::{self as pallet_ddc_staking, *};
 use ddc_primitives::{
-	CDNNodePubKey, ClusterBondingParams, ClusterFeesParams, ClusterPricingParams, StorageNodePubKey,
+	CDNNodePubKey, ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams,
+	ClusterPricingParams, NodeParams, NodePubKey, StorageNodePubKey,
 };
 use ddc_traits::{
 	cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
@@ -13,9 +14,11 @@ use ddc_traits::{
 
 use frame_support::{
 	construct_runtime,
+	dispatch::DispatchResult,
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
 	weights::constants::RocksDbWeight,
 };
+
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use lazy_static::lazy_static;
 use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
@@ -108,11 +111,38 @@ impl crate::pallet::Config for Test {
 	type ClusterVisitor = TestClusterVisitor;
 	type ClusterManager = TestClusterManager;
 	type NodeVisitor = MockNodeVisitor;
+	type NodeCreator = TestNodeCreator;
+	type ClusterCreator = TestClusterCreator;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
+pub struct TestNodeCreator;
+pub struct TestClusterCreator;
 pub struct TestClusterVisitor;
+
+impl<T: Config> NodeCreator<T> for TestNodeCreator {
+	fn create_node(
+		_node_pub_key: NodePubKey,
+		_provider_id: T::AccountId,
+		_node_params: NodeParams,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
+impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
+	fn create_new_cluster(
+		_cluster_id: ClusterId,
+		_cluster_manager_id: T::AccountId,
+		_cluster_reserve_id: T::AccountId,
+		_cluster_params: ClusterParams<T::AccountId>,
+		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
 		Ok(())

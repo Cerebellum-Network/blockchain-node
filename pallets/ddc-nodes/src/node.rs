@@ -1,13 +1,13 @@
 #![allow(clippy::needless_lifetimes)] // ToDo
 
 use crate::{
-	cdn_node::{CDNNode, CDNNodeParams, CDNNodeProps},
+	cdn_node::{CDNNode, CDNNodeProps},
 	pallet::Error,
-	storage_node::{StorageNode, StorageNodeParams, StorageNodeProps},
+	storage_node::{StorageNode, StorageNodeProps},
 	ClusterId,
 };
 use codec::{Decode, Encode};
-use ddc_primitives::{NodePubKey, NodeType};
+use ddc_primitives::{NodeParams, NodePubKey, NodeType};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
@@ -15,13 +15,6 @@ use sp_runtime::RuntimeDebug;
 pub enum Node<T: frame_system::Config> {
 	Storage(StorageNode<T>),
 	CDN(CDNNode<T>),
-}
-
-// Params fields are always coming from extrinsic input
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum NodeParams {
-	StorageParams(StorageNodeParams),
-	CDNParams(CDNNodeParams),
 }
 
 // Props fields may include internal protocol properties

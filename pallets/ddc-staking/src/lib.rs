@@ -31,8 +31,8 @@ use crate::weights::WeightInfo;
 use codec::{Decode, Encode, HasCompact};
 pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 use ddc_traits::{
-	cluster::{ClusterVisitor, ClusterVisitorError},
-	node::NodeVisitor,
+	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+	node::{NodeCreator, NodeVisitor},
 	staking::{StakingVisitor, StakingVisitorError},
 };
 
@@ -161,9 +161,13 @@ pub mod pallet {
 
 		type ClusterVisitor: ClusterVisitor<Self>;
 
+		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
+
 		type ClusterManager: ClusterManager<Self>;
 
 		type NodeVisitor: NodeVisitor<Self>;
+
+		type NodeCreator: NodeCreator<Self>;
 	}
 
 	/// Map from all locked "stash" accounts to the controller account.
