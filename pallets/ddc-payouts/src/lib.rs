@@ -60,8 +60,8 @@ pub struct NodeUsage {
 /// Stores reward in tokens(units) of node provider as per NodeUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct NodeReward {
-	pub transfer: u128, // tokens for transferred_bytes
-	pub storage: u128,  // tokens for stored_bytes
+	pub transfer: u64, // tokens for transferred_bytes
+	pub storage: u64,  // tokens for stored_bytes
 	pub puts: u128,     // tokens for number_of_puts
 	pub gets: u128,     // tokens for number_of_gets
 }
@@ -77,8 +77,8 @@ pub struct BillingReportDebt {
 /// Stores charge in tokens(units) of customer as per CustomerUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct CustomerCharge {
-	pub transfer: u128, // tokens for transferred_bytes
-	pub storage: u128,  // tokens for stored_bytes
+	pub transfer: u64, // tokens for transferred_bytes
+	pub storage: u64,  // tokens for stored_bytes
 	pub puts: u128,     // tokens for number_of_puts
 	pub gets: u128,     // tokens for number_of_gets
 }
@@ -360,9 +360,9 @@ pub mod pallet {
 			for payer in payers {
 				let customer_charge = get_customer_charge::<T>(cluster_id, &payer.1)?;
 				let total_customer_charge = (|| -> Option<u128> {
-					customer_charge
-						.transfer
-						.checked_add(customer_charge.storage)?
+					(customer_charge
+						.transfer as u128)
+						.checked_add(customer_charge.storage as u128)?
 						.checked_add(customer_charge.puts)?
 						.checked_add(customer_charge.gets)
 				})()
@@ -477,10 +477,10 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::NotExpectedClusterState)?;
 
 			let total_customer_charge = (|| -> Option<u128> {
-				billing_report
+				(billing_report
 					.total_customer_charge
-					.transfer
-					.checked_add(billing_report.total_customer_charge.storage)?
+					.transfer as u128)
+					.checked_add(billing_report.total_customer_charge.storage as u128)?
 					.checked_add(billing_report.total_customer_charge.puts)?
 					.checked_add(billing_report.total_customer_charge.gets)
 			})()
@@ -608,9 +608,9 @@ pub mod pallet {
 				)
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 				let amount_to_reward = (|| -> Option<u128> {
-					node_reward
-						.transfer
-						.checked_add(node_reward.storage)?
+					(node_reward
+						.transfer as u128)
+						.checked_add(node_reward.storage as u128)?
 						.checked_add(node_reward.puts)?
 						.checked_add(node_reward.gets)
 				})()
@@ -693,10 +693,10 @@ pub mod pallet {
 
 			ensure!(billing_report.state == State::ProvidersRewarded, Error::<T>::NotExpectedState);
 			let expected_amount_to_reward = (|| -> Option<u128> {
-				billing_report
+				(billing_report
 					.total_customer_charge
-					.transfer
-					.checked_add(billing_report.total_customer_charge.storage)?
+					.transfer as u128)
+					.checked_add(billing_report.total_customer_charge.storage as u128)?
 					.checked_add(billing_report.total_customer_charge.puts)?
 					.checked_add(billing_report.total_customer_charge.gets)
 			})()
@@ -803,14 +803,14 @@ pub mod pallet {
 				.checked_mul(pricing.unit_per_mb_streamed)?
 				.checked_div(byte_unit::MEBIBYTE)
 		})()
-		.ok_or(Error::<T>::ArithmeticOverflow)?;
+		.ok_or(Error::<T>::ArithmeticOverflow)?.try_into().map_err(|_| Error::<T>::ArithmeticOverflow)?;
 
 		total.storage = (|| -> Option<u128> {
 			(usage.stored_bytes as u128)
 				.checked_mul(pricing.unit_per_mb_stored)?
 				.checked_div(byte_unit::MEBIBYTE)
 		})()
-		.ok_or(Error::<T>::ArithmeticOverflow)?;
+		.ok_or(Error::<T>::ArithmeticOverflow)?.try_into().map_err(|_| Error::<T>::ArithmeticOverflow)?;
 
 		total.gets = usage
 			.number_of_gets
