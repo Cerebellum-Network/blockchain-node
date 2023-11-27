@@ -1,10 +1,10 @@
 //! Tests for the module.
 
-use super::{mock::*, *};
 use ddc_primitives::{CDNNodePubKey, StorageNodePubKey};
-
 use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
 use pallet_balances::Error as BalancesError;
+
+use super::{mock::*, *};
 
 pub const BLOCK_TIME: u64 = 1000;
 pub const INIT_TIMESTAMP: u64 = 30_000;

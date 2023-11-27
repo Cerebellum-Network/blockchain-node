@@ -1,13 +1,14 @@
 //! DdcStaking pallet benchmarking.
 #![cfg(feature = "runtime-benchmarks")]
 
-use super::*;
-use crate::Pallet as DdcCustomers;
 use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams};
 use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_support::traits::Currency;
 use sp_runtime::Perbill;
 use sp_std::prelude::*;
+
+use super::*;
+use crate::Pallet as DdcCustomers;
 
 pub type BalanceOf<T> =
 	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;

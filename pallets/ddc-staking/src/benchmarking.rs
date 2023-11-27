@@ -1,18 +1,17 @@
 //! DdcStaking pallet benchmarking.
 
-use super::*;
-use crate::Pallet as DdcStaking;
 use ddc_primitives::{CDNNodeParams, CDNNodePubKey, NodeParams, NodeType, StorageNodePubKey};
-use testing_utils::*;
-
-use frame_support::traits::Currency;
-use sp_runtime::traits::StaticLookup;
-use sp_std::prelude::*;
-
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 };
+use frame_support::traits::Currency;
 use frame_system::RawOrigin;
+use sp_runtime::traits::StaticLookup;
+use sp_std::prelude::*;
+use testing_utils::*;
+
+use super::*;
+use crate::Pallet as DdcStaking;
 
 const USER_SEED: u32 = 999666;
 

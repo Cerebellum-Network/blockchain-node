@@ -1,11 +1,12 @@
 #![cfg(test)]
 
+use frame_support::{assert_noop, assert_ok};
+use sp_core::U256;
+
 use super::{
 	mock::{new_test_ext, Erc721, RuntimeOrigin, Test, USER_A, USER_B, USER_C},
 	*,
 };
-use frame_support::{assert_noop, assert_ok};
-use sp_core::U256;
 
 #[test]
 fn mint_burn_tokens() {

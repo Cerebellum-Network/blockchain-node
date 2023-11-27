@@ -15,7 +15,6 @@ mod tests;
 use core::fmt::Debug;
 
 use codec::{Decode, Encode, HasCompact};
-
 use ddc_primitives::{BucketId, ClusterId};
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor},
@@ -26,14 +25,13 @@ use frame_support::{
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
 	BoundedVec, PalletId,
 };
+pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
-
-pub use pallet::*;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
@@ -167,9 +165,10 @@ impl<
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use frame_support::{pallet_prelude::*, traits::LockableCurrency};
 	use frame_system::pallet_prelude::*;
+
+	use super::*;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
