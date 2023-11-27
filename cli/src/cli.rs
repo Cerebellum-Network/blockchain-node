@@ -1,7 +1,7 @@
 #[allow(missing_docs)]
 #[derive(Debug, clap::Parser)]
 pub struct Cli {
-	#[clap(subcommand)]
+	#[command(subcommand)]
 	pub subcommand: Option<Subcommand>,
 	#[clap(flatten)]
 	pub run: RunCmd,
@@ -9,21 +9,22 @@ pub struct Cli {
 
 #[allow(missing_docs)]
 #[derive(Debug, clap::Parser)]
+#[group(skip)]
 pub struct RunCmd {
 	#[clap(flatten)]
 	pub base: sc_cli::RunCmd,
 
 	/// Enable DDC validation (disabled by default). Works only on validator nodes with enabled
 	/// offchain workers.
-	#[clap(long, requires = "dac-url")]
+	#[arg(long, requires = "dac_url")]
 	pub enable_ddc_validation: bool,
 
 	/// DAC DataModel HTTP endpoint to retrieve DDC activity data for validation.
-	#[clap(long, requires = "enable-ddc-validation", value_parser = url::Url::parse)]
+	#[arg(long, requires = "enable_ddc_validation", value_parser = url::Url::parse)]
 	pub dac_url: Option<String>,
 
 	/// Force using Cere Dev runtime.
-	#[clap(long = "force-cere-dev")]
+	#[arg(long = "force-cere-dev")]
 	pub force_cere_dev: bool,
 
 	/// Disable automatic hardware benchmarks.
@@ -33,7 +34,7 @@ pub struct RunCmd {
 	///
 	/// The results are then printed out in the logs, and also sent as part of
 	/// telemetry, if telemetry is enabled.
-	#[clap(long)]
+	#[arg(long)]
 	pub no_hardware_benchmarks: bool,
 }
 
@@ -41,7 +42,7 @@ pub struct RunCmd {
 #[derive(Debug, clap::Subcommand)]
 pub enum Subcommand {
 	/// Key management cli utilities
-	#[clap(subcommand)]
+	#[command(subcommand)]
 	Key(sc_cli::KeySubcommand),
 
 	/// Build a chain specification.
@@ -66,7 +67,7 @@ pub enum Subcommand {
 	Revert(sc_cli::RevertCmd),
 
 	/// Sub-commands concerned with benchmarking.
-	#[clap(subcommand)]
+	#[command(subcommand)]
 	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
 
 	/// Try some command against runtime state.
