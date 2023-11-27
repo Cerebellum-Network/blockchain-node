@@ -2,6 +2,8 @@
 
 use frame_support::{ord_parameter_types, parameter_types, traits::Everything, weights::Weight};
 use frame_system::{self as system};
+pub use pallet_balances as balances;
+use pallet_chainbridge as bridge;
 use sp_core::{hashing::blake2_128, H256};
 use sp_runtime::{
 	testing::Header,
@@ -10,8 +12,6 @@ use sp_runtime::{
 };
 
 use crate::{self as erc721, Config};
-pub use pallet_balances as balances;
-use pallet_chainbridge as bridge;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;

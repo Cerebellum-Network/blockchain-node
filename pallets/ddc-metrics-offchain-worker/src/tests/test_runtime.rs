@@ -2,7 +2,7 @@
 //
 // Inspired from pos-network-node/frame/contracts/src/tests.rs
 
-use crate::{self as pallet_ddc_metrics_offchain_worker, *};
+use std::cell::RefCell;
 
 use frame_support::{
 	parameter_types,
@@ -18,7 +18,8 @@ use sp_runtime::{
 	},
 	MultiSignature, Perbill,
 };
-use std::cell::RefCell;
+
+use crate::{self as pallet_ddc_metrics_offchain_worker, *};
 
 pub type Signature = MultiSignature;
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;

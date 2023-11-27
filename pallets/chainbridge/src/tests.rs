@@ -1,5 +1,7 @@
 #![cfg(test)]
 
+use frame_support::{assert_noop, assert_ok};
+
 use super::{
 	mock::{
 		assert_events, new_test_ext, Balances, Bridge, ProposalLifetime, RuntimeCall, RuntimeEvent,
@@ -9,7 +11,6 @@ use super::{
 	*,
 };
 use crate::mock::new_test_ext_initialized;
-use frame_support::{assert_noop, assert_ok};
 
 #[test]
 fn derive_ids() {
@@ -141,12 +142,7 @@ fn asset_transfer_success() {
 		assert_ok!(Bridge::set_threshold(RuntimeOrigin::root(), TEST_THRESHOLD,));
 
 		assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), dest_id));
-		assert_ok!(Bridge::transfer_fungible(
-			dest_id,
-			resource_id,
-			to.clone(),
-			amount.into()
-		));
+		assert_ok!(Bridge::transfer_fungible(dest_id, resource_id, to.clone(), amount.into()));
 		assert_events(vec![
 			RuntimeEvent::Bridge(RawEvent::ChainWhitelisted(dest_id)),
 			RuntimeEvent::Bridge(RawEvent::FungibleTransfer(
@@ -174,11 +170,7 @@ fn asset_transfer_success() {
 			metadata.clone(),
 		))]);
 
-		assert_ok!(Bridge::transfer_generic(
-			dest_id,
-			resource_id,
-			metadata.clone()
-		));
+		assert_ok!(Bridge::transfer_generic(dest_id, resource_id, metadata.clone()));
 		assert_events(vec![RuntimeEvent::Bridge(RawEvent::GenericTransfer(
 			dest_id,
 			3,
@@ -200,23 +192,12 @@ fn asset_transfer_invalid_resource_id() {
 		assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), dest_id));
 
 		assert_noop!(
-			Bridge::transfer_fungible(
-				dest_id,
-				resource_id,
-				to,
-				amount.into()
-			),
+			Bridge::transfer_fungible(dest_id, resource_id, to, amount.into()),
 			Error::<Test>::ResourceDoesNotExist
 		);
 
 		assert_noop!(
-			Bridge::transfer_nonfungible(
-				dest_id,
-				resource_id,
-				vec![],
-				vec![],
-				vec![]
-			),
+			Bridge::transfer_nonfungible(dest_id, resource_id, vec![], vec![], vec![]),
 			Error::<Test>::ResourceDoesNotExist
 		);
 

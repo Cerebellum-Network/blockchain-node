@@ -26,17 +26,15 @@ pub(crate) mod mock;
 mod tests;
 
 pub mod weights;
-use crate::weights::WeightInfo;
+use core::fmt::Debug;
 
 use codec::{Decode, Encode, HasCompact};
-use core::fmt::Debug;
 pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
 	node::{NodeCreator, NodeVisitor},
 	staking::{StakingVisitor, StakingVisitorError},
 };
-
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
@@ -53,7 +51,7 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 
-pub use pallet::*;
+use crate::weights::WeightInfo;
 
 const DDC_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC maintainer's stake
 
