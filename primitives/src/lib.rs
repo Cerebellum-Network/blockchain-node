@@ -16,7 +16,7 @@ pub type CDNNodePubKey = AccountId32;
 // ClusterParams includes Governance non-sensetive parameters only
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterParams<AccountId> {
-	pub node_provider_auth_contract: AccountId,
+	pub node_provider_auth_contract: Option<AccountId>,
 }
 
 // ClusterGovParams includes Governance sensitive parameters
