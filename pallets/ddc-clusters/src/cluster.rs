@@ -3,11 +3,14 @@ use codec::{Decode, Encode};
 use ddc_primitives::{ClusterId, ClusterParams};
 use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 
 parameter_types! {
 	pub MaxClusterParamsLen: u16 = 2048;
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct Cluster<AccountId> {
 	pub cluster_id: ClusterId,
@@ -16,6 +19,7 @@ pub struct Cluster<AccountId> {
 	pub props: ClusterProps<AccountId>,
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterProps<AccountId> {
 	pub node_provider_auth_contract: AccountId,
