@@ -44,72 +44,95 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcStaking Bonded (r:1 w:1)
 	// Storage: DdcStaking Ledger (r:1 w:1)
 	// Storage: DdcStaking Nodes (r:1 w:1)
+	// Storage: DdcStaking Providers (r:1 w:1)
+	// Storage: DdcNodes CDNNodes (r:1 w:0)
 	// Storage: Balances Locks (r:1 w:1)
 	fn bond() -> Weight {
-		Weight::from_ref_time(55_007_000_u64)
-			.saturating_add(T::DbWeight::get().reads(4_u64))
-			.saturating_add(T::DbWeight::get().writes(4_u64))
+		// Minimum execution time: 35_000 nanoseconds.
+		Weight::from_ref_time(37_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(6_u64))
+			.saturating_add(T::DbWeight::get().writes(5_u64))
 	}
 	// Storage: DdcStaking Ledger (r:1 w:1)
 	// Storage: DdcStaking CDNs (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
-	// Storage: DdcStaking CurrentEra (r:1 w:0)
+	// Storage: DdcStaking Providers (r:1 w:0)
+	// Storage: DdcNodes CDNNodes (r:1 w:0)
 	// Storage: Balances Locks (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn unbond() -> Weight {
-		Weight::from_ref_time(47_727_000_u64)
+		// Minimum execution time: 37_000 nanoseconds.
+		Weight::from_ref_time(38_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(7_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
+	}
+	// Storage: DdcStaking Ledger (r:1 w:1)
+	// Storage: DdcStaking Providers (r:1 w:0)
+	// Storage: Balances Locks (r:1 w:1)
+	// Storage: System Account (r:1 w:1)
+	// Storage: DdcStaking LeavingCDNs (r:1 w:0)
+	// Storage: DdcStaking LeavingStorages (r:1 w:0)
+	fn withdraw_unbonded() -> Weight {
+		// Minimum execution time: 33_000 nanoseconds.
+		Weight::from_ref_time(34_000_000_u64)
 			.saturating_add(T::DbWeight::get().reads(6_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
-	// Storage: DdcStaking Ledger (r:1 w:1)
-	// Storage: DdcStaking CurrentEra (r:1 w:0)
-	// Storage: Balances Locks (r:1 w:1)
-	// Storage: System Account (r:1 w:1)
-	fn withdraw_unbonded() -> Weight {
-		Weight::from_ref_time(69_750_000_u64)
-			.saturating_add(T::DbWeight::get().reads(4_u64))
-			.saturating_add(T::DbWeight::get().writes(3_u64))
-	}
+	// Storage: DdcClusters Clusters (r:1 w:0)
 	// Storage: DdcStaking Ledger (r:1 w:0)
-	// Storage: DdcStaking Settings (r:1 w:0)
+	// Storage: DdcClusters ClustersGovParams (r:1 w:0)
 	// Storage: DdcStaking CDNs (r:1 w:0)
+	// Storage: DdcStaking Providers (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:1)
+	// Storage: DdcStaking LeavingStorages (r:1 w:0)
 	fn store() -> Weight {
-		Weight::from_ref_time(26_112_000_u64)
-			.saturating_add(T::DbWeight::get().reads(4_u64))
+		// Minimum execution time: 28_000 nanoseconds.
+		Weight::from_ref_time(29_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(7_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+	// Storage: DdcClusters Clusters (r:1 w:0)
 	// Storage: DdcStaking Ledger (r:1 w:0)
-	// Storage: DdcStaking Settings (r:1 w:0)
+	// Storage: DdcClusters ClustersGovParams (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
+	// Storage: DdcStaking Providers (r:1 w:0)
 	// Storage: DdcStaking CDNs (r:1 w:1)
+	// Storage: DdcStaking LeavingCDNs (r:1 w:0)
 	fn serve() -> Weight {
-		Weight::from_ref_time(19_892_000_u64)
-			.saturating_add(T::DbWeight::get().reads(4_u64))
+		// Minimum execution time: 27_000 nanoseconds.
+		Weight::from_ref_time(28_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(7_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	// Storage: DdcStaking Ledger (r:1 w:1)
-	// Storage: DdcStaking CurrentEra (r:1 w:0)
 	// Storage: DdcStaking CDNs (r:1 w:1)
-	// Storage: DdcStaking Settings (r:1 w:0)
+	// Storage: DdcClusters ClustersGovParams (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
 	fn chill() -> Weight {
-		Weight::from_ref_time(77_450_000_u64)
-			.saturating_add(T::DbWeight::get().reads(5_u64))
+		// Minimum execution time: 27_000 nanoseconds.
+		Weight::from_ref_time(28_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(4_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcStaking Bonded (r:1 w:1)
 	// Storage: DdcStaking Ledger (r:2 w:2)
 	fn set_controller() -> Weight {
-		Weight::from_ref_time(38_521_000_u64)
+		// Minimum execution time: 12_000 nanoseconds.
+		Weight::from_ref_time(13_000_000_u64)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
-	// Storage: DdcStaking Nodes (r:1 w:1)
+	// Storage: DdcStaking Nodes (r:1 w:2)
+	// Storage: DdcStaking Providers (r:1 w:1)
+	// Storage: DdcStaking CDNs (r:1 w:0)
+	// Storage: DdcStaking Storages (r:1 w:0)
+	// Storage: DdcStaking LeavingCDNs (r:1 w:0)
+	// Storage: DdcStaking LeavingStorages (r:1 w:0)
 	fn set_node() -> Weight {
-		Weight::from_ref_time(21_779_000_u64)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
+		// Minimum execution time: 13_000 nanoseconds.
+		Weight::from_ref_time(14_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(6_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 }
 
@@ -118,71 +141,94 @@ impl WeightInfo for () {
 	// Storage: DdcStaking Bonded (r:1 w:1)
 	// Storage: DdcStaking Ledger (r:1 w:1)
 	// Storage: DdcStaking Nodes (r:1 w:1)
+	// Storage: DdcStaking Providers (r:1 w:1)
+	// Storage: DdcNodes CDNNodes (r:1 w:0)
 	// Storage: Balances Locks (r:1 w:1)
 	fn bond() -> Weight {
-		Weight::from_ref_time(55_007_000_u64)
-			.saturating_add(RocksDbWeight::get().reads(4_u64))
-			.saturating_add(RocksDbWeight::get().writes(4_u64))
+		// Minimum execution time: 35_000 nanoseconds.
+		Weight::from_ref_time(37_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(6_u64))
+			.saturating_add(RocksDbWeight::get().writes(5_u64))
 	}
 	// Storage: DdcStaking Ledger (r:1 w:1)
 	// Storage: DdcStaking CDNs (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
-	// Storage: DdcStaking CurrentEra (r:1 w:0)
+	// Storage: DdcStaking Providers (r:1 w:0)
+	// Storage: DdcNodes CDNNodes (r:1 w:0)
 	// Storage: Balances Locks (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn unbond() -> Weight {
-		Weight::from_ref_time(47_727_000_u64)
+		// Minimum execution time: 37_000 nanoseconds.
+		Weight::from_ref_time(38_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(7_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
+	}
+	// Storage: DdcStaking Ledger (r:1 w:1)
+	// Storage: DdcStaking Providers (r:1 w:0)
+	// Storage: Balances Locks (r:1 w:1)
+	// Storage: System Account (r:1 w:1)
+	// Storage: DdcStaking LeavingCDNs (r:1 w:0)
+	// Storage: DdcStaking LeavingStorages (r:1 w:0)
+	fn withdraw_unbonded() -> Weight {
+		// Minimum execution time: 33_000 nanoseconds.
+		Weight::from_ref_time(34_000_000_u64)
 			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
-	// Storage: DdcStaking Ledger (r:1 w:1)
-	// Storage: DdcStaking CurrentEra (r:1 w:0)
-	// Storage: Balances Locks (r:1 w:1)
-	// Storage: System Account (r:1 w:1)
-	fn withdraw_unbonded() -> Weight {
-		Weight::from_ref_time(69_750_000_u64)
-			.saturating_add(RocksDbWeight::get().reads(4_u64))
-			.saturating_add(RocksDbWeight::get().writes(3_u64))
-	}
+	// Storage: DdcClusters Clusters (r:1 w:0)
 	// Storage: DdcStaking Ledger (r:1 w:0)
-	// Storage: DdcStaking Settings (r:1 w:0)
+	// Storage: DdcClusters ClustersGovParams (r:1 w:0)
 	// Storage: DdcStaking CDNs (r:1 w:0)
+	// Storage: DdcStaking Providers (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:1)
+	// Storage: DdcStaking LeavingStorages (r:1 w:0)
 	fn store() -> Weight {
-		Weight::from_ref_time(26_112_000_u64)
-			.saturating_add(RocksDbWeight::get().reads(4_u64))
+		// Minimum execution time: 28_000 nanoseconds.
+		Weight::from_ref_time(29_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(7_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
+	// Storage: DdcClusters Clusters (r:1 w:0)
 	// Storage: DdcStaking Ledger (r:1 w:0)
-	// Storage: DdcStaking Settings (r:1 w:0)
+	// Storage: DdcClusters ClustersGovParams (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
+	// Storage: DdcStaking Providers (r:1 w:0)
 	// Storage: DdcStaking CDNs (r:1 w:1)
+	// Storage: DdcStaking LeavingCDNs (r:1 w:0)
 	fn serve() -> Weight {
-		Weight::from_ref_time(19_892_000_u64)
-			.saturating_add(RocksDbWeight::get().reads(4_u64))
+		// Minimum execution time: 27_000 nanoseconds.
+		Weight::from_ref_time(28_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(7_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	// Storage: DdcStaking Ledger (r:1 w:1)
-	// Storage: DdcStaking CurrentEra (r:1 w:0)
 	// Storage: DdcStaking CDNs (r:1 w:1)
-	// Storage: DdcStaking Settings (r:1 w:0)
+	// Storage: DdcClusters ClustersGovParams (r:1 w:0)
 	// Storage: DdcStaking Storages (r:1 w:0)
 	fn chill() -> Weight {
-		Weight::from_ref_time(77_450_000_u64)
-			.saturating_add(RocksDbWeight::get().reads(5_u64))
+		// Minimum execution time: 27_000 nanoseconds.
+		Weight::from_ref_time(28_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(4_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcStaking Bonded (r:1 w:1)
 	// Storage: DdcStaking Ledger (r:2 w:2)
 	fn set_controller() -> Weight {
-		Weight::from_ref_time(38_521_000_u64)
+		// Minimum execution time: 12_000 nanoseconds.
+		Weight::from_ref_time(13_000_000_u64)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
-	// Storage: DdcStaking Nodes (r:1 w:1)
+	// Storage: DdcStaking Nodes (r:1 w:2)
+	// Storage: DdcStaking Providers (r:1 w:1)
+	// Storage: DdcStaking CDNs (r:1 w:0)
+	// Storage: DdcStaking Storages (r:1 w:0)
+	// Storage: DdcStaking LeavingCDNs (r:1 w:0)
+	// Storage: DdcStaking LeavingStorages (r:1 w:0)
 	fn set_node() -> Weight {
-		Weight::from_ref_time(21_779_000_u64)
-			.saturating_add(RocksDbWeight::get().reads(1_u64))
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
+		// Minimum execution time: 13_000 nanoseconds.
+		Weight::from_ref_time(14_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(6_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 }

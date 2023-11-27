@@ -27,9 +27,9 @@ pub mod benchmarking;
 #[cfg(any(feature = "runtime-benchmarks", test))]
 pub mod testing_utils;
 
-use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey, StorageNodePubKey};
+use ddc_primitives::{CDNNodePubKey, ClusterId, NodeParams, NodePubKey, StorageNodePubKey};
 use ddc_traits::{
-	node::{NodeVisitor, NodeVisitorError},
+	node::{NodeCreator, NodeVisitor, NodeVisitorError},
 	staking::StakingVisitor,
 };
 
@@ -43,8 +43,8 @@ mod node;
 mod storage_node;
 
 pub use crate::{
-	cdn_node::{CDNNode, CDNNodeParams},
-	node::{Node, NodeError, NodeParams, NodeTrait},
+	cdn_node::CDNNode,
+	node::{Node, NodeError, NodeTrait},
 	storage_node::StorageNode,
 };
 
@@ -240,6 +240,19 @@ pub mod pallet {
 
 		fn exists(node_pub_key: &NodePubKey) -> bool {
 			Self::get(node_pub_key.clone()).is_ok()
+		}
+	}
+
+	impl<T: Config> NodeCreator<T> for Pallet<T> {
+		fn create_node(
+			node_pub_key: NodePubKey,
+			provider_id: T::AccountId,
+			node_params: NodeParams,
+		) -> DispatchResult {
+			let node = Node::<T>::new(node_pub_key, provider_id, node_params)
+				.map_err(Into::<Error<T>>::into)?;
+			Self::create(node).map_err(Into::<Error<T>>::into)?;
+			Ok(())
 		}
 	}
 }
