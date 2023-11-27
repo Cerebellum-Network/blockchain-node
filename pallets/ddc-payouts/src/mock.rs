@@ -141,6 +141,8 @@ pub const VALIDATOR3_ACCOUNT_ID: AccountId = 333;
 pub const PARTIAL_CHARGE: u128 = 100;
 pub const USER3_BALANCE: u128 = 1000;
 
+pub const FREE_CLUSTER_ID: ClusterId = ClusterId::zero();
+
 pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_streamed: 2_000_000,
 	unit_per_mb_stored: 3_000_000,
@@ -152,6 +154,12 @@ pub const PRICING_FEES: ClusterFeesParams = ClusterFeesParams {
 	treasury_share: Perbill::from_percent(1),
 	validators_share: Perbill::from_percent(10),
 	cluster_reserve_share: Perbill::from_percent(2),
+};
+
+pub const PRICING_FEES_ZERO: ClusterFeesParams = ClusterFeesParams {
+	treasury_share: Perbill::from_percent(0),
+	validators_share: Perbill::from_percent(0),
+	cluster_reserve_share: Perbill::from_percent(0),
 };
 
 pub struct TestTreasuryVisitor;
@@ -231,6 +239,14 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 	}
 }
 
+pub fn get_fees(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
+	if *cluster_id == FREE_CLUSTER_ID {
+		Ok(PRICING_FEES_ZERO)
+	} else {
+		Ok(PRICING_FEES)
+	}
+}
+
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
@@ -264,8 +280,8 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		Ok(PRICING_PARAMS)
 	}
 
-	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
-		Ok(PRICING_FEES)
+	fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
+		get_fees(cluster_id)
 	}
 
 	fn get_reserve_account_id(

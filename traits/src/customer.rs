@@ -1,3 +1,7 @@
+use codec::{Decode, Encode};
+use sp_runtime::RuntimeDebug;
+use scale_info::TypeInfo;
+
 pub trait CustomerCharger<T: frame_system::Config> {
 	fn charge_content_owner(
 		content_owner: T::AccountId,
@@ -6,6 +10,7 @@ pub trait CustomerCharger<T: frame_system::Config> {
 	) -> Result<u128, CustomerChargerError>;
 }
 
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum CustomerChargerError {
 	NotOwner,
 	ArithmeticUnderflow,

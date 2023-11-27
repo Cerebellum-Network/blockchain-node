@@ -630,6 +630,117 @@ fn end_charging_customers_works() {
 }
 
 #[test]
+fn end_charging_customers_works_zero_fees() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let dac_account = 123u64;
+		let user1 = 1u64;
+		let cluster_id = ClusterId::zero();
+		let era = 100;
+		let max_batch_index = 0;
+		let batch_index = 0;
+		let usage1 = CustomerUsage {
+			transferred_bytes: 23452345,
+			stored_bytes: 3345234523,
+			number_of_puts: 4456456345234523,
+			number_of_gets: 523423,
+		};
+		let payers = vec![(user1, usage1.clone())];
+
+		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
+
+		assert_ok!(DdcPayouts::begin_billing_report(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+		));
+
+		assert_ok!(DdcPayouts::begin_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			max_batch_index,
+		));
+
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers,
+		));
+
+		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge = calculate_charge(usage1);
+		System::assert_last_event(
+			Event::Charged { cluster_id, era, customer_id: user1, amount: charge }.into(),
+		);
+
+		let mut balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+		assert_eq!(balance, charge);
+		assert_eq!(System::events().len(), 4 + 3); // 3 for Currency::transfer
+
+		assert_ok!(DdcPayouts::end_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+		));
+
+		System::assert_has_event(Event::ChargingFinished { cluster_id, era }.into());
+		assert_eq!(System::events().len(), 7 + 1);
+
+		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		assert_eq!(report_after.state, State::CustomersChargedWithFees);
+
+		let fees = get_fees(&cluster_id).unwrap();
+
+		let total_left_from_one = (fees.treasury_share +
+			fees.validators_share +
+			fees.cluster_reserve_share)
+			.left_from_one();
+
+		assert_eq!(total_left_from_one, Perbill::one());
+
+		assert_eq!(fees.treasury_share, Perbill::zero());
+		assert_eq!(fees.validators_share, Perbill::zero());
+		assert_eq!(fees.cluster_reserve_share, Perbill::zero());
+
+		balance = Balances::free_balance(TREASURY_ACCOUNT_ID);
+		assert_eq!(balance, 0);
+
+		balance = Balances::free_balance(RESERVE_ACCOUNT_ID);
+		assert_eq!(balance, 0);
+
+		balance = Balances::free_balance(VALIDATOR1_ACCOUNT_ID);
+		assert_eq!(balance, 0);
+
+		balance = Balances::free_balance(VALIDATOR2_ACCOUNT_ID);
+		assert_eq!(balance, 0);
+
+		balance = Balances::free_balance(VALIDATOR3_ACCOUNT_ID);
+		assert_eq!(balance, 0);
+
+		assert_eq!(
+			report_after.total_customer_charge.transfer,
+			total_left_from_one * report_before.total_customer_charge.transfer
+		);
+		assert_eq!(
+			report_after.total_customer_charge.storage,
+			total_left_from_one * report_before.total_customer_charge.storage
+		);
+		assert_eq!(
+			report_after.total_customer_charge.puts,
+			total_left_from_one * report_before.total_customer_charge.puts
+		);
+		assert_eq!(
+			report_after.total_customer_charge.gets,
+			total_left_from_one * report_before.total_customer_charge.gets
+		);
+	})
+}
+
+#[test]
 fn begin_rewarding_providers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = 1u64;
