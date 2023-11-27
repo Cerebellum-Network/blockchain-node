@@ -19,7 +19,7 @@ use codec::{Decode, Encode, HasCompact};
 use ddc_primitives::{BucketId, ClusterId};
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor},
-	customer::CustomerCharger,
+	customer::{CustomerCharger, CustomerChargerError},
 };
 use frame_support::{
 	parameter_types,
@@ -565,32 +565,37 @@ pub mod pallet {
 			content_owner: T::AccountId,
 			billing_vault: T::AccountId,
 			amount: u128,
-		) -> DispatchResult {
-			let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotOwner)?;
+		) -> Result<u128, CustomerChargerError> {
+			let actually_charged: BalanceOf<T>;
+			let mut ledger = Self::ledger(&content_owner).ok_or(CustomerChargerError::NotOwner)?;
 			let mut amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
 
-			ensure!(ledger.total >= ledger.active, Error::<T>::ArithmeticUnderflow);
+			ensure!(ledger.total >= ledger.active, CustomerChargerError::ArithmeticUnderflow);
 			if ledger.active >= amount_to_deduct {
+				actually_charged = amount_to_deduct;
 				ledger.active = ledger
 					.active
 					.checked_sub(&amount_to_deduct)
-					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+					.ok_or(CustomerChargerError::ArithmeticUnderflow)?;
 				ledger.total = ledger
 					.total
 					.checked_sub(&amount_to_deduct)
-					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+					.ok_or(CustomerChargerError::ArithmeticUnderflow)?;
 				Self::update_ledger(&content_owner, &ledger);
 			} else {
 				let diff = amount_to_deduct
 					.checked_sub(&ledger.active)
-					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+					.ok_or(CustomerChargerError::ArithmeticUnderflow)?;
+				actually_charged = diff;
 				ledger.total = ledger
 					.total
 					.checked_sub(&ledger.active)
-					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+					.ok_or(CustomerChargerError::ArithmeticUnderflow)?;
 				amount_to_deduct = ledger.active;
 				ledger.active = BalanceOf::<T>::zero();
-				let (ledger, _charged) = ledger.charge_unlocking(diff)?;
+				let (ledger, _charged) = ledger
+					.charge_unlocking(diff)
+					.map_err(|_| CustomerChargerError::UnlockFailed)?;
 				Self::update_ledger(&content_owner, &ledger);
 			};
 
@@ -599,10 +604,11 @@ pub mod pallet {
 				&billing_vault,
 				amount_to_deduct,
 				ExistenceRequirement::KeepAlive,
-			)?;
+			)
+			.map_err(|_| CustomerChargerError::TransferFailed)?;
 			Self::deposit_event(Event::<T>::Charged(content_owner, amount_to_deduct));
 
-			Ok(())
+			Ok(actually_charged.saturated_into::<u128>())
 		}
 	}
 }

@@ -19,8 +19,20 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod weights;
+use crate::weights::WeightInfo;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
+#[cfg(any(feature = "runtime-benchmarks", test))]
+pub mod testing_utils;
+
 use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey, StorageNodePubKey};
-use ddc_traits::node::{NodeVisitor, NodeVisitorError};
+use ddc_traits::{
+	node::{NodeVisitor, NodeVisitorError},
+	staking::StakingVisitor,
+};
+
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 use sp_std::prelude::*;
@@ -48,6 +60,8 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type StakingVisitor: StakingVisitor<Self>;
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
@@ -68,6 +82,7 @@ pub mod pallet {
 		OnlyNodeProvider,
 		NodeIsAssignedToCluster,
 		HostLenExceedsLimit,
+		NodeHasDanglingStake,
 	}
 
 	#[pallet::storage]
@@ -81,7 +96,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::create_node())]
 		pub fn create_node(
 			origin: OriginFor<T>,
 			node_pub_key: NodePubKey,
@@ -95,18 +110,20 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::delete_node())]
 		pub fn delete_node(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let node = Self::get(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAssignedToCluster);
+			let has_stake = T::StakingVisitor::has_stake(&node_pub_key);
+			ensure!(!has_stake, Error::<T>::NodeHasDanglingStake);
 			Self::delete(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::NodeDeleted { node_pub_key });
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_node_params())]
 		pub fn set_node_params(
 			origin: OriginFor<T>,
 			node_pub_key: NodePubKey,
@@ -219,6 +236,10 @@ pub mod pallet {
 			let node =
 				Self::get(node_pub_key.clone()).map_err(|_| NodeVisitorError::NodeDoesNotExist)?;
 			Ok(*node.get_cluster_id())
+		}
+
+		fn exists(node_pub_key: &NodePubKey) -> bool {
+			Self::get(node_pub_key.clone()).is_ok()
 		}
 	}
 }
