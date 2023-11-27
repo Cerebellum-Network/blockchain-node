@@ -714,6 +714,55 @@ pub mod pallet {
 		}
 	}
 
+	fn charge_treasury_fees<T: Config>(
+		treasury_fee: u128,
+		vault: &T::AccountId,
+		treasury_vault: &T::AccountId,
+	) -> DispatchResult {
+		let amount_to_deduct = treasury_fee.saturated_into::<BalanceOf<T>>();
+		<T as pallet::Config>::Currency::transfer(
+			vault,
+			treasury_vault,
+			amount_to_deduct,
+			ExistenceRequirement::KeepAlive,
+		)
+	}
+
+	fn charge_cluster_reserve_fees<T: Config>(
+		cluster_reserve_fee: u128,
+		vault: &T::AccountId,
+		reserve_vault: &T::AccountId,
+	) -> DispatchResult {
+		let amount_to_deduct = cluster_reserve_fee.saturated_into::<BalanceOf<T>>();
+		<T as pallet::Config>::Currency::transfer(
+			vault,
+			reserve_vault,
+			amount_to_deduct,
+			ExistenceRequirement::KeepAlive,
+		)
+	}
+
+	fn charge_validator_fees<T: Config>(
+		validators_fee: u128,
+		vault: &T::AccountId,
+	) -> DispatchResult {
+		let amount_to_deduct = validators_fee
+			.checked_div(T::ValidatorList::count().try_into().unwrap())
+			.ok_or(Error::<T>::ArithmeticOverflow)?
+			.saturated_into::<BalanceOf<T>>();
+
+		for validator_account_id in T::ValidatorList::iter() {
+			<T as pallet::Config>::Currency::transfer(
+				vault,
+				&validator_account_id,
+				amount_to_deduct,
+				ExistenceRequirement::KeepAlive,
+			)?;
+		}
+
+		Ok(())
+	}
+
 	fn get_node_reward(
 		node_usage: &NodeUsage,
 		total_nodes_usage: &NodeUsage,
