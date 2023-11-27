@@ -4,8 +4,8 @@
 
 use crate::{self as pallet_ddc_staking, *};
 use ddc_primitives::{
-	CDNNodePubKey, ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	NodeParams, NodePubKey, StorageNodePubKey,
+	CDNNodePubKey, ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams,
+	ClusterPricingParams, NodeParams, NodePubKey, StorageNodePubKey,
 };
 use ddc_traits::{
 	cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
