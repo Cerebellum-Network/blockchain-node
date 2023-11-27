@@ -17,8 +17,9 @@
 
 //! Some configurable implementations as associated type for the substrate runtime.
 
-use crate::{Authorship, Balances, NegativeImbalance};
 use frame_support::traits::{Currency, OnUnbalanced};
+
+use crate::{Authorship, Balances, NegativeImbalance};
 
 pub struct Author;
 impl OnUnbalanced<NegativeImbalance> for Author {
@@ -31,10 +32,6 @@ impl OnUnbalanced<NegativeImbalance> for Author {
 
 #[cfg(test)]
 mod multiplier_tests {
-	use crate::{
-		AdjustmentVariable, MaximumMultiplier, MinimumMultiplier, Runtime,
-		RuntimeBlockWeights as BlockWeights, System, TargetBlockFullness, TransactionPayment,
-	};
 	use cere_dev_runtime_constants::{currency::*, time::*};
 	use frame_support::{
 		dispatch::DispatchClass,
@@ -45,6 +42,11 @@ mod multiplier_tests {
 		assert_eq_error_rate,
 		traits::{Convert, One, Zero},
 		FixedPointNumber,
+	};
+
+	use crate::{
+		AdjustmentVariable, MaximumMultiplier, MinimumMultiplier, Runtime,
+		RuntimeBlockWeights as BlockWeights, System, TargetBlockFullness, TransactionPayment,
 	};
 
 	fn max_normal() -> Weight {

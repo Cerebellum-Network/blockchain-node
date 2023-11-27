@@ -17,9 +17,7 @@ use frame_support::{
 use frame_system::offchain::{
 	AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer, SigningTypes,
 };
-
 use hex_literal::hex;
-
 use sp_core::crypto::{KeyTypeId, UncheckedFrom};
 use sp_runtime::{
 	offchain::{http, storage::StorageValueRef, Duration},
@@ -33,6 +31,7 @@ extern crate alloc;
 
 use alloc::string::String;
 use core::fmt::Debug;
+
 use frame_support::weights::Weight;
 use scale_info::TypeInfo;
 
@@ -102,13 +101,14 @@ pub const HTTP_TIMEOUT_MS: u64 = 30_000; // in milli-seconds
 /// We can use from supported crypto kinds (`sr25519`, `ed25519` and `ecdsa`) and augment
 /// the types with this pallet-specific identifier.
 pub mod crypto {
-	use super::KEY_TYPE;
 	use frame_system::offchain::AppCrypto;
 	use sp_core::sr25519::Signature as Sr25519Signature;
 	use sp_runtime::{
 		app_crypto::{app_crypto, sr25519},
 		traits::Verify,
 	};
+
+	use super::KEY_TYPE;
 	app_crypto!(sr25519, KEY_TYPE);
 
 	use sp_runtime::{MultiSignature, MultiSigner};
