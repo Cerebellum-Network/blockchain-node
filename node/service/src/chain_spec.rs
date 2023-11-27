@@ -234,6 +234,7 @@ pub fn cere_dev_genesis(
 		transaction_payment: Default::default(),
 		ddc_customers: Default::default(),
 		nomination_pools: Default::default(),
+		ddc_clusters: Default::default(),
 	}
 }
 
