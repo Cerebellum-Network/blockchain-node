@@ -119,7 +119,7 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 	}
 
 	let cluster_id = ClusterId::from([1; 20]);
-	let cluster_params = ClusterParams { node_provider_auth_contract: stash.clone() };
+	let cluster_params = ClusterParams { node_provider_auth_contract: Some(stash.clone()) };
 	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
 		treasury_share: Perbill::default(),
 		validators_share: Perbill::default(),
