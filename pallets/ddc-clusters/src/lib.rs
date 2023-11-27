@@ -41,6 +41,7 @@ use ddc_traits::{
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 use frame_support::{
+	assert_ok,
 	pallet_prelude::*,
 	traits::{Currency, LockableCurrency},
 };
@@ -130,6 +131,60 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub clusters: Vec<Cluster<T::AccountId>>,
+		#[allow(clippy::type_complexity)]
+		pub clusters_gov_params: Vec<(ClusterId, ClusterGovParams<BalanceOf<T>, T::BlockNumber>)>,
+		pub clusters_nodes: Vec<(ClusterId, Vec<NodePubKey>)>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig {
+				clusters: Default::default(),
+				clusters_gov_params: Default::default(),
+				clusters_nodes: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T>
+	where
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	{
+		fn build(&self) {
+			for cluster in &self.clusters {
+				assert_ok!(Pallet::<T>::create_cluster(
+					frame_system::Origin::<T>::Root.into(),
+					cluster.cluster_id,
+					cluster.manager_id.clone(),
+					cluster.reserve_id.clone(),
+					ClusterParams::<T::AccountId> {
+						node_provider_auth_contract: cluster
+							.props
+							.node_provider_auth_contract
+							.clone(),
+					},
+					self.clusters_gov_params
+						.iter()
+						.find(|(id, _)| id == &cluster.cluster_id)
+						.unwrap()
+						.1
+						.clone(),
+				));
+
+				for (cluster_id, nodes) in &self.clusters_nodes {
+					for node_pub_key in nodes {
+						<ClustersNodes<T>>::insert(cluster_id, node_pub_key, true);
+					}
+				}
+			}
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T>
 	where
@@ -177,24 +232,23 @@ pub mod pallet {
 				.map_err(Into::<Error<T>>::into)?;
 			ensure!(!has_chilling_attempt, Error::<T>::NodeChillingIsProhibited);
 
-			// Cluster extension smart contract allows joining.
-			let auth_contract = NodeProviderAuthContract::<T>::new(
-				cluster.props.node_provider_auth_contract,
-				caller_id,
-			);
-
 			// Node with this node with this public key exists.
 			let node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 
-			let is_authorized = auth_contract
-				.is_authorized(
-					node.get_provider_id().to_owned(),
-					node.get_pub_key(),
-					node.get_type(),
-				)
-				.map_err(Into::<Error<T>>::into)?;
-			ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
+			// Cluster extension smart contract allows joining.
+			if let Some(address) = cluster.props.node_provider_auth_contract {
+				let auth_contract = NodeProviderAuthContract::<T>::new(address, caller_id);
+
+				let is_authorized = auth_contract
+					.is_authorized(
+						node.get_provider_id().to_owned(),
+						node.get_pub_key(),
+						node.get_type(),
+					)
+					.map_err(Into::<Error<T>>::into)?;
+				ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
+			};
 
 			// Add node to the cluster.
 			<Self as ClusterManager<T>>::add_node(&cluster_id, &node_pub_key)

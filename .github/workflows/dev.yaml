@@ -91,6 +91,9 @@ jobs:
 
   trigger-e2e-tests:
     runs-on: ubuntu-latest
+    # e2e tests are in migration process. Disable the tests as recommended in this slack message:
+    # https://cere-network.slack.com/archives/C04LRGSLWG0/p1699892758049319
+    if: false
     needs: build
     steps:
       - name: Get short SHA

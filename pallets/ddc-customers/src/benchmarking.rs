@@ -41,7 +41,7 @@ benchmarks! {
 	  ClusterId::from([1; 20]),
 	  user.clone(),
 	  user.clone(),
-	  ClusterParams { node_provider_auth_contract: user.clone() },
+	  ClusterParams { node_provider_auth_contract: Some(user.clone()) },
 	  cluster_gov_params
 	);
 
