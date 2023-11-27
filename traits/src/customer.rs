@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
-use sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
+use sp_runtime::RuntimeDebug;
 
 pub trait CustomerCharger<T: frame_system::Config> {
 	fn charge_content_owner(

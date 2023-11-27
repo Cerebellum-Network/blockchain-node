@@ -400,12 +400,11 @@ pub mod pallet {
 						amount: total_customer_charge,
 					});
 
-					if amount_actually_charged > 0 { // something was charged and should be added
+					if amount_actually_charged > 0 {
+						// something was charged and should be added
 						// calculate ratio
-						let ratio = Perbill::from_rational(
-							amount_actually_charged,
-							total_customer_charge,
-						);
+						let ratio =
+							Perbill::from_rational(amount_actually_charged, total_customer_charge);
 
 						customer_charge.storage = ratio * customer_charge.storage;
 						customer_charge.transfer = ratio * customer_charge.transfer;

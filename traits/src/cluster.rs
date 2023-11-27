@@ -1,8 +1,8 @@
 use codec::{Decode, Encode};
 use ddc_primitives::{ClusterFeesParams, ClusterId, ClusterPricingParams, NodePubKey, NodeType};
 use frame_system::Config;
-use sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
+use sp_runtime::RuntimeDebug;
 
 pub trait ClusterVisitor<T: Config> {
 	fn cluster_has_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> bool;

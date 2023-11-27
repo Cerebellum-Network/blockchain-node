@@ -304,7 +304,7 @@ impl ExtBuilder {
 		let _ = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
 				(1, 1000000000000000000000000),
-				(2, 10),   // < PARTIAL_CHARGE
+				(2, 10),            // < PARTIAL_CHARGE
 				(3, USER3_BALANCE), // > PARTIAL_CHARGE
 				(4, 1000000000000000000000000),
 			],

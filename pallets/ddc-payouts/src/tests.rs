@@ -259,13 +259,14 @@ fn send_charging_customers_batch_fails_uninitialised() {
 
 fn calculate_charge_parts(usage: CustomerUsage) -> CustomerCharge {
 	CustomerCharge {
-		transfer: PRICING_PARAMS.unit_per_mb_streamed * (usage.transferred_bytes as u128) / byte_unit::MEBIBYTE,
-		storage: (PRICING_PARAMS.unit_per_mb_stored * usage.stored_bytes as u128) / byte_unit::MEBIBYTE,
+		transfer: PRICING_PARAMS.unit_per_mb_streamed * (usage.transferred_bytes as u128) /
+			byte_unit::MEBIBYTE,
+		storage: (PRICING_PARAMS.unit_per_mb_stored * usage.stored_bytes as u128) /
+			byte_unit::MEBIBYTE,
 		puts: PRICING_PARAMS.unit_per_put_request * usage.number_of_puts,
-		gets: PRICING_PARAMS.unit_per_get_request * usage.number_of_gets
+		gets: PRICING_PARAMS.unit_per_get_request * usage.number_of_gets,
 	}
 }
-
 
 fn calculate_charge(usage: CustomerUsage) -> u128 {
 	let charge = calculate_charge_parts(usage);
@@ -389,10 +390,22 @@ fn send_charging_customers_batch_works() {
 
 		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let charge1 = calculate_charge_parts(usage1);
-		assert_eq!(charge1.puts + before_total_customer_charge.puts, report.total_customer_charge.puts);
-		assert_eq!(charge1.gets + before_total_customer_charge.gets, report.total_customer_charge.gets);
-		assert_eq!(charge1.storage + before_total_customer_charge.storage, report.total_customer_charge.storage);
-		assert_eq!(charge1.transfer + before_total_customer_charge.transfer, report.total_customer_charge.transfer);
+		assert_eq!(
+			charge1.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			charge1.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			charge1.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			charge1.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
 
 		assert_eq!(report.state, State::ChargingCustomers);
 		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
@@ -413,10 +426,22 @@ fn send_charging_customers_batch_works() {
 		let charge3 = calculate_charge_parts(usage3);
 		let ratio = Perbill::from_rational(PARTIAL_CHARGE, user3_charge);
 		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(ratio * charge3.puts + before_total_customer_charge.puts, report.total_customer_charge.puts);
-		assert_eq!(ratio * charge3.gets + before_total_customer_charge.gets, report.total_customer_charge.gets);
-		assert_eq!(ratio * charge3.storage + before_total_customer_charge.storage, report.total_customer_charge.storage);
-		assert_eq!(ratio * charge3.transfer + before_total_customer_charge.transfer, report.total_customer_charge.transfer);
+		assert_eq!(
+			ratio * charge3.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			ratio * charge3.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			ratio * charge3.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			ratio * charge3.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
 
 		balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
 		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
@@ -695,10 +720,9 @@ fn end_charging_customers_works_zero_fees() {
 
 		let fees = get_fees(&cluster_id).unwrap();
 
-		let total_left_from_one = (fees.treasury_share +
-			fees.validators_share +
-			fees.cluster_reserve_share)
-			.left_from_one();
+		let total_left_from_one =
+			(fees.treasury_share + fees.validators_share + fees.cluster_reserve_share)
+				.left_from_one();
 
 		assert_eq!(total_left_from_one, Perbill::one());
 
