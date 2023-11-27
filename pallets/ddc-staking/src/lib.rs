@@ -32,7 +32,7 @@ use codec::{Decode, Encode, HasCompact};
 use core::fmt::Debug;
 pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 use ddc_traits::{
-	cluster::{ClusterVisitor, ClusterVisitor, ClusterVisitorError},
+	cluster::{ClusterVisitor, ClusterVisitorError},
 	node::{NodeCreator, NodeVisitor},
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
