@@ -60,10 +60,10 @@ pub struct NodeUsage {
 /// Stores reward in tokens(units) of node provider as per NodeUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct NodeReward {
-	pub transfer: u128, // tokens for transferred_bytes
-	pub storage: u128,  // tokens for stored_bytes
-	pub puts: u128,     // tokens for number_of_puts
-	pub gets: u128,     // tokens for number_of_gets
+	pub transfer: u128, // reward in tokens for NodeUsage::transferred_bytes
+	pub storage: u128,  // reward in tokens for NodeUsage::stored_bytes
+	pub puts: u128,     // reward in tokens for NodeUsage::number_of_puts
+	pub gets: u128,     // reward in tokens for NodeUsage::number_of_gets
 }
 
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
@@ -77,10 +77,10 @@ pub struct BillingReportDebt {
 /// Stores charge in tokens(units) of customer as per CustomerUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct CustomerCharge {
-	pub transfer: u128, // tokens for transferred_bytes
-	pub storage: u128,  // tokens for stored_bytes
-	pub puts: u128,     // tokens for number_of_puts
-	pub gets: u128,     // tokens for number_of_gets
+	pub transfer: u128, // charge in tokens for CustomerUsage::transferred_bytes
+	pub storage: u128,  // charge in tokens for CustomerUsage::stored_bytes
+	pub puts: u128,     // charge in tokens for CustomerUsage::number_of_puts
+	pub gets: u128,     // charge in tokens for CustomerUsage::number_of_gets
 }
 
 /// The balance type of this pallet.
@@ -249,17 +249,17 @@ pub mod pallet {
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
+	// don't remove or change numbers, if needed add a new state to the end with new number
+	// DAC uses the state value for integration!
 	pub enum State {
 		#[default]
-		NotInitialized,
-		Initialized,
-		ChargingCustomers,
-		CustomersChargedWithFees,
-		CustomersCharged,
-		FeesDeducted,
-		RewardingProviders,
-		ProvidersRewarded,
-		Finalized,
+		NotInitialized = 1,
+		Initialized = 2,
+		ChargingCustomers = 3,
+		CustomersChargedWithFees = 4,
+		RewardingProviders = 5,
+		ProvidersRewarded = 6,
+		Finalized = 7,
 	}
 
 	#[pallet::call]
