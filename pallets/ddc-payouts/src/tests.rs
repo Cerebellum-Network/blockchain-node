@@ -1078,7 +1078,10 @@ fn send_rewarding_providers_batch_works() {
 		let mut gets_charge = ratio * report_after.total_customer_charge.gets;
 
 		let mut balance = Balances::free_balance(node1);
-		assert_eq!(balance, transfer_charge as u128 + storage_charge as u128 + puts_charge + gets_charge);
+		assert_eq!(
+			balance,
+			transfer_charge as u128 + storage_charge as u128 + puts_charge + gets_charge
+		);
 
 		ratio = Perbill::from_rational(
 			node_usage2.transferred_bytes,
@@ -1098,7 +1101,10 @@ fn send_rewarding_providers_batch_works() {
 		gets_charge = ratio * report_after.total_customer_charge.gets;
 
 		balance = Balances::free_balance(node2);
-		assert_eq!(balance, transfer_charge as u128 + storage_charge as u128 + puts_charge + gets_charge);
+		assert_eq!(
+			balance,
+			transfer_charge as u128 + storage_charge as u128 + puts_charge + gets_charge
+		);
 
 		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
 			RuntimeOrigin::signed(dac_account),
@@ -1126,7 +1132,10 @@ fn send_rewarding_providers_batch_works() {
 		gets_charge = ratio * report_after.total_customer_charge.gets;
 
 		balance = Balances::free_balance(node3);
-		assert_eq!(balance, transfer_charge as u128 + storage_charge as u128 + puts_charge + gets_charge);
+		assert_eq!(
+			balance,
+			transfer_charge as u128 + storage_charge as u128 + puts_charge + gets_charge
+		);
 
 		assert_ok!(DdcPayouts::end_rewarding_providers(
 			RuntimeOrigin::signed(dac_account),
