@@ -93,10 +93,11 @@ parameter_types! {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use frame_support::PalletId;
 	use sp_io::hashing::blake2_128;
 	use sp_runtime::traits::{AccountIdConversion, Zero};
+
+	use super::*;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]

@@ -32,12 +32,10 @@ use ddc_traits::{
 	node::{NodeCreator, NodeVisitor, NodeVisitorError},
 	staking::StakingVisitor,
 };
-
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
-use sp_std::prelude::*;
-
 pub use pallet::*;
+use sp_std::prelude::*;
 mod cdn_node;
 mod node;
 mod storage_node;

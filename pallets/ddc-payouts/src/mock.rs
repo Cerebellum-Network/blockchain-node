@@ -2,7 +2,6 @@
 
 #![allow(dead_code)]
 
-use crate::{self as pallet_ddc_payouts, *};
 use ddc_primitives::{ClusterBondingParams, ClusterFeesParams, ClusterPricingParams, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
@@ -10,7 +9,6 @@ use ddc_traits::{
 	pallet::PalletVisitor,
 };
 use frame_election_provider_support::SortedListProvider;
-
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
@@ -25,6 +23,8 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 use sp_std::prelude::*;
+
+use crate::{self as pallet_ddc_payouts, *};
 
 /// The AccountId alias in this test module.
 pub type AccountId = u64;

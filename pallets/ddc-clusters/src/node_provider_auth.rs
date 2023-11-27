@@ -1,4 +1,3 @@
-use crate::Config;
 use codec::Encode;
 use ddc_primitives::{NodePubKey, NodeType};
 use frame_support::weights::Weight;
@@ -6,6 +5,8 @@ use hex_literal::hex;
 use pallet_contracts::chain_extension::UncheckedFrom;
 use sp_runtime::traits::Hash;
 use sp_std::{prelude::Vec, vec};
+
+use crate::Config;
 
 /// ink! 4.x selector for the "is_authorized" message, equals to the first four bytes of the
 /// blake2("is_authorized"). See also: https://use.ink/basics/selectors#selector-calculation/,
