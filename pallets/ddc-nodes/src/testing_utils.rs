@@ -1,9 +1,10 @@
 //! Testing utils for ddc-staking.
 
-use crate::{Config, NodePubKey};
 use ddc_primitives::{CDNNodeParams, CDNNodePubKey, NodeParams};
 use frame_benchmarking::account;
 use sp_std::vec;
+
+use crate::{Config, NodePubKey};
 
 const SEED: u32 = 0;
 

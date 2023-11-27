@@ -1,10 +1,11 @@
-use crate::node::{NodeError, NodeProps, NodeTrait};
 use codec::{Decode, Encode};
 use ddc_primitives::{CDNNodePubKey, ClusterId, NodeParams, NodePubKey, NodeType};
 use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
+
+use crate::node::{NodeError, NodeProps, NodeTrait};
 
 parameter_types! {
 	pub MaxCDNNodeParamsLen: u16 = 2048;

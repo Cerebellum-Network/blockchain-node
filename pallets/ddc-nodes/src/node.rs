@@ -1,15 +1,16 @@
 #![allow(clippy::needless_lifetimes)] // ToDo
 
+use codec::{Decode, Encode};
+use ddc_primitives::{NodeParams, NodePubKey, NodeType};
+use scale_info::TypeInfo;
+use sp_runtime::RuntimeDebug;
+
 use crate::{
 	cdn_node::{CDNNode, CDNNodeProps},
 	pallet::Error,
 	storage_node::{StorageNode, StorageNodeProps},
 	ClusterId,
 };
-use codec::{Decode, Encode};
-use ddc_primitives::{NodeParams, NodePubKey, NodeType};
-use scale_info::TypeInfo;
-use sp_runtime::RuntimeDebug;
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum Node<T: frame_system::Config> {
