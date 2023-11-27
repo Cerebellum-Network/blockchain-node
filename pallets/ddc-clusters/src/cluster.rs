@@ -22,7 +22,7 @@ pub struct Cluster<AccountId> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterProps<AccountId> {
-	pub node_provider_auth_contract: AccountId,
+	pub node_provider_auth_contract: Option<AccountId>,
 }
 
 impl<AccountId> Cluster<AccountId> {
