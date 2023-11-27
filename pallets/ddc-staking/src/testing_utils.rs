@@ -1,17 +1,16 @@
 //! Testing utils for ddc-staking.
 
-use crate::{Pallet as DdcStaking, *};
 use ddc_primitives::{
 	CDNNodeParams, CDNNodePubKey, ClusterGovParams, ClusterId, ClusterParams, NodeParams,
 	StorageNodeParams,
 };
-
 use frame_benchmarking::account;
-use frame_system::RawOrigin;
-
 use frame_support::traits::Currency;
+use frame_system::RawOrigin;
 use sp_runtime::{traits::StaticLookup, Perbill};
 use sp_std::prelude::*;
+
+use crate::{Pallet as DdcStaking, *};
 
 const SEED: u32 = 0;
 
@@ -119,7 +118,7 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 	}
 
 	let cluster_id = ClusterId::from([1; 20]);
-	let cluster_params = ClusterParams { node_provider_auth_contract: stash.clone() };
+	let cluster_params = ClusterParams { node_provider_auth_contract: Some(stash.clone()) };
 	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
 		treasury_share: Perbill::default(),
 		validators_share: Perbill::default(),

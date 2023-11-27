@@ -1,6 +1,5 @@
 //! Test utilities
 
-use crate::{self as pallet_ddc_customers, *};
 use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,
@@ -21,6 +20,8 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	DispatchResult, Perbill,
 };
+
+use crate::{self as pallet_ddc_customers, *};
 
 /// The AccountId alias in this test module.
 pub(crate) type AccountId = u64;
