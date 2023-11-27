@@ -1,24 +1,28 @@
-use frame_support::traits::{Currency, OffchainWorker};
-use frame_system::Config as FSC;
-use sp_core::offchain::{
-	testing, OffchainDbExt, OffchainWorkerExt, Timestamp as OCWTimestamp, TransactionPoolExt,
+use std::sync::Arc;
+
+use codec::Encode;
+use frame_support::{
+	traits::{Currency, OffchainWorker},
+	weights::Weight,
 };
+use frame_system::Config as FSC;
+use hex_literal::hex;
+use sp_core::{
+	bytes::from_hex,
+	offchain::{
+		testing, OffchainDbExt, OffchainWorkerExt, Timestamp as OCWTimestamp, TransactionPoolExt,
+	},
+};
+use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
 use sp_runtime::{traits::Hash, AccountId32, RuntimeAppPublic};
 use test_runtime::{
 	AccountId, Balance, Balances, Contracts, DdcMetricsOffchainWorker, RuntimeOrigin, System, Test,
 	Timestamp,
 };
 
-use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
-use std::sync::Arc;
-
 use crate::{
 	CURRENT_PERIOD_MS, FINALIZE_METRIC_PERIOD, REPORT_DDN_STATUS_SELECTOR, REPORT_METRICS_SELECTOR,
 };
-use codec::Encode;
-use frame_support::weights::Weight;
-use hex_literal::hex;
-use sp_core::bytes::from_hex;
 
 mod test_runtime;
 
