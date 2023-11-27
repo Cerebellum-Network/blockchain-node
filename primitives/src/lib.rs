@@ -5,7 +5,7 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H160;
-use sp_runtime::{AccountId32, RuntimeDebug};
+use sp_runtime::{AccountId32, Perbill, RuntimeDebug};
 pub type ClusterId = H160;
 pub type DdcEra = u32;
 pub type BucketId = u64;
@@ -18,6 +18,14 @@ pub struct ClusterPricingParams {
 	pub unit_per_put_request: u128,
 	pub unit_per_get_request: u128,
 }
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct ClusterFeesParams {
+	pub treasury_share: Perbill,
+	pub validators_share: Perbill,
+	pub cluster_reserve_share: Perbill,
+}
+
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodePubKey {
