@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use scale_info::TypeInfo;
+use scale_info::{prelude::vec::Vec, TypeInfo};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H160;
@@ -93,4 +93,27 @@ impl TryFrom<u8> for NodeType {
 			_ => Err(()),
 		}
 	}
+}
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct CDNNodeParams {
+	pub host: Vec<u8>,
+	pub http_port: u16,
+	pub grpc_port: u16,
+	pub p2p_port: u16,
+}
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct StorageNodeParams {
+	pub host: Vec<u8>,
+	pub http_port: u16,
+	pub grpc_port: u16,
+	pub p2p_port: u16,
+}
+
+// Params fields are always coming from extrinsic input
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub enum NodeParams {
+	StorageParams(StorageNodeParams),
+	CDNParams(CDNNodeParams),
 }
