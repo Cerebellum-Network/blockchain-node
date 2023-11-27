@@ -4,7 +4,7 @@
 
 use crate::{self as pallet_ddc_staking, *};
 use ddc_primitives::{
-	CDNNodePubKey, ClusterBondingParams, ClusterPricingParams, StorageNodePubKey,
+	CDNNodePubKey, ClusterBondingParams, ClusterFeesParams, ClusterPricingParams, StorageNodePubKey,
 };
 use ddc_traits::{
 	cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
@@ -24,6 +24,7 @@ use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	Perbill,
 };
 use sp_std::collections::btree_map::BTreeMap;
 use std::cell::RefCell;
@@ -144,6 +145,20 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 			unit_per_put_request: 4,
 			unit_per_get_request: 5,
 		})
+	}
+
+	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
+		Ok(ClusterFeesParams {
+			treasury_share: Perbill::from_percent(1),
+			validators_share: Perbill::from_percent(10),
+			cluster_reserve_share: Perbill::from_percent(2),
+		})
+	}
+
+	fn get_reserve_account_id(
+		_cluster_id: &ClusterId,
+	) -> Result<T::AccountId, ClusterVisitorError> {
+		Err(ClusterVisitorError::ClusterDoesNotExist)
 	}
 
 	fn get_bonding_params(
