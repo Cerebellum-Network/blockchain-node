@@ -1,11 +1,10 @@
 #![cfg(test)]
 
-use super::*;
-
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types, traits::Everything, weights::Weight,
 };
 use frame_system::{self as system};
+pub use pallet_balances as balances;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -13,8 +12,8 @@ use sp_runtime::{
 	Perbill,
 };
 
+use super::*;
 use crate::{self as bridge, Config};
-pub use pallet_balances as balances;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;

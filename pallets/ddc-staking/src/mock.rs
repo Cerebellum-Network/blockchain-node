@@ -2,7 +2,8 @@
 
 #![allow(dead_code)]
 
-use crate::{self as pallet_ddc_staking, *};
+use std::cell::RefCell;
+
 use ddc_primitives::{
 	CDNNodePubKey, ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams,
 	ClusterPricingParams, NodeParams, NodePubKey, StorageNodePubKey,
@@ -11,14 +12,12 @@ use ddc_traits::{
 	cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
 	node::{NodeVisitor, NodeVisitorError},
 };
-
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchResult,
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
 	weights::constants::RocksDbWeight,
 };
-
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use lazy_static::lazy_static;
 use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
@@ -30,7 +29,8 @@ use sp_runtime::{
 	Perbill,
 };
 use sp_std::collections::btree_map::BTreeMap;
-use std::cell::RefCell;
+
+use crate::{self as pallet_ddc_staking, *};
 
 /// The AccountId alias in this test module.
 pub(crate) type AccountId = u64;

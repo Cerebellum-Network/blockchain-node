@@ -1,4 +1,3 @@
-use crate as pallet_cere_ddc;
 use frame_support::{construct_runtime, parameter_types, traits::Everything};
 use frame_system as system;
 use sp_core::H256;
@@ -6,6 +5,8 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+
+use crate as pallet_cere_ddc;
 
 // Configure a mock runtime to test the pallet.
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;

@@ -1,11 +1,9 @@
-#[cfg(feature = "cere-native")]
-use cere_runtime as cere;
-
 #[cfg(feature = "cere-dev-native")]
 use cere_dev_runtime as cere_dev;
 #[cfg(feature = "cere-dev-native")]
 use cere_dev_runtime_constants::currency::DOLLARS as TEST_UNITS;
-
+#[cfg(feature = "cere-native")]
+use cere_runtime as cere;
 pub use node_primitives::{AccountId, Balance, Block, Signature};
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;

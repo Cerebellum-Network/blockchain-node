@@ -1,11 +1,12 @@
 //! Tests for the module.
 
-use super::{mock::*, *};
 use ddc_primitives::{CDNNodeParams, ClusterId, ClusterParams, NodeParams, NodePubKey};
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
 use frame_system::Config;
 use hex_literal::hex;
 use sp_runtime::{traits::Hash, AccountId32, Perbill};
+
+use super::{mock::*, *};
 
 #[test]
 fn create_cluster_works() {
