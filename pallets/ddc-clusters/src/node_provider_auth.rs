@@ -54,7 +54,7 @@ where
 			false,
 		)
 		.result
-		.map_err(|_| NodeProviderAuthContractError::ContractCall)?
+		.map_err(|_| NodeProviderAuthContractError::ContractCallFailed)?
 		.data
 		.first()
 		.is_some_and(|x| *x == 1);
@@ -94,7 +94,7 @@ where
 			false,
 		)
 		.result
-		.map_err(|_| NodeProviderAuthContractError::ContractDeploy)?
+		.map_err(|_| NodeProviderAuthContractError::ContractDeployFailed)?
 		.account_id;
 
 		Ok(Self::new(contract_id, caller_id))
@@ -123,7 +123,7 @@ where
 			false,
 		)
 		.result
-		.map_err(|_| NodeProviderAuthContractError::NodeAuthorization)?;
+		.map_err(|_| NodeProviderAuthContractError::NodeAuthorizationNotSuccessful)?;
 
 		Ok(true)
 	}
@@ -134,7 +134,7 @@ where
 }
 
 pub enum NodeProviderAuthContractError {
-	ContractCall,
-	ContractDeploy,
-	NodeAuthorization,
+	ContractCallFailed,
+	ContractDeployFailed,
+	NodeAuthorizationNotSuccessful,
 }

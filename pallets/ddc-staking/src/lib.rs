@@ -34,7 +34,7 @@ pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
 	node::NodeVisitor,
-	staking::{Staker, StakingVisitor, StakingVisitorError},
+	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 
 use frame_support::{
@@ -965,8 +965,8 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> Staker<T, BalanceOf<T>> for Pallet<T> {
-		fn bond_stake_and_serve(
+	impl<T: Config> StakerCreator<T, BalanceOf<T>> for Pallet<T> {
+		fn bond_stake_and_participate(
 			stash: T::AccountId,
 			controller: T::AccountId,
 			node: NodePubKey,
@@ -987,7 +987,10 @@ pub mod pallet {
 				unlocking: Default::default(),
 			};
 			Self::update_ledger(&controller, &item);
-			Self::do_add_cdn(&stash, cluster_id);
+			match node {
+				NodePubKey::StoragePubKey(_node) => Self::do_add_storage(&stash, cluster_id),
+				NodePubKey::CDNPubKey(_node) => Self::do_add_cdn(&stash, cluster_id),
+			}
 
 			Ok(())
 		}

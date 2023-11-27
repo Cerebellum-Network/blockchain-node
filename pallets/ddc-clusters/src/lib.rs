@@ -38,7 +38,7 @@ use ddc_primitives::{
 };
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
-	staking::{Staker, StakingVisitor, StakingVisitorError},
+	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -73,7 +73,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
 		type StakingVisitor: StakingVisitor<Self>;
-		type Staker: Staker<Self, BalanceOf<Self>>;
+		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 		type WeightInfo: WeightInfo;
 	}
@@ -105,7 +105,7 @@ pub mod pallet {
 		NodeChillingIsProhibited,
 		NodeAuthContractCallFailed,
 		NodeAuthContractDeployFailed,
-		NodeAuthNodeAuthorizationFailed,
+		NodeAuthNodeAuthorizationNotSuccessful,
 	}
 
 	#[pallet::storage]
@@ -455,12 +455,12 @@ pub mod pallet {
 	impl<T> From<NodeProviderAuthContractError> for Error<T> {
 		fn from(error: NodeProviderAuthContractError) -> Self {
 			match error {
-				NodeProviderAuthContractError::ContractCall =>
+				NodeProviderAuthContractError::ContractCallFailed =>
 					Error::<T>::NodeAuthContractCallFailed,
-				NodeProviderAuthContractError::ContractDeploy =>
+				NodeProviderAuthContractError::ContractDeployFailed =>
 					Error::<T>::NodeAuthContractDeployFailed,
-				NodeProviderAuthContractError::NodeAuthorization =>
-					Error::<T>::NodeAuthNodeAuthorizationFailed,
+				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
+					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful,
 			}
 		}
 	}

@@ -94,7 +94,7 @@ where
 		let _ = T::NodeRepository::create(new_node);
 	}
 
-	T::Staker::bond_stake_and_serve(
+	T::StakerCreator::bond_stake_and_participate(
 		user.clone(),
 		user.clone(),
 		node_pub_key.clone(),
@@ -123,12 +123,12 @@ where
 impl From<NodeProviderAuthContractError> for Box<BenchmarkError> {
 	fn from(error: NodeProviderAuthContractError) -> Self {
 		match error {
-			NodeProviderAuthContractError::ContractCall =>
+			NodeProviderAuthContractError::ContractCallFailed =>
 				Box::new(BenchmarkError::Stop("NodeAuthContractCallFailed")),
-			NodeProviderAuthContractError::ContractDeploy =>
+			NodeProviderAuthContractError::ContractDeployFailed =>
 				Box::new(BenchmarkError::Stop("NodeAuthContractDeployFailed")),
-			NodeProviderAuthContractError::NodeAuthorization =>
-				Box::new(BenchmarkError::Stop("NodeAuthNodeAuthorizationFailed")),
+			NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
+				Box::new(BenchmarkError::Stop("NodeAuthNodeAuthorizationNotSuccessful")),
 		}
 	}
 }
