@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - 'dev'
+      - 'deployment-0.9.30'
   workflow_dispatch:
 
 env:
