@@ -220,24 +220,23 @@ pub mod pallet {
 				.map_err(Into::<Error<T>>::into)?;
 			ensure!(!has_chilling_attempt, Error::<T>::NodeChillingIsProhibited);
 
-			// Cluster extension smart contract allows joining.
-			let auth_contract = NodeProviderAuthContract::<T>::new(
-				cluster.props.node_provider_auth_contract,
-				caller_id,
-			);
-
 			// Node with this node with this public key exists.
 			let node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 
-			let is_authorized = auth_contract
-				.is_authorized(
-					node.get_provider_id().to_owned(),
-					node.get_pub_key(),
-					node.get_type(),
-				)
-				.map_err(Into::<Error<T>>::into)?;
-			ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
+			// Cluster extension smart contract allows joining.
+			if let Some(address) = cluster.props.node_provider_auth_contract {
+				let auth_contract = NodeProviderAuthContract::<T>::new(address, caller_id);
+
+				let is_authorized = auth_contract
+					.is_authorized(
+						node.get_provider_id().to_owned(),
+						node.get_pub_key(),
+						node.get_type(),
+					)
+					.map_err(Into::<Error<T>>::into)?;
+				ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
+			};
 
 			// Add node to the cluster.
 			<Self as ClusterManager<T>>::add_node(&cluster_id, &node_pub_key)
