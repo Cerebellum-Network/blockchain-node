@@ -129,12 +129,14 @@ pub mod pallet {
 		Charged {
 			cluster_id: ClusterId,
 			era: DdcEra,
+			batch_index: BatchIndex,
 			customer_id: T::AccountId,
 			amount: u128,
 		},
 		ChargeFailed {
 			cluster_id: ClusterId,
 			era: DdcEra,
+			batch_index: BatchIndex,
 			customer_id: T::AccountId,
 			amount: u128,
 		},
@@ -420,6 +422,7 @@ pub mod pallet {
 					Self::deposit_event(Event::<T>::ChargeFailed {
 						cluster_id,
 						era,
+						batch_index,
 						customer_id,
 						amount: total_customer_charge,
 					});
@@ -436,6 +439,7 @@ pub mod pallet {
 					Self::deposit_event(Event::<T>::Charged {
 						cluster_id,
 						era,
+						batch_index,
 						customer_id,
 						amount: total_customer_charge,
 					});
