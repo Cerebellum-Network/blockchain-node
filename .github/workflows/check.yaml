@@ -28,10 +28,6 @@ jobs:
           rustup update stable --no-self-update
           rustup target add wasm32-unknown-unknown
 
-      - name: Install Tarpaulin
-        run: |
-          cargo install cargo-tarpaulin
-
       - name: Check TOML
         uses: dprint/check@v2.2
 
@@ -46,6 +42,12 @@ jobs:
         run: |
           cargo clippy --no-deps --all-targets --features runtime-benchmarks --workspace -- --deny warnings
 
+          - name: Run cargo-tarpaulin
+          uses: actions-rs/tarpaulin@v0.1
+          with:
+            version: '0.15.0'
+            args: '--verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out "Xml"' 
+        
       - name: Check Build
         run: |
           SKIP_WASM_BUILD=1 cargo check --release
@@ -54,10 +56,6 @@ jobs:
         run: >
           pushd node &&
           cargo check --features=runtime-benchmarks --release
-
-      - name: Run Coverage 
-        run: |
-          cargo tarpaulin --verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out "Xml"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v3
