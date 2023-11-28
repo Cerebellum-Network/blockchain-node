@@ -117,7 +117,7 @@ pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 pub struct ExtBuilder;
 
 impl ExtBuilder {
-	fn build(self) -> TestExternalities {
+	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
