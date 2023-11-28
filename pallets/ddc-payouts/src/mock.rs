@@ -2,15 +2,20 @@
 
 #![allow(dead_code)]
 
-use ddc_primitives::{ClusterBondingParams, ClusterFeesParams, ClusterPricingParams, NodeType};
+use ddc_primitives::{
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
+	NodeType,
+};
 use ddc_traits::{
-	cluster::{ClusterVisitor, ClusterVisitorError},
-	customer::CustomerCharger,
+	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+	customer::{CustomerCharger, CustomerDepositor},
 	pallet::PalletVisitor,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
-	construct_runtime, parameter_types,
+	construct_runtime,
+	dispatch::DispatchError,
+	parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
 	weights::constants::RocksDbWeight,
 	PalletId,
@@ -21,7 +26,6 @@ use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError,
 };
 use sp_std::prelude::*;
 
@@ -102,9 +106,12 @@ impl crate::pallet::Config for Test {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = TestCustomerCharger;
+	type CustomerDepositor = TestCustomerDepositor;
 	type ClusterVisitor = TestClusterVisitor;
 	type TreasuryVisitor = TestTreasuryVisitor;
 	type ValidatorList = TestValidatorVisitor<Self>;
+	type ClusterCreator = TestClusterCreator;
+	type WeightInfo = ();
 }
 
 pub struct TestCustomerCharger;
@@ -130,6 +137,29 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 			ExistenceRequirement::KeepAlive,
 		)?;
 		Ok(amount_to_charge)
+	}
+}
+
+pub struct TestClusterCreator;
+impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
+	fn create_new_cluster(
+		_cluster_id: ClusterId,
+		_cluster_manager_id: T::AccountId,
+		_cluster_reserve_id: T::AccountId,
+		_cluster_params: ClusterParams<T::AccountId>,
+		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
+pub struct TestCustomerDepositor;
+impl<T: Config> CustomerDepositor<T> for TestCustomerDepositor {
+	fn deposit(_customer: T::AccountId, _amount: u128) -> Result<(), DispatchError> {
+		Ok(())
+	}
+	fn deposit_extra(_customer: T::AccountId, _amount: u128) -> Result<(), DispatchError> {
+		Ok(())
 	}
 }
 
