@@ -384,7 +384,7 @@ fn send_charging_customers_batch_works() {
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge.clone();
-    batch_index += 1;
+		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
@@ -431,7 +431,6 @@ fn send_charging_customers_batch_works() {
 		// batch 3
 		batch_index += 2;
 		before_total_customer_charge = report.total_customer_charge.clone();
-    batch_index += 2;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
@@ -719,7 +718,8 @@ fn end_charging_customers_works_zero_fees() {
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let charge = calculate_charge(usage1);
 		System::assert_last_event(
-			Event::Charged { cluster_id, era, customer_id: user1, amount: charge }.into(),
+			Event::Charged { cluster_id, era, customer_id: user1, batch_index, amount: charge }
+				.into(),
 		);
 
 		let mut balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
