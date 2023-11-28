@@ -33,7 +33,7 @@ pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
 	node::{NodeCreator, NodeVisitor},
-	staking::{StakingVisitor, StakingVisitorError},
+	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 use frame_support::{
 	assert_ok,
@@ -964,6 +964,37 @@ pub mod pallet {
 					ledger.chilling = None
 				}
 			});
+		}
+	}
+
+	impl<T: Config> StakerCreator<T, BalanceOf<T>> for Pallet<T> {
+		fn bond_stake_and_participate(
+			stash: T::AccountId,
+			controller: T::AccountId,
+			node: NodePubKey,
+			value: BalanceOf<T>,
+			cluster_id: ClusterId,
+		) -> DispatchResult {
+			Nodes::<T>::insert(&node, &stash);
+			Providers::<T>::insert(&stash, &node);
+			<Bonded<T>>::insert(&stash, &controller);
+			let stash_balance = T::Currency::free_balance(&stash);
+			let value = value.min(stash_balance);
+			Self::deposit_event(Event::<T>::Bonded(stash.clone(), value));
+			let item = StakingLedger {
+				stash: stash.clone(),
+				total: value,
+				active: value,
+				chilling: Default::default(),
+				unlocking: Default::default(),
+			};
+			Self::update_ledger(&controller, &item);
+			match node {
+				NodePubKey::StoragePubKey(_node) => Self::do_add_storage(&stash, cluster_id),
+				NodePubKey::CDNPubKey(_node) => Self::do_add_cdn(&stash, cluster_id),
+			}
+
+			Ok(())
 		}
 	}
 
