@@ -1,5 +1,8 @@
+use codec::{Decode, Encode};
 use ddc_primitives::{ClusterFeesParams, ClusterId, ClusterPricingParams, NodePubKey, NodeType};
 use frame_system::Config;
+use scale_info::TypeInfo;
+use sp_runtime::RuntimeDebug;
 
 pub trait ClusterVisitor<T: Config> {
 	fn cluster_has_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> bool;
@@ -30,6 +33,7 @@ pub trait ClusterVisitor<T: Config> {
 	) -> Result<T::BlockNumber, ClusterVisitorError>;
 }
 
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum ClusterVisitorError {
 	ClusterDoesNotExist,
 	ClusterGovParamsNotSet,

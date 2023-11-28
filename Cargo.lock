@@ -1666,6 +1666,8 @@ version = "0.1.0"
 dependencies = [
  "ddc-primitives",
  "frame-system",
+ "parity-scale-codec",
+ "scale-info",
  "sp-runtime",
 ]
 
