@@ -9,13 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
-## [vNext + 1]
-
-### Changed
-
-- [C,D] Updated Substrate to polkadot-v0.9.31
-
 ## [vNext]
+
+- ...
+
+## [4.8.2]
 
 ### Added
 
@@ -28,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- ...
+- [C,D] Updated Substrate to polkadot-v0.9.31
 
 ## [4.8.1]
 
