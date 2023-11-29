@@ -1,6 +1,6 @@
 [package]
 name = "cere-dev-runtime"
-version = "4.8.1"
+version = "4.8.2"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -54,24 +54,24 @@ pallet-babe = { default-features = false, git = "https://github.com/paritytech/s
 pallet-bags-list = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-balances = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-bounties = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-cere-ddc = { version = "4.8.1", default-features = false, path = "../../pallets/ddc" }
-pallet-chainbridge = { version = "4.8.1", default-features = false, path = "../../pallets/chainbridge" }
+pallet-cere-ddc = { version = "4.8.2", default-features = false, path = "../../pallets/ddc" }
+pallet-chainbridge = { version = "4.8.2", default-features = false, path = "../../pallets/chainbridge" }
 pallet-child-bounties = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-collective = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-contracts = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-contracts-primitives = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-ddc-clusters = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-clusters" }
+pallet-ddc-clusters = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-clusters" }
 pallet-ddc-customers = { version = "0.1.0", default-features = false, path = "../../pallets/ddc-customers" }
-pallet-ddc-metrics-offchain-worker = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-metrics-offchain-worker" }
-pallet-ddc-nodes = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-nodes" }
-pallet-ddc-payouts = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-payouts" }
-pallet-ddc-staking = { version = "4.8.1", default-features = false, path = "../../pallets/ddc-staking" }
+pallet-ddc-metrics-offchain-worker = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-metrics-offchain-worker" }
+pallet-ddc-nodes = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-nodes" }
+pallet-ddc-payouts = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-payouts" }
+pallet-ddc-staking = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-staking" }
 pallet-democracy = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-election-provider-multi-phase = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-election-provider-support-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", optional = true }
 pallet-elections-phragmen = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-erc20 = { version = "4.8.1", default-features = false, path = "../../pallets/erc20" }
-pallet-erc721 = { version = "4.8.1", default-features = false, path = "../../pallets/erc721" }
+pallet-erc20 = { version = "4.8.2", default-features = false, path = "../../pallets/erc20" }
+pallet-erc721 = { version = "4.8.2", default-features = false, path = "../../pallets/erc721" }
 pallet-fast-unstake = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.31" }
 pallet-grandpa = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-identity = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
