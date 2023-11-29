@@ -11,14 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 
-### Added
-
-### Changed
-
 - ...
 
 ## [4.8.3]
-
 
 ### Changed
 - [C,D] Updated Substrate to polkadot-v0.9.33
@@ -39,10 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [D] DDC cluster managers access control list in `pallet-ddc-staking` managed by governance.
 - [Zombienet](https://github.com/paritytech/zombienet) configurations to test block building and spawn a network for DDC validation debugging.
 - New `ddc-primitives` crate with DDC common types definition
-
-### Changed
-
-- [C,D] Updated Substrate to polkadot-v0.9.31
 
 ## [4.8.0]
 
