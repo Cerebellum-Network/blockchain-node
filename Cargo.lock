@@ -4782,6 +4782,7 @@ version = "4.8.3"
 dependencies = [
  "ddc-primitives",
  "ddc-traits",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
