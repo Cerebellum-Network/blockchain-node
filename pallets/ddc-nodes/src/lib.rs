@@ -92,6 +92,31 @@ pub mod pallet {
 	#[pallet::getter(fn cdn_nodes)]
 	pub type CDNNodes<T: Config> = StorageMap<_, Blake2_128Concat, CDNNodePubKey, CDNNode<T>>;
 
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub storage_nodes: Vec<StorageNode<T>>,
+		pub cdn_nodes: Vec<CDNNode<T>>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig { storage_nodes: Default::default(), cdn_nodes: Default::default() }
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			for storage_node in &self.storage_nodes {
+				<StorageNodes<T>>::insert(storage_node.pub_key.clone(), storage_node);
+			}
+			for cdn_node in &self.cdn_nodes {
+				<CDNNodes<T>>::insert(cdn_node.pub_key.clone(), cdn_node);
+			}
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::create_node())]
