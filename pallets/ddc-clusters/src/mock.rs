@@ -2,9 +2,8 @@
 
 #![allow(dead_code)]
 
-use crate::{self as pallet_ddc_clusters, *};
 use ddc_primitives::{ClusterId, NodePubKey};
-use ddc_traits::staking::{StakingVisitor, StakingVisitorError};
+use ddc_traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything, Nothing},
@@ -21,6 +20,8 @@ use sp_runtime::{
 	},
 	MultiSignature,
 };
+
+use crate::{self as pallet_ddc_clusters, *};
 
 /// The AccountId alias in this test module.
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
@@ -90,7 +91,6 @@ impl contracts::Config for Test {
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
-	type ContractAccessWeight = ();
 	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 }
@@ -181,6 +181,8 @@ impl pallet_timestamp::Config for Test {
 
 impl pallet_ddc_nodes::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
+	type StakingVisitor = TestStakingVisitor;
+	type WeightInfo = ();
 }
 
 impl crate::pallet::Config for Test {
@@ -188,20 +190,39 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type NodeRepository = DdcNodes;
 	type StakingVisitor = TestStakingVisitor;
+	type StakerCreator = TestStaker;
+	type WeightInfo = ();
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 pub struct TestStakingVisitor;
+pub struct TestStaker;
+
 impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
-	fn node_has_stake(
+	fn has_activated_stake(
 		_node_pub_key: &NodePubKey,
 		_cluster_id: &ClusterId,
 	) -> Result<bool, StakingVisitorError> {
 		Ok(true)
 	}
-	fn node_is_chilling(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
+	fn has_stake(_node_pub_key: &NodePubKey) -> bool {
+		true
+	}
+	fn has_chilling_attempt(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
 		Ok(false)
+	}
+}
+
+impl<T: Config> StakerCreator<T, BalanceOf<T>> for TestStaker {
+	fn bond_stake_and_participate(
+		_stash: T::AccountId,
+		_controller: T::AccountId,
+		_node: NodePubKey,
+		_value: BalanceOf<T>,
+		_cluster_id: ClusterId,
+	) -> sp_runtime::DispatchResult {
+		Ok(())
 	}
 }
 

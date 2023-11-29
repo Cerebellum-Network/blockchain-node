@@ -1,9 +1,12 @@
 //! Test utilities
 
-use crate::{self as pallet_ddc_customers, *};
-use ddc_primitives::{ClusterFeesParams, ClusterPricingParams, NodePubKey, NodeType};
-use ddc_traits::cluster::{ClusterVisitor, ClusterVisitorError};
-
+use ddc_primitives::{
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
+	ClusterPricingParams, NodePubKey, NodeType,
+};
+use ddc_traits::cluster::{
+	ClusterCreator, ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError,
+};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
@@ -15,8 +18,10 @@ use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	Perbill,
+	DispatchResult, Perbill,
 };
+
+use crate::{self as pallet_ddc_customers, *};
 
 /// The AccountId alias in this test module.
 pub(crate) type AccountId = u64;
@@ -101,13 +106,12 @@ impl crate::pallet::Config for Test {
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type ClusterVisitor = TestClusterVisitor;
+	type ClusterCreator = TestClusterCreator;
+	type WeightInfo = ();
 }
 
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
-	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
-		true
-	}
 	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
 		Ok(())
 	}
@@ -154,12 +158,83 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	) -> Result<T::AccountId, ClusterVisitorError> {
 		Err(ClusterVisitorError::ClusterDoesNotExist)
 	}
+
+	fn get_bonding_params(
+		cluster_id: &ClusterId,
+	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+		Ok(ClusterBondingParams {
+			cdn_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
+				cluster_id,
+				NodeType::CDN,
+			)
+			.unwrap_or_default(),
+			cdn_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
+				cluster_id,
+				NodeType::CDN,
+			)
+			.unwrap_or_default(),
+			cdn_unbonding_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
+				cluster_id,
+				NodeType::CDN,
+			)
+			.unwrap_or_default(),
+			storage_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
+				cluster_id,
+				NodeType::Storage,
+			)
+			.unwrap_or_default(),
+			storage_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
+				cluster_id,
+				NodeType::Storage,
+			)
+			.unwrap_or_default(),
+			storage_unbonding_delay:
+				<TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
+					cluster_id,
+					NodeType::Storage,
+				)
+				.unwrap_or_default(),
+		})
+	}
+}
+
+pub struct TestClusterManager;
+impl<T: Config> ClusterManager<T> for TestClusterManager {
+	fn contains_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
+		true
+	}
+	fn add_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<(), ClusterManagerError> {
+		Ok(())
+	}
+
+	fn remove_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<(), ClusterManagerError> {
+		Ok(())
+	}
+}
+
+pub struct TestClusterCreator;
+impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
+	fn create_new_cluster(
+		_cluster_id: ClusterId,
+		_cluster_manager_id: T::AccountId,
+		_cluster_reserve_id: T::AccountId,
+		_cluster_params: ClusterParams<T::AccountId>,
+		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+	) -> DispatchResult {
+		Ok(())
+	}
 }
 
 pub struct ExtBuilder;
 
 impl ExtBuilder {
-	fn build(self) -> TestExternalities {
+	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 

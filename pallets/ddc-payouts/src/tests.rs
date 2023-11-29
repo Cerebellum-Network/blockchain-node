@@ -1,8 +1,9 @@
 //! Tests for the module.
 
-use super::{mock::*, *};
 use ddc_primitives::ClusterId;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
+
+use super::{mock::*, *};
 
 #[test]
 fn set_authorised_caller_works() {

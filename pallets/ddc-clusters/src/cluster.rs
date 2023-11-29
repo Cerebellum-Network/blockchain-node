@@ -1,14 +1,17 @@
-use crate::pallet::Error;
 use codec::{Decode, Encode};
-use ddc_primitives::ClusterId;
+use ddc_primitives::{ClusterId, ClusterParams};
 use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
-use sp_runtime::Perbill;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
+use crate::pallet::Error;
 
 parameter_types! {
 	pub MaxClusterParamsLen: u16 = 2048;
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct Cluster<AccountId> {
 	pub cluster_id: ClusterId,
@@ -17,34 +20,10 @@ pub struct Cluster<AccountId> {
 	pub props: ClusterProps<AccountId>,
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterProps<AccountId> {
-	pub node_provider_auth_contract: AccountId,
-}
-
-// ClusterParams includes Governance non-sensetive parameters only
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct ClusterParams<AccountId> {
-	pub node_provider_auth_contract: AccountId,
-}
-
-// ClusterGovParams includes Governance sensetive parameters
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-#[scale_info(skip_type_params(Balance, BlockNumber, T))]
-pub struct ClusterGovParams<Balance, BlockNumber> {
-	pub treasury_share: Perbill,
-	pub validators_share: Perbill,
-	pub cluster_reserve_share: Perbill,
-	pub cdn_bond_size: Balance,
-	pub cdn_chill_delay: BlockNumber,
-	pub cdn_unbonding_delay: BlockNumber,
-	pub storage_bond_size: Balance,
-	pub storage_chill_delay: BlockNumber,
-	pub storage_unbonding_delay: BlockNumber,
-	pub unit_per_mb_stored: u128,
-	pub unit_per_mb_streamed: u128,
-	pub unit_per_put_request: u128,
-	pub unit_per_get_request: u128,
+	pub node_provider_auth_contract: Option<AccountId>,
 }
 
 impl<AccountId> Cluster<AccountId> {

@@ -1,10 +1,11 @@
-use crate::node::{NodeError, NodeParams, NodeProps, NodeTrait};
 use codec::{Decode, Encode};
-use ddc_primitives::{CDNNodePubKey, ClusterId, NodePubKey, NodeType};
+use ddc_primitives::{CDNNodePubKey, ClusterId, NodeParams, NodePubKey, NodeType};
 use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
+
+use crate::node::{NodeError, NodeProps, NodeTrait};
 
 parameter_types! {
 	pub MaxCDNNodeParamsLen: u16 = 2048;
@@ -23,14 +24,6 @@ pub struct CDNNode<T: frame_system::Config> {
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct CDNNodeProps {
 	pub host: BoundedVec<u8, MaxHostLen>,
-	pub http_port: u16,
-	pub grpc_port: u16,
-	pub p2p_port: u16,
-}
-
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct CDNNodeParams {
-	pub host: Vec<u8>,
 	pub http_port: u16,
 	pub grpc_port: u16,
 	pub p2p_port: u16,

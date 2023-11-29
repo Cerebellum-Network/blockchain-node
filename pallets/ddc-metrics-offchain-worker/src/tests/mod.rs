@@ -1,24 +1,28 @@
-use frame_support::traits::{Currency, OffchainWorker};
-use frame_system::Config as FSC;
-use sp_core::offchain::{
-	testing, OffchainDbExt, OffchainWorkerExt, Timestamp as OCWTimestamp, TransactionPoolExt,
+use std::sync::Arc;
+
+use codec::Encode;
+use frame_support::{
+	traits::{Currency, OffchainWorker},
+	weights::Weight,
 };
+use frame_system::Config as FSC;
+use hex_literal::hex;
+use sp_core::{
+	bytes::from_hex,
+	offchain::{
+		testing, OffchainDbExt, OffchainWorkerExt, Timestamp as OCWTimestamp, TransactionPoolExt,
+	},
+};
+use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
 use sp_runtime::{traits::Hash, AccountId32, RuntimeAppPublic};
 use test_runtime::{
 	AccountId, Balance, Balances, Contracts, DdcMetricsOffchainWorker, RuntimeOrigin, System, Test,
 	Timestamp,
 };
 
-use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
-use std::sync::Arc;
-
 use crate::{
 	CURRENT_PERIOD_MS, FINALIZE_METRIC_PERIOD, REPORT_DDN_STATUS_SELECTOR, REPORT_METRICS_SELECTOR,
 };
-use codec::Encode;
-use frame_support::weights::Weight;
-use hex_literal::hex;
-use sp_core::bytes::from_hex;
 
 mod test_runtime;
 
@@ -288,7 +292,7 @@ fn should_run_contract() {
 			RuntimeOrigin::signed(alice.clone()),
 			contract_id.clone(),
 			0,
-			Weight::from_ref_time(100_000_000_000),
+			Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX),
 			None,
 			call_data.clone(),
 		)
@@ -298,7 +302,7 @@ fn should_run_contract() {
 			alice,
 			contract_id,
 			0,
-			Weight::from_ref_time(100_000_000_000),
+			Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX),
 			None,
 			call_data,
 			false,
@@ -336,7 +340,8 @@ fn deploy_contract() -> AccountId {
 
 	// Deploy the contract.
 	//let endowment = contracts::Config::<T>::subsistence_threshold_uncached();
-	const GAS_LIMIT: frame_support::weights::Weight = Weight::from_ref_time(100_000_000_000);
+	const GAS_LIMIT: frame_support::weights::Weight =
+		Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX);
 	const ENDOWMENT: Balance = 100_000_000_000;
 	Contracts::instantiate_with_code(
 		RuntimeOrigin::signed(alice.clone()),
@@ -371,7 +376,7 @@ fn deploy_contract() -> AccountId {
 			RuntimeOrigin::signed(alice.clone()),
 			contract_id.clone(),
 			0,
-			Weight::from_ref_time(1_000_000_000_000),
+			Weight::from_ref_time(1_000_000_000_000).set_proof_size(u64::MAX),
 			None,
 			call_data,
 		);

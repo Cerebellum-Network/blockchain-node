@@ -1,12 +1,12 @@
 //! Tests for the module.
 
-use super::{mock::*, *};
-use ddc_primitives::{ClusterId, NodePubKey};
+use ddc_primitives::{CDNNodeParams, ClusterId, ClusterParams, NodeParams, NodePubKey};
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
 use frame_system::Config;
 use hex_literal::hex;
-use pallet_ddc_nodes::{CDNNodeParams, NodeParams};
 use sp_runtime::{traits::Hash, AccountId32, Perbill};
+
+use super::{mock::*, *};
 
 #[test]
 fn create_cluster_works() {
@@ -36,7 +36,7 @@ fn create_cluster_works() {
 				ClusterId::from([1; 20]),
 				AccountId::from([1; 32]),
 				AccountId::from([2; 32]),
-				ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
+				ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
 				cluster_gov_params.clone()
 			),
 			BadOrigin
@@ -48,7 +48,7 @@ fn create_cluster_works() {
 			ClusterId::from([1; 20]),
 			AccountId::from([1; 32]),
 			AccountId::from([2; 32]),
-			ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
+			ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
 			cluster_gov_params.clone()
 		));
 
@@ -59,7 +59,7 @@ fn create_cluster_works() {
 				ClusterId::from([1; 20]),
 				AccountId::from([1; 32]),
 				AccountId::from([2; 32]),
-				ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
+				ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
 				cluster_gov_params
 			),
 			Error::<Test>::ClusterAlreadyExists
@@ -96,7 +96,7 @@ fn add_and_delete_node_works() {
 			ClusterId::from([1; 20]),
 			AccountId::from([1; 32]),
 			AccountId::from([2; 32]),
-			ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
+			ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
 			ClusterGovParams {
 				treasury_share: Perbill::from_float(0.05),
 				validators_share: Perbill::from_float(0.01),
@@ -166,7 +166,7 @@ fn add_and_delete_node_works() {
 		assert_ok!(DdcClusters::set_cluster_params(
 			RuntimeOrigin::signed(AccountId::from([1; 32])),
 			ClusterId::from([1; 20]),
-			cluster::ClusterParams { node_provider_auth_contract: contract_id },
+			ClusterParams { node_provider_auth_contract: Some(contract_id) },
 		));
 
 		// Node doesn't exist
@@ -183,7 +183,7 @@ fn add_and_delete_node_works() {
 				ClusterId::from([1; 20]),
 				NodePubKey::CDNPubKey(AccountId::from([4; 32])),
 			),
-			Error::<Test>::NodeIsAlreadyAssigned
+			Error::<Test>::AttemptToAddAlreadyAssignedNode
 		);
 
 		// Checking that event was emitted
@@ -218,7 +218,7 @@ fn add_and_delete_node_works() {
 				ClusterId::from([1; 20]),
 				NodePubKey::CDNPubKey(AccountId::from([4; 32])),
 			),
-			Error::<Test>::NodeIsNotAssigned
+			Error::<Test>::AttemptToRemoveNotAssignedNode
 		);
 
 		pub const CTOR_SELECTOR: [u8; 4] = hex!("9bae9d5e");
@@ -244,7 +244,7 @@ fn add_and_delete_node_works() {
 
 			// Deploy the contract.
 			const GAS_LIMIT: frame_support::weights::Weight =
-				Weight::from_ref_time(100_000_000_000);
+				Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX);
 			const ENDOWMENT: Balance = 0;
 			Contracts::instantiate_with_code(
 				RuntimeOrigin::signed(alice.clone()),
@@ -274,7 +274,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(alice),
 				contract_id.clone(),
 				0,
-				Weight::from_ref_time(1_000_000_000_000),
+				Weight::from_ref_time(1_000_000_000_000).set_proof_size(u64::MAX),
 				None,
 				call_data,
 			);
@@ -296,7 +296,7 @@ fn set_cluster_params_works() {
 			DdcClusters::set_cluster_params(
 				RuntimeOrigin::signed(AccountId::from([2; 32])),
 				ClusterId::from([2; 20]),
-				ClusterParams { node_provider_auth_contract: AccountId::from([2; 32]) },
+				ClusterParams { node_provider_auth_contract: Some(AccountId::from([2; 32])) },
 			),
 			Error::<Test>::ClusterDoesNotExist
 		);
@@ -307,7 +307,7 @@ fn set_cluster_params_works() {
 			ClusterId::from([1; 20]),
 			AccountId::from([1; 32]),
 			AccountId::from([2; 32]),
-			ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
+			ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
 			ClusterGovParams {
 				treasury_share: Perbill::from_float(0.05),
 				validators_share: Perbill::from_float(0.01),
@@ -329,7 +329,7 @@ fn set_cluster_params_works() {
 			DdcClusters::set_cluster_params(
 				RuntimeOrigin::signed(AccountId::from([2; 32])),
 				ClusterId::from([1; 20]),
-				ClusterParams { node_provider_auth_contract: AccountId::from([2; 32]) },
+				ClusterParams { node_provider_auth_contract: Some(AccountId::from([2; 32])) },
 			),
 			Error::<Test>::OnlyClusterManager
 		);
@@ -337,7 +337,7 @@ fn set_cluster_params_works() {
 		assert_ok!(DdcClusters::set_cluster_params(
 			RuntimeOrigin::signed(AccountId::from([1; 32])),
 			ClusterId::from([1; 20]),
-			ClusterParams { node_provider_auth_contract: AccountId::from([2; 32]) },
+			ClusterParams { node_provider_auth_contract: Some(AccountId::from([2; 32])) },
 		));
 
 		// Checking that event was emitted
@@ -384,7 +384,7 @@ fn set_cluster_gov_params_works() {
 			ClusterId::from([1; 20]),
 			AccountId::from([1; 32]),
 			AccountId::from([2; 32]),
-			ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
+			ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
 			cluster_gov_params.clone()
 		));
 

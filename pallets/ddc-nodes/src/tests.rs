@@ -1,10 +1,10 @@
 //! Tests for the module.
 
-use super::{mock::*, *};
-use crate::{cdn_node::CDNNodeParams, storage_node::StorageNodeParams};
-use ddc_primitives::NodePubKey;
+use ddc_primitives::{CDNNodeParams, NodePubKey, StorageNodeParams};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::AccountId32;
+
+use super::{mock::*, *};
 
 #[test]
 fn create_node_works() {
