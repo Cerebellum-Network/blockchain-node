@@ -140,6 +140,13 @@ pub mod pallet {
 			customer_id: T::AccountId,
 			amount: u128,
 		},
+		Indebted {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			batch_index: BatchIndex,
+			customer_id: T::AccountId,
+			amount: u128,
+		},
 		ChargingFinished {
 			cluster_id: ClusterId,
 			era: DdcEra,
@@ -386,14 +393,22 @@ pub mod pallet {
 						DebtorCustomers::<T>::try_get(cluster_id, customer_id.clone())
 							.unwrap_or_else(|_| Zero::zero());
 
-					customer_debt = (|| -> Option<u128> {
-						customer_debt
-							.checked_add(total_customer_charge)?
-							.checked_sub(amount_actually_charged)
-					})()
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
+					let debt = total_customer_charge
+						.checked_sub(amount_actually_charged)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+					customer_debt =
+						customer_debt.checked_add(debt).ok_or(Error::<T>::ArithmeticOverflow)?;
 
 					DebtorCustomers::<T>::insert(cluster_id, customer_id.clone(), customer_debt);
+
+					Self::deposit_event(Event::<T>::Indebted {
+						cluster_id,
+						era,
+						batch_index,
+						customer_id: customer_id.clone(),
+						amount: debt,
+					});
 
 					Self::deposit_event(Event::<T>::ChargeFailed {
 						cluster_id,
@@ -639,7 +654,7 @@ pub mod pallet {
 					&updated_billing_report.vault,
 					&node_provider_id,
 					reward,
-					ExistenceRequirement::KeepAlive,
+					ExistenceRequirement::AllowDeath,
 				)?;
 
 				updated_billing_report
@@ -744,7 +759,7 @@ pub mod pallet {
 			vault,
 			treasury_vault,
 			amount_to_deduct,
-			ExistenceRequirement::KeepAlive,
+			ExistenceRequirement::AllowDeath,
 		)
 	}
 
@@ -758,7 +773,7 @@ pub mod pallet {
 			vault,
 			reserve_vault,
 			amount_to_deduct,
-			ExistenceRequirement::KeepAlive,
+			ExistenceRequirement::AllowDeath,
 		)
 	}
 
@@ -776,7 +791,7 @@ pub mod pallet {
 				vault,
 				&validator_account_id,
 				amount_to_deduct,
-				ExistenceRequirement::KeepAlive,
+				ExistenceRequirement::AllowDeath,
 			)?;
 		}
 

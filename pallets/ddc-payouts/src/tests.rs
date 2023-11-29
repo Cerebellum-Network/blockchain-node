@@ -369,6 +369,17 @@ fn send_charging_customers_batch_works() {
 			}
 			.into(),
 		);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				amount: debt,
+			}
+			.into(),
+		);
 		System::assert_last_event(
 			Event::Charged {
 				cluster_id,
@@ -380,7 +391,7 @@ fn send_charging_customers_batch_works() {
 			.into(),
 		);
 
-		assert_eq!(System::events().len(), 5 + 3); // 3 for Currency::transfer
+		assert_eq!(System::events().len(), 5 + 3 + 1); // 3 for Currency::transfer
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge.clone();
@@ -428,6 +439,7 @@ fn send_charging_customers_batch_works() {
 		assert_eq!(user1_debt, None);
 
 		let balance_before = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+
 		// batch 3
 		batch_index += 2;
 		before_total_customer_charge = report.total_customer_charge.clone();
@@ -466,6 +478,17 @@ fn send_charging_customers_batch_works() {
 		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
 		debt = user3_charge - PARTIAL_CHARGE;
 		assert_eq!(user3_debt, debt);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user3_debtor,
+				batch_index,
+				amount: user3_debt,
+			}
+			.into(),
+		);
 
 		System::assert_last_event(
 			Event::ChargeFailed {

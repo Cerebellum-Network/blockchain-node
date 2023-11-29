@@ -6,7 +6,7 @@ use crate::{self as pallet_ddc_payouts, *};
 use ddc_primitives::{ClusterFeesParams, ClusterPricingParams, NodePubKey, NodeType};
 use ddc_traits::{
 	cluster::{ClusterVisitor, ClusterVisitorError},
-	customer::{CustomerCharger, CustomerChargerError},
+	customer::CustomerCharger,
 	pallet::PalletVisitor,
 };
 use frame_election_provider_support::SortedListProvider;
@@ -23,6 +23,7 @@ use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	DispatchError,
 };
 use sp_std::prelude::*;
 
@@ -112,8 +113,8 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		content_owner: T::AccountId,
 		billing_vault: T::AccountId,
 		amount: u128,
-	) -> Result<u128, CustomerChargerError> {
-		ensure!(amount > 1_000_000, CustomerChargerError::TransferFailed); //  any error will do
+	) -> Result<u128, DispatchError> {
+		ensure!(amount > 1_000_000, DispatchError::BadOrigin); //  any error will do
 
 		let mut amount_to_charge = amount;
 		if amount_to_charge < 50_000_000 {
@@ -127,8 +128,7 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 			&billing_vault,
 			charge,
 			ExistenceRequirement::KeepAlive,
-		)
-		.map_err(|_| CustomerChargerError::TransferFailed)?;
+		)?;
 		Ok(amount_to_charge)
 	}
 }
