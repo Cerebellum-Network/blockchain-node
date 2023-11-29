@@ -129,4 +129,10 @@ benchmarks! {
 	verify {
 		assert!(Nodes::<T>::contains_key(&new_node));
 	}
+
+	impl_benchmark_test_suite!(
+		DdcStaking,
+		crate::mock::ExtBuilder::default().build(),
+		crate::mock::Test,
+	);
 }
