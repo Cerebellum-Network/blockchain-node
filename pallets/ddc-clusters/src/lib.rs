@@ -14,6 +14,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
+pub mod weights;
+use crate::weights::WeightInfo;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
+#[cfg(any(feature = "runtime-benchmarks", test))]
+pub mod testing_utils;
+
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
@@ -25,7 +33,7 @@ use ddc_primitives::{
 };
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
-	staking::{StakingVisitor, StakingVisitorError},
+	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 use frame_support::{
 	assert_ok,
@@ -67,7 +75,9 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
 		type StakingVisitor: StakingVisitor<Self>;
+		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
@@ -96,6 +106,8 @@ pub mod pallet {
 		/// Cluster candidate should not plan to chill.
 		NodeChillingIsProhibited,
 		NodeAuthContractCallFailed,
+		NodeAuthContractDeployFailed,
+		NodeAuthNodeAuthorizationNotSuccessful,
 	}
 
 	#[pallet::storage]
@@ -179,7 +191,7 @@ pub mod pallet {
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_cluster())]
 		pub fn create_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -198,7 +210,7 @@ pub mod pallet {
 			)
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::add_node())]
 		pub fn add_node(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -247,7 +259,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_node())]
 		pub fn remove_node(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -268,7 +280,7 @@ pub mod pallet {
 		}
 
 		// Sets Governance non-sensetive parameters only
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_params())]
 		pub fn set_cluster_params(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -286,7 +298,7 @@ pub mod pallet {
 		}
 
 		// Requires Governance approval
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_gov_params())]
 		pub fn set_cluster_gov_params(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -500,6 +512,10 @@ pub mod pallet {
 			match error {
 				NodeProviderAuthContractError::ContractCallFailed =>
 					Error::<T>::NodeAuthContractCallFailed,
+				NodeProviderAuthContractError::ContractDeployFailed =>
+					Error::<T>::NodeAuthContractDeployFailed,
+				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
+					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful,
 			}
 		}
 	}
