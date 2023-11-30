@@ -9,8 +9,8 @@ fn set_authorised_caller_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let root_account = 1u64;
-		let dac_account = 2u64;
+		let root_account = 1u128;
+		let dac_account = 2u128;
 
 		assert_noop!(
 			DdcPayouts::set_authorised_caller(RuntimeOrigin::signed(root_account), dac_account),
@@ -30,8 +30,8 @@ fn set_authorised_caller_works() {
 #[test]
 fn begin_billing_report_fails_for_unauthorised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = 1u64;
-		let dac_account = 2u64;
+		let root_account = 1u128;
+		let dac_account = 2u128;
 		let cluster_id = ClusterId::from([1; 20]);
 		let era = 100;
 
@@ -58,7 +58,7 @@ fn begin_billing_report_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = 2u64;
+		let dac_account = 2u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 
@@ -80,7 +80,7 @@ fn begin_billing_report_works() {
 #[test]
 fn begin_charging_customers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let dac_account = 2u64;
+		let dac_account = 2u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
@@ -124,7 +124,7 @@ fn begin_charging_customers_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = 2u64;
+		let dac_account = 2u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
@@ -155,10 +155,10 @@ fn begin_charging_customers_works() {
 #[test]
 fn send_charging_customers_batch_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = 1u64;
-		let dac_account = 2u64;
-		let user1 = 3u64;
-		let user2 = 4u64;
+		let root_account = 1u128;
+		let dac_account = 2u128;
+		let user1 = 3u128;
+		let user2 = 4u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
@@ -278,11 +278,11 @@ fn send_charging_customers_batch_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = 123u64;
-		let user1 = 1u64;
-		let user2_debtor = 2u64;
-		let user3_debtor = 3u64;
-		let user4 = 4u64;
+		let dac_account = 123u128;
+		let user1 = 1u128;
+		let user2_debtor = 2u128;
+		let user3_debtor = 3u128;
+		let user4 = 4u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 3;
@@ -506,9 +506,9 @@ fn send_charging_customers_batch_works() {
 #[test]
 fn end_charging_customers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = 100u64;
-		let dac_account = 123u64;
-		let user1 = 1u64;
+		let root_account = 100u128;
+		let dac_account = 123u128;
+		let user1 = 1u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
@@ -579,8 +579,8 @@ fn end_charging_customers_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = 123u64;
-		let user1 = 1u64;
+		let dac_account = 123u128;
+		let user1 = 1u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 0;
@@ -701,8 +701,8 @@ fn end_charging_customers_works_zero_fees() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = 123u64;
-		let user1 = 1u64;
+		let dac_account = 123u128;
+		let user1 = 1u128;
 		let cluster_id = ClusterId::zero();
 		let era = 100;
 		let max_batch_index = 0;
@@ -810,9 +810,9 @@ fn end_charging_customers_works_zero_fees() {
 #[test]
 fn begin_rewarding_providers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = 1u64;
-		let dac_account = 2u64;
-		let user1 = 3u64;
+		let root_account = 1u128;
+		let dac_account = 2u128;
+		let user1 = 3u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
@@ -935,8 +935,8 @@ fn begin_rewarding_providers_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = 123u64;
-		let user1 = 1u64;
+		let dac_account = 123u128;
+		let user1 = 1u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 0;
@@ -994,11 +994,11 @@ fn begin_rewarding_providers_works() {
 #[test]
 fn send_rewarding_providers_batch_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = 1u64;
-		let dac_account = 2u64;
-		let user1 = 3u64;
-		let user2 = 4u64;
-		let node1 = 33u64;
+		let root_account = 1u128;
+		let dac_account = 2u128;
+		let user1 = 3u128;
+		let user2 = 4u128;
+		let node1 = 33u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 1;
@@ -1139,11 +1139,11 @@ fn send_rewarding_providers_batch_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = 123u64;
-		let user1 = 1u64;
-		let node1 = 10u64;
-		let node2 = 11u64;
-		let node3 = 12u64;
+		let dac_account = 123u128;
+		let user1 = 1u128;
+		let node1 = 10u128;
+		let node2 = 11u128;
+		let node3 = 12u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 0;
@@ -1348,11 +1348,11 @@ fn send_rewarding_providers_batch_works() {
 #[test]
 fn end_rewarding_providers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = 1u64;
-		let dac_account = 2u64;
-		let user1 = 3u64;
-		let user2 = 4u64;
-		let node1 = 33u64;
+		let root_account = 1u128;
+		let dac_account = 2u128;
+		let user1 = 3u128;
+		let user2 = 4u128;
+		let node1 = 33u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 1;
@@ -1508,9 +1508,9 @@ fn end_rewarding_providers_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = 2u64;
-		let user1 = 3u64;
-		let node1 = 33u64;
+		let dac_account = 2u128;
+		let user1 = 3u128;
+		let node1 = 33u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 0;
@@ -1583,11 +1583,11 @@ fn end_rewarding_providers_works() {
 #[test]
 fn end_billing_report_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = 1u64;
-		let dac_account = 2u64;
-		let user1 = 3u64;
-		let user2 = 4u64;
-		let node1 = 33u64;
+		let root_account = 1u128;
+		let dac_account = 2u128;
+		let user1 = 3u128;
+		let user2 = 4u128;
+		let node1 = 33u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 1;
@@ -1720,9 +1720,9 @@ fn end_billing_report_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = 2u64;
-		let user1 = 3u64;
-		let node1 = 33u64;
+		let dac_account = 2u128;
+		let user1 = 3u128;
+		let node1 = 33u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 0;

@@ -28,7 +28,7 @@ use sp_runtime::{
 use sp_std::prelude::*;
 
 /// The AccountId alias in this test module.
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub(crate) type AccountIndex = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
@@ -170,7 +170,7 @@ impl<T: frame_system::Config> PalletVisitor<T> for TestTreasuryVisitor {
 	}
 }
 
-fn create_account_id_from_u64<T: frame_system::Config>(id: u64) -> T::AccountId {
+fn create_account_id_from_u128<T: frame_system::Config>(id: u128) -> T::AccountId {
 	let bytes = id.to_ne_bytes();
 	T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
@@ -184,9 +184,9 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 	fn iter() -> Box<dyn Iterator<Item = T::AccountId>> {
 		Box::new(
 			vec![
-				create_account_id_from_u64::<T>(VALIDATOR1_ACCOUNT_ID),
-				create_account_id_from_u64::<T>(VALIDATOR2_ACCOUNT_ID),
-				create_account_id_from_u64::<T>(VALIDATOR3_ACCOUNT_ID),
+				create_account_id_from_u128::<T>(VALIDATOR1_ACCOUNT_ID),
+				create_account_id_from_u128::<T>(VALIDATOR2_ACCOUNT_ID),
+				create_account_id_from_u128::<T>(VALIDATOR3_ACCOUNT_ID),
 			]
 			.into_iter(),
 		)

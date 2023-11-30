@@ -134,8 +134,8 @@ fn charge_content_owner_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let account_3 = 3;
-		let vault = 4;
+		let account_3: u128 = 3;
+		let vault: u128 = 4;
 		let deposit = 100_u128;
 
 		let balance_before_deposit = Balances::free_balance(account_3);
@@ -144,7 +144,7 @@ fn charge_content_owner_works() {
 		let balance_after_deposit = Balances::free_balance(account_3);
 		assert_eq!(balance_before_deposit - deposit, balance_after_deposit);
 
-		let pallet_balance = Balances::free_balance(DdcCustomers::account_id());
+		let pallet_balance = Balances::free_balance(DdcCustomers::sub_account_id(&account_3));
 		assert_eq!(deposit, pallet_balance);
 
 		// Check storage
@@ -172,7 +172,8 @@ fn charge_content_owner_works() {
 		let account_balance = Balances::free_balance(account_3);
 		assert_eq!(balance_after_deposit, account_balance);
 
-		let pallet_balance_after_charge = Balances::free_balance(DdcCustomers::account_id());
+		let pallet_balance_after_charge =
+			Balances::free_balance(DdcCustomers::sub_account_id(&account_3));
 		assert_eq!(pallet_balance - charged, pallet_balance_after_charge);
 
 		// Check storage
@@ -199,7 +200,7 @@ fn charge_content_owner_works() {
 			})
 		);
 
-		assert_eq!(0, Balances::free_balance(DdcCustomers::account_id()));
+		assert_eq!(0, Balances::free_balance(DdcCustomers::sub_account_id(&account_3)));
 		assert_eq!(charge_result, deposit - charge1);
 
 		assert_ok!(DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_3), deposit));
@@ -213,7 +214,7 @@ fn charge_content_owner_works() {
 			})
 		);
 
-		assert_eq!(deposit, Balances::free_balance(DdcCustomers::account_id()));
+		assert_eq!(deposit, Balances::free_balance(DdcCustomers::sub_account_id(&account_3)));
 	})
 }
 
@@ -234,12 +235,7 @@ fn unlock_and_withdraw_deposit_works() {
 		assert_ok!(DdcCustomers::unlock_deposit(RuntimeOrigin::signed(account_1), 1_u128));
 		System::set_block_number(2);
 
-		let mut unlocking_chunks: BoundedVec<UnlockChunk<Balance, Test>, MaxUnlockingChunks> =
-			Default::default();
-		match unlocking_chunks.try_push(UnlockChunk { value: 1, block: 11 }) {
-			Ok(_) => (),
-			Err(_) => println!("No more chunks"),
-		};
+		let unlocking_chunks = vec![UnlockChunk { value: 1, block: 11 }];
 		// Check storage
 		assert_eq!(
 			DdcCustomers::ledger(&1),
@@ -247,7 +243,7 @@ fn unlock_and_withdraw_deposit_works() {
 				owner: account_1,
 				total: 35_u128,
 				active: 34_u128,
-				unlocking: unlocking_chunks.clone(),
+				unlocking: BoundedVec::try_from(unlocking_chunks).unwrap(),
 			})
 		);
 
