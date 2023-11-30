@@ -19,7 +19,7 @@ use sp_runtime::{
 };
 
 /// The AccountId alias in this test module.
-pub(crate) type AccountId = u64;
+pub(crate) type AccountId = u128;
 pub(crate) type AccountIndex = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;

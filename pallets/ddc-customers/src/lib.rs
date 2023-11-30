@@ -15,14 +15,14 @@ use frame_support::{
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
 	BoundedVec, PalletId,
 };
+pub use pallet::*;
 use scale_info::TypeInfo;
+use sp_io::hashing::blake2_128;
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
 	DispatchError, RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
-use sp_io::hashing::blake2_128;
-pub use pallet::*;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
@@ -78,10 +78,7 @@ pub struct AccountsLedger<T: Config> {
 	pub unlocking: BoundedVec<UnlockChunk<T>, MaxUnlockingChunks>,
 }
 
-impl<
-		T: Config,
-	> AccountsLedger<T>
-{
+impl<T: Config> AccountsLedger<T> {
 	/// Initializes the default object using the given owner.
 	pub fn default_from(owner: T::AccountId) -> Self {
 		Self { owner, total: Zero::zero(), active: Zero::zero(), unlocking: Default::default() }
@@ -140,12 +137,7 @@ pub mod pallet {
 	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
-	pub type Ledger<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		AccountsLedger<T>,
-	>;
+	pub type Ledger<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, AccountsLedger<T>>;
 
 	#[pallet::type_value]
 	pub fn DefaultBucketCount<T: Config>() -> BucketId {
@@ -222,8 +214,7 @@ pub mod pallet {
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {
-		}
+		fn build(&self) {}
 	}
 
 	#[pallet::call]
@@ -439,7 +430,7 @@ pub mod pallet {
 					&Self::sub_account_id(&owner),
 					&owner,
 					value,
-					ExistenceRequirement::KeepAlive,
+					ExistenceRequirement::AllowDeath,
 				)?;
 				Self::deposit_event(Event::<T>::Withdrawn(owner, value));
 			}
@@ -456,9 +447,7 @@ pub mod pallet {
 		pub fn sub_account_id(account_id: &T::AccountId) -> T::AccountId {
 			let hash = blake2_128(&account_id.encode());
 
-			// "modl" + "payouts_" + hash is 28 bytes, the T::AccountId is 32 bytes, so we should be
-			// safe from the truncation and possible collisions caused by it. The rest 4 bytes will
-			// be fulfilled with trailing zeros.
+			// hash is 28 bytes
 			T::PalletId::get().into_sub_account_truncating(hash)
 		}
 
@@ -473,7 +462,7 @@ pub mod pallet {
 				owner,
 				&Self::sub_account_id(owner),
 				ledger.total,
-				ExistenceRequirement::KeepAlive,
+				ExistenceRequirement::AllowDeath,
 			)?;
 			<Ledger<T>>::insert(owner, ledger);
 
@@ -497,7 +486,10 @@ pub mod pallet {
 		/// Charge funds that were scheduled for unlocking.
 		///
 		/// Returns the updated ledger, and the amount actually charged.
-		fn charge_unlocking(mut ledger: AccountsLedger<T>, value: BalanceOf<T>) -> Result<(AccountsLedger<T>, BalanceOf<T>), Error<T>> {
+		fn charge_unlocking(
+			mut ledger: AccountsLedger<T>,
+			value: BalanceOf<T>,
+		) -> Result<(AccountsLedger<T>, BalanceOf<T>), Error<T>> {
 			let mut unlocking_balance = BalanceOf::<T>::zero();
 
 			while let Some(last) = ledger.unlocking.last_mut() {
@@ -508,11 +500,13 @@ pub mod pallet {
 					unlocking_balance = temp;
 					ledger.unlocking.pop();
 				} else {
-					let diff =
-						value.checked_sub(&unlocking_balance).ok_or(Error::<T>::ArithmeticUnderflow)?;
+					let diff = value
+						.checked_sub(&unlocking_balance)
+						.ok_or(Error::<T>::ArithmeticUnderflow)?;
 
-					unlocking_balance =
-						unlocking_balance.checked_add(&diff).ok_or(Error::<T>::ArithmeticOverflow)?;
+					unlocking_balance = unlocking_balance
+						.checked_add(&diff)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
 					last.value =
 						last.value.checked_sub(&diff).ok_or(Error::<T>::ArithmeticUnderflow)?;
 				}
