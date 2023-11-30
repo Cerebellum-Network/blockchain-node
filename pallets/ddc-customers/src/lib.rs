@@ -262,22 +262,50 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_config]
-	pub struct GenesisConfig;
+	pub struct GenesisConfig<T: Config> {
+		pub buckets: Vec<(ClusterId, T::AccountId, BalanceOf<T>)>,
+	}
 
 	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
+	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self
+			GenesisConfig { buckets: Default::default() }
 		}
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			let account_id = <Pallet<T>>::account_id();
 			let min = <T as pallet::Config>::Currency::minimum_balance();
 			if <T as pallet::Config>::Currency::free_balance(&account_id) < min {
 				let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
+			}
+
+			for &(ref cluster_id, ref owner_id, ref deposit) in &self.buckets {
+				let cur_bucket_id = <BucketsCount<T>>::get()
+					.checked_add(1)
+					.ok_or(Error::<T>::ArithmeticOverflow)
+					.unwrap();
+				<BucketsCount<T>>::set(cur_bucket_id);
+
+				let bucket = Bucket {
+					bucket_id: cur_bucket_id,
+					owner_id: owner_id.clone(),
+					cluster_id: *cluster_id,
+				};
+				<Buckets<T>>::insert(cur_bucket_id, bucket);
+
+				let ledger = AccountsLedger::<T::AccountId, BalanceOf<T>, T> {
+					owner: owner_id.clone(),
+					total: *deposit,
+					active: *deposit,
+					unlocking: Default::default(),
+				};
+				<Ledger<T>>::insert(&ledger.owner, &ledger);
+
+				<T as pallet::Config>::Currency::deposit_into_existing(&account_id, *deposit)
+					.unwrap();
 			}
 		}
 	}
