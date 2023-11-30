@@ -10,6 +10,21 @@ pub const BLOCK_TIME: u64 = 1000;
 pub const INIT_TIMESTAMP: u64 = 30_000;
 
 #[test]
+fn test_default_staking_ledger() {
+	// Verifies initial conditions of mock
+	ExtBuilder::default().build_and_execute(|| {
+		let default_staking_ledger = StakingLedger::<
+			<Test as frame_system::Config>::AccountId,
+			BalanceOf<Test>,
+			Test,
+		>::default_from(1);
+		// Account 11 is stashed and locked, and account 10 is the controller
+		assert_eq!(default_staking_ledger.stash, 1);
+		assert_eq!(default_staking_ledger.total, Zero::zero());
+	});
+}
+
+#[test]
 fn basic_setup_works() {
 	// Verifies initial conditions of mock
 	ExtBuilder::default().build_and_execute(|| {
@@ -58,6 +73,10 @@ fn change_controller_works() {
 
 		// Change controller.
 		assert_ok!(DdcStaking::set_controller(RuntimeOrigin::signed(11), 3));
+		assert_noop!(
+			DdcStaking::set_controller(RuntimeOrigin::signed(11), 3),
+			Error::<Test>::AlreadyPaired
+		);
 		assert_eq!(DdcStaking::bonded(&11), Some(3));
 
 		// 10 is no longer in control.
@@ -86,6 +105,20 @@ fn not_enough_inital_bond_flow() {
 		// Not enough tokens bonded to serve
 		assert_noop!(
 			DdcStaking::serve(RuntimeOrigin::signed(4), ClusterId::from([1; 20])),
+			Error::<Test>::InsufficientBond
+		);
+
+		// Add new Storage participant, account 1 controlled by 2 with node 3.
+		assert_ok!(DdcStaking::bond(
+			RuntimeOrigin::signed(1),
+			2,
+			NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])),
+			100
+		));
+
+		// Not enough tokens bonded to store
+		assert_noop!(
+			DdcStaking::store(RuntimeOrigin::signed(4), ClusterId::from([1; 20])),
 			Error::<Test>::InsufficientBond
 		);
 
@@ -118,6 +151,67 @@ fn not_enough_inital_bond_flow() {
 
 		// Serving should work
 		assert_ok!(DdcStaking::serve(RuntimeOrigin::signed(4), ClusterId::from([1; 20])));
+	})
+}
+
+#[test]
+fn unbonding_edge_cases_work() {
+	ExtBuilder::default().build_and_execute(|| {
+		System::set_block_number(1);
+
+		// Add new CDN participant, account 3 controlled by 4 with node 5.
+		assert_ok!(DdcStaking::bond(
+			RuntimeOrigin::signed(3),
+			4,
+			NodePubKey::CDNPubKey(CDNNodePubKey::new([5; 32])),
+			100
+		));
+
+		assert_ok!(DdcStaking::serve(RuntimeOrigin::signed(4), ClusterId::from([1; 20])));
+
+		assert_ok!(DdcStaking::unbond(RuntimeOrigin::signed(4), 1));
+		while System::block_number() < 33 {
+			assert_ok!(DdcStaking::unbond(RuntimeOrigin::signed(4), 1));
+			System::assert_last_event(Event::Unbonded(3, 1).into());
+			System::set_block_number(System::block_number() + 1);
+		}
+
+		assert_noop!(DdcStaking::unbond(RuntimeOrigin::signed(4), 1), Error::<Test>::NoMoreChunks);
+	})
+}
+
+#[test]
+fn serve_or_store_should_be_prohibited() {
+	ExtBuilder::default().build_and_execute(|| {
+		System::set_block_number(1);
+
+		// Add new CDN participant, account 3 controlled by 4 with node 5.
+		assert_ok!(DdcStaking::bond(
+			RuntimeOrigin::signed(3),
+			4,
+			NodePubKey::CDNPubKey(CDNNodePubKey::new([5; 32])),
+			100
+		));
+
+		// Add new Storage participant, account 1 controlled by 2 with node 3.
+		assert_ok!(DdcStaking::bond(
+			RuntimeOrigin::signed(1),
+			2,
+			NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])),
+			100
+		));
+
+		// Not enough tokens bonded to serve
+		assert_noop!(
+			DdcStaking::serve(RuntimeOrigin::signed(2), ClusterId::from([1; 20])),
+			Error::<Test>::ServingProhibited
+		);
+
+		// Not enough tokens bonded to store
+		assert_noop!(
+			DdcStaking::store(RuntimeOrigin::signed(4), ClusterId::from([1; 20])),
+			Error::<Test>::StoringProhibited
+		);
 	})
 }
 
@@ -157,6 +251,45 @@ fn set_node_works() {
 			RuntimeOrigin::signed(11),
 			NodePubKey::CDNPubKey(CDNNodePubKey::new([13; 32]))
 		));
+	})
+}
+
+#[test]
+fn cancel_previous_chill_works() {
+	ExtBuilder::default().build_and_execute(|| {
+		System::set_block_number(1);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		// Add new CDN participant, account 3 controlled by 4 with node 5.
+		assert_ok!(DdcStaking::bond(
+			RuntimeOrigin::signed(3),
+			4,
+			NodePubKey::CDNPubKey(CDNNodePubKey::new([5; 32])),
+			100
+		));
+
+		// Add new Storage participant, account 1 controlled by 2 with node 3.
+		assert_ok!(DdcStaking::bond(
+			RuntimeOrigin::signed(1),
+			2,
+			NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])),
+			100
+		));
+
+		// Not enough tokens bonded to serve
+		assert_ok!(DdcStaking::serve(RuntimeOrigin::signed(4), cluster_id));
+
+		assert_ok!(DdcStaking::store(RuntimeOrigin::signed(2), ClusterId::from([1; 20])));
+
+		// Schedule CDN participant removal.
+		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(4)));
+		// Not enough tokens bonded to serve
+		assert_ok!(DdcStaking::serve(RuntimeOrigin::signed(4), cluster_id));
+
+		// Schedule CDN participant removal.
+		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(2)));
+		// Not enough tokens bonded to serve
+		assert_ok!(DdcStaking::store(RuntimeOrigin::signed(2), cluster_id));
 	})
 }
 
@@ -451,5 +584,66 @@ fn storage_full_unbonding_works() {
 		System::assert_last_event(Event::Left(provider_stash).into());
 
 		MockNodeVisitor::reset_and_release_lock(lock);
+	});
+}
+
+#[test]
+fn staking_creator_works() {
+	// Verifies initial conditions of mock
+	ExtBuilder::default().build_and_execute(|| {
+		let stash: u64 = 1;
+		let controller: u64 = 2;
+		let cluster_id = ClusterId::from([1; 20]);
+		let value = 5;
+		let cdn_node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
+		let storage_node_pub_key = NodePubKey::CDNPubKey(CDNNodePubKey::new([2; 32]));
+
+		assert_ok!(
+			<DdcStaking as StakerCreator<Test, BalanceOf<Test>>>::bond_stake_and_participate(
+				stash,
+				controller,
+				cdn_node_pub_key,
+				value,
+				cluster_id,
+			)
+		);
+
+		assert_ok!(
+			<DdcStaking as StakerCreator<Test, BalanceOf<Test>>>::bond_stake_and_participate(
+				stash,
+				controller,
+				storage_node_pub_key,
+				value,
+				cluster_id,
+			)
+		);
+	});
+}
+
+#[test]
+fn staking_visitor_works() {
+	// Verifies initial conditions of mock
+	ExtBuilder::default().build_and_execute(|| {
+		let cluster_id = ClusterId::from([1; 20]);
+		let node_pub_key = NodePubKey::CDNPubKey(CDNNodePubKey::new([5; 32]));
+
+		// Add new CDN participant, account 3 controlled by 4 with node 5.
+		assert_ok!(DdcStaking::bond(RuntimeOrigin::signed(3), 4, node_pub_key.clone(), 100));
+
+		assert!(<DdcStaking as StakingVisitor<Test>>::has_stake(&node_pub_key,));
+
+		if let Ok(result) =
+			<DdcStaking as StakingVisitor<Test>>::has_chilling_attempt(&node_pub_key)
+		{
+			assert!(!result);
+		}
+
+		assert_ok!(DdcStaking::serve(RuntimeOrigin::signed(4), ClusterId::from([1; 20])));
+
+		if let Ok(result) =
+			<DdcStaking as StakingVisitor<Test>>::has_activated_stake(&node_pub_key, &cluster_id)
+		{
+			assert!(result);
+		}
 	});
 }

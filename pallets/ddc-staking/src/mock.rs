@@ -353,7 +353,7 @@ impl ExtBuilder {
 		self.storages.push((stash, controller, stake, cluster));
 		self
 	}
-	fn build(self) -> TestExternalities {
+	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
