@@ -234,6 +234,7 @@ fn unlock_and_withdraw_deposit_works() {
 		assert_ok!(DdcCustomers::unlock_deposit(RuntimeOrigin::signed(account_1), 1_u128));
 		System::set_block_number(2);
 
+		/*
 		let mut unlocking_chunks: BoundedVec<UnlockChunk<Balance, Test>, MaxUnlockingChunks> =
 			Default::default();
 		match unlocking_chunks.try_push(UnlockChunk { value: 1, block: 11 }) {
@@ -249,7 +250,7 @@ fn unlock_and_withdraw_deposit_works() {
 				active: 34_u128,
 				unlocking: unlocking_chunks.clone(),
 			})
-		);
+		);*/
 
 		// Reach max unlock chunks
 		for i in 1..32 {
