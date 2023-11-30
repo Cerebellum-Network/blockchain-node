@@ -1489,6 +1489,12 @@ pub type UncheckedExtrinsic =
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
+/// Runtime migrations
+type Migrations = (
+	pallet_election_provider_multi_phase::migrations::v1::MigrateToV1<Runtime>,
+	pallet_fast_unstake::migrations::v1::MigrateToV1<Runtime>,
+);
+
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Runtime,
@@ -1496,7 +1502,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	(),
+	Migrations,
 >;
 
 mod custom_migration {
