@@ -6,7 +6,6 @@ use scale_info::{prelude::vec::Vec, TypeInfo};
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H160;
 use sp_runtime::{AccountId32, Perbill, RuntimeDebug};
-
 pub type ClusterId = H160;
 pub type DdcEra = u32;
 pub type BucketId = u64;

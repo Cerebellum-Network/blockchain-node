@@ -80,26 +80,27 @@ fn deposit_and_deposit_extra_works() {
 			BalancesError::<Test, _>::KeepAlive
 		);
 
+		let amount1 = 10_u128;
 		// Deposited
-		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_1), 10_u128));
+		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_1), amount1));
 
 		// Check storage
 		assert_eq!(
 			DdcCustomers::ledger(&account_1),
 			Some(AccountsLedger {
-				owner: 1,
-				total: 10_u128,
-				active: 10_u128,
+				owner: account_1,
+				total: amount1,
+				active: amount1,
 				unlocking: Default::default(),
 			})
 		);
 
 		// Checking that event was emitted
-		System::assert_last_event(Event::Deposited(account_1, 10).into());
+		System::assert_last_event(Event::Deposited(account_1, amount1).into());
 
 		// Deposit should fail when called the second time
 		assert_noop!(
-			DdcCustomers::deposit(RuntimeOrigin::signed(account_1), 10_u128),
+			DdcCustomers::deposit(RuntimeOrigin::signed(account_1), amount1),
 			Error::<Test>::AlreadyPaired
 		);
 
@@ -110,21 +111,110 @@ fn deposit_and_deposit_extra_works() {
 		);
 
 		// Deposited extra
-		assert_ok!(DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_1), 20_u128));
+		let amount2 = 20_u128;
+		assert_ok!(DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_1), amount2));
 
 		// Check storage
 		assert_eq!(
 			DdcCustomers::ledger(&account_1),
 			Some(AccountsLedger {
-				owner: 1,
-				total: 30_u128,
-				active: 30_u128,
+				owner: account_1,
+				total: amount1 + amount2,
+				active: amount1 + amount2,
 				unlocking: Default::default(),
 			})
 		);
 
 		// Checking that event was emitted
-		System::assert_last_event(Event::Deposited(account_1, 20).into());
+		System::assert_last_event(Event::Deposited(account_1, amount2).into());
+	})
+}
+
+#[test]
+fn charge_content_owner_works() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let account_3 = 3;
+		let vault = 4;
+		let deposit = 100_u128;
+
+		let balance_before_deposit = Balances::free_balance(account_3);
+		// Deposited
+		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_3), deposit));
+		let balance_after_deposit = Balances::free_balance(account_3);
+		assert_eq!(balance_before_deposit - deposit, balance_after_deposit);
+
+		let pallet_balance = Balances::free_balance(DdcCustomers::account_id());
+		assert_eq!(deposit, pallet_balance);
+
+		// Check storage
+		assert_eq!(
+			DdcCustomers::ledger(&account_3),
+			Some(AccountsLedger {
+				owner: account_3,
+				total: deposit,
+				active: deposit,
+				unlocking: Default::default(),
+			})
+		);
+
+		// Checking that event was emitted
+		System::assert_last_event(Event::Deposited(account_3, deposit).into());
+
+		// successful transfer
+		let charge1 = 10;
+		let charged = DdcCustomers::charge_content_owner(account_3, vault, charge1).unwrap();
+		assert_eq!(charge1, charged);
+
+		let vault_balance = Balances::free_balance(vault);
+		assert_eq!(charged, vault_balance);
+
+		let account_balance = Balances::free_balance(account_3);
+		assert_eq!(balance_after_deposit, account_balance);
+
+		let pallet_balance_after_charge = Balances::free_balance(DdcCustomers::account_id());
+		assert_eq!(pallet_balance - charged, pallet_balance_after_charge);
+
+		// Check storage
+		assert_eq!(
+			DdcCustomers::ledger(&account_3),
+			Some(AccountsLedger {
+				owner: account_3,
+				total: deposit - charge1,
+				active: deposit - charge1,
+				unlocking: Default::default(),
+			})
+		);
+
+		// failed transfer
+		let charge2 = 100u128;
+		let charge_result = DdcCustomers::charge_content_owner(account_3, vault, charge2).unwrap();
+		assert_eq!(
+			DdcCustomers::ledger(&account_3),
+			Some(AccountsLedger {
+				owner: account_3,
+				total: 0,
+				active: 0,
+				unlocking: Default::default(),
+			})
+		);
+
+		assert_eq!(0, Balances::free_balance(DdcCustomers::account_id()));
+		assert_eq!(charge_result, deposit - charge1);
+
+		assert_ok!(DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_3), deposit));
+		assert_eq!(
+			DdcCustomers::ledger(&account_3),
+			Some(AccountsLedger {
+				owner: account_3,
+				total: deposit,
+				active: deposit,
+				unlocking: Default::default(),
+			})
+		);
+
+		assert_eq!(deposit, Balances::free_balance(DdcCustomers::account_id()));
 	})
 }
 
