@@ -14,6 +14,7 @@ use pallet_contracts as contracts;
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
+	BuildStorage,
 	testing::{Header, TestXt},
 	traits::{
 		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
@@ -229,7 +230,7 @@ impl<T: Config> StakerCreator<T, BalanceOf<T>> for TestStaker {
 pub struct ExtBuilder;
 
 impl ExtBuilder {
-	fn build(self) -> TestExternalities {
+	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
@@ -242,6 +243,9 @@ impl ExtBuilder {
 			],
 		}
 		.assimilate_storage(&mut storage);
+
+		let _ = pallet_ddc_clusters::GenesisConfig::<Test>::default().build()
+			.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}

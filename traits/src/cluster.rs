@@ -46,6 +46,7 @@ pub trait ClusterCreator<T: Config, Balance> {
 	) -> DispatchResult;
 }
 
+#[derive(Debug, PartialEq)]
 pub enum ClusterVisitorError {
 	ClusterDoesNotExist,
 	ClusterGovParamsNotSet,

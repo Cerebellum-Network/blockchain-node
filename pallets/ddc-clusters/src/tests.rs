@@ -1,6 +1,6 @@
 //! Tests for the module.
 
-use ddc_primitives::{CDNNodeParams, ClusterId, ClusterParams, NodeParams, NodePubKey};
+use ddc_primitives::{CDNNodeParams, ClusterBondingParams, ClusterId, ClusterFeesParams, ClusterParams, ClusterPricingParams, NodeParams, NodePubKey};
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
 use frame_system::Config;
 use hex_literal::hex;
@@ -408,5 +408,78 @@ fn set_cluster_gov_params_works() {
 		System::assert_last_event(
 			Event::ClusterGovParamsSet { cluster_id: ClusterId::from([1; 20]) }.into(),
 		)
+	})
+}
+
+#[test]
+fn cluster_visitor_works() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = AccountId::from([1; 32]);
+		let cluster_reserve_id = AccountId::from([2; 32]);
+		let auth_contract = AccountId::from([3; 32]);
+
+		let cluster_gov_params = ClusterGovParams {
+			treasury_share: Perbill::from_float(0.05),
+			validators_share: Perbill::from_float(0.01),
+			cluster_reserve_share: Perbill::from_float(0.02),
+			cdn_bond_size: 100,
+			cdn_chill_delay: 50,
+			cdn_unbonding_delay: 50,
+			storage_bond_size: 100,
+			storage_chill_delay: 50,
+			storage_unbonding_delay: 50,
+			unit_per_mb_stored: 10,
+			unit_per_mb_streamed: 10,
+			unit_per_put_request: 10,
+			unit_per_get_request: 10,
+		};
+
+		// Creating 1 cluster should work fine
+		assert_ok!(DdcClusters::create_cluster(
+			RuntimeOrigin::root(),
+			cluster_id.clone(),
+			cluster_manager_id.clone(),
+			cluster_reserve_id.clone(),
+			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
+			cluster_gov_params.clone()
+		));
+
+		assert_ok!(<DdcClusters as ClusterVisitor<Test>>::ensure_cluster(&cluster_id));
+
+		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::get_bond_size(&cluster_id, NodeType::CDN).unwrap(), 100u128);
+		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::get_bond_size(&cluster_id, NodeType::Storage).unwrap(), 100u128);
+
+		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::get_pricing_params(&cluster_id).unwrap(), ClusterPricingParams {
+			unit_per_mb_stored: 10,
+			unit_per_mb_streamed: 10,
+			unit_per_put_request: 10,
+			unit_per_get_request: 10,
+		});
+	
+		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::get_fees_params(&cluster_id).unwrap(), ClusterFeesParams {
+			treasury_share: Perbill::from_float(0.05),
+			validators_share: Perbill::from_float(0.01),
+			cluster_reserve_share: Perbill::from_float(0.02)
+		});
+
+		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::get_reserve_account_id(&cluster_id).unwrap(), cluster_reserve_id);
+
+		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::get_chill_delay(&cluster_id, NodeType::CDN).unwrap(), 50);
+		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::get_chill_delay(&cluster_id, NodeType::Storage).unwrap(), 50);
+
+		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::get_unbonding_delay(&cluster_id, NodeType::CDN).unwrap(), 50);
+		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::get_unbonding_delay(&cluster_id, NodeType::Storage).unwrap(), 50);
+
+		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::get_bonding_params(&cluster_id).unwrap(), ClusterBondingParams::<<Test as frame_system::Config>::BlockNumber> {
+			cdn_bond_size: 100,
+			cdn_chill_delay: 50,
+			cdn_unbonding_delay: 50,
+			storage_bond_size: 100,
+			storage_chill_delay: 50,
+			storage_unbonding_delay: 50,
+		});
 	})
 }

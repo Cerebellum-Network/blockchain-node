@@ -54,6 +54,7 @@ pub struct ClusterFeesParams {
 	pub cluster_reserve_share: Perbill,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct ClusterBondingParams<BlockNumber> {
 	pub cdn_bond_size: u128,
 	pub cdn_chill_delay: BlockNumber,
