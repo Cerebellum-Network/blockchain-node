@@ -102,6 +102,7 @@ impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
 	}
 }
 
+#[derive(Debug, PartialEq)]
 pub enum NodeError {
 	InvalidStorageNodePubKey,
 	InvalidCDNNodePubKey,
