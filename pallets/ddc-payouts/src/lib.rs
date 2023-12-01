@@ -60,10 +60,10 @@ pub struct NodeUsage {
 /// Stores reward in tokens(units) of node provider as per NodeUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct NodeReward {
-	pub transfer: u128, // tokens for transferred_bytes
-	pub storage: u128,  // tokens for stored_bytes
-	pub puts: u128,     // tokens for number_of_puts
-	pub gets: u128,     // tokens for number_of_gets
+	pub transfer: u128, // reward in tokens for NodeUsage::transferred_bytes
+	pub storage: u128,  // reward in tokens for NodeUsage::stored_bytes
+	pub puts: u128,     // reward in tokens for NodeUsage::number_of_puts
+	pub gets: u128,     // reward in tokens for NodeUsage::number_of_gets
 }
 
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
@@ -77,10 +77,10 @@ pub struct BillingReportDebt {
 /// Stores charge in tokens(units) of customer as per CustomerUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct CustomerCharge {
-	pub transfer: u128, // tokens for transferred_bytes
-	pub storage: u128,  // tokens for stored_bytes
-	pub puts: u128,     // tokens for number_of_puts
-	pub gets: u128,     // tokens for number_of_gets
+	pub transfer: u128, // charge in tokens for CustomerUsage::transferred_bytes
+	pub storage: u128,  // charge in tokens for CustomerUsage::stored_bytes
+	pub puts: u128,     // charge in tokens for CustomerUsage::number_of_puts
+	pub gets: u128,     // charge in tokens for CustomerUsage::number_of_gets
 }
 
 /// The balance type of this pallet.
@@ -130,12 +130,21 @@ pub mod pallet {
 		Charged {
 			cluster_id: ClusterId,
 			era: DdcEra,
+			batch_index: BatchIndex,
 			customer_id: T::AccountId,
 			amount: u128,
 		},
 		ChargeFailed {
 			cluster_id: ClusterId,
 			era: DdcEra,
+			batch_index: BatchIndex,
+			customer_id: T::AccountId,
+			amount: u128,
+		},
+		Indebted {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			batch_index: BatchIndex,
 			customer_id: T::AccountId,
 			amount: u128,
 		},
@@ -250,17 +259,17 @@ pub mod pallet {
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
+	// don't remove or change numbers, if needed add a new state to the end with new number
+	// DAC uses the state value for integration!
 	pub enum State {
 		#[default]
-		NotInitialized,
-		Initialized,
-		ChargingCustomers,
-		CustomersChargedWithFees,
-		CustomersCharged,
-		FeesDeducted,
-		RewardingProviders,
-		ProvidersRewarded,
-		Finalized,
+		NotInitialized = 1,
+		Initialized = 2,
+		ChargingCustomers = 3,
+		CustomersChargedWithFees = 4,
+		RewardingProviders = 5,
+		ProvidersRewarded = 6,
+		Finalized = 7,
 	}
 
 	#[pallet::call]
@@ -359,7 +368,7 @@ pub mod pallet {
 
 			let mut updated_billing_report = billing_report;
 			for payer in payers {
-				let customer_charge = get_customer_charge::<T>(cluster_id, &payer.1)?;
+				let mut customer_charge = get_customer_charge::<T>(cluster_id, &payer.1)?;
 				let total_customer_charge = (|| -> Option<u128> {
 					customer_charge
 						.transfer
@@ -368,30 +377,6 @@ pub mod pallet {
 						.checked_add(customer_charge.gets)
 				})()
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-				let temp_total_customer_storage_charge = updated_billing_report
-					.total_customer_charge
-					.storage
-					.checked_add(customer_charge.storage)
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-				let temp_total_customer_transfer_charge = updated_billing_report
-					.total_customer_charge
-					.transfer
-					.checked_add(customer_charge.transfer)
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-				let temp_total_customer_puts_charge = updated_billing_report
-					.total_customer_charge
-					.puts
-					.checked_add(customer_charge.puts)
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-				let temp_total_customer_gets_charge = updated_billing_report
-					.total_customer_charge
-					.gets
-					.checked_add(customer_charge.gets)
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 				let customer_id = payer.0.clone();
 				let amount_actually_charged = match T::CustomerCharger::charge_content_owner(
@@ -409,38 +394,75 @@ pub mod pallet {
 						DebtorCustomers::<T>::try_get(cluster_id, customer_id.clone())
 							.unwrap_or_else(|_| Zero::zero());
 
-					customer_debt = (|| -> Option<u128> {
-						customer_debt
-							.checked_add(total_customer_charge)?
-							.checked_sub(amount_actually_charged)
-					})()
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
+					let debt = total_customer_charge
+						.checked_sub(amount_actually_charged)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+					customer_debt =
+						customer_debt.checked_add(debt).ok_or(Error::<T>::ArithmeticOverflow)?;
 
 					DebtorCustomers::<T>::insert(cluster_id, customer_id.clone(), customer_debt);
+
+					Self::deposit_event(Event::<T>::Indebted {
+						cluster_id,
+						era,
+						batch_index,
+						customer_id: customer_id.clone(),
+						amount: debt,
+					});
 
 					Self::deposit_event(Event::<T>::ChargeFailed {
 						cluster_id,
 						era,
+						batch_index,
 						customer_id,
 						amount: total_customer_charge,
 					});
-				} else {
-					updated_billing_report.total_customer_charge.storage =
-						temp_total_customer_storage_charge;
-					updated_billing_report.total_customer_charge.transfer =
-						temp_total_customer_transfer_charge;
-					updated_billing_report.total_customer_charge.puts =
-						temp_total_customer_puts_charge;
-					updated_billing_report.total_customer_charge.gets =
-						temp_total_customer_gets_charge;
 
+					if amount_actually_charged > 0 {
+						// something was charged and should be added
+						// calculate ratio
+						let ratio =
+							Perbill::from_rational(amount_actually_charged, total_customer_charge);
+
+						customer_charge.storage = ratio * customer_charge.storage;
+						customer_charge.transfer = ratio * customer_charge.transfer;
+						customer_charge.gets = ratio * customer_charge.gets;
+						customer_charge.puts = ratio * customer_charge.puts;
+					}
+				} else {
 					Self::deposit_event(Event::<T>::Charged {
 						cluster_id,
 						era,
+						batch_index,
 						customer_id,
 						amount: total_customer_charge,
 					});
 				}
+
+				updated_billing_report.total_customer_charge.storage = updated_billing_report
+					.total_customer_charge
+					.storage
+					.checked_add(customer_charge.storage)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				updated_billing_report.total_customer_charge.transfer = updated_billing_report
+					.total_customer_charge
+					.transfer
+					.checked_add(customer_charge.transfer)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				updated_billing_report.total_customer_charge.puts = updated_billing_report
+					.total_customer_charge
+					.puts
+					.checked_add(customer_charge.puts)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				updated_billing_report.total_customer_charge.gets = updated_billing_report
+					.total_customer_charge
+					.gets
+					.checked_add(customer_charge.gets)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
 			}
 
 			updated_billing_report
@@ -491,50 +513,59 @@ pub mod pallet {
 			let validators_fee = fees.validators_share * total_customer_charge;
 			let cluster_reserve_fee = fees.cluster_reserve_share * total_customer_charge;
 
-			charge_treasury_fees::<T>(
-				treasury_fee,
-				&billing_report.vault,
-				&T::TreasuryVisitor::get_account_id(),
-			)?;
-			Self::deposit_event(Event::<T>::TreasuryFeesCollected {
-				cluster_id,
-				era,
-				amount: treasury_fee,
-			});
+			if treasury_fee > 0 {
+				charge_treasury_fees::<T>(
+					treasury_fee,
+					&billing_report.vault,
+					&T::TreasuryVisitor::get_account_id(),
+				)?;
 
-			charge_cluster_reserve_fees::<T>(
-				cluster_reserve_fee,
-				&billing_report.vault,
-				&T::ClusterVisitor::get_reserve_account_id(&cluster_id)
-					.map_err(|_| Error::<T>::NotExpectedClusterState)?,
-			)?;
-			Self::deposit_event(Event::<T>::ClusterReserveFeesCollected {
-				cluster_id,
-				era,
-				amount: cluster_reserve_fee,
-			});
+				Self::deposit_event(Event::<T>::TreasuryFeesCollected {
+					cluster_id,
+					era,
+					amount: treasury_fee,
+				});
+			}
 
-			charge_validator_fees::<T>(validators_fee, &billing_report.vault)?;
-			Self::deposit_event(Event::<T>::ValidatorFeesCollected {
-				cluster_id,
-				era,
-				amount: validators_fee,
-			});
+			if cluster_reserve_fee > 0 {
+				charge_cluster_reserve_fees::<T>(
+					cluster_reserve_fee,
+					&billing_report.vault,
+					&T::ClusterVisitor::get_reserve_account_id(&cluster_id)
+						.map_err(|_| Error::<T>::NotExpectedClusterState)?,
+				)?;
+				Self::deposit_event(Event::<T>::ClusterReserveFeesCollected {
+					cluster_id,
+					era,
+					amount: cluster_reserve_fee,
+				});
+			}
+
+			if validators_fee > 0 {
+				charge_validator_fees::<T>(validators_fee, &billing_report.vault)?;
+				Self::deposit_event(Event::<T>::ValidatorFeesCollected {
+					cluster_id,
+					era,
+					amount: validators_fee,
+				});
+			}
 
 			// 1 - (X + Y + Z) > 0, 0 < X + Y + Z < 1
 			let total_left_from_one =
 				(fees.treasury_share + fees.validators_share + fees.cluster_reserve_share)
 					.left_from_one();
 
-			// X * Z < X, 0 < Z < 1
-			billing_report.total_customer_charge.transfer =
-				total_left_from_one * billing_report.total_customer_charge.transfer;
-			billing_report.total_customer_charge.storage =
-				total_left_from_one * billing_report.total_customer_charge.storage;
-			billing_report.total_customer_charge.puts =
-				total_left_from_one * billing_report.total_customer_charge.puts;
-			billing_report.total_customer_charge.gets =
-				total_left_from_one * billing_report.total_customer_charge.gets;
+			if !total_left_from_one.is_zero() {
+				// X * Z < X, 0 < Z < 1
+				billing_report.total_customer_charge.transfer =
+					total_left_from_one * billing_report.total_customer_charge.transfer;
+				billing_report.total_customer_charge.storage =
+					total_left_from_one * billing_report.total_customer_charge.storage;
+				billing_report.total_customer_charge.puts =
+					total_left_from_one * billing_report.total_customer_charge.puts;
+				billing_report.total_customer_charge.gets =
+					total_left_from_one * billing_report.total_customer_charge.gets;
+			}
 
 			billing_report.state = State::CustomersChargedWithFees;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
@@ -624,7 +655,7 @@ pub mod pallet {
 					&updated_billing_report.vault,
 					&node_provider_id,
 					reward,
-					ExistenceRequirement::KeepAlive,
+					ExistenceRequirement::AllowDeath,
 				)?;
 
 				updated_billing_report
@@ -689,7 +720,7 @@ pub mod pallet {
 			let caller = ensure_signed(origin)?;
 			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
 
-			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::ProvidersRewarded, Error::<T>::NotExpectedState);
@@ -708,7 +739,11 @@ pub mod pallet {
 				Error::<T>::NotDistributedBalance
 			);
 
-			ActiveBillingReports::<T>::remove(cluster_id, era);
+			billing_report.charging_processed_batches.clear();
+			billing_report.rewarding_processed_batches.clear();
+			billing_report.state = State::Finalized;
+
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 			Self::deposit_event(Event::<T>::BillingReportFinalized { cluster_id, era });
 
 			Ok(())
@@ -725,7 +760,7 @@ pub mod pallet {
 			vault,
 			treasury_vault,
 			amount_to_deduct,
-			ExistenceRequirement::KeepAlive,
+			ExistenceRequirement::AllowDeath,
 		)
 	}
 
@@ -739,7 +774,7 @@ pub mod pallet {
 			vault,
 			reserve_vault,
 			amount_to_deduct,
-			ExistenceRequirement::KeepAlive,
+			ExistenceRequirement::AllowDeath,
 		)
 	}
 
@@ -757,7 +792,7 @@ pub mod pallet {
 				vault,
 				&validator_account_id,
 				amount_to_deduct,
-				ExistenceRequirement::KeepAlive,
+				ExistenceRequirement::AllowDeath,
 			)?;
 		}
 
