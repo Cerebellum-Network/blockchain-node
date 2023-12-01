@@ -14,12 +14,11 @@ use pallet_contracts as contracts;
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
-	BuildStorage,
 	testing::{Header, TestXt},
 	traits::{
 		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
 	},
-	MultiSignature,
+	MultiSignature, Perbill,
 };
 
 use crate::{self as pallet_ddc_clusters, *};
@@ -244,8 +243,40 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut storage);
 
-		let _ = pallet_ddc_clusters::GenesisConfig::<Test>::default().build()
+		let cluster_gov_params = ClusterGovParams {
+			treasury_share: Perbill::from_float(0.05),
+			validators_share: Perbill::from_float(0.01),
+			cluster_reserve_share: Perbill::from_float(0.02),
+			cdn_bond_size: 100,
+			cdn_chill_delay: 50,
+			cdn_unbonding_delay: 50,
+			storage_bond_size: 100,
+			storage_chill_delay: 50,
+			storage_unbonding_delay: 50,
+			unit_per_mb_stored: 10,
+			unit_per_mb_streamed: 10,
+			unit_per_put_request: 10,
+			unit_per_get_request: 10,
+		};
+
+		let node_pub_key = NodePubKey::CDNPubKey(AccountId::from([0; 32]));
+
+		// For testing purposes only
+		pallet_ddc_clusters::GenesisConfig::<Test>::default().build();
+
+		if let Ok(cluster) = Cluster::new(
+			ClusterId::from([0; 20]),
+			AccountId::from([0; 32]),
+			AccountId::from([0; 32]),
+			ClusterParams { node_provider_auth_contract: Some(AccountId::from([0; 32])) },
+		) {
+			let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
+				clusters: vec![cluster],
+				clusters_gov_params: vec![(ClusterId::from([0; 20]), cluster_gov_params)],
+				clusters_nodes: vec![(ClusterId::from([0; 20]), vec![node_pub_key])],
+			}
 			.assimilate_storage(&mut storage);
+		}
 
 		TestExternalities::new(storage)
 	}
