@@ -146,6 +146,7 @@ pub mod pallet {
 		fn delete(node_pub_key: NodePubKey) -> Result<(), NodeRepositoryError>;
 	}
 
+	#[derive(Debug, PartialEq)]
 	pub enum NodeRepositoryError {
 		StorageNodeAlreadyExists,
 		CDNNodeAlreadyExists,
