@@ -378,12 +378,12 @@ pub mod pallet {
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 				let customer_id = payer.0.clone();
-				let amount_actually_charged = T::CustomerCharger::charge_content_owner(
+				/*let amount_actually_charged = T::CustomerCharger::charge_content_owner(
 					customer_id.clone(),
 					updated_billing_report.vault.clone(),
 					total_customer_charge,
-				)?;
-				/*
+				)?;*/
+
 				let amount_actually_charged = match T::CustomerCharger::charge_content_owner(
 					customer_id.clone(),
 					updated_billing_report.vault.clone(),
@@ -391,7 +391,7 @@ pub mod pallet {
 				) {
 					Ok(actually_charged) => actually_charged,
 					Err(_e) => 0,
-				}; */
+				};
 
 				if amount_actually_charged < total_customer_charge {
 					// debt
