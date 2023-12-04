@@ -1,10 +1,14 @@
 //! Tests for the module.
 
-use ddc_primitives::{CDNNodeParams, ClusterId, ClusterParams, NodeParams, NodePubKey};
+use ddc_primitives::{
+	CDNNodeParams, ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterParams,
+	ClusterPricingParams, NodeParams, NodePubKey,
+};
+use ddc_traits::cluster::ClusterManager;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
 use frame_system::Config;
 use hex_literal::hex;
-use sp_runtime::{traits::Hash, AccountId32, Perbill};
+use sp_runtime::{traits::Hash, Perbill};
 
 use super::{mock::*, *};
 
@@ -12,6 +16,11 @@ use super::{mock::*, *};
 fn create_cluster_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = AccountId::from([1; 32]);
+		let cluster_reserve_id = AccountId::from([2; 32]);
+		let auth_contract = AccountId::from([3; 32]);
 
 		let cluster_gov_params = ClusterGovParams {
 			treasury_share: Perbill::from_float(0.05),
@@ -33,10 +42,10 @@ fn create_cluster_works() {
 		assert_noop!(
 			DdcClusters::create_cluster(
 				RuntimeOrigin::signed(AccountId::from([1; 32])),
-				ClusterId::from([1; 20]),
-				AccountId::from([1; 32]),
-				AccountId::from([2; 32]),
-				ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
+				cluster_id,
+				cluster_manager_id.clone(),
+				cluster_reserve_id.clone(),
+				ClusterParams { node_provider_auth_contract: Some(auth_contract.clone()) },
 				cluster_gov_params.clone()
 			),
 			BadOrigin
@@ -45,10 +54,10 @@ fn create_cluster_works() {
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
 			RuntimeOrigin::root(),
-			ClusterId::from([1; 20]),
-			AccountId::from([1; 32]),
-			AccountId::from([2; 32]),
-			ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
+			cluster_id,
+			cluster_manager_id.clone(),
+			cluster_reserve_id.clone(),
+			ClusterParams { node_provider_auth_contract: Some(auth_contract.clone()) },
 			cluster_gov_params.clone()
 		));
 
@@ -56,20 +65,20 @@ fn create_cluster_works() {
 		assert_noop!(
 			DdcClusters::create_cluster(
 				RuntimeOrigin::root(),
-				ClusterId::from([1; 20]),
-				AccountId::from([1; 32]),
-				AccountId::from([2; 32]),
-				ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
+				cluster_id,
+				cluster_manager_id,
+				cluster_reserve_id,
+				ClusterParams { node_provider_auth_contract: Some(auth_contract) },
 				cluster_gov_params
 			),
 			Error::<Test>::ClusterAlreadyExists
 		);
 
+		// Checking storage
+		assert!(Clusters::<Test>::contains_key(cluster_id));
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(
-			Event::ClusterCreated { cluster_id: ClusterId::from([1; 20]) }.into(),
-		)
+		System::assert_last_event(Event::ClusterCreated { cluster_id }.into())
 	})
 }
 
@@ -78,14 +87,19 @@ fn add_and_delete_node_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = AccountId::from([1; 32]);
+		let cluster_reserve_id = AccountId::from([2; 32]);
+		let node_pub_key = AccountId::from([3; 32]);
+
 		let contract_id = deploy_contract();
 
 		// Cluster doesn't exist
 		assert_noop!(
 			DdcClusters::add_node(
-				RuntimeOrigin::signed(AccountId::from([2; 32])),
-				ClusterId::from([1; 20]),
-				NodePubKey::CDNPubKey(AccountId::from([4; 32])),
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::CDNPubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::ClusterDoesNotExist
 		);
@@ -93,10 +107,10 @@ fn add_and_delete_node_works() {
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
 			RuntimeOrigin::root(),
-			ClusterId::from([1; 20]),
-			AccountId::from([1; 32]),
-			AccountId::from([2; 32]),
-			ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
+			cluster_id,
+			cluster_manager_id.clone(),
+			cluster_reserve_id.clone(),
+			ClusterParams { node_provider_auth_contract: Some(cluster_manager_id.clone()) },
 			ClusterGovParams {
 				treasury_share: Perbill::from_float(0.05),
 				validators_share: Perbill::from_float(0.01),
@@ -117,9 +131,9 @@ fn add_and_delete_node_works() {
 		// Not Cluster Manager
 		assert_noop!(
 			DdcClusters::add_node(
-				RuntimeOrigin::signed(AccountId::from([2; 32])),
-				ClusterId::from([1; 20]),
-				NodePubKey::CDNPubKey(AccountId::from([4; 32])),
+				RuntimeOrigin::signed(cluster_reserve_id),
+				cluster_id,
+				NodePubKey::CDNPubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::OnlyClusterManager
 		);
@@ -127,16 +141,12 @@ fn add_and_delete_node_works() {
 		// Node doesn't exist
 		assert_noop!(
 			DdcClusters::add_node(
-				RuntimeOrigin::signed(AccountId::from([1; 32])),
-				ClusterId::from([1; 20]),
-				NodePubKey::CDNPubKey(AccountId::from([4; 32])),
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::CDNPubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::AttemptToAddNonExistentNode
 		);
-
-		// Create node
-		let bytes = [4u8; 32];
-		let node_pub_key = AccountId32::from(bytes);
 
 		let cdn_node_params = CDNNodeParams {
 			host: vec![1u8, 255],
@@ -147,41 +157,46 @@ fn add_and_delete_node_works() {
 
 		// Node created
 		assert_ok!(DdcNodes::create_node(
-			RuntimeOrigin::signed(AccountId::from([1; 32])),
-			NodePubKey::CDNPubKey(node_pub_key),
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
+			NodePubKey::CDNPubKey(node_pub_key.clone()),
 			NodeParams::CDNParams(cdn_node_params)
 		));
 
 		// Node doesn't exist
 		assert_noop!(
 			DdcClusters::add_node(
-				RuntimeOrigin::signed(AccountId::from([1; 32])),
-				ClusterId::from([1; 20]),
-				NodePubKey::CDNPubKey(AccountId::from([4; 32])),
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::CDNPubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::NodeAuthContractCallFailed
 		);
 
 		// Set the correct address for auth contract
 		assert_ok!(DdcClusters::set_cluster_params(
-			RuntimeOrigin::signed(AccountId::from([1; 32])),
-			ClusterId::from([1; 20]),
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
+			cluster_id,
 			ClusterParams { node_provider_auth_contract: Some(contract_id) },
 		));
 
-		// Node doesn't exist
+		// Node added succesfully
 		assert_ok!(DdcClusters::add_node(
-			RuntimeOrigin::signed(AccountId::from([1; 32])),
-			ClusterId::from([1; 20]),
-			NodePubKey::CDNPubKey(AccountId::from([4; 32])),
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
+			cluster_id,
+			NodePubKey::CDNPubKey(node_pub_key.clone()),
+		));
+
+		assert!(<DdcClusters as ClusterManager<Test>>::contains_node(
+			&cluster_id,
+			&NodePubKey::CDNPubKey(node_pub_key.clone())
 		));
 
 		// Node already assigned
 		assert_noop!(
 			DdcClusters::add_node(
-				RuntimeOrigin::signed(AccountId::from([1; 32])),
-				ClusterId::from([1; 20]),
-				NodePubKey::CDNPubKey(AccountId::from([4; 32])),
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::CDNPubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::AttemptToAddAlreadyAssignedNode
 		);
@@ -189,24 +204,24 @@ fn add_and_delete_node_works() {
 		// Checking that event was emitted
 		System::assert_last_event(
 			Event::ClusterNodeAdded {
-				cluster_id: ClusterId::from([1; 20]),
-				node_pub_key: NodePubKey::CDNPubKey(AccountId::from([4; 32])),
+				cluster_id,
+				node_pub_key: NodePubKey::CDNPubKey(node_pub_key.clone()),
 			}
 			.into(),
 		);
 
 		// Remove node
 		assert_ok!(DdcClusters::remove_node(
-			RuntimeOrigin::signed(AccountId::from([1; 32])),
-			ClusterId::from([1; 20]),
-			NodePubKey::CDNPubKey(AccountId::from([4; 32])),
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
+			cluster_id,
+			NodePubKey::CDNPubKey(node_pub_key.clone()),
 		));
 
 		// Checking that event was emitted
 		System::assert_last_event(
 			Event::ClusterNodeRemoved {
-				cluster_id: ClusterId::from([1; 20]),
-				node_pub_key: NodePubKey::CDNPubKey(AccountId::from([4; 32])),
+				cluster_id,
+				node_pub_key: NodePubKey::CDNPubKey(node_pub_key.clone()),
 			}
 			.into(),
 		);
@@ -214,9 +229,9 @@ fn add_and_delete_node_works() {
 		// Remove node should fail
 		assert_noop!(
 			DdcClusters::remove_node(
-				RuntimeOrigin::signed(AccountId::from([1; 32])),
-				ClusterId::from([1; 20]),
-				NodePubKey::CDNPubKey(AccountId::from([4; 32])),
+				RuntimeOrigin::signed(cluster_manager_id),
+				cluster_id,
+				NodePubKey::CDNPubKey(node_pub_key),
 			),
 			Error::<Test>::AttemptToRemoveNotAssignedNode
 		);
@@ -233,8 +248,10 @@ fn add_and_delete_node_works() {
 		}
 
 		fn deploy_contract() -> AccountId {
+			let cluster_manager_id = AccountId::from([1; 32]);
+			let node_pub_key = AccountId::from([3; 32]);
 			// Admin account who deploys the contract.
-			let alice = AccountId::from([1; 32]);
+			let alice = cluster_manager_id;
 			let _ = Balances::deposit_creating(&alice, 1_000_000_000_000);
 
 			// Load the contract code.
@@ -261,7 +278,7 @@ fn add_and_delete_node_works() {
 			let contract_id = Contracts::contract_address(&alice, &wasm_hash, &[]);
 
 			pub const ADD_DDC_NODE_SELECTOR: [u8; 4] = hex!("7a04093d");
-			let node_pub_key = NodePubKey::CDNPubKey(AccountId::from([4; 32]));
+			let node_pub_key = NodePubKey::CDNPubKey(node_pub_key);
 
 			let call_data = {
 				// is_authorized(node_provider: AccountId, node: Vec<u8>, node_variant: u8) -> bool
@@ -291,12 +308,18 @@ fn set_cluster_params_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = AccountId::from([1; 32]);
+		let cluster_reserve_id = AccountId::from([2; 32]);
+		let auth_contract_1 = AccountId::from([3; 32]);
+		let auth_contract_2 = AccountId::from([4; 32]);
+
 		// Cluster doesn't exist
 		assert_noop!(
 			DdcClusters::set_cluster_params(
-				RuntimeOrigin::signed(AccountId::from([2; 32])),
-				ClusterId::from([2; 20]),
-				ClusterParams { node_provider_auth_contract: Some(AccountId::from([2; 32])) },
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				ClusterParams { node_provider_auth_contract: Some(auth_contract_1.clone()) },
 			),
 			Error::<Test>::ClusterDoesNotExist
 		);
@@ -304,10 +327,10 @@ fn set_cluster_params_works() {
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
 			RuntimeOrigin::root(),
-			ClusterId::from([1; 20]),
-			AccountId::from([1; 32]),
-			AccountId::from([2; 32]),
-			ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
+			cluster_id,
+			cluster_manager_id.clone(),
+			cluster_reserve_id.clone(),
+			ClusterParams { node_provider_auth_contract: Some(auth_contract_1) },
 			ClusterGovParams {
 				treasury_share: Perbill::from_float(0.05),
 				validators_share: Perbill::from_float(0.01),
@@ -327,24 +350,22 @@ fn set_cluster_params_works() {
 
 		assert_noop!(
 			DdcClusters::set_cluster_params(
-				RuntimeOrigin::signed(AccountId::from([2; 32])),
-				ClusterId::from([1; 20]),
-				ClusterParams { node_provider_auth_contract: Some(AccountId::from([2; 32])) },
+				RuntimeOrigin::signed(cluster_reserve_id),
+				cluster_id,
+				ClusterParams { node_provider_auth_contract: Some(auth_contract_2.clone()) },
 			),
 			Error::<Test>::OnlyClusterManager
 		);
 
 		assert_ok!(DdcClusters::set_cluster_params(
-			RuntimeOrigin::signed(AccountId::from([1; 32])),
-			ClusterId::from([1; 20]),
-			ClusterParams { node_provider_auth_contract: Some(AccountId::from([2; 32])) },
+			RuntimeOrigin::signed(cluster_manager_id),
+			cluster_id,
+			ClusterParams { node_provider_auth_contract: Some(auth_contract_2) },
 		));
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 2);
-		System::assert_last_event(
-			Event::ClusterParamsSet { cluster_id: ClusterId::from([1; 20]) }.into(),
-		)
+		System::assert_last_event(Event::ClusterParamsSet { cluster_id }.into())
 	})
 }
 
@@ -352,6 +373,11 @@ fn set_cluster_params_works() {
 fn set_cluster_gov_params_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = AccountId::from([1; 32]);
+		let cluster_reserve_id = AccountId::from([2; 32]);
+		let auth_contract = AccountId::from([3; 32]);
 
 		let cluster_gov_params = ClusterGovParams {
 			treasury_share: Perbill::from_float(0.05),
@@ -373,7 +399,7 @@ fn set_cluster_gov_params_works() {
 		assert_noop!(
 			DdcClusters::set_cluster_gov_params(
 				RuntimeOrigin::root(),
-				ClusterId::from([2; 20]),
+				cluster_id,
 				cluster_gov_params.clone()
 			),
 			Error::<Test>::ClusterDoesNotExist
@@ -381,17 +407,17 @@ fn set_cluster_gov_params_works() {
 
 		assert_ok!(DdcClusters::create_cluster(
 			RuntimeOrigin::root(),
-			ClusterId::from([1; 20]),
-			AccountId::from([1; 32]),
-			AccountId::from([2; 32]),
-			ClusterParams { node_provider_auth_contract: Some(AccountId::from([1; 32])) },
+			cluster_id,
+			cluster_manager_id.clone(),
+			cluster_reserve_id,
+			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
 			cluster_gov_params.clone()
 		));
 
 		assert_noop!(
 			DdcClusters::set_cluster_gov_params(
-				RuntimeOrigin::signed(AccountId::from([1; 32])),
-				ClusterId::from([1; 20]),
+				RuntimeOrigin::signed(cluster_manager_id),
+				cluster_id,
 				cluster_gov_params.clone()
 			),
 			BadOrigin
@@ -399,14 +425,163 @@ fn set_cluster_gov_params_works() {
 
 		assert_ok!(DdcClusters::set_cluster_gov_params(
 			RuntimeOrigin::root(),
-			ClusterId::from([1; 20]),
+			cluster_id,
 			cluster_gov_params
 		));
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 2);
-		System::assert_last_event(
-			Event::ClusterGovParamsSet { cluster_id: ClusterId::from([1; 20]) }.into(),
-		)
+		System::assert_last_event(Event::ClusterGovParamsSet { cluster_id }.into())
+	})
+}
+
+#[test]
+fn cluster_visitor_works() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = AccountId::from([1; 32]);
+		let cluster_reserve_id = AccountId::from([2; 32]);
+		let auth_contract = AccountId::from([3; 32]);
+
+		let cluster_gov_params = ClusterGovParams {
+			treasury_share: Perbill::from_float(0.05),
+			validators_share: Perbill::from_float(0.01),
+			cluster_reserve_share: Perbill::from_float(0.02),
+			cdn_bond_size: 100,
+			cdn_chill_delay: 50,
+			cdn_unbonding_delay: 50,
+			storage_bond_size: 100,
+			storage_chill_delay: 50,
+			storage_unbonding_delay: 50,
+			unit_per_mb_stored: 10,
+			unit_per_mb_streamed: 10,
+			unit_per_put_request: 10,
+			unit_per_get_request: 10,
+		};
+
+		// Creating 1 cluster should work fine
+		assert_ok!(DdcClusters::create_cluster(
+			RuntimeOrigin::root(),
+			cluster_id,
+			cluster_manager_id,
+			cluster_reserve_id.clone(),
+			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
+			cluster_gov_params
+		));
+
+		assert_ok!(<DdcClusters as ClusterVisitor<Test>>::ensure_cluster(&cluster_id));
+
+		assert_eq!(
+			<DdcClusters as ClusterVisitor<Test>>::get_bond_size(&cluster_id, NodeType::CDN)
+				.unwrap(),
+			100u128
+		);
+		assert_eq!(
+			<DdcClusters as ClusterVisitor<Test>>::get_bond_size(&cluster_id, NodeType::Storage)
+				.unwrap(),
+			100u128
+		);
+
+		assert_eq!(
+			<DdcClusters as ClusterVisitor<Test>>::get_pricing_params(&cluster_id).unwrap(),
+			ClusterPricingParams {
+				unit_per_mb_stored: 10,
+				unit_per_mb_streamed: 10,
+				unit_per_put_request: 10,
+				unit_per_get_request: 10,
+			}
+		);
+
+		assert_eq!(
+			<DdcClusters as ClusterVisitor<Test>>::get_fees_params(&cluster_id).unwrap(),
+			ClusterFeesParams {
+				treasury_share: Perbill::from_float(0.05),
+				validators_share: Perbill::from_float(0.01),
+				cluster_reserve_share: Perbill::from_float(0.02)
+			}
+		);
+
+		assert_eq!(
+			<DdcClusters as ClusterVisitor<Test>>::get_reserve_account_id(&cluster_id).unwrap(),
+			cluster_reserve_id
+		);
+
+		assert_eq!(
+			<DdcClusters as ClusterVisitor<Test>>::get_chill_delay(&cluster_id, NodeType::CDN)
+				.unwrap(),
+			50
+		);
+		assert_eq!(
+			<DdcClusters as ClusterVisitor<Test>>::get_chill_delay(&cluster_id, NodeType::Storage)
+				.unwrap(),
+			50
+		);
+
+		assert_eq!(
+			<DdcClusters as ClusterVisitor<Test>>::get_unbonding_delay(&cluster_id, NodeType::CDN)
+				.unwrap(),
+			50
+		);
+		assert_eq!(
+			<DdcClusters as ClusterVisitor<Test>>::get_unbonding_delay(
+				&cluster_id,
+				NodeType::Storage
+			)
+			.unwrap(),
+			50
+		);
+
+		assert_eq!(
+			<DdcClusters as ClusterVisitor<Test>>::get_bonding_params(&cluster_id).unwrap(),
+			ClusterBondingParams::<<Test as frame_system::Config>::BlockNumber> {
+				cdn_bond_size: 100,
+				cdn_chill_delay: 50,
+				cdn_unbonding_delay: 50,
+				storage_bond_size: 100,
+				storage_chill_delay: 50,
+				storage_unbonding_delay: 50,
+			}
+		);
+	})
+}
+
+#[test]
+fn cluster_creator_works() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = AccountId::from([1; 32]);
+		let cluster_reserve_id = AccountId::from([2; 32]);
+		let auth_contract = AccountId::from([3; 32]);
+
+		let cluster_gov_params = ClusterGovParams {
+			treasury_share: Perbill::from_float(0.05),
+			validators_share: Perbill::from_float(0.01),
+			cluster_reserve_share: Perbill::from_float(0.02),
+			cdn_bond_size: 100,
+			cdn_chill_delay: 50,
+			cdn_unbonding_delay: 50,
+			storage_bond_size: 100,
+			storage_chill_delay: 50,
+			storage_unbonding_delay: 50,
+			unit_per_mb_stored: 10,
+			unit_per_mb_streamed: 10,
+			unit_per_put_request: 10,
+			unit_per_get_request: 10,
+		};
+
+		assert_ok!(<DdcClusters as ClusterCreator<Test, BalanceOf<Test>>>::create_new_cluster(
+			cluster_id,
+			cluster_manager_id,
+			cluster_reserve_id,
+			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
+			cluster_gov_params
+		));
+
+		assert!(Clusters::<Test>::contains_key(cluster_id));
+		assert!(ClustersGovParams::<Test>::contains_key(cluster_id));
 	})
 }
