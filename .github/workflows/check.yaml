@@ -31,7 +31,8 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           source "$HOME/.cargo/env"
-          rustup default stable
+          rustup install install 1.70.0
+          rustup default 1.70.0
           rustup update nightly
           rustup update stable --no-self-update
           rustup target add wasm32-unknown-unknown
@@ -59,7 +60,7 @@ jobs:
         
       - name: Check Build
         run: |
-          SKIP_WASM_BUILD=1 cargo check --release
+          SKIP_WASM_BUILD=1 cargo +1.70.0 check --release
 
       - name: Check Build for Benchmarking
         run: >
