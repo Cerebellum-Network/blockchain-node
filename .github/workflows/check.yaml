@@ -35,6 +35,7 @@ jobs:
           rustup update nightly
           rustup update stable --no-self-update
           rustup target add wasm32-unknown-unknown
+          export PATH="$HOME/.cargo/bin:$PATH"
 
       - name: Check TOML
         uses: dprint/check@v2.2
