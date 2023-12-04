@@ -258,12 +258,11 @@ fn send_charging_customers_batch_fails_uninitialised() {
 }
 
 fn calculate_charge_parts(cluster_id: ClusterId, usage: CustomerUsage) -> CustomerCharge {
-	let pricing_params =
-		if cluster_id == FREE_CLUSTER_ID || cluster_id == ONE_CLUSTER_ID {
-			PRICING_PARAMS_ONE
-		} else {
-			PRICING_PARAMS
-		};
+	let pricing_params = if cluster_id == FREE_CLUSTER_ID || cluster_id == ONE_CLUSTER_ID {
+		PRICING_PARAMS_ONE
+	} else {
+		PRICING_PARAMS
+	};
 
 	CustomerCharge {
 		transfer: pricing_params.unit_per_mb_streamed * (usage.transferred_bytes as u128) /
@@ -445,7 +444,7 @@ fn send_charging_customers_batch_works1() {
 		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
-		let mut balance_before =
+		let balance_before =
 			Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
 
 		// batch 3
@@ -521,7 +520,7 @@ fn send_charging_customers_batch_works2() {
 		let cluster_id = ONE_CLUSTER_ID;
 		let era = 100;
 		let max_batch_index = 0;
-		let mut batch_index = 0;
+		let batch_index = 0;
 		let usage5 = CustomerUsage {
 			// should pass without debt
 			transferred_bytes: 1024,
@@ -529,7 +528,7 @@ fn send_charging_customers_batch_works2() {
 			number_of_puts: 1,
 			number_of_gets: 1,
 		};
-		let payers5 = vec![(user5.clone(), usage5.clone())];
+		let payers5 = vec![(user5, usage5.clone())];
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 		assert_ok!(DdcPayouts::begin_billing_report(
