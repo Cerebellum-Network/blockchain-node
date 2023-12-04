@@ -23,7 +23,7 @@ use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError,
+	DispatchError, Perquintill,
 };
 use sp_std::prelude::*;
 
@@ -117,7 +117,10 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		ensure!(amount > 1_000_000, DispatchError::BadOrigin); //  any error will do
 
 		let mut amount_to_charge = amount;
-		if amount_to_charge < 50_000_000 {
+		let temp = ACCOUNT_ID_5.to_ne_bytes();
+		let account_5 = T::AccountId::decode(&mut &temp[..]).unwrap();
+
+		if amount_to_charge < 50_000_000 && content_owner != account_5 {
 			amount_to_charge = PARTIAL_CHARGE; // for user 3
 		}
 
@@ -133,6 +136,7 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 	}
 }
 
+pub const ACCOUNT_ID_5: AccountId = 5;
 pub const RESERVE_ACCOUNT_ID: AccountId = 999;
 pub const TREASURY_ACCOUNT_ID: AccountId = 888;
 pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
@@ -142,6 +146,7 @@ pub const PARTIAL_CHARGE: u128 = 100;
 pub const USER3_BALANCE: u128 = 1000;
 
 pub const FREE_CLUSTER_ID: ClusterId = ClusterId::zero();
+pub const ONE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(5u8);
 
 pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_streamed: 2_000_000,
@@ -150,16 +155,23 @@ pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_get_request: 5_000_000,
 };
 
+pub const PRICING_PARAMS_ONE: ClusterPricingParams = ClusterPricingParams {
+	unit_per_mb_streamed: 10_000_000_000,
+	unit_per_mb_stored: 10_000_000_000,
+	unit_per_put_request: 10_000_000_000,
+	unit_per_get_request: 10_000_000_000,
+};
+
 pub const PRICING_FEES: ClusterFeesParams = ClusterFeesParams {
-	treasury_share: Perbill::from_percent(1),
-	validators_share: Perbill::from_percent(10),
-	cluster_reserve_share: Perbill::from_percent(2),
+	treasury_share: Perquintill::from_percent(1),
+	validators_share: Perquintill::from_percent(10),
+	cluster_reserve_share: Perquintill::from_percent(2),
 };
 
 pub const PRICING_FEES_ZERO: ClusterFeesParams = ClusterFeesParams {
-	treasury_share: Perbill::from_percent(0),
-	validators_share: Perbill::from_percent(0),
-	cluster_reserve_share: Perbill::from_percent(0),
+	treasury_share: Perquintill::from_percent(0),
+	validators_share: Perquintill::from_percent(0),
+	cluster_reserve_share: Perquintill::from_percent(0),
 };
 
 pub struct TestTreasuryVisitor;
@@ -240,7 +252,7 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 }
 
 pub fn get_fees(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
-	if *cluster_id == FREE_CLUSTER_ID {
+	if *cluster_id == FREE_CLUSTER_ID || *cluster_id == ONE_CLUSTER_ID {
 		Ok(PRICING_FEES_ZERO)
 	} else {
 		Ok(PRICING_FEES)
@@ -275,9 +287,13 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	}
 
 	fn get_pricing_params(
-		_cluster_id: &ClusterId,
+		cluster_id: &ClusterId,
 	) -> Result<ClusterPricingParams, ClusterVisitorError> {
-		Ok(PRICING_PARAMS)
+		if *cluster_id == FREE_CLUSTER_ID || *cluster_id == ONE_CLUSTER_ID {
+			Ok(PRICING_PARAMS_ONE)
+		} else {
+			Ok(PRICING_PARAMS)
+		}
 	}
 
 	fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
@@ -303,10 +319,11 @@ impl ExtBuilder {
 
 		let _ = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
-				(1, 1000000000000000000000000),
+				(1, 10000000000000000000000000000),
 				(2, 10),            // < PARTIAL_CHARGE
 				(3, USER3_BALANCE), // > PARTIAL_CHARGE
 				(4, 1000000000000000000000000),
+				(5, 1000000000000000000000000),
 			],
 		}
 		.assimilate_storage(&mut storage);

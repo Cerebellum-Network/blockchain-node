@@ -34,7 +34,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
-use sp_runtime::{PerThing, Perbill};
+use sp_runtime::{PerThing, Perquintill};
 use sp_std::prelude::*;
 
 type BatchIndex = u16;
@@ -89,6 +89,7 @@ pub type BalanceOf<T> =
 
 parameter_types! {
 	pub MaxBatchesCount: u16 = 1000;
+	pub MaxDust: u16 = 20000;
 }
 
 #[frame_support::pallet]
@@ -378,12 +379,12 @@ pub mod pallet {
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 				let customer_id = payer.0.clone();
-				let amount_actually_charged = T::CustomerCharger::charge_content_owner(
+				/*let amount_actually_charged = T::CustomerCharger::charge_content_owner(
 					customer_id.clone(),
 					updated_billing_report.vault.clone(),
 					total_customer_charge,
-				)?;
-				/*
+				)?;*/
+
 				let amount_actually_charged = match T::CustomerCharger::charge_content_owner(
 					customer_id.clone(),
 					updated_billing_report.vault.clone(),
@@ -391,7 +392,7 @@ pub mod pallet {
 				) {
 					Ok(actually_charged) => actually_charged,
 					Err(_e) => 0,
-				}; */
+				};
 
 				if amount_actually_charged < total_customer_charge {
 					// debt
@@ -427,8 +428,10 @@ pub mod pallet {
 					if amount_actually_charged > 0 {
 						// something was charged and should be added
 						// calculate ratio
-						let ratio =
-							Perbill::from_rational(amount_actually_charged, total_customer_charge);
+						let ratio = Perquintill::from_rational(
+							amount_actually_charged,
+							total_customer_charge,
+						);
 
 						customer_charge.storage = ratio * customer_charge.storage;
 						customer_charge.transfer = ratio * customer_charge.transfer;
@@ -654,19 +657,21 @@ pub mod pallet {
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 				let node_provider_id = payee.0;
-				let reward: BalanceOf<T> = amount_to_reward.saturated_into::<BalanceOf<T>>();
+				if amount_to_reward > 0 {
+					let reward: BalanceOf<T> = amount_to_reward.saturated_into::<BalanceOf<T>>();
 
-				<T as pallet::Config>::Currency::transfer(
-					&updated_billing_report.vault,
-					&node_provider_id,
-					reward,
-					ExistenceRequirement::AllowDeath,
-				)?;
+					<T as pallet::Config>::Currency::transfer(
+						&updated_billing_report.vault,
+						&node_provider_id,
+						reward,
+						ExistenceRequirement::AllowDeath,
+					)?;
 
-				updated_billing_report
-					.total_distributed_reward
-					.checked_add(amount_to_reward)
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
+					updated_billing_report.total_distributed_reward = updated_billing_report
+						.total_distributed_reward
+						.checked_add(amount_to_reward)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+				}
 
 				Self::deposit_event(Event::<T>::Rewarded {
 					cluster_id,
@@ -708,6 +713,22 @@ pub mod pallet {
 				&billing_report.rewarding_max_batch_index,
 			)?;
 
+			let expected_amount_to_reward = (|| -> Option<u128> {
+				billing_report
+					.total_customer_charge
+					.transfer
+					.checked_add(billing_report.total_customer_charge.storage)?
+					.checked_add(billing_report.total_customer_charge.puts)?
+					.checked_add(billing_report.total_customer_charge.gets)
+			})()
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+			ensure!(
+				expected_amount_to_reward - billing_report.total_distributed_reward <=
+					MaxDust::get().into(),
+				Error::<T>::NotDistributedBalance
+			);
+
 			billing_report.state = State::ProvidersRewarded;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
@@ -729,20 +750,6 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::ProvidersRewarded, Error::<T>::NotExpectedState);
-			let expected_amount_to_reward = (|| -> Option<u128> {
-				billing_report
-					.total_customer_charge
-					.transfer
-					.checked_add(billing_report.total_customer_charge.storage)?
-					.checked_add(billing_report.total_customer_charge.puts)?
-					.checked_add(billing_report.total_customer_charge.gets)
-			})()
-			.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-			ensure!(
-				expected_amount_to_reward == billing_report.total_distributed_reward,
-				Error::<T>::NotDistributedBalance
-			);
 
 			billing_report.charging_processed_batches.clear();
 			billing_report.rewarding_processed_batches.clear();
@@ -811,20 +818,23 @@ pub mod pallet {
 	) -> Option<NodeReward> {
 		let mut node_reward = NodeReward::default();
 
-		let mut ratio = Perbill::from_rational(
+		let mut ratio = Perquintill::from_rational(
 			node_usage.transferred_bytes,
 			total_nodes_usage.transferred_bytes,
 		);
+
 		// ratio multiplied by X will be > 0, < X no overflow
 		node_reward.transfer = ratio * total_customer_charge.transfer;
 
-		ratio = Perbill::from_rational(node_usage.stored_bytes, total_nodes_usage.stored_bytes);
+		ratio = Perquintill::from_rational(node_usage.stored_bytes, total_nodes_usage.stored_bytes);
 		node_reward.storage = ratio * total_customer_charge.storage;
 
-		ratio = Perbill::from_rational(node_usage.number_of_puts, total_nodes_usage.number_of_puts);
+		ratio =
+			Perquintill::from_rational(node_usage.number_of_puts, total_nodes_usage.number_of_puts);
 		node_reward.puts = ratio * total_customer_charge.puts;
 
-		ratio = Perbill::from_rational(node_usage.number_of_gets, total_nodes_usage.number_of_gets);
+		ratio =
+			Perquintill::from_rational(node_usage.number_of_gets, total_nodes_usage.number_of_gets);
 		node_reward.gets = ratio * total_customer_charge.gets;
 
 		Some(node_reward)

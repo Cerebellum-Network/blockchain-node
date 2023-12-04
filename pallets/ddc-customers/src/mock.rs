@@ -15,7 +15,7 @@ use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	Perbill,
+	Perquintill,
 };
 
 /// The AccountId alias in this test module.
@@ -143,9 +143,9 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 
 	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
 		Ok(ClusterFeesParams {
-			treasury_share: Perbill::from_percent(1),
-			validators_share: Perbill::from_percent(10),
-			cluster_reserve_share: Perbill::from_percent(2),
+			treasury_share: Perquintill::from_percent(1),
+			validators_share: Perquintill::from_percent(10),
+			cluster_reserve_share: Perquintill::from_percent(2),
 		})
 	}
 
