@@ -18,7 +18,7 @@ use codec::{Decode, Encode, HasCompact};
 use ddc_primitives::{BucketId, ClusterId};
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor},
-	customer::CustomerCharger,
+	customer::{CustomerCharger, CustomerDepositor},
 };
 use frame_support::{
 	parameter_types,
@@ -257,6 +257,8 @@ pub mod pallet {
 		ArithmeticOverflow,
 		// Arithmetic underflow
 		ArithmeticUnderflow,
+		// Transferring balance to pallet's vault has failed
+		TransferFailed,
 	}
 
 	#[pallet::genesis_config]
@@ -318,28 +320,7 @@ pub mod pallet {
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-
-			if <Ledger<T>>::contains_key(&owner) {
-				Err(Error::<T>::AlreadyPaired)?
-			}
-
-			// Reject a deposit which is considered to be _dust_.
-			if value < <T as pallet::Config>::Currency::minimum_balance() {
-				Err(Error::<T>::InsufficientDeposit)?
-			}
-
-			frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::BadState)?;
-
-			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
-			let value = value.min(owner_balance);
-			let item = AccountsLedger {
-				owner: owner.clone(),
-				total: value,
-				active: value,
-				unlocking: Default::default(),
-			};
-			Self::update_ledger_and_deposit(&owner, &item)?;
-			Self::deposit_event(Event::<T>::Deposited(owner, value));
+			<Self as CustomerDepositor<T>>::deposit(owner, value.saturated_into())?;
 			Ok(())
 		}
 
@@ -355,26 +336,7 @@ pub mod pallet {
 			#[pallet::compact] max_additional: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-
-			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
-
-			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
-			let extra = owner_balance.min(max_additional);
-			ledger.total =
-				ledger.total.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
-			ledger.active =
-				ledger.active.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
-
-			// Last check: the new active amount of ledger must be more than ED.
-			ensure!(
-				ledger.active >= <T as pallet::Config>::Currency::minimum_balance(),
-				Error::<T>::InsufficientDeposit
-			);
-
-			Self::update_ledger_and_deposit(&owner, &ledger)?;
-
-			Self::deposit_event(Event::<T>::Deposited(owner, extra));
-
+			<Self as CustomerDepositor<T>>::deposit_extra(owner, max_additional.saturated_into())?;
 			Ok(())
 		}
 
@@ -597,6 +559,62 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::Charged(content_owner, amount_to_deduct));
 
 			Ok(actually_charged.saturated_into::<u128>())
+		}
+	}
+
+	impl<T: Config> CustomerDepositor<T> for Pallet<T> {
+		fn deposit(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
+			let value = amount.saturated_into::<BalanceOf<T>>();
+
+			if <Ledger<T>>::contains_key(&owner) {
+				Err(Error::<T>::AlreadyPaired)?
+			}
+
+			// Reject a deposit which is considered to be _dust_.
+			if value < <T as pallet::Config>::Currency::minimum_balance() {
+				Err(Error::<T>::InsufficientDeposit)?
+			}
+
+			frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::BadState)?;
+
+			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
+			let value = value.min(owner_balance);
+			let item = AccountsLedger {
+				owner: owner.clone(),
+				total: value,
+				active: value,
+				unlocking: Default::default(),
+			};
+
+			Self::update_ledger_and_deposit(&owner, &item)
+				.map_err(|_| Error::<T>::TransferFailed)?;
+			Self::deposit_event(Event::<T>::Deposited(owner, value));
+
+			Ok(())
+		}
+
+		fn deposit_extra(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
+			let max_additional = amount.saturated_into::<BalanceOf<T>>();
+			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
+
+			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
+			let extra = owner_balance.min(max_additional);
+			ledger.total =
+				ledger.total.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
+			ledger.active =
+				ledger.active.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
+
+			// Last check: the new active amount of ledger must be more than ED.
+			ensure!(
+				ledger.active >= <T as pallet::Config>::Currency::minimum_balance(),
+				Error::<T>::InsufficientDeposit
+			);
+
+			Self::update_ledger_and_deposit(&owner, &ledger)
+				.map_err(|_| Error::<T>::TransferFailed)?;
+			Self::deposit_event(Event::<T>::Deposited(owner, extra));
+
+			Ok(())
 		}
 	}
 }
