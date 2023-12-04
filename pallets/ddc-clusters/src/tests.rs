@@ -6,7 +6,7 @@ use frame_support::{assert_noop, assert_ok, error::BadOrigin};
 use frame_system::Config;
 use hex_literal::hex;
 use pallet_ddc_nodes::{CDNNodeParams, NodeParams};
-use sp_runtime::{traits::Hash, AccountId32, Perbill};
+use sp_runtime::{traits::Hash, AccountId32, Perquintill};
 
 #[test]
 fn create_cluster_works() {
@@ -14,9 +14,9 @@ fn create_cluster_works() {
 		System::set_block_number(1);
 
 		let cluster_gov_params = ClusterGovParams {
-			treasury_share: Perbill::from_float(0.05),
-			validators_share: Perbill::from_float(0.01),
-			cluster_reserve_share: Perbill::from_float(0.02),
+			treasury_share: Perquintill::from_float(0.05),
+			validators_share: Perquintill::from_float(0.01),
+			cluster_reserve_share: Perquintill::from_float(0.02),
 			cdn_bond_size: 100,
 			cdn_chill_delay: 50,
 			cdn_unbonding_delay: 50,
@@ -98,9 +98,9 @@ fn add_and_delete_node_works() {
 			AccountId::from([2; 32]),
 			ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
 			ClusterGovParams {
-				treasury_share: Perbill::from_float(0.05),
-				validators_share: Perbill::from_float(0.01),
-				cluster_reserve_share: Perbill::from_float(0.02),
+				treasury_share: Perquintill::from_float(0.05),
+				validators_share: Perquintill::from_float(0.01),
+				cluster_reserve_share: Perquintill::from_float(0.02),
 				cdn_bond_size: 100,
 				cdn_chill_delay: 50,
 				cdn_unbonding_delay: 50,
@@ -309,9 +309,9 @@ fn set_cluster_params_works() {
 			AccountId::from([2; 32]),
 			ClusterParams { node_provider_auth_contract: AccountId::from([1; 32]) },
 			ClusterGovParams {
-				treasury_share: Perbill::from_float(0.05),
-				validators_share: Perbill::from_float(0.01),
-				cluster_reserve_share: Perbill::from_float(0.02),
+				treasury_share: Perquintill::from_float(0.05),
+				validators_share: Perquintill::from_float(0.01),
+				cluster_reserve_share: Perquintill::from_float(0.02),
 				cdn_bond_size: 100,
 				cdn_chill_delay: 50,
 				cdn_unbonding_delay: 50,
@@ -354,9 +354,9 @@ fn set_cluster_gov_params_works() {
 		System::set_block_number(1);
 
 		let cluster_gov_params = ClusterGovParams {
-			treasury_share: Perbill::from_float(0.05),
-			validators_share: Perbill::from_float(0.01),
-			cluster_reserve_share: Perbill::from_float(0.02),
+			treasury_share: Perquintill::from_float(0.05),
+			validators_share: Perquintill::from_float(0.01),
+			cluster_reserve_share: Perquintill::from_float(0.02),
 			cdn_bond_size: 100,
 			cdn_chill_delay: 50,
 			cdn_unbonding_delay: 50,

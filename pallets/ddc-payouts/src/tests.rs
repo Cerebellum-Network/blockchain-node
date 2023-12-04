@@ -3,7 +3,7 @@
 use super::{mock::*, *};
 use ddc_primitives::ClusterId;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
-
+use sp_runtime::Perquintill;
 #[test]
 fn set_authorised_caller_works() {
 	ExtBuilder.build_and_execute(|| {
@@ -444,8 +444,7 @@ fn send_charging_customers_batch_works1() {
 		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
-		let balance_before =
-			Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+		let balance_before = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
 
 		// batch 3
 		batch_index += 1;
@@ -460,7 +459,7 @@ fn send_charging_customers_batch_works1() {
 
 		let user3_charge = calculate_charge(cluster_id, usage3.clone());
 		let charge3 = calculate_charge_parts(cluster_id, usage3);
-		let ratio = Perbill::from_rational(PARTIAL_CHARGE, user3_charge);
+		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
 		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(
 			ratio * charge3.puts + before_total_customer_charge.puts,
@@ -845,11 +844,11 @@ fn end_charging_customers_works_zero_fees() {
 			(fees.treasury_share + fees.validators_share + fees.cluster_reserve_share)
 				.left_from_one();
 
-		assert_eq!(total_left_from_one, Perbill::one());
+		assert_eq!(total_left_from_one, Perquintill::one());
 
-		assert_eq!(fees.treasury_share, Perbill::zero());
-		assert_eq!(fees.validators_share, Perbill::zero());
-		assert_eq!(fees.cluster_reserve_share, Perbill::zero());
+		assert_eq!(fees.treasury_share, Perquintill::zero());
+		assert_eq!(fees.validators_share, Perquintill::zero());
+		assert_eq!(fees.cluster_reserve_share, Perquintill::zero());
 
 		balance = Balances::free_balance(TREASURY_ACCOUNT_ID);
 		assert_eq!(balance, 0);
@@ -1347,46 +1346,59 @@ fn send_rewarding_providers_batch_works() {
 			payees1,
 		));
 
-		let mut ratio = Perbill::from_rational(
+		let ratio1_transfer = Perquintill::from_rational(
 			node_usage1.transferred_bytes,
 			total_nodes_usage.transferred_bytes,
 		);
-		let mut transfer_charge = ratio * report_after.total_customer_charge.transfer;
+		let mut transfer_charge = ratio1_transfer * report_after.total_customer_charge.transfer;
 
-		ratio = Perbill::from_rational(node_usage1.stored_bytes, total_nodes_usage.stored_bytes);
-		let mut storage_charge = ratio * report_after.total_customer_charge.storage;
+		let ratio1_storage =
+			Perquintill::from_rational(node_usage1.stored_bytes, total_nodes_usage.stored_bytes);
+		let mut storage_charge = ratio1_storage * report_after.total_customer_charge.storage;
 
-		ratio =
-			Perbill::from_rational(node_usage1.number_of_puts, total_nodes_usage.number_of_puts);
-		let mut puts_charge = ratio * report_after.total_customer_charge.puts;
+		let ratio1_puts = Perquintill::from_rational(
+			node_usage1.number_of_puts,
+			total_nodes_usage.number_of_puts,
+		);
+		let mut puts_charge = ratio1_puts * report_after.total_customer_charge.puts;
 
-		ratio =
-			Perbill::from_rational(node_usage1.number_of_gets, total_nodes_usage.number_of_gets);
-		let mut gets_charge = ratio * report_after.total_customer_charge.gets;
+		let ratio1_gets = Perquintill::from_rational(
+			node_usage1.number_of_gets,
+			total_nodes_usage.number_of_gets,
+		);
+		let mut gets_charge = ratio1_gets * report_after.total_customer_charge.gets;
 
-		let mut balance = Balances::free_balance(node1);
-		assert_eq!(balance, transfer_charge + storage_charge + puts_charge + gets_charge);
+		let balance_node1 = Balances::free_balance(node1);
+		assert_eq!(balance_node1, transfer_charge + storage_charge + puts_charge + gets_charge);
+		let mut report_reward = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 
-		ratio = Perbill::from_rational(
+		let ratio2_transfer = Perquintill::from_rational(
 			node_usage2.transferred_bytes,
 			total_nodes_usage.transferred_bytes,
 		);
-		transfer_charge = ratio * report_after.total_customer_charge.transfer;
+		transfer_charge = ratio2_transfer * report_after.total_customer_charge.transfer;
 
-		ratio = Perbill::from_rational(node_usage2.stored_bytes, total_nodes_usage.stored_bytes);
-		storage_charge = ratio * report_after.total_customer_charge.storage;
+		let ratio2_storage =
+			Perquintill::from_rational(node_usage2.stored_bytes, total_nodes_usage.stored_bytes);
+		storage_charge = ratio2_storage * report_after.total_customer_charge.storage;
 
-		ratio =
-			Perbill::from_rational(node_usage2.number_of_puts, total_nodes_usage.number_of_puts);
-		puts_charge = ratio * report_after.total_customer_charge.puts;
+		let ratio2_puts = Perquintill::from_rational(
+			node_usage2.number_of_puts,
+			total_nodes_usage.number_of_puts,
+		);
+		puts_charge = ratio2_puts * report_after.total_customer_charge.puts;
 
-		ratio =
-			Perbill::from_rational(node_usage2.number_of_gets, total_nodes_usage.number_of_gets);
-		gets_charge = ratio * report_after.total_customer_charge.gets;
+		let ratio2_gets = Perquintill::from_rational(
+			node_usage2.number_of_gets,
+			total_nodes_usage.number_of_gets,
+		);
+		gets_charge = ratio2_gets * report_after.total_customer_charge.gets;
 
-		balance = Balances::free_balance(node2);
-		assert_eq!(balance, transfer_charge + storage_charge + puts_charge + gets_charge);
+		let balance_node2 = Balances::free_balance(node2);
+		assert_eq!(balance_node2, transfer_charge + storage_charge + puts_charge + gets_charge);
+		assert_eq!(report_reward.total_distributed_reward, balance_node1 + balance_node2);
 
+		// batch 2
 		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
@@ -1395,25 +1407,42 @@ fn send_rewarding_providers_batch_works() {
 			payees2,
 		));
 
-		ratio = Perbill::from_rational(
+		let ratio3_transfer = Perquintill::from_rational(
 			node_usage3.transferred_bytes,
 			total_nodes_usage.transferred_bytes,
 		);
-		transfer_charge = ratio * report_after.total_customer_charge.transfer;
+		transfer_charge = ratio3_transfer * report_after.total_customer_charge.transfer;
 
-		ratio = Perbill::from_rational(node_usage3.stored_bytes, total_nodes_usage.stored_bytes);
-		storage_charge = ratio * report_after.total_customer_charge.storage;
+		let ratio3_storage =
+			Perquintill::from_rational(node_usage3.stored_bytes, total_nodes_usage.stored_bytes);
+		storage_charge = ratio3_storage * report_after.total_customer_charge.storage;
 
-		ratio =
-			Perbill::from_rational(node_usage3.number_of_puts, total_nodes_usage.number_of_puts);
-		puts_charge = ratio * report_after.total_customer_charge.puts;
+		let ratio3_puts = Perquintill::from_rational(
+			node_usage3.number_of_puts,
+			total_nodes_usage.number_of_puts,
+		);
+		puts_charge = ratio3_puts * report_after.total_customer_charge.puts;
 
-		ratio =
-			Perbill::from_rational(node_usage3.number_of_gets, total_nodes_usage.number_of_gets);
-		gets_charge = ratio * report_after.total_customer_charge.gets;
+		let ratio3_gets = Perquintill::from_rational(
+			node_usage3.number_of_gets,
+			total_nodes_usage.number_of_gets,
+		);
+		gets_charge = ratio3_gets * report_after.total_customer_charge.gets;
 
-		balance = Balances::free_balance(node3);
-		assert_eq!(balance, transfer_charge + storage_charge + puts_charge + gets_charge);
+		report_reward = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let balance_node3 = Balances::free_balance(node3);
+		assert_eq!(balance_node3, transfer_charge + storage_charge + puts_charge + gets_charge);
+		assert_eq!(
+			report_reward.total_distributed_reward,
+			balance_node1 + balance_node2 + balance_node3
+		);
+
+		let expected_amount_to_reward = report_reward.total_customer_charge.transfer +
+			report_reward.total_customer_charge.storage +
+			report_reward.total_customer_charge.puts +
+			report_reward.total_customer_charge.gets;
+
+		assert!(expected_amount_to_reward - report_reward.total_distributed_reward <= 20000);
 
 		assert_ok!(DdcPayouts::end_rewarding_providers(
 			RuntimeOrigin::signed(dac_account),
@@ -1587,15 +1616,29 @@ fn end_rewarding_providers_works() {
 		System::set_block_number(1);
 
 		let dac_account = 2u128;
-		let user1 = 3u128;
+		let user1 = 1u128;
 		let node1 = 33u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
-		let total_node_usage = NodeUsage::default();
-		let payers = vec![(user1, CustomerUsage::default())];
-		let payees = vec![(node1, NodeUsage::default())];
+		let usage1 = CustomerUsage {
+			transferred_bytes: 23452345,
+			stored_bytes: 3345234523,
+			number_of_puts: 4456456345234523,
+			number_of_gets: 523423,
+		};
+
+		let node_usage1 = NodeUsage {
+			// CDN + Storage
+			transferred_bytes: usage1.transferred_bytes * 2 / 3,
+			stored_bytes: usage1.stored_bytes * 2 / 3,
+			number_of_puts: usage1.number_of_puts * 2 / 3,
+			number_of_gets: usage1.number_of_gets * 2 / 3,
+		};
+		let total_node_usage = node_usage1.clone();
+		let payers = vec![(user1, usage1)];
+		let payees = vec![(node1, node_usage1)];
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 

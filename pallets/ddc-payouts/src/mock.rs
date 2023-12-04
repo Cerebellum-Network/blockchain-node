@@ -23,7 +23,7 @@ use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError,
+	DispatchError, Perquintill,
 };
 use sp_std::prelude::*;
 
@@ -163,15 +163,15 @@ pub const PRICING_PARAMS_ONE: ClusterPricingParams = ClusterPricingParams {
 };
 
 pub const PRICING_FEES: ClusterFeesParams = ClusterFeesParams {
-	treasury_share: Perbill::from_percent(1),
-	validators_share: Perbill::from_percent(10),
-	cluster_reserve_share: Perbill::from_percent(2),
+	treasury_share: Perquintill::from_percent(1),
+	validators_share: Perquintill::from_percent(10),
+	cluster_reserve_share: Perquintill::from_percent(2),
 };
 
 pub const PRICING_FEES_ZERO: ClusterFeesParams = ClusterFeesParams {
-	treasury_share: Perbill::from_percent(0),
-	validators_share: Perbill::from_percent(0),
-	cluster_reserve_share: Perbill::from_percent(0),
+	treasury_share: Perquintill::from_percent(0),
+	validators_share: Perquintill::from_percent(0),
+	cluster_reserve_share: Perquintill::from_percent(0),
 };
 
 pub struct TestTreasuryVisitor;

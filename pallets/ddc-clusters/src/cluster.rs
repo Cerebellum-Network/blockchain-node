@@ -3,7 +3,7 @@ use codec::{Decode, Encode};
 use ddc_primitives::ClusterId;
 use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
-use sp_runtime::Perbill;
+use sp_runtime::Perquintill;
 
 parameter_types! {
 	pub MaxClusterParamsLen: u16 = 2048;
@@ -32,9 +32,9 @@ pub struct ClusterParams<AccountId> {
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 #[scale_info(skip_type_params(Balance, BlockNumber, T))]
 pub struct ClusterGovParams<Balance, BlockNumber> {
-	pub treasury_share: Perbill,
-	pub validators_share: Perbill,
-	pub cluster_reserve_share: Perbill,
+	pub treasury_share: Perquintill,
+	pub validators_share: Perquintill,
+	pub cluster_reserve_share: Perquintill,
 	pub cdn_bond_size: Balance,
 	pub cdn_chill_delay: BlockNumber,
 	pub cdn_unbonding_delay: BlockNumber,
