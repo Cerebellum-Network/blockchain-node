@@ -1374,9 +1374,12 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
+	type CustomerDepositor = DdcCustomers;
 	type ClusterVisitor = DdcClusters;
 	type TreasuryVisitor = TreasureWrapper;
 	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
+	type ClusterCreator = DdcClusters;
+	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 }
 
 construct_runtime!(
@@ -1546,6 +1549,7 @@ mod benches {
 		[pallet_ddc_clusters, DdcClusters]
 		[pallet_ddc_staking, DdcStaking]
 		[pallet_ddc_nodes, DdcNodes]
+		[pallet_ddc_payouts, DdcPayouts]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
 		[pallet_tips, Tips]

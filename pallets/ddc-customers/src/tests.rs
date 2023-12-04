@@ -2,9 +2,7 @@
 
 use super::{mock::*, *};
 use ddc_primitives::ClusterId;
-
 use frame_support::{assert_noop, assert_ok};
-use pallet_balances::Error as BalancesError;
 
 #[test]
 fn create_bucket_works() {
@@ -76,7 +74,7 @@ fn deposit_and_deposit_extra_works() {
 		// Deposit all tokens fails (should not kill account)
 		assert_noop!(
 			DdcCustomers::deposit(RuntimeOrigin::signed(account_1), 100_u128),
-			BalancesError::<Test, _>::KeepAlive
+			Error::<Test>::TransferFailed
 		);
 
 		let amount1 = 10_u128;
