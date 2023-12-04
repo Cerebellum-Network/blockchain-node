@@ -14,6 +14,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
+pub mod weights;
+use crate::weights::WeightInfo;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
+
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
@@ -21,8 +27,11 @@ mod tests;
 
 use ddc_primitives::{ClusterId, DdcEra};
 use ddc_traits::{
-	cluster::ClusterVisitor as ClusterVisitorType,
-	customer::CustomerCharger as CustomerChargerType, pallet::PalletVisitor as PalletVisitorType,
+	cluster::{ClusterCreator as ClusterCreatorType, ClusterVisitor as ClusterVisitorType},
+	customer::{
+		CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
+	},
+	pallet::PalletVisitor as PalletVisitorType,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -89,6 +98,7 @@ pub type BalanceOf<T> =
 
 parameter_types! {
 	pub MaxBatchesCount: u16 = 1000;
+	pub MaxBatchSize: u16 = 1000;
 }
 
 #[frame_support::pallet]
@@ -111,9 +121,12 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 		type CustomerCharger: CustomerChargerType<Self>;
+		type CustomerDepositor: CustomerDepositorType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
 		type ClusterVisitor: ClusterVisitorType<Self>;
 		type ValidatorList: SortedListProvider<Self::AccountId>;
+		type ClusterCreator: ClusterCreatorType<Self, BalanceOf<Self>>;
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
@@ -204,6 +217,7 @@ pub mod pallet {
 		BoundedVecOverflow,
 		ArithmeticOverflow,
 		NotExpectedClusterState,
+		BatchSizeIsOutOfBounds,
 	}
 
 	#[pallet::storage]
@@ -274,7 +288,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::set_authorised_caller())]
 		pub fn set_authorised_caller(
 			origin: OriginFor<T>,
 			authorised_caller: T::AccountId,
@@ -288,7 +302,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::begin_billing_report())]
 		pub fn begin_billing_report(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -316,7 +330,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::begin_charging_customers())]
 		pub fn begin_charging_customers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -342,7 +356,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::send_charging_customers_batch(payers.len().saturated_into()))]
 		pub fn send_charging_customers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -352,6 +366,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+
+			ensure!(
+				!payers.is_empty() && payers.len() <= MaxBatchSize::get() as usize,
+				Error::<T>::BatchSizeIsOutOfBounds
+			);
 
 			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
@@ -475,7 +494,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::end_charging_customers())]
 		pub fn end_charging_customers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -573,7 +592,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::begin_rewarding_providers())]
 		pub fn begin_rewarding_providers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -604,7 +623,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::send_rewarding_providers_batch(payees.len().saturated_into()))]
 		pub fn send_rewarding_providers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -614,6 +633,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+
+			ensure!(
+				!payees.is_empty() && payees.len() <= MaxBatchSize::get() as usize,
+				Error::<T>::BatchSizeIsOutOfBounds
+			);
 
 			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
@@ -681,7 +705,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::end_rewarding_providers())]
 		pub fn end_rewarding_providers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -711,7 +735,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::end_billing_report())]
 		pub fn end_billing_report(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
