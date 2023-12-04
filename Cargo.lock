@@ -1636,6 +1636,8 @@ dependencies = [
  "ddc-primitives",
  "frame-support",
  "frame-system",
+ "parity-scale-codec",
+ "scale-info",
  "sp-runtime",
  "sp-std",
 ]

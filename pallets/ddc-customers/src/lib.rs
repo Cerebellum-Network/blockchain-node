@@ -18,7 +18,7 @@ use codec::{Decode, Encode, HasCompact};
 use ddc_primitives::{BucketId, ClusterId};
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor},
-	customer::{CustomerCharger, CustomerChargerError},
+	customer::{CustomerCharger, CustomerDepositor},
 };
 use frame_support::{
 	parameter_types,
@@ -139,8 +139,6 @@ impl<
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 			if temp <= value {
 				unlocking_balance = temp;
-				self.active =
-					self.active.checked_sub(&last.value).ok_or(Error::<T>::ArithmeticUnderflow)?;
 				self.unlocking.pop();
 			} else {
 				let diff =
@@ -148,8 +146,6 @@ impl<
 
 				unlocking_balance =
 					unlocking_balance.checked_add(&diff).ok_or(Error::<T>::ArithmeticOverflow)?;
-				self.active =
-					self.active.checked_sub(&diff).ok_or(Error::<T>::ArithmeticUnderflow)?;
 				last.value =
 					last.value.checked_sub(&diff).ok_or(Error::<T>::ArithmeticUnderflow)?;
 			}
@@ -261,6 +257,8 @@ pub mod pallet {
 		ArithmeticOverflow,
 		// Arithmetic underflow
 		ArithmeticUnderflow,
+		// Transferring balance to pallet's vault has failed
+		TransferFailed,
 	}
 
 	#[pallet::genesis_config]
@@ -322,28 +320,7 @@ pub mod pallet {
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-
-			if <Ledger<T>>::contains_key(&owner) {
-				Err(Error::<T>::AlreadyPaired)?
-			}
-
-			// Reject a deposit which is considered to be _dust_.
-			if value < <T as pallet::Config>::Currency::minimum_balance() {
-				Err(Error::<T>::InsufficientDeposit)?
-			}
-
-			frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::BadState)?;
-
-			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
-			let value = value.min(owner_balance);
-			let item = AccountsLedger {
-				owner: owner.clone(),
-				total: value,
-				active: value,
-				unlocking: Default::default(),
-			};
-			Self::update_ledger_and_deposit(&owner, &item)?;
-			Self::deposit_event(Event::<T>::Deposited(owner, value));
+			<Self as CustomerDepositor<T>>::deposit(owner, value.saturated_into())?;
 			Ok(())
 		}
 
@@ -359,26 +336,7 @@ pub mod pallet {
 			#[pallet::compact] max_additional: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-
-			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
-
-			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
-			let extra = owner_balance.min(max_additional);
-			ledger.total =
-				ledger.total.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
-			ledger.active =
-				ledger.active.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
-
-			// Last check: the new active amount of ledger must be more than ED.
-			ensure!(
-				ledger.active >= <T as pallet::Config>::Currency::minimum_balance(),
-				Error::<T>::InsufficientDeposit
-			);
-
-			Self::update_ledger_and_deposit(&owner, &ledger)?;
-
-			Self::deposit_event(Event::<T>::Deposited(owner, extra));
-
+			<Self as CustomerDepositor<T>>::deposit_extra(owner, max_additional.saturated_into())?;
 			Ok(())
 		}
 
@@ -442,7 +400,7 @@ pub mod pallet {
 						.map_err(|_| Error::<T>::NoMoreChunks)?;
 				};
 
-				Self::update_ledger(&owner, &ledger);
+				<Ledger<T>>::insert(&owner, &ledger);
 
 				Self::deposit_event(Event::<T>::InitialDepositUnlock(ledger.owner, value));
 			}
@@ -481,7 +439,8 @@ pub mod pallet {
 				log::debug!("Updating ledger");
 				// This was the consequence of a partial deposit unlock. just update the ledger and
 				// move on.
-				Self::update_ledger(&owner, &ledger);
+				<Ledger<T>>::insert(&owner, &ledger);
+
 				// This is only an update, so we use less overall weight.
 				Some(<T as pallet::Config>::WeightInfo::withdraw_unlocked_deposit_update())
 			};
@@ -523,25 +482,15 @@ pub mod pallet {
 			owner: &T::AccountId,
 			ledger: &AccountsLedger<T::AccountId, BalanceOf<T>, T>,
 		) -> DispatchResult {
-			let account_id = Self::account_id();
-
 			<T as pallet::Config>::Currency::transfer(
 				owner,
-				&account_id,
+				&Self::account_id(),
 				ledger.total,
 				ExistenceRequirement::KeepAlive,
 			)?;
 			<Ledger<T>>::insert(owner, ledger);
 
 			Ok(())
-		}
-
-		/// Update the ledger for a owner.
-		fn update_ledger(
-			owner: &T::AccountId,
-			ledger: &AccountsLedger<T::AccountId, BalanceOf<T>, T>,
-		) {
-			<Ledger<T>>::insert(owner, ledger);
 		}
 
 		/// Remove all associated data of a owner account from the accounts system.
@@ -564,50 +513,108 @@ pub mod pallet {
 			content_owner: T::AccountId,
 			billing_vault: T::AccountId,
 			amount: u128,
-		) -> Result<u128, CustomerChargerError> {
+		) -> Result<u128, DispatchError> {
 			let actually_charged: BalanceOf<T>;
-			let mut ledger = Self::ledger(&content_owner).ok_or(CustomerChargerError::NotOwner)?;
-			let mut amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
+			let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotOwner)?;
+			let amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
 
-			ensure!(ledger.total >= ledger.active, CustomerChargerError::ArithmeticUnderflow);
 			if ledger.active >= amount_to_deduct {
 				actually_charged = amount_to_deduct;
 				ledger.active = ledger
 					.active
 					.checked_sub(&amount_to_deduct)
-					.ok_or(CustomerChargerError::ArithmeticUnderflow)?;
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
 				ledger.total = ledger
 					.total
 					.checked_sub(&amount_to_deduct)
-					.ok_or(CustomerChargerError::ArithmeticUnderflow)?;
-				Self::update_ledger(&content_owner, &ledger);
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+
+				<Ledger<T>>::insert(&content_owner, &ledger);
 			} else {
 				let diff = amount_to_deduct
 					.checked_sub(&ledger.active)
-					.ok_or(CustomerChargerError::ArithmeticUnderflow)?;
-				actually_charged = diff;
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
+
+				actually_charged = ledger.active;
 				ledger.total = ledger
 					.total
 					.checked_sub(&ledger.active)
-					.ok_or(CustomerChargerError::ArithmeticUnderflow)?;
-				amount_to_deduct = ledger.active;
+					.ok_or(Error::<T>::ArithmeticUnderflow)?;
 				ledger.active = BalanceOf::<T>::zero();
-				let (ledger, _charged) = ledger
-					.charge_unlocking(diff)
-					.map_err(|_| CustomerChargerError::UnlockFailed)?;
-				Self::update_ledger(&content_owner, &ledger);
-			};
+
+				let (ledger, charged) = ledger.charge_unlocking(diff)?;
+
+				actually_charged.checked_add(&charged).ok_or(Error::<T>::ArithmeticUnderflow)?;
+
+				<Ledger<T>>::insert(&content_owner, &ledger);
+			}
 
 			<T as pallet::Config>::Currency::transfer(
 				&Self::account_id(),
 				&billing_vault,
-				amount_to_deduct,
-				ExistenceRequirement::KeepAlive,
-			)
-			.map_err(|_| CustomerChargerError::TransferFailed)?;
+				actually_charged,
+				ExistenceRequirement::AllowDeath,
+			)?;
+
 			Self::deposit_event(Event::<T>::Charged(content_owner, amount_to_deduct));
 
 			Ok(actually_charged.saturated_into::<u128>())
+		}
+	}
+
+	impl<T: Config> CustomerDepositor<T> for Pallet<T> {
+		fn deposit(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
+			let value = amount.saturated_into::<BalanceOf<T>>();
+
+			if <Ledger<T>>::contains_key(&owner) {
+				Err(Error::<T>::AlreadyPaired)?
+			}
+
+			// Reject a deposit which is considered to be _dust_.
+			if value < <T as pallet::Config>::Currency::minimum_balance() {
+				Err(Error::<T>::InsufficientDeposit)?
+			}
+
+			frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::BadState)?;
+
+			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
+			let value = value.min(owner_balance);
+			let item = AccountsLedger {
+				owner: owner.clone(),
+				total: value,
+				active: value,
+				unlocking: Default::default(),
+			};
+
+			Self::update_ledger_and_deposit(&owner, &item)
+				.map_err(|_| Error::<T>::TransferFailed)?;
+			Self::deposit_event(Event::<T>::Deposited(owner, value));
+
+			Ok(())
+		}
+
+		fn deposit_extra(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
+			let max_additional = amount.saturated_into::<BalanceOf<T>>();
+			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
+
+			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
+			let extra = owner_balance.min(max_additional);
+			ledger.total =
+				ledger.total.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
+			ledger.active =
+				ledger.active.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
+
+			// Last check: the new active amount of ledger must be more than ED.
+			ensure!(
+				ledger.active >= <T as pallet::Config>::Currency::minimum_balance(),
+				Error::<T>::InsufficientDeposit
+			);
+
+			Self::update_ledger_and_deposit(&owner, &ledger)
+				.map_err(|_| Error::<T>::TransferFailed)?;
+			Self::deposit_event(Event::<T>::Deposited(owner, extra));
+
+			Ok(())
 		}
 	}
 }

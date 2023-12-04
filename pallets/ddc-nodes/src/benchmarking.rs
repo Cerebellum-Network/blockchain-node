@@ -51,4 +51,10 @@ benchmarks! {
 			p2p_port: 65000u16,
 		});
 	}
+
+	impl_benchmark_test_suite!(
+		DdcNodes,
+		crate::mock::ExtBuilder.build(),
+		crate::mock::Test,
+	);
 }

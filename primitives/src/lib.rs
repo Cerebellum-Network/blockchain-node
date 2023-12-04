@@ -6,7 +6,6 @@ use scale_info::{prelude::vec::Vec, TypeInfo};
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H160;
 use sp_runtime::{AccountId32, Perbill, RuntimeDebug};
-
 pub type ClusterId = H160;
 pub type DdcEra = u32;
 pub type BucketId = u64;
@@ -21,7 +20,7 @@ pub struct ClusterParams<AccountId> {
 
 // ClusterGovParams includes Governance sensitive parameters
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
 #[scale_info(skip_type_params(Balance, BlockNumber, T))]
 pub struct ClusterGovParams<Balance, BlockNumber> {
 	pub treasury_share: Perbill,

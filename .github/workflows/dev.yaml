@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - 'dev'
+      - 'deployment-0.9.30'
   workflow_dispatch:
 
 env:
@@ -68,7 +69,7 @@ jobs:
 
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
-            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:dev-latest
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:deployment-0.9.30-latest
 
       - name: Copy wasm artifacts from the image
         run: |
