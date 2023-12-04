@@ -110,4 +110,10 @@ benchmarks! {
 	verify {
 	  assert_eq!(ClustersGovParams::<T>::try_get(cluster_id).unwrap(), new_cluster_gov_params);
 	}
+
+	impl_benchmark_test_suite!(
+		DdcClusters,
+		crate::mock::ExtBuilder.build(),
+		crate::mock::Test,
+	);
 }
