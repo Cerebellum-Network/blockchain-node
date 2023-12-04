@@ -30,7 +30,7 @@ jobs:
       - name: Install Rust
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          source "~/.cargo/env"
+          source "$HOME/.cargo/env"
           rustup default stable
           rustup update nightly
           rustup update stable --no-self-update
