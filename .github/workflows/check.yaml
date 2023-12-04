@@ -31,7 +31,7 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           source "$HOME/.cargo/env"
-          rustup install install 1.70.0
+          rustup install 1.70.0
           rustup default 1.70.0
           rustup update nightly
           rustup update stable --no-self-update
