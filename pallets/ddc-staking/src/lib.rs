@@ -13,6 +13,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
+#![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
