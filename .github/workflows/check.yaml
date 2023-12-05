@@ -55,7 +55,7 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          version: '0.15.0'
+          version: '0.27.2'
           args: '--verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out "Xml"' 
         
       - name: Check Build
