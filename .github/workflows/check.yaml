@@ -26,7 +26,7 @@ jobs:
         with:
           toolchain: nightly-2022-10-09
           override: true
-          target: wasm32-unknown-unknown
+          components: rustfmt
       - name: Check TOML
         uses: dprint/check@v2.2
       - name: Check Format
@@ -69,6 +69,7 @@ jobs:
           toolchain: nightly-2022-10-09
           override: true
           target: wasm32-unknown-unknown
+          components: clippy
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Check with Clippy
