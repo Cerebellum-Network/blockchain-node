@@ -6,7 +6,7 @@ use ddc_primitives::{ClusterId, NodePubKey};
 use ddc_traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU32, ConstU64, Everything, Nothing},
+	traits::{ConstBool, ConstU32, ConstU64, Everything, Nothing},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
@@ -93,6 +93,8 @@ impl contracts::Config for Test {
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
+	type UnsafeUnstableInterface = ConstBool<false>;
+	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 }
 
 use frame_system::offchain::{

@@ -6,7 +6,7 @@ use std::cell::RefCell;
 
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Currency, Everything, Get, Nothing},
+	traits::{ConstBool, ConstU32, Currency, Everything, Get, Nothing},
 	weights::Weight,
 };
 use sp_core::H256;
@@ -155,6 +155,8 @@ impl contracts::Config for Test {
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
+	type UnsafeUnstableInterface = ConstBool<false>;
+	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 }
 
 parameter_types! {

@@ -289,6 +289,7 @@ pub mod pallet {
 		/// Create new bucket with specified cluster id
 		///
 		/// Anyone can create a bucket
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::create_bucket())]
 		pub fn create_bucket(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
@@ -316,6 +317,7 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the owner account.
 		///
 		/// Emits `Deposited`.
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
@@ -353,6 +355,7 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the owner.
 		///
 		/// Emits `Deposited`.
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::deposit_extra())]
 		pub fn deposit_extra(
 			origin: OriginFor<T>,
@@ -398,6 +401,7 @@ pub mod pallet {
 		/// Emits `InitialDepositUnlock`.
 		///
 		/// See also [`Call::withdraw_unlocked_deposit`].
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::unlock_deposit())]
 		pub fn unlock_deposit(
 			origin: OriginFor<T>,
@@ -459,6 +463,7 @@ pub mod pallet {
 		/// Emits `Withdrawn`.
 		///
 		/// See also [`Call::unlock_deposit`].
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::withdraw_unlocked_deposit_kill())]
 		pub fn withdraw_unlocked_deposit(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;

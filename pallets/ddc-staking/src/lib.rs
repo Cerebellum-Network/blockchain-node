@@ -365,6 +365,7 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the stash account.
 		///
 		/// Emits `Bonded`.
+		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::bond())]
 		pub fn bond(
 			origin: OriginFor<T>,
@@ -439,6 +440,7 @@ pub mod pallet {
 		/// Emits `Unbonded`.
 		///
 		/// See also [`Call::withdraw_unbonded`].
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::unbond())]
 		pub fn unbond(
 			origin: OriginFor<T>,
@@ -559,6 +561,7 @@ pub mod pallet {
 		/// Emits `Withdrawn`.
 		///
 		/// See also [`Call::unbond`].
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
 		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
@@ -614,6 +617,7 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
 		/// bond size must be greater than or equal to the `CDNBondSize`.
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::serve())]
 		pub fn serve(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
@@ -667,6 +671,7 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
 		/// bond size must be greater than or equal to the `StorageBondSize`.
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::store())]
 		pub fn store(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
@@ -728,6 +733,7 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash.
 		///
 		/// Emits `ChillSoon`, `Chill`.
+		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::chill())]
 		pub fn chill(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
@@ -782,6 +788,7 @@ pub mod pallet {
 		/// Effects will be felt at the beginning of the next block.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
+		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::set_controller())]
 		pub fn set_controller(
 			origin: OriginFor<T>,
@@ -805,6 +812,7 @@ pub mod pallet {
 		/// (Re-)set the DDC node of a node operator stash account. Requires to chill first.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
+		#[pallet::call_index(7)]
 		#[pallet::weight(T::WeightInfo::set_node())]
 		pub fn set_node(origin: OriginFor<T>, new_node: NodePubKey) -> DispatchResult {
 			let stash = ensure_signed(origin)?;
@@ -838,6 +846,7 @@ pub mod pallet {
 		/// Allow cluster node candidate to chill in the next block.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller.
+		#[pallet::call_index(8)]
 		#[pallet::weight(10_000)]
 		pub fn fast_chill(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
