@@ -31,7 +31,7 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           source "$HOME/.cargo/env"
-          rustup toolchain install nightly
+          rustup toolchain install nightly-2022-10-09
           rustup default nightly
           rustup target add wasm32-unknown-unknown
           export PATH="$HOME/.cargo/bin:$PATH"
