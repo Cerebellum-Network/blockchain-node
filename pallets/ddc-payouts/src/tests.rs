@@ -1453,6 +1453,188 @@ fn send_rewarding_providers_batch_works() {
 }
 
 #[test]
+fn send_rewarding_providers_batch_works100() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let num_nodes = 500;
+		let num_users = 2;
+		let dac_account = 123u128;
+		let bank = 1u128;
+		let cluster_id = ClusterId::from([12; 20]);
+		let era = 100;
+		let user_batch_size = 10;
+		let node_batch_size = 10;
+		let mut batch_user_index = 0;
+		let mut batch_node_index = 0;
+		let usage1 = CustomerUsage {
+			transferred_bytes: 1,
+			stored_bytes: 1,
+			number_of_puts: 1,
+			number_of_gets: 1,
+		};
+
+		let node_usage1 = NodeUsage {
+			// CDN
+			transferred_bytes: usage1.transferred_bytes * 2 / 3,
+			stored_bytes: 0,
+			number_of_puts: usage1.number_of_puts * 2 / 3,
+			number_of_gets: usage1.number_of_gets * 2 / 3,
+		};
+
+		let node_usage2 = NodeUsage {
+			// Storage
+			transferred_bytes: 0,
+			stored_bytes: usage1.stored_bytes * 2,
+			number_of_puts: 0,
+			number_of_gets: 0,
+		};
+
+		let node_usage3 = NodeUsage {
+			// CDN + Storage
+			transferred_bytes: usage1.transferred_bytes * 2,
+			stored_bytes: usage1.stored_bytes * 3,
+			number_of_puts: usage1.number_of_puts * 2,
+			number_of_gets: usage1.number_of_gets * 2,
+		};
+
+		let mut payees: Vec<Vec<(u128, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(u128, NodeUsage)> = Vec::new();
+		let mut total_nodes_usage = NodeUsage::default();
+		for i in 10..10 + num_nodes {
+			let node_usage = match i % 3 {
+				0 => node_usage1.clone(),
+				1 => node_usage2.clone(),
+				2 => node_usage3.clone(),
+				_ => unreachable!(),
+			};
+			total_nodes_usage.transferred_bytes += node_usage.transferred_bytes;
+			total_nodes_usage.stored_bytes += node_usage.stored_bytes;
+			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
+			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
+
+			node_batch.push((i, node_usage));
+			if node_batch.len() == node_batch_size {
+				payees.push(node_batch.clone());
+				node_batch.clear();
+			}
+		}
+		if node_batch.len() > 0 {
+			payees.push(node_batch.clone());
+		}
+
+		let mut payers: Vec<Vec<(u128, CustomerUsage)>> = Vec::new();
+		let mut user_batch: Vec<(u128, CustomerUsage)> = Vec::new();
+		for i in 1000..1000 + num_users {
+			let ratio = match i % 5 {
+				0 => Perquintill::from_float(0.5),
+				1 => Perquintill::one(),
+				2 => Perquintill::from_float(2f64),
+				3 => Perquintill::from_float(0.25),
+				4 => Perquintill::from_float(0.001),
+				_ => unreachable!(),
+			};
+
+			let mut user_usage = usage1.clone();
+			user_usage.transferred_bytes = ratio * user_usage.transferred_bytes;
+			user_usage.stored_bytes = ratio * user_usage.stored_bytes;
+			user_usage.number_of_puts = ratio * user_usage.number_of_puts;
+			user_usage.number_of_gets = ratio * user_usage.number_of_gets;
+
+			let expected_charge = calculate_charge(cluster_id, user_usage.clone());
+			Balances::transfer(RuntimeOrigin::signed(bank), i, expected_charge * 2).unwrap();
+
+			user_batch.push((i, user_usage));
+			if user_batch.len() == user_batch_size {
+				payers.push(user_batch.clone());
+				user_batch.clear();
+			}
+		}
+		if user_batch.len() > 0 {
+			payers.push(user_batch.clone());
+		}
+
+		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
+		assert_ok!(DdcPayouts::begin_billing_report(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+		));
+		assert_ok!(DdcPayouts::begin_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			(payers.len() - 1) as u16,
+		));
+
+		for batch in payers.iter() {
+			assert_ok!(DdcPayouts::send_charging_customers_batch(
+				RuntimeOrigin::signed(dac_account),
+				cluster_id,
+				era,
+				batch_user_index,
+				batch.to_vec(),
+			));
+			batch_user_index += 1;
+		}
+
+		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let balance1 = Balances::free_balance(report_before.vault);
+		let balance2 = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+		assert_eq!(balance1, balance2);
+		assert_eq!(report_before.vault, DdcPayouts::sub_account_id(cluster_id, era));
+
+		assert_ok!(DdcPayouts::end_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+		));
+
+		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let total_left_from_one = (PRICING_FEES.treasury_share +
+			PRICING_FEES.validators_share +
+			PRICING_FEES.cluster_reserve_share)
+			.left_from_one();
+
+		assert_eq!(
+			report_after.total_customer_charge.transfer,
+			total_left_from_one * report_before.total_customer_charge.transfer
+		);
+		assert_eq!(
+			report_after.total_customer_charge.storage,
+			total_left_from_one * report_before.total_customer_charge.storage
+		);
+		assert_eq!(
+			report_after.total_customer_charge.puts,
+			total_left_from_one * report_before.total_customer_charge.puts
+		);
+		assert_eq!(
+			report_after.total_customer_charge.gets,
+			total_left_from_one * report_before.total_customer_charge.gets
+		);
+
+		assert_ok!(DdcPayouts::begin_rewarding_providers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			(payees.len() - 1) as u16,
+			total_nodes_usage.clone(),
+		));
+
+		for batch in payees.iter() {
+			assert_ok!(DdcPayouts::send_rewarding_providers_batch(
+				RuntimeOrigin::signed(dac_account),
+				cluster_id,
+				era,
+				batch_node_index,
+				batch.to_vec(),
+			));
+			batch_node_index += 1;
+		}
+	})
+}
+
+#[test]
 fn end_rewarding_providers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = 1u128;
