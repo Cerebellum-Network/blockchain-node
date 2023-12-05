@@ -17,6 +17,7 @@ permissions:
 jobs:
   format:
     name: Check Lints
+    runs-on: ubuntu-22.04
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
@@ -35,6 +36,7 @@ jobs:
   check:
     name: Cargo check
     needs: format
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - name: Install linux dependencies
@@ -59,6 +61,7 @@ jobs:
   clippy:
     name: Run Clippy
     needs: format
+    runs-on: ubuntu-22.04
     steps:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
