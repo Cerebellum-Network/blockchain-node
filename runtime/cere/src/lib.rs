@@ -1352,8 +1352,8 @@ parameter_types! {
 	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
 }
 
-pub struct TreasureWrapper;
-impl<T: frame_system::Config> PalletVisitor<T> for TreasureWrapper {
+pub struct TreasuryWrapper;
+impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 	fn get_account_id() -> T::AccountId {
 		TreasuryPalletId::get().into_account_truncating()
 	}
@@ -1366,7 +1366,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type CustomerCharger = DdcCustomers;
 	type CustomerDepositor = DdcCustomers;
 	type ClusterVisitor = DdcClusters;
-	type TreasuryVisitor = TreasureWrapper;
+	type TreasuryVisitor = TreasuryWrapper;
 	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
 	type ClusterCreator = DdcClusters;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
