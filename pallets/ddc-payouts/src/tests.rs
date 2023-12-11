@@ -258,11 +258,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 }
 
 fn calculate_charge_parts(cluster_id: ClusterId, usage: CustomerUsage) -> CustomerCharge {
-	let pricing_params = if cluster_id == FREE_CLUSTER_ID || cluster_id == ONE_CLUSTER_ID {
-		PRICING_PARAMS_ONE
-	} else {
-		PRICING_PARAMS
-	};
+	let pricing_params = get_pricing(&cluster_id);
 
 	CustomerCharge {
 		transfer: pricing_params.unit_per_mb_streamed * (usage.transferred_bytes as u128) /
@@ -712,9 +708,9 @@ fn end_charging_customers_works() {
 
 		System::assert_has_event(Event::ChargingFinished { cluster_id, era }.into());
 
-		let treasury_fee = PRICING_FEES.treasury_share * charge;
-		let reserve_fee = PRICING_FEES.cluster_reserve_share * charge;
-		let validator_fee = PRICING_FEES.validators_share * charge;
+		let treasury_fee = get_fees(&cluster_id).treasury_share * charge;
+		let reserve_fee = get_fees(&cluster_id).cluster_reserve_share * charge;
+		let validator_fee = get_fees(&cluster_id).validators_share * charge;
 
 		System::assert_has_event(
 			Event::TreasuryFeesCollected { cluster_id, era, amount: treasury_fee }.into(),
@@ -734,25 +730,25 @@ fn end_charging_customers_works() {
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report_after.state, State::CustomersChargedWithFees);
 
-		let total_left_from_one = (PRICING_FEES.treasury_share +
-			PRICING_FEES.validators_share +
-			PRICING_FEES.cluster_reserve_share)
+		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
+			get_fees(&cluster_id).validators_share +
+			get_fees(&cluster_id).cluster_reserve_share)
 			.left_from_one();
 
 		balance = Balances::free_balance(TREASURY_ACCOUNT_ID);
-		assert_eq!(balance, PRICING_FEES.treasury_share * charge);
+		assert_eq!(balance, get_fees(&cluster_id).treasury_share * charge);
 
 		balance = Balances::free_balance(RESERVE_ACCOUNT_ID);
-		assert_eq!(balance, PRICING_FEES.cluster_reserve_share * charge);
+		assert_eq!(balance, get_fees(&cluster_id).cluster_reserve_share * charge);
 
 		balance = Balances::free_balance(VALIDATOR1_ACCOUNT_ID);
-		assert_eq!(balance, PRICING_FEES.validators_share * charge / 3);
+		assert_eq!(balance, get_fees(&cluster_id).validators_share * charge / 3);
 
 		balance = Balances::free_balance(VALIDATOR2_ACCOUNT_ID);
-		assert_eq!(balance, PRICING_FEES.validators_share * charge / 3);
+		assert_eq!(balance, get_fees(&cluster_id).validators_share * charge / 3);
 
 		balance = Balances::free_balance(VALIDATOR3_ACCOUNT_ID);
-		assert_eq!(balance, PRICING_FEES.validators_share * charge / 3);
+		assert_eq!(balance, get_fees(&cluster_id).validators_share * charge / 3);
 
 		assert_eq!(
 			report_after.total_customer_charge.transfer,
@@ -838,7 +834,7 @@ fn end_charging_customers_works_zero_fees() {
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report_after.state, State::CustomersChargedWithFees);
 
-		let fees = get_fees(&cluster_id).unwrap();
+		let fees = get_fees(&cluster_id);
 
 		let total_left_from_one =
 			(fees.treasury_share + fees.validators_share + fees.cluster_reserve_share)
@@ -1308,9 +1304,9 @@ fn send_rewarding_providers_batch_works() {
 		));
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let total_left_from_one = (PRICING_FEES.treasury_share +
-			PRICING_FEES.validators_share +
-			PRICING_FEES.cluster_reserve_share)
+		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
+			get_fees(&cluster_id).validators_share +
+			get_fees(&cluster_id).cluster_reserve_share)
 			.left_from_one();
 
 		assert_eq!(
@@ -1458,28 +1454,28 @@ fn send_rewarding_providers_batch_works100() {
 		System::set_block_number(1);
 
 		let num_nodes = 500;
-		let num_users = 2;
+		let num_users = 5;
 		let dac_account = 123u128;
 		let bank = 1u128;
-		let cluster_id = ClusterId::from([12; 20]);
+		let cluster_id = ONE_CLUSTER_ID;
 		let era = 100;
 		let user_batch_size = 10;
 		let node_batch_size = 10;
 		let mut batch_user_index = 0;
 		let mut batch_node_index = 0;
 		let usage1 = CustomerUsage {
-			transferred_bytes: 1,
-			stored_bytes: 1,
+			transferred_bytes: 1024,
+			stored_bytes: 1024,
 			number_of_puts: 1,
 			number_of_gets: 1,
 		};
 
 		let node_usage1 = NodeUsage {
 			// CDN
-			transferred_bytes: usage1.transferred_bytes * 2 / 3,
+			transferred_bytes: Perquintill::from_float(0.75) * usage1.transferred_bytes,
 			stored_bytes: 0,
-			number_of_puts: usage1.number_of_puts * 2 / 3,
-			number_of_gets: usage1.number_of_gets * 2 / 3,
+			number_of_puts: Perquintill::from_float(0.75) * usage1.number_of_puts,
+			number_of_gets: Perquintill::from_float(0.75) * usage1.number_of_gets,
 		};
 
 		let node_usage2 = NodeUsage {
@@ -1523,12 +1519,13 @@ fn send_rewarding_providers_batch_works100() {
 			payees.push(node_batch.clone());
 		}
 
+		let mut total_charge = 0u128;
 		let mut payers: Vec<Vec<(u128, CustomerUsage)>> = Vec::new();
 		let mut user_batch: Vec<(u128, CustomerUsage)> = Vec::new();
-		for i in 1000..1000 + num_users {
-			let ratio = match i % 5 {
-				0 => Perquintill::from_float(0.5),
-				1 => Perquintill::one(),
+		for user_id in 1000..1000 + num_users {
+			let ratio = match user_id % 5 {
+				0 => Perquintill::one(),
+				1 => Perquintill::from_float(0.5),
 				2 => Perquintill::from_float(2f64),
 				3 => Perquintill::from_float(0.25),
 				4 => Perquintill::from_float(0.001),
@@ -1542,9 +1539,10 @@ fn send_rewarding_providers_batch_works100() {
 			user_usage.number_of_gets = ratio * user_usage.number_of_gets;
 
 			let expected_charge = calculate_charge(cluster_id, user_usage.clone());
-			Balances::transfer(RuntimeOrigin::signed(bank), i, expected_charge * 2).unwrap();
+			Balances::transfer(RuntimeOrigin::signed(bank), user_id, (expected_charge * 2).max(Balances::minimum_balance())).unwrap();
+			total_charge += expected_charge;
 
-			user_batch.push((i, user_usage));
+			user_batch.push((user_id, user_usage));
 			if user_batch.len() == user_batch_size {
 				payers.push(user_batch.clone());
 				user_batch.clear();
@@ -1575,6 +1573,20 @@ fn send_rewarding_providers_batch_works100() {
 				batch_user_index,
 				batch.to_vec(),
 			));
+
+			for (customer_id, usage) in batch.iter() {
+				let charge = calculate_charge(cluster_id, usage.clone());
+				System::assert_has_event(
+					Event::Charged {
+						cluster_id,
+						era,
+						customer_id: *customer_id,
+						batch_index: batch_user_index,
+						amount: charge,
+					}
+					.into(),
+				);
+			}
 			batch_user_index += 1;
 		}
 
@@ -1583,6 +1595,7 @@ fn send_rewarding_providers_batch_works100() {
 		let balance2 = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
 		assert_eq!(balance1, balance2);
 		assert_eq!(report_before.vault, DdcPayouts::sub_account_id(cluster_id, era));
+		assert_eq!(balance1, total_charge);
 
 		assert_ok!(DdcPayouts::end_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -1591,9 +1604,9 @@ fn send_rewarding_providers_batch_works100() {
 		));
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let total_left_from_one = (PRICING_FEES.treasury_share +
-			PRICING_FEES.validators_share +
-			PRICING_FEES.cluster_reserve_share)
+		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
+			get_fees(&cluster_id).validators_share +
+			get_fees(&cluster_id).cluster_reserve_share)
 			.left_from_one();
 
 		assert_eq!(
@@ -1630,6 +1643,38 @@ fn send_rewarding_providers_batch_works100() {
 				batch.to_vec(),
 			));
 			batch_node_index += 1;
+
+			for (node1, node_usage1) in batch.iter() {
+				let ratio1_transfer = Perquintill::from_rational(
+					node_usage1.transferred_bytes,
+					total_nodes_usage.transferred_bytes,
+				);
+				let transfer_charge = ratio1_transfer * report_after.total_customer_charge.transfer;
+
+				let ratio1_storage = Perquintill::from_rational(
+					node_usage1.stored_bytes,
+					total_nodes_usage.stored_bytes,
+				);
+				let storage_charge = ratio1_storage * report_after.total_customer_charge.storage;
+
+				let ratio1_puts = Perquintill::from_rational(
+					node_usage1.number_of_puts,
+					total_nodes_usage.number_of_puts,
+				);
+				let puts_charge = ratio1_puts * report_after.total_customer_charge.puts;
+
+				let ratio1_gets = Perquintill::from_rational(
+					node_usage1.number_of_gets,
+					total_nodes_usage.number_of_gets,
+				);
+				let gets_charge = ratio1_gets * report_after.total_customer_charge.gets;
+
+				let balance_node1 = Balances::free_balance(node1);
+				assert_eq!(
+					balance_node1,
+					transfer_charge + storage_charge + puts_charge + gets_charge
+				);
+			}
 		}
 	})
 }

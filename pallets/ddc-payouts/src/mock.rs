@@ -117,10 +117,10 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		ensure!(amount > 1_000_000, DispatchError::BadOrigin); //  any error will do
 
 		let mut amount_to_charge = amount;
-		let temp = ACCOUNT_ID_5.to_ne_bytes();
-		let account_5 = T::AccountId::decode(&mut &temp[..]).unwrap();
+		let temp = ACCOUNT_ID_3.to_ne_bytes();
+		let account_3 = T::AccountId::decode(&mut &temp[..]).unwrap();
 
-		if amount_to_charge < 50_000_000 && content_owner != account_5 {
+		if amount_to_charge < 50_000_000 && content_owner == account_3 {
 			amount_to_charge = PARTIAL_CHARGE; // for user 3
 		}
 
@@ -136,7 +136,7 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 	}
 }
 
-pub const ACCOUNT_ID_5: AccountId = 5;
+pub const ACCOUNT_ID_3: AccountId = 3;
 pub const RESERVE_ACCOUNT_ID: AccountId = 999;
 pub const TREASURY_ACCOUNT_ID: AccountId = 888;
 pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
@@ -251,11 +251,19 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 	}
 }
 
-pub fn get_fees(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
+pub fn get_fees(cluster_id: &ClusterId) -> ClusterFeesParams {
 	if *cluster_id == FREE_CLUSTER_ID || *cluster_id == ONE_CLUSTER_ID {
-		Ok(PRICING_FEES_ZERO)
+		PRICING_FEES_ZERO
 	} else {
-		Ok(PRICING_FEES)
+		PRICING_FEES
+	}
+}
+
+pub fn get_pricing(cluster_id: &ClusterId) -> ClusterPricingParams {
+	if *cluster_id == FREE_CLUSTER_ID || *cluster_id == ONE_CLUSTER_ID {
+		PRICING_PARAMS_ONE
+	} else {
+		PRICING_PARAMS
 	}
 }
 
@@ -289,15 +297,11 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_pricing_params(
 		cluster_id: &ClusterId,
 	) -> Result<ClusterPricingParams, ClusterVisitorError> {
-		if *cluster_id == FREE_CLUSTER_ID || *cluster_id == ONE_CLUSTER_ID {
-			Ok(PRICING_PARAMS_ONE)
-		} else {
-			Ok(PRICING_PARAMS)
-		}
+		Ok(get_pricing(cluster_id))
 	}
 
 	fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
-		get_fees(cluster_id)
+		Ok(get_fees(cluster_id))
 	}
 
 	fn get_reserve_account_id(
