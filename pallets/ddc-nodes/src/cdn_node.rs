@@ -2,6 +2,8 @@ use codec::{Decode, Encode};
 use ddc_primitives::{CDNNodePubKey, ClusterId, NodeParams, NodePubKey, NodeType};
 use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
@@ -12,6 +14,7 @@ parameter_types! {
 	pub MaxHostLen: u8 = 255;
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 #[scale_info(skip_type_params(T))]
 pub struct CDNNode<T: frame_system::Config> {
@@ -21,6 +24,7 @@ pub struct CDNNode<T: frame_system::Config> {
 	pub props: CDNNodeProps,
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct CDNNodeProps {
 	pub host: BoundedVec<u8, MaxHostLen>,
