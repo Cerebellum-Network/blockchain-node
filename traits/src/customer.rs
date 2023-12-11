@@ -1,6 +1,5 @@
-use codec::{Decode, Encode};
-use scale_info::TypeInfo;
-use sp_runtime::{DispatchError, RuntimeDebug};
+use core::u128;
+use sp_runtime::DispatchError;
 
 pub trait CustomerCharger<T: frame_system::Config> {
 	fn charge_content_owner(
@@ -10,10 +9,7 @@ pub trait CustomerCharger<T: frame_system::Config> {
 	) -> Result<u128, DispatchError>;
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum CustomerChargerError {
-	NotOwner,
-	ArithmeticUnderflow,
-	TransferFailed,
-	UnlockFailed,
+pub trait CustomerDepositor<T: frame_system::Config> {
+	fn deposit(customer: T::AccountId, amount: u128) -> Result<(), DispatchError>;
+	fn deposit_extra(customer: T::AccountId, amount: u128) -> Result<(), DispatchError>;
 }

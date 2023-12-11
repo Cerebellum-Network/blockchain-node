@@ -4,7 +4,7 @@
 
 use crate::{self as pallet_ddc_clusters, *};
 use ddc_primitives::{ClusterId, NodePubKey};
-use ddc_traits::staking::{StakingVisitor, StakingVisitorError};
+use ddc_traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything, Nothing},
@@ -19,7 +19,7 @@ use sp_runtime::{
 	traits::{
 		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
 	},
-	MultiSignature,
+	MultiSignature, Perquintill,
 };
 
 /// The AccountId alias in this test module.
@@ -181,6 +181,8 @@ impl pallet_timestamp::Config for Test {
 
 impl pallet_ddc_nodes::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
+	type StakingVisitor = TestStakingVisitor;
+	type WeightInfo = ();
 }
 
 impl crate::pallet::Config for Test {
@@ -188,27 +190,46 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type NodeRepository = DdcNodes;
 	type StakingVisitor = TestStakingVisitor;
+	type StakerCreator = TestStaker;
+	type WeightInfo = ();
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 pub struct TestStakingVisitor;
+pub struct TestStaker;
+
 impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
-	fn node_has_stake(
+	fn has_activated_stake(
 		_node_pub_key: &NodePubKey,
 		_cluster_id: &ClusterId,
 	) -> Result<bool, StakingVisitorError> {
 		Ok(true)
 	}
-	fn node_is_chilling(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
+	fn has_stake(_node_pub_key: &NodePubKey) -> bool {
+		true
+	}
+	fn has_chilling_attempt(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
 		Ok(false)
+	}
+}
+
+impl<T: Config> StakerCreator<T, BalanceOf<T>> for TestStaker {
+	fn bond_stake_and_participate(
+		_stash: T::AccountId,
+		_controller: T::AccountId,
+		_node: NodePubKey,
+		_value: BalanceOf<T>,
+		_cluster_id: ClusterId,
+	) -> sp_runtime::DispatchResult {
+		Ok(())
 	}
 }
 
 pub struct ExtBuilder;
 
 impl ExtBuilder {
-	fn build(self) -> TestExternalities {
+	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
@@ -221,6 +242,41 @@ impl ExtBuilder {
 			],
 		}
 		.assimilate_storage(&mut storage);
+
+		let cluster_gov_params = ClusterGovParams {
+			treasury_share: Perquintill::from_float(0.05),
+			validators_share: Perquintill::from_float(0.01),
+			cluster_reserve_share: Perquintill::from_float(0.02),
+			cdn_bond_size: 100,
+			cdn_chill_delay: 50,
+			cdn_unbonding_delay: 50,
+			storage_bond_size: 100,
+			storage_chill_delay: 50,
+			storage_unbonding_delay: 50,
+			unit_per_mb_stored: 10,
+			unit_per_mb_streamed: 10,
+			unit_per_put_request: 10,
+			unit_per_get_request: 10,
+		};
+
+		let node_pub_key = NodePubKey::CDNPubKey(AccountId::from([0; 32]));
+
+		// For testing purposes only
+		pallet_ddc_clusters::GenesisConfig::<Test>::default().build();
+
+		if let Ok(cluster) = Cluster::new(
+			ClusterId::from([0; 20]),
+			AccountId::from([0; 32]),
+			AccountId::from([0; 32]),
+			ClusterParams { node_provider_auth_contract: Some(AccountId::from([0; 32])) },
+		) {
+			let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
+				clusters: vec![cluster],
+				clusters_gov_params: vec![(ClusterId::from([0; 20]), cluster_gov_params)],
+				clusters_nodes: vec![(ClusterId::from([0; 20]), vec![node_pub_key])],
+			}
+			.assimilate_storage(&mut storage);
+		}
 
 		TestExternalities::new(storage)
 	}

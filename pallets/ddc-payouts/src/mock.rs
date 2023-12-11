@@ -3,10 +3,13 @@
 #![allow(dead_code)]
 
 use crate::{self as pallet_ddc_payouts, *};
-use ddc_primitives::{ClusterFeesParams, ClusterPricingParams, NodePubKey, NodeType};
+use ddc_primitives::{
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
+	NodeType,
+};
 use ddc_traits::{
-	cluster::{ClusterVisitor, ClusterVisitorError},
-	customer::CustomerCharger,
+	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+	customer::{CustomerCharger, CustomerDepositor},
 	pallet::PalletVisitor,
 };
 use frame_election_provider_support::SortedListProvider;
@@ -102,9 +105,12 @@ impl crate::pallet::Config for Test {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = TestCustomerCharger;
+	type CustomerDepositor = TestCustomerDepositor;
 	type ClusterVisitor = TestClusterVisitor;
 	type TreasuryVisitor = TestTreasuryVisitor;
 	type ValidatorList = TestValidatorVisitor<Self>;
+	type ClusterCreator = TestClusterCreator;
+	type WeightInfo = ();
 }
 
 pub struct TestCustomerCharger;
@@ -137,6 +143,29 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 }
 
 pub const ACCOUNT_ID_5: AccountId = 5;
+pub struct TestClusterCreator;
+impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
+	fn create_new_cluster(
+		_cluster_id: ClusterId,
+		_cluster_manager_id: T::AccountId,
+		_cluster_reserve_id: T::AccountId,
+		_cluster_params: ClusterParams<T::AccountId>,
+		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
+pub struct TestCustomerDepositor;
+impl<T: Config> CustomerDepositor<T> for TestCustomerDepositor {
+	fn deposit(_customer: T::AccountId, _amount: u128) -> Result<(), DispatchError> {
+		Ok(())
+	}
+	fn deposit_extra(_customer: T::AccountId, _amount: u128) -> Result<(), DispatchError> {
+		Ok(())
+	}
+}
+
 pub const RESERVE_ACCOUNT_ID: AccountId = 999;
 pub const TREASURY_ACCOUNT_ID: AccountId = 888;
 pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
@@ -261,9 +290,6 @@ pub fn get_fees(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisi
 
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
-	fn cluster_has_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
-		true
-	}
 	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
 		Ok(())
 	}
@@ -305,6 +331,12 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	) -> Result<T::AccountId, ClusterVisitorError> {
 		let reserve_account = RESERVE_ACCOUNT_ID.to_ne_bytes();
 		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
+	}
+
+	fn get_bonding_params(
+		_cluster_id: &ClusterId,
+	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+		unimplemented!()
 	}
 }
 
