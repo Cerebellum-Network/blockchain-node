@@ -1322,7 +1322,10 @@ impl pallet_ddc_staking::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1336,17 +1339,23 @@ impl pallet_ddc_customers::Config for Runtime {
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
+	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_ddc_nodes::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type WeightInfo = pallet_ddc_nodes::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_ddc_clusters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
 	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 	type Currency = Balances;
+	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -1365,9 +1374,12 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
+	type CustomerDepositor = DdcCustomers;
 	type ClusterVisitor = DdcClusters;
 	type TreasuryVisitor = TreasureWrapper;
 	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
+	type ClusterCreator = DdcClusters;
+	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 }
 
 construct_runtime!(
@@ -1533,7 +1545,11 @@ mod benches {
 		[pallet_scheduler, Scheduler]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_staking, Staking]
+		[pallet_ddc_customers, DdcCustomers]
+		[pallet_ddc_clusters, DdcClusters]
 		[pallet_ddc_staking, DdcStaking]
+		[pallet_ddc_nodes, DdcNodes]
+		[pallet_ddc_payouts, DdcPayouts]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
 		[pallet_tips, Tips]

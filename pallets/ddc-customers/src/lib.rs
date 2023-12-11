@@ -1,6 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
+pub mod weights;
+use crate::weights::WeightInfo;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
+
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
@@ -9,7 +15,10 @@ mod tests;
 use codec::{Decode, Encode, HasCompact};
 
 use ddc_primitives::{BucketId, ClusterId};
-use ddc_traits::{cluster::ClusterVisitor, customer::CustomerCharger};
+use ddc_traits::{
+	cluster::{ClusterCreator, ClusterVisitor},
+	customer::{CustomerCharger, CustomerDepositor},
+};
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
@@ -132,6 +141,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type UnlockingDelay: Get<<Self as frame_system::Config>::BlockNumber>;
 		type ClusterVisitor: ClusterVisitor<Self>;
+		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
+		type WeightInfo: WeightInfo;
 	}
 
 	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
@@ -200,6 +211,8 @@ pub mod pallet {
 		ArithmeticOverflow,
 		// Arithmetic underflow
 		ArithmeticUnderflow,
+		// Transferring balance to pallet's vault has failed
+		TransferFailed,
 	}
 
 	#[pallet::genesis_config]
@@ -222,7 +235,7 @@ pub mod pallet {
 		/// Create new bucket with specified cluster id
 		///
 		/// Anyone can create a bucket
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::create_bucket())]
 		pub fn create_bucket(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
 			let cur_bucket_id =
@@ -249,34 +262,13 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the owner account.
 		///
 		/// Emits `Deposited`.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-
-			if <Ledger<T>>::contains_key(&owner) {
-				Err(Error::<T>::AlreadyPaired)?
-			}
-
-			// Reject a deposit which is considered to be _dust_.
-			if value < <T as pallet::Config>::Currency::minimum_balance() {
-				Err(Error::<T>::InsufficientDeposit)?
-			}
-
-			frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::BadState)?;
-
-			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
-			let value = value.min(owner_balance);
-			let item = AccountsLedger {
-				owner: owner.clone(),
-				total: value,
-				active: value,
-				unlocking: Default::default(),
-			};
-			Self::update_ledger_and_deposit(&owner, &item)?;
-			Self::deposit_event(Event::<T>::Deposited(owner, value));
+			<Self as CustomerDepositor<T>>::deposit(owner, value.saturated_into())?;
 			Ok(())
 		}
 
@@ -286,32 +278,13 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the owner.
 		///
 		/// Emits `Deposited`.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::deposit_extra())]
 		pub fn deposit_extra(
 			origin: OriginFor<T>,
 			#[pallet::compact] max_additional: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-
-			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
-
-			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
-			let extra = owner_balance.min(max_additional);
-			ledger.total =
-				ledger.total.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
-			ledger.active =
-				ledger.active.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
-
-			// Last check: the new active amount of ledger must be more than ED.
-			ensure!(
-				ledger.active >= <T as pallet::Config>::Currency::minimum_balance(),
-				Error::<T>::InsufficientDeposit
-			);
-
-			Self::update_ledger_and_deposit(&owner, &ledger)?;
-
-			Self::deposit_event(Event::<T>::Deposited(owner, extra));
-
+			<Self as CustomerDepositor<T>>::deposit_extra(owner, max_additional.saturated_into())?;
 			Ok(())
 		}
 
@@ -331,7 +304,7 @@ pub mod pallet {
 		/// Emits `InitialDepositUnlock`.
 		///
 		/// See also [`Call::withdraw_unlocked_deposit`].
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::unlock_deposit())]
 		pub fn unlock_deposit(
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T>,
@@ -392,15 +365,15 @@ pub mod pallet {
 		/// Emits `Withdrawn`.
 		///
 		/// See also [`Call::unlock_deposit`].
-		#[pallet::weight(10_000)]
-		pub fn withdraw_unlocked_deposit(origin: OriginFor<T>) -> DispatchResult {
+		#[pallet::weight(T::WeightInfo::withdraw_unlocked_deposit_kill())]
+		pub fn withdraw_unlocked_deposit(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
 			let (owner, old_total) = (ledger.owner.clone(), ledger.total);
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
 
-			if ledger.unlocking.is_empty() &&
+			let post_info_weight = if ledger.unlocking.is_empty() &&
 				ledger.active < <T as pallet::Config>::Currency::minimum_balance()
 			{
 				log::debug!("Killing owner");
@@ -408,11 +381,15 @@ pub mod pallet {
 				// active portion to fall below existential deposit + will have no more unlocking
 				// chunks left. We can now safely remove all accounts-related information.
 				Self::kill_owner(&owner)?;
+				// This is worst case scenario, so we use the full weight and return None
+				None
 			} else {
 				log::debug!("Updating ledger");
 				// This was the consequence of a partial deposit unlock. just update the ledger and
 				// move on.
 				<Ledger<T>>::insert(&owner, &ledger);
+				// This is only an update, so we use less overall weight.
+				Some(<T as pallet::Config>::WeightInfo::withdraw_unlocked_deposit_update())
 			};
 
 			log::debug!("Current total: {:?}", ledger.total);
@@ -435,7 +412,7 @@ pub mod pallet {
 				Self::deposit_event(Event::<T>::Withdrawn(owner, value));
 			}
 
-			Ok(())
+			Ok(post_info_weight.into())
 		}
 	}
 
@@ -569,6 +546,62 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::Charged(content_owner, amount_to_deduct));
 
 			Ok(actually_charged.saturated_into::<u128>())
+		}
+	}
+
+	impl<T: Config> CustomerDepositor<T> for Pallet<T> {
+		fn deposit(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
+			let value = amount.saturated_into::<BalanceOf<T>>();
+
+			if <Ledger<T>>::contains_key(&owner) {
+				Err(Error::<T>::AlreadyPaired)?
+			}
+
+			// Reject a deposit which is considered to be _dust_.
+			if value < <T as pallet::Config>::Currency::minimum_balance() {
+				Err(Error::<T>::InsufficientDeposit)?
+			}
+
+			frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::BadState)?;
+
+			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
+			let value = value.min(owner_balance);
+			let item = AccountsLedger {
+				owner: owner.clone(),
+				total: value,
+				active: value,
+				unlocking: Default::default(),
+			};
+
+			Self::update_ledger_and_deposit(&owner, &item)
+				.map_err(|_| Error::<T>::TransferFailed)?;
+			Self::deposit_event(Event::<T>::Deposited(owner, value));
+
+			Ok(())
+		}
+
+		fn deposit_extra(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
+			let max_additional = amount.saturated_into::<BalanceOf<T>>();
+			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
+
+			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
+			let extra = owner_balance.min(max_additional);
+			ledger.total =
+				ledger.total.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
+			ledger.active =
+				ledger.active.checked_add(&extra).ok_or(Error::<T>::ArithmeticOverflow)?;
+
+			// Last check: the new active amount of ledger must be more than ED.
+			ensure!(
+				ledger.active >= <T as pallet::Config>::Currency::minimum_balance(),
+				Error::<T>::InsufficientDeposit
+			);
+
+			Self::update_ledger_and_deposit(&owner, &ledger)
+				.map_err(|_| Error::<T>::TransferFailed)?;
+			Self::deposit_event(Event::<T>::Deposited(owner, extra));
+
+			Ok(())
 		}
 	}
 }
