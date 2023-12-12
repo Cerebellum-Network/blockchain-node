@@ -346,8 +346,8 @@ fn send_charging_customers_batch_works1() {
 		));
 
 		let usage4_charge = calculate_charge(cluster_id, usage4.clone());
-		let mut balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
-		assert_eq!(balance, usage4_charge);
+		let mut balance = Balances::free_balance(DdcPayouts::account_id());
+		assert_eq!(balance - Balances::minimum_balance(), usage4_charge);
 
 		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor).unwrap();
 		let mut debt = calculate_charge(cluster_id, usage2.clone());
@@ -393,7 +393,7 @@ fn send_charging_customers_batch_works1() {
 			.into(),
 		);
 
-		assert_eq!(System::events().len(), 5 + 3 + 1); // 3 for Currency::transfer
+		assert_eq!(System::events().len(), 5 + 1 + 1); // 1 for Currency::transfer
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge.clone();
@@ -440,7 +440,7 @@ fn send_charging_customers_batch_works1() {
 		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
-		let balance_before = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+		let balance_before = Balances::free_balance(DdcPayouts::account_id());
 
 		// batch 3
 		batch_index += 1;
@@ -474,7 +474,7 @@ fn send_charging_customers_batch_works1() {
 			report.total_customer_charge.transfer
 		);
 
-		balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+		balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
 
 		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
@@ -543,7 +543,7 @@ fn send_charging_customers_batch_works2() {
 		// batch 1
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let before_total_customer_charge = report.total_customer_charge.clone();
-		let balance_before = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+		let balance_before = Balances::free_balance(DdcPayouts::account_id());
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
@@ -554,7 +554,7 @@ fn send_charging_customers_batch_works2() {
 
 		let usage5_charge = calculate_charge(cluster_id, usage5.clone());
 		let charge5 = calculate_charge_parts(cluster_id, usage5);
-		let balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+		let balance = Balances::free_balance(DdcPayouts::account_id());
 		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(balance, usage5_charge + balance_before);
 		assert_eq!(
@@ -696,9 +696,9 @@ fn end_charging_customers_works() {
 				.into(),
 		);
 
-		let mut balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
-		assert_eq!(balance, charge);
-		assert_eq!(System::events().len(), 4 + 3); // 3 for Currency::transfer
+		let mut balance = Balances::free_balance(DdcPayouts::account_id());
+		assert_eq!(balance - Balances::minimum_balance(), charge);
+		assert_eq!(System::events().len(), 4 + 1); // 1 for Currency::transfer
 
 		assert_ok!(DdcPayouts::end_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -725,7 +725,7 @@ fn end_charging_customers_works() {
 		);
 
 		let transfers = 3 + 3 + 3 * 3; // for Currency::transfer
-		assert_eq!(System::events().len(), 7 + 1 + 3 + transfers);
+		assert_eq!(System::events().len(), 5 + 1 + 3 + transfers);
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report_after.state, State::CustomersChargedWithFees);
@@ -818,9 +818,9 @@ fn end_charging_customers_works_zero_fees() {
 				.into(),
 		);
 
-		let mut balance = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
-		assert_eq!(balance, charge);
-		assert_eq!(System::events().len(), 4 + 3); // 3 for Currency::transfer
+		let mut balance = Balances::free_balance(DdcPayouts::account_id());
+		assert_eq!(balance - Balances::minimum_balance(), charge);
+		assert_eq!(System::events().len(), 4 + 1); // 1 for Currency::transfer
 
 		assert_ok!(DdcPayouts::end_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -829,7 +829,7 @@ fn end_charging_customers_works_zero_fees() {
 		));
 
 		System::assert_has_event(Event::ChargingFinished { cluster_id, era }.into());
-		assert_eq!(System::events().len(), 7 + 1);
+		assert_eq!(System::events().len(), 5 + 1);
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report_after.state, State::CustomersChargedWithFees);
@@ -1449,11 +1449,11 @@ fn send_rewarding_providers_batch_works() {
 }
 
 #[test]
-fn send_rewarding_providers_batch_works100() {
+fn send_rewarding_providers_batch_works100nodes() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let num_nodes = 500;
+		let num_nodes = 100;
 		let num_users = 5;
 		let dac_account = 123u128;
 		let bank = 1u128;
@@ -1539,7 +1539,12 @@ fn send_rewarding_providers_batch_works100() {
 			user_usage.number_of_gets = ratio * user_usage.number_of_gets;
 
 			let expected_charge = calculate_charge(cluster_id, user_usage.clone());
-			Balances::transfer(RuntimeOrigin::signed(bank), user_id, (expected_charge * 2).max(Balances::minimum_balance())).unwrap();
+			Balances::transfer(
+				RuntimeOrigin::signed(bank),
+				user_id,
+				(expected_charge * 2).max(Balances::minimum_balance()),
+			)
+			.unwrap();
 			total_charge += expected_charge;
 
 			user_batch.push((user_id, user_usage));
@@ -1576,6 +1581,7 @@ fn send_rewarding_providers_batch_works100() {
 
 			for (customer_id, usage) in batch.iter() {
 				let charge = calculate_charge(cluster_id, usage.clone());
+
 				System::assert_has_event(
 					Event::Charged {
 						cluster_id,
@@ -1592,10 +1598,10 @@ fn send_rewarding_providers_batch_works100() {
 
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let balance1 = Balances::free_balance(report_before.vault);
-		let balance2 = Balances::free_balance(DdcPayouts::sub_account_id(cluster_id, era));
+		let balance2 = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance1, balance2);
-		assert_eq!(report_before.vault, DdcPayouts::sub_account_id(cluster_id, era));
-		assert_eq!(balance1, total_charge);
+		assert_eq!(report_before.vault, DdcPayouts::account_id());
+		assert_eq!(balance1 - Balances::minimum_balance(), total_charge);
 
 		assert_ok!(DdcPayouts::end_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -1608,6 +1614,13 @@ fn send_rewarding_providers_batch_works100() {
 			get_fees(&cluster_id).validators_share +
 			get_fees(&cluster_id).cluster_reserve_share)
 			.left_from_one();
+
+		let total_charge = report_after.total_customer_charge.transfer +
+			report_before.total_customer_charge.storage +
+			report_before.total_customer_charge.puts +
+			report_before.total_customer_charge.gets;
+		let balance_after = Balances::free_balance(DdcPayouts::account_id());
+		assert_eq!(total_charge, balance_after - Balances::minimum_balance());
 
 		assert_eq!(
 			report_after.total_customer_charge.transfer,
@@ -1635,6 +1648,7 @@ fn send_rewarding_providers_batch_works100() {
 		));
 
 		for batch in payees.iter() {
+			let before_batch = Balances::free_balance(DdcPayouts::account_id());
 			assert_ok!(DdcPayouts::send_rewarding_providers_batch(
 				RuntimeOrigin::signed(dac_account),
 				cluster_id,
@@ -1642,8 +1656,8 @@ fn send_rewarding_providers_batch_works100() {
 				batch_node_index,
 				batch.to_vec(),
 			));
-			batch_node_index += 1;
 
+			let mut batch_charge = 0;
 			for (node1, node_usage1) in batch.iter() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
@@ -1670,12 +1684,19 @@ fn send_rewarding_providers_batch_works100() {
 				let gets_charge = ratio1_gets * report_after.total_customer_charge.gets;
 
 				let balance_node1 = Balances::free_balance(node1);
-				assert_eq!(
-					balance_node1,
-					transfer_charge + storage_charge + puts_charge + gets_charge
+				assert!(
+					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1 <
+						MAX_DUST.into()
 				);
+
+				batch_charge += transfer_charge + storage_charge + puts_charge + gets_charge;
 			}
+			let after_batch = Balances::free_balance(DdcPayouts::account_id());
+			assert!(batch_charge + after_batch - before_batch < MAX_DUST.into());
+
+			batch_node_index += 1;
 		}
+		assert!(Balances::free_balance(DdcPayouts::account_id()) < MAX_DUST.into());
 	})
 }
 

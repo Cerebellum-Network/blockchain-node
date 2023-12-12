@@ -142,8 +142,8 @@ fn charge_content_owner_works() {
 		let balance_after_deposit = Balances::free_balance(account_3);
 		assert_eq!(balance_before_deposit - deposit, balance_after_deposit);
 
-		let pallet_balance = Balances::free_balance(DdcCustomers::sub_account_id(&account_3));
-		assert_eq!(deposit, pallet_balance);
+		let pallet_balance = Balances::free_balance(DdcCustomers::account_id());
+		assert_eq!(deposit, pallet_balance - Balances::minimum_balance());
 
 		// Check storage
 		assert_eq!(
@@ -170,8 +170,7 @@ fn charge_content_owner_works() {
 		let account_balance = Balances::free_balance(account_3);
 		assert_eq!(balance_after_deposit, account_balance);
 
-		let pallet_balance_after_charge =
-			Balances::free_balance(DdcCustomers::sub_account_id(&account_3));
+		let pallet_balance_after_charge = Balances::free_balance(DdcCustomers::account_id());
 		assert_eq!(pallet_balance - charged, pallet_balance_after_charge);
 
 		// Check storage
@@ -198,7 +197,10 @@ fn charge_content_owner_works() {
 			})
 		);
 
-		assert_eq!(0, Balances::free_balance(DdcCustomers::sub_account_id(&account_3)));
+		assert_eq!(
+			0,
+			Balances::free_balance(DdcCustomers::account_id()) - Balances::minimum_balance()
+		);
 		assert_eq!(charge_result, deposit - charge1);
 
 		assert_ok!(DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_3), deposit));
@@ -212,7 +214,10 @@ fn charge_content_owner_works() {
 			})
 		);
 
-		assert_eq!(deposit, Balances::free_balance(DdcCustomers::sub_account_id(&account_3)));
+		assert_eq!(
+			deposit,
+			Balances::free_balance(DdcCustomers::account_id()) - Balances::minimum_balance()
+		);
 	})
 }
 

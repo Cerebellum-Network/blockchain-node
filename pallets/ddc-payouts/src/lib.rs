@@ -240,6 +240,11 @@ pub mod pallet {
 	pub type DebtorCustomers<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn owing_providers)]
+	pub type OwingProviders<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
+
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct BillingReport<T: Config> {
@@ -316,13 +321,11 @@ pub mod pallet {
 				Error::<T>::NotExpectedState
 			);
 
-			let mut billing_report = BillingReport::<T> {
-				vault: Self::sub_account_id(cluster_id, era),
+			let billing_report = BillingReport::<T> {
+				vault: Self::account_id(),
 				state: State::Initialized,
 				..Default::default()
 			};
-			billing_report.vault = Self::sub_account_id(cluster_id, era);
-			billing_report.state = State::Initialized;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::BillingReportInitialized { cluster_id, era });
@@ -676,7 +679,21 @@ pub mod pallet {
 
 				let node_provider_id = payee.0;
 				if amount_to_reward > 0 {
-					let reward: BalanceOf<T> = amount_to_reward.saturated_into::<BalanceOf<T>>();
+					let mut reward: BalanceOf<T> =
+						amount_to_reward.saturated_into::<BalanceOf<T>>();
+
+					let balance = <T as pallet::Config>::Currency::free_balance(
+						&updated_billing_report.vault,
+					) - <T as pallet::Config>::Currency::minimum_balance();
+
+					if reward > balance {
+						ensure!(
+							reward - balance <= MaxDust::get().into(),
+							Error::<T>::NotDistributedBalance
+						);
+
+						reward = balance;
+					}
 
 					<T as pallet::Config>::Currency::transfer(
 						&updated_billing_report.vault,
@@ -910,7 +927,44 @@ pub mod pallet {
 		Ok(())
 	}
 
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub feeder_account: Option<T::AccountId>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig { feeder_account: None }
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			let account_id = <Pallet<T>>::account_id();
+			let min = <T as pallet::Config>::Currency::minimum_balance();
+			let balance = <T as pallet::Config>::Currency::free_balance(&account_id);
+			if balance < min {
+				if let Some(vault) = &self.feeder_account {
+					let _ = <T as pallet::Config>::Currency::transfer(
+						&vault,
+						&account_id,
+						min - balance,
+						ExistenceRequirement::AllowDeath,
+					);
+				} else {
+					let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
+				}
+			}
+		}
+	}
+
 	impl<T: Config> Pallet<T> {
+		pub fn account_id() -> T::AccountId {
+			T::PalletId::get().into_account_truncating()
+		}
+
 		pub fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
 			let mut bytes = Vec::new();
 			bytes.extend_from_slice(&cluster_id[..]);
