@@ -238,7 +238,7 @@ pub mod pallet {
 			if balance < min {
 				if let Some(vault) = &self.feeder_account {
 					let _ = <T as pallet::Config>::Currency::transfer(
-						&vault,
+						vault,
 						&account_id,
 						min - balance,
 						ExistenceRequirement::AllowDeath,
@@ -246,6 +246,7 @@ pub mod pallet {
 				} else {
 					let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
 				}
+			}
 
 			for &(ref cluster_id, ref owner_id, ref deposit) in &self.buckets {
 				let cur_bucket_id = <BucketsCount<T>>::get()

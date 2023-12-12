@@ -243,9 +243,11 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut storage);
 
-		let _customer_genesis =
-			pallet_ddc_customers::GenesisConfig::<Test> { feeder_account: None }
-				.assimilate_storage(&mut storage);
+		let _customer_genesis = pallet_ddc_customers::GenesisConfig::<Test> {
+			feeder_account: None,
+			buckets: Default::default(),
+		}
+		.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}

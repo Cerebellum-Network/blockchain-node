@@ -1515,7 +1515,7 @@ fn send_rewarding_providers_batch_works100nodes() {
 				node_batch.clear();
 			}
 		}
-		if node_batch.len() > 0 {
+		if !node_batch.is_empty() {
 			payees.push(node_batch.clone());
 		}
 
@@ -1553,7 +1553,7 @@ fn send_rewarding_providers_batch_works100nodes() {
 				user_batch.clear();
 			}
 		}
-		if user_batch.len() > 0 {
+		if !user_batch.is_empty() {
 			payers.push(user_batch.clone());
 		}
 

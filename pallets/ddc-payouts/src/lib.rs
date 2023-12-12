@@ -948,7 +948,7 @@ pub mod pallet {
 			if balance < min {
 				if let Some(vault) = &self.feeder_account {
 					let _ = <T as pallet::Config>::Currency::transfer(
-						&vault,
+						vault,
 						&account_id,
 						min - balance,
 						ExistenceRequirement::AllowDeath,
