@@ -1,0 +1,232 @@
+{
+  "name": "Development",
+  "id": "cere_dev",
+  "chainType": "Development",
+  "bootNodes": [],
+  "telemetryEndpoints": null,
+  "protocolId": "cere",
+  "properties": {
+    "ss58Format": 54,
+    "tokenDecimals": 10,
+    "tokenSymbol": "CERE"
+  },
+  "forkBlocks": null,
+  "badBlocks": null,
+  "lightSyncState": null,
+  "codeSubstitutes": {},
+  "genesis": {
+    "runtime": {
+      "system": {
+        "code": "0x00"
+      },
+      "babe": {
+        "authorities": [],
+        "epochConfig": {
+          "c": [
+            1,
+            4
+          ],
+          "allowed_slots": "PrimaryAndSecondaryPlainSlots"
+        }
+      },
+      "indices": {
+        "indices": []
+      },
+      "balances": {
+        "balances": [
+          [
+            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            10000000000000
+          ],
+          [
+            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            10000000000000
+          ],
+          [
+            "5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY",
+            10000000000000
+          ],
+          [
+            "5HpG9w8EBLe5XCrbczpwq5TSXvedjrBGCwqxK1iQ7qUsSWFc",
+            10000000000000
+          ],
+          [
+            "5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y",
+            10000000000000
+          ]
+        ]
+      },
+      "transactionPayment": {
+        "multiplier": "10000000000"
+      },
+      "staking": {
+        "validatorCount": 1,
+        "minimumValidatorCount": 1,
+        "invulnerables": [
+          "5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY"
+        ],
+        "forceEra": "NotForcing",
+        "slashRewardFraction": 100000000,
+        "canceledPayout": 0,
+        "stakers": [
+          [
+            "5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY",
+            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            1000000000000,
+            "Validator"
+          ]
+        ],
+        "minNominatorBond": 0,
+        "minValidatorBond": 0,
+        "maxValidatorCount": null,
+        "maxNominatorCount": null
+      },
+      "session": {
+        "keys": [
+          [
+            "5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY",
+            "5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY",
+            {
+              "grandpa": "5FA9nQDVg267DEd8m1ZypXLBnvN7SFxYwV7ndqSYGiN9TTpu",
+              "babe": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+              "im_online": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+              "authority_discovery": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+            }
+          ]
+        ]
+      },
+      "democracy": {
+        "phantom": null
+      },
+      "council": {
+        "phantom": null,
+        "members": []
+      },
+      "technicalCommittee": {
+        "phantom": null,
+        "members": [
+          "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+          "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
+        ]
+      },
+      "elections": {
+        "members": [
+          [
+            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            10000000000
+          ],
+          [
+            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            10000000000
+          ]
+        ]
+      },
+      "technicalMembership": {
+        "members": [],
+        "phantom": null
+      },
+      "grandpa": {
+        "authorities": []
+      },
+      "treasury": null,
+      "sudo": {
+        "key": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+      },
+      "imOnline": {
+        "keys": []
+      },
+      "authorityDiscovery": {
+        "keys": []
+      },
+      "society": {
+        "pot": 0,
+        "members": [
+          "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+          "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
+        ],
+        "maxMembers": 999
+      },
+      "vesting": {
+        "vesting": []
+      },
+      "nominationPools": {
+        "minJoinBond": 0,
+        "minCreateBond": 0,
+        "maxPools": 16,
+        "maxMembersPerPool": 32,
+        "maxMembers": 512
+      },
+      "ddcStaking": {
+        "cdns": [],
+        "storages": []
+      },
+      "ddcCustomers": {
+        "buckets": [
+          [
+            "0x0000000000000000000000000000000000000001",
+            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            10000000000
+          ]
+        ]
+      },
+      "ddcNodes": {
+        "storageNodes": [
+          {
+            "pub_key": "5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y",
+            "provider_id": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            "cluster_id": "0x0000000000000000000000000000000000000001",
+            "props": {
+              "host": [],
+              "http_port": 8080,
+              "grpc_port": 8081,
+              "p2p_port": 8082
+            }
+          }
+        ],
+        "cdnNodes": []
+      },
+      "ddcClusters": {
+        "clusters": [
+          {
+            "cluster_id": "0x0000000000000000000000000000000000000001",
+            "manager_id": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            "reserve_id": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            "props": {
+              "node_provider_auth_contract": null
+            }
+          }
+        ],
+        "clustersGovParams": [
+          [
+            "0x0000000000000000000000000000000000000001",
+            {
+              "treasury_share": 0,
+              "validators_share": 0,
+              "cluster_reserve_share": 0,
+              "cdn_bond_size": 0,
+              "cdn_chill_delay": 0,
+              "cdn_unbonding_delay": 0,
+              "storage_bond_size": 0,
+              "storage_chill_delay": 0,
+              "storage_unbonding_delay": 0,
+              "unit_per_mb_stored": 0,
+              "unit_per_mb_streamed": 0,
+              "unit_per_put_request": 0,
+              "unit_per_get_request": 0
+            }
+          ]
+        ],
+        "clustersNodes": [
+          [
+            "0x0000000000000000000000000000000000000001",
+            [
+              {
+                "StoragePubKey": "5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y"
+              }
+            ]
+          ]
+        ]
+      }
+    }
+  }
+}

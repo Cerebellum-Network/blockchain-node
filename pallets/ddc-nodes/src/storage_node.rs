@@ -3,6 +3,8 @@ use codec::{Decode, Encode};
 use ddc_primitives::{ClusterId, NodeParams, NodePubKey, NodeType, StorageNodePubKey};
 use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_runtime::RuntimeDebug;
 
 parameter_types! {
@@ -10,6 +12,7 @@ parameter_types! {
 	pub MaxHostLen: u8 = 255;
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 #[scale_info(skip_type_params(T))]
 pub struct StorageNode<T: frame_system::Config> {
@@ -19,6 +22,7 @@ pub struct StorageNode<T: frame_system::Config> {
 	pub props: StorageNodeProps,
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNodeProps {
 	pub host: BoundedVec<u8, MaxHostLen>,
