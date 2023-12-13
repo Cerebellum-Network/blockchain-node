@@ -217,13 +217,14 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
+		pub feeder_account: Option<T::AccountId>,
 		pub buckets: Vec<(ClusterId, T::AccountId, BalanceOf<T>)>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			GenesisConfig { buckets: Default::default() }
+			GenesisConfig { feeder_account: None, buckets: Default::default() }
 		}
 	}
 
@@ -232,8 +233,19 @@ pub mod pallet {
 		fn build(&self) {
 			let account_id = <Pallet<T>>::account_id();
 			let min = <T as pallet::Config>::Currency::minimum_balance();
-			if <T as pallet::Config>::Currency::free_balance(&account_id) < min {
-				let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
+
+			let balance = <T as pallet::Config>::Currency::free_balance(&account_id);
+			if balance < min {
+				if let Some(vault) = &self.feeder_account {
+					let _ = <T as pallet::Config>::Currency::transfer(
+						vault,
+						&account_id,
+						min - balance,
+						ExistenceRequirement::AllowDeath,
+					);
+				} else {
+					let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
+				}
 			}
 
 			for &(ref cluster_id, ref owner_id, ref deposit) in &self.buckets {
@@ -438,7 +450,7 @@ pub mod pallet {
 					old_total.checked_sub(&ledger.total).ok_or(Error::<T>::ArithmeticUnderflow)?;
 
 				<T as pallet::Config>::Currency::transfer(
-					&Self::sub_account_id(&owner),
+					&Self::account_id(),
 					&owner,
 					value,
 					ExistenceRequirement::AllowDeath,
@@ -471,7 +483,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			<T as pallet::Config>::Currency::transfer(
 				owner,
-				&Self::sub_account_id(owner),
+				&Self::account_id(),
 				ledger.total,
 				ExistenceRequirement::AllowDeath,
 			)?;
@@ -570,7 +582,7 @@ pub mod pallet {
 			}
 
 			<T as pallet::Config>::Currency::transfer(
-				&Self::sub_account_id(&content_owner),
+				&Self::account_id(),
 				&billing_vault,
 				actually_charged,
 				ExistenceRequirement::AllowDeath,

@@ -11,7 +11,7 @@ use ddc_traits::cluster::{
 
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU32, ConstU64, Everything},
+	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
@@ -238,8 +238,14 @@ impl ExtBuilder {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
-		let _ = pallet_balances::GenesisConfig::<Test> {
+		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![(1, 100), (2, 100), (3, 1000)],
+		}
+		.assimilate_storage(&mut storage);
+
+		let _customer_genesis = pallet_ddc_customers::GenesisConfig::<Test> {
+			feeder_account: None,
+			buckets: Default::default(),
 		}
 		.assimilate_storage(&mut storage);
 
