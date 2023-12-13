@@ -1750,12 +1750,25 @@ fn send_rewarding_providers_batch_100nodes_large_usage_works() {
 		let mut node_batch: Vec<(u128, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
 		for i in 10..10 + num_nodes {
-			let node_usage = match i % 3 {
+			let ratio = match i % 5 {
+				0 => Perquintill::from_float(1_000_000.0),
+				1 => Perquintill::from_float(10_000_000.0),
+				2 => Perquintill::from_float(100_000_000.0),
+				3 => Perquintill::from_float(1_000_000_000.0),
+				4 => Perquintill::from_float(10_000_000_000.0),
+				_ => unreachable!(),
+			};
+			let mut node_usage = match i % 3 {
 				0 => node_usage1.clone(),
 				1 => node_usage2.clone(),
 				2 => node_usage3.clone(),
 				_ => unreachable!(),
 			};
+			node_usage.transferred_bytes = ratio * node_usage.transferred_bytes;
+			node_usage.stored_bytes = ratio * node_usage.stored_bytes;
+			node_usage.number_of_puts = ratio * node_usage.number_of_puts;
+			node_usage.number_of_gets = ratio * node_usage.number_of_gets;
+
 			total_nodes_usage.transferred_bytes += node_usage.transferred_bytes;
 			total_nodes_usage.stored_bytes += node_usage.stored_bytes;
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
