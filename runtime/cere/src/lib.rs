@@ -1434,11 +1434,11 @@ construct_runtime!(
 		Erc721: pallet_erc721::{Pallet, Call, Storage, Event<T>},
 		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
 		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
-		DdcClusters: pallet_ddc_clusters,
+		DdcStaking: pallet_ddc_staking,
 		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
-		DdcPayouts: pallet_ddc_payouts,
-		DdcStaking: pallet_ddc_staking
+		DdcClusters: pallet_ddc_clusters,
+		DdcPayouts: pallet_ddc_payouts
 	}
 );
 
