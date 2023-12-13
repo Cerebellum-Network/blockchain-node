@@ -1449,7 +1449,7 @@ fn send_rewarding_providers_batch_works() {
 }
 
 #[test]
-fn send_rewarding_providers_batch_works100nodes() {
+fn send_rewarding_providers_batch_100nodes_small_usage_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
@@ -1529,6 +1529,258 @@ fn send_rewarding_providers_batch_works100nodes() {
 				2 => Perquintill::from_float(2f64),
 				3 => Perquintill::from_float(0.25),
 				4 => Perquintill::from_float(0.001),
+				_ => unreachable!(),
+			};
+
+			let mut user_usage = usage1.clone();
+			user_usage.transferred_bytes = ratio * user_usage.transferred_bytes;
+			user_usage.stored_bytes = ratio * user_usage.stored_bytes;
+			user_usage.number_of_puts = ratio * user_usage.number_of_puts;
+			user_usage.number_of_gets = ratio * user_usage.number_of_gets;
+
+			let expected_charge = calculate_charge(cluster_id, user_usage.clone());
+			Balances::transfer(
+				RuntimeOrigin::signed(bank),
+				user_id,
+				(expected_charge * 2).max(Balances::minimum_balance()),
+			)
+			.unwrap();
+			total_charge += expected_charge;
+
+			user_batch.push((user_id, user_usage));
+			if user_batch.len() == user_batch_size {
+				payers.push(user_batch.clone());
+				user_batch.clear();
+			}
+		}
+		if !user_batch.is_empty() {
+			payers.push(user_batch.clone());
+		}
+
+		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
+		assert_ok!(DdcPayouts::begin_billing_report(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+		));
+		assert_ok!(DdcPayouts::begin_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			(payers.len() - 1) as u16,
+		));
+
+		for batch in payers.iter() {
+			assert_ok!(DdcPayouts::send_charging_customers_batch(
+				RuntimeOrigin::signed(dac_account),
+				cluster_id,
+				era,
+				batch_user_index,
+				batch.to_vec(),
+			));
+
+			for (customer_id, usage) in batch.iter() {
+				let charge = calculate_charge(cluster_id, usage.clone());
+
+				System::assert_has_event(
+					Event::Charged {
+						cluster_id,
+						era,
+						customer_id: *customer_id,
+						batch_index: batch_user_index,
+						amount: charge,
+					}
+					.into(),
+				);
+			}
+			batch_user_index += 1;
+		}
+
+		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let balance1 = Balances::free_balance(report_before.vault);
+		let balance2 = Balances::free_balance(DdcPayouts::account_id());
+		assert_eq!(balance1, balance2);
+		assert_eq!(report_before.vault, DdcPayouts::account_id());
+		assert_eq!(balance1 - Balances::minimum_balance(), total_charge);
+
+		assert_ok!(DdcPayouts::end_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+		));
+
+		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
+			get_fees(&cluster_id).validators_share +
+			get_fees(&cluster_id).cluster_reserve_share)
+			.left_from_one();
+
+		let total_charge = report_after.total_customer_charge.transfer +
+			report_before.total_customer_charge.storage +
+			report_before.total_customer_charge.puts +
+			report_before.total_customer_charge.gets;
+		let balance_after = Balances::free_balance(DdcPayouts::account_id());
+		assert_eq!(total_charge, balance_after - Balances::minimum_balance());
+
+		assert_eq!(
+			report_after.total_customer_charge.transfer,
+			total_left_from_one * report_before.total_customer_charge.transfer
+		);
+		assert_eq!(
+			report_after.total_customer_charge.storage,
+			total_left_from_one * report_before.total_customer_charge.storage
+		);
+		assert_eq!(
+			report_after.total_customer_charge.puts,
+			total_left_from_one * report_before.total_customer_charge.puts
+		);
+		assert_eq!(
+			report_after.total_customer_charge.gets,
+			total_left_from_one * report_before.total_customer_charge.gets
+		);
+
+		assert_ok!(DdcPayouts::begin_rewarding_providers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			(payees.len() - 1) as u16,
+			total_nodes_usage.clone(),
+		));
+
+		for batch in payees.iter() {
+			let before_batch = Balances::free_balance(DdcPayouts::account_id());
+			assert_ok!(DdcPayouts::send_rewarding_providers_batch(
+				RuntimeOrigin::signed(dac_account),
+				cluster_id,
+				era,
+				batch_node_index,
+				batch.to_vec(),
+			));
+
+			let mut batch_charge = 0;
+			for (node1, node_usage1) in batch.iter() {
+				let ratio1_transfer = Perquintill::from_rational(
+					node_usage1.transferred_bytes,
+					total_nodes_usage.transferred_bytes,
+				);
+				let transfer_charge = ratio1_transfer * report_after.total_customer_charge.transfer;
+
+				let ratio1_storage = Perquintill::from_rational(
+					node_usage1.stored_bytes,
+					total_nodes_usage.stored_bytes,
+				);
+				let storage_charge = ratio1_storage * report_after.total_customer_charge.storage;
+
+				let ratio1_puts = Perquintill::from_rational(
+					node_usage1.number_of_puts,
+					total_nodes_usage.number_of_puts,
+				);
+				let puts_charge = ratio1_puts * report_after.total_customer_charge.puts;
+
+				let ratio1_gets = Perquintill::from_rational(
+					node_usage1.number_of_gets,
+					total_nodes_usage.number_of_gets,
+				);
+				let gets_charge = ratio1_gets * report_after.total_customer_charge.gets;
+
+				let balance_node1 = Balances::free_balance(node1);
+				assert!(
+					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1 <
+						MAX_DUST.into()
+				);
+
+				batch_charge += transfer_charge + storage_charge + puts_charge + gets_charge;
+			}
+			let after_batch = Balances::free_balance(DdcPayouts::account_id());
+			assert!(batch_charge + after_batch - before_batch < MAX_DUST.into());
+
+			batch_node_index += 1;
+		}
+		assert!(Balances::free_balance(DdcPayouts::account_id()) < MAX_DUST.into());
+	})
+}
+
+#[test]
+fn send_rewarding_providers_batch_100nodes_large_usage_works() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let num_nodes = 100;
+		let num_users = 5;
+		let dac_account = 123u128;
+		let bank = 1u128;
+		let cluster_id = ONE_CLUSTER_ID;
+		let era = 100;
+		let user_batch_size = 10;
+		let node_batch_size = 10;
+		let mut batch_user_index = 0;
+		let mut batch_node_index = 0;
+		let usage1 = CustomerUsage {
+			transferred_bytes: 1024,
+			stored_bytes: 1024,
+			number_of_puts: 1,
+			number_of_gets: 1,
+		};
+
+		let node_usage1 = NodeUsage {
+			// CDN
+			transferred_bytes: Perquintill::from_float(0.75) * usage1.transferred_bytes,
+			stored_bytes: 0,
+			number_of_puts: Perquintill::from_float(0.75) * usage1.number_of_puts,
+			number_of_gets: Perquintill::from_float(0.75) * usage1.number_of_gets,
+		};
+
+		let node_usage2 = NodeUsage {
+			// Storage
+			transferred_bytes: 0,
+			stored_bytes: usage1.stored_bytes * 2,
+			number_of_puts: 0,
+			number_of_gets: 0,
+		};
+
+		let node_usage3 = NodeUsage {
+			// CDN + Storage
+			transferred_bytes: usage1.transferred_bytes * 2,
+			stored_bytes: usage1.stored_bytes * 3,
+			number_of_puts: usage1.number_of_puts * 2,
+			number_of_gets: usage1.number_of_gets * 2,
+		};
+
+		let mut payees: Vec<Vec<(u128, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(u128, NodeUsage)> = Vec::new();
+		let mut total_nodes_usage = NodeUsage::default();
+		for i in 10..10 + num_nodes {
+			let node_usage = match i % 3 {
+				0 => node_usage1.clone(),
+				1 => node_usage2.clone(),
+				2 => node_usage3.clone(),
+				_ => unreachable!(),
+			};
+			total_nodes_usage.transferred_bytes += node_usage.transferred_bytes;
+			total_nodes_usage.stored_bytes += node_usage.stored_bytes;
+			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
+			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
+
+			node_batch.push((i, node_usage));
+			if node_batch.len() == node_batch_size {
+				payees.push(node_batch.clone());
+				node_batch.clear();
+			}
+		}
+		if !node_batch.is_empty() {
+			payees.push(node_batch.clone());
+		}
+
+		let mut total_charge = 0u128;
+		let mut payers: Vec<Vec<(u128, CustomerUsage)>> = Vec::new();
+		let mut user_batch: Vec<(u128, CustomerUsage)> = Vec::new();
+		for user_id in 1000..1000 + num_users {
+			let ratio = match user_id % 5 {
+				0 => Perquintill::from_float(1_000_000.0),
+				1 => Perquintill::from_float(10_000_000.0),
+				2 => Perquintill::from_float(100_000_000.0),
+				3 => Perquintill::from_float(1_000_000_000.0),
+				4 => Perquintill::from_float(10_000_000_000.0),
 				_ => unreachable!(),
 			};
 

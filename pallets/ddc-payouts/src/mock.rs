@@ -53,7 +53,7 @@ construct_runtime!(
 	}
 );
 
-pub static MAX_DUST: u16 = 20000;
+pub static MAX_DUST: u16 = 100;
 
 parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;

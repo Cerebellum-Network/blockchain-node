@@ -190,6 +190,19 @@ pub mod pallet {
 			node_provider_id: T::AccountId,
 			amount: u128,
 		},
+		NotDistributedReward {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			node_provider_id: T::AccountId,
+			expected_reward: u128,
+			distributed_reward: BalanceOf<T>,
+		},
+		NotDistributedOverallReward {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			expected_reward: u128,
+			total_distributed_reward: u128,
+		},
 		RewardingFinished {
 			cluster_id: ClusterId,
 			era: DdcEra,
@@ -212,7 +225,6 @@ pub mod pallet {
 		BatchIndexAlreadyProcessed,
 		BatchIndexIsOutOfRange,
 		BatchesMissed,
-		NotDistributedBalance,
 		BatchIndexOverflow,
 		BoundedVecOverflow,
 		ArithmeticOverflow,
@@ -682,17 +694,22 @@ pub mod pallet {
 					let mut reward: BalanceOf<T> =
 						amount_to_reward.saturated_into::<BalanceOf<T>>();
 
-					let balance = <T as pallet::Config>::Currency::free_balance(
+					let vault_balance = <T as pallet::Config>::Currency::free_balance(
 						&updated_billing_report.vault,
 					) - <T as pallet::Config>::Currency::minimum_balance();
 
-					if reward > balance {
-						ensure!(
-							reward - balance <= MaxDust::get().into(),
-							Error::<T>::NotDistributedBalance
-						);
+					if reward > vault_balance {
+						if reward - vault_balance > MaxDust::get().into() {
+							Self::deposit_event(Event::<T>::NotDistributedReward {
+								cluster_id,
+								era,
+								node_provider_id: node_provider_id.clone(),
+								expected_reward: amount_to_reward,
+								distributed_reward: vault_balance,
+							});
+						}
 
-						reward = balance;
+						reward = vault_balance;
 					}
 
 					<T as pallet::Config>::Currency::transfer(
@@ -758,11 +775,16 @@ pub mod pallet {
 			})()
 			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-			ensure!(
-				expected_amount_to_reward - billing_report.total_distributed_reward <=
-					MaxDust::get().into(),
-				Error::<T>::NotDistributedBalance
-			);
+			if expected_amount_to_reward - billing_report.total_distributed_reward >
+				MaxDust::get().into()
+			{
+				Self::deposit_event(Event::<T>::NotDistributedOverallReward {
+					cluster_id,
+					era,
+					expected_reward: expected_amount_to_reward,
+					total_distributed_reward: billing_report.total_distributed_reward,
+				});
+			}
 
 			billing_report.state = State::ProvidersRewarded;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
@@ -854,14 +876,17 @@ pub mod pallet {
 		let mut node_reward = NodeReward::default();
 
 		let mut ratio = Perquintill::from_rational(
-			node_usage.transferred_bytes,
-			total_nodes_usage.transferred_bytes,
+			node_usage.transferred_bytes as u128,
+			total_nodes_usage.transferred_bytes as u128,
 		);
 
 		// ratio multiplied by X will be > 0, < X no overflow
 		node_reward.transfer = ratio * total_customer_charge.transfer;
 
-		ratio = Perquintill::from_rational(node_usage.stored_bytes, total_nodes_usage.stored_bytes);
+		ratio = Perquintill::from_rational(
+			node_usage.stored_bytes as u128,
+			total_nodes_usage.stored_bytes as u128,
+		);
 		node_reward.storage = ratio * total_customer_charge.storage;
 
 		ratio =
