@@ -157,7 +157,6 @@
         "maxMembers": 512
       },
       "ddcStaking": {
-        "cdns": [],
         "storages": []
       },
       "ddcCustomers": {
@@ -183,7 +182,6 @@
             }
           }
         ],
-        "cdnNodes": []
       },
       "ddcClusters": {
         "clusters": [
@@ -203,9 +201,6 @@
               "treasury_share": 0,
               "validators_share": 0,
               "cluster_reserve_share": 0,
-              "cdn_bond_size": 0,
-              "cdn_chill_delay": 0,
-              "cdn_unbonding_delay": 0,
               "storage_bond_size": 0,
               "storage_chill_delay": 0,
               "storage_unbonding_delay": 0,
