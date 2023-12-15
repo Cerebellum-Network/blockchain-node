@@ -1,6 +1,6 @@
 //! DdcStaking pallet benchmarking.
 
-use ddc_primitives::{NodeParams, NodeType, StorageNodeParams, StorageNodePubKey};
+use ddc_primitives::{NodeParams, NodeType, StorageNodeMode, StorageNodeParams, StorageNodePubKey};
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 };
@@ -26,6 +26,7 @@ benchmarks! {
 			node.clone(),
 			stash.clone(),
 			NodeParams::StorageParams(StorageNodeParams {
+				mode: StorageNodeMode::Storage,
 				host: vec![1u8, 255],
 				http_port: 35000u16,
 				grpc_port: 25000u16,

@@ -1,7 +1,8 @@
 //! DdcStaking pallet benchmarking.
 
 use ddc_primitives::{
-	ClusterGovParams, ClusterId, ClusterParams, NodeParams, NodePubKey, StorageNodeParams,
+	ClusterGovParams, ClusterId, ClusterParams, NodeParams, NodePubKey, StorageNodeMode,
+	StorageNodeParams,
 };
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
@@ -53,6 +54,7 @@ where
 {
 	let cluster_params = ClusterParams { node_provider_auth_contract: Some(user.clone()) };
 	let storage_node_params = StorageNodeParams {
+		mode: StorageNodeMode::Storage,
 		host: vec![1u8, 255],
 		http_port: 35000u16,
 		grpc_port: 25000u16,

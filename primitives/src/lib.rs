@@ -85,8 +85,17 @@ impl TryFrom<u8> for NodeType {
 	}
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub enum StorageNodeMode {
+	Full = 1,
+	Storage = 2,
+	Cache = 3,
+}
+
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNodeParams {
+	pub mode: StorageNodeMode,
 	pub host: Vec<u8>,
 	pub http_port: u16,
 	pub grpc_port: u16,

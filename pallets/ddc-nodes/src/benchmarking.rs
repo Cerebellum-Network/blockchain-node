@@ -1,6 +1,6 @@
 //! DdcStaking pallet benchmarking.
 
-use ddc_primitives::StorageNodePubKey;
+use ddc_primitives::{StorageNodeMode, StorageNodePubKey};
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 };
@@ -45,6 +45,7 @@ benchmarks! {
 		assert_eq!(StorageNodes::<T>::try_get(
 			StorageNodePubKey::new([0; 32])).unwrap().props,
 			StorageNodeProps {
+				mode: StorageNodeMode::Storage,
 				host: vec![2u8, 255].try_into().unwrap(),
 				http_port: 45000u16,
 				grpc_port: 55000u16,
