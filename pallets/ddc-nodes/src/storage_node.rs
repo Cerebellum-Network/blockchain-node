@@ -54,9 +54,7 @@ impl<T: frame_system::Config> StorageNode<T> {
 						p2p_port: node_params.p2p_port,
 					},
 				}),
-				_ => Err(NodeError::InvalidStorageNodeParams),
 			},
-			_ => Err(NodeError::InvalidStorageNodePubKey),
 		}
 	}
 }
@@ -74,7 +72,6 @@ impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError> {
 		self.props = match props {
 			NodeProps::StorageProps(props) => props,
-			_ => return Err(NodeError::InvalidStorageNodeProps),
 		};
 		Ok(())
 	}
@@ -83,13 +80,12 @@ impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 			NodeParams::StorageParams(storage_params) => {
 				self.props.host = match storage_params.host.try_into() {
 					Ok(vec) => vec,
-					Err(_) => return Err(NodeError::CDNHostLenExceedsLimit),
+					Err(_) => return Err(NodeError::StorageHostLenExceedsLimit),
 				};
 				self.props.http_port = storage_params.http_port;
 				self.props.grpc_port = storage_params.grpc_port;
 				self.props.p2p_port = storage_params.p2p_port;
 			},
-			_ => return Err(NodeError::InvalidStorageNodeParams),
 		};
 		Ok(())
 	}

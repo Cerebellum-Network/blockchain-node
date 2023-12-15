@@ -5,8 +5,8 @@
 use std::cell::RefCell;
 
 use ddc_primitives::{
-	CDNNodePubKey, ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams,
-	ClusterPricingParams, NodeParams, NodePubKey, StorageNodePubKey,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
+	NodeParams, NodePubKey, StorageNodePubKey,
 };
 use ddc_traits::{
 	cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
@@ -195,21 +195,6 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		cluster_id: &ClusterId,
 	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
 		Ok(ClusterBondingParams {
-			cdn_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
-				cluster_id,
-				NodeType::CDN,
-			)
-			.unwrap_or_default(),
-			cdn_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
-				cluster_id,
-				NodeType::CDN,
-			)
-			.unwrap_or_default(),
-			cdn_unbonding_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
-				cluster_id,
-				NodeType::CDN,
-			)
-			.unwrap_or_default(),
 			storage_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
 				cluster_id,
 				NodeType::Storage,
@@ -301,46 +286,24 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 }
 
 pub struct ExtBuilder {
-	has_cdns: bool,
 	has_storages: bool,
 	stakes: BTreeMap<AccountId, Balance>,
-	cdns: Vec<(AccountId, AccountId, Balance, ClusterId)>,
 	storages: Vec<(AccountId, AccountId, Balance, ClusterId)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self {
-			has_cdns: true,
-			has_storages: true,
-			stakes: Default::default(),
-			cdns: Default::default(),
-			storages: Default::default(),
-		}
+		Self { has_storages: true, stakes: Default::default(), storages: Default::default() }
 	}
 }
 
 impl ExtBuilder {
-	pub fn has_cdns(mut self, has: bool) -> Self {
-		self.has_cdns = has;
-		self
-	}
 	pub fn has_storages(mut self, has: bool) -> Self {
 		self.has_storages = has;
 		self
 	}
 	pub fn set_stake(mut self, who: AccountId, stake: Balance) -> Self {
 		self.stakes.insert(who, stake);
-		self
-	}
-	pub fn add_cdn(
-		mut self,
-		stash: AccountId,
-		controller: AccountId,
-		stake: Balance,
-		cluster: ClusterId,
-	) -> Self {
-		self.cdns.push((stash, controller, stake, cluster));
 		self
 	}
 	pub fn add_storage(
@@ -363,45 +326,37 @@ impl ExtBuilder {
 				(2, 100),
 				(3, 100),
 				(4, 100),
-				// cdn controllers
+				// storage controllers
 				(10, 100),
 				(20, 100),
-				// storage controllers
 				(30, 100),
 				(40, 100),
-				// cdn stashes
+				// storage stashes
 				(11, 100),
 				(21, 100),
-				// storage stashes
 				(31, 100),
 				(41, 100),
 			],
 		}
 		.assimilate_storage(&mut storage);
-		let mut cdns = vec![];
-		if self.has_cdns {
-			cdns = vec![
+		let mut storages = vec![];
+		if self.has_storages {
+			storages = vec![
 				// (stash, controller, node, stake, cluster)
 				(
 					11,
 					10,
-					NodePubKey::CDNPubKey(CDNNodePubKey::new([12; 32])),
+					NodePubKey::StoragePubKey(StorageNodePubKey::new([12; 32])),
 					100,
 					ClusterId::from([1; 20]),
 				),
 				(
 					21,
 					20,
-					NodePubKey::CDNPubKey(CDNNodePubKey::new([22; 32])),
+					NodePubKey::StoragePubKey(StorageNodePubKey::new([22; 32])),
 					100,
 					ClusterId::from([1; 20]),
 				),
-			];
-		}
-		let mut storages = vec![];
-		if self.has_storages {
-			storages = vec![
-				// (stash, controller, node, stake, cluster)
 				(
 					31,
 					30,
@@ -419,8 +374,8 @@ impl ExtBuilder {
 			];
 		}
 
-		let _ = pallet_ddc_staking::GenesisConfig::<Test> { cdns, storages }
-			.assimilate_storage(&mut storage);
+		let _ =
+			pallet_ddc_staking::GenesisConfig::<Test> { storages }.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}

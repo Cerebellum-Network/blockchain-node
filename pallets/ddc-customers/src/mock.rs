@@ -163,21 +163,6 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		cluster_id: &ClusterId,
 	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
 		Ok(ClusterBondingParams {
-			cdn_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
-				cluster_id,
-				NodeType::CDN,
-			)
-			.unwrap_or_default(),
-			cdn_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
-				cluster_id,
-				NodeType::CDN,
-			)
-			.unwrap_or_default(),
-			cdn_unbonding_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
-				cluster_id,
-				NodeType::CDN,
-			)
-			.unwrap_or_default(),
 			storage_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
 				cluster_id,
 				NodeType::Storage,
