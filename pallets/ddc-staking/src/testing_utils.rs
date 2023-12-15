@@ -2,8 +2,7 @@
 
 use crate::{Pallet as DdcStaking, *};
 use ddc_primitives::{
-	CDNNodeParams, CDNNodePubKey, ClusterGovParams, ClusterId, ClusterParams, NodeParams,
-	StorageNodeParams,
+	ClusterGovParams, ClusterId, ClusterParams, NodeParams, StorageNodeParams, StorageNodePubKey,
 };
 
 use frame_benchmarking::account;
@@ -15,11 +14,10 @@ use sp_std::prelude::*;
 
 const SEED: u32 = 0;
 
-/// This function removes all storage and CDN nodes from storage.
-pub fn clear_storages_and_cdns<T: Config>() {
+/// This function removes all storage and Storages nodes from storage.
+pub fn clear_activated_nodes<T: Config>() {
 	#[allow(unused_must_use)]
 	{
-		CDNs::<T>::clear(u32::MAX, None);
 		Storages::<T>::clear(u32::MAX, None);
 	}
 }
@@ -57,12 +55,12 @@ pub fn create_stash_controller_node<T: Config>(
 	let controller = create_funded_user::<T>("controller", n, balance_factor);
 	let controller_lookup: <T::Lookup as StaticLookup>::Source =
 		T::Lookup::unlookup(controller.clone());
-	let node = NodePubKey::CDNPubKey(CDNNodePubKey::new([0; 32]));
+	let node = NodePubKey::StoragePubKey(StorageNodePubKey::new([0; 32]));
 
 	T::NodeCreator::create_node(
 		node.clone(),
 		stash.clone(),
-		NodeParams::CDNParams(CDNNodeParams {
+		NodeParams::StorageParams(StorageNodeParams {
 			host: vec![1u8, 255],
 			http_port: 35000u16,
 			grpc_port: 25000u16,
@@ -92,21 +90,9 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 
 	let node_pub = node_pub_key.clone();
 	match node_pub_key {
-		NodePubKey::CDNPubKey(node_pub_key) => {
-			T::NodeCreator::create_node(
-				ddc_primitives::NodePubKey::CDNPubKey(node_pub_key),
-				stash.clone(),
-				NodeParams::CDNParams(CDNNodeParams {
-					host: vec![1u8, 255],
-					http_port: 35000u16,
-					grpc_port: 25000u16,
-					p2p_port: 15000u16,
-				}),
-			)?;
-		},
 		NodePubKey::StoragePubKey(node_pub_key) => {
 			T::NodeCreator::create_node(
-				NodePubKey::StoragePubKey(node_pub_key),
+				ddc_primitives::NodePubKey::StoragePubKey(node_pub_key),
 				stash.clone(),
 				NodeParams::StorageParams(StorageNodeParams {
 					host: vec![1u8, 255],
@@ -124,9 +110,6 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 		treasury_share: Perquintill::default(),
 		validators_share: Perquintill::default(),
 		cluster_reserve_share: Perquintill::default(),
-		cdn_bond_size: 10u32.into(),
-		cdn_chill_delay: 50u32.into(),
-		cdn_unbonding_delay: 50u32.into(),
 		storage_bond_size: 10u32.into(),
 		storage_chill_delay: 50u32.into(),
 		storage_unbonding_delay: 50u32.into(),

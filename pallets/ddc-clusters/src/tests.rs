@@ -2,8 +2,8 @@
 
 use super::{mock::*, *};
 use ddc_primitives::{
-	CDNNodeParams, ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterParams,
-	ClusterPricingParams, NodeParams, NodePubKey,
+	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterParams, ClusterPricingParams,
+	NodeParams, NodePubKey, StorageNodeParams,
 };
 use ddc_traits::cluster::ClusterManager;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
@@ -25,9 +25,6 @@ fn create_cluster_works() {
 			treasury_share: Perquintill::from_float(0.05),
 			validators_share: Perquintill::from_float(0.01),
 			cluster_reserve_share: Perquintill::from_float(0.02),
-			cdn_bond_size: 100,
-			cdn_chill_delay: 50,
-			cdn_unbonding_delay: 50,
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
@@ -98,7 +95,7 @@ fn add_and_delete_node_works() {
 			DdcClusters::add_node(
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
-				NodePubKey::CDNPubKey(node_pub_key.clone()),
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::ClusterDoesNotExist
 		);
@@ -114,9 +111,6 @@ fn add_and_delete_node_works() {
 				treasury_share: Perquintill::from_float(0.05),
 				validators_share: Perquintill::from_float(0.01),
 				cluster_reserve_share: Perquintill::from_float(0.02),
-				cdn_bond_size: 100,
-				cdn_chill_delay: 50,
-				cdn_unbonding_delay: 50,
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
@@ -132,7 +126,7 @@ fn add_and_delete_node_works() {
 			DdcClusters::add_node(
 				RuntimeOrigin::signed(cluster_reserve_id),
 				cluster_id,
-				NodePubKey::CDNPubKey(node_pub_key.clone()),
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::OnlyClusterManager
 		);
@@ -142,12 +136,12 @@ fn add_and_delete_node_works() {
 			DdcClusters::add_node(
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
-				NodePubKey::CDNPubKey(node_pub_key.clone()),
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::AttemptToAddNonExistentNode
 		);
 
-		let cdn_node_params = CDNNodeParams {
+		let storage_node_params = StorageNodeParams {
 			host: vec![1u8, 255],
 			http_port: 35000u16,
 			grpc_port: 25000u16,
@@ -157,8 +151,8 @@ fn add_and_delete_node_works() {
 		// Node created
 		assert_ok!(DdcNodes::create_node(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
-			NodePubKey::CDNPubKey(node_pub_key.clone()),
-			NodeParams::CDNParams(cdn_node_params)
+			NodePubKey::StoragePubKey(node_pub_key.clone()),
+			NodeParams::StorageParams(storage_node_params)
 		));
 
 		// Node doesn't exist
@@ -166,7 +160,7 @@ fn add_and_delete_node_works() {
 			DdcClusters::add_node(
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
-				NodePubKey::CDNPubKey(node_pub_key.clone()),
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::NodeAuthContractCallFailed
 		);
@@ -182,12 +176,12 @@ fn add_and_delete_node_works() {
 		assert_ok!(DdcClusters::add_node(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
-			NodePubKey::CDNPubKey(node_pub_key.clone()),
+			NodePubKey::StoragePubKey(node_pub_key.clone()),
 		));
 
 		assert!(<DdcClusters as ClusterManager<Test>>::contains_node(
 			&cluster_id,
-			&NodePubKey::CDNPubKey(node_pub_key.clone())
+			&NodePubKey::StoragePubKey(node_pub_key.clone())
 		));
 
 		// Node already assigned
@@ -195,7 +189,7 @@ fn add_and_delete_node_works() {
 			DdcClusters::add_node(
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
-				NodePubKey::CDNPubKey(node_pub_key.clone()),
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::AttemptToAddAlreadyAssignedNode
 		);
@@ -204,7 +198,7 @@ fn add_and_delete_node_works() {
 		System::assert_last_event(
 			Event::ClusterNodeAdded {
 				cluster_id,
-				node_pub_key: NodePubKey::CDNPubKey(node_pub_key.clone()),
+				node_pub_key: NodePubKey::StoragePubKey(node_pub_key.clone()),
 			}
 			.into(),
 		);
@@ -213,14 +207,14 @@ fn add_and_delete_node_works() {
 		assert_ok!(DdcClusters::remove_node(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
-			NodePubKey::CDNPubKey(node_pub_key.clone()),
+			NodePubKey::StoragePubKey(node_pub_key.clone()),
 		));
 
 		// Checking that event was emitted
 		System::assert_last_event(
 			Event::ClusterNodeRemoved {
 				cluster_id,
-				node_pub_key: NodePubKey::CDNPubKey(node_pub_key.clone()),
+				node_pub_key: NodePubKey::StoragePubKey(node_pub_key.clone()),
 			}
 			.into(),
 		);
@@ -230,7 +224,7 @@ fn add_and_delete_node_works() {
 			DdcClusters::remove_node(
 				RuntimeOrigin::signed(cluster_manager_id),
 				cluster_id,
-				NodePubKey::CDNPubKey(node_pub_key),
+				NodePubKey::StoragePubKey(node_pub_key),
 			),
 			Error::<Test>::AttemptToRemoveNotAssignedNode
 		);
@@ -277,7 +271,7 @@ fn add_and_delete_node_works() {
 			let contract_id = Contracts::contract_address(&alice, &wasm_hash, &[]);
 
 			pub const ADD_DDC_NODE_SELECTOR: [u8; 4] = hex!("7a04093d");
-			let node_pub_key = NodePubKey::CDNPubKey(node_pub_key);
+			let node_pub_key = NodePubKey::StoragePubKey(node_pub_key);
 
 			let call_data = {
 				// is_authorized(node_provider: AccountId, node: Vec<u8>, node_variant: u8) -> bool
@@ -334,9 +328,6 @@ fn set_cluster_params_works() {
 				treasury_share: Perquintill::from_float(0.05),
 				validators_share: Perquintill::from_float(0.01),
 				cluster_reserve_share: Perquintill::from_float(0.02),
-				cdn_bond_size: 100,
-				cdn_chill_delay: 50,
-				cdn_unbonding_delay: 50,
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
@@ -382,9 +373,6 @@ fn set_cluster_gov_params_works() {
 			treasury_share: Perquintill::from_float(0.05),
 			validators_share: Perquintill::from_float(0.01),
 			cluster_reserve_share: Perquintill::from_float(0.02),
-			cdn_bond_size: 100,
-			cdn_chill_delay: 50,
-			cdn_unbonding_delay: 50,
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
@@ -448,9 +436,6 @@ fn cluster_visitor_works() {
 			treasury_share: Perquintill::from_float(0.05),
 			validators_share: Perquintill::from_float(0.01),
 			cluster_reserve_share: Perquintill::from_float(0.02),
-			cdn_bond_size: 100,
-			cdn_chill_delay: 50,
-			cdn_unbonding_delay: 50,
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
@@ -473,7 +458,7 @@ fn cluster_visitor_works() {
 		assert_ok!(<DdcClusters as ClusterVisitor<Test>>::ensure_cluster(&cluster_id));
 
 		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_bond_size(&cluster_id, NodeType::CDN)
+			<DdcClusters as ClusterVisitor<Test>>::get_bond_size(&cluster_id, NodeType::Storage)
 				.unwrap(),
 			100u128
 		);
@@ -508,7 +493,7 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_chill_delay(&cluster_id, NodeType::CDN)
+			<DdcClusters as ClusterVisitor<Test>>::get_chill_delay(&cluster_id, NodeType::Storage)
 				.unwrap(),
 			50
 		);
@@ -519,8 +504,11 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_unbonding_delay(&cluster_id, NodeType::CDN)
-				.unwrap(),
+			<DdcClusters as ClusterVisitor<Test>>::get_unbonding_delay(
+				&cluster_id,
+				NodeType::Storage
+			)
+			.unwrap(),
 			50
 		);
 		assert_eq!(
@@ -535,9 +523,6 @@ fn cluster_visitor_works() {
 		assert_eq!(
 			<DdcClusters as ClusterVisitor<Test>>::get_bonding_params(&cluster_id).unwrap(),
 			ClusterBondingParams::<<Test as frame_system::Config>::BlockNumber> {
-				cdn_bond_size: 100,
-				cdn_chill_delay: 50,
-				cdn_unbonding_delay: 50,
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
@@ -560,9 +545,6 @@ fn cluster_creator_works() {
 			treasury_share: Perquintill::from_float(0.05),
 			validators_share: Perquintill::from_float(0.01),
 			cluster_reserve_share: Perquintill::from_float(0.02),
-			cdn_bond_size: 100,
-			cdn_chill_delay: 50,
-			cdn_unbonding_delay: 50,
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,

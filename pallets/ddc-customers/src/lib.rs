@@ -70,14 +70,15 @@ pub struct BucketsDetails<Balance: HasCompact> {
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct AccountsLedger<T: Config> {
-	/// The owner account whose balance is actually locked and can be used for CDN usage.
+	/// The owner account whose balance is actually locked and can be used to pay for DDC network
+	/// usage.
 	pub owner: T::AccountId,
 	/// The total amount of the owner's balance that we are currently accounting for.
 	/// It's just `active` plus all the `unlocking` balances.
 	#[codec(compact)]
 	pub total: BalanceOf<T>,
-	/// The total amount of the owner's balance that will be accessible for CDN payments in any
-	/// forthcoming rounds.
+	/// The total amount of the owner's balance that will be accessible for DDC network payouts in
+	/// any forthcoming rounds.
 	#[codec(compact)]
 	pub active: BalanceOf<T>,
 	/// Any balance that is becoming free, which may eventually be transferred out of the owner
@@ -319,7 +320,7 @@ pub mod pallet {
 		}
 
 		/// Add some extra amount that have appeared in the owner `free_balance` into the balance up
-		/// for CDN payments.
+		/// for DDC network payouts.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the owner.
 		///
