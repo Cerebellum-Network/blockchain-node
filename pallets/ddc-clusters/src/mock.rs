@@ -247,9 +247,6 @@ impl ExtBuilder {
 			treasury_share: Perbill::from_float(0.05),
 			validators_share: Perbill::from_float(0.01),
 			cluster_reserve_share: Perbill::from_float(0.02),
-			cdn_bond_size: 100,
-			cdn_chill_delay: 50,
-			cdn_unbonding_delay: 50,
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
@@ -259,7 +256,7 @@ impl ExtBuilder {
 			unit_per_get_request: 10,
 		};
 
-		let node_pub_key = NodePubKey::CDNPubKey(AccountId::from([0; 32]));
+		let node_pub_key = NodePubKey::StoragePubKey(AccountId::from([0; 32]));
 
 		// For testing purposes only
 		pallet_ddc_clusters::GenesisConfig::<Test>::default().build();

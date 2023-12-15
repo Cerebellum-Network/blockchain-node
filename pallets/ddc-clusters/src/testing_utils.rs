@@ -1,7 +1,7 @@
 //! DdcStaking pallet benchmarking.
 
 use ddc_primitives::{
-	CDNNodeParams, ClusterGovParams, ClusterId, ClusterParams, NodeParams, NodePubKey,
+	ClusterGovParams, ClusterId, ClusterParams, NodeParams, NodePubKey, StorageNodeParams,
 };
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
@@ -24,9 +24,6 @@ where
 		treasury_share: Perbill::default(),
 		validators_share: Perbill::default(),
 		cluster_reserve_share: Perbill::default(),
-		cdn_bond_size: 100u32.into(),
-		cdn_chill_delay: 50u32.into(),
-		cdn_unbonding_delay: 50u32.into(),
 		storage_bond_size: 100u32.into(),
 		storage_chill_delay: 50u32.into(),
 		storage_unbonding_delay: 50u32.into(),
@@ -55,7 +52,7 @@ where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
 	let cluster_params = ClusterParams { node_provider_auth_contract: Some(user.clone()) };
-	let cdn_node_params = CDNNodeParams {
+	let storage_node_params = StorageNodeParams {
 		host: vec![1u8, 255],
 		http_port: 35000u16,
 		grpc_port: 25000u16,
@@ -66,9 +63,6 @@ where
 		treasury_share: Perbill::default(),
 		validators_share: Perbill::default(),
 		cluster_reserve_share: Perbill::default(),
-		cdn_bond_size: 100u32.into(),
-		cdn_chill_delay: 50u32.into(),
-		cdn_unbonding_delay: 50u32.into(),
 		storage_bond_size: 100u32.into(),
 		storage_chill_delay: 50u32.into(),
 		storage_unbonding_delay: 50u32.into(),
@@ -87,9 +81,11 @@ where
 		cluster_gov_params,
 	);
 
-	if let Ok(new_node) =
-		Node::<T>::new(node_pub_key.clone(), user.clone(), NodeParams::CDNParams(cdn_node_params))
-	{
+	if let Ok(new_node) = Node::<T>::new(
+		node_pub_key.clone(),
+		user.clone(),
+		NodeParams::StorageParams(storage_node_params),
+	) {
 		let _ = T::NodeRepository::create(new_node);
 	}
 

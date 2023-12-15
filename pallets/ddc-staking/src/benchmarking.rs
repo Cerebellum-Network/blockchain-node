@@ -1,6 +1,6 @@
 //! DdcStaking pallet benchmarking.
 
-use ddc_primitives::{CDNNodeParams, CDNNodePubKey, NodeParams, NodeType, StorageNodePubKey};
+use ddc_primitives::{NodeParams, NodeType, StorageNodeParams, StorageNodePubKey};
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 };
@@ -21,11 +21,11 @@ benchmarks! {
 		let controller = create_funded_user::<T>("controller", USER_SEED, 100);
 		let controller_lookup: <T::Lookup as StaticLookup>::Source
 			= T::Lookup::unlookup(controller.clone());
-		let node = NodePubKey::CDNPubKey(CDNNodePubKey::new([0; 32]));
+		let node = NodePubKey::StoragePubKey(StorageNodePubKey::new([0; 32]));
 		let _ = T::NodeCreator::create_node(
 			node.clone(),
 			stash.clone(),
-			NodeParams::CDNParams(CDNNodeParams {
+			NodeParams::StorageParams(StorageNodeParams {
 				host: vec![1u8, 255],
 				http_port: 35000u16,
 				grpc_port: 25000u16,
@@ -43,7 +43,7 @@ benchmarks! {
 
 	unbond {
 		// clean up any existing state.
-		clear_storages_and_cdns::<T>();
+		clear_activated_nodes::<T>();
 
 		let (stash, controller, _) = create_stash_controller_node::<T>(0, 100)?;
 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
@@ -75,7 +75,7 @@ benchmarks! {
 
 	store {
 		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([0; 32]));
-		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or(100u128), node_pub_key)?;
+		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or(100u128), node_pub_key)?;
 
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller), ClusterId::from([1; 20]))
@@ -83,32 +83,23 @@ benchmarks! {
 		assert!(Storages::<T>::contains_key(&stash));
 	}
 
-	serve {
-		let node_pub_key = NodePubKey::CDNPubKey(CDNNodePubKey::new([0; 32]));
-		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or(10u128), node_pub_key)?;
-
-		whitelist_account!(controller);
-	}: _(RawOrigin::Signed(controller), ClusterId::from([1; 20]))
-	verify {
-		assert!(CDNs::<T>::contains_key(&stash));
-	}
 
 	chill {
 		// clean up any existing state.
-		clear_storages_and_cdns::<T>();
+		clear_activated_nodes::<T>();
 
-		let node_pub_key = NodePubKey::CDNPubKey(CDNNodePubKey::new([0; 32]));
-		let (cdn_stash, cdn_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or(10u128), node_pub_key)?;
-		DdcStaking::<T>::serve(RawOrigin::Signed(cdn_controller.clone()).into(), ClusterId::from([1; 20]))?;
-		assert!(CDNs::<T>::contains_key(&cdn_stash));
+		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([0; 32]));
+		let (storage_stash, storage_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or(10u128), node_pub_key)?;
+		DdcStaking::<T>::store(RawOrigin::Signed(storage_controller.clone()).into(), ClusterId::from([1; 20]))?;
+		assert!(Storages::<T>::contains_key(&storage_stash));
 		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32));
-		DdcStaking::<T>::chill(RawOrigin::Signed(cdn_controller.clone()).into())?;
-		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32) + T::ClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::CDN).unwrap_or_else(|_| T::BlockNumber::from(10u32)));
+		DdcStaking::<T>::chill(RawOrigin::Signed(storage_controller.clone()).into())?;
+		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32) + T::ClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or_else(|_| T::BlockNumber::from(10u32)));
 
-		whitelist_account!(cdn_controller);
-	}: _(RawOrigin::Signed(cdn_controller))
+		whitelist_account!(storage_controller);
+	}: _(RawOrigin::Signed(storage_controller))
 	verify {
-		assert!(!CDNs::<T>::contains_key(&cdn_stash));
+		assert!(!Storages::<T>::contains_key(&storage_stash));
 	}
 
 	set_controller {
@@ -123,7 +114,7 @@ benchmarks! {
 
 	set_node {
 		let (stash, _, _) = create_stash_controller_node::<T>(USER_SEED, 100)?;
-		let new_node = NodePubKey::CDNPubKey(CDNNodePubKey::new([1; 32]));
+		let new_node = NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32]));
 		whitelist_account!(stash);
 	}: _(RawOrigin::Signed(stash), new_node.clone())
 	verify {
