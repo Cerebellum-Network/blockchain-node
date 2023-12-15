@@ -54,7 +54,6 @@ pallet-babe = { default-features = false, git = "https://github.com/paritytech/s
 pallet-bags-list = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-balances = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-bounties = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-cere-ddc = { version = "4.8.2", default-features = false, path = "../../pallets/ddc" }
 pallet-chainbridge = { version = "4.8.2", default-features = false, path = "../../pallets/chainbridge" }
 pallet-child-bounties = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-collective = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
@@ -127,7 +126,6 @@ std = [
   "pallet-fast-unstake/std",
   "pallet-elections-phragmen/std",
   "frame-executive/std",
-  "pallet-cere-ddc/std",
   "pallet-chainbridge/std",
   "pallet-erc721/std",
   "pallet-erc20/std",

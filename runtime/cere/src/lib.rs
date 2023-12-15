@@ -50,7 +50,6 @@ pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 #[cfg(any(feature = "std", test))]
 pub use pallet_balances::Call as BalancesCall;
-pub use pallet_cere_ddc;
 pub use pallet_chainbridge;
 pub use pallet_ddc_metrics_offchain_worker;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
@@ -1209,21 +1208,6 @@ impl pallet_vesting::Config for Runtime {
 }
 
 parameter_types! {
-	// Minimum bounds on storage are important to secure your chain.
-	pub const MinDataLength: usize = 1;
-	// Maximum bounds on storage are important to secure your chain.
-	pub const MaxDataLength: usize = usize::MAX;
-}
-
-/// Configure the send data pallet
-impl pallet_cere_ddc::Config for Runtime {
-	type MinLength = MinDataLength;
-	type MaxLength = MaxDataLength;
-	// The ubiquitous event type.
-	type RuntimeEvent = RuntimeEvent;
-}
-
-parameter_types! {
 	pub const ChainId: u8 = 1;
 	pub const ProposalLifetime: BlockNumber = 1000;
 }
@@ -1363,7 +1347,6 @@ construct_runtime!(
 		ChildBounties: pallet_child_bounties,
 		NominationPools: pallet_nomination_pools,
 		FastUnstake: pallet_fast_unstake,
-		CereDDCModule: pallet_cere_ddc::{Pallet, Call, Storage, Event<T>},
 		ChainBridge: pallet_chainbridge::{Pallet, Call, Storage, Event<T>},
 		Erc721: pallet_erc721::{Pallet, Call, Storage, Event<T>},
 		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
