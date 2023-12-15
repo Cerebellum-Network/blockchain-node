@@ -28,7 +28,6 @@ sp-consensus-babe = { default-features = false, git = "https://github.com/parity
 sp-core = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 sp-inherents = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 sp-io = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-sp-offchain = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 sp-session = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 sp-staking = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
@@ -58,7 +57,6 @@ pallet-child-bounties = { default-features = false, git = "https://github.com/pa
 pallet-collective = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-contracts = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-contracts-primitives = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-ddc-metrics-offchain-worker = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-metrics-offchain-worker" }
 pallet-democracy = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-election-provider-multi-phase = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-election-provider-support-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", optional = true }
@@ -134,7 +132,6 @@ std = [
   "pallet-identity/std",
   "pallet-scheduler/std",
   "node-primitives/std",
-  "sp-offchain/std",
   "pallet-offences/std",
   "pallet-proxy/std",
   "sp-core/std",
@@ -167,7 +164,6 @@ std = [
   "frame-try-runtime/std",
   "sp-io/std",
   "pallet-child-bounties/std",
-  "pallet-ddc-metrics-offchain-worker/std",
   "cere-runtime-common/std",
   "cere-runtime-constants/std",
 ]

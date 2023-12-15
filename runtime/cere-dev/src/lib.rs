@@ -54,7 +54,6 @@ pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
-pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_nodes;
 pub use pallet_ddc_payouts;
 pub use pallet_ddc_staking;
@@ -1249,10 +1248,6 @@ impl pallet_erc20::Config for Runtime {
 }
 
 parameter_types! {
-	pub const OcwBlockInterval: u32 = pallet_ddc_metrics_offchain_worker::BLOCK_INTERVAL;
-}
-
-parameter_types! {
 	pub const PoolsPalletId: PalletId = PalletId(*b"py/nopls");
 	// Allow pools that got slashed up to 90% to remain operational.
 	pub const MaxPointsToBalance: u8 = 10;
@@ -1295,15 +1290,6 @@ impl frame_support::traits::OnRuntimeUpgrade for InitiateNominationPools {
 			<Runtime as frame_system::Config>::DbWeight::get().reads(1)
 		}
 	}
-}
-
-impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
-	type BlockInterval = OcwBlockInterval;
-
-	type AuthorityId = pallet_ddc_metrics_offchain_worker::crypto::TestAuthId;
-
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeCall = RuntimeCall;
 }
 
 impl pallet_ddc_staking::Config for Runtime {
@@ -1420,7 +1406,6 @@ construct_runtime!(
 		ChainBridge: pallet_chainbridge::{Pallet, Call, Storage, Event<T>},
 		Erc721: pallet_erc721::{Pallet, Call, Storage, Event<T>},
 		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
-		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
 		DdcStaking: pallet_ddc_staking,
 		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
@@ -1589,12 +1574,6 @@ impl_runtime_apis! {
 			block_hash: <Block as BlockT>::Hash,
 		) -> TransactionValidity {
 			Executive::validate_transaction(source, tx, block_hash)
-		}
-	}
-
-	impl sp_offchain::OffchainWorkerApi<Block> for Runtime {
-		fn offchain_worker(header: &<Block as BlockT>::Header) {
-			Executive::offchain_worker(header)
 		}
 	}
 
