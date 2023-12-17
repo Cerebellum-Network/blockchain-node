@@ -25,7 +25,7 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
-use ddc_primitives::{ClusterId, DdcEra};
+use ddc_primitives::{ClusterId, DdcEra, MILLICENTS};
 use ddc_traits::{
 	cluster::{ClusterCreator as ClusterCreatorType, ClusterVisitor as ClusterVisitorType},
 	customer::{
@@ -98,7 +98,7 @@ pub type BalanceOf<T> =
 
 parameter_types! {
 	pub MaxBatchesCount: u16 = 1000;
-	pub MaxDust: u16 = 20000;
+	pub MaxDust: u128 = MILLICENTS;
 	pub MaxBatchSize: u16 = 1000;
 }
 
@@ -672,6 +672,7 @@ pub mod pallet {
 				Error::<T>::BatchIndexAlreadyProcessed
 			);
 
+			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
 			for payee in payees {
 				let node_reward = get_node_reward::<T>(
@@ -699,7 +700,7 @@ pub mod pallet {
 					) - <T as pallet::Config>::Currency::minimum_balance();
 
 					if reward > vault_balance {
-						if reward - vault_balance > MaxDust::get().into() {
+						if reward - vault_balance > max_dust {
 							Self::deposit_event(Event::<T>::NotDistributedReward {
 								cluster_id,
 								era,
