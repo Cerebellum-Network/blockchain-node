@@ -28,7 +28,6 @@ pub use sc_executor::NativeElseWasmExecutor;
 use sc_network_common::service::NetworkEventStream;
 pub use sc_service::ChainSpec;
 pub use sp_api::ConstructRuntimeApi;
-pub use sp_core::offchain::OffchainStorage;
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch> = sc_finality_grandpa::GrandpaBlockImport<
@@ -356,20 +355,6 @@ where
 
 	let basics = new_partial_basics::<RuntimeApi, ExecutorDispatch>(&config)?;
 
-	let mut offchain_storage = basics
-		.backend
-		.offchain_storage()
-		.expect("no off-chain storage, DDC validation is not possible");
-
-	offchain_storage.set(
-		sp_core::offchain::STORAGE_PREFIX,
-		b"enable-ddc-validation",
-		if enable_ddc_validation { &[1] } else { &[0] },
-	);
-	if let Some(dac_url) = dac_url {
-		offchain_storage.set(sp_core::offchain::STORAGE_PREFIX, b"dac-url", dac_url.as_bytes());
-	};
-
 	let sc_service::PartialComponents {
 		client,
 		backend,
@@ -408,15 +393,6 @@ where
 			block_announce_validator_builder: None,
 			warp_sync: Some(warp_sync),
 		})?;
-
-	if config.offchain_worker.enabled {
-		sc_service::build_offchain_workers(
-			&config,
-			task_manager.spawn_handle(),
-			client.clone(),
-			network.clone(),
-		);
-	}
 
 	let role = config.role.clone();
 	let force_authoring = config.force_authoring;
