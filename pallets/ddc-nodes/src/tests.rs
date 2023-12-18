@@ -1,7 +1,7 @@
 //! Tests for the module.
 
 use super::{mock::*, *};
-use ddc_primitives::{NodePubKey, StorageNodeParams};
+use ddc_primitives::{NodePubKey, StorageNodeMode, StorageNodeParams};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::AccountId32;
 
@@ -12,6 +12,7 @@ fn create_storage_node_works() {
 		let bytes = [0u8; 32];
 		let node_pub_key = AccountId32::from(bytes);
 		let storage_node_params = StorageNodeParams {
+			mode: StorageNodeMode::Storage,
 			host: vec![1u8, 255],
 			http_port: 35000u16,
 			grpc_port: 25000u16,
@@ -24,6 +25,7 @@ fn create_storage_node_works() {
 				RuntimeOrigin::signed(1),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				NodeParams::StorageParams(StorageNodeParams {
+					mode: StorageNodeMode::Storage,
 					host: vec![1u8; 256],
 					http_port: 35000u16,
 					grpc_port: 25000u16,
@@ -76,6 +78,7 @@ fn create_storage_node_with_node_creator() {
 		let bytes = [0u8; 32];
 		let node_pub_key = AccountId32::from(bytes);
 		let storage_node_params = StorageNodeParams {
+			mode: StorageNodeMode::Storage,
 			host: vec![1u8, 255],
 			http_port: 35000u16,
 			grpc_port: 25000u16,
@@ -109,6 +112,7 @@ fn set_storage_node_params_works() {
 		let bytes = [0u8; 32];
 		let node_pub_key = AccountId32::from(bytes);
 		let storage_node_params = StorageNodeParams {
+			mode: StorageNodeMode::Storage,
 			host: vec![1u8, 255],
 			http_port: 35000u16,
 			grpc_port: 25000u16,
@@ -170,6 +174,7 @@ fn set_storage_node_params_works() {
 				RuntimeOrigin::signed(1),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				NodeParams::StorageParams(StorageNodeParams {
+					mode: StorageNodeMode::Storage,
 					host: vec![1u8; 256],
 					http_port: 35000u16,
 					grpc_port: 25000u16,
@@ -195,6 +200,7 @@ fn delete_storage_node_works() {
 		let bytes = [0u8; 32];
 		let node_pub_key = AccountId32::from(bytes);
 		let storage_node_params = StorageNodeParams {
+			mode: StorageNodeMode::Storage,
 			host: vec![1u8, 255],
 			http_port: 35000u16,
 			grpc_port: 25000u16,

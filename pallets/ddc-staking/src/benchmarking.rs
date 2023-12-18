@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::Pallet as DdcStaking;
-use ddc_primitives::{NodeParams, NodeType, StorageNodeParams, StorageNodePubKey};
+use ddc_primitives::{NodeParams, NodeType, StorageNodeMode, StorageNodeParams, StorageNodePubKey};
 use testing_utils::*;
 
 use frame_support::traits::Currency;
@@ -27,6 +27,7 @@ benchmarks! {
 			node.clone(),
 			stash.clone(),
 			NodeParams::StorageParams(StorageNodeParams {
+				mode: StorageNodeMode::Storage,
 				host: vec![1u8, 255],
 				http_port: 35000u16,
 				grpc_port: 25000u16,

@@ -2,7 +2,8 @@
 
 use crate::{Pallet as DdcStaking, *};
 use ddc_primitives::{
-	ClusterGovParams, ClusterId, ClusterParams, NodeParams, StorageNodeParams, StorageNodePubKey,
+	ClusterGovParams, ClusterId, ClusterParams, NodeParams, StorageNodeMode, StorageNodeParams,
+	StorageNodePubKey,
 };
 
 use frame_benchmarking::account;
@@ -61,6 +62,7 @@ pub fn create_stash_controller_node<T: Config>(
 		node.clone(),
 		stash.clone(),
 		NodeParams::StorageParams(StorageNodeParams {
+			mode: StorageNodeMode::Storage,
 			host: vec![1u8, 255],
 			http_port: 35000u16,
 			grpc_port: 25000u16,
@@ -95,6 +97,7 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 				ddc_primitives::NodePubKey::StoragePubKey(node_pub_key),
 				stash.clone(),
 				NodeParams::StorageParams(StorageNodeParams {
+					mode: StorageNodeMode::Storage,
 					host: vec![1u8, 255],
 					http_port: 35000u16,
 					grpc_port: 25000u16,
