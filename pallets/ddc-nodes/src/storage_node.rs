@@ -1,6 +1,8 @@
 use crate::node::{NodeError, NodeProps, NodeTrait};
 use codec::{Decode, Encode};
-use ddc_primitives::{ClusterId, NodeParams, NodePubKey, NodeType, StorageNodePubKey};
+use ddc_primitives::{
+	ClusterId, NodeParams, NodePubKey, NodeType, StorageNodeMode, StorageNodePubKey,
+};
 use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -29,6 +31,7 @@ pub struct StorageNodeProps {
 	pub http_port: u16,
 	pub grpc_port: u16,
 	pub p2p_port: u16,
+	pub mode: StorageNodeMode,
 }
 
 impl<T: frame_system::Config> StorageNode<T> {
@@ -44,6 +47,7 @@ impl<T: frame_system::Config> StorageNode<T> {
 					pub_key,
 					cluster_id: None,
 					props: StorageNodeProps {
+						mode: node_params.mode,
 						host: match node_params.host.try_into() {
 							Ok(vec) => vec,
 							Err(_) => return Err(NodeError::StorageHostLenExceedsLimit),
@@ -53,9 +57,7 @@ impl<T: frame_system::Config> StorageNode<T> {
 						p2p_port: node_params.p2p_port,
 					},
 				}),
-				_ => Err(NodeError::InvalidStorageNodeParams),
 			},
-			_ => Err(NodeError::InvalidStorageNodePubKey),
 		}
 	}
 }
@@ -73,7 +75,6 @@ impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError> {
 		self.props = match props {
 			NodeProps::StorageProps(props) => props,
-			_ => return Err(NodeError::InvalidStorageNodeProps),
 		};
 		Ok(())
 	}
@@ -82,13 +83,12 @@ impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 			NodeParams::StorageParams(storage_params) => {
 				self.props.host = match storage_params.host.try_into() {
 					Ok(vec) => vec,
-					Err(_) => return Err(NodeError::CDNHostLenExceedsLimit),
+					Err(_) => return Err(NodeError::StorageHostLenExceedsLimit),
 				};
 				self.props.http_port = storage_params.http_port;
 				self.props.grpc_port = storage_params.grpc_port;
 				self.props.p2p_port = storage_params.p2p_port;
 			},
-			_ => return Err(NodeError::InvalidStorageNodeParams),
 		};
 		Ok(())
 	}
