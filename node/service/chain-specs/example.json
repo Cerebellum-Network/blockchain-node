@@ -175,7 +175,17 @@
             "provider_id": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
             "cluster_id": "0x0000000000000000000000000000000000000001",
             "props": {
-              "host": [],
+              "host": [
+                49,
+                50,
+                55,
+                46,
+                48,
+                46,
+                48,
+                46,
+                49
+              ],
               "http_port": 8080,
               "grpc_port": 8081,
               "p2p_port": 8082
