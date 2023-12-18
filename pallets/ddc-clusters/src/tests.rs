@@ -2,7 +2,7 @@
 
 use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterParams, ClusterPricingParams,
-	NodeParams, NodePubKey, StorageNodeParams,
+	NodeParams, NodePubKey, StorageNodeMode, StorageNodeParams,
 };
 use ddc_traits::cluster::ClusterManager;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
@@ -143,6 +143,7 @@ fn add_and_delete_node_works() {
 		);
 
 		let storage_node_params = StorageNodeParams {
+			mode: StorageNodeMode::Storage,
 			host: vec![1u8, 255],
 			http_port: 35000u16,
 			grpc_port: 25000u16,

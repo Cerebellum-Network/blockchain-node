@@ -85,8 +85,20 @@ impl TryFrom<u8> for NodeType {
 	}
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub enum StorageNodeMode {
+	/// DDC Storage node operates with enabled caching in RAM and stores data in Hard Drive
+	Full = 1,
+	/// DDC Storage node operates with disabled caching in RAM and stores data in Hard Drive
+	Storage = 2,
+	/// DDC Storage node operates with enabled caching in RAM and doesn't store data in Hard Drive
+	Cache = 3,
+}
+
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNodeParams {
+	pub mode: StorageNodeMode,
 	pub host: Vec<u8>,
 	pub http_port: u16,
 	pub grpc_port: u16,
