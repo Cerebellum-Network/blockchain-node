@@ -1,5 +1,7 @@
 use codec::{Decode, Encode};
-use ddc_primitives::{ClusterId, NodeParams, NodePubKey, NodeType, StorageNodePubKey};
+use ddc_primitives::{
+	ClusterId, NodeParams, NodePubKey, NodeType, StorageNodeMode, StorageNodePubKey,
+};
 use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -30,6 +32,7 @@ pub struct StorageNodeProps {
 	pub http_port: u16,
 	pub grpc_port: u16,
 	pub p2p_port: u16,
+	pub mode: StorageNodeMode,
 }
 
 impl<T: frame_system::Config> StorageNode<T> {
@@ -45,6 +48,7 @@ impl<T: frame_system::Config> StorageNode<T> {
 					pub_key,
 					cluster_id: None,
 					props: StorageNodeProps {
+						mode: node_params.mode,
 						host: match node_params.host.try_into() {
 							Ok(vec) => vec,
 							Err(_) => return Err(NodeError::StorageHostLenExceedsLimit),
