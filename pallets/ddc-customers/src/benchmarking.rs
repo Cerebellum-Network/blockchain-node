@@ -43,8 +43,12 @@ benchmarks! {
 			cluster_gov_params
 		);
 
+		let bucket_params = BucketParams {
+			is_public: false
+		};
+
 		whitelist_account!(user);
-	}: _(RawOrigin::Signed(user), cluster_id)
+	}: _(RawOrigin::Signed(user), cluster_id, bucket_params)
 	verify {
 		assert_eq!(Pallet::<T>::buckets_count(), 1);
 	}
@@ -141,6 +145,33 @@ benchmarks! {
 	}: withdraw_unlocked_deposit(RawOrigin::Signed(user.clone()))
 	verify {
 		assert!(!Ledger::<T>::contains_key(user));
+	}
+
+	set_bucket_params {
+		let cluster_id = ClusterId::from([1; 20]);
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+
+		let bucket_id = 1;
+		let bucket = Bucket {
+			bucket_id,
+			owner_id: user.clone(),
+			cluster_id,
+			is_public: false,
+		};
+
+		<BucketsCount<T>>::set(bucket_id);
+		<Buckets<T>>::insert(bucket_id, bucket);
+
+		whitelist_account!(user);
+
+		let bucket_params = BucketParams {
+			is_public: true
+		};
+
+	}: _(RawOrigin::Signed(user), bucket_id, bucket_params)
+	verify {
+		let bucket = <Buckets<T>>::get(bucket_id).unwrap();
+		assert!(bucket.is_public);
 	}
 
 	impl_benchmark_test_suite!(
