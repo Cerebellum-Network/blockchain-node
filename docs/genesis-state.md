@@ -1,4 +1,4 @@
-# State preset
+# Genesis state
 
 Sometimes we use the blockchain as a part of a test environment.
 Those tests typically want a certain state of the blockchain.
@@ -21,6 +21,11 @@ And a _raw_ form with key-value pairs which will be written to the database.
 
 1. Set genesis state for each module.
     There is an example in `node/service/example.json`, you can copy everything except the `code` field value from it to the `plain.json`.
+
+    > Special note for a `ddcNodes.storageNodes.host` field.
+    > In the `example.json` it is set as:
+    > `"host": [ 49, 50, 55, 46, 48, 46, 48, 46, 49 ]`.
+    > Where the array is an encoded `127.0.0.1` value.
 
 1. Create a raw form chain spec.
 
