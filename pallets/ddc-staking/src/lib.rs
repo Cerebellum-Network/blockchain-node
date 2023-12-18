@@ -1,6 +1,6 @@
 //! # DDC Staking Pallet
 //!
-//! The DDC Staking pallet is used to manage funds at stake by CDN and storage network maintainers.
+//! The DDC Staking pallet is used to manage funds at stake by DDC network maintainers.
 //!
 //! - [`Config`]
 //! - [`Call`]
@@ -189,12 +189,6 @@ pub mod pallet {
 	pub type Ledger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>, T>>;
 
-	/// The map of (wannabe) CDN nodes participants stash keys to the DDC cluster ID they wish to
-	/// participate into.
-	#[pallet::storage]
-	#[pallet::getter(fn cdns)]
-	pub type CDNs<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
-
 	/// The map of (wannabe) Storage nodes participants stash keys to the DDC cluster ID they
 	/// wish to participate into.
 	#[pallet::storage]
@@ -216,15 +210,8 @@ pub mod pallet {
 	#[pallet::getter(fn leaving_storages)]
 	pub type LeavingStorages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
-	// Map of CDN node provider stash accounts that aim to leave a cluster
-	#[pallet::storage]
-	#[pallet::getter(fn leaving_cdns)]
-	pub type LeavingCDNs<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
-
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		#[allow(clippy::type_complexity)]
-		pub cdns: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
 		#[allow(clippy::type_complexity)]
 		pub storages: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
 	}
@@ -232,31 +219,13 @@ pub mod pallet {
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			GenesisConfig { cdns: Default::default(), storages: Default::default() }
+			GenesisConfig { storages: Default::default() }
 		}
 	}
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			// Add initial CDN participants
-			for &(ref stash, ref controller, ref node, balance, cluster) in &self.cdns {
-				assert!(
-					T::Currency::free_balance(stash) >= balance,
-					"Stash do not have enough balance to participate in CDN."
-				);
-				assert_ok!(Pallet::<T>::bond(
-					T::RuntimeOrigin::from(Some(stash.clone()).into()),
-					T::Lookup::unlookup(controller.clone()),
-					node.clone(),
-					balance,
-				));
-				assert_ok!(Pallet::<T>::serve(
-					T::RuntimeOrigin::from(Some(controller.clone()).into()),
-					cluster,
-				));
-			}
-
 			// Add initial storage network participants
 			for &(ref stash, ref controller, ref node, balance, cluster) in &self.storages {
 				assert!(
@@ -290,20 +259,20 @@ pub mod pallet {
 		/// An account has called `withdraw_unbonded` and removed unbonding chunks worth `Balance`
 		/// from the unlocking queue. \[stash, amount\]
 		Withdrawn(T::AccountId, BalanceOf<T>),
-		/// An account has stopped participating as either a storage network or CDN participant.
+		/// An account has stopped participating as DDC network participant.
 		/// \[stash\]
 		Chilled(T::AccountId),
-		/// An account has declared desire to stop participating in CDN or storage network soon.
+		/// An account has declared desire to stop participating in DDC network soon.
 		/// \[stash, cluster, block\]
 		ChillSoon(T::AccountId, ClusterId, T::BlockNumber),
-		/// An account that started participating as either a storage network or CDN participant.
+		/// An account that started participating as DDC network participant.
 		/// \[stash\]
 		Activated(T::AccountId),
 		/// An account that started unbonding tokens below the minimum value set for the cluster
-		/// his CDN or Storage node is assigned to \[stash\]
+		/// his DDC node is assigned to \[stash\]
 		LeaveSoon(T::AccountId),
 		/// An account that unbonded tokens below the minimum value set for the cluster his
-		/// CDN or Storage node was assigned to \[stash\]
+		/// DDC node was assigned to \[stash\]
 		Left(T::AccountId),
 	}
 
@@ -317,9 +286,9 @@ pub mod pallet {
 		AlreadyBonded,
 		/// Controller or node is already paired.
 		AlreadyPaired,
-		/// Cannot have a storage network or CDN participant, with the size less than defined by
+		/// Cannot have a DDC network participant, with the size less than defined by
 		/// governance (see `BondSize`). If unbonding is the intention, `chill` first to remove
-		/// one's role as storage/cdn node.
+		/// one's role as activated DDC node.
 		InsufficientBond,
 		/// Can not schedule more unlock chunks.
 		NoMoreChunks,
@@ -340,8 +309,6 @@ pub mod pallet {
 		NoClusterGovParams,
 		/// Conditions for fast chill are not met, try the regular `chill` from
 		FastChillProhibited,
-		/// Serving operation is called for non-CDN node
-		ServingProhibited,
 		/// Storing operation is called for non-Storage node
 		StoringProhibited,
 		/// Arithmetic overflow occurred
@@ -465,11 +432,7 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
-				let min_active_bond = if let Some(cluster_id) = Self::cdns(&ledger.stash) {
-					let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::CDN)
-						.map_err(Into::<Error<T>>::into)?;
-					bond_size.saturated_into::<BalanceOf<T>>()
-				} else if let Some(cluster_id) = Self::storages(&ledger.stash) {
+				let min_active_bond = if let Some(cluster_id) = Self::storages(&ledger.stash) {
 					let bond_size =
 						T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::Storage)
 							.map_err(Into::<Error<T>>::into)?;
@@ -496,7 +459,6 @@ pub mod pallet {
 							.map_err(Into::<Error<T>>::into)?;
 
 						let min_bond_size = match node_pub_key {
-							NodePubKey::CDNPubKey(_) => bonding_params.cdn_bond_size,
 							NodePubKey::StoragePubKey(_) => bonding_params.storage_bond_size,
 						};
 
@@ -504,8 +466,6 @@ pub mod pallet {
 						// cluster eventually, we keep its stake till the end of unbonding period.
 						if ledger.active < min_bond_size.saturated_into::<BalanceOf<T>>() {
 							match node_pub_key {
-								NodePubKey::CDNPubKey(_) =>
-									LeavingCDNs::<T>::insert(ledger.stash.clone(), cluster_id),
 								NodePubKey::StoragePubKey(_) =>
 									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id),
 							};
@@ -514,7 +474,6 @@ pub mod pallet {
 						};
 
 						match node_pub_key {
-							NodePubKey::CDNPubKey(_) => bonding_params.cdn_unbonding_delay,
 							NodePubKey::StoragePubKey(_) => bonding_params.storage_unbonding_delay,
 						}
 					} else {
@@ -590,72 +549,16 @@ pub mod pallet {
 
 				// If provider aimed to leave the cluster and the unbonding period ends, remove
 				// the node from the cluster
-				if let Some(cluster_id) =
-					<LeavingCDNs<T>>::get(&stash).or_else(|| <LeavingStorages<T>>::get(&stash))
-				{
+				if let Some(cluster_id) = <LeavingStorages<T>>::get(&stash) {
 					// Cluster manager could remove the node from cluster by this moment already, so
 					// it is ok to ignore result.
 					let _ = T::ClusterManager::remove_node(&cluster_id, &node_pub_key);
 
 					<LeavingStorages<T>>::remove(&stash);
-					<LeavingCDNs<T>>::remove(&stash);
 
 					Self::deposit_event(Event::<T>::Left(stash));
 				}
 			}
-
-			Ok(())
-		}
-
-		/// Declare the desire to participate in CDN for the origin controller. Also works to cancel
-		/// a previous "chill".
-		///
-		/// `cluster` is the ID of the DDC cluster the participant wishes to join.
-		///
-		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
-		/// bond size must be greater than or equal to the `CDNBondSize`.
-		#[pallet::weight(T::WeightInfo::serve())]
-		pub fn serve(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
-
-			T::ClusterVisitor::ensure_cluster(&cluster_id).map_err(Into::<Error<T>>::into)?;
-
-			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
-			// Retrieve the respective bond size from Cluster Visitor
-			let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::CDN)
-				.map_err(Into::<Error<T>>::into)?;
-
-			ensure!(
-				ledger.active >= bond_size.saturated_into::<BalanceOf<T>>(),
-				Error::<T>::InsufficientBond
-			);
-			let stash = &ledger.stash;
-
-			// Can't participate in CDN if already participating in storage network.
-			ensure!(!Storages::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
-
-			// Only CDN node can perform serving (i.e. streaming content)
-			let node_pub_key = <Providers<T>>::get(stash).ok_or(Error::<T>::BadState)?;
-			ensure!(
-				matches!(node_pub_key, NodePubKey::CDNPubKey(_)),
-				Error::<T>::ServingProhibited
-			);
-
-			// Is it an attempt to cancel a previous "chill"?
-			if let Some(current_cluster) = Self::cdns(stash) {
-				// Switching the cluster is prohibited. The user should chill first.
-				ensure!(current_cluster == cluster_id, Error::<T>::AlreadyInRole);
-				// Cancel previous "chill" attempts
-				Self::reset_chilling(&controller);
-				return Ok(())
-			} else {
-				// Can't participate in new CDN network if provider hasn't left the previous cluster
-				// yet
-				ensure!(!LeavingCDNs::<T>::contains_key(stash), Error::<T>::NodeIsLeaving);
-			}
-
-			Self::do_add_cdn(stash, cluster_id);
-			Self::deposit_event(Event::<T>::Activated(stash.clone()));
 
 			Ok(())
 		}
@@ -683,9 +586,6 @@ pub mod pallet {
 			);
 			let stash = &ledger.stash;
 
-			// Can't participate in storage network if already participating in CDN.
-			ensure!(!CDNs::<T>::contains_key(stash), Error::<T>::AlreadyInRole);
-
 			// Only Storage node can perform storing (i.e. saving content)
 			let node_pub_key = <Providers<T>>::get(stash).ok_or(Error::<T>::BadState)?;
 			ensure!(
@@ -712,15 +612,15 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Declare no desire to either participate in storage network or CDN.
+		/// Declare no desire to either participate in DDC network.
 		///
 		/// Only in case the delay for the role _origin_ maintains in the cluster is set to zero in
 		/// cluster settings, it removes the participant immediately. Otherwise, it requires at
 		/// least two invocations to effectively remove the participant. The first invocation only
 		/// updates the [`Ledger`] to note the block number at which the participant may "chill"
 		/// (current block + the delay from the cluster settings). The second invocation made at the
-		/// noted block (or any further block) will remove the participant from the list of CDN or
-		/// storage network participants. If the cluster settings updated significantly decreasing
+		/// noted block (or any further block) will remove the participant from the list of DDC
+		/// network participants. If the cluster settings updated significantly decreasing
 		/// the delay, one may invoke it again to decrease the block at with the participant may
 		/// "chill". But it never increases the block at which the participant may "chill" even when
 		/// the cluster settings updated increasing the delay.
@@ -735,11 +635,7 @@ pub mod pallet {
 			let current_block = <frame_system::Pallet<T>>::block_number();
 
 			// Extract delay from the cluster settings.
-			let (cluster, delay) = if let Some(cluster) = Self::cdns(&ledger.stash) {
-				let chill_delay = T::ClusterVisitor::get_chill_delay(&cluster, NodeType::CDN)
-					.map_err(Into::<Error<T>>::into)?;
-				(cluster, chill_delay)
-			} else if let Some(cluster) = Self::storages(&ledger.stash) {
+			let (cluster, delay) = if let Some(cluster) = Self::storages(&ledger.stash) {
 				let chill_delay = T::ClusterVisitor::get_chill_delay(&cluster, NodeType::Storage)
 					.map_err(Into::<Error<T>>::into)?;
 				(cluster, chill_delay)
@@ -821,12 +717,10 @@ pub mod pallet {
 			}
 
 			// Ensure only one node per stash.
-			ensure!(!<CDNs<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 			ensure!(!<Storages<T>>::contains_key(&stash), Error::<T>::AlreadyInRole);
 
 			// Ensure that provider is not about leaving the cluster as it may cause the removal
 			// of an unexpected node after unbonding.
-			ensure!(!<LeavingCDNs<T>>::contains_key(&stash), Error::<T>::NodeIsLeaving);
 			ensure!(!<LeavingStorages<T>>::contains_key(&stash), Error::<T>::NodeIsLeaving);
 
 			<Nodes<T>>::insert(new_node.clone(), stash.clone());
@@ -847,9 +741,7 @@ pub mod pallet {
 			let node_stash = <Nodes<T>>::get(&node_pub_key).ok_or(Error::<T>::BadState)?;
 			ensure!(stash == node_stash, Error::<T>::NotNodeController);
 
-			let cluster_id = <CDNs<T>>::get(&stash)
-				.or_else(|| <Storages<T>>::get(&stash))
-				.ok_or(Error::<T>::NodeHasNoStake)?;
+			let cluster_id = <Storages<T>>::get(&stash).ok_or(Error::<T>::NodeHasNoStake)?;
 
 			let is_cluster_node = T::ClusterManager::contains_node(&cluster_id, &node_pub_key);
 			ensure!(!is_cluster_node, Error::<T>::FastChillProhibited);
@@ -883,8 +775,7 @@ pub mod pallet {
 		/// Chill a stash account.
 		fn chill_stash(stash: &T::AccountId) {
 			let chilled_as_storage = Self::do_remove_storage(stash);
-			let chilled_as_cdn = Self::do_remove_cdn(stash);
-			if chilled_as_storage || chilled_as_cdn {
+			if chilled_as_storage {
 				Self::deposit_event(Event::<T>::Chilled(stash.clone()));
 			}
 		}
@@ -922,25 +813,10 @@ pub mod pallet {
 			};
 
 			Self::do_remove_storage(stash);
-			Self::do_remove_cdn(stash);
 
 			frame_system::Pallet::<T>::dec_consumers(stash);
 
 			Ok(())
-		}
-
-		/// This function will add a CDN participant to the `CDNs` storage map.
-		///
-		/// If the CDN participant already exists, their cluster will be updated.
-		pub fn do_add_cdn(who: &T::AccountId, cluster: ClusterId) {
-			CDNs::<T>::insert(who, cluster);
-		}
-
-		/// This function will remove a CDN participant from the `CDNs` map.
-		///
-		/// Returns true if `who` was removed from `CDNs`, otherwise false.
-		pub fn do_remove_cdn(who: &T::AccountId) -> bool {
-			CDNs::<T>::take(who).is_some()
 		}
 
 		/// This function will add a storage network participant to the `Storages` storage map.
@@ -991,7 +867,6 @@ pub mod pallet {
 			Self::update_ledger(&controller, &item);
 			match node {
 				NodePubKey::StoragePubKey(_node) => Self::do_add_storage(&stash, cluster_id),
-				NodePubKey::CDNPubKey(_node) => Self::do_add_cdn(&stash, cluster_id),
 			}
 
 			Ok(())
@@ -1005,11 +880,9 @@ pub mod pallet {
 		) -> Result<bool, StakingVisitorError> {
 			let stash =
 				<Nodes<T>>::get(node_pub_key).ok_or(StakingVisitorError::NodeStakeDoesNotExist)?;
-			let maybe_cdn_in_cluster = CDNs::<T>::get(&stash);
 			let maybe_storage_in_cluster = Storages::<T>::get(&stash);
 
-			let has_activated_stake: bool = maybe_cdn_in_cluster
-				.or(maybe_storage_in_cluster)
+			let has_activated_stake: bool = maybe_storage_in_cluster
 				.is_some_and(|staking_cluster| staking_cluster == *cluster_id);
 
 			Ok(has_activated_stake)

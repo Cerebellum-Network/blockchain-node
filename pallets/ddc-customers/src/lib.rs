@@ -63,25 +63,26 @@ pub struct Bucket<AccountId> {
 	bucket_id: BucketId,
 	owner_id: AccountId,
 	cluster_id: ClusterId,
+	is_public: bool,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct BucketsDetails<Balance: HasCompact> {
-	pub bucket_id: BucketId,
-	pub amount: Balance,
+pub struct BucketParams {
+	is_public: bool,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct AccountsLedger<AccountId, Balance: HasCompact, T: Config> {
-	/// The owner account whose balance is actually locked and can be used for CDN usage.
+	/// The owner account whose balance is actually locked and can be used to pay for DDC network
+	/// usage.
 	pub owner: AccountId,
 	/// The total amount of the owner's balance that we are currently accounting for.
 	/// It's just `active` plus all the `unlocking` balances.
 	#[codec(compact)]
 	pub total: Balance,
-	/// The total amount of the owner's balance that will be accessible for CDN payments in any
-	/// forthcoming rounds.
+	/// The total amount of the owner's balance that will be accessible for DDC network payouts in
+	/// any forthcoming rounds.
 	#[codec(compact)]
 	pub active: Balance,
 	/// Any balance that is becoming free, which may eventually be transferred out of the owner
@@ -229,6 +230,8 @@ pub mod pallet {
 		Charged(T::AccountId, BalanceOf<T>),
 		/// Bucket with specific id created
 		BucketCreated(BucketId),
+		/// Bucket with specific id updated
+		BucketUpdated(BucketId),
 	}
 
 	#[pallet::error]
@@ -263,7 +266,7 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub buckets: Vec<(ClusterId, T::AccountId, BalanceOf<T>)>,
+		pub buckets: Vec<(ClusterId, T::AccountId, BalanceOf<T>, bool)>,
 	}
 
 	#[cfg(feature = "std")]
@@ -282,7 +285,7 @@ pub mod pallet {
 				let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
 			}
 
-			for &(ref cluster_id, ref owner_id, ref deposit) in &self.buckets {
+			for &(ref cluster_id, ref owner_id, ref deposit, ref is_public) in &self.buckets {
 				let cur_bucket_id = <BucketsCount<T>>::get()
 					.checked_add(1)
 					.ok_or(Error::<T>::ArithmeticOverflow)
@@ -293,6 +296,7 @@ pub mod pallet {
 					bucket_id: cur_bucket_id,
 					owner_id: owner_id.clone(),
 					cluster_id: *cluster_id,
+					is_public: *is_public,
 				};
 				<Buckets<T>>::insert(cur_bucket_id, bucket);
 
@@ -316,7 +320,11 @@ pub mod pallet {
 		///
 		/// Anyone can create a bucket
 		#[pallet::weight(T::WeightInfo::create_bucket())]
-		pub fn create_bucket(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
+		pub fn create_bucket(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			bucket_params: BucketParams,
+		) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
 			let cur_bucket_id =
 				Self::buckets_count().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
@@ -324,7 +332,12 @@ pub mod pallet {
 			<T as pallet::Config>::ClusterVisitor::ensure_cluster(&cluster_id)
 				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 
-			let bucket = Bucket { bucket_id: cur_bucket_id, owner_id: bucket_owner, cluster_id };
+			let bucket = Bucket {
+				bucket_id: cur_bucket_id,
+				owner_id: bucket_owner,
+				cluster_id,
+				is_public: bucket_params.is_public,
+			};
 
 			<BucketsCount<T>>::set(cur_bucket_id);
 			<Buckets<T>>::insert(cur_bucket_id, bucket);
@@ -353,7 +366,7 @@ pub mod pallet {
 		}
 
 		/// Add some extra amount that have appeared in the owner `free_balance` into the balance up
-		/// for CDN payments.
+		/// for DDC network payouts.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the owner.
 		///
@@ -496,6 +509,28 @@ pub mod pallet {
 			}
 
 			Ok(post_info_weight.into())
+		}
+
+		/// Sets bucket parameters.
+		///
+		/// The dispatch origin for this call must be _Signed_ by the bucket owner.
+		///
+		/// Emits `BucketUpdated`.
+		#[pallet::weight(T::WeightInfo::set_bucket_params())]
+		pub fn set_bucket_params(
+			origin: OriginFor<T>,
+			bucket_id: BucketId,
+			bucket_params: BucketParams,
+		) -> DispatchResult {
+			let owner = ensure_signed(origin)?;
+			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+			ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
+
+			bucket.is_public = bucket_params.is_public;
+			<Buckets<T>>::insert(bucket_id, bucket);
+			Self::deposit_event(Event::<T>::BucketUpdated(bucket_id));
+
+			Ok(())
 		}
 	}
 
