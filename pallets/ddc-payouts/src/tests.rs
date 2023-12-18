@@ -1243,7 +1243,7 @@ fn send_rewarding_providers_batch_works() {
 		};
 
 		let node_usage1 = NodeUsage {
-			// CDN
+			// Storage 1
 			transferred_bytes: usage1.transferred_bytes * 2 / 3,
 			stored_bytes: 0,
 			number_of_puts: usage1.number_of_puts * 2 / 3,
@@ -1251,7 +1251,7 @@ fn send_rewarding_providers_batch_works() {
 		};
 
 		let node_usage2 = NodeUsage {
-			// Storage
+			// Storage 2
 			transferred_bytes: 0,
 			stored_bytes: usage1.stored_bytes * 2,
 			number_of_puts: 0,
@@ -1259,7 +1259,7 @@ fn send_rewarding_providers_batch_works() {
 		};
 
 		let node_usage3 = NodeUsage {
-			// CDN + Storage
+			// Storage 1 + Storage 2
 			transferred_bytes: usage1.transferred_bytes * 2,
 			stored_bytes: usage1.stored_bytes * 3,
 			number_of_puts: usage1.number_of_puts * 2,
@@ -2241,6 +2241,7 @@ fn send_rewarding_providers_batch_100nodes_small_large_usage_works() {
 		assert!(Balances::free_balance(DdcPayouts::account_id()) < MAX_DUST.into());
 	})
 }
+
 #[test]
 fn end_rewarding_providers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
