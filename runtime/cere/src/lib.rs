@@ -1320,7 +1320,7 @@ impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 
 parameter_types! {
 	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
-	pub const UnlockingDelay: BlockNumber = 5256000u32; // 1 hour * 24 * 365 = 1 day; (1 hour is 600 blocks)
+	pub const UnlockingDelay: BlockNumber = 100800_u32; // 1 hour * 24 * 7 = 7 days; (1 hour is 600 blocks)
 }
 
 impl pallet_ddc_customers::Config for Runtime {
