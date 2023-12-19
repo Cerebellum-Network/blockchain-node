@@ -25,7 +25,7 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
-use ddc_primitives::{ClusterId, DdcEra};
+use ddc_primitives::{ClusterId, DdcEra, MILLICENTS};
 use ddc_traits::{
 	cluster::{ClusterCreator as ClusterCreatorType, ClusterVisitor as ClusterVisitorType},
 	customer::{
@@ -43,7 +43,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
-use sp_runtime::{PerThing, Perquintill};
+use sp_runtime::{traits::Convert, PerThing, Perquintill};
 use sp_std::prelude::*;
 
 type BatchIndex = u16;
@@ -96,9 +96,14 @@ pub struct CustomerCharge {
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+pub type VoteScoreOf<T> =
+	<<T as pallet::Config>::NominatorsAndValidatorsList as frame_election_provider_support::SortedListProvider<
+		<T as frame_system::Config>::AccountId,
+	>>::Score;
+
 parameter_types! {
 	pub MaxBatchesCount: u16 = 1000;
-	pub MaxDust: u16 = 20000;
+	pub MaxDust: u128 = MILLICENTS;
 	pub MaxBatchSize: u16 = 1000;
 }
 
@@ -124,9 +129,10 @@ pub mod pallet {
 		type CustomerDepositor: CustomerDepositorType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
 		type ClusterVisitor: ClusterVisitorType<Self>;
-		type ValidatorList: SortedListProvider<Self::AccountId>;
+		type NominatorsAndValidatorsList: SortedListProvider<Self::AccountId>;
 		type ClusterCreator: ClusterCreatorType<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
+		type VoteScoreToU64: Convert<VoteScoreOf<Self>, u64>;
 	}
 
 	#[pallet::event]
@@ -230,6 +236,7 @@ pub mod pallet {
 		ArithmeticOverflow,
 		NotExpectedClusterState,
 		BatchSizeIsOutOfBounds,
+		ScoreRetrievalError,
 	}
 
 	#[pallet::storage]
@@ -672,6 +679,7 @@ pub mod pallet {
 				Error::<T>::BatchIndexAlreadyProcessed
 			);
 
+			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
 			for payee in payees {
 				let node_reward = get_node_reward::<T>(
@@ -699,7 +707,7 @@ pub mod pallet {
 					) - <T as pallet::Config>::Currency::minimum_balance();
 
 					if reward > vault_balance {
-						if reward - vault_balance > MaxDust::get().into() {
+						if reward - vault_balance > max_dust {
 							Self::deposit_event(Event::<T>::NotDistributedReward {
 								cluster_id,
 								era,
@@ -775,8 +783,7 @@ pub mod pallet {
 			})()
 			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-			if expected_amount_to_reward - billing_report.total_distributed_reward >
-				MaxDust::get().into()
+			if expected_amount_to_reward - billing_report.total_distributed_reward > MaxDust::get()
 			{
 				Self::deposit_event(Event::<T>::NotDistributedOverallReward {
 					cluster_id,
@@ -847,20 +854,41 @@ pub mod pallet {
 		)
 	}
 
+	fn get_current_exposure_ratios<T: Config>(
+	) -> Result<Vec<(T::AccountId, Perquintill)>, DispatchError> {
+		let mut total_score = 0;
+		let mut individual_scores: Vec<(T::AccountId, u64)> = Vec::new();
+		for staker_id in T::NominatorsAndValidatorsList::iter() {
+			let s = T::NominatorsAndValidatorsList::get_score(&staker_id)
+				.map_err(|_| Error::<T>::ScoreRetrievalError)?;
+			let score = T::VoteScoreToU64::convert(s);
+			total_score += score;
+
+			individual_scores.push((staker_id, score));
+		}
+
+		let mut result = Vec::new();
+		for (staker_id, score) in individual_scores {
+			let ratio = Perquintill::from_rational(score, total_score);
+			result.push((staker_id, ratio));
+		}
+
+		Ok(result)
+	}
+
 	fn charge_validator_fees<T: Config>(
 		validators_fee: u128,
 		vault: &T::AccountId,
 	) -> DispatchResult {
-		let amount_to_deduct = validators_fee
-			.checked_div(T::ValidatorList::count().try_into().unwrap())
-			.ok_or(Error::<T>::ArithmeticOverflow)?
-			.saturated_into::<BalanceOf<T>>();
+		let stakers = get_current_exposure_ratios::<T>()?;
 
-		for validator_account_id in T::ValidatorList::iter() {
+		for (staker_id, ratio) in stakers.iter() {
+			let amount_to_deduct = *ratio * validators_fee;
+
 			<T as pallet::Config>::Currency::transfer(
 				vault,
-				&validator_account_id,
-				amount_to_deduct,
+				staker_id,
+				amount_to_deduct.saturated_into::<BalanceOf<T>>(),
 				ExistenceRequirement::AllowDeath,
 			)?;
 		}
