@@ -184,6 +184,7 @@ std = [
   "cere-runtime-common/std",
   "cere-dev-runtime-constants/std",
   "pallet-ddc-customers/std",
+  "pallet-ddc-nodes/std",
   "pallet-ddc-clusters/std",
   "pallet-ddc-payouts/std",
 ]
