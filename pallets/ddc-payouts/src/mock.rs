@@ -25,7 +25,7 @@ use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, Identity, IdentityLookup},
 	DispatchError, Perquintill,
 };
 use sp_std::prelude::*;
@@ -110,8 +110,10 @@ impl crate::pallet::Config for Test {
 	type CustomerDepositor = TestCustomerDepositor;
 	type ClusterVisitor = TestClusterVisitor;
 	type TreasuryVisitor = TestTreasuryVisitor;
-	type ValidatorList = TestValidatorVisitor<Self>;
+	type NominatorsAndValidatorsList = TestValidatorVisitor<Self>;
 	type ClusterCreator = TestClusterCreator;
+
+	type VoteScoreToU64 = Identity;
 	type WeightInfo = ();
 }
 
@@ -192,6 +194,11 @@ pub const TREASURY_ACCOUNT_ID: AccountId = 888;
 pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
 pub const VALIDATOR2_ACCOUNT_ID: AccountId = 222;
 pub const VALIDATOR3_ACCOUNT_ID: AccountId = 333;
+
+pub const VALIDATOR1_SCORE: u64 = 30;
+pub const VALIDATOR2_SCORE: u64 = 45;
+pub const VALIDATOR3_SCORE: u64 = 25;
+
 pub const PARTIAL_CHARGE: u128 = 100;
 pub const USER3_BALANCE: u128 = 1000;
 
@@ -268,8 +275,14 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 		// nothing to do on insert.
 		Ok(())
 	}
-	fn get_score(_id: &T::AccountId) -> Result<Self::Score, Self::Error> {
-		unimplemented!()
+	fn get_score(validator_id: &T::AccountId) -> Result<Self::Score, Self::Error> {
+		if *validator_id == create_account_id_from_u128::<T>(VALIDATOR1_ACCOUNT_ID) {
+			Ok(VALIDATOR1_SCORE)
+		} else if *validator_id == create_account_id_from_u128::<T>(VALIDATOR2_ACCOUNT_ID) {
+			Ok(VALIDATOR2_SCORE)
+		} else {
+			Ok(VALIDATOR3_SCORE)
+		}
 	}
 	fn on_update(_: &T::AccountId, _weight: Self::Score) -> Result<(), Self::Error> {
 		// nothing to do on update.
