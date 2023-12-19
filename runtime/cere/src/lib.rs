@@ -23,6 +23,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
+use ddc_traits::pallet::PalletVisitor;
 use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragmen, VoteWeight};
 use frame_support::{
 	construct_runtime,
@@ -77,8 +78,8 @@ use sp_runtime::{
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	traits::{
-		self, BlakeTwo256, Block as BlockT, Bounded, ConvertInto, NumberFor, OpaqueKeys,
-		SaturatedConversion, StaticLookup,
+		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, ConvertInto, NumberFor,
+		OpaqueKeys, SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
@@ -1317,6 +1318,71 @@ impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 }
 
+parameter_types! {
+	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
+	pub const UnlockingDelay: BlockNumber = 100800_u32; // 1 hour * 24 * 7 = 7 days; (1 hour is 600 blocks)
+}
+
+impl pallet_ddc_customers::Config for Runtime {
+	type UnlockingDelay = UnlockingDelay;
+	type Currency = Balances;
+	type PalletId = DdcCustomersPalletId;
+	type RuntimeEvent = RuntimeEvent;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
+	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
+}
+
+impl pallet_ddc_clusters::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
+	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
+	type Currency = Balances;
+	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
+}
+
+impl pallet_ddc_nodes::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type WeightInfo = pallet_ddc_nodes::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
+	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
+}
+
+pub struct TreasuryWrapper;
+impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
+	fn get_account_id() -> T::AccountId {
+		TreasuryPalletId::get().into_account_truncating()
+	}
+}
+
+impl pallet_ddc_payouts::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = PayoutsPalletId;
+	type Currency = Balances;
+	type CustomerCharger = DdcCustomers;
+	type CustomerDepositor = DdcCustomers;
+	type ClusterVisitor = DdcClusters;
+	type TreasuryVisitor = TreasuryWrapper;
+	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
+	type ClusterCreator = DdcClusters;
+	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
+}
+
+impl pallet_ddc_staking::Config for Runtime {
+	type Currency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1368,6 +1434,11 @@ construct_runtime!(
 		Erc721: pallet_erc721::{Pallet, Call, Storage, Event<T>},
 		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
 		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
+		DdcStaking: pallet_ddc_staking,
+		DdcCustomers: pallet_ddc_customers,
+		DdcNodes: pallet_ddc_nodes,
+		DdcClusters: pallet_ddc_clusters,
+		DdcPayouts: pallet_ddc_payouts
 	}
 );
 
@@ -1441,6 +1512,11 @@ mod benches {
 		[pallet_child_bounties, ChildBounties]
 		[pallet_collective, Council]
 		[pallet_contracts, Contracts]
+		[pallet_ddc_customers, DdcCustomers]
+		[pallet_ddc_clusters, DdcClusters]
+		[pallet_ddc_staking, DdcStaking]
+		[pallet_ddc_nodes, DdcNodes]
+		[pallet_ddc_payouts, DdcPayouts]
 		[pallet_democracy, Democracy]
 		[pallet_election_provider_multi_phase, ElectionProviderMultiPhase]
 		[pallet_election_provider_support_benchmarking, EPSBench::<Runtime>]
