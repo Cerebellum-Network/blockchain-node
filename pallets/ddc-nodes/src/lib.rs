@@ -27,7 +27,7 @@ pub mod benchmarking;
 #[cfg(any(feature = "runtime-benchmarks", test))]
 pub mod testing_utils;
 
-use ddc_primitives::{CDNNodePubKey, ClusterId, NodeParams, NodePubKey, StorageNodePubKey};
+use ddc_primitives::{ClusterId, NodeParams, NodePubKey, StorageNodePubKey};
 use ddc_traits::{
 	node::{NodeCreator, NodeVisitor, NodeVisitorError},
 	staking::StakingVisitor,
@@ -36,12 +36,10 @@ use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_std::prelude::*;
-mod cdn_node;
 mod node;
 mod storage_node;
 
 pub use crate::{
-	cdn_node::CDNNode,
 	node::{Node, NodeError, NodeTrait},
 	storage_node::StorageNode,
 };
@@ -74,9 +72,6 @@ pub mod pallet {
 	pub enum Error<T> {
 		NodeAlreadyExists,
 		NodeDoesNotExist,
-		InvalidNodePubKey,
-		InvalidNodeParams,
-		NodeParamsExceedsLimit,
 		OnlyNodeProvider,
 		NodeIsAssignedToCluster,
 		HostLenExceedsLimit,
@@ -88,20 +83,15 @@ pub mod pallet {
 	pub type StorageNodes<T: Config> =
 		StorageMap<_, Blake2_128Concat, StorageNodePubKey, StorageNode<T>>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn cdn_nodes)]
-	pub type CDNNodes<T: Config> = StorageMap<_, Blake2_128Concat, CDNNodePubKey, CDNNode<T>>;
-
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub storage_nodes: Vec<StorageNode<T>>,
-		pub cdn_nodes: Vec<CDNNode<T>>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			GenesisConfig { storage_nodes: Default::default(), cdn_nodes: Default::default() }
+			GenesisConfig { storage_nodes: Default::default() }
 		}
 	}
 
@@ -110,9 +100,6 @@ pub mod pallet {
 		fn build(&self) {
 			for storage_node in &self.storage_nodes {
 				<StorageNodes<T>>::insert(storage_node.pub_key.clone(), storage_node);
-			}
-			for cdn_node in &self.cdn_nodes {
-				<CDNNodes<T>>::insert(cdn_node.pub_key.clone(), cdn_node);
 			}
 		}
 	}
@@ -172,18 +159,14 @@ pub mod pallet {
 	#[derive(Debug, PartialEq)]
 	pub enum NodeRepositoryError {
 		StorageNodeAlreadyExists,
-		CDNNodeAlreadyExists,
 		StorageNodeDoesNotExist,
-		CDNNodeDoesNotExist,
 	}
 
 	impl<T> From<NodeRepositoryError> for Error<T> {
 		fn from(error: NodeRepositoryError) -> Self {
 			match error {
 				NodeRepositoryError::StorageNodeAlreadyExists => Error::<T>::NodeAlreadyExists,
-				NodeRepositoryError::CDNNodeAlreadyExists => Error::<T>::NodeAlreadyExists,
 				NodeRepositoryError::StorageNodeDoesNotExist => Error::<T>::NodeDoesNotExist,
-				NodeRepositoryError::CDNNodeDoesNotExist => Error::<T>::NodeDoesNotExist,
 			}
 		}
 	}
@@ -198,13 +181,6 @@ pub mod pallet {
 					StorageNodes::<T>::insert(storage_node.pub_key.clone(), storage_node);
 					Ok(())
 				},
-				Node::CDN(cdn_node) => {
-					if CDNNodes::<T>::contains_key(&cdn_node.pub_key) {
-						return Err(NodeRepositoryError::CDNNodeAlreadyExists)
-					}
-					CDNNodes::<T>::insert(cdn_node.pub_key.clone(), cdn_node);
-					Ok(())
-				},
 			}
 		}
 
@@ -213,10 +189,6 @@ pub mod pallet {
 				NodePubKey::StoragePubKey(pub_key) => match StorageNodes::<T>::try_get(pub_key) {
 					Ok(storage_node) => Ok(Node::Storage(storage_node)),
 					Err(_) => Err(NodeRepositoryError::StorageNodeDoesNotExist),
-				},
-				NodePubKey::CDNPubKey(pub_key) => match CDNNodes::<T>::try_get(pub_key) {
-					Ok(cdn_node) => Ok(Node::CDN(cdn_node)),
-					Err(_) => Err(NodeRepositoryError::CDNNodeDoesNotExist),
 				},
 			}
 		}
@@ -229,12 +201,6 @@ pub mod pallet {
 					}
 					StorageNodes::<T>::insert(storage_node.pub_key.clone(), storage_node);
 				},
-				Node::CDN(cdn_node) => {
-					if !CDNNodes::<T>::contains_key(&cdn_node.pub_key) {
-						return Err(NodeRepositoryError::CDNNodeDoesNotExist)
-					}
-					CDNNodes::<T>::insert(cdn_node.pub_key.clone(), cdn_node);
-				},
 			}
 			Ok(())
 		}
@@ -243,10 +209,6 @@ pub mod pallet {
 			match node_pub_key {
 				NodePubKey::StoragePubKey(pub_key) => {
 					StorageNodes::<T>::remove(pub_key);
-					Ok(())
-				},
-				NodePubKey::CDNPubKey(pub_key) => {
-					CDNNodes::<T>::remove(pub_key);
 					Ok(())
 				},
 			}

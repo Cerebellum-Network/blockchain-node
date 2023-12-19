@@ -13,15 +13,25 @@ fn create_bucket_works() {
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let account_1 = 1;
+		let bucket_params = BucketParams { is_public: false };
 
 		// Bucket created
-		assert_ok!(DdcCustomers::create_bucket(RuntimeOrigin::signed(account_1), cluster_id));
+		assert_ok!(DdcCustomers::create_bucket(
+			RuntimeOrigin::signed(account_1),
+			cluster_id,
+			bucket_params.clone()
+		));
 
 		// Check storage
 		assert_eq!(DdcCustomers::buckets_count(), 1);
 		assert_eq!(
 			DdcCustomers::buckets(1),
-			Some(Bucket { bucket_id: 1, owner_id: account_1, cluster_id })
+			Some(Bucket {
+				bucket_id: 1,
+				owner_id: account_1,
+				cluster_id,
+				is_public: bucket_params.is_public
+			})
 		);
 
 		// Checking that event was emitted
@@ -37,12 +47,22 @@ fn create_two_buckets_works() {
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let account_1 = 1;
+		let bucket_1_params = BucketParams { is_public: false };
+		let bucket_2_params = BucketParams { is_public: true };
 
 		// Buckets created
-		assert_ok!(DdcCustomers::create_bucket(RuntimeOrigin::signed(account_1), cluster_id));
+		assert_ok!(DdcCustomers::create_bucket(
+			RuntimeOrigin::signed(account_1),
+			cluster_id,
+			bucket_1_params.clone()
+		));
 		assert_eq!(System::events().len(), 1);
 		System::assert_last_event(Event::BucketCreated(1u64).into());
-		assert_ok!(DdcCustomers::create_bucket(RuntimeOrigin::signed(account_1), cluster_id));
+		assert_ok!(DdcCustomers::create_bucket(
+			RuntimeOrigin::signed(account_1),
+			cluster_id,
+			bucket_2_params.clone()
+		));
 		assert_eq!(System::events().len(), 2);
 		System::assert_last_event(Event::BucketCreated(2u64).into());
 
@@ -50,11 +70,21 @@ fn create_two_buckets_works() {
 		assert_eq!(DdcCustomers::buckets_count(), 2);
 		assert_eq!(
 			DdcCustomers::buckets(1),
-			Some(Bucket { bucket_id: 1, owner_id: account_1, cluster_id })
+			Some(Bucket {
+				bucket_id: 1,
+				owner_id: account_1,
+				cluster_id,
+				is_public: bucket_1_params.is_public
+			})
 		);
 		assert_eq!(
 			DdcCustomers::buckets(2),
-			Some(Bucket { bucket_id: 2, owner_id: account_1, cluster_id })
+			Some(Bucket {
+				bucket_id: 2,
+				owner_id: account_1,
+				cluster_id,
+				is_public: bucket_2_params.is_public
+			})
 		);
 	})
 }
@@ -287,5 +317,93 @@ fn unlock_and_withdraw_deposit_works() {
 
 		// Check storage
 		assert_eq!(DdcCustomers::ledger(&account_1), None);
+	})
+}
+
+#[test]
+fn set_bucket_params_works() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let bucket_owner = 1;
+		let bucket_params = BucketParams { is_public: false };
+
+		// Bucket created
+		assert_ok!(DdcCustomers::create_bucket(
+			RuntimeOrigin::signed(bucket_owner),
+			cluster_id,
+			bucket_params
+		));
+
+		// Checking that event was emitted
+		assert_eq!(System::events().len(), 1);
+		System::assert_last_event(Event::BucketCreated(1u64).into());
+
+		let bucket_id = 1;
+		let update_bucket_params = BucketParams { is_public: true };
+		assert_ok!(DdcCustomers::set_bucket_params(
+			RuntimeOrigin::signed(bucket_owner),
+			bucket_id,
+			update_bucket_params.clone()
+		));
+
+		assert_eq!(DdcCustomers::buckets_count(), 1);
+		assert_eq!(
+			DdcCustomers::buckets(1),
+			Some(Bucket {
+				bucket_id,
+				owner_id: bucket_owner,
+				cluster_id,
+				is_public: update_bucket_params.is_public
+			})
+		);
+
+		// Checking that event was emitted
+		assert_eq!(System::events().len(), 2);
+		System::assert_last_event(Event::BucketUpdated(bucket_id).into());
+	})
+}
+
+#[test]
+fn set_bucket_params_checks_work() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let bucket_owner = 1;
+		let bucket_params = BucketParams { is_public: false };
+
+		// Bucket created
+		assert_ok!(DdcCustomers::create_bucket(
+			RuntimeOrigin::signed(bucket_owner),
+			cluster_id,
+			bucket_params
+		));
+
+		// Checking that event was emitted
+		assert_eq!(System::events().len(), 1);
+		System::assert_last_event(Event::BucketCreated(1u64).into());
+		let bucket_id = 1;
+
+		let non_existent_bucket_id = 2;
+		assert_noop!(
+			DdcCustomers::set_bucket_params(
+				RuntimeOrigin::signed(bucket_owner),
+				non_existent_bucket_id,
+				BucketParams { is_public: true }
+			),
+			Error::<Test>::NoBucketWithId
+		);
+
+		let not_bucket_owner_id = 2;
+		assert_noop!(
+			DdcCustomers::set_bucket_params(
+				RuntimeOrigin::signed(not_bucket_owner_id),
+				bucket_id,
+				BucketParams { is_public: true }
+			),
+			Error::<Test>::NotBucketOwner
+		);
 	})
 }
