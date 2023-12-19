@@ -61,9 +61,9 @@ fn create_default_cluster<T: Config>(cluster_id: ClusterId) {
 	let cluster_reserve = create_account::<T>("cr", 0, 0);
 	let cluster_params = ClusterParams { node_provider_auth_contract: Default::default() };
 	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
-		treasury_share: Perbill::from_percent(5),
-		validators_share: Perbill::from_percent(10),
-		cluster_reserve_share: Perbill::from_percent(15),
+		treasury_share: Perquintill::from_percent(5),
+		validators_share: Perquintill::from_percent(10),
+		cluster_reserve_share: Perquintill::from_percent(15),
 		unit_per_mb_stored: CERE,
 		unit_per_mb_streamed: CERE,
 		unit_per_put_request: CERE,

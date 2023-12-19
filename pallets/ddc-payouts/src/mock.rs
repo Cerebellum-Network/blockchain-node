@@ -13,9 +13,7 @@ use ddc_traits::{
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
-	construct_runtime,
-	dispatch::DispatchError,
-	parameter_types,
+	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
 	weights::constants::RocksDbWeight,
 	PalletId,
@@ -25,14 +23,15 @@ use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, Identity, IdentityLookup},
+	DispatchError, Perquintill,
 };
 use sp_std::prelude::*;
 
 use crate::{self as pallet_ddc_payouts, *};
 
 /// The AccountId alias in this test module.
-pub type AccountId = u64;
+pub type AccountId = u128;
 pub(crate) type AccountIndex = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
@@ -50,9 +49,11 @@ construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		DdcPayouts: pallet_ddc_payouts::{Pallet, Call, Storage, Event<T>},
+		DdcPayouts: pallet_ddc_payouts::{Pallet, Call, Storage, Config<T>, Event<T>},
 	}
 );
+
+pub static MAX_DUST: u16 = 100;
 
 parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
@@ -109,8 +110,10 @@ impl crate::pallet::Config for Test {
 	type CustomerDepositor = TestCustomerDepositor;
 	type ClusterVisitor = TestClusterVisitor;
 	type TreasuryVisitor = TestTreasuryVisitor;
-	type ValidatorList = TestValidatorVisitor<Self>;
+	type NominatorsAndValidatorsList = TestValidatorVisitor<Self>;
 	type ClusterCreator = TestClusterCreator;
+
+	type VoteScoreToU64 = Identity;
 	type WeightInfo = ();
 }
 
@@ -121,10 +124,28 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		billing_vault: T::AccountId,
 		amount: u128,
 	) -> Result<u128, DispatchError> {
-		ensure!(amount > 1_000_000, DispatchError::BadOrigin); //  any error will do
-
 		let mut amount_to_charge = amount;
-		if amount_to_charge < 50_000_000 {
+		let mut temp = ACCOUNT_ID_1.to_ne_bytes();
+		let account_1 = T::AccountId::decode(&mut &temp[..]).unwrap();
+		temp = ACCOUNT_ID_2.to_ne_bytes();
+		let account_2 = T::AccountId::decode(&mut &temp[..]).unwrap();
+		temp = ACCOUNT_ID_3.to_ne_bytes();
+		let account_3 = T::AccountId::decode(&mut &temp[..]).unwrap();
+		temp = ACCOUNT_ID_4.to_ne_bytes();
+		let account_4 = T::AccountId::decode(&mut &temp[..]).unwrap();
+		temp = ACCOUNT_ID_5.to_ne_bytes();
+		let account_5 = T::AccountId::decode(&mut &temp[..]).unwrap();
+
+		if content_owner == account_1 ||
+			content_owner == account_2 ||
+			content_owner == account_3 ||
+			content_owner == account_4 ||
+			content_owner == account_5
+		{
+			ensure!(amount > 1_000_000, DispatchError::BadOrigin); //  any error will do
+		}
+
+		if amount_to_charge < 50_000_000 && content_owner == account_3 {
 			amount_to_charge = PARTIAL_CHARGE; // for user 3
 		}
 
@@ -140,6 +161,11 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 	}
 }
 
+pub const ACCOUNT_ID_1: AccountId = 1;
+pub const ACCOUNT_ID_2: AccountId = 2;
+pub const ACCOUNT_ID_3: AccountId = 3;
+pub const ACCOUNT_ID_4: AccountId = 4;
+pub const ACCOUNT_ID_5: AccountId = 5;
 pub struct TestClusterCreator;
 impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 	fn create_new_cluster(
@@ -168,10 +194,16 @@ pub const TREASURY_ACCOUNT_ID: AccountId = 888;
 pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
 pub const VALIDATOR2_ACCOUNT_ID: AccountId = 222;
 pub const VALIDATOR3_ACCOUNT_ID: AccountId = 333;
+
+pub const VALIDATOR1_SCORE: u64 = 30;
+pub const VALIDATOR2_SCORE: u64 = 45;
+pub const VALIDATOR3_SCORE: u64 = 25;
+
 pub const PARTIAL_CHARGE: u128 = 100;
 pub const USER3_BALANCE: u128 = 1000;
 
 pub const FREE_CLUSTER_ID: ClusterId = ClusterId::zero();
+pub const ONE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(5u8);
 
 pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_streamed: 2_000_000,
@@ -180,16 +212,23 @@ pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_get_request: 5_000_000,
 };
 
+pub const PRICING_PARAMS_ONE: ClusterPricingParams = ClusterPricingParams {
+	unit_per_mb_streamed: 10_000_000_000,
+	unit_per_mb_stored: 10_000_000_000,
+	unit_per_put_request: 10_000_000_000,
+	unit_per_get_request: 10_000_000_000,
+};
+
 pub const PRICING_FEES: ClusterFeesParams = ClusterFeesParams {
-	treasury_share: Perbill::from_percent(1),
-	validators_share: Perbill::from_percent(10),
-	cluster_reserve_share: Perbill::from_percent(2),
+	treasury_share: Perquintill::from_percent(1),
+	validators_share: Perquintill::from_percent(10),
+	cluster_reserve_share: Perquintill::from_percent(2),
 };
 
 pub const PRICING_FEES_ZERO: ClusterFeesParams = ClusterFeesParams {
-	treasury_share: Perbill::from_percent(0),
-	validators_share: Perbill::from_percent(0),
-	cluster_reserve_share: Perbill::from_percent(0),
+	treasury_share: Perquintill::from_percent(0),
+	validators_share: Perquintill::from_percent(0),
+	cluster_reserve_share: Perquintill::from_percent(0),
 };
 
 pub struct TestTreasuryVisitor;
@@ -200,7 +239,7 @@ impl<T: frame_system::Config> PalletVisitor<T> for TestTreasuryVisitor {
 	}
 }
 
-fn create_account_id_from_u64<T: frame_system::Config>(id: u64) -> T::AccountId {
+fn create_account_id_from_u128<T: frame_system::Config>(id: u128) -> T::AccountId {
 	let bytes = id.to_ne_bytes();
 	T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
@@ -214,9 +253,9 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 	fn iter() -> Box<dyn Iterator<Item = T::AccountId>> {
 		Box::new(
 			vec![
-				create_account_id_from_u64::<T>(VALIDATOR1_ACCOUNT_ID),
-				create_account_id_from_u64::<T>(VALIDATOR2_ACCOUNT_ID),
-				create_account_id_from_u64::<T>(VALIDATOR3_ACCOUNT_ID),
+				create_account_id_from_u128::<T>(VALIDATOR1_ACCOUNT_ID),
+				create_account_id_from_u128::<T>(VALIDATOR2_ACCOUNT_ID),
+				create_account_id_from_u128::<T>(VALIDATOR3_ACCOUNT_ID),
 			]
 			.into_iter(),
 		)
@@ -236,8 +275,14 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 		// nothing to do on insert.
 		Ok(())
 	}
-	fn get_score(_id: &T::AccountId) -> Result<Self::Score, Self::Error> {
-		unimplemented!()
+	fn get_score(validator_id: &T::AccountId) -> Result<Self::Score, Self::Error> {
+		if *validator_id == create_account_id_from_u128::<T>(VALIDATOR1_ACCOUNT_ID) {
+			Ok(VALIDATOR1_SCORE)
+		} else if *validator_id == create_account_id_from_u128::<T>(VALIDATOR2_ACCOUNT_ID) {
+			Ok(VALIDATOR2_SCORE)
+		} else {
+			Ok(VALIDATOR3_SCORE)
+		}
 	}
 	fn on_update(_: &T::AccountId, _weight: Self::Score) -> Result<(), Self::Error> {
 		// nothing to do on update.
@@ -269,11 +314,19 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 	}
 }
 
-pub fn get_fees(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
-	if *cluster_id == FREE_CLUSTER_ID {
-		Ok(PRICING_FEES_ZERO)
+pub fn get_fees(cluster_id: &ClusterId) -> ClusterFeesParams {
+	if *cluster_id == FREE_CLUSTER_ID || *cluster_id == ONE_CLUSTER_ID {
+		PRICING_FEES_ZERO
 	} else {
-		Ok(PRICING_FEES)
+		PRICING_FEES
+	}
+}
+
+pub fn get_pricing(cluster_id: &ClusterId) -> ClusterPricingParams {
+	if *cluster_id == FREE_CLUSTER_ID || *cluster_id == ONE_CLUSTER_ID {
+		PRICING_PARAMS_ONE
+	} else {
+		PRICING_PARAMS
 	}
 }
 
@@ -302,13 +355,13 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	}
 
 	fn get_pricing_params(
-		_cluster_id: &ClusterId,
+		cluster_id: &ClusterId,
 	) -> Result<ClusterPricingParams, ClusterVisitorError> {
-		Ok(PRICING_PARAMS)
+		Ok(get_pricing(cluster_id))
 	}
 
 	fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
-		get_fees(cluster_id)
+		Ok(get_fees(cluster_id))
 	}
 
 	fn get_reserve_account_id(
@@ -334,15 +387,19 @@ impl ExtBuilder {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
-		let _ = pallet_balances::GenesisConfig::<Test> {
+		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
-				(1, 1000000000000000000000000),
+				(1, 10000000000000000000000000000),
 				(2, 10),            // < PARTIAL_CHARGE
 				(3, USER3_BALANCE), // > PARTIAL_CHARGE
 				(4, 1000000000000000000000000),
+				(5, 1000000000000000000000000),
 			],
 		}
 		.assimilate_storage(&mut storage);
+
+		let _payout_genesis = pallet_ddc_payouts::GenesisConfig::<Test> { feeder_account: None }
+			.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}
