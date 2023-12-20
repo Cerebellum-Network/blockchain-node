@@ -233,6 +233,16 @@
             ]
           ]
         ]
+      },
+      "ddcPayouts": {
+        "authorisedCaller": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+        "debtorCustomers": [
+          [
+            "0x0000000000000000000000000000000000000001",
+            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            10000000000
+          ]
+        ]
       }
     }
   }
