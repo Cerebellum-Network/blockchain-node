@@ -53,8 +53,8 @@ type BatchIndex = u16;
 pub struct CustomerUsage {
 	pub transferred_bytes: u64,
 	pub stored_bytes: u64,
-	pub number_of_puts: u128,
-	pub number_of_gets: u128,
+	pub number_of_puts: u64,
+	pub number_of_gets: u64,
 }
 
 /// Stores usage of node provider
@@ -62,8 +62,8 @@ pub struct CustomerUsage {
 pub struct NodeUsage {
 	pub transferred_bytes: u64,
 	pub stored_bytes: u64,
-	pub number_of_puts: u128,
-	pub number_of_gets: u128,
+	pub number_of_puts: u64,
+	pub number_of_gets: u64,
 }
 
 /// Stores reward in tokens(units) of node provider as per NodeUsage
@@ -951,13 +951,11 @@ pub mod pallet {
 		})()
 		.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-		total.gets = usage
-			.number_of_gets
+		total.gets = (usage.number_of_gets as u128)
 			.checked_mul(pricing.unit_per_get_request)
 			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-		total.puts = usage
-			.number_of_puts
+		total.puts = (usage.number_of_puts as u128)
 			.checked_mul(pricing.unit_per_put_request)
 			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
