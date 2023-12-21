@@ -58,13 +58,13 @@ fn create_cluster_works() {
 			cluster_gov_params.clone()
 		));
 
-		let created_cluster = DdcClusters::clusters(&cluster_id).unwrap();
+		let created_cluster = DdcClusters::clusters(cluster_id).unwrap();
 		assert_eq!(created_cluster.cluster_id, cluster_id);
 		assert_eq!(created_cluster.manager_id, cluster_manager_id);
 		assert_eq!(created_cluster.reserve_id, cluster_reserve_id);
 		assert_eq!(created_cluster.props.node_provider_auth_contract, Some(auth_contract.clone()));
 
-		let created_cluster_gov_params = DdcClusters::clusters_gov_params(&cluster_id).unwrap();
+		let created_cluster_gov_params = DdcClusters::clusters_gov_params(cluster_id).unwrap();
 		assert_eq!(created_cluster_gov_params.treasury_share, cluster_gov_params.treasury_share);
 		assert_eq!(
 			created_cluster_gov_params.validators_share,
@@ -402,7 +402,7 @@ fn set_cluster_params_works() {
 			ClusterParams { node_provider_auth_contract: Some(auth_contract_2.clone()) },
 		));
 
-		let updated_cluster = DdcClusters::clusters(&cluster_id).unwrap();
+		let updated_cluster = DdcClusters::clusters(cluster_id).unwrap();
 		assert_eq!(updated_cluster.props.node_provider_auth_contract, Some(auth_contract_2));
 
 		// Checking that event was emitted
@@ -457,7 +457,7 @@ fn set_cluster_gov_params_works() {
 			DdcClusters::set_cluster_gov_params(
 				RuntimeOrigin::signed(cluster_manager_id),
 				cluster_id,
-				cluster_gov_params.clone()
+				cluster_gov_params
 			),
 			BadOrigin
 		);
@@ -481,7 +481,7 @@ fn set_cluster_gov_params_works() {
 			updated_gov_params.clone()
 		));
 
-		let updated_cluster_gov_params = DdcClusters::clusters_gov_params(&cluster_id).unwrap();
+		let updated_cluster_gov_params = DdcClusters::clusters_gov_params(cluster_id).unwrap();
 		assert_eq!(updated_cluster_gov_params.treasury_share, updated_gov_params.treasury_share);
 		assert_eq!(
 			updated_cluster_gov_params.validators_share,
