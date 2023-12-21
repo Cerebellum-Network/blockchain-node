@@ -310,33 +310,6 @@ pub mod pallet {
 		Finalized = 7,
 	}
 
-	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
-		pub authorised_caller: Option<T::AccountId>,
-		pub debtor_customers: Vec<(ClusterId, T::AccountId, u128)>,
-	}
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				authorised_caller: Default::default(),
-				debtor_customers: Default::default(),
-			}
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-		fn build(&self) {
-			AuthorisedCaller::<T>::set(self.authorised_caller.clone());
-
-			for (cluster_id, customer_id, debt) in &self.debtor_customers {
-				DebtorCustomers::<T>::insert(cluster_id, customer_id, debt);
-			}
-		}
-	}
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::set_authorised_caller())]
@@ -1010,12 +983,18 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub feeder_account: Option<T::AccountId>,
+		pub authorised_caller: Option<T::AccountId>,
+		pub debtor_customers: Vec<(ClusterId, T::AccountId, u128)>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			GenesisConfig { feeder_account: None }
+			GenesisConfig {
+				feeder_account: None,
+				authorised_caller: Default::default(),
+				debtor_customers: Default::default(),
+			}
 		}
 	}
 
@@ -1036,6 +1015,11 @@ pub mod pallet {
 				} else {
 					let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
 				}
+			}
+
+			AuthorisedCaller::<T>::set(self.authorised_caller.clone());
+			for (cluster_id, customer_id, debt) in &self.debtor_customers {
+				DebtorCustomers::<T>::insert(cluster_id, customer_id, debt);
 			}
 		}
 	}

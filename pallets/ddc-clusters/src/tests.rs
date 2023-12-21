@@ -461,10 +461,10 @@ fn set_cluster_gov_params_works() {
 			BadOrigin
 		);
 
-		let updated_gov_params = ClusterGovParams {
-			treasury_share: Perbill::from_float(0.06),
-			validators_share: Perbill::from_float(0.02),
-			cluster_reserve_share: Perbill::from_float(0.03),
+		let updated_gov_params: ClusterGovParams<u128, u64> = ClusterGovParams {
+			treasury_share: Perquintill::from_float(0.06),
+			validators_share: Perquintill::from_float(0.02),
+			cluster_reserve_share: Perquintill::from_float(0.03),
 			storage_bond_size: 1000,
 			storage_chill_delay: 500,
 			storage_unbonding_delay: 500,
