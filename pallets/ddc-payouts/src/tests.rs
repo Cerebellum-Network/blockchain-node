@@ -2260,10 +2260,10 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		let min: u64 = 1024;
 		let max: u64 = 1024 * 1024;
 		let num_nodes = 100;
-		let num_users = 5;
+		let num_users = 100;
 		let dac_account = 123u128;
 		let bank = 1u128;
-		let cluster_id = ONE_CLUSTER_ID;
+		let cluster_id = CERE_CLUSTER_ID;
 		let era = 100;
 		let user_batch_size = 10;
 		let node_batch_size = 10;
