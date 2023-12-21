@@ -58,6 +58,51 @@ fn create_cluster_works() {
 			cluster_gov_params.clone()
 		));
 
+		let created_cluster = DdcClusters::clusters(cluster_id).unwrap();
+		assert_eq!(created_cluster.cluster_id, cluster_id);
+		assert_eq!(created_cluster.manager_id, cluster_manager_id);
+		assert_eq!(created_cluster.reserve_id, cluster_reserve_id);
+		assert_eq!(created_cluster.props.node_provider_auth_contract, Some(auth_contract.clone()));
+
+		let created_cluster_gov_params = DdcClusters::clusters_gov_params(cluster_id).unwrap();
+		assert_eq!(created_cluster_gov_params.treasury_share, cluster_gov_params.treasury_share);
+		assert_eq!(
+			created_cluster_gov_params.validators_share,
+			cluster_gov_params.validators_share
+		);
+		assert_eq!(
+			created_cluster_gov_params.cluster_reserve_share,
+			cluster_gov_params.cluster_reserve_share
+		);
+		assert_eq!(
+			created_cluster_gov_params.storage_bond_size,
+			cluster_gov_params.storage_bond_size
+		);
+		assert_eq!(
+			created_cluster_gov_params.storage_chill_delay,
+			cluster_gov_params.storage_chill_delay
+		);
+		assert_eq!(
+			created_cluster_gov_params.storage_unbonding_delay,
+			cluster_gov_params.storage_unbonding_delay
+		);
+		assert_eq!(
+			created_cluster_gov_params.unit_per_mb_stored,
+			cluster_gov_params.unit_per_mb_stored
+		);
+		assert_eq!(
+			created_cluster_gov_params.unit_per_mb_streamed,
+			cluster_gov_params.unit_per_mb_streamed
+		);
+		assert_eq!(
+			created_cluster_gov_params.unit_per_put_request,
+			cluster_gov_params.unit_per_put_request
+		);
+		assert_eq!(
+			created_cluster_gov_params.unit_per_get_request,
+			cluster_gov_params.unit_per_get_request
+		);
+
 		// Creating cluster with same id should fail
 		assert_noop!(
 			DdcClusters::create_cluster(
@@ -144,7 +189,9 @@ fn add_and_delete_node_works() {
 
 		let storage_node_params = StorageNodeParams {
 			mode: StorageNodeMode::Storage,
-			host: vec![1u8, 255],
+			host: vec![1u8; 255],
+			domain: vec![2u8; 255],
+			ssl: true,
 			http_port: 35000u16,
 			grpc_port: 25000u16,
 			p2p_port: 15000u16,
@@ -352,8 +399,11 @@ fn set_cluster_params_works() {
 		assert_ok!(DdcClusters::set_cluster_params(
 			RuntimeOrigin::signed(cluster_manager_id),
 			cluster_id,
-			ClusterParams { node_provider_auth_contract: Some(auth_contract_2) },
+			ClusterParams { node_provider_auth_contract: Some(auth_contract_2.clone()) },
 		));
+
+		let updated_cluster = DdcClusters::clusters(cluster_id).unwrap();
+		assert_eq!(updated_cluster.props.node_provider_auth_contract, Some(auth_contract_2));
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 2);
@@ -407,16 +457,68 @@ fn set_cluster_gov_params_works() {
 			DdcClusters::set_cluster_gov_params(
 				RuntimeOrigin::signed(cluster_manager_id),
 				cluster_id,
-				cluster_gov_params.clone()
+				cluster_gov_params
 			),
 			BadOrigin
 		);
 
+		let updated_gov_params = ClusterGovParams {
+			treasury_share: Perbill::from_float(0.06),
+			validators_share: Perbill::from_float(0.02),
+			cluster_reserve_share: Perbill::from_float(0.03),
+			storage_bond_size: 1000,
+			storage_chill_delay: 500,
+			storage_unbonding_delay: 500,
+			unit_per_mb_stored: 100,
+			unit_per_mb_streamed: 100,
+			unit_per_put_request: 100,
+			unit_per_get_request: 100,
+		};
+
 		assert_ok!(DdcClusters::set_cluster_gov_params(
 			RuntimeOrigin::root(),
 			cluster_id,
-			cluster_gov_params
+			updated_gov_params.clone()
 		));
+
+		let updated_cluster_gov_params = DdcClusters::clusters_gov_params(cluster_id).unwrap();
+		assert_eq!(updated_cluster_gov_params.treasury_share, updated_gov_params.treasury_share);
+		assert_eq!(
+			updated_cluster_gov_params.validators_share,
+			updated_gov_params.validators_share
+		);
+		assert_eq!(
+			updated_cluster_gov_params.cluster_reserve_share,
+			updated_gov_params.cluster_reserve_share
+		);
+		assert_eq!(
+			updated_cluster_gov_params.storage_bond_size,
+			updated_gov_params.storage_bond_size
+		);
+		assert_eq!(
+			updated_cluster_gov_params.storage_chill_delay,
+			updated_gov_params.storage_chill_delay
+		);
+		assert_eq!(
+			updated_cluster_gov_params.storage_unbonding_delay,
+			updated_gov_params.storage_unbonding_delay
+		);
+		assert_eq!(
+			updated_cluster_gov_params.unit_per_mb_stored,
+			updated_gov_params.unit_per_mb_stored
+		);
+		assert_eq!(
+			updated_cluster_gov_params.unit_per_mb_streamed,
+			updated_gov_params.unit_per_mb_streamed
+		);
+		assert_eq!(
+			updated_cluster_gov_params.unit_per_put_request,
+			updated_gov_params.unit_per_put_request
+		);
+		assert_eq!(
+			updated_cluster_gov_params.unit_per_get_request,
+			updated_gov_params.unit_per_get_request
+		);
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 2);
