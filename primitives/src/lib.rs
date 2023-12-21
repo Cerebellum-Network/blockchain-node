@@ -100,6 +100,8 @@ pub enum StorageNodeMode {
 pub struct StorageNodeParams {
 	pub mode: StorageNodeMode,
 	pub host: Vec<u8>,
+	pub domain: Vec<u8>,
+	pub ssl: bool,
 	pub http_port: u16,
 	pub grpc_port: u16,
 	pub p2p_port: u16,

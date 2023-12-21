@@ -187,6 +187,8 @@
                 46,
                 49
               ],
+              "domain": [],
+              "ssl": false,
               "http_port": 8080,
               "grpc_port": 8081,
               "p2p_port": 8082,
