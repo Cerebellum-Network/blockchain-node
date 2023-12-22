@@ -55,7 +55,9 @@ where
 	let cluster_params = ClusterParams { node_provider_auth_contract: Some(user.clone()) };
 	let storage_node_params = StorageNodeParams {
 		mode: StorageNodeMode::Storage,
-		host: vec![1u8, 255],
+		host: vec![1u8; 255],
+		domain: vec![2u8; 255],
+		ssl: true,
 		http_port: 35000u16,
 		grpc_port: 25000u16,
 		p2p_port: 15000u16,
