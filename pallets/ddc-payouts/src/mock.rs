@@ -5,7 +5,7 @@
 use crate::{self as pallet_ddc_payouts, *};
 use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	NodeType,
+	NodeType, DOLLARS,
 };
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
@@ -16,7 +16,7 @@ use frame_election_provider_support::SortedListProvider;
 
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU32, ConstU64, Everything},
+	traits::{ConstU32, ConstU64, Everything, Randomness},
 	weights::constants::RocksDbWeight,
 	PalletId,
 };
@@ -57,6 +57,21 @@ pub static MAX_DUST: u16 = 100;
 
 parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
+}
+
+#[derive(Default, Clone)]
+pub struct MockRandomness(H256);
+
+impl Randomness<H256, BlockNumber> for MockRandomness {
+	fn random(subject: &[u8]) -> (H256, BlockNumber) {
+		let (mut r, b) = Self::random_seed();
+		r.as_mut()[0..subject.len()].copy_from_slice(subject);
+		(r, b)
+	}
+
+	fn random_seed() -> (H256, BlockNumber) {
+		(H256::default(), BlockNumber::default())
+	}
 }
 
 impl frame_system::Config for Test {
@@ -204,6 +219,7 @@ pub const USER3_BALANCE: u128 = 1000;
 
 pub const FREE_CLUSTER_ID: ClusterId = ClusterId::zero();
 pub const ONE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(5u8);
+pub const CERE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(10u8);
 
 pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_streamed: 2_000_000,
@@ -217,6 +233,13 @@ pub const PRICING_PARAMS_ONE: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_stored: 10_000_000_000,
 	unit_per_put_request: 10_000_000_000,
 	unit_per_get_request: 10_000_000_000,
+};
+
+pub const PRICING_PARAMS_CERE: ClusterPricingParams = ClusterPricingParams {
+	unit_per_mb_streamed: DOLLARS,
+	unit_per_mb_stored: DOLLARS,
+	unit_per_put_request: DOLLARS,
+	unit_per_get_request: DOLLARS,
 };
 
 pub const PRICING_FEES: ClusterFeesParams = ClusterFeesParams {
@@ -315,7 +338,10 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 }
 
 pub fn get_fees(cluster_id: &ClusterId) -> ClusterFeesParams {
-	if *cluster_id == FREE_CLUSTER_ID || *cluster_id == ONE_CLUSTER_ID {
+	if *cluster_id == FREE_CLUSTER_ID ||
+		*cluster_id == ONE_CLUSTER_ID ||
+		*cluster_id == CERE_CLUSTER_ID
+	{
 		PRICING_FEES_ZERO
 	} else {
 		PRICING_FEES
@@ -325,6 +351,8 @@ pub fn get_fees(cluster_id: &ClusterId) -> ClusterFeesParams {
 pub fn get_pricing(cluster_id: &ClusterId) -> ClusterPricingParams {
 	if *cluster_id == FREE_CLUSTER_ID || *cluster_id == ONE_CLUSTER_ID {
 		PRICING_PARAMS_ONE
+	} else if *cluster_id == CERE_CLUSTER_ID {
+		PRICING_PARAMS_CERE
 	} else {
 		PRICING_PARAMS
 	}
