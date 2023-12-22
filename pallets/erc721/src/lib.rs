@@ -4,10 +4,13 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
+	dispatch::DispatchResult,
+	ensure,
+	pallet_prelude::{ValueQuery, *},
 	traits::Get,
 };
-use frame_system::{self as system, ensure_root, ensure_signed};
+use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
+pub use pallet::*;
 use sp_core::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
@@ -23,17 +26,47 @@ pub struct Erc721Token {
 	pub metadata: Vec<u8>,
 }
 
-pub trait Config: system::Config {
-	type RuntimeEvent: From<Event<Self>> + Into<<Self as system::Config>::RuntimeEvent>;
+#[frame_support::pallet]
+pub mod pallet {
+	use super::*;
 
-	/// Some identifier for this token type, possibly the originating ethereum address.
-	/// This is not explicitly used for anything, but may reflect the bridge's notion of resource
-	/// ID.
-	type Identifier: Get<[u8; 32]>;
-}
+	#[pallet::pallet]
+	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::without_storage_info]
+	pub struct Pallet<T>(_);
 
-decl_error! {
-	pub enum Error for Module<T: Config> {
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		/// Some identifier for this token type, possibly the originating ethereum address.
+		/// This is not explicitly used for anything, but may reflect the bridge's notion of
+		/// resource ID.
+		type Identifier: Get<[u8; 32]>;
+	}
+
+	/// Maps tokenId to Erc721 object
+	#[pallet::storage]
+	#[pallet::getter(fn tokens)]
+	pub type Tokens<T: Config> = StorageMap<_, Blake2_128Concat, TokenId, Erc721Token>;
+
+	/// Maps tokenId to owner
+	#[pallet::storage]
+	#[pallet::getter(fn owner_of)]
+	pub type TokenOwner<T: Config> = StorageMap<_, Blake2_128Concat, TokenId, T::AccountId>;
+
+	#[pallet::type_value]
+	pub fn DefaultTokenCount<T: Config>() -> U256 {
+		U256::zero()
+	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn token_count)]
+	pub type TokenCount<T: Config> =
+		StorageValue<Value = U256, QueryKind = ValueQuery, OnEmpty = DefaultTokenCount<T>>;
+
+	#[pallet::error]
+	pub enum Error<T> {
 		/// ID not recognized
 		TokenIdDoesNotExist,
 		/// Already exists with an owner
@@ -41,41 +74,29 @@ decl_error! {
 		/// Origin is not owner
 		NotOwner,
 	}
-}
 
-decl_storage! {
-	trait Store for Module<T: Config> as TokenStorage {
-		/// Maps tokenId to Erc721 object
-		Tokens get(fn tokens): map hasher(opaque_blake2_256) TokenId => Option<Erc721Token>;
-		/// Maps tokenId to owner
-		TokenOwner get(fn owner_of): map hasher(opaque_blake2_256) TokenId => Option<T::AccountId>;
-		/// Total number of tokens in existence
-		TokenCount get(fn token_count): U256 = U256::zero();
-	}
-}
-
-decl_event!(
-	pub enum Event<T>
-	where
-		<T as system::Config>::AccountId,
-	{
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
+	pub enum Event<T: Config> {
 		/// New token created
-		Minted(AccountId, TokenId),
+		Minted(T::AccountId, TokenId),
 		/// Token transfer between two parties
-		Transferred(AccountId, AccountId, TokenId),
+		Transferred(T::AccountId, T::AccountId, TokenId),
 		/// Token removed from the system
 		Burned(TokenId),
 	}
-);
 
-decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::RuntimeOrigin {
-		type Error = Error<T>;
-		fn deposit_event() = default;
-
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
 		/// Creates a new token with the given token ID and metadata, and gives ownership to owner
-		#[weight = 195_000_000]
-		pub fn mint(origin, owner: T::AccountId, id: TokenId, metadata: Vec<u8>) -> DispatchResult {
+		#[pallet::call_index(0)]
+		#[pallet::weight(195_000_000)]
+		pub fn mint(
+			origin: OriginFor<T>,
+			owner: T::AccountId,
+			id: TokenId,
+			metadata: Vec<u8>,
+		) -> DispatchResult {
 			ensure_root(origin)?;
 
 			Self::mint_token(owner, id, metadata)?;
@@ -84,8 +105,9 @@ decl_module! {
 		}
 
 		/// Changes ownership of a token sender owns
-		#[weight = 195_000_000]
-		pub fn transfer(origin, to: T::AccountId, id: TokenId) -> DispatchResult {
+		#[pallet::call_index(1)]
+		#[pallet::weight(195_000_000)]
+		pub fn transfer(origin: OriginFor<T>, to: T::AccountId, id: TokenId) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			Self::transfer_from(sender, to, id)?;
@@ -94,8 +116,9 @@ decl_module! {
 		}
 
 		/// Remove token from the system
-		#[weight = 195_000_000]
-		pub fn burn(origin, id: TokenId) -> DispatchResult {
+		#[pallet::call_index(2)]
+		#[pallet::weight(195_000_000)]
+		pub fn burn(origin: OriginFor<T>, id: TokenId) -> DispatchResult {
 			ensure_root(origin)?;
 
 			let owner = Self::owner_of(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
@@ -105,50 +128,50 @@ decl_module! {
 			Ok(())
 		}
 	}
-}
 
-impl<T: Config> Module<T> {
-	/// Creates a new token in the system.
-	pub fn mint_token(owner: T::AccountId, id: TokenId, metadata: Vec<u8>) -> DispatchResult {
-		ensure!(!Tokens::contains_key(id), Error::<T>::TokenAlreadyExists);
+	impl<T: Config> Pallet<T> {
+		/// Creates a new token in the system.
+		pub fn mint_token(owner: T::AccountId, id: TokenId, metadata: Vec<u8>) -> DispatchResult {
+			ensure!(!Tokens::<T>::contains_key(id), Error::<T>::TokenAlreadyExists);
 
-		let new_token = Erc721Token { id, metadata };
+			let new_token = Erc721Token { id, metadata };
 
-		<Tokens>::insert(id, new_token);
-		<TokenOwner<T>>::insert(id, owner.clone());
-		let new_total = <TokenCount>::get().saturating_add(U256::one());
-		<TokenCount>::put(new_total);
+			<Tokens<T>>::insert(id, new_token);
+			<TokenOwner<T>>::insert(id, owner.clone());
+			let new_total = <TokenCount<T>>::get().saturating_add(U256::one());
+			<TokenCount<T>>::put(new_total);
 
-		Self::deposit_event(RawEvent::Minted(owner, id));
+			Self::deposit_event(Event::Minted(owner, id));
 
-		Ok(())
-	}
+			Ok(())
+		}
 
-	/// Modifies ownership of a token
-	pub fn transfer_from(from: T::AccountId, to: T::AccountId, id: TokenId) -> DispatchResult {
-		// Check from is owner and token exists
-		let owner = Self::owner_of(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
-		ensure!(owner == from, Error::<T>::NotOwner);
-		// Update owner
-		<TokenOwner<T>>::insert(id, to.clone());
+		/// Modifies ownership of a token
+		pub fn transfer_from(from: T::AccountId, to: T::AccountId, id: TokenId) -> DispatchResult {
+			// Check from is owner and token exists
+			let owner = Self::owner_of(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
+			ensure!(owner == from, Error::<T>::NotOwner);
+			// Update owner
+			<TokenOwner<T>>::insert(id, to.clone());
 
-		Self::deposit_event(RawEvent::Transferred(from, to, id));
+			Self::deposit_event(Event::Transferred(from, to, id));
 
-		Ok(())
-	}
+			Ok(())
+		}
 
-	/// Deletes a token from the system.
-	pub fn burn_token(from: T::AccountId, id: TokenId) -> DispatchResult {
-		let owner = Self::owner_of(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
-		ensure!(owner == from, Error::<T>::NotOwner);
+		/// Deletes a token from the system.
+		pub fn burn_token(from: T::AccountId, id: TokenId) -> DispatchResult {
+			let owner = Self::owner_of(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
+			ensure!(owner == from, Error::<T>::NotOwner);
 
-		<Tokens>::remove(id);
-		<TokenOwner<T>>::remove(id);
-		let new_total = <TokenCount>::get().saturating_sub(U256::one());
-		<TokenCount>::put(new_total);
+			<Tokens<T>>::remove(id);
+			<TokenOwner<T>>::remove(id);
+			let new_total = <TokenCount<T>>::get().saturating_sub(U256::one());
+			<TokenCount<T>>::put(new_total);
 
-		Self::deposit_event(RawEvent::Burned(id));
+			Self::deposit_event(Event::Burned(id));
 
-		Ok(())
+			Ok(())
+		}
 	}
 }
