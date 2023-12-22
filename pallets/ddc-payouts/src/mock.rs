@@ -398,8 +398,12 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut storage);
 
-		let _payout_genesis = pallet_ddc_payouts::GenesisConfig::<Test> { feeder_account: None }
-			.assimilate_storage(&mut storage);
+		let _payout_genesis = pallet_ddc_payouts::GenesisConfig::<Test> {
+			feeder_account: None,
+			debtor_customers: Default::default(),
+			authorised_caller: None,
+		}
+		.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}
