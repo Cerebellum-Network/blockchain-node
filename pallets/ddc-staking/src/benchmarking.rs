@@ -27,7 +27,9 @@ benchmarks! {
 			stash.clone(),
 			NodeParams::StorageParams(StorageNodeParams {
 				mode: StorageNodeMode::Storage,
-				host: vec![1u8, 255],
+				host: vec![1u8; 255],
+				domain: vec![2u8; 256],
+				ssl: true,
 				http_port: 35000u16,
 				grpc_port: 25000u16,
 				p2p_port: 15000u16,

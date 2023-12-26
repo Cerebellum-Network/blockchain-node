@@ -37,9 +37,6 @@ sp-transaction-pool = { default-features = false, git = "https://github.com/pari
 sp-version = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 
 # frame dependencies
-cere-dev-runtime-constants = { path = "./constants", default-features = false }
-cere-runtime-common = { path = "../common", default-features = false }
-ddc-traits = { version = "0.1.0", default-features = false, path = "../../traits" }
 frame-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", optional = true }
 frame-election-provider-support = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 frame-executive = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
@@ -59,17 +56,10 @@ pallet-child-bounties = { default-features = false, git = "https://github.com/pa
 pallet-collective = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-contracts = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-contracts-primitives = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-ddc-clusters = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-clusters" }
-pallet-ddc-customers = { version = "0.1.0", default-features = false, path = "../../pallets/ddc-customers" }
-pallet-ddc-nodes = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-nodes" }
-pallet-ddc-payouts = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-payouts" }
-pallet-ddc-staking = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-staking" }
 pallet-democracy = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-election-provider-multi-phase = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-election-provider-support-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", optional = true }
 pallet-elections-phragmen = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-erc20 = { version = "4.8.2", default-features = false, path = "../../pallets/erc20" }
-pallet-erc721 = { version = "4.8.2", default-features = false, path = "../../pallets/erc721" }
 pallet-fast-unstake = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.31" }
 pallet-grandpa = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-identity = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
@@ -99,6 +89,18 @@ pallet-transaction-payment-rpc-runtime-api = { default-features = false, git = "
 pallet-treasury = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-utility = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-vesting = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
+
+# cere dependencies
+cere-dev-runtime-constants = { path = "./constants", default-features = false }
+cere-runtime-common = { path = "../common", default-features = false }
+ddc-traits = { version = "0.1.0", default-features = false, path = "../../traits" }
+pallet-ddc-clusters = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-clusters" }
+pallet-ddc-customers = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-customers" }
+pallet-ddc-nodes = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-nodes" }
+pallet-ddc-payouts = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-payouts" }
+pallet-ddc-staking = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-staking" }
+pallet-erc20 = { version = "4.8.2", default-features = false, path = "../../pallets/erc20" }
+pallet-erc721 = { version = "4.8.2", default-features = false, path = "../../pallets/erc721" }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
@@ -177,7 +179,6 @@ std = [
   "cere-runtime-common/std",
   "cere-dev-runtime-constants/std",
   "pallet-ddc-customers/std",
-  "pallet-ddc-nodes/std",
   "pallet-ddc-clusters/std",
 ]
 runtime-benchmarks = [

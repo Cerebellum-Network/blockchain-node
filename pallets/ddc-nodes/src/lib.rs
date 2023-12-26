@@ -75,6 +75,7 @@ pub mod pallet {
 		OnlyNodeProvider,
 		NodeIsAssignedToCluster,
 		HostLenExceedsLimit,
+		DomainLenExceedsLimit,
 		NodeHasDanglingStake,
 	}
 
