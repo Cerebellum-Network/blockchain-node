@@ -937,6 +937,7 @@ version = "4.8.2"
 dependencies = [
  "cere-runtime-common",
  "cere-runtime-constants",
+ "ddc-traits",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -959,6 +960,11 @@ dependencies = [
  "pallet-collective",
  "pallet-contracts",
  "pallet-contracts-primitives",
+ "pallet-ddc-clusters",
+ "pallet-ddc-customers",
+ "pallet-ddc-nodes",
+ "pallet-ddc-payouts",
+ "pallet-ddc-staking",
  "pallet-democracy",
  "pallet-election-provider-multi-phase",
  "pallet-election-provider-support-benchmarking",
@@ -4668,7 +4674,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-customers"
-version = "0.1.0"
+version = "4.8.2"
 dependencies = [
  "ddc-primitives",
  "ddc-traits",

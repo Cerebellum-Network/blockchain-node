@@ -187,12 +187,15 @@
                 46,
                 49
               ],
+              "domain": [],
+              "ssl": false,
               "http_port": 8080,
               "grpc_port": 8081,
-              "p2p_port": 8082
+              "p2p_port": 8082,
+              "mode": "Storage"
             }
           }
-        ],
+        ]
       },
       "ddcClusters": {
         "clusters": [
@@ -230,6 +233,16 @@
                 "StoragePubKey": "5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y"
               }
             ]
+          ]
+        ]
+      },
+      "ddcPayouts": {
+        "authorisedCaller": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+        "debtorCustomers": [
+          [
+            "0x0000000000000000000000000000000000000001",
+            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            10000000000
           ]
         ]
       }

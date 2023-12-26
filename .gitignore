@@ -17,6 +17,3 @@
 .direnv
 
 .idea
-
-# ddc-metrics-offchain-worker mock files
-pallets/ddc-metrics-offchain-worker/src/tests/test_data/ddc.contract
