@@ -285,7 +285,7 @@ pub mod pallet {
 				let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
 			}
 
-			for &(ref cluster_id, ref owner_id, ref deposit, ref is_public) in &self.buckets {
+			for (cluster_id, owner_id, deposit, is_public) in &self.buckets {
 				let cur_bucket_id = <BucketsCount<T>>::get()
 					.checked_add(1)
 					.ok_or(Error::<T>::ArithmeticOverflow)
