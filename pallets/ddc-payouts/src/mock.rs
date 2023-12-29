@@ -2,15 +2,20 @@
 
 #![allow(dead_code)]
 
-use ddc_primitives::{ClusterBondingParams, ClusterFeesParams, ClusterPricingParams, NodeType};
+use ddc_primitives::{
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
+	NodeType,
+};
 use ddc_traits::{
-	cluster::{ClusterVisitor, ClusterVisitorError},
-	customer::{CustomerCharger, CustomerChargerError},
+	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+	customer::{CustomerCharger, CustomerDepositor},
 	pallet::PalletVisitor,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
-	construct_runtime, parameter_types,
+	construct_runtime,
+	dispatch::DispatchError,
+	parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
 	weights::constants::RocksDbWeight,
 	PalletId,
@@ -101,9 +106,12 @@ impl crate::pallet::Config for Test {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = TestCustomerCharger;
+	type CustomerDepositor = TestCustomerDepositor;
 	type ClusterVisitor = TestClusterVisitor;
 	type TreasuryVisitor = TestTreasuryVisitor;
 	type ValidatorList = TestValidatorVisitor<Self>;
+	type ClusterCreator = TestClusterCreator;
+	type WeightInfo = ();
 }
 
 pub struct TestCustomerCharger;
@@ -112,12 +120,12 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		content_owner: T::AccountId,
 		billing_vault: T::AccountId,
 		amount: u128,
-	) -> Result<u128, CustomerChargerError> {
-		ensure!(amount > 1_000_000, CustomerChargerError::TransferFailed); //  any error will do
+	) -> Result<u128, DispatchError> {
+		ensure!(amount > 1_000_000, DispatchError::BadOrigin); //  any error will do
 
 		let mut amount_to_charge = amount;
 		if amount_to_charge < 50_000_000 {
-			amount_to_charge = PARTIAL_CHARGE;
+			amount_to_charge = PARTIAL_CHARGE; // for user 3
 		}
 
 		let charge = amount_to_charge.saturated_into::<BalanceOf<T>>();
@@ -127,9 +135,31 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 			&billing_vault,
 			charge,
 			ExistenceRequirement::KeepAlive,
-		)
-		.map_err(|_| CustomerChargerError::TransferFailed)?;
+		)?;
 		Ok(amount_to_charge)
+	}
+}
+
+pub struct TestClusterCreator;
+impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
+	fn create_new_cluster(
+		_cluster_id: ClusterId,
+		_cluster_manager_id: T::AccountId,
+		_cluster_reserve_id: T::AccountId,
+		_cluster_params: ClusterParams<T::AccountId>,
+		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
+pub struct TestCustomerDepositor;
+impl<T: Config> CustomerDepositor<T> for TestCustomerDepositor {
+	fn deposit(_customer: T::AccountId, _amount: u128) -> Result<(), DispatchError> {
+		Ok(())
+	}
+	fn deposit_extra(_customer: T::AccountId, _amount: u128) -> Result<(), DispatchError> {
+		Ok(())
 	}
 }
 
@@ -139,6 +169,9 @@ pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
 pub const VALIDATOR2_ACCOUNT_ID: AccountId = 222;
 pub const VALIDATOR3_ACCOUNT_ID: AccountId = 333;
 pub const PARTIAL_CHARGE: u128 = 100;
+pub const USER3_BALANCE: u128 = 1000;
+
+pub const FREE_CLUSTER_ID: ClusterId = ClusterId::zero();
 
 pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_streamed: 2_000_000,
@@ -151,6 +184,12 @@ pub const PRICING_FEES: ClusterFeesParams = ClusterFeesParams {
 	treasury_share: Perbill::from_percent(1),
 	validators_share: Perbill::from_percent(10),
 	cluster_reserve_share: Perbill::from_percent(2),
+};
+
+pub const PRICING_FEES_ZERO: ClusterFeesParams = ClusterFeesParams {
+	treasury_share: Perbill::from_percent(0),
+	validators_share: Perbill::from_percent(0),
+	cluster_reserve_share: Perbill::from_percent(0),
 };
 
 pub struct TestTreasuryVisitor;
@@ -230,6 +269,14 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 	}
 }
 
+pub fn get_fees(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
+	if *cluster_id == FREE_CLUSTER_ID {
+		Ok(PRICING_FEES_ZERO)
+	} else {
+		Ok(PRICING_FEES)
+	}
+}
+
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
@@ -260,8 +307,8 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		Ok(PRICING_PARAMS)
 	}
 
-	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
-		Ok(PRICING_FEES)
+	fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
+		get_fees(cluster_id)
 	}
 
 	fn get_reserve_account_id(
@@ -274,7 +321,7 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_bonding_params(
 		_cluster_id: &ClusterId,
 	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
-		Err(ClusterVisitorError::ClusterDoesNotExist)
+		unimplemented!()
 	}
 }
 
@@ -290,8 +337,8 @@ impl ExtBuilder {
 		let _ = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
 				(1, 1000000000000000000000000),
-				(2, 10),   // < PARTIAL_CHARGE
-				(3, 1000), // > PARTIAL_CHARGE
+				(2, 10),            // < PARTIAL_CHARGE
+				(3, USER3_BALANCE), // > PARTIAL_CHARGE
 				(4, 1000000000000000000000000),
 			],
 		}

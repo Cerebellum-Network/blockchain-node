@@ -37,8 +37,6 @@ sp-transaction-pool = { default-features = false, git = "https://github.com/pari
 sp-version = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 
 # frame dependencies
-cere-runtime-common = { path = "../common", default-features = false }
-cere-runtime-constants = { path = "./constants", default-features = false }
 frame-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33", optional = true }
 frame-election-provider-support = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 frame-executive = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
@@ -53,19 +51,15 @@ pallet-babe = { default-features = false, git = "https://github.com/paritytech/s
 pallet-bags-list = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 pallet-balances = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 pallet-bounties = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
-pallet-cere-ddc = { version = "4.8.3", default-features = false, path = "../../pallets/ddc" }
-pallet-chainbridge = { version = "4.8.3", default-features = false, path = "../../pallets/chainbridge" }
+pallet-chainbridge = { version = "4.8.2", default-features = false, path = "../../pallets/chainbridge" }
 pallet-child-bounties = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 pallet-collective = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 pallet-contracts = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 pallet-contracts-primitives = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
-pallet-ddc-metrics-offchain-worker = { version = "4.8.3", default-features = false, path = "../../pallets/ddc-metrics-offchain-worker" }
 pallet-democracy = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 pallet-election-provider-multi-phase = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 pallet-election-provider-support-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33", optional = true }
 pallet-elections-phragmen = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
-pallet-erc20 = { version = "4.8.3", default-features = false, path = "../../pallets/erc20" }
-pallet-erc721 = { version = "4.8.3", default-features = false, path = "../../pallets/erc721" }
 pallet-fast-unstake = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.33" }
 pallet-grandpa = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 pallet-identity = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
@@ -96,6 +90,18 @@ pallet-treasury = { default-features = false, git = "https://github.com/parityte
 pallet-utility = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 pallet-vesting = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 
+# cere dependencies
+cere-runtime-common = { path = "../common", default-features = false }
+cere-runtime-constants = { path = "./constants", default-features = false }
+ddc-traits = { version = "0.1.0", default-features = false, path = "../../traits" }
+pallet-ddc-clusters = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-clusters" }
+pallet-ddc-customers = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-customers" }
+pallet-ddc-nodes = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-nodes" }
+pallet-ddc-payouts = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-payouts" }
+pallet-ddc-staking = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-staking" }
+pallet-erc20 = { version = "4.8.2", default-features = false, path = "../../pallets/erc20" }
+pallet-erc721 = { version = "4.8.2", default-features = false, path = "../../pallets/erc721" }
+
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 
@@ -121,7 +127,6 @@ std = [
   "pallet-fast-unstake/std",
   "pallet-elections-phragmen/std",
   "frame-executive/std",
-  "pallet-cere-ddc/std",
   "pallet-chainbridge/std",
   "pallet-erc721/std",
   "pallet-erc20/std",
@@ -136,7 +141,6 @@ std = [
   "pallet-identity/std",
   "pallet-scheduler/std",
   "node-primitives/std",
-  "sp-offchain/std",
   "pallet-offences/std",
   "pallet-proxy/std",
   "sp-core/std",
@@ -169,7 +173,11 @@ std = [
   "frame-try-runtime/std",
   "sp-io/std",
   "pallet-child-bounties/std",
-  "pallet-ddc-metrics-offchain-worker/std",
+  "pallet-ddc-clusters/std",
+  "pallet-ddc-customers/std",
+  "pallet-ddc-nodes/std",
+  "pallet-ddc-payouts/std",
+  "pallet-ddc-staking/std",
   "cere-runtime-common/std",
   "cere-runtime-constants/std",
 ]
@@ -185,6 +193,11 @@ runtime-benchmarks = [
   "pallet-child-bounties/runtime-benchmarks",
   "pallet-collective/runtime-benchmarks",
   "pallet-contracts/runtime-benchmarks",
+  "pallet-ddc-customers/runtime-benchmarks",
+  "pallet-ddc-clusters/runtime-benchmarks",
+  "pallet-ddc-nodes/runtime-benchmarks",
+  "pallet-ddc-staking/runtime-benchmarks",
+  "pallet-ddc-payouts/runtime-benchmarks",
   "pallet-democracy/runtime-benchmarks",
   "pallet-election-provider-multi-phase/runtime-benchmarks",
   "pallet-election-provider-support-benchmarking/runtime-benchmarks",

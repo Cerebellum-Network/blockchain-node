@@ -351,7 +351,6 @@ pub mod pallet {
 			match node_type {
 				NodeType::Storage =>
 					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
-				NodeType::CDN => Ok(cluster_gov_params.cdn_bond_size.saturated_into::<u128>()),
 			}
 		}
 
@@ -397,7 +396,6 @@ pub mod pallet {
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
 			match node_type {
 				NodeType::Storage => Ok(cluster_gov_params.storage_chill_delay),
-				NodeType::CDN => Ok(cluster_gov_params.cdn_chill_delay),
 			}
 		}
 
@@ -409,7 +407,6 @@ pub mod pallet {
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
 			match node_type {
 				NodeType::Storage => Ok(cluster_gov_params.storage_unbonding_delay),
-				NodeType::CDN => Ok(cluster_gov_params.cdn_unbonding_delay),
 			}
 		}
 
@@ -419,9 +416,6 @@ pub mod pallet {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
 			Ok(ClusterBondingParams {
-				cdn_bond_size: cluster_gov_params.cdn_bond_size.saturated_into::<u128>(),
-				cdn_chill_delay: cluster_gov_params.cdn_chill_delay,
-				cdn_unbonding_delay: cluster_gov_params.cdn_unbonding_delay,
 				storage_bond_size: cluster_gov_params.storage_bond_size.saturated_into::<u128>(),
 				storage_chill_delay: cluster_gov_params.storage_chill_delay,
 				storage_unbonding_delay: cluster_gov_params.storage_unbonding_delay,

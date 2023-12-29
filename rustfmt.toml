@@ -24,8 +24,6 @@ use_field_init_shorthand = true
 
 ignore = [
   "pallets/chainbridge",
-  "pallets/ddc-metrics-offchain-worker",
-  "pallets/ddc",
   "pallets/erc20",
   "pallets/erc721",
 ]
