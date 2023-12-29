@@ -1,4 +1,4 @@
-name: Release to dev
+name: E2E
 on:
   push:
     branches:

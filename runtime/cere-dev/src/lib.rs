@@ -51,11 +51,9 @@ pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 #[cfg(any(feature = "std", test))]
 pub use pallet_balances::Call as BalancesCall;
-pub use pallet_cere_ddc;
 pub use pallet_chainbridge;
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
-pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_nodes;
 pub use pallet_ddc_payouts;
 pub use pallet_ddc_staking;
@@ -1214,21 +1212,6 @@ impl pallet_vesting::Config for Runtime {
 }
 
 parameter_types! {
-	// Minimum bounds on storage are important to secure your chain.
-	pub const MinDataLength: usize = 1;
-	// Maximum bounds on storage are important to secure your chain.
-	pub const MaxDataLength: usize = usize::MAX;
-}
-
-/// Configure the send data pallet
-impl pallet_cere_ddc::Config for Runtime {
-	type MinLength = MinDataLength;
-	type MaxLength = MaxDataLength;
-	// The ubiquitous event type.
-	type RuntimeEvent = RuntimeEvent;
-}
-
-parameter_types! {
 	pub const ChainId: u8 = 1;
 	pub const ProposalLifetime: BlockNumber = 1000;
 }
@@ -1262,10 +1245,6 @@ impl pallet_erc20::Config for Runtime {
 	type HashId = HashId;
 	type NativeTokenId = NativeTokenId;
 	type Erc721Id = NFTTokenId;
-}
-
-parameter_types! {
-	pub const OcwBlockInterval: u32 = pallet_ddc_metrics_offchain_worker::BLOCK_INTERVAL;
 }
 
 parameter_types! {
@@ -1311,15 +1290,6 @@ impl frame_support::traits::OnRuntimeUpgrade for InitiateNominationPools {
 			<Runtime as frame_system::Config>::DbWeight::get().reads(1)
 		}
 	}
-}
-
-impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
-	type BlockInterval = OcwBlockInterval;
-
-	type AuthorityId = pallet_ddc_metrics_offchain_worker::crypto::TestAuthId;
-
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeCall = RuntimeCall;
 }
 
 impl pallet_ddc_staking::Config for Runtime {
@@ -1433,11 +1403,9 @@ construct_runtime!(
 		ChildBounties: pallet_child_bounties,
 		NominationPools: pallet_nomination_pools,
 		FastUnstake: pallet_fast_unstake,
-		CereDDCModule: pallet_cere_ddc::{Pallet, Call, Storage, Event<T>},
 		ChainBridge: pallet_chainbridge::{Pallet, Call, Storage, Event<T>},
 		Erc721: pallet_erc721::{Pallet, Call, Storage, Event<T>},
 		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
-		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
 		DdcStaking: pallet_ddc_staking,
 		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
