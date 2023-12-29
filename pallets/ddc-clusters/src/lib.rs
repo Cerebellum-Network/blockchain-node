@@ -191,6 +191,7 @@ pub mod pallet {
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_cluster())]
 		pub fn create_cluster(
 			origin: OriginFor<T>,
@@ -210,6 +211,7 @@ pub mod pallet {
 			)
 		}
 
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::add_node())]
 		pub fn add_node(
 			origin: OriginFor<T>,
@@ -259,6 +261,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_node())]
 		pub fn remove_node(
 			origin: OriginFor<T>,
@@ -280,6 +283,7 @@ pub mod pallet {
 		}
 
 		// Sets Governance non-sensetive parameters only
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_params())]
 		pub fn set_cluster_params(
 			origin: OriginFor<T>,
@@ -298,6 +302,7 @@ pub mod pallet {
 		}
 
 		// Requires Governance approval
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_gov_params())]
 		pub fn set_cluster_gov_params(
 			origin: OriginFor<T>,
