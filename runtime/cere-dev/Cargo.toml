@@ -94,10 +94,8 @@ pallet-vesting = { default-features = false, git = "https://github.com/paritytec
 cere-dev-runtime-constants = { path = "./constants", default-features = false }
 cere-runtime-common = { path = "../common", default-features = false }
 ddc-traits = { version = "0.1.0", default-features = false, path = "../../traits" }
-pallet-cere-ddc = { version = "4.8.2", default-features = false, path = "../../pallets/ddc" }
 pallet-ddc-clusters = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-clusters" }
-pallet-ddc-customers = { version = "0.1.0", default-features = false, path = "../../pallets/ddc-customers" }
-pallet-ddc-metrics-offchain-worker = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-metrics-offchain-worker" }
+pallet-ddc-customers = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-customers" }
 pallet-ddc-nodes = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-nodes" }
 pallet-ddc-payouts = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-payouts" }
 pallet-ddc-staking = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-staking" }
@@ -129,7 +127,6 @@ std = [
   "pallet-fast-unstake/std",
   "pallet-elections-phragmen/std",
   "frame-executive/std",
-  "pallet-cere-ddc/std",
   "pallet-chainbridge/std",
   "pallet-erc721/std",
   "pallet-erc20/std",
@@ -144,7 +141,6 @@ std = [
   "pallet-identity/std",
   "pallet-scheduler/std",
   "node-primitives/std",
-  "sp-offchain/std",
   "pallet-offences/std",
   "pallet-proxy/std",
   "sp-core/std",
@@ -177,7 +173,6 @@ std = [
   "frame-try-runtime/std",
   "sp-io/std",
   "pallet-child-bounties/std",
-  "pallet-ddc-metrics-offchain-worker/std",
   "pallet-ddc-payouts/std",
   "pallet-ddc-nodes/std",
   "pallet-ddc-staking/std",
