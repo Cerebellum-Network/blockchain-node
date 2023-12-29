@@ -92,26 +92,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alt_serde"
-version = "1.0.119"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbdd08f26bc9972e3597a32bb7fe2b0de4e85ccfb4214acec94165b940aa537e"
-dependencies = [
- "alt_serde_derive",
-]
-
-[[package]]
-name = "alt_serde_derive"
-version = "1.0.119"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "629ddaf5b2675d9a27e9521a88870f8edea113e4a83d6d5178268b0d70e9a9a3"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -124,15 +104,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "819e7219dbd41043ac279b19830f2efc897156490d7fd6ea916720117ee66311"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "ansi_term"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
-dependencies = [
- "winapi",
 ]
 
 [[package]]
@@ -795,7 +766,7 @@ dependencies = [
  "cargo-platform",
  "semver 1.0.20",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
 ]
 
 [[package]]
@@ -887,7 +858,6 @@ dependencies = [
  "pallet-bags-list",
  "pallet-balances",
  "pallet-bounties",
- "pallet-cere-ddc",
  "pallet-chainbridge",
  "pallet-child-bounties",
  "pallet-collective",
@@ -895,7 +865,6 @@ dependencies = [
  "pallet-contracts-primitives",
  "pallet-ddc-clusters",
  "pallet-ddc-customers",
- "pallet-ddc-metrics-offchain-worker",
  "pallet-ddc-nodes",
  "pallet-ddc-payouts",
  "pallet-ddc-staking",
@@ -997,6 +966,7 @@ version = "4.8.3"
 dependencies = [
  "cere-runtime-common",
  "cere-runtime-constants",
+ "ddc-traits",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -1014,13 +984,16 @@ dependencies = [
  "pallet-bags-list",
  "pallet-balances",
  "pallet-bounties",
- "pallet-cere-ddc",
  "pallet-chainbridge",
  "pallet-child-bounties",
  "pallet-collective",
  "pallet-contracts",
  "pallet-contracts-primitives",
- "pallet-ddc-metrics-offchain-worker",
+ "pallet-ddc-clusters",
+ "pallet-ddc-customers",
+ "pallet-ddc-nodes",
+ "pallet-ddc-payouts",
+ "pallet-ddc-staking",
  "pallet-democracy",
  "pallet-election-provider-multi-phase",
  "pallet-election-provider-support-benchmarking",
@@ -1563,16 +1536,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ctor"
-version = "0.1.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d2301688392eb071b0bf1a37be05c469d3cc4dbbd95df672fe28ab021e6a096"
-dependencies = [
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "ctr"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1722,6 +1685,8 @@ dependencies = [
  "ddc-primitives",
  "frame-support",
  "frame-system",
+ "parity-scale-codec",
+ "scale-info",
  "sp-runtime",
  "sp-std",
 ]
@@ -1746,12 +1711,6 @@ dependencies = [
  "quote",
  "syn 1.0.109",
 ]
-
-[[package]]
-name = "difference"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
 
 [[package]]
 name = "difflib"
@@ -2308,7 +2267,7 @@ dependencies = [
  "sc-service",
  "sc-sysinfo",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "serde_nanos",
  "sp-api",
  "sp-blockchain",
@@ -2813,7 +2772,7 @@ dependencies = [
  "pest",
  "pest_derive",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "thiserror",
 ]
 
@@ -2948,7 +2907,7 @@ checksum = "8947b1a6fad4393052c7ba1f4cd97bed3e953a95c79c92ad9b051a04611d9fbb"
 dependencies = [
  "bytes",
  "fnv",
- "itoa 1.0.9",
+ "itoa",
 ]
 
 [[package]]
@@ -2995,7 +2954,7 @@ dependencies = [
  "http-body",
  "httparse",
  "httpdate",
- "itoa 1.0.9",
+ "itoa",
  "pin-project-lite 0.2.13",
  "socket2 0.4.10",
  "tokio",
@@ -3231,12 +3190,6 @@ dependencies = [
 
 [[package]]
 name = "itoa"
-version = "0.4.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b71991ff56294aa922b450139ee08b3bfc70982c6b2c7562771375cf73542dd4"
-
-[[package]]
-name = "itoa"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
@@ -3318,7 +3271,7 @@ dependencies = [
  "rand 0.8.5",
  "rustc-hash",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "soketto",
  "thiserror",
  "tokio",
@@ -3339,7 +3292,7 @@ dependencies = [
  "jsonrpsee-core",
  "jsonrpsee-types",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-futures",
@@ -3366,7 +3319,7 @@ dependencies = [
  "anyhow",
  "beef",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "thiserror",
  "tracing",
 ]
@@ -3394,7 +3347,7 @@ dependencies = [
  "http",
  "jsonrpsee-core",
  "jsonrpsee-types",
- "serde_json 1.0.108",
+ "serde_json",
  "soketto",
  "tokio",
  "tokio-stream",
@@ -4452,7 +4405,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a652d9771a63711fd3c3deb670acfbe5c30a4072e664d7a3bf5a9e1056ac72c3"
 dependencies = [
  "arrayvec 0.7.4",
- "itoa 1.0.9",
+ "itoa",
 ]
 
 [[package]]
@@ -4541,15 +4494,6 @@ name = "openssl-probe"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
-
-[[package]]
-name = "output_vt100"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "628223faebab4e3e40667ee0b2336d34a5b960ff60ea743ddfdbcf7770bcfb66"
-dependencies = [
- "winapi",
-]
 
 [[package]]
 name = "pallet-authority-discovery"
@@ -4653,21 +4597,6 @@ dependencies = [
  "pallet-treasury",
  "parity-scale-codec",
  "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-cere-ddc"
-version = "4.8.3"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -4804,7 +4733,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-customers"
-version = "0.1.0"
+version = "4.8.2"
 dependencies = [
  "ddc-primitives",
  "ddc-traits",
@@ -4826,30 +4755,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-ddc-metrics-offchain-worker"
-version = "4.8.3"
-dependencies = [
- "alt_serde",
- "frame-support",
- "frame-system",
- "hex",
- "hex-literal",
- "pallet-balances",
- "pallet-contracts",
- "pallet-randomness-collective-flip",
- "pallet-timestamp",
- "parity-scale-codec",
- "pretty_assertions",
- "scale-info",
- "serde_json 1.0.44",
- "sp-core",
- "sp-io",
- "sp-keystore",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-ddc-nodes"
 version = "4.8.3"
 dependencies = [
@@ -4862,6 +4767,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -5924,18 +5830,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pretty_assertions"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f81e1644e1b54f5a68959a29aa86cde704219254669da328ecfdf6a1f09d427"
-dependencies = [
- "ansi_term 0.11.0",
- "ctor",
- "difference",
- "output_vt100",
-]
-
-[[package]]
 name = "prettyplease"
 version = "0.1.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6022,7 +5916,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83cd1b99916654a69008fd66b4f9397fbe08e6e51dfe23d4417acf5d3b8cb87c"
 dependencies = [
  "dtoa",
- "itoa 1.0.9",
+ "itoa",
  "parking_lot 0.12.1",
  "prometheus-client-derive-text-encode",
 ]
@@ -6395,7 +6289,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -6739,7 +6633,7 @@ dependencies = [
  "sc-network-common",
  "sc-telemetry",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "sp-core",
  "sp-runtime",
 ]
@@ -6782,7 +6676,7 @@ dependencies = [
  "sc-tracing",
  "sc-utils",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "sp-blockchain",
  "sp-core",
  "sp-keyring",
@@ -7087,7 +6981,7 @@ dependencies = [
  "sc-network-gossip",
  "sc-telemetry",
  "sc-utils",
- "serde_json 1.0.108",
+ "serde_json",
  "sp-api",
  "sp-application-crypto",
  "sp-arithmetic",
@@ -7115,7 +7009,7 @@ dependencies = [
  "sc-finality-grandpa",
  "sc-rpc",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "sp-blockchain",
  "sp-core",
  "sp-runtime",
@@ -7127,7 +7021,7 @@ name = "sc-informant"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.33#2dff067e9f7f6f3cc4dbfdaaa97753eccc407689"
 dependencies = [
- "ansi_term 0.12.1",
+ "ansi_term",
  "futures",
  "futures-timer",
  "log",
@@ -7147,7 +7041,7 @@ dependencies = [
  "array-bytes",
  "async-trait",
  "parking_lot 0.12.1",
- "serde_json 1.0.108",
+ "serde_json",
  "sp-application-crypto",
  "sp-core",
  "sp-keystore",
@@ -7188,7 +7082,7 @@ dependencies = [
  "sc-peerset",
  "sc-utils",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "smallvec",
  "sp-arithmetic",
  "sp-blockchain",
@@ -7374,7 +7268,7 @@ dependencies = [
  "libp2p",
  "log",
  "sc-utils",
- "serde_json 1.0.108",
+ "serde_json",
  "wasm-timer",
 ]
 
@@ -7405,7 +7299,7 @@ dependencies = [
  "sc-tracing",
  "sc-transaction-pool-api",
  "sc-utils",
- "serde_json 1.0.108",
+ "serde_json",
  "sp-api",
  "sp-blockchain",
  "sp-core",
@@ -7431,7 +7325,7 @@ dependencies = [
  "sc-transaction-pool-api",
  "scale-info",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "sp-core",
  "sp-rpc",
  "sp-runtime",
@@ -7448,7 +7342,7 @@ dependencies = [
  "futures",
  "jsonrpsee",
  "log",
- "serde_json 1.0.108",
+ "serde_json",
  "substrate-prometheus-endpoint",
  "tokio",
 ]
@@ -7515,7 +7409,7 @@ dependencies = [
  "sc-transaction-pool-api",
  "sc-utils",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "sp-api",
  "sp-application-crypto",
  "sp-block-builder",
@@ -7570,7 +7464,7 @@ dependencies = [
  "sc-consensus-epochs",
  "sc-finality-grandpa",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "sp-blockchain",
  "sp-runtime",
  "thiserror",
@@ -7589,7 +7483,7 @@ dependencies = [
  "regex",
  "sc-telemetry",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "sp-core",
  "sp-io",
  "sp-std",
@@ -7608,7 +7502,7 @@ dependencies = [
  "pin-project",
  "rand 0.7.3",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "thiserror",
  "wasm-timer",
 ]
@@ -7618,7 +7512,7 @@ name = "sc-tracing"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.33#2dff067e9f7f6f3cc4dbfdaaa97753eccc407689"
 dependencies = [
- "ansi_term 0.12.1",
+ "ansi_term",
  "atty",
  "chrono",
  "lazy_static",
@@ -7903,21 +7797,11 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.44"
-source = "git+https://github.com/Cerebellum-Network/json?branch=no-std-cere#17b8b39421fb94ffb1ddb8fe65630542b0679ada"
-dependencies = [
- "alt_serde",
- "itoa 0.4.8",
- "ryu",
-]
-
-[[package]]
-name = "serde_json"
 version = "1.0.108"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d1c7e3eac408d115102c4c24ad393e0821bb3a5df4d506a80f85f7a742a526b"
 dependencies = [
- "itoa 1.0.9",
+ "itoa",
  "ryu",
  "serde",
 ]
@@ -8841,7 +8725,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "unicode-xid",
 ]
 
@@ -8960,7 +8844,7 @@ dependencies = [
  "sc-client-api",
  "sc-rpc-api",
  "sc-transaction-pool-api",
- "serde_json 1.0.108",
+ "serde_json",
  "sp-api",
  "sp-block-builder",
  "sp-blockchain",
@@ -9041,7 +8925,7 @@ name = "substrate-wasm-builder"
 version = "5.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.33#2dff067e9f7f6f3cc4dbfdaaa97753eccc407689"
 dependencies = [
- "ansi_term 0.12.1",
+ "ansi_term",
  "build-helper",
  "cargo_metadata",
  "filetime",
@@ -9394,14 +9278,14 @@ version = "0.2.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e0d2eaa99c3c2e41547cfa109e910a68ea03823cccad4a0525dcbc9b01e8c71"
 dependencies = [
- "ansi_term 0.12.1",
+ "ansi_term",
  "chrono",
  "lazy_static",
  "matchers",
  "parking_lot 0.11.2",
  "regex",
  "serde",
- "serde_json 1.0.108",
+ "serde_json",
  "sharded-slab",
  "smallvec",
  "thread_local",

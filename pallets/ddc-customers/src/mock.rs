@@ -41,7 +41,7 @@ construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		DdcCustomers: pallet_ddc_customers::{Pallet, Call, Storage, Config, Event<T>},
+		DdcCustomers: pallet_ddc_customers::{Pallet, Call, Storage, Config<T>, Event<T>},
 	}
 );
 
@@ -163,21 +163,6 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		cluster_id: &ClusterId,
 	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
 		Ok(ClusterBondingParams {
-			cdn_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
-				cluster_id,
-				NodeType::CDN,
-			)
-			.unwrap_or_default(),
-			cdn_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
-				cluster_id,
-				NodeType::CDN,
-			)
-			.unwrap_or_default(),
-			cdn_unbonding_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
-				cluster_id,
-				NodeType::CDN,
-			)
-			.unwrap_or_default(),
 			storage_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
 				cluster_id,
 				NodeType::Storage,
@@ -238,8 +223,10 @@ impl ExtBuilder {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
-		let _ = pallet_balances::GenesisConfig::<Test> { balances: vec![(1, 100), (2, 100)] }
-			.assimilate_storage(&mut storage);
+		let _ = pallet_balances::GenesisConfig::<Test> {
+			balances: vec![(1, 100), (2, 100), (3, 1000)],
+		}
+		.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}

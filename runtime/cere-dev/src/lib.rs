@@ -51,12 +51,10 @@ pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 #[cfg(any(feature = "std", test))]
 pub use pallet_balances::Call as BalancesCall;
-pub use pallet_cere_ddc;
 pub use pallet_chainbridge;
 use pallet_contracts::Determinism;
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
-pub use pallet_ddc_metrics_offchain_worker;
 pub use pallet_ddc_nodes;
 pub use pallet_ddc_payouts;
 pub use pallet_ddc_staking;
@@ -130,10 +128,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48016,
+	spec_version: 48017,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 7,
+	transaction_version: 8,
 	state_version: 0,
 };
 
@@ -1221,21 +1219,6 @@ impl pallet_vesting::Config for Runtime {
 }
 
 parameter_types! {
-	// Minimum bounds on storage are important to secure your chain.
-	pub const MinDataLength: usize = 1;
-	// Maximum bounds on storage are important to secure your chain.
-	pub const MaxDataLength: usize = usize::MAX;
-}
-
-/// Configure the send data pallet
-impl pallet_cere_ddc::Config for Runtime {
-	type MinLength = MinDataLength;
-	type MaxLength = MaxDataLength;
-	// The ubiquitous event type.
-	type RuntimeEvent = RuntimeEvent;
-}
-
-parameter_types! {
 	pub const ChainId: u8 = 1;
 	pub const ProposalLifetime: BlockNumber = 1000;
 }
@@ -1269,10 +1252,6 @@ impl pallet_erc20::Config for Runtime {
 	type HashId = HashId;
 	type NativeTokenId = NativeTokenId;
 	type Erc721Id = NFTTokenId;
-}
-
-parameter_types! {
-	pub const OcwBlockInterval: u32 = pallet_ddc_metrics_offchain_worker::BLOCK_INTERVAL;
 }
 
 parameter_types! {
@@ -1319,15 +1298,6 @@ impl frame_support::traits::OnRuntimeUpgrade for InitiateNominationPools {
 	}
 }
 
-impl pallet_ddc_metrics_offchain_worker::Config for Runtime {
-	type BlockInterval = OcwBlockInterval;
-
-	type AuthorityId = pallet_ddc_metrics_offchain_worker::crypto::TestAuthId;
-
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeCall = RuntimeCall;
-}
-
 impl pallet_ddc_staking::Config for Runtime {
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
@@ -1341,7 +1311,7 @@ impl pallet_ddc_staking::Config for Runtime {
 
 parameter_types! {
 	pub const DdcCustomersPalletId: PalletId = PalletId(*b"accounts"); // DDC maintainer's stake
-	pub const UnlockingDelay: BlockNumber = 5256000u32; // 1 hour * 24 * 365 = 1 day; (1 hour is 600 blocks)
+	pub const UnlockingDelay: BlockNumber = 100800_u32; // 1 hour * 24 * 7 = 7 days; (1 hour is 600 blocks)
 }
 
 impl pallet_ddc_customers::Config for Runtime {
@@ -1373,8 +1343,8 @@ parameter_types! {
 	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
 }
 
-pub struct TreasureWrapper;
-impl<T: frame_system::Config> PalletVisitor<T> for TreasureWrapper {
+pub struct TreasuryWrapper;
+impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 	fn get_account_id() -> T::AccountId {
 		TreasuryPalletId::get().into_account_truncating()
 	}
@@ -1385,9 +1355,12 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
+	type CustomerDepositor = DdcCustomers;
 	type ClusterVisitor = DdcClusters;
-	type TreasuryVisitor = TreasureWrapper;
+	type TreasuryVisitor = TreasuryWrapper;
 	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
+	type ClusterCreator = DdcClusters;
+	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 }
 
 construct_runtime!(
@@ -1436,11 +1409,9 @@ construct_runtime!(
 		ChildBounties: pallet_child_bounties,
 		NominationPools: pallet_nomination_pools,
 		FastUnstake: pallet_fast_unstake,
-		CereDDCModule: pallet_cere_ddc::{Pallet, Call, Storage, Event<T>},
 		ChainBridge: pallet_chainbridge::{Pallet, Call, Storage, Event<T>},
 		Erc721: pallet_erc721::{Pallet, Call, Storage, Event<T>},
 		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
-		DdcMetricsOffchainWorker: pallet_ddc_metrics_offchain_worker::{Pallet, Call, Storage, Event<T>},
 		DdcStaking: pallet_ddc_staking,
 		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
@@ -1554,6 +1525,7 @@ mod benches {
 		[pallet_ddc_clusters, DdcClusters]
 		[pallet_ddc_staking, DdcStaking]
 		[pallet_ddc_nodes, DdcNodes]
+		[pallet_ddc_payouts, DdcPayouts]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
 		[pallet_tips, Tips]

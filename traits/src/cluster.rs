@@ -1,9 +1,12 @@
+use codec::{Decode, Encode};
 use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,
 };
 use frame_support::dispatch::DispatchResult;
 use frame_system::Config;
+use scale_info::TypeInfo;
+use sp_runtime::RuntimeDebug;
 
 pub trait ClusterVisitor<T: Config> {
 	fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError>;
@@ -46,6 +49,7 @@ pub trait ClusterCreator<T: Config, Balance> {
 	) -> DispatchResult;
 }
 
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum ClusterVisitorError {
 	ClusterDoesNotExist,
 	ClusterGovParamsNotSet,

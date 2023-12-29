@@ -1,58 +1,109 @@
-name: CI
+name: PR
 
+# Controls when the action will run.
 on:
-  pull_request:
-    branches:
-      - dev
-      - master
-      - 'feature/**'
-      - 'release/**'
-      - 'hotfix/**'
-    types:
-      - opened
-      - synchronize
-      - edited
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ '**' ]
 
-env:
-  PROFILE: release
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    concurrency: dev
+  format:
+    name: Check Lints
+    runs-on: ubuntu-22.04
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly-2022-10-09
+          override: true
+          components: rustfmt
+      - name: Check TOML
+        uses: dprint/check@v2.2
+      - name: Check Format
+        run: |
+          cargo fmt -- --check
+
+  check:
+    name: Cargo check
+    needs: format
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-
-      - name: Cache cargo registry
-        uses: actions/cache@v3
-        continue-on-error: false
+      - name: Install linux dependencies
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          toolchain: nightly-2022-10-09
+          override: true
+          target: wasm32-unknown-unknown
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Check Build
+        run: |
+          SKIP_WASM_BUILD=1 cargo check --release
+      - name: Check Build for Benchmarking
+        run: >
+          pushd node &&
+          cargo check --features=runtime-benchmarks --release
 
-      - name: Configure AWS credentials ORG
-        uses: aws-actions/configure-aws-credentials@v1
+
+  clippy:
+    name: Run Clippy
+    needs: format
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install linux dependencies
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          aws-access-key-id: ${{ secrets.ORG_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.ORG_AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
+          toolchain: nightly-2022-10-09
+          override: true
+          target: wasm32-unknown-unknown
+          components: clippy
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Check with Clippy
+        run: |
+          cargo clippy --no-deps --all-targets --features runtime-benchmarks --workspace -- --deny warnings
 
-      - name: Login to Amazon ECR ORG
-        id: login-ecr-org
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Build and push docker image to ECR Docker
-        uses: docker/build-push-action@v4
+  tests:
+    name: Run tests
+    needs: format
+    # The type of runner that the job will run on
+    runs-on: ["self-hosted", "cere-network-memory-large"]
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+      - name: Install linux dependencies
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          context: .
-          file: Dockerfile.tests
-          push: false
-          build-args: |
-            "ECR_REGISTRY=${{ steps.login-ecr-org.outputs.registry }}"
+          toolchain: nightly-2022-10-09
+          override: true
+          target: wasm32-unknown-unknown
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Run cargo-tarpaulin
+        uses: actions-rs/tarpaulin@v0.1
+        with:
+          version: '0.22.0'
+          args: '--verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out "Xml"'
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: tarpaulin coverage
+          path: ./tarpaulin-report.xml
