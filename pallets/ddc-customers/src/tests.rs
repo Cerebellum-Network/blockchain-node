@@ -234,7 +234,7 @@ fn charge_content_owner_works() {
 
 		assert_ok!(DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_3), deposit));
 		assert_eq!(
-			DdcCustomers::ledger(&account_3),
+			DdcCustomers::ledger(account_3),
 			Some(AccountsLedger {
 				owner: account_3,
 				total: deposit,
