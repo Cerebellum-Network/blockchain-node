@@ -179,7 +179,7 @@ fn charge_content_owner_works() {
 
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(&account_3),
+			DdcCustomers::ledger(account_3),
 			Some(AccountsLedger {
 				owner: account_3,
 				total: deposit,
@@ -207,7 +207,7 @@ fn charge_content_owner_works() {
 
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(&account_3),
+			DdcCustomers::ledger(account_3),
 			Some(AccountsLedger {
 				owner: account_3,
 				total: deposit - charge1,
@@ -220,7 +220,7 @@ fn charge_content_owner_works() {
 		let charge2 = 100u128;
 		let charge_result = DdcCustomers::charge_content_owner(account_3, vault, charge2).unwrap();
 		assert_eq!(
-			DdcCustomers::ledger(&account_3),
+			DdcCustomers::ledger(account_3),
 			Some(AccountsLedger {
 				owner: account_3,
 				total: 0,
