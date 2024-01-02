@@ -1,6 +1,6 @@
 [package]
 name = "pallet-erc20"
-version = "4.8.4"
+version = "4.8.5"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 homepage = "https://substrate.dev"

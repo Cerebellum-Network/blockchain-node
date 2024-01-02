@@ -43,6 +43,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
+use sp_core::crypto::UncheckedFrom;
 use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
@@ -61,7 +62,6 @@ pub type BalanceOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 	use ddc_traits::cluster::{ClusterManager, ClusterManagerError};
-	use pallet_contracts::chain_extension::UncheckedFrom;
 
 	use super::*;
 
