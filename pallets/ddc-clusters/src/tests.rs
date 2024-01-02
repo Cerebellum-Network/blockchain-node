@@ -317,7 +317,7 @@ fn add_and_delete_node_works() {
 			.unwrap();
 
 			// Configure worker with the contract address.
-			let contract_id = Contracts::contract_address(&alice, &wasm_hash, &[]);
+			let contract_id = Contracts::contract_address(&alice, &wasm_hash, &[], &[]);
 
 			pub const ADD_DDC_NODE_SELECTOR: [u8; 4] = hex!("7a04093d");
 			let node_pub_key = NodePubKey::StoragePubKey(node_pub_key);
