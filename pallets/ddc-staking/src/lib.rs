@@ -154,6 +154,8 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
@@ -226,83 +228,6 @@ pub mod pallet {
 					T::RuntimeOrigin::from(Some(stash.clone()).into()),
 					T::Lookup::unlookup(controller.clone()),
 					node.clone(),
-					balance,
-				));
-				assert_ok!(Pallet::<T>::store(
-					T::RuntimeOrigin::from(Some(controller.clone()).into()),
-					cluster,
-				));
-			}
-		}
-	}
-
-	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
-		pub edges: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
-		pub storages: Vec<(T::AccountId, T::AccountId, BalanceOf<T>, ClusterId)>,
-		pub settings: Vec<(ClusterId, BalanceOf<T>, EraIndex, BalanceOf<T>, EraIndex)>,
-	}
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				edges: Default::default(),
-				storages: Default::default(),
-				settings: Default::default(),
-			}
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-		fn build(&self) {
-			// clusters' settings
-			for &(
-				cluster,
-				edge_bond_size,
-				edge_chill_delay,
-				storage_bond_size,
-				storage_chill_delay,
-			) in &self.settings
-			{
-				Settings::<T>::insert(
-					cluster,
-					ClusterSettings::<T> {
-						edge_bond_size,
-						edge_chill_delay,
-						storage_bond_size,
-						storage_chill_delay,
-					},
-				);
-			}
-
-			// Add initial CDN participants
-			for &(ref stash, ref controller, balance, cluster) in &self.edges {
-				assert!(
-					T::Currency::free_balance(&stash) >= balance,
-					"Stash do not have enough balance to participate in CDN."
-				);
-				assert_ok!(Pallet::<T>::bond(
-					T::RuntimeOrigin::from(Some(stash.clone()).into()),
-					T::Lookup::unlookup(controller.clone()),
-					balance,
-				));
-				assert_ok!(Pallet::<T>::serve(
-					T::RuntimeOrigin::from(Some(controller.clone()).into()),
-					cluster,
-				));
-			}
-
-			// Add initial storage network participants
-			for &(ref stash, ref controller, balance, cluster) in &self.storages {
-				assert!(
-					T::Currency::free_balance(&stash) >= balance,
-					"Stash do not have enough balance to participate in storage network."
-				);
-				assert_ok!(Pallet::<T>::bond(
-					T::RuntimeOrigin::from(Some(stash.clone()).into()),
-					T::Lookup::unlookup(controller.clone()),
 					balance,
 				));
 				assert_ok!(Pallet::<T>::store(

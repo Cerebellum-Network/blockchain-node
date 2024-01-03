@@ -304,6 +304,7 @@ where
 					);
 					Err("Skipping")
 				} else {
+					let mut block_interval = T::BlockInterval::get();
 					if let Some(block_interval_configured) = Self::get_block_interval() {
 						block_interval = <T as frame_system::Config>::BlockNumber::from(
 							block_interval_configured,

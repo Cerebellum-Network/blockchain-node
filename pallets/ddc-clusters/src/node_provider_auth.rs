@@ -61,6 +61,7 @@ where
 		Ok(is_authorized)
 	}
 
+	#[allow(dead_code)]
 	pub fn deploy_contract(
 		&self,
 		caller_id: T::AccountId,
@@ -99,6 +100,7 @@ where
 		Ok(Self::new(contract_id, caller_id))
 	}
 
+	#[allow(dead_code)]
 	pub fn authorize_node(
 		&self,
 		node_pub_key: NodePubKey,
