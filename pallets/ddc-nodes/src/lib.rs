@@ -107,8 +107,8 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(T::WeightInfo::create_node())]
 		#[pallet::call_index(0)]
+		#[pallet::weight(T::WeightInfo::create_node())]
 		pub fn create_node(
 			origin: OriginFor<T>,
 			node_pub_key: NodePubKey,

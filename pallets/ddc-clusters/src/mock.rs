@@ -11,7 +11,7 @@ use frame_support::{
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use pallet_contracts as contracts;
-use sp_core::H256;
+use sp_core::{ConstBool, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::{Header, TestXt},
