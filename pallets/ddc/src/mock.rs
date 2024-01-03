@@ -1,5 +1,4 @@
 use crate as pallet_cere_ddc;
-use crate::Module;
 use frame_support::{construct_runtime, parameter_types, traits::Everything};
 use frame_system as system;
 use sp_core::H256;
