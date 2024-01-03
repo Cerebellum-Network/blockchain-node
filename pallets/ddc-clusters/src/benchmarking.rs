@@ -7,7 +7,7 @@ pub use frame_benchmarking::{
 };
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::UncheckedFrom;
-use sp_runtime::{AccountId32, Perbill};
+use sp_runtime::{AccountId32, Perquintill};
 use sp_std::prelude::*;
 use testing_utils::*;
 
@@ -26,9 +26,9 @@ benchmarks! {
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
 		let cluster_params = ClusterParams { node_provider_auth_contract: Some(user.clone()) };
 		let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
-			treasury_share: Perbill::default(),
-			validators_share: Perbill::default(),
-			cluster_reserve_share: Perbill::default(),
+			treasury_share: Perquintill::default(),
+			validators_share: Perquintill::default(),
+			cluster_reserve_share: Perquintill::default(),
 			storage_bond_size: 100u32.into(),
 			storage_chill_delay: 50u32.into(),
 			storage_unbonding_delay: 50u32.into(),
@@ -89,9 +89,9 @@ benchmarks! {
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
 		let _ = config_cluster::<T>(user, cluster_id);
 		let new_cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
-			treasury_share: Perbill::default(),
-			validators_share: Perbill::default(),
-			cluster_reserve_share: Perbill::default(),
+			treasury_share: Perquintill::default(),
+			validators_share: Perquintill::default(),
+			cluster_reserve_share: Perquintill::default(),
 			storage_bond_size: 10u32.into(),
 			storage_chill_delay: 5u32.into(),
 			storage_unbonding_delay: 5u32.into(),

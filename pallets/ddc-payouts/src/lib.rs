@@ -25,7 +25,7 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
-use ddc_primitives::{ClusterId, DdcEra};
+use ddc_primitives::{ClusterId, DdcEra, MILLICENTS};
 use ddc_traits::{
 	cluster::{ClusterCreator as ClusterCreatorType, ClusterVisitor as ClusterVisitorType},
 	customer::{
@@ -43,7 +43,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
-use sp_runtime::{PerThing, Perbill};
+use sp_runtime::{traits::Convert, PerThing, Perquintill};
 use sp_std::prelude::*;
 
 type BatchIndex = u16;
@@ -53,8 +53,8 @@ type BatchIndex = u16;
 pub struct CustomerUsage {
 	pub transferred_bytes: u64,
 	pub stored_bytes: u64,
-	pub number_of_puts: u128,
-	pub number_of_gets: u128,
+	pub number_of_puts: u64,
+	pub number_of_gets: u64,
 }
 
 /// Stores usage of node provider
@@ -62,8 +62,8 @@ pub struct CustomerUsage {
 pub struct NodeUsage {
 	pub transferred_bytes: u64,
 	pub stored_bytes: u64,
-	pub number_of_puts: u128,
-	pub number_of_gets: u128,
+	pub number_of_puts: u64,
+	pub number_of_gets: u64,
 }
 
 /// Stores reward in tokens(units) of node provider as per NodeUsage
@@ -96,8 +96,14 @@ pub struct CustomerCharge {
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+pub type VoteScoreOf<T> =
+	<<T as pallet::Config>::NominatorsAndValidatorsList as frame_election_provider_support::SortedListProvider<
+		<T as frame_system::Config>::AccountId,
+	>>::Score;
+
 parameter_types! {
 	pub MaxBatchesCount: u16 = 1000;
+	pub MaxDust: u128 = MILLICENTS;
 	pub MaxBatchSize: u16 = 1000;
 }
 
@@ -124,9 +130,10 @@ pub mod pallet {
 		type CustomerDepositor: CustomerDepositorType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
 		type ClusterVisitor: ClusterVisitorType<Self>;
-		type ValidatorList: SortedListProvider<Self::AccountId>;
+		type NominatorsAndValidatorsList: SortedListProvider<Self::AccountId>;
 		type ClusterCreator: ClusterCreatorType<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
+		type VoteScoreToU64: Convert<VoteScoreOf<Self>, u64>;
 	}
 
 	#[pallet::event]
@@ -190,6 +197,19 @@ pub mod pallet {
 			node_provider_id: T::AccountId,
 			amount: u128,
 		},
+		NotDistributedReward {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			node_provider_id: T::AccountId,
+			expected_reward: u128,
+			distributed_reward: BalanceOf<T>,
+		},
+		NotDistributedOverallReward {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			expected_reward: u128,
+			total_distributed_reward: u128,
+		},
 		RewardingFinished {
 			cluster_id: ClusterId,
 			era: DdcEra,
@@ -212,12 +232,12 @@ pub mod pallet {
 		BatchIndexAlreadyProcessed,
 		BatchIndexIsOutOfRange,
 		BatchesMissed,
-		NotDistributedBalance,
 		BatchIndexOverflow,
 		BoundedVecOverflow,
 		ArithmeticOverflow,
 		NotExpectedClusterState,
 		BatchSizeIsOutOfBounds,
+		ScoreRetrievalError,
 	}
 
 	#[pallet::storage]
@@ -238,6 +258,11 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn debtor_customers)]
 	pub type DebtorCustomers<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn owing_providers)]
+	pub type OwingProviders<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -286,33 +311,6 @@ pub mod pallet {
 		Finalized = 7,
 	}
 
-	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
-		pub authorised_caller: Option<T::AccountId>,
-		pub debtor_customers: Vec<(ClusterId, T::AccountId, u128)>,
-	}
-
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				authorised_caller: Default::default(),
-				debtor_customers: Default::default(),
-			}
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-		fn build(&self) {
-			AuthorisedCaller::<T>::set(self.authorised_caller.clone());
-
-			for (cluster_id, customer_id, debt) in &self.debtor_customers {
-				DebtorCustomers::<T>::insert(cluster_id, customer_id, debt);
-			}
-		}
-	}
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(T::WeightInfo::set_authorised_caller())]
@@ -343,13 +341,11 @@ pub mod pallet {
 				Error::<T>::NotExpectedState
 			);
 
-			let mut billing_report = BillingReport::<T> {
-				vault: Self::sub_account_id(cluster_id, era),
+			let billing_report = BillingReport::<T> {
+				vault: Self::account_id(),
 				state: State::Initialized,
 				..Default::default()
 			};
-			billing_report.vault = Self::sub_account_id(cluster_id, era);
-			billing_report.state = State::Initialized;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::BillingReportInitialized { cluster_id, era });
@@ -468,8 +464,10 @@ pub mod pallet {
 					if amount_actually_charged > 0 {
 						// something was charged and should be added
 						// calculate ratio
-						let ratio =
-							Perbill::from_rational(amount_actually_charged, total_customer_charge);
+						let ratio = Perquintill::from_rational(
+							amount_actually_charged,
+							total_customer_charge,
+						);
 
 						customer_charge.storage = ratio * customer_charge.storage;
 						customer_charge.transfer = ratio * customer_charge.transfer;
@@ -682,6 +680,7 @@ pub mod pallet {
 				Error::<T>::BatchIndexAlreadyProcessed
 			);
 
+			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
 			for payee in payees {
 				let node_reward = get_node_reward::<T>(
@@ -700,19 +699,40 @@ pub mod pallet {
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 				let node_provider_id = payee.0;
-				let reward: BalanceOf<T> = amount_to_reward.saturated_into::<BalanceOf<T>>();
+				if amount_to_reward > 0 {
+					let mut reward: BalanceOf<T> =
+						amount_to_reward.saturated_into::<BalanceOf<T>>();
 
-				<T as pallet::Config>::Currency::transfer(
-					&updated_billing_report.vault,
-					&node_provider_id,
-					reward,
-					ExistenceRequirement::AllowDeath,
-				)?;
+					let vault_balance = <T as pallet::Config>::Currency::free_balance(
+						&updated_billing_report.vault,
+					) - <T as pallet::Config>::Currency::minimum_balance();
 
-				updated_billing_report
-					.total_distributed_reward
-					.checked_add(amount_to_reward)
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
+					if reward > vault_balance {
+						if reward - vault_balance > max_dust {
+							Self::deposit_event(Event::<T>::NotDistributedReward {
+								cluster_id,
+								era,
+								node_provider_id: node_provider_id.clone(),
+								expected_reward: amount_to_reward,
+								distributed_reward: vault_balance,
+							});
+						}
+
+						reward = vault_balance;
+					}
+
+					<T as pallet::Config>::Currency::transfer(
+						&updated_billing_report.vault,
+						&node_provider_id,
+						reward,
+						ExistenceRequirement::AllowDeath,
+					)?;
+
+					updated_billing_report.total_distributed_reward = updated_billing_report
+						.total_distributed_reward
+						.checked_add(amount_to_reward)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+				}
 
 				Self::deposit_event(Event::<T>::Rewarded {
 					cluster_id,
@@ -754,6 +774,26 @@ pub mod pallet {
 				&billing_report.rewarding_max_batch_index,
 			)?;
 
+			let expected_amount_to_reward = (|| -> Option<u128> {
+				billing_report
+					.total_customer_charge
+					.transfer
+					.checked_add(billing_report.total_customer_charge.storage)?
+					.checked_add(billing_report.total_customer_charge.puts)?
+					.checked_add(billing_report.total_customer_charge.gets)
+			})()
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+			if expected_amount_to_reward - billing_report.total_distributed_reward > MaxDust::get()
+			{
+				Self::deposit_event(Event::<T>::NotDistributedOverallReward {
+					cluster_id,
+					era,
+					expected_reward: expected_amount_to_reward,
+					total_distributed_reward: billing_report.total_distributed_reward,
+				});
+			}
+
 			billing_report.state = State::ProvidersRewarded;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
@@ -775,20 +815,6 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(billing_report.state == State::ProvidersRewarded, Error::<T>::NotExpectedState);
-			let expected_amount_to_reward = (|| -> Option<u128> {
-				billing_report
-					.total_customer_charge
-					.transfer
-					.checked_add(billing_report.total_customer_charge.storage)?
-					.checked_add(billing_report.total_customer_charge.puts)?
-					.checked_add(billing_report.total_customer_charge.gets)
-			})()
-			.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-			ensure!(
-				expected_amount_to_reward == billing_report.total_distributed_reward,
-				Error::<T>::NotDistributedBalance
-			);
 
 			billing_report.charging_processed_batches.clear();
 			billing_report.rewarding_processed_batches.clear();
@@ -829,20 +855,41 @@ pub mod pallet {
 		)
 	}
 
+	fn get_current_exposure_ratios<T: Config>(
+	) -> Result<Vec<(T::AccountId, Perquintill)>, DispatchError> {
+		let mut total_score = 0;
+		let mut individual_scores: Vec<(T::AccountId, u64)> = Vec::new();
+		for staker_id in T::NominatorsAndValidatorsList::iter() {
+			let s = T::NominatorsAndValidatorsList::get_score(&staker_id)
+				.map_err(|_| Error::<T>::ScoreRetrievalError)?;
+			let score = T::VoteScoreToU64::convert(s);
+			total_score += score;
+
+			individual_scores.push((staker_id, score));
+		}
+
+		let mut result = Vec::new();
+		for (staker_id, score) in individual_scores {
+			let ratio = Perquintill::from_rational(score, total_score);
+			result.push((staker_id, ratio));
+		}
+
+		Ok(result)
+	}
+
 	fn charge_validator_fees<T: Config>(
 		validators_fee: u128,
 		vault: &T::AccountId,
 	) -> DispatchResult {
-		let amount_to_deduct = validators_fee
-			.checked_div(T::ValidatorList::count().try_into().unwrap())
-			.ok_or(Error::<T>::ArithmeticOverflow)?
-			.saturated_into::<BalanceOf<T>>();
+		let stakers = get_current_exposure_ratios::<T>()?;
 
-		for validator_account_id in T::ValidatorList::iter() {
+		for (staker_id, ratio) in stakers.iter() {
+			let amount_to_deduct = *ratio * validators_fee;
+
 			<T as pallet::Config>::Currency::transfer(
 				vault,
-				&validator_account_id,
-				amount_to_deduct,
+				staker_id,
+				amount_to_deduct.saturated_into::<BalanceOf<T>>(),
 				ExistenceRequirement::AllowDeath,
 			)?;
 		}
@@ -857,20 +904,26 @@ pub mod pallet {
 	) -> Option<NodeReward> {
 		let mut node_reward = NodeReward::default();
 
-		let mut ratio = Perbill::from_rational(
-			node_usage.transferred_bytes,
-			total_nodes_usage.transferred_bytes,
+		let mut ratio = Perquintill::from_rational(
+			node_usage.transferred_bytes as u128,
+			total_nodes_usage.transferred_bytes as u128,
 		);
+
 		// ratio multiplied by X will be > 0, < X no overflow
 		node_reward.transfer = ratio * total_customer_charge.transfer;
 
-		ratio = Perbill::from_rational(node_usage.stored_bytes, total_nodes_usage.stored_bytes);
+		ratio = Perquintill::from_rational(
+			node_usage.stored_bytes as u128,
+			total_nodes_usage.stored_bytes as u128,
+		);
 		node_reward.storage = ratio * total_customer_charge.storage;
 
-		ratio = Perbill::from_rational(node_usage.number_of_puts, total_nodes_usage.number_of_puts);
+		ratio =
+			Perquintill::from_rational(node_usage.number_of_puts, total_nodes_usage.number_of_puts);
 		node_reward.puts = ratio * total_customer_charge.puts;
 
-		ratio = Perbill::from_rational(node_usage.number_of_gets, total_nodes_usage.number_of_gets);
+		ratio =
+			Perquintill::from_rational(node_usage.number_of_gets, total_nodes_usage.number_of_gets);
 		node_reward.gets = ratio * total_customer_charge.gets;
 
 		Some(node_reward)
@@ -899,13 +952,11 @@ pub mod pallet {
 		})()
 		.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-		total.gets = usage
-			.number_of_gets
+		total.gets = (usage.number_of_gets as u128)
 			.checked_mul(pricing.unit_per_get_request)
 			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-		total.puts = usage
-			.number_of_puts
+		total.puts = (usage.number_of_puts as u128)
 			.checked_mul(pricing.unit_per_put_request)
 			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
@@ -928,7 +979,55 @@ pub mod pallet {
 		Ok(())
 	}
 
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub feeder_account: Option<T::AccountId>,
+		pub authorised_caller: Option<T::AccountId>,
+		pub debtor_customers: Vec<(ClusterId, T::AccountId, u128)>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig {
+				feeder_account: None,
+				authorised_caller: Default::default(),
+				debtor_customers: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			let account_id = <Pallet<T>>::account_id();
+			let min = <T as pallet::Config>::Currency::minimum_balance();
+			let balance = <T as pallet::Config>::Currency::free_balance(&account_id);
+			if balance < min {
+				if let Some(vault) = &self.feeder_account {
+					let _ = <T as pallet::Config>::Currency::transfer(
+						vault,
+						&account_id,
+						min - balance,
+						ExistenceRequirement::AllowDeath,
+					);
+				} else {
+					let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
+				}
+			}
+
+			AuthorisedCaller::<T>::set(self.authorised_caller.clone());
+			for (cluster_id, customer_id, debt) in &self.debtor_customers {
+				DebtorCustomers::<T>::insert(cluster_id, customer_id, debt);
+			}
+		}
+	}
+
 	impl<T: Config> Pallet<T> {
+		pub fn account_id() -> T::AccountId {
+			T::PalletId::get().into_account_truncating()
+		}
+
 		pub fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
 			let mut bytes = Vec::new();
 			bytes.extend_from_slice(&cluster_id[..]);
