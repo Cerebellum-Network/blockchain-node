@@ -1471,7 +1471,13 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Runtime migrations
-type Migrations = ();
+pub struct MigrateToTrackInactive<T, I = ()>(PhantomData<(T, I)>);
+impl<T: Config<I>, I: 'static> OnRuntimeUpgrade for MigrateToTrackInactive<T, I> {
+	fn on_runtime_upgrade() -> Weight {
+		migrate_v0_to_v1::<T, I>(&[])
+	}
+}
+type Migrations = (MigrateToTrackInactive<Runtime>,);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
