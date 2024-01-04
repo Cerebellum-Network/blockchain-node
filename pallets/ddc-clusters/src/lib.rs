@@ -34,12 +34,13 @@ use ddc_primitives::{
 };
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+	pallet::PalletsOriginOf,
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
-	traits::{Currency, LockableCurrency},
+	traits::{Currency, EnsureOriginWithArg, LockableCurrency},
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -79,6 +80,11 @@ pub mod pallet {
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 		type WeightInfo: WeightInfo;
+		type SubmitOrigin: EnsureOriginWithArg<
+			Self::RuntimeOrigin,
+			PalletsOriginOf<Self>,
+			Success = Self::AccountId,
+		>;
 	}
 
 	#[pallet::event]
@@ -89,6 +95,7 @@ pub mod pallet {
 		ClusterNodeRemoved { cluster_id: ClusterId, node_pub_key: NodePubKey },
 		ClusterParamsSet { cluster_id: ClusterId },
 		ClusterGovParamsSet { cluster_id: ClusterId },
+		TestSuccess,
 	}
 
 	#[pallet::error]
@@ -192,6 +199,17 @@ pub mod pallet {
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
+		#[pallet::weight(10_000)]
+		pub fn test(
+			origin: OriginFor<T>,
+			proposal_origin: Box<PalletsOriginOf<T>>,
+		) -> DispatchResult {
+			let who = T::SubmitOrigin::ensure_origin(origin, &proposal_origin)?;
+			Self::deposit_event(Event::<T>::TestSuccess);
+
+			Ok(())
+		}
+
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_cluster())]
 		pub fn create_cluster(
 			origin: OriginFor<T>,
