@@ -834,6 +834,7 @@ dependencies = [
  "pallet-collective",
  "pallet-contracts",
  "pallet-contracts-primitives",
+ "pallet-custom-origins",
  "pallet-ddc-clusters",
  "pallet-ddc-customers",
  "pallet-ddc-nodes",
@@ -4644,6 +4645,33 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "pallet-custom-origins"
+version = "4.8.1"
+dependencies = [
+ "ddc-primitives",
+ "ddc-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "hex-literal",
+ "pallet-balances",
+ "pallet-contracts",
+ "pallet-ddc-nodes",
+ "pallet-randomness-collective-flip",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "sp-tracing",
+ "substrate-test-utils",
 ]
 
 [[package]]

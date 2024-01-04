@@ -23,7 +23,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use ddc_traits::pallet::PalletVisitor;
+use ddc_traits::pallet::{PalletVisitor, PalletsOriginOf};
 use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragmen, VoteWeight};
 use frame_support::{
 	construct_runtime,
@@ -31,8 +31,9 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly, Everything,
-		Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced,
+		CallerTrait, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EnsureOrigin,
+		EnsureOriginWithArg, EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter,
+		KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced, OriginTrait,
 		U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
@@ -52,6 +53,7 @@ use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 #[cfg(any(feature = "std", test))]
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
+pub use pallet_custom_origins;
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
 pub use pallet_ddc_nodes;
@@ -87,7 +89,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
 };
-use sp_std::prelude::*;
+use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -1331,6 +1333,7 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
+	type SubmitOrigin = EnsureOfPermissionedTrack<Self>;
 }
 
 parameter_types! {
@@ -1356,6 +1359,8 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type ClusterCreator = DdcClusters;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 }
+
+impl pallet_custom_origins::Config for Runtime {}
 
 construct_runtime!(
 	pub enum Runtime where
@@ -1410,7 +1415,8 @@ construct_runtime!(
 		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
-		DdcPayouts: pallet_ddc_payouts
+		DdcPayouts: pallet_ddc_payouts,
+		CustomOrigins: pallet_custom_origins::{Origin},
 	}
 );
 
@@ -1478,6 +1484,73 @@ mod custom_migration {
 		fn on_runtime_upgrade() -> Weight {
 			clear_prefix(&twox_128(b"DdcValidator"), None);
 			Weight::from_ref_time(0)
+		}
+	}
+}
+
+pub struct EnsureOfPermissionedTrack<T>(PhantomData<T>);
+impl<T: frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
+	for EnsureOfPermissionedTrack<T>
+where
+	<T as frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
+{
+	type Success = T::AccountId;
+
+	fn try_origin(
+		o: T::RuntimeOrigin,
+		proposal_origin: &PalletsOriginOf<T>,
+	) -> Result<Self::Success, T::RuntimeOrigin> {
+		let who = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o)?;
+		let result = CereOrigins::origin_for(proposal_origin);
+		Ok(who)
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin(proposal_origin: &PalletsOriginOf<T>) -> Result<T::RuntimeOrigin, ()> {
+		let who = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
+		Ok(frame_system::RawOrigin::Signed(who).into())
+	}
+}
+
+pub trait OriginsInfo {
+	/// The origin type from which a track is implied.
+	type RuntimeOrigin;
+	/// Determine the voting track for the given `origin`.
+	fn origin_for(origin: &Self::RuntimeOrigin) -> Result<i32, ()>;
+}
+
+pub struct CereOrigins;
+impl OriginsInfo for CereOrigins {
+	type RuntimeOrigin = <RuntimeOrigin as frame_support::traits::OriginTrait>::PalletsOrigin;
+
+	fn origin_for(id: &Self::RuntimeOrigin) -> Result<i32, ()> {
+		if let Ok(system_origin) = frame_system::RawOrigin::try_from(id.clone()) {
+			match system_origin {
+				frame_system::RawOrigin::Root => Ok(0),
+				_ => Err(()),
+			}
+		} else if let Ok(custom_origin) = pallet_custom_origins::Origin::try_from(id.clone()) {
+			match custom_origin {
+				pallet_custom_origins::Origin::WhitelistedCaller => Ok(1),
+				// General admin
+				pallet_custom_origins::Origin::StakingAdmin => Ok(10),
+				pallet_custom_origins::Origin::Treasurer => Ok(11),
+				pallet_custom_origins::Origin::LeaseAdmin => Ok(12),
+				pallet_custom_origins::Origin::FellowshipAdmin => Ok(13),
+				pallet_custom_origins::Origin::GeneralAdmin => Ok(14),
+				pallet_custom_origins::Origin::AuctionAdmin => Ok(15),
+				// Referendum admins
+				pallet_custom_origins::Origin::ReferendumCanceller => Ok(20),
+				pallet_custom_origins::Origin::ReferendumKiller => Ok(21),
+				// Limited treasury spenders
+				pallet_custom_origins::Origin::SmallTipper => Ok(30),
+				pallet_custom_origins::Origin::BigTipper => Ok(31),
+				pallet_custom_origins::Origin::SmallSpender => Ok(32),
+				pallet_custom_origins::Origin::MediumSpender => Ok(33),
+				pallet_custom_origins::Origin::BigSpender => Ok(34),
+			}
+		} else {
+			Err(())
 		}
 	}
 }
