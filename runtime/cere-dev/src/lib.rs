@@ -1500,9 +1500,11 @@ where
 		o: T::RuntimeOrigin,
 		proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<Self::Success, T::RuntimeOrigin> {
-		let who = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o)?;
-		let result = CereOrigins::origin_for(proposal_origin);
-		Ok(who)
+		let who = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
+		match CereOrigins::origin_for(proposal_origin) {
+			Ok(_) => Ok(who),
+			Err(_) => Err(o),
+		}
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
