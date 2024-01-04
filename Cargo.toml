@@ -20,6 +20,7 @@ members = [
   "pallets/erc20",
   "pallets/erc721",
   "primitives",
+  "traits",
   "runtime/cere",
   "runtime/cere-dev",
 ]

@@ -23,19 +23,21 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use ddc_primitives::traits::pallet::PalletVisitor;
+use ddc_primitives::traits::pallet::{PalletVisitor, PalletsOriginOf};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
+
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, Nothing,
-		OnUnbalanced, WithdrawReasons,
+		CallerTrait, ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
+		EnsureOrigin, EnsureOriginWithArg, EqualPrivilegeOnly, Everything, Imbalance,
+		InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced, OriginTrait,
+		U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -57,6 +59,7 @@ use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce};
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
 use pallet_contracts::Determinism;
+pub use pallet_custom_origins;
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
 pub use pallet_ddc_nodes;
@@ -93,7 +96,7 @@ use sp_runtime::{
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
 	RuntimeDebug,
 };
-use sp_std::prelude::*;
+use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -309,20 +312,20 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::Any => true,
 			ProxyType::NonTransfer => !matches!(
 				c,
-				RuntimeCall::Balances(..) |
-					RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
-					RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
-					RuntimeCall::NominationPools(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Balances(..)
+					| RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+					| RuntimeCall::Indices(pallet_indices::Call::transfer { .. })
+					| RuntimeCall::NominationPools(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
-				RuntimeCall::Treasury(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Treasury(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Staking => matches!(c, RuntimeCall::Staking(..)),
 		}
@@ -662,8 +665,8 @@ impl Get<Option<BalancingConfig>> for OffchainRandomBalancing {
 			max => {
 				let seed = sp_io::offchain::random_seed();
 				let random = <u32>::decode(&mut TrailingZeroInput::new(&seed))
-					.expect("input is padded with zeroes; qed") %
-					max.saturating_add(1);
+					.expect("input is padded with zeroes; qed")
+					% max.saturating_add(1);
 				random as usize
 			},
 		};
@@ -1153,6 +1156,7 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type MinErasureCodingRequiredLimit = ConstU32<4>;
 	type MinErasureCodingTotalLimit = ConstU32<6>;
 	type MinReplicationTotalLimit = ConstU32<3>;
+	type SubmitOrigin = EnsureOfPermissionedTrack<Self>;
 }
 
 parameter_types! {
@@ -1179,6 +1183,8 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
 }
+
+impl pallet_custom_origins::Config for Runtime {}
 
 construct_runtime!(
 	pub struct Runtime
@@ -1363,6 +1369,73 @@ type EventRecord = frame_system::EventRecord<
 	<Runtime as frame_system::Config>::RuntimeEvent,
 	<Runtime as frame_system::Config>::Hash,
 >;
+
+pub struct EnsureOfPermissionedTrack<T>(PhantomData<T>);
+impl<T: frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
+	for EnsureOfPermissionedTrack<T>
+where
+	<T as frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
+{
+	type Success = T::AccountId;
+
+	fn try_origin(
+		o: T::RuntimeOrigin,
+		proposal_origin: &PalletsOriginOf<T>,
+	) -> Result<Self::Success, T::RuntimeOrigin> {
+		let who = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o)?;
+		let result = CereOrigins::origin_for(proposal_origin);
+		Ok(who)
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin(proposal_origin: &PalletsOriginOf<T>) -> Result<T::RuntimeOrigin, ()> {
+		let who = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
+		Ok(frame_system::RawOrigin::Signed(who).into())
+	}
+}
+
+pub trait OriginsInfo {
+	/// The origin type from which a track is implied.
+	type RuntimeOrigin;
+	/// Determine the voting track for the given `origin`.
+	fn origin_for(origin: &Self::RuntimeOrigin) -> Result<i32, ()>;
+}
+
+pub struct CereOrigins;
+impl OriginsInfo for CereOrigins {
+	type RuntimeOrigin = <RuntimeOrigin as frame_support::traits::OriginTrait>::PalletsOrigin;
+
+	fn origin_for(id: &Self::RuntimeOrigin) -> Result<i32, ()> {
+		if let Ok(system_origin) = frame_system::RawOrigin::try_from(id.clone()) {
+			match system_origin {
+				frame_system::RawOrigin::Root => Ok(0),
+				_ => Err(()),
+			}
+		} else if let Ok(custom_origin) = pallet_custom_origins::Origin::try_from(id.clone()) {
+			match custom_origin {
+				pallet_custom_origins::Origin::WhitelistedCaller => Ok(1),
+				// General admin
+				pallet_custom_origins::Origin::StakingAdmin => Ok(10),
+				pallet_custom_origins::Origin::Treasurer => Ok(11),
+				pallet_custom_origins::Origin::LeaseAdmin => Ok(12),
+				pallet_custom_origins::Origin::FellowshipAdmin => Ok(13),
+				pallet_custom_origins::Origin::GeneralAdmin => Ok(14),
+				pallet_custom_origins::Origin::AuctionAdmin => Ok(15),
+				// Referendum admins
+				pallet_custom_origins::Origin::ReferendumCanceller => Ok(20),
+				pallet_custom_origins::Origin::ReferendumKiller => Ok(21),
+				// Limited treasury spenders
+				pallet_custom_origins::Origin::SmallTipper => Ok(30),
+				pallet_custom_origins::Origin::BigTipper => Ok(31),
+				pallet_custom_origins::Origin::SmallSpender => Ok(32),
+				pallet_custom_origins::Origin::MediumSpender => Ok(33),
+				pallet_custom_origins::Origin::BigSpender => Ok(34),
+			}
+		} else {
+			Err(())
+		}
+	}
+}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]

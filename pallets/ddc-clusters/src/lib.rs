@@ -31,15 +31,17 @@ pub mod migration;
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+		pallet::PalletsOriginOf,
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,
 };
+
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
-	traits::{Currency, LockableCurrency},
+	traits::{Currency, EnsureOriginWithArg, LockableCurrency},
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -89,6 +91,11 @@ pub mod pallet {
 		type MinErasureCodingTotalLimit: Get<u32>;
 		#[pallet::constant]
 		type MinReplicationTotalLimit: Get<u32>;
+		type SubmitOrigin: EnsureOriginWithArg<
+			Self::RuntimeOrigin,
+			PalletsOriginOf<Self>,
+			Success = Self::AccountId,
+		>;
 	}
 
 	#[pallet::event]
@@ -99,6 +106,7 @@ pub mod pallet {
 		ClusterNodeRemoved { cluster_id: ClusterId, node_pub_key: NodePubKey },
 		ClusterParamsSet { cluster_id: ClusterId },
 		ClusterGovParamsSet { cluster_id: ClusterId },
+		TestSuccess,
 	}
 
 	#[pallet::error]
@@ -208,6 +216,18 @@ pub mod pallet {
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
+		#[pallet::call_index(100)]
+		#[pallet::weight(10_000)]
+		pub fn test(
+			origin: OriginFor<T>,
+			proposal_origin: Box<PalletsOriginOf<T>>,
+		) -> DispatchResult {
+			let who = T::SubmitOrigin::ensure_origin(origin, &proposal_origin)?;
+			Self::deposit_event(Event::<T>::TestSuccess);
+
+			Ok(())
+		}
+
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_cluster())]
 		pub fn create_cluster(
@@ -396,8 +416,9 @@ pub mod pallet {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
 			match node_type {
-				NodeType::Storage =>
-					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
+				NodeType::Storage => {
+					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>())
+				},
 			}
 		}
 
@@ -551,12 +572,15 @@ pub mod pallet {
 	impl<T> From<NodeProviderAuthContractError> for Error<T> {
 		fn from(error: NodeProviderAuthContractError) -> Self {
 			match error {
-				NodeProviderAuthContractError::ContractCallFailed =>
-					Error::<T>::NodeAuthContractCallFailed,
-				NodeProviderAuthContractError::ContractDeployFailed =>
-					Error::<T>::NodeAuthContractDeployFailed,
-				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
-					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful,
+				NodeProviderAuthContractError::ContractCallFailed => {
+					Error::<T>::NodeAuthContractCallFailed
+				},
+				NodeProviderAuthContractError::ContractDeployFailed => {
+					Error::<T>::NodeAuthContractDeployFailed
+				},
+				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful => {
+					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful
+				},
 			}
 		}
 	}
@@ -564,14 +588,18 @@ pub mod pallet {
 	impl<T> From<ClusterManagerError> for Error<T> {
 		fn from(error: ClusterManagerError) -> Self {
 			match error {
-				ClusterManagerError::AttemptToRemoveNotAssignedNode =>
-					Error::<T>::AttemptToRemoveNotAssignedNode,
-				ClusterManagerError::AttemptToRemoveNonExistentNode =>
-					Error::<T>::AttemptToRemoveNonExistentNode,
-				ClusterManagerError::AttemptToAddNonExistentNode =>
-					Error::<T>::AttemptToAddNonExistentNode,
-				ClusterManagerError::AttemptToAddAlreadyAssignedNode =>
-					Error::<T>::AttemptToAddAlreadyAssignedNode,
+				ClusterManagerError::AttemptToRemoveNotAssignedNode => {
+					Error::<T>::AttemptToRemoveNotAssignedNode
+				},
+				ClusterManagerError::AttemptToRemoveNonExistentNode => {
+					Error::<T>::AttemptToRemoveNonExistentNode
+				},
+				ClusterManagerError::AttemptToAddNonExistentNode => {
+					Error::<T>::AttemptToAddNonExistentNode
+				},
+				ClusterManagerError::AttemptToAddAlreadyAssignedNode => {
+					Error::<T>::AttemptToAddAlreadyAssignedNode
+				},
 			}
 		}
 	}
