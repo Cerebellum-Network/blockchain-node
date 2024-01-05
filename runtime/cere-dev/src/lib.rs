@@ -1326,14 +1326,20 @@ impl pallet_ddc_nodes::Config for Runtime {
 	type WeightInfo = pallet_ddc_nodes::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	pub const ClustersPalletId: PalletId = PalletId(*b"clusters");
+}
+
 impl pallet_ddc_clusters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type PalletId = ClustersPalletId;
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
 	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
 	type SubmitOrigin = EnsureOfPermissionedTrack<Self>;
+	type RuntimeCall = RuntimeCall;
 }
 
 parameter_types! {
@@ -1488,6 +1494,13 @@ mod custom_migration {
 	}
 }
 
+pub struct ClustersWrapper;
+impl<T: frame_system::Config> PalletVisitor<T> for ClustersWrapper {
+	fn get_account_id() -> T::AccountId {
+		ClustersPalletId::get().into_account_truncating()
+	}
+}
+
 pub struct EnsureOfPermissionedTrack<T>(PhantomData<T>);
 impl<T: frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
 	for EnsureOfPermissionedTrack<T>
@@ -1501,9 +1514,22 @@ where
 		proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<Self::Success, T::RuntimeOrigin> {
 		let who = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
-		match CereOrigins::origin_for(proposal_origin) {
-			Ok(_) => Ok(who),
-			Err(_) => Err(o),
+
+		let track_id = match CereOrigins::origin_for(proposal_origin) {
+			Ok(track_id) => track_id,
+			Err(_) => return Err(o),
+		};
+
+		if track_id == 10 {
+			let clusters_gov_id = <ClustersWrapper as PalletVisitor<T>>::get_account_id();
+
+			if who == clusters_gov_id {
+				Ok(who)
+			} else {
+				Err(o)
+			}
+		} else {
+			Ok(who)
 		}
 	}
 
