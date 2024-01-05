@@ -6,8 +6,8 @@ edition = "2021"
 [dependencies]
 byte-unit = { version = "4.0.19", default-features = false, features = ["u128"] }
 codec = { package = "parity-scale-codec", version = "3.1.5", default-features = false, features = ["derive"] }
-ddc-primitives = { version = "0.1.0", default-features = false, path = "../../primitives" }
-ddc-traits = { version = "0.1.0", default-features = false, path = "../../traits" }
+ddc-primitives = { version = "4.8.2", default-features = false, path = "../../primitives" }
+ddc-traits = { version = "4.8.2", default-features = false, path = "../../traits" }
 frame-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", optional = true }
 frame-election-provider-support = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 frame-support = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }

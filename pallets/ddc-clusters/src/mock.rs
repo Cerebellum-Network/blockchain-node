@@ -18,7 +18,7 @@ use sp_runtime::{
 	traits::{
 		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
 	},
-	MultiSignature, Perbill,
+	MultiSignature, Perquintill,
 };
 
 use crate::{self as pallet_ddc_clusters, *};
@@ -244,9 +244,9 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage);
 
 		let cluster_gov_params = ClusterGovParams {
-			treasury_share: Perbill::from_float(0.05),
-			validators_share: Perbill::from_float(0.01),
-			cluster_reserve_share: Perbill::from_float(0.02),
+			treasury_share: Perquintill::from_float(0.05),
+			validators_share: Perquintill::from_float(0.01),
+			cluster_reserve_share: Perquintill::from_float(0.02),
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
