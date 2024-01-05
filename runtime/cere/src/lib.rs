@@ -1145,7 +1145,6 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type MinErasureCodingTotalLimit = ConstU32<6>;
 	type MinReplicationTotalLimit = ConstU32<3>;
 	type SubmitOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
-	type RuntimeCall = RuntimeCall;
 }
 
 impl pallet_ddc_nodes::Config for Runtime {

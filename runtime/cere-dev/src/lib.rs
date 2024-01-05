@@ -1162,7 +1162,6 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type MinErasureCodingTotalLimit = ConstU32<6>;
 	type MinReplicationTotalLimit = ConstU32<3>;
 	type SubmitOrigin = EnsureOfPermissionedTrack<Self>;
-	type RuntimeCall = RuntimeCall;
 }
 
 parameter_types! {
