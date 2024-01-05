@@ -8,6 +8,7 @@ edition = "2021"
 default = ["std"]
 no_std = []
 std = []
+try-runtime = []
 
 [dependencies]
 frame-support = { git = "https://github.com/paritytech/substrate.git", default-features = false, branch = "polkadot-v0.9.37" }
