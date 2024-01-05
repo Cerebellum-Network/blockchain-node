@@ -2,9 +2,6 @@
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use pallet_chainbridge as bridge;
-use pallet_erc721 as erc721;
-
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage,
 	dispatch::DispatchResult,
@@ -12,6 +9,8 @@ use frame_support::{
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get},
 };
 use frame_system::{self as system, ensure_signed};
+use pallet_chainbridge as bridge;
+use pallet_erc721 as erc721;
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_core::U256;
 use sp_std::prelude::*;

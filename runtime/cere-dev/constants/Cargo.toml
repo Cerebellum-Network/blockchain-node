@@ -1,11 +1,12 @@
 [package]
 name = "cere-dev-runtime-constants"
-version = "4.8.1"
+version = "4.8.2"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 
 [dependencies]
-node-primitives = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
+node-primitives = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.31" }
 
 [features]
 default = ["std"]

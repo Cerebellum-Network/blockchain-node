@@ -1,13 +1,15 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
+use std::sync::Arc;
+
 #[cfg(feature = "cere-dev-native")]
 pub use cere_dev_runtime;
 #[cfg(feature = "cere-native")]
 pub use cere_runtime;
-
 use futures::prelude::*;
 use sc_client_api::BlockBackend;
 use sc_consensus_babe::{self, SlotProportion};
+pub use sc_executor::NativeExecutionDispatch;
 use sc_network::Event;
 use sc_service::{
 	error::Error as ServiceError, Configuration, KeystoreContainer, RpcHandlers, TaskManager,
@@ -15,9 +17,6 @@ use sc_service::{
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 use sp_trie::PrefixedMemoryDB;
-use std::sync::Arc;
-
-pub use sc_executor::NativeExecutionDispatch;
 pub mod chain_spec;
 pub use cere_client::{
 	AbstractClient, CereDevExecutorDispatch, CereExecutorDispatch, Client, ClientHandle,
@@ -29,7 +28,6 @@ pub use sc_executor::NativeElseWasmExecutor;
 use sc_network_common::service::NetworkEventStream;
 pub use sc_service::ChainSpec;
 pub use sp_api::ConstructRuntimeApi;
-pub use sp_core::offchain::OffchainStorage;
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch> = sc_finality_grandpa::GrandpaBlockImport<
@@ -387,15 +385,6 @@ where
 			block_announce_validator_builder: None,
 			warp_sync: Some(warp_sync),
 		})?;
-
-	if config.offchain_worker.enabled {
-		sc_service::build_offchain_workers(
-			&config,
-			task_manager.spawn_handle(),
-			client.clone(),
-			network.clone(),
-		);
-	}
 
 	let role = config.role.clone();
 	let force_authoring = config.force_authoring;

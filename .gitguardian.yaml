@@ -1,0 +1,7 @@
+# Required, otherwise ggshield considers the file to use the deprecated v1 format
+version: 2
+
+secret:
+  # Exclude files and paths by globbing
+  ignored-paths:
+    - node/service/chain-specs/example.json

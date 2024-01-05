@@ -28,10 +28,6 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
-use crate::{
-	cluster::Cluster,
-	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
-};
 use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,
@@ -51,6 +47,11 @@ use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
+use crate::{
+	cluster::Cluster,
+	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
+};
+
 pub mod cluster;
 mod node_provider_auth;
 
@@ -60,9 +61,10 @@ pub type BalanceOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use ddc_traits::cluster::{ClusterManager, ClusterManagerError};
 	use pallet_contracts::chain_extension::UncheckedFrom;
+
+	use super::*;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
