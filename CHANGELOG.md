@@ -14,11 +14,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- ...
-
 ### Changed
 
 - ...
+
+## [4.8.2]
+
+### Added
+
+- [C,D] New `pallet-ddc-nodes` is added which allows registering a DDC node within the network with specific settings.
+- [C,D] New `pallet-ddc-clusters` is added which allows launching a DDC cluster in the network and managing it.
+- [C,D] New `pallet-ddc-staking` is added which allows making bonds for DDC nodes before joining a DDC cluster.
+- [C,D] New `pallet-ddc-customers` is added which allows depositing tokens and creating buckets for DDC customers.
+- [C,D] New `pallet-ddc-payouts` is added which allows processing payouts to DDC nodes providers based on DAC validation results.
+- New `ddc-primitives` crate with DDC common types definition.
+- New `ddc-traits` crate with DDC common traits definition.
 
 ## [4.8.1]
 
@@ -37,6 +47,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [C,D] Updated Substrate to polkadot-v0.9.30
+
+## [4.7.2]
+
+### Changed
+
+- Reduce by 2 orders of magnitude the constants changed in v4.7.1
+
+## [4.7.1]
+
+### Changed
+- Updated governance related constants
 
 ## [4.7.0]
 

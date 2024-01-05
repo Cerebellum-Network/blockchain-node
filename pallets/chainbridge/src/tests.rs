@@ -10,7 +10,6 @@ use super::{
 };
 use crate::mock::new_test_ext_initialized;
 use frame_support::{assert_noop, assert_ok};
-use frame_system::Origin;
 
 #[test]
 fn derive_ids() {
@@ -138,50 +137,41 @@ fn asset_transfer_success() {
 		let token_id = vec![1, 2, 3, 4];
 		let method = "Erc20.transfer".as_bytes().to_vec();
 
-		assert_ok!(Bridge::set_resource(RuntimeOrigin::root(), resource_id, method.clone()));
+		assert_ok!(Bridge::set_resource(RuntimeOrigin::root(), resource_id, method));
 		assert_ok!(Bridge::set_threshold(RuntimeOrigin::root(), TEST_THRESHOLD,));
 
-		assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), dest_id.clone()));
-		assert_ok!(Bridge::transfer_fungible(
-			dest_id.clone(),
-			resource_id.clone(),
-			to.clone(),
-			amount.into()
-		));
+		assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), dest_id));
+		assert_ok!(Bridge::transfer_fungible(dest_id, resource_id, to.clone(), amount.into()));
 		assert_events(vec![
-			RuntimeEvent::Bridge(RawEvent::ChainWhitelisted(dest_id.clone())),
+			RuntimeEvent::Bridge(RawEvent::ChainWhitelisted(dest_id)),
 			RuntimeEvent::Bridge(RawEvent::FungibleTransfer(
-				dest_id.clone(),
+				dest_id,
 				1,
-				resource_id.clone(),
+				resource_id,
 				amount.into(),
 				to.clone(),
 			)),
 		]);
 
 		assert_ok!(Bridge::transfer_nonfungible(
-			dest_id.clone(),
-			resource_id.clone(),
+			dest_id,
+			resource_id,
 			token_id.clone(),
 			to.clone(),
 			metadata.clone()
 		));
 		assert_events(vec![RuntimeEvent::Bridge(RawEvent::NonFungibleTransfer(
-			dest_id.clone(),
+			dest_id,
 			2,
-			resource_id.clone(),
+			resource_id,
 			token_id,
-			to.clone(),
+			to,
 			metadata.clone(),
 		))]);
 
-		assert_ok!(Bridge::transfer_generic(
-			dest_id.clone(),
-			resource_id.clone(),
-			metadata.clone()
-		));
+		assert_ok!(Bridge::transfer_generic(dest_id, resource_id, metadata.clone()));
 		assert_events(vec![RuntimeEvent::Bridge(RawEvent::GenericTransfer(
-			dest_id.clone(),
+			dest_id,
 			3,
 			resource_id,
 			metadata,
@@ -198,31 +188,20 @@ fn asset_transfer_invalid_resource_id() {
 		let amount = 100;
 
 		assert_ok!(Bridge::set_threshold(RuntimeOrigin::root(), TEST_THRESHOLD,));
-		assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), dest_id.clone()));
+		assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), dest_id));
 
 		assert_noop!(
-			Bridge::transfer_fungible(
-				dest_id.clone(),
-				resource_id.clone(),
-				to.clone(),
-				amount.into()
-			),
+			Bridge::transfer_fungible(dest_id, resource_id, to, amount.into()),
 			Error::<Test>::ResourceDoesNotExist
 		);
 
 		assert_noop!(
-			Bridge::transfer_nonfungible(
-				dest_id.clone(),
-				resource_id.clone(),
-				vec![],
-				vec![],
-				vec![]
-			),
+			Bridge::transfer_nonfungible(dest_id, resource_id, vec![], vec![], vec![]),
 			Error::<Test>::ResourceDoesNotExist
 		);
 
 		assert_noop!(
-			Bridge::transfer_generic(dest_id.clone(), resource_id.clone(), vec![]),
+			Bridge::transfer_generic(dest_id, resource_id, vec![]),
 			Error::<Test>::ResourceDoesNotExist
 		);
 	})
@@ -235,21 +214,21 @@ fn asset_transfer_invalid_chain() {
 		let bad_dest_id = 3;
 		let resource_id = [4; 32];
 
-		assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), chain_id.clone()));
-		assert_events(vec![RuntimeEvent::Bridge(RawEvent::ChainWhitelisted(chain_id.clone()))]);
+		assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), chain_id));
+		assert_events(vec![RuntimeEvent::Bridge(RawEvent::ChainWhitelisted(chain_id))]);
 
 		assert_noop!(
-			Bridge::transfer_fungible(bad_dest_id, resource_id.clone(), vec![], U256::zero()),
+			Bridge::transfer_fungible(bad_dest_id, resource_id, vec![], U256::zero()),
 			Error::<Test>::ChainNotWhitelisted
 		);
 
 		assert_noop!(
-			Bridge::transfer_nonfungible(bad_dest_id, resource_id.clone(), vec![], vec![], vec![]),
+			Bridge::transfer_nonfungible(bad_dest_id, resource_id, vec![], vec![], vec![]),
 			Error::<Test>::ChainNotWhitelisted
 		);
 
 		assert_noop!(
-			Bridge::transfer_generic(bad_dest_id, resource_id.clone(), vec![]),
+			Bridge::transfer_generic(bad_dest_id, resource_id, vec![]),
 			Error::<Test>::ChainNotWhitelisted
 		);
 	})
@@ -311,7 +290,7 @@ fn create_sucessful_proposal() {
 			r_id,
 			Box::new(proposal.clone())
 		));
-		let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
+		let prop = Bridge::votes(src_id, (prop_id, proposal.clone())).unwrap();
 		let expected = ProposalVotes {
 			votes_for: vec![RELAYER_A],
 			votes_against: vec![],
@@ -319,7 +298,6 @@ fn create_sucessful_proposal() {
 			expiry: ProposalLifetime::get() + 1,
 		};
 		assert_eq!(prop, expected);
-
 		// Second relayer votes against
 		assert_ok!(Bridge::reject_proposal(
 			RuntimeOrigin::signed(RELAYER_B),
@@ -328,7 +306,7 @@ fn create_sucessful_proposal() {
 			r_id,
 			Box::new(proposal.clone())
 		));
-		let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
+		let prop = Bridge::votes(src_id, (prop_id, proposal.clone())).unwrap();
 		let expected = ProposalVotes {
 			votes_for: vec![RELAYER_A],
 			votes_against: vec![RELAYER_B],
@@ -345,7 +323,7 @@ fn create_sucessful_proposal() {
 			r_id,
 			Box::new(proposal.clone())
 		));
-		let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
+		let prop = Bridge::votes(src_id, (prop_id, proposal)).unwrap();
 		let expected = ProposalVotes {
 			votes_for: vec![RELAYER_A, RELAYER_C],
 			votes_against: vec![RELAYER_B],
@@ -381,7 +359,7 @@ fn create_unsucessful_proposal() {
 			r_id,
 			Box::new(proposal.clone())
 		));
-		let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
+		let prop = Bridge::votes(src_id, (prop_id, proposal.clone())).unwrap();
 		let expected = ProposalVotes {
 			votes_for: vec![RELAYER_A],
 			votes_against: vec![],
@@ -389,7 +367,6 @@ fn create_unsucessful_proposal() {
 			expiry: ProposalLifetime::get() + 1,
 		};
 		assert_eq!(prop, expected);
-
 		// Second relayer votes against
 		assert_ok!(Bridge::reject_proposal(
 			RuntimeOrigin::signed(RELAYER_B),
@@ -398,7 +375,7 @@ fn create_unsucessful_proposal() {
 			r_id,
 			Box::new(proposal.clone())
 		));
-		let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
+		let prop = Bridge::votes(src_id, (prop_id, proposal.clone())).unwrap();
 		let expected = ProposalVotes {
 			votes_for: vec![RELAYER_A],
 			votes_against: vec![RELAYER_B],
@@ -406,7 +383,6 @@ fn create_unsucessful_proposal() {
 			expiry: ProposalLifetime::get() + 1,
 		};
 		assert_eq!(prop, expected);
-
 		// Third relayer votes against
 		assert_ok!(Bridge::reject_proposal(
 			RuntimeOrigin::signed(RELAYER_C),
@@ -415,7 +391,7 @@ fn create_unsucessful_proposal() {
 			r_id,
 			Box::new(proposal.clone())
 		));
-		let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
+		let prop = Bridge::votes(src_id, (prop_id, proposal)).unwrap();
 		let expected = ProposalVotes {
 			votes_for: vec![RELAYER_A],
 			votes_against: vec![RELAYER_B, RELAYER_C],
@@ -453,7 +429,7 @@ fn execute_after_threshold_change() {
 			r_id,
 			Box::new(proposal.clone())
 		));
-		let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
+		let prop = Bridge::votes(src_id, (prop_id, proposal.clone())).unwrap();
 		let expected = ProposalVotes {
 			votes_for: vec![RELAYER_A],
 			votes_against: vec![],
@@ -473,7 +449,7 @@ fn execute_after_threshold_change() {
 			Box::new(proposal.clone())
 		));
 
-		let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
+		let prop = Bridge::votes(src_id, (prop_id, proposal)).unwrap();
 		let expected = ProposalVotes {
 			votes_for: vec![RELAYER_A],
 			votes_against: vec![],
@@ -511,7 +487,7 @@ fn proposal_expires() {
 			r_id,
 			Box::new(proposal.clone())
 		));
-		let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
+		let prop = Bridge::votes(src_id, (prop_id, proposal.clone())).unwrap();
 		let expected = ProposalVotes {
 			votes_for: vec![RELAYER_A],
 			votes_against: vec![],
@@ -536,7 +512,7 @@ fn proposal_expires() {
 		);
 
 		// Proposal state should remain unchanged
-		let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
+		let prop = Bridge::votes(src_id, (prop_id, proposal.clone())).unwrap();
 		let expected = ProposalVotes {
 			votes_for: vec![RELAYER_A],
 			votes_against: vec![],
@@ -544,7 +520,6 @@ fn proposal_expires() {
 			expiry: ProposalLifetime::get() + 1,
 		};
 		assert_eq!(prop, expected);
-
 		// eval_vote_state should have no effect
 		assert_noop!(
 			Bridge::eval_vote_state(
@@ -555,7 +530,7 @@ fn proposal_expires() {
 			),
 			Error::<Test>::ProposalExpired
 		);
-		let prop = Bridge::votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
+		let prop = Bridge::votes(src_id, (prop_id, proposal)).unwrap();
 		let expected = ProposalVotes {
 			votes_for: vec![RELAYER_A],
 			votes_against: vec![],

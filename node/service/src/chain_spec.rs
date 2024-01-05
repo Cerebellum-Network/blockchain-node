@@ -233,7 +233,11 @@ pub fn cere_dev_genesis(
 		},
 		vesting: Default::default(),
 		transaction_payment: Default::default(),
+		ddc_customers: Default::default(),
 		nomination_pools: Default::default(),
+		ddc_clusters: Default::default(),
+		ddc_nodes: Default::default(),
+		ddc_payouts: Default::default(),
 	}
 }
 

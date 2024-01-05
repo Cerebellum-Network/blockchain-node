@@ -29,6 +29,7 @@ pub use sc_executor::NativeElseWasmExecutor;
 use sc_network_common::service::NetworkEventStream;
 pub use sc_service::ChainSpec;
 pub use sp_api::ConstructRuntimeApi;
+pub use sp_core::offchain::OffchainStorage;
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch> = sc_finality_grandpa::GrandpaBlockImport<
@@ -87,7 +88,7 @@ where
 
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(
-			&config,
+			config,
 			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
 			executor,
 		)?;
@@ -102,6 +103,7 @@ where
 	Ok(Basics { task_manager, client, backend, keystore_container, telemetry })
 }
 
+#[allow(clippy::type_complexity)]
 fn new_partial<RuntimeApi, ExecutorDispatch>(
 	config: &Configuration,
 	Basics { task_manager, backend, client, keystore_container, telemetry }: Basics<
@@ -282,7 +284,7 @@ pub fn build_full(
 
 	#[cfg(feature = "cere-native")]
 	{
-		return new_full::<cere_runtime::RuntimeApi, CereExecutorDispatch>(
+		new_full::<cere_runtime::RuntimeApi, CereExecutorDispatch>(
 			config,
 			disable_hardware_benchmarks,
 			|_, _| (),
@@ -338,7 +340,7 @@ where
 {
 	let hwbench = if !disable_hardware_benchmarks {
 		config.database.path().map(|database_path| {
-			let _ = std::fs::create_dir_all(&database_path);
+			let _ = std::fs::create_dir_all(database_path);
 			sc_sysinfo::gather_hwbench(Some(database_path))
 		})
 	} else {
@@ -438,7 +440,7 @@ where
 		let proposer = sc_basic_authorship::ProposerFactory::new(
 			task_manager.spawn_handle(),
 			client.clone(),
-			transaction_pool.clone(),
+			transaction_pool,
 			prometheus_registry.as_ref(),
 			telemetry.as_ref().map(|x| x.handle()),
 		);
@@ -605,6 +607,7 @@ macro_rules! chain_ops {
 	}};
 }
 
+#[allow(clippy::type_complexity)]
 pub fn new_chain_ops(
 	config: &Configuration,
 ) -> Result<
@@ -623,7 +626,7 @@ pub fn new_chain_ops(
 
 	#[cfg(feature = "cere-native")]
 	{
-		return chain_ops!(config; cere_runtime, CereExecutorDispatch, Cere)
+		chain_ops!(config; cere_runtime, CereExecutorDispatch, Cere)
 	}
 
 	#[cfg(not(feature = "cere-native"))]

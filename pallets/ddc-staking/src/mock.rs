@@ -3,19 +3,34 @@
 #![allow(dead_code)]
 
 use crate::{self as pallet_ddc_staking, *};
+use ddc_primitives::{
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
+	NodeParams, NodePubKey, StorageNodePubKey,
+};
+use ddc_traits::{
+	cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
+	node::{NodeVisitor, NodeVisitorError},
+};
+
 use frame_support::{
 	construct_runtime,
+	dispatch::DispatchResult,
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
 	weights::constants::RocksDbWeight,
 };
+
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
+use lazy_static::lazy_static;
+use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	Perquintill,
 };
 use sp_std::collections::btree_map::BTreeMap;
+use std::cell::RefCell;
 
 /// The AccountId alias in this test module.
 pub(crate) type AccountId = u64;
@@ -89,70 +104,206 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const BondingDuration: EraIndex = 10;
-	pub const DefaultEdgeBondSize: Balance = 100;
-	pub const DefaultEdgeChillDelay: EraIndex = 1;
-	pub const DefaultStorageBondSize: Balance = 100;
-	pub const DefaultStorageChillDelay: EraIndex = 1;
-}
-
 impl crate::pallet::Config for Test {
-	type BondingDuration = BondingDuration;
 	type Currency = Balances;
-	type DefaultEdgeBondSize = DefaultEdgeBondSize;
-	type DefaultEdgeChillDelay = DefaultEdgeChillDelay;
-	type DefaultStorageBondSize = DefaultStorageBondSize;
-	type DefaultStorageChillDelay = DefaultStorageChillDelay;
 	type RuntimeEvent = RuntimeEvent;
-	type UnixTime = Timestamp;
 	type WeightInfo = ();
+	type ClusterVisitor = TestClusterVisitor;
+	type ClusterManager = TestClusterManager;
+	type NodeVisitor = MockNodeVisitor;
+	type NodeCreator = TestNodeCreator;
+	type ClusterCreator = TestClusterCreator;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
+pub struct TestNodeCreator;
+pub struct TestClusterCreator;
+pub struct TestClusterVisitor;
+
+impl<T: Config> NodeCreator<T> for TestNodeCreator {
+	fn create_node(
+		_node_pub_key: NodePubKey,
+		_provider_id: T::AccountId,
+		_node_params: NodeParams,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
+impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
+	fn create_new_cluster(
+		_cluster_id: ClusterId,
+		_cluster_manager_id: T::AccountId,
+		_cluster_reserve_id: T::AccountId,
+		_cluster_params: ClusterParams<T::AccountId>,
+		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+	) -> DispatchResult {
+		Ok(())
+	}
+}
+
+impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
+	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
+		Ok(())
+	}
+	fn get_bond_size(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<u128, ClusterVisitorError> {
+		Ok(10)
+	}
+	fn get_chill_delay(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<T::BlockNumber, ClusterVisitorError> {
+		Ok(T::BlockNumber::from(10u32))
+	}
+	fn get_unbonding_delay(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<T::BlockNumber, ClusterVisitorError> {
+		Ok(T::BlockNumber::from(10u32))
+	}
+
+	fn get_pricing_params(
+		_cluster_id: &ClusterId,
+	) -> Result<ClusterPricingParams, ClusterVisitorError> {
+		Ok(ClusterPricingParams {
+			unit_per_mb_stored: 2,
+			unit_per_mb_streamed: 3,
+			unit_per_put_request: 4,
+			unit_per_get_request: 5,
+		})
+	}
+
+	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
+		Ok(ClusterFeesParams {
+			treasury_share: Perquintill::from_percent(1),
+			validators_share: Perquintill::from_percent(10),
+			cluster_reserve_share: Perquintill::from_percent(2),
+		})
+	}
+
+	fn get_reserve_account_id(
+		_cluster_id: &ClusterId,
+	) -> Result<T::AccountId, ClusterVisitorError> {
+		Err(ClusterVisitorError::ClusterDoesNotExist)
+	}
+
+	fn get_bonding_params(
+		cluster_id: &ClusterId,
+	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+		Ok(ClusterBondingParams {
+			storage_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
+				cluster_id,
+				NodeType::Storage,
+			)
+			.unwrap_or_default(),
+			storage_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
+				cluster_id,
+				NodeType::Storage,
+			)
+			.unwrap_or_default(),
+			storage_unbonding_delay:
+				<TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
+					cluster_id,
+					NodeType::Storage,
+				)
+				.unwrap_or_default(),
+		})
+	}
+}
+
+pub struct TestClusterManager;
+impl<T: Config> ClusterManager<T> for TestClusterManager {
+	fn contains_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
+		true
+	}
+
+	fn add_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<(), ClusterManagerError> {
+		Ok(())
+	}
+
+	fn remove_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<(), ClusterManagerError> {
+		Ok(())
+	}
+}
+
+lazy_static! {
+	// We have to use the ReentrantMutex as every test's thread that needs to perform some configuration on the mock acquires the lock at least 2 times:
+	// the first time when the mock configuration happens, and
+	// the second time when the pallet calls the MockNodeVisitor during execution
+	static ref MOCK_NODE: ReentrantMutex<RefCell<MockNode>> =
+		ReentrantMutex::new(RefCell::new(MockNode::default()));
+}
+
+pub struct MockNode {
+	pub cluster_id: Option<ClusterId>,
+	pub exists: bool,
+}
+
+impl Default for MockNode {
+	fn default() -> Self {
+		Self { cluster_id: None, exists: true }
+	}
+}
+
+pub struct MockNodeVisitor;
+
+impl MockNodeVisitor {
+	// Every test's thread must hold the lock till the end of its test
+	pub fn set_and_hold_lock(mock: MockNode) -> ReentrantMutexGuard<'static, RefCell<MockNode>> {
+		let lock = MOCK_NODE.lock();
+		*lock.borrow_mut() = mock;
+		lock
+	}
+
+	// Every test's thread must release the lock that it previously acquired in the end of its
+	// test
+	pub fn reset_and_release_lock(lock: ReentrantMutexGuard<'static, RefCell<MockNode>>) {
+		*lock.borrow_mut() = MockNode::default();
+	}
+}
+
+impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
+	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, NodeVisitorError> {
+		let lock = MOCK_NODE.lock();
+		let mock_ref = lock.borrow();
+		Ok(mock_ref.cluster_id)
+	}
+	fn exists(_node_pub_key: &NodePubKey) -> bool {
+		let lock = MOCK_NODE.lock();
+		let mock_ref = lock.borrow();
+		mock_ref.exists
+	}
+}
 
 pub struct ExtBuilder {
-	has_edges: bool,
 	has_storages: bool,
 	stakes: BTreeMap<AccountId, Balance>,
-	edges: Vec<(AccountId, AccountId, Balance, ClusterId)>,
 	storages: Vec<(AccountId, AccountId, Balance, ClusterId)>,
 }
 
 impl Default for ExtBuilder {
 	fn default() -> Self {
-		Self {
-			has_edges: true,
-			has_storages: true,
-			stakes: Default::default(),
-			edges: Default::default(),
-			storages: Default::default(),
-		}
+		Self { has_storages: true, stakes: Default::default(), storages: Default::default() }
 	}
 }
 
 impl ExtBuilder {
-	pub fn has_edges(mut self, has: bool) -> Self {
-		self.has_edges = has;
-		self
-	}
 	pub fn has_storages(mut self, has: bool) -> Self {
 		self.has_storages = has;
 		self
 	}
 	pub fn set_stake(mut self, who: AccountId, stake: Balance) -> Self {
 		self.stakes.insert(who, stake);
-		self
-	}
-	pub fn add_edge(
-		mut self,
-		stash: AccountId,
-		controller: AccountId,
-		stake: Balance,
-		cluster: ClusterId,
-	) -> Self {
-		self.edges.push((stash, controller, stake, cluster));
 		self
 	}
 	pub fn add_storage(
@@ -165,7 +316,7 @@ impl ExtBuilder {
 		self.storages.push((stash, controller, stake, cluster));
 		self
 	}
-	fn build(self) -> TestExternalities {
+	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
@@ -175,44 +326,60 @@ impl ExtBuilder {
 				(2, 100),
 				(3, 100),
 				(4, 100),
-				// edge controllers
+				// storage controllers
 				(10, 100),
 				(20, 100),
-				// storage controllers
 				(30, 100),
 				(40, 100),
-				// edge stashes
+				// storage stashes
 				(11, 100),
 				(21, 100),
-				// storage stashes
 				(31, 100),
 				(41, 100),
 			],
 		}
 		.assimilate_storage(&mut storage);
-		let mut edges = vec![];
-		if self.has_edges {
-			edges = vec![
-				// (stash, controller, stake, cluster)
-				(11, 10, 100, 1),
-				(21, 20, 100, 1),
-			];
-		}
 		let mut storages = vec![];
 		if self.has_storages {
 			storages = vec![
-				// (stash, controller, stake, cluster)
-				(31, 30, 100, 1),
-				(41, 40, 100, 1),
+				// (stash, controller, node, stake, cluster)
+				(
+					11,
+					10,
+					NodePubKey::StoragePubKey(StorageNodePubKey::new([12; 32])),
+					100,
+					ClusterId::from([1; 20]),
+				),
+				(
+					21,
+					20,
+					NodePubKey::StoragePubKey(StorageNodePubKey::new([22; 32])),
+					100,
+					ClusterId::from([1; 20]),
+				),
+				(
+					31,
+					30,
+					NodePubKey::StoragePubKey(StorageNodePubKey::new([32; 32])),
+					100,
+					ClusterId::from([1; 20]),
+				),
+				(
+					41,
+					40,
+					NodePubKey::StoragePubKey(StorageNodePubKey::new([42; 32])),
+					100,
+					ClusterId::from([1; 20]),
+				),
 			];
 		}
 
-		let _ = pallet_ddc_staking::GenesisConfig::<Test> { edges, storages, ..Default::default() }
-			.assimilate_storage(&mut storage);
+		let _ =
+			pallet_ddc_staking::GenesisConfig::<Test> { storages }.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}
-	pub fn build_and_execute(self, test: impl FnOnce() -> ()) {
+	pub fn build_and_execute(self, test: impl FnOnce()) {
 		sp_tracing::try_init_simple();
 		let mut ext = self.build();
 		ext.execute_with(test);

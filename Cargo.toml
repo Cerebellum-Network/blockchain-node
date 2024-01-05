@@ -4,33 +4,37 @@ path = "src/main.rs"
 
 [package]
 name = "cere"
-license = "GPL-3.0-or-later WITH Classpath-exception-2.0"
 version = "4.8.1"
-edition = "2021"
 build = "build.rs"
+edition = "2021"
+license = "GPL-3.0-or-later WITH Classpath-exception-2.0"
 
 [dependencies]
-cere-cli = { path = "cli", features = [ "cere-dev-native" ] }
-sc-cli = { version = "0.10.0-dev", git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.30" }
-ss58-registry = { version = "1.38.0", default-features = false }
+cere-cli = { path = "cli", features = ["cere-dev-native"] }
+sc-cli = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 
 [build-dependencies]
-substrate-build-script-utils = { version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
+substrate-build-script-utils = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.30" }
 
 [workspace]
 members = [
-    "cli",
-    "node/client",
-    "node/service",
-    "rpc",
-    "runtime/cere",
-    "runtime/cere-dev",
-    "pallets/chainbridge",
-    "pallets/ddc",
-    "pallets/ddc-staking",
-    "pallets/erc721",
-    "pallets/erc20",
-    "pallets/ddc-metrics-offchain-worker",
+  "cli",
+  "node/client",
+  "node/service",
+  "rpc",
+  "runtime/cere",
+  "runtime/cere-dev",
+  "pallets/chainbridge",
+  "pallets/ddc",
+  "pallets/ddc-staking",
+  "pallets/erc721",
+  "pallets/erc20",
+  "pallets/ddc-metrics-offchain-worker",
+  "pallets/ddc-customers",
+  "pallets/ddc-nodes",
+  "pallets/ddc-clusters",
+  "pallets/ddc-payouts",
+  "primitives",
 ]
 
 [profile.release]
