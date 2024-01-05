@@ -39,20 +39,14 @@ use ddc_traits::{
 };
 use frame_support::{
 	assert_ok,
-	dispatch::{extract_actual_weight, GetDispatchInfo, PostDispatchInfo},
 	pallet_prelude::*,
-	traits::{
-		Currency, EnsureOriginWithArg, IsSubType, LockableCurrency, OriginTrait,
-		UnfilteredDispatchable,
-	},
+	traits::{Currency, EnsureOriginWithArg, LockableCurrency, UnfilteredDispatchable},
 };
 use frame_system::pallet_prelude::*;
+pub use frame_system::Config as SysConfig;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
-use sp_runtime::{
-	traits::{AccountIdConversion, Dispatchable},
-	SaturatedConversion,
-};
+use sp_runtime::{traits::AccountIdConversion, SaturatedConversion};
 use sp_std::prelude::*;
 
 use crate::{
@@ -94,18 +88,6 @@ pub mod pallet {
 			PalletsOriginOf<Self>,
 			Success = Self::AccountId,
 		>;
-
-		// type RuntimeCall: Parameter
-		// 	+ UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
-		// 	+ GetDispatchInfo;
-
-		type RuntimeCall: Parameter
-			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin, PostInfo = PostDispatchInfo>
-			+ GetDispatchInfo
-			+ From<frame_system::Call<Self>>
-			+ UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
-			// + IsSubType<Call<Self>>
-			+ IsType<<Self as frame_system::Config>::RuntimeCall>;
 	}
 
 	#[pallet::event]
@@ -225,20 +207,19 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			proposal_origin: Box<PalletsOriginOf<T>>,
 		) -> DispatchResult {
-			let _who = T::SubmitOrigin::ensure_origin(origin, &proposal_origin)?;
+			let _caller_id = T::SubmitOrigin::ensure_origin(origin, &proposal_origin)?;
 			Self::deposit_event(Event::<T>::TestSuccess);
-
 			Ok(())
 		}
 
 		#[pallet::weight(10_000)]
 		pub fn submit_internal(
 			origin: OriginFor<T>,
-			call: Box<<T as Config>::RuntimeCall>,
+			proposal_origin: Box<PalletsOriginOf<T>>,
 		) -> DispatchResult {
-			// let who = T::SubmitOrigin::ensure_origin(origin, &proposal_origin)?;
-			// Self::deposit_event(Event::<T>::TestSuccess);
-			call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
+			let _caller_id = ensure_signed(origin)?;
+			let call = Call::<T>::submit_public { proposal_origin };
+			call.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into())
 				.map(|_| ())
 				.map_err(|e| e.error)?;
 

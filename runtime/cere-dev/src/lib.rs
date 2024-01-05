@@ -1339,7 +1339,6 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
 	type SubmitOrigin = EnsureOfPermissionedTrack<Self>;
-	type RuntimeCall = RuntimeCall;
 }
 
 parameter_types! {
