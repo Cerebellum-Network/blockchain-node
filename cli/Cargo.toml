@@ -17,7 +17,6 @@ frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate.git", 
 sc-cli = { git = "https://github.com/paritytech/substrate.git", optional = true, branch = "polkadot-v0.9.30" }
 sc-service = { git = "https://github.com/paritytech/substrate.git", optional = true, branch = "polkadot-v0.9.30" }
 try-runtime-cli = { git = "https://github.com/paritytech/substrate.git", optional = true, branch = "polkadot-v0.9.30" }
-url = "2.4.1"
 
 # Local
 cere-client = { path = "../node/client", optional = true }

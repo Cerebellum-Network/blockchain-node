@@ -806,7 +806,6 @@ dependencies = [
  "sc-service",
  "substrate-build-script-utils",
  "try-runtime-cli",
- "url",
 ]
 
 [[package]]

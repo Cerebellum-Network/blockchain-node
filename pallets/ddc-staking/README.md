@@ -13,4 +13,3 @@ The DDC Staking module is the means by which an account can voluntarily place fu
 - Controller account: The account that controls an owner's funds for staking.
 - Storage: Storage network participant.
 - Era: A time period of DDC participants activity data capture and accumulation which will further be used to calculate pay outs.
->>>>>>> deployment-0.9.30
