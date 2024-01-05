@@ -12,9 +12,7 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
-use core::fmt::Debug;
-
-use codec::{Decode, Encode, HasCompact};
+use codec::{Decode, Encode};
 use ddc_primitives::{BucketId, ClusterId};
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor},
@@ -27,8 +25,9 @@ use frame_support::{
 };
 pub use pallet::*;
 use scale_info::TypeInfo;
+use sp_io::hashing::blake2_128;
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, Saturating, Zero},
+	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
@@ -45,17 +44,13 @@ parameter_types! {
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub struct UnlockChunk<Balance, BlockNumber>
-where
-	Balance: HasCompact,
-	BlockNumber: Clone,
-{
+pub struct UnlockChunk<T: Config> {
 	/// Amount of funds to be unlocked.
 	#[codec(compact)]
-	value: Balance,
+	value: BalanceOf<T>,
 	/// Block number at which point it'll be unlocked.
 	#[codec(compact)]
-	block: BlockNumber,
+	block: T::BlockNumber,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -73,33 +68,28 @@ pub struct BucketParams {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub struct AccountsLedger<AccountId, Balance: HasCompact, T: Config> {
+pub struct AccountsLedger<T: Config> {
 	/// The owner account whose balance is actually locked and can be used to pay for DDC network
 	/// usage.
-	pub owner: AccountId,
+	pub owner: T::AccountId,
 	/// The total amount of the owner's balance that we are currently accounting for.
 	/// It's just `active` plus all the `unlocking` balances.
 	#[codec(compact)]
-	pub total: Balance,
+	pub total: BalanceOf<T>,
 	/// The total amount of the owner's balance that will be accessible for DDC network payouts in
 	/// any forthcoming rounds.
 	#[codec(compact)]
-	pub active: Balance,
+	pub active: BalanceOf<T>,
 	/// Any balance that is becoming free, which may eventually be transferred out of the owner
 	/// (assuming that the content owner has to pay for network usage). It is assumed that this
 	/// will be treated as a first in, first out queue where the new (higher value) eras get pushed
 	/// on the back.
-	pub unlocking: BoundedVec<UnlockChunk<Balance, T::BlockNumber>, MaxUnlockingChunks>,
+	pub unlocking: BoundedVec<UnlockChunk<T>, MaxUnlockingChunks>,
 }
 
-impl<
-		AccountId,
-		Balance: HasCompact + Copy + Saturating + AtLeast32BitUnsigned + Zero + Debug,
-		T: Config,
-	> AccountsLedger<AccountId, Balance, T>
-{
+impl<T: Config> AccountsLedger<T> {
 	/// Initializes the default object using the given owner.
-	pub fn default_from(owner: AccountId) -> Self {
+	pub fn default_from(owner: T::AccountId) -> Self {
 		Self { owner, total: Zero::zero(), active: Zero::zero(), unlocking: Default::default() }
 	}
 
@@ -107,11 +97,10 @@ impl<
 	/// total by the sum of their balances.
 	fn consolidate_unlocked(self, current_block: T::BlockNumber) -> Self {
 		let mut total = self.total;
-		let unlocking: BoundedVec<_, _> = self
+		let unlocking_result: Result<BoundedVec<_, _>, _> = self
 			.unlocking
 			.into_iter()
 			.filter(|chunk| {
-				log::debug!("Chunk era: {:?}", chunk.block);
 				if chunk.block > current_block {
 					true
 				} else {
@@ -120,43 +109,13 @@ impl<
 				}
 			})
 			.collect::<Vec<_>>()
-			.try_into()
-			.expect(
-				"filtering items from a bounded vec always leaves length less than bounds. qed",
-			);
+			.try_into();
 
-		Self { owner: self.owner, total, active: self.active, unlocking }
-	}
-
-	/// Charge funds that were scheduled for unlocking.
-	///
-	/// Returns the updated ledger, and the amount actually charged.
-	fn charge_unlocking(mut self, value: Balance) -> Result<(Self, Balance), Error<T>> {
-		let mut unlocking_balance = Balance::zero();
-
-		while let Some(last) = self.unlocking.last_mut() {
-			let temp = unlocking_balance
-				.checked_add(&last.value)
-				.ok_or(Error::<T>::ArithmeticOverflow)?;
-			if temp <= value {
-				unlocking_balance = temp;
-				self.unlocking.pop();
-			} else {
-				let diff =
-					value.checked_sub(&unlocking_balance).ok_or(Error::<T>::ArithmeticUnderflow)?;
-
-				unlocking_balance =
-					unlocking_balance.checked_add(&diff).ok_or(Error::<T>::ArithmeticOverflow)?;
-				last.value =
-					last.value.checked_sub(&diff).ok_or(Error::<T>::ArithmeticUnderflow)?;
-			}
-
-			if unlocking_balance >= value {
-				break
-			}
+		if let Ok(unlocking) = unlocking_result {
+			Self { owner: self.owner, total, active: self.active, unlocking }
+		} else {
+			panic!("Failed to filter unlocking");
 		}
-
-		Ok((self, unlocking_balance))
 	}
 }
 
@@ -190,12 +149,7 @@ pub mod pallet {
 	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
 	#[pallet::storage]
 	#[pallet::getter(fn ledger)]
-	pub type Ledger<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		AccountsLedger<T::AccountId, BalanceOf<T>, T>,
-	>;
+	pub type Ledger<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, AccountsLedger<T>>;
 
 	#[pallet::type_value]
 	pub fn DefaultBucketCount<T: Config>() -> BucketId {
@@ -266,13 +220,14 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
+		pub feeder_account: Option<T::AccountId>,
 		pub buckets: Vec<(ClusterId, T::AccountId, BalanceOf<T>, bool)>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			GenesisConfig { buckets: Default::default() }
+			GenesisConfig { feeder_account: None, buckets: Default::default() }
 		}
 	}
 
@@ -281,8 +236,19 @@ pub mod pallet {
 		fn build(&self) {
 			let account_id = <Pallet<T>>::account_id();
 			let min = <T as pallet::Config>::Currency::minimum_balance();
-			if <T as pallet::Config>::Currency::free_balance(&account_id) < min {
-				let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
+
+			let balance = <T as pallet::Config>::Currency::free_balance(&account_id);
+			if balance < min {
+				if let Some(vault) = &self.feeder_account {
+					let _ = <T as pallet::Config>::Currency::transfer(
+						vault,
+						&account_id,
+						min - balance,
+						ExistenceRequirement::AllowDeath,
+					);
+				} else {
+					let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
+				}
 			}
 
 			for &(ref cluster_id, ref owner_id, ref deposit, ref is_public) in &self.buckets {
@@ -300,7 +266,7 @@ pub mod pallet {
 				};
 				<Buckets<T>>::insert(cur_bucket_id, bucket);
 
-				let ledger = AccountsLedger::<T::AccountId, BalanceOf<T>, T> {
+				let ledger = AccountsLedger::<T> {
 					owner: owner_id.clone(),
 					total: *deposit,
 					active: *deposit,
@@ -481,7 +447,6 @@ pub mod pallet {
 				// This was the consequence of a partial deposit unlock. just update the ledger and
 				// move on.
 				<Ledger<T>>::insert(&owner, &ledger);
-
 				// This is only an update, so we use less overall weight.
 				Some(<T as pallet::Config>::WeightInfo::withdraw_unlocked_deposit_update())
 			};
@@ -497,13 +462,11 @@ pub mod pallet {
 				let value =
 					old_total.checked_sub(&ledger.total).ok_or(Error::<T>::ArithmeticUnderflow)?;
 
-				let account_id = Self::account_id();
-
 				<T as pallet::Config>::Currency::transfer(
-					&account_id,
+					&Self::account_id(),
 					&owner,
 					value,
-					ExistenceRequirement::KeepAlive,
+					ExistenceRequirement::AllowDeath,
 				)?;
 				Self::deposit_event(Event::<T>::Withdrawn(owner, value));
 			}
@@ -538,18 +501,26 @@ pub mod pallet {
 		pub fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
+
+		pub fn sub_account_id(account_id: &T::AccountId) -> T::AccountId {
+			let hash = blake2_128(&account_id.encode());
+
+			// hash is 28 bytes
+			T::PalletId::get().into_sub_account_truncating(hash)
+		}
+
 		/// Update the ledger for a owner.
 		///
 		/// This will also deposit the funds to pallet.
 		fn update_ledger_and_deposit(
 			owner: &T::AccountId,
-			ledger: &AccountsLedger<T::AccountId, BalanceOf<T>, T>,
+			ledger: &AccountsLedger<T>,
 		) -> DispatchResult {
 			<T as pallet::Config>::Currency::transfer(
 				owner,
 				&Self::account_id(),
 				ledger.total,
-				ExistenceRequirement::KeepAlive,
+				ExistenceRequirement::AllowDeath,
 			)?;
 			<Ledger<T>>::insert(owner, ledger);
 
@@ -568,6 +539,42 @@ pub mod pallet {
 			frame_system::Pallet::<T>::dec_consumers(owner);
 
 			Ok(())
+		}
+
+		/// Charge funds that were scheduled for unlocking.
+		///
+		/// Returns the updated ledger, and the amount actually charged.
+		fn charge_unlocking(
+			mut ledger: AccountsLedger<T>,
+			value: BalanceOf<T>,
+		) -> Result<(AccountsLedger<T>, BalanceOf<T>), Error<T>> {
+			let mut unlocking_balance = BalanceOf::<T>::zero();
+
+			while let Some(last) = ledger.unlocking.last_mut() {
+				let temp = unlocking_balance
+					.checked_add(&last.value)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+				if temp <= value {
+					unlocking_balance = temp;
+					ledger.unlocking.pop();
+				} else {
+					let diff = value
+						.checked_sub(&unlocking_balance)
+						.ok_or(Error::<T>::ArithmeticUnderflow)?;
+
+					unlocking_balance = unlocking_balance
+						.checked_add(&diff)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+					last.value =
+						last.value.checked_sub(&diff).ok_or(Error::<T>::ArithmeticUnderflow)?;
+				}
+
+				if unlocking_balance >= value {
+					break
+				}
+			}
+
+			Ok((ledger, unlocking_balance))
 		}
 	}
 
@@ -591,8 +598,6 @@ pub mod pallet {
 					.total
 					.checked_sub(&amount_to_deduct)
 					.ok_or(Error::<T>::ArithmeticUnderflow)?;
-
-				<Ledger<T>>::insert(&content_owner, &ledger);
 			} else {
 				let diff = amount_to_deduct
 					.checked_sub(&ledger.active)
@@ -605,11 +610,10 @@ pub mod pallet {
 					.ok_or(Error::<T>::ArithmeticUnderflow)?;
 				ledger.active = BalanceOf::<T>::zero();
 
-				let (ledger, charged) = ledger.charge_unlocking(diff)?;
+				let (_ledger, charged) = Self::charge_unlocking(ledger, diff)?;
+				ledger = _ledger;
 
 				actually_charged.checked_add(&charged).ok_or(Error::<T>::ArithmeticUnderflow)?;
-
-				<Ledger<T>>::insert(&content_owner, &ledger);
 			}
 
 			<T as pallet::Config>::Currency::transfer(
@@ -619,6 +623,7 @@ pub mod pallet {
 				ExistenceRequirement::AllowDeath,
 			)?;
 
+			<Ledger<T>>::insert(&content_owner, &ledger); // update state after successful transfer
 			Self::deposit_event(Event::<T>::Charged(content_owner, amount_to_deduct));
 
 			Ok(actually_charged.saturated_into::<u128>())
