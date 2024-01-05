@@ -11,7 +11,7 @@ pub use frame_benchmarking::{
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::UncheckedFrom;
 use pallet_ddc_nodes::Node;
-use sp_runtime::Perbill;
+use sp_runtime::Perquintill;
 use sp_std::prelude::*;
 
 use crate::{Pallet as DdcClusters, *};
@@ -22,9 +22,9 @@ where
 {
 	let cluster_params = ClusterParams { node_provider_auth_contract: Some(user.clone()) };
 	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
-		treasury_share: Perbill::default(),
-		validators_share: Perbill::default(),
-		cluster_reserve_share: Perbill::default(),
+		treasury_share: Perquintill::default(),
+		validators_share: Perquintill::default(),
+		cluster_reserve_share: Perquintill::default(),
 		storage_bond_size: 100u32.into(),
 		storage_chill_delay: 50u32.into(),
 		storage_unbonding_delay: 50u32.into(),
@@ -64,9 +64,9 @@ where
 	};
 
 	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
-		treasury_share: Perbill::default(),
-		validators_share: Perbill::default(),
-		cluster_reserve_share: Perbill::default(),
+		treasury_share: Perquintill::default(),
+		validators_share: Perquintill::default(),
+		cluster_reserve_share: Perquintill::default(),
 		storage_bond_size: 100u32.into(),
 		storage_chill_delay: 50u32.into(),
 		storage_unbonding_delay: 50u32.into(),

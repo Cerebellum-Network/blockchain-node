@@ -93,7 +93,7 @@ pallet-vesting = { default-features = false, git = "https://github.com/paritytec
 # cere dependencies
 cere-runtime-common = { path = "../common", default-features = false }
 cere-runtime-constants = { path = "./constants", default-features = false }
-ddc-traits = { version = "0.1.0", default-features = false, path = "../../traits" }
+ddc-traits = { version = "4.8.2", default-features = false, path = "../../traits" }
 pallet-ddc-clusters = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-clusters" }
 pallet-ddc-customers = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-customers" }
 pallet-ddc-nodes = { version = "4.8.2", default-features = false, path = "../../pallets/ddc-nodes" }
