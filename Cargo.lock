@@ -761,7 +761,7 @@ dependencies = [
 
 [[package]]
 name = "cere-cli"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "cere-client",
  "cere-service",
@@ -776,7 +776,7 @@ dependencies = [
 
 [[package]]
 name = "cere-client"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
@@ -807,7 +807,7 @@ dependencies = [
 
 [[package]]
 name = "cere-dev-runtime"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "cere-dev-runtime-constants",
  "cere-runtime-common",
@@ -896,7 +896,7 @@ dependencies = [
 
 [[package]]
 name = "cere-dev-runtime-constants"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "node-primitives",
  "sp-runtime",
@@ -904,7 +904,7 @@ dependencies = [
 
 [[package]]
 name = "cere-rpc"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "jsonrpsee",
  "node-primitives",
@@ -933,7 +933,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "cere-runtime-common",
  "cere-runtime-constants",
@@ -1022,7 +1022,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime-common"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "frame-support",
  "node-primitives",
@@ -1032,14 +1032,14 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime-constants"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "node-primitives",
 ]
 
 [[package]]
 name = "cere-service"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "cere-client",
  "cere-dev-runtime",
@@ -1583,7 +1583,7 @@ dependencies = [
 
 [[package]]
 name = "ddc-primitives"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -1594,7 +1594,7 @@ dependencies = [
 
 [[package]]
 name = "ddc-traits"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "ddc-primitives",
  "frame-support",
@@ -4546,7 +4546,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-chainbridge"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4648,7 +4648,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-clusters"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "ddc-primitives",
  "ddc-traits",
@@ -4674,7 +4674,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-customers"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "ddc-primitives",
  "ddc-traits",
@@ -4697,7 +4697,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-nodes"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "ddc-primitives",
  "ddc-traits",
@@ -4719,7 +4719,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-payouts"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "byte-unit",
  "ddc-primitives",
@@ -4743,7 +4743,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-staking"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "ddc-primitives",
  "ddc-traits",
@@ -4839,7 +4839,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc20"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4857,7 +4857,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc721"
-version = "4.8.2"
+version = "4.8.3"
 dependencies = [
  "frame-support",
  "frame-system",
