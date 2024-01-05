@@ -1307,8 +1307,7 @@ impl pallet_ddc_customers::Config for Runtime {
 
 parameter_types! {
 	pub const ClustersPalletId: PalletId = PalletId(*b"clusters");
-	pub RelayChainOrigin: RuntimeOrigin = frame_system::RawOrigin::Root.into();
-	// pub RelayChainOrigin: RuntimeOrigin = pallet_custom_origins::Origin::StakingAdmin.into();
+	pub RelayChainOrigin: RuntimeOrigin = pallet_custom_origins::Origin::StakingAdmin.into();
 }
 
 impl pallet_ddc_clusters::Config for Runtime {
@@ -1375,6 +1374,8 @@ impl pallet_ddc_staking::Config for Runtime {
 	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
+impl pallet_custom_origins::Config for Runtime {}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1428,7 +1429,8 @@ construct_runtime!(
 		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
-		DdcPayouts: pallet_ddc_payouts
+		DdcPayouts: pallet_ddc_payouts,
+		CustomOrigins: pallet_custom_origins::{Origin},
 	}
 );
 
