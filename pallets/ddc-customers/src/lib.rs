@@ -13,7 +13,6 @@ pub(crate) mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-
 use ddc_primitives::{BucketId, ClusterId};
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor},
@@ -29,7 +28,7 @@ use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
-	DispatchError, RuntimeDebug, SaturatedConversion,
+	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
 
@@ -98,11 +97,10 @@ impl<T: Config> AccountsLedger<T> {
 	/// total by the sum of their balances.
 	fn consolidate_unlocked(self, current_block: T::BlockNumber) -> Self {
 		let mut total = self.total;
-		let unlocking: BoundedVec<_, _> = self
+		let unlocking_result: Result<BoundedVec<_, _>, _> = self
 			.unlocking
 			.into_iter()
 			.filter(|chunk| {
-				log::debug!("Chunk era: {:?}", chunk.block);
 				if chunk.block > current_block {
 					true
 				} else {
@@ -111,20 +109,22 @@ impl<T: Config> AccountsLedger<T> {
 				}
 			})
 			.collect::<Vec<_>>()
-			.try_into()
-			.expect(
-				"filtering items from a bounded vec always leaves length less than bounds. qed",
-			);
+			.try_into();
 
-		Self { owner: self.owner, total, active: self.active, unlocking }
+		if let Ok(unlocking) = unlocking_result {
+			Self { owner: self.owner, total, active: self.active, unlocking }
+		} else {
+			panic!("Failed to filter unlocking");
+		}
 	}
 }
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use frame_support::{pallet_prelude::*, traits::LockableCurrency};
 	use frame_system::pallet_prelude::*;
+
+	use super::*;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]

@@ -1,10 +1,11 @@
-use crate::pallet::Error;
 use codec::{Decode, Encode};
 use ddc_primitives::{ClusterId, ClusterParams};
 use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+
+use crate::pallet::Error;
 
 parameter_types! {
 	pub MaxClusterParamsLen: u16 = 2048;

@@ -1,6 +1,6 @@
 [relaychain]
 default_command = "./target/release/cere"
-default_args = ["--enable-ddc-validation --dac-url {{DAC_URL}}"]
+default_args = [""]
 chain = "local"
 
 [[relaychain.nodes]]

@@ -1,17 +1,16 @@
 //! Testing utils for ddc-staking.
 
-use crate::{Pallet as DdcStaking, *};
 use ddc_primitives::{
 	ClusterGovParams, ClusterId, ClusterParams, NodeParams, StorageNodeMode, StorageNodeParams,
 	StorageNodePubKey,
 };
-
 use frame_benchmarking::account;
-use frame_system::RawOrigin;
-
 use frame_support::traits::Currency;
+use frame_system::RawOrigin;
 use sp_runtime::{traits::StaticLookup, Perquintill};
 use sp_std::prelude::*;
+
+use crate::{Pallet as DdcStaking, *};
 
 const SEED: u32 = 0;
 
