@@ -1,5 +1,7 @@
 #![cfg(test)]
 
+use frame_support::{assert_noop, assert_ok};
+
 use super::{
 	mock::{
 		assert_events, new_test_ext, Balances, Bridge, ProposalLifetime, RuntimeCall, RuntimeEvent,
@@ -9,7 +11,6 @@ use super::{
 	*,
 };
 use crate::mock::new_test_ext_initialized;
-use frame_support::{assert_noop, assert_ok};
 
 #[test]
 fn derive_ids() {
@@ -298,6 +299,7 @@ fn create_sucessful_proposal() {
 			expiry: ProposalLifetime::get() + 1,
 		};
 		assert_eq!(prop, expected);
+
 		// Second relayer votes against
 		assert_ok!(Bridge::reject_proposal(
 			RuntimeOrigin::signed(RELAYER_B),
@@ -367,6 +369,7 @@ fn create_unsucessful_proposal() {
 			expiry: ProposalLifetime::get() + 1,
 		};
 		assert_eq!(prop, expected);
+
 		// Second relayer votes against
 		assert_ok!(Bridge::reject_proposal(
 			RuntimeOrigin::signed(RELAYER_B),
@@ -383,6 +386,7 @@ fn create_unsucessful_proposal() {
 			expiry: ProposalLifetime::get() + 1,
 		};
 		assert_eq!(prop, expected);
+
 		// Third relayer votes against
 		assert_ok!(Bridge::reject_proposal(
 			RuntimeOrigin::signed(RELAYER_C),
@@ -520,6 +524,7 @@ fn proposal_expires() {
 			expiry: ProposalLifetime::get() + 1,
 		};
 		assert_eq!(prop, expected);
+
 		// eval_vote_state should have no effect
 		assert_noop!(
 			Bridge::eval_vote_state(

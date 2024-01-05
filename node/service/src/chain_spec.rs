@@ -1,11 +1,10 @@
-#[cfg(feature = "cere-native")]
-use cere_runtime as cere;
-
 #[cfg(feature = "cere-dev-native")]
 use cere_dev_runtime as cere_dev;
 #[cfg(feature = "cere-dev-native")]
 use cere_dev_runtime_constants::currency::DOLLARS as TEST_UNITS;
-
+#[cfg(feature = "cere-native")]
+use cere_runtime as cere;
+use jsonrpsee::core::__reexports::serde_json;
 pub use node_primitives::{AccountId, Balance, Block, Signature};
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;
@@ -241,6 +240,18 @@ pub fn cere_dev_genesis(
 	}
 }
 
+/// Returns the properties for the [`cere-dev-native`].
+pub fn cere_dev_native_chain_spec_properties() -> serde_json::map::Map<String, serde_json::Value> {
+	serde_json::json!({
+		"tokenDecimals": 10,
+		"tokenSymbol": "CERE",
+		"ss58Format": 54,
+	})
+	.as_object()
+	.expect("Map given; qed")
+	.clone()
+}
+
 /// Helper function to create Cere `GenesisConfig` for testing
 #[cfg(feature = "cere-dev-native")]
 fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::GenesisConfig {
@@ -275,7 +286,7 @@ pub fn cere_dev_development_config() -> Result<CereDevChainSpec, String> {
 		None,
 		Some(DEFAULT_PROTOCOL_ID),
 		None,
-		None,
+		Some(cere_dev_native_chain_spec_properties()),
 		Default::default(),
 	))
 }

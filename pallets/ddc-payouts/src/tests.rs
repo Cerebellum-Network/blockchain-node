@@ -1,10 +1,11 @@
 //! Tests for the module.
 
-use super::{mock::*, *};
 use ddc_primitives::ClusterId;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin, traits::Randomness};
 use sp_core::H256;
 use sp_runtime::Perquintill;
+
+use super::{mock::*, *};
 
 #[test]
 fn set_authorised_caller_works() {

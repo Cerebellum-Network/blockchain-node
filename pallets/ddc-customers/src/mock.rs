@@ -1,6 +1,5 @@
 //! Test utilities
 
-use crate::{self as pallet_ddc_customers, *};
 use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,
@@ -8,7 +7,6 @@ use ddc_primitives::{
 use ddc_traits::cluster::{
 	ClusterCreator, ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError,
 };
-
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
@@ -22,6 +20,8 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	DispatchResult, Perquintill,
 };
+
+use crate::{self as pallet_ddc_customers, *};
 
 /// The AccountId alias in this test module.
 pub(crate) type AccountId = u128;

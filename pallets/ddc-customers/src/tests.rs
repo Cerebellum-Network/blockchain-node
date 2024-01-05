@@ -1,8 +1,9 @@
 //! Tests for the module.
 
-use super::{mock::*, *};
 use ddc_primitives::ClusterId;
 use frame_support::{assert_noop, assert_ok};
+
+use super::{mock::*, *};
 
 #[test]
 fn create_bucket_works() {
