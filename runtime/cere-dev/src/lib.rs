@@ -23,7 +23,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use ddc_primitives::traits::pallet::{PalletVisitor, PalletsOriginOf};
+use ddc_primitives::traits::pallet::{ConvertOrigin, PalletVisitor, PalletsOriginOf};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
@@ -1148,6 +1148,7 @@ impl pallet_ddc_nodes::Config for Runtime {
 
 parameter_types! {
 	pub const ClustersPalletId: PalletId = PalletId(*b"clusters");
+	pub RelayChainOrigin: RuntimeOrigin = pallet_custom_origins::Origin::StakingAdmin.into();
 }
 
 impl pallet_ddc_clusters::Config for Runtime {
@@ -1162,6 +1163,18 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type MinErasureCodingTotalLimit = ConstU32<6>;
 	type MinReplicationTotalLimit = ConstU32<3>;
 	type SubmitOrigin = EnsureOfPermissionedTrack<Self>;
+	type OriginConverter = RelayChainAsNative<RelayChainOrigin, RuntimeOrigin>;
+}
+
+pub struct RelayChainAsNative<RelayOrigin, RuntimeOrigin>(
+	PhantomData<(RelayOrigin, RuntimeOrigin)>,
+);
+impl<RelayOrigin: Get<RuntimeOrigin>, RuntimeOrigin> ConvertOrigin<RuntimeOrigin>
+	for RelayChainAsNative<RelayOrigin, RuntimeOrigin>
+{
+	fn convert_origin() -> Result<RuntimeOrigin, ()> {
+		Ok(RelayOrigin::get())
+	}
 }
 
 parameter_types! {

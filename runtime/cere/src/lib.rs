@@ -22,7 +22,7 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 use codec::{Decode, Encode, MaxEncodedLen};
-use ddc_primitives::traits::pallet::PalletVisitor;
+use ddc_primitives::traits::pallet::{ConvertOrigin, PalletVisitor, PalletsOriginOf};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
@@ -32,10 +32,10 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf,
-		EitherOfDiverse, EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter,
-		KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced, U128CurrencyToVote,
-		WithdrawReasons,
+		AsEnsureOriginWithArg, CallerTrait, ConstBool, ConstU128, ConstU16, ConstU32, Currency,
+		EitherOf, EitherOfDiverse, EnsureOrigin, EnsureOriginWithArg, EqualPrivilegeOnly,
+		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
+		OnUnbalanced, OriginTrait, U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -57,6 +57,7 @@ use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce};
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
 use pallet_contracts::Determinism;
+pub use pallet_custom_origins;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -88,7 +89,7 @@ use sp_runtime::{
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
 	RuntimeDebug,
 };
-use sp_std::prelude::*;
+use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -1131,6 +1132,8 @@ impl pallet_ddc_customers::Config for Runtime {
 
 parameter_types! {
 	pub const ClustersPalletId: PalletId = PalletId(*b"clusters");
+	pub RelayChainOrigin: RuntimeOrigin = frame_system::RawOrigin::Root.into();
+	// pub RelayChainOrigin: RuntimeOrigin = pallet_custom_origins::Origin::StakingAdmin.into();
 }
 
 impl pallet_ddc_clusters::Config for Runtime {
@@ -1145,6 +1148,18 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type MinErasureCodingTotalLimit = ConstU32<6>;
 	type MinReplicationTotalLimit = ConstU32<3>;
 	type SubmitOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
+	type OriginConverter = RelayChainAsNative<RelayChainOrigin, RuntimeOrigin>;
+}
+
+pub struct RelayChainAsNative<RelayOrigin, RuntimeOrigin>(
+	PhantomData<(RelayOrigin, RuntimeOrigin)>,
+);
+impl<RelayOrigin: Get<RuntimeOrigin>, RuntimeOrigin> ConvertOrigin<RuntimeOrigin>
+	for RelayChainAsNative<RelayOrigin, RuntimeOrigin>
+{
+	fn convert_origin() -> Result<RuntimeOrigin, ()> {
+		Ok(RelayOrigin::get())
+	}
 }
 
 impl pallet_ddc_nodes::Config for Runtime {

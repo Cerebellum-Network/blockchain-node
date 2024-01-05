@@ -29,6 +29,7 @@ sp-std = { workspace = true }
 # Cere dependencies
 ddc-primitives = { workspace = true }
 pallet-ddc-nodes = { workspace = true }
+pallet-custom-origins = { workspace = true }
 
 [dev-dependencies]
 frame-benchmarking = { workspace = true, default-features = true }

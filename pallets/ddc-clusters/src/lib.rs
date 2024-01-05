@@ -31,17 +31,19 @@ pub mod migration;
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
-		pallet::PalletsOriginOf,
+		pallet::{ConvertOrigin, PalletsOriginOf},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,
 };
-
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
-	traits::{Currency, EnsureOriginWithArg, LockableCurrency, UnfilteredDispatchable},
+	traits::{
+		CallerTrait, Currency, EnsureOriginWithArg, LockableCurrency, OriginTrait,
+		UnfilteredDispatchable,
+	},
 };
 use frame_system::pallet_prelude::*;
 pub use frame_system::Config as SysConfig;
@@ -103,6 +105,7 @@ pub mod pallet {
 			PalletsOriginOf<Self>,
 			Success = Self::AccountId,
 		>;
+		type OriginConverter: ConvertOrigin<Self::RuntimeOrigin>;
 	}
 
 	#[pallet::event]
@@ -236,13 +239,38 @@ pub mod pallet {
 
 		#[pallet::call_index(200)]
 		#[pallet::weight(10_000)]
-		pub fn submit_internal(
+		pub fn submit_via_internal(
 			origin: OriginFor<T>,
 			proposal_origin: Box<PalletsOriginOf<T>>,
 		) -> DispatchResult {
 			let _caller_id = ensure_signed(origin)?;
 			let call = Call::<T>::submit_public { proposal_origin };
 			call.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into())
+				.map(|_| ())
+				.map_err(|e| e.error)?;
+
+			Ok(())
+		}
+
+		#[pallet::call_index(300)]
+		#[pallet::weight(10_000)]
+		pub fn submit_internal(origin: OriginFor<T>) -> DispatchResult {
+			let caller_id = ensure_signed(origin)?;
+
+			// let origin: T::RuntimeOrigin = frame_system::RawOrigin::Signed(caller_id).into();
+			// let pallets_origin: <T::RuntimeOrigin as
+			// frame_support::traits::OriginTrait>::PalletsOrigin = origin.caller().clone();
+			// let call = Call::<T>::submit_public { proposal_origin: Box::new(pallets_origin) };
+			// call.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).
+			// into()) 	.map(|_| ())
+			// 	.map_err(|e| e.error)?;
+
+			let origin2 = T::OriginConverter::convert_origin().unwrap();
+			let pallets_origin2: <T::RuntimeOrigin as
+			frame_support::traits::OriginTrait>::PalletsOrigin = origin2.caller().clone();
+			let call2 = Call::<T>::submit_public { proposal_origin: Box::new(pallets_origin2) };
+			call2
+				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into())
 				.map(|_| ())
 				.map_err(|e| e.error)?;
 
