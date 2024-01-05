@@ -1129,8 +1129,13 @@ impl pallet_ddc_customers::Config for Runtime {
 	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	pub const ClustersPalletId: PalletId = PalletId(*b"clusters");
+}
+
 impl pallet_ddc_clusters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type PalletId = ClustersPalletId;
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
 	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
@@ -1140,6 +1145,7 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type MinErasureCodingTotalLimit = ConstU32<6>;
 	type MinReplicationTotalLimit = ConstU32<3>;
 	type SubmitOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
+	type RuntimeCall = RuntimeCall;
 }
 
 impl pallet_ddc_nodes::Config for Runtime {

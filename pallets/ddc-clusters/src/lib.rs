@@ -40,14 +40,21 @@ use ddc_primitives::{
 
 use frame_support::{
 	assert_ok,
+	dispatch::{extract_actual_weight, GetDispatchInfo, PostDispatchInfo},
 	pallet_prelude::*,
-	traits::{Currency, EnsureOriginWithArg, LockableCurrency},
+	traits::{
+		Currency, EnsureOriginWithArg, IsSubType, LockableCurrency, OriginTrait,
+		UnfilteredDispatchable,
+	},
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_core::crypto::UncheckedFrom;
-use sp_runtime::SaturatedConversion;
+use sp_runtime::{
+	traits::{AccountIdConversion, Dispatchable},
+	SaturatedConversion,
+};
 use sp_std::prelude::*;
 
 use crate::{
@@ -65,6 +72,8 @@ pub type BalanceOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 	use ddc_primitives::traits::cluster::{ClusterManager, ClusterManagerError};
+	use frame_support::PalletId;
+	use pallet_contracts::chain_extension::UncheckedFrom;
 
 	use super::*;
 
@@ -79,6 +88,7 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_contracts::Config {
+		type PalletId: Get<PalletId>;
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
 		type StakingVisitor: StakingVisitor<Self>;
@@ -96,6 +106,18 @@ pub mod pallet {
 			PalletsOriginOf<Self>,
 			Success = Self::AccountId,
 		>;
+
+		// type RuntimeCall: Parameter
+		// 	+ UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+		// 	+ GetDispatchInfo;
+
+		type RuntimeCall: Parameter
+			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin, PostInfo = PostDispatchInfo>
+			+ GetDispatchInfo
+			+ From<frame_system::Call<Self>>
+			+ UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+			// + IsSubType<Call<Self>>
+			+ IsType<<Self as frame_system::Config>::RuntimeCall>;
 	}
 
 	#[pallet::event]
@@ -218,12 +240,27 @@ pub mod pallet {
 	{
 		#[pallet::call_index(100)]
 		#[pallet::weight(10_000)]
-		pub fn test(
+		pub fn submit_public(
 			origin: OriginFor<T>,
 			proposal_origin: Box<PalletsOriginOf<T>>,
 		) -> DispatchResult {
-			let who = T::SubmitOrigin::ensure_origin(origin, &proposal_origin)?;
+			let _who = T::SubmitOrigin::ensure_origin(origin, &proposal_origin)?;
 			Self::deposit_event(Event::<T>::TestSuccess);
+
+			Ok(())
+		}
+
+		#[pallet::call_index(200)]
+		#[pallet::weight(10_000)]
+		pub fn submit_internal(
+			origin: OriginFor<T>,
+			call: Box<<T as Config>::RuntimeCall>,
+		) -> DispatchResult {
+			// let who = T::SubmitOrigin::ensure_origin(origin, &proposal_origin)?;
+			// Self::deposit_event(Event::<T>::TestSuccess);
+			call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
+				.map(|_| ())
+				.map_err(|e| e.error)?;
 
 			Ok(())
 		}
@@ -399,6 +436,10 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
 
 			Ok(())
+		}
+
+		pub fn account_id() -> T::AccountId {
+			T::PalletId::get().into_account_truncating()
 		}
 	}
 
