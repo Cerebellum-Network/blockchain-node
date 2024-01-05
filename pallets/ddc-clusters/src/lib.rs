@@ -50,6 +50,7 @@ pub use frame_system::Config as SysConfig;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_core::crypto::UncheckedFrom;
+use sp_io::hashing::blake2_128;
 use sp_runtime::{
 	traits::{AccountIdConversion, Dispatchable},
 	SaturatedConversion,
@@ -271,6 +272,9 @@ pub mod pallet {
 			let call2 = Call::<T>::submit_public { proposal_origin: Box::new(pallets_origin2) };
 			call2
 				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into())
+				// .dispatch_bypass_filter(
+				// 	frame_system::RawOrigin::Signed(Self::sub_account_id(5u32)).into(),
+				// )
 				.map(|_| ())
 				.map_err(|e| e.error)?;
 
@@ -452,6 +456,13 @@ pub mod pallet {
 
 		pub fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
+		}
+
+		pub fn sub_account_id(num: u32) -> T::AccountId {
+			let mut bytes = Vec::new();
+			bytes.extend_from_slice(&num.encode());
+			let hash = blake2_128(&bytes);
+			T::PalletId::get().into_sub_account_truncating(hash)
 		}
 	}
 
