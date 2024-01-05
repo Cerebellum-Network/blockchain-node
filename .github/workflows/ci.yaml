@@ -24,7 +24,7 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2022-10-09
+          toolchain: nightly-2023-10-22
           override: true
           components: rustfmt
       - name: Check TOML
@@ -44,7 +44,7 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2022-10-09
+          toolchain: nightly-2023-10-22
           override: true
           target: wasm32-unknown-unknown
       - name: Rust Cache
@@ -69,7 +69,7 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2022-10-09
+          toolchain: nightly-2023-10-22
           override: true
           target: wasm32-unknown-unknown
           components: clippy
@@ -92,7 +92,7 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2022-10-09
+          toolchain: nightly-2023-10-22
           override: true
           target: wasm32-unknown-unknown
       - name: Rust Cache
