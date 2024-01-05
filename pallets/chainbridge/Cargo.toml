@@ -36,3 +36,7 @@ std = [
   "sp-core/std",
   "sp-runtime/std",
 ]
+try-runtime = [
+  "frame-system/try-runtime",
+  "pallet-balances/try-runtime",
+]
