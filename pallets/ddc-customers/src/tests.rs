@@ -114,7 +114,7 @@ fn deposit_and_deposit_extra_works() {
 
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(&account_1),
+			DdcCustomers::ledger(account_1),
 			Some(AccountsLedger {
 				owner: account_1,
 				total: amount1,
@@ -144,7 +144,7 @@ fn deposit_and_deposit_extra_works() {
 
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(&account_1),
+			DdcCustomers::ledger(account_1),
 			Some(AccountsLedger {
 				owner: account_1,
 				total: amount1 + amount2,
@@ -178,7 +178,7 @@ fn charge_content_owner_works() {
 
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(&account_3),
+			DdcCustomers::ledger(account_3),
 			Some(AccountsLedger {
 				owner: account_3,
 				total: deposit,
@@ -206,7 +206,7 @@ fn charge_content_owner_works() {
 
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(&account_3),
+			DdcCustomers::ledger(account_3),
 			Some(AccountsLedger {
 				owner: account_3,
 				total: deposit - charge1,
@@ -219,7 +219,7 @@ fn charge_content_owner_works() {
 		let charge2 = 100u128;
 		let charge_result = DdcCustomers::charge_content_owner(account_3, vault, charge2).unwrap();
 		assert_eq!(
-			DdcCustomers::ledger(&account_3),
+			DdcCustomers::ledger(account_3),
 			Some(AccountsLedger {
 				owner: account_3,
 				total: 0,
@@ -236,7 +236,7 @@ fn charge_content_owner_works() {
 
 		assert_ok!(DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_3), deposit));
 		assert_eq!(
-			DdcCustomers::ledger(&account_3),
+			DdcCustomers::ledger(account_3),
 			Some(AccountsLedger {
 				owner: account_3,
 				total: deposit,
@@ -272,7 +272,7 @@ fn unlock_and_withdraw_deposit_works() {
 		let unlocking_chunks = vec![UnlockChunk { value: 1, block: 11 }];
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(&1),
+			DdcCustomers::ledger(1),
 			Some(AccountsLedger {
 				owner: account_1,
 				total: 35_u128,
@@ -299,7 +299,7 @@ fn unlock_and_withdraw_deposit_works() {
 		assert_ok!(DdcCustomers::withdraw_unlocked_deposit(RuntimeOrigin::signed(account_1)));
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(&1),
+			DdcCustomers::ledger(1),
 			Some(AccountsLedger {
 				owner: account_1,
 				total: 3_u128,
@@ -314,7 +314,7 @@ fn unlock_and_withdraw_deposit_works() {
 		assert_ok!(DdcCustomers::withdraw_unlocked_deposit(RuntimeOrigin::signed(account_1)));
 
 		// Check storage
-		assert_eq!(DdcCustomers::ledger(&account_1), None);
+		assert_eq!(DdcCustomers::ledger(account_1), None);
 	})
 }
 
