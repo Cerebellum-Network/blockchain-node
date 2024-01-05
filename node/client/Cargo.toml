@@ -1,6 +1,6 @@
 [package]
 name = "cere-client"
-version = "4.8.1"
+version = "4.8.2"
 edition = "2021"
 
 [dependencies]
