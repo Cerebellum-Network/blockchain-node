@@ -752,7 +752,7 @@ dependencies = [
 
 [[package]]
 name = "cere"
-version = "4.8.1"
+version = "4.8.2"
 dependencies = [
  "cere-cli",
  "sc-cli",
