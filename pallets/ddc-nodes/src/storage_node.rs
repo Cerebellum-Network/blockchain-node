@@ -1,4 +1,3 @@
-use crate::node::{NodeError, NodeProps, NodeTrait};
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	ClusterId, NodeParams, NodePubKey, NodeType, StorageNodeMode, StorageNodePubKey,
@@ -8,6 +7,8 @@ use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::RuntimeDebug;
+
+use crate::node::{NodeError, NodeProps, NodeTrait};
 
 parameter_types! {
 	pub MaxHostLen: u8 = 255;

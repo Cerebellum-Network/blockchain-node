@@ -1,9 +1,9 @@
-use crate::cli::{Cli, Subcommand};
-
 use cere_service::{self, IdentifyVariant};
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use sc_cli::{Error, RuntimeVersion, SubstrateCli};
 use sc_service::error::Error as ServiceError;
+
+use crate::cli::{Cli, Subcommand};
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {

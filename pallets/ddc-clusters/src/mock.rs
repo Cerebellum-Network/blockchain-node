@@ -2,7 +2,6 @@
 
 #![allow(dead_code)]
 
-use crate::{self as pallet_ddc_clusters, *};
 use ddc_primitives::{ClusterId, NodePubKey};
 use ddc_traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError};
 use frame_support::{
@@ -21,6 +20,8 @@ use sp_runtime::{
 	},
 	MultiSignature, Perquintill,
 };
+
+use crate::{self as pallet_ddc_clusters, *};
 
 /// The AccountId alias in this test module.
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
@@ -90,7 +91,6 @@ impl contracts::Config for Test {
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
-	type ContractAccessWeight = ();
 	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 }

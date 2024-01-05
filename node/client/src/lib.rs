@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 pub use node_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Index, Signature};
 use sc_client_api::{AuxStore, Backend as BackendT, BlockchainEvents, KeyIterator, UsageProvider};
 pub use sc_executor::NativeElseWasmExecutor;
@@ -10,7 +12,6 @@ use sp_runtime::{
 	Justifications,
 };
 use sp_storage::{ChildInfo, StorageData, StorageKey};
-use std::sync::Arc;
 
 pub type FullBackend = sc_service::TFullBackend<Block>;
 pub type FullClient<RuntimeApi, ExecutorDispatch> =
@@ -257,63 +258,63 @@ impl sc_client_api::BlockBackend<Block> for Client {
 impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 	fn storage(
 		&self,
-		id: &BlockId<Block>,
+		hash: &<Block as BlockT>::Hash,
 		key: &StorageKey,
 	) -> sp_blockchain::Result<Option<StorageData>> {
 		with_client! {
 			self,
 			client,
 			{
-				client.storage(id, key)
+				client.storage(hash, key)
 			}
 		}
 	}
 
 	fn storage_keys(
 		&self,
-		id: &BlockId<Block>,
+		hash: &<Block as BlockT>::Hash,
 		key_prefix: &StorageKey,
 	) -> sp_blockchain::Result<Vec<StorageKey>> {
 		with_client! {
 			self,
 			client,
 			{
-				client.storage_keys(id, key_prefix)
+				client.storage_keys(hash, key_prefix)
 			}
 		}
 	}
 
 	fn storage_hash(
 		&self,
-		id: &BlockId<Block>,
+		hash: &<Block as BlockT>::Hash,
 		key: &StorageKey,
 	) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {
 		with_client! {
 			self,
 			client,
 			{
-				client.storage_hash(id, key)
+				client.storage_hash(hash, key)
 			}
 		}
 	}
 
 	fn storage_pairs(
 		&self,
-		id: &BlockId<Block>,
+		hash: &<Block as BlockT>::Hash,
 		key_prefix: &StorageKey,
 	) -> sp_blockchain::Result<Vec<(StorageKey, StorageData)>> {
 		with_client! {
 			self,
 			client,
 			{
-				client.storage_pairs(id, key_prefix)
+				client.storage_pairs(hash, key_prefix)
 			}
 		}
 	}
 
 	fn storage_keys_iter<'a>(
 		&self,
-		id: &BlockId<Block>,
+		hash: &<Block as BlockT>::Hash,
 		prefix: Option<&'a StorageKey>,
 		start_key: Option<&StorageKey>,
 	) -> sp_blockchain::Result<
@@ -323,14 +324,14 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 			self,
 			client,
 			{
-				client.storage_keys_iter(id, prefix, start_key)
+				client.storage_keys_iter(hash, prefix, start_key)
 			}
 		}
 	}
 
 	fn child_storage(
 		&self,
-		id: &BlockId<Block>,
+		hash: &<Block as BlockT>::Hash,
 		child_info: &ChildInfo,
 		key: &StorageKey,
 	) -> sp_blockchain::Result<Option<StorageData>> {
@@ -338,14 +339,14 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 			self,
 			client,
 			{
-				client.child_storage(id, child_info, key)
+				client.child_storage(hash, child_info, key)
 			}
 		}
 	}
 
 	fn child_storage_keys(
 		&self,
-		id: &BlockId<Block>,
+		hash: &<Block as BlockT>::Hash,
 		child_info: &ChildInfo,
 		key_prefix: &StorageKey,
 	) -> sp_blockchain::Result<Vec<StorageKey>> {
@@ -353,14 +354,14 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 			self,
 			client,
 			{
-				client.child_storage_keys(id, child_info, key_prefix)
+				client.child_storage_keys(hash, child_info, key_prefix)
 			}
 		}
 	}
 
 	fn child_storage_keys_iter<'a>(
 		&self,
-		id: &BlockId<Block>,
+		hash: &<Block as BlockT>::Hash,
 		child_info: ChildInfo,
 		prefix: Option<&'a StorageKey>,
 		start_key: Option<&StorageKey>,
@@ -371,14 +372,14 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 			self,
 			client,
 			{
-				client.child_storage_keys_iter(id, child_info, prefix, start_key)
+				client.child_storage_keys_iter(hash, child_info, prefix, start_key)
 			}
 		}
 	}
 
 	fn child_storage_hash(
 		&self,
-		id: &BlockId<Block>,
+		hash: &<Block as BlockT>::Hash,
 		child_info: &ChildInfo,
 		key: &StorageKey,
 	) -> sp_blockchain::Result<Option<<Block as BlockT>::Hash>> {
@@ -386,7 +387,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 			self,
 			client,
 			{
-				client.child_storage_hash(id, child_info, key)
+				client.child_storage_hash(hash, child_info, key)
 			}
 		}
 	}
@@ -499,7 +500,6 @@ pub trait RuntimeApiCollection:
 	+ sp_offchain::OffchainWorkerApi<Block>
 	+ sp_session::SessionKeys<Block>
 	+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
-	+ pallet_contracts_rpc::ContractsRuntimeApi<Block, AccountId, Balance, BlockNumber, Hash>
 where
 	<Self as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
 {
@@ -517,8 +517,7 @@ where
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_session::SessionKeys<Block>
-		+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
-		+ pallet_contracts_rpc::ContractsRuntimeApi<Block, AccountId, Balance, BlockNumber, Hash>,
+		+ sp_authority_discovery::AuthorityDiscoveryApi<Block>,
 	<Self as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
 {
 }

@@ -2,7 +2,6 @@
 
 #![allow(dead_code)]
 
-use crate::{self as pallet_ddc_nodes, *};
 use ddc_traits::staking::{StakingVisitor, StakingVisitorError};
 use frame_support::{
 	construct_runtime, parameter_types,
@@ -16,6 +15,8 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+
+use crate::{self as pallet_ddc_nodes, *};
 
 /// The AccountId alias in this test module.
 pub(crate) type AccountId = u64;
