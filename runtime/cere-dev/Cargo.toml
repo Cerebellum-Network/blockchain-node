@@ -148,6 +148,7 @@ std = [
   "sp-std/std",
   "pallet-session/std",
   "sp-api/std",
+  "sp-offchain/std",
   "sp-runtime/std",
   "sp-staking/std",
   "pallet-staking/std",
