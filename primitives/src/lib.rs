@@ -10,6 +10,7 @@ use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
 pub const MILLICENTS: u128 = 100_000;
 pub const CENTS: u128 = 1_000 * MILLICENTS; // assume this is worth about a cent.
 pub const DOLLARS: u128 = 100 * CENTS;
+/// DDC Cluster identifier.
 pub type ClusterId = H160;
 pub type DdcEra = u32;
 pub type BucketId = u64;
@@ -21,42 +22,69 @@ pub struct ClusterParams<AccountId> {
 	pub node_provider_auth_contract: Option<AccountId>,
 }
 
-// ClusterGovParams includes Governance sensitive parameters
+/// List of all economic parameters for DDC Cluster locked by Governance.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
 #[scale_info(skip_type_params(Balance, BlockNumber, T))]
 pub struct ClusterGovParams<Balance, BlockNumber> {
+	/// Share from DAC payout cycles that goes to the Treasury Fund.
 	pub treasury_share: Perquintill,
+	/// Share from DAC payout cycles that goes to Validators.
 	pub validators_share: Perquintill,
+	/// Share from DAC payout cycles that goes to the cluster reserve account.
 	pub cluster_reserve_share: Perquintill,
+	/// Minimum amount of CERE tokens to bond by a DDC node to serve the cluster.
 	pub storage_bond_size: Balance,
+	/// Minimum delay before a serving DDC node can be stopped for maintenance without a risk of
+	/// being slashed.
 	pub storage_chill_delay: BlockNumber,
+	/// Minimum delay before a DDC node provider can fully unbond tokens to leave the serving
+	/// cluster.
 	pub storage_unbonding_delay: BlockNumber,
+	/// Amount of tokens to pay for 1 MB of stored data.
 	pub unit_per_mb_stored: u128,
+	/// Amount of tokens to pay for 1 MB of streamed data.
 	pub unit_per_mb_streamed: u128,
+	/// Amount of tokens to pay for 1 PUT request.
 	pub unit_per_put_request: u128,
+	/// Amount of tokens to pay for 1 GET request.
 	pub unit_per_get_request: u128,
 }
 
+/// DDC cluster pricing parameters for data storing and data streaming
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterPricingParams {
+	/// Amount of tokens to pay for 1 MB of stored data.
 	pub unit_per_mb_stored: u128,
+	/// Amount of tokens to pay for 1 MB of streamed data.
 	pub unit_per_mb_streamed: u128,
+	/// Amount of tokens to pay for 1 PUT request.
 	pub unit_per_put_request: u128,
+	/// Amount of tokens to pay for 1 GET request.
 	pub unit_per_get_request: u128,
 }
 
+/// DDC cluster fee parameters charged in DAC payout cycles
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterFeesParams {
+	/// Share from DAC payout cycles that goes to the Treasury Fund.
 	pub treasury_share: Perquintill,
+	/// Share from DAC payout cycles that goes to Validators.
 	pub validators_share: Perquintill,
+	/// Share from DAC payout cycles that goes to the cluster reserve account.
 	pub cluster_reserve_share: Perquintill,
 }
 
+/// DDC cluster bonding parameters for serving DDC nodes
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterBondingParams<BlockNumber> {
+	/// Minimum amount of CERE tokens to bond by a DDC node to serve the cluster.
 	pub storage_bond_size: u128,
+	/// Minimum delay before a serving DDC node can be stopped for maintenance without a risk of
+	/// being slashed.
 	pub storage_chill_delay: BlockNumber,
+	/// Minimum delay before a DDC node provider can fully unbond tokens to leave the serving
+	/// cluster.
 	pub storage_unbonding_delay: BlockNumber,
 }
 

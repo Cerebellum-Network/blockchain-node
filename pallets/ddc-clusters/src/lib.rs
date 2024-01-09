@@ -73,53 +73,81 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_contracts::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		/// DDC nodes registry.
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
+		/// DDC nodes staking read-only registry.
 		type StakingVisitor: StakingVisitor<Self>;
+		/// DDC nodes staking registry.
+		/// NOTE: Required for the benchmarking only.
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
+		/// Accounts balances registry.
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		/// Weight functions.
 		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// New DDC cluster was created in the network.
 		ClusterCreated { cluster_id: ClusterId },
+		/// DDC node was added to DDC cluster.
 		ClusterNodeAdded { cluster_id: ClusterId, node_pub_key: NodePubKey },
+		/// DDC node was removed from DDC cluster.
 		ClusterNodeRemoved { cluster_id: ClusterId, node_pub_key: NodePubKey },
+		/// Operational parameters for a DDC cluster were set.
 		ClusterParamsSet { cluster_id: ClusterId },
+		/// Economic parameters for a DDC cluster were set.
 		ClusterGovParamsSet { cluster_id: ClusterId },
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// DDC cluster with such `cluster_id` already exists.
 		ClusterAlreadyExists,
+		/// DDC cluster with such `cluster_id` does not exist.
 		ClusterDoesNotExist,
+		/// DDC cluster parameters size exceeds the limit.
 		ClusterParamsExceedsLimit,
+		/// Attempt to add a DDC node that does not exist.
 		AttemptToAddNonExistentNode,
+		/// Attempt to add a DDC node that is already added to another DDC Cluster.
 		AttemptToAddAlreadyAssignedNode,
+		/// Attempt to remove a DDC node that does not exist.
 		AttemptToRemoveNonExistentNode,
+		/// Attempt to remove a DDC node that is not added to the DDC Cluster.
 		AttemptToRemoveNotAssignedNode,
+		/// Operation is restricted to DDC cluster manager role.
 		OnlyClusterManager,
+		/// DDC node is not authorized by additional DDC cluster authorization smart contract.
 		NodeIsNotAuthorized,
+		/// DDC node has not activated the bond for a DDC cluster before adding to its topology.
 		NodeHasNoActivatedStake,
+		/// Tokens bonded for the DDC node are in an inconsistent state.
 		NodeStakeIsInvalid,
-		/// Cluster candidate should not plan to chill.
+		/// DDC node selected as a candidate for DDC cluster should not plan to chill.
 		NodeChillingIsProhibited,
+		/// Call to additional DDC cluster authorization smart contract failed.
 		NodeAuthContractCallFailed,
+		/// Deployment of additional DDC cluster authorization smart contract failed.
 		NodeAuthContractDeployFailed,
+		/// DDC node is not authorized by authorization smart contract of the DDC cluster.
 		NodeAuthNodeAuthorizationNotSuccessful,
 	}
 
+	/// Collection of all DDC Clusters.
 	#[pallet::storage]
 	#[pallet::getter(fn clusters)]
 	pub type Clusters<T: Config> =
 		StorageMap<_, Blake2_128Concat, ClusterId, Cluster<T::AccountId>>;
 
+	/// Collection of economic parameters for all DDC Clusters.
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_gov_params)]
 	pub type ClustersGovParams<T: Config> =
 		StorageMap<_, Twox64Concat, ClusterId, ClusterGovParams<BalanceOf<T>, T::BlockNumber>>;
 
+	/// Collection of DDC nodes assigned to DDC Clusters.
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_nodes)]
 	pub type ClustersNodes<T: Config> = StorageDoubleMap<
@@ -134,9 +162,12 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
+		/// List of initial DDC Clusters.
 		pub clusters: Vec<Cluster<T::AccountId>>,
 		#[allow(clippy::type_complexity)]
+		/// List of economic parameters for initial DDC Clusters.
 		pub clusters_gov_params: Vec<(ClusterId, ClusterGovParams<BalanceOf<T>, T::BlockNumber>)>,
+		/// List of DDC nodes assigned to initial DDC Clusters.
 		pub clusters_nodes: Vec<(ClusterId, Vec<NodePubKey>)>,
 	}
 
@@ -191,6 +222,18 @@ pub mod pallet {
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
+		/// Creates a new DDC Cluster in the network.
+		///
+		/// The dispatch origin of this call must be _Root_.
+		///
+		/// - `cluster_id`: A hash-based identifier for DDC cluster with 20 bytes in length.
+		/// - `cluster_manager_id`: The account of the cluster manager responsible for executing
+		///   operational actions.
+		/// - `cluster_reserve_id`: The account of the cluster reserve responsible for holding
+		///   rewards.
+		/// - `cluster_params`: A set of operational parameters for the cluster.
+		/// - `cluster_gov_params`: A set of economic parameters for the cluster locked by the
+		///   Governance.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_cluster())]
 		pub fn create_cluster(
 			origin: OriginFor<T>,
@@ -210,6 +253,13 @@ pub mod pallet {
 			)
 		}
 
+		/// Adds a DDC node to a DDC Cluster.
+		///
+		/// The dispatch origin of this call must be _Signed_, and the signing account must be the
+		/// cluster manager.
+		///
+		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
+		/// - `node_pub_key`: The key of the targeting DDC node to add.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::add_node())]
 		pub fn add_node(
 			origin: OriginFor<T>,
@@ -259,6 +309,13 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Removes a DDC node from a DDC cluster.
+		///
+		/// The dispatch origin of this call must be _Signed_, and the signing account must be the
+		/// cluster manager.
+		///
+		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
+		/// - `node_pub_key`: The key of the targeting DDC node to remove.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_node())]
 		pub fn remove_node(
 			origin: OriginFor<T>,
@@ -279,7 +336,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// Sets Governance non-sensetive parameters only
+		/// Sets operational parameters for a DDC cluster.
+		///
+		/// The dispatch origin of this call must be _Signed_, and the signing account must be the
+		/// cluster manager.
+		///
+		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
+		/// - `cluster_params`: A set of operational parameters for the cluster.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_params())]
 		pub fn set_cluster_params(
 			origin: OriginFor<T>,
@@ -297,7 +360,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// Requires Governance approval
+		/// Sets operational parameters for a DDC cluster.
+		///
+		/// The dispatch origin of this call must be _Root_.
+		///
+		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
+		/// - `cluster_gov_params`: A set of economic parameters for the cluster locked by the
+		///   Governance.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_gov_params())]
 		pub fn set_cluster_gov_params(
 			origin: OriginFor<T>,
@@ -315,6 +384,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		/// Creates a new DDC cluster and emits appropriate events.
 		fn do_create_cluster(
 			cluster_id: ClusterId,
 			cluster_manager_id: T::AccountId,
@@ -336,12 +406,14 @@ pub mod pallet {
 	}
 
 	impl<T: Config> ClusterVisitor<T> for Pallet<T> {
+		/// Checks whether a DDC Cluster exists.
 		fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
 			Clusters::<T>::get(cluster_id)
 				.map(|_| ())
 				.ok_or(ClusterVisitorError::ClusterDoesNotExist)
 		}
 
+		/// Gets minimal bonding size set for a DDC cluster.
 		fn get_bond_size(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
@@ -354,6 +426,8 @@ pub mod pallet {
 			}
 		}
 
+		/// Gets pricing-related parameters for data storing and data streaming set for a
+		/// DDC cluster.
 		fn get_pricing_params(
 			cluster_id: &ClusterId,
 		) -> Result<ClusterPricingParams, ClusterVisitorError> {
@@ -367,6 +441,7 @@ pub mod pallet {
 			})
 		}
 
+		/// Gets fee-related parameters set for a DDC cluster.
 		fn get_fees_params(
 			cluster_id: &ClusterId,
 		) -> Result<ClusterFeesParams, ClusterVisitorError> {
@@ -380,6 +455,7 @@ pub mod pallet {
 			})
 		}
 
+		/// Gets reserve account set for a DDC cluster.
 		fn get_reserve_account_id(
 			cluster_id: &ClusterId,
 		) -> Result<T::AccountId, ClusterVisitorError> {
@@ -388,6 +464,7 @@ pub mod pallet {
 			Ok(cluster.reserve_id)
 		}
 
+		/// Gets minimum chilling delay for DDC nodes set for a DDC cluster.
 		fn get_chill_delay(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
@@ -399,6 +476,7 @@ pub mod pallet {
 			}
 		}
 
+		/// Gets minimum unbonding delay for DDC nodes set for a DDC cluster.
 		fn get_unbonding_delay(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
@@ -410,6 +488,7 @@ pub mod pallet {
 			}
 		}
 
+		/// Gets bonding-related parameters set for a DDC cluster.
 		fn get_bonding_params(
 			cluster_id: &ClusterId,
 		) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
@@ -424,10 +503,12 @@ pub mod pallet {
 	}
 
 	impl<T: Config> ClusterManager<T> for Pallet<T> {
+		/// Checks whether a DDC node is added to a DDC Cluster.
 		fn contains_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> bool {
 			ClustersNodes::<T>::get(cluster_id, node_pub_key).is_some()
 		}
 
+		/// Adds a DDC to a DDC Cluster and emits appropriate events.
 		fn add_node(
 			cluster_id: &ClusterId,
 			node_pub_key: &NodePubKey,
@@ -449,6 +530,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Removes a DDC from a DDC Cluster and emits appropriate events.
 		fn remove_node(
 			cluster_id: &ClusterId,
 			node_pub_key: &NodePubKey,
@@ -475,6 +557,8 @@ pub mod pallet {
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
+		/// Creates a DDC cluster.
+		/// NOTE: Required for the benchmarking only.
 		fn create_new_cluster(
 			cluster_id: ClusterId,
 			cluster_manager_id: T::AccountId,

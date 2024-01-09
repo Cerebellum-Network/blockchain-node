@@ -18,8 +18,12 @@ const INK_SELECTOR_IS_AUTHORIZED: [u8; 4] = [0x96, 0xb0, 0x45, 0x3e];
 const EXTENSION_CALL_GAS_LIMIT: Weight =
 	Weight::from_ref_time(5_000_000_000_000).set_proof_size(u64::MAX);
 
+/// DDC cluster authorization smart contract that acts as an additional layer of approval before a
+/// DDC node can join the cluster.
 pub struct NodeProviderAuthContract<T: Config> {
+	/// Contract address
 	pub contract_id: T::AccountId,
+	/// Contract caller
 	caller_id: T::AccountId,
 }
 
@@ -27,6 +31,7 @@ impl<T: Config> NodeProviderAuthContract<T>
 where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
+	/// Checks whether a DDC node is authorized by the smart contract
 	pub fn is_authorized(
 		&self,
 		node_provider_id: T::AccountId,
@@ -64,6 +69,8 @@ where
 		Ok(is_authorized)
 	}
 
+	/// Deploys authorization smart contract.
+	/// NOTE: Required for the benchmarking and tests only.
 	pub fn deploy_contract(
 		&self,
 		caller_id: T::AccountId,
@@ -102,6 +109,8 @@ where
 		Ok(Self::new(contract_id, caller_id))
 	}
 
+	/// Authorizes a DDC node by the smart contract.
+	/// NOTE: Required for the benchmarking and tests only.
 	pub fn authorize_node(
 		&self,
 		node_pub_key: NodePubKey,
@@ -136,6 +145,7 @@ where
 	}
 }
 
+/// DDC cluster authorization smart contract errors
 pub enum NodeProviderAuthContractError {
 	ContractCallFailed,
 	ContractDeployFailed,
