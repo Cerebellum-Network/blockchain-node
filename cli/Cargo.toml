@@ -13,11 +13,24 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 clap = { version = "4.0.9", features = ["derive"], optional = true }
+log = "0.4.17"
+thiserror = "1.0.31"
+futures = "0.3.21"
+url = "2.4.1"
+pyro = { package = "pyroscope", version = "0.3.1", optional = true }
+
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.33" }
 sc-cli = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.33" }
 sc-service = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.33" }
 try-runtime-cli = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.33" }
-url = "2.4.1"
+sc-tracing = { git = "https://github.com/paritytech/substrate", optional = true , branch = "polkadot-v0.9.33" }
+sc-sysinfo = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
+
+# this crate is used only to enable `trie-memory-tracker` feature
+# see https://github.com/paritytech/substrate/pull/6745
+sp-trie = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.33" }
 
 # Local
 cere-client = { path = "../node/client", optional = true }
@@ -27,17 +40,21 @@ cere-service = { path = "../node/service", default-features = false, optional = 
 substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 
 [features]
-default = ["cli", "cere-native"]
+default = ["wasmtime", "cli", "trie-memory-tracker", "cere-native"]
+wasmtime = ["sc-cli/wasmtime"]
 cli = [
   "clap",
   "sc-cli",
   "sc-service",
+  "sc-tracing",
   "frame-benchmarking-cli",
   "try-runtime-cli",
   "cere-client",
 ]
 runtime-benchmarks = ["cere-service/runtime-benchmarks"]
-try-runtime = ["cere-service/try-runtime"]
+trie-memory-tracker = ["sp-trie/memory-tracker"]
+try-runtime = ["cere-service/try-runtime", "try-runtime-cli/try-runtime"]
+pyroscope = ["pyro"]
 
 cere-native = ["cere-service/cere-native"]
 cere-dev-native = ["cere-service/cere-dev-native"]
