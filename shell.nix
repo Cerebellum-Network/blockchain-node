@@ -13,7 +13,7 @@ let
     rev = "1fe6ed37fd9beb92afe90671c0c2a662a03463dd";
   };
   nixpkgs = import pinned { overlays = [ mozillaOverlay ]; };
-  toolchain = with nixpkgs; (rustChannelOf { date = "2023-10-22"; channel = "nightly"; });
+  toolchain = with nixpkgs; (rustChannelOf { date = "2022-10-09"; channel = "nightly"; });
   rust-wasm = toolchain.rust.override {
     targets = [ "wasm32-unknown-unknown" ];
   };
@@ -23,6 +23,7 @@ with nixpkgs; pkgs.mkShell {
     clang
     pkg-config
     rust-wasm
+    openssl
   ];
 
   LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
