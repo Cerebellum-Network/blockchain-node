@@ -54,7 +54,7 @@ jobs:
           cargo build --release
       - name: Run dev chain
         run: |
-          timeout --preserve-status 5s ./target/release/cere --dev
+          timeout --preserve-status 30s ./target/release/cere --dev
       - name: Check Build for Benchmarking
         run: >
           pushd node &&
