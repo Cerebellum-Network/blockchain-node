@@ -51,7 +51,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Check Build
         run: |
-          SKIP_WASM_BUILD=1 cargo check --release
+          cargo build --release
+      - name: Run dev chain
+        run: |
+          timeout --preserve-status 5s ./target/release/cere --dev
       - name: Check Build for Benchmarking
         run: >
           pushd node &&
