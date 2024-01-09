@@ -24,7 +24,7 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-10-22
+          toolchain: nightly-2022-10-09
           override: true
           components: rustfmt
       - name: Check TOML
@@ -44,14 +44,17 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-10-22
+          toolchain: nightly-2022-10-09
           override: true
           target: wasm32-unknown-unknown
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Check Build
         run: |
-          SKIP_WASM_BUILD=1 cargo check --release
+          cargo build --release
+      - name: Run dev chain
+        run: |
+          timeout --preserve-status 30s ./target/release/cere --dev
       - name: Check Build for Benchmarking
         run: >
           pushd node &&
@@ -69,7 +72,7 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-10-22
+          toolchain: nightly-2022-10-09
           override: true
           target: wasm32-unknown-unknown
           components: clippy
@@ -92,7 +95,7 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-10-22
+          toolchain: nightly-2022-10-09
           override: true
           target: wasm32-unknown-unknown
       - name: Rust Cache
