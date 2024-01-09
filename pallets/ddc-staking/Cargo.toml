@@ -38,3 +38,8 @@ std = [
   "sp-std/std",
 ]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
+try-runtime = [
+  "frame-system/try-runtime",
+  "ddc-primitives/try-runtime",
+  "ddc-traits/try-runtime",
+]

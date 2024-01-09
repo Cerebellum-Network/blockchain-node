@@ -11,3 +11,9 @@ frame-system = { default-features = false, git = "https://github.com/paritytech/
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
 sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
 sp-std = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.33" }
+
+[features]
+try-runtime = [
+  "frame-system/try-runtime",
+  "ddc-primitives/try-runtime",
+]

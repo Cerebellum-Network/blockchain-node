@@ -1,41 +1,8 @@
-#[allow(missing_docs)]
-#[derive(Debug, clap::Parser)]
-pub struct Cli {
-	#[command(subcommand)]
-	pub subcommand: Option<Subcommand>,
-	#[clap(flatten)]
-	pub run: RunCmd,
-}
+use clap::Parser;
 
 #[allow(missing_docs)]
-#[derive(Debug, clap::Parser)]
-#[group(skip)]
-pub struct RunCmd {
-	#[clap(flatten)]
-	pub base: sc_cli::RunCmd,
-
-	/// Force using Cere Dev runtime.
-	#[arg(long = "force-cere-dev")]
-	pub force_cere_dev: bool,
-
-	/// Disable automatic hardware benchmarks.
-	///
-	/// By default these benchmarks are automatically ran at startup and measure
-	/// the CPU speed, the memory bandwidth and the disk speed.
-	///
-	/// The results are then printed out in the logs, and also sent as part of
-	/// telemetry, if telemetry is enabled.
-	#[arg(long)]
-	pub no_hardware_benchmarks: bool,
-}
-
-#[allow(missing_docs)]
-#[derive(Debug, clap::Subcommand)]
+#[derive(Debug, Parser)]
 pub enum Subcommand {
-	/// Key management cli utilities
-	#[command(subcommand)]
-	Key(sc_cli::KeySubcommand),
-
 	/// Build a chain specification.
 	BuildSpec(sc_cli::BuildSpecCmd),
 
@@ -56,8 +23,9 @@ pub enum Subcommand {
 
 	/// Revert the chain to a previous state.
 	Revert(sc_cli::RevertCmd),
-
+	
 	/// Sub-commands concerned with benchmarking.
+	/// The pallet benchmarking moved to the `pallet` sub-command.
 	#[command(subcommand)]
 	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
 
@@ -69,6 +37,78 @@ pub enum Subcommand {
 	#[cfg(not(feature = "try-runtime"))]
 	TryRuntime,
 
+	/// Key management CLI utilities
+	#[command(subcommand)]
+	Key(sc_cli::KeySubcommand),
+
 	/// Db meta columns information.
 	ChainInfo(sc_cli::ChainInfoCmd),
+}
+
+#[allow(missing_docs)]
+#[derive(Debug, Parser)]
+pub struct ValidationWorkerCommand {
+	/// The path to the validation host's socket.
+	pub socket_path: String,
+}
+
+#[allow(missing_docs)]
+#[derive(Debug, Parser)]
+#[group(skip)]
+pub struct RunCmd {
+	#[allow(missing_docs)]
+	#[clap(flatten)]
+	pub base: sc_cli::RunCmd,
+
+	/// Force using Cere Dev runtime.
+	#[arg(long = "force-cere-dev")]
+	pub force_cere_dev: bool,
+
+	/// Setup a GRANDPA scheduled voting pause.
+	///
+	/// This parameter takes two values, namely a block number and a delay (in
+	/// blocks). After the given block number is finalized the GRANDPA voter
+	/// will temporarily stop voting for new blocks until the given delay has
+	/// elapsed (i.e. until a block at height `pause_block + delay` is imported).
+	#[arg(long = "grandpa-pause", num_args = 2)]
+	pub grandpa_pause: Vec<u32>,
+
+	/// Add the destination address to the jaeger agent.
+	///
+	/// Must be valid socket address, of format `IP:Port`
+	/// commonly `127.0.0.1:6831`.
+	#[arg(long)]
+	pub jaeger_agent: Option<String>,
+
+	/// Add the destination address to the `pyroscope` agent.
+	///
+	/// Must be valid socket address, of format `IP:Port`
+	/// commonly `127.0.0.1:4040`.
+	#[arg(long)]
+	pub pyroscope_server: Option<String>,
+
+	/// Disable automatic hardware benchmarks.
+	///
+	/// By default these benchmarks are automatically ran at startup and measure
+	/// the CPU speed, the memory bandwidth and the disk speed.
+	///
+	/// The results are then printed out in the logs, and also sent as part of
+	/// telemetry, if telemetry is enabled.
+	#[arg(long)]
+	pub no_hardware_benchmarks: bool,
+
+	/// Overseer message capacity override.
+	///
+	/// **Dangerous!** Do not touch unless explicitly adviced to.
+	#[arg(long)]
+	pub overseer_channel_capacity_override: Option<usize>,
+}
+
+#[allow(missing_docs)]
+#[derive(Debug, Parser)]
+pub struct Cli {
+	#[command(subcommand)]
+	pub subcommand: Option<Subcommand>,
+	#[clap(flatten)]
+	pub run: RunCmd,
 }

@@ -44,3 +44,8 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
+try-runtime = [
+  "frame-system/try-runtime",
+  "ddc-primitives/try-runtime",
+  "ddc-traits/try-runtime",
+]

@@ -1,6 +1,10 @@
 //! Substrate Node Template CLI library.
 #![warn(missing_docs)]
 
-fn main() -> sc_cli::Result<()> {
-	cere_cli::run()
+use color_eyre::eyre;
+
+fn main() -> eyre::Result<()> {
+	color_eyre::install()?;
+	cere_cli::run()?;
+	Ok(())
 }
