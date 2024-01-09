@@ -12,12 +12,10 @@ wasm-opt = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-clap = { version = "4.0.9", features = ["derive"], optional = true }
+clap = { version = "4.0.15", features = ["derive"], optional = true }
+futures = "0.3.21"
 log = "0.4.17"
 thiserror = "1.0.31"
-futures = "0.3.21"
-url = "2.4.1"
-pyro = { package = "pyroscope", version = "0.3.1", optional = true }
 
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
 sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.33" }
@@ -54,7 +52,6 @@ cli = [
 runtime-benchmarks = ["cere-service/runtime-benchmarks"]
 trie-memory-tracker = ["sp-trie/memory-tracker"]
 try-runtime = ["cere-service/try-runtime", "try-runtime-cli/try-runtime"]
-pyroscope = ["pyro"]
 
 cere-native = ["cere-service/cere-native"]
 cere-dev-native = ["cere-service/cere-dev-native"]
