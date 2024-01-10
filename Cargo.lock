@@ -1573,7 +1573,7 @@ dependencies = [
 
 [[package]]
 name = "ddc-primitives"
-version = "0.1.0"
+version = "4.8.4"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -1584,7 +1584,7 @@ dependencies = [
 
 [[package]]
 name = "ddc-traits"
-version = "0.1.0"
+version = "4.8.4"
 dependencies = [
  "ddc-primitives",
  "frame-support",
@@ -4619,7 +4619,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-customers"
-version = "4.8.2"
+version = "4.8.4"
 dependencies = [
  "ddc-primitives",
  "ddc-traits",

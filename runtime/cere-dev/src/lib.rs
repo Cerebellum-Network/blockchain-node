@@ -84,8 +84,8 @@ use sp_runtime::{
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	traits::{
-		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, ConvertInto, NumberFor,
-		OpaqueKeys, SaturatedConversion, StaticLookup,
+		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, ConvertInto,
+		Identity as IdentityConvert, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
@@ -133,7 +133,6 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_version: 48400,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 10,
 	state_version: 0,
 };
 
@@ -1363,9 +1362,10 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type CustomerDepositor = DdcCustomers;
 	type ClusterVisitor = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
-	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
+	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type ClusterCreator = DdcClusters;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
+	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
 }
 
 construct_runtime!(

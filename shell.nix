@@ -23,6 +23,7 @@ with nixpkgs; pkgs.mkShell {
     clang
     pkg-config
     rust-wasm
+    openssl
   ];
 
   LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
