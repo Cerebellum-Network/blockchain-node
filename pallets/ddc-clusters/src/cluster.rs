@@ -25,6 +25,7 @@ pub struct Cluster<AccountId> {
 	pub props: ClusterProps<AccountId>,
 }
 
+/// DDC cluster operational parameters.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterProps<AccountId> {
@@ -63,6 +64,7 @@ impl<AccountId> Cluster<AccountId> {
 
 /// DDC cluster handler error.
 pub enum ClusterError {
+	/// Cluster operational parameters size exceeds the limit.
 	ClusterParamsExceedsLimit,
 }
 

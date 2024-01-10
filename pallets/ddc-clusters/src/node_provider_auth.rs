@@ -31,7 +31,7 @@ impl<T: Config> NodeProviderAuthContract<T>
 where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
-	/// Checks whether a DDC node is authorized by the smart contract
+	/// Checks whether a DDC node is authorized by the smart contract.
 	pub fn is_authorized(
 		&self,
 		node_provider_id: T::AccountId,
@@ -75,8 +75,10 @@ where
 		&self,
 		caller_id: T::AccountId,
 	) -> Result<Self, NodeProviderAuthContractError> {
+		/// Smart contract constructor selector.
 		pub const CTOR_SELECTOR: [u8; 4] = hex!("9bae9d5e");
 
+		/// Smart contract constructor encoder.
 		fn encode_constructor() -> Vec<u8> {
 			let mut call_data = CTOR_SELECTOR.to_vec();
 			let x = 0_u128;
@@ -86,12 +88,12 @@ where
 			call_data
 		}
 
-		// Load the contract code.
+		// Load the smart contract code.
 		let wasm = &include_bytes!("./test_data/node_provider_auth_white_list.wasm")[..];
 		let _wasm_hash = <T as frame_system::Config>::Hashing::hash(wasm);
 		let contract_args = encode_constructor();
 
-		// Deploy the contract.
+		// Deploy the smart contract.
 		let contract_id = pallet_contracts::Pallet::<T>::bare_instantiate(
 			caller_id.clone(),
 			Default::default(),
@@ -115,6 +117,7 @@ where
 		&self,
 		node_pub_key: NodePubKey,
 	) -> Result<bool, NodeProviderAuthContractError> {
+		/// Smart contract call selector to authorize a DDC node.
 		pub const ADD_DDC_NODE_SELECTOR: [u8; 4] = hex!("7a04093d");
 
 		let call_data = {
@@ -140,14 +143,18 @@ where
 		Ok(true)
 	}
 
+	/// Constructor function.
 	pub fn new(contract_id: T::AccountId, caller_id: T::AccountId) -> Self {
 		Self { contract_id, caller_id }
 	}
 }
 
-/// DDC cluster authorization smart contract errors
+/// DDC cluster authorization smart contract errors.
 pub enum NodeProviderAuthContractError {
+	/// Smart contract call failed.
 	ContractCallFailed,
+	/// Smart contract deployment failed.
 	ContractDeployFailed,
+	/// Could not authorize a DDC node in smart contract.
 	NodeAuthorizationNotSuccessful,
 }
