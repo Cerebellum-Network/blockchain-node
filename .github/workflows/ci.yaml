@@ -110,3 +110,24 @@ jobs:
         with:
           name: tarpaulin coverage
           path: ./tarpaulin-report.xml
+
+  tests:
+    name: Check docs
+    needs: format
+    runs-on: ubuntu-22.04
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+      - name: Install linux dependencies
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly-2022-10-09
+          override: true
+          target: wasm32-unknown-unknown
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Check Build
+        run: |
+          cargo doc --workspace --features runtime-benchmarks,try-runtime --no-deps --document-private-items
