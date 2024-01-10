@@ -52,7 +52,9 @@ use crate::{
 	node_provider_auth::{NodeProviderAuthContract, NodeProviderAuthContractError},
 };
 
+/// DDC cluster data structures.
 pub mod cluster;
+/// DDC cluster additional authorization smart contract.
 mod node_provider_auth;
 
 /// The balance type of this pallet.
@@ -73,6 +75,7 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_contracts::Config {
+		/// Runtime event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// DDC nodes registry.
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
@@ -83,7 +86,7 @@ pub mod pallet {
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 		/// Accounts balances registry.
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
-		/// Weight functions.
+		/// Weight info type.
 		type WeightInfo: WeightInfo;
 	}
 
@@ -91,15 +94,34 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// New DDC cluster was created in the network.
-		ClusterCreated { cluster_id: ClusterId },
+		ClusterCreated {
+			/// DDC cluster identifier.
+			cluster_id: ClusterId,
+		},
 		/// DDC node was added to DDC cluster.
-		ClusterNodeAdded { cluster_id: ClusterId, node_pub_key: NodePubKey },
+		ClusterNodeAdded {
+			/// DDC cluster identifier.
+			cluster_id: ClusterId,
+			/// DDC node public key.
+			node_pub_key: NodePubKey,
+		},
 		/// DDC node was removed from DDC cluster.
-		ClusterNodeRemoved { cluster_id: ClusterId, node_pub_key: NodePubKey },
+		ClusterNodeRemoved {
+			/// DDC cluster identifier.
+			cluster_id: ClusterId,
+			/// DDC node key.
+			node_pub_key: NodePubKey,
+		},
 		/// Operational parameters for a DDC cluster were set.
-		ClusterParamsSet { cluster_id: ClusterId },
+		ClusterParamsSet {
+			/// DDC cluster identifier.
+			cluster_id: ClusterId,
+		},
 		/// Economic parameters for a DDC cluster were set.
-		ClusterGovParamsSet { cluster_id: ClusterId },
+		ClusterGovParamsSet {
+			/// DDC cluster identifier.
+			cluster_id: ClusterId,
+		},
 	}
 
 	#[pallet::error]
@@ -227,7 +249,8 @@ pub mod pallet {
 		///
 		/// The dispatch origin of this call must be _Root_.
 		///
-		/// - `cluster_id`: A hash-based identifier for DDC cluster with 20 bytes in length.
+		/// Parameters:
+		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
 		/// - `cluster_manager_id`: The account of the cluster manager responsible for executing
 		///   operational actions.
 		/// - `cluster_reserve_id`: The account of the cluster reserve responsible for holding
@@ -259,6 +282,7 @@ pub mod pallet {
 		/// The dispatch origin of this call must be _Signed_, and the signing account must be the
 		/// cluster manager.
 		///
+		/// Parameters:
 		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
 		/// - `node_pub_key`: The key of the targeting DDC node to add.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::add_node())]
@@ -315,6 +339,7 @@ pub mod pallet {
 		/// The dispatch origin of this call must be _Signed_, and the signing account must be the
 		/// cluster manager.
 		///
+		/// Parameters:
 		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
 		/// - `node_pub_key`: The key of the targeting DDC node to remove.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_node())]
@@ -342,6 +367,7 @@ pub mod pallet {
 		/// The dispatch origin of this call must be _Signed_, and the signing account must be the
 		/// cluster manager.
 		///
+		/// Parameters:
 		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
 		/// - `cluster_params`: A set of operational parameters for the cluster.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_params())]
@@ -365,6 +391,7 @@ pub mod pallet {
 		///
 		/// The dispatch origin of this call must be _Root_.
 		///
+		/// Parameters:
 		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
 		/// - `cluster_gov_params`: A set of economic parameters for the cluster locked by the
 		///   Governance.

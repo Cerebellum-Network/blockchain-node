@@ -14,7 +14,9 @@ use testing_utils::*;
 use super::*;
 use crate::{cluster::ClusterProps, Pallet as DdcClusters};
 
+/// User seed
 const USER_SEED: u32 = 999666;
+/// User seed 2
 const USER_SEED_2: u32 = 999555;
 
 benchmarks! {

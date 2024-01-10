@@ -16,6 +16,7 @@ use sp_std::prelude::*;
 
 use crate::{Pallet as DdcClusters, *};
 
+/// Test utility function that creates a DDC cluster with some parameters.
 pub fn config_cluster<T: Config>(user: T::AccountId, cluster_id: ClusterId)
 where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
@@ -44,6 +45,8 @@ where
 	);
 }
 
+/// Test utility function that creates a DDC cluster with some parameters, adds a DDC node and
+/// activates it.
 pub fn config_cluster_and_node<T: Config>(
 	user: T::AccountId,
 	node_pub_key: NodePubKey,
