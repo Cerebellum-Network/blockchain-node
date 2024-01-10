@@ -9,12 +9,12 @@ use sp_std::{prelude::Vec, vec};
 use crate::Config;
 
 /// ink! 4.x selector for the "is_authorized" message, equals to the first four bytes of the
-/// blake2("is_authorized"). See also: https://use.ink/basics/selectors#selector-calculation/,
-/// https://use.ink/macros-attributes/selector/.
+/// blake2("is_authorized"). See also: <https://use.ink/basics/selectors#selector-calculation/>,
+/// <https://use.ink/macros-attributes/selector/>.
 const INK_SELECTOR_IS_AUTHORIZED: [u8; 4] = [0x96, 0xb0, 0x45, 0x3e];
 
 /// The maximum amount of weight that the cluster extension contract call is allowed to consume.
-/// See also https://github.com/paritytech/substrate/blob/a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d/frame/contracts/rpc/src/lib.rs#L63.
+/// See also <https://github.com/paritytech/substrate/blob/a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d/frame/contracts/rpc/src/lib.rs#L63>.
 const EXTENSION_CALL_GAS_LIMIT: Weight =
 	Weight::from_ref_time(5_000_000_000_000).set_proof_size(u64::MAX);
 
