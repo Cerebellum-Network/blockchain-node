@@ -13,16 +13,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ...
 
-## [4.8.4]
+## [4.8.5]
 
 ### Changed
 
 - [C,D] Updated Substrate to polkadot-v0.9.36
 
-## [4.8.3]
+## [4.8.4]
 
 ### Changed
+
 - [C,D] Updated Substrate to polkadot-v0.9.33
+
+## [4.8.3]
+
+## Changed
+
+- [C,D] Updated Substrate to polkadot-v0.9.31
 
 ## [4.8.2]
 
@@ -37,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New `ddc-traits` crate with DDC common traits definition.
 
 ### Changed
+
 - [C] Fixed governance parameters
 
 ## [4.8.1]
