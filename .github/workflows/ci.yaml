@@ -111,7 +111,7 @@ jobs:
           name: tarpaulin coverage
           path: ./tarpaulin-report.xml
 
-  tests:
+  docs:
     name: Check docs
     needs: format
     runs-on: ubuntu-22.04
