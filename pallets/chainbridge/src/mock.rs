@@ -1,5 +1,3 @@
-#![cfg(test)]
-
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types, traits::Everything, weights::Weight,
 };
@@ -12,8 +10,7 @@ use sp_runtime::{
 	Perbill,
 };
 
-use super::*;
-use crate::{self as bridge, Config};
+use crate::{self as bridge, *};
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -77,7 +74,7 @@ parameter_types! {
 	pub const ProposalLifetime: u64 = 50;
 }
 
-impl Config for Test {
+impl crate::pallet::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type Proposal = RuntimeCall;
@@ -94,7 +91,7 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: system::{Pallet, Call, Event<T>},
+		System: system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Bridge: bridge::{Pallet, Call, Storage, Event<T>},
 	}

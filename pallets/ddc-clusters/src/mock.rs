@@ -11,7 +11,7 @@ use frame_support::{
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use pallet_contracts as contracts;
-use sp_core::H256;
+use sp_core::{ConstBool, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::{Header, TestXt},
@@ -93,6 +93,8 @@ impl contracts::Config for Test {
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
+	type UnsafeUnstableInterface = ConstBool<false>;
+	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 }
 
 use frame_system::offchain::{
