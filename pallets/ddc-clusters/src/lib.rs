@@ -10,6 +10,7 @@
 //!
 //! The DDC Clusters pallet depends on the [`GenesisConfig`]. The
 //! `GenesisConfig` is optional and allow to set some initial nodes in DDC.
+#![warn(clippy::missing_docs_in_private_items)]
 #![feature(is_some_and)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
