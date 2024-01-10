@@ -258,6 +258,7 @@ pub mod pallet {
 		/// - `cluster_params`: A set of operational parameters for the cluster.
 		/// - `cluster_gov_params`: A set of economic parameters for the cluster locked by the
 		///   Governance.
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_cluster())]
 		pub fn create_cluster(
 			origin: OriginFor<T>,
@@ -285,6 +286,7 @@ pub mod pallet {
 		/// Parameters:
 		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
 		/// - `node_pub_key`: The key of the targeting DDC node to add.
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::add_node())]
 		pub fn add_node(
 			origin: OriginFor<T>,
@@ -342,6 +344,7 @@ pub mod pallet {
 		/// Parameters:
 		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
 		/// - `node_pub_key`: The key of the targeting DDC node to remove.
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_node())]
 		pub fn remove_node(
 			origin: OriginFor<T>,
@@ -370,6 +373,8 @@ pub mod pallet {
 		/// Parameters:
 		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
 		/// - `cluster_params`: A set of operational parameters for the cluster.
+		// Sets Governance non-sensetive parameters only
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_params())]
 		pub fn set_cluster_params(
 			origin: OriginFor<T>,
@@ -395,6 +400,8 @@ pub mod pallet {
 		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
 		/// - `cluster_gov_params`: A set of economic parameters for the cluster locked by the
 		///   Governance.
+		// Requires Governance approval
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_gov_params())]
 		pub fn set_cluster_gov_params(
 			origin: OriginFor<T>,
