@@ -109,7 +109,7 @@ pub mod pallet {
 		ClusterNodeRemoved {
 			/// DDC cluster identifier.
 			cluster_id: ClusterId,
-			/// DDC node key.
+			/// DDC node public key.
 			node_pub_key: NodePubKey,
 		},
 		/// Operational parameters for a DDC cluster were set.
@@ -250,13 +250,13 @@ pub mod pallet {
 		/// The dispatch origin of this call must be _Root_.
 		///
 		/// Parameters:
-		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
+		/// - `cluster_id`: Hash-based identifier of the targeting DDC cluster.
 		/// - `cluster_manager_id`: The account of the cluster manager responsible for executing
 		///   operational actions.
 		/// - `cluster_reserve_id`: The account of the cluster reserve responsible for holding
 		///   rewards.
-		/// - `cluster_params`: A set of operational parameters for the cluster.
-		/// - `cluster_gov_params`: A set of economic parameters for the cluster locked by the
+		/// - `cluster_params`: Set of operational parameters for the cluster.
+		/// - `cluster_gov_params`: Set of economic parameters for the cluster locked by the
 		///   Governance.
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_cluster())]
@@ -284,8 +284,8 @@ pub mod pallet {
 		/// cluster manager.
 		///
 		/// Parameters:
-		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
-		/// - `node_pub_key`: The key of the targeting DDC node to add.
+		/// - `cluster_id`: Hash-based identifier of the targeting DDC cluster.
+		/// - `node_pub_key`: Public key of the targeting DDC node to add.
 		#[pallet::call_index(1)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::add_node())]
 		pub fn add_node(
@@ -342,8 +342,8 @@ pub mod pallet {
 		/// cluster manager.
 		///
 		/// Parameters:
-		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
-		/// - `node_pub_key`: The key of the targeting DDC node to remove.
+		/// - `cluster_id`: Hash-based identifier of the targeting DDC cluster.
+		/// - `node_pub_key`: Public key of the targeting DDC node to remove.
 		#[pallet::call_index(2)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_node())]
 		pub fn remove_node(
@@ -371,8 +371,8 @@ pub mod pallet {
 		/// cluster manager.
 		///
 		/// Parameters:
-		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
-		/// - `cluster_params`: A set of operational parameters for the cluster.
+		/// - `cluster_id`: Hash-based identifier of the targeting DDC cluster.
+		/// - `cluster_params`: Set of operational parameters for the cluster.
 		// Sets Governance non-sensetive parameters only
 		#[pallet::call_index(3)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_params())]
@@ -397,8 +397,8 @@ pub mod pallet {
 		/// The dispatch origin of this call must be _Root_.
 		///
 		/// Parameters:
-		/// - `cluster_id`: The hash-based identifier of the targeting DDC cluster.
-		/// - `cluster_gov_params`: A set of economic parameters for the cluster locked by the
+		/// - `cluster_id`: Hash-based identifier of the targeting DDC cluster.
+		/// - `cluster_gov_params`: Set of economic parameters for the cluster locked by the
 		///   Governance.
 		// Requires Governance approval
 		#[pallet::call_index(4)]

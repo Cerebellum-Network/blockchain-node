@@ -62,7 +62,7 @@ impl<AccountId> Cluster<AccountId> {
 	}
 }
 
-/// DDC cluster handler error.
+/// DDC cluster error.
 pub enum ClusterError {
 	/// Cluster operational parameters size exceeds the limit.
 	ClusterParamsExceedsLimit,

@@ -11,29 +11,42 @@ use crate::{
 	ClusterId,
 };
 
+/// DDC node type enum.
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum Node<T: frame_system::Config> {
+	/// DDC Storage node variant.
 	Storage(StorageNode<T>),
 }
 
-// Props fields may include internal protocol properties
+/// DDC Storage node properties that include non-input fields.
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodeProps {
+	/// DDC Storage node properties.
 	StorageProps(StorageNodeProps),
 }
 
+/// DDC node trait.
 pub trait NodeTrait<T: frame_system::Config> {
+	/// DDC node public key getter.
 	fn get_pub_key(&self) -> NodePubKey;
+	/// DDC node provider account getter.
 	fn get_provider_id(&self) -> &T::AccountId;
+	/// DDC node properties getter.
 	fn get_props(&self) -> NodeProps;
+	/// DDC node properties setter.
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError>;
+	/// DDC node parameters setter.
 	fn set_params(&mut self, props: NodeParams) -> Result<(), NodeError>;
+	/// Assigned cluster getter.
 	fn get_cluster_id(&self) -> &Option<ClusterId>;
+	/// Assigned cluster setter.
 	fn set_cluster_id(&mut self, cluster_id: Option<ClusterId>);
+	/// DDC node type getter.
 	fn get_type(&self) -> NodeType;
 }
 
 impl<T: frame_system::Config> Node<T> {
+	/// DDC node constructor.
 	pub fn new(
 		node_pub_key: NodePubKey,
 		provider_id: T::AccountId,
@@ -89,9 +102,12 @@ impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
 	}
 }
 
+/// DDC node error.
 #[derive(Debug, PartialEq)]
 pub enum NodeError {
+	/// DDC node host length exceeds the limit.
 	StorageHostLenExceedsLimit,
+	/// DDC node domain length exceeds the limit.
 	StorageDomainLenExceedsLimit,
 }
 
