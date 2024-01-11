@@ -12,6 +12,7 @@ use sp_std::prelude::*;
 
 use crate::{Pallet as DdcStaking, *};
 
+/// User seed.
 const SEED: u32 = 0;
 
 /// This function removes all storage and Storages nodes from storage.
