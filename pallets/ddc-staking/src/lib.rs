@@ -341,7 +341,7 @@ pub mod pallet {
 		/// - `controller`: Account that will manage the stake.
 		/// - `node`: Public key of the targeting DDC node to make the stake for.
 		///
-		/// Emits `Bonded`.
+		/// Emits: `Bonded`.
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::bond())]
 		pub fn bond(
@@ -420,7 +420,7 @@ pub mod pallet {
 		/// Parameters:
 		/// - `value`: Amount of tokens to unbond.
 		///
-		/// Emits `Unbonded`.
+		/// Emits: `Unbonded`, `LeaveSoon`.
 		///
 		/// See also [`Call::withdraw_unbonded`].
 		#[pallet::call_index(1)]
@@ -536,7 +536,7 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller.
 		///
-		/// Emits `Withdrawn`, `Left`.
+		/// Emits: `Withdrawn`, `Left`.
 		///
 		/// See also [`Call::unbond`].
 		#[pallet::call_index(2)]
@@ -594,7 +594,7 @@ pub mod pallet {
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
 		/// bond size must be greater than or equal to the `StorageBondSize`.
 		///
-		/// Emits `Activated`.
+		/// Emits: `Activated`.
 		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::store())]
 		pub fn store(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
@@ -653,7 +653,7 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash.
 		///
-		/// Emits `ChillSoon`, `Chill`.
+		/// Emits: `ChillSoon`, `Chill`.
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::chill())]
 		pub fn chill(origin: OriginFor<T>) -> DispatchResult {

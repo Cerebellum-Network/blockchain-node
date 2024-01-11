@@ -1,6 +1,6 @@
 //! # DDC Nodes Pallet
 //!
-//! The DDC Nodes pallet is used to manage nodes in DDC Cluster
+//! The DDC Nodes pallet is used to manage nodes in DDC cluster.
 //!
 //! - [`Config`]
 //! - [`Call`]
@@ -104,7 +104,7 @@ pub mod pallet {
 		NodeHasDanglingStake,
 	}
 
-	/// Collection of all DDC Storage nodes.
+	/// Map of DDC Storage nodes.
 	#[pallet::storage]
 	#[pallet::getter(fn storage_nodes)]
 	pub type StorageNodes<T: Config> =
@@ -141,6 +141,8 @@ pub mod pallet {
 		/// Parameters:
 		/// - `node_pub_key`: Public key of DDC node.
 		/// - `node_params`: Set of parameters for the DDC node.
+		///
+		/// Emits: `NodeCreated`.
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::create_node())]
 		pub fn create_node(
@@ -162,6 +164,8 @@ pub mod pallet {
 		///
 		/// Parameters:
 		/// - `node_pub_key`: Public key of the targeting DDC node to remove.
+		///
+		/// Emits: `NodeDeleted`.
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::delete_node())]
 		pub fn delete_node(origin: OriginFor<T>, node_pub_key: NodePubKey) -> DispatchResult {
@@ -183,6 +187,8 @@ pub mod pallet {
 		/// Parameters:
 		/// - `node_pub_key`: Public key of the targeting DDC node.
 		/// - `node_params`: Set of parameters for the DDC node.
+		///
+		/// Emits: `NodeParamsChanged`.
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::set_node_params())]
 		pub fn set_node_params(
