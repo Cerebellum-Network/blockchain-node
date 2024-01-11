@@ -10,6 +10,7 @@
 //!
 //! The DDC Staking pallet depends on the [`GenesisConfig`]. The
 //! `GenesisConfig` is optional and allow to set some initial stakers in DDC.
+#![warn(clippy::missing_docs_in_private_items)]
 #![feature(is_some_and)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
@@ -53,6 +54,7 @@ use sp_std::prelude::*;
 
 use crate::weights::WeightInfo;
 
+/// Lock that is set for staked funds.
 const DDC_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC maintainer's stake
 
 /// The balance type of this pallet.
@@ -80,6 +82,7 @@ where
 	block: BlockNumber,
 }
 
+/// DDC staking ledger that keeps track of bonded tokens and unbonding schedule.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct StakingLedger<AccountId, Balance, T>
@@ -160,21 +163,23 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		/// Accounts balances registry.
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
-
+		/// Runtime event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
-		/// Weight information for extrinsics in this pallet.
+		/// Weight info type.
 		type WeightInfo: WeightInfo;
-
+		/// DDC clusters read-only registry.
 		type ClusterVisitor: ClusterVisitor<Self>;
-
+		/// DDC clusters creator.
+		/// NOTE: Required for the benchmarking only.
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
-
+		/// DDC clusters nodes manager.
 		type ClusterManager: ClusterManager<Self>;
-
+		/// DDC nodes read-only registry.
 		type NodeVisitor: NodeVisitor<Self>;
-
+		/// DDC nodes creator.
+		/// NOTE: Required for the benchmarking only.
 		type NodeCreator: NodeCreator<Self>;
 	}
 
@@ -205,7 +210,7 @@ pub mod pallet {
 	#[pallet::getter(fn providers)]
 	pub type Providers<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, NodePubKey>;
 
-	/// Map of Storage node provider stash accounts that aim to leave a cluster
+	/// Map of Storage node provider stash accounts that aim to leave a cluster.
 	#[pallet::storage]
 	#[pallet::getter(fn leaving_storages)]
 	pub type LeavingStorages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
@@ -213,6 +218,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		#[allow(clippy::type_complexity)]
+		/// List of initial bonds for activated DDC Storage nodes.
 		pub storages: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
 	}
 
@@ -331,6 +337,10 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call must be _Signed_ by the stash account.
 		///
+		/// Parameters:
+		/// - `controller`: Account that will manage the stake.
+		/// - `node`: Public key of the targeting DDC node to make the stake for.
+		///
 		/// Emits `Bonded`.
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::bond())]
@@ -403,6 +413,12 @@ pub mod pallet {
 		///
 		/// If a user encounters the `InsufficientBond` error when calling this extrinsic,
 		/// they should call `chill` first in order to free up their bonded funds.
+		///
+		/// If a user undonds some amount and the rest is less than the minimum required deposit for
+		/// the cluster the node is currently serving, the node is put in the list of Leaving nodes.
+		///
+		/// Parameters:
+		/// - `value`: Amount of tokens to unbond.
 		///
 		/// Emits `Unbonded`.
 		///
@@ -515,9 +531,12 @@ pub mod pallet {
 		/// This essentially frees up that balance to be used by the stash account to do
 		/// whatever it wants.
 		///
+		/// If a node the stake is attached for is marked as Leaving, and the unbonding period is
+		/// ended, the node is being removed from the the cluster it was assigned to.
+		///
 		/// The dispatch origin for this call must be _Signed_ by the controller.
 		///
-		/// Emits `Withdrawn`.
+		/// Emits `Withdrawn`, `Left`.
 		///
 		/// See also [`Call::unbond`].
 		#[pallet::call_index(2)]
@@ -569,10 +588,13 @@ pub mod pallet {
 		/// Declare the desire to participate in storage network for the origin controller. Also
 		/// works to cancel a previous "chill".
 		///
-		/// `cluster` is the ID of the DDC cluster the participant wishes to join.
+		/// Parameters:
+		/// - `cluster_id`: is the ID of the DDC cluster the participant wishes to join.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the controller, not the stash. The
 		/// bond size must be greater than or equal to the `StorageBondSize`.
+		///
+		/// Emits `Activated`.
 		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::store())]
 		pub fn store(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
@@ -682,6 +704,9 @@ pub mod pallet {
 		///
 		/// Effects will be felt at the beginning of the next block.
 		///
+		/// Parameters:
+		/// - `controller`: New account that will manage the stake.
+		///
 		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
 		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::set_controller())]
@@ -705,6 +730,9 @@ pub mod pallet {
 		}
 
 		/// (Re-)set the DDC node of a node operator stash account. Requires to chill first.
+		///
+		/// Parameters:
+		/// - `new_node`: Public key of the targeting DDC node to attach the stake for.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the stash, not the controller.
 		#[pallet::call_index(6)]

@@ -81,7 +81,7 @@ pub mod pallet {
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
 		/// DDC nodes staking read-only registry.
 		type StakingVisitor: StakingVisitor<Self>;
-		/// DDC nodes staking registry.
+		/// DDC nodes staking creator.
 		/// NOTE: Required for the benchmarking only.
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 		/// Accounts balances registry.

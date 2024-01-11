@@ -13,6 +13,7 @@ use testing_utils::*;
 use super::*;
 use crate::Pallet as DdcStaking;
 
+/// User seed.
 const USER_SEED: u32 = 999666;
 
 benchmarks! {
