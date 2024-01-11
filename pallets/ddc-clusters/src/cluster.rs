@@ -21,11 +21,11 @@ pub struct Cluster<AccountId> {
 	pub manager_id: AccountId,
 	/// Cluster reserve account.
 	pub reserve_id: AccountId,
-	/// Cluster operational parameters.
+	/// Cluster properties that may include non-input fields.
 	pub props: ClusterProps<AccountId>,
 }
 
-/// DDC cluster operational parameters.
+/// DDC cluster properties that may include non-input fields.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterProps<AccountId> {

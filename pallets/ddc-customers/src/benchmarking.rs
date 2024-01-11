@@ -10,11 +10,13 @@ use sp_std::prelude::*;
 use super::*;
 use crate::Pallet as DdcCustomers;
 
+/// The balance type of this pallet.
 pub type BalanceOf<T> =
 	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 use frame_system::{Pallet as System, RawOrigin};
 
+/// User seed.
 const USER_SEED: u32 = 999666;
 
 benchmarks! {

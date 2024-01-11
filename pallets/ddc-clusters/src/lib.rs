@@ -1,6 +1,6 @@
 //! # DDC Nodes Pallet
 //!
-//! The DDC Clusters pallet is used to manage DDC Clusters
+//! The DDC Clusters pallet is used to manage DDC clusters.
 //!
 //! - [`Config`]
 //! - [`Call`]
@@ -9,7 +9,7 @@
 //! ## GenesisConfig
 //!
 //! The DDC Clusters pallet depends on the [`GenesisConfig`]. The
-//! `GenesisConfig` is optional and allow to set some initial nodes in DDC.
+//! `GenesisConfig` is optional and allow to set some initial clusters in DDC.
 #![warn(clippy::missing_docs_in_private_items)]
 #![feature(is_some_and)]
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -158,19 +158,19 @@ pub mod pallet {
 		NodeAuthNodeAuthorizationNotSuccessful,
 	}
 
-	/// Collection of all DDC Clusters.
+	/// Map of DDC Clusters.
 	#[pallet::storage]
 	#[pallet::getter(fn clusters)]
 	pub type Clusters<T: Config> =
 		StorageMap<_, Blake2_128Concat, ClusterId, Cluster<T::AccountId>>;
 
-	/// Collection of economic parameters for all DDC Clusters.
+	/// Map of economic parameters for all DDC Clusters.
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_gov_params)]
 	pub type ClustersGovParams<T: Config> =
 		StorageMap<_, Twox64Concat, ClusterId, ClusterGovParams<BalanceOf<T>, T::BlockNumber>>;
 
-	/// Collection of DDC nodes assigned to DDC Clusters.
+	/// Map of DDC nodes assigned to DDC Clusters.
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_nodes)]
 	pub type ClustersNodes<T: Config> = StorageDoubleMap<
@@ -258,6 +258,8 @@ pub mod pallet {
 		/// - `cluster_params`: Set of operational parameters for the cluster.
 		/// - `cluster_gov_params`: Set of economic parameters for the cluster locked by the
 		///   Governance.
+		///
+		/// Emits: `ClusterCreated`.
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_cluster())]
 		pub fn create_cluster(
@@ -286,6 +288,8 @@ pub mod pallet {
 		/// Parameters:
 		/// - `cluster_id`: Hash-based identifier of the targeting DDC cluster.
 		/// - `node_pub_key`: Public key of the targeting DDC node to add.
+		///
+		/// Emits: `ClusterNodeAdded`.
 		#[pallet::call_index(1)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::add_node())]
 		pub fn add_node(
@@ -344,6 +348,8 @@ pub mod pallet {
 		/// Parameters:
 		/// - `cluster_id`: Hash-based identifier of the targeting DDC cluster.
 		/// - `node_pub_key`: Public key of the targeting DDC node to remove.
+		///
+		/// Emits: `ClusterNodeRemoved`.
 		#[pallet::call_index(2)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_node())]
 		pub fn remove_node(
@@ -373,7 +379,8 @@ pub mod pallet {
 		/// Parameters:
 		/// - `cluster_id`: Hash-based identifier of the targeting DDC cluster.
 		/// - `cluster_params`: Set of operational parameters for the cluster.
-		// Sets Governance non-sensetive parameters only
+		///
+		/// Emits: `ClusterParamsSet`.
 		#[pallet::call_index(3)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_params())]
 		pub fn set_cluster_params(
@@ -400,7 +407,8 @@ pub mod pallet {
 		/// - `cluster_id`: Hash-based identifier of the targeting DDC cluster.
 		/// - `cluster_gov_params`: Set of economic parameters for the cluster locked by the
 		///   Governance.
-		// Requires Governance approval
+		///
+		/// Emits: `ClusterGovParamsSet`.
 		#[pallet::call_index(4)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_gov_params())]
 		pub fn set_cluster_gov_params(

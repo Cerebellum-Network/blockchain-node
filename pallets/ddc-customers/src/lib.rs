@@ -1,3 +1,16 @@
+//! # DDC Customers Pallet
+//!
+//! The DDC Customers pallet is used to manage customers deposits and buckets.
+//!
+//! - [`Config`]
+//! - [`Call`]
+//! - [`Pallet`]
+//!
+//! ## GenesisConfig
+//!
+//! The DDC Customers pallet depends on the [`GenesisConfig`]. The
+//! `GenesisConfig` is optional and allow to set some initial customer ledgers and buckets in DDC.
+#![warn(clippy::missing_docs_in_private_items)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
@@ -53,19 +66,27 @@ pub struct UnlockChunk<T: Config> {
 	block: T::BlockNumber,
 }
 
+/// DDC bucket that stores customer's data.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Bucket<AccountId> {
+	/// Bucket identifier.
 	bucket_id: BucketId,
+	/// Customer account that owns the bucket.
 	owner_id: AccountId,
+	/// Cluster where the bucket is created.
 	cluster_id: ClusterId,
+	/// Whether the bucket's data is public.
 	is_public: bool,
 }
 
+/// Input parameters for DDC bucket.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct BucketParams {
+	/// Whether the bucket's data is public.
 	is_public: bool,
 }
 
+/// Customer ledger that holds deposited funds to pay for DDC usage.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct AccountsLedger<T: Config> {
@@ -136,13 +157,19 @@ pub mod pallet {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
+		/// Accounts balances registry.
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		/// Runtime event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		/// Number of eras that staked funds must remain locked for.
+		/// Number of blocks that locked funds must remain locked for.
 		#[pallet::constant]
 		type UnlockingDelay: Get<<Self as frame_system::Config>::BlockNumber>;
+		/// DDC clusters read-only registry.
 		type ClusterVisitor: ClusterVisitor<Self>;
+		/// DDC clusters creator.
+		/// NOTE: Required for the benchmarking only.
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
+		/// Weight info type.
 		type WeightInfo: WeightInfo;
 	}
 
@@ -151,17 +178,19 @@ pub mod pallet {
 	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, AccountsLedger<T>>;
 
+	/// Default buckets count getter.
 	#[pallet::type_value]
 	pub fn DefaultBucketCount<T: Config>() -> BucketId {
 		0
 	}
 
+	/// Total buckets count.
 	#[pallet::storage]
 	#[pallet::getter(fn buckets_count)]
 	pub type BucketsCount<T: Config> =
 		StorageValue<Value = BucketId, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
 
-	/// Map from bucket ID to to the bucket structure
+	/// Map from bucket ID to to the bucket structure.
 	#[pallet::storage]
 	#[pallet::getter(fn buckets)]
 	pub type Buckets<T: Config> =
@@ -180,11 +209,11 @@ pub mod pallet {
 		/// An account has called `withdraw_unlocked_deposit` and removed unlocking chunks worth
 		/// `Balance` from the unlocking queue. \[owner, amount\]
 		Withdrawn(T::AccountId, BalanceOf<T>),
-		/// The account has been charged for the usage
+		/// The account has been charged for the usage.
 		Charged(T::AccountId, BalanceOf<T>),
-		/// Bucket with specific id created
+		/// Bucket with specific id created.
 		BucketCreated(BucketId),
-		/// Bucket with specific id updated
+		/// Bucket with specific id updated.
 		BucketUpdated(BucketId),
 	}
 
@@ -192,11 +221,11 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Not a owner account.
 		NotOwner,
-		/// Not an owner of bucket
+		/// Not an owner of bucket.
 		NotBucketOwner,
 		/// Owner is already paired with structure representing account.
 		AlreadyPaired,
-		/// Cannot deposit dust
+		/// Cannot deposit dust.
 		InsufficientDeposit,
 		/// Can not schedule more unlock chunks.
 		NoMoreChunks,
@@ -204,23 +233,26 @@ pub mod pallet {
 		NoBucketWithId,
 		/// Internal state has become somehow corrupted and the operation cannot continue.
 		BadState,
-		/// Bucket with specified id doesn't exist
+		/// Bucket with specified id doesn't exist.
 		BucketDoesNotExist,
-		/// DDC Cluster with provided id doesn't exist
+		/// DDC Cluster with provided id doesn't exist.
 		ClusterDoesNotExist,
-		// unauthorised operation
+		/// Unauthorised operation.
 		Unauthorised,
-		// Arithmetic overflow
+		/// Arithmetic overflow.
 		ArithmeticOverflow,
-		// Arithmetic underflow
+		/// Arithmetic underflow.
 		ArithmeticUnderflow,
-		// Transferring balance to pallet's vault has failed
+		/// Transferring balance to pallet's vault has failed.
 		TransferFailed,
 	}
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
+		/// Account that provides pre-funding in case the transferring amount is less than the
+		/// minimum existential deposit.
 		pub feeder_account: Option<T::AccountId>,
+		/// List of initial customers buckets.
 		pub buckets: Vec<(ClusterId, T::AccountId, BalanceOf<T>, bool)>,
 	}
 
@@ -282,9 +314,15 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Create new bucket with specified cluster id
+		/// Creates a new DDC bucket within a specified DDC cluster.
 		///
-		/// Anyone can create a bucket
+		/// The dispatch origin of this call must be _Signed_ by the owner account.
+		///
+		/// Parameters:
+		/// - `cluster_id`: Hash-based identifier of the targeting DDC cluster.
+		/// - `bucket_params`: Set of parameters for the DDC bucket.
+		///
+		/// Emits: `BucketCreated`.
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::create_bucket())]
 		pub fn create_bucket(
@@ -314,14 +352,17 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Take the origin account as a owner and lock up `value` of its balance. `Owner` will
-		/// be the account that controls it.
-		///
-		/// `value` must be more than the `minimum_balance` specified by `T::Currency`.
+		/// Take the origin (customer) account as an owner and lock up the specified amount of its
+		/// balance. This operation creates customer's ledger that holds tokens to pay for DDC
+		/// usage.
 		///
 		/// The dispatch origin for this call must be _Signed_ by the owner account.
 		///
-		/// Emits `Deposited`.
+		/// Parameters:
+		/// - `value`: Amount of tokens to deposit, must be more than the `minimum_balance`
+		///   specified by `T::Currency`.
+		///
+		/// Emits: `Deposited`.
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::deposit())]
 		pub fn deposit(
@@ -333,12 +374,14 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Add some extra amount that have appeared in the owner `free_balance` into the balance up
-		/// for DDC network payouts.
+		/// Add the specified extra amount of tokens to customer's ledger (deposit).
 		///
 		/// The dispatch origin for this call must be _Signed_ by the owner.
 		///
-		/// Emits `Deposited`.
+		/// Parameters:
+		/// - `max_additional`: Amount of tokens to add to existing deposit.
+		///
+		/// Emits: `Deposited`.
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::deposit_extra())]
 		pub fn deposit_extra(
@@ -354,8 +397,6 @@ pub mod pallet {
 		/// after the lock period ends. If this leaves an amount actively locked less than
 		/// T::Currency::minimum_balance(), then it is increased to the full amount.
 		///
-		/// The dispatch origin for this call must be _Signed_ by the owner.
-		///
 		/// Once the unlock period is done, you can call `withdraw_unlocked_deposit` to actually
 		/// move the funds out of management ready for transfer.
 		///
@@ -363,7 +404,12 @@ pub mod pallet {
 		/// can co-exists at the same time. In that case, [`Call::withdraw_unlocked_deposit`] need
 		/// to be called first to remove some of the chunks (if possible).
 		///
-		/// Emits `InitialDepositUnlock`.
+		/// The dispatch origin for this call must be _Signed_ by the owner.
+		///
+		/// Parameters:
+		/// - `value`: Amount of tokens to unlock from the ledger.
+		///
+		/// Emits: `InitialDepositUnlock`.
 		///
 		/// See also [`Call::withdraw_unlocked_deposit`].
 		#[pallet::call_index(3)]
@@ -425,7 +471,7 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call must be _Signed_ by the owner.
 		///
-		/// Emits `Withdrawn`.
+		/// Emits: `Withdrawn`.
 		///
 		/// See also [`Call::unlock_deposit`].
 		#[pallet::call_index(4)]
@@ -483,7 +529,11 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call must be _Signed_ by the bucket owner.
 		///
-		/// Emits `BucketUpdated`.
+		/// Parameters:
+		/// - `bucket_id`: Targeting bucket identifier.
+		/// - `bucket_params`: Set of parameters for the bucket.
+		///
+		/// Emits: `BucketUpdated`.
 		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::set_bucket_params())]
 		pub fn set_bucket_params(
@@ -504,10 +554,12 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		/// Customer pallet's account.
 		pub fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
 
+		/// Customer pallet's account.
 		pub fn sub_account_id(account_id: &T::AccountId) -> T::AccountId {
 			let hash = blake2_128(&account_id.encode());
 
@@ -515,7 +567,7 @@ pub mod pallet {
 			T::PalletId::get().into_sub_account_truncating(hash)
 		}
 
-		/// Update the ledger for a owner.
+		/// Update the ledger for its owner.
 		///
 		/// This will also deposit the funds to pallet.
 		fn update_ledger_and_deposit(
@@ -533,12 +585,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Remove all associated data of a owner account from the accounts system.
+		/// Remove all associated data about owner account from the accounts system.
 		///
 		/// Assumes storage is upgraded before calling.
 		///
-		/// This is called:
-		/// - after a `withdraw_unlocked_deposit()` call that frees all of a owner's locked balance.
+		/// This is called after a `withdraw_unlocked_deposit()` call that frees all of a owner's
+		/// locked balance.
 		fn kill_owner(owner: &T::AccountId) -> DispatchResult {
 			<Ledger<T>>::remove(owner);
 

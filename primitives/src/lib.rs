@@ -26,7 +26,7 @@ pub type BucketId = u64;
 /// DDC Storage node key type.
 pub type StorageNodePubKey = AccountId32;
 
-/// Operational Parameters for DDC cluster.
+/// Input parameters for DDC cluster.
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterParams<AccountId> {
 	/// Additional authorization contract for DDC nodes.
@@ -86,7 +86,7 @@ pub struct ClusterFeesParams {
 	pub cluster_reserve_share: Perquintill,
 }
 
-/// DDC cluster bonding parameters for serving DDC nodes.
+/// DDC cluster bonding parameters for DDC nodes that serve the cluster.
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterBondingParams<BlockNumber> {
 	/// Minimum amount of CERE tokens to bond by a DDC node to serve the cluster.
