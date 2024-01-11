@@ -11,33 +11,49 @@ use sp_runtime::RuntimeDebug;
 use crate::node::{NodeError, NodeProps, NodeTrait};
 
 parameter_types! {
+	/// DDC node maximum host length size.
 	pub MaxHostLen: u8 = 255;
+	/// DDC node maximum domain length size.
 	pub MaxDomainLen: u8 = 255;
 }
 
+/// DDC Storage node type.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 #[scale_info(skip_type_params(T))]
 pub struct StorageNode<T: frame_system::Config> {
+	/// Storage node public key.
 	pub pub_key: StorageNodePubKey,
+	/// Storage node provider account.
 	pub provider_id: T::AccountId,
+	/// Assigned cluster.
 	pub cluster_id: Option<ClusterId>,
+	/// Storage node properties.
 	pub props: StorageNodeProps,
 }
 
+/// DDC Storage node properties.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNodeProps {
+	/// Host as IP address.
 	pub host: BoundedVec<u8, MaxHostLen>,
+	/// Domain name.
 	pub domain: BoundedVec<u8, MaxDomainLen>,
+	/// Is ssl enabled.
 	pub ssl: bool,
+	/// HTTP Port.
 	pub http_port: u16,
+	/// GRPC Port.
 	pub grpc_port: u16,
+	/// P2P Port.
 	pub p2p_port: u16,
+	/// Operating mode.
 	pub mode: StorageNodeMode,
 }
 
 impl<T: frame_system::Config> StorageNode<T> {
+	/// Storage node constructor.
 	pub fn new(
 		node_pub_key: NodePubKey,
 		provider_id: T::AccountId,

@@ -11,6 +11,7 @@ use testing_utils::*;
 use super::*;
 use crate::{storage_node::StorageNodeProps, Pallet as DdcNodes};
 
+/// User seed.
 const USER_SEED: u32 = 999666;
 
 benchmarks! {

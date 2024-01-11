@@ -6,9 +6,10 @@ use sp_std::vec;
 
 use crate::{Config, NodePubKey};
 
+/// User seed.
 const SEED: u32 = 0;
 
-/// Grab a funded user.
+/// Test utility function that creates a DDC Storage node with some parameters.
 pub fn create_user_and_config<T: Config>(
 	string: &'static str,
 	n: u32,
