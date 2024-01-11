@@ -38,6 +38,6 @@ jobs:
       - name: Publish image to DockerHub
         id: docker_publish
         run: |
-          docker push $DOCKERHUB_REPOSITORY/$PACKAGE_NAME:${GITHUB_REF##*/}
+          docker push -a $DOCKERHUB_REPOSITORY/$PACKAGE_NAME
       - name: Image digest
         run: echo ${{ steps.docker_publish.outputs.digest }}
