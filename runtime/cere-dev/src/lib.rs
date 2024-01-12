@@ -130,7 +130,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48500,
+	spec_version: 48501,
 	impl_version: 0,
 	transaction_version: 10,
 	apis: RUNTIME_API_VERSIONS,
@@ -1226,6 +1226,7 @@ impl pallet_vesting::Config for Runtime {
 parameter_types! {
 	pub const ChainId: u8 = 1;
 	pub const ProposalLifetime: BlockNumber = 1000;
+	pub BridgeAccountId: AccountId = AccountIdConversion::<AccountId>::into_account_truncating(&pallet_chainbridge::MODULE_ID);
 }
 
 /// Configure the send data pallet
@@ -1235,6 +1236,7 @@ impl pallet_chainbridge::Config for Runtime {
 	type Proposal = RuntimeCall;
 	type ChainId = ChainId;
 	type ProposalLifetime = ProposalLifetime;
+	type BridgeAccountId = BridgeAccountId;
 }
 
 parameter_types! {
