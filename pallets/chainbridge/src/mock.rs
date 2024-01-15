@@ -1,5 +1,3 @@
-#![cfg(test)]
-
 use frame_support::{
 	assert_ok, ord_parameter_types, parameter_types, traits::Everything, weights::Weight,
 };
@@ -12,8 +10,7 @@ use sp_runtime::{
 	Perbill,
 };
 
-use super::*;
-use crate::{self as bridge, Config};
+use crate::{self as bridge, *};
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -75,14 +72,16 @@ impl pallet_balances::Config for Test {
 parameter_types! {
 	pub const TestChainId: u8 = 5;
 	pub const ProposalLifetime: u64 = 50;
+	pub BridgeAccountId: u64 = AccountIdConversion::<u64>::into_account_truncating(&MODULE_ID);
 }
 
-impl Config for Test {
+impl crate::pallet::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type Proposal = RuntimeCall;
 	type ChainId = TestChainId;
 	type ProposalLifetime = ProposalLifetime;
+	type BridgeAccountId = BridgeAccountId;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -94,7 +93,7 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: system::{Pallet, Call, Event<T>},
+		System: system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Bridge: bridge::{Pallet, Call, Storage, Event<T>},
 	}
