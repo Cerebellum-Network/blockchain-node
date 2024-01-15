@@ -65,6 +65,7 @@ pallet-grandpa = { default-features = false, git = "https://github.com/paritytec
 pallet-identity = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 pallet-im-online = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 pallet-indices = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
+pallet-insecure-randomness-collective-flip = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 pallet-membership = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 pallet-multisig = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 pallet-nomination-pools = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.39" }
@@ -73,7 +74,6 @@ pallet-nomination-pools-runtime-api = { git = "https://github.com/paritytech/sub
 pallet-offences = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 pallet-offences-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39", default-features = false, optional = true }
 pallet-proxy = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
-pallet-randomness-collective-flip = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 pallet-recovery = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 pallet-scheduler = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 pallet-session = { features = ["historical"], git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39", default-features = false }
@@ -144,7 +144,7 @@ std = [
   "pallet-offences/std",
   "pallet-proxy/std",
   "sp-core/std",
-  "pallet-randomness-collective-flip/std",
+  "pallet-insecure-randomness-collective-flip/std",
   "sp-std/std",
   "pallet-session/std",
   "sp-api/std",
@@ -252,7 +252,7 @@ try-runtime = [
   "pallet-nomination-pools/try-runtime",
   "pallet-offences/try-runtime",
   "pallet-proxy/try-runtime",
-  "pallet-randomness-collective-flip/try-runtime",
+  "pallet-insecure-randomness-collective-flip/try-runtime",
   "pallet-recovery/try-runtime",
   "pallet-scheduler/try-runtime",
   "pallet-session/try-runtime",

@@ -45,7 +45,7 @@ construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
 		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Event<T>},
-		Randomness: pallet_randomness_collective_flip::{Pallet, Storage},
+		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 	}
 );
 
@@ -115,7 +115,7 @@ where
 	type OverarchingCall = RuntimeCall;
 	type Extrinsic = Extrinsic;
 }
-impl pallet_randomness_collective_flip::Config for Test {}
+impl pallet_insecure_randomness_collective_flip::Config for Test {}
 
 impl<LocalCall> CreateSignedTransaction<LocalCall> for Test
 where
