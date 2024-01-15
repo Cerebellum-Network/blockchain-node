@@ -6,12 +6,12 @@ use ddc_primitives::{ClusterId, NodePubKey};
 use ddc_traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU32, ConstU64, Everything, Nothing},
+	traits::{ConstBool, ConstU32, ConstU64, Everything, Nothing},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use pallet_contracts as contracts;
-use sp_core::{ConstBool, H256};
+use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::{Header, TestXt},
