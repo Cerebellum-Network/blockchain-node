@@ -1,6 +1,6 @@
 [package]
 name = "ddc-primitives"
-version = "4.8.6"
+version = "4.8.7"
 edition = "2021"
 
 [dependencies]
