@@ -1232,6 +1232,7 @@ impl pallet_vesting::Config for Runtime {
 parameter_types! {
 	pub const ChainId: u8 = 1;
 	pub const ProposalLifetime: BlockNumber = 1000;
+	pub BridgeAccountId: AccountId = AccountIdConversion::<AccountId>::into_account_truncating(&pallet_chainbridge::MODULE_ID);
 }
 
 /// Configure the send data pallet
@@ -1241,6 +1242,7 @@ impl pallet_chainbridge::Config for Runtime {
 	type Proposal = RuntimeCall;
 	type ChainId = ChainId;
 	type ProposalLifetime = ProposalLifetime;
+	type BridgeAccountId = BridgeAccountId;
 }
 
 parameter_types! {

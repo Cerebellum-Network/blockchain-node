@@ -2,9 +2,10 @@ name: Release to stage
 on:
   push:
     branches:
+      - dev
+      - master
       - 'release/**'
       - 'hotfix/**'
-      - 'master'
 
 env:
   PROFILE: release

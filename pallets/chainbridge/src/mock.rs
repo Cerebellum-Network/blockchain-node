@@ -72,6 +72,7 @@ impl pallet_balances::Config for Test {
 parameter_types! {
 	pub const TestChainId: u8 = 5;
 	pub const ProposalLifetime: u64 = 50;
+	pub BridgeAccountId: u64 = AccountIdConversion::<u64>::into_account_truncating(&MODULE_ID);
 }
 
 impl crate::pallet::Config for Test {
@@ -80,6 +81,7 @@ impl crate::pallet::Config for Test {
 	type Proposal = RuntimeCall;
 	type ChainId = TestChainId;
 	type ProposalLifetime = ProposalLifetime;
+	type BridgeAccountId = BridgeAccountId;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
