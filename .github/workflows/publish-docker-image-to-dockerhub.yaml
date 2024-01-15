@@ -10,7 +10,7 @@ env:
   PACKAGE_NAME: pos-node
 jobs:
   tag-and-push:
-    runs-on: [self-hosted, cere-network-xlarge-workers]
+    runs-on: [self-hosted, cere-network-xlarge]
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
