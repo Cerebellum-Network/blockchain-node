@@ -10,10 +10,9 @@
 //!
 //! The DDC Staking pallet depends on the [`GenesisConfig`]. The
 //! `GenesisConfig` is optional and allow to set some initial stakers in DDC.
-
+#![feature(is_some_and)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
-#![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
@@ -35,8 +34,9 @@ use ddc_traits::{
 	node::{NodeCreator, NodeVisitor},
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
+#[cfg(feature = "std")]
+use frame_support::assert_ok;
 use frame_support::{
-	assert_ok,
 	pallet_prelude::*,
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, LockIdentifier, LockableCurrency, WithdrawReasons},

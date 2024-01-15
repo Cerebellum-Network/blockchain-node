@@ -150,7 +150,6 @@ pub fn cere_dev_genesis(
 			let nominations = initial_authorities
 				.as_slice()
 				.choose_multiple(&mut rng, count)
-				.into_iter()
 				.map(|choice| choice.0.clone())
 				.collect::<Vec<_>>();
 			(x.clone(), x.clone(), STASH, cere_dev::StakerStatus::Nominator(nominations))
