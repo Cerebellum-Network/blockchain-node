@@ -1474,7 +1474,7 @@ pub type UncheckedExtrinsic =
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
-// TODO Remove me after 0.9.37 upgrade
+// TODO Remove me after 0.9.38 upgrade
 parameter_types! {
 	pub const DummyPalletId: PalletId = PalletId(*b"piddummy");
 	pub DummyPalletAccountId: AccountId = DummyPalletId::get().into_account_truncating();
