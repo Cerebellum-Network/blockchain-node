@@ -91,7 +91,7 @@ impl contracts::Config for Test {
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
-	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
+	type MaxCodeLen = ConstU32<{ 256 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
