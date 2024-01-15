@@ -683,7 +683,7 @@ pub mod pallet {
 			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
 			for payee in payees {
-				let node_reward = get_node_reward::<T>(
+				let node_reward = get_node_reward(
 					&payee.1,
 					&billing_report.total_node_usage,
 					&billing_report.total_customer_charge,
@@ -897,7 +897,7 @@ pub mod pallet {
 		Ok(())
 	}
 
-	fn get_node_reward<T: Config>(
+	fn get_node_reward(
 		node_usage: &NodeUsage,
 		total_nodes_usage: &NodeUsage,
 		total_customer_charge: &CustomerCharge,
