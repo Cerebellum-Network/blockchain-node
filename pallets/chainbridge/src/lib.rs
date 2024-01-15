@@ -124,12 +124,7 @@ pub mod pallet {
 
 		#[cfg(feature = "runtime-benchmarks")]
 		fn try_successful_origin() -> Result<T::RuntimeOrigin, ()> {
-			unimplemented!()
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		fn successful_origin() -> T::RuntimeOrigin {
-			T::RuntimeOrigin::from(system::RawOrigin::Signed(<Module<T>>::account_id()))
+			Ok(T::RuntimeOrigin::from(system::RawOrigin::Signed(<Pallet<T>>::account_id())))
 		}
 	}
 

@@ -225,6 +225,7 @@ runtime-benchmarks = [
   "pallet-utility/runtime-benchmarks",
   "pallet-vesting/runtime-benchmarks",
   "frame-system-benchmarking/runtime-benchmarks",
+  "pallet-chainbridge/runtime-benchmarks",
   "hex-literal",
 ]
 try-runtime = [
