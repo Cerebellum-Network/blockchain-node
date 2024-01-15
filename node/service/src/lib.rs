@@ -164,7 +164,7 @@ where
 
 	let (grandpa_block_import, grandpa_link) = sc_finality_grandpa::block_import(
 		client.clone(),
-		&(client as Arc<_>),
+		&client,
 		select_chain.clone(),
 		telemetry.as_ref().map(|x| x.handle()),
 	)?;
