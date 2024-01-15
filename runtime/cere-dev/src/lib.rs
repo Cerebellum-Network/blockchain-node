@@ -130,11 +130,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48600,
-	spec_version: 48501,
+	spec_version: 48700,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 11,
+	transaction_version: 12,
 	state_version: 0,
 };
 
@@ -1470,18 +1469,12 @@ pub type UncheckedExtrinsic =
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
-// TODO Remove me after 0.9.38 upgrade
-parameter_types! {
-	pub const DummyPalletId: PalletId = PalletId(*b"piddummy");
-	pub DummyPalletAccountId: AccountId = DummyPalletId::get().into_account_truncating();
-}
 /// Runtime migrations
 type Migrations = (
-	pallet_balances::migration::ResetInactive<Runtime>,
-	// We need to apply this migration again, because `ResetInactive` resets the state again.
-	pallet_balances::migration::MigrateToTrackInactive<Runtime, DummyPalletAccountId>,
-	pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
-	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
+	// Remove stale entries in the set id -> session index storage map (after
+	// this release they will be properly pruned after the bonding duration has
+	// elapsed)
+	pallet_grandpa::migrations::CleanupSetIdSessionMap<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.
