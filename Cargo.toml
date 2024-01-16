@@ -31,7 +31,7 @@ members = [
   "pallets/ddc-customers",
   "pallets/ddc-nodes",
   "pallets/ddc-clusters",
-  "pallets/custom-origins",
+  "pallets/ddc-origins",
   "primitives",
   "traits",
 ]

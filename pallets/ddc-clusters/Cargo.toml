@@ -13,7 +13,7 @@ frame-system = { default-features = false, git = "https://github.com/paritytech/
 hex-literal = "^0.3.1"
 pallet-contracts = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 pallet-ddc-nodes = { version = "4.7.0", default-features = false, path = "../ddc-nodes" }
-pallet-custom-origins = { version = "4.7.0", default-features = false, path = "../custom-origins" }
+pallet-ddc-origins = { version = "4.7.0", default-features = false, path = "../ddc-origins" }
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
 serde = { version = "1.0.136", default-features = false, features = ["derive"], optional = true }
 sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
