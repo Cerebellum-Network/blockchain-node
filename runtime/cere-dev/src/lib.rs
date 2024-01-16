@@ -40,7 +40,7 @@ use frame_support::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 		ConstantMultiplier, IdentityFee, Weight,
 	},
-	PalletId, RuntimeDebug,
+	PalletId, Parameter, RuntimeDebug,
 };
 #[cfg(any(feature = "std", test))]
 pub use frame_system::Call as SystemCall;
@@ -1525,7 +1525,7 @@ where
 	) -> Result<Self::Success, T::RuntimeOrigin> {
 		let who = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
 
-		let track_id = match DdcPalletsOrigin::origin_for(proposal_origin) {
+		let track_id = match DdcTracksInfo::track_for(proposal_origin) {
 			Ok(track_id) => track_id,
 			Err(_) => return Err(o),
 		};
@@ -1549,18 +1549,22 @@ where
 	}
 }
 
-pub trait OriginsInfo {
+pub trait TracksInfo {
+	/// The identifier for a track.
+	type Id: Copy + Parameter + Ord + PartialOrd + Send + Sync + 'static + MaxEncodedLen;
 	/// The origin type from which a track is implied.
 	type RuntimeOrigin;
 	/// Determine the voting track for the given `origin`.
-	fn origin_for(origin: &Self::RuntimeOrigin) -> Result<i32, ()>;
+	fn track_for(origin: &Self::RuntimeOrigin) -> Result<Self::Id, ()>;
 }
 
-pub struct DdcPalletsOrigin;
-impl OriginsInfo for DdcPalletsOrigin {
+pub struct DdcTracksInfo;
+impl TracksInfo for DdcTracksInfo {
 	type RuntimeOrigin = <RuntimeOrigin as frame_support::traits::OriginTrait>::PalletsOrigin;
 
-	fn origin_for(id: &Self::RuntimeOrigin) -> Result<i32, ()> {
+	type Id = u16;
+
+	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
 		if let Ok(system_origin) = frame_system::RawOrigin::try_from(id.clone()) {
 			match system_origin {
 				frame_system::RawOrigin::Root => Ok(0),
