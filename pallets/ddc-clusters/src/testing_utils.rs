@@ -9,8 +9,8 @@ pub use frame_benchmarking::{
 	BenchmarkError,
 };
 use frame_system::RawOrigin;
-use pallet_contracts::chain_extension::UncheckedFrom;
 use pallet_ddc_nodes::Node;
+use sp_core::crypto::UncheckedFrom;
 use sp_runtime::Perquintill;
 use sp_std::prelude::*;
 
