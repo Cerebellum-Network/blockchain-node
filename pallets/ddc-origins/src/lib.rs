@@ -30,8 +30,6 @@ pub mod pallet_ddc_origins {
 		Treasurer,
 		/// Origin for managing the composition of the fellowship.
 		FellowshipAdmin,
-		/// Origin for managing the registrar and permissioned HRMP channel operations.
-		GeneralAdmin,
 		/// Origin for creating new clusters.
 		ClusterGovCreator,
 		/// Origin for updating cluster economics.
@@ -88,7 +86,6 @@ pub mod pallet_ddc_origins {
 		StakingAdmin,
 		Treasurer,
 		FellowshipAdmin,
-		GeneralAdmin,
 		ClusterGovCreator,
 		ClusterGovEditor,
 		ReferendumCanceller,

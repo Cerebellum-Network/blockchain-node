@@ -1574,7 +1574,6 @@ impl OriginsInfo for DdcPalletsOrigin {
 				pallet_ddc_origins::Origin::Treasurer => Ok(11),
 				pallet_ddc_origins::Origin::ClusterGovCreator => Ok(12),
 				pallet_ddc_origins::Origin::FellowshipAdmin => Ok(13),
-				pallet_ddc_origins::Origin::GeneralAdmin => Ok(14),
 				pallet_ddc_origins::Origin::ClusterGovEditor => Ok(15),
 				// Referendum admins
 				pallet_ddc_origins::Origin::ReferendumCanceller => Ok(20),
