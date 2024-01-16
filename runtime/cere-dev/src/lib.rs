@@ -1475,13 +1475,7 @@ parameter_types! {
 	pub DummyPalletAccountId: AccountId = DummyPalletId::get().into_account_truncating();
 }
 /// Runtime migrations
-type Migrations = (
-	pallet_balances::migration::ResetInactive<Runtime>,
-	// We need to apply this migration again, because `ResetInactive` resets the state again.
-	pallet_balances::migration::MigrateToTrackInactive<Runtime, DummyPalletAccountId>,
-	pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
-	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
-);
+type Migrations = (pallet_contracts::Migration<Runtime>,);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
