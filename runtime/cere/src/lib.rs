@@ -125,7 +125,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48500,
+	spec_version: 48501,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 10,
@@ -1480,8 +1480,10 @@ parameter_types! {
 	pub DummyPalletAccountId: AccountId = DummyPalletId::get().into_account_truncating();
 }
 /// Runtime migrations
-type Migrations =
-	(pallet_balances::migration::MigrateToTrackInactive<Runtime, DummyPalletAccountId>,);
+type Migrations = (
+	pallet_balances::migration::MigrateToTrackInactive<Runtime, DummyPalletAccountId>,
+	pallet_contracts::Migration<Runtime>,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
