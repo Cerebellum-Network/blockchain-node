@@ -42,7 +42,6 @@ use frame_support::{
 	traits::{Currency, LockableCurrency},
 };
 use frame_system::pallet_prelude::*;
-pub use frame_system::Config as SysConfig;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_runtime::SaturatedConversion;
