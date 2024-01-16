@@ -12,6 +12,7 @@
 //! `GenesisConfig` is optional and allow to set some initial nodes in DDC.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::missing_docs_in_private_items)]
 #![recursion_limit = "256"]
 
 pub mod weights;

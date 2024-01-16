@@ -48,14 +48,17 @@ pub use crate::{
 };
 
 #[frame_support::pallet]
+#[allow(clippy::missing_docs_in_private_items)]
 pub mod pallet {
 	use super::*;
 
+	/// The pallet
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
+	/// Pallet configuration
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// Runtime event type.

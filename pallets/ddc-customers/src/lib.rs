@@ -141,6 +141,7 @@ impl<T: Config> AccountsLedger<T> {
 }
 
 #[frame_support::pallet]
+#[allow(clippy::missing_docs_in_private_items)]
 pub mod pallet {
 	use frame_support::{pallet_prelude::*, traits::LockableCurrency};
 	use frame_system::pallet_prelude::*;
