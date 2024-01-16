@@ -998,6 +998,7 @@ dependencies = [
  "pallet-conviction-voting",
  "pallet-custom-origins",
  "pallet-ddc-clusters",
+ "pallet-ddc-clusters-gov",
  "pallet-ddc-customers",
  "pallet-ddc-nodes",
  "pallet-ddc-origins",
@@ -5191,6 +5192,31 @@ dependencies = [
  "pallet-ddc-nodes",
  "pallet-insecure-randomness-collective-flip",
  "pallet-ddc-origins",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "sp-tracing",
+ "substrate-test-utils",
+]
+
+[[package]]
+name = "pallet-ddc-clusters-gov"
+version = "4.8.2"
+dependencies = [
+ "ddc-primitives",
+ "ddc-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "pallet-balances",
+ "pallet-ddc-origins",
+ "pallet-randomness-collective-flip",
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",

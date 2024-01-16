@@ -1130,14 +1130,8 @@ impl pallet_ddc_customers::Config for Runtime {
 	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
 }
 
-parameter_types! {
-	pub const ClustersPalletId: PalletId = PalletId(*b"clusters");
-	pub ClusterGovCreatorOrigin: RuntimeOrigin = pallet_ddc_origins::Origin::ClusterGovCreator.into();
-}
-
 impl pallet_ddc_clusters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type PalletId = ClustersPalletId;
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
 	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
@@ -1146,8 +1140,6 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type MinErasureCodingRequiredLimit = ConstU32<4>;
 	type MinErasureCodingTotalLimit = ConstU32<6>;
 	type MinReplicationTotalLimit = ConstU32<3>;
-	type SubmitOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
-	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, Self>;
 }
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);

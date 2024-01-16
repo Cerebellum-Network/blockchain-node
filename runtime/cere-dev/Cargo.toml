@@ -103,7 +103,8 @@ pallet-ddc-payouts = { workspace = true }
 pallet-ddc-staking = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
-pallet-ddc-origins= { workspace = true }
+pallet-ddc-origins = { workspace = true }
+pallet-ddc-clusters-gov = { workspace = true }
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }
@@ -185,12 +186,11 @@ std = [
   "pallet-ddc-staking/std",
   "pallet-ddc-customers/std",
   "pallet-ddc-clusters/std",
-  "pallet-ddc-payouts/std",
   "cere-runtime-common/std",
-  "sp-arithmetic/std",
   "pallet-conviction-voting/std",
   "pallet-referenda/std",
   "pallet-whitelist/std",
+  "pallet-ddc-clusters-gov/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",

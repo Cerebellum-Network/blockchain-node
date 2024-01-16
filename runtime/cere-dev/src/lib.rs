@@ -1147,14 +1147,8 @@ impl pallet_ddc_nodes::Config for Runtime {
 	type WeightInfo = pallet_ddc_nodes::weights::SubstrateWeight<Runtime>;
 }
 
-parameter_types! {
-	pub const ClustersPalletId: PalletId = PalletId(*b"clusters");
-	pub ClusterGovCreatorOrigin: RuntimeOrigin = pallet_ddc_origins::Origin::ClusterGovCreator.into();
-}
-
 impl pallet_ddc_clusters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type PalletId = ClustersPalletId;
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
 	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
@@ -1163,19 +1157,6 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type MinErasureCodingRequiredLimit = ConstU32<4>;
 	type MinErasureCodingTotalLimit = ConstU32<6>;
 	type MinReplicationTotalLimit = ConstU32<3>;
-	type SubmitOrigin = EnsureOfPermissionedTrack<Self>;
-	type OriginConverter = RelayChainAsNative<RelayChainOrigin, RuntimeOrigin>;
-	type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
-	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, Self>;
-}
-
-pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
-impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
-	for DdcOriginAsNative<DdcOrigin, T>
-{
-	fn get() -> T::RuntimeOrigin {
-		DdcOrigin::get()
-	}
 }
 
 parameter_types! {
@@ -1204,6 +1185,120 @@ impl pallet_ddc_payouts::Config for Runtime {
 }
 
 impl pallet_ddc_origins::Config for Runtime {}
+
+parameter_types! {
+	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
+	pub ClusterGovCreatorOrigin: RuntimeOrigin = pallet_ddc_origins::Origin::ClusterGovCreator.into();
+}
+
+impl pallet_ddc_clusters_gov::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = ClustersGovPalletId;
+	type Currency = Balances;
+	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
+	type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
+	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, Self>;
+}
+
+pub struct ClustersGovWrapper;
+impl<T: frame_system::Config> PalletVisitor<T> for ClustersGovWrapper {
+	fn get_account_id() -> T::AccountId {
+		ClustersGovPalletId::get().into_account_truncating()
+	}
+}
+
+pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
+impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
+	for DdcOriginAsNative<DdcOrigin, T>
+{
+	fn get() -> T::RuntimeOrigin {
+		DdcOrigin::get()
+	}
+}
+
+pub struct EnsureOfPermittedReferendaOrigin<T>(PhantomData<T>);
+impl<T: frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
+	for EnsureOfPermittedReferendaOrigin<T>
+where
+	<T as frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
+{
+	type Success = T::AccountId;
+
+	fn try_origin(
+		o: T::RuntimeOrigin,
+		proposal_origin: &PalletsOriginOf<T>,
+	) -> Result<Self::Success, T::RuntimeOrigin> {
+		let who = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
+
+		let track_id = match DdcTracksInfo::track_for(proposal_origin) {
+			Ok(track_id) => track_id,
+			Err(_) => return Err(o),
+		};
+
+		if track_id == 10 {
+			let clusters_gov_id = <ClustersGovWrapper as PalletVisitor<T>>::get_account_id();
+			if who == clusters_gov_id {
+				Ok(who)
+			} else {
+				Err(o)
+			}
+		} else {
+			Ok(who)
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin(proposal_origin: &PalletsOriginOf<T>) -> Result<T::RuntimeOrigin, ()> {
+		let who = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
+		Ok(frame_system::RawOrigin::Signed(who).into())
+	}
+}
+
+pub trait TracksInfo {
+	/// The identifier for a track.
+	type Id: Copy + Parameter + Ord + PartialOrd + Send + Sync + 'static + MaxEncodedLen;
+	/// The origin type from which a track is implied.
+	type RuntimeOrigin;
+	/// Determine the voting track for the given `origin`.
+	fn track_for(origin: &Self::RuntimeOrigin) -> Result<Self::Id, ()>;
+}
+
+pub struct DdcTracksInfo;
+impl TracksInfo for DdcTracksInfo {
+	type RuntimeOrigin = <RuntimeOrigin as frame_support::traits::OriginTrait>::PalletsOrigin;
+
+	type Id = u16;
+
+	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
+		if let Ok(system_origin) = frame_system::RawOrigin::try_from(id.clone()) {
+			match system_origin {
+				frame_system::RawOrigin::Root => Ok(0),
+				_ => Err(()),
+			}
+		} else if let Ok(custom_origin) = pallet_ddc_origins::Origin::try_from(id.clone()) {
+			match custom_origin {
+				pallet_ddc_origins::Origin::WhitelistedCaller => Ok(1),
+				// General admin
+				pallet_ddc_origins::Origin::StakingAdmin => Ok(10),
+				pallet_ddc_origins::Origin::Treasurer => Ok(11),
+				pallet_ddc_origins::Origin::ClusterGovCreator => Ok(12),
+				pallet_ddc_origins::Origin::FellowshipAdmin => Ok(13),
+				pallet_ddc_origins::Origin::ClusterGovEditor => Ok(15),
+				// Referendum admins
+				pallet_ddc_origins::Origin::ReferendumCanceller => Ok(20),
+				pallet_ddc_origins::Origin::ReferendumKiller => Ok(21),
+				// Limited treasury spenders
+				pallet_ddc_origins::Origin::SmallTipper => Ok(30),
+				pallet_ddc_origins::Origin::BigTipper => Ok(31),
+				pallet_ddc_origins::Origin::SmallSpender => Ok(32),
+				pallet_ddc_origins::Origin::MediumSpender => Ok(33),
+				pallet_ddc_origins::Origin::BigSpender => Ok(34),
+			}
+		} else {
+			Err(())
+		}
+	}
+}
 
 construct_runtime!(
 	pub struct Runtime
@@ -1256,6 +1351,8 @@ construct_runtime!(
 		Origins: pallet_custom_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov.
+		DdcOrigins: pallet_ddc_origins::{Origin},
+		DdcClustersGov: pallet_ddc_clusters_gov,
 	}
 );
 
@@ -1388,97 +1485,6 @@ type EventRecord = frame_system::EventRecord<
 	<Runtime as frame_system::Config>::RuntimeEvent,
 	<Runtime as frame_system::Config>::Hash,
 >;
-
-pub struct ClustersWrapper;
-impl<T: frame_system::Config> PalletVisitor<T> for ClustersWrapper {
-	fn get_account_id() -> T::AccountId {
-		ClustersPalletId::get().into_account_truncating()
-	}
-}
-
-pub struct EnsureOfPermittedReferendaOrigin<T>(PhantomData<T>);
-impl<T: frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
-	for EnsureOfPermittedReferendaOrigin<T>
-where
-	<T as frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
-{
-	type Success = T::AccountId;
-
-	fn try_origin(
-		o: T::RuntimeOrigin,
-		proposal_origin: &PalletsOriginOf<T>,
-	) -> Result<Self::Success, T::RuntimeOrigin> {
-		let who = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
-
-		let track_id = match DdcTracksInfo::track_for(proposal_origin) {
-			Ok(track_id) => track_id,
-			Err(_) => return Err(o),
-		};
-
-		if track_id == 10 {
-			let clusters_gov_id = <ClustersWrapper as PalletVisitor<T>>::get_account_id();
-			if who == clusters_gov_id {
-				Ok(who)
-			} else {
-				Err(o)
-			}
-		} else {
-			Ok(who)
-		}
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	fn try_successful_origin(proposal_origin: &PalletsOriginOf<T>) -> Result<T::RuntimeOrigin, ()> {
-		let who = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
-		Ok(frame_system::RawOrigin::Signed(who).into())
-	}
-}
-
-pub trait TracksInfo {
-	/// The identifier for a track.
-	type Id: Copy + Parameter + Ord + PartialOrd + Send + Sync + 'static + MaxEncodedLen;
-	/// The origin type from which a track is implied.
-	type RuntimeOrigin;
-	/// Determine the voting track for the given `origin`.
-	fn track_for(origin: &Self::RuntimeOrigin) -> Result<Self::Id, ()>;
-}
-
-pub struct DdcTracksInfo;
-impl TracksInfo for DdcTracksInfo {
-	type RuntimeOrigin = <RuntimeOrigin as frame_support::traits::OriginTrait>::PalletsOrigin;
-
-	type Id = u16;
-
-	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
-		if let Ok(system_origin) = frame_system::RawOrigin::try_from(id.clone()) {
-			match system_origin {
-				frame_system::RawOrigin::Root => Ok(0),
-				_ => Err(()),
-			}
-		} else if let Ok(custom_origin) = pallet_ddc_origins::Origin::try_from(id.clone()) {
-			match custom_origin {
-				pallet_ddc_origins::Origin::WhitelistedCaller => Ok(1),
-				// General admin
-				pallet_ddc_origins::Origin::StakingAdmin => Ok(10),
-				pallet_ddc_origins::Origin::Treasurer => Ok(11),
-				pallet_ddc_origins::Origin::ClusterGovCreator => Ok(12),
-				pallet_ddc_origins::Origin::FellowshipAdmin => Ok(13),
-				pallet_ddc_origins::Origin::ClusterGovEditor => Ok(15),
-				// Referendum admins
-				pallet_ddc_origins::Origin::ReferendumCanceller => Ok(20),
-				pallet_ddc_origins::Origin::ReferendumKiller => Ok(21),
-				// Limited treasury spenders
-				pallet_ddc_origins::Origin::SmallTipper => Ok(30),
-				pallet_ddc_origins::Origin::BigTipper => Ok(31),
-				pallet_ddc_origins::Origin::SmallSpender => Ok(32),
-				pallet_ddc_origins::Origin::MediumSpender => Ok(33),
-				pallet_ddc_origins::Origin::BigSpender => Ok(34),
-			}
-		} else {
-			Err(())
-		}
-	}
-}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
