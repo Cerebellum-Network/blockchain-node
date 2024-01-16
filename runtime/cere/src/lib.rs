@@ -89,7 +89,7 @@ use sp_runtime::{
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
 	RuntimeDebug,
 };
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -1142,15 +1142,6 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type MinReplicationTotalLimit = ConstU32<3>;
 }
 
-pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
-impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
-	for DdcOriginAsNative<DdcOrigin, T>
-{
-	fn get() -> T::RuntimeOrigin {
-		DdcOrigin::get()
-	}
-}
-
 impl pallet_ddc_nodes::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
@@ -1192,8 +1183,6 @@ impl pallet_ddc_staking::Config for Runtime {
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
 }
-
-impl pallet_ddc_origins::Config for Runtime {}
 
 construct_runtime!(
 	pub struct Runtime

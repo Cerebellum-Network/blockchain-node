@@ -1125,7 +1125,6 @@ dependencies = [
  "pallet-ddc-clusters",
  "pallet-ddc-customers",
  "pallet-ddc-nodes",
- "pallet-ddc-origins",
  "pallet-ddc-payouts",
  "pallet-ddc-staking",
  "pallet-democracy",
