@@ -23,7 +23,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use ddc_traits::pallet::{GetDdcOrigin, PalletVisitor};
+use ddc_traits::pallet::PalletVisitor;
 use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragmen, VoteWeight};
 use frame_support::{
 	construct_runtime,
@@ -52,7 +52,6 @@ use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 #[cfg(any(feature = "std", test))]
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
-pub use pallet_ddc_origins;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -83,7 +82,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
 };
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -1313,15 +1312,6 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
 }
 
-pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
-impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
-	for DdcOriginAsNative<DdcOrigin, T>
-{
-	fn get() -> T::RuntimeOrigin {
-		DdcOrigin::get()
-	}
-}
-
 impl pallet_ddc_nodes::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
@@ -1362,8 +1352,6 @@ impl pallet_ddc_staking::Config for Runtime {
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
 }
-
-impl pallet_ddc_origins::Config for Runtime {}
 
 construct_runtime!(
 	pub enum Runtime where
@@ -1419,7 +1407,6 @@ construct_runtime!(
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
 		DdcPayouts: pallet_ddc_payouts,
-		DdcOrigins: pallet_ddc_origins::{Origin},
 	}
 );
 
