@@ -1,10 +1,14 @@
 use codec::Encode;
 use ddc_primitives::{NodePubKey, NodeType};
 use frame_support::weights::Weight;
+#[cfg(any(feature = "runtime-benchmarks", test))]
 use hex_literal::hex;
 use sp_core::crypto::UncheckedFrom;
+#[cfg(any(feature = "runtime-benchmarks", test))]
 use sp_runtime::traits::Hash;
-use sp_std::{prelude::Vec, vec};
+use sp_std::prelude::Vec;
+#[cfg(any(feature = "runtime-benchmarks", test))]
+use sp_std::vec;
 
 use crate::Config;
 
@@ -64,6 +68,7 @@ where
 		Ok(is_authorized)
 	}
 
+	#[cfg(any(feature = "runtime-benchmarks", test))]
 	pub fn deploy_contract(
 		&self,
 		caller_id: T::AccountId,
@@ -102,6 +107,7 @@ where
 		Ok(Self::new(contract_id, caller_id))
 	}
 
+	#[cfg(any(feature = "runtime-benchmarks", test))]
 	pub fn authorize_node(
 		&self,
 		node_pub_key: NodePubKey,
