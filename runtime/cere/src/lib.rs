@@ -1132,7 +1132,7 @@ impl pallet_ddc_customers::Config for Runtime {
 
 parameter_types! {
 	pub const ClustersPalletId: PalletId = PalletId(*b"clusters");
-	pub RelayChainOrigin: RuntimeOrigin = pallet_custom_origins::Origin::StakingAdmin.into();
+	pub ClusterGovCreatorOrigin: RuntimeOrigin = pallet_ddc_origins::Origin::ClusterGovCreator.into();
 }
 
 impl pallet_ddc_clusters::Config for Runtime {
@@ -1147,17 +1147,15 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type MinErasureCodingTotalLimit = ConstU32<6>;
 	type MinReplicationTotalLimit = ConstU32<3>;
 	type SubmitOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
-	type OriginConverter = RelayChainAsNative<RelayChainOrigin, RuntimeOrigin>;
+	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, RuntimeOrigin>;
 }
 
-pub struct RelayChainAsNative<RelayOrigin, RuntimeOrigin>(
-	PhantomData<(RelayOrigin, RuntimeOrigin)>,
-);
-impl<RelayOrigin: Get<RuntimeOrigin>, RuntimeOrigin> ConvertOrigin<RuntimeOrigin>
-	for RelayChainAsNative<RelayOrigin, RuntimeOrigin>
+pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
+impl<DdcOrigin: Get<RuntimeOrigin>, RuntimeOrigin> ConvertOrigin<RuntimeOrigin>
+	for DdcOriginAsNative<DdcOrigin, RuntimeOrigin>
 {
 	fn convert_origin() -> Result<RuntimeOrigin, ()> {
-		Ok(RelayOrigin::get())
+		Ok(DdcOrigin::get())
 	}
 }
 
@@ -1203,7 +1201,7 @@ impl pallet_ddc_staking::Config for Runtime {
 	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
-impl pallet_custom_origins::Config for Runtime {}
+impl pallet_ddc_origins::Config for Runtime {}
 
 construct_runtime!(
 	pub struct Runtime

@@ -103,7 +103,7 @@ pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
 pallet-referenda = { workspace = true }
 pallet-whitelist = { workspace = true }
-pallet-custom-origins = { workspace = true }
+pallet-ddc-origins = { workspace = true }
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }

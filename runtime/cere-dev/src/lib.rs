@@ -63,6 +63,7 @@ pub use pallet_custom_origins;
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
 pub use pallet_ddc_nodes;
+pub use pallet_ddc_origins;
 pub use pallet_ddc_payouts;
 pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
@@ -1148,7 +1149,7 @@ impl pallet_ddc_nodes::Config for Runtime {
 
 parameter_types! {
 	pub const ClustersPalletId: PalletId = PalletId(*b"clusters");
-	pub RelayChainOrigin: RuntimeOrigin = pallet_custom_origins::Origin::StakingAdmin.into();
+	pub ClusterGovCreatorOrigin: RuntimeOrigin = pallet_ddc_origins::Origin::ClusterGovCreator.into();
 }
 
 impl pallet_ddc_clusters::Config for Runtime {
@@ -1164,16 +1165,16 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type MinReplicationTotalLimit = ConstU32<3>;
 	type SubmitOrigin = EnsureOfPermissionedTrack<Self>;
 	type OriginConverter = RelayChainAsNative<RelayChainOrigin, RuntimeOrigin>;
+	type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
+	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, RuntimeOrigin>;
 }
 
-pub struct RelayChainAsNative<RelayOrigin, RuntimeOrigin>(
-	PhantomData<(RelayOrigin, RuntimeOrigin)>,
-);
-impl<RelayOrigin: Get<RuntimeOrigin>, RuntimeOrigin> ConvertOrigin<RuntimeOrigin>
-	for RelayChainAsNative<RelayOrigin, RuntimeOrigin>
+pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
+impl<DdcOrigin: Get<RuntimeOrigin>, RuntimeOrigin> ConvertOrigin<RuntimeOrigin>
+	for DdcOriginAsNative<DdcOrigin, RuntimeOrigin>
 {
 	fn convert_origin() -> Result<RuntimeOrigin, ()> {
-		Ok(RelayOrigin::get())
+		Ok(DdcOrigin::get())
 	}
 }
 
@@ -1202,7 +1203,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
 }
 
-impl pallet_custom_origins::Config for Runtime {}
+impl pallet_ddc_origins::Config for Runtime {}
 
 construct_runtime!(
 	pub struct Runtime
@@ -1395,9 +1396,9 @@ impl<T: frame_system::Config> PalletVisitor<T> for ClustersWrapper {
 	}
 }
 
-pub struct EnsureOfPermissionedTrack<T>(PhantomData<T>);
+pub struct EnsureOfPermittedReferendaOrigin<T>(PhantomData<T>);
 impl<T: frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
-	for EnsureOfPermissionedTrack<T>
+	for EnsureOfPermittedReferendaOrigin<T>
 where
 	<T as frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
 {
@@ -1409,14 +1410,13 @@ where
 	) -> Result<Self::Success, T::RuntimeOrigin> {
 		let who = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
 
-		let track_id = match CereOrigins::origin_for(proposal_origin) {
+		let track_id = match DdcPalletsOrigin::origin_for(proposal_origin) {
 			Ok(track_id) => track_id,
 			Err(_) => return Err(o),
 		};
 
 		if track_id == 10 {
 			let clusters_gov_id = <ClustersWrapper as PalletVisitor<T>>::get_account_id();
-
 			if who == clusters_gov_id {
 				Ok(who)
 			} else {
@@ -1441,8 +1441,8 @@ pub trait OriginsInfo {
 	fn origin_for(origin: &Self::RuntimeOrigin) -> Result<i32, ()>;
 }
 
-pub struct CereOrigins;
-impl OriginsInfo for CereOrigins {
+pub struct DdcPalletsOrigin;
+impl OriginsInfo for DdcPalletsOrigin {
 	type RuntimeOrigin = <RuntimeOrigin as frame_support::traits::OriginTrait>::PalletsOrigin;
 
 	fn origin_for(id: &Self::RuntimeOrigin) -> Result<i32, ()> {
@@ -1451,25 +1451,25 @@ impl OriginsInfo for CereOrigins {
 				frame_system::RawOrigin::Root => Ok(0),
 				_ => Err(()),
 			}
-		} else if let Ok(custom_origin) = pallet_custom_origins::Origin::try_from(id.clone()) {
+		} else if let Ok(custom_origin) = pallet_ddc_origins::Origin::try_from(id.clone()) {
 			match custom_origin {
-				pallet_custom_origins::Origin::WhitelistedCaller => Ok(1),
+				pallet_ddc_origins::Origin::WhitelistedCaller => Ok(1),
 				// General admin
-				pallet_custom_origins::Origin::StakingAdmin => Ok(10),
-				pallet_custom_origins::Origin::Treasurer => Ok(11),
-				pallet_custom_origins::Origin::LeaseAdmin => Ok(12),
-				pallet_custom_origins::Origin::FellowshipAdmin => Ok(13),
-				pallet_custom_origins::Origin::GeneralAdmin => Ok(14),
-				pallet_custom_origins::Origin::AuctionAdmin => Ok(15),
+				pallet_ddc_origins::Origin::StakingAdmin => Ok(10),
+				pallet_ddc_origins::Origin::Treasurer => Ok(11),
+				pallet_ddc_origins::Origin::ClusterGovCreator => Ok(12),
+				pallet_ddc_origins::Origin::FellowshipAdmin => Ok(13),
+				pallet_ddc_origins::Origin::GeneralAdmin => Ok(14),
+				pallet_ddc_origins::Origin::ClusterGovEditor => Ok(15),
 				// Referendum admins
-				pallet_custom_origins::Origin::ReferendumCanceller => Ok(20),
-				pallet_custom_origins::Origin::ReferendumKiller => Ok(21),
+				pallet_ddc_origins::Origin::ReferendumCanceller => Ok(20),
+				pallet_ddc_origins::Origin::ReferendumKiller => Ok(21),
 				// Limited treasury spenders
-				pallet_custom_origins::Origin::SmallTipper => Ok(30),
-				pallet_custom_origins::Origin::BigTipper => Ok(31),
-				pallet_custom_origins::Origin::SmallSpender => Ok(32),
-				pallet_custom_origins::Origin::MediumSpender => Ok(33),
-				pallet_custom_origins::Origin::BigSpender => Ok(34),
+				pallet_ddc_origins::Origin::SmallTipper => Ok(30),
+				pallet_ddc_origins::Origin::BigTipper => Ok(31),
+				pallet_ddc_origins::Origin::SmallSpender => Ok(32),
+				pallet_ddc_origins::Origin::MediumSpender => Ok(33),
+				pallet_ddc_origins::Origin::BigSpender => Ok(34),
 			}
 		} else {
 			Err(())

@@ -19,6 +19,7 @@ members = [
   "pallets/ddc-staking",
   "pallets/erc20",
   "pallets/erc721",
+  "pallets/ddc-origins",
   "primitives",
   "traits",
   "runtime/cere",
