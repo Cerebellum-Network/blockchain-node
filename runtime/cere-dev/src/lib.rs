@@ -23,7 +23,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use ddc_traits::pallet::{ConvertOrigin, PalletVisitor, PalletsOriginOf};
+use ddc_traits::pallet::{GetDdcOrigin, PalletVisitor, PalletsOriginOf};
 use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragmen, VoteWeight};
 use frame_support::{
 	construct_runtime,
@@ -31,7 +31,7 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		CallerTrait, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EnsureOrigin,
+		ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EnsureOrigin,
 		EnsureOriginWithArg, EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter,
 		KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced, OriginTrait,
 		U128CurrencyToVote, WithdrawReasons,
@@ -1340,15 +1340,15 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
 	type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
-	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, RuntimeOrigin>;
+	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, Self>;
 }
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
-impl<DdcOrigin: Get<RuntimeOrigin>, RuntimeOrigin> ConvertOrigin<RuntimeOrigin>
-	for DdcOriginAsNative<DdcOrigin, RuntimeOrigin>
+impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
+	for DdcOriginAsNative<DdcOrigin, T>
 {
-	fn convert_origin() -> Result<RuntimeOrigin, ()> {
-		Ok(DdcOrigin::get())
+	fn get() -> T::RuntimeOrigin {
+		DdcOrigin::get()
 	}
 }
 
