@@ -2,7 +2,7 @@ use codec::Encode;
 use ddc_primitives::{NodePubKey, NodeType};
 use frame_support::weights::Weight;
 use hex_literal::hex;
-use pallet_contracts::chain_extension::UncheckedFrom;
+use sp_core::crypto::UncheckedFrom;
 use sp_runtime::traits::Hash;
 use sp_std::{prelude::Vec, vec};
 

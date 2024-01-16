@@ -41,8 +41,11 @@ pub mod pallet {
 		type Currency: Currency<Self::AccountId>;
 
 		/// Ids can be defined by the runtime and passed in, perhaps from blake2b_128 hashes.
+		#[pallet::constant]
 		type HashId: Get<ResourceId>;
+		#[pallet::constant]
 		type NativeTokenId: Get<ResourceId>;
+		#[pallet::constant]
 		type Erc721Id: Get<ResourceId>;
 	}
 

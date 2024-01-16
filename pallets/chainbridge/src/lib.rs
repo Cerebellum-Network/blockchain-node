@@ -141,9 +141,14 @@ pub mod pallet {
 		/// The identifier for this chain.
 		/// This must be unique and must not collide with existing IDs within a set of bridged
 		/// chains.
+		#[pallet::constant]
 		type ChainId: Get<ChainId>;
 
-		type ProposalLifetime: Get<Self::BlockNumber>;
+		#[pallet::constant]
+		type ProposalLifetime: Get<<Self as frame_system::Config>::BlockNumber>;
+
+		#[pallet::constant]
+		type BridgeAccountId: Get<Self::AccountId>;
 	}
 
 	/// All whitelisted chains and their respective transaction counts

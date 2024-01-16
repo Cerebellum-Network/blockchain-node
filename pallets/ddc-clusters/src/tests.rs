@@ -311,13 +311,13 @@ fn add_and_delete_node_works() {
 				GAS_LIMIT,
 				None,
 				wasm.to_vec(),
-				contract_args,
+				contract_args.clone(),
 				vec![],
 			)
 			.unwrap();
 
 			// Configure worker with the contract address.
-			let contract_id = Contracts::contract_address(&alice, &wasm_hash, &[]);
+			let contract_id = Contracts::contract_address(&alice, &wasm_hash, &contract_args, &[]);
 
 			pub const ADD_DDC_NODE_SELECTOR: [u8; 4] = hex!("7a04093d");
 			let node_pub_key = NodePubKey::StoragePubKey(node_pub_key);
@@ -333,7 +333,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(alice),
 				contract_id.clone(),
 				0,
-				Weight::from_ref_time(1_000_000_000_000).set_proof_size(u64::MAX),
+				GAS_LIMIT,
 				None,
 				call_data,
 			);
