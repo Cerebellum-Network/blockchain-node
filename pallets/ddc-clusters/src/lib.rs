@@ -34,22 +34,18 @@ use ddc_primitives::{
 };
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
-	pallet::{GetDdcOrigin, PalletsOriginOf},
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
-	traits::{
-		Currency, EnsureOriginWithArg, LockableCurrency, OriginTrait, UnfilteredDispatchable,
-	},
+	traits::{Currency, LockableCurrency},
 };
 use frame_system::pallet_prelude::*;
 pub use frame_system::Config as SysConfig;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
-use sp_io::hashing::blake2_128;
-use sp_runtime::{traits::AccountIdConversion, SaturatedConversion};
+use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
 use crate::{
@@ -67,7 +63,6 @@ pub type BalanceOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 	use ddc_traits::cluster::{ClusterManager, ClusterManagerError};
-	use frame_support::PalletId;
 	use pallet_contracts::chain_extension::UncheckedFrom;
 
 	use super::*;
@@ -79,19 +74,12 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_contracts::Config {
-		type PalletId: Get<PalletId>;
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
 		type StakingVisitor: StakingVisitor<Self>;
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 		type WeightInfo: WeightInfo;
-		type SubmitOrigin: EnsureOriginWithArg<
-			Self::RuntimeOrigin,
-			PalletsOriginOf<Self>,
-			Success = Self::AccountId,
-		>;
-		type ClusterGovCreatorOrigin: GetDdcOrigin<Self>;
 	}
 
 	#[pallet::event]
@@ -102,7 +90,6 @@ pub mod pallet {
 		ClusterNodeRemoved { cluster_id: ClusterId, node_pub_key: NodePubKey },
 		ClusterParamsSet { cluster_id: ClusterId },
 		ClusterGovParamsSet { cluster_id: ClusterId },
-		TestSuccess,
 	}
 
 	#[pallet::error]
@@ -206,57 +193,6 @@ pub mod pallet {
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
-		#[pallet::weight(10_000)]
-		pub fn submit_public(
-			origin: OriginFor<T>,
-			proposal_origin: Box<PalletsOriginOf<T>>,
-		) -> DispatchResult {
-			let _caller_id = T::SubmitOrigin::ensure_origin(origin, &proposal_origin)?;
-			Self::deposit_event(Event::<T>::TestSuccess);
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn submit_via_internal(
-			origin: OriginFor<T>,
-			proposal_origin: Box<PalletsOriginOf<T>>,
-		) -> DispatchResult {
-			let _caller_id = ensure_signed(origin)?;
-			let call = Call::<T>::submit_public { proposal_origin };
-			call.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into())
-				.map(|_| ())
-				.map_err(|e| e.error)?;
-
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn submit_internal(origin: OriginFor<T>) -> DispatchResult {
-			let _caller_id = ensure_signed(origin)?;
-
-			// let origin: T::RuntimeOrigin = frame_system::RawOrigin::Signed(_caller_id).into();
-			// let pallets_origin: <T::RuntimeOrigin as
-			// frame_support::traits::OriginTrait>::PalletsOrigin = origin.caller().clone();
-			// let call = Call::<T>::submit_public { proposal_origin: Box::new(pallets_origin) };
-			// call.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).
-			// into()) 	.map(|_| ())
-			// 	.map_err(|e| e.error)?;
-
-			let origin2 = T::ClusterGovCreatorOrigin::get();
-			let pallets_origin2: <T::RuntimeOrigin as
-			frame_support::traits::OriginTrait>::PalletsOrigin = origin2.caller().clone();
-			let call2 = Call::<T>::submit_public { proposal_origin: Box::new(pallets_origin2) };
-			call2
-				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into())
-				// .dispatch_bypass_filter(
-				// 	frame_system::RawOrigin::Signed(Self::sub_account_id(5u32)).into(),
-				// )
-				.map(|_| ())
-				.map_err(|e| e.error)?;
-
-			Ok(())
-		}
-
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_cluster())]
 		pub fn create_cluster(
 			origin: OriginFor<T>,
@@ -398,17 +334,6 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
 
 			Ok(())
-		}
-
-		pub fn account_id() -> T::AccountId {
-			T::PalletId::get().into_account_truncating()
-		}
-
-		pub fn sub_account_id(num: u32) -> T::AccountId {
-			let mut bytes = Vec::new();
-			bytes.extend_from_slice(&num.encode());
-			let hash = blake2_128(&bytes);
-			T::PalletId::get().into_sub_account_truncating(hash)
 		}
 	}
 

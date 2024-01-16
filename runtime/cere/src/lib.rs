@@ -31,9 +31,9 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse,
-		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem,
-		LockIdentifier, Nothing, OnUnbalanced, U128CurrencyToVote, WithdrawReasons,
+		ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly, Everything,
+		Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced,
+		U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
@@ -1304,21 +1304,13 @@ impl pallet_ddc_customers::Config for Runtime {
 	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
 }
 
-parameter_types! {
-	pub const ClustersPalletId: PalletId = PalletId(*b"clusters");
-	pub ClusterGovCreatorOrigin: RuntimeOrigin = pallet_ddc_origins::Origin::ClusterGovCreator.into();
-}
-
 impl pallet_ddc_clusters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type PalletId = ClustersPalletId;
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
 	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
-	type SubmitOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
-	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, Self>;
 }
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
