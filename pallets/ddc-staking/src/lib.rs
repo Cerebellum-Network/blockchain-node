@@ -151,6 +151,7 @@ impl<
 }
 
 #[frame_support::pallet]
+#[allow(clippy::missing_docs_in_private_items)]
 pub mod pallet {
 	use ddc_traits::{cluster::ClusterManager, node::NodeVisitorError};
 
