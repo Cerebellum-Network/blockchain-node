@@ -62,6 +62,7 @@ pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 #[frame_support::pallet]
+#[allow(clippy::missing_docs_in_private_items)]
 pub mod pallet {
 	use ddc_traits::cluster::{ClusterManager, ClusterManagerError};
 	use pallet_contracts::chain_extension::UncheckedFrom;
