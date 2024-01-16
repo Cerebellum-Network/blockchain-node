@@ -4,8 +4,8 @@ use frame_system::Config;
 pub type PalletsOriginOf<T> =
 	<<T as frame_system::Config>::RuntimeOrigin as OriginTrait>::PalletsOrigin;
 
-pub trait ConvertOrigin<Origin> {
-	fn convert_origin() -> Result<Origin, ()>;
+pub trait GetDdcOrigin<T: Config> {
+	fn get() -> T::RuntimeOrigin;
 }
 
 pub trait PalletVisitor<T: Config> {

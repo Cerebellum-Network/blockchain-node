@@ -31,7 +31,7 @@ pub mod migration;
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
-		pallet::{ConvertOrigin, PalletsOriginOf},
+		pallet::{GetDdcOrigin, PalletsOriginOf},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
@@ -41,8 +41,7 @@ use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
 	traits::{
-		CallerTrait, Currency, EnsureOriginWithArg, LockableCurrency, OriginTrait,
-		UnfilteredDispatchable,
+		Currency, EnsureOriginWithArg, LockableCurrency, OriginTrait, UnfilteredDispatchable,
 	},
 };
 use frame_system::pallet_prelude::*;
@@ -106,7 +105,7 @@ pub mod pallet {
 			PalletsOriginOf<Self>,
 			Success = Self::AccountId,
 		>;
-		type ClusterGovCreatorOrigin: ConvertOrigin<Self::RuntimeOrigin>;
+		type ClusterGovCreatorOrigin: GetDdcOrigin<Self>;
 	}
 
 	#[pallet::event]
@@ -256,9 +255,9 @@ pub mod pallet {
 		#[pallet::call_index(300)]
 		#[pallet::weight(10_000)]
 		pub fn submit_internal(origin: OriginFor<T>) -> DispatchResult {
-			let caller_id = ensure_signed(origin)?;
+			let _caller_id = ensure_signed(origin)?;
 
-			// let origin: T::RuntimeOrigin = frame_system::RawOrigin::Signed(caller_id).into();
+			// let origin: T::RuntimeOrigin = frame_system::RawOrigin::Signed(_caller_id).into();
 			// let pallets_origin: <T::RuntimeOrigin as
 			// frame_support::traits::OriginTrait>::PalletsOrigin = origin.caller().clone();
 			// let call = Call::<T>::submit_public { proposal_origin: Box::new(pallets_origin) };
@@ -266,7 +265,7 @@ pub mod pallet {
 			// into()) 	.map(|_| ())
 			// 	.map_err(|e| e.error)?;
 
-			let origin2 = T::ClusterGovCreatorOrigin::convert_origin().unwrap();
+			let origin2 = T::ClusterGovCreatorOrigin::get();
 			let pallets_origin2: <T::RuntimeOrigin as
 			frame_support::traits::OriginTrait>::PalletsOrigin = origin2.caller().clone();
 			let call2 = Call::<T>::submit_public { proposal_origin: Box::new(pallets_origin2) };

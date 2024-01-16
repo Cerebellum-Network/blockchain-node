@@ -23,7 +23,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use ddc_primitives::traits::pallet::{ConvertOrigin, PalletVisitor, PalletsOriginOf};
+use ddc_primitives::traits::pallet::{GetDdcOrigin, PalletVisitor, PalletsOriginOf};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
@@ -1166,15 +1166,15 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type SubmitOrigin = EnsureOfPermissionedTrack<Self>;
 	type OriginConverter = RelayChainAsNative<RelayChainOrigin, RuntimeOrigin>;
 	type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
-	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, RuntimeOrigin>;
+	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, Self>;
 }
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
-impl<DdcOrigin: Get<RuntimeOrigin>, RuntimeOrigin> ConvertOrigin<RuntimeOrigin>
-	for DdcOriginAsNative<DdcOrigin, RuntimeOrigin>
+impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
+	for DdcOriginAsNative<DdcOrigin, T>
 {
-	fn convert_origin() -> Result<RuntimeOrigin, ()> {
-		Ok(DdcOrigin::get())
+	fn get() -> T::RuntimeOrigin {
+		DdcOrigin::get()
 	}
 }
 
