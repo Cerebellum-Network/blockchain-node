@@ -92,7 +92,7 @@ pub mod pallet {
 			PalletsOriginOf<Self>,
 			Success = Self::AccountId,
 		>;
-		type OriginConverter: ConvertOrigin<Self::RuntimeOrigin>;
+		type ClusterGovCreatorOrigin: ConvertOrigin<Self::RuntimeOrigin>;
 	}
 
 	#[pallet::event]
@@ -243,7 +243,7 @@ pub mod pallet {
 			// into()) 	.map(|_| ())
 			// 	.map_err(|e| e.error)?;
 
-			let origin2 = T::OriginConverter::convert_origin().unwrap();
+			let origin2 = T::ClusterGovCreatorOrigin::convert_origin().unwrap();
 			let pallets_origin2: <T::RuntimeOrigin as
 			frame_support::traits::OriginTrait>::PalletsOrigin = origin2.caller().clone();
 			let call2 = Call::<T>::submit_public { proposal_origin: Box::new(pallets_origin2) };

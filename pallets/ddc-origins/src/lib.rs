@@ -1,9 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub use pallet_custom_origins::*;
+pub use pallet_ddc_origins::*;
 
 #[frame_support::pallet]
-pub mod pallet_custom_origins {
+pub mod pallet_ddc_origins {
 	// use crate::{Balance, DOLLARS, GRAND};
 	use frame_support::pallet_prelude::*;
 
@@ -32,10 +32,10 @@ pub mod pallet_custom_origins {
 		FellowshipAdmin,
 		/// Origin for managing the registrar and permissioned HRMP channel operations.
 		GeneralAdmin,
-		/// Origin for starting auctions.
-		AuctionAdmin,
-		/// Origin able to force slot leases.
-		LeaseAdmin,
+		/// Origin for creating new clusters.
+		ClusterGovCreator,
+		/// Origin for updating cluster economics.
+		ClusterGovEditor,
 		/// Origin able to cancel referenda.
 		ReferendumCanceller,
 		/// Origin able to kill referenda.
@@ -89,8 +89,8 @@ pub mod pallet_custom_origins {
 		Treasurer,
 		FellowshipAdmin,
 		GeneralAdmin,
-		AuctionAdmin,
-		LeaseAdmin,
+		ClusterGovCreator,
+		ClusterGovEditor,
 		ReferendumCanceller,
 		ReferendumKiller,
 		WhitelistedCaller,

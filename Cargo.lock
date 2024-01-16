@@ -834,10 +834,10 @@ dependencies = [
  "pallet-collective",
  "pallet-contracts",
  "pallet-contracts-primitives",
- "pallet-custom-origins",
  "pallet-ddc-clusters",
  "pallet-ddc-customers",
  "pallet-ddc-nodes",
+ "pallet-ddc-origins",
  "pallet-ddc-payouts",
  "pallet-ddc-staking",
  "pallet-democracy",
@@ -961,10 +961,10 @@ dependencies = [
  "pallet-collective",
  "pallet-contracts",
  "pallet-contracts-primitives",
- "pallet-custom-origins",
  "pallet-ddc-clusters",
  "pallet-ddc-customers",
  "pallet-ddc-nodes",
+ "pallet-ddc-origins",
  "pallet-ddc-payouts",
  "pallet-ddc-staking",
  "pallet-democracy",
@@ -4649,33 +4649,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-custom-origins"
-version = "4.8.1"
-dependencies = [
- "ddc-primitives",
- "ddc-traits",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex",
- "hex-literal",
- "pallet-balances",
- "pallet-contracts",
- "pallet-ddc-nodes",
- "pallet-randomness-collective-flip",
- "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "sp-tracing",
- "substrate-test-utils",
-]
-
-[[package]]
 name = "pallet-ddc-clusters"
 version = "4.8.2"
 dependencies = [
@@ -4687,8 +4660,8 @@ dependencies = [
  "hex-literal",
  "pallet-balances",
  "pallet-contracts",
- "pallet-custom-origins",
  "pallet-ddc-nodes",
+ "pallet-ddc-origins",
  "pallet-randomness-collective-flip",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -4735,6 +4708,33 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "sp-tracing",
+ "substrate-test-utils",
+]
+
+[[package]]
+name = "pallet-ddc-origins"
+version = "4.8.1"
+dependencies = [
+ "ddc-primitives",
+ "ddc-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "hex-literal",
+ "pallet-balances",
+ "pallet-contracts",
+ "pallet-ddc-nodes",
+ "pallet-randomness-collective-flip",
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",

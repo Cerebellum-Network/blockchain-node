@@ -53,7 +53,7 @@ use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 #[cfg(any(feature = "std", test))]
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
-pub use pallet_custom_origins;
+pub use pallet_ddc_origins;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -1307,7 +1307,7 @@ impl pallet_ddc_customers::Config for Runtime {
 
 parameter_types! {
 	pub const ClustersPalletId: PalletId = PalletId(*b"clusters");
-	pub RelayChainOrigin: RuntimeOrigin = pallet_custom_origins::Origin::StakingAdmin.into();
+	pub ClusterGovCreatorOrigin: RuntimeOrigin = pallet_ddc_origins::Origin::ClusterGovCreator.into();
 }
 
 impl pallet_ddc_clusters::Config for Runtime {
@@ -1319,17 +1319,15 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
 	type SubmitOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
-	type OriginConverter = RelayChainAsNative<RelayChainOrigin, RuntimeOrigin>;
+	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, RuntimeOrigin>;
 }
 
-pub struct RelayChainAsNative<RelayOrigin, RuntimeOrigin>(
-	PhantomData<(RelayOrigin, RuntimeOrigin)>,
-);
-impl<RelayOrigin: Get<RuntimeOrigin>, RuntimeOrigin> ConvertOrigin<RuntimeOrigin>
-	for RelayChainAsNative<RelayOrigin, RuntimeOrigin>
+pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
+impl<DdcOrigin: Get<RuntimeOrigin>, RuntimeOrigin> ConvertOrigin<RuntimeOrigin>
+	for DdcOriginAsNative<DdcOrigin, RuntimeOrigin>
 {
 	fn convert_origin() -> Result<RuntimeOrigin, ()> {
-		Ok(RelayOrigin::get())
+		Ok(DdcOrigin::get())
 	}
 }
 
@@ -1374,7 +1372,7 @@ impl pallet_ddc_staking::Config for Runtime {
 	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
-impl pallet_custom_origins::Config for Runtime {}
+impl pallet_ddc_origins::Config for Runtime {}
 
 construct_runtime!(
 	pub enum Runtime where
@@ -1430,7 +1428,7 @@ construct_runtime!(
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
 		DdcPayouts: pallet_ddc_payouts,
-		CustomOrigins: pallet_custom_origins::{Origin},
+		DdcOrigins: pallet_ddc_origins::{Origin},
 	}
 );
 

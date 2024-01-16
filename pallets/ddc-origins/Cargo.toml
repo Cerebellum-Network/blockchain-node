@@ -1,5 +1,5 @@
 [package]
-name = "pallet-custom-origins"
+name = "pallet-ddc-origins"
 version = "4.8.1"
 edition = "2021"
 
