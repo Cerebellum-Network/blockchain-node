@@ -77,7 +77,7 @@ impl bridge::Config for Test {
     type Event = Event;
     type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type Proposal = Call;
-    type ChainId = TestChainId;
+    type ChainIdentity = TestChainId;
     type ProposalLifetime = ProposalLifetime;
 }
 
