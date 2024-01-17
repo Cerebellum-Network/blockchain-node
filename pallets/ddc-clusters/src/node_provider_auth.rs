@@ -9,17 +9,21 @@ use sp_std::{prelude::Vec, vec};
 use crate::Config;
 
 /// ink! 4.x selector for the "is_authorized" message, equals to the first four bytes of the
-/// blake2("is_authorized"). See also: https://use.ink/basics/selectors#selector-calculation/,
-/// https://use.ink/macros-attributes/selector/.
+/// blake2("is_authorized"). See also: <https://use.ink/basics/selectors#selector-calculation/>,
+/// <https://use.ink/macros-attributes/selector/>.
 const INK_SELECTOR_IS_AUTHORIZED: [u8; 4] = [0x96, 0xb0, 0x45, 0x3e];
 
 /// The maximum amount of weight that the cluster extension contract call is allowed to consume.
-/// See also https://github.com/paritytech/substrate/blob/a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d/frame/contracts/rpc/src/lib.rs#L63.
+/// See also <https://github.com/paritytech/substrate/blob/a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d/frame/contracts/rpc/src/lib.rs#L63>.
 const EXTENSION_CALL_GAS_LIMIT: Weight =
 	Weight::from_ref_time(5_000_000_000_000).set_proof_size(u64::MAX);
 
+/// DDC cluster authorization smart contract that acts as an additional layer of approval before a
+/// DDC node can join the cluster.
 pub struct NodeProviderAuthContract<T: Config> {
+	/// Contract address
 	pub contract_id: T::AccountId,
+	/// Contract caller
 	caller_id: T::AccountId,
 }
 
@@ -27,6 +31,7 @@ impl<T: Config> NodeProviderAuthContract<T>
 where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
+	/// Checks whether a DDC node is authorized by the smart contract.
 	pub fn is_authorized(
 		&self,
 		node_provider_id: T::AccountId,
@@ -64,12 +69,16 @@ where
 		Ok(is_authorized)
 	}
 
+	/// Deploys authorization smart contract.
+	/// NOTE: Required for the benchmarking and tests only.
 	pub fn deploy_contract(
 		&self,
 		caller_id: T::AccountId,
 	) -> Result<Self, NodeProviderAuthContractError> {
+		/// Smart contract constructor selector.
 		pub const CTOR_SELECTOR: [u8; 4] = hex!("9bae9d5e");
 
+		/// Smart contract constructor encoder.
 		fn encode_constructor() -> Vec<u8> {
 			let mut call_data = CTOR_SELECTOR.to_vec();
 			let x = 0_u128;
@@ -79,12 +88,12 @@ where
 			call_data
 		}
 
-		// Load the contract code.
+		// Load the smart contract code.
 		let wasm = &include_bytes!("./test_data/node_provider_auth_white_list.wasm")[..];
 		let _wasm_hash = <T as frame_system::Config>::Hashing::hash(wasm);
 		let contract_args = encode_constructor();
 
-		// Deploy the contract.
+		// Deploy the smart contract.
 		let contract_id = pallet_contracts::Pallet::<T>::bare_instantiate(
 			caller_id.clone(),
 			Default::default(),
@@ -102,10 +111,13 @@ where
 		Ok(Self::new(contract_id, caller_id))
 	}
 
+	/// Authorizes a DDC node by the smart contract.
+	/// NOTE: Required for the benchmarking and tests only.
 	pub fn authorize_node(
 		&self,
 		node_pub_key: NodePubKey,
 	) -> Result<bool, NodeProviderAuthContractError> {
+		/// Smart contract call selector to authorize a DDC node.
 		pub const ADD_DDC_NODE_SELECTOR: [u8; 4] = hex!("7a04093d");
 
 		let call_data = {
@@ -131,13 +143,18 @@ where
 		Ok(true)
 	}
 
+	/// Constructor function.
 	pub fn new(contract_id: T::AccountId, caller_id: T::AccountId) -> Self {
 		Self { contract_id, caller_id }
 	}
 }
 
+/// DDC cluster authorization smart contract errors.
 pub enum NodeProviderAuthContractError {
+	/// Smart contract call failed.
 	ContractCallFailed,
+	/// Smart contract deployment failed.
 	ContractDeployFailed,
+	/// Could not authorize a DDC node in smart contract.
 	NodeAuthorizationNotSuccessful,
 }
