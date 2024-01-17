@@ -1235,7 +1235,7 @@ impl pallet_chainbridge::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type Proposal = RuntimeCall;
-	type ChainId = ChainId;
+	type ChainIdentity = ChainId;
 	type ProposalLifetime = ProposalLifetime;
 	type BridgeAccountId = BridgeAccountId;
 }
