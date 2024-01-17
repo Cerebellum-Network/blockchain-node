@@ -28,6 +28,7 @@ jobs:
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
           docker image tag $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA $DOCKERHUB_REPOSITORY/$PACKAGE_NAME:${GITHUB_REF##*/}
           docker image tag $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA $ECR_REGISTRY/$ECR_REPOSITORY:${GITHUB_REF##*/}
+          docker image tag $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA $DOCKERHUB_REPOSITORY/$PACKAGE_NAME:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:${GITHUB_REF##*/}
       - name: Login to DockerHub
         uses: docker/login-action@v1
@@ -37,6 +38,6 @@ jobs:
       - name: Publish image to DockerHub
         id: docker_publish
         run: |
-          docker push $DOCKERHUB_REPOSITORY/$PACKAGE_NAME:${GITHUB_REF##*/}
+          docker push -a $DOCKERHUB_REPOSITORY/$PACKAGE_NAME
       - name: Image digest
         run: echo ${{ steps.docker_publish.outputs.digest }}
