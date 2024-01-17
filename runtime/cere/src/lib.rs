@@ -125,10 +125,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48600,
+	spec_version: 48700,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 11,
+	transaction_version: 12,
 	state_version: 0,
 };
 
@@ -456,14 +456,8 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = pallet_timestamp::weights::SubstrateWeight<Runtime>;
 }
 
-parameter_types! {
-	pub const UncleGenerations: BlockNumber = 0;
-}
-
 impl pallet_authorship::Config for Runtime {
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
-	type UncleGenerations = UncleGenerations;
-	type FilterUncle = ();
 	type EventHandler = (Staking, ImOnline);
 }
 
@@ -563,6 +557,9 @@ impl pallet_fast_unstake::Config for Runtime {
 	type Currency = Balances;
 	type BatchSize = frame_support::traits::ConstU32<64>;
 	type Staking = Staking;
+	type MaxErasToCheckPerBlock = ConstU32<1>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type MaxBackersPerValidator = MaxNominatorRewardedPerValidator;
 	type WeightInfo = ();
 }
 
@@ -1008,7 +1005,7 @@ impl pallet_contracts::Config for Runtime {
 	type CallFilter = Nothing;
 	type DepositPerItem = DepositPerItem;
 	type DepositPerByte = DepositPerByte;
-	type CallStack = [pallet_contracts::Frame<Self>; 31];
+	type CallStack = [pallet_contracts::Frame<Self>; 5];
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
 	type ChainExtension = ();
@@ -1016,7 +1013,7 @@ impl pallet_contracts::Config for Runtime {
 	type DeletionWeightLimit = DeletionWeightLimit;
 	type Schedule = Schedule;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
-	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
+	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
@@ -1115,6 +1112,10 @@ impl pallet_authority_discovery::Config for Runtime {
 	type MaxAuthorities = MaxAuthorities;
 }
 
+parameter_types! {
+	pub MaxSetIdSessionEntries: u32 = BondingDuration::get() * SessionsPerEra::get();
+}
+
 impl pallet_grandpa::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 
@@ -1136,6 +1137,7 @@ impl pallet_grandpa::Config for Runtime {
 
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
+	type MaxSetIdSessionEntries = MaxSetIdSessionEntries;
 }
 
 parameter_types! {
@@ -1474,18 +1476,12 @@ pub type UncheckedExtrinsic =
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
-// TODO Remove me after 0.9.37 upgrade
-parameter_types! {
-	pub const DummyPalletId: PalletId = PalletId(*b"piddummy");
-	pub DummyPalletAccountId: AccountId = DummyPalletId::get().into_account_truncating();
-}
 /// Runtime migrations
 type Migrations = (
-	pallet_balances::migration::ResetInactive<Runtime>,
-	// We need to apply this migration again, because `ResetInactive` resets the state again.
-	pallet_balances::migration::MigrateToTrackInactive<Runtime, DummyPalletAccountId>,
-	pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
-	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
+	// Remove stale entries in the set id -> session index storage map (after
+	// this release they will be properly pruned after the bonding duration has
+	// elapsed)
+	pallet_grandpa::migrations::CleanupSetIdSessionMap<Runtime>,
 );
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -1760,6 +1756,12 @@ impl_runtime_apis! {
 		fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> FeeDetails<Balance> {
 			TransactionPayment::query_fee_details(uxt, len)
 		}
+		fn query_weight_to_fee(weight: Weight) -> Balance {
+			TransactionPayment::weight_to_fee(weight)
+		}
+		fn query_length_to_fee(length: u32) -> Balance {
+			TransactionPayment::length_to_fee(length)
+		}
 	}
 
 	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentCallApi<Block, Balance, RuntimeCall>
@@ -1770,6 +1772,12 @@ impl_runtime_apis! {
 		}
 		fn query_call_fee_details(call: RuntimeCall, len: u32) -> FeeDetails<Balance> {
 			TransactionPayment::query_call_fee_details(call, len)
+		}
+		fn query_weight_to_fee(weight: Weight) -> Balance {
+			TransactionPayment::weight_to_fee(weight)
+		}
+		fn query_length_to_fee(length: u32) -> Balance {
+			TransactionPayment::length_to_fee(length)
 		}
 	}
 
