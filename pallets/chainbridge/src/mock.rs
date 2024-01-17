@@ -70,7 +70,7 @@ impl pallet_balances::Config for Test {
 }
 
 parameter_types! {
-	pub const TestChainId: u8 = 5;
+	pub const TestChainIdentity: u8 = 5;
 	pub const ProposalLifetime: u64 = 50;
 	pub BridgeAccountId: u64 = AccountIdConversion::<u64>::into_account_truncating(&MODULE_ID);
 }
@@ -79,7 +79,7 @@ impl crate::pallet::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type Proposal = RuntimeCall;
-	type ChainId = TestChainId;
+	type ChainIdentity = TestChainIdentity;
 	type ProposalLifetime = ProposalLifetime;
 	type BridgeAccountId = BridgeAccountId;
 }
@@ -118,7 +118,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 pub fn new_test_ext_initialized(
-	src_id: ChainId,
+	src_id: ChainIdentity,
 	r_id: ResourceId,
 	resource: Vec<u8>,
 ) -> sp_io::TestExternalities {

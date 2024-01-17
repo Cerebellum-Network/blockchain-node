@@ -1230,7 +1230,7 @@ impl pallet_vesting::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ChainId: u8 = 1;
+	pub const ChainIdentity: u8 = 1;
 	pub const ProposalLifetime: BlockNumber = 1000;
 	pub BridgeAccountId: AccountId = AccountIdConversion::<AccountId>::into_account_truncating(&pallet_chainbridge::MODULE_ID);
 }
@@ -1240,7 +1240,7 @@ impl pallet_chainbridge::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type Proposal = RuntimeCall;
-	type ChainId = ChainId;
+	type ChainIdentity = ChainIdentity;
 	type ProposalLifetime = ProposalLifetime;
 	type BridgeAccountId = BridgeAccountId;
 }

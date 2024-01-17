@@ -69,7 +69,7 @@ impl pallet_balances::Config for Test {
 }
 
 parameter_types! {
-    pub const TestChainId: u8 = 5;
+    pub const TestChainIdentity: u8 = 5;
     pub const ProposalLifetime: u64 = 100;
 }
 
@@ -77,7 +77,7 @@ impl bridge::Config for Test {
     type Event = Event;
     type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type Proposal = Call;
-    type ChainId = TestChainId;
+    type ChainIdentity = TestChainIdentity;
     type ProposalLifetime = ProposalLifetime;
 }
 

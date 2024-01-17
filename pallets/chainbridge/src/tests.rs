@@ -3,8 +3,8 @@ use frame_support::{assert_noop, assert_ok};
 use super::{
 	mock::{
 		assert_events, new_test_ext, Balances, Bridge, ProposalLifetime, RuntimeCall, RuntimeEvent,
-		RuntimeOrigin, System, Test, TestChainId, ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C,
-		TEST_THRESHOLD,
+		RuntimeOrigin, System, Test, TestChainIdentity, ENDOWED_BALANCE, RELAYER_A, RELAYER_B,
+		RELAYER_C, TEST_THRESHOLD,
 	},
 	*,
 };
@@ -99,7 +99,7 @@ fn whitelist_chain() {
 
 		assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), 0));
 		assert_noop!(
-			Bridge::whitelist_chain(RuntimeOrigin::root(), TestChainId::get()),
+			Bridge::whitelist_chain(RuntimeOrigin::root(), TestChainIdentity::get()),
 			Error::<Test>::InvalidChainId
 		);
 

@@ -72,7 +72,7 @@ pub mod pallet {
 		pub fn transfer_hash(
 			origin: OriginFor<T>,
 			hash: T::Hash,
-			dest_id: bridge::ChainId,
+			dest_id: bridge::ChainIdentity,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
@@ -89,7 +89,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			amount: BalanceOf<T>,
 			recipient: Vec<u8>,
-			dest_id: bridge::ChainId,
+			dest_id: bridge::ChainIdentity,
 		) -> DispatchResult {
 			let source = ensure_signed(origin)?;
 			ensure!(<bridge::Pallet<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
@@ -114,7 +114,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			recipient: Vec<u8>,
 			token_id: U256,
-			dest_id: bridge::ChainId,
+			dest_id: bridge::ChainIdentity,
 		) -> DispatchResult {
 			let source = ensure_signed(origin)?;
 			ensure!(<bridge::Pallet<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
