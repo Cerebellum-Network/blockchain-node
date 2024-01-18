@@ -35,6 +35,7 @@ sp-staking = { default-features = false, git = "https://github.com/paritytech/su
 sp-std = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
 sp-transaction-pool = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
 sp-version = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
+sp-arithmetic = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
 
 # frame dependencies
 frame-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37", optional = true }
@@ -89,6 +90,9 @@ pallet-transaction-payment-rpc-runtime-api = { default-features = false, git = "
 pallet-treasury = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
 pallet-utility = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
 pallet-vesting = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
+pallet-conviction-voting = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
+pallet-referenda = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
+pallet-whitelist = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
 
 # cere dependencies
 cere-runtime-common = { path = "../common", default-features = false }
@@ -180,6 +184,10 @@ std = [
   "pallet-ddc-staking/std",
   "cere-runtime-common/std",
   "cere-runtime-constants/std",
+  "sp-arithmetic/std",
+  "pallet-conviction-voting/std",
+  "pallet-referenda/std",
+  "pallet-whitelist/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -224,6 +232,9 @@ runtime-benchmarks = [
   "pallet-vesting/runtime-benchmarks",
   "frame-system-benchmarking/runtime-benchmarks",
   "hex-literal",
+  "pallet-conviction-voting/runtime-benchmarks",
+  "pallet-referenda/runtime-benchmarks",
+  "pallet-whitelist/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-executive/try-runtime",
@@ -264,4 +275,7 @@ try-runtime = [
   "pallet-treasury/try-runtime",
   "pallet-utility/try-runtime",
   "pallet-vesting/try-runtime",
+  "pallet-conviction-voting/try-runtime",
+  "pallet-referenda/try-runtime",
+  "pallet-whitelist/try-runtime",
 ]
