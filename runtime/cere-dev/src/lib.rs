@@ -275,6 +275,21 @@ parameter_types! {
 	pub const AnnouncementDepositFactor: Balance = deposit(0, 66);
 }
 
+parameter_types! {
+	pub const PreimageMaxSize: u32 = 4096 * 1024;
+	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
+	pub const PreimageByteDeposit: Balance = deposit(0, 1);
+}
+
+impl pallet_preimage::Config for Runtime {
+	type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type ManagerOrigin = EnsureRoot<AccountId>;
+	type BaseDeposit = PreimageBaseDeposit;
+	type ByteDeposit = PreimageByteDeposit;
+}
+
 /// The type used to represent the kinds of proxying allowed.
 #[derive(
 	Copy,
@@ -370,7 +385,7 @@ impl pallet_scheduler::Config for Runtime {
 	type MaxScheduledPerBlock = ConstU32<512>;
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
-	type Preimages = ();
+	type Preimages = Preimage;
 }
 
 parameter_types! {
@@ -1278,11 +1293,13 @@ construct_runtime!(
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
 		DdcPayouts: pallet_ddc_payouts,
-		// OpenGov stuff.
+		// Start OpenGov stuff.
 		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
 		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
 		Origins: pallet_custom_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
+		// End OpenGov stuff.
+		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>},
 }
 );
 
@@ -1403,6 +1420,7 @@ mod benches {
 		[pallet_conviction_voting, ConvictionVoting]
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
+		[pallet_preimage, Preimage]
 	);
 }
 

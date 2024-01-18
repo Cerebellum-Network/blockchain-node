@@ -93,6 +93,7 @@ pallet-vesting = { default-features = false, git = "https://github.com/paritytec
 pallet-conviction-voting = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
 pallet-referenda = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
 pallet-whitelist = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
+pallet-preimage = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
 
 # cere dependencies
 cere-dev-runtime-constants = { path = "./constants", default-features = false }
@@ -190,6 +191,7 @@ std = [
   "pallet-conviction-voting/std",
   "pallet-referenda/std",
   "pallet-whitelist/std",
+  "pallet-preimage/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -237,6 +239,7 @@ runtime-benchmarks = [
   "pallet-conviction-voting/runtime-benchmarks",
   "pallet-referenda/runtime-benchmarks",
   "pallet-whitelist/runtime-benchmarks",
+  "pallet-preimage/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-executive/try-runtime",
@@ -280,4 +283,5 @@ try-runtime = [
   "pallet-conviction-voting/try-runtime",
   "pallet-referenda/try-runtime",
   "pallet-whitelist/try-runtime",
+  "pallet-preimage/try-runtime",
 ]
