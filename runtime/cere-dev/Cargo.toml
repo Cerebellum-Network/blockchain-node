@@ -191,6 +191,7 @@ std = [
   "pallet-referenda/std",
   "pallet-whitelist/std",
   "pallet-ddc-clusters-gov/std",
+  "sp-arithmetic/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",

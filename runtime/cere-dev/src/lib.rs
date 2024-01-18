@@ -34,10 +34,13 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		CallerTrait, ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EnsureOrigin, EnsureOriginWithArg, EqualPrivilegeOnly, Everything, Imbalance,
-		InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced, OriginTrait,
-		U128CurrencyToVote, WithdrawReasons,
+		CallerTrait, ConstBool, ConstBool, ConstU128, ConstU128, ConstU16, ConstU16, ConstU32,
+		ConstU32, Currency, Currency, EitherOf, EitherOf, EitherOfDiverse, EitherOfDiverse,
+		EnsureOrigin, EnsureOriginWithArg, EqualPrivilegeOnly, EqualPrivilegeOnly, Everything,
+		Everything, Imbalance, Imbalance, InstanceFilter, InstanceFilter, KeyOwnerProofSystem,
+		KeyOwnerProofSystem, LockIdentifier, LockIdentifier, Nothing, Nothing, OnUnbalanced,
+		OnUnbalanced, OriginTrait, U128CurrencyToVote, U128CurrencyToVote, WithdrawReasons,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -383,7 +386,7 @@ impl pallet_scheduler::Config for Runtime {
 	type PalletsOrigin = OriginCaller;
 	type RuntimeCall = RuntimeCall;
 	type MaximumWeight = MaximumSchedulerWeight;
-	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type ScheduleOrigin = EitherOf<EnsureRoot<AccountId>, AuctionAdmin>;
 	type MaxScheduledPerBlock = ConstU32<512>;
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
@@ -1345,7 +1348,6 @@ construct_runtime!(
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
 		DdcPayouts: pallet_ddc_payouts,
-		// Start OpenGov.
 		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
 		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
 		Origins: pallet_custom_origins::{Origin},
