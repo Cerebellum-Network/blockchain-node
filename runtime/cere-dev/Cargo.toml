@@ -87,6 +87,11 @@ sp-std = { workspace = true }
 sp-storage = { workspace = true }
 sp-transaction-pool = { workspace = true }
 sp-version = { workspace = true }
+sp-arithmetic = { workspace = true }
+pallet-conviction-voting = { workspace = true }
+pallet-referenda = { workspace = true }
+pallet-whitelist = { workspace = true }
+
 
 # cere dependencies
 cere-runtime-common = { workspace = true }
@@ -182,6 +187,10 @@ std = [
   "pallet-ddc-clusters/std",
   "pallet-ddc-payouts/std",
   "cere-runtime-common/std",
+  "sp-arithmetic/std",
+  "pallet-conviction-voting/std",
+  "pallet-referenda/std",
+  "pallet-whitelist/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -228,6 +237,9 @@ runtime-benchmarks = [
   "pallet-chainbridge/runtime-benchmarks",
   "ddc-primitives/runtime-benchmarks",
   "hex-literal",
+  "pallet-conviction-voting/runtime-benchmarks",
+  "pallet-referenda/runtime-benchmarks",
+  "pallet-whitelist/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-executive/try-runtime",
@@ -276,4 +288,7 @@ try-runtime = [
   "pallet-ddc-staking/try-runtime",
   "pallet-erc20/try-runtime",
   "pallet-erc721/try-runtime",
+  "pallet-conviction-voting/try-runtime",
+  "pallet-referenda/try-runtime",
+  "pallet-whitelist/try-runtime",
 ]

@@ -17,6 +17,8 @@
 
 //! A set of constant values used in substrate runtime.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
 /// Money matters.
 pub mod currency {
 	use node_primitives::Balance;
