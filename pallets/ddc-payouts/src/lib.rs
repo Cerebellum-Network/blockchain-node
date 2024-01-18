@@ -25,6 +25,7 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+use chrono::{NaiveDateTime, TimeZone, Utc};
 use ddc_primitives::{ClusterId, DdcEra, MILLICENTS};
 use ddc_traits::{
 	cluster::{ClusterCreator as ClusterCreatorType, ClusterVisitor as ClusterVisitorType},
@@ -238,6 +239,7 @@ pub mod pallet {
 		NotExpectedClusterState,
 		BatchSizeIsOutOfBounds,
 		ScoreRetrievalError,
+		BadRequest,
 	}
 
 	#[pallet::storage]
@@ -270,6 +272,8 @@ pub mod pallet {
 	pub struct BillingReport<T: Config> {
 		pub state: State,
 		pub vault: T::AccountId,
+		pub start_era: i64,
+		pub end_era: i64,
 		pub total_customer_charge: CustomerCharge,
 		pub total_distributed_reward: u128,
 		pub total_node_usage: NodeUsage,
@@ -286,6 +290,8 @@ pub mod pallet {
 			Self {
 				state: State::default(),
 				vault: T::PalletId::get().into_account_truncating(),
+				start_era: Zero::zero(),
+				end_era: Zero::zero(),
 				total_customer_charge: CustomerCharge::default(),
 				total_distributed_reward: Zero::zero(),
 				total_node_usage: NodeUsage::default(),
@@ -334,6 +340,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era: DdcEra,
+			start_era: i64,
+			end_era: i64,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
@@ -343,9 +351,13 @@ pub mod pallet {
 				Error::<T>::NotExpectedState
 			);
 
+			ensure!(end_era > start_era, Error::<T>::BadRequest);
+
 			let billing_report = BillingReport::<T> {
 				vault: Self::account_id(),
 				state: State::Initialized,
+				start_era,
+				end_era,
 				..Default::default()
 			};
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
@@ -414,7 +426,12 @@ pub mod pallet {
 
 			let mut updated_billing_report = billing_report;
 			for payer in payers {
-				let mut customer_charge = get_customer_charge::<T>(cluster_id, &payer.1)?;
+				let mut customer_charge = get_customer_charge::<T>(
+					cluster_id,
+					&payer.1,
+					updated_billing_report.start_era,
+					updated_billing_report.end_era,
+				)?;
 				let total_customer_charge = (|| -> Option<u128> {
 					customer_charge
 						.transfer
@@ -941,6 +958,8 @@ pub mod pallet {
 	fn get_customer_charge<T: Config>(
 		cluster_id: ClusterId,
 		usage: &CustomerUsage,
+		start_era: i64,
+		end_era: i64,
 	) -> Result<CustomerCharge, Error<T>> {
 		let mut total = CustomerCharge::default();
 
@@ -954,12 +973,26 @@ pub mod pallet {
 		})()
 		.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-		total.storage = (|| -> Option<u128> {
-			(usage.stored_bytes as u128)
-				.checked_mul(pricing.unit_per_mb_stored)?
-				.checked_div(byte_unit::MEBIBYTE)
-		})()
-		.ok_or(Error::<T>::ArithmeticOverflow)?;
+		// Convert the timestamps to DateTime<Utc>
+		let start_ts =
+			NaiveDateTime::from_timestamp_opt(start_era, 0).ok_or(Error::<T>::BadRequest)?;
+		let end_ts = NaiveDateTime::from_timestamp_opt(end_era, 0).ok_or(Error::<T>::BadRequest)?;
+		let start = Utc.from_utc_datetime(&start_ts);
+		let end = Utc.from_utc_datetime(&end_ts);
+
+		// Calculate the duration of the period in seconds
+		let duration_seconds = (end - start).num_seconds();
+		let seconds_in_month = 30.44 * 24.0 * 3600.0;
+		let fraction_of_month =
+			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
+
+		total.storage = fraction_of_month *
+			(|| -> Option<u128> {
+				(usage.stored_bytes as u128)
+					.checked_mul(pricing.unit_per_mb_stored)?
+					.checked_div(byte_unit::MEBIBYTE)
+			})()
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 		total.gets = (usage.number_of_gets as u128)
 			.checked_mul(pricing.unit_per_get_request)

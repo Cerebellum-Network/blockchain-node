@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 byte-unit = { version = "4.0.19", default-features = false, features = ["u128"] }
+chrono = "0.4.31"
 codec = { package = "parity-scale-codec", version = "3.1.5", default-features = false, features = ["derive"] }
 ddc-primitives = { version = "4.8.7", default-features = false, path = "../../primitives" }
 ddc-traits = { version = "4.8.7", default-features = false, path = "../../traits" }
