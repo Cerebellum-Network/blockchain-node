@@ -3,9 +3,6 @@ use frame_system::EnsureRootWithSuccess;
 
 use super::*;
 
-// Old governance configurations.
-pub mod old;
-
 mod origins;
 pub use origins::{
 	pallet_custom_origins, AuctionAdmin, FellowshipAdmin, GeneralAdmin, LeaseAdmin,
