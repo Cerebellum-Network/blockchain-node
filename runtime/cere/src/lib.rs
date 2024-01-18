@@ -125,10 +125,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48502,
+	spec_version: 48503,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 10,
+	transaction_version: 11,
 	state_version: 0,
 };
 
@@ -1544,6 +1544,7 @@ mod benches {
 		[pallet_multisig, Multisig]
 		[pallet_nomination_pools, NominationPoolsBench::<Runtime>]
 		[pallet_offences, OffencesBench::<Runtime>]
+		[pallet_preimage, Preimage]
 		[pallet_proxy, Proxy]
 		[pallet_scheduler, Scheduler]
 		[pallet_session, SessionBench::<Runtime>]
