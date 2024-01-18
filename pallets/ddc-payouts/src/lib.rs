@@ -25,7 +25,6 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
-use chrono::{NaiveDateTime, TimeZone, Utc};
 use ddc_primitives::{ClusterId, DdcEra, MILLICENTS};
 use ddc_traits::{
 	cluster::{ClusterCreator as ClusterCreatorType, ClusterVisitor as ClusterVisitorType},
@@ -973,15 +972,8 @@ pub mod pallet {
 		})()
 		.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-		// Convert the timestamps to DateTime<Utc>
-		let start_ts =
-			NaiveDateTime::from_timestamp_opt(start_era, 0).ok_or(Error::<T>::BadRequest)?;
-		let end_ts = NaiveDateTime::from_timestamp_opt(end_era, 0).ok_or(Error::<T>::BadRequest)?;
-		let start = Utc.from_utc_datetime(&start_ts);
-		let end = Utc.from_utc_datetime(&end_ts);
-
 		// Calculate the duration of the period in seconds
-		let duration_seconds = (end - start).num_seconds();
+		let duration_seconds = end_era - start_era;
 		let seconds_in_month = 30.44 * 24.0 * 3600.0;
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);

@@ -1,6 +1,5 @@
 //! DdcPayouts pallet benchmarking.
 
-use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams};
 pub use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_system::RawOrigin;
@@ -97,10 +96,7 @@ struct BillingReportParams {
 
 fn create_billing_report<T: Config>(params: BillingReportParams) {
 	let vault = DdcPayouts::<T>::sub_account_id(params.cluster_id, params.era);
-	let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-	let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
-	let start_era: i64 =
-		DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+	let start_era: i64 = 1_000_000_000;
 	let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 	let billing_report = BillingReport::<T> {
@@ -134,11 +130,7 @@ benchmarks! {
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let era : DdcEra = 1;
-
-		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
-		let start_era: i64 =
-			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let start_era: i64 = 1_000_000_000;
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		create_default_cluster::<T>(cluster_id);
