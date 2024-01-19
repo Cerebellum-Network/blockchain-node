@@ -5070,6 +5070,7 @@ name = "pallet-ddc-payouts"
 version = "4.8.6"
 dependencies = [
  "byte-unit",
+ "chrono",
  "ddc-primitives",
  "ddc-traits",
  "frame-benchmarking",

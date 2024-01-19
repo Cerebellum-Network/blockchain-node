@@ -96,8 +96,13 @@ struct BillingReportParams {
 
 fn create_billing_report<T: Config>(params: BillingReportParams) {
 	let vault = DdcPayouts::<T>::sub_account_id(params.cluster_id, params.era);
+	let start_era: i64 = 1_000_000_000;
+	let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
+
 	let billing_report = BillingReport::<T> {
 		vault,
+		start_era,
+		end_era,
 		state: params.state,
 		total_customer_charge: params.total_customer_charge,
 		total_distributed_reward: params.total_distributed_reward,
@@ -125,13 +130,15 @@ benchmarks! {
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let era : DdcEra = 1;
+		let start_era: i64 = 1_000_000_000;
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		create_default_cluster::<T>(cluster_id);
 
 		let dac_account = create_dac_account::<T>();
 		whitelist_account!(dac_account);
 
-	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era)
+	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, start_era, end_era)
 	verify {
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();
