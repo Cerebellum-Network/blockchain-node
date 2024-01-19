@@ -1306,38 +1306,38 @@ pub mod migrations {
 		pub const ElectionPalletId: LockIdentifier = *b"phrelect";
 	}
 
-	// Special Config for Gov V1 pallets, allowing us to run migrations for them without
-	// implementing their configs on [`Runtime`].
-	pub struct UnlockConfig;
-	impl pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockConfig for UnlockConfig {
-		type Currency = Balances;
-		type MaxVotes = ConstU32<100>;
-		type MaxDeposits = ConstU32<100>;
-		type AccountId = AccountId;
-		type BlockNumber = BlockNumberFor<Runtime>;
-		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-		type PalletName = DemocracyPalletName;
-	}
-	impl pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockConfig
-		for UnlockConfig
-	{
-		type Currency = Balances;
-		type MaxVotesPerVoter = ConstU32<16>;
-		type PalletId = ElectionPalletId;
-		type AccountId = AccountId;
-		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-		type PalletName = ElectionPalletName;
-	}
-	impl pallet_tips::migrations::unreserve_deposits::UnlockConfig<()> for UnlockConfig {
-		type Currency = Balances;
-		type Hash = Hash;
-		type DataDepositPerByte = DataDepositPerByte;
-		type TipReportDepositBase = TipReportDepositBase;
-		type AccountId = AccountId;
-		type BlockNumber = BlockNumberFor<Runtime>;
-		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-		type PalletName = TipsPalletName;
-	}
+	// // Special Config for Gov V1 pallets, allowing us to run migrations for them without
+	// // implementing their configs on [`Runtime`].
+	// pub struct UnlockConfig;
+	// impl pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockConfig for
+	// UnlockConfig { 	type Currency = Balances;
+	// 	type MaxVotes = ConstU32<100>;
+	// 	type MaxDeposits = ConstU32<100>;
+	// 	type AccountId = AccountId;
+	// 	type BlockNumber = BlockNumberFor<Runtime>;
+	// 	type DbWeight = <Runtime as frame_system::Config>::DbWeight;
+	// 	type PalletName = DemocracyPalletName;
+	// }
+	// impl pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockConfig
+	// 	for UnlockConfig
+	// {
+	// 	type Currency = Balances;
+	// 	type MaxVotesPerVoter = ConstU32<16>;
+	// 	type PalletId = ElectionPalletId;
+	// 	type AccountId = AccountId;
+	// 	type DbWeight = <Runtime as frame_system::Config>::DbWeight;
+	// 	type PalletName = ElectionPalletName;
+	// }
+	// impl pallet_tips::migrations::unreserve_deposits::UnlockConfig<()> for UnlockConfig {
+	// 	type Currency = Balances;
+	// 	type Hash = Hash;
+	// 	type DataDepositPerByte = DataDepositPerByte;
+	// 	type TipReportDepositBase = TipReportDepositBase;
+	// 	type AccountId = AccountId;
+	// 	type BlockNumber = BlockNumberFor<Runtime>;
+	// 	type DbWeight = <Runtime as frame_system::Config>::DbWeight;
+	// 	type PalletName = TipsPalletName;
+	// }
 
 	/// Unreleased migrations. Add new ones here:
 	pub type Unreleased = (
