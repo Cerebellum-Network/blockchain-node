@@ -365,7 +365,7 @@ impl pallet_scheduler::Config for Runtime {
 	type MaxScheduledPerBlock = ConstU32<512>;
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
-	type Preimages = ();
+	type Preimages = Preimage;
 }
 
 parameter_types! {
@@ -1227,6 +1227,21 @@ impl pallet_ddc_staking::Config for Runtime {
 	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
+parameter_types! {
+	pub const PreimageMaxSize: u32 = 4096 * 1024;
+	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
+	pub const PreimageByteDeposit: Balance = deposit(0, 1);
+}
+
+impl pallet_preimage::Config for Runtime {
+	type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type ManagerOrigin = EnsureRoot<AccountId>;
+	type BaseDeposit = PreimageBaseDeposit;
+	type ByteDeposit = PreimageByteDeposit;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -1289,6 +1304,7 @@ construct_runtime!(
 		Origins: pallet_custom_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov stuff.
+		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -1401,6 +1417,7 @@ mod benches {
 		[pallet_conviction_voting, ConvictionVoting]
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
+		[pallet_preimage, Preimage]
 	);
 }
 
