@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 
+### Changed
+
+- Changes in `pallet-ddc-payouts::begin_billing_report` crate to accept start and end of the era.
+
 - ...
 
 ## [4.8.7]
