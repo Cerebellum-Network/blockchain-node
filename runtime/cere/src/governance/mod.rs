@@ -1,4 +1,4 @@
-use frame_support::parameter_types;
+use frame_support::{parameter_types, traits::EitherOf};
 use frame_system::EnsureRootWithSuccess;
 
 use super::*;
