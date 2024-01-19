@@ -51,8 +51,7 @@ impl pallet_whitelist::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WhitelistOrigin = EnsureRoot<Self::AccountId>; // todo: add Technical Committee body
 	type DispatchWhitelistedOrigin = EitherOf<EnsureRoot<Self::AccountId>, WhitelistedCaller>;
-	// type Preimages = Preimage;
-	type Preimages = ();
+	type Preimages = Preimage;
 }
 
 impl pallet_referenda::Config for Runtime {
@@ -73,6 +72,5 @@ impl pallet_referenda::Config for Runtime {
 	type UndecidingTimeout = UndecidingTimeout;
 	type AlarmInterval = AlarmInterval;
 	type Tracks = TracksInfo;
-	// type Preimages = Preimage;
-	type Preimages = ();
+	type Preimages = Preimage;
 }

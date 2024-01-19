@@ -147,7 +147,6 @@ std = [
   "pallet-scheduler/std",
   "pallet-offences/std",
   "pallet-proxy/std",
-  "pallet-preimage/std",
   "pallet-insecure-randomness-collective-flip/std",
   "pallet-session/std",
   "pallet-staking/std",
@@ -188,6 +187,7 @@ std = [
   "pallet-conviction-voting/std",
   "pallet-referenda/std",
   "pallet-whitelist/std",
+  "pallet-preimage/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -220,7 +220,6 @@ runtime-benchmarks = [
   "pallet-nomination-pools/runtime-benchmarks",
   "pallet-nomination-pools-benchmarking/runtime-benchmarks",
   "pallet-offences-benchmarking/runtime-benchmarks",
-  "pallet-preimage/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
