@@ -170,22 +170,23 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
+		// todo! name events
 		/// An account has deposited this amount. \[owner, amount\]
 		///
 		/// NOTE: This event is only emitted when funds are deposited via a dispatchable. Notably,
 		/// it will not be emitted for staking rewards when they are added to stake.
-		Deposited(T::AccountId, BalanceOf<T>),
+		Deposited { owner_id: T::AccountId, amount: BalanceOf<T> },
 		/// An account has initiated unlock for amount. \[owner, amount\]
-		InitialDepositUnlock(T::AccountId, BalanceOf<T>),
+		InitialDepositUnlock { owner_id: T::AccountId, amount: BalanceOf<T> },
 		/// An account has called `withdraw_unlocked_deposit` and removed unlocking chunks worth
 		/// `Balance` from the unlocking queue. \[owner, amount\]
-		Withdrawn(T::AccountId, BalanceOf<T>),
+		Withdrawn { owner_id: T::AccountId, amount: BalanceOf<T> },
 		/// The account has been charged for the usage
-		Charged(T::AccountId, BalanceOf<T>),
+		Charged { owner_id: T::AccountId, charged: BalanceOf<T>, expected_to_charge: BalanceOf<T> },
 		/// Bucket with specific id created
-		BucketCreated(BucketId),
+		BucketCreated { bucket_id: BucketId },
 		/// Bucket with specific id updated
-		BucketUpdated(BucketId),
+		BucketUpdated { bucket_id: BucketId },
 	}
 
 	#[pallet::error]
@@ -309,7 +310,7 @@ pub mod pallet {
 			<BucketsCount<T>>::set(cur_bucket_id);
 			<Buckets<T>>::insert(cur_bucket_id, bucket);
 
-			Self::deposit_event(Event::<T>::BucketCreated(cur_bucket_id));
+			Self::deposit_event(Event::<T>::BucketCreated { bucket_id: cur_bucket_id });
 
 			Ok(())
 		}
@@ -413,7 +414,10 @@ pub mod pallet {
 
 				<Ledger<T>>::insert(&owner, &ledger);
 
-				Self::deposit_event(Event::<T>::InitialDepositUnlock(ledger.owner, value));
+				Self::deposit_event(Event::<T>::InitialDepositUnlock {
+					owner_id: ledger.owner,
+					amount: value,
+				});
 			}
 			Ok(())
 		}
@@ -473,7 +477,7 @@ pub mod pallet {
 					value,
 					ExistenceRequirement::AllowDeath,
 				)?;
-				Self::deposit_event(Event::<T>::Withdrawn(owner, value));
+				Self::deposit_event(Event::<T>::Withdrawn { owner_id: owner, amount: value });
 			}
 
 			Ok(post_info_weight.into())
@@ -497,7 +501,7 @@ pub mod pallet {
 
 			bucket.is_public = bucket_params.is_public;
 			<Buckets<T>>::insert(bucket_id, bucket);
-			Self::deposit_event(Event::<T>::BucketUpdated(bucket_id));
+			Self::deposit_event(Event::<T>::BucketUpdated { bucket_id });
 
 			Ok(())
 		}
@@ -630,7 +634,11 @@ pub mod pallet {
 			)?;
 
 			<Ledger<T>>::insert(&content_owner, &ledger); // update state after successful transfer
-			Self::deposit_event(Event::<T>::Charged(content_owner, amount_to_deduct));
+			Self::deposit_event(Event::<T>::Charged {
+				owner_id: content_owner,
+				charged: actually_charged,
+				expected_to_charge: amount_to_deduct,
+			});
 
 			Ok(actually_charged.saturated_into::<u128>())
 		}
@@ -662,7 +670,7 @@ pub mod pallet {
 
 			Self::update_ledger_and_deposit(&owner, &item)
 				.map_err(|_| Error::<T>::TransferFailed)?;
-			Self::deposit_event(Event::<T>::Deposited(owner, value));
+			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: value });
 
 			Ok(())
 		}
@@ -686,7 +694,7 @@ pub mod pallet {
 
 			Self::update_ledger_and_deposit(&owner, &ledger)
 				.map_err(|_| Error::<T>::TransferFailed)?;
-			Self::deposit_event(Event::<T>::Deposited(owner, extra));
+			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: extra });
 
 			Ok(())
 		}
