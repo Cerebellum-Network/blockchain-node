@@ -1496,7 +1496,7 @@ parameter_types! {
 	pub DummyPalletAccountId: AccountId = DummyPalletId::get().into_account_truncating();
 }
 /// Runtime migrations
-type Migrations = ();
+type Migrations = (pallet_preimage::migration::v1::Migration<Runtime>,);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
