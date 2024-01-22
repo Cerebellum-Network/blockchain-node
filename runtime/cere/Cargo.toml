@@ -216,6 +216,7 @@ runtime-benchmarks = [
   "pallet-offences-benchmarking/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
+  "pallet-preimage/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
   "pallet-session-benchmarking/runtime-benchmarks",
   "pallet-society/runtime-benchmarks",
