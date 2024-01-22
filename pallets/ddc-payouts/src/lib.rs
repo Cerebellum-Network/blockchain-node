@@ -159,7 +159,8 @@ pub mod pallet {
 			era: DdcEra,
 			batch_index: BatchIndex,
 			customer_id: T::AccountId,
-			amount: u128,
+			charged: u128,
+			expected_to_charge: u128,
 		},
 		Indebted {
 			cluster_id: ClusterId,
@@ -195,7 +196,8 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			node_provider_id: T::AccountId,
-			amount: u128,
+			rewarded: u128,
+			expected_to_reward: u128,
 		},
 		NotDistributedReward {
 			cluster_id: ClusterId,
@@ -478,22 +480,19 @@ pub mod pallet {
 						era,
 						batch_index,
 						customer_id,
-						amount: total_customer_charge,
+						charged: amount_actually_charged,
+						expected_to_charge: total_customer_charge,
 					});
 
-					if amount_actually_charged > 0 {
-						// something was charged and should be added
-						// calculate ratio
-						let ratio = Perquintill::from_rational(
-							amount_actually_charged,
-							total_customer_charge,
-						);
+					// something was charged and should be added
+					// calculate ratio
+					let ratio =
+						Perquintill::from_rational(amount_actually_charged, total_customer_charge);
 
-						customer_charge.storage = ratio * customer_charge.storage;
-						customer_charge.transfer = ratio * customer_charge.transfer;
-						customer_charge.gets = ratio * customer_charge.gets;
-						customer_charge.puts = ratio * customer_charge.puts;
-					}
+					customer_charge.storage = ratio * customer_charge.storage;
+					customer_charge.transfer = ratio * customer_charge.transfer;
+					customer_charge.gets = ratio * customer_charge.gets;
+					customer_charge.puts = ratio * customer_charge.puts;
 				} else {
 					Self::deposit_event(Event::<T>::Charged {
 						cluster_id,
@@ -722,10 +721,9 @@ pub mod pallet {
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 				let node_provider_id = payee.0;
+				let mut reward_ = amount_to_reward;
+				let mut reward: BalanceOf<T> = amount_to_reward.saturated_into::<BalanceOf<T>>();
 				if amount_to_reward > 0 {
-					let mut reward: BalanceOf<T> =
-						amount_to_reward.saturated_into::<BalanceOf<T>>();
-
 					let vault_balance = <T as pallet::Config>::Currency::free_balance(
 						&updated_billing_report.vault,
 					) - <T as pallet::Config>::Currency::minimum_balance();
@@ -751,9 +749,11 @@ pub mod pallet {
 						ExistenceRequirement::AllowDeath,
 					)?;
 
+					reward_ = reward.saturated_into::<u128>();
+
 					updated_billing_report.total_distributed_reward = updated_billing_report
 						.total_distributed_reward
-						.checked_add(amount_to_reward)
+						.checked_add(reward_)
 						.ok_or(Error::<T>::ArithmeticOverflow)?;
 				}
 
@@ -761,7 +761,8 @@ pub mod pallet {
 					cluster_id,
 					era,
 					node_provider_id,
-					amount: amount_to_reward,
+					rewarded: reward_,
+					expected_to_reward: amount_to_reward,
 				});
 			}
 
