@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [C,D] Updated Substrate to polkadot-v0.9.38
+- [C] Added pallet-preimage to support democracy functionality.
 
 ## [4.8.6]
 
@@ -34,7 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [C,D] Updated Substrate to polkadot-v0.9.36
-- [C] Added pallet-preimage to support democracy functionality.
 
 ## [4.8.4]
 
