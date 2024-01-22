@@ -216,7 +216,9 @@ fn charge_content_owner_works() {
 		);
 
 		// Checking that event was emitted
-		System::assert_last_event(Event::Charged { owner_id: account_3, charged, expected_to_charge: charged }.into());
+		System::assert_last_event(
+			Event::Charged { owner_id: account_3, charged, expected_to_charge: charged }.into(),
+		);
 
 		// failed transfer
 		let charge2 = 100u128;
@@ -232,7 +234,14 @@ fn charge_content_owner_works() {
 		);
 
 		// Checking that event was emitted
-		System::assert_last_event(Event::Charged { owner_id: account_3, charged: deposit - charge1, expected_to_charge: charge2 }.into());
+		System::assert_last_event(
+			Event::Charged {
+				owner_id: account_3,
+				charged: deposit - charge1,
+				expected_to_charge: charge2,
+			}
+			.into(),
+		);
 
 		assert_eq!(
 			0,

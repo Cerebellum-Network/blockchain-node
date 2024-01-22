@@ -637,7 +637,7 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::Charged {
 				owner_id: content_owner,
 				charged: actually_charged,
-				expected_to_charge: amount_to_deduct
+				expected_to_charge: amount_to_deduct,
 			});
 
 			Ok(actually_charged.saturated_into::<u128>())
