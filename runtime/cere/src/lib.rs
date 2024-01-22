@@ -1498,6 +1498,7 @@ type Migrations = (
 	// this release they will be properly pruned after the bonding duration has
 	// elapsed)
 	pallet_grandpa::migrations::CleanupSetIdSessionMap<Runtime>,
+	pallet_preimage::migration::v1::Migration<Runtime>,
 );
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
