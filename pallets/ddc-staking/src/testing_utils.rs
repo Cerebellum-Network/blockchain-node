@@ -7,7 +7,7 @@ use ddc_primitives::{
 use frame_benchmarking::account;
 use frame_support::traits::Currency;
 use frame_system::RawOrigin;
-use sp_runtime::{traits::StaticLookup, Perbill};
+use sp_runtime::{traits::StaticLookup, Perquintill};
 use sp_std::prelude::*;
 
 use crate::{Pallet as DdcStaking, *};
@@ -113,9 +113,9 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 	let cluster_id = ClusterId::from([1; 20]);
 	let cluster_params = ClusterParams { node_provider_auth_contract: Some(stash.clone()) };
 	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
-		treasury_share: Perbill::default(),
-		validators_share: Perbill::default(),
-		cluster_reserve_share: Perbill::default(),
+		treasury_share: Perquintill::default(),
+		validators_share: Perquintill::default(),
+		cluster_reserve_share: Perquintill::default(),
 		storage_bond_size: 10u32.into(),
 		storage_chill_delay: 50u32.into(),
 		storage_unbonding_delay: 50u32.into(),

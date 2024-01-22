@@ -29,15 +29,15 @@ fn basic_setup_works() {
 	// Verifies initial conditions of mock
 	ExtBuilder::default().build_and_execute(|| {
 		// Account 11 is stashed and locked, and account 10 is the controller
-		assert_eq!(DdcStaking::bonded(&11), Some(10));
+		assert_eq!(DdcStaking::bonded(11), Some(10));
 		// Account 21 is stashed and locked, and account 20 is the controller
-		assert_eq!(DdcStaking::bonded(&21), Some(20));
+		assert_eq!(DdcStaking::bonded(21), Some(20));
 		// Account 1 is not a stashed
-		assert_eq!(DdcStaking::bonded(&1), None);
+		assert_eq!(DdcStaking::bonded(1), None);
 
 		// Account 10 controls the stash from account 11, which is 100 units
 		assert_eq!(
-			DdcStaking::ledger(&10),
+			DdcStaking::ledger(10),
 			Some(StakingLedger {
 				stash: 11,
 				total: 100,
@@ -48,7 +48,7 @@ fn basic_setup_works() {
 		);
 		// Account 20 controls the stash from account 21, which is 100 units
 		assert_eq!(
-			DdcStaking::ledger(&20),
+			DdcStaking::ledger(20),
 			Some(StakingLedger {
 				stash: 21,
 				total: 100,
@@ -58,7 +58,7 @@ fn basic_setup_works() {
 			})
 		);
 		// Account 1 does not control any stash
-		assert_eq!(DdcStaking::ledger(&1), None);
+		assert_eq!(DdcStaking::ledger(1), None);
 	});
 }
 
@@ -66,7 +66,7 @@ fn basic_setup_works() {
 fn change_controller_works() {
 	ExtBuilder::default().build_and_execute(|| {
 		// 10 and 11 are bonded as stash controller.
-		assert_eq!(DdcStaking::bonded(&11), Some(10));
+		assert_eq!(DdcStaking::bonded(11), Some(10));
 
 		// 10 can control 11 who is initially a validator.
 		assert_ok!(DdcStaking::withdraw_unbonded(RuntimeOrigin::signed(10)));
@@ -77,7 +77,7 @@ fn change_controller_works() {
 			DdcStaking::set_controller(RuntimeOrigin::signed(11), 3),
 			Error::<Test>::AlreadyPaired
 		);
-		assert_eq!(DdcStaking::bonded(&11), Some(3));
+		assert_eq!(DdcStaking::bonded(11), Some(3));
 
 		// 10 is no longer in control.
 		assert_noop!(
@@ -185,7 +185,7 @@ fn set_node_works() {
 	ExtBuilder::default().build_and_execute(|| {
 		System::set_block_number(1);
 		// 10 and 11 are bonded as stash controller.
-		assert_eq!(DdcStaking::bonded(&11), Some(10));
+		assert_eq!(DdcStaking::bonded(11), Some(10));
 
 		// Node is already paired
 		assert_noop!(
@@ -314,9 +314,9 @@ fn staking_should_work() {
 
 		// Account 4 controls the stash from account 3, which is 1500 units, 3 is a Storage
 		// participant, 5 is a DDC node.
-		assert_eq!(DdcStaking::bonded(&3), Some(4));
+		assert_eq!(DdcStaking::bonded(3), Some(4));
 		assert_eq!(
-			DdcStaking::ledger(&4),
+			DdcStaking::ledger(4),
 			Some(StakingLedger {
 				stash: 3,
 				total: 1500,
@@ -343,7 +343,7 @@ fn staking_should_work() {
 		// TestClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage)
 		// 	.unwrap_or(10_u64);
 		assert_eq!(
-			DdcStaking::ledger(&4),
+			DdcStaking::ledger(4),
 			Some(StakingLedger {
 				stash: 3,
 				total: 1500,
@@ -373,7 +373,7 @@ fn staking_should_work() {
 
 		// Ledger is not changed until we make another call to `chill`.
 		assert_eq!(
-			DdcStaking::ledger(&4),
+			DdcStaking::ledger(4),
 			Some(StakingLedger {
 				stash: 3,
 				total: 1500,

@@ -40,12 +40,12 @@ fn mint_burn_tokens() {
 
 		assert_ok!(Erc721::burn(RuntimeOrigin::root(), id_a));
 		assert_eq!(Erc721::token_count(), 1.into());
-		assert!(!<Tokens>::contains_key(id_a));
+		assert!(!<Tokens<Test>>::contains_key(id_a));
 		assert!(!<TokenOwner<Test>>::contains_key(id_a));
 
 		assert_ok!(Erc721::burn(RuntimeOrigin::root(), id_b));
 		assert_eq!(Erc721::token_count(), 0.into());
-		assert!(!<Tokens>::contains_key(id_b));
+		assert!(!<Tokens<Test>>::contains_key(id_b));
 		assert!(!<TokenOwner<Test>>::contains_key(id_b));
 	})
 }

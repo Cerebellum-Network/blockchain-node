@@ -1,18 +1,11 @@
-#![cfg_attr(not(feature = "std"), no_std)]
-
-pub use pallet_ddc_origins::*;
+//! Custom origins for governance interventions.
+pub use pallet_custom_origins::*;
 
 #[frame_support::pallet]
-pub mod pallet_ddc_origins {
-	// use crate::{Balance, DOLLARS, GRAND};
+pub mod pallet_custom_origins {
 	use frame_support::pallet_prelude::*;
 
-	type Balance = u128;
-
-	pub const MILLICENTS: Balance = 100_000;
-	pub const CENTS: Balance = 1_000 * MILLICENTS; // assume this is worth about a cent.
-	pub const DOLLARS: Balance = 100 * CENTS;
-	pub const GRAND: Balance = DOLLARS * 1_000; // 10_000_000_000_000
+	use crate::{Balance, DOLLARS, GRAND};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {}
@@ -30,10 +23,12 @@ pub mod pallet_ddc_origins {
 		Treasurer,
 		/// Origin for managing the composition of the fellowship.
 		FellowshipAdmin,
-		/// Origin for creating new clusters.
-		ClusterGovCreator,
-		/// Origin for updating cluster economics.
-		ClusterGovEditor,
+		/// Origin for managing the registrar.
+		GeneralAdmin,
+		/// Origin for starting auctions.
+		AuctionAdmin,
+		/// Origin able to force slot leases.
+		LeaseAdmin,
 		/// Origin able to cancel referenda.
 		ReferendumCanceller,
 		/// Origin able to kill referenda.
@@ -50,6 +45,10 @@ pub mod pallet_ddc_origins {
 		BigSpender,
 		/// Origin able to dispatch a whitelisted call.
 		WhitelistedCaller,
+		/// Origin for creating new clusters.
+		ClusterGovCreator,
+		/// Origin for updating cluster economics.
+		ClusterGovEditor,
 	}
 
 	macro_rules! decl_unit_ensures {
@@ -86,8 +85,9 @@ pub mod pallet_ddc_origins {
 		StakingAdmin,
 		Treasurer,
 		FellowshipAdmin,
-		ClusterGovCreator,
-		ClusterGovEditor,
+		GeneralAdmin,
+		AuctionAdmin,
+		LeaseAdmin,
 		ReferendumCanceller,
 		ReferendumKiller,
 		WhitelistedCaller,

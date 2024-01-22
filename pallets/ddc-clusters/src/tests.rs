@@ -8,7 +8,7 @@ use ddc_traits::cluster::ClusterManager;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
 use frame_system::Config;
 use hex_literal::hex;
-use sp_runtime::{traits::Hash, Perbill};
+use sp_runtime::{traits::Hash, Perquintill};
 
 use super::{mock::*, *};
 
@@ -23,9 +23,9 @@ fn create_cluster_works() {
 		let auth_contract = AccountId::from([3; 32]);
 
 		let cluster_gov_params = ClusterGovParams {
-			treasury_share: Perbill::from_float(0.05),
-			validators_share: Perbill::from_float(0.01),
-			cluster_reserve_share: Perbill::from_float(0.02),
+			treasury_share: Perquintill::from_float(0.05),
+			validators_share: Perquintill::from_float(0.01),
+			cluster_reserve_share: Perquintill::from_float(0.02),
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
@@ -154,9 +154,9 @@ fn add_and_delete_node_works() {
 			cluster_reserve_id.clone(),
 			ClusterParams { node_provider_auth_contract: Some(cluster_manager_id.clone()) },
 			ClusterGovParams {
-				treasury_share: Perbill::from_float(0.05),
-				validators_share: Perbill::from_float(0.01),
-				cluster_reserve_share: Perbill::from_float(0.02),
+				treasury_share: Perquintill::from_float(0.05),
+				validators_share: Perquintill::from_float(0.01),
+				cluster_reserve_share: Perquintill::from_float(0.02),
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
@@ -311,13 +311,13 @@ fn add_and_delete_node_works() {
 				GAS_LIMIT,
 				None,
 				wasm.to_vec(),
-				contract_args,
+				contract_args.clone(),
 				vec![],
 			)
 			.unwrap();
 
 			// Configure worker with the contract address.
-			let contract_id = Contracts::contract_address(&alice, &wasm_hash, &[]);
+			let contract_id = Contracts::contract_address(&alice, &wasm_hash, &contract_args, &[]);
 
 			pub const ADD_DDC_NODE_SELECTOR: [u8; 4] = hex!("7a04093d");
 			let node_pub_key = NodePubKey::StoragePubKey(node_pub_key);
@@ -333,7 +333,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(alice),
 				contract_id.clone(),
 				0,
-				Weight::from_ref_time(1_000_000_000_000).set_proof_size(u64::MAX),
+				GAS_LIMIT,
 				None,
 				call_data,
 			);
@@ -374,9 +374,9 @@ fn set_cluster_params_works() {
 			cluster_reserve_id.clone(),
 			ClusterParams { node_provider_auth_contract: Some(auth_contract_1) },
 			ClusterGovParams {
-				treasury_share: Perbill::from_float(0.05),
-				validators_share: Perbill::from_float(0.01),
-				cluster_reserve_share: Perbill::from_float(0.02),
+				treasury_share: Perquintill::from_float(0.05),
+				validators_share: Perquintill::from_float(0.01),
+				cluster_reserve_share: Perquintill::from_float(0.02),
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
@@ -422,9 +422,9 @@ fn set_cluster_gov_params_works() {
 		let auth_contract = AccountId::from([3; 32]);
 
 		let cluster_gov_params = ClusterGovParams {
-			treasury_share: Perbill::from_float(0.05),
-			validators_share: Perbill::from_float(0.01),
-			cluster_reserve_share: Perbill::from_float(0.02),
+			treasury_share: Perquintill::from_float(0.05),
+			validators_share: Perquintill::from_float(0.01),
+			cluster_reserve_share: Perquintill::from_float(0.02),
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
@@ -463,9 +463,9 @@ fn set_cluster_gov_params_works() {
 		);
 
 		let updated_gov_params = ClusterGovParams {
-			treasury_share: Perbill::from_float(0.06),
-			validators_share: Perbill::from_float(0.02),
-			cluster_reserve_share: Perbill::from_float(0.03),
+			treasury_share: Perquintill::from_float(0.06),
+			validators_share: Perquintill::from_float(0.02),
+			cluster_reserve_share: Perquintill::from_float(0.03),
 			storage_bond_size: 1000,
 			storage_chill_delay: 500,
 			storage_unbonding_delay: 500,
@@ -537,9 +537,9 @@ fn cluster_visitor_works() {
 		let auth_contract = AccountId::from([3; 32]);
 
 		let cluster_gov_params = ClusterGovParams {
-			treasury_share: Perbill::from_float(0.05),
-			validators_share: Perbill::from_float(0.01),
-			cluster_reserve_share: Perbill::from_float(0.02),
+			treasury_share: Perquintill::from_float(0.05),
+			validators_share: Perquintill::from_float(0.01),
+			cluster_reserve_share: Perquintill::from_float(0.02),
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,
@@ -585,9 +585,9 @@ fn cluster_visitor_works() {
 		assert_eq!(
 			<DdcClusters as ClusterVisitor<Test>>::get_fees_params(&cluster_id).unwrap(),
 			ClusterFeesParams {
-				treasury_share: Perbill::from_float(0.05),
-				validators_share: Perbill::from_float(0.01),
-				cluster_reserve_share: Perbill::from_float(0.02)
+				treasury_share: Perquintill::from_float(0.05),
+				validators_share: Perquintill::from_float(0.01),
+				cluster_reserve_share: Perquintill::from_float(0.02)
 			}
 		);
 
@@ -646,9 +646,9 @@ fn cluster_creator_works() {
 		let auth_contract = AccountId::from([3; 32]);
 
 		let cluster_gov_params = ClusterGovParams {
-			treasury_share: Perbill::from_float(0.05),
-			validators_share: Perbill::from_float(0.01),
-			cluster_reserve_share: Perbill::from_float(0.02),
+			treasury_share: Perquintill::from_float(0.05),
+			validators_share: Perquintill::from_float(0.01),
+			cluster_reserve_share: Perquintill::from_float(0.02),
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,

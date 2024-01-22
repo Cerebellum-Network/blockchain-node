@@ -4,7 +4,7 @@
 use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams};
 use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_support::traits::Currency;
-use sp_runtime::Perbill;
+use sp_runtime::Perquintill;
 use sp_std::prelude::*;
 
 use super::*;
@@ -21,11 +21,10 @@ benchmarks! {
 	create_bucket {
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-
 		let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
-			treasury_share: Perbill::default(),
-			validators_share: Perbill::default(),
-			cluster_reserve_share: Perbill::default(),
+			treasury_share: Perquintill::default(),
+			validators_share: Perquintill::default(),
+			cluster_reserve_share: Perquintill::default(),
 			storage_bond_size: 100u32.into(),
 			storage_chill_delay: 50u32.into(),
 			storage_unbonding_delay: 50u32.into(),

@@ -10,10 +10,9 @@
 //!
 //! The DDC Clusters pallet depends on the [`GenesisConfig`]. The
 //! `GenesisConfig` is optional and allow to set some initial nodes in DDC.
-
+#![feature(is_some_and)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
-#![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
 pub mod weights;
 use crate::weights::WeightInfo;
@@ -44,6 +43,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
+use sp_core::crypto::UncheckedFrom;
 use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
@@ -62,7 +62,6 @@ pub type BalanceOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 	use ddc_traits::cluster::{ClusterManager, ClusterManagerError};
-	use pallet_contracts::chain_extension::UncheckedFrom;
 
 	use super::*;
 
@@ -192,6 +191,7 @@ pub mod pallet {
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_cluster())]
 		pub fn create_cluster(
 			origin: OriginFor<T>,
@@ -211,6 +211,7 @@ pub mod pallet {
 			)
 		}
 
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::add_node())]
 		pub fn add_node(
 			origin: OriginFor<T>,
@@ -260,6 +261,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_node())]
 		pub fn remove_node(
 			origin: OriginFor<T>,
@@ -281,6 +283,7 @@ pub mod pallet {
 		}
 
 		// Sets Governance non-sensetive parameters only
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_params())]
 		pub fn set_cluster_params(
 			origin: OriginFor<T>,
@@ -299,6 +302,7 @@ pub mod pallet {
 		}
 
 		// Requires Governance approval
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_gov_params())]
 		pub fn set_cluster_gov_params(
 			origin: OriginFor<T>,

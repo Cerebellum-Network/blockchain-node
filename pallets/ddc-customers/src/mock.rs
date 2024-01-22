@@ -9,7 +9,7 @@ use ddc_traits::cluster::{
 };
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU32, ConstU64, Everything},
+	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
@@ -18,13 +18,13 @@ use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchResult, Perbill,
+	DispatchResult, Perquintill,
 };
 
 use crate::{self as pallet_ddc_customers, *};
 
 /// The AccountId alias in this test module.
-pub(crate) type AccountId = u64;
+pub(crate) type AccountId = u128;
 pub(crate) type AccountIndex = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
@@ -147,9 +147,9 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 
 	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
 		Ok(ClusterFeesParams {
-			treasury_share: Perbill::from_percent(1),
-			validators_share: Perbill::from_percent(10),
-			cluster_reserve_share: Perbill::from_percent(2),
+			treasury_share: Perquintill::from_percent(1),
+			validators_share: Perquintill::from_percent(10),
+			cluster_reserve_share: Perquintill::from_percent(2),
 		})
 	}
 
@@ -223,8 +223,14 @@ impl ExtBuilder {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
-		let _ = pallet_balances::GenesisConfig::<Test> {
+		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![(1, 100), (2, 100), (3, 1000)],
+		}
+		.assimilate_storage(&mut storage);
+
+		let _customer_genesis = pallet_ddc_customers::GenesisConfig::<Test> {
+			feeder_account: None,
+			buckets: Default::default(),
 		}
 		.assimilate_storage(&mut storage);
 
