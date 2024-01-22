@@ -436,15 +436,19 @@ fn send_charging_customers_batch_works1() {
 		));
 
 		let usage4_charge = calculate_charge_for_month(cluster_id, usage4.clone());
-		let mut balance = Balances::free_balance(DdcPayouts::account_id());
-		assert_eq!(balance - Balances::minimum_balance(), usage4_charge);
-
 		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor).unwrap();
-		let mut debt = calculate_charge_for_month(cluster_id, usage2.clone());
+		let expected_charge2 = calculate_charge_for_month(cluster_id, usage2.clone());
+		let mut debt = expected_charge2 - USER2_BALANCE;
 		assert_eq!(user2_debt, debt);
 
+		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let mut charge2 = calculate_charge_parts_for_month(cluster_id, usage2);
+		charge2.storage = ratio * charge2.storage;
+		charge2.transfer = ratio * charge2.transfer;
+		charge2.gets = ratio * charge2.gets;
+		charge2.puts = ratio * charge2.puts;
+
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let charge2 = calculate_charge_parts_for_month(cluster_id, usage2);
 		let charge4 = calculate_charge_parts_for_month(cluster_id, usage4);
 		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
 		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
@@ -457,7 +461,8 @@ fn send_charging_customers_batch_works1() {
 				era,
 				customer_id: user2_debtor,
 				batch_index,
-				amount: debt,
+				charged: USER2_BALANCE,
+				expected_to_charge: expected_charge2,
 			}
 			.into(),
 		);
@@ -483,7 +488,7 @@ fn send_charging_customers_batch_works1() {
 			.into(),
 		);
 
-		assert_eq!(System::events().len(), 5 + 1 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge.clone();
@@ -564,7 +569,7 @@ fn send_charging_customers_batch_works1() {
 			report.total_customer_charge.transfer
 		);
 
-		balance = Balances::free_balance(DdcPayouts::account_id());
+		let balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
 
 		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
@@ -588,7 +593,8 @@ fn send_charging_customers_batch_works1() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
-				amount: user3_charge,
+				charged: PARTIAL_CHARGE,
+				expected_to_charge: user3_charge,
 			}
 			.into(),
 		);
@@ -673,15 +679,19 @@ fn send_charging_customers_batch_works1_for_day() {
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
-		let mut balance = Balances::free_balance(DdcPayouts::account_id());
-		assert_eq!(balance - Balances::minimum_balance(), usage4_charge);
-
 		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor).unwrap();
-		let mut debt = calculate_charge_for_day(cluster_id, usage2.clone());
+		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
+		let mut debt = expected_charge2 - USER2_BALANCE;
 		assert_eq!(user2_debt, debt);
 
+		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
+		charge2.storage = ratio * charge2.storage;
+		charge2.transfer = ratio * charge2.transfer;
+		charge2.gets = ratio * charge2.gets;
+		charge2.puts = ratio * charge2.puts;
+
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
 		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
 		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
 		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
@@ -694,7 +704,8 @@ fn send_charging_customers_batch_works1_for_day() {
 				era,
 				customer_id: user2_debtor,
 				batch_index,
-				amount: debt,
+				charged: USER2_BALANCE,
+				expected_to_charge: expected_charge2,
 			}
 			.into(),
 		);
@@ -720,7 +731,7 @@ fn send_charging_customers_batch_works1_for_day() {
 			.into(),
 		);
 
-		assert_eq!(System::events().len(), 5 + 1 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge.clone();
@@ -801,7 +812,7 @@ fn send_charging_customers_batch_works1_for_day() {
 			report.total_customer_charge.transfer
 		);
 
-		balance = Balances::free_balance(DdcPayouts::account_id());
+		let balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
 
 		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
@@ -825,7 +836,8 @@ fn send_charging_customers_batch_works1_for_day() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
-				amount: user3_charge,
+				charged: PARTIAL_CHARGE,
+				expected_to_charge: user3_charge,
 			}
 			.into(),
 		);
