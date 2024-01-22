@@ -150,7 +150,6 @@ pub fn cere_dev_genesis(
 			let nominations = initial_authorities
 				.as_slice()
 				.choose_multiple(&mut rng, count)
-				.into_iter()
 				.map(|choice| choice.0.clone())
 				.collect::<Vec<_>>();
 			(x.clone(), x.clone(), STASH, cere_dev::StakerStatus::Nominator(nominations))
@@ -193,24 +192,6 @@ pub fn cere_dev_genesis(
 			..Default::default()
 		},
 		ddc_staking: cere_dev::DdcStakingConfig::default(),
-		democracy: cere_dev::DemocracyConfig::default(),
-		elections: cere_dev::ElectionsConfig {
-			members: endowed_accounts
-				.iter()
-				.take((num_endowed_accounts + 1) / 2)
-				.cloned()
-				.map(|member| (member, STASH))
-				.collect(),
-		},
-		council: cere_dev::CouncilConfig::default(),
-		technical_committee: cere_dev::TechnicalCommitteeConfig {
-			members: endowed_accounts
-				.iter()
-				.take((num_endowed_accounts + 1) / 2)
-				.cloned()
-				.collect(),
-			phantom: Default::default(),
-		},
 		sudo: cere_dev::SudoConfig { key: Some(root_key) },
 		babe: cere_dev::BabeConfig {
 			authorities: vec![],
@@ -219,7 +200,6 @@ pub fn cere_dev_genesis(
 		im_online: cere_dev::ImOnlineConfig { keys: vec![] },
 		authority_discovery: cere_dev::AuthorityDiscoveryConfig { keys: vec![] },
 		grandpa: cere_dev::GrandpaConfig { authorities: vec![] },
-		technical_membership: Default::default(),
 		treasury: Default::default(),
 		society: cere_dev::SocietyConfig {
 			members: endowed_accounts

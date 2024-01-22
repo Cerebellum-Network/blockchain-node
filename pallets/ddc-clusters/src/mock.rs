@@ -6,7 +6,7 @@ use ddc_primitives::{ClusterId, NodePubKey};
 use ddc_traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU32, ConstU64, Everything, Nothing},
+	traits::{ConstBool, ConstU32, ConstU64, Everything, Nothing},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
@@ -18,7 +18,7 @@ use sp_runtime::{
 	traits::{
 		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
 	},
-	MultiSignature, Perbill,
+	MultiSignature, Perquintill,
 };
 
 use crate::{self as pallet_ddc_clusters, *};
@@ -93,6 +93,8 @@ impl contracts::Config for Test {
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
+	type UnsafeUnstableInterface = ConstBool<false>;
+	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 }
 
 use frame_system::offchain::{
@@ -244,9 +246,9 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage);
 
 		let cluster_gov_params = ClusterGovParams {
-			treasury_share: Perbill::from_float(0.05),
-			validators_share: Perbill::from_float(0.01),
-			cluster_reserve_share: Perbill::from_float(0.02),
+			treasury_share: Perquintill::from_float(0.05),
+			validators_share: Perquintill::from_float(0.01),
+			cluster_reserve_share: Perquintill::from_float(0.02),
 			storage_bond_size: 100,
 			storage_chill_delay: 50,
 			storage_unbonding_delay: 50,

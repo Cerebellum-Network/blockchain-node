@@ -3,6 +3,7 @@
 use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams};
 pub use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_system::RawOrigin;
+use sp_runtime::Perquintill;
 use sp_std::prelude::*;
 
 use super::*;
@@ -61,9 +62,9 @@ fn create_default_cluster<T: Config>(cluster_id: ClusterId) {
 	let cluster_reserve = create_account::<T>("cr", 0, 0);
 	let cluster_params = ClusterParams { node_provider_auth_contract: Default::default() };
 	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
-		treasury_share: Perbill::from_percent(5),
-		validators_share: Perbill::from_percent(10),
-		cluster_reserve_share: Perbill::from_percent(15),
+		treasury_share: Perquintill::from_percent(5),
+		validators_share: Perquintill::from_percent(10),
+		cluster_reserve_share: Perquintill::from_percent(15),
 		unit_per_mb_stored: CERE,
 		unit_per_mb_streamed: CERE,
 		unit_per_put_request: CERE,
@@ -349,8 +350,8 @@ benchmarks! {
 		let total_node_usage = NodeUsage {
 			transferred_bytes: 200000000u64.saturating_mul(b.into()), // 200 mb per provider
 			stored_bytes: 100000000u64.saturating_mul(b.into()), // 100 mb per provider
-			number_of_gets: 10u128.saturating_mul(b.into()), // 10 gets per provider
-			number_of_puts: 5u128.saturating_mul(b.into()), // 5 puts per provider
+			number_of_gets: 10u64.saturating_mul(b.into()), // 10 gets per provider
+			number_of_puts: 10u64.saturating_mul(b.into()), // 5 puts per provider
 		};
 		let charging_max_batch_index = 0;
 		let mut charging_processed_batches : BoundedBTreeSet<BatchIndex, MaxBatchesCount> = BoundedBTreeSet::default();
