@@ -4,17 +4,17 @@ path = "src/main.rs"
 
 [package]
 name = "cere"
-version = "4.8.7"
+version = "4.8.8"
 build = "build.rs"
 edition = "2021"
 license = "GPL-3.0-or-later WITH Classpath-exception-2.0"
 
 [dependencies]
 cere-cli = { path = "cli", features = ["cere-dev-native"] }
-sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38" }
+sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
 
 [build-dependencies]
-substrate-build-script-utils = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
+substrate-build-script-utils = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 
 [workspace]
 members = [

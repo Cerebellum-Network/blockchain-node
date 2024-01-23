@@ -10,7 +10,7 @@ use futures::prelude::*;
 use sc_client_api::BlockBackend;
 use sc_consensus_babe::{self, SlotProportion};
 pub use sc_executor::NativeExecutionDispatch;
-use sc_network::Event;
+use sc_network::{Event, NetworkEventStream};
 use sc_service::{
 	error::Error as ServiceError, Configuration, KeystoreContainer, RpcHandlers, TaskManager,
 };
@@ -25,17 +25,17 @@ pub use cere_client::{
 pub use chain_spec::{CereChainSpec, CereDevChainSpec};
 pub use node_primitives::{Block, BlockNumber};
 pub use sc_executor::NativeElseWasmExecutor;
-use sc_network_common::service::NetworkEventStream;
 pub use sc_service::ChainSpec;
 pub use sp_api::ConstructRuntimeApi;
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
-type FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch> = sc_finality_grandpa::GrandpaBlockImport<
-	FullBackend,
-	Block,
-	FullClient<RuntimeApi, ExecutorDispatch>,
-	FullSelectChain,
->;
+type FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch> =
+	sc_consensus_grandpa::GrandpaBlockImport<
+		FullBackend,
+		Block,
+		FullClient<RuntimeApi, ExecutorDispatch>,
+		FullSelectChain,
+	>;
 
 struct Basics<RuntimeApi, ExecutorDispatch>
 where
@@ -126,14 +126,14 @@ fn new_partial<RuntimeApi, ExecutorDispatch>(
 					FullClient<RuntimeApi, ExecutorDispatch>,
 					FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch>,
 				>,
-				sc_finality_grandpa::LinkHalf<
+				sc_consensus_grandpa::LinkHalf<
 					Block,
 					FullClient<RuntimeApi, ExecutorDispatch>,
 					FullSelectChain,
 				>,
 				sc_consensus_babe::BabeLink<Block>,
 			),
-			sc_finality_grandpa::SharedVoterState,
+			sc_consensus_grandpa::SharedVoterState,
 			Option<Telemetry>,
 		),
 	>,
@@ -162,7 +162,7 @@ where
 		client.clone(),
 	);
 
-	let (grandpa_block_import, grandpa_link) = sc_finality_grandpa::block_import(
+	let (grandpa_block_import, grandpa_link) = sc_consensus_grandpa::block_import(
 		client.clone(),
 		&client,
 		select_chain.clone(),
@@ -206,10 +206,10 @@ where
 
 		let justification_stream = grandpa_link.justification_stream();
 		let shared_authority_set = grandpa_link.shared_authority_set().clone();
-		let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
+		let shared_voter_state = sc_consensus_grandpa::SharedVoterState::empty();
 		let shared_voter_state2 = shared_voter_state.clone();
 
-		let finality_proof_provider = sc_finality_grandpa::FinalityProofProvider::new_for_service(
+		let finality_proof_provider = sc_consensus_grandpa::FinalityProofProvider::new_for_service(
 			backend.clone(),
 			Some(shared_authority_set.clone()),
 		);
@@ -333,6 +333,8 @@ where
 		RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
 	ExecutorDispatch: NativeExecutionDispatch + 'static,
 {
+	use sc_network_common::sync::warp::WarpSyncParams;
+
 	let hwbench = if !disable_hardware_benchmarks {
 		config.database.path().map(|database_path| {
 			let _ = std::fs::create_dir_all(database_path);
@@ -357,7 +359,7 @@ where
 
 	let shared_voter_state = rpc_setup;
 	let auth_disc_publish_non_global_ips = config.network.allow_non_globals_in_dht;
-	let grandpa_protocol_name = sc_finality_grandpa::protocol_standard_name(
+	let grandpa_protocol_name = sc_consensus_grandpa::protocol_standard_name(
 		&client.block_hash(0).ok().flatten().expect("Genesis block exists; qed"),
 		&config.chain_spec,
 	);
@@ -365,14 +367,15 @@ where
 	config
 		.network
 		.extra_sets
-		.push(sc_finality_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone()));
-	let warp_sync = Arc::new(sc_finality_grandpa::warp_proof::NetworkProvider::new(
+		.push(sc_consensus_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone()));
+
+	let warp_sync = Arc::new(sc_consensus_grandpa::warp_proof::NetworkProvider::new(
 		backend.clone(),
 		import_setup.1.shared_authority_set().clone(),
 		Vec::default(),
 	));
 
-	let (network, system_rpc_tx, tx_handler_controller, network_starter) =
+	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
 			client: client.clone(),
@@ -380,7 +383,7 @@ where
 			spawn_handle: task_manager.spawn_handle(),
 			import_queue,
 			block_announce_validator_builder: None,
-			warp_sync: Some(warp_sync),
+			warp_sync_params: Some(WarpSyncParams::WithProvider(warp_sync)),
 		})?;
 
 	let role = config.role.clone();
@@ -403,6 +406,7 @@ where
 		system_rpc_tx,
 		tx_handler_controller,
 		telemetry: telemetry.as_mut(),
+		sync_service: sync_service.clone(),
 	})?;
 
 	if let Some(hwbench) = hwbench {
@@ -439,8 +443,8 @@ where
 			select_chain,
 			env: proposer,
 			block_import,
-			sync_oracle: network.clone(),
-			justification_sync_link: network.clone(),
+			sync_oracle: sync_service.clone(),
+			justification_sync_link: sync_service.clone(),
 			create_inherent_data_providers: move |parent, ()| {
 				let client_clone = client_clone.clone();
 				async move {
@@ -513,7 +517,7 @@ where
 	let keystore =
 		if role.is_authority() { Some(keystore_container.sync_keystore()) } else { None };
 
-	let config = sc_finality_grandpa::Config {
+	let config = sc_consensus_grandpa::Config {
 		// FIXME #1578 make this available through chainspec
 		gossip_duration: std::time::Duration::from_millis(333),
 		justification_period: 512,
@@ -532,12 +536,13 @@ where
 		// and vote data availability than the observer. The observer has not
 		// been tested extensively yet and having most nodes in a network run it
 		// could lead to finality stalls.
-		let grandpa_config = sc_finality_grandpa::GrandpaParams {
+		let grandpa_config = sc_consensus_grandpa::GrandpaParams {
 			config,
 			link: grandpa_link,
+			sync: Arc::new(sync_service),
 			network: network.clone(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
-			voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
+			voting_rule: sc_consensus_grandpa::VotingRulesBuilder::default().build(),
 			prometheus_registry,
 			shared_voter_state,
 		};
@@ -547,7 +552,7 @@ where
 		task_manager.spawn_essential_handle().spawn_blocking(
 			"grandpa-voter",
 			None,
-			sc_finality_grandpa::run_grandpa_voter(grandpa_config)?,
+			sc_consensus_grandpa::run_grandpa_voter(grandpa_config)?,
 		);
 	}
 
@@ -572,7 +577,7 @@ impl ExecuteWithClient for RevertConsensus {
 		Client: AbstractClient<Block, Backend, Api = Api> + 'static,
 	{
 		sc_consensus_babe::revert(client.clone(), self.backend, self.blocks)?;
-		sc_finality_grandpa::revert(client, self.blocks)?;
+		sc_consensus_grandpa::revert(client, self.blocks)?;
 		Ok(())
 	}
 }

@@ -46,7 +46,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcNodes StorageNodes (r:1 w:0)
 	// Storage: Balances Locks (r:1 w:1)
 	fn bond() -> Weight {
-		Weight::from_ref_time(39_000_000_u64)
+		Weight::from_parts(39_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(6_u64))
 			.saturating_add(T::DbWeight::get().writes(5_u64))
 	}
@@ -57,7 +57,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Balances Locks (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn unbond() -> Weight {
-		Weight::from_ref_time(37_000_000_u64)
+		Weight::from_parts(37_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(6_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
@@ -67,7 +67,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: System Account (r:1 w:1)
 	// Storage: DdcStaking LeavingStorages (r:1 w:0)
 	fn withdraw_unbonded() -> Weight {
-		Weight::from_ref_time(33_000_000_u64)
+		Weight::from_parts(33_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(5_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
@@ -78,7 +78,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcStaking Storages (r:1 w:1)
 	// Storage: DdcStaking LeavingStorages (r:1 w:0)
 	fn store() -> Weight {
-		Weight::from_ref_time(28_000_000_u64)
+		Weight::from_parts(28_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(6_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -86,14 +86,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcStaking Storages (r:1 w:1)
 	// Storage: DdcClusters ClustersGovParams (r:1 w:0)
 	fn chill() -> Weight {
-		Weight::from_ref_time(28_000_000_u64)
+		Weight::from_parts(28_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcStaking Bonded (r:1 w:1)
 	// Storage: DdcStaking Ledger (r:2 w:2)
 	fn set_controller() -> Weight {
-		Weight::from_ref_time(14_000_000_u64)
+		Weight::from_parts(14_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
@@ -102,7 +102,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcStaking Storages (r:1 w:0)
 	// Storage: DdcStaking LeavingStorages (r:1 w:0)
 	fn set_node() -> Weight {
-		Weight::from_ref_time(14_000_000_u64)
+		Weight::from_parts(14_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(4_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
@@ -117,7 +117,7 @@ impl WeightInfo for () {
 	// Storage: DdcNodes StorageNodes (r:1 w:0)
 	// Storage: Balances Locks (r:1 w:1)
 	fn bond() -> Weight {
-		Weight::from_ref_time(39_000_000_u64)
+		Weight::from_parts(39_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(5_u64))
 	}
@@ -128,7 +128,7 @@ impl WeightInfo for () {
 	// Storage: Balances Locks (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn unbond() -> Weight {
-		Weight::from_ref_time(37_000_000_u64)
+		Weight::from_parts(37_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
@@ -138,7 +138,7 @@ impl WeightInfo for () {
 	// Storage: System Account (r:1 w:1)
 	// Storage: DdcStaking LeavingStorages (r:1 w:0)
 	fn withdraw_unbonded() -> Weight {
-		Weight::from_ref_time(33_000_000_u64)
+		Weight::from_parts(33_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(5_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
@@ -149,7 +149,7 @@ impl WeightInfo for () {
 	// Storage: DdcStaking Storages (r:1 w:1)
 	// Storage: DdcStaking LeavingStorages (r:1 w:0)
 	fn store() -> Weight {
-		Weight::from_ref_time(28_000_000_u64)
+		Weight::from_parts(28_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -157,14 +157,14 @@ impl WeightInfo for () {
 	// Storage: DdcStaking Storages (r:1 w:1)
 	// Storage: DdcClusters ClustersGovParams (r:1 w:0)
 	fn chill() -> Weight {
-		Weight::from_ref_time(28_000_000_u64)
+		Weight::from_parts(28_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcStaking Bonded (r:1 w:1)
 	// Storage: DdcStaking Ledger (r:2 w:2)
 	fn set_controller() -> Weight {
-		Weight::from_ref_time(14_000_000_u64)
+		Weight::from_parts(14_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
@@ -173,7 +173,7 @@ impl WeightInfo for () {
 	// Storage: DdcStaking Storages (r:1 w:0)
 	// Storage: DdcStaking LeavingStorages (r:1 w:0)
 	fn set_node() -> Weight {
-		Weight::from_ref_time(14_000_000_u64)
+		Weight::from_parts(14_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(4_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}

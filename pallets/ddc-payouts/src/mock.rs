@@ -328,10 +328,6 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 		0
 	}
 
-	fn try_state() -> Result<(), &'static str> {
-		unimplemented!()
-	}
-
 	fn unsafe_clear() {
 		unimplemented!()
 	}
