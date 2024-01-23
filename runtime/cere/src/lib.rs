@@ -1473,12 +1473,10 @@ impl Get<Perbill> for NominationPoolsMigrationV4OldPallet {
 /// Runtime migrations
 type Migrations = (
 	// 0.9.40
-	pallet_nomination_pools::migration::v4::MigrateToV4<
+	pallet_nomination_pools::migration::v4::MigrateV3ToV5<
 		Runtime,
 		NominationPoolsMigrationV4OldPallet,
 	>,
-	// Unreleased - add new migrations here:
-	pallet_nomination_pools::migration::v5::MigrateToV5<Runtime>,
 );
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
