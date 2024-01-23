@@ -133,7 +133,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_version: 48601,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 11,
+	transaction_version: 12,
 	state_version: 0,
 };
 
@@ -340,6 +340,21 @@ impl pallet_proxy::Config for Runtime {
 	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
+}
+
+parameter_types! {
+	pub const PreimageMaxSize: u32 = 4096 * 1024;
+	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
+	pub const PreimageByteDeposit: Balance = deposit(0, 1);
+}
+
+impl pallet_preimage::Config for Runtime {
+	type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type ManagerOrigin = EnsureRoot<AccountId>;
+	type BaseDeposit = PreimageBaseDeposit;
+	type ByteDeposit = PreimageByteDeposit;
 }
 
 parameter_types! {
@@ -1409,6 +1424,7 @@ construct_runtime!(
 		Society: pallet_society,
 		Recovery: pallet_recovery,
 		Vesting: pallet_vesting,
+		Preimage: pallet_preimage,
 		Scheduler: pallet_scheduler,
 		Proxy: pallet_proxy,
 		Multisig: pallet_multisig,
@@ -1469,13 +1485,8 @@ pub type UncheckedExtrinsic =
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
-// TODO Remove me after 0.9.37 upgrade
-parameter_types! {
-	pub const DummyPalletId: PalletId = PalletId(*b"piddummy");
-	pub DummyPalletAccountId: AccountId = DummyPalletId::get().into_account_truncating();
-}
 /// Runtime migrations
-type Migrations = (pallet_contracts::Migration<Runtime>,);
+type Migrations = (pallet_preimage::migration::v1::Migration<Runtime>,);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -1529,6 +1540,7 @@ mod benches {
 		[pallet_nomination_pools, NominationPoolsBench::<Runtime>]
 		[pallet_offences, OffencesBench::<Runtime>]
 		[pallet_proxy, Proxy]
+		[pallet_preimage, Preimage]
 		[pallet_scheduler, Scheduler]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_staking, Staking]
