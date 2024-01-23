@@ -72,6 +72,7 @@ pallet-nomination-pools-benchmarking = { git = "https://github.com/paritytech/su
 pallet-nomination-pools-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
 pallet-offences = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
 pallet-offences-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
+pallet-preimage = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
 pallet-proxy = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
 pallet-randomness-collective-flip = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
 pallet-recovery = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
@@ -143,6 +144,7 @@ std = [
   "node-primitives/std",
   "pallet-offences/std",
   "pallet-proxy/std",
+  "pallet-preimage/std",
   "sp-core/std",
   "pallet-randomness-collective-flip/std",
   "sp-std/std",
@@ -210,6 +212,7 @@ runtime-benchmarks = [
   "pallet-nomination-pools-benchmarking/runtime-benchmarks",
   "pallet-offences-benchmarking/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
+  "pallet-preimage/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
   "pallet-session-benchmarking/runtime-benchmarks",
   "pallet-society/runtime-benchmarks",
@@ -254,6 +257,7 @@ try-runtime = [
   "pallet-nomination-pools/try-runtime",
   "pallet-offences/try-runtime",
   "pallet-proxy/try-runtime",
+  "pallet-preimage/try-runtime",
   "pallet-randomness-collective-flip/try-runtime",
   "pallet-recovery/try-runtime",
   "pallet-scheduler/try-runtime",
