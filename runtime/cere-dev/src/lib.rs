@@ -1493,7 +1493,15 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Runtime migrations
-type Migrations = ();
+type Migrations = (
+	// 0.9.40
+	pallet_nomination_pools::migration::v4::MigrateToV4<
+		Runtime,
+		NominationPoolsMigrationV4OldPallet,
+	>,
+	// Unreleased - add new migrations here:
+	pallet_nomination_pools::migration::v5::MigrateToV5<Runtime>,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
