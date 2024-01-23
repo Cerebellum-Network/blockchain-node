@@ -51,7 +51,7 @@ pallet-babe = { default-features = false, git = "https://github.com/paritytech/s
 pallet-bags-list = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 pallet-balances = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 pallet-bounties = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
-pallet-chainbridge = { version = "4.8.8", default-features = false, path = "../../pallets/chainbridge" }
+pallet-chainbridge = { version = "4.8.7", default-features = false, path = "../../pallets/chainbridge" }
 pallet-child-bounties = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 pallet-collective = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 pallet-contracts = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
@@ -73,6 +73,7 @@ pallet-nomination-pools-benchmarking = { git = "https://github.com/paritytech/su
 pallet-nomination-pools-runtime-api = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.40" }
 pallet-offences = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 pallet-offences-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40", default-features = false, optional = true }
+pallet-preimage = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 pallet-proxy = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 pallet-recovery = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 pallet-scheduler = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
@@ -143,6 +144,7 @@ std = [
   "node-primitives/std",
   "pallet-offences/std",
   "pallet-proxy/std",
+  "pallet-preimage/std",
   "sp-core/std",
   "pallet-insecure-randomness-collective-flip/std",
   "sp-std/std",
@@ -212,7 +214,9 @@ runtime-benchmarks = [
   "pallet-nomination-pools/runtime-benchmarks",
   "pallet-nomination-pools-benchmarking/runtime-benchmarks",
   "pallet-offences-benchmarking/runtime-benchmarks",
+  "pallet-preimage/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
+  "pallet-preimage/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
   "pallet-session-benchmarking/runtime-benchmarks",
   "pallet-society/runtime-benchmarks",
