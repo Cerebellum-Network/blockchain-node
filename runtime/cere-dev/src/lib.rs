@@ -1488,13 +1488,7 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Runtime migrations
-type Migrations = (
-	// Remove stale entries in the set id -> session index storage map (after
-	// this release they will be properly pruned after the bonding duration has
-	// elapsed)
-	pallet_grandpa::migrations::CleanupSetIdSessionMap<Runtime>,
-	pallet_preimage::migration::v1::Migration<Runtime>,
-);
+type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
