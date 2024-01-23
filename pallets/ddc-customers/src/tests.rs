@@ -35,7 +35,7 @@ fn create_bucket_works() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::BucketCreated(1u64).into())
+		System::assert_last_event(Event::BucketCreated { bucket_id: 1u64 }.into())
 	})
 }
 
@@ -56,14 +56,14 @@ fn create_two_buckets_works() {
 			bucket_1_params.clone()
 		));
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::BucketCreated(1u64).into());
+		System::assert_last_event(Event::BucketCreated { bucket_id: 1u64 }.into());
 		assert_ok!(DdcCustomers::create_bucket(
 			RuntimeOrigin::signed(account_1),
 			cluster_id,
 			bucket_2_params.clone()
 		));
 		assert_eq!(System::events().len(), 2);
-		System::assert_last_event(Event::BucketCreated(2u64).into());
+		System::assert_last_event(Event::BucketCreated { bucket_id: 2u64 }.into());
 
 		// Check storage
 		assert_eq!(DdcCustomers::buckets_count(), 2);
@@ -124,7 +124,7 @@ fn deposit_and_deposit_extra_works() {
 		);
 
 		// Checking that event was emitted
-		System::assert_last_event(Event::Deposited(account_1, amount1).into());
+		System::assert_last_event(Event::Deposited { owner_id: account_1, amount: amount1 }.into());
 
 		// Deposit should fail when called the second time
 		assert_noop!(
@@ -154,7 +154,7 @@ fn deposit_and_deposit_extra_works() {
 		);
 
 		// Checking that event was emitted
-		System::assert_last_event(Event::Deposited(account_1, amount2).into());
+		System::assert_last_event(Event::Deposited { owner_id: account_1, amount: amount2 }.into());
 	})
 }
 
@@ -188,7 +188,7 @@ fn charge_content_owner_works() {
 		);
 
 		// Checking that event was emitted
-		System::assert_last_event(Event::Deposited(account_3, deposit).into());
+		System::assert_last_event(Event::Deposited { owner_id: account_3, amount: deposit }.into());
 
 		// successful transfer
 		let charge1 = 10;
@@ -215,6 +215,11 @@ fn charge_content_owner_works() {
 			})
 		);
 
+		// Checking that event was emitted
+		System::assert_last_event(
+			Event::Charged { owner_id: account_3, charged, expected_to_charge: charged }.into(),
+		);
+
 		// failed transfer
 		let charge2 = 100u128;
 		let charge_result = DdcCustomers::charge_content_owner(account_3, vault, charge2).unwrap();
@@ -226,6 +231,16 @@ fn charge_content_owner_works() {
 				active: 0,
 				unlocking: Default::default(),
 			})
+		);
+
+		// Checking that event was emitted
+		System::assert_last_event(
+			Event::Charged {
+				owner_id: account_3,
+				charged: deposit - charge1,
+				expected_to_charge: charge2,
+			}
+			.into(),
 		);
 
 		assert_eq!(
@@ -336,7 +351,7 @@ fn set_bucket_params_works() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::BucketCreated(1u64).into());
+		System::assert_last_event(Event::BucketCreated { bucket_id: 1u64 }.into());
 
 		let bucket_id = 1;
 		let update_bucket_params = BucketParams { is_public: true };
@@ -359,7 +374,7 @@ fn set_bucket_params_works() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 2);
-		System::assert_last_event(Event::BucketUpdated(bucket_id).into());
+		System::assert_last_event(Event::BucketUpdated { bucket_id }.into());
 	})
 }
 
@@ -381,7 +396,7 @@ fn set_bucket_params_checks_work() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::BucketCreated(1u64).into());
+		System::assert_last_event(Event::BucketCreated { bucket_id: 1u64 }.into());
 		let bucket_id = 1;
 
 		let non_existent_bucket_id = 2;
