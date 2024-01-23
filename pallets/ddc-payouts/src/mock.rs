@@ -164,13 +164,17 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 			amount_to_charge = PARTIAL_CHARGE; // for user 3
 		}
 
+		if content_owner == account_2 {
+			amount_to_charge = USER2_BALANCE; // for user 2
+		}
+
 		let charge = amount_to_charge.saturated_into::<BalanceOf<T>>();
 
 		<T as pallet::Config>::Currency::transfer(
 			&content_owner,
 			&billing_vault,
 			charge,
-			ExistenceRequirement::KeepAlive,
+			ExistenceRequirement::AllowDeath,
 		)?;
 		Ok(amount_to_charge)
 	}
@@ -215,6 +219,7 @@ pub const VALIDATOR2_SCORE: u64 = 45;
 pub const VALIDATOR3_SCORE: u64 = 25;
 
 pub const PARTIAL_CHARGE: u128 = 100;
+pub const USER2_BALANCE: u128 = 10;
 pub const USER3_BALANCE: u128 = 1000;
 
 pub const FREE_CLUSTER_ID: ClusterId = ClusterId::zero();
@@ -418,7 +423,7 @@ impl ExtBuilder {
 		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
 				(1, 10000000000000000000000000000),
-				(2, 10),            // < PARTIAL_CHARGE
+				(2, USER2_BALANCE), // < PARTIAL_CHARGE
 				(3, USER3_BALANCE), // > PARTIAL_CHARGE
 				(4, 1000000000000000000000000),
 				(5, 1000000000000000000000000),
