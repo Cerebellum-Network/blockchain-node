@@ -361,7 +361,7 @@ pub mod pallet {
 		/// - weight of proposed call, regardless of whether execution is performed
 		/// # </weight>
 		#[pallet::call_index(6)]
-		#[pallet::weight(call.get_dispatch_info().weight + Weight::from_ref_time(195_000_000_u64))]
+		#[pallet::weight(call.get_dispatch_info().weight + Weight::from_parts(195_000_000_u64, 0))]
 		pub fn acknowledge_proposal(
 			origin: OriginFor<T>,
 			nonce: DepositNonce,
@@ -408,7 +408,7 @@ pub mod pallet {
 		/// - weight of proposed call, regardless of whether execution is performed
 		/// # </weight>
 		#[pallet::call_index(8)]
-		#[pallet::weight(prop.get_dispatch_info().weight + Weight::from_ref_time(195_000_000_u64))]
+		#[pallet::weight(prop.get_dispatch_info().weight + Weight::from_parts(195_000_000_u64, 0))]
 		pub fn eval_vote_state(
 			origin: OriginFor<T>,
 			nonce: DepositNonce,

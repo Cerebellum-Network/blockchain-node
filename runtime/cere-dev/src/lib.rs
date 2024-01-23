@@ -1508,7 +1508,7 @@ mod custom_migration {
 	impl OnRuntimeUpgrade for Upgrade {
 		fn on_runtime_upgrade() -> Weight {
 			clear_prefix(&twox_128(b"DdcValidator"), None);
-			Weight::from_ref_time(0)
+			Weight::from_parts(0, 0)
 		}
 	}
 }
