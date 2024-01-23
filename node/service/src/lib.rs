@@ -25,7 +25,6 @@ pub use cere_client::{
 pub use chain_spec::{CereChainSpec, CereDevChainSpec};
 pub use node_primitives::{Block, BlockNumber};
 pub use sc_executor::NativeElseWasmExecutor;
-use sc_network_common::service::NetworkEventStream;
 pub use sc_service::ChainSpec;
 pub use sp_api::ConstructRuntimeApi;
 
@@ -375,7 +374,7 @@ where
 		Vec::default(),
 	));
 
-	let (network, system_rpc_tx, tx_handler_controller, network_starter) =
+	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
 			client: client.clone(),
@@ -406,6 +405,7 @@ where
 		system_rpc_tx,
 		tx_handler_controller,
 		telemetry: telemetry.as_mut(),
+		sync_service: sync_service.clone(),
 	})?;
 
 	if let Some(hwbench) = hwbench {
@@ -538,6 +538,7 @@ where
 		let grandpa_config = sc_consensus_grandpa::GrandpaParams {
 			config,
 			link: grandpa_link,
+			sync: Arc::new(sync_service),
 			network: network.clone(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
 			voting_rule: sc_consensus_grandpa::VotingRulesBuilder::default().build(),
