@@ -10,7 +10,7 @@ use futures::prelude::*;
 use sc_client_api::BlockBackend;
 use sc_consensus_babe::{self, SlotProportion};
 pub use sc_executor::NativeExecutionDispatch;
-use sc_network::Event;
+use sc_network::{Event, NetworkEventStream};
 use sc_service::{
 	error::Error as ServiceError, Configuration, KeystoreContainer, RpcHandlers, TaskManager,
 };
@@ -334,6 +334,7 @@ where
 	ExecutorDispatch: NativeExecutionDispatch + 'static,
 {
 	use sc_network_common::sync::warp::WarpSyncParams;
+
 	let hwbench = if !disable_hardware_benchmarks {
 		config.database.path().map(|database_path| {
 			let _ = std::fs::create_dir_all(database_path);
@@ -442,8 +443,8 @@ where
 			select_chain,
 			env: proposer,
 			block_import,
-			sync_oracle: network.clone(),
-			justification_sync_link: network.clone(),
+			sync_oracle: sync_service.clone(),
+			justification_sync_link: sync_service.clone(),
 			create_inherent_data_providers: move |parent, ()| {
 				let client_clone = client_clone.clone();
 				async move {
