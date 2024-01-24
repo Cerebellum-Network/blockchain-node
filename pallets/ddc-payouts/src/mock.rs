@@ -204,6 +204,7 @@ impl<T: Config> CustomerDepositor<T> for TestCustomerDepositor {
 	}
 }
 
+pub const MANAGER_ACCOUNT_ID: AccountId = 998;
 pub const RESERVE_ACCOUNT_ID: AccountId = 999;
 pub const TREASURY_ACCOUNT_ID: AccountId = 888;
 pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
@@ -403,6 +404,13 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		_cluster_id: &ClusterId,
 	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
 		unimplemented!()
+	}
+
+	fn get_manager_account_id(
+		_cluster_id: &ClusterId,
+	) -> Result<T::AccountId, ClusterVisitorError> {
+		let manager_account = MANAGER_ACCOUNT_ID.to_ne_bytes();
+		Ok(T::AccountId::decode(&mut &manager_account[..]).unwrap())
 	}
 }
 
