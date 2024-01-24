@@ -303,7 +303,7 @@ fn add_and_delete_node_works() {
 
 			// Deploy the contract.
 			const GAS_LIMIT: frame_support::weights::Weight =
-				Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX);
+				Weight::from_parts(100_000_000_000, 0).set_proof_size(u64::MAX);
 			const ENDOWMENT: Balance = 0;
 			Contracts::instantiate_with_code(
 				RuntimeOrigin::signed(alice.clone()),

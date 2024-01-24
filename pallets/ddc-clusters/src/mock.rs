@@ -45,7 +45,7 @@ construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
 		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Event<T>},
-		Randomness: pallet_randomness_collective_flip::{Pallet, Storage},
+		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 	}
 );
 
@@ -79,7 +79,7 @@ impl contracts::Config for Test {
 	type Randomness = Randomness;
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
-	type CallStack = [pallet_contracts::Frame<Self>; 31];
+	type CallStack = [pallet_contracts::Frame<Self>; 5];
 	type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
 	type WeightInfo = ();
 	type ChainExtension = ();
@@ -91,7 +91,7 @@ impl contracts::Config for Test {
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
-	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
+	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
@@ -115,7 +115,7 @@ where
 	type OverarchingCall = RuntimeCall;
 	type Extrinsic = Extrinsic;
 }
-impl pallet_randomness_collective_flip::Config for Test {}
+impl pallet_insecure_randomness_collective_flip::Config for Test {}
 
 impl<LocalCall> CreateSignedTransaction<LocalCall> for Test
 where

@@ -1,10 +1,14 @@
 use codec::Encode;
 use ddc_primitives::{NodePubKey, NodeType};
 use frame_support::weights::Weight;
+#[cfg(any(feature = "runtime-benchmarks", test))]
 use hex_literal::hex;
 use sp_core::crypto::UncheckedFrom;
+#[cfg(any(feature = "runtime-benchmarks", test))]
 use sp_runtime::traits::Hash;
-use sp_std::{prelude::Vec, vec};
+use sp_std::prelude::Vec;
+#[cfg(any(feature = "runtime-benchmarks", test))]
+use sp_std::vec;
 
 use crate::Config;
 
@@ -16,7 +20,7 @@ const INK_SELECTOR_IS_AUTHORIZED: [u8; 4] = [0x96, 0xb0, 0x45, 0x3e];
 /// The maximum amount of weight that the cluster extension contract call is allowed to consume.
 /// See also https://github.com/paritytech/substrate/blob/a3ed0119c45cdd0d571ad34e5b3ee7518c8cef8d/frame/contracts/rpc/src/lib.rs#L63.
 const EXTENSION_CALL_GAS_LIMIT: Weight =
-	Weight::from_ref_time(5_000_000_000_000).set_proof_size(u64::MAX);
+	Weight::from_parts(5_000_000_000_000, 0).set_proof_size(u64::MAX);
 
 pub struct NodeProviderAuthContract<T: Config> {
 	pub contract_id: T::AccountId,
@@ -64,6 +68,7 @@ where
 		Ok(is_authorized)
 	}
 
+	#[cfg(any(feature = "runtime-benchmarks", test))]
 	pub fn deploy_contract(
 		&self,
 		caller_id: T::AccountId,
@@ -102,6 +107,7 @@ where
 		Ok(Self::new(contract_id, caller_id))
 	}
 
+	#[cfg(any(feature = "runtime-benchmarks", test))]
 	pub fn authorize_node(
 		&self,
 		node_pub_key: NodePubKey,
