@@ -37,6 +37,8 @@ pub trait ClusterVisitor<T: Config> {
 	fn get_bonding_params(
 		cluster_id: &ClusterId,
 	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError>;
+
+	fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, ClusterVisitorError>;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {

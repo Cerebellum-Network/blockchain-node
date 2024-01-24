@@ -1227,6 +1227,8 @@ impl pallet_ddc_payouts::Config for Runtime {
 parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
 	pub ClusterGovCreatorOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterGovCreator.into();
+	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
+	pub const ClusterMaxProposals: u32 = 1;
 }
 
 impl pallet_ddc_clusters_gov::Config for Runtime {
@@ -1236,6 +1238,11 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
 	type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
 	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, Self>;
+	// type ClusterProposal = RuntimeCall;
+	type ClusterProposalCall = RuntimeCall;
+	type ClusterProposalDuration = ClusterProposalDuration;
+	type ClusterMaxProposals = ClusterMaxProposals;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 }
 
 pub struct ClustersGovWrapper;
