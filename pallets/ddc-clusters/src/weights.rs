@@ -40,7 +40,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcClusters Clusters (r:1 w:1)
 	// Storage: DdcClusters ClustersGovParams (r:0 w:1)
 	fn create_cluster() -> Weight {
-		Weight::from_ref_time(15_000_000_u64)
+		Weight::from_parts(15_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
@@ -59,7 +59,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: unknown [0x89eb0d6a8a691dae2cd15ed0369931ce0a949ecafa5c3f93f8121833646e15c3] (r:1 w:0)
 	// Storage: unknown [0xc3ad1d87683b6ac25f2e809346840d7a7ed0c05653ee606dba68aba3bdb5d957] (r:1 w:0)
 	fn add_node() -> Weight {
-		Weight::from_ref_time(599_000_000_u64)
+		Weight::from_parts(599_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(14_u64))
 			.saturating_add(T::DbWeight::get().writes(5_u64))
 	}
@@ -67,20 +67,20 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcNodes StorageNodes (r:1 w:1)
 	// Storage: DdcClusters ClustersNodes (r:0 w:1)
 	fn remove_node() -> Weight {
-		Weight::from_ref_time(24_000_000_u64)
+		Weight::from_parts(24_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcClusters Clusters (r:1 w:1)
 	fn set_cluster_params() -> Weight {
-		Weight::from_ref_time(16_000_000_u64)
+		Weight::from_parts(16_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	// Storage: DdcClusters Clusters (r:1 w:0)
 	// Storage: DdcClusters ClustersGovParams (r:0 w:1)
 	fn set_cluster_gov_params() -> Weight {
-		Weight::from_ref_time(17_000_000_u64)
+		Weight::from_parts(17_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -91,7 +91,7 @@ impl WeightInfo for () {
 	// Storage: DdcClusters Clusters (r:1 w:1)
 	// Storage: DdcClusters ClustersGovParams (r:0 w:1)
 	fn create_cluster() -> Weight {
-		Weight::from_ref_time(15_000_000_u64)
+		Weight::from_parts(15_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
@@ -110,7 +110,7 @@ impl WeightInfo for () {
 	// Storage: unknown [0x89eb0d6a8a691dae2cd15ed0369931ce0a949ecafa5c3f93f8121833646e15c3] (r:1 w:0)
 	// Storage: unknown [0xc3ad1d87683b6ac25f2e809346840d7a7ed0c05653ee606dba68aba3bdb5d957] (r:1 w:0)
 	fn add_node() -> Weight {
-		Weight::from_ref_time(599_000_000_u64)
+		Weight::from_parts(599_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(14_u64))
 			.saturating_add(RocksDbWeight::get().writes(5_u64))
 	}
@@ -118,20 +118,20 @@ impl WeightInfo for () {
 	// Storage: DdcNodes StorageNodes (r:1 w:1)
 	// Storage: DdcClusters ClustersNodes (r:0 w:1)
 	fn remove_node() -> Weight {
-		Weight::from_ref_time(24_000_000_u64)
+		Weight::from_parts(24_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcClusters Clusters (r:1 w:1)
 	fn set_cluster_params() -> Weight {
-		Weight::from_ref_time(16_000_000_u64)
+		Weight::from_parts(16_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	// Storage: DdcClusters Clusters (r:1 w:0)
 	// Storage: DdcClusters ClustersGovParams (r:0 w:1)
 	fn set_cluster_gov_params() -> Weight {
-		Weight::from_ref_time(17_000_000_u64)
+		Weight::from_parts(17_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}

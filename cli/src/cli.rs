@@ -29,7 +29,7 @@ pub struct RunCmd {
 	pub no_hardware_benchmarks: bool,
 }
 
-#[allow(missing_docs)]
+#[allow(missing_docs, clippy::large_enum_variant)]
 #[derive(Debug, clap::Subcommand)]
 pub enum Subcommand {
 	/// Key management cli utilities
