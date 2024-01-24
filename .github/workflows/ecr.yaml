@@ -1,10 +1,13 @@
 name: ECR
 
 on:
-  pull_request:
+  push:
     branches:
       - dev
+      - staging
       - master
+  pull_request:
+    branches:
       - 'release/**'
       - 'hotfix/**'
     types:

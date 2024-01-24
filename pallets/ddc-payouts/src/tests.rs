@@ -1,5 +1,6 @@
 //! Tests for the module.
 
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use ddc_primitives::ClusterId;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin, traits::Randomness};
 use sp_core::H256;
@@ -37,6 +38,12 @@ fn begin_billing_report_fails_for_unauthorised() {
 		let dac_account = 2u128;
 		let cluster_id = ClusterId::from([1; 20]);
 		let era = 100;
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 
@@ -45,12 +52,20 @@ fn begin_billing_report_fails_for_unauthorised() {
 				RuntimeOrigin::signed(dac_account + 1),
 				cluster_id,
 				era,
+				start_era,
+				end_era,
 			),
 			Error::<Test>::Unauthorised
 		);
 
 		assert_noop!(
-			DdcPayouts::begin_billing_report(RuntimeOrigin::signed(root_account), cluster_id, era,),
+			DdcPayouts::begin_billing_report(
+				RuntimeOrigin::signed(root_account),
+				cluster_id,
+				era,
+				start_era,
+				end_era,
+			),
 			Error::<Test>::Unauthorised
 		);
 	})
@@ -64,6 +79,12 @@ fn begin_billing_report_works() {
 		let dac_account = 2u128;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 
@@ -71,12 +92,16 @@ fn begin_billing_report_works() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		System::assert_last_event(Event::BillingReportInitialized { cluster_id, era }.into());
 
 		let report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report.state, State::Initialized);
+		assert_eq!(report.start_era, start_era);
+		assert_eq!(report.end_era, end_era);
 	})
 }
 
@@ -131,6 +156,12 @@ fn begin_charging_customers_works() {
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 
@@ -138,6 +169,8 @@ fn begin_charging_customers_works() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
@@ -168,6 +201,12 @@ fn send_charging_customers_batch_fails_uninitialised() {
 		let batch_index = 1;
 		let payers1 = vec![(user1, CustomerUsage::default())];
 		let payers2 = vec![(user2, CustomerUsage::default())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_noop!(
 			DdcPayouts::send_charging_customers_batch(
@@ -208,6 +247,8 @@ fn send_charging_customers_batch_fails_uninitialised() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		assert_noop!(
@@ -260,21 +301,60 @@ fn send_charging_customers_batch_fails_uninitialised() {
 	})
 }
 
-fn calculate_charge_parts(cluster_id: ClusterId, usage: CustomerUsage) -> CustomerCharge {
+fn calculate_charge_parts_for_day(cluster_id: ClusterId, usage: CustomerUsage) -> CustomerCharge {
 	let pricing_params = get_pricing(&cluster_id);
+
+	// Calculate the duration of the period in seconds
+	let duration_seconds = 1.0 * 24.0 * 3600.0;
+	let seconds_in_month = 30.44 * 24.0 * 3600.0;
+	let fraction_of_month =
+		Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
+
+	let storage = fraction_of_month *
+		(|| -> Option<u128> {
+			(usage.stored_bytes as u128)
+				.checked_mul(pricing_params.unit_per_mb_stored)?
+				.checked_div(byte_unit::MEBIBYTE)
+		})()
+		.unwrap();
 
 	CustomerCharge {
 		transfer: pricing_params.unit_per_mb_streamed * (usage.transferred_bytes as u128) /
 			byte_unit::MEBIBYTE,
-		storage: (pricing_params.unit_per_mb_stored * usage.stored_bytes as u128) /
-			byte_unit::MEBIBYTE,
+		storage,
 		puts: pricing_params.unit_per_put_request * (usage.number_of_puts as u128),
 		gets: pricing_params.unit_per_get_request * (usage.number_of_gets as u128),
 	}
 }
 
-fn calculate_charge(cluster_id: ClusterId, usage: CustomerUsage) -> u128 {
-	let charge = calculate_charge_parts(cluster_id, usage);
+fn calculate_charge_for_day(cluster_id: ClusterId, usage: CustomerUsage) -> u128 {
+	let charge = calculate_charge_parts_for_day(cluster_id, usage);
+	charge.transfer + charge.storage + charge.puts + charge.gets
+}
+
+fn calculate_charge_parts_for_month(cluster_id: ClusterId, usage: CustomerUsage) -> CustomerCharge {
+	let pricing_params = get_pricing(&cluster_id);
+
+	let fraction_of_month = Perquintill::one();
+	let storage = fraction_of_month *
+		(|| -> Option<u128> {
+			(usage.stored_bytes as u128)
+				.checked_mul(pricing_params.unit_per_mb_stored)?
+				.checked_div(byte_unit::MEBIBYTE)
+		})()
+		.unwrap();
+
+	CustomerCharge {
+		transfer: pricing_params.unit_per_mb_streamed * (usage.transferred_bytes as u128) /
+			byte_unit::MEBIBYTE,
+		storage,
+		puts: pricing_params.unit_per_put_request * (usage.number_of_puts as u128),
+		gets: pricing_params.unit_per_get_request * (usage.number_of_gets as u128),
+	}
+}
+
+fn calculate_charge_for_month(cluster_id: ClusterId, usage: CustomerUsage) -> u128 {
+	let charge = calculate_charge_parts_for_month(cluster_id, usage);
 	charge.transfer + charge.storage + charge.puts + charge.gets
 }
 
@@ -323,12 +403,19 @@ fn send_charging_customers_batch_works1() {
 		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
 		let payers2 = vec![(user1, usage1.clone())];
 		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
@@ -348,17 +435,21 @@ fn send_charging_customers_batch_works1() {
 			payers1,
 		));
 
-		let usage4_charge = calculate_charge(cluster_id, usage4.clone());
-		let mut balance = Balances::free_balance(DdcPayouts::account_id());
-		assert_eq!(balance - Balances::minimum_balance(), usage4_charge);
-
+		let usage4_charge = calculate_charge_for_month(cluster_id, usage4.clone());
 		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor).unwrap();
-		let mut debt = calculate_charge(cluster_id, usage2.clone());
+		let expected_charge2 = calculate_charge_for_month(cluster_id, usage2.clone());
+		let mut debt = expected_charge2 - USER2_BALANCE;
 		assert_eq!(user2_debt, debt);
 
+		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let mut charge2 = calculate_charge_parts_for_month(cluster_id, usage2);
+		charge2.storage = ratio * charge2.storage;
+		charge2.transfer = ratio * charge2.transfer;
+		charge2.gets = ratio * charge2.gets;
+		charge2.puts = ratio * charge2.puts;
+
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let charge2 = calculate_charge_parts(cluster_id, usage2);
-		let charge4 = calculate_charge_parts(cluster_id, usage4);
+		let charge4 = calculate_charge_parts_for_month(cluster_id, usage4);
 		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
 		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
 		assert_eq!(charge2.storage + charge4.storage, report.total_customer_charge.storage);
@@ -370,7 +461,8 @@ fn send_charging_customers_batch_works1() {
 				era,
 				customer_id: user2_debtor,
 				batch_index,
-				amount: debt,
+				charged: USER2_BALANCE,
+				expected_to_charge: expected_charge2,
 			}
 			.into(),
 		);
@@ -396,7 +488,7 @@ fn send_charging_customers_batch_works1() {
 			.into(),
 		);
 
-		assert_eq!(System::events().len(), 5 + 1 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge.clone();
@@ -415,13 +507,13 @@ fn send_charging_customers_batch_works1() {
 				era,
 				batch_index,
 				customer_id: user1,
-				amount: calculate_charge(cluster_id, usage1.clone()),
+				amount: calculate_charge_for_month(cluster_id, usage1.clone()),
 			}
 			.into(),
 		);
 
 		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let charge1 = calculate_charge_parts(cluster_id, usage1);
+		let charge1 = calculate_charge_parts_for_month(cluster_id, usage1);
 		assert_eq!(
 			charge1.puts + before_total_customer_charge.puts,
 			report.total_customer_charge.puts
@@ -456,8 +548,8 @@ fn send_charging_customers_batch_works1() {
 			payers3,
 		));
 
-		let user3_charge = calculate_charge(cluster_id, usage3.clone());
-		let charge3 = calculate_charge_parts(cluster_id, usage3);
+		let user3_charge = calculate_charge_for_month(cluster_id, usage3.clone());
+		let charge3 = calculate_charge_parts_for_month(cluster_id, usage3);
 		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
 		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(
@@ -477,7 +569,7 @@ fn send_charging_customers_batch_works1() {
 			report.total_customer_charge.transfer
 		);
 
-		balance = Balances::free_balance(DdcPayouts::account_id());
+		let balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
 
 		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
@@ -501,7 +593,251 @@ fn send_charging_customers_batch_works1() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
-				amount: user3_charge,
+				charged: PARTIAL_CHARGE,
+				expected_to_charge: user3_charge,
+			}
+			.into(),
+		);
+	})
+}
+
+#[test]
+fn send_charging_customers_batch_works1_for_day() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let dac_account = 123u128;
+		let user1 = 1u128;
+		let user2_debtor = 2u128;
+		let user3_debtor = 3u128;
+		let user4 = 4u128;
+		let cluster_id = ClusterId::from([12; 20]);
+		let era = 100;
+		let max_batch_index = 3;
+		let mut batch_index = 0;
+		let usage1 = CustomerUsage {
+			// should pass without debt
+			transferred_bytes: 23452345,
+			stored_bytes: 3345234523,
+			number_of_puts: 4456456345234523,
+			number_of_gets: 523423,
+		};
+		let usage2 = CustomerUsage {
+			// should fail as not enough balance
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let usage3 = CustomerUsage {
+			// should pass but with debt (partial charge)
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let usage4 = CustomerUsage {
+			// should pass without debt
+			transferred_bytes: 467457,
+			stored_bytes: 45674567456,
+			number_of_puts: 3456345,
+			number_of_gets: 242334563456423,
+		};
+		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
+		let payers2 = vec![(user1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
+
+		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
+		assert_ok!(DdcPayouts::begin_billing_report(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			start_era,
+			end_era,
+		));
+
+		assert_ok!(DdcPayouts::begin_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			max_batch_index,
+		));
+		assert_eq!(System::events().len(), 3);
+
+		// batch 1
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers1,
+		));
+
+		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
+		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor).unwrap();
+		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
+		let mut debt = expected_charge2 - USER2_BALANCE;
+		assert_eq!(user2_debt, debt);
+
+		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
+		charge2.storage = ratio * charge2.storage;
+		charge2.transfer = ratio * charge2.transfer;
+		charge2.gets = ratio * charge2.gets;
+		charge2.puts = ratio * charge2.puts;
+
+		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
+		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
+		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
+		assert_eq!(charge2.storage + charge4.storage, report.total_customer_charge.storage);
+		assert_eq!(charge2.transfer + charge4.transfer, report.total_customer_charge.transfer);
+
+		System::assert_has_event(
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				charged: USER2_BALANCE,
+				expected_to_charge: expected_charge2,
+			}
+			.into(),
+		);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				amount: debt,
+			}
+			.into(),
+		);
+		System::assert_last_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				customer_id: user4,
+				batch_index,
+				amount: usage4_charge,
+			}
+			.into(),
+		);
+
+		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+
+		// batch 2
+		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		batch_index += 1;
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers2,
+		));
+
+		System::assert_last_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user1,
+				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
+			}
+			.into(),
+		);
+
+		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge1 = calculate_charge_parts_for_day(cluster_id, usage1);
+		assert_eq!(
+			charge1.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			charge1.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			charge1.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			charge1.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
+
+		assert_eq!(report.state, State::ChargingCustomers);
+		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		assert_eq!(user1_debt, None);
+
+		let balance_before = Balances::free_balance(DdcPayouts::account_id());
+
+		// batch 3
+		batch_index += 1;
+		before_total_customer_charge = report.total_customer_charge.clone();
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers3,
+		));
+
+		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
+		let charge3 = calculate_charge_parts_for_day(cluster_id, usage3);
+		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
+		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		assert_eq!(
+			ratio * charge3.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			ratio * charge3.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			ratio * charge3.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			ratio * charge3.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
+
+		let balance = Balances::free_balance(DdcPayouts::account_id());
+		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
+
+		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
+		debt = user3_charge - PARTIAL_CHARGE;
+		assert_eq!(user3_debt, debt);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user3_debtor,
+				batch_index,
+				amount: user3_debt,
+			}
+			.into(),
+		);
+
+		System::assert_last_event(
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user3_debtor,
+				charged: PARTIAL_CHARGE,
+				expected_to_charge: user3_charge,
 			}
 			.into(),
 		);
@@ -527,12 +863,19 @@ fn send_charging_customers_batch_works2() {
 			number_of_gets: 1,
 		};
 		let payers5 = vec![(user5, usage5.clone())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
@@ -555,8 +898,8 @@ fn send_charging_customers_batch_works2() {
 			payers5,
 		));
 
-		let usage5_charge = calculate_charge(cluster_id, usage5.clone());
-		let charge5 = calculate_charge_parts(cluster_id, usage5);
+		let usage5_charge = calculate_charge_for_month(cluster_id, usage5.clone());
+		let charge5 = calculate_charge_parts_for_month(cluster_id, usage5);
 		let balance = Balances::free_balance(DdcPayouts::account_id());
 		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(balance, usage5_charge + balance_before);
@@ -590,6 +933,11 @@ fn end_charging_customers_fails_uninitialised() {
 		let max_batch_index = 2;
 		let batch_index = 1;
 		let payers = vec![(user1, CustomerUsage::default())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_noop!(
 			DdcPayouts::end_charging_customers(
@@ -616,6 +964,8 @@ fn end_charging_customers_fails_uninitialised() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		assert_noop!(
@@ -668,6 +1018,12 @@ fn end_charging_customers_works() {
 			number_of_gets: 523423,
 		};
 		let payers = vec![(user1, usage1.clone())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 
@@ -675,6 +1031,8 @@ fn end_charging_customers_works() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
@@ -693,7 +1051,7 @@ fn end_charging_customers_works() {
 		));
 
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let charge = calculate_charge(cluster_id, usage1);
+		let charge = calculate_charge_for_month(cluster_id, usage1);
 		System::assert_last_event(
 			Event::Charged { cluster_id, era, batch_index, customer_id: user1, amount: charge }
 				.into(),
@@ -802,6 +1160,12 @@ fn end_charging_customers_works_zero_fees() {
 			number_of_gets: 1,
 		};
 		let payers = vec![(user1, usage1.clone())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 
@@ -809,6 +1173,8 @@ fn end_charging_customers_works_zero_fees() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
@@ -827,7 +1193,7 @@ fn end_charging_customers_works_zero_fees() {
 		));
 
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let charge = calculate_charge(cluster_id, usage1);
+		let charge = calculate_charge_for_month(cluster_id, usage1);
 		System::assert_last_event(
 			Event::Charged { cluster_id, era, customer_id: user1, batch_index, amount: charge }
 				.into(),
@@ -907,6 +1273,12 @@ fn begin_rewarding_providers_fails_uninitialised() {
 		let batch_index = 1;
 		let payers = vec![(user1, CustomerUsage::default())];
 		let node_usage = NodeUsage::default();
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_noop!(
 			DdcPayouts::begin_rewarding_providers(
@@ -947,6 +1319,8 @@ fn begin_rewarding_providers_fails_uninitialised() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		assert_noop!(
@@ -1031,6 +1405,12 @@ fn begin_rewarding_providers_works() {
 		let batch_index = 0;
 		let total_node_usage = NodeUsage::default();
 		let payers = vec![(user1, CustomerUsage::default())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 
@@ -1038,6 +1418,8 @@ fn begin_rewarding_providers_works() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
@@ -1094,6 +1476,12 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		let payers1 = vec![(user1, CustomerUsage::default())];
 		let payers2 = vec![(user2, CustomerUsage::default())];
 		let payees = vec![(node1, NodeUsage::default())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_noop!(
 			DdcPayouts::send_rewarding_providers_batch(
@@ -1134,6 +1522,8 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		assert_noop!(
@@ -1287,6 +1677,12 @@ fn send_rewarding_providers_batch_works() {
 		let payers = vec![(user1, usage1)];
 		let payees1 = vec![(node1, node_usage1.clone()), (node2, node_usage2.clone())];
 		let payees2 = vec![(node3, node_usage3.clone())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 
@@ -1294,6 +1690,8 @@ fn send_rewarding_providers_batch_works() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
@@ -1478,6 +1876,12 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		let node_batch_size = 10;
 		let mut batch_user_index = 0;
 		let mut batch_node_index = 0;
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let usage1 = CustomerUsage {
 			transferred_bytes: 1024,
 			stored_bytes: 1024,
@@ -1553,7 +1957,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			user_usage.number_of_puts = ratio * user_usage.number_of_puts;
 			user_usage.number_of_gets = ratio * user_usage.number_of_gets;
 
-			let expected_charge = calculate_charge(cluster_id, user_usage.clone());
+			let expected_charge = calculate_charge_for_month(cluster_id, user_usage.clone());
 			Balances::transfer(
 				RuntimeOrigin::signed(bank),
 				user_id,
@@ -1577,6 +1981,8 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 		assert_ok!(DdcPayouts::begin_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -1595,7 +2001,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			));
 
 			for (customer_id, usage) in batch.iter() {
-				let charge = calculate_charge(cluster_id, usage.clone());
+				let charge = calculate_charge_for_month(cluster_id, usage.clone());
 
 				System::assert_has_event(
 					Event::Charged {
@@ -1720,6 +2126,12 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let num_nodes = 100;
 		let num_users = 5;
 		let dac_account = 123u128;
@@ -1818,7 +2230,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			user_usage.number_of_puts = ratio * user_usage.number_of_puts;
 			user_usage.number_of_gets = ratio * user_usage.number_of_gets;
 
-			let expected_charge = calculate_charge(cluster_id, user_usage.clone());
+			let expected_charge = calculate_charge_for_month(cluster_id, user_usage.clone());
 			Balances::transfer(
 				RuntimeOrigin::signed(bank),
 				user_id,
@@ -1842,6 +2254,8 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 		assert_ok!(DdcPayouts::begin_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -1860,7 +2274,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			));
 
 			for (customer_id, usage) in batch.iter() {
-				let charge = calculate_charge(cluster_id, usage.clone());
+				let charge = calculate_charge_for_month(cluster_id, usage.clone());
 
 				System::assert_has_event(
 					Event::Charged {
@@ -1985,6 +2399,12 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let num_nodes = 100;
 		let num_users = 5;
 		let dac_account = 123u128;
@@ -2083,7 +2503,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			user_usage.number_of_puts = ratio * user_usage.number_of_puts;
 			user_usage.number_of_gets = ratio * user_usage.number_of_gets;
 
-			let expected_charge = calculate_charge(cluster_id, user_usage.clone());
+			let expected_charge = calculate_charge_for_month(cluster_id, user_usage.clone());
 			Balances::transfer(
 				RuntimeOrigin::signed(bank),
 				user_id,
@@ -2107,6 +2527,8 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 		assert_ok!(DdcPayouts::begin_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -2125,7 +2547,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			));
 
 			for (customer_id, usage) in batch.iter() {
-				let charge = calculate_charge(cluster_id, usage.clone());
+				let charge = calculate_charge_for_month(cluster_id, usage.clone());
 
 				System::assert_has_event(
 					Event::Charged {
@@ -2257,6 +2679,12 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let mock_randomness = MockRandomness::default();
 		let min: u64 = 1024;
 		let max: u64 = 1024 * 1024;
@@ -2307,7 +2735,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 				number_of_gets: generate_random_u64(&mock_randomness, min, max),
 			};
 
-			let expected_charge = calculate_charge(cluster_id, user_usage.clone());
+			let expected_charge = calculate_charge_for_month(cluster_id, user_usage.clone());
 			Balances::transfer(
 				RuntimeOrigin::signed(bank),
 				user_id,
@@ -2331,6 +2759,8 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 		assert_ok!(DdcPayouts::begin_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -2349,7 +2779,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			));
 
 			for (customer_id, usage) in batch.iter() {
-				let charge = calculate_charge(cluster_id, usage.clone());
+				let charge = calculate_charge_for_month(cluster_id, usage.clone());
 
 				System::assert_has_event(
 					Event::Charged {
@@ -2485,6 +2915,12 @@ fn end_rewarding_providers_fails_uninitialised() {
 		let payers2 = vec![(user2, CustomerUsage::default())];
 		let payees = vec![(node1, NodeUsage::default())];
 		let total_node_usage = NodeUsage::default();
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_noop!(
 			DdcPayouts::end_rewarding_providers(
@@ -2515,6 +2951,8 @@ fn end_rewarding_providers_fails_uninitialised() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		assert_noop!(
@@ -2632,6 +3070,12 @@ fn end_rewarding_providers_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let dac_account = 2u128;
 		let user1 = 1u128;
 		let node1 = 33u128;
@@ -2663,6 +3107,8 @@ fn end_rewarding_providers_works() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
@@ -2721,6 +3167,12 @@ fn end_rewarding_providers_works() {
 #[test]
 fn end_billing_report_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let root_account = 1u128;
 		let dac_account = 2u128;
 		let user1 = 3u128;
@@ -2756,6 +3208,8 @@ fn end_billing_report_fails_uninitialised() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		assert_noop!(
@@ -2858,6 +3312,12 @@ fn end_billing_report_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let dac_account = 2u128;
 		let user1 = 3u128;
 		let node1 = 33u128;
@@ -2875,6 +3335,8 @@ fn end_billing_report_works() {
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
 			era,
+			start_era,
+			end_era,
 		));
 
 		let report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
