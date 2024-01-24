@@ -5,8 +5,9 @@ use super::*;
 
 mod origins;
 pub use origins::{
-	pallet_custom_origins, ClusterGovActivator, ClusterGovEditor, GeneralAdmin,
-	ReferendumCanceller, ReferendumKiller, Spender, StakingAdmin, Treasurer, WhitelistedCaller,
+	pallet_custom_origins, AuctionAdmin, ClusterGovCreator, ClusterGovEditor, FellowshipAdmin,
+	GeneralAdmin, ReferendumCanceller, ReferendumKiller, Spender, StakingAdmin, Treasurer,
+	WhitelistedCaller,
 };
 mod tracks;
 pub use tracks::TracksInfo;

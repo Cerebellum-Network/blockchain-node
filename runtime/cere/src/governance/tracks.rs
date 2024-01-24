@@ -59,7 +59,7 @@ const APP_WHITELISTED_CALLER: Curve =
 const SUP_WHITELISTED_CALLER: Curve =
 	Curve::make_reciprocal(1, 28, percent(20), percent(5), percent(50));
 
-const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13] = [
+const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15] = [
 	(
 		0,
 		pallet_referenda::TrackInfo {
@@ -242,6 +242,34 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13
 			min_support: SUP_BIG_SPENDER,
 		},
 	),
+	(
+		100,
+		pallet_referenda::TrackInfo {
+			name: "cluster_activator",
+			max_deciding: 50,
+			decision_deposit: 400 * DOLLARS,
+			prepare_period: 4 * HOURS,
+			decision_period: 28 * DAYS,
+			confirm_period: 48 * HOURS,
+			min_enactment_period: 24 * HOURS,
+			min_approval: APP_BIG_SPENDER,
+			min_support: SUP_BIG_SPENDER,
+		},
+	),
+	(
+		101,
+		pallet_referenda::TrackInfo {
+			name: "cluster_admin",
+			max_deciding: 50,
+			decision_deposit: 400 * DOLLARS,
+			prepare_period: 4 * HOURS,
+			decision_period: 28 * DAYS,
+			confirm_period: 48 * HOURS,
+			min_enactment_period: 24 * HOURS,
+			min_approval: APP_BIG_SPENDER,
+			min_support: SUP_BIG_SPENDER,
+		},
+	),
 ];
 
 pub struct TracksInfo;
@@ -275,7 +303,7 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 				origins::Origin::MediumSpender => Ok(33),
 				origins::Origin::BigSpender => Ok(34),
 				// DDC admins
-				origins::Origin::ClusterGovActivator => Ok(100),
+				origins::Origin::ClusterGovCreator => Ok(100),
 				origins::Origin::ClusterGovEditor => Ok(101),
 			}
 		} else {
