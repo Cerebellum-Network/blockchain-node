@@ -118,7 +118,10 @@ use sp_runtime::generic::Era;
 
 // Governance configurations.
 pub mod governance;
-use governance::{pallet_custom_origins, GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender};
+use governance::{
+	pallet_custom_origins, ClusterGovActivator, ClusterGovEditor, GeneralAdmin, StakingAdmin,
+	Treasurer, TreasurySpender,
+};
 
 /// Generated voter bag information.
 mod voter_bags;
@@ -1216,13 +1219,14 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type PalletId = ClustersGovPalletId;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
-	type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
-	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, Self>;
-	// type ClusterProposal = RuntimeCall;
+	// type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
+	type ClusterGovActivatorOrigin = DdcOriginAsNative<ClusterGovActivatorOrigin, Self>;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
 	type ClusterMaxProposals = ClusterMaxProposals;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterActivatorOrigin = ClusterGovActivator;
+	type ClusterEditorOrigin = ClusterGovEditor;
 }
 
 pub struct ClustersGovWrapper;
@@ -1318,6 +1322,9 @@ impl TracksInfo for DdcTracksInfo {
 				pallet_ddc_origins::Origin::SmallSpender => Ok(32),
 				pallet_ddc_origins::Origin::MediumSpender => Ok(33),
 				pallet_ddc_origins::Origin::BigSpender => Ok(34),
+				// DDC admins
+				pallet_custom_origins::Origin::ClusterGovActivator => Ok(100),
+				pallet_custom_origins::Origin::ClusterGovEditor => Ok(101),
 			}
 		} else {
 			Err(())

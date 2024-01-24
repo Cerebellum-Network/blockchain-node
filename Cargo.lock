@@ -5239,6 +5239,7 @@ dependencies = [
  "pallet-balances",
  "pallet-ddc-origins",
  "pallet-randomness-collective-flip",
+ "pallet-referenda",
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
