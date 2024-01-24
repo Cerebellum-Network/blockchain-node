@@ -476,6 +476,14 @@ pub mod pallet {
 				storage_unbonding_delay: cluster_gov_params.storage_unbonding_delay,
 			})
 		}
+
+		fn get_manager_account_id(
+			cluster_id: &ClusterId,
+		) -> Result<T::AccountId, ClusterVisitorError> {
+			let cluster = Clusters::<T>::try_get(cluster_id)
+				.map_err(|_| ClusterVisitorError::ClusterDoesNotExist)?;
+			Ok(cluster.manager_id)
+		}
 	}
 
 	impl<T: Config> ClusterManager<T> for Pallet<T> {

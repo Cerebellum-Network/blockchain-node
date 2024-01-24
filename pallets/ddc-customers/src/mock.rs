@@ -176,6 +176,12 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 				.unwrap_or_default(),
 		})
 	}
+
+	fn get_manager_account_id(
+		_cluster_id: &ClusterId,
+	) -> Result<T::AccountId, ClusterVisitorError> {
+		Err(ClusterVisitorError::ClusterDoesNotExist)
+	}
 }
 
 pub struct TestClusterManager;
