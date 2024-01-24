@@ -45,10 +45,10 @@ pub mod pallet_custom_origins {
 		BigSpender,
 		/// Origin able to dispatch a whitelisted call.
 		WhitelistedCaller,
-		/// Origin for creating new clusters.
-		ClusterGovActivator,
+		/// Origin for activating new clusters.
+		ClusterActivator,
 		/// Origin for updating cluster economics.
-		ClusterGovEditor,
+		ClusterAdmin,
 	}
 
 	macro_rules! decl_unit_ensures {

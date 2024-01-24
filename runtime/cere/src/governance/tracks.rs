@@ -279,7 +279,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 17
 	(
 		100,
 		pallet_referenda::TrackInfo {
-			name: "cluster_gov_creator",
+			name: "cluster_activator",
 			max_deciding: 50,
 			decision_deposit: 400 * DOLLARS,
 			prepare_period: 4 * HOURS,
@@ -293,7 +293,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 17
 	(
 		101,
 		pallet_referenda::TrackInfo {
-			name: "cluster_gov_editor",
+			name: "cluster_admin",
 			max_deciding: 50,
 			decision_deposit: 400 * DOLLARS,
 			prepare_period: 4 * HOURS,
@@ -339,8 +339,8 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 				origins::Origin::MediumSpender => Ok(33),
 				origins::Origin::BigSpender => Ok(34),
 				// DDC admins
-				origins::Origin::ClusterGovActivator => Ok(100),
-				origins::Origin::ClusterGovEditor => Ok(101),
+				origins::Origin::ClusterActivator => Ok(100),
+				origins::Origin::ClusterAdmin => Ok(101),
 			}
 		} else {
 			Err(())
