@@ -46,8 +46,8 @@ pub mod pallet_custom_origins {
 		BigSpender,
 		/// Origin able to dispatch a whitelisted call.
 		WhitelistedCaller,
-		/// Origin for creating new clusters.
-		ClusterGovCreator,
+		/// Origin for activating new clusters.
+		ClusterGovActivator,
 		/// Origin for updating cluster economics.
 		ClusterGovEditor,
 	}
@@ -92,6 +92,8 @@ pub mod pallet_custom_origins {
 		ReferendumCanceller,
 		ReferendumKiller,
 		WhitelistedCaller,
+		ClusterGovActivator,
+		ClusterGovEditor,
 	);
 
 	macro_rules! decl_ensure {

@@ -29,7 +29,8 @@ use frame_support::{
 	},
 	pallet_prelude::*,
 	traits::{
-		Currency, EnsureOriginWithArg, LockableCurrency, OriginTrait, UnfilteredDispatchable,
+		schedule::DispatchTime, Bounded, Currency, EnsureOriginWithArg, LockableCurrency,
+		OriginTrait, StorePreimage, UnfilteredDispatchable,
 	},
 };
 use frame_system::pallet_prelude::*;
@@ -43,10 +44,6 @@ pub type ProposalIndex = u32;
 pub type MemberCount = u32;
 
 use crate::weights::WeightInfo;
-
-/// The balance type of this pallet.
-pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 /// Info for keeping track of a motion being voted on.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -70,44 +67,44 @@ pub mod pallet {
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	#[pallet::without_storage_info]
-	pub struct Pallet<T>(_);
+	pub struct Pallet<T, I = ()>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config<I: 'static = ()>: frame_system::Config + pallet_referenda::Config<I> {
 		type PalletId: Get<PalletId>;
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self, I>>
+			+ IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 		type WeightInfo: WeightInfo;
-		// todo: move to pallet_referenda
-		type SubmitOrigin: EnsureOriginWithArg<
-			Self::RuntimeOrigin,
-			PalletsOriginOf<Self>,
-			Success = Self::AccountId,
-		>;
 
 		type ClusterProposalCall: Parameter
-			+ From<Call<Self>>
-			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>;
+			+ From<Call<Self, I>>
+			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+			+ IsType<<Self as pallet_referenda::Config<I>>::RuntimeCall>;
+
 		type ClusterVisitor: ClusterVisitor<Self>;
-		type ClusterGovCreatorOrigin: GetDdcOrigin<Self>;
+		type ClusterGovActivatorOrigin: GetDdcOrigin<Self>;
 		type ClusterProposalDuration: Get<Self::BlockNumber>;
 		type ClusterMaxProposals: Get<ProposalIndex>;
+		type ClusterActivatorOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+		type ClusterEditorOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 	}
 
 	#[pallet::storage]
 	#[pallet::getter(fn proposal_of)]
-	pub type ClusterProposal<T: Config> =
+	pub type ClusterProposal<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Identity, ClusterId, T::ClusterProposalCall, OptionQuery>;
 
-	/// Votes on a given proposal, if it is ongoing.
+	/// Votes on a given cluster proposal, if it is ongoing.
 	#[pallet::storage]
 	#[pallet::getter(fn voting)]
-	pub type ClusterProposalVoting<T: Config> =
+	pub type ClusterProposalVoting<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Identity, ClusterId, Votes<T::AccountId, T::BlockNumber>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	pub enum Event<T: Config> {
+	pub enum Event<T: Config<I>, I: 'static = ()> {
 		GenericEvent,
 		/// A motion (given hash) has been proposed (by given account) with a threshold (given
 		/// `MemberCount`).
@@ -147,7 +144,7 @@ pub mod pallet {
 	}
 
 	#[pallet::error]
-	pub enum Error<T> {
+	pub enum Error<T, I = ()> {
 		GenericError,
 		/// Account is not a member
 		NotMember,
@@ -164,114 +161,88 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		#[pallet::call_index(0)]
-		#[pallet::weight(10_000)]
-		pub fn submit_public(
-			origin: OriginFor<T>,
-			proposal_origin: Box<PalletsOriginOf<T>>,
-		) -> DispatchResult {
-			let _caller_id = T::SubmitOrigin::ensure_origin(origin, &proposal_origin)?;
-			Self::deposit_event(Event::<T>::GenericEvent);
-			Ok(())
-		}
-
-		#[pallet::call_index(1)]
-		#[pallet::weight(10_000)]
-		pub fn submit_via_internal(
-			origin: OriginFor<T>,
-			proposal_origin: Box<PalletsOriginOf<T>>,
-		) -> DispatchResult {
-			let _caller_id = ensure_signed(origin)?;
-			let call = Call::<T>::submit_public { proposal_origin };
-			call.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into())
-				.map(|_| ())
-				.map_err(|e| e.error)?;
-
-			Ok(())
-		}
-
-		#[pallet::call_index(2)]
-		#[pallet::weight(10_000)]
-		pub fn submit_internal(origin: OriginFor<T>) -> DispatchResult {
-			let _caller_id = ensure_signed(origin)?;
-
-			// let origin: T::RuntimeOrigin = frame_system::RawOrigin::Signed(_caller_id).into();
-			// let pallets_origin: <T::RuntimeOrigin as
-			// frame_support::traits::OriginTrait>::PalletsOrigin = origin.caller().clone();
-			// let call = Call::<T>::submit_public { proposal_origin: Box::new(pallets_origin) };
-			// call.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).
-			// into()) 	.map(|_| ())
-			// 	.map_err(|e| e.error)?;
-
-			let origin2 = T::ClusterGovCreatorOrigin::get();
-			let pallets_origin2: <T::RuntimeOrigin as
-			frame_support::traits::OriginTrait>::PalletsOrigin = origin2.caller().clone();
-			let call2 = Call::<T>::submit_public { proposal_origin: Box::new(pallets_origin2) };
-			call2
-				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into())
-				// .dispatch_bypass_filter(
-				// 	frame_system::RawOrigin::Signed(Self::sub_account_id(5u32)).into(),
-				// )
-				.map(|_| ())
-				.map_err(|e| e.error)?;
-
-			Ok(())
-		}
-
-		#[pallet::call_index(3)]
 		#[pallet::weight(10_000)]
 		pub fn propose_activate_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			_cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			// _cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let cluster_manager_id = T::ClusterVisitor::get_manager_account_id(&cluster_id)
-				.map_err(|_| Error::<T>::NoCluster)?;
+				.map_err(|_| Error::<T, I>::NoCluster)?;
 
-			ensure!(cluster_manager_id == caller_id, Error::<T>::NotClusterManager);
+			ensure!(cluster_manager_id == caller_id, Error::<T, I>::NotClusterManager);
 
+			// todo: calculate the threshold based on number of validated nodes
 			let threshold = 64u32;
 			let votes = {
 				let end =
 					frame_system::Pallet::<T>::block_number() + T::ClusterProposalDuration::get();
 				Votes { threshold, ayes: vec![], nays: vec![], end }
 			};
+			let proposal: <T as Config<I>>::ClusterProposalCall =
+				T::ClusterProposalCall::from(Call::<T, I>::activate_cluster { cluster_id });
 
-			let creator_origin = T::ClusterGovCreatorOrigin::get();
-			let pallets_origin: <T::RuntimeOrigin as OriginTrait>::PalletsOrigin =
-				creator_origin.caller().clone();
-			let call = T::ClusterProposalCall::from(Call::<T>::submit_public {
-				proposal_origin: Box::new(pallets_origin),
-			});
-
-			<ClusterProposal<T>>::insert(cluster_id, call);
-			<ClusterProposalVoting<T>>::insert(cluster_id, votes);
+			<ClusterProposal<T, I>>::insert(cluster_id, proposal);
+			<ClusterProposalVoting<T, I>>::insert(cluster_id, votes);
 			Self::deposit_event(Event::Proposed { account: caller_id, cluster_id, threshold });
 
 			Ok(())
 		}
 
-		#[pallet::call_index(4)]
+		#[pallet::call_index(1)]
 		#[pallet::weight(10_000)]
 		pub fn execute_proposal(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let _caller_id = ensure_signed(origin)?;
 
-			let call = <ClusterProposal<T>>::try_get(cluster_id)
-				.map_err(|_| Error::<T>::ProposalMissing)?;
+			// todo: check the local consensus on proposal
+			Self::propose_public(cluster_id)?;
 
-			call.dispatch(frame_system::RawOrigin::Signed(Self::account_id()).into())
-				.map(|_| ())
-				.map_err(|e| e.error)?;
+			Ok(())
+		}
+
+		#[pallet::call_index(2)]
+		#[pallet::weight(10_000)]
+		pub fn activate_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
+			T::ClusterActivatorOrigin::ensure_origin(origin)?;
+
+			// todo: activate cluster and update its economic
+			Self::propose_public(cluster_id)?;
 
 			Ok(())
 		}
 	}
 
-	impl<T: Config> Pallet<T> {
+	impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		pub fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
+		}
+
+		pub fn propose_public(cluster_id: ClusterId) -> DispatchResult {
+			let cluster_proposal = <ClusterProposal<T, I>>::try_get(cluster_id)
+				.map_err(|_| Error::<T, I>::ProposalMissing)?;
+
+			let call: <T as pallet_referenda::Config<I>>::RuntimeCall = cluster_proposal.into();
+			let bounded_call =
+				T::Preimages::bound(call).map_err(|_| Error::<T, I>::ProposalMissing)?;
+
+			let creator_origin = T::ClusterGovActivatorOrigin::get();
+			let pallets_origin: <T::RuntimeOrigin as OriginTrait>::PalletsOrigin =
+				creator_origin.caller().clone();
+			let referenda_call = pallet_referenda::Call::<T, I>::submit {
+				proposal_origin: Box::new(pallets_origin),
+				proposal: bounded_call,
+				enactment_moment: DispatchTime::After(T::BlockNumber::from(1u32)),
+			};
+
+			referenda_call
+				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into())
+				.map(|_| ())
+				.map_err(|e| e.error)?;
+
+			Ok(())
 		}
 	}
 }

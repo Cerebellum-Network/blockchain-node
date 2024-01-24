@@ -107,8 +107,8 @@ use sp_runtime::generic::Era;
 // Governance configurations.
 pub mod governance;
 use governance::{
-	pallet_custom_origins, AuctionAdmin, FellowshipAdmin, GeneralAdmin, LeaseAdmin, StakingAdmin,
-	Treasurer, TreasurySpender,
+	pallet_custom_origins, AuctionAdmin, ClusterGovActivator, ClusterGovEditor, FellowshipAdmin,
+	GeneralAdmin, LeaseAdmin, StakingAdmin, Treasurer, TreasurySpender,
 };
 
 /// Generated voter bag information.
@@ -1226,7 +1226,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 
 parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
-	pub ClusterGovCreatorOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterGovCreator.into();
+	pub ClusterGovActivatorOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterGovActivator.into();
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
 	pub const ClusterMaxProposals: u32 = 1;
 }
@@ -1236,13 +1236,14 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type PalletId = ClustersGovPalletId;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
-	type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
-	type ClusterGovCreatorOrigin = DdcOriginAsNative<ClusterGovCreatorOrigin, Self>;
-	// type ClusterProposal = RuntimeCall;
+	// type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
+	type ClusterGovActivatorOrigin = DdcOriginAsNative<ClusterGovActivatorOrigin, Self>;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
 	type ClusterMaxProposals = ClusterMaxProposals;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterActivatorOrigin = ClusterGovActivator;
+	type ClusterEditorOrigin = ClusterGovEditor;
 }
 
 pub struct ClustersGovWrapper;
@@ -1340,7 +1341,7 @@ impl TracksInfo for DdcTracksInfo {
 				pallet_custom_origins::Origin::MediumSpender => Ok(33),
 				pallet_custom_origins::Origin::BigSpender => Ok(34),
 				// DDC admins
-				pallet_custom_origins::Origin::ClusterGovCreator => Ok(100),
+				pallet_custom_origins::Origin::ClusterGovActivator => Ok(100),
 				pallet_custom_origins::Origin::ClusterGovEditor => Ok(101),
 			}
 		} else {

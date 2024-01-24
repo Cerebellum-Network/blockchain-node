@@ -5064,6 +5064,7 @@ dependencies = [
  "hex-literal",
  "pallet-balances",
  "pallet-randomness-collective-flip",
+ "pallet-referenda",
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",

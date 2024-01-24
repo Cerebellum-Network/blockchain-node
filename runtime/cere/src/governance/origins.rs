@@ -46,7 +46,7 @@ pub mod pallet_custom_origins {
 		/// Origin able to dispatch a whitelisted call.
 		WhitelistedCaller,
 		/// Origin for creating new clusters.
-		ClusterGovCreator,
+		ClusterGovActivator,
 		/// Origin for updating cluster economics.
 		ClusterGovEditor,
 	}
