@@ -5,7 +5,7 @@ use super::*;
 
 mod origins;
 pub use origins::{
-	pallet_custom_origins, AuctionAdmin, ClusterGovActivator, ClusterGovEditor, FellowshipAdmin,
+	pallet_custom_origins, AuctionAdmin, ClusterActivator, ClusterAdmin, FellowshipAdmin,
 	GeneralAdmin, LeaseAdmin, ReferendumCanceller, ReferendumKiller, Spender, StakingAdmin,
 	Treasurer, WhitelistedCaller,
 };
@@ -30,7 +30,8 @@ impl pallet_conviction_voting::Config for Runtime {
 
 parameter_types! {
 	pub const AlarmInterval: BlockNumber = 1;
-	pub const SubmissionDeposit: Balance = 1 * DOLLARS;
+	// pub const SubmissionDeposit: Balance = 1 * DOLLARS;
+	pub const SubmissionDeposit: Balance = 0 * DOLLARS;
 	pub const UndecidingTimeout: BlockNumber = 14 * DAYS;
 }
 

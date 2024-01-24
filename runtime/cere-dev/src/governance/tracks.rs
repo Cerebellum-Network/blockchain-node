@@ -49,6 +49,13 @@ const APP_WHITELISTED_CALLER: Curve =
 const SUP_WHITELISTED_CALLER: Curve =
 	Curve::make_reciprocal(1, 28, percent(20), percent(5), percent(50));
 
+const APP_CLUSTER_ACTIVATOR: Curve = Curve::make_linear(10, 28, percent(0), percent(10));
+const SUP_CLUSTER_ACTIVATOR: Curve =
+	Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
+
+const APP_CLUSTER_ADMIN: Curve = Curve::make_linear(10, 28, percent(50), percent(100));
+const SUP_CLUSTER_ADMIN: Curve = Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(50));
+
 const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 17] = [
 	(
 		0,
@@ -263,29 +270,29 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 17
 	(
 		100,
 		pallet_referenda::TrackInfo {
-			name: "cluster_gov_creator",
+			name: "cluster_activator",
 			max_deciding: 50,
-			decision_deposit: 400 * DOLLARS,
-			prepare_period: 4 * HOURS,
-			decision_period: 28 * DAYS,
-			confirm_period: 48 * HOURS,
-			min_enactment_period: 24 * HOURS,
-			min_approval: APP_BIG_SPENDER,
-			min_support: SUP_BIG_SPENDER,
+			decision_deposit: 0 * DOLLARS,
+			prepare_period: 0 * HOURS,
+			decision_period: 2 * MINUTES,
+			confirm_period: 1 * MINUTES,
+			min_enactment_period: 0 * HOURS,
+			min_approval: APP_CLUSTER_ACTIVATOR,
+			min_support: SUP_CLUSTER_ACTIVATOR,
 		},
 	),
 	(
 		101,
 		pallet_referenda::TrackInfo {
-			name: "cluster_gov_editor",
+			name: "cluster_admin",
 			max_deciding: 50,
-			decision_deposit: 400 * DOLLARS,
-			prepare_period: 4 * HOURS,
-			decision_period: 28 * DAYS,
-			confirm_period: 48 * HOURS,
-			min_enactment_period: 24 * HOURS,
-			min_approval: APP_BIG_SPENDER,
-			min_support: SUP_BIG_SPENDER,
+			decision_deposit: 0 * DOLLARS,
+			prepare_period: 0 * HOURS,
+			decision_period: 2 * MINUTES,
+			confirm_period: 1 * MINUTES,
+			min_enactment_period: 0 * HOURS,
+			min_approval: APP_CLUSTER_ADMIN,
+			min_support: SUP_CLUSTER_ADMIN,
 		},
 	),
 ];
@@ -323,8 +330,8 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 				origins::Origin::MediumSpender => Ok(33),
 				origins::Origin::BigSpender => Ok(34),
 				// DDC admins
-				origins::Origin::ClusterGovActivator => Ok(100),
-				origins::Origin::ClusterGovEditor => Ok(101),
+				origins::Origin::ClusterActivator => Ok(100),
+				origins::Origin::ClusterAdmin => Ok(101),
 			}
 		} else {
 			Err(())

@@ -84,11 +84,11 @@ pub mod pallet {
 			+ IsType<<Self as pallet_referenda::Config<I>>::RuntimeCall>;
 
 		type ClusterVisitor: ClusterVisitor<Self>;
-		type ClusterGovActivatorOrigin: GetDdcOrigin<Self>;
+		type ClusterGovOrigin: GetDdcOrigin<Self>;
 		type ClusterProposalDuration: Get<Self::BlockNumber>;
 		type ClusterMaxProposals: Get<ProposalIndex>;
 		type ClusterActivatorOrigin: EnsureOrigin<Self::RuntimeOrigin>;
-		type ClusterEditorOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+		type ClusterAdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 	}
 
 	#[pallet::storage]
@@ -105,7 +105,6 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config<I>, I: 'static = ()> {
-		GenericEvent,
 		/// A motion (given hash) has been proposed (by given account) with a threshold (given
 		/// `MemberCount`).
 		Proposed {
@@ -141,11 +140,13 @@ pub mod pallet {
 			yes: MemberCount,
 			no: MemberCount,
 		},
+		ClusterActivated {
+			cluster_id: ClusterId,
+		},
 	}
 
 	#[pallet::error]
 	pub enum Error<T, I = ()> {
-		GenericError,
 		/// Account is not a member
 		NotMember,
 		/// Account is not a cluster manager
@@ -209,7 +210,7 @@ pub mod pallet {
 			T::ClusterActivatorOrigin::ensure_origin(origin)?;
 
 			// todo: activate cluster and update its economic
-			Self::propose_public(cluster_id)?;
+			Self::deposit_event(Event::ClusterActivated { cluster_id });
 
 			Ok(())
 		}
@@ -221,16 +222,16 @@ pub mod pallet {
 		}
 
 		pub fn propose_public(cluster_id: ClusterId) -> DispatchResult {
-			let cluster_proposal = <ClusterProposal<T, I>>::try_get(cluster_id)
+			let proposal = <ClusterProposal<T, I>>::try_get(cluster_id)
 				.map_err(|_| Error::<T, I>::ProposalMissing)?;
 
-			let call: <T as pallet_referenda::Config<I>>::RuntimeCall = cluster_proposal.into();
+			let call: <T as pallet_referenda::Config<I>>::RuntimeCall = proposal.into();
 			let bounded_call =
 				T::Preimages::bound(call).map_err(|_| Error::<T, I>::ProposalMissing)?;
 
-			let creator_origin = T::ClusterGovActivatorOrigin::get();
+			let cluster_gov_origin = T::ClusterGovOrigin::get();
 			let pallets_origin: <T::RuntimeOrigin as OriginTrait>::PalletsOrigin =
-				creator_origin.caller().clone();
+				cluster_gov_origin.caller().clone();
 			let referenda_call = pallet_referenda::Call::<T, I>::submit {
 				proposal_origin: Box::new(pallets_origin),
 				proposal: bounded_call,
