@@ -1790,7 +1790,7 @@ fn send_rewarding_providers_batch_works() {
 				rewarded: balance_node1,
 				expected_to_reward: balance_node1,
 			}
-				.into(),
+			.into(),
 		);
 
 		let ratio2_transfer = Perquintill::from_rational(
@@ -1828,7 +1828,7 @@ fn send_rewarding_providers_batch_works() {
 				rewarded: balance_node2,
 				expected_to_reward: balance_node2,
 			}
-				.into(),
+			.into(),
 		);
 
 		// batch 2
@@ -1875,7 +1875,7 @@ fn send_rewarding_providers_batch_works() {
 				rewarded: balance_node3,
 				expected_to_reward: balance_node3,
 			}
-				.into(),
+			.into(),
 		);
 
 		assert_eq!(
