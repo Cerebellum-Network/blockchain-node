@@ -1,7 +1,7 @@
 //! DdcStaking pallet benchmarking.
 #![cfg(feature = "runtime-benchmarks")]
 
-use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams, ClusterStatus};
+use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams};
 use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_support::traits::Currency;
 use sp_runtime::Perquintill;
@@ -40,7 +40,6 @@ benchmarks! {
 			user.clone(),
 			ClusterParams { node_provider_auth_contract: Some(user.clone()) },
 			cluster_gov_params,
-			ClusterStatus::Inactive
 		);
 
 		let bucket_params = BucketParams {

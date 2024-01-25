@@ -1,7 +1,7 @@
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
-	ClusterPricingParams, ClusterStatus, NodePubKey, NodeType,
+	ClusterPricingParams, NodePubKey, NodeType,
 };
 use frame_support::dispatch::DispatchResult;
 use frame_system::Config;
@@ -48,7 +48,6 @@ pub trait ClusterCreator<T: Config, Balance> {
 		cluster_reserve_id: T::AccountId,
 		cluster_params: ClusterParams<T::AccountId>,
 		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
-		cluster_status: ClusterStatus,
 	) -> DispatchResult;
 }
 

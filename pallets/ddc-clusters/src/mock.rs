@@ -268,7 +268,6 @@ impl ExtBuilder {
 			AccountId::from([0; 32]),
 			AccountId::from([0; 32]),
 			ClusterParams { node_provider_auth_contract: Some(AccountId::from([0; 32])) },
-			ClusterStatus::Inactive,
 		) {
 			let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
 				clusters: vec![cluster],
