@@ -3,13 +3,13 @@
 #![allow(dead_code)]
 
 use ddc_primitives::{
+	traits::{
+		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+		customer::{CustomerCharger, CustomerDepositor},
+		pallet::PalletVisitor,
+	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
 	NodeType, DOLLARS,
-};
-use ddc_traits::{
-	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
-	customer::{CustomerCharger, CustomerDepositor},
-	pallet::PalletVisitor,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{

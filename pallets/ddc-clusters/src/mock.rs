@@ -2,8 +2,10 @@
 
 #![allow(dead_code)]
 
-use ddc_primitives::{ClusterId, NodePubKey};
-use ddc_traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError};
+use ddc_primitives::{
+	traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError},
+	ClusterId, NodePubKey,
+};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstBool, ConstU32, ConstU64, Everything, Nothing},

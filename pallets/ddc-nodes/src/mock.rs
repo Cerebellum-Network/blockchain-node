@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use ddc_traits::staking::{StakingVisitor, StakingVisitorError};
+use ddc_primitives::traits::staking::{StakingVisitor, StakingVisitorError};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},

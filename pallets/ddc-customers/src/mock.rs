@@ -1,11 +1,11 @@
 //! Test utilities
 
 use ddc_primitives::{
+	traits::cluster::{
+		ClusterCreator, ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError,
+	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,
-};
-use ddc_traits::cluster::{
-	ClusterCreator, ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError,
 };
 use frame_support::{
 	construct_runtime, parameter_types,

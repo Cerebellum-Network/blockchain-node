@@ -1,10 +1,10 @@
 //! Tests for the module.
 
 use ddc_primitives::{
-	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterParams, ClusterPricingParams,
-	NodeParams, NodePubKey, StorageNodeMode, StorageNodeParams,
+	traits::cluster::ClusterManager, ClusterBondingParams, ClusterFeesParams, ClusterId,
+	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodeMode,
+	StorageNodeParams,
 };
-use ddc_traits::cluster::ClusterManager;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
 use frame_system::Config;
 use hex_literal::hex;
