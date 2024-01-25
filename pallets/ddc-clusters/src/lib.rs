@@ -316,10 +316,9 @@ pub mod pallet {
 			cluster_params: ClusterParams<T::AccountId>,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
-			let cluster =
-				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params)
-					.map_err(Into::<Error<T>>::into)?;
 			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
+			let cluster =
+				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params);
 
 			Clusters::<T>::insert(cluster_id, cluster);
 			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
