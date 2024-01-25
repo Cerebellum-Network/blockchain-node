@@ -1,5 +1,8 @@
-use frame_support::{parameter_types, traits::EitherOf};
-use frame_system::EnsureRootWithSuccess;
+use frame_support::{
+	parameter_types,
+	traits::{AsEnsureOriginWithArg, EitherOf},
+};
+use frame_system::{EnsureRootWithSuccess, EnsureSigned};
 
 use super::*;
 
@@ -55,7 +58,7 @@ impl pallet_referenda::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Scheduler = Scheduler;
 	type Currency = Balances;
-	type SubmitOrigin = frame_system::EnsureSigned<AccountId>;
+	type SubmitOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type CancelOrigin = EitherOf<EnsureRoot<AccountId>, ReferendumCanceller>;
 	type KillOrigin = EitherOf<EnsureRoot<AccountId>, ReferendumKiller>;
 	type Slash = Treasury;

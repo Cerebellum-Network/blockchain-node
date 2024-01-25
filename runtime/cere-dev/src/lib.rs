@@ -119,9 +119,15 @@ use sp_runtime::generic::Era;
 // Governance configurations.
 pub mod governance;
 use governance::{
+<<<<<<< HEAD
 	pallet_custom_origins, AuctionAdmin, ClusterActivator, ClusterAdmin, ClusterGovActivator,
 	ClusterGovEditor, FellowshipAdmin, GeneralAdmin, GeneralAdmin, LeaseAdmin, StakingAdmin,
 	StakingAdmin, Treasurer, Treasurer, TreasurySpender, TreasurySpender,
+=======
+	pallet_custom_origins, AuctionAdmin, ClusterActivator, ClusterAdmin, FellowshipAdmin,
+	GeneralAdmin, LeaseAdmin, StakingAdmin, TracksInfo, Treasurer, TreasurySpender,
+	CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ADMIN_TRACK_ID,
+>>>>>>> 3104a78d (feat: cluster governance is integrated with opengov)
 };
 
 /// Generated voter bag information.
@@ -1221,7 +1227,6 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type PalletId = ClustersGovPalletId;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
-	// type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
 	type ClusterGovOrigin = DdcOriginAsNative<ClusterActivatorOrigin, Self>;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
@@ -1259,27 +1264,31 @@ where
 		o: T::RuntimeOrigin,
 		proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<Self::Success, T::RuntimeOrigin> {
-		let who = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
+		let origin = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
 
-		let track_id = match DdcTracksInfo::track_for(proposal_origin) {
-			Ok(track_id) => track_id,
-			Err(_) => return Err(o),
-		};
+		let track_id =
+			match <TracksInfo as pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
+				proposal_origin,
+			) {
+				Ok(track_id) => track_id,
+				Err(_) => return Err(o),
+			};
 
-		if track_id == 10 {
-			let clusters_gov_id = <ClustersGovWrapper as PalletVisitor<T>>::get_account_id();
-			if who == clusters_gov_id {
-				Ok(who)
+		if track_id == CLUSTER_ACTIVATOR_TRACK_ID || track_id == CLUSTER_ADMIN_TRACK_ID {
+			let clusters_governance = <ClustersGovWrapper as PalletVisitor<T>>::get_account_id();
+			if origin == clusters_governance {
+				Ok(origin)
 			} else {
 				Err(o)
 			}
 		} else {
-			Ok(who)
+			Ok(origin)
 		}
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin(proposal_origin: &PalletsOriginOf<T>) -> Result<T::RuntimeOrigin, ()> {
+<<<<<<< HEAD
 		let who = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
 		Ok(frame_system::RawOrigin::Signed(who).into())
 	}
@@ -1330,6 +1339,10 @@ impl TracksInfo for DdcTracksInfo {
 		} else {
 			Err(())
 		}
+=======
+		let origin = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
+		Ok(frame_system::RawOrigin::Signed(origin).into())
+>>>>>>> 3104a78d (feat: cluster governance is integrated with opengov)
 	}
 }
 

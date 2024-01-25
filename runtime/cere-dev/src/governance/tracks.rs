@@ -263,6 +263,9 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 	),
 ];
 
+pub const CLUSTER_ACTIVATOR_TRACK_ID: u16 = 100;
+pub const CLUSTER_ADMIN_TRACK_ID: u16 = 101;
+
 pub struct TracksInfo;
 impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	type Id = u16;

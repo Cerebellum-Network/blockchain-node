@@ -10,7 +10,7 @@ pub use origins::{
 	WhitelistedCaller,
 };
 mod tracks;
-pub use tracks::TracksInfo;
+pub use tracks::{TracksInfo, CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ADMIN_TRACK_ID};
 
 parameter_types! {
 	pub const VoteLockingPeriod: BlockNumber = 7 * DAYS;
@@ -56,7 +56,7 @@ impl pallet_referenda::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Scheduler = Scheduler;
 	type Currency = Balances;
-	type SubmitOrigin = frame_system::EnsureSigned<AccountId>;
+	type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
 	type CancelOrigin = EitherOf<EnsureRoot<AccountId>, ReferendumCanceller>;
 	type KillOrigin = EitherOf<EnsureRoot<AccountId>, ReferendumKiller>;
 	type Slash = Treasury;
