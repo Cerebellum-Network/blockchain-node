@@ -116,3 +116,11 @@ pub struct StorageNodeParams {
 pub enum NodeParams {
 	StorageParams(StorageNodeParams),
 }
+
+/// DDC cluster status
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub enum ClusterStatus {
+	Inactive,
+	Active,
+}

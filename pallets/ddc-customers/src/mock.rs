@@ -2,7 +2,7 @@
 
 use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
-	ClusterPricingParams, NodePubKey, NodeType,
+	ClusterPricingParams, ClusterStatus, NodePubKey, NodeType,
 };
 use ddc_traits::cluster::{
 	ClusterCreator, ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError,
@@ -211,12 +211,13 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 
 pub struct TestClusterCreator;
 impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
-	fn create_new_cluster(
+	fn create_cluster(
 		_cluster_id: ClusterId,
 		_cluster_manager_id: T::AccountId,
 		_cluster_reserve_id: T::AccountId,
 		_cluster_params: ClusterParams<T::AccountId>,
 		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+		_cluster_status: ClusterStatus,
 	) -> DispatchResult {
 		Ok(())
 	}
