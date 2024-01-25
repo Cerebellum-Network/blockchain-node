@@ -9,8 +9,8 @@ use ddc_primitives::{
 		cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
 		node::{NodeVisitor, NodeVisitorError},
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	NodeParams, NodePubKey, StorageNodePubKey,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodeKind, ClusterParams,
+	ClusterPricingParams, NodeParams, NodePubKey, StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime,
@@ -230,6 +230,7 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 	fn add_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
+		_node_kind: &ClusterNodeKind,
 	) -> Result<(), ClusterManagerError> {
 		Ok(())
 	}

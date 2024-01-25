@@ -5,7 +5,7 @@ use ddc_primitives::{
 	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodeMode,
 	StorageNodeParams,
 };
-use frame_support::{assert_noop, assert_ok, error::BadOrigin};
+use frame_support::{assert_noop, assert_ok};
 use frame_system::Config;
 use hex_literal::hex;
 use sp_runtime::{traits::Hash, Perquintill};
@@ -129,6 +129,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
+				ClusterNodeKind::Genesis
 			),
 			Error::<Test>::ClusterDoesNotExist
 		);
@@ -160,6 +161,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(cluster_reserve_id),
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
+				ClusterNodeKind::Genesis
 			),
 			Error::<Test>::OnlyClusterManager
 		);
@@ -170,6 +172,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
+				ClusterNodeKind::Genesis
 			),
 			Error::<Test>::AttemptToAddNonExistentNode
 		);
@@ -197,6 +200,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
+				ClusterNodeKind::Genesis
 			),
 			Error::<Test>::NodeAuthContractCallFailed
 		);
@@ -213,6 +217,7 @@ fn add_and_delete_node_works() {
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
 			NodePubKey::StoragePubKey(node_pub_key.clone()),
+			ClusterNodeKind::Genesis
 		));
 
 		assert!(<DdcClusters as ClusterManager<Test>>::contains_node(
@@ -226,6 +231,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
+				ClusterNodeKind::Genesis
 			),
 			Error::<Test>::AttemptToAddAlreadyAssignedNode
 		);
