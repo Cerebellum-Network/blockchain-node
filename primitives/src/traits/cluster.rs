@@ -70,6 +70,14 @@ pub trait ClusterManager<T: Config> {
 	) -> Result<(), ClusterManagerError>;
 }
 
+pub trait ClusterAdministrator<T: Config, Balance> {
+	fn activate_cluster(cluster_id: ClusterId) -> DispatchResult;
+	fn update_cluster_gov_params(
+		cluster_id: ClusterId,
+		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+	) -> DispatchResult;
+}
+
 pub enum ClusterManagerError {
 	AttemptToAddNonExistentNode,
 	AttemptToAddAlreadyAssignedNode,

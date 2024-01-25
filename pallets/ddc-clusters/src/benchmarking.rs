@@ -84,26 +84,26 @@ benchmarks! {
 		assert_eq!(Clusters::<T>::try_get(cluster_id).unwrap().props, ClusterProps { node_provider_auth_contract: Some(user_2) });
 	}
 
-	set_cluster_gov_params {
-		let cluster_id = ClusterId::from([1; 20]);
-		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-		let _ = config_cluster::<T>(user, cluster_id);
-		let new_cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
-			treasury_share: Perquintill::default(),
-			validators_share: Perquintill::default(),
-			cluster_reserve_share: Perquintill::default(),
-			storage_bond_size: 10u32.into(),
-			storage_chill_delay: 5u32.into(),
-			storage_unbonding_delay: 5u32.into(),
-			unit_per_mb_stored: 1,
-			unit_per_mb_streamed: 1,
-			unit_per_put_request: 1,
-			unit_per_get_request: 1,
-		};
-	}: _(RawOrigin::Root, cluster_id, new_cluster_gov_params.clone())
-	verify {
-		assert_eq!(ClustersGovParams::<T>::try_get(cluster_id).unwrap(), new_cluster_gov_params);
-	}
+	// set_cluster_gov_params {
+	// 	let cluster_id = ClusterId::from([1; 20]);
+	// 	let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+	// 	let _ = config_cluster::<T>(user, cluster_id);
+	// 	let new_cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
+	// 		treasury_share: Perquintill::default(),
+	// 		validators_share: Perquintill::default(),
+	// 		cluster_reserve_share: Perquintill::default(),
+	// 		storage_bond_size: 10u32.into(),
+	// 		storage_chill_delay: 5u32.into(),
+	// 		storage_unbonding_delay: 5u32.into(),
+	// 		unit_per_mb_stored: 1,
+	// 		unit_per_mb_streamed: 1,
+	// 		unit_per_put_request: 1,
+	// 		unit_per_get_request: 1,
+	// 	};
+	// }: _(RawOrigin::Root, cluster_id, new_cluster_gov_params.clone())
+	// verify {
+	// 	assert_eq!(ClustersGovParams::<T>::try_get(cluster_id).unwrap(), new_cluster_gov_params);
+	// }
 
 	impl_benchmark_test_suite!(
 		DdcClusters,
