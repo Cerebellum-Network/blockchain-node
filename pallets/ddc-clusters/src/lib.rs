@@ -28,12 +28,12 @@ pub(crate) mod mock;
 mod tests;
 
 use ddc_primitives::{
+	traits::{
+		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
+	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,
-};
-use ddc_traits::{
-	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
-	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 use frame_support::{
 	assert_ok,
@@ -61,7 +61,7 @@ pub type BalanceOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_traits::cluster::{ClusterManager, ClusterManagerError};
+	use ddc_primitives::traits::cluster::{ClusterManager, ClusterManagerError};
 
 	use super::*;
 

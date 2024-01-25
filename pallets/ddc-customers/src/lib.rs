@@ -13,10 +13,12 @@ pub(crate) mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use ddc_primitives::{BucketId, ClusterId};
-use ddc_traits::{
-	cluster::{ClusterCreator, ClusterVisitor},
-	customer::{CustomerCharger, CustomerDepositor},
+use ddc_primitives::{
+	traits::{
+		cluster::{ClusterCreator, ClusterVisitor},
+		customer::{CustomerCharger, CustomerDepositor},
+	},
+	BucketId, ClusterId,
 };
 use frame_support::{
 	parameter_types,

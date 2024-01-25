@@ -27,10 +27,12 @@ pub mod benchmarking;
 #[cfg(any(feature = "runtime-benchmarks", test))]
 pub mod testing_utils;
 
-use ddc_primitives::{ClusterId, NodeParams, NodePubKey, StorageNodePubKey};
-use ddc_traits::{
-	node::{NodeCreator, NodeVisitor, NodeVisitorError},
-	staking::StakingVisitor,
+use ddc_primitives::{
+	traits::{
+		node::{NodeCreator, NodeVisitor, NodeVisitorError},
+		staking::StakingVisitor,
+	},
+	ClusterId, NodeParams, NodePubKey, StorageNodePubKey,
 };
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
