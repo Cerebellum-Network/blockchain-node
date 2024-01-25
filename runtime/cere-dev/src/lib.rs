@@ -108,7 +108,8 @@ use sp_runtime::generic::Era;
 pub mod governance;
 use governance::{
 	pallet_custom_origins, AuctionAdmin, ClusterActivator, ClusterAdmin, FellowshipAdmin,
-	GeneralAdmin, LeaseAdmin, StakingAdmin, Treasurer, TreasurySpender,
+	GeneralAdmin, LeaseAdmin, StakingAdmin, TracksInfo, Treasurer, TreasurySpender,
+	CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ADMIN_TRACK_ID,
 };
 
 /// Generated voter bag information.
@@ -1219,7 +1220,6 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type PalletId = ClustersGovPalletId;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
-	// type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
 	type ClusterGovOrigin = DdcOriginAsNative<ClusterActivatorOrigin, Self>;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
@@ -1257,79 +1257,32 @@ where
 		o: T::RuntimeOrigin,
 		proposal_origin: &PalletsOriginOf<T>,
 	) -> Result<Self::Success, T::RuntimeOrigin> {
-		let who = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
+		let origin = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
 
-		let track_id = match DdcTracksInfo::track_for(proposal_origin) {
-			Ok(track_id) => track_id,
-			Err(_) => return Err(o),
-		};
+		let track_id =
+			match <TracksInfo as pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
+				proposal_origin,
+			) {
+				Ok(track_id) => track_id,
+				Err(_) => return Err(o),
+			};
 
-		if track_id == 10 {
-			let clusters_gov_id = <ClustersGovWrapper as PalletVisitor<T>>::get_account_id();
-			if who == clusters_gov_id {
-				Ok(who)
+		if track_id == CLUSTER_ACTIVATOR_TRACK_ID || track_id == CLUSTER_ADMIN_TRACK_ID {
+			let clusters_governance = <ClustersGovWrapper as PalletVisitor<T>>::get_account_id();
+			if origin == clusters_governance {
+				Ok(origin)
 			} else {
 				Err(o)
 			}
 		} else {
-			Ok(who)
+			Ok(origin)
 		}
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin(proposal_origin: &PalletsOriginOf<T>) -> Result<T::RuntimeOrigin, ()> {
-		let who = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
-		Ok(frame_system::RawOrigin::Signed(who).into())
-	}
-}
-
-pub trait TracksInfo {
-	/// The identifier for a track.
-	type Id: Copy + Parameter + Ord + PartialOrd + Send + Sync + 'static + MaxEncodedLen;
-	/// The origin type from which a track is implied.
-	type RuntimeOrigin;
-	/// Determine the voting track for the given `origin`.
-	fn track_for(origin: &Self::RuntimeOrigin) -> Result<Self::Id, ()>;
-}
-
-pub struct DdcTracksInfo;
-impl TracksInfo for DdcTracksInfo {
-	type RuntimeOrigin = <RuntimeOrigin as frame_support::traits::OriginTrait>::PalletsOrigin;
-
-	type Id = u16;
-
-	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
-		if let Ok(system_origin) = frame_system::RawOrigin::try_from(id.clone()) {
-			match system_origin {
-				frame_system::RawOrigin::Root => Ok(0),
-				_ => Err(()),
-			}
-		} else if let Ok(custom_origin) = pallet_custom_origins::Origin::try_from(id.clone()) {
-			match custom_origin {
-				pallet_custom_origins::Origin::WhitelistedCaller => Ok(1),
-				// General admin
-				pallet_custom_origins::Origin::StakingAdmin => Ok(10),
-				pallet_custom_origins::Origin::Treasurer => Ok(11),
-				pallet_custom_origins::Origin::LeaseAdmin => Ok(12),
-				pallet_custom_origins::Origin::FellowshipAdmin => Ok(13),
-				pallet_custom_origins::Origin::GeneralAdmin => Ok(14),
-				pallet_custom_origins::Origin::AuctionAdmin => Ok(15),
-				// Referendum admins
-				pallet_custom_origins::Origin::ReferendumCanceller => Ok(20),
-				pallet_custom_origins::Origin::ReferendumKiller => Ok(21),
-				// Limited treasury spenders
-				pallet_custom_origins::Origin::SmallTipper => Ok(30),
-				pallet_custom_origins::Origin::BigTipper => Ok(31),
-				pallet_custom_origins::Origin::SmallSpender => Ok(32),
-				pallet_custom_origins::Origin::MediumSpender => Ok(33),
-				pallet_custom_origins::Origin::BigSpender => Ok(34),
-				// DDC admins
-				pallet_custom_origins::Origin::ClusterActivator => Ok(100),
-				pallet_custom_origins::Origin::ClusterAdmin => Ok(101),
-			}
-		} else {
-			Err(())
-		}
+		let origin = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
+		Ok(frame_system::RawOrigin::Signed(origin).into())
 	}
 }
 

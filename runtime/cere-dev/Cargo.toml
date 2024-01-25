@@ -93,7 +93,7 @@ pallet-treasury = { default-features = false, git = "https://github.com/parityte
 pallet-utility = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 pallet-vesting = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 pallet-conviction-voting = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
-pallet-referenda = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
+pallet-referenda = { default-features = false, git = "https://github.com/yahortsaryk/pallet-referenda.git", branch = "main" }
 pallet-whitelist = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 
 # cere dependencies
