@@ -18,13 +18,13 @@ pub struct Cluster<AccountId> {
 	pub manager_id: AccountId,
 	pub reserve_id: AccountId,
 	pub props: ClusterProps<AccountId>,
+	pub status: ClusterStatus,
 }
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterProps<AccountId> {
 	pub node_provider_auth_contract: Option<AccountId>,
-	pub status: ClusterStatus,
 }
 
 impl<AccountId> Cluster<AccountId> {
@@ -33,7 +33,6 @@ impl<AccountId> Cluster<AccountId> {
 		manager_id: AccountId,
 		reserve_id: AccountId,
 		cluster_params: ClusterParams<AccountId>,
-		status: ClusterStatus,
 	) -> Result<Cluster<AccountId>, ClusterError> {
 		Ok(Cluster {
 			cluster_id,
@@ -41,8 +40,8 @@ impl<AccountId> Cluster<AccountId> {
 			reserve_id,
 			props: ClusterProps {
 				node_provider_auth_contract: cluster_params.node_provider_auth_contract,
-				status,
 			},
+			status: ClusterStatus::Inactive,
 		})
 	}
 
@@ -50,12 +49,14 @@ impl<AccountId> Cluster<AccountId> {
 		&mut self,
 		cluster_params: ClusterParams<AccountId>,
 	) -> Result<(), ClusterError> {
-		self.props.node_provider_auth_contract = cluster_params.node_provider_auth_contract;
+		self.props = ClusterProps {
+			node_provider_auth_contract: cluster_params.node_provider_auth_contract,
+		};
 		Ok(())
 	}
 
 	pub fn set_status(&mut self, status: ClusterStatus) -> Result<(), ClusterError> {
-		self.props.status = status;
+		self.status = status;
 		Ok(())
 	}
 }

@@ -2,7 +2,7 @@
 
 use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterParams, ClusterPricingParams,
-	ClusterStatus, NodeParams, NodePubKey, StorageNodeMode, StorageNodeParams,
+	NodeParams, NodePubKey, StorageNodeMode, StorageNodeParams,
 };
 use ddc_traits::cluster::ClusterManager;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
@@ -63,6 +63,7 @@ fn create_cluster_works() {
 		assert_eq!(created_cluster.manager_id, cluster_manager_id);
 		assert_eq!(created_cluster.reserve_id, cluster_reserve_id);
 		assert_eq!(created_cluster.props.node_provider_auth_contract, Some(auth_contract.clone()));
+		assert_eq!(created_cluster.status, ClusterStatus::Inactive);
 
 		let created_cluster_gov_params = DdcClusters::clusters_gov_params(cluster_id).unwrap();
 		assert_eq!(created_cluster_gov_params.treasury_share, cluster_gov_params.treasury_share);
@@ -664,7 +665,6 @@ fn cluster_creator_works() {
 			cluster_reserve_id,
 			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
 			cluster_gov_params,
-			ClusterStatus::Inactive
 		));
 
 		assert!(Clusters::<Test>::contains_key(cluster_id));

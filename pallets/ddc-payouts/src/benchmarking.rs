@@ -1,6 +1,6 @@
 //! DdcPayouts pallet benchmarking.
 
-use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams, ClusterStatus};
+use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams};
 pub use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_system::RawOrigin;
 use sp_runtime::Perquintill;
@@ -53,7 +53,6 @@ fn create_cluster<T: Config>(
 		cluster_reserve_id,
 		cluster_params,
 		cluster_gov_params,
-		ClusterStatus::Inactive,
 	)
 	.expect("Cluster is not created");
 }

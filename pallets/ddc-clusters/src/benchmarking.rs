@@ -81,7 +81,7 @@ benchmarks! {
 		let new_cluster_params = ClusterParams { node_provider_auth_contract: Some(user_2.clone()) };
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, new_cluster_params)
 	verify {
-		assert_eq!(Clusters::<T>::try_get(cluster_id).unwrap().props, ClusterProps { node_provider_auth_contract: Some(user_2), status: ClusterStatus::Inactive });
+		assert_eq!(Clusters::<T>::try_get(cluster_id).unwrap().props, ClusterProps { node_provider_auth_contract: Some(user_2) });
 	}
 
 	set_cluster_gov_params {

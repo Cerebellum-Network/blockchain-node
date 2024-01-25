@@ -4,7 +4,7 @@
 
 use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	ClusterStatus, NodeType, DOLLARS,
+	NodeType, DOLLARS,
 };
 use ddc_traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
@@ -193,7 +193,6 @@ impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 		_cluster_reserve_id: T::AccountId,
 		_cluster_params: ClusterParams<T::AccountId>,
 		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
-		_cluster_status: ClusterStatus,
 	) -> DispatchResult {
 		Ok(())
 	}

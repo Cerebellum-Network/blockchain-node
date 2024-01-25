@@ -6,7 +6,7 @@ use std::cell::RefCell;
 
 use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	ClusterStatus, NodeParams, NodePubKey, StorageNodePubKey,
+	NodeParams, NodePubKey, StorageNodePubKey,
 };
 use ddc_traits::{
 	cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
@@ -138,7 +138,6 @@ impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
 		_cluster_reserve_id: T::AccountId,
 		_cluster_params: ClusterParams<T::AccountId>,
 		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
-		_cluster_status: ClusterStatus,
 	) -> DispatchResult {
 		Ok(())
 	}
