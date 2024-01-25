@@ -276,7 +276,7 @@ impl ExtBuilder {
 		// For testing purposes only
 		pallet_ddc_clusters::GenesisConfig::<Test>::default().build();
 
-		if let Ok(cluster) = Cluster::new(
+		let cluster = Cluster::new(
 			ClusterId::from([0; 20]),
 			AccountId::from([0; 32]),
 			AccountId::from([0; 32]),
@@ -286,14 +286,14 @@ impl ExtBuilder {
 				erasure_coding_total: 6,
 				replication_total: 3,
 			},
-		) {
-			let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
-				clusters: vec![cluster],
-				clusters_gov_params: vec![(ClusterId::from([0; 20]), cluster_gov_params)],
-				clusters_nodes: vec![(ClusterId::from([0; 20]), vec![node_pub_key])],
-			}
-			.assimilate_storage(&mut t);
+		);
+
+		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
+			clusters: vec![cluster],
+			clusters_gov_params: vec![(ClusterId::from([0; 20]), cluster_gov_params)],
+			clusters_nodes: vec![(ClusterId::from([0; 20]), vec![node_pub_key])],
 		}
+		.assimilate_storage(&mut t);
 
 		TestExternalities::new(t)
 	}

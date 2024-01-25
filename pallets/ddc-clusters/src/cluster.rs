@@ -4,8 +4,6 @@ use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 
-use crate::pallet::Error;
-
 parameter_types! {
 	pub MaxClusterParamsLen: u16 = 2048;
 }
@@ -33,8 +31,8 @@ impl<AccountId> Cluster<AccountId> {
 		manager_id: AccountId,
 		reserve_id: AccountId,
 		cluster_params: ClusterParams<AccountId>,
-	) -> Result<Cluster<AccountId>, ClusterError> {
-		Ok(Cluster {
+	) -> Cluster<AccountId> {
+		Cluster {
 			cluster_id,
 			manager_id,
 			reserve_id,
@@ -45,7 +43,7 @@ impl<AccountId> Cluster<AccountId> {
 				replication_total: cluster_params.replication_total,
 			},
 			status: ClusterStatus::Inactive,
-		})
+		}
 	}
 
 	pub fn set_params(&mut self, cluster_params: ClusterParams<AccountId>) {
@@ -59,17 +57,5 @@ impl<AccountId> Cluster<AccountId> {
 
 	pub fn set_status(&mut self, status: ClusterStatus) {
 		self.status = status;
-	}
-}
-
-pub enum ClusterError {
-	ClusterParamsExceedsLimit,
-}
-
-impl<T> From<ClusterError> for Error<T> {
-	fn from(error: ClusterError) -> Self {
-		match error {
-			ClusterError::ClusterParamsExceedsLimit => Error::<T>::ClusterParamsExceedsLimit,
-		}
 	}
 }
