@@ -9,7 +9,7 @@ use ddc_primitives::{
 		pallet::PalletVisitor,
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	NodeType, DOLLARS,
+	ClusterStatus, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -150,10 +150,10 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		temp = ACCOUNT_ID_5.to_ne_bytes();
 		let account_5 = T::AccountId::decode(&mut &temp[..]).unwrap();
 
-		if content_owner == account_1 ||
-			content_owner == account_3 ||
-			content_owner == account_4 ||
-			content_owner == account_5
+		if content_owner == account_1
+			|| content_owner == account_3
+			|| content_owner == account_4
+			|| content_owner == account_5
 		{
 			ensure!(amount > 1_000_000, DispatchError::BadOrigin); //  any error will do
 		}
@@ -188,12 +188,13 @@ pub const ACCOUNT_ID_6: AccountId = 6;
 pub const ACCOUNT_ID_7: AccountId = 7;
 pub struct TestClusterCreator;
 impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
-	fn create_new_cluster(
+	fn create_cluster(
 		_cluster_id: ClusterId,
 		_cluster_manager_id: T::AccountId,
 		_cluster_reserve_id: T::AccountId,
 		_cluster_params: ClusterParams<T::AccountId>,
 		_cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
+		_cluster_status: ClusterStatus,
 	) -> DispatchResult {
 		Ok(())
 	}
@@ -386,9 +387,9 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 }
 
 pub fn get_fees(cluster_id: &ClusterId) -> ClusterFeesParams {
-	if *cluster_id == NO_FEE_CLUSTER_ID ||
-		*cluster_id == ONE_CLUSTER_ID ||
-		*cluster_id == CERE_CLUSTER_ID
+	if *cluster_id == NO_FEE_CLUSTER_ID
+		|| *cluster_id == ONE_CLUSTER_ID
+		|| *cluster_id == CERE_CLUSTER_ID
 	{
 		PRICING_FEES_ZERO
 	} else if *cluster_id == HIGH_FEES_CLUSTER_ID {

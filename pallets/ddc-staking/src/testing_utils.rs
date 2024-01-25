@@ -1,8 +1,8 @@
 //! Testing utils for ddc-staking.
 
 use ddc_primitives::{
-	ClusterGovParams, ClusterId, ClusterParams, NodeParams, StorageNodeMode, StorageNodeParams,
-	StorageNodePubKey,
+	ClusterGovParams, ClusterId, ClusterParams, ClusterStatus, NodeParams, StorageNodeMode,
+	StorageNodeParams, StorageNodePubKey,
 };
 use frame_benchmarking::account;
 use frame_support::traits::Currency;
@@ -129,12 +129,13 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 		unit_per_put_request: 10,
 		unit_per_get_request: 10,
 	};
-	T::ClusterCreator::create_new_cluster(
+	T::ClusterCreator::create_cluster(
 		cluster_id,
 		stash.clone(),
 		stash.clone(),
 		cluster_params,
 		cluster_gov_params,
+		ClusterStatus::Inactive,
 	)?;
 
 	DdcStaking::<T>::bond(

@@ -10,7 +10,7 @@ use ddc_primitives::{
 		node::{NodeVisitor, NodeVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	NodeParams, NodePubKey, StorageNodePubKey,
+	ClusterStatus, NodeParams, NodePubKey, StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime,
@@ -131,12 +131,13 @@ impl<T: Config> NodeCreator<T> for TestNodeCreator {
 }
 
 impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
-	fn create_new_cluster(
+	fn create_cluster(
 		_cluster_id: ClusterId,
 		_cluster_manager_id: T::AccountId,
 		_cluster_reserve_id: T::AccountId,
 		_cluster_params: ClusterParams<T::AccountId>,
 		_cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
+		_cluster_status: ClusterStatus,
 	) -> DispatchResult {
 		Ok(())
 	}

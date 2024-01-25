@@ -97,7 +97,8 @@ benchmarks! {
 				node_provider_auth_contract: Some(user_2),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-				replication_total: 3
+				replication_total: 3,
+				status: ClusterStatus::Inactive
 			}
 		);
 	}

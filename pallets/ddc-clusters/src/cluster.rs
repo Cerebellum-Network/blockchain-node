@@ -1,5 +1,5 @@
 use codec::{Decode, Encode};
-use ddc_primitives::{ClusterId, ClusterParams};
+use ddc_primitives::{ClusterId, ClusterParams, ClusterStatus};
 use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,7 @@ pub struct Cluster<AccountId> {
 	pub manager_id: AccountId,
 	pub reserve_id: AccountId,
 	pub props: ClusterProps<AccountId>,
+	pub status: ClusterStatus,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
@@ -32,6 +33,7 @@ impl<AccountId> Cluster<AccountId> {
 		manager_id: AccountId,
 		reserve_id: AccountId,
 		cluster_params: ClusterParams<AccountId>,
+		status: ClusterStatus,
 	) -> Result<Cluster<AccountId>, ClusterError> {
 		Ok(Cluster {
 			cluster_id,
@@ -43,6 +45,7 @@ impl<AccountId> Cluster<AccountId> {
 				erasure_coding_total: cluster_params.erasure_coding_total,
 				replication_total: cluster_params.replication_total,
 			},
+			status,
 		})
 	}
 
@@ -56,6 +59,11 @@ impl<AccountId> Cluster<AccountId> {
 			erasure_coding_total: cluster_params.erasure_coding_total,
 			replication_total: cluster_params.replication_total,
 		};
+		Ok(())
+	}
+
+	pub fn set_status(&mut self, status: ClusterStatus) -> Result<(), ClusterError> {
+		self.props.status = status;
 		Ok(())
 	}
 }

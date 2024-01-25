@@ -3,8 +3,7 @@
 use codec::Compact;
 use ddc_primitives::{
 	traits::cluster::ClusterManager, ClusterBondingParams, ClusterFeesParams, ClusterId,
-	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodeMode,
-	StorageNodeParams,
+	ClusterParams, ClusterPricingParams, ClusterStatus, NodeParams, NodePubKey, StorageNodeParams,
 };
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
 use frame_system::Config;
@@ -759,7 +758,7 @@ fn cluster_creator_works() {
 			unit_per_get_request: 10,
 		};
 
-		assert_ok!(<DdcClusters as ClusterCreator<Test, BalanceOf<Test>>>::create_new_cluster(
+		assert_ok!(<DdcClusters as ClusterCreator<Test, BalanceOf<Test>>>::create_cluster(
 			cluster_id,
 			cluster_manager_id,
 			cluster_reserve_id,
@@ -769,7 +768,8 @@ fn cluster_creator_works() {
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
-			cluster_gov_params
+			cluster_gov_params,
+			ClusterStatus::Inactive
 		));
 
 		assert!(Clusters::<Test>::contains_key(cluster_id));

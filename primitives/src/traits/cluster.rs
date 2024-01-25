@@ -6,7 +6,7 @@ use sp_runtime::RuntimeDebug;
 
 use crate::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
-	ClusterPricingParams, NodePubKey, NodeType,
+	ClusterPricingParams, ClusterStatus, NodePubKey, NodeType,
 };
 
 pub trait ClusterVisitor<T: Config> {
@@ -43,12 +43,13 @@ pub trait ClusterVisitor<T: Config> {
 }
 
 pub trait ClusterCreator<T: Config, Balance> {
-	fn create_new_cluster(
+	fn create_cluster(
 		cluster_id: ClusterId,
 		cluster_manager_id: T::AccountId,
 		cluster_reserve_id: T::AccountId,
 		cluster_params: ClusterParams<T::AccountId>,
 		cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
+		cluster_status: ClusterStatus,
 	) -> DispatchResult;
 }
 

@@ -286,6 +286,7 @@ impl ExtBuilder {
 				erasure_coding_total: 6,
 				replication_total: 3,
 			},
+			ClusterStatus::Inactive,
 		) {
 			let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
 				clusters: vec![cluster],
