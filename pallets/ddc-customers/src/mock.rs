@@ -4,7 +4,7 @@ use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,
 };
-use ddc_traits::cluster::{
+use ddc_primtives::traits::cluster::{
 	ClusterCreator, ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError,
 };
 use frame_support::{
