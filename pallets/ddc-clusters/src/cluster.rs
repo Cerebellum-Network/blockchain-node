@@ -33,7 +33,6 @@ impl<AccountId> Cluster<AccountId> {
 		manager_id: AccountId,
 		reserve_id: AccountId,
 		cluster_params: ClusterParams<AccountId>,
-		status: ClusterStatus,
 	) -> Result<Cluster<AccountId>, ClusterError> {
 		Ok(Cluster {
 			cluster_id,
@@ -45,7 +44,7 @@ impl<AccountId> Cluster<AccountId> {
 				erasure_coding_total: cluster_params.erasure_coding_total,
 				replication_total: cluster_params.replication_total,
 			},
-			status,
+			status: ClusterStatus::Inactive,
 		})
 	}
 
@@ -63,7 +62,7 @@ impl<AccountId> Cluster<AccountId> {
 	}
 
 	pub fn set_status(&mut self, status: ClusterStatus) -> Result<(), ClusterError> {
-		self.props.status = status;
+		self.status = status;
 		Ok(())
 	}
 }

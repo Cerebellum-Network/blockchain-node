@@ -73,6 +73,7 @@ fn create_cluster_works() {
 		assert_eq!(created_cluster.manager_id, cluster_manager_id);
 		assert_eq!(created_cluster.reserve_id, cluster_reserve_id);
 		assert_eq!(created_cluster.props.node_provider_auth_contract, Some(auth_contract.clone()));
+		assert_eq!(created_cluster.status, ClusterStatus::Inactive);
 
 		let created_cluster_gov_params = DdcClusters::clusters_gov_params(cluster_id).unwrap();
 		assert_eq!(created_cluster_gov_params.treasury_share, cluster_gov_params.treasury_share);
@@ -769,7 +770,6 @@ fn cluster_creator_works() {
 				replication_total: 3
 			},
 			cluster_gov_params,
-			ClusterStatus::Inactive
 		));
 
 		assert!(Clusters::<Test>::contains_key(cluster_id));

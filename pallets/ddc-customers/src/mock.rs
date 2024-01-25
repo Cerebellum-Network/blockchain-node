@@ -4,10 +4,8 @@ use ddc_primitives::{
 	traits::cluster::{
 		ClusterCreator, ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError,
 	},
-	ClusterBondingParams, ClusterBondingParams, ClusterFeesParams, ClusterFeesParams,
-	ClusterGovParams, ClusterGovParams, ClusterId, ClusterParams, ClusterParams,
-	ClusterPricingParams, ClusterPricingParams, ClusterStatus, NodePubKey, NodePubKey, NodeType,
-	NodeType,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
+	ClusterPricingParams, ClusterStatus, NodePubKey, NodeType,
 };
 
 use frame_support::{
@@ -217,7 +215,6 @@ impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 		_cluster_reserve_id: T::AccountId,
 		_cluster_params: ClusterParams<T::AccountId>,
 		_cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
-		_cluster_status: ClusterStatus,
 	) -> DispatchResult {
 		Ok(())
 	}

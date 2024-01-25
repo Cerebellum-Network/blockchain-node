@@ -106,6 +106,7 @@ pub mod pallet {
 		ClusterNodeRemoved { cluster_id: ClusterId, node_pub_key: NodePubKey },
 		ClusterParamsSet { cluster_id: ClusterId },
 		ClusterGovParamsSet { cluster_id: ClusterId },
+		ClusterActivated { cluster_id: ClusterId },
 	}
 
 	#[pallet::error]
@@ -129,6 +130,7 @@ pub mod pallet {
 		ErasureCodingRequiredDidNotMeetMinimum,
 		ErasureCodingTotalNotMeetMinimum,
 		ReplicationTotalDidNotMeetMinimum,
+		ClusterAlreadyActivated,
 	}
 
 	#[pallet::storage]
@@ -232,7 +234,6 @@ pub mod pallet {
 				cluster_reserve_id,
 				cluster_params,
 				cluster_gov_params,
-				ClusterStatus::Inactive,
 			)
 		}
 
@@ -363,7 +364,6 @@ pub mod pallet {
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
-			cluster_status: ClusterStatus,
 		) -> DispatchResult {
 			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
 
@@ -380,19 +380,34 @@ pub mod pallet {
 				Error::<T>::ReplicationTotalDidNotMeetMinimum
 			);
 
-			let cluster = Cluster::new(
-				cluster_id,
-				cluster_manager_id,
-				cluster_reserve_id,
-				cluster_params,
-				cluster_status,
-			)
-			.map_err(Into::<Error<T>>::into)?;
+			let cluster =
+				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params)
+					.map_err(Into::<Error<T>>::into)?;
+
+			let cluster =
+				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params)
+					.map_err(Into::<Error<T>>::into)?;
 			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
 
 			Clusters::<T>::insert(cluster_id, cluster);
 			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
+
+			Ok(())
+		}
+
+		fn do_activate_cluster(
+			cluster_id: ClusterId,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+		) -> DispatchResult {
+			let mut cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ensure!(cluster.status == ClusterStatus::Inactive, Error::<T>::ClusterAlreadyActivated);
+
+			cluster.status = ClusterStatus::Active;
+			Clusters::<T>::insert(cluster_id, cluster);
+			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
+			Self::deposit_event(Event::<T>::ClusterActivated { cluster_id });
 
 			Ok(())
 		}
@@ -553,7 +568,6 @@ pub mod pallet {
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
-			cluster_status: ClusterStatus,
 		) -> DispatchResult {
 			Self::do_create_cluster(
 				cluster_id,
@@ -561,7 +575,6 @@ pub mod pallet {
 				cluster_reserve_id,
 				cluster_params,
 				cluster_gov_params,
-				cluster_status,
 			)
 		}
 	}

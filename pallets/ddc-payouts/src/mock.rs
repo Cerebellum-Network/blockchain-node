@@ -9,7 +9,7 @@ use ddc_primitives::{
 		pallet::PalletVisitor,
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	ClusterStatus, NodeType, DOLLARS,
+	NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -194,7 +194,6 @@ impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 		_cluster_reserve_id: T::AccountId,
 		_cluster_params: ClusterParams<T::AccountId>,
 		_cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
-		_cluster_status: ClusterStatus,
 	) -> DispatchResult {
 		Ok(())
 	}
