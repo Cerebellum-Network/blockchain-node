@@ -3,7 +3,7 @@ use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
 	ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
 };
-use frame_support::dispatch::DispatchResult;
+use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::Config;
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
@@ -63,16 +63,6 @@ pub trait ClusterManager<T: Config> {
 		cluster_id: &ClusterId,
 		node_pub_key: &NodePubKey,
 		node_kind: &ClusterNodeKind,
-	) -> Result<(), ClusterManagerError>;
-	fn remove_node(
-		cluster_id: &ClusterId,
-		node_pub_key: &NodePubKey,
-	) -> Result<(), ClusterManagerError>;
-}
-
-pub enum ClusterManagerError {
-	AttemptToAddNonExistentNode,
-	AttemptToAddAlreadyAssignedNode,
-	AttemptToRemoveNotAssignedNode,
-	AttemptToRemoveNonExistentNode,
+	) -> Result<(), DispatchError>;
+	fn remove_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> Result<(), DispatchError>;
 }
