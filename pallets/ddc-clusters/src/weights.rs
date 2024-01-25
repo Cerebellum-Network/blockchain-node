@@ -31,7 +31,7 @@ pub trait WeightInfo {
 	fn add_node() -> Weight;
 	fn remove_node() -> Weight;
 	fn set_cluster_params() -> Weight;
-	fn set_cluster_gov_params() -> Weight;
+	fn validate_node() -> Weight;
 }
 
 /// Weights for pallet_ddc_clusters using the Substrate node and recommended hardware.
@@ -77,12 +77,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	// Storage: DdcClusters Clusters (r:1 w:0)
-	// Storage: DdcClusters ClustersGovParams (r:0 w:1)
-	fn set_cluster_gov_params() -> Weight {
-		Weight::from_parts(17_000_000_u64, 0)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
+
+	fn validate_node() -> Weight {
+		Weight::from_parts(10_000_u64, 0)
 	}
 }
 
@@ -128,11 +125,8 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	// Storage: DdcClusters Clusters (r:1 w:0)
-	// Storage: DdcClusters ClustersGovParams (r:0 w:1)
-	fn set_cluster_gov_params() -> Weight {
-		Weight::from_parts(17_000_000_u64, 0)
-			.saturating_add(RocksDbWeight::get().reads(1_u64))
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
+
+	fn validate_node() -> Weight {
+		Weight::from_parts(10_000_u64, 0)
 	}
 }
