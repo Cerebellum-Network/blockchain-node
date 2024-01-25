@@ -11,6 +11,10 @@ wasm-opt = false
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[[bin]]
+name = "cere"
+path = "src/main.rs"
+
 [dependencies]
 clap = { version = "4.0.15", features = ["derive"], optional = true }
 frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.40" }
