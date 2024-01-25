@@ -1,14 +1,14 @@
 //! Test utilities
 
 use ddc_primitives::{
-	traits::cluster::{
-		ClusterCreator, ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError,
-	},
+	traits::cluster::{ClusterCreator, ClusterManager, ClusterVisitor, ClusterVisitorError},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
 	ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
 };
 use frame_support::{
-	construct_runtime, parameter_types,
+	construct_runtime,
+	dispatch::DispatchError,
+	parameter_types,
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
 	weights::constants::RocksDbWeight,
 };
@@ -194,18 +194,19 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 	fn contains_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
 		true
 	}
+
 	fn add_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
 		_node_kind: &ClusterNodeKind,
-	) -> Result<(), ClusterManagerError> {
+	) -> Result<(), DispatchError> {
 		Ok(())
 	}
 
 	fn remove_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
-	) -> Result<(), ClusterManagerError> {
+	) -> Result<(), DispatchError> {
 		Ok(())
 	}
 }
