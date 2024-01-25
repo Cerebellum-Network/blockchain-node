@@ -838,7 +838,7 @@ version = "4.8.8"
 dependencies = [
  "cere-dev-runtime-constants",
  "cere-runtime-common",
- "ddc-traits",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -965,7 +965,7 @@ version = "4.8.8"
 dependencies = [
  "cere-runtime-common",
  "cere-runtime-constants",
- "ddc-traits",
+ "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-executive",
@@ -1731,22 +1731,12 @@ dependencies = [
 name = "ddc-primitives"
 version = "4.8.8"
 dependencies = [
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
-]
-
-[[package]]
-name = "ddc-traits"
-version = "4.8.8"
-dependencies = [
- "ddc-primitives",
  "frame-support",
  "frame-system",
  "parity-scale-codec",
  "scale-info",
+ "serde",
+ "sp-core",
  "sp-runtime",
  "sp-std",
 ]
@@ -5076,7 +5066,6 @@ name = "pallet-ddc-clusters"
 version = "4.8.8"
 dependencies = [
  "ddc-primitives",
- "ddc-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5102,7 +5091,6 @@ name = "pallet-ddc-customers"
 version = "4.8.8"
 dependencies = [
  "ddc-primitives",
- "ddc-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5125,7 +5113,6 @@ name = "pallet-ddc-nodes"
 version = "4.8.8"
 dependencies = [
  "ddc-primitives",
- "ddc-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5149,7 +5136,6 @@ dependencies = [
  "byte-unit",
  "chrono",
  "ddc-primitives",
- "ddc-traits",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-support",
@@ -5172,7 +5158,6 @@ name = "pallet-ddc-staking"
 version = "4.8.8"
 dependencies = [
  "ddc-primitives",
- "ddc-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

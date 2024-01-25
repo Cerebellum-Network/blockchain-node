@@ -25,13 +25,15 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
-use ddc_primitives::{ClusterId, DdcEra, MILLICENTS};
-use ddc_traits::{
-	cluster::{ClusterCreator as ClusterCreatorType, ClusterVisitor as ClusterVisitorType},
-	customer::{
-		CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
+use ddc_primitives::{
+	traits::{
+		cluster::{ClusterCreator as ClusterCreatorType, ClusterVisitor as ClusterVisitorType},
+		customer::{
+			CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
+		},
+		pallet::PalletVisitor as PalletVisitorType,
 	},
-	pallet::PalletVisitor as PalletVisitorType,
+	ClusterId, DdcEra, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{

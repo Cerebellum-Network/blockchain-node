@@ -94,7 +94,7 @@ pallet-vesting = { default-features = false, git = "https://github.com/paritytec
 # cere dependencies
 cere-dev-runtime-constants = { path = "./constants", default-features = false }
 cere-runtime-common = { path = "../common", default-features = false }
-ddc-traits = { version = "4.8.8", default-features = false, path = "../../traits" }
+ddc-primitives = { path = "../../primitives", default-features = false }
 pallet-ddc-clusters = { version = "4.8.8", default-features = false, path = "../../pallets/ddc-clusters" }
 pallet-ddc-customers = { version = "4.8.8", default-features = false, path = "../../pallets/ddc-customers" }
 pallet-ddc-nodes = { version = "4.8.8", default-features = false, path = "../../pallets/ddc-nodes" }
@@ -175,6 +175,7 @@ std = [
   "log/std",
   "frame-try-runtime/std",
   "sp-io/std",
+  "ddc-primitives/std",
   "pallet-child-bounties/std",
   "pallet-ddc-payouts/std",
   "pallet-ddc-nodes/std",
@@ -229,6 +230,7 @@ runtime-benchmarks = [
   "pallet-vesting/runtime-benchmarks",
   "frame-system-benchmarking/runtime-benchmarks",
   "pallet-chainbridge/runtime-benchmarks",
+  "ddc-primitives/runtime-benchmarks",
   "hex-literal",
 ]
 try-runtime = [
