@@ -119,15 +119,9 @@ use sp_runtime::generic::Era;
 // Governance configurations.
 pub mod governance;
 use governance::{
-<<<<<<< HEAD
 	pallet_custom_origins, AuctionAdmin, ClusterActivator, ClusterAdmin, ClusterGovActivator,
-	ClusterGovEditor, FellowshipAdmin, GeneralAdmin, GeneralAdmin, LeaseAdmin, StakingAdmin,
-	StakingAdmin, Treasurer, Treasurer, TreasurySpender, TreasurySpender,
-=======
-	pallet_custom_origins, AuctionAdmin, ClusterActivator, ClusterAdmin, FellowshipAdmin,
-	GeneralAdmin, LeaseAdmin, StakingAdmin, TracksInfo, Treasurer, TreasurySpender,
-	CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ADMIN_TRACK_ID,
->>>>>>> 3104a78d (feat: cluster governance is integrated with opengov)
+	ClusterGovEditor, FellowshipAdmin, GeneralAdmin, LeaseAdmin, StakingAdmin, TracksInfo,
+	Treasurer, TreasurySpender, CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ADMIN_TRACK_ID,
 };
 
 /// Generated voter bag information.
@@ -1232,8 +1226,8 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type ClusterProposalDuration = ClusterProposalDuration;
 	type ClusterMaxProposals = ClusterMaxProposals;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
-	type ClusterActivatorOrigin = ClusterGovCreatorOrigin;
-	type ClusterAdminOrigin = ClusterGovEditorOrigin;
+	type ClusterActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterGovCreatorOrigin>;
+	type ClusterAdminOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterGovEditorOrigin>;
 }
 
 pub struct ClustersGovWrapper;
@@ -1288,9 +1282,8 @@ where
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin(proposal_origin: &PalletsOriginOf<T>) -> Result<T::RuntimeOrigin, ()> {
-<<<<<<< HEAD
-		let who = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
-		Ok(frame_system::RawOrigin::Signed(who).into())
+		let origin = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
+		Ok(frame_system::RawOrigin::Signed(origin).into())
 	}
 }
 
@@ -1333,16 +1326,12 @@ impl TracksInfo for DdcTracksInfo {
 				pallet_ddc_origins::Origin::MediumSpender => Ok(33),
 				pallet_ddc_origins::Origin::BigSpender => Ok(34),
 				// DDC admins
-				pallet_custom_origins::Origin::ClusterGovCreator => Ok(100),
-				pallet_custom_origins::Origin::ClusterGovEditor => Ok(101),
+				pallet_custom_origins::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
+				pallet_custom_origins::Origin::ClusterGovEditor => Ok(CLUSTER_ADMIN_TRACK_ID),
 			}
 		} else {
 			Err(())
 		}
-=======
-		let origin = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
-		Ok(frame_system::RawOrigin::Signed(origin).into())
->>>>>>> 3104a78d (feat: cluster governance is integrated with opengov)
 	}
 }
 
