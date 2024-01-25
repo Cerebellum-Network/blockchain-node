@@ -4,8 +4,8 @@ use ddc_primitives::{
 	traits::cluster::{
 		ClusterCreator, ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError,
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
-	ClusterPricingParams, ClusterStatus, NodePubKey, NodeType,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
+	ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
 };
 
 use frame_support::{
@@ -195,6 +195,7 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 	fn add_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
+		_node_kind: &ClusterNodeKind,
 	) -> Result<(), ClusterManagerError> {
 		Ok(())
 	}

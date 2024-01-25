@@ -1,13 +1,12 @@
 use codec::{Decode, Encode};
-use frame_support::dispatch::DispatchResult;
-use frame_system::{pallet_prelude::BlockNumberFor, Config};
-use scale_info::TypeInfo;
-use sp_runtime::RuntimeDebug;
-
-use crate::{
+use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
 	ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
 };
+use frame_support::dispatch::DispatchResult;
+use frame_system::Config;
+use scale_info::TypeInfo;
+use sp_runtime::RuntimeDebug;
 
 pub trait ClusterVisitor<T: Config> {
 	fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError>;
@@ -28,16 +27,16 @@ pub trait ClusterVisitor<T: Config> {
 	fn get_chill_delay(
 		cluster_id: &ClusterId,
 		node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, ClusterVisitorError>;
+	) -> Result<T::BlockNumber, ClusterVisitorError>;
 
 	fn get_unbonding_delay(
 		cluster_id: &ClusterId,
 		node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, ClusterVisitorError>;
+	) -> Result<T::BlockNumber, ClusterVisitorError>;
 
 	fn get_bonding_params(
 		cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, ClusterVisitorError>;
+	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError>;
 
 	fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, ClusterVisitorError>;
 }
@@ -48,7 +47,7 @@ pub trait ClusterCreator<T: Config, Balance> {
 		cluster_manager_id: T::AccountId,
 		cluster_reserve_id: T::AccountId,
 		cluster_params: ClusterParams<T::AccountId>,
-		cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
+		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
 	) -> DispatchResult;
 }
 
@@ -69,14 +68,6 @@ pub trait ClusterManager<T: Config> {
 		cluster_id: &ClusterId,
 		node_pub_key: &NodePubKey,
 	) -> Result<(), ClusterManagerError>;
-}
-
-pub trait ClusterAdministrator<T: Config, Balance> {
-	fn activate_cluster(cluster_id: ClusterId) -> DispatchResult;
-	fn update_cluster_gov_params(
-		cluster_id: ClusterId,
-		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
-	) -> DispatchResult;
 }
 
 pub enum ClusterManagerError {

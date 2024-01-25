@@ -127,3 +127,20 @@ pub enum ClusterStatus {
 	Inactive,
 	Active,
 }
+
+/// DDC node kind added to DDC cluster
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub enum ClusterNodeKind {
+	Genesis,
+	External,
+}
+
+/// DDC node status in to DDC cluster
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub enum ClusterNodeStatus {
+	AwaitsValidation,
+	Validated,
+	ValidationFailed,
+}
