@@ -2,7 +2,7 @@
 
 use ddc_primitives::{
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterParams, ClusterPricingParams,
-	NodeParams, NodePubKey, StorageNodeMode, StorageNodeParams,
+	ClusterStatus, NodeParams, NodePubKey, StorageNodeMode, StorageNodeParams,
 };
 use ddc_traits::cluster::ClusterManager;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
@@ -658,12 +658,13 @@ fn cluster_creator_works() {
 			unit_per_get_request: 10,
 		};
 
-		assert_ok!(<DdcClusters as ClusterCreator<Test, BalanceOf<Test>>>::create_new_cluster(
+		assert_ok!(<DdcClusters as ClusterCreator<Test, BalanceOf<Test>>>::create_cluster(
 			cluster_id,
 			cluster_manager_id,
 			cluster_reserve_id,
 			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
-			cluster_gov_params
+			cluster_gov_params,
+			ClusterStatus::Inactive
 		));
 
 		assert!(Clusters::<Test>::contains_key(cluster_id));

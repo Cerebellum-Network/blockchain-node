@@ -1,5 +1,5 @@
 use codec::{Decode, Encode};
-use ddc_primitives::{ClusterId, ClusterParams};
+use ddc_primitives::{ClusterId, ClusterParams, ClusterStatus};
 use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -24,6 +24,7 @@ pub struct Cluster<AccountId> {
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterProps<AccountId> {
 	pub node_provider_auth_contract: Option<AccountId>,
+	pub status: ClusterStatus,
 }
 
 impl<AccountId> Cluster<AccountId> {
@@ -32,6 +33,7 @@ impl<AccountId> Cluster<AccountId> {
 		manager_id: AccountId,
 		reserve_id: AccountId,
 		cluster_params: ClusterParams<AccountId>,
+		status: ClusterStatus,
 	) -> Result<Cluster<AccountId>, ClusterError> {
 		Ok(Cluster {
 			cluster_id,
@@ -39,6 +41,7 @@ impl<AccountId> Cluster<AccountId> {
 			reserve_id,
 			props: ClusterProps {
 				node_provider_auth_contract: cluster_params.node_provider_auth_contract,
+				status,
 			},
 		})
 	}
@@ -47,9 +50,12 @@ impl<AccountId> Cluster<AccountId> {
 		&mut self,
 		cluster_params: ClusterParams<AccountId>,
 	) -> Result<(), ClusterError> {
-		self.props = ClusterProps {
-			node_provider_auth_contract: cluster_params.node_provider_auth_contract,
-		};
+		self.props.node_provider_auth_contract = cluster_params.node_provider_auth_contract;
+		Ok(())
+	}
+
+	pub fn set_status(&mut self, status: ClusterStatus) -> Result<(), ClusterError> {
+		self.props.status = status;
 		Ok(())
 	}
 }
