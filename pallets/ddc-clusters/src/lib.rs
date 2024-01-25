@@ -99,6 +99,7 @@ pub mod pallet {
 		ClusterParamsSet { cluster_id: ClusterId },
 		ClusterGovParamsSet { cluster_id: ClusterId },
 		ClusterActivated { cluster_id: ClusterId },
+		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
 	}
 
 	#[pallet::error]
@@ -120,6 +121,7 @@ pub mod pallet {
 		NodeAuthContractDeployFailed,
 		NodeAuthNodeAuthorizationNotSuccessful,
 		ClusterAlreadyActivated,
+		AttemptToValidateNotAssignedNode,
 	}
 
 	#[pallet::storage]
@@ -310,12 +312,30 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::call_index(4)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::validate_node())]
+		pub fn validate_node(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+			validation_succeeded: bool,
+		) -> DispatchResult {
+			let caller_id = ensure_signed(origin)?;
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			// todo: allow to trigger this extrinsic to the Validators only
+			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
+
+			Self::do_validate_node(cluster_id, node_pub_key, validation_succeeded)
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
 		fn do_create_cluster(
 			cluster_id: ClusterId,
 			cluster_manager_id: T::AccountId,
+
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
@@ -399,6 +419,31 @@ pub mod pallet {
 
 			ClustersNodes::<T>::remove(cluster_id, node_pub_key.clone());
 			Self::deposit_event(Event::<T>::ClusterNodeRemoved { cluster_id, node_pub_key });
+
+			Ok(())
+		}
+
+		fn do_validate_node(
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+			validation_succeeded: bool,
+		) -> DispatchResult {
+			let mut cluster_node_state =
+				ClustersNodes::<T>::try_get(cluster_id, node_pub_key.clone())
+					.map_err(|_| Error::<T>::AttemptToValidateNotAssignedNode)?;
+
+			if validation_succeeded {
+				cluster_node_state.status = ClusterNodeStatus::Validated;
+			} else {
+				cluster_node_state.status = ClusterNodeStatus::ValidationFailed;
+			}
+
+			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), cluster_node_state);
+			Self::deposit_event(Event::<T>::ClusterNodeValidated {
+				cluster_id,
+				node_pub_key,
+				succeeded: validation_succeeded,
+			});
 
 			Ok(())
 		}
