@@ -5632,7 +5632,7 @@ dependencies = [
 [[package]]
 name = "pallet-referenda"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.40#98f2e3451c9143278ec53c6718940aeabcd3b68a"
+source = "git+https://github.com/yahortsaryk/pallet-referenda.git?branch=main#7e96d1345524e12df5c3c645e23e4067dc459106"
 dependencies = [
  "assert_matches",
  "frame-benchmarking",
