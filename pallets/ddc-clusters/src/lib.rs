@@ -293,12 +293,7 @@ pub mod pallet {
 				ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
 			};
 
-			// Add node to the cluster.
-			<Self as ClusterManager<T>>::add_node(&cluster_id, &node_pub_key, &node_kind)
-				.map_err(Into::<Error<T>>::into)?;
-			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
-
-			Ok(())
+			Self::do_add_node(cluster_id, node_pub_key, node_kind)
 		}
 
 		#[pallet::call_index(2)]
@@ -314,12 +309,7 @@ pub mod pallet {
 
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
-			// Remove node from the cluster.
-			<Self as ClusterManager<T>>::remove_node(&cluster_id, &node_pub_key)
-				.map_err(Into::<Error<T>>::into)?;
-			Self::deposit_event(Event::<T>::ClusterNodeRemoved { cluster_id, node_pub_key });
-
-			Ok(())
+			Self::do_remove_node(cluster_id, node_pub_key)
 		}
 
 		// Sets Governance non-sensetive parameters only
@@ -415,6 +405,51 @@ pub mod pallet {
 
 			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
+
+			Ok(())
+		}
+
+		fn do_add_node(
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+			node_kind: ClusterNodeKind,
+		) -> DispatchResult {
+			let mut node = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+
+			ensure!(node.get_cluster_id().is_none(), Error::<T>::AttemptToAddAlreadyAssignedNode);
+
+			node.set_cluster_id(Some(cluster_id));
+			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+
+			ClustersNodes::<T>::insert(
+				cluster_id,
+				node_pub_key.clone(),
+				ClusterNodeState {
+					kind: node_kind.clone(),
+					status: ClusterNodeStatus::AwaitsValidation,
+				},
+			);
+			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
+
+			Ok(())
+		}
+
+		fn do_remove_node(cluster_id: ClusterId, node_pub_key: NodePubKey) -> DispatchResult {
+			let mut node = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
+
+			ensure!(
+				node.get_cluster_id() == &Some(cluster_id),
+				Error::<T>::AttemptToRemoveNotAssignedNode
+			);
+
+			node.set_cluster_id(None);
+			T::NodeRepository::update(node)
+				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
+
+			ClustersNodes::<T>::remove(cluster_id, node_pub_key.clone());
+			Self::deposit_event(Event::<T>::ClusterNodeRemoved { cluster_id, node_pub_key });
 
 			Ok(())
 		}
@@ -526,50 +561,15 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			node_pub_key: &NodePubKey,
 			node_kind: &ClusterNodeKind,
-		) -> Result<(), ClusterManagerError> {
-			let mut node = T::NodeRepository::get(node_pub_key.clone())
-				.map_err(|_| ClusterManagerError::AttemptToAddNonExistentNode)?;
-
-			ensure!(
-				node.get_cluster_id().is_none(),
-				ClusterManagerError::AttemptToAddAlreadyAssignedNode
-			);
-
-			node.set_cluster_id(Some(*cluster_id));
-			T::NodeRepository::update(node)
-				.map_err(|_| ClusterManagerError::AttemptToAddNonExistentNode)?;
-
-			ClustersNodes::<T>::insert(
-				cluster_id,
-				node_pub_key.clone(),
-				ClusterNodeState {
-					kind: node_kind.clone(),
-					status: ClusterNodeStatus::AwaitsValidation,
-				},
-			);
-
-			Ok(())
+		) -> Result<(), DispatchError> {
+			Self::do_add_node(cluster_id.clone(), node_pub_key.clone(), node_kind.clone())
 		}
 
 		fn remove_node(
 			cluster_id: &ClusterId,
 			node_pub_key: &NodePubKey,
-		) -> Result<(), ClusterManagerError> {
-			let mut node = T::NodeRepository::get(node_pub_key.clone())
-				.map_err(|_| ClusterManagerError::AttemptToRemoveNonExistentNode)?;
-
-			ensure!(
-				node.get_cluster_id() == &Some(*cluster_id),
-				ClusterManagerError::AttemptToRemoveNotAssignedNode
-			);
-
-			node.set_cluster_id(None);
-			T::NodeRepository::update(node)
-				.map_err(|_| ClusterManagerError::AttemptToRemoveNonExistentNode)?;
-
-			ClustersNodes::<T>::remove(cluster_id, node_pub_key.clone());
-
-			Ok(())
+		) -> Result<(), DispatchError> {
+			Self::do_remove_node(cluster_id.clone(), node_pub_key.clone())
 		}
 	}
 
@@ -630,25 +630,6 @@ pub mod pallet {
 				},
 				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful => {
 					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful
-				},
-			}
-		}
-	}
-
-	impl<T> From<ClusterManagerError> for Error<T> {
-		fn from(error: ClusterManagerError) -> Self {
-			match error {
-				ClusterManagerError::AttemptToRemoveNotAssignedNode => {
-					Error::<T>::AttemptToRemoveNotAssignedNode
-				},
-				ClusterManagerError::AttemptToRemoveNonExistentNode => {
-					Error::<T>::AttemptToRemoveNonExistentNode
-				},
-				ClusterManagerError::AttemptToAddNonExistentNode => {
-					Error::<T>::AttemptToAddNonExistentNode
-				},
-				ClusterManagerError::AttemptToAddAlreadyAssignedNode => {
-					Error::<T>::AttemptToAddAlreadyAssignedNode
 				},
 			}
 		}

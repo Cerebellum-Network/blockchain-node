@@ -6,7 +6,7 @@ use std::cell::RefCell;
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
+		cluster::{ClusterManager, ClusterVisitor, ClusterVisitorError},
 		node::{NodeVisitor, NodeVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodeKind, ClusterParams,
@@ -14,8 +14,8 @@ use ddc_primitives::{
 };
 use frame_support::{
 	construct_runtime,
-	dispatch::DispatchResult,
-	traits::{ConstU32, ConstU64, Everything},
+	dispatch::{DispatchError, DispatchResult},
+	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
@@ -230,14 +230,14 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
 		_node_kind: &ClusterNodeKind,
-	) -> Result<(), ClusterManagerError> {
+	) -> Result<(), DispatchError> {
 		Ok(())
 	}
 
 	fn remove_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
-	) -> Result<(), ClusterManagerError> {
+	) -> Result<(), DispatchError> {
 		Ok(())
 	}
 }
