@@ -30,7 +30,7 @@ pub mod migration;
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+		cluster::{ClusterAdministrator, ClusterCreator, ClusterVisitor, ClusterVisitorError},
 		pallet::{GetDdcOrigin, PalletsOriginOf},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
@@ -182,7 +182,7 @@ pub mod pallet {
 		fn build(&self) {
 			for cluster in &self.clusters {
 				assert_ok!(Pallet::<T>::create_cluster(
-					frame_system::Origin::<T>::Root.into(),
+					frame_system::Origin::<T>::Signed(cluster.manager_id.clone()).into(),
 					cluster.cluster_id,
 					cluster.manager_id.clone(),
 					cluster.reserve_id.clone(),
@@ -227,7 +227,7 @@ pub mod pallet {
 			cluster_params: ClusterParams<T::AccountId>,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
-			ensure_root(origin)?; // requires Governance approval
+			let _caller_id = ensure_signed(origin)?;
 			Self::do_create_cluster(
 				cluster_id,
 				cluster_manager_id,
@@ -338,23 +338,6 @@ pub mod pallet {
 
 			Ok(())
 		}
-
-		// Requires Governance approval
-		#[pallet::call_index(4)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_gov_params())]
-		pub fn set_cluster_gov_params(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
-		) -> DispatchResult {
-			ensure_root(origin)?; // requires Governance approval
-			let _cluster =
-				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
-			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
-
-			Ok(())
-		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -396,18 +379,29 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn do_activate_cluster(
-			cluster_id: ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
-		) -> DispatchResult {
+		fn do_activate_cluster(cluster_id: ClusterId) -> DispatchResult {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.status == ClusterStatus::Inactive, Error::<T>::ClusterAlreadyActivated);
 
 			cluster.status = ClusterStatus::Active;
 			Clusters::<T>::insert(cluster_id, cluster);
-			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterActivated { cluster_id });
+
+			Ok(())
+		}
+
+		fn do_update_cluster_gov_params(
+			cluster_id: ClusterId,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+		) -> DispatchResult {
+			ensure!(
+				!ClustersGovParams::<T>::contains_key(cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
+
+			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
+			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
 
 			Ok(())
 		}
@@ -576,6 +570,22 @@ pub mod pallet {
 				cluster_params,
 				cluster_gov_params,
 			)
+		}
+	}
+
+	impl<T: Config> ClusterAdministrator<T, BalanceOf<T>> for Pallet<T>
+	where
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	{
+		fn activate_cluster(cluster_id: ClusterId) -> DispatchResult {
+			Self::do_activate_cluster(cluster_id)
+		}
+
+		fn update_cluster_gov_params(
+			cluster_id: ClusterId,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+		) -> DispatchResult {
+			Self::do_update_cluster_gov_params(cluster_id, cluster_gov_params)
 		}
 	}
 

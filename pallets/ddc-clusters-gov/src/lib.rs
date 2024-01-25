@@ -16,10 +16,12 @@
 #![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
 pub mod weights;
-use ddc_primitives::{ClusterGovParams, ClusterId};
-use ddc_traits::{
-	cluster::ClusterVisitor,
-	pallet::{GetDdcOrigin, PalletsOriginOf},
+use ddc_primitives::{
+	traits::{
+		cluster::{ClusterAdministrator as ClusterAdministratorType, ClusterVisitor},
+		pallet::{GetDdcOrigin, PalletsOriginOf},
+	},
+	ClusterGovParams, ClusterId,
 };
 use frame_support::{
 	codec::{Decode, Encode, MaxEncodedLen},
@@ -44,6 +46,10 @@ pub type ProposalIndex = u32;
 pub type MemberCount = u32;
 
 use crate::weights::WeightInfo;
+
+/// The balance type of this pallet.
+pub type BalanceOf<T> =
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 /// Info for keeping track of a motion being voted on.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -71,21 +77,20 @@ pub mod pallet {
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
 	#[pallet::without_storage_info]
-	pub struct Pallet<T, I = ()>(_);
+	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config<I: 'static = ()>: frame_system::Config + pallet_referenda::Config<I> {
+	pub trait Config: frame_system::Config + pallet_referenda::Config {
 		type PalletId: Get<PalletId>;
-		type RuntimeEvent: From<Event<Self, I>>
-			+ IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 		type WeightInfo: WeightInfo;
 
 		type ClusterProposalCall: Parameter
-			+ From<Call<Self, I>>
+			+ From<Call<Self>>
 			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
-			+ IsType<<Self as pallet_referenda::Config<I>>::RuntimeCall>;
+			+ IsType<<Self as pallet_referenda::Config>::RuntimeCall>;
 
 		type ClusterVisitor: ClusterVisitor<Self>;
 		type ClusterGovOrigin: GetDdcOrigin<Self>;
@@ -93,29 +98,26 @@ pub mod pallet {
 		type ClusterMaxProposals: Get<ProposalIndex>;
 		type ClusterActivatorOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		type ClusterAdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+		type ClusterAdministrator: ClusterAdministratorType<Self, BalanceOf<Self>>;
 	}
 
 	#[pallet::storage]
 	#[pallet::getter(fn proposal_of)]
-	pub type ClusterProposal<T: Config<I>, I: 'static = ()> =
+	pub type ClusterProposal<T: Config> =
 		StorageMap<_, Identity, ClusterId, T::ClusterProposalCall, OptionQuery>;
 
 	/// Votes on a given cluster proposal, if it is ongoing.
 	#[pallet::storage]
 	#[pallet::getter(fn voting)]
-	pub type ClusterProposalVoting<T: Config<I>, I: 'static = ()> =
+	pub type ClusterProposalVoting<T: Config> =
 		StorageMap<_, Identity, ClusterId, Votes<T::AccountId, T::BlockNumber>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
-	pub enum Event<T: Config<I>, I: 'static = ()> {
+	pub enum Event<T: Config> {
 		/// A motion (given hash) has been proposed (by given account) with a threshold (given
 		/// `MemberCount`).
-		Proposed {
-			account: T::AccountId,
-			cluster_id: ClusterId,
-			threshold: MemberCount,
-		},
+		Proposed { account: T::AccountId, cluster_id: ClusterId, threshold: MemberCount },
 		/// A motion (given hash) has been voted on by given account, leaving
 		/// a tally (yes votes and no votes given respectively as `MemberCount`).
 		Voted {
@@ -126,31 +128,17 @@ pub mod pallet {
 			no: MemberCount,
 		},
 		/// A motion was approved by the required threshold.
-		Approved {
-			proposal_hash: T::Hash,
-		},
+		Approved { proposal_hash: T::Hash },
 		/// A motion was not approved by the required threshold.
-		Disapproved {
-			proposal_hash: T::Hash,
-		},
+		Disapproved { proposal_hash: T::Hash },
 		/// A motion was executed; result will be `Ok` if it returned without error.
-		Executed {
-			proposal_hash: T::Hash,
-			result: DispatchResult,
-		},
+		Executed { proposal_hash: T::Hash, result: DispatchResult },
 		/// A proposal was closed because its threshold was reached or after its duration was up.
-		Closed {
-			proposal_hash: T::Hash,
-			yes: MemberCount,
-			no: MemberCount,
-		},
-		ClusterActivated {
-			cluster_id: ClusterId,
-		},
+		Closed { proposal_hash: T::Hash, yes: MemberCount, no: MemberCount },
 	}
 
 	#[pallet::error]
-	pub enum Error<T, I = ()> {
+	pub enum Error<T> {
 		/// Account is not a member
 		NotMember,
 		/// Account is not a cluster manager
@@ -166,19 +154,19 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config<I>, I: 'static> Pallet<T, I> {
+	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
 		#[pallet::weight(10_000)]
 		pub fn propose_activate_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			// _cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let cluster_manager_id = T::ClusterVisitor::get_manager_account_id(&cluster_id)
-				.map_err(|_| Error::<T, I>::NoCluster)?;
+				.map_err(|_| Error::<T>::NoCluster)?;
 
-			ensure!(cluster_manager_id == caller_id, Error::<T, I>::NotClusterManager);
+			ensure!(cluster_manager_id == caller_id, Error::<T>::NotClusterManager);
 
 			// todo: calculate the threshold based on number of validated nodes
 			let threshold = 64u32;
@@ -187,11 +175,14 @@ pub mod pallet {
 					frame_system::Pallet::<T>::block_number() + T::ClusterProposalDuration::get();
 				Votes { threshold, ayes: vec![], nays: vec![], end }
 			};
-			let proposal: <T as Config<I>>::ClusterProposalCall =
-				T::ClusterProposalCall::from(Call::<T, I>::activate_cluster { cluster_id });
+			let proposal: <T as Config>::ClusterProposalCall =
+				T::ClusterProposalCall::from(Call::<T>::activate_cluster {
+					cluster_id,
+					cluster_gov_params,
+				});
 
-			<ClusterProposal<T, I>>::insert(cluster_id, proposal);
-			<ClusterProposalVoting<T, I>>::insert(cluster_id, votes);
+			<ClusterProposal<T>>::insert(cluster_id, proposal);
+			<ClusterProposalVoting<T>>::insert(cluster_id, votes);
 			Self::deposit_event(Event::Proposed { account: caller_id, cluster_id, threshold });
 
 			Ok(())
@@ -210,33 +201,34 @@ pub mod pallet {
 
 		#[pallet::call_index(2)]
 		#[pallet::weight(10_000)]
-		pub fn activate_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
+		pub fn activate_cluster(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+		) -> DispatchResult {
 			T::ClusterActivatorOrigin::ensure_origin(origin)?;
-
-			// todo: activate cluster and update its economic
-			Self::deposit_event(Event::ClusterActivated { cluster_id });
-
-			Ok(())
+			T::ClusterAdministrator::activate_cluster(cluster_id)?;
+			T::ClusterAdministrator::update_cluster_gov_params(cluster_id, cluster_gov_params)
 		}
 	}
 
-	impl<T: Config<I>, I: 'static> Pallet<T, I> {
+	impl<T: Config> Pallet<T> {
 		pub fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
 
 		pub fn propose_public(cluster_id: ClusterId) -> DispatchResult {
-			let proposal = <ClusterProposal<T, I>>::try_get(cluster_id)
-				.map_err(|_| Error::<T, I>::ProposalMissing)?;
+			let proposal = <ClusterProposal<T>>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ProposalMissing)?;
 
-			let call: <T as pallet_referenda::Config<I>>::RuntimeCall = proposal.into();
+			let call: <T as pallet_referenda::Config>::RuntimeCall = proposal.into();
 			let bounded_call =
-				T::Preimages::bound(call).map_err(|_| Error::<T, I>::ProposalMissing)?;
+				T::Preimages::bound(call).map_err(|_| Error::<T>::ProposalMissing)?;
 
 			let cluster_gov_origin = T::ClusterGovOrigin::get();
 			let pallets_origin: <T::RuntimeOrigin as OriginTrait>::PalletsOrigin =
 				cluster_gov_origin.caller().clone();
-			let referenda_call = pallet_referenda::Call::<T, I>::submit {
+			let referenda_call = pallet_referenda::Call::<T>::submit {
 				proposal_origin: Box::new(pallets_origin),
 				proposal: bounded_call,
 				enactment_moment: DispatchTime::After(T::BlockNumber::from(1u32)),
