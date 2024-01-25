@@ -195,6 +195,7 @@ pub mod pallet {
 		Rewarded {
 			cluster_id: ClusterId,
 			era: DdcEra,
+			batch_index: BatchIndex,
 			node_provider_id: T::AccountId,
 			rewarded: u128,
 			expected_to_reward: u128,
@@ -202,6 +203,7 @@ pub mod pallet {
 		NotDistributedReward {
 			cluster_id: ClusterId,
 			era: DdcEra,
+			batch_index: BatchIndex,
 			node_provider_id: T::AccountId,
 			expected_reward: u128,
 			distributed_reward: BalanceOf<T>,
@@ -728,11 +730,13 @@ pub mod pallet {
 						&updated_billing_report.vault,
 					) - <T as pallet::Config>::Currency::minimum_balance();
 
+					// 10000000000001 > 10000000000000 but is still ok
 					if reward > vault_balance {
 						if reward - vault_balance > max_dust {
 							Self::deposit_event(Event::<T>::NotDistributedReward {
 								cluster_id,
 								era,
+								batch_index,
 								node_provider_id: node_provider_id.clone(),
 								expected_reward: amount_to_reward,
 								distributed_reward: vault_balance,
@@ -760,6 +764,7 @@ pub mod pallet {
 				Self::deposit_event(Event::<T>::Rewarded {
 					cluster_id,
 					era,
+					batch_index,
 					node_provider_id,
 					rewarded: reward_,
 					expected_to_reward: amount_to_reward,
