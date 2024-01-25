@@ -18,7 +18,7 @@ pub struct Cluster<AccountId> {
 	pub manager_id: AccountId,
 	pub reserve_id: AccountId,
 	pub props: ClusterProps<AccountId>,
-	pub status: ClusterStatus,
+	pub status: ClusterStatus, // todo: provide migration
 }
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -45,19 +45,14 @@ impl<AccountId> Cluster<AccountId> {
 		})
 	}
 
-	pub fn set_params(
-		&mut self,
-		cluster_params: ClusterParams<AccountId>,
-	) -> Result<(), ClusterError> {
+	pub fn set_params(&mut self, cluster_params: ClusterParams<AccountId>) {
 		self.props = ClusterProps {
 			node_provider_auth_contract: cluster_params.node_provider_auth_contract,
 		};
-		Ok(())
 	}
 
-	pub fn set_status(&mut self, status: ClusterStatus) -> Result<(), ClusterError> {
+	pub fn set_status(&mut self, status: ClusterStatus) {
 		self.status = status;
-		Ok(())
 	}
 }
 
