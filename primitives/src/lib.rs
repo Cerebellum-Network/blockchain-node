@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use sp_core::hash::H160;
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
 
+pub mod traits;
+
 pub const MILLICENTS: u128 = 100_000;
 pub const CENTS: u128 = 1_000 * MILLICENTS; // assume this is worth about a cent.
 pub const DOLLARS: u128 = 100 * CENTS;

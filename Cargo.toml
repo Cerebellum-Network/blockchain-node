@@ -32,7 +32,7 @@ members = [
   "pallets/ddc-nodes",
   "pallets/ddc-clusters",
   "primitives",
-  "traits",
+  "pallets/ddc-clusters-gov",
 ]
 
 [profile.release]

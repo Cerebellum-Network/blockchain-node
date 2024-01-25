@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 
+- More explicit events in `pallet-ddc-payouts` about batch index
 - ...
 
 ## [4.8.8]
