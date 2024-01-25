@@ -1,13 +1,12 @@
 use codec::{Decode, Encode};
+use ddc_primitives::{
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
+	ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
+};
 use frame_support::dispatch::DispatchResult;
 use frame_system::Config;
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
-
-use crate::{
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
-	ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
-};
 
 pub trait ClusterVisitor<T: Config> {
 	fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError>;
@@ -69,14 +68,6 @@ pub trait ClusterManager<T: Config> {
 		cluster_id: &ClusterId,
 		node_pub_key: &NodePubKey,
 	) -> Result<(), ClusterManagerError>;
-}
-
-pub trait ClusterAdministrator<T: Config, Balance> {
-	fn activate_cluster(cluster_id: ClusterId) -> DispatchResult;
-	fn update_cluster_gov_params(
-		cluster_id: ClusterId,
-		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
-	) -> DispatchResult;
 }
 
 pub enum ClusterManagerError {

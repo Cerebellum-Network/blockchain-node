@@ -32,8 +32,8 @@ use ddc_primitives::{
 		cluster::{ClusterAdministrator, ClusterCreator, ClusterVisitor, ClusterVisitorError},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
-	ClusterPricingParams, ClusterStatus, NodePubKey, NodeType,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
+	ClusterNodeStatus, ClusterParams, ClusterPricingParams, ClusterStatus, NodePubKey, NodeType,
 };
 use frame_support::{
 	assert_ok,
@@ -58,6 +58,12 @@ mod node_provider_auth;
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct ClusterNodeState {
+	pub kind: ClusterNodeKind,
+	pub status: ClusterNodeStatus,
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -134,7 +140,7 @@ pub mod pallet {
 		ClusterId,
 		Blake2_128Concat,
 		NodePubKey,
-		bool,
+		ClusterNodeState, // todo: provide migration
 		OptionQuery,
 	>;
 
@@ -185,7 +191,14 @@ pub mod pallet {
 
 				for (cluster_id, nodes) in &self.clusters_nodes {
 					for node_pub_key in nodes {
-						<ClustersNodes<T>>::insert(cluster_id, node_pub_key, true);
+						<ClustersNodes<T>>::insert(
+							cluster_id,
+							node_pub_key,
+							ClusterNodeState {
+								kind: ClusterNodeKind::Genesis,
+								status: ClusterNodeStatus::AwaitsValidation,
+							},
+						);
 					}
 				}
 			}
@@ -223,6 +236,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
+			node_kind: ClusterNodeKind,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
@@ -260,7 +274,7 @@ pub mod pallet {
 			};
 
 			// Add node to the cluster.
-			<Self as ClusterManager<T>>::add_node(&cluster_id, &node_pub_key)
+			<Self as ClusterManager<T>>::add_node(&cluster_id, &node_pub_key, &node_kind)
 				.map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
 
@@ -459,6 +473,7 @@ pub mod pallet {
 		fn add_node(
 			cluster_id: &ClusterId,
 			node_pub_key: &NodePubKey,
+			node_kind: &ClusterNodeKind,
 		) -> Result<(), ClusterManagerError> {
 			let mut node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| ClusterManagerError::AttemptToAddNonExistentNode)?;
@@ -472,7 +487,14 @@ pub mod pallet {
 			T::NodeRepository::update(node)
 				.map_err(|_| ClusterManagerError::AttemptToAddNonExistentNode)?;
 
-			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), true);
+			ClustersNodes::<T>::insert(
+				cluster_id,
+				node_pub_key.clone(),
+				ClusterNodeState {
+					kind: node_kind.clone(),
+					status: ClusterNodeStatus::AwaitsValidation,
+				},
+			);
 
 			Ok(())
 		}
