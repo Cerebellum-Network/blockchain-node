@@ -332,7 +332,7 @@ pub mod pallet {
 				cluster_params.replication_total >= T::MinReplicationTotalLimit::get(),
 				Error::<T>::ReplicationTotalDidNotMeetMinimum
 			);
-			cluster.set_params(cluster_params).map_err(Into::<Error<T>>::into)?;
+			cluster.set_params(cluster_params);
 			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
 
@@ -384,7 +384,7 @@ pub mod pallet {
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.status == ClusterStatus::Inactive, Error::<T>::ClusterAlreadyActivated);
 
-			cluster.status = ClusterStatus::Active;
+			cluster.set_status(ClusterStatus::Active);
 			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterActivated { cluster_id });
 
@@ -396,7 +396,7 @@ pub mod pallet {
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			ensure!(
-				!ClustersGovParams::<T>::contains_key(cluster_id),
+				ClustersGovParams::<T>::contains_key(cluster_id),
 				Error::<T>::ClusterDoesNotExist
 			);
 

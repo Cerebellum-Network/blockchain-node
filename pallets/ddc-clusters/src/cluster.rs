@@ -16,7 +16,7 @@ pub struct Cluster<AccountId> {
 	pub manager_id: AccountId,
 	pub reserve_id: AccountId,
 	pub props: ClusterProps<AccountId>,
-	pub status: ClusterStatus,
+	pub status: ClusterStatus, // todo: provide migration
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
@@ -48,22 +48,17 @@ impl<AccountId> Cluster<AccountId> {
 		})
 	}
 
-	pub fn set_params(
-		&mut self,
-		cluster_params: ClusterParams<AccountId>,
-	) -> Result<(), ClusterError> {
+	pub fn set_params(&mut self, cluster_params: ClusterParams<AccountId>) {
 		self.props = ClusterProps {
 			node_provider_auth_contract: cluster_params.node_provider_auth_contract,
 			erasure_coding_required: cluster_params.erasure_coding_required,
 			erasure_coding_total: cluster_params.erasure_coding_total,
 			replication_total: cluster_params.replication_total,
 		};
-		Ok(())
 	}
 
-	pub fn set_status(&mut self, status: ClusterStatus) -> Result<(), ClusterError> {
+	pub fn set_status(&mut self, status: ClusterStatus) {
 		self.status = status;
-		Ok(())
 	}
 }
 
