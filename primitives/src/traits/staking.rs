@@ -1,5 +1,6 @@
-use ddc_primitives::{ClusterId, NodePubKey};
 use frame_system::Config;
+
+use crate::{ClusterId, NodePubKey};
 
 pub trait StakingVisitor<T: Config> {
 	fn has_activated_stake(

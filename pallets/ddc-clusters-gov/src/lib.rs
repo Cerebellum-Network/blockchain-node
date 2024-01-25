@@ -16,10 +16,12 @@
 #![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
 pub mod weights;
-use ddc_primitives::{ClusterGovParams, ClusterId};
-use ddc_traits::{
-	cluster::ClusterVisitor,
-	pallet::{GetDdcOrigin, PalletsOriginOf},
+use ddc_primitives::{
+	traits::{
+		cluster::ClusterVisitor,
+		pallet::{GetDdcOrigin, PalletsOriginOf},
+	},
+	ClusterGovParams, ClusterId,
 };
 use frame_support::{
 	codec::{Decode, Encode, MaxEncodedLen},

@@ -23,7 +23,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use ddc_traits::pallet::{GetDdcOrigin, PalletVisitor, PalletsOriginOf};
+use ddc_primitives::traits::pallet::{GetDdcOrigin, PalletVisitor, PalletsOriginOf};
 use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragmen, VoteWeight};
 use frame_support::{
 	construct_runtime,

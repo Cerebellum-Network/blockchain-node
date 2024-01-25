@@ -1781,6 +1781,18 @@ fn send_rewarding_providers_batch_works() {
 		assert_eq!(balance_node1, transfer_charge + storage_charge + puts_charge + gets_charge);
 		let mut report_reward = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 
+		System::assert_has_event(
+			Event::Rewarded {
+				cluster_id,
+				era,
+				node_provider_id: node1,
+				batch_index: batch_node_index,
+				rewarded: balance_node1,
+				expected_to_reward: balance_node1,
+			}
+			.into(),
+		);
+
 		let ratio2_transfer = Perquintill::from_rational(
 			node_usage2.transferred_bytes,
 			total_nodes_usage.transferred_bytes,
@@ -1806,6 +1818,18 @@ fn send_rewarding_providers_batch_works() {
 		let balance_node2 = Balances::free_balance(node2);
 		assert_eq!(balance_node2, transfer_charge + storage_charge + puts_charge + gets_charge);
 		assert_eq!(report_reward.total_distributed_reward, balance_node1 + balance_node2);
+
+		System::assert_has_event(
+			Event::Rewarded {
+				cluster_id,
+				era,
+				node_provider_id: node2,
+				batch_index: batch_node_index,
+				rewarded: balance_node2,
+				expected_to_reward: balance_node2,
+			}
+			.into(),
+		);
 
 		// batch 2
 		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
@@ -1841,6 +1865,19 @@ fn send_rewarding_providers_batch_works() {
 		report_reward = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let balance_node3 = Balances::free_balance(node3);
 		assert_eq!(balance_node3, transfer_charge + storage_charge + puts_charge + gets_charge);
+
+		System::assert_has_event(
+			Event::Rewarded {
+				cluster_id,
+				era,
+				node_provider_id: node3,
+				batch_index: batch_node_index + 1,
+				rewarded: balance_node3,
+				expected_to_reward: balance_node3,
+			}
+			.into(),
+		);
+
 		assert_eq!(
 			report_reward.total_distributed_reward,
 			balance_node1 + balance_node2 + balance_node3
