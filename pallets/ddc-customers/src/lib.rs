@@ -305,8 +305,10 @@ pub mod pallet {
 			let cur_bucket_id =
 				Self::buckets_count().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
 
-			<T as pallet::Config>::ClusterVisitor::ensure_cluster(&cluster_id)
-				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ensure!(
+				<T as pallet::Config>::ClusterVisitor::cluster_exists(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
 
 			let bucket = Bucket {
 				bucket_id: cur_bucket_id,

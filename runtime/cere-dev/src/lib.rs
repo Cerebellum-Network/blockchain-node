@@ -1213,7 +1213,6 @@ parameter_types! {
 	pub ClusterGovCreatorOrigin: RuntimeOrigin = pallet_ddc_origins::Origin::ClusterGovCreator.into();
 	pub ClusterGovEditorOrigin: RuntimeOrigin = pallet_ddc_origins::Origin::ClusterGovEditor.into();
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
-	pub const ClusterMaxProposals: u32 = 1;
 }
 
 impl pallet_ddc_clusters_gov::Config for Runtime {

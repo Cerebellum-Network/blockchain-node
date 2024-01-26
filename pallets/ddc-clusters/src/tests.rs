@@ -527,7 +527,7 @@ fn cluster_visitor_works() {
 			cluster_gov_params
 		));
 
-		assert_ok!(<DdcClusters as ClusterVisitor<Test>>::ensure_cluster(&cluster_id));
+		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::cluster_exists(&cluster_id), true);
 
 		assert_eq!(
 			<DdcClusters as ClusterVisitor<Test>>::get_bond_size(&cluster_id, NodeType::Storage)
