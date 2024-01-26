@@ -92,7 +92,6 @@ pallet-utility = { default-features = false, git = "https://github.com/paritytec
 pallet-vesting = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 
 # cere dependencies
-cere-dev-runtime-constants = { path = "./constants", default-features = false }
 cere-runtime-common = { path = "../common", default-features = false }
 ddc-primitives = { path = "../../primitives", default-features = false }
 pallet-ddc-clusters = { version = "4.8.8", default-features = false, path = "../../pallets/ddc-clusters" }
@@ -181,7 +180,6 @@ std = [
   "pallet-ddc-nodes/std",
   "pallet-ddc-staking/std",
   "cere-runtime-common/std",
-  "cere-dev-runtime-constants/std",
   "pallet-ddc-customers/std",
   "pallet-ddc-clusters/std",
   "pallet-ddc-payouts/std",

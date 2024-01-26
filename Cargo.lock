@@ -836,7 +836,6 @@ dependencies = [
 name = "cere-dev-runtime"
 version = "4.8.8"
 dependencies = [
- "cere-dev-runtime-constants",
  "cere-runtime-common",
  "ddc-primitives",
  "frame-benchmarking",
@@ -923,14 +922,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cere-dev-runtime-constants"
-version = "4.8.8"
-dependencies = [
- "node-primitives",
- "sp-runtime",
-]
-
-[[package]]
 name = "cere-rpc"
 version = "4.8.8"
 dependencies = [
@@ -964,7 +955,6 @@ name = "cere-runtime"
 version = "4.8.8"
 dependencies = [
  "cere-runtime-common",
- "cere-runtime-constants",
  "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -1060,21 +1050,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "cere-runtime-constants"
-version = "4.8.8"
-dependencies = [
- "node-primitives",
-]
-
-[[package]]
 name = "cere-service"
 version = "4.8.8"
 dependencies = [
  "cere-client",
  "cere-dev-runtime",
- "cere-dev-runtime-constants",
  "cere-rpc",
  "cere-runtime",
+ "cere-runtime-common",
  "futures",
  "jsonrpsee",
  "node-primitives",

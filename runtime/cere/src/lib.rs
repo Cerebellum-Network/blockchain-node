@@ -94,7 +94,7 @@ use static_assertions::const_assert;
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
 /// Constant values used within the runtime.
-use cere_runtime_constants::{currency::*, time::*};
+use cere_runtime_common::constants::{currency::*, time::*};
 use impls::Author;
 use sp_runtime::generic::Era;
 
