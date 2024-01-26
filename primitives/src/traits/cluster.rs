@@ -6,7 +6,7 @@ use sp_runtime::RuntimeDebug;
 
 use crate::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
-	ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
+	ClusterNodesStats, ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
 };
 
 pub trait ClusterVisitor<T: Config> {
@@ -36,7 +36,7 @@ pub trait ClusterVisitor<T: Config> {
 
 	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError>;
 
-	fn get_validated_nodes_count(cluster_id: &ClusterId) -> u32;
+	fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError>;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {
