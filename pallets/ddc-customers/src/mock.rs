@@ -3,7 +3,8 @@
 use ddc_primitives::{
 	traits::cluster::{ClusterCreator, ClusterManager, ClusterVisitor},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
-	ClusterNodesStats, ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
+	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams, NodePubKey,
+	NodeType,
 };
 use frame_support::{
 	construct_runtime,
@@ -177,19 +178,19 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 		unimplemented!()
 	}
-
-	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
-		unimplemented!()
-	}
-
-	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
-		unimplemented!()
-	}
 }
 
 pub struct TestClusterManager;
 impl<T: Config> ClusterManager<T> for TestClusterManager {
-	fn contains_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
+	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+
+	fn contains_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+		_validation_status: Option<ClusterNodeStatus>,
+	) -> bool {
 		true
 	}
 
@@ -206,6 +207,10 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		_node_pub_key: &NodePubKey,
 	) -> Result<(), DispatchError> {
 		Ok(())
+	}
+
+	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+		unimplemented!()
 	}
 }
 

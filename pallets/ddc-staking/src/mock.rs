@@ -7,10 +7,11 @@ use std::cell::RefCell;
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterManager, ClusterVisitor},
-		node::{NodeVisitor, NodeVisitorError},
+		node::NodeVisitor,
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodeKind, ClusterNodesStats,
-	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodePubKey,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodeKind, ClusterNodeStatus,
+	ClusterNodesStats, ClusterParams, ClusterPricingParams, NodeParams, NodePubKey,
+	StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime,
@@ -206,22 +207,18 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		})
 	}
 
-	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
-		unimplemented!()
-	}
-
 	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
-		unimplemented!()
-	}
-
-	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
 		unimplemented!()
 	}
 }
 
 pub struct TestClusterManager;
 impl<T: Config> ClusterManager<T> for TestClusterManager {
-	fn contains_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
+	fn contains_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+		_validation_status: Option<ClusterNodeStatus>,
+	) -> bool {
 		true
 	}
 
@@ -239,6 +236,14 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 	) -> Result<(), DispatchError> {
 		Ok(())
 	}
+
+	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+		unimplemented!()
+	}
 }
 
 lazy_static! {
@@ -252,11 +257,12 @@ lazy_static! {
 pub struct MockNode {
 	pub cluster_id: Option<ClusterId>,
 	pub exists: bool,
+	pub node_provider_id: AccountId,
 }
 
 impl Default for MockNode {
 	fn default() -> Self {
-		Self { cluster_id: None, exists: true }
+		Self { cluster_id: None, exists: true, node_provider_id: 0 }
 	}
 }
 
@@ -277,8 +283,11 @@ impl MockNodeVisitor {
 	}
 }
 
-impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
-	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, NodeVisitorError> {
+impl<T: Config> NodeVisitor<T> for MockNodeVisitor
+where
+	<T as frame_system::Config>::AccountId: From<u64>,
+{
+	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
 		let lock = MOCK_NODE.lock();
 		let mock_ref = lock.borrow();
 		Ok(mock_ref.cluster_id)
@@ -287,6 +296,12 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 		let lock = MOCK_NODE.lock();
 		let mock_ref = lock.borrow();
 		mock_ref.exists
+	}
+
+	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
+		let lock = MOCK_NODE.lock();
+		let mock_ref = lock.borrow();
+		Ok(mock_ref.node_provider_id.into())
 	}
 }
 

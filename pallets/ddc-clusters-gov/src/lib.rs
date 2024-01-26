@@ -18,21 +18,19 @@
 pub mod weights;
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterAdministrator as ClusterAdministratorType, ClusterVisitor},
-		pallet::{GetDdcOrigin, PalletsOriginOf},
+		cluster::{ClusterAdministrator, ClusterManager},
+		node::NodeVisitor,
+		pallet::GetDdcOrigin,
 	},
-	ClusterGovParams, ClusterId, MIN_VALIDATED_NODES_COUNT,
+	ClusterGovParams, ClusterId, ClusterNodeStatus, MIN_VALIDATED_NODES_COUNT,
 };
 use frame_support::{
-	codec::{Decode, Encode, MaxEncodedLen},
-	dispatch::{
-		DispatchError, DispatchResultWithPostInfo, Dispatchable, GetDispatchInfo, Pays,
-		PostDispatchInfo,
-	},
+	codec::{Decode, Encode},
+	dispatch::{DispatchError, Dispatchable},
 	pallet_prelude::*,
 	traits::{
-		schedule::DispatchTime, Bounded, Currency, EnsureOriginWithArg, LockableCurrency,
-		OriginTrait, StorePreimage, UnfilteredDispatchable,
+		schedule::DispatchTime, Currency, LockableCurrency, OriginTrait, StorePreimage,
+		UnfilteredDispatchable,
 	},
 };
 use frame_system::pallet_prelude::*;
@@ -66,6 +64,7 @@ pub struct Votes<AccountId, BlockNumber> {
 
 #[frame_support::pallet]
 pub mod pallet {
+	use ddc_primitives::NodePubKey;
 	use frame_support::PalletId;
 
 	use super::*;
@@ -83,21 +82,20 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_referenda::Config {
 		type PalletId: Get<PalletId>;
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 		type WeightInfo: WeightInfo;
-
+		type ClusterProposalDuration: Get<Self::BlockNumber>;
 		type ClusterProposalCall: Parameter
 			+ From<Call<Self>>
 			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
 			+ IsType<<Self as pallet_referenda::Config>::RuntimeCall>;
 
-		type ClusterVisitor: ClusterVisitor<Self>;
 		type ClusterGovOrigin: GetDdcOrigin<Self>;
-		type ClusterProposalDuration: Get<Self::BlockNumber>;
 		type ClusterActivatorOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		type ClusterAdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
-		type ClusterAdministrator: ClusterAdministratorType<Self, BalanceOf<Self>>;
+		type ClusterAdministrator: ClusterAdministrator<Self, BalanceOf<Self>>;
+		type ClusterManager: ClusterManager<Self>;
+		type NodeVisitor: NodeVisitor<Self>;
 	}
 
 	#[pallet::storage]
@@ -139,9 +137,11 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Account is not a member
-		NotMember,
+		NotClusterMember,
 		/// Account is not a cluster manager
 		NotClusterManager,
+		/// Account is not a member
+		NotValidatedClusterMember,
 		/// Cluster does not exist
 		NoCluster,
 		/// Proposal must exist
@@ -164,11 +164,9 @@ pub mod pallet {
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let cluster_manager_id = T::ClusterVisitor::get_manager_account_id(&cluster_id)
-				.map_err(|_| Error::<T>::NoCluster)?;
-			ensure!(cluster_manager_id == caller_id, Error::<T>::NotClusterManager);
+			Self::ensure_cluster_manager(caller_id.clone(), cluster_id)?;
 
-			let cluster_nodes_stats = T::ClusterVisitor::get_nodes_stats(&cluster_id)
+			let cluster_nodes_stats = T::ClusterManager::get_nodes_stats(&cluster_id)
 				.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_nodes_stats.await_validation == 0, Error::<T>::AwaitsValidation);
 			ensure!(
@@ -198,16 +196,34 @@ pub mod pallet {
 
 		#[pallet::call_index(1)]
 		#[pallet::weight(10_000)]
-		pub fn close_proposal(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
-			let _caller_id = ensure_signed(origin)?;
+		pub fn vote_proposal(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		) -> DispatchResult {
+			let caller_id = ensure_signed(origin)?;
+			Self::ensure_validated_member(caller_id, cluster_id, node_pub_key)?;
+			// todo: implement voting
 
+			Ok(())
+		}
+
+		#[pallet::call_index(2)]
+		#[pallet::weight(10_000)]
+		pub fn close_proposal(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		) -> DispatchResult {
+			let caller_id = ensure_signed(origin)?;
+			Self::ensure_validated_member(caller_id, cluster_id, node_pub_key)?;
 			// todo: check the local consensus on proposal
 			Self::propose_public(cluster_id)?;
 
 			Ok(())
 		}
 
-		#[pallet::call_index(2)]
+		#[pallet::call_index(3)]
 		#[pallet::weight(10_000)]
 		pub fn activate_cluster(
 			origin: OriginFor<T>,
@@ -223,6 +239,46 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
+		}
+
+		fn ensure_cluster_manager(
+			origin: T::AccountId,
+			cluster_id: ClusterId,
+		) -> Result<(), DispatchError> {
+			let cluster_manager = T::ClusterManager::get_manager_account_id(&cluster_id)
+				.map_err(|_| Error::<T>::NoCluster)?;
+			ensure!(origin == cluster_manager, Error::<T>::NotClusterManager);
+			Ok(())
+		}
+
+		fn ensure_validated_member(
+			origin: T::AccountId,
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		) -> Result<(), DispatchError> {
+			let cluster_manager = T::ClusterManager::get_manager_account_id(&cluster_id)
+				.map_err(|_| Error::<T>::NoCluster)?;
+
+			if origin == cluster_manager {
+				return Ok(())
+			}
+
+			let is_validated = T::ClusterManager::contains_node(
+				&cluster_id,
+				&node_pub_key,
+				Some(ClusterNodeStatus::ValidationSucceeded),
+			);
+
+			if !is_validated {
+				return Err(Error::<T>::NotValidatedClusterMember.into())
+			}
+
+			let node_provider = T::NodeVisitor::get_node_provider_id(&node_pub_key)?;
+			if origin == node_provider {
+				return Ok(())
+			}
+
+			Err(Error::<T>::NotValidatedClusterMember.into())
 		}
 
 		fn propose_public(cluster_id: ClusterId) -> DispatchResult {

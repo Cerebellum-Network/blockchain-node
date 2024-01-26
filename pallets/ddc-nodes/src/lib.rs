@@ -29,7 +29,7 @@ pub mod testing_utils;
 
 use ddc_primitives::{
 	traits::{
-		node::{NodeCreator, NodeVisitor, NodeVisitorError},
+		node::{NodeCreator, NodeVisitor},
 		staking::StakingVisitor,
 	},
 	ClusterId, NodeParams, NodePubKey, StorageNodePubKey,
@@ -226,16 +226,18 @@ pub mod pallet {
 	}
 
 	impl<T: Config> NodeVisitor<T> for Pallet<T> {
-		fn get_cluster_id(
-			node_pub_key: &NodePubKey,
-		) -> Result<Option<ClusterId>, NodeVisitorError> {
-			let node =
-				Self::get(node_pub_key.clone()).map_err(|_| NodeVisitorError::NodeDoesNotExist)?;
+		fn get_cluster_id(node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
+			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
 			Ok(*node.get_cluster_id())
 		}
 
 		fn exists(node_pub_key: &NodePubKey) -> bool {
 			Self::get(node_pub_key.clone()).is_ok()
+		}
+
+		fn get_node_provider_id(node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
+			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
+			Ok(node.get_provider_id().clone())
 		}
 	}
 

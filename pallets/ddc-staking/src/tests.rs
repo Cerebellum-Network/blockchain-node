@@ -405,6 +405,7 @@ fn storage_full_unbonding_works() {
 		let lock = MockNodeVisitor::set_and_hold_lock(MockNode {
 			cluster_id: Some(cluster_id),
 			exists: true,
+			node_provider_id: provider_controller,
 		});
 
 		let storage_bond_size = 10_u128;
