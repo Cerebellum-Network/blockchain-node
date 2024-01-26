@@ -146,6 +146,11 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn clusters_validated_nodes_count)]
+	pub type ClustersValidatedNodesCount<T: Config> =
+		StorageMap<_, Twox64Concat, ClusterId, u32, ValueQuery>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub clusters: Vec<Cluster<T::AccountId>>,
@@ -319,15 +324,15 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
-			validation_succeeded: bool,
+			succeeded: bool,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			// todo: allow to trigger this extrinsic to the Validators only
+			// todo: allow to execute this extrinsic to Validators only
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
-			Self::do_validate_node(cluster_id, node_pub_key, validation_succeeded)
+			Self::do_validate_node(cluster_id, node_pub_key, succeeded)
 		}
 	}
 
@@ -426,23 +431,32 @@ pub mod pallet {
 		fn do_validate_node(
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
-			validation_succeeded: bool,
+			succeeded: bool,
 		) -> DispatchResult {
-			let mut cluster_node_state =
+			let mut current_node_state =
 				ClustersNodes::<T>::try_get(cluster_id, node_pub_key.clone())
 					.map_err(|_| Error::<T>::AttemptToValidateNotAssignedNode)?;
 
-			if validation_succeeded {
-				cluster_node_state.status = ClusterNodeStatus::Validated;
-			} else {
-				cluster_node_state.status = ClusterNodeStatus::ValidationFailed;
-			}
+			let current_count = ClustersValidatedNodesCount::<T>::get(cluster_id);
 
-			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), cluster_node_state);
+			let updated_count = match current_node_state.status {
+				ClusterNodeStatus::AwaitsValidation if succeeded => current_count + 1,
+				ClusterNodeStatus::ValidationSucceeded if !succeeded => current_count - 1,
+				_ => current_count,
+			};
+
+			current_node_state.status = if succeeded {
+				ClusterNodeStatus::ValidationSucceeded
+			} else {
+				ClusterNodeStatus::ValidationFailed
+			};
+
+			ClustersValidatedNodesCount::<T>::insert(cluster_id, updated_count);
+			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), current_node_state);
 			Self::deposit_event(Event::<T>::ClusterNodeValidated {
 				cluster_id,
 				node_pub_key,
-				succeeded: validation_succeeded,
+				succeeded,
 			});
 
 			Ok(())

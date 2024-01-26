@@ -140,6 +140,6 @@ pub enum ClusterNodeKind {
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum ClusterNodeStatus {
 	AwaitsValidation,
-	Validated,
+	ValidationSucceeded,
 	ValidationFailed,
 }
