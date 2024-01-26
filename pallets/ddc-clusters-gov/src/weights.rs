@@ -27,16 +27,41 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_ddc_clusters_gov.
 pub trait WeightInfo {
-	
+    fn close_early_disapproved(m: u32, p: u32, ) -> Weight;
+	fn close_early_approved(b: u32, m: u32, p: u32, ) -> Weight;
+    fn close_disapproved(m: u32, p: u32, ) -> Weight;
+	fn close_approved(b: u32, m: u32, p: u32, ) -> Weight;
 }
 
 /// Weights for pallet_ddc_clusters_gov using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-
+	fn close_early_disapproved(m: u32, p: u32, ) -> Weight {
+        Weight::from_ref_time(10000)
+    }
+	fn close_early_approved(b: u32, m: u32, p: u32, ) -> Weight {
+        Weight::from_ref_time(10000)
+    }
+    fn close_disapproved(m: u32, p: u32, ) -> Weight {
+        Weight::from_ref_time(10000)
+    }
+	fn close_approved(b: u32, m: u32, p: u32, ) -> Weight {
+        Weight::from_ref_time(10000)
+    }
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-
+	fn close_early_disapproved(m: u32, p: u32, ) -> Weight {
+        Weight::from_ref_time(10000)
+    }
+	fn close_early_approved(b: u32, m: u32, p: u32, ) -> Weight {
+        Weight::from_ref_time(10000)
+    }
+    fn close_disapproved(m: u32, p: u32, ) -> Weight {
+        Weight::from_ref_time(10000)
+    }
+	fn close_approved(b: u32, m: u32, p: u32, ) -> Weight {
+        Weight::from_ref_time(10000)
+    }
 }

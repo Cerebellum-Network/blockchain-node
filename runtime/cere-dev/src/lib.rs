@@ -1227,6 +1227,7 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterAdministrator = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
 }
 
 pub struct ClustersGovWrapper;
