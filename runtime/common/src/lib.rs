@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod constants;
+
 use node_primitives::Balance;
 
 /// Convert a balance to an unsigned 256-bit number, use in nomination pools.
