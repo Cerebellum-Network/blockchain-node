@@ -41,8 +41,8 @@ sp-trie = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 
 # Local
 cere-client = { path = "../client", default-features = false, optional = true }
-cere-dev-runtime-constants = { path = "../../runtime/cere-dev/constants", optional = true }
 cere-rpc = { path = "../../rpc" }
+cere-runtime-common = { path = "../../runtime/common", optional = true }
 
 cere-dev-runtime = { path = "../../runtime/cere-dev", optional = true }
 cere-runtime = { path = "../../runtime/cere", optional = true }
@@ -50,7 +50,7 @@ cere-runtime = { path = "../../runtime/cere", optional = true }
 [features]
 default = ["cere-native"]
 cere-native = ["cere-runtime", "cere-client/cere"]
-cere-dev-native = ["cere-dev-runtime", "cere-dev-runtime-constants", "cere-client/cere-dev"]
+cere-dev-native = ["cere-dev-runtime", "cere-runtime-common", "cere-client/cere-dev"]
 
 runtime-benchmarks = [
   "cere-runtime/runtime-benchmarks",
