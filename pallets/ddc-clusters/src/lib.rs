@@ -29,7 +29,7 @@ mod tests;
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterAdministrator, ClusterCreator, ClusterVisitor, ClusterVisitorError},
+		cluster::{ClusterAdministrator, ClusterCreator, ClusterVisitor},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
@@ -122,6 +122,7 @@ pub mod pallet {
 		NodeAuthNodeAuthorizationNotSuccessful,
 		ClusterAlreadyActivated,
 		AttemptToValidateNotAssignedNode,
+		ClusterGovParamsNotSet,
 	}
 
 	#[pallet::storage]
@@ -149,7 +150,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_validated_nodes_count)]
 	pub type ClustersValidatedNodesCount<T: Config> =
-		StorageMap<_, Twox64Concat, ClusterId, u32, ValueQuery>;
+		StorageMap<_, Twox64Concat, ClusterId, u32, ValueQuery>; // todo: provide migration
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -374,7 +375,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure!(
 				ClustersGovParams::<T>::contains_key(cluster_id),
-				Error::<T>::ClusterDoesNotExist
+				Error::<T>::ClusterGovParamsNotSet
 			);
 
 			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
@@ -464,18 +465,16 @@ pub mod pallet {
 	}
 
 	impl<T: Config> ClusterVisitor<T> for Pallet<T> {
-		fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
-			Clusters::<T>::get(cluster_id)
-				.map(|_| ())
-				.ok_or(ClusterVisitorError::ClusterDoesNotExist)
+		fn cluster_exists(cluster_id: &ClusterId) -> bool {
+			Clusters::<T>::contains_key(cluster_id)
 		}
 
 		fn get_bond_size(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
-		) -> Result<u128, ClusterVisitorError> {
+		) -> Result<u128, DispatchError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 			match node_type {
 				NodeType::Storage =>
 					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
@@ -484,9 +483,9 @@ pub mod pallet {
 
 		fn get_pricing_params(
 			cluster_id: &ClusterId,
-		) -> Result<ClusterPricingParams, ClusterVisitorError> {
+		) -> Result<ClusterPricingParams, DispatchError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 			Ok(ClusterPricingParams {
 				unit_per_mb_stored: cluster_gov_params.unit_per_mb_stored,
 				unit_per_mb_streamed: cluster_gov_params.unit_per_mb_streamed,
@@ -495,11 +494,9 @@ pub mod pallet {
 			})
 		}
 
-		fn get_fees_params(
-			cluster_id: &ClusterId,
-		) -> Result<ClusterFeesParams, ClusterVisitorError> {
+		fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, DispatchError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 
 			Ok(ClusterFeesParams {
 				treasury_share: cluster_gov_params.treasury_share,
@@ -508,20 +505,12 @@ pub mod pallet {
 			})
 		}
 
-		fn get_reserve_account_id(
-			cluster_id: &ClusterId,
-		) -> Result<T::AccountId, ClusterVisitorError> {
-			let cluster = Clusters::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterDoesNotExist)?;
-			Ok(cluster.reserve_id)
-		}
-
 		fn get_chill_delay(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
-		) -> Result<T::BlockNumber, ClusterVisitorError> {
+		) -> Result<T::BlockNumber, DispatchError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 			match node_type {
 				NodeType::Storage => Ok(cluster_gov_params.storage_chill_delay),
 			}
@@ -530,9 +519,9 @@ pub mod pallet {
 		fn get_unbonding_delay(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
-		) -> Result<T::BlockNumber, ClusterVisitorError> {
+		) -> Result<T::BlockNumber, DispatchError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 			match node_type {
 				NodeType::Storage => Ok(cluster_gov_params.storage_unbonding_delay),
 			}
@@ -540,9 +529,9 @@ pub mod pallet {
 
 		fn get_bonding_params(
 			cluster_id: &ClusterId,
-		) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+		) -> Result<ClusterBondingParams<T::BlockNumber>, DispatchError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 			Ok(ClusterBondingParams {
 				storage_bond_size: cluster_gov_params.storage_bond_size.saturated_into::<u128>(),
 				storage_chill_delay: cluster_gov_params.storage_chill_delay,
@@ -550,12 +539,20 @@ pub mod pallet {
 			})
 		}
 
-		fn get_manager_account_id(
-			cluster_id: &ClusterId,
-		) -> Result<T::AccountId, ClusterVisitorError> {
-			let cluster = Clusters::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterDoesNotExist)?;
+		fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			Ok(cluster.manager_id)
+		}
+
+		fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(cluster.reserve_id)
+		}
+
+		fn get_validated_nodes_count(cluster_id: &ClusterId) -> u32 {
+			ClustersValidatedNodesCount::<T>::get(cluster_id)
 		}
 	}
 

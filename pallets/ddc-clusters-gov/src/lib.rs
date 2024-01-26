@@ -95,7 +95,6 @@ pub mod pallet {
 		type ClusterVisitor: ClusterVisitor<Self>;
 		type ClusterGovOrigin: GetDdcOrigin<Self>;
 		type ClusterProposalDuration: Get<Self::BlockNumber>;
-		type ClusterMaxProposals: Get<ProposalIndex>;
 		type ClusterActivatorOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		type ClusterAdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		type ClusterAdministrator: ClusterAdministratorType<Self, BalanceOf<Self>>;
@@ -168,8 +167,7 @@ pub mod pallet {
 
 			ensure!(cluster_manager_id == caller_id, Error::<T>::NotClusterManager);
 
-			// todo: calculate the threshold based on number of validated nodes
-			let threshold = 64u32;
+			let threshold = T::ClusterVisitor::get_validated_nodes_count(&cluster_id);
 			let votes = {
 				let end =
 					frame_system::Pallet::<T>::block_number() + T::ClusterProposalDuration::get();

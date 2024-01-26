@@ -1212,7 +1212,6 @@ parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
 	pub ClusterActivatorOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterActivator.into();
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
-	pub const ClusterMaxProposals: u32 = 1;
 }
 
 impl pallet_ddc_clusters_gov::Config for Runtime {
@@ -1223,10 +1222,9 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type ClusterGovOrigin = DdcOriginAsNative<ClusterActivatorOrigin, Self>;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
-	type ClusterMaxProposals = ClusterMaxProposals;
-	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterActivator>;
 	type ClusterAdminOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterAdmin>;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterAdministrator = pallet_ddc_clusters::Pallet<Runtime>;
 }
 
