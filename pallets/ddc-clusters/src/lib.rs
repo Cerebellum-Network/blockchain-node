@@ -35,7 +35,8 @@ use ddc_primitives::{
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
-	ClusterNodeStatus, ClusterParams, ClusterPricingParams, ClusterStatus, NodePubKey, NodeType,
+	ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
+	ClusterStatus, NodePubKey, NodeType,
 };
 use frame_support::{
 	assert_ok,
@@ -64,12 +65,6 @@ mod node_provider_auth;
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct ClusterNodeState {
-	pub kind: ClusterNodeKind,
-	pub status: ClusterNodeStatus,
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -140,6 +135,7 @@ pub mod pallet {
 		ClusterAlreadyActivated,
 		AttemptToValidateNotAssignedNode,
 		ClusterGovParamsNotSet,
+		ArithmeticOverflow,
 	}
 
 	#[pallet::storage]
@@ -165,9 +161,9 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn clusters_validated_nodes_count)]
-	pub type ClustersValidatedNodesCount<T: Config> =
-		StorageMap<_, Twox64Concat, ClusterId, u32, ValueQuery>; // todo: provide migration
+	#[pallet::getter(fn clusters_nodes_stats)]
+	pub type ClustersNodesStats<T: Config> =
+		StorageMap<_, Twox64Concat, ClusterId, ClusterNodesStats>; // todo: provide migration
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -402,8 +398,10 @@ pub mod pallet {
 				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params);
 
 			Clusters::<T>::insert(cluster_id, cluster);
-			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
+			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
+			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
+			ClustersNodesStats::<T>::insert(cluster_id, ClusterNodesStats::default());
 
 			Ok(())
 		}
@@ -440,7 +438,7 @@ pub mod pallet {
 			node_pub_key: NodePubKey,
 			node_kind: ClusterNodeKind,
 		) -> DispatchResult {
-			let mut node = T::NodeRepository::get(node_pub_key.clone())
+			let mut node: pallet_ddc_nodes::Node<T> = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::AttemptToAddAlreadyAssignedNode);
@@ -457,6 +455,15 @@ pub mod pallet {
 				},
 			);
 			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
+
+			let mut current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			current_stats.await_validation = current_stats
+				.await_validation
+				.checked_add(1)
+				.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+			ClustersNodesStats::<T>::insert(cluster_id, current_stats);
 
 			Ok(())
 		}
@@ -485,16 +492,58 @@ pub mod pallet {
 			node_pub_key: NodePubKey,
 			succeeded: bool,
 		) -> DispatchResult {
+			let mut current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			let mut current_node_state =
 				ClustersNodes::<T>::try_get(cluster_id, node_pub_key.clone())
 					.map_err(|_| Error::<T>::AttemptToValidateNotAssignedNode)?;
 
-			let current_count = ClustersValidatedNodesCount::<T>::get(cluster_id);
-
-			let updated_count = match current_node_state.status {
-				ClusterNodeStatus::AwaitsValidation if succeeded => current_count + 1,
-				ClusterNodeStatus::ValidationSucceeded if !succeeded => current_count - 1,
-				_ => current_count,
+			let updated_stats = match current_node_state.status {
+				ClusterNodeStatus::AwaitsValidation if succeeded => {
+					current_stats.await_validation = current_stats
+						.await_validation
+						.checked_sub(1)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+					current_stats.validation_succeeded = current_stats
+						.validation_succeeded
+						.checked_add(1)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+					current_stats
+				},
+				ClusterNodeStatus::AwaitsValidation if !succeeded => {
+					current_stats.await_validation = current_stats
+						.await_validation
+						.checked_sub(1)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+					current_stats.validation_failed = current_stats
+						.validation_failed
+						.checked_add(1)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+					current_stats
+				},
+				ClusterNodeStatus::ValidationSucceeded if !succeeded => {
+					current_stats.validation_succeeded = current_stats
+						.validation_succeeded
+						.checked_sub(1)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+					current_stats.validation_failed = current_stats
+						.validation_failed
+						.checked_add(1)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+					current_stats
+				},
+				ClusterNodeStatus::ValidationFailed if succeeded => {
+					current_stats.validation_failed = current_stats
+						.validation_failed
+						.checked_sub(1)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+					current_stats.validation_succeeded = current_stats
+						.validation_succeeded
+						.checked_add(1)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+					current_stats
+				},
+				_ => current_stats,
 			};
 
 			current_node_state.status = if succeeded {
@@ -503,13 +552,13 @@ pub mod pallet {
 				ClusterNodeStatus::ValidationFailed
 			};
 
-			ClustersValidatedNodesCount::<T>::insert(cluster_id, updated_count);
 			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), current_node_state);
 			Self::deposit_event(Event::<T>::ClusterNodeValidated {
 				cluster_id,
 				node_pub_key,
 				succeeded,
 			});
+			ClustersNodesStats::<T>::insert(cluster_id, updated_stats);
 
 			Ok(())
 		}
@@ -603,8 +652,10 @@ pub mod pallet {
 			Ok(cluster.reserve_id)
 		}
 
-		fn get_validated_nodes_count(cluster_id: &ClusterId) -> u32 {
-			ClustersValidatedNodesCount::<T>::get(cluster_id)
+		fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+			let current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(current_stats)
 		}
 	}
 

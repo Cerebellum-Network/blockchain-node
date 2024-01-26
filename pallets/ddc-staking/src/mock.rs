@@ -9,8 +9,8 @@ use ddc_primitives::{
 		cluster::{ClusterManager, ClusterVisitor},
 		node::{NodeVisitor, NodeVisitorError},
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodeKind, ClusterParams,
-	ClusterPricingParams, NodeParams, NodePubKey, StorageNodePubKey,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodeKind, ClusterNodesStats,
+	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime,
@@ -29,7 +29,7 @@ use sp_runtime::{
 };
 use sp_std::collections::btree_map::BTreeMap;
 
-use crate::{self as pallet_ddc_staking, Error, *};
+use crate::{self as pallet_ddc_staking, *};
 
 /// The AccountId alias in this test module.
 pub(crate) type AccountId = u64;
@@ -213,7 +213,7 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		unimplemented!()
 	}
 
-	fn get_validated_nodes_count(_cluster_id: &ClusterId) -> u32 {
+	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
 		unimplemented!()
 	}
 }

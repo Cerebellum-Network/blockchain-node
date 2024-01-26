@@ -116,8 +116,9 @@ fn create_cluster_works() {
 		// Checking storage
 		assert!(Clusters::<Test>::contains_key(cluster_id));
 		// Checking that event was emitted
-		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::ClusterCreated { cluster_id }.into())
+		assert_eq!(System::events().len(), 2);
+		System::assert_has_event(Event::ClusterCreated { cluster_id }.into());
+		System::assert_last_event(Event::ClusterGovParamsSet { cluster_id }.into());
 	})
 }
 
@@ -484,7 +485,7 @@ fn set_cluster_params_works() {
 		assert_eq!(updated_cluster.props.replication_total, 3);
 
 		// Checking that event was emitted
-		assert_eq!(System::events().len(), 2);
+		assert_eq!(System::events().len(), 3);
 		System::assert_last_event(Event::ClusterParamsSet { cluster_id }.into())
 	})
 }
