@@ -19,6 +19,7 @@ pub mod weights;
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterAdministrator, ClusterManager},
+		cluster_gov::{DefaultVote, MemberCount},
 		node::NodeVisitor,
 		pallet::GetDdcOrigin,
 	},
@@ -26,7 +27,7 @@ use ddc_primitives::{
 };
 use frame_support::{
 	codec::{Decode, Encode},
-	dispatch::{DispatchError, Dispatchable},
+	dispatch::{DispatchError, DispatchResult, Dispatchable, GetDispatchInfo, Pays, Weight},
 	pallet_prelude::*,
 	traits::{
 		schedule::DispatchTime, Currency, LockableCurrency, OriginTrait, StorePreimage,
@@ -37,13 +38,10 @@ use frame_system::pallet_prelude::*;
 pub use frame_system::Config as SysConfig;
 pub use pallet::*;
 use scale_info::TypeInfo;
+use sp_io::storage;
 use sp_runtime::{traits::AccountIdConversion, RuntimeDebug};
 use sp_std::prelude::*;
-
-pub type ProposalIndex = u32;
-pub type MemberCount = u32;
-
-use crate::weights::WeightInfo;
+pub use weights::WeightInfo;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
@@ -88,7 +86,8 @@ pub mod pallet {
 		type ClusterProposalCall: Parameter
 			+ From<Call<Self>>
 			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
-			+ IsType<<Self as pallet_referenda::Config>::RuntimeCall>;
+			+ IsType<<Self as pallet_referenda::Config>::RuntimeCall>
+			+ GetDispatchInfo;
 
 		type ClusterGovOrigin: GetDdcOrigin<Self>;
 		type ClusterActivatorOrigin: EnsureOrigin<Self::RuntimeOrigin>;
@@ -96,6 +95,8 @@ pub mod pallet {
 		type ClusterAdministrator: ClusterAdministrator<Self, BalanceOf<Self>>;
 		type ClusterManager: ClusterManager<Self>;
 		type NodeVisitor: NodeVisitor<Self>;
+		/// Default voting strategy.
+		type DefaultVote: DefaultVote;
 	}
 
 	#[pallet::storage]
@@ -119,19 +120,19 @@ pub mod pallet {
 		/// a tally (yes votes and no votes given respectively as `MemberCount`).
 		Voted {
 			account: T::AccountId,
-			proposal_hash: T::Hash,
+			cluster_id: ClusterId,
 			voted: bool,
 			yes: MemberCount,
 			no: MemberCount,
 		},
 		/// A motion was approved by the required threshold.
-		Approved { proposal_hash: T::Hash },
+		Approved { cluster_id: ClusterId },
 		/// A motion was not approved by the required threshold.
-		Disapproved { proposal_hash: T::Hash },
+		Disapproved { cluster_id: ClusterId },
 		/// A motion was executed; result will be `Ok` if it returned without error.
-		Executed { proposal_hash: T::Hash, result: DispatchResult },
+		Executed { cluster_id: ClusterId, result: DispatchResult },
 		/// A proposal was closed because its threshold was reached or after its duration was up.
-		Closed { proposal_hash: T::Hash, yes: MemberCount, no: MemberCount },
+		Closed { cluster_id: ClusterId, yes: MemberCount, no: MemberCount },
 	}
 
 	#[pallet::error]
@@ -200,11 +201,11 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
+			approve: bool,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			Self::ensure_validated_member(caller_id, cluster_id, node_pub_key)?;
-			// todo: implement voting
-
+			Self::ensure_validated_member(caller_id.clone(), cluster_id, node_pub_key)?;
+			let _ = Self::do_vote(caller_id, cluster_id, approve)?;
 			Ok(())
 		}
 
@@ -214,13 +215,10 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let caller_id = ensure_signed(origin)?;
-			Self::ensure_validated_member(caller_id, cluster_id, node_pub_key)?;
-			// todo: check the local consensus on proposal
-			Self::propose_public(cluster_id)?;
-
-			Ok(())
+			Self::ensure_validated_member(caller_id.clone(), cluster_id, node_pub_key)?;
+			Self::do_close(cluster_id)?
 		}
 
 		#[pallet::call_index(3)]
@@ -263,13 +261,13 @@ pub mod pallet {
 				return Ok(())
 			}
 
-			let is_validated = T::ClusterManager::contains_node(
+			let is_validated_node = T::ClusterManager::contains_node(
 				&cluster_id,
 				&node_pub_key,
 				Some(ClusterNodeStatus::ValidationSucceeded),
 			);
 
-			if !is_validated {
+			if !is_validated_node {
 				return Err(Error::<T>::NotValidatedClusterMember.into())
 			}
 
@@ -281,10 +279,166 @@ pub mod pallet {
 			Err(Error::<T>::NotValidatedClusterMember.into())
 		}
 
-		fn propose_public(cluster_id: ClusterId) -> DispatchResult {
-			let proposal = <ClusterProposal<T>>::try_get(cluster_id)
-				.map_err(|_| Error::<T>::ProposalMissing)?;
+		fn do_vote(
+			voter_id: T::AccountId,
+			cluster_id: ClusterId,
+			approve: bool,
+		) -> Result<bool, DispatchError> {
+			let mut voting = Self::voting(&cluster_id).ok_or(Error::<T>::ProposalMissing)?;
 
+			let position_yes = voting.ayes.iter().position(|a| a == &voter_id);
+			let position_no = voting.nays.iter().position(|a| a == &voter_id);
+
+			// Detects first vote of the member in the motion
+			let is_account_voting_first_time = position_yes.is_none() && position_no.is_none();
+
+			if approve {
+				if position_yes.is_none() {
+					voting.ayes.push(voter_id.clone());
+				} else {
+					return Err(Error::<T>::DuplicateVote.into())
+				}
+				if let Some(pos) = position_no {
+					voting.nays.swap_remove(pos);
+				}
+			} else {
+				if position_no.is_none() {
+					voting.nays.push(voter_id.clone());
+				} else {
+					return Err(Error::<T>::DuplicateVote.into())
+				}
+				if let Some(pos) = position_yes {
+					voting.ayes.swap_remove(pos);
+				}
+			}
+
+			let yes_votes = voting.ayes.len() as MemberCount;
+			let no_votes = voting.nays.len() as MemberCount;
+			Self::deposit_event(Event::Voted {
+				account: voter_id,
+				cluster_id,
+				voted: approve,
+				yes: yes_votes,
+				no: no_votes,
+			});
+
+			ClusterProposalVoting::<T>::insert(&cluster_id, voting);
+
+			Ok(is_account_voting_first_time)
+		}
+
+		/// Close a vote that is either approved, disapproved or whose voting period has ended.
+		fn do_close(cluster_id: ClusterId) -> Result<DispatchResultWithPostInfo, DispatchError> {
+			let voting = Self::voting(&cluster_id).ok_or(Error::<T>::ProposalMissing)?;
+
+			let mut no_votes = voting.nays.len() as MemberCount;
+			let mut yes_votes = voting.ayes.len() as MemberCount;
+			let seats = voting.threshold as MemberCount;
+			let approved = yes_votes >= voting.threshold;
+			let disapproved = seats.saturating_sub(no_votes) < voting.threshold;
+			// Allow (dis-)approving the proposal as soon as there are enough votes.
+			if approved {
+				let (proposal, len) = Self::validate_and_get_proposal(&cluster_id)?;
+				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
+				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal)?;
+				let proposal_count = 1;
+
+				return Ok(Ok((
+					Some(
+						<T as pallet::Config>::WeightInfo::close_early_approved(
+							len as u32,
+							seats,
+							proposal_count,
+						)
+						.saturating_add(proposal_weight),
+					),
+					Pays::Yes,
+				)
+					.into()))
+			} else if disapproved {
+				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
+				Self::do_disapprove_proposal(cluster_id);
+				let proposal_count = 1;
+
+				return Ok(Ok((
+					Some(<T as pallet::Config>::WeightInfo::close_early_disapproved(
+						seats,
+						proposal_count,
+					)),
+					Pays::No,
+				)
+					.into()))
+			}
+
+			// Only allow actual closing of the proposal after the voting period has ended.
+			ensure!(frame_system::Pallet::<T>::block_number() >= voting.end, Error::<T>::TooEarly);
+
+			// default voting strategy.
+			let default = T::DefaultVote::default_vote(None, yes_votes, no_votes, seats);
+
+			let abstentions = seats - (yes_votes + no_votes);
+			match default {
+				true => yes_votes += abstentions,
+				false => no_votes += abstentions,
+			}
+			let approved = yes_votes >= voting.threshold;
+
+			if approved {
+				let (proposal, len) = Self::validate_and_get_proposal(&cluster_id)?;
+				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
+				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal)?;
+				let proposal_count = 1;
+
+				Ok(Ok((
+					Some(
+						<T as pallet::Config>::WeightInfo::close_approved(
+							len as u32,
+							seats,
+							proposal_count,
+						)
+						.saturating_add(proposal_weight),
+					),
+					Pays::Yes,
+				)
+					.into()))
+			} else {
+				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
+				Self::do_disapprove_proposal(cluster_id);
+				let proposal_count = 1;
+
+				Ok(Ok((
+					Some(<T as pallet::Config>::WeightInfo::close_disapproved(
+						seats,
+						proposal_count,
+					)),
+					Pays::No,
+				)
+					.into()))
+			}
+		}
+
+		fn do_approve_proposal(
+			cluster_id: ClusterId,
+			proposal: <T as Config>::ClusterProposalCall,
+		) -> Result<Weight, DispatchError> {
+			Self::deposit_event(Event::Approved { cluster_id });
+			let (result, proposal_weight) = Self::do_propose_public(proposal)?;
+			Self::deposit_event(Event::Executed {
+				cluster_id,
+				result: result.map(|_| ()).map_err(|e| e.error),
+			});
+			Ok(proposal_weight)
+		}
+
+		/// Removes a proposal from the pallet, and deposit the `Disapproved` event.
+		fn do_disapprove_proposal(cluster_id: ClusterId) {
+			Self::deposit_event(Event::Disapproved { cluster_id });
+			Self::remove_proposal(cluster_id)
+		}
+
+		fn do_propose_public(
+			proposal: <T as Config>::ClusterProposalCall,
+		) -> Result<(DispatchResultWithPostInfo, Weight), DispatchError> {
 			let call: <T as pallet_referenda::Config>::RuntimeCall = proposal.into();
 			let bounded_call =
 				T::Preimages::bound(call).map_err(|_| Error::<T>::ProposalMissing)?;
@@ -298,12 +452,54 @@ pub mod pallet {
 				enactment_moment: DispatchTime::After(T::BlockNumber::from(1u32)),
 			};
 
-			referenda_call
-				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into())
-				.map(|_| ())
-				.map_err(|e| e.error)?;
+			let result = referenda_call
+				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into());
 
-			Ok(())
+			let proposal_weight =
+				Self::get_result_weight(result.clone()).unwrap_or(Weight::from_ref_time(10000));
+
+			Ok((result, proposal_weight))
 		}
+
+		/// Removes a proposal from the pallet, cleaning up votes and the vector of proposals.
+		fn remove_proposal(cluster_id: ClusterId) {
+			ClusterProposal::<T>::remove(&cluster_id);
+			ClusterProposalVoting::<T>::remove(&cluster_id);
+		}
+
+		/// Return the weight of a dispatch call result as an `Option`.
+		///
+		/// Will return the weight regardless of what the state of the result is.
+		fn get_result_weight(result: DispatchResultWithPostInfo) -> Option<Weight> {
+			match result {
+				Ok(post_info) => post_info.actual_weight,
+				Err(err) => err.post_info.actual_weight,
+			}
+		}
+
+		fn validate_and_get_proposal(
+			cluster_id: &ClusterId,
+		) -> Result<(<T as Config>::ClusterProposalCall, usize), DispatchError> {
+			let key = ClusterProposal::<T>::hashed_key_for(cluster_id);
+			// read the length of the proposal storage entry directly
+			let proposal_len =
+				storage::read(&key, &mut [0; 0], 0).ok_or(Error::<T>::ProposalMissing)?;
+			let proposal =
+				ClusterProposal::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
+			Ok((proposal, proposal_len as usize))
+		}
+	}
+}
+
+/// Set the prime member's vote as the default vote.
+pub struct NayAsDefaultVote;
+impl DefaultVote for NayAsDefaultVote {
+	fn default_vote(
+		_prime_vote: Option<bool>,
+		_yes_votes: MemberCount,
+		_no_votes: MemberCount,
+		_len: MemberCount,
+	) -> bool {
+		false
 	}
 }
