@@ -150,6 +150,7 @@ pub mod pallet {
 		DuplicateVote,
 		/// The close call was made too early, before the end of the voting.
 		TooEarly,
+		AwaitsValidation,
 	}
 
 	#[pallet::call]
@@ -164,10 +165,14 @@ pub mod pallet {
 			let caller_id = ensure_signed(origin)?;
 			let cluster_manager_id = T::ClusterVisitor::get_manager_account_id(&cluster_id)
 				.map_err(|_| Error::<T>::NoCluster)?;
-
 			ensure!(cluster_manager_id == caller_id, Error::<T>::NotClusterManager);
 
-			let threshold = T::ClusterVisitor::get_validated_nodes_count(&cluster_id);
+			let cluster_nodes_stats = T::ClusterVisitor::get_nodes_stats(&cluster_id)
+				.map_err(|_| Error::<T>::NoCluster)?;
+			ensure!(cluster_nodes_stats.await_validation == 0, Error::<T>::AwaitsValidation);
+
+			let threshold = cluster_nodes_stats.validation_succeeded;
+
 			let votes = {
 				let end =
 					frame_system::Pallet::<T>::block_number() + T::ClusterProposalDuration::get();

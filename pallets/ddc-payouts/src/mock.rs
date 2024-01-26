@@ -8,8 +8,8 @@ use ddc_primitives::{
 		customer::{CustomerCharger, CustomerDepositor},
 		pallet::PalletVisitor,
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	NodeType, DOLLARS,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodesStats, ClusterParams,
+	ClusterPricingParams, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -408,7 +408,7 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
 	}
 
-	fn get_validated_nodes_count(_cluster_id: &ClusterId) -> u32 {
+	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
 		unimplemented!()
 	}
 }

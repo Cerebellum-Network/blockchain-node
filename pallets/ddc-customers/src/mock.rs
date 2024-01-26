@@ -3,7 +3,7 @@
 use ddc_primitives::{
 	traits::cluster::{ClusterCreator, ClusterManager, ClusterVisitor},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
-	ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
+	ClusterNodesStats, ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
 };
 use frame_support::{
 	construct_runtime,
@@ -21,7 +21,7 @@ use sp_runtime::{
 	DispatchResult, Perquintill,
 };
 
-use crate::{self as pallet_ddc_customers, Error, *};
+use crate::{self as pallet_ddc_customers, *};
 
 /// The AccountId alias in this test module.
 pub(crate) type AccountId = u128;
@@ -182,7 +182,7 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		unimplemented!()
 	}
 
-	fn get_validated_nodes_count(_cluster_id: &ClusterId) -> u32 {
+	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
 		unimplemented!()
 	}
 }

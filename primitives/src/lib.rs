@@ -143,3 +143,16 @@ pub enum ClusterNodeStatus {
 	ValidationSucceeded,
 	ValidationFailed,
 }
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct ClusterNodeState {
+	pub kind: ClusterNodeKind,
+	pub status: ClusterNodeStatus,
+}
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
+pub struct ClusterNodesStats {
+	pub await_validation: u32,
+	pub validation_succeeded: u32,
+	pub validation_failed: u32,
+}
