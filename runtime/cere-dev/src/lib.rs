@@ -1227,7 +1227,9 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterGovCreatorOrigin>;
 	type ClusterAdminOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterGovEditorOrigin>;
+	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterAdministrator = pallet_ddc_clusters::Pallet<Runtime>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
 pub struct ClustersGovWrapper;

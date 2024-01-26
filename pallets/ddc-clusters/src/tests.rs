@@ -243,7 +243,8 @@ fn add_and_delete_node_works() {
 
 		assert!(<DdcClusters as ClusterManager<Test>>::contains_node(
 			&cluster_id,
-			&NodePubKey::StoragePubKey(node_pub_key.clone())
+			&NodePubKey::StoragePubKey(node_pub_key.clone()),
+			None
 		));
 
 		// Node already assigned
