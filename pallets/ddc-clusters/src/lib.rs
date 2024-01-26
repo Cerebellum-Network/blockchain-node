@@ -481,8 +481,38 @@ pub mod pallet {
 			T::NodeRepository::update(node)
 				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
 
-			ClustersNodes::<T>::remove(cluster_id, node_pub_key.clone());
+			let current_node_state = ClustersNodes::<T>::take(cluster_id, node_pub_key.clone())
+				.ok_or(Error::<T>::AttemptToRemoveNotAssignedNode)?;
 			Self::deposit_event(Event::<T>::ClusterNodeRemoved { cluster_id, node_pub_key });
+
+			let mut current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+
+			let updated_stats = match current_node_state.status {
+				ClusterNodeStatus::AwaitsValidation => {
+					current_stats.await_validation = current_stats
+						.await_validation
+						.checked_sub(1)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+					current_stats
+				},
+				ClusterNodeStatus::ValidationSucceeded => {
+					current_stats.validation_succeeded = current_stats
+						.validation_succeeded
+						.checked_sub(1)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+					current_stats
+				},
+				ClusterNodeStatus::ValidationFailed => {
+					current_stats.validation_failed = current_stats
+						.validation_failed
+						.checked_sub(1)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+					current_stats
+				},
+			};
+
+			ClustersNodesStats::<T>::insert(cluster_id, updated_stats);
 
 			Ok(())
 		}
