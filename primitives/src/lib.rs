@@ -16,6 +16,7 @@ pub type ClusterId = H160;
 pub type DdcEra = u32;
 pub type BucketId = u64;
 pub type StorageNodePubKey = AccountId32;
+pub type ClusterNodesCount = u32;
 
 // ClusterParams includes Governance non-sensetive parameters only
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -152,7 +153,7 @@ pub struct ClusterNodeState {
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
 pub struct ClusterNodesStats {
-	pub await_validation: u32,
-	pub validation_succeeded: u32,
-	pub validation_failed: u32,
+	pub await_validation: ClusterNodesCount,
+	pub validation_succeeded: ClusterNodesCount,
+	pub validation_failed: ClusterNodesCount,
 }
