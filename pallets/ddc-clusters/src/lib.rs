@@ -618,28 +618,31 @@ pub mod pallet {
 			})
 		}
 
+		fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(cluster.reserve_id)
+		}
+	}
+
+	impl<T: Config> ClusterManager<T> for Pallet<T> {
 		fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			Ok(cluster.manager_id)
 		}
 
-		fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
-			let cluster =
-				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			Ok(cluster.reserve_id)
-		}
-
-		fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
-			let current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
-				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			Ok(current_stats)
-		}
-	}
-
-	impl<T: Config> ClusterManager<T> for Pallet<T> {
-		fn contains_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> bool {
-			ClustersNodes::<T>::get(cluster_id, node_pub_key).is_some()
+		fn contains_node(
+			cluster_id: &ClusterId,
+			node_pub_key: &NodePubKey,
+			validation_status: Option<ClusterNodeStatus>,
+		) -> bool {
+			match validation_status {
+				Some(status) => ClustersNodes::<T>::try_get(cluster_id, node_pub_key)
+					.map(|n| n.status == status)
+					.unwrap_or(false),
+				None => ClustersNodes::<T>::get(cluster_id, node_pub_key).is_some(),
+			}
 		}
 
 		fn add_node(
@@ -655,6 +658,12 @@ pub mod pallet {
 			node_pub_key: &NodePubKey,
 		) -> Result<(), DispatchError> {
 			Self::do_remove_node(cluster_id.clone(), node_pub_key.clone())
+		}
+
+		fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+			let current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(current_stats)
 		}
 	}
 

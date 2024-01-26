@@ -149,7 +149,7 @@ impl<
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::traits::{cluster::ClusterManager, node::NodeVisitorError};
+	use ddc_primitives::traits::cluster::ClusterManager;
 
 	use super::*;
 
@@ -755,7 +755,8 @@ pub mod pallet {
 
 			let cluster_id = <Storages<T>>::get(&stash).ok_or(Error::<T>::NodeHasNoStake)?;
 
-			let is_cluster_node = T::ClusterManager::contains_node(&cluster_id, &node_pub_key);
+			let is_cluster_node =
+				T::ClusterManager::contains_node(&cluster_id, &node_pub_key, None);
 			ensure!(!is_cluster_node, Error::<T>::FastChillProhibited);
 
 			// block number + 1 => no overflow
@@ -916,14 +917,6 @@ pub mod pallet {
 				.is_some();
 
 			Ok(is_chilling_attempt)
-		}
-	}
-
-	impl<T> From<NodeVisitorError> for Error<T> {
-		fn from(error: NodeVisitorError) -> Self {
-			match error {
-				NodeVisitorError::NodeDoesNotExist => Error::<T>::NodeIsNotFound,
-			}
 		}
 	}
 }
