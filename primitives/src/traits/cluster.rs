@@ -1,47 +1,46 @@
 use codec::{Decode, Encode};
-use frame_support::dispatch::DispatchResult;
+use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::Config;
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
 use crate::{
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
-	ClusterPricingParams, NodePubKey, NodeType,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
+	ClusterParams, ClusterPricingParams, NodePubKey, NodeType,
 };
 
 pub trait ClusterVisitor<T: Config> {
-	fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError>;
+	fn cluster_exists(cluster_id: &ClusterId) -> bool;
 
-	fn get_bond_size(
-		cluster_id: &ClusterId,
-		node_type: NodeType,
-	) -> Result<u128, ClusterVisitorError>;
+	fn get_bond_size(cluster_id: &ClusterId, node_type: NodeType) -> Result<u128, DispatchError>;
 
-	fn get_pricing_params(
-		cluster_id: &ClusterId,
-	) -> Result<ClusterPricingParams, ClusterVisitorError>;
+	fn get_pricing_params(cluster_id: &ClusterId) -> Result<ClusterPricingParams, DispatchError>;
 
-	fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError>;
-
-	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, ClusterVisitorError>;
+	fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, DispatchError>;
 
 	fn get_chill_delay(
 		cluster_id: &ClusterId,
 		node_type: NodeType,
-	) -> Result<T::BlockNumber, ClusterVisitorError>;
+	) -> Result<T::BlockNumber, DispatchError>;
 
 	fn get_unbonding_delay(
 		cluster_id: &ClusterId,
 		node_type: NodeType,
-	) -> Result<T::BlockNumber, ClusterVisitorError>;
+	) -> Result<T::BlockNumber, DispatchError>;
 
 	fn get_bonding_params(
 		cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError>;
+	) -> Result<ClusterBondingParams<T::BlockNumber>, DispatchError>;
+
+	fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError>;
+
+	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError>;
+
+	fn get_validated_nodes_count(cluster_id: &ClusterId) -> u32;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {
-	fn create_new_cluster(
+	fn create_cluster(
 		cluster_id: ClusterId,
 		cluster_manager_id: T::AccountId,
 		cluster_reserve_id: T::AccountId,
@@ -50,27 +49,20 @@ pub trait ClusterCreator<T: Config, Balance> {
 	) -> DispatchResult;
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum ClusterVisitorError {
-	ClusterDoesNotExist,
-	ClusterGovParamsNotSet,
-}
-
 pub trait ClusterManager<T: Config> {
 	fn contains_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> bool;
 	fn add_node(
 		cluster_id: &ClusterId,
 		node_pub_key: &NodePubKey,
-	) -> Result<(), ClusterManagerError>;
-	fn remove_node(
-		cluster_id: &ClusterId,
-		node_pub_key: &NodePubKey,
-	) -> Result<(), ClusterManagerError>;
+		node_kind: &ClusterNodeKind,
+	) -> Result<(), DispatchError>;
+	fn remove_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> Result<(), DispatchError>;
 }
 
-pub enum ClusterManagerError {
-	AttemptToAddNonExistentNode,
-	AttemptToAddAlreadyAssignedNode,
-	AttemptToRemoveNotAssignedNode,
-	AttemptToRemoveNonExistentNode,
+pub trait ClusterAdministrator<T: Config, Balance> {
+	fn activate_cluster(cluster_id: ClusterId) -> DispatchResult;
+	fn update_cluster_gov_params(
+		cluster_id: ClusterId,
+		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+	) -> DispatchResult;
 }

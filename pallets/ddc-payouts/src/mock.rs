@@ -4,7 +4,7 @@
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+		cluster::{ClusterCreator, ClusterVisitor},
 		customer::{CustomerCharger, CustomerDepositor},
 		pallet::PalletVisitor,
 	},
@@ -187,7 +187,7 @@ pub const ACCOUNT_ID_4: AccountId = 4;
 pub const ACCOUNT_ID_5: AccountId = 5;
 pub struct TestClusterCreator;
 impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
-	fn create_new_cluster(
+	fn create_cluster(
 		_cluster_id: ClusterId,
 		_cluster_manager_id: T::AccountId,
 		_cluster_reserve_id: T::AccountId,
@@ -208,6 +208,7 @@ impl<T: Config> CustomerDepositor<T> for TestCustomerDepositor {
 	}
 }
 
+pub const MANAGER_ACCOUNT_ID: AccountId = 998;
 pub const RESERVE_ACCOUNT_ID: AccountId = 999;
 pub const TREASURY_ACCOUNT_ID: AccountId = 888;
 pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
@@ -361,48 +362,53 @@ pub fn get_pricing(cluster_id: &ClusterId) -> ClusterPricingParams {
 
 pub struct TestClusterVisitor;
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
-	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
-		Ok(())
+	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
+		true
 	}
-	fn get_bond_size(
-		_cluster_id: &ClusterId,
-		_node_type: NodeType,
-	) -> Result<u128, ClusterVisitorError> {
+
+	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
 		Ok(10)
 	}
+
 	fn get_chill_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<T::BlockNumber, ClusterVisitorError> {
+	) -> Result<T::BlockNumber, DispatchError> {
 		Ok(T::BlockNumber::from(10u32))
 	}
+
 	fn get_unbonding_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<T::BlockNumber, ClusterVisitorError> {
+	) -> Result<T::BlockNumber, DispatchError> {
 		Ok(T::BlockNumber::from(10u32))
 	}
 
-	fn get_pricing_params(
-		cluster_id: &ClusterId,
-	) -> Result<ClusterPricingParams, ClusterVisitorError> {
+	fn get_pricing_params(cluster_id: &ClusterId) -> Result<ClusterPricingParams, DispatchError> {
 		Ok(get_pricing(cluster_id))
 	}
 
-	fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
+	fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, DispatchError> {
 		Ok(get_fees(cluster_id))
-	}
-
-	fn get_reserve_account_id(
-		_cluster_id: &ClusterId,
-	) -> Result<T::AccountId, ClusterVisitorError> {
-		let reserve_account = RESERVE_ACCOUNT_ID.to_ne_bytes();
-		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
 	}
 
 	fn get_bonding_params(
 		_cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+	) -> Result<ClusterBondingParams<T::BlockNumber>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		let manager_account = MANAGER_ACCOUNT_ID.to_ne_bytes();
+		Ok(T::AccountId::decode(&mut &manager_account[..]).unwrap())
+	}
+
+	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		let reserve_account = RESERVE_ACCOUNT_ID.to_ne_bytes();
+		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
+	}
+
+	fn get_validated_nodes_count(_cluster_id: &ClusterId) -> u32 {
 		unimplemented!()
 	}
 }

@@ -124,7 +124,7 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 		unit_per_put_request: 10,
 		unit_per_get_request: 10,
 	};
-	T::ClusterCreator::create_new_cluster(
+	T::ClusterCreator::create_cluster(
 		cluster_id,
 		stash.clone(),
 		stash.clone(),

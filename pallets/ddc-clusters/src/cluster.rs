@@ -1,11 +1,9 @@
 use codec::{Decode, Encode};
-use ddc_primitives::{ClusterId, ClusterParams};
+use ddc_primitives::{ClusterId, ClusterParams, ClusterStatus};
 use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-
-use crate::pallet::Error;
 
 parameter_types! {
 	pub MaxClusterParamsLen: u16 = 2048;
@@ -18,6 +16,7 @@ pub struct Cluster<AccountId> {
 	pub manager_id: AccountId,
 	pub reserve_id: AccountId,
 	pub props: ClusterProps<AccountId>,
+	pub status: ClusterStatus, // todo: provide migration
 }
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -32,36 +31,25 @@ impl<AccountId> Cluster<AccountId> {
 		manager_id: AccountId,
 		reserve_id: AccountId,
 		cluster_params: ClusterParams<AccountId>,
-	) -> Result<Cluster<AccountId>, ClusterError> {
-		Ok(Cluster {
+	) -> Cluster<AccountId> {
+		Cluster {
 			cluster_id,
 			manager_id,
 			reserve_id,
 			props: ClusterProps {
 				node_provider_auth_contract: cluster_params.node_provider_auth_contract,
 			},
-		})
+			status: ClusterStatus::Inactive,
+		}
 	}
 
-	pub fn set_params(
-		&mut self,
-		cluster_params: ClusterParams<AccountId>,
-	) -> Result<(), ClusterError> {
+	pub fn set_params(&mut self, cluster_params: ClusterParams<AccountId>) {
 		self.props = ClusterProps {
 			node_provider_auth_contract: cluster_params.node_provider_auth_contract,
 		};
-		Ok(())
 	}
-}
 
-pub enum ClusterError {
-	ClusterParamsExceedsLimit,
-}
-
-impl<T> From<ClusterError> for Error<T> {
-	fn from(error: ClusterError) -> Self {
-		match error {
-			ClusterError::ClusterParamsExceedsLimit => Error::<T>::ClusterParamsExceedsLimit,
-		}
+	pub fn set_status(&mut self, status: ClusterStatus) {
+		self.status = status;
 	}
 }

@@ -265,19 +265,19 @@ impl ExtBuilder {
 		// For testing purposes only
 		pallet_ddc_clusters::GenesisConfig::<Test>::default().build();
 
-		if let Ok(cluster) = Cluster::new(
+		let cluster = Cluster::new(
 			ClusterId::from([0; 20]),
 			AccountId::from([0; 32]),
 			AccountId::from([0; 32]),
 			ClusterParams { node_provider_auth_contract: Some(AccountId::from([0; 32])) },
-		) {
-			let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
-				clusters: vec![cluster],
-				clusters_gov_params: vec![(ClusterId::from([0; 20]), cluster_gov_params)],
-				clusters_nodes: vec![(ClusterId::from([0; 20]), vec![node_pub_key])],
-			}
-			.assimilate_storage(&mut storage);
+		);
+
+		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
+			clusters: vec![cluster],
+			clusters_gov_params: vec![(ClusterId::from([0; 20]), cluster_gov_params)],
+			clusters_nodes: vec![(ClusterId::from([0; 20]), vec![node_pub_key])],
 		}
+		.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}

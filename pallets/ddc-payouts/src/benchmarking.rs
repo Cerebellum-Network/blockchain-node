@@ -47,7 +47,7 @@ fn create_cluster<T: Config>(
 	cluster_params: ClusterParams<T::AccountId>,
 	cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 ) {
-	T::ClusterCreator::create_new_cluster(
+	T::ClusterCreator::create_cluster(
 		cluster_id,
 		cluster_manager_id,
 		cluster_reserve_id,

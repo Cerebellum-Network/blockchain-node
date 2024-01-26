@@ -6,15 +6,15 @@ use std::cell::RefCell;
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
+		cluster::{ClusterManager, ClusterVisitor},
 		node::{NodeVisitor, NodeVisitorError},
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	NodeParams, NodePubKey, StorageNodePubKey,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodeKind, ClusterParams,
+	ClusterPricingParams, NodeParams, NodePubKey, StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime,
-	dispatch::DispatchResult,
+	dispatch::{DispatchError, DispatchResult},
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
 	weights::constants::RocksDbWeight,
 };
@@ -30,7 +30,7 @@ use sp_runtime::{
 };
 use sp_std::collections::btree_map::BTreeMap;
 
-use crate::{self as pallet_ddc_staking, *};
+use crate::{self as pallet_ddc_staking, Error, *};
 
 /// The AccountId alias in this test module.
 pub(crate) type AccountId = u64;
@@ -132,7 +132,7 @@ impl<T: Config> NodeCreator<T> for TestNodeCreator {
 }
 
 impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
-	fn create_new_cluster(
+	fn create_cluster(
 		_cluster_id: ClusterId,
 		_cluster_manager_id: T::AccountId,
 		_cluster_reserve_id: T::AccountId,
@@ -144,31 +144,29 @@ impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
 }
 
 impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
-	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
-		Ok(())
+	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
+		true
 	}
-	fn get_bond_size(
-		_cluster_id: &ClusterId,
-		_node_type: NodeType,
-	) -> Result<u128, ClusterVisitorError> {
+
+	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
 		Ok(10)
 	}
+
 	fn get_chill_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<T::BlockNumber, ClusterVisitorError> {
-		Ok(T::BlockNumber::from(10u32))
-	}
-	fn get_unbonding_delay(
-		_cluster_id: &ClusterId,
-		_node_type: NodeType,
-	) -> Result<T::BlockNumber, ClusterVisitorError> {
+	) -> Result<T::BlockNumber, DispatchError> {
 		Ok(T::BlockNumber::from(10u32))
 	}
 
-	fn get_pricing_params(
+	fn get_unbonding_delay(
 		_cluster_id: &ClusterId,
-	) -> Result<ClusterPricingParams, ClusterVisitorError> {
+		_node_type: NodeType,
+	) -> Result<T::BlockNumber, DispatchError> {
+		Ok(T::BlockNumber::from(10u32))
+	}
+
+	fn get_pricing_params(_cluster_id: &ClusterId) -> Result<ClusterPricingParams, DispatchError> {
 		Ok(ClusterPricingParams {
 			unit_per_mb_stored: 2,
 			unit_per_mb_streamed: 3,
@@ -177,7 +175,7 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		})
 	}
 
-	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
+	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, DispatchError> {
 		Ok(ClusterFeesParams {
 			treasury_share: Perquintill::from_percent(1),
 			validators_share: Perquintill::from_percent(10),
@@ -185,15 +183,9 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		})
 	}
 
-	fn get_reserve_account_id(
-		_cluster_id: &ClusterId,
-	) -> Result<T::AccountId, ClusterVisitorError> {
-		Err(ClusterVisitorError::ClusterDoesNotExist)
-	}
-
 	fn get_bonding_params(
 		cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+	) -> Result<ClusterBondingParams<T::BlockNumber>, DispatchError> {
 		Ok(ClusterBondingParams {
 			storage_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
 				cluster_id,
@@ -213,6 +205,18 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 				.unwrap_or_default(),
 		})
 	}
+
+	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_validated_nodes_count(_cluster_id: &ClusterId) -> u32 {
+		unimplemented!()
+	}
 }
 
 pub struct TestClusterManager;
@@ -224,14 +228,15 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 	fn add_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
-	) -> Result<(), ClusterManagerError> {
+		_node_kind: &ClusterNodeKind,
+	) -> Result<(), DispatchError> {
 		Ok(())
 	}
 
 	fn remove_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
-	) -> Result<(), ClusterManagerError> {
+	) -> Result<(), DispatchError> {
 		Ok(())
 	}
 }

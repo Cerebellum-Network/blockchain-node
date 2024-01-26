@@ -34,12 +34,12 @@ benchmarks! {
 			unit_per_get_request: 10,
 		};
 
-		let _ = <T as pallet::Config>::ClusterCreator::create_new_cluster(
+		let _ = <T as pallet::Config>::ClusterCreator::create_cluster(
 			ClusterId::from([1; 20]),
 			user.clone(),
 			user.clone(),
 			ClusterParams { node_provider_auth_contract: Some(user.clone()) },
-			cluster_gov_params
+			cluster_gov_params,
 		);
 
 		let bucket_params = BucketParams {

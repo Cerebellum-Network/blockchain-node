@@ -5,7 +5,7 @@ use ddc_primitives::{
 	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodeMode,
 	StorageNodeParams,
 };
-use frame_support::{assert_noop, assert_ok, error::BadOrigin};
+use frame_support::{assert_noop, assert_ok};
 use frame_system::Config;
 use hex_literal::hex;
 use sp_runtime::{traits::Hash, Perquintill};
@@ -35,22 +35,9 @@ fn create_cluster_works() {
 			unit_per_get_request: 10,
 		};
 
-		// Creating cluster not with root signature should fail
-		assert_noop!(
-			DdcClusters::create_cluster(
-				RuntimeOrigin::signed(AccountId::from([1; 32])),
-				cluster_id,
-				cluster_manager_id.clone(),
-				cluster_reserve_id.clone(),
-				ClusterParams { node_provider_auth_contract: Some(auth_contract.clone()) },
-				cluster_gov_params.clone()
-			),
-			BadOrigin
-		);
-
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
-			RuntimeOrigin::root(),
+			RuntimeOrigin::signed(AccountId::from([1; 32])),
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
@@ -106,7 +93,7 @@ fn create_cluster_works() {
 		// Creating cluster with same id should fail
 		assert_noop!(
 			DdcClusters::create_cluster(
-				RuntimeOrigin::root(),
+				RuntimeOrigin::signed(AccountId::from([1; 32])),
 				cluster_id,
 				cluster_manager_id,
 				cluster_reserve_id,
@@ -142,13 +129,14 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
+				ClusterNodeKind::Genesis
 			),
 			Error::<Test>::ClusterDoesNotExist
 		);
 
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
-			RuntimeOrigin::root(),
+			RuntimeOrigin::signed(AccountId::from([1; 32])),
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
@@ -173,6 +161,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(cluster_reserve_id),
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
+				ClusterNodeKind::Genesis
 			),
 			Error::<Test>::OnlyClusterManager
 		);
@@ -183,6 +172,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
+				ClusterNodeKind::Genesis
 			),
 			Error::<Test>::AttemptToAddNonExistentNode
 		);
@@ -210,6 +200,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
+				ClusterNodeKind::Genesis
 			),
 			Error::<Test>::NodeAuthContractCallFailed
 		);
@@ -226,6 +217,7 @@ fn add_and_delete_node_works() {
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
 			NodePubKey::StoragePubKey(node_pub_key.clone()),
+			ClusterNodeKind::Genesis
 		));
 
 		assert!(<DdcClusters as ClusterManager<Test>>::contains_node(
@@ -239,6 +231,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
+				ClusterNodeKind::Genesis
 			),
 			Error::<Test>::AttemptToAddAlreadyAssignedNode
 		);
@@ -368,7 +361,7 @@ fn set_cluster_params_works() {
 
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
-			RuntimeOrigin::root(),
+			RuntimeOrigin::signed(AccountId::from([1; 32])),
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
@@ -412,121 +405,6 @@ fn set_cluster_params_works() {
 }
 
 #[test]
-fn set_cluster_gov_params_works() {
-	ExtBuilder.build_and_execute(|| {
-		System::set_block_number(1);
-
-		let cluster_id = ClusterId::from([1; 20]);
-		let cluster_manager_id = AccountId::from([1; 32]);
-		let cluster_reserve_id = AccountId::from([2; 32]);
-		let auth_contract = AccountId::from([3; 32]);
-
-		let cluster_gov_params = ClusterGovParams {
-			treasury_share: Perquintill::from_float(0.05),
-			validators_share: Perquintill::from_float(0.01),
-			cluster_reserve_share: Perquintill::from_float(0.02),
-			storage_bond_size: 100,
-			storage_chill_delay: 50,
-			storage_unbonding_delay: 50,
-			unit_per_mb_stored: 10,
-			unit_per_mb_streamed: 10,
-			unit_per_put_request: 10,
-			unit_per_get_request: 10,
-		};
-
-		// Cluster doesn't exist
-		assert_noop!(
-			DdcClusters::set_cluster_gov_params(
-				RuntimeOrigin::root(),
-				cluster_id,
-				cluster_gov_params.clone()
-			),
-			Error::<Test>::ClusterDoesNotExist
-		);
-
-		assert_ok!(DdcClusters::create_cluster(
-			RuntimeOrigin::root(),
-			cluster_id,
-			cluster_manager_id.clone(),
-			cluster_reserve_id,
-			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
-			cluster_gov_params.clone()
-		));
-
-		assert_noop!(
-			DdcClusters::set_cluster_gov_params(
-				RuntimeOrigin::signed(cluster_manager_id),
-				cluster_id,
-				cluster_gov_params
-			),
-			BadOrigin
-		);
-
-		let updated_gov_params = ClusterGovParams {
-			treasury_share: Perquintill::from_float(0.06),
-			validators_share: Perquintill::from_float(0.02),
-			cluster_reserve_share: Perquintill::from_float(0.03),
-			storage_bond_size: 1000,
-			storage_chill_delay: 500,
-			storage_unbonding_delay: 500,
-			unit_per_mb_stored: 100,
-			unit_per_mb_streamed: 100,
-			unit_per_put_request: 100,
-			unit_per_get_request: 100,
-		};
-
-		assert_ok!(DdcClusters::set_cluster_gov_params(
-			RuntimeOrigin::root(),
-			cluster_id,
-			updated_gov_params.clone()
-		));
-
-		let updated_cluster_gov_params = DdcClusters::clusters_gov_params(cluster_id).unwrap();
-		assert_eq!(updated_cluster_gov_params.treasury_share, updated_gov_params.treasury_share);
-		assert_eq!(
-			updated_cluster_gov_params.validators_share,
-			updated_gov_params.validators_share
-		);
-		assert_eq!(
-			updated_cluster_gov_params.cluster_reserve_share,
-			updated_gov_params.cluster_reserve_share
-		);
-		assert_eq!(
-			updated_cluster_gov_params.storage_bond_size,
-			updated_gov_params.storage_bond_size
-		);
-		assert_eq!(
-			updated_cluster_gov_params.storage_chill_delay,
-			updated_gov_params.storage_chill_delay
-		);
-		assert_eq!(
-			updated_cluster_gov_params.storage_unbonding_delay,
-			updated_gov_params.storage_unbonding_delay
-		);
-		assert_eq!(
-			updated_cluster_gov_params.unit_per_mb_stored,
-			updated_gov_params.unit_per_mb_stored
-		);
-		assert_eq!(
-			updated_cluster_gov_params.unit_per_mb_streamed,
-			updated_gov_params.unit_per_mb_streamed
-		);
-		assert_eq!(
-			updated_cluster_gov_params.unit_per_put_request,
-			updated_gov_params.unit_per_put_request
-		);
-		assert_eq!(
-			updated_cluster_gov_params.unit_per_get_request,
-			updated_gov_params.unit_per_get_request
-		);
-
-		// Checking that event was emitted
-		assert_eq!(System::events().len(), 2);
-		System::assert_last_event(Event::ClusterGovParamsSet { cluster_id }.into())
-	})
-}
-
-#[test]
 fn cluster_visitor_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
@@ -551,7 +429,7 @@ fn cluster_visitor_works() {
 
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
-			RuntimeOrigin::root(),
+			RuntimeOrigin::signed(AccountId::from([1; 32])),
 			cluster_id,
 			cluster_manager_id,
 			cluster_reserve_id.clone(),
@@ -559,7 +437,7 @@ fn cluster_visitor_works() {
 			cluster_gov_params
 		));
 
-		assert_ok!(<DdcClusters as ClusterVisitor<Test>>::ensure_cluster(&cluster_id));
+		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::cluster_exists(&cluster_id), true);
 
 		assert_eq!(
 			<DdcClusters as ClusterVisitor<Test>>::get_bond_size(&cluster_id, NodeType::Storage)
@@ -658,7 +536,7 @@ fn cluster_creator_works() {
 			unit_per_get_request: 10,
 		};
 
-		assert_ok!(<DdcClusters as ClusterCreator<Test, BalanceOf<Test>>>::create_new_cluster(
+		assert_ok!(<DdcClusters as ClusterCreator<Test, BalanceOf<Test>>>::create_cluster(
 			cluster_id,
 			cluster_manager_id,
 			cluster_reserve_id,

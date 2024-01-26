@@ -29,11 +29,11 @@ mod tests;
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+		cluster::{ClusterAdministrator, ClusterCreator, ClusterVisitor},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
-	ClusterPricingParams, NodePubKey, NodeType,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
+	ClusterNodeStatus, ClusterParams, ClusterPricingParams, ClusterStatus, NodePubKey, NodeType,
 };
 use frame_support::{
 	assert_ok,
@@ -59,9 +59,15 @@ mod node_provider_auth;
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct ClusterNodeState {
+	pub kind: ClusterNodeKind,
+	pub status: ClusterNodeStatus,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::traits::cluster::{ClusterManager, ClusterManagerError};
+	use ddc_primitives::traits::cluster::ClusterManager;
 
 	use super::*;
 
@@ -92,6 +98,8 @@ pub mod pallet {
 		ClusterNodeRemoved { cluster_id: ClusterId, node_pub_key: NodePubKey },
 		ClusterParamsSet { cluster_id: ClusterId },
 		ClusterGovParamsSet { cluster_id: ClusterId },
+		ClusterActivated { cluster_id: ClusterId },
+		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
 	}
 
 	#[pallet::error]
@@ -112,6 +120,9 @@ pub mod pallet {
 		NodeAuthContractCallFailed,
 		NodeAuthContractDeployFailed,
 		NodeAuthNodeAuthorizationNotSuccessful,
+		ClusterAlreadyActivated,
+		AttemptToValidateNotAssignedNode,
+		ClusterGovParamsNotSet,
 	}
 
 	#[pallet::storage]
@@ -132,9 +143,14 @@ pub mod pallet {
 		ClusterId,
 		Blake2_128Concat,
 		NodePubKey,
-		bool,
+		ClusterNodeState, // todo: provide migration
 		OptionQuery,
 	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn clusters_validated_nodes_count)]
+	pub type ClustersValidatedNodesCount<T: Config> =
+		StorageMap<_, Twox64Concat, ClusterId, u32, ValueQuery>; // todo: provide migration
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -163,7 +179,7 @@ pub mod pallet {
 		fn build(&self) {
 			for cluster in &self.clusters {
 				assert_ok!(Pallet::<T>::create_cluster(
-					frame_system::Origin::<T>::Root.into(),
+					frame_system::Origin::<T>::Signed(cluster.manager_id.clone()).into(),
 					cluster.cluster_id,
 					cluster.manager_id.clone(),
 					cluster.reserve_id.clone(),
@@ -183,7 +199,14 @@ pub mod pallet {
 
 				for (cluster_id, nodes) in &self.clusters_nodes {
 					for node_pub_key in nodes {
-						<ClustersNodes<T>>::insert(cluster_id, node_pub_key, true);
+						<ClustersNodes<T>>::insert(
+							cluster_id,
+							node_pub_key,
+							ClusterNodeState {
+								kind: ClusterNodeKind::Genesis,
+								status: ClusterNodeStatus::AwaitsValidation,
+							},
+						);
 					}
 				}
 			}
@@ -205,7 +228,7 @@ pub mod pallet {
 			cluster_params: ClusterParams<T::AccountId>,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
-			ensure_root(origin)?; // requires Governance approval
+			let _caller_id = ensure_signed(origin)?;
 			Self::do_create_cluster(
 				cluster_id,
 				cluster_manager_id,
@@ -221,6 +244,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
+			node_kind: ClusterNodeKind,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
@@ -257,12 +281,7 @@ pub mod pallet {
 				ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
 			};
 
-			// Add node to the cluster.
-			<Self as ClusterManager<T>>::add_node(&cluster_id, &node_pub_key)
-				.map_err(Into::<Error<T>>::into)?;
-			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
-
-			Ok(())
+			Self::do_add_node(cluster_id, node_pub_key, node_kind)
 		}
 
 		#[pallet::call_index(2)]
@@ -278,12 +297,7 @@ pub mod pallet {
 
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
-			// Remove node from the cluster.
-			<Self as ClusterManager<T>>::remove_node(&cluster_id, &node_pub_key)
-				.map_err(Into::<Error<T>>::into)?;
-			Self::deposit_event(Event::<T>::ClusterNodeRemoved { cluster_id, node_pub_key });
-
-			Ok(())
+			Self::do_remove_node(cluster_id, node_pub_key)
 		}
 
 		// Sets Governance non-sensetive parameters only
@@ -298,28 +312,28 @@ pub mod pallet {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
-			cluster.set_params(cluster_params).map_err(Into::<Error<T>>::into)?;
+			cluster.set_params(cluster_params);
 			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
 
 			Ok(())
 		}
 
-		// Requires Governance approval
 		#[pallet::call_index(4)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_cluster_gov_params())]
-		pub fn set_cluster_gov_params(
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::validate_node())]
+		pub fn validate_node(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			node_pub_key: NodePubKey,
+			succeeded: bool,
 		) -> DispatchResult {
-			ensure_root(origin)?; // requires Governance approval
-			let _cluster =
+			let caller_id = ensure_signed(origin)?;
+			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
-			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
+			// todo: allow to execute this extrinsic to Validators only
+			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
-			Ok(())
+			Self::do_validate_node(cluster_id, node_pub_key, succeeded)
 		}
 	}
 
@@ -327,14 +341,14 @@ pub mod pallet {
 		fn do_create_cluster(
 			cluster_id: ClusterId,
 			cluster_manager_id: T::AccountId,
+
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
-			let cluster =
-				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params)
-					.map_err(Into::<Error<T>>::into)?;
 			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
+			let cluster =
+				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params);
 
 			Clusters::<T>::insert(cluster_id, cluster);
 			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
@@ -342,21 +356,125 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		fn do_activate_cluster(cluster_id: ClusterId) -> DispatchResult {
+			let mut cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ensure!(cluster.status == ClusterStatus::Inactive, Error::<T>::ClusterAlreadyActivated);
+
+			cluster.set_status(ClusterStatus::Active);
+			Clusters::<T>::insert(cluster_id, cluster);
+			Self::deposit_event(Event::<T>::ClusterActivated { cluster_id });
+
+			Ok(())
+		}
+
+		fn do_update_cluster_gov_params(
+			cluster_id: ClusterId,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+		) -> DispatchResult {
+			ensure!(
+				ClustersGovParams::<T>::contains_key(cluster_id),
+				Error::<T>::ClusterGovParamsNotSet
+			);
+
+			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
+			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
+
+			Ok(())
+		}
+
+		fn do_add_node(
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+			node_kind: ClusterNodeKind,
+		) -> DispatchResult {
+			let mut node = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+
+			ensure!(node.get_cluster_id().is_none(), Error::<T>::AttemptToAddAlreadyAssignedNode);
+
+			node.set_cluster_id(Some(cluster_id));
+			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+
+			ClustersNodes::<T>::insert(
+				cluster_id,
+				node_pub_key.clone(),
+				ClusterNodeState {
+					kind: node_kind.clone(),
+					status: ClusterNodeStatus::AwaitsValidation,
+				},
+			);
+			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
+
+			Ok(())
+		}
+
+		fn do_remove_node(cluster_id: ClusterId, node_pub_key: NodePubKey) -> DispatchResult {
+			let mut node = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
+
+			ensure!(
+				node.get_cluster_id() == &Some(cluster_id),
+				Error::<T>::AttemptToRemoveNotAssignedNode
+			);
+
+			node.set_cluster_id(None);
+			T::NodeRepository::update(node)
+				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
+
+			ClustersNodes::<T>::remove(cluster_id, node_pub_key.clone());
+			Self::deposit_event(Event::<T>::ClusterNodeRemoved { cluster_id, node_pub_key });
+
+			Ok(())
+		}
+
+		fn do_validate_node(
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+			succeeded: bool,
+		) -> DispatchResult {
+			let mut current_node_state =
+				ClustersNodes::<T>::try_get(cluster_id, node_pub_key.clone())
+					.map_err(|_| Error::<T>::AttemptToValidateNotAssignedNode)?;
+
+			let current_count = ClustersValidatedNodesCount::<T>::get(cluster_id);
+
+			let updated_count = match current_node_state.status {
+				ClusterNodeStatus::AwaitsValidation if succeeded => current_count + 1,
+				ClusterNodeStatus::ValidationSucceeded if !succeeded => current_count - 1,
+				_ => current_count,
+			};
+
+			current_node_state.status = if succeeded {
+				ClusterNodeStatus::ValidationSucceeded
+			} else {
+				ClusterNodeStatus::ValidationFailed
+			};
+
+			ClustersValidatedNodesCount::<T>::insert(cluster_id, updated_count);
+			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), current_node_state);
+			Self::deposit_event(Event::<T>::ClusterNodeValidated {
+				cluster_id,
+				node_pub_key,
+				succeeded,
+			});
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> ClusterVisitor<T> for Pallet<T> {
-		fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
-			Clusters::<T>::get(cluster_id)
-				.map(|_| ())
-				.ok_or(ClusterVisitorError::ClusterDoesNotExist)
+		fn cluster_exists(cluster_id: &ClusterId) -> bool {
+			Clusters::<T>::contains_key(cluster_id)
 		}
 
 		fn get_bond_size(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
-		) -> Result<u128, ClusterVisitorError> {
+		) -> Result<u128, DispatchError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 			match node_type {
 				NodeType::Storage =>
 					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
@@ -365,9 +483,9 @@ pub mod pallet {
 
 		fn get_pricing_params(
 			cluster_id: &ClusterId,
-		) -> Result<ClusterPricingParams, ClusterVisitorError> {
+		) -> Result<ClusterPricingParams, DispatchError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 			Ok(ClusterPricingParams {
 				unit_per_mb_stored: cluster_gov_params.unit_per_mb_stored,
 				unit_per_mb_streamed: cluster_gov_params.unit_per_mb_streamed,
@@ -376,11 +494,9 @@ pub mod pallet {
 			})
 		}
 
-		fn get_fees_params(
-			cluster_id: &ClusterId,
-		) -> Result<ClusterFeesParams, ClusterVisitorError> {
+		fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, DispatchError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 
 			Ok(ClusterFeesParams {
 				treasury_share: cluster_gov_params.treasury_share,
@@ -389,20 +505,12 @@ pub mod pallet {
 			})
 		}
 
-		fn get_reserve_account_id(
-			cluster_id: &ClusterId,
-		) -> Result<T::AccountId, ClusterVisitorError> {
-			let cluster = Clusters::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterDoesNotExist)?;
-			Ok(cluster.reserve_id)
-		}
-
 		fn get_chill_delay(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
-		) -> Result<T::BlockNumber, ClusterVisitorError> {
+		) -> Result<T::BlockNumber, DispatchError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 			match node_type {
 				NodeType::Storage => Ok(cluster_gov_params.storage_chill_delay),
 			}
@@ -411,9 +519,9 @@ pub mod pallet {
 		fn get_unbonding_delay(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
-		) -> Result<T::BlockNumber, ClusterVisitorError> {
+		) -> Result<T::BlockNumber, DispatchError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 			match node_type {
 				NodeType::Storage => Ok(cluster_gov_params.storage_unbonding_delay),
 			}
@@ -421,14 +529,30 @@ pub mod pallet {
 
 		fn get_bonding_params(
 			cluster_id: &ClusterId,
-		) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+		) -> Result<ClusterBondingParams<T::BlockNumber>, DispatchError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
+				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 			Ok(ClusterBondingParams {
 				storage_bond_size: cluster_gov_params.storage_bond_size.saturated_into::<u128>(),
 				storage_chill_delay: cluster_gov_params.storage_chill_delay,
 				storage_unbonding_delay: cluster_gov_params.storage_unbonding_delay,
 			})
+		}
+
+		fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(cluster.manager_id)
+		}
+
+		fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(cluster.reserve_id)
+		}
+
+		fn get_validated_nodes_count(cluster_id: &ClusterId) -> u32 {
+			ClustersValidatedNodesCount::<T>::get(cluster_id)
 		}
 	}
 
@@ -440,43 +564,16 @@ pub mod pallet {
 		fn add_node(
 			cluster_id: &ClusterId,
 			node_pub_key: &NodePubKey,
-		) -> Result<(), ClusterManagerError> {
-			let mut node = T::NodeRepository::get(node_pub_key.clone())
-				.map_err(|_| ClusterManagerError::AttemptToAddNonExistentNode)?;
-
-			ensure!(
-				node.get_cluster_id().is_none(),
-				ClusterManagerError::AttemptToAddAlreadyAssignedNode
-			);
-
-			node.set_cluster_id(Some(*cluster_id));
-			T::NodeRepository::update(node)
-				.map_err(|_| ClusterManagerError::AttemptToAddNonExistentNode)?;
-
-			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), true);
-
-			Ok(())
+			node_kind: &ClusterNodeKind,
+		) -> Result<(), DispatchError> {
+			Self::do_add_node(cluster_id.clone(), node_pub_key.clone(), node_kind.clone())
 		}
 
 		fn remove_node(
 			cluster_id: &ClusterId,
 			node_pub_key: &NodePubKey,
-		) -> Result<(), ClusterManagerError> {
-			let mut node = T::NodeRepository::get(node_pub_key.clone())
-				.map_err(|_| ClusterManagerError::AttemptToRemoveNonExistentNode)?;
-
-			ensure!(
-				node.get_cluster_id() == &Some(*cluster_id),
-				ClusterManagerError::AttemptToRemoveNotAssignedNode
-			);
-
-			node.set_cluster_id(None);
-			T::NodeRepository::update(node)
-				.map_err(|_| ClusterManagerError::AttemptToRemoveNonExistentNode)?;
-
-			ClustersNodes::<T>::remove(cluster_id, node_pub_key.clone());
-
-			Ok(())
+		) -> Result<(), DispatchError> {
+			Self::do_remove_node(cluster_id.clone(), node_pub_key.clone())
 		}
 	}
 
@@ -484,7 +581,7 @@ pub mod pallet {
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
-		fn create_new_cluster(
+		fn create_cluster(
 			cluster_id: ClusterId,
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
@@ -498,6 +595,22 @@ pub mod pallet {
 				cluster_params,
 				cluster_gov_params,
 			)
+		}
+	}
+
+	impl<T: Config> ClusterAdministrator<T, BalanceOf<T>> for Pallet<T>
+	where
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	{
+		fn activate_cluster(cluster_id: ClusterId) -> DispatchResult {
+			Self::do_activate_cluster(cluster_id)
+		}
+
+		fn update_cluster_gov_params(
+			cluster_id: ClusterId,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+		) -> DispatchResult {
+			Self::do_update_cluster_gov_params(cluster_id, cluster_gov_params)
 		}
 	}
 
@@ -519,21 +632,6 @@ pub mod pallet {
 					Error::<T>::NodeAuthContractDeployFailed,
 				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
 					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful,
-			}
-		}
-	}
-
-	impl<T> From<ClusterManagerError> for Error<T> {
-		fn from(error: ClusterManagerError) -> Self {
-			match error {
-				ClusterManagerError::AttemptToRemoveNotAssignedNode =>
-					Error::<T>::AttemptToRemoveNotAssignedNode,
-				ClusterManagerError::AttemptToRemoveNonExistentNode =>
-					Error::<T>::AttemptToRemoveNonExistentNode,
-				ClusterManagerError::AttemptToAddNonExistentNode =>
-					Error::<T>::AttemptToAddNonExistentNode,
-				ClusterManagerError::AttemptToAddAlreadyAssignedNode =>
-					Error::<T>::AttemptToAddAlreadyAssignedNode,
 			}
 		}
 	}
