@@ -21,7 +21,7 @@ use ddc_primitives::{
 		cluster::{ClusterAdministrator as ClusterAdministratorType, ClusterVisitor},
 		pallet::{GetDdcOrigin, PalletsOriginOf},
 	},
-	ClusterGovParams, ClusterId,
+	ClusterGovParams, ClusterId, MIN_VALIDATED_NODES_COUNT,
 };
 use frame_support::{
 	codec::{Decode, Encode, MaxEncodedLen},
@@ -151,6 +151,7 @@ pub mod pallet {
 		/// The close call was made too early, before the end of the voting.
 		TooEarly,
 		AwaitsValidation,
+		NotEnoughValidatedNodes,
 	}
 
 	#[pallet::call]
@@ -170,6 +171,10 @@ pub mod pallet {
 			let cluster_nodes_stats = T::ClusterVisitor::get_nodes_stats(&cluster_id)
 				.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_nodes_stats.await_validation == 0, Error::<T>::AwaitsValidation);
+			ensure!(
+				cluster_nodes_stats.validation_succeeded >= MIN_VALIDATED_NODES_COUNT,
+				Error::<T>::NotEnoughValidatedNodes
+			);
 
 			let threshold = cluster_nodes_stats.validation_succeeded;
 
@@ -193,7 +198,7 @@ pub mod pallet {
 
 		#[pallet::call_index(1)]
 		#[pallet::weight(10_000)]
-		pub fn execute_proposal(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
+		pub fn close_proposal(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let _caller_id = ensure_signed(origin)?;
 
 			// todo: check the local consensus on proposal
@@ -216,11 +221,11 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub fn account_id() -> T::AccountId {
+		fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
 
-		pub fn propose_public(cluster_id: ClusterId) -> DispatchResult {
+		fn propose_public(cluster_id: ClusterId) -> DispatchResult {
 			let proposal = <ClusterProposal<T>>::try_get(cluster_id)
 				.map_err(|_| Error::<T>::ProposalMissing)?;
 
