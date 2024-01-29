@@ -16,7 +16,7 @@ pub type ClusterId = H160;
 pub type DdcEra = u32;
 pub type BucketId = u64;
 pub type StorageNodePubKey = AccountId32;
-pub type ClusterNodesCount = u32;
+pub type ClusterNodesCount = u16;
 pub const MIN_VALIDATED_NODES_COUNT: ClusterNodesCount = 3;
 
 // ClusterParams includes Governance non-sensetive parameters only
