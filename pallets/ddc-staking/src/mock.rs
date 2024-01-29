@@ -10,7 +10,7 @@ use ddc_primitives::{
 		node::NodeVisitor,
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodeKind, ClusterNodeStatus,
-	ClusterNodesStats, ClusterParams, ClusterPricingParams, NodeParams, NodePubKey,
+	ClusterNodesStats, ClusterParams, ClusterPricingParams, ClusterStatus, NodeParams, NodePubKey,
 	StorageNodePubKey,
 };
 use frame_support::{
@@ -211,6 +211,10 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	}
 
 	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
 		unimplemented!()
 	}
 }

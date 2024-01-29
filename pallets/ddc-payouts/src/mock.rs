@@ -9,7 +9,7 @@ use ddc_primitives::{
 		pallet::PalletVisitor,
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodesStats, ClusterParams,
-	ClusterPricingParams, NodeType, DOLLARS,
+	ClusterPricingParams, ClusterStatus, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -459,6 +459,10 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	}
 
 	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
 		unimplemented!()
 	}
 }

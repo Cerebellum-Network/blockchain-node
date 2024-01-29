@@ -40,6 +40,8 @@ pub trait ClusterVisitor<T: Config> {
 	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError>;
 
 	fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError>;
+
+	fn get_cluster_status(cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError>;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {
