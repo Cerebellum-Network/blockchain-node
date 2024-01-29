@@ -1,8 +1,6 @@
 use codec::{Decode, Encode};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::Config;
-use scale_info::TypeInfo;
-use sp_runtime::RuntimeDebug;
 
 use crate::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
@@ -39,6 +37,8 @@ pub trait ClusterVisitor<T: Config> {
 	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError>;
 
 	fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError>;
+
+	fn get_cluster_status(cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError>;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {
