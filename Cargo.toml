@@ -3,7 +3,6 @@ version = "4.8.8"
 edition = "2021"
 license = "GPL-3.0-or-later WITH Classpath-exception-2.0"
 
-
 [workspace]
 members = [
   "node/cli",
@@ -25,4 +24,3 @@ resolver = "2"
 
 [profile.release]
 panic = "unwind"
-
