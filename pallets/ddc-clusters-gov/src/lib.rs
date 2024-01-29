@@ -550,13 +550,14 @@ pub mod pallet {
 				cluster_id,
 				result: result.map(|_| ()).map_err(|e| e.error),
 			});
+			Self::do_remove_proposal(cluster_id);
 			Ok(proposal_weight)
 		}
 
 		/// Removes a proposal from the pallet, and deposit the `Disapproved` event.
 		fn do_disapprove_proposal(cluster_id: ClusterId) {
 			Self::deposit_event(Event::Disapproved { cluster_id });
-			Self::remove_proposal(cluster_id)
+			Self::do_remove_proposal(cluster_id)
 		}
 
 		fn do_propose_public(
@@ -591,7 +592,7 @@ pub mod pallet {
 		}
 
 		/// Removes a proposal from the pallet, cleaning up votes and the vector of proposals.
-		fn remove_proposal(cluster_id: ClusterId) {
+		fn do_remove_proposal(cluster_id: ClusterId) {
 			ClusterProposal::<T>::remove(&cluster_id);
 			ClusterProposalVoting::<T>::remove(&cluster_id);
 		}
