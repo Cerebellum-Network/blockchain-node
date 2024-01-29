@@ -1,7 +1,5 @@
-[package]
-name = "cere"
+[workspace.package]
 version = "4.8.8"
-build = "build.rs"
 edition = "2021"
 license = "GPL-3.0-or-later WITH Classpath-exception-2.0"
 
@@ -11,7 +9,7 @@ members = [
   "node/cli",
   "node/client",
   "node/service",
-  "rpc",
+  "node/rpc",
   "runtime/cere",
   "runtime/cere-dev",
   "pallets/chainbridge",
