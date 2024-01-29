@@ -1211,6 +1211,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
+	pub const MinValidatedNodesCount: u16 = 3;
 	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterActivator.into();
 	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterAdmin.into();
 }
@@ -1231,6 +1232,7 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type ClusterEconomics = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
+	type MinValidatedNodesCount = MinValidatedNodesCount;
 }
 
 pub struct ClustersGovWrapper;

@@ -24,7 +24,6 @@ use ddc_primitives::{
 		pallet::GetDdcOrigin,
 	},
 	ClusterGovParams, ClusterId, ClusterNodeStatus, ClusterStatus, NodePubKey,
-	MIN_VALIDATED_NODES_COUNT,
 };
 use frame_support::{
 	codec::{Decode, Encode},
@@ -110,6 +109,7 @@ pub mod pallet {
 		type NodeVisitor: NodeVisitor<Self>;
 		/// Default voting strategy.
 		type DefaultVote: DefaultVote;
+		type MinValidatedNodesCount: Get<u16>;
 	}
 
 	#[pallet::storage]
@@ -199,13 +199,12 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_nodes_stats.await_validation == 0, Error::<T>::AwaitsValidation);
 			ensure!(
-				cluster_nodes_stats.validation_succeeded >= MIN_VALIDATED_NODES_COUNT,
+				cluster_nodes_stats.validation_succeeded >= T::MinValidatedNodesCount::get(),
 				Error::<T>::NotEnoughValidatedNodes
 			);
 
 			// Collect votes from 100% of Validated Nodes + 1 vote from Cluster Manager
 			let threshold = cluster_nodes_stats.validation_succeeded as u32 + 1;
-
 			let votes = {
 				let start = frame_system::Pallet::<T>::block_number();
 				let end = start + T::ClusterProposalDuration::get();
@@ -254,7 +253,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_nodes_stats.await_validation == 0, Error::<T>::AwaitsValidation);
 			ensure!(
-				cluster_nodes_stats.validation_succeeded >= MIN_VALIDATED_NODES_COUNT,
+				cluster_nodes_stats.validation_succeeded >= T::MinValidatedNodesCount::get(),
 				Error::<T>::NotEnoughValidatedNodes
 			);
 
