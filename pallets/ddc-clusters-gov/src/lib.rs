@@ -126,10 +126,10 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A motion (given hash) has been proposed (by given account) with a threshold (given
+		/// A proposal (given hash) has been proposed (by given account) with a threshold (given
 		/// `MemberCount`).
 		Proposed { account: T::AccountId, cluster_id: ClusterId, threshold: MemberCount },
-		/// A motion (given hash) has been voted on by given account, leaving
+		/// A proposal (given hash) has been voted on by given account, leaving
 		/// a tally (yes votes and no votes given respectively as `MemberCount`).
 		Voted {
 			account: T::AccountId,
@@ -138,14 +138,16 @@ pub mod pallet {
 			yes: MemberCount,
 			no: MemberCount,
 		},
-		/// A motion was approved by the required threshold.
+		/// A proposal was approved by the required threshold.
 		Approved { cluster_id: ClusterId },
-		/// A motion was not approved by the required threshold.
+		/// A proposal was not approved by the required threshold.
 		Disapproved { cluster_id: ClusterId },
-		/// A motion was executed; result will be `Ok` if it returned without error.
+		/// A proposal was executed; result will be `Ok` if it returned without error.
 		Executed { cluster_id: ClusterId, result: DispatchResult },
 		/// A proposal was closed because its threshold was reached or after its duration was up.
 		Closed { cluster_id: ClusterId, yes: MemberCount, no: MemberCount },
+		/// A proposal was not removed by its author.
+		Removed { cluster_id: ClusterId },
 	}
 
 	#[pallet::error]
@@ -158,6 +160,8 @@ pub mod pallet {
 		NotValidatedNode,
 		/// Cluster does not exist
 		NoCluster,
+		/// Account is not proposal author
+		NotProposalAuthor,
 		/// Proposal must exist
 		ProposalMissing,
 		/// Active proposal is ongoing
@@ -168,7 +172,7 @@ pub mod pallet {
 		TooEarly,
 		AwaitsValidation,
 		NotEnoughValidatedNodes,
-		BadState,
+		UnexpectedState,
 		VoteProhibited,
 	}
 
@@ -189,7 +193,7 @@ pub mod pallet {
 			let cluster_status =
 				<T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(&cluster_id)
 					.map_err(|_| Error::<T>::NoCluster)?;
-			ensure!(cluster_status == ClusterStatus::Inactive, Error::<T>::BadState);
+			ensure!(cluster_status == ClusterStatus::Inactive, Error::<T>::UnexpectedState);
 
 			let cluster_nodes_stats = T::ClusterManager::get_nodes_stats(&cluster_id)
 				.map_err(|_| Error::<T>::NoCluster)?;
@@ -244,7 +248,7 @@ pub mod pallet {
 			let cluster_status =
 				<T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(&cluster_id)
 					.map_err(|_| Error::<T>::NoCluster)?;
-			ensure!(cluster_status == ClusterStatus::Active, Error::<T>::BadState);
+			ensure!(cluster_status == ClusterStatus::Active, Error::<T>::UnexpectedState);
 
 			let cluster_nodes_stats = T::ClusterManager::get_nodes_stats(&cluster_id)
 				.map_err(|_| Error::<T>::NoCluster)?;
@@ -310,6 +314,21 @@ pub mod pallet {
 
 		#[pallet::call_index(4)]
 		#[pallet::weight(10_000)]
+		pub fn retract_proposal(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
+			let caller_id = ensure_signed(origin)?;
+			let voting =
+				ClusterProposalVoting::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
+			if voting.author != caller_id {
+				Err(Error::<T>::NotProposalAuthor.into())
+			} else {
+				Self::do_remove_proposal(cluster_id);
+				Self::deposit_event(Event::Removed { cluster_id });
+				Ok(())
+			}
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(10_000)]
 		pub fn activate_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -320,7 +339,7 @@ pub mod pallet {
 			T::ClusterEconomics::update_cluster_economics(cluster_id, cluster_gov_params)
 		}
 
-		#[pallet::call_index(5)]
+		#[pallet::call_index(6)]
 		#[pallet::weight(10_000)]
 		pub fn update_cluster(
 			origin: OriginFor<T>,
