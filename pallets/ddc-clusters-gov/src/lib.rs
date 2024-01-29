@@ -192,7 +192,7 @@ pub mod pallet {
 			);
 
 			// Collect votes from 100% of Validated Nodes + 1 vote from Cluster Manager
-			let threshold = cluster_nodes_stats.validation_succeeded.saturating_add(1); // 1 vote is from the Cluster Manager
+			let threshold = cluster_nodes_stats.validation_succeeded as u32 + 1;
 
 			let votes = {
 				let end =
@@ -238,7 +238,7 @@ pub mod pallet {
 			);
 
 			// Collect votes from 100% of Validated Nodes + 1 vote from Cluster Manager
-			let threshold = cluster_nodes_stats.validation_succeeded.saturating_add(1);
+			let threshold = cluster_nodes_stats.validation_succeeded as u32 + 1;
 			let votes = {
 				let end =
 					frame_system::Pallet::<T>::block_number() + T::ClusterProposalDuration::get();
