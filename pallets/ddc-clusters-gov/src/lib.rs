@@ -23,7 +23,8 @@ use ddc_primitives::{
 		node::NodeVisitor,
 		pallet::GetDdcOrigin,
 	},
-	ClusterGovParams, ClusterId, ClusterNodeStatus, ClusterStatus, MIN_VALIDATED_NODES_COUNT,
+	ClusterGovParams, ClusterId, ClusterNodeStatus, ClusterStatus, NodePubKey,
+	MIN_VALIDATED_NODES_COUNT,
 };
 use frame_support::{
 	codec::{Decode, Encode},
@@ -60,9 +61,14 @@ pub struct Votes<AccountId, BlockNumber> {
 	end: BlockNumber,
 }
 
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub enum ClusterMember {
+	ClusterManager,
+	NodeProvider(NodePubKey),
+}
+
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::NodePubKey;
 	use frame_support::PalletId;
 
 	use super::*;
@@ -143,11 +149,13 @@ pub mod pallet {
 		/// Account is not a cluster manager
 		NotClusterManager,
 		/// Account is not a member
-		NotValidatedClusterMember,
+		NotValidatedNode,
 		/// Cluster does not exist
 		NoCluster,
 		/// Proposal must exist
 		ProposalMissing,
+		/// Active proposal is ongoing
+		ActiveProposal,
 		/// Duplicate vote ignored
 		DuplicateVote,
 		/// The close call was made too early, before the end of the voting.
@@ -169,6 +177,8 @@ pub mod pallet {
 			let caller_id = ensure_signed(origin)?;
 			Self::ensure_cluster_manager(caller_id.clone(), cluster_id)?;
 
+			ensure!(!<ClusterProposal<T>>::contains_key(cluster_id), Error::<T>::ActiveProposal);
+
 			let cluster_status = T::ClusterVisitor::get_cluster_status(&cluster_id)
 				.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_status == ClusterStatus::Inactive, Error::<T>::BadState);
@@ -181,7 +191,8 @@ pub mod pallet {
 				Error::<T>::NotEnoughValidatedNodes
 			);
 
-			let threshold = cluster_nodes_stats.validation_succeeded;
+			// Collect votes from 100% of Validated Nodes + 1 vote from Cluster Manager
+			let threshold = cluster_nodes_stats.validation_succeeded.saturating_add(1); // 1 vote is from the Cluster Manager
 
 			let votes = {
 				let end =
@@ -203,31 +214,76 @@ pub mod pallet {
 
 		#[pallet::call_index(1)]
 		#[pallet::weight(10_000)]
-		pub fn vote_proposal(
+		pub fn propose_update_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			node_pub_key: NodePubKey,
-			approve: bool,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			member: ClusterMember,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			Self::ensure_validated_member(caller_id.clone(), cluster_id, node_pub_key)?;
-			let _ = Self::do_vote(caller_id, cluster_id, approve)?;
+			Self::ensure_validated_member(caller_id.clone(), cluster_id, member)?;
+
+			ensure!(!<ClusterProposal<T>>::contains_key(cluster_id), Error::<T>::ActiveProposal);
+
+			let cluster_status = T::ClusterVisitor::get_cluster_status(&cluster_id)
+				.map_err(|_| Error::<T>::NoCluster)?;
+			ensure!(cluster_status == ClusterStatus::Active, Error::<T>::BadState);
+
+			let cluster_nodes_stats = T::ClusterVisitor::get_nodes_stats(&cluster_id)
+				.map_err(|_| Error::<T>::NoCluster)?;
+			ensure!(cluster_nodes_stats.await_validation == 0, Error::<T>::AwaitsValidation);
+			ensure!(
+				cluster_nodes_stats.validation_succeeded >= MIN_VALIDATED_NODES_COUNT,
+				Error::<T>::NotEnoughValidatedNodes
+			);
+
+			// Collect votes from 100% of Validated Nodes + 1 vote from Cluster Manager
+			let threshold = cluster_nodes_stats.validation_succeeded.saturating_add(1);
+			let votes = {
+				let end =
+					frame_system::Pallet::<T>::block_number() + T::ClusterProposalDuration::get();
+				Votes { threshold, ayes: vec![], nays: vec![], end }
+			};
+			let proposal: <T as Config>::ClusterProposalCall =
+				T::ClusterProposalCall::from(Call::<T>::update_cluster {
+					cluster_id,
+					cluster_gov_params,
+				});
+
+			<ClusterProposal<T>>::insert(cluster_id, proposal);
+			<ClusterProposalVoting<T>>::insert(cluster_id, votes);
+			Self::deposit_event(Event::Proposed { account: caller_id, cluster_id, threshold });
+
 			Ok(())
 		}
 
 		#[pallet::call_index(2)]
 		#[pallet::weight(10_000)]
-		pub fn close_proposal(
+		pub fn vote_proposal(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			node_pub_key: NodePubKey,
-		) -> DispatchResultWithPostInfo {
+			approve: bool,
+			member: ClusterMember,
+		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			Self::ensure_validated_member(caller_id.clone(), cluster_id, node_pub_key)?;
-			Self::do_close(cluster_id)?
+			Self::ensure_validated_member(caller_id.clone(), cluster_id, member)?;
+			let _ = Self::do_vote(caller_id, cluster_id, approve)?;
+			Ok(())
 		}
 
 		#[pallet::call_index(3)]
+		#[pallet::weight(10_000)]
+		pub fn close_proposal(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			member: ClusterMember,
+		) -> DispatchResultWithPostInfo {
+			let caller_id = ensure_signed(origin)?;
+			Self::ensure_validated_member(caller_id.clone(), cluster_id, member)?;
+			Self::do_close(cluster_id)?
+		}
+
+		#[pallet::call_index(4)]
 		#[pallet::weight(10_000)]
 		pub fn activate_cluster(
 			origin: OriginFor<T>,
@@ -236,6 +292,17 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::ClusterActivatorOrigin::ensure_origin(origin)?;
 			T::ClusterAdministrator::activate_cluster(cluster_id)?;
+			T::ClusterAdministrator::update_cluster_gov_params(cluster_id, cluster_gov_params)
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(10_000)]
+		pub fn update_cluster(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+		) -> DispatchResult {
+			T::ClusterAdminOrigin::ensure_origin(origin)?;
 			T::ClusterAdministrator::update_cluster_gov_params(cluster_id, cluster_gov_params)
 		}
 	}
@@ -258,31 +325,28 @@ pub mod pallet {
 		fn ensure_validated_member(
 			origin: T::AccountId,
 			cluster_id: ClusterId,
-			node_pub_key: NodePubKey,
+			member: ClusterMember,
 		) -> Result<(), DispatchError> {
-			let cluster_manager = T::ClusterManager::get_manager_account_id(&cluster_id)
-				.map_err(|_| Error::<T>::NoCluster)?;
-
-			if origin == cluster_manager {
-				return Ok(())
+			match member {
+				ClusterMember::ClusterManager => Self::ensure_cluster_manager(origin, cluster_id),
+				ClusterMember::NodeProvider(node_pub_key) => {
+					let is_validated_node = T::ClusterManager::contains_node(
+						&cluster_id,
+						&node_pub_key,
+						Some(ClusterNodeStatus::ValidationSucceeded),
+					);
+					if !is_validated_node {
+						Err(Error::<T>::NotValidatedNode.into())
+					} else {
+						let node_provider = T::NodeVisitor::get_node_provider_id(&node_pub_key)?;
+						if origin == node_provider {
+							Ok(())
+						} else {
+							Err(Error::<T>::NotValidatedNode.into())
+						}
+					}
+				},
 			}
-
-			let is_validated_node = T::ClusterManager::contains_node(
-				&cluster_id,
-				&node_pub_key,
-				Some(ClusterNodeStatus::ValidationSucceeded),
-			);
-
-			if !is_validated_node {
-				return Err(Error::<T>::NotValidatedClusterMember.into())
-			}
-
-			let node_provider = T::NodeVisitor::get_node_provider_id(&node_pub_key)?;
-			if origin == node_provider {
-				return Ok(())
-			}
-
-			Err(Error::<T>::NotValidatedClusterMember.into())
 		}
 
 		fn do_vote(
