@@ -15,7 +15,7 @@ mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterVisitor},
+		cluster::{ClusterCreator, ClusterQuery, ClusterVisitor},
 		customer::{CustomerCharger, CustomerDepositor},
 	},
 	BucketId, ClusterId,
@@ -304,7 +304,7 @@ pub mod pallet {
 				Self::buckets_count().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
 
 			ensure!(
-				<T as pallet::Config>::ClusterVisitor::cluster_exists(&cluster_id),
+				<T::ClusterVisitor as ClusterQuery<T>>::cluster_exists(&cluster_id),
 				Error::<T>::ClusterDoesNotExist
 			);
 

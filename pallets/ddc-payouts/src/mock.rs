@@ -7,6 +7,7 @@ use ddc_primitives::{
 		cluster::{ClusterCreator, ClusterVisitor},
 		customer::{CustomerCharger, CustomerDepositor},
 		pallet::PalletVisitor,
+		ClusterQuery,
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodesStats, ClusterParams,
 	ClusterPricingParams, ClusterStatus, NodeType, DOLLARS,
@@ -360,11 +361,18 @@ pub fn get_pricing(cluster_id: &ClusterId) -> ClusterPricingParams {
 }
 
 pub struct TestClusterVisitor;
-impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
+impl<T: Config> ClusterQuery<T> for TestClusterVisitor {
 	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
 		true
 	}
 
+	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
+		unimplemented!()
+	}
+}
+
+pub struct TestClusterVisitor;
+impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
 		Ok(10)
 	}
@@ -400,14 +408,6 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 		let reserve_account = RESERVE_ACCOUNT_ID.to_ne_bytes();
 		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
-	}
-
-	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
-		unimplemented!()
-	}
-
-	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
-		unimplemented!()
 	}
 }
 
