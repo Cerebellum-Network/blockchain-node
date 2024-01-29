@@ -1226,6 +1226,7 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type ClusterAdminOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterAdmin>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterAdministrator = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
 }

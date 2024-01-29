@@ -10,6 +10,9 @@ use crate::{
 	NodePubKey, NodeType,
 };
 
+// todo: This trait becomes too overloaded and needs to be revised.
+// One of possible solutions is to define a trait for basic storage queries and use it to extend
+// more specific traits, i.e. ClusterQuery + ClusterEconomy, ClusterQuery + ClusteManager, etc.
 pub trait ClusterVisitor<T: Config> {
 	fn cluster_exists(cluster_id: &ClusterId) -> bool;
 
@@ -34,6 +37,8 @@ pub trait ClusterVisitor<T: Config> {
 	) -> Result<ClusterBondingParams<T::BlockNumber>, DispatchError>;
 
 	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError>;
+
+	fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError>;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {
@@ -62,8 +67,6 @@ pub trait ClusterManager<T: Config> {
 	) -> Result<(), DispatchError>;
 
 	fn remove_node(cluster_id: &ClusterId, node_pub_key: &NodePubKey) -> Result<(), DispatchError>;
-
-	fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError>;
 }
 
 pub trait ClusterAdministrator<T: Config, Balance> {

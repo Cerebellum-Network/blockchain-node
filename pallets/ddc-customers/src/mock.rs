@@ -178,6 +178,10 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 		unimplemented!()
 	}
+
+	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+		unimplemented!()
+	}
 }
 
 pub struct TestClusterManager;
@@ -207,10 +211,6 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		_node_pub_key: &NodePubKey,
 	) -> Result<(), DispatchError> {
 		Ok(())
-	}
-
-	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
-		unimplemented!()
 	}
 }
 
