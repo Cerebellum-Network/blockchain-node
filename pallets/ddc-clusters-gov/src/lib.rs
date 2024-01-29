@@ -51,6 +51,8 @@ pub type BalanceOf<T> =
 /// Info for keeping track of a proposal being voted on.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Votes<AccountId, BlockNumber> {
+	/// Proposal author
+	author: AccountId,
 	/// The number of approval votes that are needed to pass the proposal.
 	threshold: MemberCount,
 	/// The current set of voters that approved it.
@@ -61,6 +63,8 @@ pub struct Votes<AccountId, BlockNumber> {
 	start: BlockNumber,
 	/// The hard end time of this vote.
 	end: BlockNumber,
+
+	is_activation: bool, // todo: remove to make proposal generic
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -90,16 +94,16 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 		type WeightInfo: WeightInfo;
+		type OpenGovActivatorTrackOrigin: GetDdcOrigin<Self>;
+		type OpenGovActivatorOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+		type OpenGovUpdaterTrackOrigin: GetDdcOrigin<Self>;
+		type OpenGovUpdaterOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		type ClusterProposalDuration: Get<Self::BlockNumber>;
 		type ClusterProposalCall: Parameter
 			+ From<Call<Self>>
 			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
 			+ IsType<<Self as pallet_referenda::Config>::RuntimeCall>
 			+ GetDispatchInfo;
-
-		type ClusterGovOrigin: GetDdcOrigin<Self>;
-		type ClusterActivatorOrigin: EnsureOrigin<Self::RuntimeOrigin>;
-		type ClusterAdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type ClusterManager: ClusterManager<Self>;
 		type ClusterEconomics: ClusterEconomics<Self, BalanceOf<Self>>;
@@ -201,7 +205,15 @@ pub mod pallet {
 			let votes = {
 				let start = frame_system::Pallet::<T>::block_number();
 				let end = start + T::ClusterProposalDuration::get();
-				Votes { threshold, ayes: vec![], nays: vec![], start, end }
+				Votes {
+					threshold,
+					ayes: vec![],
+					nays: vec![],
+					start,
+					end,
+					author: caller_id.clone(),
+					is_activation: true,
+				}
 			};
 			let proposal: <T as Config>::ClusterProposalCall =
 				T::ClusterProposalCall::from(Call::<T>::activate_cluster {
@@ -247,7 +259,15 @@ pub mod pallet {
 			let votes = {
 				let start = frame_system::Pallet::<T>::block_number();
 				let end = start + T::ClusterProposalDuration::get();
-				Votes { threshold, ayes: vec![], nays: vec![], start, end }
+				Votes {
+					threshold,
+					ayes: vec![],
+					nays: vec![],
+					start,
+					end,
+					author: caller_id.clone(),
+					is_activation: false,
+				}
 			};
 			let proposal: <T as Config>::ClusterProposalCall =
 				T::ClusterProposalCall::from(Call::<T>::update_cluster {
@@ -295,7 +315,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
-			T::ClusterActivatorOrigin::ensure_origin(origin)?;
+			T::OpenGovActivatorOrigin::ensure_origin(origin)?;
 			T::ClusterCreator::activate_cluster(cluster_id)?;
 			T::ClusterEconomics::update_cluster_economics(cluster_id, cluster_gov_params)
 		}
@@ -307,7 +327,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
-			T::ClusterAdminOrigin::ensure_origin(origin)?;
+			T::OpenGovUpdaterOrigin::ensure_origin(origin)?;
 			T::ClusterEconomics::update_cluster_economics(cluster_id, cluster_gov_params)
 		}
 	}
@@ -364,7 +384,7 @@ pub mod pallet {
 				ClusterMember::NodeProvider(node_pub_key) => {
 					let node_state = T::ClusterManager::get_node_state(&cluster_id, &node_pub_key)
 						.map_err(|_| Error::<T>::NotValidatedNode)?;
-					if (node_state.status != ClusterNodeStatus::ValidationSucceeded) {
+					if node_state.status != ClusterNodeStatus::ValidationSucceeded {
 						Err(Error::<T>::NotValidatedNode.into())
 					} else {
 						let voting = ClusterProposalVoting::<T>::get(cluster_id)
@@ -440,7 +460,8 @@ pub mod pallet {
 			if approved {
 				let (proposal, len) = Self::validate_and_get_proposal(&cluster_id)?;
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
-				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal)?;
+				let proposal_weight =
+					Self::do_approve_proposal(cluster_id, proposal, voting.is_activation)?;
 				let proposal_count = 1;
 
 				return Ok(Ok((
@@ -486,7 +507,8 @@ pub mod pallet {
 			if approved {
 				let (proposal, len) = Self::validate_and_get_proposal(&cluster_id)?;
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
-				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal)?;
+				let proposal_weight =
+					Self::do_approve_proposal(cluster_id, proposal, voting.is_activation)?;
 				let proposal_count = 1;
 
 				Ok(Ok((
@@ -520,9 +542,10 @@ pub mod pallet {
 		fn do_approve_proposal(
 			cluster_id: ClusterId,
 			proposal: <T as Config>::ClusterProposalCall,
+			is_activation: bool,
 		) -> Result<Weight, DispatchError> {
 			Self::deposit_event(Event::Approved { cluster_id });
-			let (result, proposal_weight) = Self::do_propose_public(proposal)?;
+			let (result, proposal_weight) = Self::do_propose_public(proposal, is_activation)?;
 			Self::deposit_event(Event::Executed {
 				cluster_id,
 				result: result.map(|_| ()).map_err(|e| e.error),
@@ -538,14 +561,20 @@ pub mod pallet {
 
 		fn do_propose_public(
 			proposal: <T as Config>::ClusterProposalCall,
+			is_activation: bool,
 		) -> Result<(DispatchResultWithPostInfo, Weight), DispatchError> {
 			let call: <T as pallet_referenda::Config>::RuntimeCall = proposal.into();
 			let bounded_call =
 				T::Preimages::bound(call).map_err(|_| Error::<T>::ProposalMissing)?;
 
-			let cluster_gov_origin = T::ClusterGovOrigin::get();
+			let proposal_origin = if is_activation {
+				T::OpenGovActivatorTrackOrigin::get()
+			} else {
+				T::OpenGovUpdaterTrackOrigin::get()
+			};
+
 			let pallets_origin: <T::RuntimeOrigin as OriginTrait>::PalletsOrigin =
-				cluster_gov_origin.caller().clone();
+				proposal_origin.caller().clone();
 			let referenda_call = pallet_referenda::Call::<T>::submit {
 				proposal_origin: Box::new(pallets_origin),
 				proposal: bounded_call,

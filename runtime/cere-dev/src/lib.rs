@@ -42,7 +42,7 @@ use frame_support::{
 		},
 		ConstantMultiplier, IdentityFee, Weight,
 	},
-	PalletId, Parameter, RuntimeDebug,
+	PalletId, RuntimeDebug,
 };
 #[cfg(any(feature = "std", test))]
 pub use frame_system::Call as SystemCall;
@@ -1210,8 +1210,9 @@ impl pallet_ddc_payouts::Config for Runtime {
 
 parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
-	pub ClusterActivatorOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterActivator.into();
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
+	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterActivator.into();
+	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterAdmin.into();
 }
 
 impl pallet_ddc_clusters_gov::Config for Runtime {
@@ -1219,11 +1220,12 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type PalletId = ClustersGovPalletId;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
-	type ClusterGovOrigin = DdcOriginAsNative<ClusterActivatorOrigin, Self>;
+	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterActivatorTrackOrigin, Self>;
+	type OpenGovActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterActivator>;
+	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterUpdaterTrackOrigin, Self>;
+	type OpenGovUpdaterOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterAdmin>;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
-	type ClusterActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterActivator>;
-	type ClusterAdminOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterAdmin>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterEconomics = pallet_ddc_clusters::Pallet<Runtime>;
