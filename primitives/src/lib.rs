@@ -148,9 +148,10 @@ pub enum ClusterNodeStatus {
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct ClusterNodeState {
+pub struct ClusterNodeState<BlockNumber> {
 	pub kind: ClusterNodeKind,
 	pub status: ClusterNodeStatus,
+	pub added_at: BlockNumber,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]

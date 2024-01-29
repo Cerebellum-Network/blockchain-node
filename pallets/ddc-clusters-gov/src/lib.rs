@@ -18,7 +18,7 @@
 pub mod weights;
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterAdministrator, ClusterManager, ClusterVisitor},
+		cluster::{ClusterAdministrator, ClusterManager, ClusterQuery, ClusterVisitor},
 		cluster_gov::{DefaultVote, MemberCount},
 		node::NodeVisitor,
 		pallet::GetDdcOrigin,
@@ -48,15 +48,17 @@ pub use weights::WeightInfo;
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-/// Info for keeping track of a motion being voted on.
+/// Info for keeping track of a proposal being voted on.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Votes<AccountId, BlockNumber> {
-	/// The number of approval votes that are needed to pass the motion.
+	/// The number of approval votes that are needed to pass the proposal.
 	threshold: MemberCount,
 	/// The current set of voters that approved it.
 	ayes: Vec<AccountId>,
 	/// The current set of voters that rejected it.
 	nays: Vec<AccountId>,
+	/// Block at which proposal was inited.
+	start: BlockNumber,
 	/// The hard end time of this vote.
 	end: BlockNumber,
 }
@@ -163,6 +165,7 @@ pub mod pallet {
 		AwaitsValidation,
 		NotEnoughValidatedNodes,
 		BadState,
+		VoteProhibited,
 	}
 
 	#[pallet::call]
@@ -179,11 +182,12 @@ pub mod pallet {
 
 			ensure!(!<ClusterProposal<T>>::contains_key(cluster_id), Error::<T>::ActiveProposal);
 
-			let cluster_status = T::ClusterVisitor::get_cluster_status(&cluster_id)
-				.map_err(|_| Error::<T>::NoCluster)?;
+			let cluster_status =
+				<T::ClusterVisitor as ClusterQuery<T>>::get_cluster_status(&cluster_id)
+					.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_status == ClusterStatus::Inactive, Error::<T>::BadState);
 
-			let cluster_nodes_stats = T::ClusterVisitor::get_nodes_stats(&cluster_id)
+			let cluster_nodes_stats = T::ClusterManager::get_nodes_stats(&cluster_id)
 				.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_nodes_stats.await_validation == 0, Error::<T>::AwaitsValidation);
 			ensure!(
@@ -195,9 +199,9 @@ pub mod pallet {
 			let threshold = cluster_nodes_stats.validation_succeeded as u32 + 1;
 
 			let votes = {
-				let end =
-					frame_system::Pallet::<T>::block_number() + T::ClusterProposalDuration::get();
-				Votes { threshold, ayes: vec![], nays: vec![], end }
+				let start = frame_system::Pallet::<T>::block_number();
+				let end = start + T::ClusterProposalDuration::get();
+				Votes { threshold, ayes: vec![], nays: vec![], start, end }
 			};
 			let proposal: <T as Config>::ClusterProposalCall =
 				T::ClusterProposalCall::from(Call::<T>::activate_cluster {
@@ -225,11 +229,12 @@ pub mod pallet {
 
 			ensure!(!<ClusterProposal<T>>::contains_key(cluster_id), Error::<T>::ActiveProposal);
 
-			let cluster_status = T::ClusterVisitor::get_cluster_status(&cluster_id)
-				.map_err(|_| Error::<T>::NoCluster)?;
+			let cluster_status =
+				<T::ClusterVisitor as ClusterQuery<T>>::get_cluster_status(&cluster_id)
+					.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_status == ClusterStatus::Active, Error::<T>::BadState);
 
-			let cluster_nodes_stats = T::ClusterVisitor::get_nodes_stats(&cluster_id)
+			let cluster_nodes_stats = T::ClusterManager::get_nodes_stats(&cluster_id)
 				.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_nodes_stats.await_validation == 0, Error::<T>::AwaitsValidation);
 			ensure!(
@@ -240,9 +245,9 @@ pub mod pallet {
 			// Collect votes from 100% of Validated Nodes + 1 vote from Cluster Manager
 			let threshold = cluster_nodes_stats.validation_succeeded as u32 + 1;
 			let votes = {
-				let end =
-					frame_system::Pallet::<T>::block_number() + T::ClusterProposalDuration::get();
-				Votes { threshold, ayes: vec![], nays: vec![], end }
+				let start = frame_system::Pallet::<T>::block_number();
+				let end = start + T::ClusterProposalDuration::get();
+				Votes { threshold, ayes: vec![], nays: vec![], start, end }
 			};
 			let proposal: <T as Config>::ClusterProposalCall =
 				T::ClusterProposalCall::from(Call::<T>::update_cluster {
@@ -266,7 +271,7 @@ pub mod pallet {
 			member: ClusterMember,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			Self::ensure_validated_member(caller_id.clone(), cluster_id, member)?;
+			Self::ensure_allowed_voter(caller_id.clone(), cluster_id, member)?;
 			let _ = Self::do_vote(caller_id, cluster_id, approve)?;
 			Ok(())
 		}
@@ -343,6 +348,31 @@ pub mod pallet {
 							Ok(())
 						} else {
 							Err(Error::<T>::NotValidatedNode.into())
+						}
+					}
+				},
+			}
+		}
+
+		fn ensure_allowed_voter(
+			origin: T::AccountId,
+			cluster_id: ClusterId,
+			member: ClusterMember,
+		) -> Result<(), DispatchError> {
+			match member {
+				ClusterMember::ClusterManager => Self::ensure_cluster_manager(origin, cluster_id),
+				ClusterMember::NodeProvider(node_pub_key) => {
+					let node_state = T::ClusterManager::get_node_state(&cluster_id, &node_pub_key)
+						.map_err(|_| Error::<T>::NotValidatedNode)?;
+					if (node_state.status != ClusterNodeStatus::ValidationSucceeded) {
+						Err(Error::<T>::NotValidatedNode.into())
+					} else {
+						let voting = ClusterProposalVoting::<T>::get(cluster_id)
+							.ok_or(Error::<T>::ProposalMissing)?;
+						if node_state.added_at < voting.start {
+							Ok(())
+						} else {
+							Err(Error::<T>::VoteProhibited.into())
 						}
 					}
 				},
