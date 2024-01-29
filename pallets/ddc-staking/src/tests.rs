@@ -341,7 +341,7 @@ fn staking_should_work() {
 
 		// Removal is scheduled, stashed value of 4 is still lock.
 		let chilling = System::block_number() + 10u64;
-		// TestClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage)
+		// TestClusterEconomics::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage)
 		// 	.unwrap_or(10_u64);
 		assert_eq!(
 			DdcStaking::ledger(4),

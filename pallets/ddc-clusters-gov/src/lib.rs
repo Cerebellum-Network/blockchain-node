@@ -18,7 +18,7 @@
 pub mod weights;
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterAdministrator, ClusterManager, ClusterQuery, ClusterVisitor},
+		cluster::{ClusterCreator, ClusterEconomics, ClusterManager, ClusterQuery},
 		cluster_gov::{DefaultVote, MemberCount},
 		node::NodeVisitor,
 		pallet::GetDdcOrigin,
@@ -100,9 +100,9 @@ pub mod pallet {
 		type ClusterGovOrigin: GetDdcOrigin<Self>;
 		type ClusterActivatorOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		type ClusterAdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
-		type ClusterAdministrator: ClusterAdministrator<Self, BalanceOf<Self>>;
+		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type ClusterManager: ClusterManager<Self>;
-		type ClusterVisitor: ClusterVisitor<Self>;
+		type ClusterEconomics: ClusterEconomics<Self, BalanceOf<Self>>;
 		type NodeVisitor: NodeVisitor<Self>;
 		/// Default voting strategy.
 		type DefaultVote: DefaultVote;
@@ -183,7 +183,7 @@ pub mod pallet {
 			ensure!(!<ClusterProposal<T>>::contains_key(cluster_id), Error::<T>::ActiveProposal);
 
 			let cluster_status =
-				<T::ClusterVisitor as ClusterQuery<T>>::get_cluster_status(&cluster_id)
+				<T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(&cluster_id)
 					.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_status == ClusterStatus::Inactive, Error::<T>::BadState);
 
@@ -230,7 +230,7 @@ pub mod pallet {
 			ensure!(!<ClusterProposal<T>>::contains_key(cluster_id), Error::<T>::ActiveProposal);
 
 			let cluster_status =
-				<T::ClusterVisitor as ClusterQuery<T>>::get_cluster_status(&cluster_id)
+				<T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(&cluster_id)
 					.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_status == ClusterStatus::Active, Error::<T>::BadState);
 
@@ -296,8 +296,8 @@ pub mod pallet {
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			T::ClusterActivatorOrigin::ensure_origin(origin)?;
-			T::ClusterAdministrator::activate_cluster(cluster_id)?;
-			T::ClusterAdministrator::update_cluster_gov_params(cluster_id, cluster_gov_params)
+			T::ClusterCreator::activate_cluster(cluster_id)?;
+			T::ClusterEconomics::update_cluster_economics(cluster_id, cluster_gov_params)
 		}
 
 		#[pallet::call_index(5)]
@@ -308,7 +308,7 @@ pub mod pallet {
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			T::ClusterAdminOrigin::ensure_origin(origin)?;
-			T::ClusterAdministrator::update_cluster_gov_params(cluster_id, cluster_gov_params)
+			T::ClusterEconomics::update_cluster_economics(cluster_id, cluster_gov_params)
 		}
 	}
 

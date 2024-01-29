@@ -28,7 +28,7 @@ use core::fmt::Debug;
 
 use codec::{Decode, Encode, HasCompact};
 use ddc_primitives::traits::{
-	cluster::{ClusterCreator, ClusterQuery, ClusterVisitor},
+	cluster::{ClusterCreator, ClusterEconomics, ClusterQuery},
 	node::{NodeCreator, NodeVisitor},
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
@@ -168,7 +168,7 @@ pub mod pallet {
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
-		type ClusterVisitor: ClusterVisitor<Self>;
+		type ClusterEconomics: ClusterEconomics<Self, BalanceOf<Self>>;
 
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 
@@ -436,7 +436,7 @@ pub mod pallet {
 
 				let min_active_bond = if let Some(cluster_id) = Self::storages(&ledger.stash) {
 					let bond_size =
-						T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::Storage)
+						T::ClusterEconomics::get_bond_size(&cluster_id, NodeType::Storage)
 							.map_err(|_| Error::<T>::NoClusterGovParams)?;
 					bond_size.saturated_into::<BalanceOf<T>>()
 				} else {
@@ -457,7 +457,7 @@ pub mod pallet {
 						.map_err(|_| Error::<T>::NoCluster)?;
 
 					if let Some(cluster_id) = node_cluster_id {
-						let bonding_params = T::ClusterVisitor::get_bonding_params(&cluster_id)
+						let bonding_params = T::ClusterEconomics::get_bonding_params(&cluster_id)
 							.map_err(|_| Error::<T>::NoClusterGovParams)?;
 
 						let min_bond_size = match node_pub_key {
@@ -579,13 +579,13 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 
 			ensure!(
-				<T::ClusterVisitor as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				<T::ClusterEconomics as ClusterQuery<T>>::cluster_exists(&cluster_id),
 				Error::<T>::NoCluster
 			);
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			// Retrieve the respective bond size from Cluster Visitor
-			let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::Storage)
+			let bond_size = T::ClusterEconomics::get_bond_size(&cluster_id, NodeType::Storage)
 				.map_err(|_| Error::<T>::NoClusterGovParams)?;
 			ensure!(
 				ledger.active >= bond_size.saturated_into::<BalanceOf<T>>(),
@@ -644,7 +644,7 @@ pub mod pallet {
 
 			// Extract delay from the cluster settings.
 			let (cluster, delay) = if let Some(cluster) = Self::storages(&ledger.stash) {
-				let chill_delay = T::ClusterVisitor::get_chill_delay(&cluster, NodeType::Storage)
+				let chill_delay = T::ClusterEconomics::get_chill_delay(&cluster, NodeType::Storage)
 					.map_err(|_| Error::<T>::NoClusterGovParams)?;
 				(cluster, chill_delay)
 			} else {

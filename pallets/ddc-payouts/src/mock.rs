@@ -4,13 +4,13 @@
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterVisitor},
+		cluster::{ClusterCreator, ClusterEconomics},
 		customer::{CustomerCharger, CustomerDepositor},
 		pallet::PalletVisitor,
 		ClusterQuery,
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodesStats, ClusterParams,
-	ClusterPricingParams, ClusterStatus, NodeType, DOLLARS,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
+	ClusterStatus, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -123,7 +123,7 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type CustomerCharger = TestCustomerCharger;
 	type CustomerDepositor = TestCustomerDepositor;
-	type ClusterVisitor = TestClusterVisitor;
+	type ClusterEconomics = TestClusterEconomics;
 	type TreasuryVisitor = TestTreasuryVisitor;
 	type NominatorsAndValidatorsList = TestValidatorVisitor<Self>;
 	type ClusterCreator = TestClusterCreator;
@@ -197,6 +197,10 @@ impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 		_cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult {
 		Ok(())
+	}
+
+	fn activate_cluster(_cluster_id: ClusterId) -> DispatchResult {
+		unimplemented!()
 	}
 }
 
@@ -416,8 +420,8 @@ pub fn get_pricing(cluster_id: &ClusterId) -> ClusterPricingParams {
 	}
 }
 
-pub struct TestClusterVisitor;
-impl<T: Config> ClusterQuery<T> for TestClusterVisitor {
+pub struct TestClusterEconomics;
+impl<T: Config> ClusterQuery<T> for TestClusterEconomics {
 	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
 		true
 	}
@@ -427,8 +431,7 @@ impl<T: Config> ClusterQuery<T> for TestClusterVisitor {
 	}
 }
 
-pub struct TestClusterVisitor;
-impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
+impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
 	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
 		Ok(10)
 	}
@@ -464,6 +467,13 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 		let reserve_account = RESERVE_ACCOUNT_ID.to_ne_bytes();
 		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
+	}
+
+	fn update_cluster_economics(
+		_cluster_id: ClusterId,
+		_cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+	) -> DispatchResult {
+		unimplemented!()
 	}
 }
 

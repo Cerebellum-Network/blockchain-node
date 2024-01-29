@@ -16,10 +16,7 @@ pub trait ClusterQuery<T: Config> {
 	fn get_cluster_status(cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError>;
 }
 
-// todo: This trait becomes too overloaded and needs to be revised.
-// One of possible solutions is to define a trait for basic storage queries and use it to extend
-// more specific traits, i.e. ClusterQuery + ClusterEconomy, ClusterQuery + ClusteManager, etc.
-pub trait ClusterVisitor<T: Config>: ClusterQuery<T> {
+pub trait ClusterEconomics<T: Config, Balance>: ClusterQuery<T> {
 	fn get_bond_size(cluster_id: &ClusterId, node_type: NodeType) -> Result<u128, DispatchError>;
 
 	fn get_pricing_params(cluster_id: &ClusterId) -> Result<ClusterPricingParams, DispatchError>;
@@ -41,6 +38,11 @@ pub trait ClusterVisitor<T: Config>: ClusterQuery<T> {
 	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, DispatchError>;
 
 	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError>;
+
+	fn update_cluster_economics(
+		cluster_id: ClusterId,
+		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+	) -> DispatchResult;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {
@@ -51,6 +53,8 @@ pub trait ClusterCreator<T: Config, Balance> {
 		cluster_params: ClusterParams<T::AccountId>,
 		cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult;
+
+	fn activate_cluster(cluster_id: ClusterId) -> DispatchResult;
 }
 
 pub trait ClusterManager<T: Config>: ClusterQuery<T> {
@@ -76,13 +80,4 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 	) -> Result<ClusterNodeState<T::BlockNumber>, DispatchError>;
 
 	fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError>;
-}
-
-pub trait ClusterAdministrator<T: Config, Balance> {
-	fn activate_cluster(cluster_id: ClusterId) -> DispatchResult;
-
-	fn update_cluster_gov_params(
-		cluster_id: ClusterId,
-		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
-	) -> DispatchResult;
 }

@@ -27,7 +27,7 @@ mod tests;
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator as ClusterCreatorType, ClusterVisitor as ClusterVisitorType},
+		cluster::{ClusterCreator as ClusterCreatorType, ClusterEconomics as ClusterEconomicsType},
 		customer::{
 			CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
 		},
@@ -135,7 +135,7 @@ pub mod pallet {
 		type CustomerCharger: CustomerChargerType<Self>;
 		type CustomerDepositor: CustomerDepositorType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
-		type ClusterVisitor: ClusterVisitorType<Self>;
+		type ClusterEconomics: ClusterEconomicsType<Self, BalanceOf<Self>>;
 		type NominatorsAndValidatorsList: SortedListProvider<Self::AccountId>;
 		type ClusterCreator: ClusterCreatorType<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
@@ -586,7 +586,7 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
 
 			// deduct fees
-			let fees = T::ClusterVisitor::get_fees_params(&cluster_id)
+			let fees = T::ClusterEconomics::get_fees_params(&cluster_id)
 				.map_err(|_| Error::<T>::NotExpectedClusterState)?;
 
 			let total_customer_charge = (|| -> Option<u128> {
@@ -621,7 +621,7 @@ pub mod pallet {
 				charge_cluster_reserve_fees::<T>(
 					cluster_reserve_fee,
 					&billing_report.vault,
-					&T::ClusterVisitor::get_reserve_account_id(&cluster_id)
+					&T::ClusterEconomics::get_reserve_account_id(&cluster_id)
 						.map_err(|_| Error::<T>::NotExpectedClusterState)?,
 				)?;
 				Self::deposit_event(Event::<T>::ClusterReserveFeesCollected {
@@ -992,7 +992,7 @@ pub mod pallet {
 	) -> Result<CustomerCharge, Error<T>> {
 		let mut total = CustomerCharge::default();
 
-		let pricing = T::ClusterVisitor::get_pricing_params(&cluster_id)
+		let pricing = T::ClusterEconomics::get_pricing_params(&cluster_id)
 			.map_err(|_| Error::<T>::NotExpectedClusterState)?;
 
 		total.transfer = (|| -> Option<u128> {
