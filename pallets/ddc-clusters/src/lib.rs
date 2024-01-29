@@ -629,6 +629,12 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			Ok(current_stats)
 		}
+
+		fn get_cluster_status(cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(cluster.status)
+		}
 	}
 
 	impl<T: Config> ClusterManager<T> for Pallet<T> {

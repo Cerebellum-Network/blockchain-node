@@ -3,8 +3,8 @@
 use ddc_primitives::{
 	traits::cluster::{ClusterCreator, ClusterManager, ClusterVisitor},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
-	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams, NodePubKey,
-	NodeType,
+	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams, ClusterStatus,
+	NodePubKey, NodeType,
 };
 use frame_support::{
 	construct_runtime,
@@ -180,6 +180,10 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	}
 
 	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
 		unimplemented!()
 	}
 }

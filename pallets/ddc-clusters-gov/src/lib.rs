@@ -23,7 +23,7 @@ use ddc_primitives::{
 		node::NodeVisitor,
 		pallet::GetDdcOrigin,
 	},
-	ClusterGovParams, ClusterId, ClusterNodeStatus, MIN_VALIDATED_NODES_COUNT,
+	ClusterGovParams, ClusterId, ClusterNodeStatus, ClusterStatus, MIN_VALIDATED_NODES_COUNT,
 };
 use frame_support::{
 	codec::{Decode, Encode},
@@ -154,6 +154,7 @@ pub mod pallet {
 		TooEarly,
 		AwaitsValidation,
 		NotEnoughValidatedNodes,
+		BadState,
 	}
 
 	#[pallet::call]
@@ -167,6 +168,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			Self::ensure_cluster_manager(caller_id.clone(), cluster_id)?;
+
+			let cluster_status = T::ClusterVisitor::get_cluster_status(&cluster_id)
+				.map_err(|_| Error::<T>::NoCluster)?;
+			ensure!(cluster_status == ClusterStatus::Inactive, Error::<T>::BadState);
 
 			let cluster_nodes_stats = T::ClusterVisitor::get_nodes_stats(&cluster_id)
 				.map_err(|_| Error::<T>::NoCluster)?;
