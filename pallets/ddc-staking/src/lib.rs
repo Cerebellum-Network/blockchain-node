@@ -29,7 +29,7 @@ use core::fmt::Debug;
 
 use codec::{Decode, Encode, HasCompact};
 use ddc_primitives::traits::{
-	cluster::{ClusterCreator, ClusterVisitor},
+	cluster::{ClusterCreator, ClusterQuery, ClusterVisitor},
 	node::{NodeCreator, NodeVisitor},
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
@@ -582,7 +582,10 @@ pub mod pallet {
 		pub fn store(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 
-			ensure!(T::ClusterVisitor::cluster_exists(&cluster_id), Error::<T>::NoCluster);
+			ensure!(
+				<T::ClusterVisitor as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				Error::<T>::NoCluster
+			);
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			// Retrieve the respective bond size from Cluster Visitor

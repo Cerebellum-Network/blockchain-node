@@ -1,7 +1,7 @@
 //! Test utilities
 
 use ddc_primitives::{
-	traits::cluster::{ClusterCreator, ClusterManager, ClusterVisitor},
+	traits::cluster::{ClusterCreator, ClusterManager, ClusterQuery, ClusterVisitor},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams, ClusterStatus,
 	NodePubKey, NodeType,
@@ -112,11 +112,17 @@ impl crate::pallet::Config for Test {
 }
 
 pub struct TestClusterVisitor;
-impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
+impl<T: Config> ClusterQuery<T> for TestClusterVisitor {
 	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
 		true
 	}
 
+	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
+		unimplemented!()
+	}
+}
+
+impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
 		Ok(10)
 	}
@@ -178,9 +184,12 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 		unimplemented!()
 	}
+}
 
-	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
-		unimplemented!()
+pub struct TestClusterManager;
+impl<T: Config> ClusterQuery<T> for TestClusterManager {
+	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
+		true
 	}
 
 	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
@@ -188,7 +197,6 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	}
 }
 
-pub struct TestClusterManager;
 impl<T: Config> ClusterManager<T> for TestClusterManager {
 	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 		unimplemented!()
@@ -215,6 +223,10 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		_node_pub_key: &NodePubKey,
 	) -> Result<(), DispatchError> {
 		Ok(())
+	}
+
+	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+		unimplemented!()
 	}
 }
 

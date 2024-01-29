@@ -29,7 +29,9 @@ mod tests;
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterAdministrator, ClusterCreator, ClusterVisitor},
+		cluster::{
+			ClusterAdministrator, ClusterCreator, ClusterManager, ClusterQuery, ClusterVisitor,
+		},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
@@ -62,8 +64,6 @@ pub type BalanceOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::traits::cluster::ClusterManager;
-
 	use super::*;
 
 	/// The current storage version.
@@ -119,6 +119,7 @@ pub mod pallet {
 		AttemptToValidateNotAssignedNode,
 		ClusterGovParamsNotSet,
 		ArithmeticOverflow,
+		NodeIsNotAssignedToCluster,
 	}
 
 	#[pallet::storage]
@@ -139,7 +140,7 @@ pub mod pallet {
 		ClusterId,
 		Blake2_128Concat,
 		NodePubKey,
-		ClusterNodeState, // todo: provide migration
+		ClusterNodeState<T::BlockNumber>, // todo: provide migration
 		OptionQuery,
 	>;
 
@@ -201,6 +202,7 @@ pub mod pallet {
 							ClusterNodeState {
 								kind: ClusterNodeKind::Genesis,
 								status: ClusterNodeStatus::AwaitsValidation,
+								added_at: frame_system::Pallet::<T>::block_number(),
 							},
 						);
 					}
@@ -401,6 +403,7 @@ pub mod pallet {
 				ClusterNodeState {
 					kind: node_kind.clone(),
 					status: ClusterNodeStatus::AwaitsValidation,
+					added_at: frame_system::Pallet::<T>::block_number(),
 				},
 			);
 			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
@@ -543,11 +546,19 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterVisitor<T> for Pallet<T> {
+	impl<T: Config> ClusterQuery<T> for Pallet<T> {
 		fn cluster_exists(cluster_id: &ClusterId) -> bool {
 			Clusters::<T>::contains_key(cluster_id)
 		}
 
+		fn get_cluster_status(cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(cluster.status)
+		}
+	}
+
+	impl<T: Config> ClusterVisitor<T> for Pallet<T> {
 		fn get_bond_size(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
@@ -623,18 +634,6 @@ pub mod pallet {
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			Ok(cluster.reserve_id)
 		}
-
-		fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
-			let current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
-				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			Ok(current_stats)
-		}
-
-		fn get_cluster_status(cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
-			let cluster =
-				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			Ok(cluster.status)
-		}
 	}
 
 	impl<T: Config> ClusterManager<T> for Pallet<T> {
@@ -670,6 +669,21 @@ pub mod pallet {
 			node_pub_key: &NodePubKey,
 		) -> Result<(), DispatchError> {
 			Self::do_remove_node(cluster_id.clone(), node_pub_key.clone())
+		}
+
+		fn get_node_state(
+			cluster_id: &ClusterId,
+			node_pub_key: &NodePubKey,
+		) -> Result<ClusterNodeState<T::BlockNumber>, DispatchError> {
+			let node_state = ClustersNodes::<T>::try_get(cluster_id, node_pub_key)
+				.map_err(|_| Error::<T>::NodeIsNotAssignedToCluster)?;
+			Ok(node_state)
+		}
+
+		fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+			let current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(current_stats)
 		}
 	}
 
