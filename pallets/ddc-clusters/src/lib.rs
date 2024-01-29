@@ -29,9 +29,7 @@ mod tests;
 
 use ddc_primitives::{
 	traits::{
-		cluster::{
-			ClusterAdministrator, ClusterCreator, ClusterManager, ClusterQuery, ClusterVisitor,
-		},
+		cluster::{ClusterCreator, ClusterEconomics, ClusterManager, ClusterQuery},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
@@ -369,7 +367,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn do_update_cluster_gov_params(
+		fn do_update_cluster_economics(
 			cluster_id: ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
@@ -558,7 +556,10 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterVisitor<T> for Pallet<T> {
+	impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for Pallet<T>
+	where
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	{
 		fn get_bond_size(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
@@ -634,6 +635,13 @@ pub mod pallet {
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			Ok(cluster.reserve_id)
 		}
+
+		fn update_cluster_economics(
+			cluster_id: ClusterId,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+		) -> DispatchResult {
+			Self::do_update_cluster_economics(cluster_id, cluster_gov_params)
+		}
 	}
 
 	impl<T: Config> ClusterManager<T> for Pallet<T> {
@@ -706,21 +714,9 @@ pub mod pallet {
 				cluster_gov_params,
 			)
 		}
-	}
 
-	impl<T: Config> ClusterAdministrator<T, BalanceOf<T>> for Pallet<T>
-	where
-		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
-	{
 		fn activate_cluster(cluster_id: ClusterId) -> DispatchResult {
 			Self::do_activate_cluster(cluster_id)
-		}
-
-		fn update_cluster_gov_params(
-			cluster_id: ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
-		) -> DispatchResult {
-			Self::do_update_cluster_gov_params(cluster_id, cluster_gov_params)
 		}
 	}
 

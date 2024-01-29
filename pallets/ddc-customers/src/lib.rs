@@ -15,7 +15,7 @@ mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterQuery, ClusterVisitor},
+		cluster::{ClusterCreator, ClusterEconomics, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor},
 	},
 	BucketId, ClusterId,
@@ -147,7 +147,7 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type UnlockingDelay: Get<<Self as frame_system::Config>::BlockNumber>;
-		type ClusterVisitor: ClusterVisitor<Self>;
+		type ClusterEconomics: ClusterEconomics<Self, BalanceOf<Self>>;
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
 	}
@@ -304,7 +304,7 @@ pub mod pallet {
 				Self::buckets_count().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
 
 			ensure!(
-				<T::ClusterVisitor as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				<T::ClusterEconomics as ClusterQuery<T>>::cluster_exists(&cluster_id),
 				Error::<T>::ClusterDoesNotExist
 			);
 
