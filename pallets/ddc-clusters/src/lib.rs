@@ -675,6 +675,12 @@ pub mod pallet {
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			Ok(cluster.reserve_id)
 		}
+
+		fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+			let current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok(current_stats)
+		}
 	}
 
 	impl<T: Config> ClusterManager<T> for Pallet<T> {
@@ -710,12 +716,6 @@ pub mod pallet {
 			node_pub_key: &NodePubKey,
 		) -> Result<(), DispatchError> {
 			Self::do_remove_node(cluster_id.clone(), node_pub_key.clone())
-		}
-
-		fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
-			let current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
-				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			Ok(current_stats)
 		}
 	}
 
