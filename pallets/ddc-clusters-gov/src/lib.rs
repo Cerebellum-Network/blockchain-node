@@ -18,7 +18,7 @@
 pub mod weights;
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterAdministrator, ClusterManager},
+		cluster::{ClusterAdministrator, ClusterManager, ClusterVisitor},
 		cluster_gov::{DefaultVote, MemberCount},
 		node::NodeVisitor,
 		pallet::GetDdcOrigin,
@@ -94,6 +94,7 @@ pub mod pallet {
 		type ClusterAdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		type ClusterAdministrator: ClusterAdministrator<Self, BalanceOf<Self>>;
 		type ClusterManager: ClusterManager<Self>;
+		type ClusterVisitor: ClusterVisitor<Self>;
 		type NodeVisitor: NodeVisitor<Self>;
 		/// Default voting strategy.
 		type DefaultVote: DefaultVote;
@@ -167,7 +168,7 @@ pub mod pallet {
 			let caller_id = ensure_signed(origin)?;
 			Self::ensure_cluster_manager(caller_id.clone(), cluster_id)?;
 
-			let cluster_nodes_stats = T::ClusterManager::get_nodes_stats(&cluster_id)
+			let cluster_nodes_stats = T::ClusterVisitor::get_nodes_stats(&cluster_id)
 				.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_nodes_stats.await_validation == 0, Error::<T>::AwaitsValidation);
 			ensure!(
