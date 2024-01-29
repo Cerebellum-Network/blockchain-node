@@ -1146,7 +1146,7 @@ impl pallet_ddc_staking::Config for Runtime {
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
-	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterEconomics = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
@@ -1163,7 +1163,7 @@ impl pallet_ddc_customers::Config for Runtime {
 	type Currency = Balances;
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
-	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterEconomics = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
 }
@@ -1200,7 +1200,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
 	type CustomerDepositor = DdcCustomers;
-	type ClusterVisitor = DdcClusters;
+	type ClusterEconomics = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type ClusterCreator = DdcClusters;
@@ -1225,8 +1225,8 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type ClusterActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterActivator>;
 	type ClusterAdminOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterAdmin>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
-	type ClusterAdministrator = pallet_ddc_clusters::Pallet<Runtime>;
-	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterEconomics = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
 }

@@ -439,21 +439,30 @@ fn cluster_visitor_works() {
 			cluster_gov_params
 		));
 
-		assert_eq!(<DdcClusters as ClusterVisitor<Test>>::cluster_exists(&cluster_id), true);
+		assert_eq!(<DdcClusters as ClusterQuery<Test>>::cluster_exists(&cluster_id), true);
 
 		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_bond_size(&cluster_id, NodeType::Storage)
-				.unwrap(),
+			<DdcClusters as ClusterEconomics<Test, BalanceOf<Test>>>::get_bond_size(
+				&cluster_id,
+				NodeType::Storage
+			)
+			.unwrap(),
 			100u128
 		);
 		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_bond_size(&cluster_id, NodeType::Storage)
-				.unwrap(),
+			<DdcClusters as ClusterEconomics<Test, BalanceOf<Test>>>::get_bond_size(
+				&cluster_id,
+				NodeType::Storage
+			)
+			.unwrap(),
 			100u128
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_pricing_params(&cluster_id).unwrap(),
+			<DdcClusters as ClusterEconomics<Test, BalanceOf<Test>>>::get_pricing_params(
+				&cluster_id
+			)
+			.unwrap(),
 			ClusterPricingParams {
 				unit_per_mb_stored: 10,
 				unit_per_mb_streamed: 10,
@@ -463,7 +472,8 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_fees_params(&cluster_id).unwrap(),
+			<DdcClusters as ClusterEconomics<Test, BalanceOf<Test>>>::get_fees_params(&cluster_id)
+				.unwrap(),
 			ClusterFeesParams {
 				treasury_share: Perquintill::from_float(0.05),
 				validators_share: Perquintill::from_float(0.01),
@@ -472,23 +482,15 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_reserve_account_id(&cluster_id).unwrap(),
+			<DdcClusters as ClusterEconomics<Test, BalanceOf<Test>>>::get_reserve_account_id(
+				&cluster_id
+			)
+			.unwrap(),
 			cluster_reserve_id
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_chill_delay(&cluster_id, NodeType::Storage)
-				.unwrap(),
-			50
-		);
-		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_chill_delay(&cluster_id, NodeType::Storage)
-				.unwrap(),
-			50
-		);
-
-		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_unbonding_delay(
+			<DdcClusters as ClusterEconomics<Test, BalanceOf<Test>>>::get_chill_delay(
 				&cluster_id,
 				NodeType::Storage
 			)
@@ -496,7 +498,7 @@ fn cluster_visitor_works() {
 			50
 		);
 		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_unbonding_delay(
+			<DdcClusters as ClusterEconomics<Test, BalanceOf<Test>>>::get_chill_delay(
 				&cluster_id,
 				NodeType::Storage
 			)
@@ -505,7 +507,27 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterVisitor<Test>>::get_bonding_params(&cluster_id).unwrap(),
+			<DdcClusters as ClusterEconomics<Test, BalanceOf<Test>>>::get_unbonding_delay(
+				&cluster_id,
+				NodeType::Storage
+			)
+			.unwrap(),
+			50
+		);
+		assert_eq!(
+			<DdcClusters as ClusterEconomics<Test, BalanceOf<Test>>>::get_unbonding_delay(
+				&cluster_id,
+				NodeType::Storage
+			)
+			.unwrap(),
+			50
+		);
+
+		assert_eq!(
+			<DdcClusters as ClusterEconomics<Test, BalanceOf<Test>>>::get_bonding_params(
+				&cluster_id
+			)
+			.unwrap(),
 			ClusterBondingParams::<<Test as frame_system::Config>::BlockNumber> {
 				storage_bond_size: 100,
 				storage_chill_delay: 50,

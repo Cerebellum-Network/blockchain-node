@@ -1,10 +1,10 @@
 //! Test utilities
 
 use ddc_primitives::{
-	traits::cluster::{ClusterCreator, ClusterManager, ClusterQuery, ClusterVisitor},
+	traits::cluster::{ClusterCreator, ClusterEconomics, ClusterManager, ClusterQuery},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
-	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams, ClusterStatus,
-	NodePubKey, NodeType,
+	ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
+	ClusterStatus, NodePubKey, NodeType,
 };
 use frame_support::{
 	construct_runtime,
@@ -106,13 +106,13 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
-	type ClusterVisitor = TestClusterVisitor;
+	type ClusterEconomics = TestClusterEconomics;
 	type ClusterCreator = TestClusterCreator;
 	type WeightInfo = ();
 }
 
-pub struct TestClusterVisitor;
-impl<T: Config> ClusterQuery<T> for TestClusterVisitor {
+pub struct TestClusterEconomics;
+impl<T: Config> ClusterQuery<T> for TestClusterEconomics {
 	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
 		true
 	}
@@ -122,7 +122,7 @@ impl<T: Config> ClusterQuery<T> for TestClusterVisitor {
 	}
 }
 
-impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
+impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
 	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
 		Ok(10)
 	}
@@ -162,18 +162,20 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		cluster_id: &ClusterId,
 	) -> Result<ClusterBondingParams<T::BlockNumber>, DispatchError> {
 		Ok(ClusterBondingParams {
-			storage_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
-				cluster_id,
-				NodeType::Storage,
-			)
-			.unwrap_or_default(),
-			storage_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
-				cluster_id,
-				NodeType::Storage,
-			)
-			.unwrap_or_default(),
+			storage_bond_size:
+				<TestClusterEconomics as ClusterEconomics<T, BalanceOf<T>>>::get_bond_size(
+					cluster_id,
+					NodeType::Storage,
+				)
+				.unwrap_or_default(),
+			storage_chill_delay:
+				<TestClusterEconomics as ClusterEconomics<T, BalanceOf<T>>>::get_chill_delay(
+					cluster_id,
+					NodeType::Storage,
+				)
+				.unwrap_or_default(),
 			storage_unbonding_delay:
-				<TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
+				<TestClusterEconomics as ClusterEconomics<T, BalanceOf<T>>>::get_unbonding_delay(
 					cluster_id,
 					NodeType::Storage,
 				)
@@ -182,6 +184,13 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	}
 
 	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+
+	fn update_cluster_economics(
+		_cluster_id: ClusterId,
+		_cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+	) -> DispatchResult {
 		unimplemented!()
 	}
 }
@@ -225,6 +234,13 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		Ok(())
 	}
 
+	fn get_node_state(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<ClusterNodeState<T::BlockNumber>, DispatchError> {
+		unimplemented!()
+	}
+
 	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
 		unimplemented!()
 	}
@@ -240,6 +256,10 @@ impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
 	) -> DispatchResult {
 		Ok(())
+	}
+
+	fn activate_cluster(_cluster_id: ClusterId) -> DispatchResult {
+		unimplemented!()
 	}
 }
 

@@ -78,7 +78,7 @@ benchmarks! {
 
 	store {
 		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([0; 32]));
-		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or(100u128), node_pub_key)?;
+		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterEconomics::get_bond_size(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or(100u128), node_pub_key)?;
 
 		whitelist_account!(controller);
 	}: _(RawOrigin::Signed(controller), ClusterId::from([1; 20]))
@@ -92,12 +92,12 @@ benchmarks! {
 		clear_activated_nodes::<T>();
 
 		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([0; 32]));
-		let (storage_stash, storage_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterVisitor::get_bond_size(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or(10u128), node_pub_key)?;
+		let (storage_stash, storage_controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterEconomics::get_bond_size(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or(10u128), node_pub_key)?;
 		DdcStaking::<T>::store(RawOrigin::Signed(storage_controller.clone()).into(), ClusterId::from([1; 20]))?;
 		assert!(Storages::<T>::contains_key(&storage_stash));
 		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32));
 		DdcStaking::<T>::chill(RawOrigin::Signed(storage_controller.clone()).into())?;
-		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32) + T::ClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or_else(|_| T::BlockNumber::from(10u32)));
+		frame_system::Pallet::<T>::set_block_number(T::BlockNumber::from(1u32) + T::ClusterEconomics::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or_else(|_| T::BlockNumber::from(10u32)));
 
 		whitelist_account!(storage_controller);
 	}: _(RawOrigin::Signed(storage_controller))
