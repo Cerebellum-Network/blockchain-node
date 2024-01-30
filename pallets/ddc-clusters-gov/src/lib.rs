@@ -485,7 +485,7 @@ pub mod pallet {
 			let disapproved = seats.saturating_sub(no_votes) < voting.threshold;
 			// Allow (dis-)approving the proposal as soon as there are enough votes.
 			if approved {
-				let (proposal, len) = Self::validate_and_get_referenda(&cluster_id)?;
+				let (proposal, len) = Self::validate_and_get_public_proposal(&cluster_id)?;
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
 				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal)?;
 				let proposal_count = 1;
@@ -531,7 +531,7 @@ pub mod pallet {
 			let approved = yes_votes >= voting.threshold;
 
 			if approved {
-				let (proposal, len) = Self::validate_and_get_referenda(&cluster_id)?;
+				let (proposal, len) = Self::validate_and_get_public_proposal(&cluster_id)?;
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
 				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal)?;
 				let proposal_count = 1;
@@ -596,7 +596,7 @@ pub mod pallet {
 			ClusterProposalVoting::<T>::remove(&cluster_id);
 		}
 
-		fn validate_and_get_referenda(
+		fn validate_and_get_public_proposal(
 			cluster_id: &ClusterId,
 		) -> Result<(ReferendaCall<T>, usize), DispatchError> {
 			let proposal =
