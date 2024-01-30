@@ -330,7 +330,6 @@ pub mod pallet {
 				Err(Error::<T>::NotProposalAuthor.into())
 			} else {
 				Self::do_remove_proposal(cluster_id);
-				Self::deposit_event(Event::Removed { cluster_id });
 				Ok(())
 			}
 		}
@@ -594,6 +593,7 @@ pub mod pallet {
 		fn do_remove_proposal(cluster_id: ClusterId) {
 			ClusterProposal::<T>::remove(&cluster_id);
 			ClusterProposalVoting::<T>::remove(&cluster_id);
+			Self::deposit_event(Event::Removed { cluster_id });
 		}
 
 		fn validate_and_get_public_proposal(
