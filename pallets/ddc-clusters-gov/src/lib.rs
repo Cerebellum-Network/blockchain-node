@@ -38,7 +38,6 @@ use frame_system::pallet_prelude::*;
 pub use frame_system::Config as SysConfig;
 pub use pallet::*;
 use scale_info::TypeInfo;
-use sp_io::storage;
 use sp_runtime::{traits::AccountIdConversion, RuntimeDebug};
 use sp_std::prelude::*;
 pub use weights::WeightInfo;
@@ -47,11 +46,11 @@ pub use weights::WeightInfo;
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
+pub type ReferendaCall<T> = pallet_referenda::Call<T>;
+
 /// Info for keeping track of a proposal being voted on.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Votes<AccountId, BlockNumber> {
-	/// Proposal author
-	author: AccountId,
 	/// The number of approval votes that are needed to pass the proposal.
 	threshold: MemberCount,
 	/// The current set of voters that approved it.
@@ -62,14 +61,25 @@ pub struct Votes<AccountId, BlockNumber> {
 	start: BlockNumber,
 	/// The hard end time of this vote.
 	end: BlockNumber,
-
-	is_activation: bool, // todo: remove to make proposal generic
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum ClusterMember {
 	ClusterManager,
 	NodeProvider(NodePubKey),
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct Proposal<AccountId, Call> {
+	author_id: AccountId,
+	kind: ProposalKind,
+	call: Call,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub enum ProposalKind {
+	ActivateCluster,
+	UpdateClusterEconomics,
 }
 
 #[frame_support::pallet]
@@ -114,8 +124,13 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn proposal_of)]
-	pub type ClusterProposal<T: Config> =
-		StorageMap<_, Identity, ClusterId, T::ClusterProposalCall, OptionQuery>;
+	pub type ClusterProposal<T: Config> = StorageMap<
+		_,
+		Identity,
+		ClusterId,
+		Proposal<T::AccountId, T::ClusterProposalCall>,
+		OptionQuery,
+	>;
 
 	/// Votes on a given cluster proposal, if it is ongoing.
 	#[pallet::storage]
@@ -208,21 +223,18 @@ pub mod pallet {
 			let votes = {
 				let start = frame_system::Pallet::<T>::block_number();
 				let end = start + T::ClusterProposalDuration::get();
-				Votes {
-					threshold,
-					ayes: vec![],
-					nays: vec![],
-					start,
-					end,
-					author: caller_id.clone(),
-					is_activation: true,
-				}
+				Votes { threshold, ayes: vec![], nays: vec![], start, end }
 			};
-			let proposal: <T as Config>::ClusterProposalCall =
+			let call: <T as Config>::ClusterProposalCall =
 				T::ClusterProposalCall::from(Call::<T>::activate_cluster {
 					cluster_id,
 					cluster_gov_params,
 				});
+			let proposal = Proposal {
+				call,
+				author_id: caller_id.clone(),
+				kind: ProposalKind::ActivateCluster,
+			};
 
 			<ClusterProposal<T>>::insert(cluster_id, proposal);
 			<ClusterProposalVoting<T>>::insert(cluster_id, votes);
@@ -233,7 +245,7 @@ pub mod pallet {
 
 		#[pallet::call_index(1)]
 		#[pallet::weight(10_000)]
-		pub fn propose_update_cluster(
+		pub fn propose_update_cluster_economics(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
@@ -262,21 +274,18 @@ pub mod pallet {
 			let votes = {
 				let start = frame_system::Pallet::<T>::block_number();
 				let end = start + T::ClusterProposalDuration::get();
-				Votes {
-					threshold,
-					ayes: vec![],
-					nays: vec![],
-					start,
-					end,
-					author: caller_id.clone(),
-					is_activation: false,
-				}
+				Votes { threshold, ayes: vec![], nays: vec![], start, end }
 			};
-			let proposal: <T as Config>::ClusterProposalCall =
-				T::ClusterProposalCall::from(Call::<T>::update_cluster {
+			let call: <T as Config>::ClusterProposalCall =
+				T::ClusterProposalCall::from(Call::<T>::update_cluster_economics {
 					cluster_id,
 					cluster_gov_params,
 				});
+			let proposal = Proposal {
+				call,
+				author_id: caller_id.clone(),
+				kind: ProposalKind::UpdateClusterEconomics,
+			};
 
 			<ClusterProposal<T>>::insert(cluster_id, proposal);
 			<ClusterProposalVoting<T>>::insert(cluster_id, votes);
@@ -308,16 +317,16 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let caller_id = ensure_signed(origin)?;
 			Self::ensure_validated_member(caller_id.clone(), cluster_id, member)?;
-			Self::do_close(cluster_id)?
+			Self::do_close(cluster_id)
 		}
 
 		#[pallet::call_index(4)]
 		#[pallet::weight(10_000)]
 		pub fn retract_proposal(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let voting =
-				ClusterProposalVoting::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
-			if voting.author != caller_id {
+			let proposal =
+				ClusterProposal::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
+			if proposal.author_id != caller_id {
 				Err(Error::<T>::NotProposalAuthor.into())
 			} else {
 				Self::do_remove_proposal(cluster_id);
@@ -340,7 +349,7 @@ pub mod pallet {
 
 		#[pallet::call_index(6)]
 		#[pallet::weight(10_000)]
-		pub fn update_cluster(
+		pub fn update_cluster_economics(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
@@ -466,7 +475,7 @@ pub mod pallet {
 		}
 
 		/// Close a vote that is either approved, disapproved or whose voting period has ended.
-		fn do_close(cluster_id: ClusterId) -> Result<DispatchResultWithPostInfo, DispatchError> {
+		fn do_close(cluster_id: ClusterId) -> DispatchResultWithPostInfo {
 			let voting = Self::voting(&cluster_id).ok_or(Error::<T>::ProposalMissing)?;
 
 			let mut no_votes = voting.nays.len() as MemberCount;
@@ -476,13 +485,12 @@ pub mod pallet {
 			let disapproved = seats.saturating_sub(no_votes) < voting.threshold;
 			// Allow (dis-)approving the proposal as soon as there are enough votes.
 			if approved {
-				let (proposal, len) = Self::validate_and_get_proposal(&cluster_id)?;
+				let (proposal, len) = Self::validate_and_get_referenda(&cluster_id)?;
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
-				let proposal_weight =
-					Self::do_approve_proposal(cluster_id, proposal, voting.is_activation)?;
+				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal)?;
 				let proposal_count = 1;
 
-				return Ok(Ok((
+				return Ok((
 					Some(
 						<T as pallet::Config>::WeightInfo::close_early_approved(
 							len as u32,
@@ -493,20 +501,20 @@ pub mod pallet {
 					),
 					Pays::Yes,
 				)
-					.into()))
+					.into())
 			} else if disapproved {
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
 				Self::do_disapprove_proposal(cluster_id);
 				let proposal_count = 1;
 
-				return Ok(Ok((
+				return Ok((
 					Some(<T as pallet::Config>::WeightInfo::close_early_disapproved(
 						seats,
 						proposal_count,
 					)),
 					Pays::No,
 				)
-					.into()))
+					.into())
 			}
 
 			// Only allow actual closing of the proposal after the voting period has ended.
@@ -523,13 +531,12 @@ pub mod pallet {
 			let approved = yes_votes >= voting.threshold;
 
 			if approved {
-				let (proposal, len) = Self::validate_and_get_proposal(&cluster_id)?;
+				let (proposal, len) = Self::validate_and_get_referenda(&cluster_id)?;
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
-				let proposal_weight =
-					Self::do_approve_proposal(cluster_id, proposal, voting.is_activation)?;
+				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal)?;
 				let proposal_count = 1;
 
-				Ok(Ok((
+				Ok((
 					Some(
 						<T as pallet::Config>::WeightInfo::close_approved(
 							len as u32,
@@ -540,34 +547,39 @@ pub mod pallet {
 					),
 					Pays::Yes,
 				)
-					.into()))
+					.into())
 			} else {
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
 				Self::do_disapprove_proposal(cluster_id);
 				let proposal_count = 1;
 
-				Ok(Ok((
+				Ok((
 					Some(<T as pallet::Config>::WeightInfo::close_disapproved(
 						seats,
 						proposal_count,
 					)),
 					Pays::No,
 				)
-					.into()))
+					.into())
 			}
 		}
 
 		fn do_approve_proposal(
 			cluster_id: ClusterId,
-			proposal: <T as Config>::ClusterProposalCall,
-			is_activation: bool,
+			proposal: ReferendaCall<T>,
 		) -> Result<Weight, DispatchError> {
 			Self::deposit_event(Event::Approved { cluster_id });
-			let (result, proposal_weight) = Self::do_propose_public(proposal, is_activation)?;
+
+			let dispatch_weight = proposal.get_dispatch_info().weight;
+			let result = proposal
+				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into());
 			Self::deposit_event(Event::Executed {
 				cluster_id,
 				result: result.map(|_| ()).map_err(|e| e.error),
 			});
+			// default to the dispatch info weight for safety
+			let proposal_weight = Self::get_result_weight(result).unwrap_or(dispatch_weight);
+
 			Self::do_remove_proposal(cluster_id);
 			Ok(proposal_weight)
 		}
@@ -578,18 +590,25 @@ pub mod pallet {
 			Self::do_remove_proposal(cluster_id)
 		}
 
-		fn do_propose_public(
-			proposal: <T as Config>::ClusterProposalCall,
-			is_activation: bool,
-		) -> Result<(DispatchResultWithPostInfo, Weight), DispatchError> {
-			let call: <T as pallet_referenda::Config>::RuntimeCall = proposal.into();
+		/// Removes a proposal from the pallet, cleaning up votes and the vector of proposals.
+		fn do_remove_proposal(cluster_id: ClusterId) {
+			ClusterProposal::<T>::remove(&cluster_id);
+			ClusterProposalVoting::<T>::remove(&cluster_id);
+		}
+
+		fn validate_and_get_referenda(
+			cluster_id: &ClusterId,
+		) -> Result<(ReferendaCall<T>, usize), DispatchError> {
+			let proposal =
+				ClusterProposal::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
+
+			let call: <T as pallet_referenda::Config>::RuntimeCall = proposal.call.into();
 			let bounded_call =
 				T::Preimages::bound(call).map_err(|_| Error::<T>::ProposalMissing)?;
 
-			let proposal_origin = if is_activation {
-				T::OpenGovActivatorTrackOrigin::get()
-			} else {
-				T::OpenGovUpdaterTrackOrigin::get()
+			let proposal_origin = match proposal.kind {
+				ProposalKind::ActivateCluster => T::OpenGovActivatorTrackOrigin::get(),
+				ProposalKind::UpdateClusterEconomics => T::OpenGovUpdaterTrackOrigin::get(),
 			};
 
 			let pallets_origin: <T::RuntimeOrigin as OriginTrait>::PalletsOrigin =
@@ -600,19 +619,9 @@ pub mod pallet {
 				enactment_moment: DispatchTime::After(T::BlockNumber::from(1u32)),
 			};
 
-			let result = referenda_call
-				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into());
+			let referenda_call_len = referenda_call.encode().len();
 
-			let proposal_weight =
-				Self::get_result_weight(result.clone()).unwrap_or(Weight::from_ref_time(10000));
-
-			Ok((result, proposal_weight))
-		}
-
-		/// Removes a proposal from the pallet, cleaning up votes and the vector of proposals.
-		fn do_remove_proposal(cluster_id: ClusterId) {
-			ClusterProposal::<T>::remove(&cluster_id);
-			ClusterProposalVoting::<T>::remove(&cluster_id);
+			Ok((referenda_call, referenda_call_len))
 		}
 
 		/// Return the weight of a dispatch call result as an `Option`.
@@ -623,18 +632,6 @@ pub mod pallet {
 				Ok(post_info) => post_info.actual_weight,
 				Err(err) => err.post_info.actual_weight,
 			}
-		}
-
-		fn validate_and_get_proposal(
-			cluster_id: &ClusterId,
-		) -> Result<(<T as Config>::ClusterProposalCall, usize), DispatchError> {
-			let key = ClusterProposal::<T>::hashed_key_for(cluster_id);
-			// read the length of the proposal storage entry directly
-			let proposal_len =
-				storage::read(&key, &mut [0; 0], 0).ok_or(Error::<T>::ProposalMissing)?;
-			let proposal =
-				ClusterProposal::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
-			Ok((proposal, proposal_len as usize))
 		}
 	}
 }
