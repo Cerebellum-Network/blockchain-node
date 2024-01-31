@@ -30,15 +30,16 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResult, Dispatchable, GetDispatchInfo, Pays, Weight},
 	pallet_prelude::*,
 	traits::{
-		schedule::DispatchTime, Currency, LockableCurrency, OriginTrait, StorePreimage,
-		UnfilteredDispatchable,
+		schedule::DispatchTime, Currency, ExistenceRequirement, LockableCurrency, OriginTrait,
+		StorePreimage, UnfilteredDispatchable,
 	},
 };
 use frame_system::pallet_prelude::*;
 pub use frame_system::Config as SysConfig;
 pub use pallet::*;
+use pallet_referenda::ReferendumIndex;
 use scale_info::TypeInfo;
-use sp_runtime::{traits::AccountIdConversion, RuntimeDebug};
+use sp_runtime::{traits::AccountIdConversion, RuntimeDebug, SaturatedConversion};
 use sp_std::prelude::*;
 pub use weights::WeightInfo;
 
@@ -80,6 +81,12 @@ pub struct Proposal<AccountId, Call> {
 pub enum ProposalKind {
 	ActivateCluster,
 	UpdateClusterEconomics,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct SubmissionDeposit<AccountId> {
+	depositor_id: AccountId,
+	amount: u128,
 }
 
 #[frame_support::pallet]
@@ -138,6 +145,12 @@ pub mod pallet {
 	pub type ClusterProposalVoting<T: Config> =
 		StorageMap<_, Identity, ClusterId, Votes<T::AccountId, T::BlockNumber>, OptionQuery>;
 
+	/// Public referendums initiated by clusters
+	#[pallet::storage]
+	#[pallet::getter(fn submission_depositor)]
+	pub type SubmissionDeposits<T: Config> =
+		StorageMap<_, Identity, ReferendumIndex, SubmissionDeposit<T::AccountId>, OptionQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -189,6 +202,10 @@ pub mod pallet {
 		NotEnoughValidatedNodes,
 		UnexpectedState,
 		VoteProhibited,
+		NoSubmissionDeposit,
+		NoReferendum,
+		NotSubmissionDepositor,
+		RefundFailed,
 	}
 
 	#[pallet::call]
@@ -336,6 +353,36 @@ pub mod pallet {
 
 		#[pallet::call_index(5)]
 		#[pallet::weight(10_000)]
+		pub fn refund_submission_deposit(
+			origin: OriginFor<T>,
+			referenda_index: ReferendumIndex,
+		) -> DispatchResult {
+			let caller_id = ensure_signed(origin)?;
+			let deposit = SubmissionDeposits::<T>::get(referenda_index)
+				.ok_or(Error::<T>::NoSubmissionDeposit)?;
+
+			ensure!(caller_id == deposit.depositor_id, Error::<T>::NotSubmissionDepositor);
+
+			let refund_call =
+				pallet_referenda::Call::<T>::refund_submission_deposit { index: referenda_index };
+
+			let result = refund_call
+				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into());
+
+			if result.is_ok() {
+				Self::do_refund_submission_deposit(
+					deposit.depositor_id,
+					deposit.amount.saturated_into::<BalanceOf<T>>(),
+				)?;
+				SubmissionDeposits::<T>::remove(referenda_index);
+				Ok(())
+			} else {
+				Err(Error::<T>::RefundFailed.into())
+			}
+		}
+
+		#[pallet::call_index(6)]
+		#[pallet::weight(10_000)]
 		pub fn activate_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -346,7 +393,7 @@ pub mod pallet {
 			T::ClusterEconomics::update_cluster_economics(cluster_id, cluster_gov_params)
 		}
 
-		#[pallet::call_index(6)]
+		#[pallet::call_index(7)]
 		#[pallet::weight(10_000)]
 		pub fn update_cluster_economics(
 			origin: OriginFor<T>,
@@ -484,9 +531,10 @@ pub mod pallet {
 			let disapproved = seats.saturating_sub(no_votes) < voting.threshold;
 			// Allow (dis-)approving the proposal as soon as there are enough votes.
 			if approved {
-				let (proposal, len) = Self::validate_and_get_public_proposal(&cluster_id)?;
+				let (proposal, len, depositor) =
+					Self::validate_and_get_public_proposal(&cluster_id)?;
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
-				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal)?;
+				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal, depositor)?;
 				let proposal_count = 1;
 
 				return Ok((
@@ -530,9 +578,10 @@ pub mod pallet {
 			let approved = yes_votes >= voting.threshold;
 
 			if approved {
-				let (proposal, len) = Self::validate_and_get_public_proposal(&cluster_id)?;
+				let (proposal, len, depositor) =
+					Self::validate_and_get_public_proposal(&cluster_id)?;
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
-				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal)?;
+				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal, depositor)?;
 				let proposal_count = 1;
 
 				Ok((
@@ -566,16 +615,25 @@ pub mod pallet {
 		fn do_approve_proposal(
 			cluster_id: ClusterId,
 			proposal: ReferendaCall<T>,
+			depositor: T::AccountId,
 		) -> Result<Weight, DispatchError> {
 			Self::deposit_event(Event::Approved { cluster_id });
 
 			let dispatch_weight = proposal.get_dispatch_info().weight;
+			let submission_deposit = Self::do_submission_deposit(depositor.clone())?;
+
 			let result = proposal
 				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into());
 			Self::deposit_event(Event::Executed {
 				cluster_id,
 				result: result.map(|_| ()).map_err(|e| e.error),
 			});
+			if result.is_ok() {
+				let referenda_index = pallet_referenda::ReferendumCount::<T>::get() - 1;
+				Self::do_retain_submission_deposit(referenda_index, depositor, submission_deposit);
+			} else {
+				Self::do_refund_submission_deposit(depositor, submission_deposit)?;
+			};
 			// default to the dispatch info weight for safety
 			let proposal_weight = Self::get_result_weight(result).unwrap_or(dispatch_weight);
 
@@ -598,7 +656,7 @@ pub mod pallet {
 
 		fn validate_and_get_public_proposal(
 			cluster_id: &ClusterId,
-		) -> Result<(ReferendaCall<T>, usize), DispatchError> {
+		) -> Result<(ReferendaCall<T>, usize, T::AccountId), DispatchError> {
 			let proposal =
 				ClusterProposal::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
 
@@ -620,8 +678,9 @@ pub mod pallet {
 			};
 
 			let referenda_call_len = referenda_call.encode().len();
+			let submission_depositor = proposal.author_id;
 
-			Ok((referenda_call, referenda_call_len))
+			Ok((referenda_call, referenda_call_len, submission_depositor))
 		}
 
 		/// Return the weight of a dispatch call result as an `Option`.
@@ -632,6 +691,44 @@ pub mod pallet {
 				Ok(post_info) => post_info.actual_weight,
 				Err(err) => err.post_info.actual_weight,
 			}
+		}
+
+		fn do_submission_deposit(depositor: T::AccountId) -> Result<BalanceOf<T>, DispatchError> {
+			let submission_deposit =
+				<T as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+			let amount = submission_deposit.saturated_into::<BalanceOf<T>>();
+			<T as pallet::Config>::Currency::transfer(
+				&depositor,
+				&Self::account_id(),
+				amount,
+				ExistenceRequirement::KeepAlive,
+			)?;
+			Ok(amount)
+		}
+
+		fn do_refund_submission_deposit(
+			depositor: T::AccountId,
+			amount: BalanceOf<T>,
+		) -> Result<(), DispatchError> {
+			<T as pallet::Config>::Currency::transfer(
+				&Self::account_id(),
+				&depositor,
+				amount,
+				ExistenceRequirement::KeepAlive,
+			)?;
+			Ok(())
+		}
+
+		fn do_retain_submission_deposit(
+			referenda_index: ReferendumIndex,
+			depositor: T::AccountId,
+			amount: BalanceOf<T>,
+		) {
+			let deposit = SubmissionDeposit {
+				depositor_id: depositor,
+				amount: amount.saturated_into::<u128>(),
+			};
+			SubmissionDeposits::<T>::insert(referenda_index, deposit);
 		}
 	}
 }
