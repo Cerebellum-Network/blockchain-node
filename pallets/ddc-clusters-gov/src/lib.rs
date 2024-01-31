@@ -72,7 +72,7 @@ pub enum ClusterMember {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Proposal<AccountId, Call> {
-	author_id: AccountId,
+	author: AccountId,
 	kind: ProposalKind,
 	call: Call,
 }
@@ -85,7 +85,7 @@ pub enum ProposalKind {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct SubmissionDeposit<AccountId> {
-	depositor_id: AccountId,
+	depositor: AccountId,
 	amount: u128,
 }
 
@@ -176,6 +176,24 @@ pub mod pallet {
 		Closed { cluster_id: ClusterId, yes: MemberCount, no: MemberCount },
 		/// A proposal was not removed by its author.
 		Removed { cluster_id: ClusterId },
+		/// The submission deposit has been refunded.
+		SubmissionDepositRetained {
+			/// Index of the referendum.
+			referenda_index: ReferendumIndex,
+			/// The account who placed the deposit.
+			depositor: T::AccountId,
+			/// The amount placed by the account.
+			amount: BalanceOf<T>,
+		},
+		/// The submission deposit has been refunded.
+		SubmissionDepositRefunded {
+			/// Index of the referendum.
+			referenda_index: ReferendumIndex,
+			/// The account who placed the deposit.
+			depositor: T::AccountId,
+			/// The amount placed by the account.
+			amount: BalanceOf<T>,
+		},
 	}
 
 	#[pallet::error]
@@ -203,8 +221,7 @@ pub mod pallet {
 		UnexpectedState,
 		VoteProhibited,
 		NoSubmissionDeposit,
-		NoReferendum,
-		NotSubmissionDepositor,
+		NotNodeProvider,
 	}
 
 	#[pallet::call]
@@ -246,11 +263,8 @@ pub mod pallet {
 					cluster_id,
 					cluster_gov_params,
 				});
-			let proposal = Proposal {
-				call,
-				author_id: caller_id.clone(),
-				kind: ProposalKind::ActivateCluster,
-			};
+			let proposal =
+				Proposal { call, author: caller_id.clone(), kind: ProposalKind::ActivateCluster };
 
 			<ClusterProposal<T>>::insert(cluster_id, proposal);
 			<ClusterProposalVoting<T>>::insert(cluster_id, votes);
@@ -299,7 +313,7 @@ pub mod pallet {
 				});
 			let proposal = Proposal {
 				call,
-				author_id: caller_id.clone(),
+				author: caller_id.clone(),
 				kind: ProposalKind::UpdateClusterEconomics,
 			};
 
@@ -342,7 +356,7 @@ pub mod pallet {
 			let caller_id = ensure_signed(origin)?;
 			let proposal =
 				ClusterProposal::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
-			if proposal.author_id != caller_id {
+			if proposal.author != caller_id {
 				Err(Error::<T>::NotProposalAuthor.into())
 			} else {
 				Self::do_remove_proposal(cluster_id);
@@ -356,14 +370,9 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			referenda_index: ReferendumIndex,
 		) -> DispatchResult {
-			let caller_id = ensure_signed(origin)?;
+			ensure_signed_or_root(origin)?;
 			let submission_deposit = SubmissionDeposits::<T>::get(referenda_index)
 				.ok_or(Error::<T>::NoSubmissionDeposit)?;
-
-			ensure!(
-				caller_id == submission_deposit.depositor_id,
-				Error::<T>::NotSubmissionDepositor
-			);
 
 			let refund_call =
 				pallet_referenda::Call::<T>::refund_submission_deposit { index: referenda_index };
@@ -372,17 +381,17 @@ pub mod pallet {
 
 			match result {
 				Ok(_) => (),
-				// Check the error type as the 'refund_submission_deposit' extrinsic might had been
-				// called in the original 'pallet_referenda' before this call, so the funds are
-				// already unlocked for the pallet's balance and need to be refunded to the
-				// original depositor.
+				// Check the error type as the 'refund_submission_deposit' extrinsic might have been
+				// called in the original 'pallet_referenda' before the current extrinsic calleed,
+				// so the funds are already unlocked for the pallet's balance and need to be
+				// refunded to the original depositor.
 				Err(ref e) if e.error == pallet_referenda::Error::<T>::NoDeposit.into() => (),
 				Err(e) => return Err(e.error),
 			}
 
 			Self::do_refund_submission_deposit(
 				referenda_index,
-				submission_deposit.depositor_id,
+				submission_deposit.depositor,
 				submission_deposit.amount.saturated_into::<BalanceOf<T>>(),
 			)?;
 
@@ -448,7 +457,7 @@ pub mod pallet {
 						if origin == node_provider {
 							Ok(())
 						} else {
-							Err(Error::<T>::NotValidatedNode.into())
+							Err(Error::<T>::NotNodeProvider.into())
 						}
 					}
 				},
@@ -701,10 +710,15 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 		) {
 			let deposit = SubmissionDeposit {
-				depositor_id: depositor,
+				depositor: depositor.clone(),
 				amount: amount.saturated_into::<u128>(),
 			};
 			SubmissionDeposits::<T>::insert(referenda_index, deposit);
+			Self::deposit_event(Event::SubmissionDepositRetained {
+				depositor,
+				referenda_index,
+				amount,
+			});
 		}
 
 		fn do_refund_submission_deposit(
@@ -719,6 +733,11 @@ pub mod pallet {
 				ExistenceRequirement::AllowDeath,
 			)?;
 			SubmissionDeposits::<T>::remove(referenda_index);
+			Self::deposit_event(Event::SubmissionDepositRefunded {
+				referenda_index,
+				depositor,
+				amount,
+			});
 			Ok(())
 		}
 	}
