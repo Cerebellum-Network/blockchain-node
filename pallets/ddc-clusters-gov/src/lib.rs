@@ -171,7 +171,7 @@ pub mod pallet {
 		/// A proposal was not approved by the required threshold.
 		Disapproved { cluster_id: ClusterId },
 		/// A proposal was executed; result will be `Ok` if it returned without error.
-		Executed { cluster_id: ClusterId, result: DispatchResult },
+		ReferendumSubmitted { cluster_id: ClusterId },
 		/// A proposal was closed because its threshold was reached or after its duration was up.
 		Closed { cluster_id: ClusterId, yes: MemberCount, no: MemberCount },
 		/// A proposal was not removed by its author.
@@ -205,7 +205,6 @@ pub mod pallet {
 		NoSubmissionDeposit,
 		NoReferendum,
 		NotSubmissionDepositor,
-		RefundFailed,
 	}
 
 	#[pallet::call]
@@ -358,27 +357,36 @@ pub mod pallet {
 			referenda_index: ReferendumIndex,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let deposit = SubmissionDeposits::<T>::get(referenda_index)
+			let submission_deposit = SubmissionDeposits::<T>::get(referenda_index)
 				.ok_or(Error::<T>::NoSubmissionDeposit)?;
 
-			ensure!(caller_id == deposit.depositor_id, Error::<T>::NotSubmissionDepositor);
+			ensure!(
+				caller_id == submission_deposit.depositor_id,
+				Error::<T>::NotSubmissionDepositor
+			);
 
 			let refund_call =
 				pallet_referenda::Call::<T>::refund_submission_deposit { index: referenda_index };
-
 			let result = refund_call
 				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into());
 
-			if result.is_ok() {
-				Self::do_refund_submission_deposit(
-					deposit.depositor_id,
-					deposit.amount.saturated_into::<BalanceOf<T>>(),
-				)?;
-				SubmissionDeposits::<T>::remove(referenda_index);
-				Ok(())
-			} else {
-				Err(Error::<T>::RefundFailed.into())
+			match result {
+				Ok(_) => (),
+				// Check the error type as the 'refund_submission_deposit' extrinsic might had been
+				// called in the original 'pallet_referenda' before this call, so the funds are
+				// already unlocked for the pallet's balance and need to be refunded to the
+				// original depositor.
+				Err(ref e) if e.error == pallet_referenda::Error::<T>::NoDeposit.into() => (),
+				Err(e) => return Err(e.error),
 			}
+
+			Self::do_refund_submission_deposit(
+				referenda_index,
+				submission_deposit.depositor_id,
+				submission_deposit.amount.saturated_into::<BalanceOf<T>>(),
+			)?;
+
+			Ok(())
 		}
 
 		#[pallet::call_index(6)]
@@ -620,20 +628,14 @@ pub mod pallet {
 			let dispatch_weight = proposal.get_dispatch_info().weight;
 			let submission_deposit = Self::do_submission_deposit(depositor.clone())?;
 
-			let result = proposal
-				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into());
-			Self::deposit_event(Event::Executed {
-				cluster_id,
-				result: result.map(|_| ()).map_err(|e| e.error),
-			});
-			if result.is_ok() {
-				let referenda_index = pallet_referenda::ReferendumCount::<T>::get() - 1;
-				Self::do_retain_submission_deposit(referenda_index, depositor, submission_deposit);
-			} else {
-				Self::do_refund_submission_deposit(depositor, submission_deposit)?;
-			};
-			// default to the dispatch info weight for safety
-			let proposal_weight = Self::get_result_weight(result).unwrap_or(dispatch_weight);
+			let post_info = proposal
+				.dispatch_bypass_filter(frame_system::RawOrigin::Signed(Self::account_id()).into())
+				.map_err(|e| e.error)?;
+			Self::deposit_event(Event::ReferendumSubmitted { cluster_id });
+
+			let referenda_index = pallet_referenda::ReferendumCount::<T>::get() - 1;
+			Self::do_retain_submission_deposit(referenda_index, depositor, submission_deposit);
+			let proposal_weight = post_info.actual_weight.unwrap_or(dispatch_weight);
 
 			Self::do_remove_proposal(cluster_id);
 			Ok(proposal_weight)
@@ -680,16 +682,6 @@ pub mod pallet {
 			Ok((referenda_call, referenda_call_len))
 		}
 
-		/// Return the weight of a dispatch call result as an `Option`.
-		///
-		/// Will return the weight regardless of what the state of the result is.
-		fn get_result_weight(result: DispatchResultWithPostInfo) -> Option<Weight> {
-			match result {
-				Ok(post_info) => post_info.actual_weight,
-				Err(err) => err.post_info.actual_weight,
-			}
-		}
-
 		fn do_submission_deposit(depositor: T::AccountId) -> Result<BalanceOf<T>, DispatchError> {
 			let submission_deposit =
 				<T as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
@@ -703,19 +695,6 @@ pub mod pallet {
 			Ok(amount)
 		}
 
-		fn do_refund_submission_deposit(
-			depositor: T::AccountId,
-			amount: BalanceOf<T>,
-		) -> Result<(), DispatchError> {
-			<T as pallet::Config>::Currency::transfer(
-				&Self::account_id(),
-				&depositor,
-				amount,
-				ExistenceRequirement::AllowDeath,
-			)?;
-			Ok(())
-		}
-
 		fn do_retain_submission_deposit(
 			referenda_index: ReferendumIndex,
 			depositor: T::AccountId,
@@ -726,6 +705,21 @@ pub mod pallet {
 				amount: amount.saturated_into::<u128>(),
 			};
 			SubmissionDeposits::<T>::insert(referenda_index, deposit);
+		}
+
+		fn do_refund_submission_deposit(
+			referenda_index: ReferendumIndex,
+			depositor: T::AccountId,
+			amount: BalanceOf<T>,
+		) -> Result<(), DispatchError> {
+			<T as pallet::Config>::Currency::transfer(
+				&Self::account_id(),
+				&depositor,
+				amount,
+				ExistenceRequirement::AllowDeath,
+			)?;
+			SubmissionDeposits::<T>::remove(referenda_index);
+			Ok(())
 		}
 	}
 }
