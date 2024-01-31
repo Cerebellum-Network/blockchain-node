@@ -714,7 +714,7 @@ pub mod pallet {
 				&Self::account_id(),
 				&depositor,
 				amount,
-				ExistenceRequirement::KeepAlive,
+				ExistenceRequirement::AllowDeath,
 			)?;
 			Ok(())
 		}
