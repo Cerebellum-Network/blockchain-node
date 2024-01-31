@@ -16,19 +16,22 @@ name = "cere"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.0.15", features = ["derive"], optional = true }
-frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.40" }
-sc-cli = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.40" }
-sc-service = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.40" }
-try-runtime-cli = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.40" }
-url = "2.4.1"
+# 3rd-party dependencies
+clap = { workspace = true, optional = true }
+url = { workspace = true }
+
+# Substrate dependencies
+frame-benchmarking-cli = { workspace = true, optional = true }
+sc-cli = { workspace = true, optional = true }
+sc-service = { workspace = true, optional = true }
+try-runtime-cli = { workspace = true, optional = true }
 
 # Local
-cere-client = { path = "../client", optional = true }
-cere-service = { path = "../service", default-features = false, optional = true }
+cere-client = { workspace = true, optional = true }
+cere-service = { workspace = true, optional = true }
 
 [build-dependencies]
-substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
+substrate-build-script-utils = { workspace = true }
 
 [features]
 default = ["cli", "cere-dev-native"]
