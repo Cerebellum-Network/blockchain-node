@@ -1,27 +1,14 @@
-[[bin]]
-name = "cere"
-path = "src/main.rs"
-
-[package]
-name = "cere"
+[workspace.package]
 version = "4.8.8"
-build = "build.rs"
 edition = "2021"
 license = "GPL-3.0-or-later WITH Classpath-exception-2.0"
 
-[dependencies]
-cere-cli = { path = "cli", features = ["cere-dev-native"] }
-sc-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
-
-[build-dependencies]
-substrate-build-script-utils = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
-
 [workspace]
 members = [
-  "cli",
+  "node/cli",
   "node/client",
   "node/service",
-  "rpc",
+  "node/rpc",
   "runtime/cere",
   "runtime/cere-dev",
   "pallets/chainbridge",
@@ -33,10 +20,7 @@ members = [
   "pallets/ddc-clusters",
   "primitives",
 ]
+resolver = "2"
 
 [profile.release]
 panic = "unwind"
-
-[features]
-runtime-benchmarks = ["cere-cli/runtime-benchmarks"]
-try-runtime = ["cere-cli/try-runtime"]

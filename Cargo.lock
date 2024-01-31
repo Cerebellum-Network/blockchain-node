@@ -777,15 +777,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cere"
-version = "4.8.8"
-dependencies = [
- "cere-cli",
- "sc-cli",
- "substrate-build-script-utils",
-]
-
-[[package]]
 name = "cere-cli"
 version = "4.8.8"
 dependencies = [
