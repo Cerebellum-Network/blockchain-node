@@ -2,6 +2,9 @@
 
 use std::sync::Arc;
 
+#[cfg(not(any(feature = "cere-native", feature = "cere-dev-native",)))]
+compile_error!("at least one runtime feature must be enabled");
+
 #[cfg(feature = "cere-dev-native")]
 pub use cere_dev_runtime;
 #[cfg(feature = "cere-native")]
@@ -18,9 +21,13 @@ use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 use sp_trie::PrefixedMemoryDB;
 pub mod chain_spec;
+#[cfg(feature = "cere-dev-native")]
+pub use cere_client::CereDevExecutorDispatch;
+#[cfg(feature = "cere-native")]
+pub use cere_client::CereExecutorDispatch;
 pub use cere_client::{
-	AbstractClient, CereDevExecutorDispatch, CereExecutorDispatch, Client, ClientHandle,
-	ExecuteWithClient, FullBackend, FullClient, RuntimeApiCollection,
+	AbstractClient, Client, ClientHandle, ExecuteWithClient, FullBackend, FullClient,
+	RuntimeApiCollection,
 };
 pub use chain_spec::{CereChainSpec, CereDevChainSpec};
 pub use node_primitives::{Block, BlockNumber};
