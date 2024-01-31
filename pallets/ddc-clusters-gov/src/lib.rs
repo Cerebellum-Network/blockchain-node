@@ -334,7 +334,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let caller_id = ensure_signed(origin)?;
 			Self::ensure_validated_member(caller_id.clone(), cluster_id, member)?;
-			Self::do_close(cluster_id)
+			Self::do_close(cluster_id, caller_id)
 		}
 
 		#[pallet::call_index(4)]
@@ -521,7 +521,7 @@ pub mod pallet {
 		}
 
 		/// Close a vote that is either approved, disapproved or whose voting period has ended.
-		fn do_close(cluster_id: ClusterId) -> DispatchResultWithPostInfo {
+		fn do_close(cluster_id: ClusterId, caller_id: T::AccountId) -> DispatchResultWithPostInfo {
 			let voting = Self::voting(&cluster_id).ok_or(Error::<T>::ProposalMissing)?;
 
 			let mut no_votes = voting.nays.len() as MemberCount;
@@ -531,10 +531,9 @@ pub mod pallet {
 			let disapproved = seats.saturating_sub(no_votes) < voting.threshold;
 			// Allow (dis-)approving the proposal as soon as there are enough votes.
 			if approved {
-				let (proposal, len, depositor) =
-					Self::validate_and_get_public_proposal(&cluster_id)?;
+				let (proposal, len) = Self::validate_and_get_public_proposal(&cluster_id)?;
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
-				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal, depositor)?;
+				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal, caller_id)?;
 				let proposal_count = 1;
 
 				return Ok((
@@ -578,10 +577,9 @@ pub mod pallet {
 			let approved = yes_votes >= voting.threshold;
 
 			if approved {
-				let (proposal, len, depositor) =
-					Self::validate_and_get_public_proposal(&cluster_id)?;
+				let (proposal, len) = Self::validate_and_get_public_proposal(&cluster_id)?;
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
-				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal, depositor)?;
+				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal, caller_id)?;
 				let proposal_count = 1;
 
 				Ok((
@@ -656,7 +654,7 @@ pub mod pallet {
 
 		fn validate_and_get_public_proposal(
 			cluster_id: &ClusterId,
-		) -> Result<(ReferendaCall<T>, usize, T::AccountId), DispatchError> {
+		) -> Result<(ReferendaCall<T>, usize), DispatchError> {
 			let proposal =
 				ClusterProposal::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
 
@@ -678,9 +676,8 @@ pub mod pallet {
 			};
 
 			let referenda_call_len = referenda_call.encode().len();
-			let submission_depositor = proposal.author_id;
 
-			Ok((referenda_call, referenda_call_len, submission_depositor))
+			Ok((referenda_call, referenda_call_len))
 		}
 
 		/// Return the weight of a dispatch call result as an `Option`.
