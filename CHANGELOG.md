@@ -11,12 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 
+- Introduce a burn rate of 0.058% daily to bring inflation down.
+- More explicit events in `pallet-ddc-payouts` about batch index
+- ...
+
+## [4.8.8]
+
 ### Changed
 
+- [C,D] Updated Substrate to polkadot-v0.9.38
 - Changes in `pallet-ddc-payouts::begin_billing_report` crate to accept start and end of the era.
-
 - More explicit events in `pallet-ddc-payouts` and `pallet-ddc-customers`
-- ...
 
 ## [4.8.7]
 
