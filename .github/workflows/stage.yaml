@@ -108,7 +108,7 @@ jobs:
           workflow_file_name: run-simulations-env-local-triggered.yml
           client_payload: |-
             {
-              "POS_NODE_VERSION": "master-latest"
+              "POS_NODE_VERSION": "staging-latest"
             }
           ref: master
           propagate_failure: false
