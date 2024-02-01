@@ -27,10 +27,12 @@ pub mod benchmarking;
 #[cfg(any(feature = "runtime-benchmarks", test))]
 pub mod testing_utils;
 
-use ddc_primitives::{ClusterId, NodeParams, NodePubKey, StorageNodePubKey};
-use ddc_traits::{
-	node::{NodeCreator, NodeVisitor, NodeVisitorError},
-	staking::StakingVisitor,
+use ddc_primitives::{
+	traits::{
+		node::{NodeCreator, NodeVisitor, NodeVisitorError},
+		staking::StakingVisitor,
+	},
+	ClusterId, NodeParams, NodePubKey, StorageNodePubKey,
 };
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
@@ -48,8 +50,12 @@ pub use crate::{
 pub mod pallet {
 	use super::*;
 
+	/// The current storage version.
+	const STORAGE_VERSION: frame_support::traits::StorageVersion =
+		frame_support::traits::StorageVersion::new(0);
+
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
