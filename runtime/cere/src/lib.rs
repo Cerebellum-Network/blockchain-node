@@ -125,10 +125,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48800,
+	spec_version: 48900,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 13,
+	transaction_version: 14,
 	state_version: 0,
 };
 
@@ -1488,15 +1488,9 @@ impl Get<Perbill> for NominationPoolsMigrationV4OldPallet {
 
 /// Runtime migrations
 type Migrations = (
-	// 0.9.40
-	pallet_nomination_pools::migration::v4::MigrateV3ToV5<
-		Runtime,
-		NominationPoolsMigrationV4OldPallet,
-	>,
-	// this release they will be properly pruned after the bonding duration has
-	// elapsed)
-	pallet_grandpa::migrations::CleanupSetIdSessionMap<Runtime>,
-	pallet_preimage::migration::v1::Migration<Runtime>,
+	parachains_configuration::migration::v5::MigrateToV5<Runtime>,
+	pallet_offences::migration::v1::MigrateToV1<Runtime>,
+	runtime_common::session::migration::ClearOldSessionStorage<Runtime>,
 );
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
