@@ -54,6 +54,6 @@ impl<AccountId> Cluster<AccountId> {
 	}
 
 	pub fn can_manage_nodes(&self) -> bool {
-		self.status == ClusterStatus::Bonded || self.status == ClusterStatus::Activated
+		matches!(self.status, ClusterStatus::Bonded | ClusterStatus::Activated)
 	}
 }

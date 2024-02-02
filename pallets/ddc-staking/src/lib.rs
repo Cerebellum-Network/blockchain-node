@@ -340,7 +340,7 @@ pub mod pallet {
 		/// Action is prohibited for a node provider stash account that is in the process of
 		/// leaving a cluster
 		NodeIsLeaving,
-		UnbondProhibited,
+		UnbondingProhibited,
 	}
 
 	#[pallet::call]
@@ -812,6 +812,8 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientBond)?
 			}
 
+			T::ClusterEconomics::bond_cluster(&cluster_id)?;
+
 			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
 
 			<ClusterBonded<T>>::insert(&stash, &controller);
@@ -830,7 +832,6 @@ pub mod pallet {
 				unlocking: Default::default(),
 			};
 			Self::update_cluster_ledger(&controller, &item);
-			T::ClusterEconomics::bond_cluster(cluster_id)?;
 			Ok(())
 		}
 
@@ -842,43 +843,39 @@ pub mod pallet {
 
 			ensure!(controller == cluster_controller, Error::<T>::NotController);
 
-			let has_nodes = T::ClusterManager::contains_nodes(&cluster_id);
-			ensure!(!has_nodes, Error::<T>::UnbondProhibited);
-
 			let mut ledger = Self::cluster_ledger(&controller).ok_or(Error::<T>::NotController)?;
 			ensure!(
 				ledger.unlocking.len() < MaxUnlockingChunks::get() as usize,
 				Error::<T>::NoMoreChunks,
 			);
 
+			T::ClusterEconomics::unbond_cluster(&cluster_id)?;
+
 			// Unbond the full amount
-			let value = ledger.active;
-			if !value.is_zero() {
-				ledger.active =
-					ledger.active.checked_sub(&value).ok_or(Error::<T>::ArithmeticUnderflow)?;
+			let amount = ledger.active;
 
-				let unbonding_delay = T::ClusterUnboningDelay::get();
+			ledger.active =
+				ledger.active.checked_sub(&amount).ok_or(Error::<T>::ArithmeticUnderflow)?;
 
-				// block number + configuration -> no overflow
-				let block = <frame_system::Pallet<T>>::block_number() + unbonding_delay;
-				if let Some(chunk) =
-					ledger.unlocking.last_mut().filter(|chunk| chunk.block == block)
-				{
-					// To keep the chunk count down, we only keep one chunk per block. Since
-					// `unlocking` is a FiFo queue, if a chunk exists for `block` we know that it
-					// will be the last one.
-					chunk.value = chunk.value.defensive_saturating_add(value)
-				} else {
-					ledger
-						.unlocking
-						.try_push(UnlockChunk { value, block })
-						.map_err(|_| Error::<T>::NoMoreChunks)?;
-				};
+			let unbonding_delay = T::ClusterUnboningDelay::get();
 
-				Self::update_cluster_ledger(&controller, &ledger);
+			// block number + configuration -> no overflow
+			let block = <frame_system::Pallet<T>>::block_number() + unbonding_delay;
+			if let Some(chunk) = ledger.unlocking.last_mut().filter(|chunk| chunk.block == block) {
+				// To keep the chunk count down, we only keep one chunk per block. Since
+				// `unlocking` is a FiFo queue, if a chunk exists for `block` we know that it
+				// will be the last one.
+				chunk.value = chunk.value.defensive_saturating_add(amount)
+			} else {
+				ledger
+					.unlocking
+					.try_push(UnlockChunk { value: amount, block })
+					.map_err(|_| Error::<T>::NoMoreChunks)?;
+			};
 
-				Self::deposit_event(Event::<T>::Unbonded(ledger.stash, value));
-			}
+			Self::update_cluster_ledger(&controller, &ledger);
+
+			Self::deposit_event(Event::<T>::Unbonded(ledger.stash, amount));
 
 			Ok(())
 		}
