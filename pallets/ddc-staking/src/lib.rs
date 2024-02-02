@@ -787,7 +787,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::bond())]
 		pub fn bond_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let cluster_stash = ensure_signed(origin)?;
-			let (stash, controller) =
+			let (controller, stash) =
 				<T::ClusterEconomics as ClusterQuery<T>>::get_manager_and_reserve_id(&cluster_id)?;
 
 			ensure!(stash == cluster_stash, Error::<T>::NotStash);
