@@ -197,7 +197,6 @@ pub mod pallet {
 				assert_ok!(Pallet::<T>::create_cluster(
 					frame_system::Origin::<T>::Signed(cluster.manager_id.clone()).into(),
 					cluster.cluster_id,
-					cluster.manager_id.clone(),
 					cluster.reserve_id.clone(),
 					ClusterParams::<T::AccountId> {
 						node_provider_auth_contract: cluster
@@ -243,12 +242,11 @@ pub mod pallet {
 		pub fn create_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
-			let _caller_id = ensure_signed(origin)?;
+			let cluster_manager_id = ensure_signed(origin)?;
 			Self::do_create_cluster(
 				cluster_id,
 				cluster_manager_id,
@@ -373,7 +371,6 @@ pub mod pallet {
 		fn do_create_cluster(
 			cluster_id: ClusterId,
 			cluster_manager_id: T::AccountId,
-
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,

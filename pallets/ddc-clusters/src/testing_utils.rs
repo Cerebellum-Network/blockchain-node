@@ -40,9 +40,8 @@ where
 	};
 
 	let _ = DdcClusters::<T>::create_cluster(
-		RawOrigin::Root.into(),
+		RawOrigin::Signed(user.clone()).into(),
 		cluster_id,
-		user.clone(),
 		user,
 		cluster_params,
 		cluster_gov_params,
@@ -87,9 +86,8 @@ where
 	};
 
 	let _ = DdcClusters::<T>::create_cluster(
-		RawOrigin::Root.into(),
+		RawOrigin::Signed(user.clone()).into(),
 		cluster_id,
-		user.clone(),
 		user.clone(),
 		cluster_params,
 		cluster_gov_params,

@@ -1137,6 +1137,10 @@ impl pallet_nomination_pools::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const ClusterBond: Balance = 1 * DOLLARS;
+}
+
 impl pallet_ddc_staking::Config for Runtime {
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
@@ -1146,6 +1150,7 @@ impl pallet_ddc_staking::Config for Runtime {
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
+	type ClusterBond = ClusterBond;
 }
 
 parameter_types! {
