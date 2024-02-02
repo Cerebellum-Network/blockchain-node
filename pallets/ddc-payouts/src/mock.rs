@@ -419,6 +419,10 @@ impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
 	) -> DispatchResult {
 		unimplemented!()
 	}
+
+	fn bond_cluster(_cluster_id: ClusterId) -> DispatchResult {
+		unimplemented!()
+	}
 }
 
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;

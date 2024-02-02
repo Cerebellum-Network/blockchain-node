@@ -124,8 +124,11 @@ pub enum NodeParams {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum ClusterStatus {
-	Inactive,
-	Active,
+	Unbonded,
+	Bonded,
+	Activated,
+	Unbonding,
+	Deactivated,
 }
 
 /// DDC node kind added to DDC cluster
