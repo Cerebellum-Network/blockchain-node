@@ -786,16 +786,15 @@ pub mod pallet {
 		#[pallet::call_index(8)]
 		#[pallet::weight(T::WeightInfo::bond())]
 		pub fn bond_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
-			let stash = ensure_signed(origin)?;
-			let cluster_stash = T::ClusterEconomics::get_reserve_account_id(&cluster_id)?;
+			let cluster_stash = ensure_signed(origin)?;
+			let (stash, controller) =
+				<T::ClusterEconomics as ClusterQuery<T>>::get_manager_and_reserve_id(&cluster_id)?;
 
 			ensure!(stash == cluster_stash, Error::<T>::NotStash);
 
 			if <ClusterBonded<T>>::contains_key(&stash) {
 				Err(Error::<T>::AlreadyBonded)?
 			}
-
-			let controller = T::ClusterManager::get_manager_account_id(&cluster_id)?;
 
 			if <ClusterLedger<T>>::contains_key(&controller) {
 				Err(Error::<T>::AlreadyPaired)?
@@ -834,8 +833,8 @@ pub mod pallet {
 		#[pallet::call_index(9)]
 		#[pallet::weight(T::WeightInfo::unbond())]
 		pub fn unbond_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
-			let cluster_controller = T::ClusterManager::get_manager_account_id(&cluster_id)?;
+			let cluster_controller = ensure_signed(origin)?;
+			let controller = T::ClusterManager::get_manager_account_id(&cluster_id)?;
 
 			ensure!(controller == cluster_controller, Error::<T>::NotController);
 
@@ -845,11 +844,10 @@ pub mod pallet {
 				Error::<T>::NoMoreChunks,
 			);
 
-			T::ClusterEconomics::unbond_cluster(&cluster_id)?;
+			T::ClusterEconomics::start_unbond_cluster(&cluster_id)?;
 
 			// Unbond the full amount
 			let amount = ledger.active;
-
 			ledger.active =
 				ledger.active.checked_sub(&amount).ok_or(Error::<T>::ArithmeticUnderflow)?;
 
@@ -878,8 +876,14 @@ pub mod pallet {
 
 		#[pallet::call_index(10)]
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
-		pub fn withdraw_unbonded_cluster(origin: OriginFor<T>) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
+		pub fn withdraw_unbonded_cluster(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+		) -> DispatchResult {
+			let cluster_controller = ensure_signed(origin)?;
+			let controller = T::ClusterManager::get_manager_account_id(&cluster_id)?;
+			ensure!(controller == cluster_controller, Error::<T>::NotController);
+
 			let mut ledger = Self::cluster_ledger(&controller).ok_or(Error::<T>::NotController)?;
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
 
@@ -892,6 +896,7 @@ pub mod pallet {
 				Self::kill_cluster_stash(&stash)?;
 				// Remove the lock.
 				T::Currency::remove_lock(DDC_CLUSTER_STAKING_ID, &stash);
+				T::ClusterEconomics::end_unbond_cluster(&cluster_id)?;
 			} else {
 				// This was the consequence of a partial unbond. just update the ledger and move on.
 				Self::update_cluster_ledger(&controller, &ledger);

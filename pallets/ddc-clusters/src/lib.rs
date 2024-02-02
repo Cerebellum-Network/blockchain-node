@@ -111,6 +111,7 @@ pub mod pallet {
 		ClusterGovParamsSet { cluster_id: ClusterId },
 		ClusterActivated { cluster_id: ClusterId },
 		ClusterBonded { cluster_id: ClusterId },
+		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
 	}
 
@@ -433,7 +434,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn do_unbond_cluster(cluster_id: &ClusterId) -> DispatchResult {
+		fn do_start_unbond_cluster(cluster_id: &ClusterId) -> DispatchResult {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(Self::can_unbond_cluster(cluster_id), Error::<T>::UnexpectedClusterStatus);
@@ -441,6 +442,21 @@ pub mod pallet {
 			cluster.set_status(ClusterStatus::Unbonding);
 			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: cluster_id.clone() });
+
+			Ok(())
+		}
+
+		fn do_end_unbond_cluster(cluster_id: &ClusterId) -> DispatchResult {
+			let mut cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ensure!(
+				cluster.status == ClusterStatus::Unbonding,
+				Error::<T>::UnexpectedClusterStatus
+			);
+
+			cluster.set_status(ClusterStatus::Unbonded);
+			Clusters::<T>::insert(cluster_id, cluster);
+			Self::deposit_event(Event::<T>::ClusterUnbonded { cluster_id: cluster_id.clone() });
 
 			Ok(())
 		}
@@ -635,12 +651,12 @@ pub mod pallet {
 		}
 
 		fn can_unbond_cluster(cluster_id: &ClusterId) -> bool {
-			// todo: replace with ClustersNodes::<T>::contains_prefix in new substrate releases
 			let cluster = match Clusters::<T>::get(cluster_id) {
 				Some(cluster) => cluster,
 				None => return false,
 			};
 
+			// todo: replace with ClustersNodes::<T>::contains_prefix in new substrate releases
 			let is_empty_nodes = ClustersNodesStats::<T>::try_get(cluster_id)
 				.map(|status| {
 					status.await_validation + status.validation_succeeded + status.validation_failed
@@ -662,6 +678,14 @@ pub mod pallet {
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			Ok(cluster.status)
+		}
+
+		fn get_manager_and_reserve_id(
+			cluster_id: &ClusterId,
+		) -> Result<(T::AccountId, T::AccountId), DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Ok((cluster.manager_id, cluster.reserve_id))
 		}
 	}
 
@@ -757,8 +781,12 @@ pub mod pallet {
 			Self::do_bond_cluster(cluster_id)
 		}
 
-		fn unbond_cluster(cluster_id: &ClusterId) -> DispatchResult {
-			Self::do_unbond_cluster(cluster_id)
+		fn start_unbond_cluster(cluster_id: &ClusterId) -> DispatchResult {
+			Self::do_start_unbond_cluster(cluster_id)
+		}
+
+		fn end_unbond_cluster(cluster_id: &ClusterId) -> DispatchResult {
+			Self::do_end_unbond_cluster(cluster_id)
 		}
 	}
 

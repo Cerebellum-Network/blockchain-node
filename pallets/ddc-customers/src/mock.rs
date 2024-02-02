@@ -118,6 +118,12 @@ impl<T: Config> ClusterQuery<T> for TestClusterEconomics {
 	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
 		unimplemented!()
 	}
+
+	fn get_manager_and_reserve_id(
+		_cluster_id: &ClusterId,
+	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
+		unimplemented!()
+	}
 }
 
 impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
@@ -196,7 +202,11 @@ impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
 		unimplemented!()
 	}
 
-	fn unbond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
+	fn start_unbond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn end_unbond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
 		unimplemented!()
 	}
 }
@@ -208,6 +218,12 @@ impl<T: Config> ClusterQuery<T> for TestClusterManager {
 	}
 
 	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_manager_and_reserve_id(
+		_cluster_id: &ClusterId,
+	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
 		unimplemented!()
 	}
 }
