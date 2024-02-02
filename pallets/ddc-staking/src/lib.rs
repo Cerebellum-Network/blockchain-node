@@ -888,10 +888,10 @@ pub mod pallet {
 			ledger = ledger.consolidate_unlocked(<frame_system::Pallet<T>>::block_number());
 
 			if ledger.unlocking.is_empty() && ledger.active < T::Currency::minimum_balance() {
-				// This account must have called `unbond()` with some value that caused the active
-				// portion to fall below existential deposit + will have no more unlocking chunks
-				// left. We can now safely remove all staking-related information.
-				Self::kill_stash(&stash)?;
+				// This account must have called `unbond_cluster()` with some value that caused the
+				// active portion to fall below existential deposit + will have no more unlocking
+				// chunks left. We can now safely remove all staking-related information.
+				Self::kill_cluster_stash(&stash)?;
 				// Remove the lock.
 				T::Currency::remove_lock(DDC_CLUSTER_STAKING_ID, &stash);
 			} else {
@@ -985,6 +985,21 @@ pub mod pallet {
 			};
 
 			Self::do_remove_storage(stash);
+
+			frame_system::Pallet::<T>::dec_consumers(stash);
+
+			Ok(())
+		}
+
+		/// Remove all associated data of a cluster stash account from the staking system.
+		///
+		/// This is called:
+		/// - after a `withdraw_unbonded_cluster()` call that frees all of a stash's bonded balance.
+		fn kill_cluster_stash(stash: &T::AccountId) -> DispatchResult {
+			let controller = <ClusterBonded<T>>::get(stash).ok_or(Error::<T>::NotStash)?;
+
+			<ClusterBonded<T>>::remove(stash);
+			<ClusterLedger<T>>::remove(&controller);
 
 			frame_system::Pallet::<T>::dec_consumers(stash);
 
