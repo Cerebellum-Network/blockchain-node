@@ -217,6 +217,10 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		true
 	}
 
+	fn contains_nodes(_cluster_id: &ClusterId) -> bool {
+		true
+	}
+
 	fn add_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,

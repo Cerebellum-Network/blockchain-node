@@ -717,6 +717,18 @@ pub mod pallet {
 			}
 		}
 
+		fn contains_nodes(cluster_id: &ClusterId) -> bool {
+			// todo: replace with ClustersNodes::<T>::contains_prefix in new substrate releases
+			ClustersNodesStats::<T>::try_get(cluster_id)
+				.map(|status| {
+					(status.await_validation +
+						status.validation_succeeded +
+						status.validation_failed) ==
+						0
+				})
+				.unwrap_or(false)
+		}
+
 		fn add_node(
 			cluster_id: &ClusterId,
 			node_pub_key: &NodePubKey,

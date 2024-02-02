@@ -54,7 +54,8 @@ construct_runtime!(
 
 parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
-	pub static ClusterBond: Balance = 1;
+	pub static ClusterBondingAmount: Balance = 1;
+	pub static ClusterUnboningDelay: BlockNumber = 1;
 }
 
 impl frame_system::Config for Test {
@@ -115,7 +116,8 @@ impl crate::pallet::Config for Test {
 	type NodeVisitor = MockNodeVisitor;
 	type NodeCreator = TestNodeCreator;
 	type ClusterCreator = TestClusterCreator;
-	type ClusterBond = ClusterBond;
+	type ClusterBondingAmount = ClusterBondingAmount;
+	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
@@ -250,6 +252,10 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		_node_pub_key: &NodePubKey,
 		_validation_status: Option<ClusterNodeStatus>,
 	) -> bool {
+		true
+	}
+
+	fn contains_nodes(cluster_id: &ClusterId) -> bool {
 		true
 	}
 
