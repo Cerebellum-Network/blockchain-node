@@ -424,7 +424,10 @@ fn storage_full_unbonding_works() {
 			storage_bond_size, // min bond size
 		));
 		let events = System::events();
-		assert_eq!(events[events.len() - 2].event, Event::Bonded(provider_stash, storage_bond_size).into());
+		assert_eq!(
+			events[events.len() - 2].event,
+			Event::Bonded(provider_stash, storage_bond_size).into()
+		);
 		assert_ok!(DdcStaking::store(RuntimeOrigin::signed(provider_controller), cluster_id));
 		System::assert_last_event(Event::Activated(provider_stash).into());
 
