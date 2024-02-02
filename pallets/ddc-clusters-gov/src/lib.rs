@@ -406,8 +406,8 @@ pub mod pallet {
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			T::OpenGovActivatorOrigin::ensure_origin(origin)?;
-			T::ClusterCreator::activate_cluster(cluster_id)?;
-			T::ClusterEconomics::update_cluster_economics(cluster_id, cluster_gov_params)
+			T::ClusterCreator::activate_cluster(&cluster_id)?;
+			T::ClusterEconomics::update_cluster_economics(&cluster_id, cluster_gov_params)
 		}
 
 		#[pallet::call_index(7)]
@@ -418,7 +418,7 @@ pub mod pallet {
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			T::OpenGovUpdaterOrigin::ensure_origin(origin)?;
-			T::ClusterEconomics::update_cluster_economics(cluster_id, cluster_gov_params)
+			T::ClusterEconomics::update_cluster_economics(&cluster_id, cluster_gov_params)
 		}
 	}
 
