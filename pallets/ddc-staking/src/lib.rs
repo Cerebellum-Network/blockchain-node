@@ -826,6 +826,7 @@ pub mod pallet {
 				unlocking: Default::default(),
 			};
 			Self::update_cluster_ledger(&controller, &item);
+			T::ClusterEconomics::bond_cluster(cluster_id)?;
 			Ok(())
 		}
 
@@ -848,7 +849,6 @@ pub mod pallet {
 
 			// Unbond the full amount
 			let value = ledger.active;
-
 			if !value.is_zero() {
 				ledger.active =
 					ledger.active.checked_sub(&value).ok_or(Error::<T>::ArithmeticUnderflow)?;
@@ -875,6 +875,7 @@ pub mod pallet {
 
 				Self::deposit_event(Event::<T>::Unbonded(ledger.stash, value));
 			}
+
 			Ok(())
 		}
 

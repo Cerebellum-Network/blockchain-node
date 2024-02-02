@@ -230,6 +230,8 @@ fn add_and_delete_node_works() {
 			},
 		));
 
+		assert_ok!(DdcClusters::bond_cluster(cluster_id));
+
 		// Node added succesfully
 		assert_ok!(DdcClusters::add_node(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),

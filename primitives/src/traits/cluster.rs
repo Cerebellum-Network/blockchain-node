@@ -43,6 +43,8 @@ pub trait ClusterEconomics<T: Config, Balance>: ClusterQuery<T> {
 		cluster_id: ClusterId,
 		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
 	) -> DispatchResult;
+
+	fn bond_cluster(cluster_id: ClusterId) -> DispatchResult;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {

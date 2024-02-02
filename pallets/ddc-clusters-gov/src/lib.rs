@@ -241,7 +241,7 @@ pub mod pallet {
 			let cluster_status =
 				<T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(&cluster_id)
 					.map_err(|_| Error::<T>::NoCluster)?;
-			ensure!(cluster_status == ClusterStatus::Inactive, Error::<T>::UnexpectedState);
+			ensure!(cluster_status == ClusterStatus::Bonded, Error::<T>::UnexpectedState);
 
 			let cluster_nodes_stats = T::ClusterManager::get_nodes_stats(&cluster_id)
 				.map_err(|_| Error::<T>::NoCluster)?;
@@ -289,7 +289,7 @@ pub mod pallet {
 			let cluster_status =
 				<T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(&cluster_id)
 					.map_err(|_| Error::<T>::NoCluster)?;
-			ensure!(cluster_status == ClusterStatus::Active, Error::<T>::UnexpectedState);
+			ensure!(cluster_status == ClusterStatus::Activated, Error::<T>::UnexpectedState);
 
 			let cluster_nodes_stats = T::ClusterManager::get_nodes_stats(&cluster_id)
 				.map_err(|_| Error::<T>::NoCluster)?;

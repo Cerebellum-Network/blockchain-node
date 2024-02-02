@@ -42,7 +42,7 @@ impl<AccountId> Cluster<AccountId> {
 				erasure_coding_total: cluster_params.erasure_coding_total,
 				replication_total: cluster_params.replication_total,
 			},
-			status: ClusterStatus::Inactive,
+			status: ClusterStatus::Unbonded,
 		}
 	}
 
@@ -57,5 +57,9 @@ impl<AccountId> Cluster<AccountId> {
 
 	pub fn set_status(&mut self, status: ClusterStatus) {
 		self.status = status;
+	}
+
+	pub fn can_manage_nodes(&self) -> bool {
+		self.status == ClusterStatus::Bonded || self.status == ClusterStatus::Activated
 	}
 }
