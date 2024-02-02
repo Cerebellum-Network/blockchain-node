@@ -92,6 +92,7 @@ pub mod pallet {
 		ClusterParamsSet { cluster_id: ClusterId },
 		ClusterGovParamsSet { cluster_id: ClusterId },
 		ClusterActivated { cluster_id: ClusterId },
+		ClusterBonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
 	}
 
@@ -113,7 +114,7 @@ pub mod pallet {
 		NodeAuthContractCallFailed,
 		NodeAuthContractDeployFailed,
 		NodeAuthNodeAuthorizationNotSuccessful,
-		ClusterAlreadyActivated,
+		UnexpectedClusterStatus,
 		AttemptToValidateNotAssignedNode,
 		ClusterGovParamsNotSet,
 		ArithmeticOverflow,
@@ -262,7 +263,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 
 			// Cluster extension smart contract allows joining.
-			if let Some(address) = cluster.props.node_provider_auth_contract {
+			if let Some(address) = cluster.props.node_provider_auth_contract.clone() {
 				let auth_contract = NodeProviderAuthContract::<T>::new(address, caller_id);
 
 				let is_authorized = auth_contract
@@ -275,7 +276,7 @@ pub mod pallet {
 				ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
 			};
 
-			Self::do_add_node(cluster_id, node_pub_key, node_kind)
+			Self::do_add_node(cluster, node_pub_key, node_kind)
 		}
 
 		#[pallet::call_index(2)]
@@ -291,7 +292,7 @@ pub mod pallet {
 
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
-			Self::do_remove_node(cluster_id, node_pub_key)
+			Self::do_remove_node(cluster, node_pub_key)
 		}
 
 		// Sets Governance non-sensetive parameters only
@@ -352,12 +353,24 @@ pub mod pallet {
 			Ok(())
 		}
 
+		fn do_bond_cluster(cluster_id: ClusterId) -> DispatchResult {
+			let mut cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ensure!(cluster.status == ClusterStatus::Unbonded, Error::<T>::UnexpectedClusterStatus);
+
+			cluster.set_status(ClusterStatus::Bonded);
+			Clusters::<T>::insert(cluster_id, cluster);
+			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id });
+
+			Ok(())
+		}
+
 		fn do_activate_cluster(cluster_id: ClusterId) -> DispatchResult {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			ensure!(cluster.status == ClusterStatus::Inactive, Error::<T>::ClusterAlreadyActivated);
+			ensure!(cluster.status == ClusterStatus::Bonded, Error::<T>::UnexpectedClusterStatus);
 
-			cluster.set_status(ClusterStatus::Active);
+			cluster.set_status(ClusterStatus::Activated);
 			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterActivated { cluster_id });
 
@@ -380,20 +393,21 @@ pub mod pallet {
 		}
 
 		fn do_add_node(
-			cluster_id: ClusterId,
+			cluster: Cluster<T::AccountId>,
 			node_pub_key: NodePubKey,
 			node_kind: ClusterNodeKind,
 		) -> DispatchResult {
+			ensure!(cluster.can_manage_nodes(), Error::<T>::UnexpectedClusterStatus);
+
 			let mut node: pallet_ddc_nodes::Node<T> = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::AttemptToAddAlreadyAssignedNode);
-
-			node.set_cluster_id(Some(cluster_id));
+			node.set_cluster_id(Some(cluster.cluster_id));
 			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 
 			ClustersNodes::<T>::insert(
-				cluster_id,
+				cluster.cluster_id,
 				node_pub_key.clone(),
 				ClusterNodeState {
 					kind: node_kind.clone(),
@@ -401,26 +415,34 @@ pub mod pallet {
 					added_at: frame_system::Pallet::<T>::block_number(),
 				},
 			);
-			Self::deposit_event(Event::<T>::ClusterNodeAdded { cluster_id, node_pub_key });
+			Self::deposit_event(Event::<T>::ClusterNodeAdded {
+				cluster_id: cluster.cluster_id,
+				node_pub_key,
+			});
 
-			let mut current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
+			let mut current_stats = ClustersNodesStats::<T>::try_get(cluster.cluster_id)
 				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			current_stats.await_validation = current_stats
 				.await_validation
 				.checked_add(1)
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-			ClustersNodesStats::<T>::insert(cluster_id, current_stats);
+			ClustersNodesStats::<T>::insert(cluster.cluster_id, current_stats);
 
 			Ok(())
 		}
 
-		fn do_remove_node(cluster_id: ClusterId, node_pub_key: NodePubKey) -> DispatchResult {
+		fn do_remove_node(
+			cluster: Cluster<T::AccountId>,
+			node_pub_key: NodePubKey,
+		) -> DispatchResult {
+			ensure!(cluster.can_manage_nodes(), Error::<T>::UnexpectedClusterStatus);
+
 			let mut node = T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
 
 			ensure!(
-				node.get_cluster_id() == &Some(cluster_id),
+				node.get_cluster_id() == &Some(cluster.cluster_id),
 				Error::<T>::AttemptToRemoveNotAssignedNode
 			);
 
@@ -428,11 +450,15 @@ pub mod pallet {
 			T::NodeRepository::update(node)
 				.map_err(|_| Error::<T>::AttemptToRemoveNonExistentNode)?;
 
-			let current_node_state = ClustersNodes::<T>::take(cluster_id, node_pub_key.clone())
-				.ok_or(Error::<T>::AttemptToRemoveNotAssignedNode)?;
-			Self::deposit_event(Event::<T>::ClusterNodeRemoved { cluster_id, node_pub_key });
+			let current_node_state =
+				ClustersNodes::<T>::take(cluster.cluster_id, node_pub_key.clone())
+					.ok_or(Error::<T>::AttemptToRemoveNotAssignedNode)?;
+			Self::deposit_event(Event::<T>::ClusterNodeRemoved {
+				cluster_id: cluster.cluster_id,
+				node_pub_key,
+			});
 
-			let mut current_stats = ClustersNodesStats::<T>::try_get(cluster_id)
+			let mut current_stats = ClustersNodesStats::<T>::try_get(cluster.cluster_id)
 				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 
 			let updated_stats = match current_node_state.status {
@@ -459,7 +485,7 @@ pub mod pallet {
 				},
 			};
 
-			ClustersNodesStats::<T>::insert(cluster_id, updated_stats);
+			ClustersNodesStats::<T>::insert(cluster.cluster_id, updated_stats);
 
 			Ok(())
 		}
@@ -639,6 +665,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::do_update_cluster_economics(cluster_id, cluster_gov_params)
 		}
+
+		fn bond_cluster(cluster_id: ClusterId) -> DispatchResult {
+			Self::do_bond_cluster(cluster_id)
+		}
 	}
 
 	impl<T: Config> ClusterManager<T> for Pallet<T> {
@@ -678,14 +708,18 @@ pub mod pallet {
 			node_pub_key: &NodePubKey,
 			node_kind: &ClusterNodeKind,
 		) -> Result<(), DispatchError> {
-			Self::do_add_node(cluster_id.clone(), node_pub_key.clone(), node_kind.clone())
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Self::do_add_node(cluster, node_pub_key.clone(), node_kind.clone())
 		}
 
 		fn remove_node(
 			cluster_id: &ClusterId,
 			node_pub_key: &NodePubKey,
 		) -> Result<(), DispatchError> {
-			Self::do_remove_node(cluster_id.clone(), node_pub_key.clone())
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			Self::do_remove_node(cluster, node_pub_key.clone())
 		}
 
 		fn get_node_state(

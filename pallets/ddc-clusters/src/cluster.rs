@@ -39,7 +39,7 @@ impl<AccountId> Cluster<AccountId> {
 			props: ClusterProps {
 				node_provider_auth_contract: cluster_params.node_provider_auth_contract,
 			},
-			status: ClusterStatus::Inactive,
+			status: ClusterStatus::Unbonded,
 		}
 	}
 
@@ -51,5 +51,9 @@ impl<AccountId> Cluster<AccountId> {
 
 	pub fn set_status(&mut self, status: ClusterStatus) {
 		self.status = status;
+	}
+
+	pub fn can_manage_nodes(&self) -> bool {
+		self.status == ClusterStatus::Bonded || self.status == ClusterStatus::Activated
 	}
 }
