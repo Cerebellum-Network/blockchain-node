@@ -128,7 +128,6 @@ pub enum ClusterStatus {
 	Bonded,
 	Activated,
 	Unbonding,
-	Deactivated,
 }
 
 /// DDC node kind added to DDC cluster

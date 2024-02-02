@@ -1,4 +1,3 @@
-use codec::{Decode, Encode};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::Config;
 
@@ -11,6 +10,9 @@ use crate::{
 pub trait ClusterQuery<T: Config> {
 	fn cluster_exists(cluster_id: &ClusterId) -> bool;
 	fn get_cluster_status(cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError>;
+	fn get_manager_and_reserve_id(
+		cluster_id: &ClusterId,
+	) -> Result<(T::AccountId, T::AccountId), DispatchError>;
 }
 
 pub trait ClusterEconomics<T: Config, Balance>: ClusterQuery<T> {
@@ -43,7 +45,9 @@ pub trait ClusterEconomics<T: Config, Balance>: ClusterQuery<T> {
 
 	fn bond_cluster(cluster_id: &ClusterId) -> DispatchResult;
 
-	fn unbond_cluster(cluster_id: &ClusterId) -> DispatchResult;
+	fn start_unbond_cluster(cluster_id: &ClusterId) -> DispatchResult;
+
+	fn end_unbond_cluster(cluster_id: &ClusterId) -> DispatchResult;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {
