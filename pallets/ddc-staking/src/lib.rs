@@ -50,7 +50,7 @@ use sp_std::prelude::*;
 
 use crate::weights::WeightInfo;
 
-const DDC_CLUSTER_STAKING_ID: LockIdentifier = *b"ddcclstr"; // DDC clusters stake
+const DDC_CLUSTER_STAKING_ID: LockIdentifier = *b"clrstake"; // DDC clusters stake
 const DDC_NODE_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC clusters maintainer's stake
 
 /// The balance type of this pallet.
@@ -875,6 +875,38 @@ pub mod pallet {
 
 				Self::deposit_event(Event::<T>::Unbonded(ledger.stash, value));
 			}
+			Ok(())
+		}
+
+		#[pallet::call_index(10)]
+		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
+		pub fn withdraw_unbonded_cluster(origin: OriginFor<T>) -> DispatchResult {
+			let controller = ensure_signed(origin)?;
+			let mut ledger = Self::cluster_ledger(&controller).ok_or(Error::<T>::NotController)?;
+			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
+
+			ledger = ledger.consolidate_unlocked(<frame_system::Pallet<T>>::block_number());
+
+			if ledger.unlocking.is_empty() && ledger.active < T::Currency::minimum_balance() {
+				// This account must have called `unbond()` with some value that caused the active
+				// portion to fall below existential deposit + will have no more unlocking chunks
+				// left. We can now safely remove all staking-related information.
+				Self::kill_stash(&stash)?;
+				// Remove the lock.
+				T::Currency::remove_lock(DDC_CLUSTER_STAKING_ID, &stash);
+			} else {
+				// This was the consequence of a partial unbond. just update the ledger and move on.
+				Self::update_ledger(&controller, &ledger);
+			};
+
+			// `old_total` should never be less than the new total because
+			// `consolidate_unlocked` strictly subtracts balance.
+			if ledger.total < old_total {
+				// Already checked that this won't overflow by entry condition.
+				let value = old_total - ledger.total;
+				Self::deposit_event(Event::<T>::Withdrawn(stash, value));
+			}
+
 			Ok(())
 		}
 	}
