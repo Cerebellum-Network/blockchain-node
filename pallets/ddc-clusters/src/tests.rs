@@ -37,9 +37,8 @@ fn create_cluster_works() {
 
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
-			RuntimeOrigin::signed(AccountId::from([1; 32])),
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
-			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
 			ClusterParams { node_provider_auth_contract: Some(auth_contract.clone()) },
 			cluster_gov_params.clone()
@@ -93,9 +92,8 @@ fn create_cluster_works() {
 		// Creating cluster with same id should fail
 		assert_noop!(
 			DdcClusters::create_cluster(
-				RuntimeOrigin::signed(AccountId::from([1; 32])),
+				RuntimeOrigin::signed(cluster_manager_id),
 				cluster_id,
-				cluster_manager_id,
 				cluster_reserve_id,
 				ClusterParams { node_provider_auth_contract: Some(auth_contract) },
 				cluster_gov_params
@@ -137,9 +135,8 @@ fn add_and_delete_node_works() {
 
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
-			RuntimeOrigin::signed(AccountId::from([1; 32])),
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
-			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
 			ClusterParams { node_provider_auth_contract: Some(cluster_manager_id.clone()) },
 			ClusterGovParams {
@@ -363,9 +360,8 @@ fn set_cluster_params_works() {
 
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
-			RuntimeOrigin::signed(AccountId::from([1; 32])),
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
-			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
 			ClusterParams { node_provider_auth_contract: Some(auth_contract_1) },
 			ClusterGovParams {
@@ -431,9 +427,8 @@ fn cluster_visitor_works() {
 
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
-			RuntimeOrigin::signed(AccountId::from([1; 32])),
+			RuntimeOrigin::signed(cluster_manager_id),
 			cluster_id,
-			cluster_manager_id,
 			cluster_reserve_id.clone(),
 			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
 			cluster_gov_params

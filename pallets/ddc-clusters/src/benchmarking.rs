@@ -37,7 +37,7 @@ benchmarks! {
 			unit_per_put_request: 10,
 			unit_per_get_request: 10,
 		};
-	}: _(RawOrigin::Root, cluster_id, user.clone(), user, cluster_params, cluster_gov_params)
+	}: _(RawOrigin::Signed(user.clone()), cluster_id, user.clone(), cluster_params, cluster_gov_params)
 	verify {
 		assert!(Clusters::<T>::contains_key(cluster_id));
 	}

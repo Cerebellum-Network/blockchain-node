@@ -58,6 +58,7 @@ construct_runtime!(
 
 parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
+	pub static ClusterBond: Balance = 1;
 }
 
 impl frame_system::Config for Test {
@@ -115,6 +116,7 @@ impl crate::pallet::Config for Test {
 	type NodeVisitor = MockNodeVisitor;
 	type NodeCreator = TestNodeCreator;
 	type ClusterCreator = TestClusterCreator;
+	type ClusterBond = ClusterBond;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
