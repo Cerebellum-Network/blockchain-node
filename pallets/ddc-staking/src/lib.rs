@@ -28,12 +28,12 @@ pub mod weights;
 use core::fmt::Debug;
 
 use codec::{Decode, Encode, HasCompact};
-pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
-use ddc_traits::{
+use ddc_primitives::traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
 	node::{NodeCreator, NodeVisitor},
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
+pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 #[cfg(feature = "std")]
 use frame_support::assert_ok;
 use frame_support::{
@@ -149,12 +149,16 @@ impl<
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_traits::{cluster::ClusterManager, node::NodeVisitorError};
+	use ddc_primitives::traits::{cluster::ClusterManager, node::NodeVisitorError};
 
 	use super::*;
 
+	/// The current storage version.
+	const STORAGE_VERSION: frame_support::traits::StorageVersion =
+		frame_support::traits::StorageVersion::new(0);
+
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
