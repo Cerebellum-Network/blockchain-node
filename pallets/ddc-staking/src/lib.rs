@@ -53,7 +53,8 @@ use sp_std::prelude::*;
 
 use crate::weights::WeightInfo;
 
-const DDC_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC maintainer's stake
+const DDC_CLUSTER_STAKING_ID: LockIdentifier = *b"ddcclstr"; // DDC clusters stake
+const DDC_NODE_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC clusters maintainer's stake
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
@@ -180,6 +181,8 @@ pub mod pallet {
 		type NodeVisitor: NodeVisitor<Self>;
 
 		type NodeCreator: NodeCreator<Self>;
+
+		type ClusterBond: Get<BalanceOf<Self>>;
 	}
 
 	/// Map from all locked "stash" accounts to the controller account.
@@ -213,6 +216,17 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn leaving_storages)]
 	pub type LeavingStorages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
+
+	/// Map from all clusters locked "stash" accounts to the controller account.
+	#[pallet::storage]
+	#[pallet::getter(fn cluster_bonded)]
+	pub type ClusterBonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
+
+	/// Map of all clusters staking ledgers.
+	#[pallet::storage]
+	#[pallet::getter(fn cluster_ledger)]
+	pub type ClusterLedger<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>, T>>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -324,6 +338,7 @@ pub mod pallet {
 		/// Action is prohibited for a node provider stash account that is in the process of
 		/// leaving a cluster
 		NodeIsLeaving,
+		NotClusterStash,
 	}
 
 	#[pallet::call]
@@ -540,7 +555,7 @@ pub mod pallet {
 				// left. We can now safely remove all staking-related information.
 				Self::kill_stash(&stash)?;
 				// Remove the lock.
-				T::Currency::remove_lock(DDC_STAKING_ID, &stash);
+				T::Currency::remove_lock(DDC_NODE_STAKING_ID, &stash);
 			} else {
 				// This was the consequence of a partial unbond. just update the ledger and move on.
 				Self::update_ledger(&controller, &ledger);
@@ -769,10 +784,56 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::call_index(8)]
+		#[pallet::weight(T::WeightInfo::bond())]
+		pub fn bond_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
+			let stash = ensure_signed(origin)?;
+			let cluster_stash = T::ClusterEconomics::get_reserve_account_id(&cluster_id)?;
+
+			ensure!(stash == cluster_stash, Error::<T>::NotStash);
+
+			if <ClusterBonded<T>>::contains_key(&stash) {
+				Err(Error::<T>::AlreadyBonded)?
+			}
+
+			let controller = T::ClusterManager::get_manager_account_id(&cluster_id)?;
+
+			if <ClusterLedger<T>>::contains_key(&controller) {
+				Err(Error::<T>::AlreadyPaired)?
+			}
+
+			let amount = T::ClusterBond::get();
+
+			// Reject a bond which is considered to be _dust_.
+			if amount < T::Currency::minimum_balance() {
+				Err(Error::<T>::InsufficientBond)?
+			}
+
+			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
+
+			<ClusterBonded<T>>::insert(&stash, &controller);
+
+			let balance = T::Currency::free_balance(&stash);
+			if balance < amount {
+				return Err(Error::<T>::InsufficientBond)?
+			}
+
+			Self::deposit_event(Event::<T>::Bonded(stash.clone(), amount));
+			let item = StakingLedger {
+				stash,
+				total: amount,
+				active: amount,
+				chilling: Default::default(),
+				unlocking: Default::default(),
+			};
+			Self::update_cluster_ledger(&controller, &item);
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Update the ledger for a controller.
+		/// Update the ledger for a node controller.
 		///
 		/// This will also update the stash lock.
 		fn update_ledger(
@@ -780,12 +841,28 @@ pub mod pallet {
 			ledger: &StakingLedger<T::AccountId, BalanceOf<T>, T>,
 		) {
 			T::Currency::set_lock(
-				DDC_STAKING_ID,
+				DDC_NODE_STAKING_ID,
 				&ledger.stash,
 				ledger.total,
 				WithdrawReasons::all(),
 			);
 			<Ledger<T>>::insert(controller, ledger);
+		}
+
+		/// Update the ledger for a cluster.
+		///
+		/// This will also update the stash lock.
+		fn update_cluster_ledger(
+			controller: &T::AccountId,
+			ledger: &StakingLedger<T::AccountId, BalanceOf<T>, T>,
+		) {
+			T::Currency::set_lock(
+				DDC_CLUSTER_STAKING_ID,
+				&ledger.stash,
+				ledger.total,
+				WithdrawReasons::all(),
+			);
+			<ClusterLedger<T>>::insert(controller, ledger);
 		}
 
 		/// Chill a stash account.
