@@ -3,13 +3,13 @@
 #![allow(dead_code)]
 
 use ddc_primitives::{
+	traits::{
+		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+		customer::{CustomerCharger, CustomerDepositor},
+		pallet::PalletVisitor,
+	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
 	NodeType, DOLLARS,
-};
-use ddc_traits::{
-	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
-	customer::{CustomerCharger, CustomerDepositor},
-	pallet::PalletVisitor,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -326,10 +326,6 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 	) -> u32 {
 		// nothing to do upon regenerate.
 		0
-	}
-
-	fn try_state() -> Result<(), &'static str> {
-		unimplemented!()
 	}
 
 	fn unsafe_clear() {

@@ -25,13 +25,15 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
-use ddc_primitives::{ClusterId, DdcEra, MILLICENTS};
-use ddc_traits::{
-	cluster::{ClusterCreator as ClusterCreatorType, ClusterVisitor as ClusterVisitorType},
-	customer::{
-		CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
+use ddc_primitives::{
+	traits::{
+		cluster::{ClusterCreator as ClusterCreatorType, ClusterVisitor as ClusterVisitorType},
+		customer::{
+			CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
+		},
+		pallet::PalletVisitor as PalletVisitorType,
 	},
-	pallet::PalletVisitor as PalletVisitorType,
+	ClusterId, DdcEra, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -115,8 +117,12 @@ pub mod pallet {
 
 	use super::*;
 
+	/// The current storage version.
+	const STORAGE_VERSION: frame_support::traits::StorageVersion =
+		frame_support::traits::StorageVersion::new(0);
+
 	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::storage_version(STORAGE_VERSION)]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
@@ -195,6 +201,7 @@ pub mod pallet {
 		Rewarded {
 			cluster_id: ClusterId,
 			era: DdcEra,
+			batch_index: BatchIndex,
 			node_provider_id: T::AccountId,
 			rewarded: u128,
 			expected_to_reward: u128,
@@ -202,6 +209,7 @@ pub mod pallet {
 		NotDistributedReward {
 			cluster_id: ClusterId,
 			era: DdcEra,
+			batch_index: BatchIndex,
 			node_provider_id: T::AccountId,
 			expected_reward: u128,
 			distributed_reward: BalanceOf<T>,
@@ -728,11 +736,13 @@ pub mod pallet {
 						&updated_billing_report.vault,
 					) - <T as pallet::Config>::Currency::minimum_balance();
 
+					// 10000000000001 > 10000000000000 but is still ok
 					if reward > vault_balance {
 						if reward - vault_balance > max_dust {
 							Self::deposit_event(Event::<T>::NotDistributedReward {
 								cluster_id,
 								era,
+								batch_index,
 								node_provider_id: node_provider_id.clone(),
 								expected_reward: amount_to_reward,
 								distributed_reward: vault_balance,
@@ -760,6 +770,7 @@ pub mod pallet {
 				Self::deposit_event(Event::<T>::Rewarded {
 					cluster_id,
 					era,
+					batch_index,
 					node_provider_id,
 					rewarded: reward_,
 					expected_to_reward: amount_to_reward,

@@ -176,9 +176,9 @@ pub fn run() -> sc_cli::Result<()> {
 
 					#[cfg(not(feature = "cere-native"))]
 					#[allow(unreachable_code)]
-					Error::Service(ServiceError::Other(
+					Err(Error::Service(ServiceError::Other(
 						"No runtime feature (cere-native, cere-dev-native) is enabled".to_string(),
-					))
+					)))
 				},
 				BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {
 					let (client, _, _, _) = cere_service::new_chain_ops(&config)?;

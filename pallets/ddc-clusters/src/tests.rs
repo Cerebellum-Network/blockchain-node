@@ -1,10 +1,10 @@
 //! Tests for the module.
 
 use ddc_primitives::{
-	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterParams, ClusterPricingParams,
-	NodeParams, NodePubKey, StorageNodeMode, StorageNodeParams,
+	traits::cluster::ClusterManager, ClusterBondingParams, ClusterFeesParams, ClusterId,
+	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodeMode,
+	StorageNodeParams,
 };
-use ddc_traits::cluster::ClusterManager;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
 use frame_system::Config;
 use hex_literal::hex;
@@ -303,7 +303,7 @@ fn add_and_delete_node_works() {
 
 			// Deploy the contract.
 			const GAS_LIMIT: frame_support::weights::Weight =
-				Weight::from_ref_time(100_000_000_000).set_proof_size(u64::MAX);
+				Weight::from_parts(100_000_000_000, 0).set_proof_size(u64::MAX);
 			const ENDOWMENT: Balance = 0;
 			Contracts::instantiate_with_code(
 				RuntimeOrigin::signed(alice.clone()),

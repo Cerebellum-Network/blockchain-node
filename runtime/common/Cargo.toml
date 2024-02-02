@@ -1,16 +1,21 @@
 [package]
 name = "cere-runtime-common"
-version = "4.8.7"
+version = "4.8.8"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
+
+[dependencies]
+frame-support = { workspace = true }
+node-primitives = { workspace = true }
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
 
 [features]
 default = ["std"]
 no_std = []
-std = []
-
-[dependencies]
-frame-support = { git = "https://github.com/paritytech/substrate.git", default-features = false, branch = "polkadot-v0.9.38" }
-node-primitives = { git = "https://github.com/paritytech/substrate.git", default-features = false, branch = "polkadot-v0.9.38" }
-sp-core = { git = "https://github.com/paritytech/substrate.git", default-features = false, branch = "polkadot-v0.9.38" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.38" }
+std = [
+  "frame-support/std",
+  "node-primitives/std",
+  "sp-core/std",
+  "sp-runtime/std",
+]
