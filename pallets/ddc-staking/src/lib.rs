@@ -896,7 +896,7 @@ pub mod pallet {
 				T::Currency::remove_lock(DDC_CLUSTER_STAKING_ID, &stash);
 			} else {
 				// This was the consequence of a partial unbond. just update the ledger and move on.
-				Self::update_ledger(&controller, &ledger);
+				Self::update_cluster_ledger(&controller, &ledger);
 			};
 
 			// `old_total` should never be less than the new total because
