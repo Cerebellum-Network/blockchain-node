@@ -63,6 +63,8 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 		validation_status: Option<ClusterNodeStatus>,
 	) -> bool;
 
+	fn contains_nodes(cluster_id: &ClusterId) -> bool;
+
 	fn add_node(
 		cluster_id: &ClusterId,
 		node_pub_key: &NodePubKey,

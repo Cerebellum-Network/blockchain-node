@@ -1143,7 +1143,8 @@ impl frame_support::traits::OnRuntimeUpgrade for InitiateNominationPools {
 }
 
 parameter_types! {
-	pub const ClusterBond: Balance = 1 * DOLLARS;
+	pub const ClusterBondingAmount: Balance = 1 * DOLLARS;
+	pub const ClusterUnboningDelay: BlockNumber = 1 * MINUTES;
 }
 
 impl pallet_ddc_staking::Config for Runtime {
@@ -1155,7 +1156,8 @@ impl pallet_ddc_staking::Config for Runtime {
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
-	type ClusterBond = ClusterBond;
+	type ClusterBondingAmount = ClusterBondingAmount;
+	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
 
 parameter_types! {
