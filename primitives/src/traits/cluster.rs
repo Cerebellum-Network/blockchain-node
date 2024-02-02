@@ -40,11 +40,13 @@ pub trait ClusterEconomics<T: Config, Balance>: ClusterQuery<T> {
 	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError>;
 
 	fn update_cluster_economics(
-		cluster_id: ClusterId,
+		cluster_id: &ClusterId,
 		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
 	) -> DispatchResult;
 
-	fn bond_cluster(cluster_id: ClusterId) -> DispatchResult;
+	fn bond_cluster(cluster_id: &ClusterId) -> DispatchResult;
+
+	fn unbond_cluster(cluster_id: &ClusterId) -> DispatchResult;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {
@@ -56,7 +58,7 @@ pub trait ClusterCreator<T: Config, Balance> {
 		cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult;
 
-	fn activate_cluster(cluster_id: ClusterId) -> DispatchResult;
+	fn activate_cluster(cluster_id: &ClusterId) -> DispatchResult;
 }
 
 pub trait ClusterManager<T: Config>: ClusterQuery<T> {
@@ -67,8 +69,6 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 		node_pub_key: &NodePubKey,
 		validation_status: Option<ClusterNodeStatus>,
 	) -> bool;
-
-	fn contains_nodes(cluster_id: &ClusterId) -> bool;
 
 	fn add_node(
 		cluster_id: &ClusterId,

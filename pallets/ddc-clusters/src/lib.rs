@@ -409,32 +409,44 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn do_bond_cluster(cluster_id: ClusterId) -> DispatchResult {
+		fn do_bond_cluster(cluster_id: &ClusterId) -> DispatchResult {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.status == ClusterStatus::Unbonded, Error::<T>::UnexpectedClusterStatus);
 
 			cluster.set_status(ClusterStatus::Bonded);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id });
+			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: cluster_id.clone() });
 
 			Ok(())
 		}
 
-		fn do_activate_cluster(cluster_id: ClusterId) -> DispatchResult {
+		fn do_activate_cluster(cluster_id: &ClusterId) -> DispatchResult {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.status == ClusterStatus::Bonded, Error::<T>::UnexpectedClusterStatus);
 
 			cluster.set_status(ClusterStatus::Activated);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterActivated { cluster_id });
+			Self::deposit_event(Event::<T>::ClusterActivated { cluster_id: cluster_id.clone() });
+
+			Ok(())
+		}
+
+		fn do_unbond_cluster(cluster_id: &ClusterId) -> DispatchResult {
+			let mut cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ensure!(Self::can_unbond_cluster(cluster_id), Error::<T>::UnexpectedClusterStatus);
+
+			cluster.set_status(ClusterStatus::Unbonding);
+			Clusters::<T>::insert(cluster_id, cluster);
+			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: cluster_id.clone() });
 
 			Ok(())
 		}
 
 		fn do_update_cluster_economics(
-			cluster_id: ClusterId,
+			cluster_id: &ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			ensure!(
@@ -443,7 +455,7 @@ pub mod pallet {
 			);
 
 			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
-			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
+			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id: cluster_id.clone() });
 
 			Ok(())
 		}
@@ -621,6 +633,24 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		fn can_unbond_cluster(cluster_id: &ClusterId) -> bool {
+			// todo: replace with ClustersNodes::<T>::contains_prefix in new substrate releases
+			let cluster = match Clusters::<T>::get(cluster_id) {
+				Some(cluster) => cluster,
+				None => return false,
+			};
+
+			let is_empty_nodes = ClustersNodesStats::<T>::try_get(cluster_id)
+				.map(|status| {
+					status.await_validation + status.validation_succeeded + status.validation_failed
+						== 0
+				})
+				.unwrap_or(false);
+
+			is_empty_nodes
+				&& matches!(cluster.status, ClusterStatus::Bonded | ClusterStatus::Activated)
+		}
 	}
 
 	impl<T: Config> ClusterQuery<T> for Pallet<T> {
@@ -717,14 +747,18 @@ pub mod pallet {
 		}
 
 		fn update_cluster_economics(
-			cluster_id: ClusterId,
+			cluster_id: &ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 		) -> DispatchResult {
 			Self::do_update_cluster_economics(cluster_id, cluster_gov_params)
 		}
 
-		fn bond_cluster(cluster_id: ClusterId) -> DispatchResult {
+		fn bond_cluster(cluster_id: &ClusterId) -> DispatchResult {
 			Self::do_bond_cluster(cluster_id)
+		}
+
+		fn unbond_cluster(cluster_id: &ClusterId) -> DispatchResult {
+			Self::do_unbond_cluster(cluster_id)
 		}
 	}
 
@@ -746,18 +780,6 @@ pub mod pallet {
 					.unwrap_or(false),
 				None => ClustersNodes::<T>::get(cluster_id, node_pub_key).is_some(),
 			}
-		}
-
-		fn contains_nodes(cluster_id: &ClusterId) -> bool {
-			// todo: replace with ClustersNodes::<T>::contains_prefix in new substrate releases
-			ClustersNodesStats::<T>::try_get(cluster_id)
-				.map(|status| {
-					(status.await_validation
-						+ status.validation_succeeded
-						+ status.validation_failed)
-						== 0
-				})
-				.unwrap_or(false)
 		}
 
 		fn add_node(
@@ -815,7 +837,7 @@ pub mod pallet {
 			)
 		}
 
-		fn activate_cluster(cluster_id: ClusterId) -> DispatchResult {
+		fn activate_cluster(cluster_id: &ClusterId) -> DispatchResult {
 			Self::do_activate_cluster(cluster_id)
 		}
 	}

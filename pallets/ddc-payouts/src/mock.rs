@@ -199,7 +199,7 @@ impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 		Ok(())
 	}
 
-	fn activate_cluster(_cluster_id: ClusterId) -> DispatchResult {
+	fn activate_cluster(_cluster_id: &ClusterId) -> DispatchResult {
 		unimplemented!()
 	}
 }
@@ -470,13 +470,17 @@ impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
 	}
 
 	fn update_cluster_economics(
-		_cluster_id: ClusterId,
+		_cluster_id: &ClusterId,
 		_cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
 	) -> DispatchResult {
 		unimplemented!()
 	}
 
-	fn bond_cluster(_cluster_id: ClusterId) -> DispatchResult {
+	fn bond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn unbond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
 		unimplemented!()
 	}
 }
