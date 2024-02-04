@@ -25,6 +25,7 @@ sc-consensus-grandpa-rpc = { workspace = true, default-features = true }
 sc-rpc = { workspace = true, default-features = true }
 sc-rpc-api = { workspace = true, default-features = true }
 sc-sync-state-rpc = { workspace = true, default-features = true }
+sc-transaction-pool-api = { workspace = true, default-features = true }
 sp-api = { workspace = true, default-features = true }
 sp-block-builder = { workspace = true, default-features = true }
 sp-blockchain = { workspace = true, default-features = true }
@@ -34,4 +35,3 @@ sp-keystore = { workspace = true, default-features = true }
 sp-runtime = { workspace = true, default-features = true }
 substrate-frame-rpc-system = { workspace = true, default-features = true }
 substrate-state-trie-migration-rpc = { workspace = true, default-features = true }
-txpool-api = { package = "sc-transaction-pool-api", git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
