@@ -1,7 +1,12 @@
 [package]
 name = "cere-cli"
-version = "4.8.8"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
 
 [package.metadata.wasm-pack.profile.release]
 # `wasm-opt` has some problems on Linux, see

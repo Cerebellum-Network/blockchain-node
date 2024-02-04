@@ -4,6 +4,7 @@ authors = ["Cerebellum-Network"]
 edition = "2021"
 homepage = "https://cere.network/"
 license = "GPL-3.0-or-later WITH Classpath-exception-2.0"
+repository = "https://github.com/Cerebellum-Network/blockchain-node"
 
 [workspace]
 members = [
