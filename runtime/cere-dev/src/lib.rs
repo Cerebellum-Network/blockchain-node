@@ -443,8 +443,8 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
-	type HoldIdentifier = HoldReason;
-	type MaxHolds = ConstU32<1>;
+	type HoldIdentifier = ();
+	type MaxHolds = ConstU32<0>;
 }
 
 parameter_types! {
@@ -1501,7 +1501,10 @@ impl Get<Perbill> for NominationPoolsMigrationV4OldPallet {
 }
 
 /// Runtime migrations
-type Migrations = (pallet_offences::migration::v1::MigrateToV1<Runtime>,);
+type Migrations = (
+	pallet_offences::migration::v1::MigrateToV1<Runtime>,
+	cere_runtime_common::session::migration::ClearOldSessionStorage<Runtime>,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<

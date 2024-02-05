@@ -1046,9 +1046,14 @@ name = "cere-runtime-common"
 version = "4.8.9"
 dependencies = [
  "frame-support",
+ "log",
  "node-primitives",
+ "pallet-session",
+ "sp-api",
  "sp-core",
+ "sp-io",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
