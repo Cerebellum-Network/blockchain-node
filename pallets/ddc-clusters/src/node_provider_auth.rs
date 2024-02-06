@@ -56,7 +56,8 @@ where
 			EXTENSION_CALL_GAS_LIMIT,
 			None,
 			call_data,
-			false,
+			pallet_contracts::DebugInfo::Skip,
+			pallet_contracts::CollectEvents::Skip,
 			pallet_contracts::Determinism::Enforced,
 		)
 		.result
@@ -98,7 +99,8 @@ where
 			wasm.into(),
 			contract_args,
 			vec![],
-			false,
+			pallet_contracts::DebugInfo::Skip,
+			pallet_contracts::CollectEvents::Skip,
 		)
 		.result
 		.map_err(|_| NodeProviderAuthContractError::ContractDeployFailed)?
@@ -128,7 +130,8 @@ where
 			EXTENSION_CALL_GAS_LIMIT,
 			None,
 			call_data,
-			false,
+			pallet_contracts::DebugInfo::Skip,
+			pallet_contracts::CollectEvents::Skip,
 			pallet_contracts::Determinism::Enforced,
 		)
 		.result
