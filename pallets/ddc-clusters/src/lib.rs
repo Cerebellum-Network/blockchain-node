@@ -27,6 +27,9 @@ pub(crate) mod mock;
 mod tests;
 
 pub mod migration;
+const LOG_TARGET: &str = "runtime::ddc-clusters";
+
+pub mod migrations; // todo: merge with migration
 
 use ddc_primitives::{
 	traits::{
