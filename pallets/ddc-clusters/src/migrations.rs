@@ -44,7 +44,7 @@ pub mod v1 {
 				current_version.put::<Pallet<T>>();
 				log::info!(
 					target: LOG_TARGET,
-					"Upgraded {} pools, storage to version {:?}",
+					"Upgraded {} clusters, storage to version {:?}",
 					translated,
 					current_version
 				);
@@ -76,7 +76,7 @@ pub mod v1 {
 			let post_count = Clusters::<T>::iter().count() as u32;
 			assert_eq!(
 				prev_count, post_count,
-				"the asset count before and after the migration should be the same"
+				"the clusters count before and after the migration should be the same"
 			);
 
 			let current_version = Pallet::<T>::current_storage_version();
