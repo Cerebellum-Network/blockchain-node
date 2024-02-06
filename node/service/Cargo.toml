@@ -47,7 +47,7 @@ sp-transaction-storage-proof = { workspace = true }
 sp-trie = { workspace = true }
 
 # Cere dependencies
-cere-client = { workspace = true, default-features = false, optional = true }
+cere-client = { workspace = true, optional = true }
 cere-rpc = { workspace = true }
 cere-runtime-common = { workspace = true, optional = true }
 
