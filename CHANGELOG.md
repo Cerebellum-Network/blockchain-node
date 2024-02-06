@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 
+## [4.8.9]
+
+- [C,D] Updated Substrate to polkadot-v0.9.42
 - Introduce a burn rate of 0.058% daily to bring inflation down.
 - More explicit events in `pallet-ddc-payouts` about batch index
 - ...
