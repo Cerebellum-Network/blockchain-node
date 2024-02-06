@@ -1407,17 +1407,7 @@ impl Get<Perbill> for NominationPoolsMigrationV4OldPallet {
 }
 
 /// Runtime migrations
-type Migrations = (
-	// 0.9.40
-	pallet_nomination_pools::migration::v4::MigrateV3ToV5<
-		Runtime,
-		NominationPoolsMigrationV4OldPallet,
-	>,
-	// this release they will be properly pruned after the bonding duration has
-	// elapsed)
-	pallet_grandpa::migrations::CleanupSetIdSessionMap<Runtime>,
-	pallet_preimage::migration::v1::Migration<Runtime>,
-);
+pub type Migrations = migrations::Unreleased;
 
 /// The runtime migrations per release.
 #[allow(deprecated, missing_docs)]
@@ -1488,6 +1478,8 @@ pub mod migrations {
 	// 	frame_support::migrations::RemovePallet<TechnicalMembershipPalletName, <Runtime as
 	// frame_system::Config>::DbWeight>, 	frame_support::migrations::RemovePallet<TipsPalletName,
 	// <Runtime as frame_system::Config>::DbWeight>, );
+
+	pub type Unreleased = (pallet_ddc_clusters::migrations::v1::MigrateToV1<Runtime>);
 }
 
 /// Executive: handles dispatch to the various modules.
