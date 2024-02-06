@@ -27,6 +27,10 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+const LOG_TARGET: &str = "runtime::ddc-clusters";
+
+pub mod migrations;
+
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterEconomics, ClusterManager, ClusterQuery},
