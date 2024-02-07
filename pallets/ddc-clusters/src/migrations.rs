@@ -43,10 +43,14 @@ pub mod v1 {
 			let mut weight = T::DbWeight::get().reads(1);
 
 			if onchain_version == 0 && current_version == 1 {
+				let mut nodes_count_by_cluster: BTreeMap<ClusterId, ClusterNodesCount> =
+					BTreeMap::new();
+
 				let mut translated_clusters = 0u64;
 				Clusters::<T>::translate::<OldCluster<T::AccountId>, _>(
-					|_cluster_id, old_cluster| {
+					|cluster_id, old_cluster| {
 						translated_clusters.saturating_inc();
+						nodes_count_by_cluster.insert(cluster_id, 0);
 						Some(old_cluster.migrate_to_v1())
 					},
 				);
@@ -64,8 +68,6 @@ pub mod v1 {
 				);
 
 				let mut translated_clusters_nodes = 0u64;
-				let mut nodes_count_by_cluster: BTreeMap<ClusterId, ClusterNodesCount> =
-					BTreeMap::new();
 				ClustersNodes::<T>::translate::<OldNodeStatus, _>(
 					|cluster_id, _node_pub_key, _old_value| {
 						translated_clusters_nodes.saturating_inc();
