@@ -4820,6 +4820,7 @@ dependencies = [
  "hex-literal",
  "pallet-balances",
  "pallet-contracts",
+ "pallet-contracts-primitives",
  "pallet-ddc-nodes",
  "pallet-insecure-randomness-collective-flip",
  "pallet-timestamp",
