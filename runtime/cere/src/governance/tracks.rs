@@ -259,7 +259,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 	(
 		101,
 		pallet_referenda::TrackInfo {
-			name: "cluster_admin",
+			name: "cluster_economics_updater",
 			max_deciding: 50,
 			decision_deposit: 400 * DOLLARS,
 			prepare_period: 4 * HOURS,

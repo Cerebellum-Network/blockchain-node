@@ -47,8 +47,9 @@ const APP_CLUSTER_ACTIVATOR: Curve = Curve::make_linear(10, 28, percent(0), perc
 const SUP_CLUSTER_ACTIVATOR: Curve =
 	Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
 
-const APP_CLUSTER_ADMIN: Curve = Curve::make_linear(10, 28, percent(50), percent(100));
-const SUP_CLUSTER_ADMIN: Curve = Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(50));
+const APP_CLUSTER_ECONOMICS_UPDATER: Curve = Curve::make_linear(10, 28, percent(0), percent(10));
+const SUP_CLUSTER_ECONOMICS_UPDATER: Curve =
+	Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
 
 const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15] = [
 	(
@@ -240,8 +241,8 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 			max_deciding: 50,
 			decision_deposit: 0 * DOLLARS,
 			prepare_period: 0 * HOURS,
-			decision_period: 2 * MINUTES,
-			confirm_period: 1 * MINUTES,
+			decision_period: 1 * MINUTES,
+			confirm_period: MINUTES / 2,
 			min_enactment_period: 0 * HOURS,
 			min_approval: APP_CLUSTER_ACTIVATOR,
 			min_support: SUP_CLUSTER_ACTIVATOR,
@@ -250,15 +251,15 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 	(
 		101,
 		pallet_referenda::TrackInfo {
-			name: "cluster_admin",
+			name: "cluster_economics_updater",
 			max_deciding: 50,
 			decision_deposit: 0 * DOLLARS,
 			prepare_period: 0 * HOURS,
-			decision_period: 2 * MINUTES,
-			confirm_period: 1 * MINUTES,
+			decision_period: 1 * MINUTES,
+			confirm_period: MINUTES / 2,
 			min_enactment_period: 0 * HOURS,
-			min_approval: APP_CLUSTER_ADMIN,
-			min_support: SUP_CLUSTER_ADMIN,
+			min_approval: APP_CLUSTER_ECONOMICS_UPDATER,
+			min_support: SUP_CLUSTER_ECONOMICS_UPDATER,
 		},
 	),
 ];
