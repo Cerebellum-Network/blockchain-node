@@ -335,7 +335,7 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 				origins::Origin::BigSpender => Ok(34),
 				// DDC admins
 				origins::Origin::ClusterActivator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
-				origins::Origin::ClusterAdmin => Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID),
+				origins::Origin::ClusterEconomicsUpdater => Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID),
 			}
 		} else {
 			Err(())
