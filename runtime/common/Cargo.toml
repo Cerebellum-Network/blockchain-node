@@ -18,6 +18,7 @@ sp-api = { workspace = true }
 sp-core = { workspace = true }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
+sp-staking = { workspace = true }
 sp-std = { workspace = true }
 
 [features]
@@ -28,4 +29,5 @@ std = [
   "node-primitives/std",
   "sp-core/std",
   "sp-runtime/std",
+  "sp-staking/std",
 ]

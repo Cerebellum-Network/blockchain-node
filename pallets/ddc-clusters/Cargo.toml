@@ -12,7 +12,7 @@ repository.workspace = true
 # 3rd-party depdencies
 codec = { workspace = true }
 hex-literal = { workspace = true }
-serde = { workspace = true, optional = true }
+serde = { workspace = true }
 
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }
@@ -42,7 +42,6 @@ substrate-test-utils = { workspace = true, default-features = true }
 default = ["std"]
 std = [
   "codec/std",
-  "serde",
   "ddc-primitives/std",
   "frame-support/std",
   "frame-system/std",

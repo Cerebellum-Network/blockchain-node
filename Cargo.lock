@@ -947,6 +947,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-staking",
  "sp-std",
 ]
 

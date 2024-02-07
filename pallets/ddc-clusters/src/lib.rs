@@ -79,7 +79,7 @@ pub mod pallet {
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
 		type StakingVisitor: StakingVisitor<Self>;
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
-		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type WeightInfo: WeightInfo;
 	}
 
@@ -121,7 +121,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_gov_params)]
 	pub type ClustersGovParams<T: Config> =
-		StorageMap<_, Twox64Concat, ClusterId, ClusterGovParams<BalanceOf<T>, T::BlockNumber>>;
+		StorageMap<_, Twox64Concat, ClusterId, ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_nodes)]
@@ -139,11 +139,11 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub clusters: Vec<Cluster<T::AccountId>>,
 		#[allow(clippy::type_complexity)]
-		pub clusters_gov_params: Vec<(ClusterId, ClusterGovParams<BalanceOf<T>, T::BlockNumber>)>,
+		pub clusters_gov_params:
+			Vec<(ClusterId, ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>)>,
 		pub clusters_nodes: Vec<(ClusterId, Vec<NodePubKey>)>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig {
@@ -155,7 +155,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T>
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T>
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
@@ -202,7 +202,7 @@ pub mod pallet {
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			ensure_root(origin)?; // requires Governance approval
 			Self::do_create_cluster(
@@ -310,7 +310,7 @@ pub mod pallet {
 		pub fn set_cluster_gov_params(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			ensure_root(origin)?; // requires Governance approval
 			let _cluster =
@@ -328,7 +328,7 @@ pub mod pallet {
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			let cluster =
 				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params)
@@ -399,7 +399,7 @@ pub mod pallet {
 		fn get_chill_delay(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
-		) -> Result<T::BlockNumber, ClusterVisitorError> {
+		) -> Result<BlockNumberFor<T>, ClusterVisitorError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
 			match node_type {
@@ -410,7 +410,7 @@ pub mod pallet {
 		fn get_unbonding_delay(
 			cluster_id: &ClusterId,
 			node_type: NodeType,
-		) -> Result<T::BlockNumber, ClusterVisitorError> {
+		) -> Result<BlockNumberFor<T>, ClusterVisitorError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
 			match node_type {
@@ -420,7 +420,7 @@ pub mod pallet {
 
 		fn get_bonding_params(
 			cluster_id: &ClusterId,
-		) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+		) -> Result<ClusterBondingParams<BlockNumberFor<T>>, ClusterVisitorError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
 			Ok(ClusterBondingParams {
@@ -488,7 +488,7 @@ pub mod pallet {
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			Self::do_create_cluster(
 				cluster_id,

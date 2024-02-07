@@ -131,7 +131,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
-		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type CustomerCharger: CustomerChargerType<Self>;
 		type CustomerDepositor: CustomerDepositorType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
@@ -1032,7 +1032,6 @@ pub mod pallet {
 		pub debtor_customers: Vec<(ClusterId, T::AccountId, u128)>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig {
@@ -1044,7 +1043,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			let account_id = <Pallet<T>>::account_id();
 			let min = <T as pallet::Config>::Currency::minimum_balance();

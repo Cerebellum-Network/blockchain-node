@@ -25,6 +25,7 @@ use frame_support::{
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
 	BoundedVec, PalletId,
 };
+use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
@@ -52,7 +53,7 @@ pub struct UnlockChunk<T: Config> {
 	value: BalanceOf<T>,
 	/// Block number at which point it'll be unlocked.
 	#[codec(compact)]
-	block: T::BlockNumber,
+	block: BlockNumberFor<T>,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -97,7 +98,7 @@ impl<T: Config> AccountsLedger<T> {
 
 	/// Remove entries from `unlocking` that are sufficiently old and reduce the
 	/// total by the sum of their balances.
-	fn consolidate_unlocked(self, current_block: T::BlockNumber) -> Self {
+	fn consolidate_unlocked(self, current_block: BlockNumberFor<T>) -> Self {
 		let mut total = self.total;
 		let unlocking_result: Result<BoundedVec<_, _>, _> = self
 			.unlocking
@@ -142,11 +143,11 @@ pub mod pallet {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
-		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
-		type UnlockingDelay: Get<<Self as frame_system::Config>::BlockNumber>;
+		type UnlockingDelay: Get<BlockNumberFor<Self>>;
 		type ClusterVisitor: ClusterVisitor<Self>;
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
@@ -231,7 +232,6 @@ pub mod pallet {
 		pub buckets: Vec<(ClusterId, T::AccountId, BalanceOf<T>, bool)>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig { feeder_account: None, buckets: Default::default() }
@@ -239,7 +239,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			let account_id = <Pallet<T>>::account_id();
 			let min = <T as pallet::Config>::Currency::minimum_balance();
