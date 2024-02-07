@@ -125,10 +125,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48900,
+	spec_version: 50000,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 14,
+	transaction_version: 15,
 	state_version: 0,
 };
 
@@ -1497,7 +1497,7 @@ impl Get<Perbill> for NominationPoolsMigrationV4OldPallet {
 }
 
 /// Runtime migrations
-type Migrations = ();
+type Migrations = (pallet_im_online::migration::v1::Migration<Runtime>);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
