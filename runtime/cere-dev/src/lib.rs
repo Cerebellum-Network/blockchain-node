@@ -119,11 +119,11 @@ use sp_runtime::generic::Era;
 // Governance configurations.
 pub mod governance;
 use governance::{
-	pallet_custom_origins, ClusterGovActivator,
+	pallet_custom_origins,
 	ClusterGovEditor, ClusterGovCreator,
-	AuctionAdmin, ClusterActivator, ClusterAdmin, FellowshipAdmin,
-	GeneralAdmin, LeaseAdmin, StakingAdmin, TracksInfo, Treasurer, TreasurySpender,
 	CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ECONOMICS_UPDATER_TRACK_ID,
+	FellowshipAdmin, GeneralAdmin, StakingAdmin, TracksInfo, Treasurer,
+	TreasurySpender,
 };
 
 /// Generated voter bag information.
@@ -1224,7 +1224,7 @@ parameter_types! {
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
 	pub const MinValidatedNodesCount: u16 = 3;
 	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterActivator.into();
-	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterAdmin.into();
+	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterEconomicsUpdater.into();
 }
 
 impl pallet_ddc_clusters_gov::Config for Runtime {
