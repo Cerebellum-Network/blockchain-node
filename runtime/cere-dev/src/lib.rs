@@ -1220,7 +1220,7 @@ parameter_types! {
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
 	pub const MinValidatedNodesCount: u16 = 3;
 	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterActivator.into();
-	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterEconomicsUpdater.into();
+	pub ClusterEconomicsUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterEconomicsUpdater.into();
 }
 
 impl pallet_ddc_clusters_gov::Config for Runtime {
@@ -1230,7 +1230,7 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
 	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterActivatorTrackOrigin, Self>;
 	type OpenGovActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterActivator>;
-	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterUpdaterTrackOrigin, Self>;
+	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterEconomicsUpdaterTrackOrigin, Self>;
 	type OpenGovUpdaterOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterEconomicsUpdater>;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
