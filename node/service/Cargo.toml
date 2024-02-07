@@ -35,6 +35,7 @@ sc-sync-state-rpc = { workspace = true }
 sc-sysinfo = { workspace = true }
 sc-telemetry = { workspace = true }
 sc-transaction-pool = { workspace = true }
+sc-transaction-pool-api = { workspace = true }
 sp-api = { workspace = true }
 sp-authority-discovery = { workspace = true }
 sp-blockchain = { workspace = true }
