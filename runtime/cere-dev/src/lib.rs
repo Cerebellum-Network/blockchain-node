@@ -1499,7 +1499,10 @@ pub mod migrations {
 	/// Unreleased migrations. Add new ones here:
 	pub type Unreleased = (
         pallet_ddc_clusters::migration::MigrateToV1<Runtime>,
+		// ----- ClusterGov -----
 		pallet_ddc_clusters::migrations::v1::MigrateToV1<Runtime>
+		pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
+		// ----- ClusterGov -----
 		pallet_contracts::migration::Migration<Runtime>,
 		pallet_referenda::migration::v1::MigrateV0ToV1<Runtime>,
 		// Gov v1 storage migrations

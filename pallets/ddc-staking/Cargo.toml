@@ -12,6 +12,7 @@ repository.workspace = true
 # 3rd-party dependencies
 codec = { workspace = true }
 scale-info = { workspace = true }
+hex-literal = { workspace = true }
 
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }
