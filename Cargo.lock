@@ -5216,6 +5216,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "hex-literal",
  "lazy_static",
  "pallet-balances",
  "pallet-timestamp",

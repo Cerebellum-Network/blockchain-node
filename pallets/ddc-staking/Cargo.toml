@@ -13,6 +13,7 @@ scale-info = { version = "2.1.2", default-features = false, features = ["derive"
 sp-io = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 sp-std = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
+hex-literal = { version = "0.3.4" }
 
 [dev-dependencies]
 lazy_static = "1.4.0"

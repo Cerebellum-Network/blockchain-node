@@ -1480,7 +1480,10 @@ pub mod migrations {
 	// frame_system::Config>::DbWeight>, 	frame_support::migrations::RemovePallet<TipsPalletName,
 	// <Runtime as frame_system::Config>::DbWeight>, );
 
-	pub type Unreleased = (pallet_ddc_clusters::migrations::v1::MigrateToV1<Runtime>);
+	pub type Unreleased = (
+		pallet_ddc_clusters::migrations::v1::MigrateToV1<Runtime>,
+		pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
+	);
 }
 
 /// Executive: handles dispatch to the various modules.
