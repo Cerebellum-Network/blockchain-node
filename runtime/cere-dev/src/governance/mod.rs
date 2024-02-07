@@ -10,7 +10,7 @@ pub use origins::{
 	WhitelistedCaller,
 };
 mod tracks;
-pub use tracks::{TracksInfo, CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ADMIN_TRACK_ID};
+pub use tracks::{TracksInfo, CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ECONOMICS_UPDATER_TRACK_ID};
 
 parameter_types! {
 	pub const VoteLockingPeriod: BlockNumber = 7 * DAYS;

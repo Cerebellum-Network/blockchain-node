@@ -119,9 +119,11 @@ use sp_runtime::generic::Era;
 // Governance configurations.
 pub mod governance;
 use governance::{
-	pallet_custom_origins, AuctionAdmin, ClusterActivator, ClusterAdmin, ClusterGovActivator,
-	ClusterGovEditor, FellowshipAdmin, GeneralAdmin, LeaseAdmin, StakingAdmin, TracksInfo,
-	Treasurer, TreasurySpender, CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ADMIN_TRACK_ID,
+	pallet_custom_origins, ClusterGovActivator,
+	ClusterGovEditor, ClusterGovCreator,
+	AuctionAdmin, ClusterActivator, ClusterAdmin, FellowshipAdmin,
+	GeneralAdmin, LeaseAdmin, StakingAdmin, TracksInfo, Treasurer, TreasurySpender,
+	CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ECONOMICS_UPDATER_TRACK_ID,
 };
 
 /// Generated voter bag information.
@@ -1282,7 +1284,8 @@ where
 				Err(_) => return Err(o),
 			};
 
-		if track_id == CLUSTER_ACTIVATOR_TRACK_ID || track_id == CLUSTER_ADMIN_TRACK_ID {
+		if track_id == CLUSTER_ACTIVATOR_TRACK_ID || track_id == CLUSTER_ECONOMICS_UPDATER_TRACK_ID
+		{
 			let clusters_governance = <ClustersGovWrapper as PalletVisitor<T>>::get_account_id();
 			if origin == clusters_governance {
 				Ok(origin)
@@ -1341,7 +1344,7 @@ impl TracksInfo for DdcTracksInfo {
 				pallet_ddc_origins::Origin::BigSpender => Ok(34),
 				// DDC admins
 				pallet_custom_origins::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
-				pallet_custom_origins::Origin::ClusterGovEditor => Ok(CLUSTER_ADMIN_TRACK_ID),
+				pallet_custom_origins::Origin::ClusterGovEditor => Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID),
 			}
 		} else {
 			Err(())
