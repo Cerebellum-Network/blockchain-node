@@ -196,7 +196,7 @@ impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 		_cluster_manager_id: T::AccountId,
 		_cluster_reserve_id: T::AccountId,
 		_cluster_params: ClusterParams<T::AccountId>,
-		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+		_cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult {
 		Ok(())
 	}
@@ -377,14 +377,14 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_chill_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<T::BlockNumber, ClusterVisitorError> {
-		Ok(T::BlockNumber::from(10u32))
+	) -> Result<BlockNumberFor<T>, ClusterVisitorError> {
+		Ok(BlockNumberFor::<T>::from(10u32))
 	}
 	fn get_unbonding_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<T::BlockNumber, ClusterVisitorError> {
-		Ok(T::BlockNumber::from(10u32))
+	) -> Result<BlockNumberFor<T>, ClusterVisitorError> {
+		Ok(BlockNumberFor::<T>::from(10u32))
 	}
 
 	fn get_pricing_params(
@@ -406,7 +406,7 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 
 	fn get_bonding_params(
 		_cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, ClusterVisitorError> {
 		unimplemented!()
 	}
 }

@@ -21,7 +21,7 @@ benchmarks! {
 	create_bucket {
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-		let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
+		let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
 			treasury_share: Perquintill::default(),
 			validators_share: Perquintill::default(),
 			cluster_reserve_share: Perquintill::default(),
