@@ -49,7 +49,7 @@ pub mod pallet_custom_origins {
 		/// Origin for activating new clusters.
 		ClusterActivator,
 		/// Origin for updating cluster economics.
-		ClusterAdmin,
+		ClusterEconomicsUpdater,
 	}
 
 	macro_rules! decl_unit_ensures {
@@ -93,7 +93,7 @@ pub mod pallet_custom_origins {
 		ReferendumKiller,
 		WhitelistedCaller,
 		ClusterActivator,
-		ClusterAdmin,
+		ClusterEconomicsUpdater,
 	);
 
 	macro_rules! decl_ensure {

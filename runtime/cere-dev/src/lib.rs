@@ -107,9 +107,9 @@ use sp_runtime::generic::Era;
 // Governance configurations.
 pub mod governance;
 use governance::{
-	pallet_custom_origins, AuctionAdmin, ClusterActivator, ClusterAdmin, FellowshipAdmin,
-	GeneralAdmin, LeaseAdmin, StakingAdmin, TracksInfo, Treasurer, TreasurySpender,
-	CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ECONOMICS_UPDATER_TRACK_ID,
+	pallet_custom_origins, AuctionAdmin, ClusterActivator, ClusterEconomicsUpdater,
+	FellowshipAdmin, GeneralAdmin, LeaseAdmin, StakingAdmin, TracksInfo, Treasurer,
+	TreasurySpender, CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ECONOMICS_UPDATER_TRACK_ID,
 };
 
 /// Generated voter bag information.
@@ -1220,7 +1220,7 @@ parameter_types! {
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
 	pub const MinValidatedNodesCount: u16 = 3;
 	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterActivator.into();
-	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterAdmin.into();
+	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterEconomicsUpdater.into();
 }
 
 impl pallet_ddc_clusters_gov::Config for Runtime {
@@ -1231,7 +1231,7 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterActivatorTrackOrigin, Self>;
 	type OpenGovActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterActivator>;
 	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterUpdaterTrackOrigin, Self>;
-	type OpenGovUpdaterOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterAdmin>;
+	type OpenGovUpdaterOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterEconomicsUpdater>;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
