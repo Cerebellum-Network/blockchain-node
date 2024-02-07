@@ -24,6 +24,10 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+const LOG_TARGET: &str = "runtime::ddc-staking";
+
+pub mod migrations;
+
 pub mod weights;
 use core::fmt::Debug;
 
@@ -156,7 +160,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+		frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
