@@ -5616,7 +5616,7 @@ dependencies = [
 [[package]]
 name = "pallet-referenda"
 version = "4.0.0-dev"
-source = "git+https://github.com/yahortsaryk/pallet-referenda.git?branch=main#7e96d1345524e12df5c3c645e23e4067dc459106"
+source = "git+https://github.com/yahortsaryk/pallet-referenda.git?rev=f02f27052b7f0d24ba27c63b7123703ef4ba75fa#f02f27052b7f0d24ba27c63b7123703ef4ba75fa"
 dependencies = [
  "assert_matches",
  "frame-benchmarking",

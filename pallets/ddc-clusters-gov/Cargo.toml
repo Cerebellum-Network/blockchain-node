@@ -15,7 +15,7 @@ serde = { version = "1.0.136", default-features = false, features = ["derive"], 
 sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 sp-std = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 sp-io = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
-pallet-referenda = { default-features = false, git = "https://github.com/yahortsaryk/pallet-referenda.git", branch = "main" }
+pallet-referenda = { default-features = false, git = "https://github.com/yahortsaryk/pallet-referenda.git", rev = "f02f27052b7f0d24ba27c63b7123703ef4ba75fa" }
 
 [dev-dependencies]
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
