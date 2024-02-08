@@ -557,7 +557,7 @@ where
 			voting_rule: sc_consensus_grandpa::VotingRulesBuilder::default().build(),
 			prometheus_registry,
 			shared_voter_state,
-			offchain_tx_pool_factory: OffchainTransactionPoolFactory::new(transaction_pool.clone()),
+			offchain_tx_pool_factory: OffchainTransactionPoolFactory::new(transaction_pool),
 		};
 
 		// the GRANDPA voter task is considered infallible, i.e.

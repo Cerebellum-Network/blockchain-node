@@ -171,7 +171,6 @@ pub fn cere_dev_genesis(
 		balances: cere_dev::BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
 			balances: endowed_accounts.iter().cloned().map(|x| (x, ENDOWMENT)).collect(),
-			..Default::default()
 		},
 		indices: cere_dev::IndicesConfig { indices: vec![] },
 		session: cere_dev::SessionConfig {
