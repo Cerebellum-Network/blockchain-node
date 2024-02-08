@@ -1,6 +1,6 @@
 //! DdcStaking pallet benchmarking.
 
-use ddc_primitives::{NodeParams, NodeType, StorageNodeMode, StorageNodeParams, StorageNodePubKey};
+use ddc_primitives::{DDCNodeParams, NodeMode, NodeParams, NodeType, StorageNodePubKey};
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 };
@@ -25,8 +25,8 @@ benchmarks! {
 		let _ = T::NodeCreator::create_node(
 			node.clone(),
 			stash.clone(),
-			NodeParams::StorageParams(StorageNodeParams {
-				mode: StorageNodeMode::Storage,
+			NodeParams::StorageParams(DDCNodeParams {
+				mode: NodeMode::Storage.into(),
 				host: vec![1u8; 255],
 				domain: vec![2u8; 256],
 				ssl: true,

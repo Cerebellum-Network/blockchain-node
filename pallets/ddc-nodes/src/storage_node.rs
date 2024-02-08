@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
 use ddc_primitives::{
-	ClusterId, NodeParams, NodePubKey, NodeType, StorageNodeMode, StorageNodePubKey,
+	ClusterId, NodeModeFlags, NodeParams, NodePubKey, NodeType, StorageNodePubKey,
 };
 use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
@@ -34,7 +34,7 @@ pub struct StorageNodeProps {
 	pub http_port: u16,
 	pub grpc_port: u16,
 	pub p2p_port: u16,
-	pub mode: StorageNodeMode,
+	pub mode: NodeModeFlags,
 }
 
 impl<T: frame_system::Config> StorageNode<T> {
