@@ -1,6 +1,6 @@
 //! Testing utils for ddc-staking.
 
-use ddc_primitives::{NodeParams, StorageNodeMode, StorageNodeParams, StorageNodePubKey};
+use ddc_primitives::{DDCNodeParams, NodeMode, NodeParams, StorageNodePubKey};
 use frame_benchmarking::account;
 use sp_std::vec;
 
@@ -15,8 +15,8 @@ pub fn create_user_and_config<T: Config>(
 ) -> (T::AccountId, NodePubKey, NodeParams, NodeParams) {
 	let user = account(string, n, SEED);
 	let node = NodePubKey::StoragePubKey(StorageNodePubKey::new([0; 32]));
-	let storage_node_params = NodeParams::StorageParams(StorageNodeParams {
-		mode: StorageNodeMode::Storage,
+	let storage_node_params = NodeParams::StorageParams(DDCNodeParams {
+		mode: NodeMode::Storage.into(),
 		host: vec![1u8; 255],
 		domain: vec![2u8; 255],
 		ssl: false,
@@ -25,8 +25,8 @@ pub fn create_user_and_config<T: Config>(
 		p2p_port: 15000u16,
 	});
 
-	let new_storage_node_params = NodeParams::StorageParams(StorageNodeParams {
-		mode: StorageNodeMode::Storage,
+	let new_storage_node_params = NodeParams::StorageParams(DDCNodeParams {
+		mode: NodeMode::Storage.into(),
 		host: vec![3u8; 255],
 		domain: vec![4u8; 255],
 		ssl: true,

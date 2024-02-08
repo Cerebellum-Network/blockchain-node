@@ -92,19 +92,60 @@ impl TryFrom<u8> for NodeType {
 }
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum StorageNodeMode {
-	/// DDC Storage node operates with enabled caching in RAM and stores data in Hard Drive
-	Full = 1,
+#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub enum NodeMode {
+	/// DDC Storage node operates with enabled caching in RAM and doesn't store data in Hard Drive
+	Cache = 1,
 	/// DDC Storage node operates with disabled caching in RAM and stores data in Hard Drive
 	Storage = 2,
-	/// DDC Storage node operates with enabled caching in RAM and doesn't store data in Hard Drive
-	Cache = 3,
+	/// DDC DAC node operates as aggregator of activity events
+	DAC = 4,
+}
+
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct NodeModeFlags {
+	bits: u16,
+}
+
+impl Default for NodeModeFlags {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+impl From<NodeMode> for NodeModeFlags {
+	fn from(mode: NodeMode) -> Self {
+		NodeModeFlags { bits: mode as u16 }
+	}
+}
+
+impl NodeModeFlags {
+	pub fn new() -> Self {
+		Self { bits: 0 }
+	}
+
+	pub fn from_modes(modes: &Vec<NodeMode>) -> Self {
+		let mut bits = 0u16; // Initialize bits as u8
+		for &mode in modes {
+			// Directly use the copied enum variant, `mode` is now a copy of the enum variant
+			bits |= mode as u16;
+		}
+		Self { bits }
+	}
+
+	pub fn add_mode(&mut self, mode: NodeMode) {
+		self.bits |= mode as u16;
+	}
+
+	pub fn has_mode(&self, mode: NodeMode) -> bool {
+		(self.bits & (mode as u16)) != 0
+	}
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub struct StorageNodeParams {
-	pub mode: StorageNodeMode,
+pub struct DDCNodeParams {
+	pub mode: NodeModeFlags,
 	pub host: Vec<u8>,
 	pub domain: Vec<u8>,
 	pub ssl: bool,
@@ -116,5 +157,5 @@ pub struct StorageNodeParams {
 // Params fields are always coming from extrinsic input
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodeParams {
-	StorageParams(StorageNodeParams),
+	StorageParams(DDCNodeParams),
 }
