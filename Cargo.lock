@@ -5001,6 +5001,7 @@ dependencies = [
 name = "pallet-erc20"
 version = "5.0.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-balances",
@@ -5019,6 +5020,7 @@ dependencies = [
 name = "pallet-erc721"
 version = "5.0.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-balances",
