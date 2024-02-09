@@ -19,9 +19,17 @@ pub type StorageNodePubKey = AccountId32;
 pub type ClusterNodesCount = u16;
 
 // ClusterParams includes Governance non-sensetive parameters only
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterParams<AccountId> {
 	pub node_provider_auth_contract: Option<AccountId>,
+}
+
+#[cfg(feature = "std")]
+impl<AccountId> Default for ClusterParams<AccountId> {
+	fn default() -> Self {
+		ClusterParams { node_provider_auth_contract: None }
+	}
 }
 
 // ClusterGovParams includes Governance sensitive parameters
@@ -103,6 +111,7 @@ pub enum StorageNodeMode {
 	Cache = 3,
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNodeParams {
 	pub mode: StorageNodeMode,
@@ -112,6 +121,21 @@ pub struct StorageNodeParams {
 	pub http_port: u16,
 	pub grpc_port: u16,
 	pub p2p_port: u16,
+}
+
+#[cfg(feature = "std")]
+impl Default for StorageNodeParams {
+	fn default() -> Self {
+		StorageNodeParams {
+			mode: StorageNodeMode::Full,
+			host: Default::default(),
+			domain: Default::default(),
+			ssl: Default::default(),
+			http_port: Default::default(),
+			grpc_port: Default::default(),
+			p2p_port: Default::default(),
+		}
+	}
 }
 
 // Params fields are always coming from extrinsic input

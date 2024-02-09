@@ -198,6 +198,12 @@ pub mod pallet {
 						.clone(),
 				));
 
+				Clusters::<T>::mutate(cluster.cluster_id, |value| {
+					if let Some(clust) = value {
+						clust.status = cluster.status.clone();
+					};
+				});
+
 				for (cluster_id, nodes) in &self.clusters_nodes {
 					let mut stats = ClusterNodesStats {
 						await_validation: 0,
