@@ -21,6 +21,15 @@ pallet-referenda = { default-features = false, git = "https://github.com/yahorts
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
+pallet-preimage = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
+pallet-conviction-voting = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
+pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
+pallet-contracts = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
+pallet-insecure-randomness-collective-flip = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
+pallet-ddc-nodes = { version = "4.8.8", path = "../../pallets/ddc-nodes" }
+pallet-ddc-clusters = { version = "4.8.8", path = "../../pallets/ddc-clusters" }
+pallet-ddc-staking = { version = "4.8.8", path = "../../pallets/ddc-staking" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 sp-tracing = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }

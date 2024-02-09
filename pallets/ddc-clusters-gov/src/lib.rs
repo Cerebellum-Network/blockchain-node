@@ -43,6 +43,11 @@ use sp_runtime::{traits::AccountIdConversion, RuntimeDebug, SaturatedConversion}
 use sp_std::prelude::*;
 pub use weights::WeightInfo;
 
+#[cfg(test)]
+pub(crate) mod mock;
+#[cfg(test)]
+mod tests;
+
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
