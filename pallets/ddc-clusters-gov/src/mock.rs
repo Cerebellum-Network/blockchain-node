@@ -4,7 +4,7 @@
 
 use ddc_primitives::{
 	traits::pallet::{GetDdcOrigin, PalletsOriginOf},
-	ClusterId, ClusterNodeKind, ClusterParams, NodeParams, NodePubKey, StorageNodeMode,
+	ClusterGovParams, ClusterId, ClusterNodeKind, ClusterParams, NodeParams, NodePubKey,
 	StorageNodeParams, DOLLARS,
 };
 use frame_support::{
@@ -27,7 +27,7 @@ use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify},
-	MultiSignature, Perquintill,
+	MultiSignature,
 };
 
 use crate::{self as pallet_ddc_clusters_gov, *};
@@ -503,100 +503,96 @@ pub const NODE_PUB_KEY_1: [u8; 32] = [111; 32];
 pub const NODE_PUB_KEY_2: [u8; 32] = [112; 32];
 pub const NODE_PUB_KEY_3: [u8; 32] = [113; 32];
 
+pub const ENDOWMENT: u128 = 1000 * CERE;
+
+#[allow(clippy::type_complexity)]
+pub type BuiltCluster = (Cluster<AccountId>, ClusterGovParams<Balance, BlockNumber>);
+#[allow(clippy::type_complexity)]
+pub type BuiltNode = (NodePubKey, StorageNode<Test>, ClusterNodeStatus, ClusterNodeKind);
+
+pub fn build_cluster(
+	cluster_id: [u8; 20],
+	manager_id: [u8; 32],
+	reserve_id: [u8; 32],
+	params: ClusterParams<AccountId>,
+	economic_params: ClusterGovParams<Balance, BlockNumber>,
+	status: ClusterStatus,
+) -> BuiltCluster {
+	let mut cluster = Cluster::new(
+		ClusterId::from(cluster_id),
+		AccountId::from(manager_id),
+		AccountId::from(reserve_id),
+		params,
+	);
+	cluster.status = status;
+	(cluster, economic_params)
+}
+
+pub fn build_cluster_node(
+	pub_key: [u8; 32],
+	provider_id: [u8; 32],
+	params: StorageNodeParams,
+	cluster_id: [u8; 20],
+	status: ClusterNodeStatus,
+	kind: ClusterNodeKind,
+) -> BuiltNode {
+	let key = NodePubKey::StoragePubKey(AccountId::from(pub_key.clone()));
+	let mut node = StorageNode::new(
+		key.clone(),
+		AccountId::from(provider_id),
+		NodeParams::StorageParams(params),
+	)
+	.unwrap();
+	node.cluster_id = Some(ClusterId::from(cluster_id));
+	(key, node, status, kind)
+}
+
 pub struct ExtBuilder;
 
 impl ExtBuilder {
-	pub fn build(self) -> TestExternalities {
+	pub fn build(self, cluster: BuiltCluster, cluster_nodes: Vec<BuiltNode>) -> TestExternalities {
 		sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
-		let cluster_id = ClusterId::from(CLUSTER_ID);
-		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_reserve = AccountId::from(CLUSTER_RESERVE_ID);
+		let mut balances: Vec<(AccountId, Balance)> = Vec::new();
+		let mut storage_nodes: Vec<StorageNode<Test>> = Vec::new();
+		let mut cluster_storage_nodes: Vec<(NodePubKey, ClusterNodeKind, ClusterNodeStatus)> =
+			Vec::new();
 
-		let np_1 = AccountId::from(NODE_PROVIDER_ID_1);
-		let np_2 = AccountId::from(NODE_PROVIDER_ID_2);
-		let np_3 = AccountId::from(NODE_PROVIDER_ID_3);
-
-		let node_key_1 = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
-		let node_key_2 = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_2));
-		let node_key_3 = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
-
-		let _ = pallet_balances::GenesisConfig::<Test> {
-			balances: vec![
-				(cluster_manager.clone(), 100 * CERE),
-				(cluster_reserve.clone(), 1000 * CERE),
-				(np_1.clone(), 100 * CERE),
-				(np_2.clone(), 100 * CERE),
-				(np_3.clone(), 100 * CERE),
-			],
+		for (pub_key, node, status, kind) in cluster_nodes.iter() {
+			balances.push((node.provider_id.clone(), ENDOWMENT));
+			cluster_storage_nodes.push((pub_key.clone(), kind.clone(), status.clone()));
+			storage_nodes.push(node.clone());
 		}
-		.assimilate_storage(&mut storage);
 
-		let node_params = NodeParams::StorageParams(StorageNodeParams {
-			mode: StorageNodeMode::Storage,
-			host: vec![1u8; 255],
-			domain: vec![2u8; 255],
-			ssl: true,
-			http_port: 8080_u16,
-			grpc_port: 9090_u16,
-			p2p_port: 9070_u16,
-		});
-
-		let mut node_1 = StorageNode::new(node_key_1.clone(), np_1, node_params.clone()).unwrap();
-		node_1.cluster_id = Some(cluster_id);
-
-		let mut node_2 = StorageNode::new(node_key_2.clone(), np_2, node_params.clone()).unwrap();
-		node_2.cluster_id = Some(cluster_id);
-
-		let mut node_3 = StorageNode::new(node_key_3.clone(), np_3, node_params.clone()).unwrap();
-		node_3.cluster_id = Some(cluster_id);
+		let (clust, cluster_gov_params) = cluster;
+		balances.push((clust.manager_id.clone(), ENDOWMENT));
+		balances.push((clust.reserve_id.clone(), ENDOWMENT));
 
 		let _ =
-			pallet_ddc_nodes::GenesisConfig::<Test> { storage_nodes: vec![node_1, node_2, node_3] }
-				.assimilate_storage(&mut storage);
+			pallet_balances::GenesisConfig::<Test> { balances }.assimilate_storage(&mut storage);
 
-		let mut cluster = Cluster::new(
-			cluster_id,
-			cluster_manager,
-			cluster_reserve,
-			ClusterParams { node_provider_auth_contract: None },
-		);
-		cluster.status = ClusterStatus::Bonded;
+		let _ = pallet_ddc_nodes::GenesisConfig::<Test> { storage_nodes }
+			.assimilate_storage(&mut storage);
 
 		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
-			clusters: vec![cluster],
-			clusters_gov_params: vec![(
-				cluster_id,
-				ClusterGovParams {
-					treasury_share: Perquintill::from_float(10.0),
-					validators_share: Perquintill::from_float(10.0),
-					cluster_reserve_share: Perquintill::from_float(10.0),
-					storage_bond_size: 10,
-					storage_chill_delay: 10,
-					storage_unbonding_delay: 10,
-					unit_per_mb_stored: 10,
-					unit_per_mb_streamed: 10,
-					unit_per_put_request: 10,
-					unit_per_get_request: 10,
-				},
-			)],
-			clusters_nodes: vec![(
-				cluster_id,
-				vec![
-					(node_key_1, ClusterNodeKind::Genesis, ClusterNodeStatus::ValidationSucceeded),
-					(node_key_2, ClusterNodeKind::Genesis, ClusterNodeStatus::ValidationSucceeded),
-					(node_key_3, ClusterNodeKind::Genesis, ClusterNodeStatus::ValidationSucceeded),
-				],
-			)],
+			clusters: vec![clust.clone()],
+			clusters_gov_params: vec![(clust.cluster_id.clone(), cluster_gov_params)],
+			clusters_nodes: vec![(clust.cluster_id.clone(), cluster_storage_nodes)],
 		}
 		.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}
-	pub fn build_and_execute(self, test: impl FnOnce()) {
+
+	pub fn build_and_execute(
+		self,
+		cluster: BuiltCluster,
+		cluster_nodes: Vec<BuiltNode>,
+		test: impl FnOnce(),
+	) {
 		sp_tracing::try_init_simple();
-		let mut ext = self.build();
+		let mut ext = self.build(cluster, cluster_nodes);
 		ext.execute_with(test);
 	}
 }
