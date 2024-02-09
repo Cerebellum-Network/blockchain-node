@@ -1,4 +1,5 @@
 use frame_system::Config;
+use sp_runtime::DispatchResult;
 
 use crate::{ClusterId, NodePubKey};
 
@@ -20,7 +21,7 @@ pub trait StakerCreator<T: Config, Balance> {
 		node: NodePubKey,
 		value: Balance,
 		cluster_id: ClusterId,
-	) -> sp_runtime::DispatchResult;
+	) -> DispatchResult;
 }
 
 pub enum StakingVisitorError {

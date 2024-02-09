@@ -37,8 +37,8 @@ use ddc_primitives::{
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
-	ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterStatus, NodePubKey, NodeType,
+	ClusterNodeState, ClusterNodeStatus, ClusterNodesCount, ClusterNodesStats, ClusterParams,
+	ClusterPricingParams, ClusterStatus, NodePubKey, NodeType,
 };
 use frame_support::{
 	assert_ok,
@@ -158,7 +158,8 @@ pub mod pallet {
 		pub clusters: Vec<Cluster<T::AccountId>>,
 		#[allow(clippy::type_complexity)]
 		pub clusters_gov_params: Vec<(ClusterId, ClusterGovParams<BalanceOf<T>, T::BlockNumber>)>,
-		pub clusters_nodes: Vec<(ClusterId, Vec<NodePubKey>)>,
+		#[allow(clippy::type_complexity)]
+		pub clusters_nodes: Vec<(ClusterId, Vec<(NodePubKey, ClusterNodeKind, ClusterNodeStatus)>)>,
 	}
 
 	#[cfg(feature = "std")]
@@ -198,17 +199,37 @@ pub mod pallet {
 				));
 
 				for (cluster_id, nodes) in &self.clusters_nodes {
-					for node_pub_key in nodes {
+					let mut stats = ClusterNodesStats {
+						await_validation: 0,
+						validation_succeeded: 0,
+						validation_failed: 0,
+					};
+
+					for (node_pub_key, kind, status) in nodes {
 						<ClustersNodes<T>>::insert(
 							cluster_id,
 							node_pub_key,
 							ClusterNodeState {
-								kind: ClusterNodeKind::Genesis,
-								status: ClusterNodeStatus::AwaitsValidation,
+								kind: kind.clone(),
+								status: status.clone(),
 								added_at: frame_system::Pallet::<T>::block_number(),
 							},
 						);
+						match status {
+							ClusterNodeStatus::AwaitsValidation => {
+								stats.await_validation = stats.await_validation.saturating_add(1);
+							},
+							ClusterNodeStatus::ValidationSucceeded => {
+								stats.validation_succeeded =
+									stats.validation_succeeded.saturating_add(1);
+							},
+							ClusterNodeStatus::ValidationFailed => {
+								stats.validation_failed = stats.validation_failed.saturating_add(1);
+							},
+						}
 					}
+
+					<ClustersNodesStats<T>>::insert(cluster.cluster_id, stats);
 				}
 			}
 		}
