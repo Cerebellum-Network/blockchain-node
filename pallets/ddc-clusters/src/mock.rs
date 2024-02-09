@@ -4,7 +4,7 @@
 
 use ddc_primitives::{
 	traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError},
-	ClusterId, NodePubKey,
+	ClusterId, NodeParams, NodePubKey,
 };
 use frame_support::{
 	construct_runtime, parameter_types,
@@ -273,9 +273,6 @@ impl ExtBuilder {
 
 		let node_pub_key = NodePubKey::StoragePubKey(AccountId::from([0; 32]));
 
-		// For testing purposes only
-		pallet_ddc_clusters::GenesisConfig::<Test>::default().build();
-
 		let cluster = Cluster::new(
 			ClusterId::from([0; 20]),
 			AccountId::from([0; 32]),
@@ -291,7 +288,14 @@ impl ExtBuilder {
 		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
 			clusters: vec![cluster],
 			clusters_gov_params: vec![(ClusterId::from([0; 20]), cluster_gov_params)],
-			clusters_nodes: vec![(ClusterId::from([0; 20]), vec![node_pub_key])],
+			clusters_nodes: vec![(
+				ClusterId::from([0; 20]),
+				vec![(
+					node_pub_key,
+					ClusterNodeKind::Genesis,
+					ClusterNodeStatus::ValidationSucceeded,
+				)],
+			)],
 		}
 		.assimilate_storage(&mut t);
 

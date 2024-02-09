@@ -459,8 +459,8 @@ impl ExtBuilder {
 			];
 		}
 
-		let _ =
-			pallet_ddc_staking::GenesisConfig::<Test> { storages }.assimilate_storage(&mut storage);
+		let _ = pallet_ddc_staking::GenesisConfig::<Test> { storages, clusters: vec![] }
+			.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}

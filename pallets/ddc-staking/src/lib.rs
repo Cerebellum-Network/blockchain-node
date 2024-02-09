@@ -36,7 +36,7 @@ use ddc_primitives::traits::{
 	node::{NodeCreator, NodeVisitor},
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
-pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
+pub use ddc_primitives::{ClusterId, ClusterNodesCount, NodePubKey, NodeType};
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
@@ -235,11 +235,13 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		#[allow(clippy::type_complexity)]
 		pub storages: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
+		#[allow(clippy::type_complexity)]
+		pub clusters: Vec<(T::AccountId, T::AccountId, ClusterId)>,
 	}
 
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			GenesisConfig { storages: Default::default() }
+			GenesisConfig { storages: Default::default(), clusters: Default::default() }
 		}
 	}
 
@@ -262,6 +264,41 @@ pub mod pallet {
 					T::RuntimeOrigin::from(Some(controller.clone()).into()),
 					cluster,
 				));
+			}
+
+			for &(ref cluster_stash, ref cluster_controller, cluster) in &self.clusters {
+				let amount = T::ClusterBondingAmount::get();
+
+				assert!(
+					!<ClusterBonded<T>>::contains_key(&cluster_stash),
+					"Cluster is already bonded"
+				);
+
+				assert!(
+					!<ClusterLedger<T>>::contains_key(&cluster_controller),
+					"Cluster ledger is already exists"
+				);
+
+				assert!(
+					T::Currency::free_balance(cluster_stash) >= amount,
+					"Cluster Stash do not have enough balance to participate in storage network."
+				);
+
+				assert!(T::Currency::free_balance(&cluster_stash) < amount, "Insufficient bond");
+
+				assert_ok!(frame_system::Pallet::<T>::inc_consumers(&cluster_stash));
+
+				<ClusterBonded<T>>::insert(&cluster_stash, &cluster_controller);
+
+				let ledger = StakingLedger {
+					stash: cluster_stash.clone(),
+					total: amount,
+					active: amount,
+					chilling: Default::default(),
+					unlocking: Default::default(),
+				};
+
+				Pallet::<T>::update_cluster_ledger(&cluster_controller, &ledger);
 			}
 		}
 	}
@@ -489,8 +526,9 @@ pub mod pallet {
 						// cluster eventually, we keep its stake till the end of unbonding period.
 						if ledger.active < min_bond_size.saturated_into::<BalanceOf<T>>() {
 							match node_pub_key {
-								NodePubKey::StoragePubKey(_) =>
-									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id),
+								NodePubKey::StoragePubKey(_) => {
+									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id)
+								},
 							};
 
 							Self::deposit_event(Event::<T>::LeaveSoon(ledger.stash.clone()));
@@ -819,18 +857,18 @@ pub mod pallet {
 
 			let balance = T::Currency::free_balance(&stash);
 			if balance < amount {
-				return Err(Error::<T>::InsufficientBond)?
+				return Err(Error::<T>::InsufficientBond)?;
 			}
 
 			Self::deposit_event(Event::<T>::Bonded(stash.clone(), amount));
-			let item = StakingLedger {
+			let ledger = StakingLedger {
 				stash,
 				total: amount,
 				active: amount,
 				chilling: Default::default(),
 				unlocking: Default::default(),
 			};
-			Self::update_cluster_ledger(&controller, &item);
+			Self::update_cluster_ledger(&controller, &ledger);
 			Ok(())
 		}
 
