@@ -942,9 +942,12 @@ name = "cere-runtime-common"
 version = "5.0.0"
 dependencies = [
  "frame-support",
+ "frame-system",
  "log",
  "node-primitives",
+ "pallet-contracts",
  "pallet-session",
+ "parity-scale-codec",
  "sp-api",
  "sp-core",
  "sp-io",

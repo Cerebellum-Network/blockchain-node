@@ -1033,7 +1033,8 @@ impl pallet_contracts::Config for Runtime {
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 	type Migrations = (
-		pallet_contracts::migration::v10::Migration<Runtime>,
+		cere_runtime_common::migrations::ContractsMigration<Runtime>,
+		// pallet_contracts::migration::v10::Migration<Runtime>,
 		pallet_contracts::migration::v11::Migration<Runtime>,
 		pallet_contracts::migration::v12::Migration<Runtime>,
 	);
@@ -1496,6 +1497,13 @@ impl Get<Perbill> for NominationPoolsMigrationV4OldPallet {
 /// Runtime migrations
 type Migrations = (
 	pallet_im_online::migration::v1::Migration<Runtime>,
+	pallet_fast_unstake::migrations::v1::MigrateToV1<Runtime>,
+	pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
+	pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
+	pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
+	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
+	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
+	pallet_society::migrations::MigrateToV2<Runtime, (), ()>,
 	pallet_contracts::migration::Migration<Runtime>,
 );
 
