@@ -5,6 +5,7 @@ use ddc_primitives::{
 };
 use frame_support::{assert_noop, assert_ok};
 use pallet_conviction_voting::{AccountVote, Conviction, Vote};
+use pallet_ddc_clusters::Event::{ClusterActivated, ClusterGovParamsSet};
 use pallet_referenda::ReferendumInfo;
 use sp_runtime::Perquintill;
 
@@ -113,8 +114,6 @@ fn cluster_activation_proposal_works() {
 		let end = start + <Test as pallet::Config>::ClusterProposalDuration::get();
 		let threshold = 4; // 3 nodes + 1 cluster manager
 		assert_eq!(votes, Some(Votes { threshold, ayes: vec![], nays: vec![], start, end }));
-
-		assert_eq!(System::events().len(), 1);
 		System::assert_last_event(
 			Event::Proposed { account: cluster_manager, cluster_id, threshold }.into(),
 		)
@@ -293,6 +292,9 @@ fn cluster_activation_is_allowed_for_referenda_activator_track_origin() {
 		let updated_cluster_gov_params =
 			pallet_ddc_clusters::ClustersGovParams::<Test>::get(cluster_id).unwrap();
 		assert_eq!(cluster_gov_params, updated_cluster_gov_params);
+		assert_eq!(System::events().len(), 2);
+		System::assert_has_event(ClusterActivated { cluster_id }.into());
+		System::assert_last_event(ClusterGovParamsSet { cluster_id }.into());
 	})
 }
 
@@ -355,6 +357,10 @@ fn cluster_activation_proposal_approval_initiates_public_referendum() {
 			cluster_id,
 			cluster_gov_params.clone()
 		));
+		let threshold = 4; // 3 nodes + 1 cluster manager
+		System::assert_last_event(
+			Event::Proposed { account: cluster_manager.clone(), cluster_id, threshold }.into(),
+		);
 
 		let not_cluster_manager = AccountId::from([0; 32]);
 		assert_noop!(
@@ -376,6 +382,16 @@ fn cluster_activation_proposal_approval_initiates_public_referendum() {
 
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
 		assert_eq!(votes.ayes, vec![cluster_manager.clone()]);
+		System::assert_last_event(
+			Event::Voted {
+				account: cluster_manager.clone(),
+				cluster_id,
+				voted: true,
+				yes: 1,
+				no: 0,
+			}
+			.into(),
+		);
 
 		let not_node_provider = AccountId::from([128; 32]);
 		let not_cluster_node_key = NodePubKey::StoragePubKey(AccountId::from([128; 32]));
@@ -407,6 +423,16 @@ fn cluster_activation_proposal_approval_initiates_public_referendum() {
 		));
 		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
 		assert_eq!(votes.ayes, vec![cluster_manager.clone(), cluster_node_1_provider.clone()]);
+		System::assert_last_event(
+			Event::Voted {
+				account: cluster_node_1_provider.clone(),
+				cluster_id,
+				voted: true,
+				yes: 2,
+				no: 0,
+			}
+			.into(),
+		);
 
 		assert_ok!(DdcClustersGov::vote_proposal(
 			RuntimeOrigin::signed(cluster_node_2_provider.clone()),
@@ -422,6 +448,16 @@ fn cluster_activation_proposal_approval_initiates_public_referendum() {
 				cluster_node_1_provider.clone(),
 				cluster_node_2_provider.clone()
 			]
+		);
+		System::assert_last_event(
+			Event::Voted {
+				account: cluster_node_2_provider.clone(),
+				cluster_id,
+				voted: true,
+				yes: 3,
+				no: 0,
+			}
+			.into(),
 		);
 
 		assert_ok!(DdcClustersGov::vote_proposal(
@@ -439,6 +475,16 @@ fn cluster_activation_proposal_approval_initiates_public_referendum() {
 				cluster_node_2_provider.clone(),
 				cluster_node_3_provider.clone()
 			]
+		);
+		System::assert_last_event(
+			Event::Voted {
+				account: cluster_node_3_provider.clone(),
+				cluster_id,
+				voted: true,
+				yes: 4,
+				no: 0,
+			}
+			.into(),
 		);
 
 		assert_noop!(
@@ -474,33 +520,46 @@ fn cluster_activation_proposal_approval_initiates_public_referendum() {
 			cluster_id,
 			ClusterMember::ClusterManager,
 		));
-		let balance_after_submission_deposit = Balances::free_balance(cluster_manager.clone());
-
-		let referendum_index = pallet_referenda::ReferendumCount::<Test>::get() - 1;
-		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
-		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
-
+		let referenda_index = pallet_referenda::ReferendumCount::<Test>::get() - 1;
 		let submission_deposit_amount =
 			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
 
+		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
+		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
+
 		assert_eq!(
-			SubmissionDeposits::<Test>::get(referendum_index),
+			SubmissionDeposits::<Test>::get(referenda_index),
 			Some(ReferendaSubmissionDeposit {
 				depositor: cluster_manager.clone(),
 				amount: submission_deposit_amount
 			})
 		);
+
+		let balance_after_submission_deposit = Balances::free_balance(cluster_manager.clone());
 		assert_eq!(
 			balance_before_submission_deposit.saturating_sub(submission_deposit_amount),
 			balance_after_submission_deposit
 		);
+
+		System::assert_has_event(Event::Closed { cluster_id, yes: 4, no: 0 }.into());
+		System::assert_has_event(Event::Approved { cluster_id }.into());
+		System::assert_has_event(Event::ReferendumSubmitted { cluster_id }.into());
+		System::assert_has_event(
+			Event::SubmissionDepositRetained {
+				referenda_index,
+				depositor: cluster_manager.clone(),
+				amount: submission_deposit_amount,
+			}
+			.into(),
+		);
+		System::assert_has_event(Event::Removed { cluster_id }.into());
 
 		// OpenGov
 
 		let balance_before_decision_deposit = Balances::free_balance(cluster_manager.clone());
 		assert_ok!(Referenda::place_decision_deposit(
 			RuntimeOrigin::signed(cluster_manager.clone()),
-			referendum_index,
+			referenda_index,
 		));
 		let balance_after_decision_deposit = Balances::free_balance(cluster_manager.clone());
 		assert_eq!(
@@ -508,32 +567,30 @@ fn cluster_activation_proposal_approval_initiates_public_referendum() {
 			balance_after_decision_deposit
 		);
 
-		let referendum =
-			pallet_referenda::ReferendumInfoFor::<Test>::get(referendum_index).unwrap();
+		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Ongoing(..)));
 
 		assert_ok!(ConvictionVoting::vote(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
-			referendum_index,
+			referenda_index,
 			AccountVote::Standard {
 				vote: Vote { aye: true, conviction: Conviction::Locked6x },
 				balance: Balances::free_balance(cluster_node_1_provider.clone())
 			}
 		));
 
-		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referendum_index));
+		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
 		fast_forward_to(3);
-		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referendum_index));
+		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
 
-		let referendum =
-			pallet_referenda::ReferendumInfoFor::<Test>::get(referendum_index).unwrap();
+		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
 		assert!(matches!(referendum, ReferendumInfo::Approved(..)));
 
 		let balance_before_submission_deposit_refund =
 			Balances::free_balance(cluster_manager.clone());
 		assert_ok!(DdcClustersGov::refund_submission_deposit(
 			RuntimeOrigin::signed(cluster_manager.clone()),
-			referendum_index,
+			referenda_index,
 		));
 		let balance_after_submission_deposit_refund =
 			Balances::free_balance(cluster_manager.clone());
@@ -541,6 +598,14 @@ fn cluster_activation_proposal_approval_initiates_public_referendum() {
 		assert_eq!(
 			balance_before_submission_deposit_refund.saturating_add(submission_deposit_amount),
 			balance_after_submission_deposit_refund
+		);
+		System::assert_last_event(
+			Event::SubmissionDepositRefunded {
+				referenda_index,
+				depositor: cluster_manager.clone(),
+				amount: submission_deposit_amount,
+			}
+			.into(),
 		);
 	})
 }
