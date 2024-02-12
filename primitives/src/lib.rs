@@ -103,15 +103,9 @@ pub enum NodeMode {
 }
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Default, Clone, Copy, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct NodeModeFlags {
 	bits: u16,
-}
-
-impl Default for NodeModeFlags {
-	fn default() -> Self {
-		Self::new()
-	}
 }
 
 impl From<NodeMode> for NodeModeFlags {
