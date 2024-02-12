@@ -116,11 +116,11 @@ impl From<NodeMode> for NodeModeFlags {
 
 impl NodeModeFlags {
 	pub fn new() -> Self {
-		Self { bits: 0 }
+		Default::default()
 	}
 
 	pub fn from_modes(modes: &Vec<NodeMode>) -> Self {
-		let mut bits = 0u16; // Initialize bits as u8
+		let mut bits = 0u16; // Initialize bits as u16
 		for &mode in modes {
 			// Directly use the copied enum variant, `mode` is now a copy of the enum variant
 			bits |= mode as u16;
