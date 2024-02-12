@@ -41,8 +41,8 @@ use ddc_primitives::{
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
-	ClusterNodeState, ClusterNodeStatus, ClusterNodesCount, ClusterNodesStats, ClusterParams,
-	ClusterPricingParams, ClusterStatus, NodePubKey, NodeType,
+	ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
+	ClusterStatus, NodePubKey, NodeType,
 };
 use frame_support::{
 	assert_ok,
