@@ -1221,6 +1221,7 @@ parameter_types! {
 	pub const MinValidatedNodesCount: u16 = 3;
 	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterActivator.into();
 	pub ClusterEconomicsUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterEconomicsUpdater.into();
+	pub const ReferendumEnactmentDuration: BlockNumber = 1;
 }
 
 impl pallet_ddc_clusters_gov::Config for Runtime {
@@ -1240,6 +1241,7 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
+	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
 }
 
 pub struct ClustersGovWrapper;
