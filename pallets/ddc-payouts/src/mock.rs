@@ -173,7 +173,6 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		}
 
 		let charge = amount_to_charge.saturated_into::<BalanceOf<T>>();
-
 		<T as pallet::Config>::Currency::transfer(
 			&content_owner,
 			&billing_vault,
@@ -189,6 +188,8 @@ pub const ACCOUNT_ID_2: AccountId = 2;
 pub const ACCOUNT_ID_3: AccountId = 3;
 pub const ACCOUNT_ID_4: AccountId = 4;
 pub const ACCOUNT_ID_5: AccountId = 5;
+pub const ACCOUNT_ID_6: AccountId = 6;
+pub const ACCOUNT_ID_7: AccountId = 7;
 pub struct TestClusterCreator;
 impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 	fn create_new_cluster(
@@ -229,6 +230,7 @@ pub const USER3_BALANCE: u128 = 1000;
 pub const FREE_CLUSTER_ID: ClusterId = ClusterId::zero();
 pub const ONE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(5u8);
 pub const CERE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(10u8);
+pub const HIGH_FEES_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(6u8);
 
 pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_streamed: 2_000_000,
@@ -255,6 +257,12 @@ pub const PRICING_FEES: ClusterFeesParams = ClusterFeesParams {
 	treasury_share: Perquintill::from_percent(1),
 	validators_share: Perquintill::from_percent(10),
 	cluster_reserve_share: Perquintill::from_percent(2),
+};
+
+pub const PRICING_FEES_HIGH: ClusterFeesParams = ClusterFeesParams {
+	treasury_share: Perquintill::from_percent(10),
+	validators_share: Perquintill::from_percent(20),
+	cluster_reserve_share: Perquintill::from_percent(20),
 };
 
 pub const PRICING_FEES_ZERO: ClusterFeesParams = ClusterFeesParams {
@@ -348,6 +356,8 @@ pub fn get_fees(cluster_id: &ClusterId) -> ClusterFeesParams {
 		*cluster_id == CERE_CLUSTER_ID
 	{
 		PRICING_FEES_ZERO
+	} else if *cluster_id == HIGH_FEES_CLUSTER_ID {
+		PRICING_FEES_HIGH
 	} else {
 		PRICING_FEES
 	}
@@ -427,6 +437,8 @@ impl ExtBuilder {
 				(3, USER3_BALANCE), // > PARTIAL_CHARGE
 				(4, 1000000000000000000000000),
 				(5, 1000000000000000000000000),
+				(6, 1000000000000000000000000),
+				(7, 1000000000000000000000000),
 			],
 		}
 		.assimilate_storage(&mut storage);
