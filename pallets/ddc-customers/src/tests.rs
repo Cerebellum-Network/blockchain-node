@@ -29,7 +29,8 @@ fn create_bucket_works() {
 				bucket_id: 1,
 				owner_id: account_1,
 				cluster_id,
-				is_public: bucket_params.is_public
+				is_public: bucket_params.is_public,
+				is_removed: false,
 			})
 		);
 
@@ -73,7 +74,8 @@ fn create_two_buckets_works() {
 				bucket_id: 1,
 				owner_id: account_1,
 				cluster_id,
-				is_public: bucket_1_params.is_public
+				is_public: bucket_1_params.is_public,
+				is_removed: false,
 			})
 		);
 		assert_eq!(
@@ -82,7 +84,8 @@ fn create_two_buckets_works() {
 				bucket_id: 2,
 				owner_id: account_1,
 				cluster_id,
-				is_public: bucket_2_params.is_public
+				is_public: bucket_2_params.is_public,
+				is_removed: false,
 			})
 		);
 	})
@@ -368,7 +371,8 @@ fn set_bucket_params_works() {
 				bucket_id,
 				owner_id: bucket_owner,
 				cluster_id,
-				is_public: update_bucket_params.is_public
+				is_public: update_bucket_params.is_public,
+				is_removed: false,
 			})
 		);
 
