@@ -132,6 +132,7 @@ pub mod pallet {
 		/// Default voting strategy.
 		type DefaultVote: DefaultVote;
 		type MinValidatedNodesCount: Get<u16>;
+		type ReferendumEnactmentDuration: Get<Self::BlockNumber>;
 	}
 
 	#[pallet::storage]
@@ -211,6 +212,8 @@ pub mod pallet {
 		NotValidatedNode,
 		/// Cluster does not exist
 		NoCluster,
+		/// Cluster does not contain this node
+		NoClusterNode,
 		/// Account is not proposal author
 		NotProposalAuthor,
 		/// Proposal must exist
@@ -478,16 +481,21 @@ pub mod pallet {
 				ClusterMember::ClusterManager => Self::ensure_cluster_manager(origin, cluster_id),
 				ClusterMember::NodeProvider(node_pub_key) => {
 					let node_state = T::ClusterManager::get_node_state(&cluster_id, &node_pub_key)
-						.map_err(|_| Error::<T>::NotValidatedNode)?;
+						.map_err(|_| Error::<T>::NoClusterNode)?;
 					if node_state.status != ClusterNodeStatus::ValidationSucceeded {
 						Err(Error::<T>::NotValidatedNode.into())
 					} else {
-						let voting = ClusterProposalVoting::<T>::get(cluster_id)
-							.ok_or(Error::<T>::ProposalMissing)?;
-						if node_state.added_at < voting.start {
-							Ok(())
+						let node_provider = T::NodeVisitor::get_node_provider_id(&node_pub_key)?;
+						if origin == node_provider {
+							let voting = ClusterProposalVoting::<T>::get(cluster_id)
+								.ok_or(Error::<T>::ProposalMissing)?;
+							if node_state.added_at < voting.start {
+								Ok(())
+							} else {
+								Err(Error::<T>::VoteProhibited.into())
+							}
 						} else {
-							Err(Error::<T>::VoteProhibited.into())
+							Err(Error::<T>::NotNodeProvider.into())
 						}
 					}
 				},
@@ -688,7 +696,7 @@ pub mod pallet {
 			let referenda_call = pallet_referenda::Call::<T>::submit {
 				proposal_origin: Box::new(pallets_origin),
 				proposal: bounded_call,
-				enactment_moment: DispatchTime::After(T::BlockNumber::from(1u32)),
+				enactment_moment: DispatchTime::After(T::ReferendumEnactmentDuration::get()),
 			};
 
 			let referenda_call_len = referenda_call.encode().len();

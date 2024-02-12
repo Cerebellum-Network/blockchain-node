@@ -270,6 +270,7 @@ parameter_types! {
 	pub const MinValidatedNodesCount: u16 = 3;
 	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterActivator.into();
 	pub ClusterEconomicsUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterEconomicsUpdater.into();
+	pub const ReferendumEnactmentDuration: BlockNumber = 1;
 }
 
 impl crate::pallet::Config for Test {
@@ -289,6 +290,7 @@ impl crate::pallet::Config for Test {
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
 	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
+	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
 }
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
@@ -353,17 +355,20 @@ const APP_CLUSTER_ECONOMICS_UPDATER: Curve = Curve::make_linear(10, 28, percent(
 const SUP_CLUSTER_ECONOMICS_UPDATER: Curve =
 	Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
 
+pub const CLUSTER_ACTIVATOR_DECISION_DEPOSIT: Balance = 30 * DOLLARS;
+pub const CLUSTER_ECONOMICS_UPDATE_DECISION_DEPOSIT: Balance = 20 * DOLLARS;
+
 const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 2] = [
 	(
 		100,
 		pallet_referenda::TrackInfo {
 			name: "cluster_activator",
 			max_deciding: 50,
-			decision_deposit: 0 * DOLLARS,
-			prepare_period: 0 * MINUTES,
-			decision_period: 1 * MINUTES,
-			confirm_period: MINUTES / 2,
-			min_enactment_period: 0 * MINUTES,
+			decision_deposit: CLUSTER_ACTIVATOR_DECISION_DEPOSIT,
+			prepare_period: 0,
+			decision_period: MINUTES / 2,
+			confirm_period: MINUTES / 4,
+			min_enactment_period: 0,
 			min_approval: APP_CLUSTER_ACTIVATOR,
 			min_support: SUP_CLUSTER_ACTIVATOR,
 		},
@@ -373,11 +378,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 2]
 		pallet_referenda::TrackInfo {
 			name: "cluster_economics_updater",
 			max_deciding: 50,
-			decision_deposit: 0 * DOLLARS,
-			prepare_period: 0 * MINUTES,
-			decision_period: 1 * MINUTES,
-			confirm_period: MINUTES / 2,
-			min_enactment_period: 0 * MINUTES,
+			decision_deposit: CLUSTER_ECONOMICS_UPDATE_DECISION_DEPOSIT,
+			prepare_period: 0,
+			decision_period: MINUTES / 2,
+			confirm_period: MINUTES / 4,
+			min_enactment_period: 0,
 			min_approval: APP_CLUSTER_ECONOMICS_UPDATER,
 			min_support: SUP_CLUSTER_ECONOMICS_UPDATER,
 		},
