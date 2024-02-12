@@ -266,7 +266,7 @@ impl pallet_custom_origins::Config for Test {}
 
 parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
-	pub const ClusterProposalDuration: BlockNumber = 5 * MINUTES;
+	pub const ClusterProposalDuration: BlockNumber = 1 * MINUTES;
 	pub const MinValidatedNodesCount: u16 = 3;
 	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterActivator.into();
 	pub ClusterEconomicsUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterEconomicsUpdater.into();

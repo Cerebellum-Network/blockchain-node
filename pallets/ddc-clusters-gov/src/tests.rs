@@ -1,8 +1,6 @@
 //! Tests for the module.
 
-use ddc_primitives::{
-	traits::cluster, ClusterGovParams, ClusterNodeKind, ClusterParams, StorageNodeParams,
-};
+use ddc_primitives::{ClusterGovParams, ClusterNodeKind, ClusterParams, StorageNodeParams};
 use frame_support::{assert_noop, assert_ok};
 use pallet_conviction_voting::{AccountVote, Conviction, Vote};
 use pallet_ddc_clusters::Event::{ClusterActivated, ClusterGovParamsSet};
@@ -63,7 +61,7 @@ fn cluster_activation_proposal_works() {
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
-		System::set_block_number(1);
+		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let not_cluster_manager = AccountId::from([0; 32]);
@@ -159,7 +157,7 @@ fn cluster_activation_proposal_fails_on_unexpected_state() {
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
-		System::set_block_number(1);
+		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
@@ -197,7 +195,7 @@ fn cluster_activation_proposal_fails_if_there_are_not_enough_validated_nodes() {
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![node_1], || {
-		System::set_block_number(1);
+		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
@@ -226,7 +224,7 @@ fn cluster_activation_is_restricted_for_system_origins() {
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![], || {
-		System::set_block_number(1);
+		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
@@ -264,7 +262,7 @@ fn cluster_activation_is_allowed_for_referenda_activator_track_origin() {
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![], || {
-		System::set_block_number(1);
+		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_gov_params = ClusterGovParams {
@@ -299,7 +297,8 @@ fn cluster_activation_is_allowed_for_referenda_activator_track_origin() {
 }
 
 #[test]
-fn cluster_activation_proposal_approval_initiates_public_referendum() {
+fn cluster_activation_proposal_initiates_referendum_on_close_if_there_are_no_abstentions_and_voting_period_continues(
+) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -520,7 +519,11 @@ fn cluster_activation_proposal_approval_initiates_public_referendum() {
 			cluster_id,
 			ClusterMember::ClusterManager,
 		));
-		let referenda_index = pallet_referenda::ReferendumCount::<Test>::get() - 1;
+
+		let referenda_count = pallet_referenda::ReferendumCount::<Test>::get();
+		assert_eq!(referenda_count, 1);
+		let referenda_index = referenda_count - 1;
+
 		let submission_deposit_amount =
 			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
 
@@ -606,6 +609,409 @@ fn cluster_activation_proposal_approval_initiates_public_referendum() {
 				amount: submission_deposit_amount,
 			}
 			.into(),
+		);
+	})
+}
+
+#[test]
+fn cluster_activation_proposal_initiates_referendum_on_close_if_there_are_no_abstentions_and_voting_period_ended(
+) {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Bonded,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
+		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
+
+		let cluster_node_2_provider = AccountId::from(NODE_PROVIDER_ID_2);
+		let cluster_node_2_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_2));
+
+		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
+		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
+
+		assert_ok!(DdcClustersGov::propose_activate_cluster(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			cluster_gov_params.clone()
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			true,
+			ClusterMember::ClusterManager,
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_1_key.clone()),
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_2_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_2_key.clone()),
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_3_key),
+		));
+
+		let start = BlockNumber::from(1_u64);
+		let end = start + <Test as pallet::Config>::ClusterProposalDuration::get();
+		fast_forward_to(end + 1);
+
+		let balance_before_submission_deposit =
+			Balances::free_balance(cluster_node_2_provider.clone());
+		assert_ok!(DdcClustersGov::close_proposal(
+			RuntimeOrigin::signed(cluster_node_2_provider.clone()),
+			cluster_id,
+			ClusterMember::NodeProvider(cluster_node_2_key.clone()),
+		));
+
+		let referenda_count = pallet_referenda::ReferendumCount::<Test>::get();
+		assert_eq!(referenda_count, 1);
+		let referenda_index = referenda_count - 1;
+
+		let submission_deposit_amount =
+			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+
+		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
+		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
+
+		assert_eq!(
+			SubmissionDeposits::<Test>::get(referenda_index),
+			Some(ReferendaSubmissionDeposit {
+				depositor: cluster_node_2_provider.clone(),
+				amount: submission_deposit_amount
+			})
+		);
+
+		let balance_after_submission_deposit =
+			Balances::free_balance(cluster_node_2_provider.clone());
+		assert_eq!(
+			balance_before_submission_deposit.saturating_sub(submission_deposit_amount),
+			balance_after_submission_deposit
+		);
+
+		System::assert_has_event(Event::Closed { cluster_id, yes: 4, no: 0 }.into());
+		System::assert_has_event(Event::Approved { cluster_id }.into());
+		System::assert_has_event(Event::ReferendumSubmitted { cluster_id }.into());
+		System::assert_has_event(
+			Event::SubmissionDepositRetained {
+				referenda_index,
+				depositor: cluster_node_2_provider.clone(),
+				amount: submission_deposit_amount,
+			}
+			.into(),
+		);
+		System::assert_has_event(Event::Removed { cluster_id }.into());
+	})
+}
+
+#[test]
+fn cluster_activation_proposal_does_not_initiate_referendum_on_close_if_there_are_abstentions_and_voting_period_ended(
+) {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Bonded,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		assert_ok!(DdcClustersGov::propose_activate_cluster(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			cluster_gov_params.clone()
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			true,
+			ClusterMember::ClusterManager,
+		));
+
+		let start = BlockNumber::from(1_u64);
+		let end = start + <Test as pallet::Config>::ClusterProposalDuration::get();
+		fast_forward_to(end + 1);
+
+		assert_ok!(DdcClustersGov::close_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			ClusterMember::ClusterManager,
+		));
+
+		// As the quorum is not reached, the proposal gets rejected and no referenda is created
+		assert_eq!(pallet_referenda::ReferendumCount::<Test>::get(), 0);
+
+		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
+		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
+
+		System::assert_has_event(Event::Closed { cluster_id, yes: 1, no: 3 }.into());
+		System::assert_has_event(Event::Disapproved { cluster_id }.into());
+		System::assert_has_event(Event::Removed { cluster_id }.into());
+	})
+}
+
+#[test]
+fn cluster_activation_proposal_does_not_initiate_referendum_on_close_if_there_are_no_abstentions_and_voting_period_ended(
+) {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Bonded,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
+		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
+
+		let cluster_node_2_provider = AccountId::from(NODE_PROVIDER_ID_2);
+		let cluster_node_2_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_2));
+
+		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
+		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
+
+		assert_ok!(DdcClustersGov::propose_activate_cluster(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			cluster_gov_params.clone()
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			true,
+			ClusterMember::ClusterManager,
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+			false,
+			ClusterMember::NodeProvider(cluster_node_1_key.clone()),
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_2_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_2_key.clone()),
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_3_key),
+		));
+
+		let start = BlockNumber::from(1_u64);
+		let end = start + <Test as pallet::Config>::ClusterProposalDuration::get();
+		fast_forward_to(end + 1);
+
+		assert_ok!(DdcClustersGov::close_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			ClusterMember::ClusterManager,
+		));
+
+		// As the quorum is not reached, the proposal gets rejected and no referenda is created
+		assert_eq!(pallet_referenda::ReferendumCount::<Test>::get(), 0);
+
+		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
+		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
+
+		System::assert_has_event(Event::Closed { cluster_id, yes: 3, no: 1 }.into());
+		System::assert_has_event(Event::Disapproved { cluster_id }.into());
+		System::assert_has_event(Event::Removed { cluster_id }.into());
+	})
+}
+
+#[test]
+fn cluster_activation_proposal_cannot_be_closed_if_there_are_abstentions_and_voting_period_continues(
+) {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Bonded,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		assert_ok!(DdcClustersGov::propose_activate_cluster(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			cluster_gov_params.clone()
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			true,
+			ClusterMember::ClusterManager,
+		));
+
+		assert_noop!(
+			DdcClustersGov::close_proposal(
+				RuntimeOrigin::signed(cluster_manager.clone()),
+				cluster_id,
+				ClusterMember::ClusterManager,
+			),
+			Error::<Test>::TooEarly
 		);
 	})
 }
