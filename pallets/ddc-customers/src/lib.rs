@@ -61,6 +61,7 @@ pub struct Bucket<AccountId> {
 	owner_id: AccountId,
 	cluster_id: ClusterId,
 	is_public: bool,
+	is_removed: bool,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -193,6 +194,8 @@ pub mod pallet {
 		BucketCreated { bucket_id: BucketId },
 		/// Bucket with specific id updated
 		BucketUpdated { bucket_id: BucketId },
+		/// Bucket with specific id marked as removed
+		BucketRemoved { bucket_id: BucketId },
 	}
 
 	#[pallet::error]
@@ -228,7 +231,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub feeder_account: Option<T::AccountId>,
-		pub buckets: Vec<(ClusterId, T::AccountId, BalanceOf<T>, bool)>,
+		pub buckets: Vec<(ClusterId, T::AccountId, BalanceOf<T>, bool, bool)>,
 	}
 
 	#[cfg(feature = "std")]
@@ -258,7 +261,7 @@ pub mod pallet {
 				}
 			}
 
-			for (cluster_id, owner_id, deposit, is_public) in &self.buckets {
+			for (cluster_id, owner_id, deposit, is_public, is_removed) in &self.buckets {
 				let cur_bucket_id = <BucketsCount<T>>::get()
 					.checked_add(1)
 					.ok_or(Error::<T>::ArithmeticOverflow)
@@ -270,6 +273,7 @@ pub mod pallet {
 					owner_id: owner_id.clone(),
 					cluster_id: *cluster_id,
 					is_public: *is_public,
+					is_removed: *is_removed,
 				};
 				<Buckets<T>>::insert(cur_bucket_id, bucket);
 
@@ -311,6 +315,7 @@ pub mod pallet {
 				owner_id: bucket_owner,
 				cluster_id,
 				is_public: bucket_params.is_public,
+				is_removed: false,
 			};
 
 			<BucketsCount<T>>::set(cur_bucket_id);
@@ -508,6 +513,26 @@ pub mod pallet {
 			bucket.is_public = bucket_params.is_public;
 			<Buckets<T>>::insert(bucket_id, bucket);
 			Self::deposit_event(Event::<T>::BucketUpdated { bucket_id });
+
+			Ok(())
+		}
+
+		/// Mark existing bucket with specified bucket id as removed
+		///
+		/// Only an owner can remove a bucket
+		#[pallet::call_index(6)]
+		// Todo: add benchmarks
+		#[pallet::weight(T::WeightInfo::create_bucket())]
+		pub fn remove_bucket(origin: OriginFor<T>, bucket_id: BucketId) -> DispatchResult {
+			let owner = ensure_signed(origin)?;
+			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+			ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
+
+			bucket.is_removed = true;
+
+			<Buckets<T>>::insert(bucket_id, bucket);
+
+			Self::deposit_event(Event::<T>::BucketRemoved { bucket_id });
 
 			Ok(())
 		}
