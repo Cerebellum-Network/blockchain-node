@@ -51,7 +51,7 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 
-use crate::weights::WeightInfo;
+pub use crate::weights::WeightInfo;
 
 const DDC_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC maintainer's stake
 

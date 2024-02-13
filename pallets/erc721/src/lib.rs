@@ -16,7 +16,7 @@ use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
 pub mod weights;
-use crate::weights::WeightInfo;
+pub use crate::weights::WeightInfo;
 mod mock;
 mod tests;
 

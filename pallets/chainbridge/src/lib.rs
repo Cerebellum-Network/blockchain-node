@@ -3,7 +3,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod weights;
-use crate::weights::WeightInfo;
+pub use crate::weights::WeightInfo;
 
 #[cfg(test)]
 pub(crate) mod mock;

@@ -15,7 +15,7 @@
 #![recursion_limit = "256"]
 
 pub mod weights;
-use crate::weights::WeightInfo;
+pub use crate::weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
