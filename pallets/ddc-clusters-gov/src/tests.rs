@@ -23,7 +23,7 @@ fn fast_forward_to(n: u64) {
 }
 
 #[test]
-fn cluster_activation_proposal_works() {
+fn cluster_activation_proposal_initiated() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -292,6 +292,305 @@ fn cluster_activation_is_allowed_for_referenda_activator_track_origin() {
 		assert_eq!(cluster_gov_params, updated_cluster_gov_params);
 		assert_eq!(System::events().len(), 2);
 		System::assert_has_event(ClusterActivated { cluster_id }.into());
+		System::assert_last_event(ClusterGovParamsSet { cluster_id }.into());
+	})
+}
+
+#[test]
+fn cluster_economics_update_proposal_initiated() {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Activated,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
+		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
+		let cluster_gov_params = ClusterGovParams {
+			treasury_share: Perquintill::from_float(5.0),
+			validators_share: Perquintill::from_float(10.0),
+			cluster_reserve_share: Perquintill::from_float(15.0),
+			storage_bond_size: 10 * CERE,
+			storage_chill_delay: 20,
+			storage_unbonding_delay: 20,
+			unit_per_mb_stored: 97656,
+			unit_per_mb_streamed: 48828,
+			unit_per_put_request: 10,
+			unit_per_get_request: 5,
+		};
+
+		let not_cluster_member = AccountId::from([0; 32]);
+		let not_cluster_node_key =
+			NodePubKey::StoragePubKey(AccountId::from(AccountId::from([128; 32])));
+		assert_noop!(
+			DdcClustersGov::propose_update_cluster_economics(
+				RuntimeOrigin::signed(not_cluster_member.clone()),
+				cluster_id,
+				cluster_gov_params.clone(),
+				ClusterMember::NodeProvider(not_cluster_node_key.clone())
+			),
+			Error::<Test>::NotValidatedNode
+		);
+
+		let not_cluster_id = ClusterId::from([0; 20]);
+		assert_noop!(
+			DdcClustersGov::propose_update_cluster_economics(
+				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+				not_cluster_id,
+				cluster_gov_params.clone(),
+				ClusterMember::NodeProvider(cluster_node_1_key.clone())
+			),
+			Error::<Test>::NotValidatedNode
+		);
+
+		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+			cluster_gov_params.clone(),
+			ClusterMember::NodeProvider(cluster_node_1_key)
+		));
+
+		let proposal = ClusterProposal::<Test>::get(cluster_id);
+		assert_eq!(
+			proposal,
+			Some(Proposal {
+				author: cluster_node_1_provider.clone(),
+				kind: ProposalKind::UpdateClusterEconomics,
+				call: <Test as pallet::Config>::ClusterProposalCall::from(
+					Call::<Test>::update_cluster_economics {
+						cluster_id,
+						cluster_gov_params: cluster_gov_params.clone(),
+					}
+				)
+			})
+		);
+
+		let votes = ClusterProposalVoting::<Test>::get(cluster_id);
+		let start = BlockNumber::from(1_u64);
+		let end = start + <Test as pallet::Config>::ClusterProposalDuration::get();
+		let threshold = 4; // 3 nodes + 1 cluster manager
+		assert_eq!(votes, Some(Votes { threshold, ayes: vec![], nays: vec![], start, end }));
+		System::assert_last_event(
+			Event::Proposed { account: cluster_node_1_provider, cluster_id, threshold }.into(),
+		)
+	})
+}
+
+#[test]
+fn cluster_economics_update_proposal_fails_on_unexpected_state() {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Unbonded,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		assert_noop!(
+			DdcClustersGov::propose_update_cluster_economics(
+				RuntimeOrigin::signed(cluster_manager.clone()),
+				cluster_id,
+				cluster_gov_params.clone(),
+				ClusterMember::ClusterManager
+			),
+			Error::<Test>::UnexpectedState
+		);
+	})
+}
+
+#[test]
+fn cluster_economics_update_proposal_fails_if_there_are_not_enough_validated_nodes() {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Activated,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1], || {
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		assert_noop!(
+			DdcClustersGov::propose_update_cluster_economics(
+				RuntimeOrigin::signed(cluster_manager.clone()),
+				cluster_id,
+				cluster_gov_params.clone(),
+				ClusterMember::ClusterManager
+			),
+			Error::<Test>::NotEnoughValidatedNodes
+		);
+	})
+}
+
+#[test]
+fn cluster_economics_update_is_restricted_for_system_origins() {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Activated,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1], || {
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		assert_noop!(
+			DdcClustersGov::update_cluster_economics(
+				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+				cluster_id,
+				cluster_gov_params.clone(),
+			),
+			DispatchError::BadOrigin
+		);
+
+		assert_noop!(
+			DdcClustersGov::update_cluster_economics(
+				RuntimeOrigin::root(),
+				cluster_id,
+				cluster_gov_params.clone(),
+			),
+			DispatchError::BadOrigin
+		);
+	})
+}
+
+#[test]
+fn cluster_economics_update_is_allowed_for_referenda_economics_updater_track_origin() {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Bonded,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![], || {
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_gov_params = ClusterGovParams {
+			treasury_share: Perquintill::from_float(5.0),
+			validators_share: Perquintill::from_float(10.0),
+			cluster_reserve_share: Perquintill::from_float(15.0),
+			storage_bond_size: 10 * CERE,
+			storage_chill_delay: 20,
+			storage_unbonding_delay: 20,
+			unit_per_mb_stored: 97656,
+			unit_per_mb_streamed: 48828,
+			unit_per_put_request: 10,
+			unit_per_get_request: 5,
+		};
+		let open_gov_updater = <Test as pallet::Config>::OpenGovUpdaterTrackOrigin::get();
+		assert_ok!(DdcClustersGov::update_cluster_economics(
+			open_gov_updater,
+			cluster_id,
+			cluster_gov_params.clone()
+		));
+
+		let updated_cluster_gov_params =
+			pallet_ddc_clusters::ClustersGovParams::<Test>::get(cluster_id).unwrap();
+		assert_eq!(cluster_gov_params, updated_cluster_gov_params);
+		assert_eq!(System::events().len(), 1);
 		System::assert_last_event(ClusterGovParamsSet { cluster_id }.into());
 	})
 }
