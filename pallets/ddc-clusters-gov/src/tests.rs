@@ -1015,3 +1015,87 @@ fn cluster_activation_proposal_cannot_be_closed_if_there_are_abstentions_and_vot
 		);
 	})
 }
+
+#[test]
+fn proposal_can_be_retracted_by_its_author() {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Bonded,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+		let not_cluster_id = ClusterId::from([0; 20]);
+
+		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
+
+		assert_ok!(DdcClustersGov::propose_activate_cluster(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			cluster_gov_params.clone()
+		));
+
+		assert!(ClusterProposal::<Test>::contains_key(cluster_id));
+		assert!(ClusterProposalVoting::<Test>::contains_key(cluster_id));
+
+		assert_noop!(
+			DdcClustersGov::retract_proposal(
+				RuntimeOrigin::signed(cluster_manager.clone()),
+				not_cluster_id,
+			),
+			Error::<Test>::ProposalMissing
+		);
+
+		assert_noop!(
+			DdcClustersGov::retract_proposal(
+				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+				cluster_id,
+			),
+			Error::<Test>::NotProposalAuthor
+		);
+
+		assert_ok!(DdcClustersGov::retract_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+		));
+
+		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
+		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
+		System::assert_last_event(Event::Removed { cluster_id }.into());
+	})
+}
