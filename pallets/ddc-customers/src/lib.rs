@@ -34,6 +34,8 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 
+pub mod migration;
+
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -131,7 +133,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+		frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
