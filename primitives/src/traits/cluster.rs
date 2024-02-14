@@ -85,4 +85,10 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 	) -> Result<ClusterNodeState<T::BlockNumber>, DispatchError>;
 
 	fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError>;
+
+	fn validate_node(
+		cluster_id: &ClusterId,
+		node_pub_key: &NodePubKey,
+		succeeded: bool,
+	) -> Result<(), DispatchError>;
 }

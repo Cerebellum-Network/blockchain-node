@@ -1242,6 +1242,10 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
 	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
+	#[cfg(feature = "runtime-benchmarks")]
+	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 }
 
 pub struct ClustersGovWrapper;
@@ -1541,6 +1545,7 @@ mod benches {
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
 		[pallet_preimage, Preimage]
+		[pallet_ddc_clusters_gov, DdcClustersGov]
 	);
 }
 

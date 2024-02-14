@@ -291,6 +291,10 @@ impl crate::pallet::Config for Test {
 	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
 	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
+	#[cfg(feature = "runtime-benchmarks")]
+	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type StakerCreator = pallet_ddc_nodes::Pallet<Test>;
 }
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
