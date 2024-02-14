@@ -5236,6 +5236,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "log",
  "pallet-balances",
  "pallet-ddc-origins",
  "pallet-contracts",
