@@ -31,6 +31,7 @@ pub fn create_cluster_with_nodes<T: Config>(
 	cluster_manager_id: T::AccountId,
 	cluster_reserve_id: T::AccountId,
 	nodes_keys: Vec<NodePubKey>,
+	is_activated: bool,
 ) {
 	let bond_size: BalanceOf<T> = 10000_u32.saturated_into::<BalanceOf<T>>();
 	let cluster_gov_params = ClusterGovParams {
@@ -97,6 +98,10 @@ pub fn create_cluster_with_nodes<T: Config>(
 
 		i = i + 1;
 	}
+
+	if is_activated {
+		T::ClusterCreator::activate_cluster(&cluster_id);
+	}
 }
 
 benchmarks! {
@@ -110,10 +115,29 @@ benchmarks! {
 		let node_pub_key_2 = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
 		let node_pub_key_3 = NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32]));
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), vec![node_pub_key_1, node_pub_key_2, node_pub_key_3]);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), vec![node_pub_key_1, node_pub_key_2, node_pub_key_3], false);
 
 	}: propose_activate_cluster(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterGovParams::default())
 	verify {
+		assert!(ClusterProposal::<T>::contains_key(cluster_id));
+		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
+	}
 
+	propose_update_cluster_economics {
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+
+		let node_pub_key_1 = NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32]));
+		let node_pub_key_2 = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
+		let node_pub_key_3 = NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32]));
+
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), vec![node_pub_key_1, node_pub_key_2, node_pub_key_3], true);
+
+	}: propose_update_cluster_economics(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterGovParams::default(), ClusterMember::ClusterManager)
+	verify {
+		assert!(ClusterProposal::<T>::contains_key(cluster_id));
+		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
 	}
 }
