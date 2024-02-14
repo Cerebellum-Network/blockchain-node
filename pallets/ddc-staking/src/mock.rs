@@ -309,6 +309,14 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
 		unimplemented!()
 	}
+
+	fn validate_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+		_succeeded: bool,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
 }
 
 lazy_static! {
