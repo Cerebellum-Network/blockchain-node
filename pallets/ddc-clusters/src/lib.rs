@@ -873,6 +873,14 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			Ok(current_stats)
 		}
+
+		fn validate_node(
+			cluster_id: &ClusterId,
+			node_pub_key: &NodePubKey,
+			succeeded: bool,
+		) -> Result<(), DispatchError> {
+			Self::do_validate_node(cluster_id.clone(), node_pub_key.clone(), succeeded)
+		}
 	}
 
 	impl<T: Config> ClusterCreator<T, BalanceOf<T>> for Pallet<T>

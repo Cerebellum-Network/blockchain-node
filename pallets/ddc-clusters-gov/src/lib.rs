@@ -15,13 +15,13 @@
 #![recursion_limit = "256"]
 #![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
-pub mod weights;
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterEconomics, ClusterManager, ClusterQuery},
 		cluster_gov::{DefaultVote, MemberCount},
-		node::NodeVisitor,
+		node::{NodeCreator, NodeVisitor},
 		pallet::GetDdcOrigin,
+		staking::StakerCreator,
 	},
 	ClusterGovParams, ClusterId, ClusterNodeStatus, ClusterStatus, NodePubKey,
 };
@@ -41,12 +41,16 @@ use pallet_referenda::ReferendumIndex;
 use scale_info::TypeInfo;
 use sp_runtime::{traits::AccountIdConversion, RuntimeDebug, SaturatedConversion};
 use sp_std::prelude::*;
-pub use weights::WeightInfo;
 
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+pub mod weights;
+pub use weights::WeightInfo;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
@@ -129,10 +133,13 @@ pub mod pallet {
 		type ClusterManager: ClusterManager<Self>;
 		type ClusterEconomics: ClusterEconomics<Self, BalanceOf<Self>>;
 		type NodeVisitor: NodeVisitor<Self>;
-		/// Default voting strategy.
 		type DefaultVote: DefaultVote;
 		type MinValidatedNodesCount: Get<u16>;
 		type ReferendumEnactmentDuration: Get<Self::BlockNumber>;
+		#[cfg(feature = "runtime-benchmarks")]
+		type NodeCreator: NodeCreator<Self>;
+		#[cfg(feature = "runtime-benchmarks")]
+		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 	}
 
 	#[pallet::storage]

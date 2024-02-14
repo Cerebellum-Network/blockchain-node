@@ -242,6 +242,7 @@ runtime-benchmarks = [
   "pallet-referenda/runtime-benchmarks",
   "pallet-whitelist/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
+  "pallet-ddc-clusters-gov/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-executive/try-runtime",
