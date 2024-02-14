@@ -30,7 +30,7 @@ pub fn create_cluster_with_nodes<T: Config>(
 	cluster_id: ClusterId,
 	cluster_manager_id: T::AccountId,
 	cluster_reserve_id: T::AccountId,
-	nodes_keys: Vec<NodePubKey>,
+	nodes_keys: Vec<(NodePubKey, T::AccountId)>,
 	is_activated: bool,
 ) {
 	let bond_size: BalanceOf<T> = 10000_u32.saturated_into::<BalanceOf<T>>();
@@ -65,9 +65,7 @@ pub fn create_cluster_with_nodes<T: Config>(
 	)
 	.expect("Cluster could not be bonded");
 
-	let mut i = 0;
-	for node_pub_key in nodes_keys.iter() {
-		let node_provider = create_funded_user_with_balance::<T>("provider", i, 5);
+	for (node_pub_key, node_provider) in nodes_keys.iter() {
 		let node_params = NodeParams::StorageParams(StorageNodeParams {
 			mode: StorageNodeMode::Storage,
 			host: vec![1u8; 255],
@@ -95,13 +93,17 @@ pub fn create_cluster_with_nodes<T: Config>(
 
 		T::ClusterManager::validate_node(&cluster_id, &node_pub_key, true)
 			.expect("Node could not be validated in the cluster");
-
-		i = i + 1;
 	}
 
 	if is_activated {
-		T::ClusterCreator::activate_cluster(&cluster_id);
+		T::ClusterCreator::activate_cluster(&cluster_id).expect("Could not activate cluster");
 	}
+}
+
+fn next_block<T: Config>() {
+	frame_system::Pallet::<T>::set_block_number(
+		frame_system::Pallet::<T>::block_number() + T::BlockNumber::from(1_u32),
+	);
 }
 
 benchmarks! {
@@ -111,11 +113,16 @@ benchmarks! {
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
 
+		let node_provider_1 = create_funded_user_with_balance::<T>("provider", 0, 5);
 		let node_pub_key_1 = NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32]));
+
+		let node_provider_2 = create_funded_user_with_balance::<T>("provider", 1, 5);
 		let node_pub_key_2 = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
+
+		let node_provider_3 = create_funded_user_with_balance::<T>("provider", 2, 5);
 		let node_pub_key_3 = NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32]));
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), vec![node_pub_key_1, node_pub_key_2, node_pub_key_3], false);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), vec![(node_pub_key_1, node_provider_1), (node_pub_key_2, node_provider_2), (node_pub_key_3, node_provider_3)], false);
 
 	}: propose_activate_cluster(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterGovParams::default())
 	verify {
@@ -129,15 +136,62 @@ benchmarks! {
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
 
+		let node_provider_1 = create_funded_user_with_balance::<T>("provider", 0, 5);
 		let node_pub_key_1 = NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32]));
+
+		let node_provider_2 = create_funded_user_with_balance::<T>("provider", 1, 5);
 		let node_pub_key_2 = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
+
+		let node_provider_3 = create_funded_user_with_balance::<T>("provider", 2, 5);
 		let node_pub_key_3 = NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32]));
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), vec![node_pub_key_1, node_pub_key_2, node_pub_key_3], true);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), vec![(node_pub_key_1, node_provider_1), (node_pub_key_2, node_provider_2), (node_pub_key_3, node_provider_3)], true);
 
 	}: propose_update_cluster_economics(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterGovParams::default(), ClusterMember::ClusterManager)
 	verify {
 		assert!(ClusterProposal::<T>::contains_key(cluster_id));
 		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
+	}
+
+	vote_proposal {
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+
+		let node_provider_1 = create_funded_user_with_balance::<T>("provider", 0, 5);
+		let node_pub_key_1 = NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32]));
+
+		let node_provider_2 = create_funded_user_with_balance::<T>("provider", 1, 5);
+		let node_pub_key_2 = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
+
+		let node_provider_3 = create_funded_user_with_balance::<T>("provider", 2, 5);
+		let node_pub_key_3 = NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32]));
+
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), vec![(node_pub_key_1.clone(), node_provider_1.clone()), (node_pub_key_2, node_provider_2), (node_pub_key_3, node_provider_3)], true);
+		next_block::<T>();
+
+		let threshold = 4;
+		let votes = {
+			let start = frame_system::Pallet::<T>::block_number();
+			let end = start + T::ClusterProposalDuration::get();
+
+			Votes { threshold, ayes: vec![], nays: vec![], start, end }
+		};
+		let call: <T as Config>::ClusterProposalCall =
+			T::ClusterProposalCall::from(Call::<T>::activate_cluster {
+				cluster_id,
+				cluster_gov_params: ClusterGovParams::default(),
+			});
+		let proposal =
+			Proposal { call, author: cluster_manager_id.clone(), kind: ProposalKind::ActivateCluster };
+
+		ClusterProposal::<T>::insert(cluster_id, proposal);
+		ClusterProposalVoting::<T>::insert(cluster_id, votes);
+
+	}: vote_proposal(RawOrigin::Signed(node_provider_1.clone()), cluster_id, true, ClusterMember::NodeProvider(node_pub_key_1))
+	verify {
+		let votes = ClusterProposalVoting::<T>::get(cluster_id).unwrap();
+		assert_eq!(votes.ayes, vec![node_provider_1.clone()]);
 	}
 }

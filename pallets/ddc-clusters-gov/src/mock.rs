@@ -294,7 +294,7 @@ impl crate::pallet::Config for Test {
 	#[cfg(feature = "runtime-benchmarks")]
 	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type StakerCreator = pallet_ddc_nodes::Pallet<Test>;
+	type StakerCreator = pallet_ddc_staking::Pallet<Test>;
 }
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
