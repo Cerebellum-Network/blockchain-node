@@ -22,6 +22,12 @@ pub trait StakerCreator<T: Config, Balance> {
 		value: Balance,
 		cluster_id: ClusterId,
 	) -> DispatchResult;
+
+	fn bond_cluster(
+		cluster_stash: T::AccountId,
+		cluster_controller: T::AccountId,
+		cluster_id: ClusterId,
+	) -> DispatchResult;
 }
 
 pub enum StakingVisitorError {

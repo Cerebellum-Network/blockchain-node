@@ -20,7 +20,7 @@ use sp_runtime::{
 	traits::{
 		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
 	},
-	BuildStorage, MultiSignature, Perbill, Perquintill,
+	BuildStorage, DispatchResult, MultiSignature, Perbill, Perquintill,
 };
 
 use crate::{self as pallet_ddc_clusters, *};
@@ -235,7 +235,15 @@ impl<T: Config> StakerCreator<T, BalanceOf<T>> for TestStaker {
 		_node: NodePubKey,
 		_value: BalanceOf<T>,
 		_cluster_id: ClusterId,
-	) -> sp_runtime::DispatchResult {
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn bond_cluster(
+		_cluster_stash: T::AccountId,
+		_cluster_controller: T::AccountId,
+		_cluster_id: ClusterId,
+	) -> DispatchResult {
 		Ok(())
 	}
 }
