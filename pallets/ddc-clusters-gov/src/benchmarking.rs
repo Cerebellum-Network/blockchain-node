@@ -46,8 +46,8 @@ benchmarks! {
 			unit_per_get_request: 5,
 		};
 
-		let cluster_manager_id = create_funded_user_with_balance::<T>("stash", 1, 2);
-		let cluster_reserve_id = create_funded_user_with_balance::<T>("controller", 1, 2);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("controller", 1, 2);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("stash", 1, 2);
 		let cluster_params = ClusterParams {
 			node_provider_auth_contract: None
 		};
@@ -61,7 +61,11 @@ benchmarks! {
 		)
 		.expect("Cluster is not created");
 
-		T::ClusterEconomics::bond_cluster(&cluster_id).expect("Cluster could not be bonded");
+		T::StakerCreator::bond_cluster(
+			cluster_reserve_id.clone(),
+			cluster_manager_id.clone(),
+			cluster_id,
+		).expect("Cluster could not be bonded");
 
 		for i in 1..4 {
 			let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([i; 32]));

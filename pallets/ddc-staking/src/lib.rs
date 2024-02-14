@@ -1088,7 +1088,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			Nodes::<T>::insert(&node, &stash);
 			Providers::<T>::insert(&stash, &node);
-			<Bonded<T>>::insert(&stash, &controller);
+			Bonded::<T>::insert(&stash, &controller);
 			let stash_balance = T::Currency::free_balance(&stash);
 			let value = value.min(stash_balance);
 			Self::deposit_event(Event::<T>::Bonded(stash.clone(), value));
@@ -1104,6 +1104,26 @@ pub mod pallet {
 				NodePubKey::StoragePubKey(_node) => Self::do_add_storage(&stash, cluster_id),
 			}
 
+			Ok(())
+		}
+
+		fn bond_cluster(
+			cluster_stash: T::AccountId,
+			cluster_controller: T::AccountId,
+			cluster_id: ClusterId,
+		) -> DispatchResult {
+			ClusterBonded::<T>::insert(&cluster_stash, &cluster_controller);
+			let amount = T::ClusterBondingAmount::get();
+			Self::deposit_event(Event::<T>::Bonded(cluster_stash.clone(), amount));
+			let ledger = StakingLedger {
+				stash: cluster_stash,
+				total: amount,
+				active: amount,
+				chilling: Default::default(),
+				unlocking: Default::default(),
+			};
+			Self::update_cluster_ledger(&cluster_controller, &ledger);
+			T::ClusterEconomics::bond_cluster(&cluster_id)?;
 			Ok(())
 		}
 	}
