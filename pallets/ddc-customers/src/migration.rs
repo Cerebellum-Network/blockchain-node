@@ -49,8 +49,8 @@ pub fn migrate_to_v1<T: Config>() -> Weight {
 
 		Buckets::<T>::translate::<v0::Bucket<T::AccountId>, _>(
 			|bucket_id: BucketId, _bucket: v0::Bucket<T::AccountId>| {
-				let bucket = Pallet::<T>::buckets(bucket_id).unwrap();
-				info!(target: LOG_TARGET, "     Migrated bucket for bucket ID {:?}...", bucket_id);
+				info!(target: LOG_TARGET, "     Migrating bucket for bucket ID {:?}...", bucket_id);
+				let bucket: Bucket<T::AccountId> = Pallet::<T>::buckets(bucket_id).unwrap();
 
 				Some(Bucket {
 					bucket_id: bucket.bucket_id,
