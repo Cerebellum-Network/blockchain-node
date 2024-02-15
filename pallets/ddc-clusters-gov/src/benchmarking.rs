@@ -5,7 +5,7 @@ use ddc_primitives::{
 	ClusterGovParams, ClusterId, ClusterNodeKind, ClusterParams, NodeParams, StorageNodeMode,
 	StorageNodeParams, StorageNodePubKey,
 };
-use frame_benchmarking::{account, benchmarks, whitelist_account};
+use frame_benchmarking::{account, benchmarks, benchmarks_instance_pallet, whitelist_account};
 use frame_system::RawOrigin;
 use sp_runtime::Perquintill;
 use sp_std::prelude::*;
@@ -106,7 +106,12 @@ fn next_block<T: Config>() {
 	);
 }
 
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+}
+
 benchmarks! {
+
 	propose_activate_cluster {
 
 		let cluster_id = ClusterId::from([1; 20]);
@@ -194,4 +199,54 @@ benchmarks! {
 		let votes = ClusterProposalVoting::<T>::get(cluster_id).unwrap();
 		assert_eq!(votes.ayes, vec![node_provider_1.clone()]);
 	}
+
+	close_early_approved {
+		let m in 4 .. 64; // min amount of nodes is 4, max is 64
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+
+		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
+
+		for i in 0 .. m - 1 {
+			let node_provider = create_funded_user_with_balance::<T>("node-provider", i, 5);
+			let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([i as u8; 32]));
+			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
+		}
+
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		next_block::<T>();
+
+		DdcClustersGov::<T>::propose_activate_cluster(
+			RawOrigin::Signed(cluster_manager_id.clone()).into(),
+			cluster_id,
+			ClusterGovParams::default(),
+		)?;
+
+		for j in 0 .. m - 1 {
+			let (node_pub_key, node_provider) = &cluster_nodes.get(j as usize).unwrap();
+			DdcClustersGov::<T>::vote_proposal(
+				RawOrigin::Signed(node_provider.clone()).into(),
+				cluster_id,
+				true,
+				ClusterMember::NodeProvider(node_pub_key.clone()),
+			)?;
+		}
+
+		DdcClustersGov::<T>::vote_proposal(
+			RawOrigin::Signed(cluster_manager_id.clone()).into(),
+			cluster_id,
+			true,
+			ClusterMember::ClusterManager,
+		)?;
+
+	}: close_proposal(RawOrigin::Signed(cluster_manager_id.clone()), cluster_id, ClusterMember::ClusterManager)
+	verify {
+		let cluster_id = ClusterId::from([1; 20]);
+		assert!(!ClusterProposal::<T>::contains_key(cluster_id));
+		assert!(!ClusterProposalVoting::<T>::contains_key(cluster_id));
+		assert_last_event::<T>(Event::Removed { cluster_id }.into());
+	}
+
 }
