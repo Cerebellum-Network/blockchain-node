@@ -487,6 +487,12 @@ fn remove_bucket_works() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 2);
-		System::assert_last_event(Event::BucketRemoved { bucket_id: 1u64 }.into())
+		System::assert_last_event(Event::BucketRemoved { bucket_id: 1u64 }.into());
+
+		// Cannot remove bucket twice
+		assert_noop!(
+			DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_1), bucket_id_1),
+			Error::<Test>::AlreadyRemoved
+		);
 	})
 }

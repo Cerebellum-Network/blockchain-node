@@ -228,6 +228,8 @@ pub mod pallet {
 		ArithmeticUnderflow,
 		// Transferring balance to pallet's vault has failed
 		TransferFailed,
+		/// Bucket is already removed
+		AlreadyRemoved,
 	}
 
 	#[pallet::genesis_config]
@@ -529,9 +531,9 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 			ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
+			ensure!(bucket.is_removed == false, Error::<T>::AlreadyRemoved);
 
 			bucket.is_removed = true;
-
 			<Buckets<T>>::insert(bucket_id, bucket);
 
 			Self::deposit_event(Event::<T>::BucketRemoved { bucket_id });

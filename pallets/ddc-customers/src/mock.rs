@@ -232,12 +232,9 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut storage);
 
-		// let bucket = (ClusterId::from([2; 20]), 10, 1, false, false);
-
 		let _customer_genesis = pallet_ddc_customers::GenesisConfig::<Test> {
 			feeder_account: None,
 			buckets: Default::default(),
-			// buckets: vec![bucket],
 		}
 		.assimilate_storage(&mut storage);
 
