@@ -1239,6 +1239,7 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterEconomics = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type SeatsConsensus = pallet_ddc_clusters_gov::Unanimous;
 	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
 	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;

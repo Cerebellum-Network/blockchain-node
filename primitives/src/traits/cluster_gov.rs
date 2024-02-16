@@ -19,3 +19,7 @@ pub trait DefaultVote {
 		len: MemberCount,
 	) -> bool;
 }
+
+pub trait SeatsConsensus {
+	fn get_threshold(seats: MemberCount) -> MemberCount;
+}

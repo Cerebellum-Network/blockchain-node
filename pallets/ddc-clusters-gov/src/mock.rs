@@ -3,7 +3,10 @@
 #![allow(dead_code)]
 
 use ddc_primitives::{
-	traits::pallet::{GetDdcOrigin, PalletsOriginOf},
+	traits::{
+		pallet::{GetDdcOrigin, PalletsOriginOf},
+		SeatsConsensus,
+	},
 	ClusterGovParams, ClusterId, ClusterNodeKind, ClusterParams, NodeParams, NodePubKey,
 	StorageNodeParams, DOLLARS,
 };
@@ -288,7 +291,8 @@ impl crate::pallet::Config for Test {
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterEconomics = pallet_ddc_clusters::Pallet<Test>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
-	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
+	type SeatsConsensus = pallet_ddc_clusters_gov::Supermajority;
+	type DefaultVote = pallet_ddc_clusters_gov::PrimeDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
 	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
 	#[cfg(feature = "runtime-benchmarks")]

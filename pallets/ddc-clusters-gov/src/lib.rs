@@ -18,7 +18,7 @@
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterEconomics, ClusterManager, ClusterQuery},
-		cluster_gov::{DefaultVote, MemberCount},
+		cluster_gov::{DefaultVote, MemberCount, SeatsConsensus},
 		node::{NodeCreator, NodeVisitor},
 		pallet::GetDdcOrigin,
 		staking::StakerCreator,
@@ -61,6 +61,8 @@ pub type ReferendaCall<T> = pallet_referenda::Call<T>;
 /// Info for keeping track of a proposal being voted on.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Votes<AccountId, BlockNumber> {
+	/// The max number of members that can vote on this proposal.
+	seats: MemberCount,
 	/// The number of approval votes that are needed to pass the proposal.
 	threshold: MemberCount,
 	/// The current set of voters that approved it.
@@ -133,6 +135,7 @@ pub mod pallet {
 		type ClusterManager: ClusterManager<Self>;
 		type ClusterEconomics: ClusterEconomics<Self, BalanceOf<Self>>;
 		type NodeVisitor: NodeVisitor<Self>;
+		type SeatsConsensus: SeatsConsensus;
 		type DefaultVote: DefaultVote;
 		type MinValidatedNodesCount: Get<u16>;
 		type ReferendumEnactmentDuration: Get<Self::BlockNumber>;
@@ -266,12 +269,13 @@ pub mod pallet {
 				Error::<T>::NotEnoughValidatedNodes
 			);
 
-			// Collect votes from 100% of Validated Nodes + 1 vote from Cluster Manager
-			let threshold = cluster_nodes_stats.validation_succeeded as u32 + 1;
+			// All Nodes validated by this moment + 1 Cluster Manager
+			let seats = cluster_nodes_stats.validation_succeeded as u32 + 1;
+			let threshold = T::SeatsConsensus::get_threshold(seats);
 			let votes = {
 				let start = frame_system::Pallet::<T>::block_number();
 				let end = start + T::ClusterProposalDuration::get();
-				Votes { threshold, ayes: vec![], nays: vec![], start, end }
+				Votes { seats, threshold, ayes: vec![], nays: vec![], start, end }
 			};
 			let call: <T as Config>::ClusterProposalCall =
 				T::ClusterProposalCall::from(Call::<T>::activate_cluster {
@@ -314,12 +318,13 @@ pub mod pallet {
 				Error::<T>::NotEnoughValidatedNodes
 			);
 
-			// Collect votes from 100% of Validated Nodes + 1 vote from Cluster Manager
-			let threshold = cluster_nodes_stats.validation_succeeded as u32 + 1;
+			// All Nodes validated by this moment + 1 Cluster Manager
+			let seats = cluster_nodes_stats.validation_succeeded as u32 + 1;
+			let threshold = T::SeatsConsensus::get_threshold(seats);
 			let votes = {
 				let start = frame_system::Pallet::<T>::block_number();
 				let end = start + T::ClusterProposalDuration::get();
-				Votes { threshold, ayes: vec![], nays: vec![], start, end }
+				Votes { seats, threshold, ayes: vec![], nays: vec![], start, end }
 			};
 			let call: <T as Config>::ClusterProposalCall =
 				T::ClusterProposalCall::from(Call::<T>::update_cluster_economics {
@@ -563,7 +568,7 @@ pub mod pallet {
 
 			let mut no_votes = voting.nays.len() as MemberCount;
 			let mut yes_votes = voting.ayes.len() as MemberCount;
-			let seats = voting.threshold as MemberCount;
+			let seats = voting.seats as MemberCount;
 			let approved = yes_votes >= voting.threshold;
 			let disapproved = seats.saturating_sub(no_votes) < voting.threshold;
 			// Allow (dis-)approving the proposal as soon as there are enough votes.
@@ -603,8 +608,16 @@ pub mod pallet {
 			// Only allow actual closing of the proposal after the voting period has ended.
 			ensure!(frame_system::Pallet::<T>::block_number() >= voting.end, Error::<T>::TooEarly);
 
+			let cluster_manager = T::ClusterManager::get_manager_account_id(&cluster_id)?;
+			let cluster_manager_vote = voting.ayes.iter().any(|a| a == &cluster_manager);
+
 			// default voting strategy.
-			let default = T::DefaultVote::default_vote(None, yes_votes, no_votes, seats);
+			let default = T::DefaultVote::default_vote(
+				Some(cluster_manager_vote),
+				yes_votes,
+				no_votes,
+				seats,
+			);
 
 			let abstentions = seats - (yes_votes + no_votes);
 			match default {
@@ -763,7 +776,7 @@ pub mod pallet {
 	}
 }
 
-/// Set the prime member's vote as the default vote.
+/// Set 'Nay' as default vote.
 pub struct NayAsDefaultVote;
 impl DefaultVote for NayAsDefaultVote {
 	fn default_vote(
@@ -773,5 +786,30 @@ impl DefaultVote for NayAsDefaultVote {
 		_len: MemberCount,
 	) -> bool {
 		false
+	}
+}
+
+/// Set the prime member's vote as the default vote.
+pub struct PrimeDefaultVote;
+impl DefaultVote for PrimeDefaultVote {
+	fn default_vote(
+		prime_vote: Option<bool>,
+		_yes_votes: MemberCount,
+		_no_votes: MemberCount,
+		_len: MemberCount,
+	) -> bool {
+		prime_vote.unwrap_or(false)
+	}
+}
+pub struct Unanimous;
+impl SeatsConsensus for Unanimous {
+	fn get_threshold(seats: MemberCount) -> MemberCount {
+		seats
+	}
+}
+pub struct Supermajority;
+impl SeatsConsensus for Supermajority {
+	fn get_threshold(seats: MemberCount) -> MemberCount {
+		(seats * 2 + 2 - 1) / 3
 	}
 }
