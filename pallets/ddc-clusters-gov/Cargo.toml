@@ -35,6 +35,8 @@ sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polka
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 sp-tracing = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
 substrate-test-utils = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.40" }
+lazy_static = "1.4.0"
+parking_lot = "0.12.1"
 
 [features]
 default = ["std"]
