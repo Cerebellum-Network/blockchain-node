@@ -2395,6 +2395,105 @@ fn activation_proposal_disapproved_with_unanimous_consensus_and_nay_default_vote
 }
 
 #[test]
+fn activation_proposal_cannot_be_closed_if_threshold_is_not_reached_with_unanimous_consensus_and_nay_default_vote(
+) {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Bonded,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::NayAsDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Unanimous,
+		});
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
+		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
+
+		let cluster_node_2_provider = AccountId::from(NODE_PROVIDER_ID_2);
+		let cluster_node_2_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_2));
+
+		assert_ok!(DdcClustersGov::propose_activate_cluster(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			cluster_gov_params.clone()
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			true,
+			ClusterMember::ClusterManager,
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_1_key.clone()),
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_2_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_2_key.clone()),
+		));
+
+		assert_noop!(
+			DdcClustersGov::close_proposal(
+				RuntimeOrigin::signed(cluster_manager.clone()),
+				cluster_id,
+				ClusterMember::ClusterManager,
+			),
+			Error::<Test>::TooEarly
+		);
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
+	})
+}
+
+#[test]
 fn economics_update_proposal_early_approved_with_supermajority_consensus_and_prime_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
@@ -3857,6 +3956,108 @@ fn economics_update_proposal_disapproved_with_unanimous_consensus_and_nay_defaul
 		System::assert_has_event(Event::Closed { cluster_id, yes: 3, no: 1 }.into());
 		System::assert_has_event(Event::Disapproved { cluster_id }.into());
 		System::assert_has_event(Event::Removed { cluster_id }.into());
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
+	})
+}
+
+#[test]
+fn economics_update_proposal_cannot_be_closed_if_threshold_is_not_reached_with_unanimous_consensus_and_nay_default_vote(
+) {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Activated,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::NayAsDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Unanimous,
+		});
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
+		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
+
+		let cluster_node_2_provider = AccountId::from(NODE_PROVIDER_ID_2);
+		let cluster_node_2_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_2));
+
+		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
+		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
+
+		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+			cluster_gov_params.clone(),
+			ClusterMember::NodeProvider(cluster_node_1_key.clone())
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_1_key.clone())
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_2_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_2_key.clone()),
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_3_key),
+		));
+
+		assert_noop!(
+			DdcClustersGov::close_proposal(
+				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+				cluster_id,
+				ClusterMember::NodeProvider(cluster_node_1_key)
+			),
+			Error::<Test>::TooEarly
+		);
 
 		MockedDefaultVote::reset_and_release_lock(lock1);
 		MockedSeatsConsensus::reset_and_release_lock(lock2);
