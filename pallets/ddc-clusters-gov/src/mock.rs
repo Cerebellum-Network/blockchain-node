@@ -313,7 +313,7 @@ pub enum DefaultVoteVariant {
 lazy_static! {
 	// We have to use the ReentrantMutex as every test's thread that needs to perform some configuration on the mock acquires the lock at least 2 times:
 	// the first time when the mock configuration happens, and
-	// the second time when the pallet calls the MockNodeVisitor during execution
+	// the second time when the pallet calls the MockedDefaultVote during execution
 	static ref MOCK_DEFAULT_VOTE: ReentrantMutex<RefCell<MockDefaultVote>> =
 		ReentrantMutex::new(RefCell::new(MockDefaultVote::default()));
 }
@@ -371,7 +371,7 @@ pub enum ConsensusVariant {
 lazy_static! {
 	// We have to use the ReentrantMutex as every test's thread that needs to perform some configuration on the mock acquires the lock at least 2 times:
 	// the first time when the mock configuration happens, and
-	// the second time when the pallet calls the MockNodeVisitor during execution
+	// the second time when the pallet calls the MockedSeatsConsensus during execution
 	static ref MOCK_SEATS_CONSENSUS: ReentrantMutex<RefCell<MockSeatsConsensus>> =
 		ReentrantMutex::new(RefCell::new(MockSeatsConsensus::default()));
 }

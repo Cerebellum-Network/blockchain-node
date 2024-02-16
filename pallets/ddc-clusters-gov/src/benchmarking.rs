@@ -158,15 +158,6 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		// let node_provider_1 = create_funded_user_with_balance::<T>("provider", 0, 5);
-		// let node_pub_key_1 = NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32]));
-
-		// let node_provider_2 = create_funded_user_with_balance::<T>("provider", 1, 5);
-		// let node_pub_key_2 = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
-
-		// let node_provider_3 = create_funded_user_with_balance::<T>("provider", 2, 5);
-		// let node_pub_key_3 = NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32]));
-
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes, true);
 
 	}: propose_update_cluster_economics(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterGovParams::default(), ClusterMember::ClusterManager)
@@ -180,15 +171,6 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
-
-		// let node_provider_1 = create_funded_user_with_balance::<T>("provider", 0, 5);
-		// let node_pub_key_1 = NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32]));
-
-		// let node_provider_2 = create_funded_user_with_balance::<T>("provider", 1, 5);
-		// let node_pub_key_2 = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
-
-		// let node_provider_3 = create_funded_user_with_balance::<T>("provider", 2, 5);
-		// let node_pub_key_3 = NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32]));
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 		for i in 0 .. 3 {
@@ -230,7 +212,7 @@ benchmarks! {
 	}
 
 	close_early_approved {
-		let m in 4 .. 64; // members range
+		let m in 4 .. 64; // nodes range
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
@@ -293,7 +275,7 @@ benchmarks! {
 	}
 
 	close_approved {
-		let m in 4 .. 64; // members range
+		let m in 4 .. 64; // nodes range
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
@@ -329,22 +311,43 @@ benchmarks! {
 		ClusterProposal::<T>::insert(cluster_id, proposal);
 		ClusterProposalVoting::<T>::insert(cluster_id, votes.clone());
 
-		for j in 0 .. m {
-			let (node_pub_key, node_provider) = &cluster_nodes.get(j as usize).unwrap();
-			DdcClustersGov::<T>::vote_proposal(
-				RawOrigin::Signed(node_provider.clone()).into(),
-				cluster_id,
-				true,
-				ClusterMember::NodeProvider(node_pub_key.clone()),
-			)?;
+		fn is_unanimous<T: Config>() -> bool {
+			let max_seats = 100;
+			max_seats == T::SeatsConsensus::get_threshold(max_seats)
 		}
 
-		DdcClustersGov::<T>::vote_proposal(
-			RawOrigin::Signed(cluster_manager_id.clone()).into(),
-			cluster_id,
-			true,
-			ClusterMember::ClusterManager,
-		)?;
+		fn is_prime_vote<T: Config>() -> bool {
+			T::DefaultVote::default_vote(Some(true), 0, 0, 0)
+		}
+
+		if is_prime_vote::<T>() && !is_unanimous::<T>() {
+
+			DdcClustersGov::<T>::vote_proposal(
+				RawOrigin::Signed(cluster_manager_id.clone()).into(),
+				cluster_id,
+				true,
+				ClusterMember::ClusterManager,
+			)?;
+
+		} else {
+
+			DdcClustersGov::<T>::vote_proposal(
+				RawOrigin::Signed(cluster_manager_id.clone()).into(),
+				cluster_id,
+				true,
+				ClusterMember::ClusterManager,
+			)?;
+
+			for j in 0 .. m {
+				let (node_pub_key, node_provider) = &cluster_nodes.get(j as usize).unwrap();
+				DdcClustersGov::<T>::vote_proposal(
+					RawOrigin::Signed(node_provider.clone()).into(),
+					cluster_id,
+					true,
+					ClusterMember::NodeProvider(node_pub_key.clone()),
+				)?;
+			}
+		}
 
 		fast_forward_to::<T>(votes.end + T::BlockNumber::from(1_u32));
 
@@ -358,7 +361,7 @@ benchmarks! {
 	}
 
 	close_early_disapproved {
-		let m in 4 .. 64; // members range
+		let m in 4 .. 64; // nodes range
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
@@ -421,7 +424,7 @@ benchmarks! {
 	}
 
 	close_disapproved {
-		let m in 4 .. 64; // members range
+		let m in 4 .. 64; // nodes range
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
