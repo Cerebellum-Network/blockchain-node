@@ -1696,6 +1696,332 @@ fn activation_proposal_cannot_be_closed_if_threshold_is_not_reached_with_superma
 }
 
 #[test]
+fn activation_proposal_early_approved_with_unanimous_consensus_and_nay_default_vote() {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Bonded,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::NayAsDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Unanimous,
+		});
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
+		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
+
+		let cluster_node_2_provider = AccountId::from(NODE_PROVIDER_ID_2);
+		let cluster_node_2_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_2));
+
+		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
+		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
+
+		assert_ok!(DdcClustersGov::propose_activate_cluster(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			cluster_gov_params.clone()
+		));
+		let seats = 4; // 3 validated nodes + 1 cluster manager
+		let threshold = <Test as pallet::Config>::SeatsConsensus::get_threshold(seats);
+		System::assert_last_event(
+			Event::Proposed { account: cluster_manager.clone(), cluster_id, threshold }.into(),
+		);
+
+		let not_cluster_manager = AccountId::from([0; 32]);
+		assert_noop!(
+			DdcClustersGov::vote_proposal(
+				RuntimeOrigin::signed(not_cluster_manager.clone()),
+				cluster_id,
+				true,
+				ClusterMember::ClusterManager,
+			),
+			Error::<Test>::NotClusterManager
+		);
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			true,
+			ClusterMember::ClusterManager,
+		));
+
+		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
+		assert_eq!(votes.ayes, vec![cluster_manager.clone()]);
+		System::assert_last_event(
+			Event::Voted {
+				account: cluster_manager.clone(),
+				cluster_id,
+				voted: true,
+				yes: 1,
+				no: 0,
+			}
+			.into(),
+		);
+
+		let not_node_provider = AccountId::from([128; 32]);
+		let not_cluster_node_key = NodePubKey::StoragePubKey(AccountId::from([128; 32]));
+		assert_noop!(
+			DdcClustersGov::vote_proposal(
+				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+				cluster_id,
+				true,
+				ClusterMember::NodeProvider(not_cluster_node_key.clone()),
+			),
+			Error::<Test>::NoClusterNode
+		);
+
+		assert_noop!(
+			DdcClustersGov::vote_proposal(
+				RuntimeOrigin::signed(not_node_provider.clone()),
+				cluster_id,
+				true,
+				ClusterMember::NodeProvider(cluster_node_1_key.clone()),
+			),
+			Error::<Test>::NotNodeProvider
+		);
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_1_key.clone()),
+		));
+		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
+		assert_eq!(votes.ayes, vec![cluster_manager.clone(), cluster_node_1_provider.clone()]);
+		System::assert_last_event(
+			Event::Voted {
+				account: cluster_node_1_provider.clone(),
+				cluster_id,
+				voted: true,
+				yes: 2,
+				no: 0,
+			}
+			.into(),
+		);
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_2_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_2_key),
+		));
+		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
+		assert_eq!(
+			votes.ayes,
+			vec![
+				cluster_manager.clone(),
+				cluster_node_1_provider.clone(),
+				cluster_node_2_provider.clone()
+			]
+		);
+		System::assert_last_event(
+			Event::Voted {
+				account: cluster_node_2_provider.clone(),
+				cluster_id,
+				voted: true,
+				yes: 3,
+				no: 0,
+			}
+			.into(),
+		);
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_3_key),
+		));
+		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
+		assert_eq!(
+			votes.ayes,
+			vec![
+				cluster_manager.clone(),
+				cluster_node_1_provider.clone(),
+				cluster_node_2_provider.clone(),
+				cluster_node_3_provider.clone()
+			]
+		);
+		System::assert_last_event(
+			Event::Voted {
+				account: cluster_node_3_provider.clone(),
+				cluster_id,
+				voted: true,
+				yes: 4,
+				no: 0,
+			}
+			.into(),
+		);
+
+		assert_noop!(
+			DdcClustersGov::close_proposal(
+				RuntimeOrigin::signed(not_cluster_manager.clone()),
+				cluster_id,
+				ClusterMember::ClusterManager,
+			),
+			Error::<Test>::NotClusterManager
+		);
+
+		assert_noop!(
+			DdcClustersGov::close_proposal(
+				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+				cluster_id,
+				ClusterMember::NodeProvider(not_cluster_node_key.clone()),
+			),
+			Error::<Test>::NotValidatedNode
+		);
+
+		assert_noop!(
+			DdcClustersGov::close_proposal(
+				RuntimeOrigin::signed(not_node_provider.clone()),
+				cluster_id,
+				ClusterMember::NodeProvider(cluster_node_1_key.clone()),
+			),
+			Error::<Test>::NotNodeProvider
+		);
+
+		let balance_before_submission_deposit = Balances::free_balance(cluster_manager.clone());
+		assert_ok!(DdcClustersGov::close_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			ClusterMember::ClusterManager,
+		));
+
+		let referenda_count = pallet_referenda::ReferendumCount::<Test>::get();
+		assert_eq!(referenda_count, 1);
+		let referenda_index = referenda_count - 1;
+
+		let submission_deposit_amount =
+			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+
+		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
+		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
+
+		assert_eq!(
+			SubmissionDeposits::<Test>::get(referenda_index),
+			Some(ReferendaSubmissionDeposit {
+				depositor: cluster_manager.clone(),
+				amount: submission_deposit_amount
+			})
+		);
+
+		let balance_after_submission_deposit = Balances::free_balance(cluster_manager.clone());
+		assert_eq!(
+			balance_before_submission_deposit.saturating_sub(submission_deposit_amount),
+			balance_after_submission_deposit
+		);
+
+		System::assert_has_event(Event::Closed { cluster_id, yes: 4, no: 0 }.into());
+		System::assert_has_event(Event::Approved { cluster_id }.into());
+		System::assert_has_event(Event::ReferendumSubmitted { cluster_id }.into());
+		System::assert_has_event(
+			Event::SubmissionDepositRetained {
+				referenda_index,
+				depositor: cluster_manager.clone(),
+				amount: submission_deposit_amount,
+			}
+			.into(),
+		);
+		System::assert_has_event(Event::Removed { cluster_id }.into());
+
+		// OpenGov
+
+		let balance_before_decision_deposit = Balances::free_balance(cluster_manager.clone());
+		assert_ok!(Referenda::place_decision_deposit(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			referenda_index,
+		));
+		let balance_after_decision_deposit = Balances::free_balance(cluster_manager.clone());
+		assert_eq!(
+			balance_before_decision_deposit.saturating_sub(CLUSTER_ACTIVATOR_DECISION_DEPOSIT),
+			balance_after_decision_deposit
+		);
+
+		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		assert!(matches!(referendum, ReferendumInfo::Ongoing(..)));
+
+		assert_ok!(ConvictionVoting::vote(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			referenda_index,
+			AccountVote::Standard {
+				vote: Vote { aye: true, conviction: Conviction::Locked6x },
+				balance: Balances::free_balance(cluster_node_1_provider.clone())
+			}
+		));
+
+		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
+		fast_forward_to(3);
+		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
+
+		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		assert!(matches!(referendum, ReferendumInfo::Approved(..)));
+
+		let balance_before_submission_deposit_refund =
+			Balances::free_balance(cluster_manager.clone());
+		assert_ok!(DdcClustersGov::refund_submission_deposit(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			referenda_index,
+		));
+		let balance_after_submission_deposit_refund =
+			Balances::free_balance(cluster_manager.clone());
+
+		assert_eq!(
+			balance_before_submission_deposit_refund.saturating_add(submission_deposit_amount),
+			balance_after_submission_deposit_refund
+		);
+		System::assert_last_event(
+			Event::SubmissionDepositRefunded {
+				referenda_index,
+				depositor: cluster_manager.clone(),
+				amount: submission_deposit_amount,
+			}
+			.into(),
+		);
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
+	})
+}
+
+#[test]
 fn activation_proposal_disapproved_with_unanimous_consensus_and_nay_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
@@ -2560,6 +2886,338 @@ fn economics_update_proposal_cannot_be_closed_if_threshold_is_not_reached_with_s
 				ClusterMember::NodeProvider(cluster_node_1_key)
 			),
 			Error::<Test>::TooEarly
+		);
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
+	})
+}
+
+#[test]
+fn economics_update_proposal_early_approved_with_unanimous_consensus_and_nay_default_vote() {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Activated,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::NayAsDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Unanimous,
+		});
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
+		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
+
+		let cluster_node_2_provider = AccountId::from(NODE_PROVIDER_ID_2);
+		let cluster_node_2_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_2));
+
+		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
+		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
+
+		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
+			cluster_id,
+			cluster_gov_params.clone(),
+			ClusterMember::NodeProvider(cluster_node_3_key.clone()),
+		));
+		let seats = 4; // 3 validated nodes + 1 cluster manager
+		let threshold = <Test as pallet::Config>::SeatsConsensus::get_threshold(seats);
+		System::assert_last_event(
+			Event::Proposed { account: cluster_node_3_provider.clone(), cluster_id, threshold }
+				.into(),
+		);
+
+		let not_cluster_manager = AccountId::from([0; 32]);
+		assert_noop!(
+			DdcClustersGov::vote_proposal(
+				RuntimeOrigin::signed(not_cluster_manager.clone()),
+				cluster_id,
+				true,
+				ClusterMember::ClusterManager,
+			),
+			Error::<Test>::NotClusterManager
+		);
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			true,
+			ClusterMember::ClusterManager,
+		));
+
+		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
+		assert_eq!(votes.ayes, vec![cluster_manager.clone()]);
+		System::assert_last_event(
+			Event::Voted {
+				account: cluster_manager.clone(),
+				cluster_id,
+				voted: true,
+				yes: 1,
+				no: 0,
+			}
+			.into(),
+		);
+
+		let not_node_provider = AccountId::from([128; 32]);
+		let not_cluster_node_key = NodePubKey::StoragePubKey(AccountId::from([128; 32]));
+		assert_noop!(
+			DdcClustersGov::vote_proposal(
+				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+				cluster_id,
+				true,
+				ClusterMember::NodeProvider(not_cluster_node_key.clone()),
+			),
+			Error::<Test>::NoClusterNode
+		);
+
+		assert_noop!(
+			DdcClustersGov::vote_proposal(
+				RuntimeOrigin::signed(not_node_provider.clone()),
+				cluster_id,
+				true,
+				ClusterMember::NodeProvider(cluster_node_1_key.clone()),
+			),
+			Error::<Test>::NotNodeProvider
+		);
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_1_key.clone()),
+		));
+		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
+		assert_eq!(votes.ayes, vec![cluster_manager.clone(), cluster_node_1_provider.clone()]);
+		System::assert_last_event(
+			Event::Voted {
+				account: cluster_node_1_provider.clone(),
+				cluster_id,
+				voted: true,
+				yes: 2,
+				no: 0,
+			}
+			.into(),
+		);
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_2_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_2_key),
+		));
+		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
+		assert_eq!(
+			votes.ayes,
+			vec![
+				cluster_manager.clone(),
+				cluster_node_1_provider.clone(),
+				cluster_node_2_provider.clone()
+			]
+		);
+		System::assert_last_event(
+			Event::Voted {
+				account: cluster_node_2_provider.clone(),
+				cluster_id,
+				voted: true,
+				yes: 3,
+				no: 0,
+			}
+			.into(),
+		);
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_3_key.clone()),
+		));
+		let votes = ClusterProposalVoting::<Test>::get(cluster_id).unwrap();
+		assert_eq!(
+			votes.ayes,
+			vec![
+				cluster_manager.clone(),
+				cluster_node_1_provider.clone(),
+				cluster_node_2_provider.clone(),
+				cluster_node_3_provider.clone()
+			]
+		);
+		System::assert_last_event(
+			Event::Voted {
+				account: cluster_node_3_provider.clone(),
+				cluster_id,
+				voted: true,
+				yes: 4,
+				no: 0,
+			}
+			.into(),
+		);
+
+		assert_noop!(
+			DdcClustersGov::close_proposal(
+				RuntimeOrigin::signed(not_cluster_manager.clone()),
+				cluster_id,
+				ClusterMember::ClusterManager,
+			),
+			Error::<Test>::NotClusterManager
+		);
+
+		assert_noop!(
+			DdcClustersGov::close_proposal(
+				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+				cluster_id,
+				ClusterMember::NodeProvider(not_cluster_node_key.clone()),
+			),
+			Error::<Test>::NotValidatedNode
+		);
+
+		assert_noop!(
+			DdcClustersGov::close_proposal(
+				RuntimeOrigin::signed(not_node_provider.clone()),
+				cluster_id,
+				ClusterMember::NodeProvider(cluster_node_1_key.clone()),
+			),
+			Error::<Test>::NotNodeProvider
+		);
+
+		let balance_before_submission_deposit = Balances::free_balance(cluster_manager.clone());
+		assert_ok!(DdcClustersGov::close_proposal(
+			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
+			cluster_id,
+			ClusterMember::NodeProvider(cluster_node_3_key.clone()),
+		));
+
+		let referenda_count = pallet_referenda::ReferendumCount::<Test>::get();
+		assert_eq!(referenda_count, 1);
+		let referenda_index = referenda_count - 1;
+
+		let submission_deposit_amount =
+			<Test as pallet_referenda::Config>::SubmissionDeposit::get().saturated_into::<u128>();
+
+		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
+		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
+
+		assert_eq!(
+			SubmissionDeposits::<Test>::get(referenda_index),
+			Some(ReferendaSubmissionDeposit {
+				depositor: cluster_node_3_provider.clone(),
+				amount: submission_deposit_amount
+			})
+		);
+
+		let balance_after_submission_deposit =
+			Balances::free_balance(cluster_node_3_provider.clone());
+		assert_eq!(
+			balance_before_submission_deposit.saturating_sub(submission_deposit_amount),
+			balance_after_submission_deposit
+		);
+
+		System::assert_has_event(Event::Closed { cluster_id, yes: 4, no: 0 }.into());
+		System::assert_has_event(Event::Approved { cluster_id }.into());
+		System::assert_has_event(Event::ReferendumSubmitted { cluster_id }.into());
+		System::assert_has_event(
+			Event::SubmissionDepositRetained {
+				referenda_index,
+				depositor: cluster_node_3_provider.clone(),
+				amount: submission_deposit_amount,
+			}
+			.into(),
+		);
+		System::assert_has_event(Event::Removed { cluster_id }.into());
+
+		// OpenGov
+
+		let balance_before_decision_deposit =
+			Balances::free_balance(cluster_node_3_provider.clone());
+		assert_ok!(Referenda::place_decision_deposit(
+			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
+			referenda_index,
+		));
+		let balance_after_decision_deposit =
+			Balances::free_balance(cluster_node_3_provider.clone());
+		assert_eq!(
+			balance_before_decision_deposit
+				.saturating_sub(CLUSTER_ECONOMICS_UPDATE_DECISION_DEPOSIT),
+			balance_after_decision_deposit
+		);
+
+		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		assert!(matches!(referendum, ReferendumInfo::Ongoing(..)));
+
+		assert_ok!(ConvictionVoting::vote(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			referenda_index,
+			AccountVote::Standard {
+				vote: Vote { aye: true, conviction: Conviction::Locked6x },
+				balance: Balances::free_balance(cluster_node_1_provider.clone())
+			}
+		));
+
+		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
+		fast_forward_to(3);
+		assert_ok!(Referenda::nudge_referendum(RuntimeOrigin::root(), referenda_index));
+
+		let referendum = pallet_referenda::ReferendumInfoFor::<Test>::get(referenda_index).unwrap();
+		assert!(matches!(referendum, ReferendumInfo::Approved(..)));
+
+		let balance_before_submission_deposit_refund =
+			Balances::free_balance(cluster_node_3_provider.clone());
+		assert_ok!(DdcClustersGov::refund_submission_deposit(
+			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
+			referenda_index,
+		));
+		let balance_after_submission_deposit_refund =
+			Balances::free_balance(cluster_node_3_provider.clone());
+
+		assert_eq!(
+			balance_before_submission_deposit_refund.saturating_add(submission_deposit_amount),
+			balance_after_submission_deposit_refund
+		);
+		System::assert_last_event(
+			Event::SubmissionDepositRefunded {
+				referenda_index,
+				depositor: cluster_node_3_provider.clone(),
+				amount: submission_deposit_amount,
+			}
+			.into(),
 		);
 
 		MockedDefaultVote::reset_and_release_lock(lock1);
