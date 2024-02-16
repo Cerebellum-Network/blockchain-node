@@ -18,10 +18,10 @@ pub mod v0 {
 
 	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 	pub struct Bucket<AccountId> {
-		bucket_id: BucketId,
-		owner_id: AccountId,
-		cluster_id: ClusterId,
-		is_public: bool,
+		pub bucket_id: BucketId,
+		pub owner_id: AccountId,
+		pub cluster_id: ClusterId,
+		pub is_public: bool,
 	}
 
 	#[storage_alias]
@@ -48,9 +48,8 @@ pub fn migrate_to_v1<T: Config>() -> Weight {
 		);
 
 		Buckets::<T>::translate::<v0::Bucket<T::AccountId>, _>(
-			|bucket_id: BucketId, _bucket: v0::Bucket<T::AccountId>| {
+			|bucket_id: BucketId, bucket: v0::Bucket<T::AccountId>| {
 				info!(target: LOG_TARGET, "     Migrating bucket for bucket ID {:?}...", bucket_id);
-				let bucket: Bucket<T::AccountId> = Pallet::<T>::buckets(bucket_id).unwrap();
 
 				Some(Bucket {
 					bucket_id: bucket.bucket_id,
@@ -70,8 +69,7 @@ pub fn migrate_to_v1<T: Config>() -> Weight {
 			" <<< DDC Customers storage updated! Migrated {} buckets ✅", count
 		);
 
-		// 1 read from `translate` method + 1 read from the closure
-		T::DbWeight::get().reads_writes(2 * count as u64 + 1, count as u64 + 1)
+		T::DbWeight::get().reads_writes(count as u64 + 2, count as u64 + 1)
 	} else {
 		info!(target: LOG_TARGET, " >>> Unused migration!");
 		T::DbWeight::get().reads(1)
@@ -86,11 +84,6 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
-		frame_support::ensure!(
-			Pallet::<T>::on_chain_storage_version() == 0,
-			"must upgrade linearly"
-		);
-
 		let prev_bucket_id = v0::BucketsCount::<T>::get();
 		let prev_count = v0::Buckets::<T>::iter().count();
 
