@@ -128,16 +128,14 @@ benchmarks! {
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
 
-		let node_provider_1 = create_funded_user_with_balance::<T>("provider", 0, 5);
-		let node_pub_key_1 = NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32]));
+		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
+		for i in 0 .. 3 {
+			let node_provider = create_funded_user_with_balance::<T>("node-provider", i, 5);
+			let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([i as u8; 32]));
+			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
+		}
 
-		let node_provider_2 = create_funded_user_with_balance::<T>("provider", 1, 5);
-		let node_pub_key_2 = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
-
-		let node_provider_3 = create_funded_user_with_balance::<T>("provider", 2, 5);
-		let node_pub_key_3 = NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32]));
-
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), vec![(node_pub_key_1, node_provider_1), (node_pub_key_2, node_provider_2), (node_pub_key_3, node_provider_3)], false);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 
 	}: propose_activate_cluster(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterGovParams::default())
 	verify {
@@ -179,27 +177,10 @@ benchmarks! {
 			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
 		}
 
-		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), true);
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		let seats = 4;
-		let threshold = seats;
-		let votes = {
-			let start = frame_system::Pallet::<T>::block_number();
-			let end = start + T::ClusterProposalDuration::get();
-
-			Votes { seats, threshold, ayes: vec![], nays: vec![], start, end }
-		};
-		let call: <T as Config>::ClusterProposalCall =
-			T::ClusterProposalCall::from(Call::<T>::activate_cluster {
-				cluster_id,
-				cluster_gov_params: ClusterGovParams::default(),
-			});
-		let proposal =
-			Proposal { call, author: cluster_manager_id.clone(), kind: ProposalKind::ActivateCluster };
-
-		ClusterProposal::<T>::insert(cluster_id, proposal);
-		ClusterProposalVoting::<T>::insert(cluster_id, votes);
+		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
 		let (node_pub_key_1, node_provider_1) = cluster_nodes.get(0)
 			.map(|(key, provider)| (key.clone(), provider.clone()))
@@ -229,24 +210,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		let seats = m + 1; // 64 nodes + 1 cluster manager at max
-		let threshold = seats;
-		let votes = {
-			let start = frame_system::Pallet::<T>::block_number();
-			let end = start + T::ClusterProposalDuration::get();
-
-			Votes { seats, threshold, ayes: vec![], nays: vec![], start, end }
-		};
-		let call: <T as Config>::ClusterProposalCall =
-			T::ClusterProposalCall::from(Call::<T>::activate_cluster {
-				cluster_id,
-				cluster_gov_params: ClusterGovParams::default(),
-			});
-		let proposal =
-			Proposal { call, author: cluster_manager_id.clone(), kind: ProposalKind::ActivateCluster };
-
-		ClusterProposal::<T>::insert(cluster_id, proposal);
-		ClusterProposalVoting::<T>::insert(cluster_id, votes);
+		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
 		for j in 0 .. m {
 			let (node_pub_key, node_provider) = &cluster_nodes.get(j as usize).unwrap();
@@ -292,24 +256,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		let seats = m + 1; // 64 nodes + 1 cluster manager at max
-		let threshold = seats;
-		let votes = {
-			let start = frame_system::Pallet::<T>::block_number();
-			let end = start + T::ClusterProposalDuration::get();
-
-			Votes { seats, threshold, ayes: vec![], nays: vec![], start, end }
-		};
-		let call: <T as Config>::ClusterProposalCall =
-			T::ClusterProposalCall::from(Call::<T>::activate_cluster {
-				cluster_id,
-				cluster_gov_params: ClusterGovParams::default(),
-			});
-		let proposal =
-			Proposal { call, author: cluster_manager_id.clone(), kind: ProposalKind::ActivateCluster };
-
-		ClusterProposal::<T>::insert(cluster_id, proposal);
-		ClusterProposalVoting::<T>::insert(cluster_id, votes.clone());
+		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
 		fn is_unanimous<T: Config>() -> bool {
 			let max_seats = 100;
@@ -349,6 +296,7 @@ benchmarks! {
 			}
 		}
 
+		let votes = ClusterProposalVoting::<T>::get(cluster_id).unwrap();
 		fast_forward_to::<T>(votes.end + T::BlockNumber::from(1_u32));
 
 	}: close_proposal(RawOrigin::Signed(cluster_manager_id.clone()), cluster_id, ClusterMember::ClusterManager)
@@ -378,24 +326,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		let seats = m + 1; // 64 nodes + 1 cluster manager at max
-		let threshold = seats;
-		let votes = {
-			let start = frame_system::Pallet::<T>::block_number();
-			let end = start + T::ClusterProposalDuration::get();
-
-			Votes { seats, threshold, ayes: vec![], nays: vec![], start, end }
-		};
-		let call: <T as Config>::ClusterProposalCall =
-			T::ClusterProposalCall::from(Call::<T>::activate_cluster {
-				cluster_id,
-				cluster_gov_params: ClusterGovParams::default(),
-			});
-		let proposal =
-			Proposal { call, author: cluster_manager_id.clone(), kind: ProposalKind::ActivateCluster };
-
-		ClusterProposal::<T>::insert(cluster_id, proposal);
-		ClusterProposalVoting::<T>::insert(cluster_id, votes);
+		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
 		for j in 0 .. m {
 			let (node_pub_key, node_provider) = &cluster_nodes.get(j as usize).unwrap();
@@ -441,25 +372,9 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		let seats = m + 1; // 64 nodes + 1 cluster manager at max
-		let threshold = seats;
-		let votes = {
-			let start = frame_system::Pallet::<T>::block_number();
-			let end = start + T::ClusterProposalDuration::get();
+		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
-			Votes { seats, threshold, ayes: vec![], nays: vec![], start, end }
-		};
-		let call: <T as Config>::ClusterProposalCall =
-			T::ClusterProposalCall::from(Call::<T>::activate_cluster {
-				cluster_id,
-				cluster_gov_params: ClusterGovParams::default(),
-			});
-		let proposal =
-			Proposal { call, author: cluster_manager_id.clone(), kind: ProposalKind::ActivateCluster };
-
-		ClusterProposal::<T>::insert(cluster_id, proposal);
-		ClusterProposalVoting::<T>::insert(cluster_id, votes.clone());
-
+		let votes = ClusterProposalVoting::<T>::get(cluster_id).unwrap();
 		fast_forward_to::<T>(votes.end + T::BlockNumber::from(1_u32));
 
 	}: close_proposal(RawOrigin::Signed(cluster_manager_id.clone()), cluster_id, ClusterMember::ClusterManager)
@@ -468,6 +383,32 @@ benchmarks! {
 		assert!(!ClusterProposal::<T>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<T>::contains_key(cluster_id));
 		assert_has_event::<T>(Event::Disapproved { cluster_id }.into());
+	}
+
+	retract_proposal {
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+
+		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
+		for i in 0 .. 3 {
+			let node_provider = create_funded_user_with_balance::<T>("node-provider", i, 5);
+			let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([i as u8; 32]));
+			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
+		}
+
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+
+		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+
+		assert!(ClusterProposal::<T>::contains_key(cluster_id));
+		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
+
+	}: retract_proposal(RawOrigin::Signed(cluster_manager_id.clone()), cluster_id)
+	verify {
+		let cluster_id = ClusterId::from([1; 20]);
+		assert!(!ClusterProposal::<T>::contains_key(cluster_id));
+		assert!(!ClusterProposalVoting::<T>::contains_key(cluster_id));
 		assert_last_event::<T>(Event::Removed { cluster_id }.into());
 	}
 
