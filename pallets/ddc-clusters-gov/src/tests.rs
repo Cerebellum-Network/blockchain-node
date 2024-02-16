@@ -23,7 +23,7 @@ fn fast_forward_to(n: u64) {
 }
 
 #[test]
-fn cluster_activation_proposal_initiated() {
+fn activation_proposal_initiated() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -120,7 +120,7 @@ fn cluster_activation_proposal_initiated() {
 }
 
 #[test]
-fn cluster_activation_proposal_fails_on_unexpected_state() {
+fn activation_proposal_fails_on_unexpected_state() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -176,7 +176,7 @@ fn cluster_activation_proposal_fails_on_unexpected_state() {
 }
 
 #[test]
-fn cluster_activation_proposal_fails_if_there_are_not_enough_validated_nodes() {
+fn activation_proposal_fails_if_there_are_not_enough_validated_nodes() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -214,7 +214,7 @@ fn cluster_activation_proposal_fails_if_there_are_not_enough_validated_nodes() {
 }
 
 #[test]
-fn cluster_activation_proposal_fails_if_there_is_active_proposal() {
+fn activation_proposal_fails_if_there_is_active_proposal() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -276,7 +276,7 @@ fn cluster_activation_proposal_fails_if_there_is_active_proposal() {
 }
 
 #[test]
-fn cluster_activation_is_restricted_for_system_origins() {
+fn activation_is_restricted_for_system_origins() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -314,7 +314,7 @@ fn cluster_activation_is_restricted_for_system_origins() {
 }
 
 #[test]
-fn cluster_activation_is_allowed_for_referenda_activator_track_origin() {
+fn activation_is_allowed_for_referenda_activator_track_origin() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -360,7 +360,7 @@ fn cluster_activation_is_allowed_for_referenda_activator_track_origin() {
 }
 
 #[test]
-fn cluster_activation_proposal_can_be_retracted_by_its_author() {
+fn activation_proposal_can_be_retracted_by_its_author() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -444,7 +444,7 @@ fn cluster_activation_proposal_can_be_retracted_by_its_author() {
 }
 
 #[test]
-fn cluster_activation_proposal_cannot_be_initated_for_active_cluster() {
+fn activation_proposal_cannot_be_initated_for_active_cluster() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -499,7 +499,7 @@ fn cluster_activation_proposal_cannot_be_initated_for_active_cluster() {
 }
 
 #[test]
-fn cluster_economics_update_proposal_initiated() {
+fn economics_update_proposal_initiated() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -614,7 +614,7 @@ fn cluster_economics_update_proposal_initiated() {
 }
 
 #[test]
-fn cluster_economics_update_proposal_fails_on_unexpected_state() {
+fn economics_update_proposal_fails_on_unexpected_state() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -671,7 +671,7 @@ fn cluster_economics_update_proposal_fails_on_unexpected_state() {
 }
 
 #[test]
-fn cluster_economics_update_proposal_fails_if_there_are_not_enough_validated_nodes() {
+fn economics_update_proposal_fails_if_there_are_not_enough_validated_nodes() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -710,7 +710,7 @@ fn cluster_economics_update_proposal_fails_if_there_are_not_enough_validated_nod
 }
 
 #[test]
-fn cluster_economics_update_proposal_fails_if_there_is_active_proposal() {
+fn economics_update_proposal_fails_if_there_is_active_proposal() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -774,7 +774,7 @@ fn cluster_economics_update_proposal_fails_if_there_is_active_proposal() {
 }
 
 #[test]
-fn cluster_economics_update_is_restricted_for_system_origins() {
+fn economics_update_is_restricted_for_system_origins() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -821,7 +821,7 @@ fn cluster_economics_update_is_restricted_for_system_origins() {
 }
 
 #[test]
-fn cluster_economics_update_is_allowed_for_referenda_economics_updater_track_origin() {
+fn economics_update_is_allowed_for_referenda_economics_updater_track_origin() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -863,7 +863,7 @@ fn cluster_economics_update_is_allowed_for_referenda_economics_updater_track_ori
 }
 
 #[test]
-fn cluster_economics_update_proposal_can_be_retracted_by_its_author() {
+fn economics_update_proposal_can_be_retracted_by_its_author() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
