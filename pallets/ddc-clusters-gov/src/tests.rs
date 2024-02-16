@@ -863,8 +863,93 @@ fn cluster_economics_update_is_allowed_for_referenda_economics_updater_track_ori
 }
 
 #[test]
-fn cluster_activation_proposal_initiates_referendum_on_close_if_threshold_is_reached_and_voting_period_continues(
-) {
+fn cluster_economics_update_proposal_can_be_retracted_by_its_author() {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Activated,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+		let not_cluster_id = ClusterId::from([0; 20]);
+
+		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
+		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
+
+		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+			cluster_gov_params.clone(),
+			ClusterMember::NodeProvider(cluster_node_1_key)
+		));
+
+		assert!(ClusterProposal::<Test>::contains_key(cluster_id));
+		assert!(ClusterProposalVoting::<Test>::contains_key(cluster_id));
+
+		assert_noop!(
+			DdcClustersGov::retract_proposal(
+				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+				not_cluster_id,
+			),
+			Error::<Test>::ProposalMissing
+		);
+
+		assert_noop!(
+			DdcClustersGov::retract_proposal(
+				RuntimeOrigin::signed(cluster_manager.clone()),
+				cluster_id,
+			),
+			Error::<Test>::NotProposalAuthor
+		);
+
+		assert_ok!(DdcClustersGov::retract_proposal(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+		));
+
+		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
+		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
+		System::assert_last_event(Event::Removed { cluster_id }.into());
+	})
+}
+
+#[test]
+fn activation_proposal_early_approved_with_supermajority_consensus_and_prime_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -902,6 +987,12 @@ fn cluster_activation_proposal_initiates_referendum_on_close_if_threshold_is_rea
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::PrimeDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Supermajority,
+		});
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
@@ -1177,12 +1268,14 @@ fn cluster_activation_proposal_initiates_referendum_on_close_if_threshold_is_rea
 			}
 			.into(),
 		);
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
 	})
 }
 
 #[test]
-fn cluster_activation_proposal_does_not_initiate_referendum_on_close_if_threshold_is_not_reached_with_abstentions_and_voting_period_ended(
-) {
+fn activation_proposal_disapproved_with_supermajority_consensus_and_prime_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -1220,6 +1313,12 @@ fn cluster_activation_proposal_does_not_initiate_referendum_on_close_if_threshol
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::PrimeDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Supermajority,
+		});
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
@@ -1268,11 +1367,14 @@ fn cluster_activation_proposal_does_not_initiate_referendum_on_close_if_threshol
 		System::assert_has_event(Event::Closed { cluster_id, yes: 1, no: 3 }.into());
 		System::assert_has_event(Event::Disapproved { cluster_id }.into());
 		System::assert_has_event(Event::Removed { cluster_id }.into());
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
 	})
 }
 
 #[test]
-fn cluster_activation_proposal_cannot_be_closed_if_threshold_is_not_reached_and_voting_period_continues(
+fn activation_proposal_cannot_be_closed_if_threshold_is_not_reached_with_supermajority_consensus_and_prime_default_vote(
 ) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
@@ -1311,6 +1413,12 @@ fn cluster_activation_proposal_cannot_be_closed_if_threshold_is_not_reached_and_
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::PrimeDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Supermajority,
+		});
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
@@ -1338,12 +1446,14 @@ fn cluster_activation_proposal_cannot_be_closed_if_threshold_is_not_reached_and_
 			),
 			Error::<Test>::TooEarly
 		);
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
 	})
 }
 
 #[test]
-fn cluster_activation_proposal_does_not_initiate_referendum_on_close_if_threshold_is_not_reached_and_voting_period_continues(
-) {
+fn activation_proposal_early_disapproved_with_supermajority_consensus_and_prime_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -1381,6 +1491,12 @@ fn cluster_activation_proposal_does_not_initiate_referendum_on_close_if_threshol
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::PrimeDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Supermajority,
+		});
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
@@ -1445,12 +1561,14 @@ fn cluster_activation_proposal_does_not_initiate_referendum_on_close_if_threshol
 		System::assert_has_event(Event::Closed { cluster_id, yes: 1, no: 3 }.into());
 		System::assert_has_event(Event::Disapproved { cluster_id }.into());
 		System::assert_has_event(Event::Removed { cluster_id }.into());
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
 	})
 }
 
 #[test]
-fn cluster_activation_proposal_initiates_referendum_on_close_if_threshold_is_reached_with_abstentions_and_voting_period_ended(
-) {
+fn activation_proposal_approved_with_supermajority_consensus_and_prime_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -1488,6 +1606,13 @@ fn cluster_activation_proposal_initiates_referendum_on_close_if_threshold_is_rea
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::PrimeDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Supermajority,
+		});
+
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
@@ -1564,12 +1689,124 @@ fn cluster_activation_proposal_initiates_referendum_on_close_if_threshold_is_rea
 			.into(),
 		);
 		System::assert_has_event(Event::Removed { cluster_id }.into());
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
 	})
 }
 
 #[test]
-fn cluster_economics_update_proposal_initiates_referendum_on_close_if_threshold_is_reached_and_voting_period_continues(
-) {
+fn activation_proposal_disapproved_with_unanimous_consensus_and_nay_default_vote() {
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Bonded,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::NayAsDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Unanimous,
+		});
+
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
+		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
+
+		let cluster_node_2_provider = AccountId::from(NODE_PROVIDER_ID_2);
+		let cluster_node_2_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_2));
+
+		assert_ok!(DdcClustersGov::propose_activate_cluster(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			cluster_gov_params.clone()
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			true,
+			ClusterMember::ClusterManager,
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_1_key.clone()),
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_2_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_2_key.clone()),
+		));
+
+		let start = BlockNumber::from(1_u64);
+		let end = start + <Test as pallet::Config>::ClusterProposalDuration::get();
+		fast_forward_to(end + 1);
+
+		assert_ok!(DdcClustersGov::close_proposal(
+			RuntimeOrigin::signed(cluster_manager.clone()),
+			cluster_id,
+			ClusterMember::ClusterManager,
+		));
+
+		// As the quorum is not reached, the proposal gets rejected and no referenda is created
+		assert_eq!(pallet_referenda::ReferendumCount::<Test>::get(), 0);
+
+		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
+		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
+
+		System::assert_has_event(Event::Closed { cluster_id, yes: 3, no: 1 }.into());
+		System::assert_has_event(Event::Disapproved { cluster_id }.into());
+		System::assert_has_event(Event::Removed { cluster_id }.into());
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
+	})
+}
+
+#[test]
+fn economics_update_proposal_early_approved_with_supermajority_consensus_and_prime_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -1607,6 +1844,12 @@ fn cluster_economics_update_proposal_initiates_referendum_on_close_if_threshold_
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::PrimeDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Supermajority,
+		});
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
@@ -1888,12 +2131,14 @@ fn cluster_economics_update_proposal_initiates_referendum_on_close_if_threshold_
 			}
 			.into(),
 		);
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
 	})
 }
 
 #[test]
-fn cluster_economics_update_proposal_does_not_initiate_referendum_on_close_if_threshold_is_not_reached_with_abstentions_and_voting_period_ended(
-) {
+fn economics_update_proposal_disapproved_with_supermajority_consensus_and_prime_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -1931,6 +2176,12 @@ fn cluster_economics_update_proposal_does_not_initiate_referendum_on_close_if_th
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::PrimeDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Supermajority,
+		});
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
@@ -1980,11 +2231,14 @@ fn cluster_economics_update_proposal_does_not_initiate_referendum_on_close_if_th
 		System::assert_has_event(Event::Closed { cluster_id, yes: 1, no: 3 }.into());
 		System::assert_has_event(Event::Disapproved { cluster_id }.into());
 		System::assert_has_event(Event::Removed { cluster_id }.into());
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
 	})
 }
 
 #[test]
-fn cluster_economics_update_proposal_does_not_initiate_referendum_on_close_if_threshold_is_not_reached_and_voting_period_continues(
+fn economics_update_proposal_cannot_be_closed_if_threshold_is_not_reached_with_supermajority_consensus_and_prime_default_vote(
 ) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
@@ -2023,6 +2277,94 @@ fn cluster_economics_update_proposal_does_not_initiate_referendum_on_close_if_th
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::PrimeDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Supermajority,
+		});
+		fast_forward_to(1);
+
+		let cluster_id = ClusterId::from(CLUSTER_ID);
+		let cluster_gov_params = ClusterGovParams::default();
+
+		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
+		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
+
+		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+			cluster_gov_params.clone(),
+			ClusterMember::NodeProvider(cluster_node_1_key.clone())
+		));
+
+		assert_ok!(DdcClustersGov::vote_proposal(
+			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+			cluster_id,
+			true,
+			ClusterMember::NodeProvider(cluster_node_1_key.clone())
+		));
+
+		assert_noop!(
+			DdcClustersGov::close_proposal(
+				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
+				cluster_id,
+				ClusterMember::NodeProvider(cluster_node_1_key)
+			),
+			Error::<Test>::TooEarly
+		);
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
+	})
+}
+
+#[test]
+fn economics_update_proposal_early_disapproved_with_supermajority_consensus_and_prime_default_vote()
+{
+	let cluster = build_cluster(
+		CLUSTER_ID,
+		CLUSTER_MANAGER_ID,
+		CLUSTER_RESERVE_ID,
+		ClusterParams::default(),
+		ClusterGovParams::default(),
+		ClusterStatus::Activated,
+	);
+
+	let node_1 = build_cluster_node(
+		NODE_PUB_KEY_1,
+		NODE_PROVIDER_ID_1,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_2 = build_cluster_node(
+		NODE_PUB_KEY_2,
+		NODE_PROVIDER_ID_2,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	let node_3 = build_cluster_node(
+		NODE_PUB_KEY_3,
+		NODE_PROVIDER_ID_3,
+		StorageNodeParams::default(),
+		CLUSTER_ID,
+		ClusterNodeStatus::ValidationSucceeded,
+		ClusterNodeKind::Genesis,
+	);
+
+	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::PrimeDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Supermajority,
+		});
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
@@ -2088,12 +2430,14 @@ fn cluster_economics_update_proposal_does_not_initiate_referendum_on_close_if_th
 		System::assert_has_event(Event::Closed { cluster_id, yes: 1, no: 3 }.into());
 		System::assert_has_event(Event::Disapproved { cluster_id }.into());
 		System::assert_has_event(Event::Removed { cluster_id }.into());
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
 	})
 }
 
 #[test]
-fn cluster_economics_update_proposal_cannot_be_closed_if_threshold_is_not_reached_and_voting_period_continues(
-) {
+fn economics_update_proposal_approved_with_supermajority_consensus_and_prime_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -2131,165 +2475,12 @@ fn cluster_economics_update_proposal_cannot_be_closed_if_threshold_is_not_reache
 	);
 
 	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
-		fast_forward_to(1);
-
-		let cluster_id = ClusterId::from(CLUSTER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
-
-		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
-		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
-
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
-			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
-			cluster_id,
-			cluster_gov_params.clone(),
-			ClusterMember::NodeProvider(cluster_node_1_key.clone())
-		));
-
-		assert_ok!(DdcClustersGov::vote_proposal(
-			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
-			cluster_id,
-			true,
-			ClusterMember::NodeProvider(cluster_node_1_key.clone())
-		));
-
-		assert_noop!(
-			DdcClustersGov::close_proposal(
-				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
-				cluster_id,
-				ClusterMember::NodeProvider(cluster_node_1_key)
-			),
-			Error::<Test>::TooEarly
-		);
-	})
-}
-
-#[test]
-fn cluster_economics_update_proposal_can_be_retracted_by_its_author() {
-	let cluster = build_cluster(
-		CLUSTER_ID,
-		CLUSTER_MANAGER_ID,
-		CLUSTER_RESERVE_ID,
-		ClusterParams::default(),
-		ClusterGovParams::default(),
-		ClusterStatus::Activated,
-	);
-
-	let node_1 = build_cluster_node(
-		NODE_PUB_KEY_1,
-		NODE_PROVIDER_ID_1,
-		StorageNodeParams::default(),
-		CLUSTER_ID,
-		ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
-	);
-
-	let node_2 = build_cluster_node(
-		NODE_PUB_KEY_2,
-		NODE_PROVIDER_ID_2,
-		StorageNodeParams::default(),
-		CLUSTER_ID,
-		ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
-	);
-
-	let node_3 = build_cluster_node(
-		NODE_PUB_KEY_3,
-		NODE_PROVIDER_ID_3,
-		StorageNodeParams::default(),
-		CLUSTER_ID,
-		ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
-	);
-
-	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
-		fast_forward_to(1);
-
-		let cluster_id = ClusterId::from(CLUSTER_ID);
-		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
-		let not_cluster_id = ClusterId::from([0; 20]);
-
-		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
-		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
-
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
-			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
-			cluster_id,
-			cluster_gov_params.clone(),
-			ClusterMember::NodeProvider(cluster_node_1_key)
-		));
-
-		assert!(ClusterProposal::<Test>::contains_key(cluster_id));
-		assert!(ClusterProposalVoting::<Test>::contains_key(cluster_id));
-
-		assert_noop!(
-			DdcClustersGov::retract_proposal(
-				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
-				not_cluster_id,
-			),
-			Error::<Test>::ProposalMissing
-		);
-
-		assert_noop!(
-			DdcClustersGov::retract_proposal(
-				RuntimeOrigin::signed(cluster_manager.clone()),
-				cluster_id,
-			),
-			Error::<Test>::NotProposalAuthor
-		);
-
-		assert_ok!(DdcClustersGov::retract_proposal(
-			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
-			cluster_id,
-		));
-
-		assert!(!ClusterProposal::<Test>::contains_key(cluster_id));
-		assert!(!ClusterProposalVoting::<Test>::contains_key(cluster_id));
-		System::assert_last_event(Event::Removed { cluster_id }.into());
-	})
-}
-
-#[test]
-fn cluster_economics_update_proposal_initiates_referendum_on_close_if_threshold_is_reached_with_abstentions_and_voting_period_ended(
-) {
-	let cluster = build_cluster(
-		CLUSTER_ID,
-		CLUSTER_MANAGER_ID,
-		CLUSTER_RESERVE_ID,
-		ClusterParams::default(),
-		ClusterGovParams::default(),
-		ClusterStatus::Activated,
-	);
-
-	let node_1 = build_cluster_node(
-		NODE_PUB_KEY_1,
-		NODE_PROVIDER_ID_1,
-		StorageNodeParams::default(),
-		CLUSTER_ID,
-		ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
-	);
-
-	let node_2 = build_cluster_node(
-		NODE_PUB_KEY_2,
-		NODE_PROVIDER_ID_2,
-		StorageNodeParams::default(),
-		CLUSTER_ID,
-		ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
-	);
-
-	let node_3 = build_cluster_node(
-		NODE_PUB_KEY_3,
-		NODE_PROVIDER_ID_3,
-		StorageNodeParams::default(),
-		CLUSTER_ID,
-		ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
-	);
-
-	ExtBuilder.build_and_execute(cluster, vec![node_1, node_2, node_3], || {
+		let lock1 = MockedDefaultVote::set_and_hold_lock(MockDefaultVote {
+			strategy: DefaultVoteVariant::PrimeDefaultVote,
+		});
+		let lock2 = MockedSeatsConsensus::set_and_hold_lock(MockSeatsConsensus {
+			consensus: ConsensusVariant::Supermajority,
+		});
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
@@ -2370,5 +2561,8 @@ fn cluster_economics_update_proposal_initiates_referendum_on_close_if_threshold_
 			.into(),
 		);
 		System::assert_has_event(Event::Removed { cluster_id }.into());
+
+		MockedDefaultVote::reset_and_release_lock(lock1);
+		MockedSeatsConsensus::reset_and_release_lock(lock2);
 	})
 }

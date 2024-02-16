@@ -2,6 +2,8 @@
 
 #![allow(dead_code)]
 
+use std::cell::RefCell;
+
 use ddc_primitives::{
 	traits::{
 		pallet::{GetDdcOrigin, PalletsOriginOf},
@@ -22,9 +24,11 @@ use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureRoot,
 };
+use lazy_static::lazy_static;
 use pallet_ddc_clusters::cluster::Cluster;
 use pallet_ddc_nodes::StorageNode;
 use pallet_referenda::Curve;
+use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -291,14 +295,123 @@ impl crate::pallet::Config for Test {
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterEconomics = pallet_ddc_clusters::Pallet<Test>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
-	type SeatsConsensus = pallet_ddc_clusters_gov::Supermajority;
-	type DefaultVote = pallet_ddc_clusters_gov::PrimeDefaultVote;
+	type SeatsConsensus = MockedSeatsConsensus;
+	type DefaultVote = MockedDefaultVote; // pallet_ddc_clusters_gov::PrimeDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
 	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
 	#[cfg(feature = "runtime-benchmarks")]
 	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type StakerCreator = pallet_ddc_staking::Pallet<Test>;
+}
+
+pub enum DefaultVoteVariant {
+	NayAsDefaultVote,
+	PrimeDefaultVote,
+}
+
+lazy_static! {
+	// We have to use the ReentrantMutex as every test's thread that needs to perform some configuration on the mock acquires the lock at least 2 times:
+	// the first time when the mock configuration happens, and
+	// the second time when the pallet calls the MockNodeVisitor during execution
+	static ref MOCK_DEFAULT_VOTE: ReentrantMutex<RefCell<MockDefaultVote>> =
+		ReentrantMutex::new(RefCell::new(MockDefaultVote::default()));
+}
+pub struct MockDefaultVote {
+	pub strategy: DefaultVoteVariant,
+}
+
+impl Default for MockDefaultVote {
+	fn default() -> Self {
+		Self { strategy: DefaultVoteVariant::PrimeDefaultVote }
+	}
+}
+
+pub struct MockedDefaultVote;
+impl MockedDefaultVote {
+	// Every test's thread must hold the lock till the end of its test
+	pub fn set_and_hold_lock(
+		mock: MockDefaultVote,
+	) -> ReentrantMutexGuard<'static, RefCell<MockDefaultVote>> {
+		let lock = MOCK_DEFAULT_VOTE.lock();
+		*lock.borrow_mut() = mock;
+		lock
+	}
+
+	// Every test's thread must release the lock that it previously acquired in the end of its
+	// test
+	pub fn reset_and_release_lock(lock: ReentrantMutexGuard<'static, RefCell<MockDefaultVote>>) {
+		*lock.borrow_mut() = MockDefaultVote::default();
+	}
+}
+
+impl DefaultVote for MockedDefaultVote {
+	fn default_vote(
+		prime_vote: Option<bool>,
+		yes_votes: MemberCount,
+		no_votes: MemberCount,
+		len: MemberCount,
+	) -> bool {
+		let lock = MOCK_DEFAULT_VOTE.lock();
+		let mock_ref = lock.borrow();
+		match mock_ref.strategy {
+			DefaultVoteVariant::NayAsDefaultVote =>
+				NayAsDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len),
+			DefaultVoteVariant::PrimeDefaultVote =>
+				PrimeDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len),
+		}
+	}
+}
+
+pub enum ConsensusVariant {
+	Supermajority,
+	Unanimous,
+}
+
+lazy_static! {
+	// We have to use the ReentrantMutex as every test's thread that needs to perform some configuration on the mock acquires the lock at least 2 times:
+	// the first time when the mock configuration happens, and
+	// the second time when the pallet calls the MockNodeVisitor during execution
+	static ref MOCK_SEATS_CONSENSUS: ReentrantMutex<RefCell<MockSeatsConsensus>> =
+		ReentrantMutex::new(RefCell::new(MockSeatsConsensus::default()));
+}
+pub struct MockSeatsConsensus {
+	pub consensus: ConsensusVariant,
+}
+
+impl Default for MockSeatsConsensus {
+	fn default() -> Self {
+		Self { consensus: ConsensusVariant::Supermajority }
+	}
+}
+
+pub struct MockedSeatsConsensus;
+impl MockedSeatsConsensus {
+	// Every test's thread must hold the lock till the end of its test
+	pub fn set_and_hold_lock(
+		mock: MockSeatsConsensus,
+	) -> ReentrantMutexGuard<'static, RefCell<MockSeatsConsensus>> {
+		let lock = MOCK_SEATS_CONSENSUS.lock();
+		*lock.borrow_mut() = mock;
+		lock
+	}
+
+	// Every test's thread must release the lock that it previously acquired in the end of its
+	// test
+	pub fn reset_and_release_lock(lock: ReentrantMutexGuard<'static, RefCell<MockSeatsConsensus>>) {
+		*lock.borrow_mut() = MockSeatsConsensus::default();
+	}
+}
+
+impl SeatsConsensus for MockedSeatsConsensus {
+	fn get_threshold(seats: MemberCount) -> MemberCount {
+		let lock = MOCK_SEATS_CONSENSUS.lock();
+		let mock_ref = lock.borrow();
+		match mock_ref.consensus {
+			ConsensusVariant::Supermajority => Supermajority::get_threshold(seats),
+			ConsensusVariant::Unanimous => Unanimous::get_threshold(seats),
+		}
+	}
 }
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
