@@ -71,21 +71,24 @@ pub enum NodePubKey {
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodeType {
 	Storage = 1,
+	DAC = 4,
 }
 
-impl From<NodeType> for u8 {
+impl From<NodeType> for u16 {
 	fn from(node_type: NodeType) -> Self {
 		match node_type {
 			NodeType::Storage => 1,
+			NodeType::DAC => 4,
 		}
 	}
 }
 
-impl TryFrom<u8> for NodeType {
+impl TryFrom<u16> for NodeType {
 	type Error = ();
-	fn try_from(value: u8) -> Result<Self, Self::Error> {
+	fn try_from(value: u16) -> Result<Self, Self::Error> {
 		match value {
 			1 => Ok(NodeType::Storage),
+			4 => Ok(NodeType::DAC),
 			_ => Err(()),
 		}
 	}
@@ -94,10 +97,10 @@ impl TryFrom<u8> for NodeType {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodeMode {
-	/// DDC Storage node operates with enabled caching in RAM and doesn't store data in Hard Drive
-	Cache = 1,
 	/// DDC Storage node operates with disabled caching in RAM and stores data in Hard Drive
-	Storage = 2,
+	Storage = 1,
+	/// DDC Storage node operates with enabled caching in RAM and doesn't store data in Hard Drive
+	Cache = 2,
 	/// DDC DAC node operates as aggregator of activity events
 	DAC = 4,
 }

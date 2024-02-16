@@ -1,13 +1,10 @@
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
 use frame_system::Config;
-use scale_info::TypeInfo;
+use scale_info::{prelude::vec::Vec, TypeInfo};
 use sp_runtime::RuntimeDebug;
 
-use crate::{
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
-	ClusterPricingParams, NodePubKey, NodeType,
-};
+use crate::{ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodeMode, NodePubKey, NodeType};
 
 pub trait ClusterVisitor<T: Config> {
 	fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError>;
@@ -38,6 +35,8 @@ pub trait ClusterVisitor<T: Config> {
 	fn get_bonding_params(
 		cluster_id: &ClusterId,
 	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError>;
+
+	fn get_node(mode: NodeMode) -> Result<Vec<NodePubKey>, ClusterVisitorError>;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {

@@ -17,6 +17,7 @@ members = [
   "pallets/ddc-customers",
   "pallets/ddc-nodes",
   "pallets/ddc-staking",
+  "pallets/ddc-validator",
   "pallets/erc20",
   "pallets/erc721",
   "primitives",

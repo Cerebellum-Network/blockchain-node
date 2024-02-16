@@ -1,0 +1,64 @@
+[package]
+name = "pallet-ddc-validator"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+
+[dependencies]
+# 3rd-party dependencies (!todo: fix the versions)
+alt_serde = { version = "1", default-features = false, features = ["derive"] }
+array-bytes = "6.0.0"
+base64 = { version = "0.21.0", default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+lite-json = { version = "0.2.0", default-features = false }
+log = { version = "0.4.17", default-features = false }
+scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
+serde = { version = "1.0.101", optional = true }
+
+# Substrate dependencies
+frame-election-provider-support = { workspace = true, optional = true }
+frame-support = { workspace = true, optional = true }
+frame-system = { workspace = true, optional = true }
+pallet-contracts = { workspace = true, optional = true }
+pallet-session = { workspace = true, optional = true }
+pallet-staking = { workspace = true, optional = true }
+sp-core = { workspace = true, optional = true }
+sp-io = { workspace = true, optional = true }
+sp-keystore = { workspace = true, optional = true }
+sp-runtime = { workspace = true, optional = true }
+sp-staking = { workspace = true, optional = true }
+sp-std = { workspace = true, optional = true }
+
+# Cere dependencies
+ddc-primitives = { workspace = true }
+
+[dev-dependencies]
+pallet-balances = { workspace = true, default-features = true }
+pallet-staking-reward-curve = { workspace = true, default-features = true }
+pallet-timestamp = { workspace = true, default-features = true }
+
+
+[features]
+default = ["std"]
+std = [
+    "codec/std",
+    "frame-election-provider-support/std",
+    "frame-support/std",
+    "frame-system/std",
+    "lite-json/std",
+    "pallet-contracts/std",
+    "pallet-session/std",
+    "pallet-staking/std",
+    "scale-info/std",
+    "serde",
+    "sp-core/std",
+    "sp-io/std",
+    "sp-keystore",
+    "sp-runtime/std",
+    "sp-staking/std",
+    "sp-std/std",
+]

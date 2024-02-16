@@ -237,6 +237,14 @@ pub mod pallet {
 		fn exists(node_pub_key: &NodePubKey) -> bool {
 			Self::get(node_pub_key.clone()).is_ok()
 		}
+
+		fn get_node() -> Vec<NodePubKey> {
+			let mut result: Vec<NodePubKey> = Vec::new();
+
+
+
+			Ok(result)
+		}
 	}
 
 	impl<T: Config> NodeCreator<T> for Pallet<T> {
