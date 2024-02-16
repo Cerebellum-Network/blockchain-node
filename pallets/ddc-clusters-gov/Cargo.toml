@@ -37,6 +37,8 @@ pallet-contracts = { git = "https://github.com/paritytech/substrate.git", branch
 pallet-ddc-nodes = { version = "4.8.8", path = "../../pallets/ddc-nodes" }
 pallet-ddc-clusters = { version = "4.8.8", path = "../../pallets/ddc-clusters" }
 pallet-ddc-staking = { version = "4.8.8", path = "../../pallets/ddc-staking" }
+lazy_static = "1.4.0"
+parking_lot = "0.12.1"
 
 [features]
 default = ["std"]
