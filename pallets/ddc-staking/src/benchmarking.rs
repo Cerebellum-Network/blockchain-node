@@ -1,6 +1,9 @@
 //! DdcStaking pallet benchmarking.
 
-use ddc_primitives::{NodeParams, NodeType, StorageNodeMode, StorageNodeParams, StorageNodePubKey};
+use ddc_primitives::{
+	ClusterGovParams, ClusterParams, NodeParams, NodeType, StorageNodeMode, StorageNodeParams,
+	StorageNodePubKey,
+};
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 };
@@ -15,6 +18,26 @@ use crate::Pallet as DdcStaking;
 
 const USER_SEED: u32 = 999666;
 
+fn next_block<T: Config>() {
+	frame_system::Pallet::<T>::set_block_number(
+		frame_system::Pallet::<T>::block_number() + T::BlockNumber::from(1_u32),
+	);
+}
+
+fn fast_forward_to<T: Config>(n: T::BlockNumber) {
+	while frame_system::Pallet::<T>::block_number() < n {
+		next_block::<T>();
+	}
+}
+
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+}
+
+fn assert_has_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+	frame_system::Pallet::<T>::assert_has_event(generic_event.into());
+}
+
 benchmarks! {
 	bond {
 		let stash = create_funded_user::<T>("stash", USER_SEED, 100);
@@ -28,7 +51,7 @@ benchmarks! {
 			NodeParams::StorageParams(StorageNodeParams {
 				mode: StorageNodeMode::Storage,
 				host: vec![1u8; 255],
-				domain: vec![2u8; 256],
+				domain: vec![2u8; 255],
 				ssl: true,
 				http_port: 35000u16,
 				grpc_port: 25000u16,
@@ -122,6 +145,81 @@ benchmarks! {
 	}: _(RawOrigin::Signed(stash), new_node.clone())
 	verify {
 		assert!(Nodes::<T>::contains_key(&new_node));
+	}
+
+	bond_cluster {
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5000);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5000);
+
+		T::ClusterCreator::create_cluster(
+			cluster_id,
+			cluster_manager_id.clone(),
+			cluster_reserve_id.clone(),
+			ClusterParams { node_provider_auth_contract: None },
+			ClusterGovParams::default()
+		)?;
+
+		whitelist_account!(cluster_reserve_id);
+
+	}: _(RawOrigin::Signed(cluster_reserve_id.clone()), cluster_id)
+	verify {
+		assert!(ClusterBonded::<T>::contains_key(&cluster_reserve_id));
+		assert!(ClusterLedger::<T>::contains_key(&cluster_manager_id));
+		let amount = T::ClusterBondingAmount::get();
+		assert_last_event::<T>(Event::Bonded(cluster_reserve_id, amount).into());
+	}
+
+	unbond_cluster {
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5000);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5000);
+
+		T::ClusterCreator::create_cluster(
+			cluster_id,
+			cluster_manager_id.clone(),
+			cluster_reserve_id.clone(),
+			ClusterParams { node_provider_auth_contract: None },
+			ClusterGovParams::default()
+		)?;
+
+		DdcStaking::<T>::bond_cluster(RawOrigin::Signed(cluster_reserve_id.clone()).into(), cluster_id)?;
+
+		whitelist_account!(cluster_manager_id);
+
+	}: _(RawOrigin::Signed(cluster_manager_id.clone()), cluster_id)
+	verify {
+		let amount = T::ClusterBondingAmount::get();
+		assert_last_event::<T>(Event::Unbonded(cluster_reserve_id, amount).into());
+	}
+
+	withdraw_unbonded_cluster {
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5000);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5000);
+
+		T::ClusterCreator::create_cluster(
+			cluster_id,
+			cluster_manager_id.clone(),
+			cluster_reserve_id.clone(),
+			ClusterParams { node_provider_auth_contract: None },
+			ClusterGovParams::default()
+		)?;
+
+		DdcStaking::<T>::bond_cluster(RawOrigin::Signed(cluster_reserve_id.clone()).into(), cluster_id)?;
+		next_block::<T>();
+
+		DdcStaking::<T>::unbond_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id)?;
+		fast_forward_to::<T>(frame_system::Pallet::<T>::block_number() + T::ClusterUnboningDelay::get() + T::BlockNumber::from(1_u32));
+
+		whitelist_account!(cluster_reserve_id);
+
+	}: _(RawOrigin::Signed(cluster_manager_id.clone()), cluster_id)
+	verify {
+		assert!(!ClusterBonded::<T>::contains_key(&cluster_reserve_id));
+		assert!(!ClusterLedger::<T>::contains_key(&cluster_manager_id));
+		let amount = T::ClusterBondingAmount::get();
+		assert_last_event::<T>(Event::Withdrawn(cluster_reserve_id, amount).into());
 	}
 
 	impl_benchmark_test_suite!(

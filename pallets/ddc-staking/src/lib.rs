@@ -829,7 +829,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(8)]
-		#[pallet::weight(T::WeightInfo::bond())]
+		#[pallet::weight(T::WeightInfo::bond_cluster())]
 		pub fn bond_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let cluster_stash = ensure_signed(origin)?;
 			let (controller, stash) =
@@ -876,7 +876,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(9)]
-		#[pallet::weight(T::WeightInfo::unbond())]
+		#[pallet::weight(T::WeightInfo::unbond_cluster())]
 		pub fn unbond_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let cluster_controller = ensure_signed(origin)?;
 			let controller = T::ClusterManager::get_manager_account_id(&cluster_id)?;
@@ -920,7 +920,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(10)]
-		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
+		#[pallet::weight(T::WeightInfo::withdraw_unbonded_cluster())]
 		pub fn withdraw_unbonded_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
