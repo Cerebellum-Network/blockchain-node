@@ -17,6 +17,14 @@ use crate::{cluster::ClusterProps, Pallet as DdcClusters};
 const USER_SEED: u32 = 999666;
 const USER_SEED_2: u32 = 999555;
 
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+}
+
+fn assert_has_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+	frame_system::Pallet::<T>::assert_has_event(generic_event.into());
+}
+
 benchmarks! {
   where_clause { where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]> }
@@ -83,6 +91,21 @@ benchmarks! {
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, new_cluster_params)
 	verify {
 		assert_eq!(Clusters::<T>::try_get(cluster_id).unwrap().props, ClusterProps { node_provider_auth_contract: Some(user_2) });
+	}
+
+	validate_node {
+		let bytes = [0u8; 32];
+		let node_pub_key = NodePubKey::StoragePubKey(AccountId32::from(bytes));
+		let cluster_id = ClusterId::from([1; 20]);
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
+		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
+		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
+		DdcClusters::<T>::add_node(RawOrigin::Signed(user.clone()).into(), cluster_id, node_pub_key.clone(), ClusterNodeKind::Genesis)?;
+
+	}: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key.clone(), true)
+	verify {
+		assert_last_event::<T>(Event::ClusterNodeValidated { cluster_id, node_pub_key, succeeded: true}.into());
 	}
 
 	impl_benchmark_test_suite!(
