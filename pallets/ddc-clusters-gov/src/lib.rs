@@ -245,7 +245,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::propose_activate_cluster())]
 		pub fn propose_activate_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -293,7 +293,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(1)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::propose_update_cluster_economics())]
 		pub fn propose_update_cluster_economics(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -345,7 +345,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(2)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::vote_proposal())]
 		pub fn vote_proposal(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -359,7 +359,15 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight((
+			{
+				let m = 64;
+				<T as pallet::Config>::WeightInfo::close_early_approved(m)
+					.max(<T as pallet::Config>::WeightInfo::close_early_disapproved(m))
+					.max(<T as pallet::Config>::WeightInfo::close_approved(m))
+					.max(<T as pallet::Config>::WeightInfo::close_disapproved(m))
+			}
+		))]
 		pub fn close_proposal(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -371,7 +379,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(4)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::retract_proposal())]
 		pub fn retract_proposal(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			let proposal =
@@ -385,7 +393,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(5)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::refund_submission_deposit())]
 		pub fn refund_submission_deposit(
 			origin: OriginFor<T>,
 			referenda_index: ReferendumIndex,
@@ -419,7 +427,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(6)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::activate_cluster())]
 		pub fn activate_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -431,7 +439,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(7)]
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::update_cluster_economics())]
 		pub fn update_cluster_economics(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -573,19 +581,14 @@ pub mod pallet {
 			let disapproved = seats.saturating_sub(no_votes) < voting.threshold;
 			// Allow (dis-)approving the proposal as soon as there are enough votes.
 			if approved {
-				let (proposal, len) = Self::validate_and_get_public_proposal(&cluster_id)?;
+				let (proposal, _) = Self::validate_and_get_public_proposal(&cluster_id)?;
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
 				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal, caller_id)?;
-				let proposal_count = 1;
 
 				return Ok((
 					Some(
-						<T as pallet::Config>::WeightInfo::close_early_approved(
-							len as u32,
-							seats,
-							proposal_count,
-						)
-						.saturating_add(proposal_weight),
+						<T as pallet::Config>::WeightInfo::close_early_approved(seats)
+							.saturating_add(proposal_weight),
 					),
 					Pays::Yes,
 				)
@@ -593,14 +596,10 @@ pub mod pallet {
 			} else if disapproved {
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
 				Self::do_disapprove_proposal(cluster_id);
-				let proposal_count = 1;
 
 				return Ok((
-					Some(<T as pallet::Config>::WeightInfo::close_early_disapproved(
-						seats,
-						proposal_count,
-					)),
-					Pays::No,
+					Some(<T as pallet::Config>::WeightInfo::close_early_disapproved(seats)),
+					Pays::Yes,
 				)
 					.into())
 			}
@@ -627,19 +626,14 @@ pub mod pallet {
 			let approved = yes_votes >= voting.threshold;
 
 			if approved {
-				let (proposal, len) = Self::validate_and_get_public_proposal(&cluster_id)?;
+				let (proposal, _) = Self::validate_and_get_public_proposal(&cluster_id)?;
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
 				let proposal_weight = Self::do_approve_proposal(cluster_id, proposal, caller_id)?;
-				let proposal_count = 1;
 
 				Ok((
 					Some(
-						<T as pallet::Config>::WeightInfo::close_approved(
-							len as u32,
-							seats,
-							proposal_count,
-						)
-						.saturating_add(proposal_weight),
+						<T as pallet::Config>::WeightInfo::close_approved(seats)
+							.saturating_add(proposal_weight),
 					),
 					Pays::Yes,
 				)
@@ -647,15 +641,8 @@ pub mod pallet {
 			} else {
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
 				Self::do_disapprove_proposal(cluster_id);
-				let proposal_count = 1;
 
-				Ok((
-					Some(<T as pallet::Config>::WeightInfo::close_disapproved(
-						seats,
-						proposal_count,
-					)),
-					Pays::No,
-				)
+				Ok((Some(<T as pallet::Config>::WeightInfo::close_disapproved(seats)), Pays::Yes)
 					.into())
 			}
 		}
