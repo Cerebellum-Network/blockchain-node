@@ -2,12 +2,13 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use ddc_primitives::{
-	ClusterGovParams, ClusterId, ClusterNodeKind, ClusterParams, NodeParams, StorageNodeMode,
-	StorageNodeParams, StorageNodePubKey,
+	ClusterBondingParams, ClusterGovParams, ClusterId, ClusterNodeKind, ClusterParams, NodeParams,
+	StorageNodeMode, StorageNodeParams, StorageNodePubKey,
 };
-use frame_benchmarking::{account, benchmarks, benchmarks_instance_pallet, whitelist_account};
+use frame_benchmarking::{account, benchmarks};
 use frame_system::RawOrigin;
-use sp_runtime::Perquintill;
+use pallet_referenda::Pallet as Referenda;
+use sp_runtime::{Perquintill, SaturatedConversion};
 use sp_std::prelude::*;
 
 use super::*;
@@ -398,6 +399,7 @@ benchmarks! {
 		}
 
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		next_block::<T>();
 
 		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
@@ -410,6 +412,114 @@ benchmarks! {
 		assert!(!ClusterProposal::<T>::contains_key(cluster_id));
 		assert!(!ClusterProposalVoting::<T>::contains_key(cluster_id));
 		assert_last_event::<T>(Event::Removed { cluster_id }.into());
+	}
+
+	refund_submission_deposit {
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+
+		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
+		for i in 0 .. 3 {
+			let node_provider = create_funded_user_with_balance::<T>("node-provider", i, 5);
+			let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([i as u8; 32]));
+			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
+		}
+
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		next_block::<T>();
+
+		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+
+		for i in 0 .. 3 {
+			let (node_pub_key, node_provider) = &cluster_nodes.get(i as usize).unwrap();
+			DdcClustersGov::<T>::vote_proposal(
+				RawOrigin::Signed(node_provider.clone()).into(),
+				cluster_id,
+				true,
+				ClusterMember::NodeProvider(node_pub_key.clone()),
+			)?;
+		}
+
+		DdcClustersGov::<T>::vote_proposal(
+			RawOrigin::Signed(cluster_manager_id.clone()).into(),
+			cluster_id,
+			true,
+			ClusterMember::ClusterManager,
+		)?;
+
+		DdcClustersGov::<T>::close_proposal(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterMember::ClusterManager).expect("Could not close proposal");
+
+		let referenda_index = pallet_referenda::ReferendumCount::<T>::get() - 1;
+
+		assert!(SubmissionDeposits::<T>::contains_key(referenda_index));
+
+		Referenda::<T>::place_decision_deposit(RawOrigin::Signed(cluster_manager_id.clone()).into(), referenda_index).expect("Could not place decision deposit");
+		Referenda::<T>::cancel(RawOrigin::Root.into(), referenda_index).expect("Could not cancel referendum");
+
+	}: refund_submission_deposit(RawOrigin::Signed(cluster_manager_id.clone()), referenda_index)
+	verify {
+		assert!(!SubmissionDeposits::<T>::contains_key(referenda_index));
+	}
+
+	activate_cluster {
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+
+		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
+		for i in 0 .. 3 {
+			let node_provider = create_funded_user_with_balance::<T>("node-provider", i, 5);
+			let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([i as u8; 32]));
+			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
+		}
+
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
+		next_block::<T>();
+
+	}: activate_cluster(RawOrigin::Root, cluster_id, ClusterGovParams::default())
+	verify {
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_status = <T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(&cluster_id).unwrap();
+		assert_eq!(cluster_status, ClusterStatus::Activated);
+	}
+
+	update_cluster_economics {
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+
+		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
+		for i in 0 .. 3 {
+			let node_provider = create_funded_user_with_balance::<T>("node-provider", i, 5);
+			let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([i as u8; 32]));
+			cluster_nodes.push((node_pub_key.clone(), node_provider.clone()));
+		}
+
+		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), true);
+		next_block::<T>();
+
+	}: update_cluster_economics(RawOrigin::Root, cluster_id, ClusterGovParams {
+		treasury_share: Perquintill::from_percent(5),
+		validators_share: Perquintill::from_percent(10),
+		cluster_reserve_share: Perquintill::from_percent(15),
+		storage_bond_size: 10000_u128.saturated_into::<BalanceOf<T>>(),
+		storage_chill_delay: T::BlockNumber::from(20_u32),
+		storage_unbonding_delay: T::BlockNumber::from(20_u32),
+		unit_per_mb_stored: 97656,
+		unit_per_mb_streamed: 48828,
+		unit_per_put_request: 10,
+		unit_per_get_request: 5,
+	})
+	verify {
+		let cluster_id = ClusterId::from([1; 20]);
+		let bonding_params = T::ClusterEconomics::get_bonding_params(&cluster_id).unwrap();
+		let updated_bonding = ClusterBondingParams {
+			storage_bond_size: 10000_u128,
+			storage_chill_delay: T::BlockNumber::from(20_u32),
+			storage_unbonding_delay: T::BlockNumber::from(20_u32)
+		};
+		assert_eq!(bonding_params, updated_bonding);
 	}
 
 }
