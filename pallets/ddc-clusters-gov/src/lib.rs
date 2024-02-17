@@ -359,7 +359,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight((
+		#[pallet::weight(
 			{
 				let m = 64;
 				<T as pallet::Config>::WeightInfo::close_early_approved(m)
@@ -367,7 +367,7 @@ pub mod pallet {
 					.max(<T as pallet::Config>::WeightInfo::close_approved(m))
 					.max(<T as pallet::Config>::WeightInfo::close_disapproved(m))
 			}
-		))]
+		)]
 		pub fn close_proposal(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
