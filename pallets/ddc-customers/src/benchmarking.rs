@@ -194,7 +194,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(user), bucket_id)
 	verify {
 		let bucket = <Buckets<T>>::get(bucket_id).unwrap();
-		assert_eq!(bucket.is_removed, true);
+		assert!(bucket.is_removed);
 	}
 
 	impl_benchmark_test_suite!(

@@ -526,7 +526,7 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 			ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
-			ensure!(bucket.is_removed == false, Error::<T>::AlreadyRemoved);
+			ensure!(!bucket.is_removed, Error::<T>::AlreadyRemoved);
 
 			bucket.is_removed = true;
 			<Buckets<T>>::insert(bucket_id, bucket);

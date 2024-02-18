@@ -69,7 +69,7 @@ pub fn migrate_to_v1<T: Config>() -> Weight {
 			" <<< DDC Customers storage updated! Migrated {} buckets ✅", count
 		);
 
-		T::DbWeight::get().reads_writes(count as u64 + 2, count as u64 + 1)
+		T::DbWeight::get().reads_writes(count + 2, count + 1)
 	} else {
 		info!(target: LOG_TARGET, " >>> Unused migration!");
 		T::DbWeight::get().reads(1)
