@@ -11,12 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 
+- ...
+
+## [4.8.8]
+
 ### Changed
 
-- Changes in `pallet-ddc-payouts::begin_billing_report` crate to accept start and end of the era.
-
+- [C,D] Updated Substrate to polkadot-v0.9.40
 - More explicit events in `pallet-ddc-payouts` and `pallet-ddc-customers`
-- ...
+- Introduce a burn rate of 0.058% daily to bring inflation down.
+- More explicit events in `pallet-ddc-payouts` about batch index
 
 ## [4.8.7]
 
@@ -24,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [C,D] Updated Substrate to polkadot-v0.9.38
 - [C] Added pallet-preimage to support democracy functionality.
+- Changes in `pallet-ddc-payouts::begin_billing_report` crate to accept start and end of the era.
+- Changes in `pallet-ddc-payouts::begin_billing_report` crate to accept start and end of the era.
+- More explicit events in `pallet-ddc-payouts` and `pallet-ddc-customers`
 
 ## [4.8.6]
 

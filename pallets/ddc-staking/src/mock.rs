@@ -5,12 +5,12 @@
 use std::cell::RefCell;
 
 use ddc_primitives::{
+	traits::{
+		cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
+		node::{NodeVisitor, NodeVisitorError},
+	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
 	NodeParams, NodePubKey, StorageNodePubKey,
-};
-use ddc_traits::{
-	cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
-	node::{NodeVisitor, NodeVisitorError},
 };
 use frame_support::{
 	construct_runtime,
