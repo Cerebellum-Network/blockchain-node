@@ -27,6 +27,7 @@ use frame_support::{
 };
 pub use pallet::*;
 use scale_info::TypeInfo;
+use serde::{Deserialize, Serialize};
 use sp_io::hashing::blake2_128;
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
@@ -57,6 +58,7 @@ pub struct UnlockChunk<T: Config> {
 	block: T::BlockNumber,
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Bucket<AccountId> {
 	bucket_id: BucketId,
@@ -170,7 +172,7 @@ pub mod pallet {
 	pub type BucketsCount<T: Config> =
 		StorageValue<Value = BucketId, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
 
-	/// Map from bucket ID to to the bucket structure
+	/// Map from bucket ID to the bucket structure
 	#[pallet::storage]
 	#[pallet::getter(fn buckets)]
 	pub type Buckets<T: Config> =
@@ -235,7 +237,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub feeder_account: Option<T::AccountId>,
-		pub buckets: Vec<(ClusterId, T::AccountId, BalanceOf<T>, bool, bool)>,
+		pub buckets: Vec<(Bucket<T::AccountId>, BalanceOf<T>)>,
 	}
 
 	#[cfg(feature = "std")]
@@ -265,24 +267,17 @@ pub mod pallet {
 				}
 			}
 
-			for (cluster_id, owner_id, deposit, is_public, is_removed) in &self.buckets {
+			for (bucket, deposit) in &self.buckets {
 				let cur_bucket_id = <BucketsCount<T>>::get()
 					.checked_add(1)
 					.ok_or(Error::<T>::ArithmeticOverflow)
 					.unwrap();
 				<BucketsCount<T>>::set(cur_bucket_id);
 
-				let bucket = Bucket {
-					bucket_id: cur_bucket_id,
-					owner_id: owner_id.clone(),
-					cluster_id: *cluster_id,
-					is_public: *is_public,
-					is_removed: *is_removed,
-				};
 				<Buckets<T>>::insert(cur_bucket_id, bucket);
 
 				let ledger = AccountsLedger::<T> {
-					owner: owner_id.clone(),
+					owner: bucket.owner_id.clone(),
 					total: *deposit,
 					active: *deposit,
 					unlocking: Default::default(),
