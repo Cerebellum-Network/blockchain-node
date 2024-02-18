@@ -43,47 +43,47 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcClusters Clusters (r:1 w:0)
 	// Storage: DdcCustomers Buckets (r:0 w:1)
 	fn create_bucket() -> Weight {
-		Weight::from_ref_time(156_518_000_u64)
+		Weight::from_parts(156_518_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcCustomers Ledger (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn deposit() -> Weight {
-		Weight::from_ref_time(439_562_000_u64)
+		Weight::from_parts(439_562_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcCustomers Ledger (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn deposit_extra() -> Weight {
-		Weight::from_ref_time(582_699_000_u64)
+		Weight::from_parts(582_699_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcCustomers Ledger (r:1 w:1)
 	fn unlock_deposit() -> Weight {
-		Weight::from_ref_time(208_316_000_u64)
+		Weight::from_parts(208_316_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	// Storage: DdcCustomers Ledger (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn withdraw_unlocked_deposit_update() -> Weight {
-		Weight::from_ref_time(451_983_000_u64)
+		Weight::from_parts(451_983_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcCustomers Ledger (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn withdraw_unlocked_deposit_kill() -> Weight {
-		Weight::from_ref_time(599_908_000_u64)
+		Weight::from_parts(599_908_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcCustomers Buckets (r:1 w:1)
 	fn set_bucket_params() -> Weight {
-		Weight::from_ref_time(155_437_000_u64)
+		Weight::from_parts(155_437_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -95,47 +95,47 @@ impl WeightInfo for () {
 	// Storage: DdcClusters Clusters (r:1 w:0)
 	// Storage: DdcCustomers Buckets (r:0 w:1)
 	fn create_bucket() -> Weight {
-		Weight::from_ref_time(156_518_000_u64)
+		Weight::from_parts(156_518_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcCustomers Ledger (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn deposit() -> Weight {
-		Weight::from_ref_time(439_562_000_u64)
+		Weight::from_parts(439_562_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcCustomers Ledger (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn deposit_extra() -> Weight {
-		Weight::from_ref_time(582_699_000_u64)
+		Weight::from_parts(582_699_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcCustomers Ledger (r:1 w:1)
 	fn unlock_deposit() -> Weight {
-		Weight::from_ref_time(208_316_000_u64)
+		Weight::from_parts(208_316_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	// Storage: DdcCustomers Ledger (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn withdraw_unlocked_deposit_update() -> Weight {
-		Weight::from_ref_time(451_983_000_u64)
+		Weight::from_parts(451_983_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcCustomers Ledger (r:1 w:1)
 	// Storage: System Account (r:1 w:1)
 	fn withdraw_unlocked_deposit_kill() -> Weight {
-		Weight::from_ref_time(599_908_000_u64)
+		Weight::from_parts(599_908_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcCustomers Buckets (r:1 w:1)
 	fn set_bucket_params() -> Weight {
-		Weight::from_ref_time(155_437_000_u64)
+		Weight::from_parts(155_437_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}

@@ -37,20 +37,20 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: DdcNodes StorageNodes (r:1 w:1)
 	fn create_node() -> Weight {
-		Weight::from_ref_time(12_000_000_u64)
+		Weight::from_parts(12_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	// Storage: DdcNodes StorageNodes (r:1 w:1)
 	// Storage: DdcStaking Nodes (r:1 w:0)
 	fn delete_node() -> Weight {
-		Weight::from_ref_time(16_000_000_u64)
+		Weight::from_parts(16_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	// Storage: DdcNodes StorageNodes (r:1 w:1)
 	fn set_node_params() -> Weight {
-		Weight::from_ref_time(15_000_000_u64)
+		Weight::from_parts(15_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -60,20 +60,20 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 impl WeightInfo for () {
 	// Storage: DdcNodes StorageNodes (r:1 w:1)
 	fn create_node() -> Weight {
-		Weight::from_ref_time(12_000_000_u64)
+		Weight::from_parts(12_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	// Storage: DdcNodes StorageNodes (r:1 w:1)
 	// Storage: DdcStaking Nodes (r:1 w:0)
 	fn delete_node() -> Weight {
-		Weight::from_ref_time(16_000_000_u64)
+		Weight::from_parts(16_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	// Storage: DdcNodes StorageNodes (r:1 w:1)
 	fn set_node_params() -> Weight {
-		Weight::from_ref_time(15_000_000_u64)
+		Weight::from_parts(15_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
