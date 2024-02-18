@@ -99,6 +99,7 @@ impl Config for Test {
     type HashId = HashId;
     type NativeTokenId = NativeTokenId;
     type Erc721Id = Erc721Id;
+    type WeightInfo = ();
 }
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
