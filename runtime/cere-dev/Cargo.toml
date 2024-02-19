@@ -96,6 +96,7 @@ pallet-ddc-clusters = { workspace = true }
 pallet-ddc-customers = { workspace = true }
 pallet-ddc-nodes = { workspace = true }
 pallet-ddc-payouts = { workspace = true }
+pallet-ddc-validator = { workspace = true }
 pallet-ddc-staking = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }

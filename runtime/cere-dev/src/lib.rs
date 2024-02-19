@@ -59,6 +59,7 @@ pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
 pub use pallet_ddc_nodes;
 pub use pallet_ddc_payouts;
+pub use pallet_ddc_validator;
 pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
@@ -102,6 +103,7 @@ pub mod impls;
 use cere_runtime_common::constants::{currency::*, time::*};
 use impls::Author;
 use sp_runtime::generic::Era;
+use sp_staking::EraIndex;
 
 /// Generated voter bag information.
 mod voter_bags;
@@ -1345,6 +1347,19 @@ impl pallet_ddc_customers::Config for Runtime {
 	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	pub const DACValidatorsQuorumSize: u32 = 3;
+	pub const ValidationThreshold: u32 = 5;
+	pub const ValidatorsMax: u32 = 64;
+}
+impl pallet_ddc_validator::Config for Runtime {
+	type Randomness = RandomnessCollectiveFlip;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type AuthorityId = sp_consensus_babe::AuthorityId;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+}
+
 impl pallet_ddc_nodes::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
@@ -1439,7 +1454,8 @@ construct_runtime!(
 		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
-		DdcPayouts: pallet_ddc_payouts
+		DdcPayouts: pallet_ddc_payouts,
+		DdcValidator: pallet_ddc_validator,
 	}
 );
 

@@ -62,8 +62,6 @@ type BalanceOf<T> = <<T as pallet_contracts::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
 
-type ResultStr<T> = Result<T, &'static str>;
-
 /// Offchain local storage key that holds the last era in which the validator completed its
 /// assignment.
 const LAST_VALIDATED_ERA_KEY: &[u8; 40] = b"pallet-ddc-validator::last_validated_era";
@@ -73,107 +71,6 @@ const VALIDATION_LOCK: &[u8; 37] = b"pallet-ddc-validator::validation_lock";
 /// Local storage key that holds the flag to enable DDC validation. Set it to true (0x01) to enable
 /// DDC validation, set it to false (0x00) or delete the key to disable it.
 const ENABLE_DDC_VALIDATION_KEY: &[u8; 21] = b"enable-ddc-validation";
-
-pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dacv");
-
-/// Webdis in experimental cluster connected to Redis in dev.
-pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://webdis:7379";
-// pub const DEFAULT_DATA_PROVIDER_URL: &str = "http://161.35.140.182:7379";
-pub const DATA_PROVIDER_URL_KEY: &[u8; 7] = b"dac-url";
-pub const QUORUM_SIZE: usize = 1;
-
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub enum OpCode {
-	Read = 1,
-	Write = 2,
-	Search = 3,
-}
-
-impl TryFrom<u64> for OpCode {
-	type Error = &'static str;
-
-	fn try_from(v: u64) -> Result<Self, Self::Error> {
-		match v {
-			x if x == OpCode::Write as u64 => Ok(OpCode::Write),
-			x if x == OpCode::Read as u64 => Ok(OpCode::Read),
-			x if x == OpCode::Search as u64 => Ok(OpCode::Search),
-			_ => Err("Invalid value to for log type"),
-		}
-	}
-}
-
-#[derive(Debug)]
-pub enum AssignmentError {
-	NoValidators,
-	NotEnoughValidators { requested_quorum: usize, available_validators: usize },
-	DefensiveEmptyQuorumsCycle,
-}
-
-/// Aggregated values from DAC that describe CDN node's activity during a certain era.
-#[derive(
-	PartialEq,
-	Eq,
-	Clone,
-	Encode,
-	Decode,
-	RuntimeDebug,
-	TypeInfo,
-	MaxEncodedLen,
-	Serialize,
-	Deserialize,
-)]
-#[serde(crate = "alt_serde")]
-pub struct DacTotalAggregates {
-	/// Total bytes received by the client.
-	pub received: u64,
-	/// Total bytes sent by the CDN node.
-	pub sent: u64,
-	/// Total bytes sent by the CDN node to the client which interrupts the connection.
-	pub failed_by_client: u64,
-	/// ToDo: explain.
-	pub failure_rate: u64,
-}
-
-/// Final DAC Validation decision.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Serialize, Deserialize)]
-#[serde(crate = "alt_serde")]
-pub struct ValidationDecision {
-	/// CDN node public key.
-	pub edge: String,
-	/// Validation result.
-	pub result: bool,
-	/// A hash of the data used to produce validation result.
-	pub payload: [u8; 32],
-	/// Values aggregated from the payload.
-	pub totals: DacTotalAggregates,
-}
-
-pub mod crypto {
-	use super::KEY_TYPE;
-	use frame_system::offchain::AppCrypto;
-	use sp_core::sr25519::Signature as Sr25519Signature;
-	use sp_runtime::{
-		app_crypto::{app_crypto, sr25519},
-		traits::Verify,
-	};
-	app_crypto!(sr25519, KEY_TYPE);
-
-	use sp_runtime::{MultiSignature, MultiSigner};
-
-	pub struct TestAuthId;
-
-	impl AppCrypto<<Sr25519Signature as Verify>::Signer, Sr25519Signature> for TestAuthId {
-		type RuntimeAppPublic = Public;
-		type GenericSignature = sp_core::sr25519::Signature;
-		type GenericPublic = sp_core::sr25519::Public;
-	}
-
-	impl AppCrypto<MultiSigner, MultiSignature> for TestAuthId {
-		type RuntimeAppPublic = Public;
-		type GenericSignature = sp_core::sr25519::Signature;
-		type GenericPublic = sp_core::sr25519::Public;
-	}
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -198,21 +95,6 @@ pub mod pallet {
 
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 
-		/// Number of validators expected to produce an individual validation decision to form a
-		/// consensus. Tasks assignment procedure use this value to determine the number of
-		/// validators are getting the same task. Must be an odd number.
-		#[pallet::constant]
-		type DdcValidatorsQuorumSize: Get<u32>;
-
-		type ValidatorsMax: Get<u32>;
-
-		/// Proof-of-Delivery parameter specifies an allowed deviation between bytes sent and bytes
-		/// received. The deviation is expressed as a percentage. For example, if the value is 10,
-		/// then the difference between bytes sent and bytes received is allowed to be up to 10%.
-		/// The value must be in range [0, 100].
-		#[pallet::constant]
-		type ValidationThreshold: Get<u32>;
-
 		type ClusterVisitor: ClusterVisitorType<Self>;
 	}
 
@@ -221,13 +103,6 @@ pub mod pallet {
 	#[pallet::getter(fn assignments)]
 	pub(super) type Assignments<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, EraIndex, Identity, T::AccountId, Vec<T::AccountId>>;
-
-	/// Map to from era and account ID to bool indicateing that a particular content owner was
-	/// charged for the era
-	#[pallet::storage]
-	#[pallet::getter(fn content_owners_charged)]
-	pub(super) type EraContentOwnersCharged<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, EraIndex, Identity, T::AccountId, bool, ValueQuery>;
 
 	/// A signal to start a process on all the validators.
 	#[pallet::storage]
@@ -244,12 +119,6 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn validation_decision_set_for_node)]
 	pub(super) type ValidationDecisionSetForNode<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, EraIndex, Identity, T::AccountId, bool, ValueQuery>;
-
-	// Map to check if reward points were set for the era
-	#[pallet::storage]
-	#[pallet::getter(fn reward_points_set_for_node)]
-	pub(super) type RewardPointsSetForNode<T: Config> =
 		StorageDoubleMap<_, Twox64Concat, EraIndex, Identity, T::AccountId, bool, ValueQuery>;
 
 	/// The last era for which the tasks assignment produced.
@@ -533,20 +402,7 @@ where
     <T as frame_system::Config>::AccountId: AsRef<[u8]> + UncheckedFrom<T::Hash>,
     <BalanceOf<T> as HasCompact>::Type: Clone + Eq + PartialEq + Debug + TypeInfo + Encode,
 {
-    fn get_data_provider_url() -> String {
-        let url_ref = sp_io::offchain::local_storage_get(
-            sp_core::offchain::StorageKind::PERSISTENT,
-            DATA_PROVIDER_URL_KEY,
-        );
-
-        match url_ref {
-            Some(url) =>
-                String::from_utf8(url).expect("Data provider URL should be valid UTF-8 string"),
-            None => String::from(DEFAULT_DATA_PROVIDER_URL),
-        }
-    }
-
-    fn assign(quorum_size: usize, era: EraIndex) -> Result<(), AssignmentError> {
+    fn assign(quorum_size: usize, era: EraIndex) -> Result<(), DispatchError> {
     /*
         let validators: Vec<T::AccountId> = DDCValidatorToStashKeys::<T>::iter_keys().collect();
         log::debug!("Current validators: {:?}.", validators);
