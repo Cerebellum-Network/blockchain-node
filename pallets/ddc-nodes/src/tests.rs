@@ -1,6 +1,6 @@
 //! Tests for the module.
 
-use ddc_primitives::{NodePubKey, StorageNodeMode, StorageNodeParams};
+use ddc_primitives::{DDCNodeParams, NodeMode, NodeModeFlags, NodePubKey};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::AccountId32;
 use storage_node::{MaxDomainLen, MaxHostLen};
@@ -13,8 +13,8 @@ fn create_storage_node_works() {
 		System::set_block_number(1);
 		let bytes = [0u8; 32];
 		let node_pub_key = AccountId32::from(bytes);
-		let storage_node_params = StorageNodeParams {
-			mode: StorageNodeMode::Storage,
+		let storage_node_params = DDCNodeParams {
+			mode: NodeMode::Storage.into(),
 			host: vec![1u8; 255],
 			domain: vec![2u8; 255],
 			ssl: true,
@@ -28,8 +28,8 @@ fn create_storage_node_works() {
 			DdcNodes::create_node(
 				RuntimeOrigin::signed(1),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
-				NodeParams::StorageParams(StorageNodeParams {
-					mode: StorageNodeMode::Storage,
+				NodeParams::StorageParams(DDCNodeParams {
+					mode: NodeMode::Storage.into(),
 					host: vec![1u8; 256],
 					domain: vec![2u8; 255],
 					ssl: true,
@@ -46,8 +46,8 @@ fn create_storage_node_works() {
 			DdcNodes::create_node(
 				RuntimeOrigin::signed(1),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
-				NodeParams::StorageParams(StorageNodeParams {
-					mode: StorageNodeMode::Storage,
+				NodeParams::StorageParams(DDCNodeParams {
+					mode: NodeMode::Storage.into(),
 					host: vec![1u8; 255],
 					domain: vec![2u8; 256],
 					ssl: true,
@@ -118,8 +118,8 @@ fn create_storage_node_with_node_creator() {
 		System::set_block_number(1);
 		let bytes = [0u8; 32];
 		let node_pub_key = AccountId32::from(bytes);
-		let storage_node_params = StorageNodeParams {
-			mode: StorageNodeMode::Storage,
+		let storage_node_params = DDCNodeParams {
+			mode: NodeMode::Storage.into(),
 			host: vec![1u8; 255],
 			domain: vec![2u8; 255],
 			ssl: true,
@@ -154,8 +154,8 @@ fn set_storage_node_params_works() {
 		System::set_block_number(1);
 		let bytes = [0u8; 32];
 		let node_pub_key = AccountId32::from(bytes);
-		let storage_node_params = StorageNodeParams {
-			mode: StorageNodeMode::Storage,
+		let storage_node_params = DDCNodeParams {
+			mode: NodeMode::Storage.into(),
 			host: vec![1u8; 255],
 			domain: vec![2u8; 255],
 			ssl: true,
@@ -181,8 +181,8 @@ fn set_storage_node_params_works() {
 			NodeParams::StorageParams(storage_node_params.clone())
 		));
 
-		let updated_params = StorageNodeParams {
-			mode: StorageNodeMode::Full,
+		let updated_params = DDCNodeParams {
+			mode: NodeModeFlags::from_modes(&vec![NodeMode::Cache, NodeMode::Storage]),
 			host: vec![3u8; 255],
 			domain: vec![4u8; 255],
 			ssl: false,
@@ -213,6 +213,9 @@ fn set_storage_node_params_works() {
 		assert_eq!(updated_storage_node.props.grpc_port, updated_params.grpc_port);
 		assert_eq!(updated_storage_node.props.p2p_port, updated_params.p2p_port);
 		assert_eq!(updated_storage_node.props.mode, updated_params.mode);
+		assert!(updated_storage_node.props.mode.has_mode(NodeMode::Storage));
+		assert!(updated_storage_node.props.mode.has_mode(NodeMode::Cache));
+		assert!(!updated_storage_node.props.mode.has_mode(NodeMode::DAC));
 
 		// Only node provider can set params
 		assert_noop!(
@@ -244,8 +247,8 @@ fn set_storage_node_params_works() {
 			DdcNodes::set_node_params(
 				RuntimeOrigin::signed(1),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
-				NodeParams::StorageParams(StorageNodeParams {
-					mode: StorageNodeMode::Storage,
+				NodeParams::StorageParams(DDCNodeParams {
+					mode: NodeMode::Storage.into(),
 					host: vec![1u8; 256],
 					domain: vec![2u8; 255],
 					ssl: true,
@@ -262,8 +265,8 @@ fn set_storage_node_params_works() {
 			DdcNodes::set_node_params(
 				RuntimeOrigin::signed(1),
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
-				NodeParams::StorageParams(StorageNodeParams {
-					mode: StorageNodeMode::Storage,
+				NodeParams::StorageParams(DDCNodeParams {
+					mode: NodeMode::Storage.into(),
 					host: vec![1u8; 255],
 					domain: vec![2u8; 256],
 					ssl: true,
@@ -290,8 +293,8 @@ fn delete_storage_node_works() {
 		System::set_block_number(1);
 		let bytes = [0u8; 32];
 		let node_pub_key = AccountId32::from(bytes);
-		let storage_node_params = StorageNodeParams {
-			mode: StorageNodeMode::Storage,
+		let storage_node_params = DDCNodeParams {
+			mode: NodeMode::Storage.into(),
 			host: vec![1u8; 255],
 			domain: vec![2u8; 255],
 			ssl: true,

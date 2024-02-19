@@ -1,7 +1,7 @@
 //! Testing utils for ddc-staking.
 
 use ddc_primitives::{
-	ClusterGovParams, ClusterId, ClusterParams, NodeParams, StorageNodeMode, StorageNodeParams,
+	ClusterGovParams, ClusterId, ClusterParams, DDCNodeParams, NodeMode, NodeParams,
 	StorageNodePubKey,
 };
 use frame_benchmarking::account;
@@ -60,8 +60,8 @@ pub fn create_stash_controller_node<T: Config>(
 	T::NodeCreator::create_node(
 		node.clone(),
 		stash.clone(),
-		NodeParams::StorageParams(StorageNodeParams {
-			mode: StorageNodeMode::Storage,
+		NodeParams::StorageParams(DDCNodeParams {
+			mode: NodeMode::Storage.into(),
 			host: vec![1u8; 255],
 			domain: vec![2u8; 256],
 			ssl: true,
@@ -97,8 +97,8 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 			T::NodeCreator::create_node(
 				ddc_primitives::NodePubKey::StoragePubKey(node_pub_key),
 				stash.clone(),
-				NodeParams::StorageParams(StorageNodeParams {
-					mode: StorageNodeMode::Storage,
+				NodeParams::StorageParams(DDCNodeParams {
+					mode: NodeMode::Storage.into(),
 					host: vec![1u8; 255],
 					domain: vec![2u8; 256],
 					ssl: true,

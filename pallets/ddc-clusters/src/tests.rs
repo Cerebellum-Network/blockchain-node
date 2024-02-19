@@ -2,8 +2,7 @@
 
 use ddc_primitives::{
 	traits::cluster::ClusterManager, ClusterBondingParams, ClusterFeesParams, ClusterId,
-	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodeMode,
-	StorageNodeParams,
+	ClusterParams, ClusterPricingParams, DDCNodeParams, NodeMode, NodeParams, NodePubKey,
 };
 use frame_support::{assert_noop, assert_ok, error::BadOrigin};
 use frame_system::Config;
@@ -187,8 +186,8 @@ fn add_and_delete_node_works() {
 			Error::<Test>::AttemptToAddNonExistentNode
 		);
 
-		let storage_node_params = StorageNodeParams {
-			mode: StorageNodeMode::Storage,
+		let storage_node_params = DDCNodeParams {
+			mode: NodeMode::Storage.into(),
 			host: vec![1u8; 255],
 			domain: vec![2u8; 255],
 			ssl: true,
