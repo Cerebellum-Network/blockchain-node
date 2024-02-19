@@ -907,6 +907,7 @@ parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 50_000 * DOLLARS;
 	pub const SpendPeriod: BlockNumber = DAYS;
+	/// Burn rate is at 0.058% per era (daily burn rate)
 	pub const Burn: Permill = Permill::from_parts(580);
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
