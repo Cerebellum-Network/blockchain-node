@@ -520,16 +520,20 @@ pub mod pallet {
 		///
 		/// Only an owner can remove a bucket
 		#[pallet::call_index(6)]
-		// Todo: add benchmarks
-		#[pallet::weight(T::WeightInfo::create_bucket())]
+		#[pallet::weight(T::WeightInfo::remove_bucket())]
 		pub fn remove_bucket(origin: OriginFor<T>, bucket_id: BucketId) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
-			ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
-			ensure!(!bucket.is_removed, Error::<T>::AlreadyRemoved);
 
-			bucket.is_removed = true;
-			<Buckets<T>>::insert(bucket_id, bucket);
+			<Buckets<T>>::try_mutate(bucket_id, |maybe_bucket| -> DispatchResult {
+				let mut bucket = maybe_bucket.as_mut().ok_or(Error::<T>::NoBucketWithId)?;
+				ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
+				ensure!(!bucket.is_removed, Error::<T>::AlreadyRemoved);
+
+				// Mark the bucket as removed
+				bucket.is_removed = true;
+
+				Ok(())
+			})?;
 
 			Self::deposit_event(Event::<T>::BucketRemoved { bucket_id });
 
