@@ -156,7 +156,6 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		let account_5 = T::AccountId::decode(&mut &temp[..]).unwrap();
 
 		if content_owner == account_1 ||
-			content_owner == account_2 ||
 			content_owner == account_3 ||
 			content_owner == account_4 ||
 			content_owner == account_5
@@ -165,15 +164,16 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		}
 
 		if amount_to_charge < 50_000_000 && content_owner == account_3 {
+			assert!(PARTIAL_CHARGE < amount);
 			amount_to_charge = PARTIAL_CHARGE; // for user 3
 		}
 
 		if content_owner == account_2 {
+			assert!(USER2_BALANCE < amount);
 			amount_to_charge = USER2_BALANCE; // for user 2
 		}
 
 		let charge = amount_to_charge.saturated_into::<BalanceOf<T>>();
-
 		<T as pallet::Config>::Currency::transfer(
 			&content_owner,
 			&billing_vault,
@@ -189,6 +189,8 @@ pub const ACCOUNT_ID_2: AccountId = 2;
 pub const ACCOUNT_ID_3: AccountId = 3;
 pub const ACCOUNT_ID_4: AccountId = 4;
 pub const ACCOUNT_ID_5: AccountId = 5;
+pub const ACCOUNT_ID_6: AccountId = 6;
+pub const ACCOUNT_ID_7: AccountId = 7;
 pub struct TestClusterCreator;
 impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 	fn create_new_cluster(
@@ -222,18 +224,52 @@ pub const VALIDATOR1_SCORE: u64 = 30;
 pub const VALIDATOR2_SCORE: u64 = 45;
 pub const VALIDATOR3_SCORE: u64 = 25;
 
-pub const PARTIAL_CHARGE: u128 = 100;
-pub const USER2_BALANCE: u128 = 10;
+pub const PARTIAL_CHARGE: u128 = 10;
+pub const USER2_BALANCE: u128 = 5;
 pub const USER3_BALANCE: u128 = 1000;
 
-pub const FREE_CLUSTER_ID: ClusterId = ClusterId::zero();
-pub const ONE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(5u8);
+pub const NO_FEE_CLUSTER_ID: ClusterId = ClusterId::zero();
+pub const ONE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(4u8);
 pub const CERE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(10u8);
-
+pub const HIGH_FEES_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(5u8);
+pub const GET_PUT_ZERO_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(3u8);
+pub const STORAGE_ZERO_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(6u8);
+pub const STREAM_ZERO_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(7u8);
+pub const PUT_ZERO_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(8u8);
+pub const GET_ZERO_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(9u8);
+pub const STORAGE_STREAM_ZERO_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(11u8);
 pub const PRICING_PARAMS: ClusterPricingParams = ClusterPricingParams {
 	unit_per_mb_streamed: 2_000_000,
 	unit_per_mb_stored: 3_000_000,
 	unit_per_put_request: 4_000_000,
+	unit_per_get_request: 5_000_000,
+};
+
+pub const PRICING_PARAMS_STREAM_ZERO: ClusterPricingParams = ClusterPricingParams {
+	unit_per_mb_streamed: 0,
+	unit_per_mb_stored: 3_000_000,
+	unit_per_put_request: 4_000_000,
+	unit_per_get_request: 5_000_000,
+};
+
+pub const PRICING_PARAMS_STORAGE_ZERO: ClusterPricingParams = ClusterPricingParams {
+	unit_per_mb_streamed: 2_000_000,
+	unit_per_mb_stored: 0,
+	unit_per_put_request: 4_000_000,
+	unit_per_get_request: 5_000_000,
+};
+
+pub const PRICING_PARAMS_GET_ZERO: ClusterPricingParams = ClusterPricingParams {
+	unit_per_mb_streamed: 2_000_000,
+	unit_per_mb_stored: 3_000_000,
+	unit_per_put_request: 4_000_000,
+	unit_per_get_request: 0,
+};
+
+pub const PRICING_PARAMS_PUT_ZERO: ClusterPricingParams = ClusterPricingParams {
+	unit_per_mb_streamed: 2_000_000,
+	unit_per_mb_stored: 3_000_000,
+	unit_per_put_request: 0,
 	unit_per_get_request: 5_000_000,
 };
 
@@ -255,6 +291,12 @@ pub const PRICING_FEES: ClusterFeesParams = ClusterFeesParams {
 	treasury_share: Perquintill::from_percent(1),
 	validators_share: Perquintill::from_percent(10),
 	cluster_reserve_share: Perquintill::from_percent(2),
+};
+
+pub const PRICING_FEES_HIGH: ClusterFeesParams = ClusterFeesParams {
+	treasury_share: Perquintill::from_percent(10),
+	validators_share: Perquintill::from_percent(20),
+	cluster_reserve_share: Perquintill::from_percent(20),
 };
 
 pub const PRICING_FEES_ZERO: ClusterFeesParams = ClusterFeesParams {
@@ -343,21 +385,31 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 }
 
 pub fn get_fees(cluster_id: &ClusterId) -> ClusterFeesParams {
-	if *cluster_id == FREE_CLUSTER_ID ||
+	if *cluster_id == NO_FEE_CLUSTER_ID ||
 		*cluster_id == ONE_CLUSTER_ID ||
 		*cluster_id == CERE_CLUSTER_ID
 	{
 		PRICING_FEES_ZERO
+	} else if *cluster_id == HIGH_FEES_CLUSTER_ID {
+		PRICING_FEES_HIGH
 	} else {
 		PRICING_FEES
 	}
 }
 
 pub fn get_pricing(cluster_id: &ClusterId) -> ClusterPricingParams {
-	if *cluster_id == FREE_CLUSTER_ID || *cluster_id == ONE_CLUSTER_ID {
+	if *cluster_id == ONE_CLUSTER_ID || *cluster_id == NO_FEE_CLUSTER_ID {
 		PRICING_PARAMS_ONE
 	} else if *cluster_id == CERE_CLUSTER_ID {
 		PRICING_PARAMS_CERE
+	} else if *cluster_id == STORAGE_ZERO_CLUSTER_ID {
+		PRICING_PARAMS_STORAGE_ZERO
+	} else if *cluster_id == STREAM_ZERO_CLUSTER_ID {
+		PRICING_PARAMS_STREAM_ZERO
+	} else if *cluster_id == PUT_ZERO_CLUSTER_ID {
+		PRICING_PARAMS_PUT_ZERO
+	} else if *cluster_id == GET_ZERO_CLUSTER_ID {
+		PRICING_PARAMS_GET_ZERO
 	} else {
 		PRICING_PARAMS
 	}
@@ -427,6 +479,8 @@ impl ExtBuilder {
 				(3, USER3_BALANCE), // > PARTIAL_CHARGE
 				(4, 1000000000000000000000000),
 				(5, 1000000000000000000000000),
+				(6, 1000000000000000000000000),
+				(7, 1000000000000000000000000),
 			],
 		}
 		.assimilate_storage(&mut storage);

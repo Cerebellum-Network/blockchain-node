@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 - [C,D] `pallet-ddc-customers`: implemented bucket removal
+- Added ChargeError event to payout pallet
 
 ## [4.8.9]
 
