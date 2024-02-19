@@ -60,9 +60,10 @@ pub struct UnlockChunk<T: Config> {
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct Bucket<AccountId> {
+#[scale_info(skip_type_params(T))]
+pub struct Bucket<T: Config> {
 	bucket_id: BucketId,
-	owner_id: AccountId,
+	owner_id: T::AccountId,
 	cluster_id: ClusterId,
 	is_public: bool,
 	is_removed: bool,
@@ -175,8 +176,7 @@ pub mod pallet {
 	/// Map from bucket ID to the bucket structure
 	#[pallet::storage]
 	#[pallet::getter(fn buckets)]
-	pub type Buckets<T: Config> =
-		StorageMap<_, Twox64Concat, BucketId, Bucket<T::AccountId>, OptionQuery>;
+	pub type Buckets<T: Config> = StorageMap<_, Twox64Concat, BucketId, Bucket<T>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
@@ -237,7 +237,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub feeder_account: Option<T::AccountId>,
-		pub buckets: Vec<(Bucket<T::AccountId>, BalanceOf<T>)>,
+		pub buckets: Vec<(Bucket<T>, BalanceOf<T>)>,
 	}
 
 	#[cfg(feature = "std")]
