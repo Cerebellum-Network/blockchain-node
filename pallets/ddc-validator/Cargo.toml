@@ -23,9 +23,6 @@ serde = { version = "1.0.101", optional = true }
 frame-election-provider-support = { workspace = true, optional = true }
 frame-support = { workspace = true, optional = true }
 frame-system = { workspace = true, optional = true }
-pallet-contracts = { workspace = true, optional = true }
-pallet-session = { workspace = true, optional = true }
-pallet-staking = { workspace = true, optional = true }
 sp-core = { workspace = true, optional = true }
 sp-io = { workspace = true, optional = true }
 sp-keystore = { workspace = true, optional = true }
@@ -50,9 +47,6 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "lite-json/std",
-    "pallet-contracts/std",
-    "pallet-session/std",
-    "pallet-staking/std",
     "scale-info/std",
     "serde",
     "sp-core/std",
