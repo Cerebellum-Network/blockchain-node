@@ -60,3 +60,8 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
+try-runtime = [
+  "frame-system/try-runtime",
+  "pallet-contracts/try-runtime",
+  "pallet-ddc-nodes/try-runtime",
+]
