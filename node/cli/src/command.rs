@@ -208,32 +208,11 @@ pub fn run() -> sc_cli::Result<()> {
 			}
 		},
 		#[cfg(feature = "try-runtime")]
-		Some(Subcommand::TryRuntime(cmd)) => {
-			let runner = cli.create_runner(cmd)?;
-			let chain_spec = &runner.config().chain_spec;
-
-			let registry = &runner.config().prometheus_config.as_ref().map(|cfg| &cfg.registry);
-			let task_manager =
-				sc_service::TaskManager::new(runner.config().tokio_handle.clone(), *registry)
-					.map_err(|e| Error::Service(ServiceError::Prometheus(e)))?;
-
-			#[cfg(feature = "cere-dev-native")]
-			if chain_spec.is_cere_dev() {
-				return runner.async_run(|config| {
-            Ok((cmd.run::<cere_service::cere_dev_runtime::Block, cere_service::CereDevExecutorDispatch>(config), task_manager))
-        })
-			}
-
-			#[cfg(feature = "cere-native")]
-			{
-				return runner.async_run(|config| {
-          Ok((cmd.run::<cere_service::cere_runtime::Block, cere_service::CereExecutorDispatch>(config), task_manager))
-        })
-			}
-
-			#[cfg(not(feature = "cere-native"))]
-			panic!("No runtime feature (cere, cere-dev) is enabled")
-		},
+		Some(Subcommand::TryRuntime(_)) => Err("The `try-runtime` subcommand has been migrated to a \
+			standalone CLI (https://github.com/paritytech/try-runtime-cli). It is no longer \
+			being maintained here and will be removed entirely some time after January 2024. \
+			Please remove this subcommand from your runtime and use the standalone CLI."
+			.into()),
 		#[cfg(not(feature = "try-runtime"))]
 		Some(Subcommand::TryRuntime) => Err("TryRuntime wasn't enabled when building the node. \
 				You can enable it with `--features try-runtime`."
