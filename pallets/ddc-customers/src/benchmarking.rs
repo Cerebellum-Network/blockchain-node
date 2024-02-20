@@ -156,6 +156,7 @@ benchmarks! {
 			owner_id: user.clone(),
 			cluster_id,
 			is_public: false,
+			is_removed: false,
 		};
 
 		<BucketsCount<T>>::set(bucket_id);
@@ -171,6 +172,29 @@ benchmarks! {
 	verify {
 		let bucket = <Buckets<T>>::get(bucket_id).unwrap();
 		assert!(bucket.is_public);
+	}
+
+	remove_bucket {
+		let cluster_id = ClusterId::from([1; 20]);
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+
+		let bucket_id = 1;
+		let bucket = Bucket {
+			bucket_id,
+			owner_id: user.clone(),
+			cluster_id,
+			is_public: false,
+			is_removed: false,
+		};
+
+		<BucketsCount<T>>::set(bucket_id);
+		<Buckets<T>>::insert(bucket_id, bucket);
+
+		whitelist_account!(user);
+	}: _(RawOrigin::Signed(user), bucket_id)
+	verify {
+		let bucket = <Buckets<T>>::get(bucket_id).unwrap();
+		assert!(bucket.is_removed);
 	}
 
 	impl_benchmark_test_suite!(
