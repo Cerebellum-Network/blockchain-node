@@ -3,7 +3,7 @@
 use ddc_primitives::{DDCNodeParams, NodeMode, NodeModeFlags, NodePubKey};
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::AccountId32;
-use storage_node::{MaxDomainLen, MaxHostLen};
+use ddc_primitives::{MaxDomainLen, MaxHostLen};
 
 use super::{mock::*, *};
 
