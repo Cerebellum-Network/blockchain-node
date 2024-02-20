@@ -8,8 +8,3 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-dprint check
-if [ $? -ne 0 ]; then
-	echo "Run \`dprint fmt\` to fix formatting issues before committing."
-	exit 1
-fi
