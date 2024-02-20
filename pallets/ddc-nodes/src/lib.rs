@@ -241,8 +241,6 @@ pub mod pallet {
 		fn get_node() -> Vec<NodePubKey> {
 			let mut result: Vec<NodePubKey> = Vec::new();
 
-
-
 			Ok(result)
 		}
 	}

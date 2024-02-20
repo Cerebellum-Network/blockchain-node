@@ -177,6 +177,7 @@ pallet-ddc-customers = { path = "pallets/ddc-customers", default-features = fals
 pallet-ddc-nodes = { path = "pallets/ddc-nodes", default-features = false }
 pallet-ddc-payouts = { path = "pallets/ddc-payouts", default-features = false }
 pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
+pallet-ddc-validator = { path = "pallets/ddc-validator", default-features = false }
 pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
 

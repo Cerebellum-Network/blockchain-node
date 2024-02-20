@@ -4,7 +4,10 @@ use frame_system::Config;
 use scale_info::{prelude::vec::Vec, TypeInfo};
 use sp_runtime::RuntimeDebug;
 
-use crate::{ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams, ClusterPricingParams, NodeMode, NodePubKey, NodeType};
+use crate::{
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
+	ClusterPricingParams, NodeMode, NodePubKey, NodeType,
+};
 
 pub trait ClusterVisitor<T: Config> {
 	fn ensure_cluster(cluster_id: &ClusterId) -> Result<(), ClusterVisitorError>;

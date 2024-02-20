@@ -895,6 +895,7 @@ dependencies = [
  "pallet-ddc-nodes",
  "pallet-ddc-payouts",
  "pallet-ddc-staking",
+ "pallet-ddc-validator",
  "pallet-democracy",
  "pallet-election-provider-multi-phase",
  "pallet-election-provider-support-benchmarking",
@@ -1781,6 +1782,7 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-runtime",
+ "sp-staking",
  "sp-std",
 ]
 
@@ -5381,9 +5383,6 @@ dependencies = [
  "lite-json",
  "log",
  "pallet-balances",
- "pallet-contracts",
- "pallet-session",
- "pallet-staking",
  "pallet-staking-reward-curve",
  "pallet-timestamp",
  "parity-scale-codec",
