@@ -1,6 +1,6 @@
 //! DdcStaking pallet benchmarking.
 
-use ddc_primitives::{NodeMode, StorageNodePubKey};
+use ddc_primitives::{NodeMode, StorageNodePubKey, StorageNodeProps};
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 };
@@ -9,7 +9,7 @@ use sp_std::prelude::*;
 use testing_utils::*;
 
 use super::*;
-use crate::{storage_node::StorageNodeProps, Pallet as DdcNodes};
+use crate::{Pallet as DdcNodes};
 
 const USER_SEED: u32 = 999666;
 

@@ -32,7 +32,7 @@ use ddc_primitives::{
 		node::{NodeCreator, NodeVisitor, NodeVisitorError},
 		staking::DDCStakingVisitor,
 	},
-	ClusterId, NodeParams, NodePubKey, StorageNodePubKey,
+	ClusterId, NodeParams, NodePubKey, StorageNode, StorageNodePubKey,
 };
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
@@ -41,10 +41,7 @@ use sp_std::prelude::*;
 mod node;
 mod storage_node;
 
-pub use crate::{
-	node::{Node, NodeError, NodeTrait},
-	storage_node::StorageNode,
-};
+pub use crate::node::{Node, NodeTrait};
 
 #[frame_support::pallet]
 pub mod pallet {

@@ -1,15 +1,11 @@
 #![allow(clippy::needless_lifetimes)] // ToDo
 
 use codec::{Decode, Encode};
-use ddc_primitives::{NodeParams, NodePubKey, NodeType};
+use ddc_primitives::{NodeError, NodeParams, NodePubKey, NodeType, StorageNode, StorageNodeProps};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
-use crate::{
-	pallet::Error,
-	storage_node::{StorageNode, StorageNodeProps},
-	ClusterId,
-};
+use crate::{pallet::Error, ClusterId};
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum Node<T: frame_system::Config> {
@@ -87,12 +83,6 @@ impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
 			Node::Storage(node) => node.get_type(),
 		}
 	}
-}
-
-#[derive(Debug, PartialEq)]
-pub enum NodeError {
-	StorageHostLenExceedsLimit,
-	StorageDomainLenExceedsLimit,
 }
 
 impl<T> From<NodeError> for Error<T> {
