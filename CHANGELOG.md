@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 - Added ChargeError event to payout pallet
+- [C,D] Remove pallet-society
 
 ## [4.8.9]
 
