@@ -1,7 +1,12 @@
 [package]
 name = "pallet-ddc-customers"
-version = "4.8.8"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
 
 [dependencies]
 # 3rd-party dependencies

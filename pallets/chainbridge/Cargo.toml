@@ -1,12 +1,12 @@
 [package]
 name = "pallet-chainbridge"
-version = "4.8.8"
-authors = ["Parity Technologies <admin@parity.io>"]
-edition = "2021"
-homepage = "https://substrate.io"
-license = "Unlicense"
-readme = "README.md"
-repository = "https://github.com/paritytech/substrate/"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
 description = ""
 
 [package.metadata.docs.rs]

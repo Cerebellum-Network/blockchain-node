@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [vNext]
 
 - ...
+=======
+
+## [4.8.9]
+
+- [C,D] Updated Substrate to polkadot-v0.9.42
+- Added ChargeError event to payout pallet
 
 ## [4.8.8]
 

@@ -57,7 +57,7 @@ where
 			None,
 			call_data,
 			false,
-			pallet_contracts::Determinism::Deterministic,
+			pallet_contracts::Determinism::Enforced,
 		)
 		.result
 		.map_err(|_| NodeProviderAuthContractError::ContractCallFailed)?
@@ -129,7 +129,7 @@ where
 			None,
 			call_data,
 			false,
-			pallet_contracts::Determinism::Deterministic,
+			pallet_contracts::Determinism::Enforced,
 		)
 		.result
 		.map_err(|_| NodeProviderAuthContractError::NodeAuthorizationNotSuccessful)?;
