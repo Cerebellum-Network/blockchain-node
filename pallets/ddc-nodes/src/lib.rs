@@ -20,7 +20,7 @@ pub(crate) mod mock;
 mod tests;
 
 pub mod weights;
-use crate::weights::WeightInfo;
+pub use crate::weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;

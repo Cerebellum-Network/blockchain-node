@@ -17,7 +17,7 @@ use sp_core::U256;
 use sp_std::prelude::*;
 
 pub mod weights;
-use crate::weights::WeightInfo;
+pub use crate::weights::WeightInfo;
 
 type ResourceId = bridge::ResourceId;
 
