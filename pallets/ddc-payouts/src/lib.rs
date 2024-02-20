@@ -231,6 +231,14 @@ pub mod pallet {
 		AuthorisedCaller {
 			authorised_caller: T::AccountId,
 		},
+		ChargeError {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			batch_index: BatchIndex,
+			customer_id: T::AccountId,
+			amount: u128,
+			error: DispatchError,
+		},
 	}
 
 	#[pallet::error]
@@ -457,7 +465,17 @@ pub mod pallet {
 					total_customer_charge,
 				) {
 					Ok(actually_charged) => actually_charged,
-					Err(_e) => 0,
+					Err(e) => {
+						Self::deposit_event(Event::<T>::ChargeError {
+							cluster_id,
+							era,
+							batch_index,
+							customer_id: customer_id.clone(),
+							amount: total_customer_charge,
+							error: e,
+						});
+						0
+					},
 				};
 
 				if amount_actually_charged < total_customer_charge {

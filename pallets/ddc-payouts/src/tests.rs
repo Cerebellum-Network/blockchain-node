@@ -353,13 +353,42 @@ fn calculate_charge_parts_for_month(cluster_id: ClusterId, usage: CustomerUsage)
 	}
 }
 
+fn calculate_charge_parts_for_hour(cluster_id: ClusterId, usage: CustomerUsage) -> CustomerCharge {
+	let pricing_params = get_pricing(&cluster_id);
+
+	let duration_seconds = 1.0 * 1.0 * 3600.0;
+	let seconds_in_month = 30.44 * 24.0 * 3600.0;
+	let fraction_of_hour =
+		Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
+	let storage = fraction_of_hour *
+		(|| -> Option<u128> {
+			(usage.stored_bytes as u128)
+				.checked_mul(pricing_params.unit_per_mb_stored)?
+				.checked_div(byte_unit::MEBIBYTE)
+		})()
+		.unwrap();
+
+	CustomerCharge {
+		transfer: pricing_params.unit_per_mb_streamed * (usage.transferred_bytes as u128) /
+			byte_unit::MEBIBYTE,
+		storage,
+		puts: pricing_params.unit_per_put_request * (usage.number_of_puts as u128),
+		gets: pricing_params.unit_per_get_request * (usage.number_of_gets as u128),
+	}
+}
+
 fn calculate_charge_for_month(cluster_id: ClusterId, usage: CustomerUsage) -> u128 {
 	let charge = calculate_charge_parts_for_month(cluster_id, usage);
 	charge.transfer + charge.storage + charge.puts + charge.gets
 }
 
+fn calculate_charge_for_hour(cluster_id: ClusterId, usage: CustomerUsage) -> u128 {
+	let charge = calculate_charge_parts_for_hour(cluster_id, usage);
+	charge.transfer + charge.storage + charge.puts + charge.gets
+}
+
 #[test]
-fn send_charging_customers_batch_works1() {
+fn send_charging_customers_batch_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
@@ -602,7 +631,197 @@ fn send_charging_customers_batch_works1() {
 }
 
 #[test]
-fn send_charging_customers_batch_works1_for_day() {
+fn end_charging_customers_works_small_usage_1_hour() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let dac_account = 123u128;
+		let user6 = 6u128;
+		let user7 = 7u128;
+		let cluster_id = HIGH_FEES_CLUSTER_ID;
+		let era = 100;
+		let max_batch_index = 0;
+		let batch_index = 0;
+		let usage6 = CustomerUsage {
+			transferred_bytes: 0,
+			stored_bytes: 474_957,
+			number_of_puts: 0,
+			number_of_gets: 0,
+		};
+		let usage7 = CustomerUsage {
+			transferred_bytes: 474_957,
+			stored_bytes: 0,
+			number_of_puts: 0,
+			number_of_gets: 0,
+		};
+		let payers1 = vec![(user6, usage6.clone()), (user7, usage7.clone())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (1.0 * 1.0 * 3600.0) as i64; // 1 hour
+
+		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
+		assert_ok!(DdcPayouts::begin_billing_report(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			start_era,
+			end_era,
+		));
+
+		assert_ok!(DdcPayouts::begin_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			max_batch_index,
+		));
+		assert_eq!(System::events().len(), 3);
+
+		// batch 1
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers1,
+		));
+
+		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let usage6_charge = calculate_charge_for_hour(cluster_id, usage6.clone());
+		let usage7_charge = calculate_charge_for_hour(cluster_id, usage7.clone());
+		let charge6 = calculate_charge_parts_for_hour(cluster_id, usage6);
+		let charge7 = calculate_charge_parts_for_hour(cluster_id, usage7);
+		assert_eq!(charge7.puts + charge6.puts, report_before.total_customer_charge.puts);
+		assert_eq!(charge7.gets + charge6.gets, report_before.total_customer_charge.gets);
+		assert_eq!(charge7.storage + charge6.storage, report_before.total_customer_charge.storage);
+		assert_eq!(
+			charge7.transfer + charge6.transfer,
+			report_before.total_customer_charge.transfer
+		);
+
+		System::assert_has_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				customer_id: user6,
+				batch_index,
+				amount: usage6_charge,
+			}
+			.into(),
+		);
+
+		System::assert_has_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				customer_id: user7,
+				batch_index,
+				amount: usage7_charge,
+			}
+			.into(),
+		);
+
+		let mut balance = Balances::free_balance(DdcPayouts::account_id());
+		let charge = usage7_charge + usage6_charge;
+		assert_eq!(balance - Balances::minimum_balance(), charge);
+
+		balance = Balances::free_balance(TREASURY_ACCOUNT_ID);
+		assert_eq!(balance, 0);
+
+		balance = Balances::free_balance(RESERVE_ACCOUNT_ID);
+		assert_eq!(balance, 0);
+
+		balance = Balances::free_balance(VALIDATOR1_ACCOUNT_ID);
+		assert_eq!(balance, 0);
+
+		balance = Balances::free_balance(VALIDATOR2_ACCOUNT_ID);
+		assert_eq!(balance, 0);
+
+		balance = Balances::free_balance(VALIDATOR3_ACCOUNT_ID);
+		assert_eq!(balance, 0);
+
+		assert_ok!(DdcPayouts::end_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+		));
+
+		System::assert_has_event(Event::ChargingFinished { cluster_id, era }.into());
+		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		assert_eq!(report_after.state, State::CustomersChargedWithFees);
+
+		let fees = get_fees(&cluster_id);
+		let total_left_from_one =
+			(fees.treasury_share + fees.validators_share + fees.cluster_reserve_share)
+				.left_from_one();
+
+		assert_eq!(
+			total_left_from_one,
+			Perquintill::one() -
+				(PRICING_FEES_HIGH.treasury_share +
+					PRICING_FEES_HIGH.validators_share +
+					PRICING_FEES_HIGH.cluster_reserve_share)
+		);
+		assert_eq!(fees.treasury_share, PRICING_FEES_HIGH.treasury_share);
+		assert_eq!(fees.validators_share, PRICING_FEES_HIGH.validators_share);
+		assert_eq!(fees.cluster_reserve_share, PRICING_FEES_HIGH.cluster_reserve_share);
+
+		balance = Balances::free_balance(TREASURY_ACCOUNT_ID);
+		assert_eq!(balance, get_fees(&cluster_id).treasury_share * charge);
+		assert!(balance > 0);
+
+		balance = Balances::free_balance(RESERVE_ACCOUNT_ID);
+		assert_eq!(balance, get_fees(&cluster_id).cluster_reserve_share * charge);
+		assert!(balance > 0);
+
+		balance = Balances::free_balance(VALIDATOR1_ACCOUNT_ID);
+		let mut ratio = Perquintill::from_rational(
+			VALIDATOR1_SCORE,
+			VALIDATOR1_SCORE + VALIDATOR2_SCORE + VALIDATOR3_SCORE,
+		);
+		assert_eq!(balance, get_fees(&cluster_id).validators_share * ratio * charge);
+		assert!(balance > 0);
+
+		balance = Balances::free_balance(VALIDATOR2_ACCOUNT_ID);
+		ratio = Perquintill::from_rational(
+			VALIDATOR2_SCORE,
+			VALIDATOR1_SCORE + VALIDATOR2_SCORE + VALIDATOR3_SCORE,
+		);
+		assert_eq!(balance, get_fees(&cluster_id).validators_share * ratio * charge);
+		assert!(balance > 0);
+
+		balance = Balances::free_balance(VALIDATOR3_ACCOUNT_ID);
+		ratio = Perquintill::from_rational(
+			VALIDATOR3_SCORE,
+			VALIDATOR1_SCORE + VALIDATOR2_SCORE + VALIDATOR3_SCORE,
+		);
+		assert_eq!(balance, get_fees(&cluster_id).validators_share * ratio * charge);
+		assert!(balance > 0);
+
+		assert_eq!(
+			report_after.total_customer_charge.transfer,
+			total_left_from_one * report_before.total_customer_charge.transfer
+		);
+		assert!(report_after.total_customer_charge.transfer > 0);
+		assert_eq!(
+			report_after.total_customer_charge.storage,
+			total_left_from_one * report_before.total_customer_charge.storage
+		);
+		assert!(report_after.total_customer_charge.storage > 0);
+		assert_eq!(
+			report_after.total_customer_charge.puts,
+			total_left_from_one * report_before.total_customer_charge.puts
+		);
+		assert_eq!(
+			report_after.total_customer_charge.gets,
+			total_left_from_one * report_before.total_customer_charge.gets
+		);
+	})
+}
+
+#[test]
+fn send_charging_customers_batch_works_for_day() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
@@ -845,7 +1064,1222 @@ fn send_charging_customers_batch_works1_for_day() {
 }
 
 #[test]
-fn send_charging_customers_batch_works2() {
+fn send_charging_customers_batch_works_for_day_free_storage() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let dac_account = 123u128;
+		let user1 = 1u128;
+		let user2_debtor = 2u128;
+		let user3_debtor = 3u128;
+		let user4 = 4u128;
+		let cluster_id = STORAGE_ZERO_CLUSTER_ID;
+		let era = 100;
+		let max_batch_index = 3;
+		let mut batch_index = 0;
+		let usage1 = CustomerUsage {
+			// should pass without debt
+			transferred_bytes: 23452345,
+			stored_bytes: 3345234523,
+			number_of_puts: 4456456345234523,
+			number_of_gets: 523423,
+		};
+		let usage2 = CustomerUsage {
+			// should fail as not enough balance
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let usage3 = CustomerUsage {
+			// should pass but with debt (partial charge)
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let usage4 = CustomerUsage {
+			// should pass without debt
+			transferred_bytes: 467457,
+			stored_bytes: 45674567456,
+			number_of_puts: 3456345,
+			number_of_gets: 242334563456423,
+		};
+		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
+		let payers2 = vec![(user1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
+
+		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
+		assert_ok!(DdcPayouts::begin_billing_report(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			start_era,
+			end_era,
+		));
+
+		assert_ok!(DdcPayouts::begin_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			max_batch_index,
+		));
+		assert_eq!(System::events().len(), 3);
+
+		// batch 1
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers1,
+		));
+
+		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
+		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor).unwrap();
+		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
+		let mut debt = expected_charge2 - USER2_BALANCE;
+		assert_eq!(user2_debt, debt);
+
+		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
+		charge2.storage = ratio * charge2.storage;
+		charge2.transfer = ratio * charge2.transfer;
+		charge2.gets = ratio * charge2.gets;
+		charge2.puts = ratio * charge2.puts;
+
+		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
+		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
+		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
+		assert_eq!(charge2.storage + charge4.storage, report.total_customer_charge.storage);
+		assert_eq!(charge2.transfer + charge4.transfer, report.total_customer_charge.transfer);
+
+		System::assert_has_event(
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				charged: USER2_BALANCE,
+				expected_to_charge: expected_charge2,
+			}
+			.into(),
+		);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				amount: debt,
+			}
+			.into(),
+		);
+		System::assert_last_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				customer_id: user4,
+				batch_index,
+				amount: usage4_charge,
+			}
+			.into(),
+		);
+
+		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+
+		// batch 2
+		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		batch_index += 1;
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers2,
+		));
+
+		System::assert_last_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user1,
+				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
+			}
+			.into(),
+		);
+
+		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge1 = calculate_charge_parts_for_day(cluster_id, usage1);
+		assert_eq!(
+			charge1.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			charge1.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			charge1.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			charge1.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
+
+		assert_eq!(report.state, State::ChargingCustomers);
+		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		assert_eq!(user1_debt, None);
+
+		let balance_before = Balances::free_balance(DdcPayouts::account_id());
+
+		// batch 3
+		batch_index += 1;
+		before_total_customer_charge = report.total_customer_charge.clone();
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers3,
+		));
+
+		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
+		let charge3 = calculate_charge_parts_for_day(cluster_id, usage3);
+		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
+		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		assert_eq!(
+			ratio * charge3.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			ratio * charge3.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			ratio * charge3.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			ratio * charge3.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
+
+		let balance = Balances::free_balance(DdcPayouts::account_id());
+		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
+
+		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
+		debt = user3_charge - PARTIAL_CHARGE;
+		assert_eq!(user3_debt, debt);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user3_debtor,
+				batch_index,
+				amount: user3_debt,
+			}
+			.into(),
+		);
+
+		System::assert_last_event(
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user3_debtor,
+				charged: PARTIAL_CHARGE,
+				expected_to_charge: user3_charge,
+			}
+			.into(),
+		);
+	})
+}
+
+#[test]
+fn send_charging_customers_batch_works_for_day_free_stream() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let dac_account = 123u128;
+		let user1 = 1u128;
+		let user2_debtor = 2u128;
+		let user3_debtor = 3u128;
+		let user4 = 4u128;
+		let cluster_id = STREAM_ZERO_CLUSTER_ID;
+		let era = 100;
+		let max_batch_index = 3;
+		let mut batch_index = 0;
+		let usage1 = CustomerUsage {
+			// should pass without debt
+			transferred_bytes: 23452345,
+			stored_bytes: 3345234523,
+			number_of_puts: 4456456345234523,
+			number_of_gets: 523423,
+		};
+		let usage2 = CustomerUsage {
+			// should fail as not enough balance
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let usage3 = CustomerUsage {
+			// should pass but with debt (partial charge)
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let usage4 = CustomerUsage {
+			// should pass without debt
+			transferred_bytes: 467457,
+			stored_bytes: 45674567456,
+			number_of_puts: 3456345,
+			number_of_gets: 242334563456423,
+		};
+		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
+		let payers2 = vec![(user1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
+
+		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
+		assert_ok!(DdcPayouts::begin_billing_report(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			start_era,
+			end_era,
+		));
+
+		assert_ok!(DdcPayouts::begin_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			max_batch_index,
+		));
+		assert_eq!(System::events().len(), 3);
+
+		// batch 1
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers1,
+		));
+
+		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
+		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor).unwrap();
+		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
+		let mut debt = expected_charge2 - USER2_BALANCE;
+		assert_eq!(user2_debt, debt);
+
+		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
+		charge2.storage = ratio * charge2.storage;
+		charge2.transfer = ratio * charge2.transfer;
+		charge2.gets = ratio * charge2.gets;
+		charge2.puts = ratio * charge2.puts;
+
+		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
+		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
+		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
+		assert_eq!(charge2.storage + charge4.storage, report.total_customer_charge.storage);
+		assert_eq!(charge2.transfer + charge4.transfer, report.total_customer_charge.transfer);
+
+		System::assert_has_event(
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				charged: USER2_BALANCE,
+				expected_to_charge: expected_charge2,
+			}
+			.into(),
+		);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				amount: debt,
+			}
+			.into(),
+		);
+		System::assert_last_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				customer_id: user4,
+				batch_index,
+				amount: usage4_charge,
+			}
+			.into(),
+		);
+
+		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+
+		// batch 2
+		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		batch_index += 1;
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers2,
+		));
+
+		System::assert_last_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user1,
+				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
+			}
+			.into(),
+		);
+
+		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge1 = calculate_charge_parts_for_day(cluster_id, usage1);
+		assert_eq!(
+			charge1.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			charge1.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			charge1.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			charge1.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
+
+		assert_eq!(report.state, State::ChargingCustomers);
+		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		assert_eq!(user1_debt, None);
+
+		let balance_before = Balances::free_balance(DdcPayouts::account_id());
+
+		// batch 3
+		batch_index += 1;
+		before_total_customer_charge = report.total_customer_charge.clone();
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers3,
+		));
+
+		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
+		let charge3 = calculate_charge_parts_for_day(cluster_id, usage3);
+		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
+		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		assert_eq!(
+			ratio * charge3.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			ratio * charge3.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			ratio * charge3.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			ratio * charge3.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
+
+		let balance = Balances::free_balance(DdcPayouts::account_id());
+		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
+
+		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
+		debt = user3_charge - PARTIAL_CHARGE;
+		assert_eq!(user3_debt, debt);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user3_debtor,
+				batch_index,
+				amount: user3_debt,
+			}
+			.into(),
+		);
+
+		System::assert_last_event(
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user3_debtor,
+				charged: PARTIAL_CHARGE,
+				expected_to_charge: user3_charge,
+			}
+			.into(),
+		);
+	})
+}
+
+#[test]
+fn send_charging_customers_batch_works_for_day_free_get() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let dac_account = 123u128;
+		let user1 = 1u128;
+		let user2_debtor = 2u128;
+		let user3_debtor = 3u128;
+		let user4 = 4u128;
+		let cluster_id = GET_ZERO_CLUSTER_ID;
+		let era = 100;
+		let max_batch_index = 3;
+		let mut batch_index = 0;
+		let usage1 = CustomerUsage {
+			// should pass without debt
+			transferred_bytes: 23452345,
+			stored_bytes: 3345234523,
+			number_of_puts: 4456456345234523,
+			number_of_gets: 523423,
+		};
+		let usage2 = CustomerUsage {
+			// should fail as not enough balance
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let usage3 = CustomerUsage {
+			// should pass but with debt (partial charge)
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let usage4 = CustomerUsage {
+			// should pass without debt
+			transferred_bytes: 467457,
+			stored_bytes: 45674567456,
+			number_of_puts: 3456345,
+			number_of_gets: 242334563456423,
+		};
+		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
+		let payers2 = vec![(user1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
+
+		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
+		assert_ok!(DdcPayouts::begin_billing_report(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			start_era,
+			end_era,
+		));
+
+		assert_ok!(DdcPayouts::begin_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			max_batch_index,
+		));
+		assert_eq!(System::events().len(), 3);
+
+		// batch 1
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers1,
+		));
+
+		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
+		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor).unwrap();
+		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
+		let mut debt = expected_charge2 - USER2_BALANCE;
+		assert_eq!(user2_debt, debt);
+
+		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
+		charge2.storage = ratio * charge2.storage;
+		charge2.transfer = ratio * charge2.transfer;
+		charge2.gets = ratio * charge2.gets;
+		charge2.puts = ratio * charge2.puts;
+
+		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
+		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
+		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
+		assert_eq!(charge2.storage + charge4.storage, report.total_customer_charge.storage);
+		assert_eq!(charge2.transfer + charge4.transfer, report.total_customer_charge.transfer);
+
+		System::assert_has_event(
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				charged: USER2_BALANCE,
+				expected_to_charge: expected_charge2,
+			}
+			.into(),
+		);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				amount: debt,
+			}
+			.into(),
+		);
+		System::assert_last_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				customer_id: user4,
+				batch_index,
+				amount: usage4_charge,
+			}
+			.into(),
+		);
+
+		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+
+		// batch 2
+		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		batch_index += 1;
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers2,
+		));
+
+		System::assert_last_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user1,
+				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
+			}
+			.into(),
+		);
+
+		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge1 = calculate_charge_parts_for_day(cluster_id, usage1);
+		assert_eq!(
+			charge1.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			charge1.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			charge1.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			charge1.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
+
+		assert_eq!(report.state, State::ChargingCustomers);
+		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		assert_eq!(user1_debt, None);
+
+		let balance_before = Balances::free_balance(DdcPayouts::account_id());
+
+		// batch 3
+		batch_index += 1;
+		before_total_customer_charge = report.total_customer_charge.clone();
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers3,
+		));
+
+		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
+		let charge3 = calculate_charge_parts_for_day(cluster_id, usage3);
+		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
+		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		assert_eq!(
+			ratio * charge3.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			ratio * charge3.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			ratio * charge3.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			ratio * charge3.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
+
+		let balance = Balances::free_balance(DdcPayouts::account_id());
+		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
+
+		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
+		debt = user3_charge - PARTIAL_CHARGE;
+		assert_eq!(user3_debt, debt);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user3_debtor,
+				batch_index,
+				amount: user3_debt,
+			}
+			.into(),
+		);
+
+		System::assert_last_event(
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user3_debtor,
+				charged: PARTIAL_CHARGE,
+				expected_to_charge: user3_charge,
+			}
+			.into(),
+		);
+	})
+}
+
+#[test]
+fn send_charging_customers_batch_works_for_day_free_put() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let dac_account = 123u128;
+		let user1 = 1u128;
+		let user2_debtor = 2u128;
+		let user3_debtor = 3u128;
+		let user4 = 4u128;
+		let cluster_id = PUT_ZERO_CLUSTER_ID;
+		let era = 100;
+		let max_batch_index = 3;
+		let mut batch_index = 0;
+		let usage1 = CustomerUsage {
+			// should pass without debt
+			transferred_bytes: 23452345,
+			stored_bytes: 3345234523,
+			number_of_puts: 4456456345234523,
+			number_of_gets: 523423,
+		};
+		let usage2 = CustomerUsage {
+			// should fail as not enough balance
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let usage3 = CustomerUsage {
+			// should pass but with debt (partial charge)
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let usage4 = CustomerUsage {
+			// should pass without debt
+			transferred_bytes: 467457,
+			stored_bytes: 45674567456,
+			number_of_puts: 3456345,
+			number_of_gets: 242334563456423,
+		};
+		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
+		let payers2 = vec![(user1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
+
+		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
+		assert_ok!(DdcPayouts::begin_billing_report(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			start_era,
+			end_era,
+		));
+
+		assert_ok!(DdcPayouts::begin_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			max_batch_index,
+		));
+		assert_eq!(System::events().len(), 3);
+
+		// batch 1
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers1,
+		));
+
+		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
+		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor).unwrap();
+		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
+		let mut debt = expected_charge2 - USER2_BALANCE;
+		assert_eq!(user2_debt, debt);
+
+		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
+		charge2.storage = ratio * charge2.storage;
+		charge2.transfer = ratio * charge2.transfer;
+		charge2.gets = ratio * charge2.gets;
+		charge2.puts = ratio * charge2.puts;
+
+		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
+		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
+		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
+		assert_eq!(charge2.storage + charge4.storage, report.total_customer_charge.storage);
+		assert_eq!(charge2.transfer + charge4.transfer, report.total_customer_charge.transfer);
+
+		System::assert_has_event(
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				charged: USER2_BALANCE,
+				expected_to_charge: expected_charge2,
+			}
+			.into(),
+		);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				amount: debt,
+			}
+			.into(),
+		);
+		System::assert_last_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				customer_id: user4,
+				batch_index,
+				amount: usage4_charge,
+			}
+			.into(),
+		);
+
+		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+
+		// batch 2
+		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		batch_index += 1;
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers2,
+		));
+
+		System::assert_last_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user1,
+				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
+			}
+			.into(),
+		);
+
+		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge1 = calculate_charge_parts_for_day(cluster_id, usage1);
+		assert_eq!(
+			charge1.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			charge1.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			charge1.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			charge1.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
+
+		assert_eq!(report.state, State::ChargingCustomers);
+		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		assert_eq!(user1_debt, None);
+
+		let balance_before = Balances::free_balance(DdcPayouts::account_id());
+
+		// batch 3
+		batch_index += 1;
+		before_total_customer_charge = report.total_customer_charge.clone();
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers3,
+		));
+
+		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
+		let charge3 = calculate_charge_parts_for_day(cluster_id, usage3);
+		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
+		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		assert_eq!(
+			ratio * charge3.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			ratio * charge3.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			ratio * charge3.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			ratio * charge3.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
+
+		let balance = Balances::free_balance(DdcPayouts::account_id());
+		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
+
+		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
+		debt = user3_charge - PARTIAL_CHARGE;
+		assert_eq!(user3_debt, debt);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user3_debtor,
+				batch_index,
+				amount: user3_debt,
+			}
+			.into(),
+		);
+
+		System::assert_last_event(
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user3_debtor,
+				charged: PARTIAL_CHARGE,
+				expected_to_charge: user3_charge,
+			}
+			.into(),
+		);
+	})
+}
+
+#[test]
+fn send_charging_customers_batch_works_for_day_free_storage_stream() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let dac_account = 123u128;
+		let user1 = 1u128;
+		let user2_debtor = 2u128;
+		let user3_debtor = 3u128;
+		let user4 = 4u128;
+		let cluster_id = STORAGE_STREAM_ZERO_CLUSTER_ID;
+		let era = 100;
+		let max_batch_index = 3;
+		let mut batch_index = 0;
+		let usage1 = CustomerUsage {
+			// should pass without debt
+			transferred_bytes: 23452345,
+			stored_bytes: 3345234523,
+			number_of_puts: 4456456345234523,
+			number_of_gets: 523423,
+		};
+		let usage2 = CustomerUsage {
+			// should fail as not enough balance
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let usage3 = CustomerUsage {
+			// should pass but with debt (partial charge)
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let usage4 = CustomerUsage {
+			// should pass without debt
+			transferred_bytes: 467457,
+			stored_bytes: 45674567456,
+			number_of_puts: 3456345,
+			number_of_gets: 242334563456423,
+		};
+		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
+		let payers2 = vec![(user1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
+		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
+		let start_era: i64 =
+			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
+		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
+
+		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
+		assert_ok!(DdcPayouts::begin_billing_report(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			start_era,
+			end_era,
+		));
+
+		assert_ok!(DdcPayouts::begin_charging_customers(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			max_batch_index,
+		));
+		assert_eq!(System::events().len(), 3);
+
+		// batch 1
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers1,
+		));
+
+		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
+		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor).unwrap();
+		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
+		let mut debt = expected_charge2 - USER2_BALANCE;
+		assert_eq!(user2_debt, debt);
+
+		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
+		charge2.storage = ratio * charge2.storage;
+		charge2.transfer = ratio * charge2.transfer;
+		charge2.gets = ratio * charge2.gets;
+		charge2.puts = ratio * charge2.puts;
+
+		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
+		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
+		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
+		assert_eq!(charge2.storage + charge4.storage, report.total_customer_charge.storage);
+		assert_eq!(charge2.transfer + charge4.transfer, report.total_customer_charge.transfer);
+
+		System::assert_has_event(
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				charged: USER2_BALANCE,
+				expected_to_charge: expected_charge2,
+			}
+			.into(),
+		);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user2_debtor,
+				batch_index,
+				amount: debt,
+			}
+			.into(),
+		);
+		System::assert_last_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				customer_id: user4,
+				batch_index,
+				amount: usage4_charge,
+			}
+			.into(),
+		);
+
+		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+
+		// batch 2
+		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		batch_index += 1;
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers2,
+		));
+
+		System::assert_last_event(
+			Event::Charged {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user1,
+				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
+			}
+			.into(),
+		);
+
+		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let charge1 = calculate_charge_parts_for_day(cluster_id, usage1);
+		assert_eq!(
+			charge1.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			charge1.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			charge1.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			charge1.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
+
+		assert_eq!(report.state, State::ChargingCustomers);
+		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		assert_eq!(user1_debt, None);
+
+		let balance_before = Balances::free_balance(DdcPayouts::account_id());
+
+		// batch 3
+		batch_index += 1;
+		before_total_customer_charge = report.total_customer_charge.clone();
+		assert_ok!(DdcPayouts::send_charging_customers_batch(
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			batch_index,
+			payers3,
+		));
+
+		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
+		let charge3 = calculate_charge_parts_for_day(cluster_id, usage3);
+		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
+		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		assert_eq!(
+			ratio * charge3.puts + before_total_customer_charge.puts,
+			report.total_customer_charge.puts
+		);
+		assert_eq!(
+			ratio * charge3.gets + before_total_customer_charge.gets,
+			report.total_customer_charge.gets
+		);
+		assert_eq!(
+			ratio * charge3.storage + before_total_customer_charge.storage,
+			report.total_customer_charge.storage
+		);
+		assert_eq!(
+			ratio * charge3.transfer + before_total_customer_charge.transfer,
+			report.total_customer_charge.transfer
+		);
+
+		let balance = Balances::free_balance(DdcPayouts::account_id());
+		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
+
+		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor).unwrap();
+		debt = user3_charge - PARTIAL_CHARGE;
+		assert_eq!(user3_debt, debt);
+
+		System::assert_has_event(
+			Event::Indebted {
+				cluster_id,
+				era,
+				customer_id: user3_debtor,
+				batch_index,
+				amount: user3_debt,
+			}
+			.into(),
+		);
+
+		System::assert_last_event(
+			Event::ChargeFailed {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user3_debtor,
+				charged: PARTIAL_CHARGE,
+				expected_to_charge: user3_charge,
+			}
+			.into(),
+		);
+	})
+}
+
+#[test]
+fn send_charging_customers_batch_works_zero_fees() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 

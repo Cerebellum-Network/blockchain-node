@@ -913,7 +913,8 @@ parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 50_000 * DOLLARS;
 	pub const SpendPeriod: BlockNumber = DAYS;
-	pub const Burn: Permill = Permill::from_percent(580);
+	/// Burn rate is at 0.058% per era (daily burn rate)
+	pub const Burn: Permill = Permill::from_parts(580);
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
 	pub const TipReportDepositBase: Balance = 50_000 * DOLLARS;
@@ -1524,6 +1525,7 @@ type Migrations = (
 	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
 	pallet_society::migrations::MigrateToV2<Runtime, (), ()>,
 	pallet_contracts::migration::Migration<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
 	SetStorageVersions,
 );
 
