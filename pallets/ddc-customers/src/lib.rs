@@ -23,12 +23,11 @@ use ddc_primitives::{
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
-	BoundedVec, PalletId,
+	BoundedVec, Deserialize, PalletId, Serialize,
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
-use serde::{Deserialize, Serialize};
 use sp_io::hashing::blake2_128;
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
@@ -59,8 +58,7 @@ pub struct UnlockChunk<T: Config> {
 	block: BlockNumberFor<T>,
 }
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Serialize, Deserialize)]
 #[scale_info(skip_type_params(T))]
 pub struct Bucket<T: Config> {
 	bucket_id: BucketId,
@@ -525,7 +523,7 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 
 			<Buckets<T>>::try_mutate(bucket_id, |maybe_bucket| -> DispatchResult {
-				let mut bucket = maybe_bucket.as_mut().ok_or(Error::<T>::NoBucketWithId)?;
+				let bucket = maybe_bucket.as_mut().ok_or(Error::<T>::NoBucketWithId)?;
 				ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
 				ensure!(!bucket.is_removed, Error::<T>::AlreadyRemoved);
 

@@ -28,12 +28,12 @@ use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragm
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
-	pallet_prelude::Get,
+	pallet_prelude::{Get, StorageVersion},
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly,
-		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
-		OnUnbalanced, WithdrawReasons,
+		Everything, GetStorageVersion, Imbalance, InstanceFilter, KeyOwnerProofSystem,
+		LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
