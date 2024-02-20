@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package file;
+
+import "activity_record_api.proto";
+
+option go_package = "api/file";
+
+service FileApi {
+  rpc putRawPiece(stream PutRawPieceRequest) returns (PutRawPieceResponse) {}
+  rpc putMultipartPiece(PutMultiPartPieceRequest) returns (PutMultiPartPieceResponse) {}
+  rpc getFile(stream GetFileRequest) returns (stream GetFileResponse) {}
+}
+
+message PutRawPieceRequest {
+  message Metadata {
+    uint64 bucketId = 1;
+    bytes cid = 2;
+    uint64 offset = 3; // starting offset of the piece inside a file. Should be set only if isMultipart = true
+    bool isMultipart = 4; // whether the piece is part of a file or not
+    uint64 size = 5; // indicates the size of the content, in bytes
+  }
+
+  message Content {
+    bytes data = 1;
+  }
+
+  oneof body {
+    Metadata metadata = 1; // first message contains piece metadata
+    Content content = 2; // subsequent messages contain only part of a raw piece data
+  }
+}
+
+message PutRawPieceResponse {
+  bytes cid = 1;
+  // TBD
+}
+
+message PutMultiPartPieceRequest {
+  uint64 bucketId = 1; // bucket where file is stored
+  bytes cid = 2; // root hash of the file hash tree
+  uint64 totalSize = 3; // size of the multi-part piece (large file total size)
+  uint64 partSize = 4; // size of the raw piece (large file part size)
+  repeated bytes partHashes = 5; // ordered list of the raw piece hashes
+}
+
+message PutMultiPartPieceResponse {
+  bytes cid = 1;
+  // TBD
+}
+
+message GetFileRequest {
+  message Request {
+    bytes cid = 1; // CID of either raw or multi-part piece
+    uint64 bucketId = 2;
+    Range range = 3; // indicates part of the file to be returned (return whole file if range is missing)
+
+    message Range {
+      uint64 start = 1;
+      uint64 end = 2;
+    }
+  }
+
+  oneof Body {
+    Request request = 1;
+    activity_report.ActivityAcknowledgment ack = 2;
+  }
+}
+
+message GetFileResponse {
+  message Proof {
+    repeated bytes proof = 1;
+  }
+
+  oneof body {
+    Proof proof = 1; // first message contains only merkle proof of requested content for the root (CID)
+    bytes data = 2; // subsequent messages contain only part of a requested content
+  }
+}

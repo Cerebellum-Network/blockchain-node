@@ -92,7 +92,7 @@ where
 		let _ = T::NodeRepository::create(new_node);
 	}
 
-	T::StakerCreator::bond_stake_and_participate(
+	T::DDCStakerCreator::bond_stake_and_participate(
 		user.clone(),
 		user.clone(),
 		node_pub_key.clone(),

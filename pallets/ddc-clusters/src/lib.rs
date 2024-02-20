@@ -30,7 +30,7 @@ mod tests;
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
-		staking::{DDCStakingVisitor, StakerCreator, StakingVisitorError},
+		staking::{DDCStakerCreator, DDCStakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,
@@ -79,7 +79,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
 		type DDCStakingVisitor: DDCStakingVisitor<Self>;
-		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
+		type DDCStakerCreator: DDCStakerCreator<Self, BalanceOf<Self>>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 		type WeightInfo: WeightInfo;
 	}

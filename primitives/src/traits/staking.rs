@@ -19,7 +19,7 @@ pub trait DDCStakingVisitor<T: Config> {
 	fn has_chilling_attempt(node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError>;
 }
 
-pub trait StakerCreator<T: Config, Balance> {
+pub trait DDCStakerCreator<T: Config, Balance> {
 	fn bond_stake_and_participate(
 		stash: T::AccountId,
 		controller: T::AccountId,

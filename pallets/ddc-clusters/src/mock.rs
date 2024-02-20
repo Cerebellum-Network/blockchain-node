@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use ddc_primitives::{
-	traits::staking::{DDCStakingVisitor, StakerCreator, StakingVisitorError},
+	traits::staking::{DDCStakerCreator, DDCStakingVisitor, StakingVisitorError},
 	ClusterId, NodePubKey,
 };
 use frame_support::{
@@ -198,7 +198,7 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type NodeRepository = DdcNodes;
 	type DDCStakingVisitor = TestStakingVisitor;
-	type StakerCreator = TestStaker;
+	type DDCStakerCreator = TestStaker;
 	type WeightInfo = ();
 }
 
@@ -222,7 +222,7 @@ impl<T: Config> DDCStakingVisitor<T> for TestStakingVisitor {
 	}
 }
 
-impl<T: Config> StakerCreator<T, BalanceOf<T>> for TestStaker {
+impl<T: Config> DDCStakerCreator<T, BalanceOf<T>> for TestStaker {
 	fn bond_stake_and_participate(
 		_stash: T::AccountId,
 		_controller: T::AccountId,

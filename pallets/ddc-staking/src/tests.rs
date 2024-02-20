@@ -491,7 +491,7 @@ fn staking_creator_works() {
 		let storage_node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
 
 		assert_ok!(
-			<DdcStaking as StakerCreator<Test, BalanceOf<Test>>>::bond_stake_and_participate(
+			<DdcStaking as DDCStakerCreator<Test, BalanceOf<Test>>>::bond_stake_and_participate(
 				stash,
 				controller,
 				storage_node_pub_key,

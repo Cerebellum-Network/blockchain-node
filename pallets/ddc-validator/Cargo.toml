@@ -9,15 +9,14 @@ readme.workspace = true
 repository.workspace = true
 
 [dependencies]
-# 3rd-party dependencies (!todo: fix the versions)
-alt_serde = { version = "1", default-features = false, features = ["derive"] }
-array-bytes = "6.0.0"
-base64 = { version = "0.21.0", default-features = false }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
-lite-json = { version = "0.2.0", default-features = false }
-log = { version = "0.4.17", default-features = false }
-scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
-serde = { version = "1.0.101", optional = true }
+# 3rd-party dependencies
+byte-unit = { workspace = true }
+codec = { workspace = true }
+log = { workspace = true }
+scale-info = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+tonic = { workspace = true }
 
 # Substrate dependencies
 frame-election-provider-support = { workspace = true, optional = true }
@@ -46,9 +45,7 @@ std = [
     "frame-election-provider-support/std",
     "frame-support/std",
     "frame-system/std",
-    "lite-json/std",
     "scale-info/std",
-    "serde",
     "sp-core/std",
     "sp-io/std",
     "sp-keystore",

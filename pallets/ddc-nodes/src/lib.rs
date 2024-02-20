@@ -48,6 +48,8 @@ pub use crate::{
 
 #[frame_support::pallet]
 pub mod pallet {
+	use ddc_primitives::NodeMode;
+
 	use super::*;
 
 	/// The current storage version.
@@ -238,10 +240,20 @@ pub mod pallet {
 			Self::get(node_pub_key.clone()).is_ok()
 		}
 
-		fn get_node() -> Vec<NodePubKey> {
-			let mut result: Vec<NodePubKey> = Vec::new();
+		fn get_nodes(mode: NodeMode) -> Vec<Node<T>> {
+			let result = StorageNodes::<T>::iter()
+				.filter_map(
+					|(_key, node)| {
+						if node.props.mode.has_mode(mode) {
+							Some(node.pub_key)
+						} else {
+							None
+						}
+					},
+				)
+				.collect();
 
-			Ok(result)
+			result
 		}
 	}
 

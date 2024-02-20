@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "network.cere.dac.kafka.stream.state";
+
+message ResourceAggregate {
+  uint64 putRequestsTotal = 1;
+  uint64 getRequestsTotal = 2;
+  uint64 totalBytesStored = 3;
+  uint64 totalBytesTraffic = 4;
+}
+
+message MetricsAggregate {
+  ResourceAggregate resources = 1;
+  // NOTE: this is going to contain more performance metrics later
+  // (latency, bandwidth, failure rate)
+}

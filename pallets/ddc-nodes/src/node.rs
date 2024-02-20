@@ -30,7 +30,7 @@ pub trait NodeTrait<T: frame_system::Config> {
 	fn set_params(&mut self, props: NodeParams) -> Result<(), NodeError>;
 	fn get_cluster_id(&self) -> &Option<ClusterId>;
 	fn set_cluster_id(&mut self, cluster_id: Option<ClusterId>);
-	fn get_type(&self) -> NodeType;
+	fn get_type(&self) -> NodeType; // todo! remove this (look into get_props)
 }
 
 impl<T: frame_system::Config> Node<T> {
