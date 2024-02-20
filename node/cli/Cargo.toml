@@ -26,17 +26,19 @@ clap = { workspace = true, optional = true }
 url = { workspace = true }
 
 # Substrate dependencies
-frame-benchmarking-cli = { workspace = true, optional = true }
-sc-cli = { workspace = true, optional = true }
-sc-service = { workspace = true, optional = true }
-try-runtime-cli = { workspace = true, optional = true }
+frame-benchmarking-cli = { workspace = true, default-features = true, optional = true }
+sc-cli = { workspace = true, default-features = true, optional = true }
+sc-executor = { workspace = true, default-features = true }
+sc-service = { workspace = true, default-features = true, optional = true }
+sp-io = { workspace = true, default-features = true }
+try-runtime-cli = { workspace = true, default-features = true, optional = true }
 
 # Local
 cere-client = { workspace = true, optional = true }
 cere-service = { workspace = true, optional = true }
 
 [build-dependencies]
-substrate-build-script-utils = { workspace = true }
+substrate-build-script-utils = { workspace = true, default-features = true }
 
 [features]
 default = ["cli", "cere-dev-native"]
@@ -49,7 +51,6 @@ cli = [
   "cere-client",
 ]
 runtime-benchmarks = ["cere-service/runtime-benchmarks"]
-try-runtime = ["cere-service/try-runtime"]
-
+try-runtime = ["cere-service/try-runtime", "try-runtime-cli/try-runtime"]
 cere-native = ["cere-service/cere-native"]
 cere-dev-native = ["cere-service/cere-dev-native"]

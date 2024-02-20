@@ -27,12 +27,15 @@ use frame_support::{
 };
 pub use pallet::*;
 use scale_info::TypeInfo;
+use serde::{Deserialize, Serialize};
 use sp_io::hashing::blake2_128;
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
+
+pub mod migration;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
@@ -55,12 +58,15 @@ pub struct UnlockChunk<T: Config> {
 	block: T::BlockNumber,
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct Bucket<AccountId> {
+#[scale_info(skip_type_params(T))]
+pub struct Bucket<T: Config> {
 	bucket_id: BucketId,
-	owner_id: AccountId,
+	owner_id: T::AccountId,
 	cluster_id: ClusterId,
 	is_public: bool,
+	is_removed: bool,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -130,7 +136,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+		frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -167,11 +173,10 @@ pub mod pallet {
 	pub type BucketsCount<T: Config> =
 		StorageValue<Value = BucketId, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
 
-	/// Map from bucket ID to to the bucket structure
+	/// Map from bucket ID to the bucket structure
 	#[pallet::storage]
 	#[pallet::getter(fn buckets)]
-	pub type Buckets<T: Config> =
-		StorageMap<_, Twox64Concat, BucketId, Bucket<T::AccountId>, OptionQuery>;
+	pub type Buckets<T: Config> = StorageMap<_, Twox64Concat, BucketId, Bucket<T>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
@@ -193,6 +198,8 @@ pub mod pallet {
 		BucketCreated { bucket_id: BucketId },
 		/// Bucket with specific id updated
 		BucketUpdated { bucket_id: BucketId },
+		/// Bucket with specific id marked as removed
+		BucketRemoved { bucket_id: BucketId },
 	}
 
 	#[pallet::error]
@@ -223,12 +230,14 @@ pub mod pallet {
 		ArithmeticUnderflow,
 		// Transferring balance to pallet's vault has failed
 		TransferFailed,
+		/// Bucket is already removed
+		AlreadyRemoved,
 	}
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub feeder_account: Option<T::AccountId>,
-		pub buckets: Vec<(ClusterId, T::AccountId, BalanceOf<T>, bool)>,
+		pub buckets: Vec<(Bucket<T>, BalanceOf<T>)>,
 	}
 
 	#[cfg(feature = "std")]
@@ -258,23 +267,17 @@ pub mod pallet {
 				}
 			}
 
-			for (cluster_id, owner_id, deposit, is_public) in &self.buckets {
+			for (bucket, deposit) in &self.buckets {
 				let cur_bucket_id = <BucketsCount<T>>::get()
 					.checked_add(1)
 					.ok_or(Error::<T>::ArithmeticOverflow)
 					.unwrap();
 				<BucketsCount<T>>::set(cur_bucket_id);
 
-				let bucket = Bucket {
-					bucket_id: cur_bucket_id,
-					owner_id: owner_id.clone(),
-					cluster_id: *cluster_id,
-					is_public: *is_public,
-				};
 				<Buckets<T>>::insert(cur_bucket_id, bucket);
 
 				let ledger = AccountsLedger::<T> {
-					owner: owner_id.clone(),
+					owner: bucket.owner_id.clone(),
 					total: *deposit,
 					active: *deposit,
 					unlocking: Default::default(),
@@ -311,6 +314,7 @@ pub mod pallet {
 				owner_id: bucket_owner,
 				cluster_id,
 				is_public: bucket_params.is_public,
+				is_removed: false,
 			};
 
 			<BucketsCount<T>>::set(cur_bucket_id);
@@ -508,6 +512,30 @@ pub mod pallet {
 			bucket.is_public = bucket_params.is_public;
 			<Buckets<T>>::insert(bucket_id, bucket);
 			Self::deposit_event(Event::<T>::BucketUpdated { bucket_id });
+
+			Ok(())
+		}
+
+		/// Mark existing bucket with specified bucket id as removed
+		///
+		/// Only an owner can remove a bucket
+		#[pallet::call_index(6)]
+		#[pallet::weight(T::WeightInfo::remove_bucket())]
+		pub fn remove_bucket(origin: OriginFor<T>, bucket_id: BucketId) -> DispatchResult {
+			let owner = ensure_signed(origin)?;
+
+			<Buckets<T>>::try_mutate(bucket_id, |maybe_bucket| -> DispatchResult {
+				let mut bucket = maybe_bucket.as_mut().ok_or(Error::<T>::NoBucketWithId)?;
+				ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
+				ensure!(!bucket.is_removed, Error::<T>::AlreadyRemoved);
+
+				// Mark the bucket as removed
+				bucket.is_removed = true;
+
+				Ok(())
+			})?;
+
+			Self::deposit_event(Event::<T>::BucketRemoved { bucket_id });
 
 			Ok(())
 		}

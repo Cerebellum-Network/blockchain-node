@@ -125,10 +125,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 48900,
+	spec_version: 48902,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 14,
+	transaction_version: 15,
 	state_version: 0,
 };
 
@@ -1498,8 +1498,8 @@ impl Get<Perbill> for NominationPoolsMigrationV4OldPallet {
 
 /// Runtime migrations
 type Migrations = (
-	pallet_offences::migration::v1::MigrateToV1<Runtime>,
 	cere_runtime_common::session::migration::ClearOldSessionStorage<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.
@@ -1844,7 +1844,7 @@ impl_runtime_apis! {
 		fn on_runtime_upgrade(checks: frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
 			log::info!("try-runtime::on_runtime_upgrade cere.");
 			let weight = Executive::try_runtime_upgrade(checks).unwrap();
-			(weight, BlockWeights::get().max_block)
+			(weight, RuntimeBlockWeights::get().max_block)
 		}
 
 		fn execute_block(

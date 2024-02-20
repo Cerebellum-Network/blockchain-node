@@ -45,6 +45,12 @@ std = [
   "pallet-chainbridge/std",
   "pallet-erc721/std",
 ]
+try-runtime = [
+  "frame-system/try-runtime",
+  "pallet-balances/try-runtime",
+  "pallet-chainbridge/try-runtime",
+  "pallet-erc721/try-runtime",
+]
 
 [package.metadata.cargo-machete]
 ignored = ["scale-info"]
