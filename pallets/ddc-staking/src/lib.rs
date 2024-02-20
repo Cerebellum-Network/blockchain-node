@@ -32,6 +32,7 @@ use ddc_primitives::traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
 	node::{NodeCreator, NodeVisitor},
 	staking::{DDCStakerCreator, DDCStakingVisitor, StakingVisitorError},
+	staking::{DDCStakingVisitor, StakerCreator, StakingVisitorError},
 };
 pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 #[cfg(feature = "std")]
