@@ -30,7 +30,7 @@ mod tests;
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
-		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
+		staking::{DDCStakingVisitor, StakerCreator, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,
@@ -78,7 +78,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_contracts::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		type NodeRepository: NodeRepository<Self>; // todo: get rid of tight coupling with nodes-pallet
-		type StakingVisitor: StakingVisitor<Self>;
+		type DDCStakingVisitor: DDCStakingVisitor<Self>;
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
 		type WeightInfo: WeightInfo;
@@ -230,12 +230,12 @@ pub mod pallet {
 
 			// Sufficient funds are locked at the DDC Staking module.
 			let has_activated_stake =
-				T::StakingVisitor::has_activated_stake(&node_pub_key, &cluster_id)
+				T::DDCStakingVisitor::has_activated_stake(&node_pub_key, &cluster_id)
 					.map_err(Into::<Error<T>>::into)?;
 			ensure!(has_activated_stake, Error::<T>::NodeHasNoActivatedStake);
 
 			// Candidate is not planning to pause operations any time soon.
-			let has_chilling_attempt = T::StakingVisitor::has_chilling_attempt(&node_pub_key)
+			let has_chilling_attempt = T::DDCStakingVisitor::has_chilling_attempt(&node_pub_key)
 				.map_err(Into::<Error<T>>::into)?;
 			ensure!(!has_chilling_attempt, Error::<T>::NodeChillingIsProhibited);
 

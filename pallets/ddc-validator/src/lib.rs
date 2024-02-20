@@ -26,8 +26,10 @@ pub use core::fmt::Debug;
 
 pub use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 pub use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
-use ddc_primitives::traits::cluster::ClusterVisitor as ClusterVisitorType;
-use ddc_primitives::traits::staking::StakingVisitor as StakingVisitorType;
+use ddc_primitives::traits::{
+	cluster::ClusterVisitor as ClusterVisitorType,
+	staking::ProtocolStakingVisitor as ProtocolStakingVisitorType,
+};
 use frame_election_provider_support::SortedListProvider;
 pub use frame_support::{
 	decl_event, decl_module, decl_storage, defensive,
@@ -63,12 +65,13 @@ const VALIDATION_LOCK: &[u8; 37] = b"pallet-ddc-validator::validation_lock";
 const ENABLE_DDC_VALIDATION_KEY: &[u8; 21] = b"enable-ddc-validation";
 
 pub type BalanceOf<T> =
-<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_election_provider_support::SortedListProvider;
 	use frame_support::traits::LockableCurrency;
+
 	use super::*;
 
 	#[pallet::pallet]
@@ -92,7 +95,7 @@ pub mod pallet {
 
 		type ClusterVisitor: ClusterVisitorType<Self>;
 		type ValidatorsList: SortedListProvider<Self::AccountId>;
-		type StakingVisitor: StakingVisitorType<Self, BalanceOf<Self>>;
+		type ProtocolStakingVisitor: ProtocolStakingVisitorType<Self, BalanceOf<Self>>;
 	}
 
 	/// The map from the era and validator stash key to the list of CDN nodes to validate.
@@ -157,8 +160,7 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T>
-	{
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_initialize(block_number: T::BlockNumber) -> Weight {
 			if block_number <= 1u32.into() {
 				return Weight::from_ref_time(0)
@@ -166,7 +168,7 @@ pub mod pallet {
 
 			Signal::<T>::set(Some(false));
 
-			let current_ddc_era = match T::StakingVisitor::current_era() {
+			let current_ddc_era = match T::ProtocolStakingVisitor::current_era() {
 				Some(era) => era,
 				None => {
 					log::debug!("DDC era not set.");
@@ -217,7 +219,7 @@ pub mod pallet {
 				_ => 0, // let's consider an absent or undecodable data as we never did a validation
 			};
 
-			let current_ddc_era = match T::StakingVisitor::current_era() {
+			let current_ddc_era = match T::ProtocolStakingVisitor::current_era() {
 				Some(era) => era,
 				None => {
 					defensive!("DDC era not set");
@@ -366,20 +368,17 @@ pub mod pallet {
 			ddc_validator_pub: T::AccountId,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			let ledger = T::StakingVisitor::active_stake(&controller).ok_or(Error::<T>::NotController)?;
+			let ledger = T::ProtocolStakingVisitor::get_ledger(&controller)
+				.ok_or(Error::<T>::NotController)?;
 
-			ensure!(
-				T::ValidatorsList::contains(&ledger.stash),
-				Error::<T>::NotValidatorStash
-			);
+			ensure!(T::ValidatorsList::contains(&ledger.stash), Error::<T>::NotValidatorStash);
 
 			DDCValidatorToStashKeys::<T>::insert(ddc_validator_pub, &ledger.stash);
 			Ok(())
 		}
 	}
 
-	impl<T: Config> Pallet<T>
-	{
+	impl<T: Config> Pallet<T> {
 		fn assign(quorum_size: usize, era: EraIndex) -> Result<(), DispatchError> {
 			/*
 			let validators: Vec<T::AccountId> = DDCValidatorToStashKeys::<T>::iter_keys().collect();

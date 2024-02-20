@@ -1,11 +1,18 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use frame_support::{
+	dispatch::HasCompact,
+	pallet_prelude::{
+		CloneNoBound, EqNoBound, MaxEncodedLen, PartialEqNoBound, RuntimeDebugNoBound,
+	},
+};
 use scale_info::{prelude::vec::Vec, TypeInfo};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H160;
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
+use sp_staking::EraIndex;
 
 pub mod traits;
 
@@ -155,4 +162,18 @@ pub struct DDCNodeParams {
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodeParams {
 	StorageParams(DDCNodeParams),
+}
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct StakingLedger<T: frame_system::Config, Balance> {
+	/// The stash account whose balance is actually locked and at stake.
+	pub stash: T::AccountId,
+
+	/// The total amount of the stash's balance that we are currently accounting for.
+	/// It's just `active` plus all the `unlocking` balances.
+	pub total: Balance,
+
+	/// The total amount of the stash's balance that will be at stake in any forthcoming
+	/// rounds.
+	pub active: Balance,
 }

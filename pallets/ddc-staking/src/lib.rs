@@ -31,7 +31,7 @@ use codec::{Decode, Encode, HasCompact};
 use ddc_primitives::traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
 	node::{NodeCreator, NodeVisitor},
-	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
+	staking::{DDCStakingVisitor, StakerCreator, StakingVisitorError},
 };
 pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 #[cfg(feature = "std")]
@@ -885,7 +885,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> StakingVisitor<T> for Pallet<T> {
+	impl<T: Config> DDCStakingVisitor<T> for Pallet<T> {
 		fn has_activated_stake(
 			node_pub_key: &NodePubKey,
 			cluster_id: &ClusterId,

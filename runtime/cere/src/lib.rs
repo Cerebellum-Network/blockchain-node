@@ -1342,7 +1342,7 @@ impl pallet_ddc_customers::Config for Runtime {
 impl pallet_ddc_clusters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
-	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type DDCStakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
@@ -1350,7 +1350,7 @@ impl pallet_ddc_clusters::Config for Runtime {
 
 impl pallet_ddc_nodes::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type DDCStakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
 	type WeightInfo = pallet_ddc_nodes::weights::SubstrateWeight<Runtime>;
 }
 

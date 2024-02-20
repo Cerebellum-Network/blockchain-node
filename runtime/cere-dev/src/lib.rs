@@ -80,10 +80,18 @@ use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-use sp_runtime::{create_runtime_str, curve::PiecewiseLinear, generic, impl_opaque_keys, traits::{
-	self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, ConvertInto,
-	Identity as IdentityConvert, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup,
-}, transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity}, ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill, DispatchResult, DispatchError};
+use sp_runtime::{
+	create_runtime_str,
+	curve::PiecewiseLinear,
+	generic, impl_opaque_keys,
+	traits::{
+		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, ConvertInto,
+		Identity as IdentityConvert, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup,
+	},
+	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
+	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill,
+	Percent, Permill, Perquintill,
+};
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -1341,9 +1349,13 @@ impl pallet_ddc_customers::Config for Runtime {
 }
 
 pub struct StakingWrapper<T: frame_system::Config>;
-impl StakingVisitor for StakingWrapper<T: frame_system::Config> {
-	fn current_era() -> EraIndex {unimplemented!()}
-	fn active_stake(stash: &Self::AccountId) -> Option<Self::Balance> {unimplemented!()}
+impl DDCStakingVisitor for StakingWrapper<T: frame_system::Config> {
+	fn current_era() -> EraIndex {
+		unimplemented!()
+	}
+	fn active_stake(stash: &Self::AccountId) -> Option<Self::Balance> {
+		unimplemented!()
+	}
 }
 impl pallet_ddc_validator::Config for Runtime {
 	type Randomness = RandomnessCollectiveFlip;
@@ -1351,19 +1363,19 @@ impl pallet_ddc_validator::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
 	type ValidatorsList = pallet_staking::UseValidatorsMap<Self>;
-	type StakingInterface = StakingWrapper<pallet_staking::Pallet<Runtime>>;
+	type ProtocolStakingVisitor = ProtocolStakingWrapper<pallet_staking::Pallet<Runtime>>;
 }
 
 impl pallet_ddc_nodes::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type DDCStakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
 	type WeightInfo = pallet_ddc_nodes::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_ddc_clusters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
-	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type DDCStakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;

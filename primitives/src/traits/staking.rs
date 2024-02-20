@@ -1,8 +1,14 @@
 use frame_system::Config;
-use crate::{ClusterId, NodePubKey};
 use sp_staking::EraIndex;
 
-pub trait StakingVisitor<T: Config, Balance> {
+use crate::{ClusterId, NodePubKey, StakingLedger};
+
+pub trait ProtocolStakingVisitor<T: Config, Balance> {
+	fn current_era() -> Option<EraIndex>;
+	fn get_ledger(node_pub_key: &NodePubKey) -> Option<StakingLedger<T, Balance>>;
+}
+
+pub trait DDCStakingVisitor<T: Config> {
 	fn has_activated_stake(
 		node_pub_key: &NodePubKey,
 		cluster_id: &ClusterId,
@@ -11,8 +17,6 @@ pub trait StakingVisitor<T: Config, Balance> {
 	fn has_stake(node_pub_key: &NodePubKey) -> bool;
 
 	fn has_chilling_attempt(node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError>;
-	fn current_era() -> Option<EraIndex>;
-	fn active_stake(stash: &T::AccountId) -> Option<Balance>;
 }
 
 pub trait StakerCreator<T: Config, Balance> {

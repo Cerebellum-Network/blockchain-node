@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use ddc_primitives::{
-	traits::staking::{StakerCreator, StakingVisitor, StakingVisitorError},
+	traits::staking::{DDCStakingVisitor, StakerCreator, StakingVisitorError},
 	ClusterId, NodePubKey,
 };
 use frame_support::{
@@ -189,7 +189,7 @@ impl pallet_timestamp::Config for Test {
 
 impl pallet_ddc_nodes::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
-	type StakingVisitor = TestStakingVisitor;
+	type DDCStakingVisitor = TestStakingVisitor;
 	type WeightInfo = ();
 }
 
@@ -197,7 +197,7 @@ impl crate::pallet::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type NodeRepository = DdcNodes;
-	type StakingVisitor = TestStakingVisitor;
+	type DDCStakingVisitor = TestStakingVisitor;
 	type StakerCreator = TestStaker;
 	type WeightInfo = ();
 }
@@ -207,7 +207,7 @@ pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 pub struct TestStakingVisitor;
 pub struct TestStaker;
 
-impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
+impl<T: Config> DDCStakingVisitor<T> for TestStakingVisitor {
 	fn has_activated_stake(
 		_node_pub_key: &NodePubKey,
 		_cluster_id: &ClusterId,

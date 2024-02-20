@@ -6,6 +6,7 @@ use crate::{ClusterId, NodeParams, NodePubKey};
 pub trait NodeVisitor<T: Config> {
 	fn get_cluster_id(node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, NodeVisitorError>;
 	fn exists(node_pub_key: &NodePubKey) -> bool;
+	fn get_node() -> Vec<NodePubKey>;
 }
 
 pub trait NodeCreator<T: Config> {
