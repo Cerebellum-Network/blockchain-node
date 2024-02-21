@@ -702,6 +702,7 @@ version = "4.0.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da78b32057b8fdfc352504708feeba7216dcd65a2c9ab02978cbd288d1279b6c"
 dependencies = [
+ "serde",
  "utf8-width",
 ]
 
@@ -3821,7 +3822,7 @@ dependencies = [
  "once_cell",
  "parking_lot 0.12.1",
  "pin-project",
- "prost 0.11.9",
+ "prost",
  "prost-build",
  "rand 0.8.5",
  "rw-stream-sink",
@@ -3889,7 +3890,7 @@ dependencies = [
  "libp2p-swarm",
  "log",
  "lru",
- "prost 0.11.9",
+ "prost",
  "prost-build",
  "prost-codec",
  "smallvec",
@@ -3932,7 +3933,7 @@ dependencies = [
  "libp2p-core 0.38.0",
  "libp2p-swarm",
  "log",
- "prost 0.11.9",
+ "prost",
  "prost-build",
  "rand 0.8.5",
  "sha2 0.10.8",
@@ -4007,7 +4008,7 @@ dependencies = [
  "libp2p-core 0.38.0",
  "log",
  "once_cell",
- "prost 0.11.9",
+ "prost",
  "prost-build",
  "rand 0.8.5",
  "sha2 0.10.8",
@@ -4172,7 +4173,7 @@ dependencies = [
  "libp2p-noise",
  "log",
  "multihash 0.16.3",
- "prost 0.11.9",
+ "prost",
  "prost-build",
  "prost-codec",
  "rand 0.8.5",
@@ -5339,16 +5340,15 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-timestamp",
  "parity-scale-codec",
- "prost 0.12.3",
- "prost-types 0.12.3",
  "scale-info",
+ "serde",
+ "serde_json",
  "sp-core",
  "sp-io",
  "sp-keystore",
  "sp-runtime",
  "sp-staking",
  "sp-std",
- "tonic",
 ]
 
 [[package]]
@@ -6505,17 +6505,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b82eaa1d779e9a4bc1c3217db8ffbeabaae1dca241bf70183242128d48681cd"
 dependencies = [
  "bytes",
- "prost-derive 0.11.9",
-]
-
-[[package]]
-name = "prost"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "146c289cda302b98a28d40c8b3b90498d6e526dd24ac2ecea73e4e491685b94a"
-dependencies = [
- "bytes",
- "prost-derive 0.12.3",
+ "prost-derive",
 ]
 
 [[package]]
@@ -6532,8 +6522,8 @@ dependencies = [
  "multimap",
  "petgraph",
  "prettyplease",
- "prost 0.11.9",
- "prost-types 0.11.9",
+ "prost",
+ "prost-types",
  "regex",
  "syn 1.0.109",
  "tempfile",
@@ -6548,7 +6538,7 @@ checksum = "0dc34979ff898b6e141106178981ce2596c387ea6e62533facfc61a37fc879c0"
 dependencies = [
  "asynchronous-codec",
  "bytes",
- "prost 0.11.9",
+ "prost",
  "thiserror",
  "unsigned-varint",
 ]
@@ -6567,34 +6557,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "prost-derive"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efb6c9a1dd1def8e2124d17e83a20af56f1570d6c2d2bd9e266ccb768df3840e"
-dependencies = [
- "anyhow",
- "itertools",
- "proc-macro2",
- "quote",
- "syn 2.0.48",
-]
-
-[[package]]
 name = "prost-types"
 version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "213622a1460818959ac1181aaeb2dc9c7f63df720db7d788b3e24eacd1983e13"
 dependencies = [
- "prost 0.11.9",
-]
-
-[[package]]
-name = "prost-types"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "193898f59edcf43c26227dcd4c8427f00d99d61e95dcde58dabd49fa291d470e"
-dependencies = [
- "prost 0.12.3",
+ "prost",
 ]
 
 [[package]]
@@ -7257,7 +7225,7 @@ dependencies = [
  "libp2p",
  "log",
  "parity-scale-codec",
- "prost 0.11.9",
+ "prost",
  "prost-build",
  "rand 0.8.5",
  "sc-client-api",
@@ -7765,7 +7733,7 @@ dependencies = [
  "futures",
  "libp2p",
  "log",
- "prost 0.11.9",
+ "prost",
  "prost-build",
  "sc-client-api",
  "sc-network",
@@ -7833,7 +7801,7 @@ dependencies = [
  "libp2p",
  "log",
  "parity-scale-codec",
- "prost 0.11.9",
+ "prost",
  "prost-build",
  "sc-client-api",
  "sc-network",
@@ -7860,7 +7828,7 @@ dependencies = [
  "lru",
  "mockall",
  "parity-scale-codec",
- "prost 0.11.9",
+ "prost",
  "prost-build",
  "sc-client-api",
  "sc-consensus",
@@ -8531,9 +8499,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.111"
+version = "1.0.114"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "176e46fa42316f18edd598015a5166857fc835ec732f5215eac6b7bdbf0a84f4"
+checksum = "c5f09b1bd632ef549eaa9f60a1f8de742bdbc698e6cee2095fc84dde5f549ae0"
 dependencies = [
  "itoa",
  "ryu",
@@ -10064,25 +10032,6 @@ dependencies = [
  "indexmap 2.1.0",
  "toml_datetime",
  "winnow",
-]
-
-[[package]]
-name = "tonic"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76c4eb7a4e9ef9d4763600161f12f5070b92a578e1b634db88a6887844c91a13"
-dependencies = [
- "base64 0.21.7",
- "bytes",
- "http",
- "http-body",
- "percent-encoding",
- "pin-project",
- "tokio",
- "tokio-stream",
- "tower-layer",
- "tower-service",
- "tracing",
 ]
 
 [[package]]

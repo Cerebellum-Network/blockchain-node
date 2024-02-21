@@ -14,6 +14,7 @@
 //!   documentation for `era` definition used in this pallet.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![recursion_limit = "256"]
 
 #[cfg(test)]
 mod mock;
@@ -21,36 +22,30 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub use alloc::{format, string::String};
-pub use core::fmt::Debug;
-pub use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
-use ddc_primitives::traits::{
-	cluster::ClusterVisitor as ClusterVisitorType,
-	staking::ProtocolStakingVisitor as ProtocolStakingVisitorType,
+use ddc_primitives::{
+	traits::{
+		cluster::{ClusterCreator as ClusterCreatorType, ClusterVisitor as ClusterVisitorType},
+		staking::ProtocolStakingVisitor as ProtocolStakingVisitorType,
+		customer::{
+			CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
+		},
+		pallet::PalletVisitor as PalletVisitorType,
+	},
 };
 use frame_election_provider_support::SortedListProvider;
-pub use frame_support::{
-	decl_event, decl_module, decl_storage, defensive,
-	dispatch::DispatchResult,
+use frame_support::{
 	pallet_prelude::*,
-	parameter_types, storage,
-	traits::{Currency, Randomness, UnixTime},
-	weights::Weight,
-	BoundedVec, RuntimeDebug,
+	sp_runtime::SaturatedConversion,
+	traits::{Currency, LockableCurrency, Randomness},
 };
-pub use frame_system::{
-	ensure_signed,
-	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer, SigningTypes},
-	pallet_prelude::*,
-};
+use frame_system::{ensure_signed, pallet_prelude::*};
 pub use pallet::*;
-pub use scale_info::TypeInfo;
-pub use sp_runtime::offchain::{
+use sp_runtime::{traits::Convert, PerThing, DispatchError, DispatchResult};
+use sp_std::prelude::*;
+use sp_runtime::offchain::{
 	http, storage::StorageValueRef, storage_lock, storage_lock::StorageLock, Duration, Timestamp,
 };
-pub use sp_staking::EraIndex;
-pub use sp_std::{collections::btree_map::BTreeMap, prelude::*};
-extern crate alloc;
+use sp_staking::EraIndex;
 
 /// Offchain local storage key that holds the last era in which the validator completed its
 /// assignment.
@@ -96,22 +91,10 @@ pub mod pallet {
 		type ProtocolStakingVisitor: ProtocolStakingVisitorType<Self, BalanceOf<Self>>;
 	}
 
-	/// The map from the era and validator stash key to the list of CDN nodes to validate.
-	#[pallet::storage]
-	#[pallet::getter(fn assignments)]
-	pub(super) type Assignments<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, EraIndex, Identity, T::AccountId, Vec<T::AccountId>>;
-
 	/// A signal to start a process on all the validators.
 	#[pallet::storage]
 	#[pallet::getter(fn signal)]
 	pub(super) type Signal<T: Config> = StorageValue<_, bool>;
-
-	// Map to check if validation decision was performed for the era
-	#[pallet::storage]
-	#[pallet::getter(fn validation_decision_set_for_node)]
-	pub(super) type ValidationDecisionSetForNode<T: Config> =
-		StorageDoubleMap<_, Twox64Concat, EraIndex, Identity, T::AccountId, bool, ValueQuery>;
 
 	/// The last era for which the tasks assignment produced.
 	#[pallet::storage]
@@ -220,7 +203,6 @@ pub mod pallet {
 			let current_ddc_era = match T::ProtocolStakingVisitor::current_era() {
 				Some(era) => era,
 				None => {
-					defensive!("DDC era not set");
 					return
 				},
 			};
@@ -377,7 +359,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn assign(quorum_size: usize, era: EraIndex) -> Result<(), DispatchError> {
+		fn assign(_quorum_size: usize, _era: EraIndex) -> Result<(), DispatchError> {
 			/*
 			let validators: Vec<T::AccountId> = DDCValidatorToStashKeys::<T>::iter_keys().collect();
 			log::debug!("Current validators: {:?}.", validators);

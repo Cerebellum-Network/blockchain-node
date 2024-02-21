@@ -10,7 +10,7 @@ use ddc_primitives::{
 		node::{NodeVisitor, NodeVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	NodeParams, NodePubKey, StorageNodePubKey,
+	NodeMode, NodeParams, NodePubKey, StorageNode, StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime,
@@ -286,6 +286,10 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 		let lock = MOCK_NODE.lock();
 		let mock_ref = lock.borrow();
 		mock_ref.exists
+	}
+
+	fn get_nodes(_: NodeMode) -> frame_benchmarking::Vec<StorageNode<T>> {
+		unimplemented!()
 	}
 }
 

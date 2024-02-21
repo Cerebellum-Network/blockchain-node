@@ -14,20 +14,19 @@ byte-unit = { workspace = true }
 codec = { workspace = true }
 log = { workspace = true }
 scale-info = { workspace = true }
-prost = { workspace = true }
-prost-types = { workspace = true }
-tonic = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Substrate dependencies
-frame-election-provider-support = { workspace = true, optional = true }
-frame-support = { workspace = true, optional = true }
-frame-system = { workspace = true, optional = true }
-sp-core = { workspace = true, optional = true }
-sp-io = { workspace = true, optional = true }
+frame-election-provider-support = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-core = { workspace = true }
+sp-io = { workspace = true }
 sp-keystore = { workspace = true, optional = true }
-sp-runtime = { workspace = true, optional = true }
-sp-staking = { workspace = true, optional = true }
-sp-std = { workspace = true, optional = true }
+sp-runtime = { workspace = true }
+sp-staking = { workspace = true }
+sp-std = { workspace = true }
 
 # Cere dependencies
 ddc-primitives = { workspace = true }
@@ -37,11 +36,15 @@ pallet-balances = { workspace = true, default-features = true }
 pallet-staking-reward-curve = { workspace = true, default-features = true }
 pallet-timestamp = { workspace = true, default-features = true }
 
-
 [features]
 default = ["std"]
 std = [
+    "byte-unit/std",
     "codec/std",
+    "log/std",
+    "scale-info/std",
+    "serde/std",
+    "serde_json/std",
     "frame-election-provider-support/std",
     "frame-support/std",
     "frame-system/std",
