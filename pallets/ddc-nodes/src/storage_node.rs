@@ -1,8 +1,8 @@
 use ddc_primitives::{
-	ClusterId, NodeError, NodeParams, NodePubKey, NodeType, StorageNode,
+	ClusterId, NodeError, NodeParams, NodePubKey, NodeType, StorageNode, StorageNodeProps,
 };
 
-use crate::node::{NodeProps, NodeTrait};
+use crate::node::NodeTrait;
 
 impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 	fn get_pub_key(&self) -> NodePubKey {
@@ -11,13 +11,11 @@ impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 	fn get_provider_id(&self) -> &T::AccountId {
 		&self.provider_id
 	}
-	fn get_props(&self) -> NodeProps {
-		NodeProps::StorageProps(self.props.clone())
+	fn get_props(&self) -> StorageNodeProps {
+		self.props.clone()
 	}
-	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError> {
-		self.props = match props {
-			NodeProps::StorageProps(props) => props,
-		};
+	fn set_props(&mut self, props: StorageNodeProps) -> Result<(), NodeError> {
+		self.props = props;
 		Ok(())
 	}
 	fn set_params(&mut self, node_params: NodeParams) -> Result<(), NodeError> {

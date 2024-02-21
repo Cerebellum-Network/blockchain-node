@@ -145,6 +145,12 @@ impl NodeModeFlags {
 	}
 }
 
+impl From<NodeModeFlags> for u16 {
+	fn from(flags: NodeModeFlags) -> Self {
+		flags.bits
+	}
+}
+
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 #[scale_info(skip_type_params(T))]

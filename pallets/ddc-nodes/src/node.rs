@@ -12,17 +12,11 @@ pub enum Node<T: frame_system::Config> {
 	Storage(StorageNode<T>),
 }
 
-// Props fields may include internal protocol properties
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum NodeProps {
-	StorageProps(StorageNodeProps),
-}
-
 pub trait NodeTrait<T: frame_system::Config> {
 	fn get_pub_key(&self) -> NodePubKey;
 	fn get_provider_id(&self) -> &T::AccountId;
-	fn get_props(&self) -> NodeProps;
-	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError>;
+	fn get_props(&self) -> StorageNodeProps;
+	fn set_props(&mut self, props: StorageNodeProps) -> Result<(), NodeError>;
 	fn set_params(&mut self, props: NodeParams) -> Result<(), NodeError>;
 	fn get_cluster_id(&self) -> &Option<ClusterId>;
 	fn set_cluster_id(&mut self, cluster_id: Option<ClusterId>);
@@ -53,12 +47,12 @@ impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
 			Node::Storage(node) => node.get_provider_id(),
 		}
 	}
-	fn get_props(&self) -> NodeProps {
+	fn get_props(&self) -> StorageNodeProps {
 		match &self {
 			Node::Storage(node) => node.get_props(),
 		}
 	}
-	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError> {
+	fn set_props(&mut self, props: StorageNodeProps) -> Result<(), NodeError> {
 		match self {
 			Node::Storage(node) => node.set_props(props),
 		}

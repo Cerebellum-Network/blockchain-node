@@ -251,7 +251,7 @@ pub mod pallet {
 					.is_authorized(
 						node.get_provider_id().to_owned(),
 						node.get_pub_key(),
-						node.get_type(),
+						node.get_props().mode,
 					)
 					.map_err(Into::<Error<T>>::into)?;
 				ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
@@ -357,10 +357,7 @@ pub mod pallet {
 		) -> Result<u128, ClusterVisitorError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
-			match node_type {
-				NodeType::Storage =>
-					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
-			}
+			Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>())
 		}
 
 		fn get_pricing_params(
@@ -403,9 +400,7 @@ pub mod pallet {
 		) -> Result<T::BlockNumber, ClusterVisitorError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
-			match node_type {
-				NodeType::Storage => Ok(cluster_gov_params.storage_chill_delay),
-			}
+			Ok(cluster_gov_params.storage_chill_delay)
 		}
 
 		fn get_unbonding_delay(
@@ -414,9 +409,7 @@ pub mod pallet {
 		) -> Result<T::BlockNumber, ClusterVisitorError> {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| ClusterVisitorError::ClusterGovParamsNotSet)?;
-			match node_type {
-				NodeType::Storage => Ok(cluster_gov_params.storage_unbonding_delay),
-			}
+			Ok(cluster_gov_params.storage_unbonding_delay)
 		}
 
 		fn get_bonding_params(
