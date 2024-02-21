@@ -30,9 +30,9 @@ pub mod testing_utils;
 use ddc_primitives::{
 	traits::{
 		node::{NodeCreator, NodeVisitor, NodeVisitorError},
-		staking::StakingVisitor,
+		staking::DDCStakingVisitor,
 	},
-	ClusterId, NodeParams, NodePubKey, StorageNodePubKey,
+	ClusterId, NodeParams, NodePubKey, StorageNode, StorageNodePubKey,
 };
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
@@ -41,13 +41,12 @@ use sp_std::prelude::*;
 mod node;
 mod storage_node;
 
-pub use crate::{
-	node::{Node, NodeError, NodeTrait},
-	storage_node::StorageNode,
-};
+pub use crate::node::{Node, NodeTrait};
 
 #[frame_support::pallet]
 pub mod pallet {
+	use ddc_primitives::NodeMode;
+
 	use super::*;
 
 	/// The current storage version.
@@ -62,7 +61,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		type StakingVisitor: StakingVisitor<Self>;
+		type DDCStakingVisitor: DDCStakingVisitor<Self>;
 		type WeightInfo: WeightInfo;
 	}
 
@@ -135,7 +134,7 @@ pub mod pallet {
 			let node = Self::get(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
 			ensure!(node.get_cluster_id().is_none(), Error::<T>::NodeIsAssignedToCluster);
-			let has_stake = T::StakingVisitor::has_stake(&node_pub_key);
+			let has_stake = T::DDCStakingVisitor::has_stake(&node_pub_key);
 			ensure!(!has_stake, Error::<T>::NodeHasDanglingStake);
 			Self::delete(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::NodeDeleted { node_pub_key });
@@ -236,6 +235,22 @@ pub mod pallet {
 
 		fn exists(node_pub_key: &NodePubKey) -> bool {
 			Self::get(node_pub_key.clone()).is_ok()
+		}
+
+		fn get_nodes(mode: NodeMode) -> Vec<StorageNode<T>> {
+			let result = StorageNodes::<T>::iter()
+				.filter_map(
+					|(_key, node)| {
+						if node.props.mode.has_mode(mode) {
+							Some(node)
+						} else {
+							None
+						}
+					},
+				)
+				.collect();
+
+			result
 		}
 	}
 

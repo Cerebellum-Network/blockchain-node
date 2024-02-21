@@ -60,6 +60,7 @@ pub use pallet_ddc_customers;
 pub use pallet_ddc_nodes;
 pub use pallet_ddc_payouts;
 pub use pallet_ddc_staking;
+pub use pallet_ddc_validator;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -88,7 +89,8 @@ use sp_runtime::{
 		Identity as IdentityConvert, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
+	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill,
+	Percent, Permill, Perquintill,
 };
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
@@ -102,6 +104,7 @@ pub mod impls;
 use cere_runtime_common::constants::{currency::*, time::*};
 use impls::Author;
 use sp_runtime::generic::Era;
+use sp_staking::{EraIndex, Stake, StakingInterface};
 
 /// Generated voter bag information.
 mod voter_bags;
@@ -1345,17 +1348,35 @@ impl pallet_ddc_customers::Config for Runtime {
 	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
 }
 
+pub struct StakingWrapper<T: frame_system::Config>;
+impl DDCStakingVisitor for StakingWrapper<T: frame_system::Config> {
+	fn current_era() -> EraIndex {
+		unimplemented!()
+	}
+	fn active_stake(stash: &Self::AccountId) -> Option<Self::Balance> {
+		unimplemented!()
+	}
+}
+impl pallet_ddc_validator::Config for Runtime {
+	type Randomness = RandomnessCollectiveFlip;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ValidatorsList = pallet_staking::UseValidatorsMap<Self>;
+	type ProtocolStakingVisitor = ProtocolStakingWrapper<pallet_staking::Pallet<Runtime>>;
+}
+
 impl pallet_ddc_nodes::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type DDCStakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
 	type WeightInfo = pallet_ddc_nodes::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_ddc_clusters::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type NodeRepository = pallet_ddc_nodes::Pallet<Runtime>;
-	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
-	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
+	type DDCStakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type DDCStakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
 }
@@ -1439,7 +1460,8 @@ construct_runtime!(
 		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
-		DdcPayouts: pallet_ddc_payouts
+		DdcPayouts: pallet_ddc_payouts,
+		DdcValidator: pallet_ddc_validator,
 	}
 );
 

@@ -1,5 +1,5 @@
 use codec::Encode;
-use ddc_primitives::{NodePubKey, NodeType};
+use ddc_primitives::{NodeModeFlags, NodePubKey, NodeType};
 use frame_support::weights::Weight;
 #[cfg(any(feature = "runtime-benchmarks", test))]
 use hex_literal::hex;
@@ -35,11 +35,11 @@ where
 		&self,
 		node_provider_id: T::AccountId,
 		node_pub_key: NodePubKey,
-		node_type: NodeType,
+		node_type: NodeModeFlags,
 	) -> Result<bool, NodeProviderAuthContractError> {
 		let call_data = {
-			// is_authorized(node_provider: AccountId, node: Vec<u8>, node_variant: u8) -> bool
-			let args: ([u8; 4], T::AccountId, Vec<u8>, u8) = (
+			// is_authorized(node_provider: AccountId, node: Vec<u8>, node_variant: u16) -> bool
+			let args: ([u8; 4], T::AccountId, Vec<u8>, u16) = (
 				INK_SELECTOR_IS_AUTHORIZED,
 				node_provider_id,
 				/* remove the first byte* added by SCALE */

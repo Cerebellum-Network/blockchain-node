@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use ddc_primitives::traits::staking::{StakingVisitor, StakingVisitorError};
+use ddc_primitives::traits::staking::{DDCStakingVisitor, StakingVisitorError};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
@@ -96,12 +96,12 @@ impl pallet_timestamp::Config for Test {
 
 impl crate::pallet::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
-	type StakingVisitor = TestStakingVisitor;
+	type DDCStakingVisitor = TestStakingVisitor;
 	type WeightInfo = ();
 }
 
 pub struct TestStakingVisitor;
-impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
+impl<T: Config> DDCStakingVisitor<T> for TestStakingVisitor {
 	fn has_activated_stake(
 		_node_pub_key: &NodePubKey,
 		_cluster_id: &ClusterId,

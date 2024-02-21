@@ -491,7 +491,7 @@ fn staking_creator_works() {
 		let storage_node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
 
 		assert_ok!(
-			<DdcStaking as StakerCreator<Test, BalanceOf<Test>>>::bond_stake_and_participate(
+			<DdcStaking as DDCStakerCreator<Test, BalanceOf<Test>>>::bond_stake_and_participate(
 				stash,
 				controller,
 				storage_node_pub_key,
@@ -512,10 +512,10 @@ fn staking_visitor_works() {
 		// Add new Storage participant, account 3 controlled by 4 with node 5.
 		assert_ok!(DdcStaking::bond(RuntimeOrigin::signed(3), 4, node_pub_key.clone(), 100));
 
-		assert!(<DdcStaking as StakingVisitor<Test>>::has_stake(&node_pub_key,));
+		assert!(<DdcStaking as DDCStakingVisitor<Test>>::has_stake(&node_pub_key,));
 
 		if let Ok(result) =
-			<DdcStaking as StakingVisitor<Test>>::has_chilling_attempt(&node_pub_key)
+			<DdcStaking as DDCStakingVisitor<Test>>::has_chilling_attempt(&node_pub_key)
 		{
 			assert!(!result);
 		}
@@ -523,7 +523,7 @@ fn staking_visitor_works() {
 		assert_ok!(DdcStaking::store(RuntimeOrigin::signed(4), ClusterId::from([1; 20])));
 
 		if let Ok(result) =
-			<DdcStaking as StakingVisitor<Test>>::has_activated_stake(&node_pub_key, &cluster_id)
+			<DdcStaking as DDCStakingVisitor<Test>>::has_activated_stake(&node_pub_key, &cluster_id)
 		{
 			assert!(result);
 		}

@@ -31,7 +31,7 @@ use codec::{Decode, Encode, HasCompact};
 use ddc_primitives::traits::{
 	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
 	node::{NodeCreator, NodeVisitor},
-	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
+	staking::{DDCStakerCreator, DDCStakingVisitor, StakingVisitorError},
 };
 pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
 #[cfg(feature = "std")]
@@ -855,7 +855,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> StakerCreator<T, BalanceOf<T>> for Pallet<T> {
+	impl<T: Config> DDCStakerCreator<T, BalanceOf<T>> for Pallet<T> {
 		fn bond_stake_and_participate(
 			stash: T::AccountId,
 			controller: T::AccountId,
@@ -885,7 +885,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> StakingVisitor<T> for Pallet<T> {
+	impl<T: Config> DDCStakingVisitor<T> for Pallet<T> {
 		fn has_activated_stake(
 			node_pub_key: &NodePubKey,
 			cluster_id: &ClusterId,
