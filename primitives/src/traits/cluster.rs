@@ -38,8 +38,6 @@ pub trait ClusterVisitor<T: Config> {
 	fn get_bonding_params(
 		cluster_id: &ClusterId,
 	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError>;
-
-	fn get_nodes(mode: NodeMode) -> Result<Vec<NodePubKey>, ClusterVisitorError>;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {

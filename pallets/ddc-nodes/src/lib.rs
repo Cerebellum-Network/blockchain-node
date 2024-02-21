@@ -237,12 +237,12 @@ pub mod pallet {
 			Self::get(node_pub_key.clone()).is_ok()
 		}
 
-		fn get_nodes(mode: NodeMode) -> Vec<Node<T>> {
+		fn get_nodes(mode: NodeMode) -> Vec<StorageNode<T>> {
 			let result = StorageNodes::<T>::iter()
 				.filter_map(
 					|(_key, node)| {
 						if node.props.mode.has_mode(mode) {
-							Some(node.pub_key)
+							Some(node)
 						} else {
 							None
 						}

@@ -5,7 +5,7 @@ use crate::{ClusterId, NodePubKey, StakingLedger};
 
 pub trait ProtocolStakingVisitor<T: Config, Balance> {
 	fn current_era() -> Option<EraIndex>;
-	fn get_ledger(node_pub_key: &NodePubKey) -> Option<StakingLedger<T, Balance>>;
+	fn get_ledger(node_pub_key: &T::AccountId) -> Option<StakingLedger<T, Balance>>;
 }
 
 pub trait DDCStakingVisitor<T: Config> {

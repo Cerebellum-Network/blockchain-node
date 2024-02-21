@@ -31,7 +31,6 @@ use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
 		staking::{DDCStakerCreator, DDCStakingVisitor, StakingVisitorError},
-		staking::{DDCStakingVisitor, StakerCreator, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,

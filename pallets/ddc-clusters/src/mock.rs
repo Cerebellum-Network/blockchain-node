@@ -4,7 +4,6 @@
 
 use ddc_primitives::{
 	traits::staking::{DDCStakerCreator, DDCStakingVisitor, StakingVisitorError},
-	traits::staking::{DDCStakingVisitor, StakerCreator, StakingVisitorError},
 	ClusterId, NodePubKey,
 };
 use frame_support::{

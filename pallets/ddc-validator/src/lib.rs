@@ -23,8 +23,6 @@ mod tests;
 
 pub use alloc::{format, string::String};
 pub use core::fmt::Debug;
-
-pub use alt_serde::{de::DeserializeOwned, Deserialize, Serialize};
 pub use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
 use ddc_primitives::traits::{
 	cluster::ClusterVisitor as ClusterVisitorType,
