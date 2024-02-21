@@ -5,9 +5,8 @@ use frame_system::{self as system};
 pub use pallet_balances as balances;
 use sp_core::H256;
 use sp_runtime::{
-	testing::Header,
 	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
-	Perbill,
+	BuildStorage, Perbill,
 };
 
 use crate::{self as bridge, *};
@@ -26,13 +25,12 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = u64;
-	type BlockNumber = u64;
+	type Nonce = u64;
+	type Block = Block;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
@@ -69,8 +67,8 @@ impl pallet_balances::Config for Test {
 	type ReserveIdentifier = ();
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
-	type HoldIdentifier = ();
 	type MaxHolds = ();
+	type RuntimeHoldReason = ();
 }
 
 parameter_types! {
@@ -89,16 +87,12 @@ impl crate::pallet::Config for Test {
 	type WeightInfo = ();
 }
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
+	pub struct Test
 	{
-		System: system::{Pallet, Call, Config, Storage, Event<T>},
+		System: system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Balances: balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Bridge: bridge::{Pallet, Call, Storage, Event<T>},
 	}
@@ -113,7 +107,7 @@ pub const TEST_THRESHOLD: u32 = 2;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let bridge_id = AccountIdConversion::into_account_truncating(&MODULE_ID);
-	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+	let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 	pallet_balances::GenesisConfig::<Test> { balances: vec![(bridge_id, ENDOWED_BALANCE)] }
 		.assimilate_storage(&mut t)
 		.unwrap();

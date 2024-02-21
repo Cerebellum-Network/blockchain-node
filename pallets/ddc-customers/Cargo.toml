@@ -14,7 +14,7 @@ codec = { workspace = true }
 log = { workspace = true }
 rand_chacha = { workspace = true, optional = true }
 scale-info = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
+serde = { workspace = true }
 
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }

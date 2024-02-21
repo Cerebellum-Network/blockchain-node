@@ -12,14 +12,15 @@ repository.workspace = true
 # 3rd-party depdencies
 codec = { workspace = true }
 hex-literal = { workspace = true }
-serde = { workspace = true, optional = true }
+scale-info = { workspace = true }
+serde = { workspace = true }
 
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 pallet-contracts = { workspace = true }
-scale-info = { workspace = true }
+pallet-contracts-primitives = { workspace = true }
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
@@ -42,11 +43,11 @@ substrate-test-utils = { workspace = true, default-features = true }
 default = ["std"]
 std = [
   "codec/std",
-  "serde",
   "ddc-primitives/std",
   "frame-support/std",
   "frame-system/std",
   "pallet-contracts/std",
+  "pallet-contracts-primitives/std",
   "pallet-ddc-nodes/std",
   "scale-info/std",
   "sp-core/std",
@@ -59,6 +60,8 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
+  "pallet-contracts/runtime-benchmarks",
+  "pallet-ddc-nodes/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-system/try-runtime",
