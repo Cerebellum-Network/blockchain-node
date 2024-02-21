@@ -1,6 +1,6 @@
 use cere_service::{self, IdentifyVariant};
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
-use sc_cli::{Error, RuntimeVersion, SubstrateCli};
+use sc_cli::{Error, SubstrateCli};
 use sc_service::error::Error as ServiceError;
 
 use crate::cli::{Cli, Subcommand};
@@ -54,24 +54,6 @@ impl SubstrateCli for Cli {
 				}
 			},
 		})
-	}
-
-	fn native_runtime_version(spec: &Box<dyn cere_service::ChainSpec>) -> &'static RuntimeVersion {
-		#[cfg(feature = "cere-dev-native")]
-		if spec.is_cere_dev() {
-			return &cere_service::cere_dev_runtime::VERSION
-		}
-
-		#[cfg(not(all(feature = "cere-dev-native")))]
-		let _ = spec;
-
-		#[cfg(feature = "cere-native")]
-		{
-			&cere_service::cere_runtime::VERSION
-		}
-
-		#[cfg(not(feature = "cere-native"))]
-		panic!("No runtime feature (cere, cere-dev) is enabled")
 	}
 }
 
@@ -162,15 +144,7 @@ pub fn run() -> sc_cli::Result<()> {
 					#[cfg(feature = "cere-dev-native")]
 					if chain_spec.is_cere_dev() {
 						return runner.sync_run(|config| {
-							cmd.run::<cere_service::cere_dev_runtime::Block, cere_client::CereDevExecutorDispatch>(config)
-						})
-					}
-
-					// else we assume it is Cere
-					#[cfg(feature = "cere-native")]
-					{
-						runner.sync_run(|config| {
-							cmd.run::<cere_service::cere_runtime::Block, cere_client::CereExecutorDispatch>(config)
+							cmd.run::<cere_service::cere_dev_runtime::Block, ()>(config)
 						})
 					}
 
@@ -208,7 +182,7 @@ pub fn run() -> sc_cli::Result<()> {
 			}
 		},
 		#[cfg(feature = "try-runtime")]
-		Some(Subcommand::TryRuntime(_)) => Err("The `try-runtime` subcommand has been migrated to a \
+		Some(Subcommand::TryRuntime) => Err("The `try-runtime` subcommand has been migrated to a \
 			standalone CLI (https://github.com/paritytech/try-runtime-cli). It is no longer \
 			being maintained here and will be removed entirely some time after January 2024. \
 			Please remove this subcommand from your runtime and use the standalone CLI."

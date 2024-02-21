@@ -17,6 +17,7 @@ codec = { workspace = true }
 scale-info = { workspace = true }
 
 # Substrate dependencies
+frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 pallet-balances = { workspace = true }
@@ -44,6 +45,14 @@ std = [
   "sp-arithmetic/std",
   "pallet-chainbridge/std",
   "pallet-erc721/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+  "pallet-chainbridge/runtime-benchmarks",
+  "pallet-erc721/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-system/try-runtime",

@@ -12,7 +12,7 @@ repository.workspace = true
 # 3rd-party dependencies
 codec = { workspace = true }
 scale-info = { workspace = true }
-serde = { workspace = true, optional = true }
+serde = { workspace = true }
 
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }
@@ -44,7 +44,6 @@ std = [
   "sp-runtime/std",
   "sp-std/std",
   "sp-core/std",
-  "serde",
 ]
 runtime-benchmarks = [
   "ddc-primitives/runtime-benchmarks",

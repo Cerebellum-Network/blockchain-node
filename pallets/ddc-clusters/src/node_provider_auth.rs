@@ -56,7 +56,8 @@ where
 			EXTENSION_CALL_GAS_LIMIT,
 			None,
 			call_data,
-			false,
+			pallet_contracts::DebugInfo::Skip,
+			pallet_contracts::CollectEvents::Skip,
 			pallet_contracts::Determinism::Enforced,
 		)
 		.result
@@ -89,16 +90,27 @@ where
 		let _wasm_hash = <T as frame_system::Config>::Hashing::hash(wasm);
 		let contract_args = encode_constructor();
 
+		// upload and instantiate the contract
+		let code_hash = pallet_contracts::Pallet::<T>::bare_upload_code(
+			caller_id.clone(),
+			wasm.to_vec(),
+			None,
+			pallet_contracts::Determinism::Enforced,
+		)
+		.unwrap()
+		.code_hash;
+
 		// Deploy the contract.
 		let contract_id = pallet_contracts::Pallet::<T>::bare_instantiate(
 			caller_id.clone(),
 			Default::default(),
 			EXTENSION_CALL_GAS_LIMIT,
 			None,
-			wasm.into(),
+			pallet_contracts_primitives::Code::Existing(code_hash),
 			contract_args,
 			vec![],
-			false,
+			pallet_contracts::DebugInfo::Skip,
+			pallet_contracts::CollectEvents::Skip,
 		)
 		.result
 		.map_err(|_| NodeProviderAuthContractError::ContractDeployFailed)?
@@ -128,7 +140,8 @@ where
 			EXTENSION_CALL_GAS_LIMIT,
 			None,
 			call_data,
-			false,
+			pallet_contracts::DebugInfo::Skip,
+			pallet_contracts::CollectEvents::Skip,
 			pallet_contracts::Determinism::Enforced,
 		)
 		.result

@@ -23,11 +23,11 @@ use ddc_primitives::{
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
-	BoundedVec, PalletId,
+	BoundedVec, Deserialize, PalletId, Serialize,
 };
+use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
-use serde::{Deserialize, Serialize};
 use sp_io::hashing::blake2_128;
 use sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
@@ -55,11 +55,10 @@ pub struct UnlockChunk<T: Config> {
 	value: BalanceOf<T>,
 	/// Block number at which point it'll be unlocked.
 	#[codec(compact)]
-	block: T::BlockNumber,
+	block: BlockNumberFor<T>,
 }
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Serialize, Deserialize)]
 #[scale_info(skip_type_params(T))]
 pub struct Bucket<T: Config> {
 	bucket_id: BucketId,
@@ -103,7 +102,7 @@ impl<T: Config> AccountsLedger<T> {
 
 	/// Remove entries from `unlocking` that are sufficiently old and reduce the
 	/// total by the sum of their balances.
-	fn consolidate_unlocked(self, current_block: T::BlockNumber) -> Self {
+	fn consolidate_unlocked(self, current_block: BlockNumberFor<T>) -> Self {
 		let mut total = self.total;
 		let unlocking_result: Result<BoundedVec<_, _>, _> = self
 			.unlocking
@@ -148,11 +147,11 @@ pub mod pallet {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
-		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
-		type UnlockingDelay: Get<<Self as frame_system::Config>::BlockNumber>;
+		type UnlockingDelay: Get<BlockNumberFor<Self>>;
 		type ClusterVisitor: ClusterVisitor<Self>;
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
@@ -240,7 +239,6 @@ pub mod pallet {
 		pub buckets: Vec<(Bucket<T>, BalanceOf<T>)>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig { feeder_account: None, buckets: Default::default() }
@@ -248,7 +246,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			let account_id = <Pallet<T>>::account_id();
 			let min = <T as pallet::Config>::Currency::minimum_balance();
@@ -525,7 +523,7 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 
 			<Buckets<T>>::try_mutate(bucket_id, |maybe_bucket| -> DispatchResult {
-				let mut bucket = maybe_bucket.as_mut().ok_or(Error::<T>::NoBucketWithId)?;
+				let bucket = maybe_bucket.as_mut().ok_or(Error::<T>::NoBucketWithId)?;
 				ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
 				ensure!(!bucket.is_removed, Error::<T>::AlreadyRemoved);
 

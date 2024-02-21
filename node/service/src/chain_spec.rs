@@ -37,7 +37,7 @@ pub type DummyChainSpec = sc_service::GenericChainSpec<(), Extensions>;
 
 /// The `ChainSpec` parameterized for the cere runtime.
 #[cfg(feature = "cere-native")]
-pub type CereChainSpec = sc_service::GenericChainSpec<cere::GenesisConfig, Extensions>;
+pub type CereChainSpec = sc_service::GenericChainSpec<cere::RuntimeGenesisConfig, Extensions>;
 
 /// The `ChainSpec` parameterized for the cere runtime.
 // Dummy chain spec, but that is fine when we don't have the native runtime.
@@ -46,7 +46,8 @@ pub type CereChainSpec = DummyChainSpec;
 
 /// The `ChainSpec` parameterized for the cere-dev runtime.
 #[cfg(feature = "cere-dev-native")]
-pub type CereDevChainSpec = sc_service::GenericChainSpec<cere_dev::GenesisConfig, Extensions>;
+pub type CereDevChainSpec =
+	sc_service::GenericChainSpec<cere_dev::RuntimeGenesisConfig, Extensions>;
 
 /// The `ChainSpec` parameterized for the cere-dev runtime.
 // Dummy chain spec, but that is fine when we don't have the native runtime.
@@ -94,7 +95,7 @@ fn cere_dev_session_keys(
 	cere_dev::SessionKeys { grandpa, babe, im_online, authority_discovery }
 }
 
-/// Helper function to create Cere Dev `GenesisConfig` for testing
+/// Helper function to create Cere Dev `RuntimeGenesisConfig` for testing
 #[cfg(feature = "cere-dev-native")]
 pub fn cere_dev_genesis(
 	wasm_binary: &[u8],
@@ -109,7 +110,7 @@ pub fn cere_dev_genesis(
 	initial_nominators: Vec<AccountId>,
 	root_key: AccountId,
 	endowed_accounts: Option<Vec<AccountId>>,
-) -> cere_dev::GenesisConfig {
+) -> cere_dev::RuntimeGenesisConfig {
 	let mut endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
 		vec![
 			get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -161,10 +162,11 @@ pub fn cere_dev_genesis(
 	const ENDOWMENT: Balance = 10_000_000_000 * TEST_UNITS;
 	const STASH: Balance = ENDOWMENT / 1000;
 
-	cere_dev::GenesisConfig {
+	cere_dev::RuntimeGenesisConfig {
 		system: cere_dev::SystemConfig {
 			// Add Wasm runtime to storage.
 			code: wasm_binary.to_vec(),
+			..Default::default()
 		},
 		balances: cere_dev::BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
@@ -212,23 +214,19 @@ pub fn cere_dev_genesis(
 		},
 		sudo: cere_dev::SudoConfig { key: Some(root_key) },
 		babe: cere_dev::BabeConfig {
-			authorities: vec![],
+			authorities: Default::default(),
 			epoch_config: Some(cere_dev::BABE_GENESIS_EPOCH_CONFIG),
+			..Default::default()
 		},
 		im_online: cere_dev::ImOnlineConfig { keys: vec![] },
-		authority_discovery: cere_dev::AuthorityDiscoveryConfig { keys: vec![] },
-		grandpa: cere_dev::GrandpaConfig { authorities: vec![] },
+		authority_discovery: cere_dev::AuthorityDiscoveryConfig {
+			keys: vec![],
+			..Default::default()
+		},
+		grandpa: Default::default(),
 		technical_membership: Default::default(),
 		treasury: Default::default(),
-		society: cere_dev::SocietyConfig {
-			members: endowed_accounts
-				.iter()
-				.take((num_endowed_accounts + 1) / 2)
-				.cloned()
-				.collect(),
-			pot: 0,
-			max_members: 999,
-		},
+		society: cere_dev::SocietyConfig { pot: 0 },
 		vesting: Default::default(),
 		transaction_payment: Default::default(),
 		ddc_customers: Default::default(),
@@ -251,9 +249,9 @@ pub fn cere_dev_native_chain_spec_properties() -> serde_json::map::Map<String, s
 	.clone()
 }
 
-/// Helper function to create Cere `GenesisConfig` for testing
+/// Helper function to create Cere `RuntimeGenesisConfig` for testing
 #[cfg(feature = "cere-dev-native")]
-fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::GenesisConfig {
+fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::RuntimeGenesisConfig {
 	cere_dev_genesis(
 		wasm_binary,
 		// Initial authorities
@@ -291,7 +289,7 @@ pub fn cere_dev_development_config() -> Result<CereDevChainSpec, String> {
 }
 
 #[cfg(feature = "cere-dev-native")]
-fn cere_dev_local_testnet_genesis(wasm_binary: &[u8]) -> cere_dev::GenesisConfig {
+fn cere_dev_local_testnet_genesis(wasm_binary: &[u8]) -> cere_dev::RuntimeGenesisConfig {
 	cere_dev_genesis(
 		wasm_binary,
 		// Initial authorities
