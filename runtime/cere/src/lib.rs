@@ -1463,10 +1463,7 @@ impl Get<Perbill> for NominationPoolsMigrationV4OldPallet {
 }
 
 /// Runtime migrations
-type Migrations = (
-	pallet_offences::migration::v1::MigrateToV1<Runtime>,
-	cere_runtime_common::session::migration::ClearOldSessionStorage<Runtime>,
-);
+type Migrations = (cere_runtime_common::migrations::RemoveSocietyPallet<Runtime>,);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
