@@ -223,7 +223,6 @@ runtime-benchmarks = [
   "pallet-offences-benchmarking/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
-  "pallet-preimage/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
   "pallet-session-benchmarking/runtime-benchmarks",
   "pallet-society/runtime-benchmarks",
@@ -240,7 +239,6 @@ runtime-benchmarks = [
   "pallet-conviction-voting/runtime-benchmarks",
   "pallet-referenda/runtime-benchmarks",
   "pallet-whitelist/runtime-benchmarks",
-  "pallet-preimage/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-executive/try-runtime",
