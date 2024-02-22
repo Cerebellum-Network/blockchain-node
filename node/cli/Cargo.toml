@@ -1,0 +1,56 @@
+[package]
+name = "cere-cli"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+
+[package.metadata.wasm-pack.profile.release]
+# `wasm-opt` has some problems on Linux, see
+# https://github.com/rustwasm/wasm-pack/issues/781 etc.
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "cere"
+path = "src/main.rs"
+
+[dependencies]
+# 3rd-party dependencies
+clap = { workspace = true, optional = true }
+url = { workspace = true }
+
+# Substrate dependencies
+frame-benchmarking-cli = { workspace = true, default-features = true, optional = true }
+sc-cli = { workspace = true, default-features = true, optional = true }
+sc-executor = { workspace = true, default-features = true }
+sc-service = { workspace = true, default-features = true, optional = true }
+sp-io = { workspace = true, default-features = true }
+try-runtime-cli = { workspace = true, default-features = true, optional = true }
+
+# Local
+cere-client = { workspace = true, optional = true }
+cere-service = { workspace = true, optional = true }
+
+[build-dependencies]
+substrate-build-script-utils = { workspace = true, default-features = true }
+
+[features]
+default = ["cli", "cere-dev-native"]
+cli = [
+  "clap",
+  "sc-cli",
+  "sc-service",
+  "frame-benchmarking-cli",
+  "try-runtime-cli",
+  "cere-client",
+]
+runtime-benchmarks = ["cere-service/runtime-benchmarks"]
+try-runtime = ["cere-service/try-runtime", "try-runtime-cli/try-runtime"]
+cere-native = ["cere-service/cere-native"]
+cere-dev-native = ["cere-service/cere-dev-native"]

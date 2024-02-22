@@ -16,6 +16,9 @@ use sp_arithmetic::traits::SaturatedConversion;
 use sp_core::U256;
 use sp_std::prelude::*;
 
+pub mod weights;
+use crate::weights::WeightInfo;
+
 type ResourceId = bridge::ResourceId;
 
 pub type BalanceOf<T> =
@@ -46,6 +49,7 @@ pub mod pallet {
 		type NativeTokenId: Get<ResourceId>;
 		#[pallet::constant]
 		type Erc721Id: Get<ResourceId>;
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::error]
@@ -67,7 +71,7 @@ pub mod pallet {
 
 		/// Transfers an arbitrary hash to a (whitelisted) destination chain.
 		#[pallet::call_index(0)]
-		#[pallet::weight(195_000_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::transfer_hash())]
 		pub fn transfer_hash(
 			origin: OriginFor<T>,
 			hash: T::Hash,
@@ -83,7 +87,7 @@ pub mod pallet {
 		/// Transfers some amount of the native token to some recipient on a (whitelisted)
 		/// destination chain.
 		#[pallet::call_index(1)]
-		#[pallet::weight(195_000_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::transfer_native())]
 		pub fn transfer_native(
 			origin: OriginFor<T>,
 			amount: BalanceOf<T>,
@@ -108,7 +112,7 @@ pub mod pallet {
 
 		/// Transfer a non-fungible token (erc721) to a (whitelisted) destination chain.
 		#[pallet::call_index(2)]
-		#[pallet::weight(195_000_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::transfer_erc721())]
 		pub fn transfer_erc721(
 			origin: OriginFor<T>,
 			recipient: Vec<u8>,
@@ -141,7 +145,7 @@ pub mod pallet {
 
 		/// Executes a simple currency transfer using the bridge account as the source
 		#[pallet::call_index(3)]
-		#[pallet::weight(195_000_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::transfer())]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			to: T::AccountId,
@@ -154,7 +158,7 @@ pub mod pallet {
 
 		/// This can be called by the bridge to demonstrate an arbitrary call from a proposal.
 		#[pallet::call_index(4)]
-		#[pallet::weight(195_000_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::remark())]
 		pub fn remark(origin: OriginFor<T>, hash: T::Hash) -> DispatchResult {
 			T::BridgeOrigin::ensure_origin(origin)?;
 			Self::deposit_event(Event::<T>::Remark(hash));
@@ -163,7 +167,7 @@ pub mod pallet {
 
 		/// Allows the bridge to issue new erc721 tokens
 		#[pallet::call_index(5)]
-		#[pallet::weight(195_000_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::mint_erc721())]
 		pub fn mint_erc721(
 			origin: OriginFor<T>,
 			recipient: T::AccountId,

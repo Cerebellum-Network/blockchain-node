@@ -45,7 +45,7 @@ fn create_cluster<T: Config>(
 	cluster_manager_id: T::AccountId,
 	cluster_reserve_id: T::AccountId,
 	cluster_params: ClusterParams<T::AccountId>,
-	cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+	cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 ) {
 	T::ClusterCreator::create_new_cluster(
 		cluster_id,
@@ -61,7 +61,7 @@ fn create_default_cluster<T: Config>(cluster_id: ClusterId) {
 	let cluster_manager = create_account::<T>("cm", 0, 0);
 	let cluster_reserve = create_account::<T>("cr", 0, 0);
 	let cluster_params = ClusterParams { node_provider_auth_contract: Default::default() };
-	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber> = ClusterGovParams {
+	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
 		treasury_share: Perquintill::from_percent(5),
 		validators_share: Perquintill::from_percent(10),
 		cluster_reserve_share: Perquintill::from_percent(15),

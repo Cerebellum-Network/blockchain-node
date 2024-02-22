@@ -2,7 +2,6 @@ use codec::{Decode, Encode};
 use ddc_primitives::{ClusterId, ClusterParams};
 use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
 use crate::pallet::Error;
@@ -11,8 +10,7 @@ parameter_types! {
 	pub MaxClusterParamsLen: u16 = 2048;
 }
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 pub struct Cluster<AccountId> {
 	pub cluster_id: ClusterId,
 	pub manager_id: AccountId,
@@ -20,8 +18,7 @@ pub struct Cluster<AccountId> {
 	pub props: ClusterProps<AccountId>,
 }
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 pub struct ClusterProps<AccountId> {
 	pub node_provider_auth_contract: Option<AccountId>,
 }

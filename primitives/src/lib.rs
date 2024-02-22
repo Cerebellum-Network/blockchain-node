@@ -2,7 +2,6 @@
 
 use codec::{Decode, Encode};
 use scale_info::{prelude::vec::Vec, TypeInfo};
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H160;
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
@@ -24,8 +23,9 @@ pub struct ClusterParams<AccountId> {
 }
 
 // ClusterGovParams includes Governance sensitive parameters
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
+#[derive(
+	Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default, Serialize, Deserialize,
+)]
 #[scale_info(skip_type_params(Balance, BlockNumber, T))]
 pub struct ClusterGovParams<Balance, BlockNumber> {
 	pub treasury_share: Perquintill,
@@ -62,8 +62,7 @@ pub struct ClusterBondingParams<BlockNumber> {
 	pub storage_unbonding_delay: BlockNumber,
 }
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 pub enum NodePubKey {
 	StoragePubKey(StorageNodePubKey),
 }
@@ -91,8 +90,7 @@ impl TryFrom<u8> for NodeType {
 	}
 }
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 pub enum StorageNodeMode {
 	/// DDC Storage node operates with enabled caching in RAM and stores data in Hard Drive
 	Full = 1,

@@ -10,9 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [D] Changes is `Cere Dev` Runtime
 
 ## [vNext]
+- [C,D] `pallet-ddc-customers`: implemented bucket removal
+- Added ChargeError event to payout pallet
 
-- More explicit events in `pallet-ddc-payouts` about batch index
 - ...
+
+## [5.0.0]
+
+### Changed
+
+- [C,D] Updated Substrate to polkadot-v1.0.0
+
+## [4.8.9]
+
+### Changed
+
+- [C,D] Updated Substrate to polkadot-v0.9.42
+- Introduce a burn rate of 0.058% daily to bring inflation down.
+- More explicit events in `pallet-ddc-payouts` about batch index
 
 ## [4.8.8]
 

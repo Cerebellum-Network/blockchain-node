@@ -15,6 +15,8 @@ use sp_core::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
+pub mod weights;
+use crate::weights::WeightInfo;
 mod mock;
 mod tests;
 
@@ -42,6 +44,7 @@ pub mod pallet {
 		/// This is not explicitly used for anything, but may reflect the bridge's notion of
 		/// resource ID.
 		type Identifier: Get<[u8; 32]>;
+		type WeightInfo: WeightInfo;
 	}
 
 	/// Maps tokenId to Erc721 object
@@ -89,7 +92,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Creates a new token with the given token ID and metadata, and gives ownership to owner
 		#[pallet::call_index(0)]
-		#[pallet::weight(195_000_000)]
+		#[pallet::weight(T::WeightInfo::mint())]
 		pub fn mint(
 			origin: OriginFor<T>,
 			owner: T::AccountId,
@@ -105,7 +108,7 @@ pub mod pallet {
 
 		/// Changes ownership of a token sender owns
 		#[pallet::call_index(1)]
-		#[pallet::weight(195_000_000)]
+		#[pallet::weight(T::WeightInfo::transfer())]
 		pub fn transfer(origin: OriginFor<T>, to: T::AccountId, id: TokenId) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -116,7 +119,7 @@ pub mod pallet {
 
 		/// Remove token from the system
 		#[pallet::call_index(2)]
-		#[pallet::weight(195_000_000)]
+		#[pallet::weight(T::WeightInfo::burn())]
 		pub fn burn(origin: OriginFor<T>, id: TokenId) -> DispatchResult {
 			ensure_root(origin)?;
 

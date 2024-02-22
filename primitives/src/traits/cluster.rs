@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
-use frame_system::Config;
+use frame_system::{pallet_prelude::BlockNumberFor, Config};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
@@ -28,16 +28,16 @@ pub trait ClusterVisitor<T: Config> {
 	fn get_chill_delay(
 		cluster_id: &ClusterId,
 		node_type: NodeType,
-	) -> Result<T::BlockNumber, ClusterVisitorError>;
+	) -> Result<BlockNumberFor<T>, ClusterVisitorError>;
 
 	fn get_unbonding_delay(
 		cluster_id: &ClusterId,
 		node_type: NodeType,
-	) -> Result<T::BlockNumber, ClusterVisitorError>;
+	) -> Result<BlockNumberFor<T>, ClusterVisitorError>;
 
 	fn get_bonding_params(
 		cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError>;
+	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, ClusterVisitorError>;
 }
 
 pub trait ClusterCreator<T: Config, Balance> {
@@ -46,7 +46,7 @@ pub trait ClusterCreator<T: Config, Balance> {
 		cluster_manager_id: T::AccountId,
 		cluster_reserve_id: T::AccountId,
 		cluster_params: ClusterParams<T::AccountId>,
-		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+		cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult;
 }
 

@@ -131,7 +131,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
-		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type CustomerCharger: CustomerChargerType<Self>;
 		type CustomerDepositor: CustomerDepositorType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
@@ -230,6 +230,14 @@ pub mod pallet {
 		},
 		AuthorisedCaller {
 			authorised_caller: T::AccountId,
+		},
+		ChargeError {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			batch_index: BatchIndex,
+			customer_id: T::AccountId,
+			amount: u128,
+			error: DispatchError,
 		},
 	}
 
@@ -457,7 +465,17 @@ pub mod pallet {
 					total_customer_charge,
 				) {
 					Ok(actually_charged) => actually_charged,
-					Err(_e) => 0,
+					Err(e) => {
+						Self::deposit_event(Event::<T>::ChargeError {
+							cluster_id,
+							era,
+							batch_index,
+							customer_id: customer_id.clone(),
+							amount: total_customer_charge,
+							error: e,
+						});
+						0
+					},
 				};
 
 				if amount_actually_charged < total_customer_charge {
@@ -1032,7 +1050,6 @@ pub mod pallet {
 		pub debtor_customers: Vec<(ClusterId, T::AccountId, u128)>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig {
@@ -1044,7 +1061,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			let account_id = <Pallet<T>>::account_id();
 			let min = <T as pallet::Config>::Currency::minimum_balance();

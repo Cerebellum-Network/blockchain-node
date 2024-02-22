@@ -16,11 +16,11 @@ use pallet_contracts as contracts;
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
-	testing::{Header, TestXt},
+	testing::TestXt,
 	traits::{
 		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
 	},
-	MultiSignature, Perquintill,
+	BuildStorage, MultiSignature, Perquintill,
 };
 
 use crate::{self as pallet_ddc_clusters, *};
@@ -36,13 +36,10 @@ type UncheckedExtrinsic = MockUncheckedExtrinsic<Test>;
 type Block = MockBlock<Test>;
 
 construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+	pub struct Test
 	{
 		Contracts: contracts::{Pallet, Call, Storage, Event<T>},
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
@@ -63,6 +60,7 @@ parameter_types! {
 	pub const MaxDepth: u32 = 100;
 	pub const MaxValueSize: u32 = 16_384;
 	pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
+	pub static DefaultDepositLimit: Balance = 10_000_000;
 }
 
 impl Convert<Weight, BalanceOf<Self>> for Test {
@@ -85,18 +83,18 @@ impl contracts::Config for Test {
 	type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
 	type WeightInfo = ();
 	type ChainExtension = ();
-	type DeletionQueueDepth = ();
-	type DeletionWeightLimit = ();
 	type Schedule = Schedule;
 	type RuntimeCall = RuntimeCall;
 	type CallFilter = Nothing;
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
+	type DefaultDepositLimit = DefaultDepositLimit;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+	type Migrations = ();
 }
 
 use frame_system::offchain::{
@@ -143,14 +141,12 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type DbWeight = RocksDbWeight;
 	type RuntimeOrigin = RuntimeOrigin;
-	type Index = AccountIndex;
-	type BlockNumber = BlockNumber;
+	type Nonce = u64;
+	type Block = Block;
 	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
@@ -162,6 +158,7 @@ impl frame_system::Config for Test {
 	type SS58Prefix = ();
 	type OnSetCode = ();
 	type MaxConsumers = ConstU32<16>;
+	type Lookup = IdentityLookup<Self::AccountId>;
 }
 
 impl pallet_balances::Config for Test {
@@ -174,6 +171,10 @@ impl pallet_balances::Config for Test {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
+	type FreezeIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = ();
+	type RuntimeHoldReason = ();
 }
 
 impl pallet_timestamp::Config for Test {
@@ -235,7 +236,8 @@ pub struct ExtBuilder;
 impl ExtBuilder {
 	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
-		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+
+		let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 		let _ = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
@@ -245,7 +247,7 @@ impl ExtBuilder {
 				(AccountId::from([4; 32]), 100),
 			],
 		}
-		.assimilate_storage(&mut storage);
+		.assimilate_storage(&mut t);
 
 		let cluster_gov_params = ClusterGovParams {
 			treasury_share: Perquintill::from_float(0.05),
@@ -276,10 +278,10 @@ impl ExtBuilder {
 				clusters_gov_params: vec![(ClusterId::from([0; 20]), cluster_gov_params)],
 				clusters_nodes: vec![(ClusterId::from([0; 20]), vec![node_pub_key])],
 			}
-			.assimilate_storage(&mut storage);
+			.assimilate_storage(&mut t);
 		}
 
-		TestExternalities::new(storage)
+		TestExternalities::new(t)
 	}
 	pub fn build_and_execute(self, test: impl FnOnce()) {
 		sp_tracing::try_init_simple();

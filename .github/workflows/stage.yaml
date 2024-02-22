@@ -91,3 +91,26 @@ jobs:
         with:
           name: "cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
           path: "./${{ env.CERE_DEV_RUNTIME }}"
+
+  trigger-e2e-tests:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: 'Trigger e2e DDC tests'
+        uses: convictional/trigger-workflow-and-wait@v1.6.5
+        with:
+          owner: Cerebellum-Network
+          repo: ddc-api-e2e-simulations
+          github_token: ${{ secrets.GH_E2E_TOKEN }}
+          comment_github_token: ${{ secrets.GH_E2E_TOKEN }}
+          github_user: devops-cere
+          workflow_file_name: run-simulations-env-local-triggered.yml
+          client_payload: |-
+            {
+              "POS_NODE_VERSION": "dev-latest"
+            }
+          ref: master
+          propagate_failure: false
+          trigger_workflow: true
+          wait_workflow: false
+          comment_downstream_url: ${{ github.event.pull_request.comments_url }}
