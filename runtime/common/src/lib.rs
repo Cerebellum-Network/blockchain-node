@@ -5,6 +5,11 @@ pub mod migrations;
 
 use node_primitives::Balance;
 
+/// The type used for currency conversion.
+///
+/// This must only be used as long as the balance type is `u128`.
+pub type CurrencyToVote = sp_staking::currency_to_vote::U128CurrencyToVote;
+
 /// Convert a balance to an unsigned 256-bit number, use in nomination pools.
 pub struct BalanceToU256;
 impl sp_runtime::traits::Convert<Balance, sp_core::U256> for BalanceToU256 {

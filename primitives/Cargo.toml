@@ -11,7 +11,7 @@ repository.workspace = true
 [dependencies]
 codec = { workspace = true }
 scale-info = { workspace = true }
-serde = { workspace = true, optional = true }
+serde = { workspace = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
@@ -24,7 +24,6 @@ default = ["std"]
 std = [
   "codec/std",
   "scale-info/std",
-  "serde",
   "sp-core/std",
   "sp-std/std",
   "sp-runtime/std",

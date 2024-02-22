@@ -147,7 +147,7 @@ pub mod pallet {
 		type ChainIdentity: Get<ChainId>;
 
 		#[pallet::constant]
-		type ProposalLifetime: Get<<Self as frame_system::Config>::BlockNumber>;
+		type ProposalLifetime: Get<BlockNumberFor<Self>>;
 
 		#[pallet::constant]
 		type BridgeAccountId: Get<Self::AccountId>;
@@ -180,7 +180,7 @@ pub mod pallet {
 		ChainId,
 		Blake2_128Concat,
 		(DepositNonce, T::Proposal),
-		ProposalVotes<T::AccountId, T::BlockNumber>,
+		ProposalVotes<T::AccountId, BlockNumberFor<T>>,
 	>;
 
 	#[pallet::type_value]
