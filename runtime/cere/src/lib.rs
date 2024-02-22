@@ -1515,6 +1515,10 @@ impl OnRuntimeUpgrade for SetStorageVersions {
 }
 /// Runtime migrations
 type Migrations = (
+	// Contracts migrate in sequence so make them last.
+	// Substrate upgrades run in reverse order so this migration
+	// is the last one to execute.
+	pallet_contracts::migration::Migration<Runtime>,
 	pallet_im_online::migration::v1::Migration<Runtime>,
 	pallet_democracy::migrations::v1::v1::Migration<Runtime>,
 	pallet_fast_unstake::migrations::v1::MigrateToV1<Runtime>,
@@ -1524,7 +1528,6 @@ type Migrations = (
 	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
 	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
 	pallet_society::migrations::MigrateToV2<Runtime, (), ()>,
-	pallet_contracts::migration::Migration<Runtime>,
 	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
 	SetStorageVersions,
 );
