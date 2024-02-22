@@ -1476,6 +1476,9 @@ impl OnRuntimeUpgrade for SetStorageVersions {
 		RocksDbWeight::get().reads_writes(2, 2)
 	}
 }
+parameter_types! {
+	pub const SocietyPalletName: &'static str = "Society";
+}
 /// Runtime migrations
 type Migrations = (
 	pallet_im_online::migration::v1::Migration<Runtime>,
@@ -1486,7 +1489,10 @@ type Migrations = (
 	pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
 	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
 	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
-	cere_runtime_common::migrations::RemoveSocietyPallet<Runtime>,
+	frame_support::migrations::RemovePallet<
+		SocietyPalletName,
+		<Runtime as frame_system::Config>::DbWeight,
+	>,
 	pallet_contracts::migration::Migration<Runtime>,
 	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
 	SetStorageVersions,
