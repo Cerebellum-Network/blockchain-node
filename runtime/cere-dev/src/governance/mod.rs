@@ -5,8 +5,8 @@ use super::*;
 
 mod origins;
 pub use origins::{
-	pallet_custom_origins, AuctionAdmin, FellowshipAdmin, GeneralAdmin, LeaseAdmin,
-	ReferendumCanceller, ReferendumKiller, Spender, StakingAdmin, Treasurer, WhitelistedCaller,
+	pallet_custom_origins, FellowshipAdmin, GeneralAdmin, ReferendumCanceller, ReferendumKiller,
+	Spender, StakingAdmin, Treasurer, WhitelistedCaller,
 };
 mod tracks;
 pub use tracks::TracksInfo;
@@ -16,7 +16,6 @@ parameter_types! {
 }
 
 impl pallet_conviction_voting::Config for Runtime {
-	// type WeightInfo = weights::pallet_conviction_voting::WeightInfo<Self>;
 	type WeightInfo = pallet_conviction_voting::weights::SubstrateWeight<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
@@ -42,7 +41,6 @@ pub type TreasurySpender = EitherOf<EnsureRootWithSuccess<AccountId, MaxBalance>
 impl origins::pallet_custom_origins::Config for Runtime {}
 
 impl pallet_whitelist::Config for Runtime {
-	// type WeightInfo = weights::pallet_whitelist::WeightInfo<Self>;
 	type WeightInfo = pallet_whitelist::weights::SubstrateWeight<Runtime>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
@@ -52,7 +50,6 @@ impl pallet_whitelist::Config for Runtime {
 }
 
 impl pallet_referenda::Config for Runtime {
-	// type WeightInfo = weights::pallet_referenda::WeightInfo<Self>;
 	type WeightInfo = pallet_referenda::weights::SubstrateWeight<Runtime>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;

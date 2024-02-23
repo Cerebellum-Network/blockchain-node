@@ -110,8 +110,7 @@ use sp_runtime::generic::Era;
 // Governance configurations.
 pub mod governance;
 use governance::{
-	pallet_custom_origins, AuctionAdmin, FellowshipAdmin, GeneralAdmin, LeaseAdmin, StakingAdmin,
-	Treasurer, TreasurySpender,
+	pallet_custom_origins, FellowshipAdmin, GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender,
 };
 
 /// Generated voter bag information.
@@ -381,7 +380,7 @@ impl pallet_scheduler::Config for Runtime {
 	type PalletsOrigin = OriginCaller;
 	type RuntimeCall = RuntimeCall;
 	type MaximumWeight = MaximumSchedulerWeight;
-	type ScheduleOrigin = EitherOf<EnsureRoot<AccountId>, AuctionAdmin>; // todo: remove AuctionAdmin
+	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type MaxScheduledPerBlock = ConstU32<512>;
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
@@ -1040,11 +1039,8 @@ impl pallet_society::Config for Runtime {
 	type Randomness = RandomnessCollectiveFlip;
 	type PeriodSpend = PeriodSpend;
 	type MaxLockDuration = MaxLockDuration;
-	// type FounderSetOrigin =
-	// 	pallet_collective::EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>;
 	type FounderSetOrigin = EitherOf<EnsureRoot<Self::AccountId>, GeneralAdmin>; // todo: confirm the desirable origin
 	type ChallengePeriod = ChallengePeriod;
-
 	type GraceStrikes = GraceStrikes;
 	type VotingPeriod = SocietyVotingPeriod;
 	type ClaimPeriod = ClaimPeriod;
