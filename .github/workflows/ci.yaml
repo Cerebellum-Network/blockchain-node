@@ -50,6 +50,8 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Check Build
+        env:
+          RUSTFLAGS: -Z threads=8
         run: |
           cargo build --release
       - name: Run dev chain
@@ -79,6 +81,8 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Check with Clippy
+        env:
+          RUSTFLAGS: -Z threads=8
         run: |
           cargo clippy --no-deps --all-targets --features runtime-benchmarks --workspace -- --deny warnings
 
@@ -102,6 +106,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
+        env:
+          RUSTFLAGS: -Z threads=8
         with:
           version: '0.22.0'
           args: '--verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out "Xml"'
