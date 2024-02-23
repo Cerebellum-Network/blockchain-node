@@ -35,6 +35,7 @@ sc-sync-state-rpc = { workspace = true }
 sc-sysinfo = { workspace = true }
 sc-telemetry = { workspace = true }
 sc-transaction-pool = { workspace = true }
+sc-transaction-pool-api = { workspace = true }
 sp-api = { workspace = true }
 sp-authority-discovery = { workspace = true }
 sp-blockchain = { workspace = true }
@@ -47,7 +48,7 @@ sp-transaction-storage-proof = { workspace = true }
 sp-trie = { workspace = true }
 
 # Cere dependencies
-cere-client = { workspace = true, default-features = false, optional = true }
+cere-client = { workspace = true, optional = true }
 cere-rpc = { workspace = true }
 cere-runtime-common = { workspace = true, optional = true }
 

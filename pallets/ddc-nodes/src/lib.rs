@@ -95,7 +95,6 @@ pub mod pallet {
 		pub storage_nodes: Vec<StorageNode<T>>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig { storage_nodes: Default::default() }
@@ -103,7 +102,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			for storage_node in &self.storage_nodes {
 				<StorageNodes<T>>::insert(storage_node.pub_key.clone(), storage_node);
