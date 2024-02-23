@@ -1037,7 +1037,11 @@ impl pallet_contracts::Config for Runtime {
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
-	type Migrations = ();
+	type Migrations = (
+		pallet_contracts::migration::v10::Migration<Runtime>,
+		pallet_contracts::migration::v11::Migration<Runtime>,
+		pallet_contracts::migration::v12::Migration<Runtime>,
+	);
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -1510,6 +1514,13 @@ impl OnRuntimeUpgrade for SetStorageVersions {
 }
 /// Runtime migrations
 type Migrations = (
+	// Contracts migrate in sequence so make them last.
+	// Substrate upgrades run in reverse order so this migration
+	// is the last one to execute.
+	pallet_contracts::migration::Migration<Runtime>,
+	pallet_im_online::migration::v1::Migration<Runtime>,
+	pallet_democracy::migrations::v1::v1::Migration<Runtime>,
+	pallet_fast_unstake::migrations::v1::MigrateToV1<Runtime>,
 	pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
 	pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
 	pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
