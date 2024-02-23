@@ -28,12 +28,12 @@ use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragm
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
-	pallet_prelude::{Get, StorageVersion},
+	pallet_prelude::Get,
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly,
-		Everything, GetStorageVersion, Imbalance, InstanceFilter, KeyOwnerProofSystem,
-		LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, WithdrawReasons,
+		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
+		OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -1490,28 +1490,6 @@ pub type UncheckedExtrinsic =
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
-
-pub struct NominationPoolsMigrationV4OldPallet;
-impl Get<Perbill> for NominationPoolsMigrationV4OldPallet {
-	fn get() -> Perbill {
-		Perbill::zero()
-	}
-}
-/// Migrations that set `StorageVersion`s we missed to set.
-pub struct SetStorageVersions;
-
-impl OnRuntimeUpgrade for SetStorageVersions {
-	fn on_runtime_upgrade() -> Weight {
-		// Was missed as part of:
-		// `runtime_common::session::migration::ClearOldSessionStorage<Runtime>`.
-		let storage_version = Historical::on_chain_storage_version();
-		if storage_version < 1 {
-			StorageVersion::new(1).put::<Historical>();
-		}
-
-		RocksDbWeight::get().reads_writes(2, 2)
-	}
-}
 /// Runtime migrations
 type Migrations = (
 	// Contracts migrate in sequence so make them last.
@@ -1521,14 +1499,6 @@ type Migrations = (
 	pallet_im_online::migration::v1::Migration<Runtime>,
 	pallet_democracy::migrations::v1::v1::Migration<Runtime>,
 	pallet_fast_unstake::migrations::v1::MigrateToV1<Runtime>,
-	pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
-	pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
-	pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
-	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
-	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
-	pallet_society::migrations::MigrateToV2<Runtime, (), ()>,
-	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
-	SetStorageVersions,
 );
 
 /// Executive: handles dispatch to the various modules.
