@@ -31,9 +31,10 @@ use frame_support::{
 	pallet_prelude::{Get, StorageVersion},
 	parameter_types,
 	traits::{
-		LockIdentifier, Nothing, OnUnbalanced, WithdrawReasons, ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly,
-		Everything, GetStorageVersion, Imbalance, InstanceFilter, KeyOwnerProofSystem,
-		OnRuntimeUpgrade, EitherOf
+		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
+		EqualPrivilegeOnly, Everything, GetStorageVersion, Imbalance, InstanceFilter,
+		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -1339,20 +1340,7 @@ impl OnRuntimeUpgrade for SetStorageVersions {
 	}
 }
 /// Runtime migrations
-type Migrations = (
-	pallet_im_online::migration::v1::Migration<Runtime>,
-	pallet_democracy::migrations::v1::v1::Migration<Runtime>,
-	pallet_fast_unstake::migrations::v1::MigrateToV1<Runtime>,
-	pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
-	pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
-	pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
-	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
-	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
-	pallet_society::migrations::MigrateToV2<Runtime, (), ()>,
-	pallet_contracts::migration::Migration<Runtime>,
-	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
-	SetStorageVersions,
-);
+type Migrations = ();
 
 /// The runtime migrations per release.
 #[allow(deprecated, missing_docs)]
@@ -1434,7 +1422,6 @@ pub type Executive = frame_executive::Executive<
 	AllPalletsWithSystem,
 	Migrations,
 >;
-
 
 type EventRecord = frame_system::EventRecord<
 	<Runtime as frame_system::Config>::RuntimeEvent,
