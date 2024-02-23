@@ -33,8 +33,9 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem,
-		LockIdentifier, Nothing, OnUnbalanced, U128CurrencyToVote, WithdrawReasons,
+		EqualPrivilegeOnly, Everything, GetStorageVersion, Imbalance, InstanceFilter,
+		KeyOwnerProofSystem, LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced,
+		U128CurrencyToVote, WithdrawReasons,
 	},
 	weights::{
 		constants::{

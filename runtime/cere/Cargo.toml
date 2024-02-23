@@ -187,7 +187,6 @@ std = [
   "pallet-conviction-voting/std",
   "pallet-referenda/std",
   "pallet-whitelist/std",
-  "pallet-preimage/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
