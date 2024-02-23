@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-pub use node_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Index, Signature};
+use node_primitives::Nonce;
+pub use node_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Signature};
 use sc_client_api::{
 	AuxStore, Backend as BackendT, BlockchainEvents, KeysIter, PairsIter, UsageProvider,
 };
@@ -476,7 +477,7 @@ pub trait RuntimeApiCollection:
 	+ sp_consensus_babe::BabeApi<Block>
 	+ sp_consensus_grandpa::GrandpaApi<Block>
 	+ sp_block_builder::BlockBuilder<Block>
-	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Index>
+	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 	+ sp_api::Metadata<Block>
 	+ sp_offchain::OffchainWorkerApi<Block>
@@ -494,7 +495,7 @@ where
 		+ sp_consensus_babe::BabeApi<Block>
 		+ sp_consensus_grandpa::GrandpaApi<Block>
 		+ sp_block_builder::BlockBuilder<Block>
-		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Index>
+		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>

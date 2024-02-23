@@ -520,7 +520,7 @@ fn send_charging_customers_batch_works() {
 		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
-		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
@@ -953,7 +953,7 @@ fn send_charging_customers_batch_works_for_day() {
 		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
-		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
@@ -1196,7 +1196,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
-		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
@@ -1439,7 +1439,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
-		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
@@ -1682,7 +1682,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
-		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
@@ -1925,7 +1925,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
-		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
@@ -2168,7 +2168,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
-		let mut before_total_customer_charge = report.total_customer_charge.clone();
+		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
@@ -2322,7 +2322,7 @@ fn send_charging_customers_batch_works_zero_fees() {
 
 		// batch 1
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let before_total_customer_charge = report.total_customer_charge.clone();
+		let before_total_customer_charge = report.total_customer_charge;
 		let balance_before = Balances::free_balance(DdcPayouts::account_id());
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
