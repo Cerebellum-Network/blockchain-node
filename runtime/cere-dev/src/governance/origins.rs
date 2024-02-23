@@ -26,10 +26,6 @@ pub mod pallet_custom_origins {
 		FellowshipAdmin,
 		/// Origin for managing the registrar.
 		GeneralAdmin,
-		/// Origin for starting auctions.
-		AuctionAdmin,
-		/// Origin able to force slot leases.
-		LeaseAdmin,
 		/// Origin able to cancel referenda.
 		ReferendumCanceller,
 		/// Origin able to kill referenda.
@@ -83,8 +79,6 @@ pub mod pallet_custom_origins {
 		Treasurer,
 		FellowshipAdmin,
 		GeneralAdmin,
-		AuctionAdmin,
-		LeaseAdmin,
 		ReferendumCanceller,
 		ReferendumKiller,
 		WhitelistedCaller,
