@@ -29,7 +29,8 @@ fn create_bucket_works() {
 				bucket_id: 1,
 				owner_id: account_1,
 				cluster_id,
-				is_public: bucket_params.is_public
+				is_public: bucket_params.is_public,
+				is_removed: false,
 			})
 		);
 
@@ -73,7 +74,8 @@ fn create_two_buckets_works() {
 				bucket_id: 1,
 				owner_id: account_1,
 				cluster_id,
-				is_public: bucket_1_params.is_public
+				is_public: bucket_1_params.is_public,
+				is_removed: false,
 			})
 		);
 		assert_eq!(
@@ -82,7 +84,8 @@ fn create_two_buckets_works() {
 				bucket_id: 2,
 				owner_id: account_1,
 				cluster_id,
-				is_public: bucket_2_params.is_public
+				is_public: bucket_2_params.is_public,
+				is_removed: false,
 			})
 		);
 	})
@@ -368,7 +371,8 @@ fn set_bucket_params_works() {
 				bucket_id,
 				owner_id: bucket_owner,
 				cluster_id,
-				is_public: update_bucket_params.is_public
+				is_public: update_bucket_params.is_public,
+				is_removed: false,
 			})
 		);
 
@@ -417,6 +421,78 @@ fn set_bucket_params_checks_work() {
 				BucketParams { is_public: true }
 			),
 			Error::<Test>::NotBucketOwner
+		);
+	})
+}
+
+#[test]
+fn remove_bucket_works() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let account_1 = 1;
+		let account_2 = 2;
+		let bucket_id_1 = 1;
+		let bucket_id_2 = 2;
+		let bucket_params = BucketParams { is_public: false };
+
+		// Bucket created
+		assert_ok!(DdcCustomers::create_bucket(
+			RuntimeOrigin::signed(account_1),
+			cluster_id,
+			bucket_params.clone()
+		));
+
+		// Cannot remove someone else's bucket
+		assert_noop!(
+			DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_2), bucket_id_1),
+			Error::<Test>::NotBucketOwner
+		);
+
+		// Cannot remove non existing bucket
+		assert_noop!(
+			DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_1), bucket_id_2),
+			Error::<Test>::NoBucketWithId
+		);
+
+		// Check storage bucket is not removed
+		assert_eq!(DdcCustomers::buckets_count(), 1);
+		assert_eq!(
+			DdcCustomers::buckets(1),
+			Some(Bucket {
+				bucket_id: 1,
+				owner_id: account_1,
+				cluster_id,
+				is_public: bucket_params.is_public,
+				is_removed: false,
+			})
+		);
+
+		// Bucket removed
+		assert_ok!(DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_1), bucket_id_1));
+
+		// Check storage bucket is removed
+		assert_eq!(DdcCustomers::buckets_count(), 1);
+		assert_eq!(
+			DdcCustomers::buckets(1),
+			Some(Bucket {
+				bucket_id: 1,
+				owner_id: account_1,
+				cluster_id,
+				is_public: bucket_params.is_public,
+				is_removed: true,
+			})
+		);
+
+		// Checking that event was emitted
+		assert_eq!(System::events().len(), 2);
+		System::assert_last_event(Event::BucketRemoved { bucket_id: 1u64 }.into());
+
+		// Cannot remove bucket twice
+		assert_noop!(
+			DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_1), bucket_id_1),
+			Error::<Test>::AlreadyRemoved
 		);
 	})
 }

@@ -10,7 +10,6 @@
 //!
 //! The DDC Staking pallet depends on the [`GenesisConfig`]. The
 //! `GenesisConfig` is optional and allow to set some initial stakers in DDC.
-#![feature(is_some_and)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
@@ -34,9 +33,8 @@ use ddc_primitives::traits::{
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
-#[cfg(feature = "std")]
-use frame_support::assert_ok;
 use frame_support::{
+	assert_ok,
 	pallet_prelude::*,
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, LockIdentifier, LockableCurrency, WithdrawReasons},
@@ -98,11 +96,11 @@ where
 	#[codec(compact)]
 	pub active: Balance,
 	/// Block number at which chilling will be allowed.
-	pub chilling: Option<T::BlockNumber>,
+	pub chilling: Option<BlockNumberFor<T>>,
 	/// Any balance that is becoming free, which may eventually be transferred out of the stash
 	/// (assuming it doesn't get slashed first). It is assumed that this will be treated as a first
 	/// in, first out queue where the new (higher value) blocks get pushed on the back.
-	pub unlocking: BoundedVec<UnlockChunk<Balance, T::BlockNumber>, MaxUnlockingChunks>,
+	pub unlocking: BoundedVec<UnlockChunk<Balance, BlockNumberFor<T>>, MaxUnlockingChunks>,
 }
 
 impl<
@@ -124,7 +122,7 @@ impl<
 
 	/// Remove entries from `unlocking` that are sufficiently old and reduce the
 	/// total by the sum of their balances.
-	fn consolidate_unlocked(self, current_block: T::BlockNumber) -> Self {
+	fn consolidate_unlocked(self, current_block: BlockNumberFor<T>) -> Self {
 		let mut total = self.total;
 		let unlocking: BoundedVec<_, _> = self
 			.unlocking
@@ -164,7 +162,7 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
@@ -220,7 +218,6 @@ pub mod pallet {
 		pub storages: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig { storages: Default::default() }
@@ -228,7 +225,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			// Add initial storage network participants
 			for &(ref stash, ref controller, ref node, balance, cluster) in &self.storages {
@@ -268,7 +265,7 @@ pub mod pallet {
 		Chilled(T::AccountId),
 		/// An account has declared desire to stop participating in DDC network soon.
 		/// \[stash, cluster, block\]
-		ChillSoon(T::AccountId, ClusterId, T::BlockNumber),
+		ChillSoon(T::AccountId, ClusterId, BlockNumberFor<T>),
 		/// An account that started participating as DDC network participant.
 		/// \[stash\]
 		Activated(T::AccountId),
@@ -484,11 +481,11 @@ pub mod pallet {
 						}
 					} else {
 						// If node is not a member of any cluster, allow immediate unbonding.
-						T::BlockNumber::from(0u32)
+						BlockNumberFor::<T>::from(0u32)
 					}
 				} else {
 					// If node was deleted, allow immediate unbonding.
-					T::BlockNumber::from(0u32)
+					BlockNumberFor::<T>::from(0u32)
 				};
 
 				// block number + configuration -> no overflow
@@ -652,7 +649,7 @@ pub mod pallet {
 				return Ok(()) // node is already chilling or leaving the cluster
 			};
 
-			if delay == T::BlockNumber::from(0u32) {
+			if delay == BlockNumberFor::<T>::from(0u32) {
 				// No delay is set, so we can chill right away.
 				Self::chill_stash(&ledger.stash);
 				return Ok(())
@@ -760,7 +757,7 @@ pub mod pallet {
 
 			// block number + 1 => no overflow
 			let can_chill_from =
-				<frame_system::Pallet<T>>::block_number() + T::BlockNumber::from(1u32);
+				<frame_system::Pallet<T>>::block_number() + BlockNumberFor::<T>::from(1u32);
 			Self::chill_stash_soon(&stash, &controller, cluster_id, can_chill_from);
 
 			Ok(())
@@ -797,7 +794,7 @@ pub mod pallet {
 			stash: &T::AccountId,
 			controller: &T::AccountId,
 			cluster: ClusterId,
-			can_chill_from: T::BlockNumber,
+			can_chill_from: BlockNumberFor<T>,
 		) {
 			Ledger::<T>::mutate(controller, |maybe_ledger| {
 				if let Some(ref mut ledger) = maybe_ledger {

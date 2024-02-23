@@ -626,7 +626,7 @@ fn cluster_visitor_works() {
 
 		assert_eq!(
 			<DdcClusters as ClusterVisitor<Test>>::get_bonding_params(&cluster_id).unwrap(),
-			ClusterBondingParams::<<Test as frame_system::Config>::BlockNumber> {
+			ClusterBondingParams::<BlockNumberFor<Test>> {
 				storage_bond_size: 100,
 				storage_chill_delay: 50,
 				storage_unbonding_delay: 50,
