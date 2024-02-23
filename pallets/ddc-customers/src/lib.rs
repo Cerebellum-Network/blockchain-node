@@ -23,8 +23,9 @@ use ddc_primitives::{
 use frame_support::{
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, ExistenceRequirement},
-	BoundedVec, PalletId,
+	BoundedVec, Deserialize, PalletId, Serialize,
 };
+use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
@@ -33,6 +34,8 @@ use sp_runtime::{
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
+
+pub mod migration;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
@@ -52,15 +55,17 @@ pub struct UnlockChunk<T: Config> {
 	value: BalanceOf<T>,
 	/// Block number at which point it'll be unlocked.
 	#[codec(compact)]
-	block: T::BlockNumber,
+	block: BlockNumberFor<T>,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct Bucket<AccountId> {
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Serialize, Deserialize)]
+#[scale_info(skip_type_params(T))]
+pub struct Bucket<T: Config> {
 	bucket_id: BucketId,
-	owner_id: AccountId,
+	owner_id: T::AccountId,
 	cluster_id: ClusterId,
 	is_public: bool,
+	is_removed: bool,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -97,7 +102,7 @@ impl<T: Config> AccountsLedger<T> {
 
 	/// Remove entries from `unlocking` that are sufficiently old and reduce the
 	/// total by the sum of their balances.
-	fn consolidate_unlocked(self, current_block: T::BlockNumber) -> Self {
+	fn consolidate_unlocked(self, current_block: BlockNumberFor<T>) -> Self {
 		let mut total = self.total;
 		let unlocking_result: Result<BoundedVec<_, _>, _> = self
 			.unlocking
@@ -130,7 +135,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+		frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -142,11 +147,11 @@ pub mod pallet {
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
-		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
-		type UnlockingDelay: Get<<Self as frame_system::Config>::BlockNumber>;
+		type UnlockingDelay: Get<BlockNumberFor<Self>>;
 		type ClusterVisitor: ClusterVisitor<Self>;
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
@@ -167,11 +172,10 @@ pub mod pallet {
 	pub type BucketsCount<T: Config> =
 		StorageValue<Value = BucketId, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
 
-	/// Map from bucket ID to to the bucket structure
+	/// Map from bucket ID to the bucket structure
 	#[pallet::storage]
 	#[pallet::getter(fn buckets)]
-	pub type Buckets<T: Config> =
-		StorageMap<_, Twox64Concat, BucketId, Bucket<T::AccountId>, OptionQuery>;
+	pub type Buckets<T: Config> = StorageMap<_, Twox64Concat, BucketId, Bucket<T>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
@@ -193,6 +197,8 @@ pub mod pallet {
 		BucketCreated { bucket_id: BucketId },
 		/// Bucket with specific id updated
 		BucketUpdated { bucket_id: BucketId },
+		/// Bucket with specific id marked as removed
+		BucketRemoved { bucket_id: BucketId },
 	}
 
 	#[pallet::error]
@@ -223,15 +229,16 @@ pub mod pallet {
 		ArithmeticUnderflow,
 		// Transferring balance to pallet's vault has failed
 		TransferFailed,
+		/// Bucket is already removed
+		AlreadyRemoved,
 	}
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub feeder_account: Option<T::AccountId>,
-		pub buckets: Vec<(ClusterId, T::AccountId, BalanceOf<T>, bool)>,
+		pub buckets: Vec<(Bucket<T>, BalanceOf<T>)>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig { feeder_account: None, buckets: Default::default() }
@@ -239,7 +246,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			let account_id = <Pallet<T>>::account_id();
 			let min = <T as pallet::Config>::Currency::minimum_balance();
@@ -258,23 +265,17 @@ pub mod pallet {
 				}
 			}
 
-			for (cluster_id, owner_id, deposit, is_public) in &self.buckets {
+			for (bucket, deposit) in &self.buckets {
 				let cur_bucket_id = <BucketsCount<T>>::get()
 					.checked_add(1)
 					.ok_or(Error::<T>::ArithmeticOverflow)
 					.unwrap();
 				<BucketsCount<T>>::set(cur_bucket_id);
 
-				let bucket = Bucket {
-					bucket_id: cur_bucket_id,
-					owner_id: owner_id.clone(),
-					cluster_id: *cluster_id,
-					is_public: *is_public,
-				};
 				<Buckets<T>>::insert(cur_bucket_id, bucket);
 
 				let ledger = AccountsLedger::<T> {
-					owner: owner_id.clone(),
+					owner: bucket.owner_id.clone(),
 					total: *deposit,
 					active: *deposit,
 					unlocking: Default::default(),
@@ -311,6 +312,7 @@ pub mod pallet {
 				owner_id: bucket_owner,
 				cluster_id,
 				is_public: bucket_params.is_public,
+				is_removed: false,
 			};
 
 			<BucketsCount<T>>::set(cur_bucket_id);
@@ -508,6 +510,30 @@ pub mod pallet {
 			bucket.is_public = bucket_params.is_public;
 			<Buckets<T>>::insert(bucket_id, bucket);
 			Self::deposit_event(Event::<T>::BucketUpdated { bucket_id });
+
+			Ok(())
+		}
+
+		/// Mark existing bucket with specified bucket id as removed
+		///
+		/// Only an owner can remove a bucket
+		#[pallet::call_index(6)]
+		#[pallet::weight(T::WeightInfo::remove_bucket())]
+		pub fn remove_bucket(origin: OriginFor<T>, bucket_id: BucketId) -> DispatchResult {
+			let owner = ensure_signed(origin)?;
+
+			<Buckets<T>>::try_mutate(bucket_id, |maybe_bucket| -> DispatchResult {
+				let bucket = maybe_bucket.as_mut().ok_or(Error::<T>::NoBucketWithId)?;
+				ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
+				ensure!(!bucket.is_removed, Error::<T>::AlreadyRemoved);
+
+				// Mark the bucket as removed
+				bucket.is_removed = true;
+
+				Ok(())
+			})?;
+
+			Self::deposit_event(Event::<T>::BucketRemoved { bucket_id });
 
 			Ok(())
 		}

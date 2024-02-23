@@ -9,36 +9,30 @@ use ddc_primitives::{
 };
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
+	traits::{ConstU32, ConstU64, Everything},
 	weights::constants::RocksDbWeight,
 };
-use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
+use frame_system::mocking::MockBlock;
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
-	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchResult, Perquintill,
+	BuildStorage, DispatchResult, Perquintill,
 };
 
 use crate::{self as pallet_ddc_customers, *};
 
 /// The AccountId alias in this test module.
 pub(crate) type AccountId = u128;
-pub(crate) type AccountIndex = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
 
-type UncheckedExtrinsic = MockUncheckedExtrinsic<Test>;
 type Block = MockBlock<Test>;
 
 construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+	pub struct Test
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcCustomers: pallet_ddc_customers::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -55,14 +49,13 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type DbWeight = RocksDbWeight;
 	type RuntimeOrigin = RuntimeOrigin;
-	type Index = AccountIndex;
-	type BlockNumber = BlockNumber;
+	type Nonce = u64;
+	type Block = Block;
 	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
@@ -88,8 +81,8 @@ impl pallet_balances::Config for Test {
 	type WeightInfo = ();
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
-	type HoldIdentifier = ();
 	type MaxHolds = ();
+	type RuntimeHoldReason = ();
 }
 
 impl pallet_timestamp::Config for Test {
@@ -128,14 +121,14 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 	fn get_chill_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<T::BlockNumber, ClusterVisitorError> {
-		Ok(T::BlockNumber::from(10u32))
+	) -> Result<BlockNumberFor<T>, ClusterVisitorError> {
+		Ok(BlockNumberFor::<T>::from(10u32))
 	}
 	fn get_unbonding_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<T::BlockNumber, ClusterVisitorError> {
-		Ok(T::BlockNumber::from(10u32))
+	) -> Result<BlockNumberFor<T>, ClusterVisitorError> {
+		Ok(BlockNumberFor::<T>::from(10u32))
 	}
 
 	fn get_pricing_params(
@@ -165,7 +158,7 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 
 	fn get_bonding_params(
 		cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<T::BlockNumber>, ClusterVisitorError> {
+	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, ClusterVisitorError> {
 		Ok(ClusterBondingParams {
 			storage_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
 				cluster_id,
@@ -214,7 +207,7 @@ impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 		_cluster_manager_id: T::AccountId,
 		_cluster_reserve_id: T::AccountId,
 		_cluster_params: ClusterParams<T::AccountId>,
-		_cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+		_cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult {
 		Ok(())
 	}
@@ -225,7 +218,8 @@ pub struct ExtBuilder;
 impl ExtBuilder {
 	pub fn build(self) -> TestExternalities {
 		sp_tracing::try_init_simple();
-		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+
+		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![(1, 100), (2, 100), (3, 1000)],
