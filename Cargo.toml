@@ -161,6 +161,9 @@ substrate-state-trie-migration-rpc = { git = "https://github.com/paritytech/subs
 substrate-test-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
 try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+pallet-conviction-voting = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0", default-features = false }
+pallet-referenda = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0", default-features = false }
+pallet-whitelist = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0", default-features = false }
 
 # Cere Dependenies
 cere-client = { path = "node/client" }
