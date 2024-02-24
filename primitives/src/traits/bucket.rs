@@ -9,14 +9,14 @@ pub trait BucketManager<T: frame_system::Config> {
 	fn get_total_bucket_usage(
 		cluster_id: &ClusterId,
 		bucket_id: BucketId,
-		content_owner: &T::AccountId,
+		bucket_owner: &T::AccountId,
 	) -> Result<Option<BucketUsage>, DispatchError>;
 
-	fn inc_total_bucket_usage(
+	fn update_total_bucket_usage(
 		cluster_id: &ClusterId,
 		bucket_id: BucketId,
-		content_owner: T::AccountId,
-		customer_usage: &BucketUsage,
+		bucket_owner: T::AccountId,
+		payable_usage: &BucketUsage,
 	) -> DispatchResult;
 
 	#[cfg(feature = "runtime-benchmarks")]

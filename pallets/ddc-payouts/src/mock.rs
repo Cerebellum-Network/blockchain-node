@@ -113,6 +113,7 @@ impl pallet_balances::Config for Test {
 
 parameter_types! {
 	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
+	pub const MajorityOfValidators: Percent = Percent::from_percent(67);
 }
 
 impl crate::pallet::Config for Test {
@@ -128,6 +129,20 @@ impl crate::pallet::Config for Test {
 	type ValidatorVisitor = MockValidatorVisitor;
 	type NodeManager = MockNodeManager;
 	type AccountIdConverter = AccountId;
+	type Hasher = BlakeTwo256;
+	type ClusterValidator = MockClusterValidator;
+	type ValidatorsQuorum = MajorityOfValidators;
+}
+
+pub struct MockClusterValidator;
+impl<T: Config> ClusterValidator<T> for MockClusterValidator {
+	fn set_last_paid_era(_cluster_id: &ClusterId, _era_id: DdcEra) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_last_paid_era(_cluster_id: &ClusterId) -> Result<DdcEra, DispatchError> {
+		Ok(Default::default())
+	}
 }
 
 pub struct MockNodeManager;
@@ -135,16 +150,19 @@ impl<T: Config> NodeManager<T> for MockNodeManager
 where
 	<T as frame_system::Config>::AccountId: From<AccountId>,
 {
-	fn get_total_usage(_node_pub_key: &NodePubKey) -> Result<Option<NodeUsage>, DispatchError> {
-		unimplemented!()
-	}
-
 	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
 		unimplemented!()
 	}
 
 	fn exists(_node_pub_key: &NodePubKey) -> bool {
 		unimplemented!()
+	}
+
+	fn update_total_node_usage(
+		_node_key: &NodePubKey,
+		_payable_usage: &NodeUsage,
+	) -> Result<(), DispatchError> {
+		Ok(())
 	}
 
 	fn get_node_provider_id(pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
@@ -196,24 +214,7 @@ where
 	fn is_ocw_validator(caller: T::AccountId) -> bool {
 		caller == VALIDATOR_OCW_KEY_32.into()
 	}
-	fn is_customers_batch_valid(
-		_cluster_id: ClusterId,
-		_era: DdcEra,
-		_batch_index: BatchIndex,
-		_max_batch_index: BatchIndex,
-		_payers: &[(NodePubKey, BucketId, BucketUsage)],
-		_batch_proof: &MMRProof,
-	) -> bool {
-		true
-	}
-	fn is_providers_batch_valid(
-		_cluster_id: ClusterId,
-		_era: DdcEra,
-		_batch_index: BatchIndex,
-		_max_batch_index: BatchIndex,
-		_payees: &[(NodePubKey, NodeUsage)],
-		_batch_proof: &MMRProof,
-	) -> bool {
+	fn is_quorum_reached(_quorum: Percent, _members_count: usize) -> bool {
 		true
 	}
 }
@@ -251,18 +252,18 @@ where
 	fn get_total_bucket_usage(
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
-		_content_owner: &T::AccountId,
+		_bucket_owner: &T::AccountId,
 	) -> Result<Option<BucketUsage>, DispatchError> {
 		Ok(None)
 	}
 
-	fn inc_total_bucket_usage(
+	fn update_total_bucket_usage(
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
-		_content_owner: T::AccountId,
-		_customer_usage: &BucketUsage,
+		_bucket_owner: T::AccountId,
+		_payable_usage: &BucketUsage,
 	) -> DispatchResult {
-		unimplemented!()
+		Ok(())
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
@@ -281,12 +282,9 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger
 where
 	<T as frame_system::Config>::AccountId: From<AccountId>,
 {
-	fn charge_content_owner(
-		_cluster_id: &ClusterId,
-		_bucket_id: BucketId,
+	fn charge_bucket_owner(
 		content_owner: T::AccountId,
 		billing_vault: T::AccountId,
-		_customer_usage: &BucketUsage,
 		amount: u128,
 	) -> Result<u128, DispatchError> {
 		let mut amount_to_charge = amount;
@@ -513,6 +511,9 @@ pub const PRICING_FEES_ZERO: ClusterFeesParams = ClusterFeesParams {
 	validators_share: Perquintill::from_percent(0),
 	cluster_reserve_share: Perquintill::from_percent(0),
 };
+
+pub const DEFAULT_PAYERS_ROOT: H256 = H256([112; 32]);
+pub const DEFAULT_PAYEES_ROOT: H256 = H256([113; 32]);
 
 pub struct TestTreasuryVisitor;
 impl<T: frame_system::Config> PalletVisitor<T> for TestTreasuryVisitor {
