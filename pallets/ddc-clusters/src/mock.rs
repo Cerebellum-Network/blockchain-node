@@ -20,7 +20,15 @@ use sp_runtime::{
 	traits::{
 		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
 	},
+<<<<<<< HEAD
+<<<<<<< HEAD
 	BuildStorage, DispatchResult, MultiSignature, Perbill, Perquintill,
+=======
+	BuildStorage, MultiSignature, Perbill, Perquintill,
+>>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
+=======
+	BuildStorage, DispatchResult, MultiSignature, Perbill, Perquintill,
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 };
 
 use crate::{self as pallet_ddc_clusters, *};
@@ -290,6 +298,10 @@ impl ExtBuilder {
 				erasure_coding_total: 6,
 				replication_total: 3,
 			},
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 		);
 
 		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
@@ -303,6 +315,18 @@ impl ExtBuilder {
 					ClusterNodeStatus::ValidationSucceeded,
 				)],
 			)],
+<<<<<<< HEAD
+=======
+		) {
+			let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
+				clusters: vec![cluster],
+				clusters_gov_params: vec![(ClusterId::from([0; 20]), cluster_gov_params)],
+				clusters_nodes: vec![(ClusterId::from([0; 20]), vec![node_pub_key])],
+			}
+			.assimilate_storage(&mut t);
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 		}
 		.assimilate_storage(&mut t);
 

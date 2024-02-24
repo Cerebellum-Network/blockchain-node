@@ -115,6 +115,49 @@ fn create_storage_node_works() {
 }
 
 #[test]
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+fn create_storage_node_with_node_creator() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+		let bytes = [0u8; 32];
+		let node_pub_key = AccountId32::from(bytes);
+		let storage_node_params = StorageNodeParams {
+			mode: StorageNodeMode::Storage,
+			host: vec![1u8; 255],
+			domain: vec![2u8; 255],
+			ssl: true,
+			http_port: 35000u16,
+			grpc_port: 25000u16,
+			p2p_port: 15000u16,
+		};
+		let account_id1 = AccountId::from([1; 32]);
+
+		// Node created
+		assert_ok!(<DdcNodes as NodeManager<Test>>::create_node(
+			NodePubKey::StoragePubKey(node_pub_key.clone()),
+			account_id1,
+			NodeParams::StorageParams(storage_node_params)
+		));
+
+		// Check storage
+		assert!(StorageNodes::<Test>::contains_key(node_pub_key.clone()));
+		assert!(DdcNodes::exists(&NodePubKey::StoragePubKey(node_pub_key.clone())));
+		if let Ok(cluster_id) =
+			DdcNodes::get_cluster_id(&NodePubKey::StoragePubKey(node_pub_key.clone()))
+		{
+			assert_eq!(cluster_id, None);
+		}
+		let storage_node = DdcNodes::storage_nodes(&node_pub_key).unwrap();
+		assert_eq!(storage_node.pub_key, node_pub_key);
+	})
+}
+
+#[test]
+>>>>>>> e0ce0e5b (node integer delta usage (#412))
+=======
+>>>>>>> 7cd03fd0 (fix: compilation error is fixed in tests)
 fn set_storage_node_params_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);

@@ -36,6 +36,30 @@ fn create_cluster_works() {
 			unit_per_get_request: 10,
 		};
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+		// Creating cluster not with root signature should fail
+		assert_noop!(
+			DdcClusters::create_cluster(
+				RuntimeOrigin::signed(AccountId::from([1; 32])),
+				cluster_id,
+				cluster_manager_id.clone(),
+				cluster_reserve_id.clone(),
+				ClusterParams {
+					node_provider_auth_contract: Some(auth_contract.clone()),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+				},
+				cluster_gov_params.clone()
+			),
+			BadOrigin
+		);
+
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
@@ -47,7 +71,15 @@ fn create_cluster_works() {
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
+<<<<<<< HEAD
+<<<<<<< HEAD
 			cluster_protocol_params.clone()
+=======
+			cluster_gov_params.clone()
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
+=======
+			cluster_protocol_params.clone()
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 		));
 
 		let created_cluster = DdcClusters::clusters(cluster_id).unwrap();
@@ -111,7 +143,15 @@ fn create_cluster_works() {
 					erasure_coding_total: 6,
 					replication_total: 3
 				},
+<<<<<<< HEAD
+<<<<<<< HEAD
 				cluster_protocol_params
+=======
+				cluster_gov_params
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
+=======
+				cluster_protocol_params
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 			),
 			Error::<Test>::ClusterAlreadyExists
 		);
@@ -145,6 +185,17 @@ fn add_join_and_delete_node_works() {
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				ClusterNodeKind::Genesis
+<<<<<<< HEAD
+			),
+			Error::<Test>::ClusterDoesNotExist
+		);
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 			),
 			Error::<Test>::ClusterDoesNotExist
 		);
@@ -163,12 +214,28 @@ fn add_join_and_delete_node_works() {
 			cluster_id,
 			cluster_reserve_id.clone(),
 			ClusterParams {
+<<<<<<< HEAD
+<<<<<<< HEAD
 				node_provider_auth_contract: None,
+=======
+				node_provider_auth_contract: Some(cluster_manager_id.clone()),
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
+=======
+				node_provider_auth_contract: None,
+>>>>>>> d9cc7c7d (New `join_cluster` extrinsic (#425))
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
+<<<<<<< HEAD
+<<<<<<< HEAD
 			ClusterProtocolParams {
+=======
+			ClusterGovParams {
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
+=======
+			ClusterProtocolParams {
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 				treasury_share: Perquintill::from_float(0.05),
 				validators_share: Perquintill::from_float(0.01),
 				cluster_reserve_share: Perquintill::from_float(0.02),
@@ -222,6 +289,17 @@ fn add_join_and_delete_node_works() {
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				ClusterNodeKind::Genesis
+<<<<<<< HEAD
+			),
+			Error::<Test>::AttemptToAddNonExistentNode
+		);
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 			),
 			Error::<Test>::AttemptToAddNonExistentNode
 		);
@@ -275,6 +353,10 @@ fn add_join_and_delete_node_works() {
 
 		assert_ok!(DdcClusters::bond_cluster(&cluster_id));
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> d9cc7c7d (New `join_cluster` extrinsic (#425))
 		// Node is not authorized to join
 		assert_ok!(DdcNodes::create_node(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
@@ -291,6 +373,12 @@ fn add_join_and_delete_node_works() {
 		);
 
 		// Node added successfully
+<<<<<<< HEAD
+=======
+		// Node added succesfully
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+>>>>>>> d9cc7c7d (New `join_cluster` extrinsic (#425))
 		assert_ok!(DdcClusters::add_node(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
@@ -311,6 +399,17 @@ fn add_join_and_delete_node_works() {
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				ClusterNodeKind::Genesis
+<<<<<<< HEAD
+			),
+			Error::<Test>::AttemptToAddAlreadyAssignedNode
+		);
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 			),
 			Error::<Test>::AttemptToAddAlreadyAssignedNode
 		);
@@ -484,7 +583,15 @@ fn set_cluster_params_works() {
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
+<<<<<<< HEAD
+<<<<<<< HEAD
 			ClusterProtocolParams {
+=======
+			ClusterGovParams {
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
+=======
+			ClusterProtocolParams {
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 				treasury_share: Perquintill::from_float(0.05),
 				validators_share: Perquintill::from_float(0.01),
 				cluster_reserve_share: Perquintill::from_float(0.02),
@@ -578,6 +685,10 @@ fn set_cluster_params_works() {
 }
 
 #[test]
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 fn set_last_validated_era_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
@@ -590,7 +701,19 @@ fn set_last_validated_era_works() {
 
 		// Cluster doesn't exist
 		assert_noop!(
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
 			<DdcClusters as ClusterValidator<Test>>::set_last_paid_era(&cluster_id, era_id),
+=======
+			DdcClusters::set_last_validated_era(&cluster_id, era_id),
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
+=======
+			DdcClusters::set_last_paid_era(&cluster_id, era_id),
+>>>>>>> 342b5f27 (chore: methods for last paid removed to eliminate ambiguity)
+=======
+			<DdcClusters as ClusterValidator<Test>>::set_last_paid_era(&cluster_id, era_id),
+>>>>>>> 5588d775 (Fix tests regression)
 			Error::<Test>::ClusterDoesNotExist
 		);
 
@@ -598,13 +721,30 @@ fn set_last_validated_era_works() {
 		assert_ok!(DdcClusters::create_cluster(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
+<<<<<<< HEAD
+<<<<<<< HEAD
 			cluster_reserve_id.clone(),
 			ClusterParams {
 				node_provider_auth_contract: Some(auth_contract_1),
+=======
+			cluster_manager_id.clone(),
+			cluster_reserve_id,
+			ClusterParams {
+				node_provider_auth_contract: Some(auth_contract),
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
+=======
+			cluster_reserve_id.clone(),
+			ClusterParams {
+				node_provider_auth_contract: Some(auth_contract_1),
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
 				validators_share: Perquintill::from_float(0.01),
@@ -617,6 +757,10 @@ fn set_last_validated_era_works() {
 				unit_per_put_request: 10,
 				unit_per_get_request: 10,
 			}
+<<<<<<< HEAD
+=======
+			cluster_gov_params.clone()
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
 		));
 
 		assert_ok!(<DdcClusters as ClusterValidator<Test>>::set_last_paid_era(&cluster_id, era_id));
@@ -627,10 +771,31 @@ fn set_last_validated_era_works() {
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 3);
 		System::assert_last_event(Event::ClusterEraPaid { cluster_id, era_id }.into())
+=======
+		));
+
+		assert_ok!(<DdcClusters as ClusterValidator<Test>>::set_last_paid_era(&cluster_id, era_id));
+
+		let updated_cluster = DdcClusters::clusters(cluster_id).unwrap();
+		assert_eq!(updated_cluster.last_paid_era, era_id);
+
+		// Checking that event was emitted
+		assert_eq!(System::events().len(), 3);
+<<<<<<< HEAD
+		System::assert_last_event(Event::ClusterEraValidated { cluster_id, era_id }.into())
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
+=======
+		System::assert_last_event(Event::ClusterEraPaid { cluster_id, era_id }.into())
+>>>>>>> 342b5f27 (chore: methods for last paid removed to eliminate ambiguity)
 	})
 }
 
 #[test]
+<<<<<<< HEAD
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 fn cluster_visitor_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
@@ -664,7 +829,15 @@ fn cluster_visitor_works() {
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
+<<<<<<< HEAD
+<<<<<<< HEAD
 			cluster_protocol_params
+=======
+			cluster_gov_params
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
+=======
+			cluster_protocol_params
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 		));
 
 		assert!(<DdcClusters as ClusterQuery<Test>>::cluster_exists(&cluster_id));
@@ -798,7 +971,15 @@ fn cluster_creator_works() {
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
+<<<<<<< HEAD
+<<<<<<< HEAD
 			cluster_protocol_params,
+=======
+			cluster_gov_params
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
+=======
+			cluster_protocol_params,
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 		));
 
 		assert!(Clusters::<Test>::contains_key(cluster_id));

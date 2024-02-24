@@ -1,6 +1,14 @@
 //! DdcStaking pallet benchmarking.
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 use ddc_primitives::{BucketParams, ClusterId, ClusterParams, ClusterProtocolParams};
+=======
+use ddc_primitives::{ClusterId, ClusterParams, ClusterProtocolParams};
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+use ddc_primitives::{BucketParams, ClusterId, ClusterParams, ClusterProtocolParams};
+>>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_support::traits::Currency;
 use sp_runtime::Perquintill;
@@ -43,7 +51,15 @@ benchmarks! {
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
+<<<<<<< HEAD
+<<<<<<< HEAD
 			cluster_protocol_params
+=======
+			cluster_gov_params
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
+=======
+			cluster_protocol_params
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 		);
 
 		let bucket_params = BucketParams {

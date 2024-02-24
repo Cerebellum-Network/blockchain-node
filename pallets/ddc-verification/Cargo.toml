@@ -10,7 +10,14 @@ repository.workspace = true
 
 [dependencies]
 array-bytes = { workspace = true }
+<<<<<<< HEAD
+<<<<<<< HEAD
 base64ct = { workspace = true }
+=======
+>>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
+=======
+base64ct = { workspace = true }
+>>>>>>> 18369b0b (Challenge sub trees and make them ready for payout (#434))
 # 3rd-party dependencies
 codec = { workspace = true }
 # Cere dependencies
@@ -20,15 +27,32 @@ frame-benchmarking = { workspace = true, optional = true }
 frame-election-provider-support = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 396e017d (Fixing customer id encoding (#407))
 hex = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 polkadot-ckb-merkle-mountain-range = { workspace = true }
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> f6a9561b (Use protobuf generated definitions)
 prost = { version = "0.13", default-features = false, features = ["prost-derive"] }
 rand = { workspace = true, features = ["small_rng", "alloc"], default-features = false }
+=======
+itertools = { workspace = true }
+log = { workspace = true }
+polkadot-ckb-merkle-mountain-range = { workspace = true }
+>>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
+=======
+rand = { workspace = true, features = ["small_rng", "alloc"], default-features = false }
+>>>>>>> 18369b0b (Challenge sub trees and make them ready for payout (#434))
 scale-info = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_with = { version = "3", default-features = false, features = ["base64", "macros"] }
 sp-application-crypto = { workspace = true }
 sp-core = { workspace = true }
 sp-io = { workspace = true }
@@ -45,14 +69,30 @@ pallet-timestamp = { workspace = true }
 sp-core = { workspace = true, default-features = true }
 sp-keystore = { workspace = true }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a2bb827e (Compile protobuf)
 [build-dependencies]
 prost-build = "0.13.3"
 
 [features]
 default = ["std"]
 std = [
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 18369b0b (Challenge sub trees and make them ready for payout (#434))
   "rand/std",
   "hex/std",
+=======
+[features]
+default = ["std"]
+std = [
+>>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
+=======
+  "hex/std",
+>>>>>>> 396e017d (Fixing customer id encoding (#407))
   "polkadot-ckb-merkle-mountain-range/std",
   "codec/std",
   "frame-benchmarking?/std",
@@ -69,7 +109,14 @@ std = [
   "frame-election-provider-support/std",
 ]
 runtime-benchmarks = [
+<<<<<<< HEAD
+<<<<<<< HEAD
   "ddc-primitives/runtime-benchmarks",
+=======
+>>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
+=======
+  "ddc-primitives/runtime-benchmarks",
+>>>>>>> e53267d6 (Fix benchmark feat build for ddc-verification)
   "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",

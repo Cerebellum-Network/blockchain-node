@@ -72,7 +72,11 @@ pub trait AbstractClient<Block, Backend>:
 where
 	Block: BlockT,
 	Backend: BackendT<Block>,
+<<<<<<< HEAD
 	Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+=======
+	Backend::State: sp_api::StateBackend<BlakeTwo256>,
+>>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
 	Self::Api: RuntimeApiCollection,
 {
 }
@@ -130,7 +134,11 @@ pub trait ExecuteWithClient {
 	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
 	where
 		Backend: sc_client_api::Backend<Block>,
+<<<<<<< HEAD
 		Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+=======
+		Backend::State: sp_api::StateBackend<BlakeTwo256>,
+>>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
 		Api: crate::RuntimeApiCollection,
 		Client: AbstractClient<Block, Backend, Api = Api> + 'static;
 }
@@ -375,7 +383,14 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		}
 	}
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 	/// Given a block's `Hash` and a key, return the closest merkle value.
+=======
+>>>>>>> 5f953312 (bump dependnecies and fix implementation)
+=======
+	/// Given a block's `Hash` and a key, return the closest merkle value.
+>>>>>>> d846507c (added some documentation)
 	fn closest_merkle_value(
 		&self,
 		hash: <Block as BlockT>::Hash,
@@ -390,7 +405,14 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		}
 	}
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 	/// Given a block's `Hash`, a key and a child storage key, return the closest merkle value.
+=======
+>>>>>>> 5f953312 (bump dependnecies and fix implementation)
+=======
+	/// Given a block's `Hash`, a key and a child storage key, return the closest merkle value.
+>>>>>>> d846507c (added some documentation)
 	fn child_closest_merkle_value(
 		&self,
 		hash: <Block as BlockT>::Hash,

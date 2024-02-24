@@ -1,4 +1,8 @@
 //! DdcClustersGov pallet benchmarking.
+<<<<<<< HEAD
+=======
+#![cfg(feature = "runtime-benchmarks")]
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 
 use ddc_primitives::{
 	ClusterBondingParams, ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams,
@@ -26,6 +30,10 @@ pub fn create_funded_user_with_balance<T: Config>(
 	user
 }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 pub fn fund_user<T: Config>(user: T::AccountId, balance_factor: u128) -> T::AccountId {
 	let balance = <T as pallet::Config>::Currency::minimum_balance() *
 		balance_factor.saturated_into::<BalanceOf<T>>();
@@ -33,6 +41,11 @@ pub fn fund_user<T: Config>(user: T::AccountId, balance_factor: u128) -> T::Acco
 	user
 }
 
+<<<<<<< HEAD
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+>>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 pub fn create_cluster_with_nodes<T: Config>(
 	cluster_id: ClusterId,
 	cluster_manager_id: T::AccountId,
@@ -88,7 +101,15 @@ pub fn create_cluster_with_nodes<T: Config>(
 			p2p_port: 9070_u16,
 		});
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 		T::NodeManager::create_node(node_pub_key.clone(), node_provider.clone(), node_params)
+=======
+		T::NodeCreator::create_node(node_pub_key.clone(), node_provider.clone(), node_params)
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+		T::NodeManager::create_node(node_pub_key.clone(), node_provider.clone(), node_params)
+>>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 			.expect("Node is not created");
 
 		T::StakerCreator::bond_stake_and_participate(
@@ -211,7 +232,14 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+<<<<<<< HEAD
+<<<<<<< HEAD
 		let _ = fund_user::<T>(DdcClustersGov::<T>::account_id(), 1000);
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+		let _ = fund_user::<T>(DdcClustersGov::<T>::account_id(), 1000);
+>>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 
@@ -258,7 +286,14 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+<<<<<<< HEAD
+<<<<<<< HEAD
 		let _ = fund_user::<T>(DdcClustersGov::<T>::account_id(), 1000);
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+		let _ = fund_user::<T>(DdcClustersGov::<T>::account_id(), 1000);
+>>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 
@@ -432,7 +467,14 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+<<<<<<< HEAD
+<<<<<<< HEAD
 		let _ = fund_user::<T>(DdcClustersGov::<T>::account_id(), 1000);
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+		let _ = fund_user::<T>(DdcClustersGov::<T>::account_id(), 1000);
+>>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 		for i in 0 .. 3 {

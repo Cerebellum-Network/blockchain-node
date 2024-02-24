@@ -1,11 +1,26 @@
 use frame_system::{pallet_prelude::BlockNumberFor, Config};
 use sp_runtime::{DispatchError, DispatchResult};
+<<<<<<< HEAD
+<<<<<<< HEAD
 use sp_std::prelude::*;
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+use sp_std::prelude::*;
+>>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 
 use crate::{
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
+<<<<<<< HEAD
+<<<<<<< HEAD
 	ClusterProtocolParams, ClusterStatus, DdcEra, NodePubKey, NodeType,
+=======
+	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+	ClusterProtocolParams, ClusterStatus, DdcEra, NodePubKey, NodeType,
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 };
 
 pub trait ClusterQuery<T: Config> {
@@ -71,6 +86,11 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 		node_pub_key: &NodePubKey,
 		validation_status: Option<ClusterNodeStatus>,
 	) -> bool;
+<<<<<<< HEAD
+
+	fn get_nodes(cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError>;
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 
 	fn get_nodes(cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError>;
 
@@ -94,11 +114,54 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 		node_pub_key: &NodePubKey,
 		succeeded: bool,
 	) -> Result<(), DispatchError>;
+<<<<<<< HEAD
+<<<<<<< HEAD
 
 	fn get_clusters(status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError>;
 }
 pub trait ClusterValidator<T: Config> {
 	/// Updates the `last_paid_era` for the given cluster and emits an event indicating the
+<<<<<<< HEAD
+	/// update.
+	///
+	/// # Parameters
+	///
+	/// - `cluster_id`: A reference to the unique identifier of the cluster that needs its last paid
+	///   era updated.
+	/// - `era_id`: The new era identifier to be set as the last paid era for the cluster.
+	///
+	/// # Returns
+	///
+	/// Returns `Ok(())` if the operation was successful, otherwise returns a `DispatchError`.
+	///
+	/// # Events
+	///
+	/// Emits `ClusterEraPaid` event if the operation is successful.
+	fn set_last_paid_era(cluster_id: &ClusterId, era_id: DdcEra) -> Result<(), DispatchError>;
+
+	/// Retrieves the `last_paid_era` for the given cluster
+	/// update.
+	///
+	/// # Parameters
+	///
+	/// - `cluster_id`: A reference to the unique identifier of the cluster the `last_paid_era` is
+	///   being retrieved for
+	///
+	/// # Returns
+	///
+	/// Returns `Ok(DdcEra)` identifier of the last validated era in cluster
+	fn get_last_paid_era(cluster_id: &ClusterId) -> Result<DdcEra, DispatchError>;
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+
+	fn get_clusters(status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError>;
+>>>>>>> 36ff1650 (feat: supporting multicluster environment in DAC validation)
+}
+pub trait ClusterValidator<T: Config> {
+	/// Updates the `last_validated_era_id` for the given cluster and emits an event indicating the
+=======
+>>>>>>> beaea12a (chore: addressing PR comments)
 	/// update.
 	///
 	/// # Parameters

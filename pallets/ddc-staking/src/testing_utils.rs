@@ -125,7 +125,25 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 		erasure_coding_required: 4,
 		erasure_coding_total: 6,
 		replication_total: 3,
+<<<<<<< HEAD
+=======
 	};
+<<<<<<< HEAD
+	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
+		treasury_share: Perquintill::default(),
+		validators_share: Perquintill::default(),
+		cluster_reserve_share: Perquintill::default(),
+		storage_bond_size: 10u32.into(),
+		storage_chill_delay: 50u32.into(),
+		storage_unbonding_delay: 50u32.into(),
+		unit_per_mb_stored: 10,
+		unit_per_mb_streamed: 10,
+		unit_per_put_request: 10,
+		unit_per_get_request: 10,
+>>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
+	};
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 	let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
 		ClusterProtocolParams {
 			treasury_share: Perquintill::default(),

@@ -13,10 +13,26 @@ use ddc_primitives::{
 	StorageNodeParams, DOLLARS,
 };
 use frame_support::{
+<<<<<<< HEAD
 	derive_impl, parameter_types,
 	traits::{
 		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, EnsureOriginWithArg,
 		EqualPrivilegeOnly, Everything, LinearStoragePrice, Nothing,
+=======
+	parameter_types,
+	traits::{
+<<<<<<< HEAD
+<<<<<<< HEAD
+		ConstBool, ConstU32, ConstU64, EnsureOriginWithArg, EqualPrivilegeOnly, Everything, Nothing,
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, EnsureOriginWithArg,
+		EqualPrivilegeOnly, Everything, LinearStoragePrice, Nothing,
+>>>>>>> 447b5301 (Polkadot v1.1. to v1.2 upgrade)
+=======
+		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, EnsureOriginWithArg,
+		EqualPrivilegeOnly, Everything, LinearStoragePrice, Nothing,
+>>>>>>> 90ccc019 (update mock)
 	},
 	weights::constants::RocksDbWeight,
 	PalletId,
@@ -59,14 +75,34 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>, HoldReason},
+=======
+		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>},
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>, HoldReason},
+>>>>>>> 447b5301 (Polkadot v1.1. to v1.2 upgrade)
+=======
+		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>, HoldReason},
+>>>>>>> 90ccc019 (update mock)
 		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
 		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
 		Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
 		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
+<<<<<<< HEAD
+<<<<<<< HEAD
 		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Config<T>, Event<T>},
+=======
+		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Event<T>},
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Config<T>, Event<T>},
+>>>>>>> 5d85b7a3 (Accept cluster replication props from genesis config (#344))
 		DdcStaking: pallet_ddc_staking::{Pallet, Call, Storage, Event<T>},
 		Origins: pallet_mock_origins::{Origin},
 		DdcClustersGov: pallet_ddc_clusters_gov::{Pallet, Call, Storage, Event<T>},
@@ -85,23 +121,44 @@ impl Convert<Weight, BalanceOf<Self>> for Test {
 	}
 }
 
+<<<<<<< HEAD
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
+=======
+impl frame_system::Config for Test {
+	type BaseCallFilter = Everything;
+	type BlockWeights = ();
+	type BlockLength = ();
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 	type DbWeight = RocksDbWeight;
 	type RuntimeOrigin = RuntimeOrigin;
 	type Nonce = u64;
 	type Block = Block;
 	type RuntimeCall = RuntimeCall;
+<<<<<<< HEAD
 	type RuntimeTask = RuntimeTask;
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
+<<<<<<< HEAD
 	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
+=======
+	type Version = ();
+	type PalletInfo = PalletInfo;
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type OnNewAccount = ();
+	type OnKilledAccount = ();
+	type SystemWeightInfo = ();
+	type SS58Prefix = ();
+	type OnSetCode = ();
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 	type MaxConsumers = ConstU32<16>;
 }
 
@@ -127,9 +184,30 @@ impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type WeightInfo = ();
 	type FreezeIdentifier = ();
+<<<<<<< HEAD
+<<<<<<< HEAD
 	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
 	type MaxHolds = ConstU32<2>;
+=======
+=======
+	type RuntimeFreezeReason = ();
+>>>>>>> c64a7d00 (fix mock)
+	type MaxFreezes = ();
+	type MaxHolds = ();
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+	type MaxHolds =  ConstU32<1>;
+>>>>>>> 8d24d2f2 (fix types for tests)
+=======
+	type MaxHolds = ConstU32<1>;
+>>>>>>> 164b98cc (fmt)
+=======
+	type MaxHolds = ConstU32<2>;
+>>>>>>> 90ccc019 (update mock)
 	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
@@ -137,7 +215,19 @@ parameter_types! {
 	pub const PreimageMaxSize: u32 = 4096 * 1024;
 	pub const PreimageBaseDeposit: Balance = 0;
 	pub const PreimageByteDeposit: Balance = 0;
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
 	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
+
+>>>>>>> 447b5301 (Polkadot v1.1. to v1.2 upgrade)
+=======
+	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
+>>>>>>> 90ccc019 (update mock)
 }
 
 impl pallet_preimage::Config for Test {
@@ -145,12 +235,33 @@ impl pallet_preimage::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 447b5301 (Polkadot v1.1. to v1.2 upgrade)
+=======
+>>>>>>> 90ccc019 (update mock)
 	type Consideration = HoldConsideration<
 		AccountId,
 		Balances,
 		PreimageHoldReason,
 		LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
 	>;
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+	type BaseDeposit = PreimageBaseDeposit;
+	type ByteDeposit = PreimageByteDeposit;
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+>>>>>>> 447b5301 (Polkadot v1.1. to v1.2 upgrade)
+=======
+	type Consideration = ();
+>>>>>>> 5f953312 (bump dependnecies and fix implementation)
+=======
+>>>>>>> 90ccc019 (update mock)
 }
 
 parameter_types! {
@@ -249,7 +360,14 @@ impl pallet_contracts::Config for Test {
 	type Debug = ();
 	type Environment = ();
 	type Migrations = ();
+<<<<<<< HEAD
+<<<<<<< HEAD
 	type Xcm = ();
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+	type Xcm = ();
+>>>>>>> c64a7d00 (fix mock)
 }
 
 impl pallet_insecure_randomness_collective_flip::Config for Test {}
@@ -267,9 +385,21 @@ impl pallet_ddc_clusters::Config for Test {
 	type StakerCreator = pallet_ddc_staking::Pallet<Test>;
 	type Currency = Balances;
 	type WeightInfo = ();
+<<<<<<< HEAD
+<<<<<<< HEAD
 	type MinErasureCodingRequiredLimit = ConstU32<0>;
 	type MinErasureCodingTotalLimit = ConstU32<0>;
 	type MinReplicationTotalLimit = ConstU32<0>;
+=======
+	type MinErasureCodingRequiredLimit = ConstU32<4>;
+	type MinErasureCodingTotalLimit = ConstU32<6>;
+	type MinReplicationTotalLimit = ConstU32<3>;
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+	type MinErasureCodingRequiredLimit = ConstU32<0>;
+	type MinErasureCodingTotalLimit = ConstU32<0>;
+	type MinReplicationTotalLimit = ConstU32<0>;
+>>>>>>> 5d85b7a3 (Accept cluster replication props from genesis config (#344))
 }
 
 parameter_types! {
@@ -284,7 +414,16 @@ impl pallet_ddc_staking::Config for Test {
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
+<<<<<<< HEAD
+<<<<<<< HEAD
 	type NodeManager = pallet_ddc_nodes::Pallet<Test>;
+=======
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
+	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+	type NodeManager = pallet_ddc_nodes::Pallet<Test>;
+>>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 	type ClusterBondingAmount = ClusterBondingAmount;
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
@@ -314,12 +453,28 @@ impl crate::pallet::Config for Test {
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
+<<<<<<< HEAD
+<<<<<<< HEAD
 	type NodeManager = pallet_ddc_nodes::Pallet<Test>;
+=======
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+	type NodeManager = pallet_ddc_nodes::Pallet<Test>;
+>>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 	type SeatsConsensus = MockedSeatsConsensus;
 	type DefaultVote = MockedDefaultVote; // pallet_ddc_clusters_gov::PrimeDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
 	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
 	#[cfg(feature = "runtime-benchmarks")]
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
+	#[cfg(feature = "runtime-benchmarks")]
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+>>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 	type StakerCreator = pallet_ddc_staking::Pallet<Test>;
 }
 
@@ -642,6 +797,13 @@ mod pallet_mock_origins {
 }
 
 pub const CLUSTER_ID: [u8; 20] = [1; 20];
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+>>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 pub const CLUSTER_MANAGER_ID: [u8; 32] = [1; 32];
 pub const CLUSTER_RESERVE_ID: [u8; 32] = [2; 32];
 

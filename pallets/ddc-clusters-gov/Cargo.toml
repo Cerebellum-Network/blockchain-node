@@ -29,7 +29,15 @@ lazy_static = { workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
 pallet-contracts = { workspace = true }
 pallet-conviction-voting = { workspace = true }
+<<<<<<< HEAD
+<<<<<<< HEAD
 pallet-ddc-clusters = { workspace = true, default-features = true }
+=======
+pallet-ddc-clusters = { workspace = true }
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+pallet-ddc-clusters = { workspace = true, default-features = true }
+>>>>>>> 5d85b7a3 (Accept cluster replication props from genesis config (#344))
 pallet-ddc-nodes = { workspace = true }
 pallet-ddc-staking = { workspace = true }
 pallet-insecure-randomness-collective-flip = { workspace = true, default-features = true }

@@ -10,3 +10,11 @@ name = "bob"
 
 [[relaychain.nodes]]
 name = "charlie"
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 5c9162c1 (fix zombienet issue)
+=======
+>>>>>>> 6f3db528 (fmt)

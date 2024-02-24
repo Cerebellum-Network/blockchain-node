@@ -11,7 +11,15 @@ pub use cere_dev_runtime;
 pub use cere_runtime;
 use futures::prelude::*;
 use sc_client_api::{Backend, BlockBackend};
+<<<<<<< HEAD
+<<<<<<< HEAD
 use sc_consensus_babe::SlotProportion;
+=======
+use sc_consensus_babe::{self, SlotProportion};
+>>>>>>> 1264bdff (Consolidating `master` and `dev` branches (#295))
+=======
+use sc_consensus_babe::SlotProportion;
+>>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
 pub use sc_executor::NativeExecutionDispatch;
 use sc_network::{Event, NetworkEventStream};
 use sc_service::{
@@ -607,7 +615,11 @@ impl ExecuteWithClient for RevertConsensus {
 	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
 	where
 		Backend: sc_client_api::Backend<Block>,
+<<<<<<< HEAD
 		Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+=======
+		Backend::State: sp_api::StateBackend<BlakeTwo256>,
+>>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
 		Api: RuntimeApiCollection,
 		Client: AbstractClient<Block, Backend, Api = Api> + 'static,
 	{

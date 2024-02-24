@@ -1,9 +1,16 @@
 use frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 use log::info;
+<<<<<<< HEAD
 use serde::{Deserialize, Serialize};
 use sp_runtime::Saturating;
 
 use super::*;
+=======
+use sp_runtime::Saturating;
+
+use super::*;
+use crate::cluster::ClusterProps;
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 
 const LOG_TARGET: &str = "ddc-clusters";
 
@@ -35,16 +42,26 @@ pub mod v0 {
 }
 
 pub mod v1 {
+<<<<<<< HEAD
+=======
+	use ddc_primitives::ClusterStatus;
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 	use frame_support::pallet_prelude::*;
+	use serde::{Deserialize, Serialize};
 
 	use super::*;
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 	pub struct Cluster<AccountId> {
 		pub cluster_id: ClusterId,
 		pub manager_id: AccountId,
 		pub reserve_id: AccountId,
 		pub props: ClusterProps<AccountId>,
+<<<<<<< HEAD
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
@@ -53,6 +70,9 @@ pub mod v1 {
 		pub erasure_coding_required: u32, // new field
 		pub erasure_coding_total: u32,    // new field
 		pub replication_total: u32,       // new field
+=======
+		pub status: ClusterStatus,
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 	}
 
 	#[storage_alias]
@@ -63,6 +83,11 @@ pub mod v1 {
 		Cluster<<T as frame_system::Config>::AccountId>,
 	>;
 
+<<<<<<< HEAD
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 	pub fn migrate_to_v1<T: Config>() -> Weight {
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
 		let current_version = Pallet::<T>::current_storage_version();
@@ -82,7 +107,15 @@ pub mod v1 {
 				" >>> Updating DDC Cluster storage. Migrating {} clusters...", count
 			);
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 			v1::Clusters::<T>::translate::<v0::Cluster<T::AccountId>, _>(
+=======
+			Clusters::<T>::translate::<v0::Cluster<T::AccountId>, _>(
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+			v1::Clusters::<T>::translate::<v0::Cluster<T::AccountId>, _>(
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 				|cluster_id: ClusterId, cluster: v0::Cluster<T::AccountId>| {
 					info!(target: LOG_TARGET, "     Migrating cluster for cluster ID {:?}...", cluster_id);
 					translated.saturating_inc();
@@ -93,11 +126,23 @@ pub mod v1 {
 						replication_total: 20,
 					};
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 					Some(v1::Cluster {
+=======
+					Some(Cluster {
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+					Some(v1::Cluster {
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 						cluster_id: cluster.cluster_id,
 						manager_id: cluster.manager_id,
 						reserve_id: cluster.reserve_id,
 						props,
+<<<<<<< HEAD
+=======
+						status: ClusterStatus::Unbonded,
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 					})
 				},
 			);
@@ -229,6 +274,13 @@ pub mod v1 {
 }
 
 pub mod v2 {
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 	use ddc_primitives::{
 		ClusterId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesCount,
 		ClusterNodesStats, ClusterStatus,
@@ -239,15 +291,29 @@ pub mod v2 {
 	#[cfg(feature = "try-runtime")]
 	use sp_std::vec::Vec;
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 	use super::*;
 	use crate::{ClustersNodes, ClustersNodesStats, Config, Pallet, LOG_TARGET};
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 	pub struct Cluster<AccountId> {
+=======
+=======
+	use super::*;
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
+	use crate::{
+		cluster::ClusterProps, ClustersNodes, ClustersNodesStats, Config, Pallet, LOG_TARGET,
+	};
+
+	#[derive(Decode)]
+	pub struct OldCluster<AccountId> {
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 		pub cluster_id: ClusterId,
 		pub manager_id: AccountId,
 		pub reserve_id: AccountId,
 		pub props: ClusterProps<AccountId>,
+<<<<<<< HEAD
 		pub status: ClusterStatus, // new field
 	}
 
@@ -381,6 +447,115 @@ pub mod v2 {
 	impl<T: Config> OnRuntimeUpgrade for MigrateToV2<T> {
 		fn on_runtime_upgrade() -> Weight {
 			migrate_to_v2::<T>()
+=======
+	}
+
+	impl<AccountId> OldCluster<AccountId> {
+		fn migrate_to_v2(self) -> v1::Cluster<AccountId> {
+			// all clusters are unbonded by default
+			let status = ClusterStatus::Unbonded;
+			v1::Cluster {
+				cluster_id: self.cluster_id,
+				manager_id: self.manager_id,
+				reserve_id: self.reserve_id,
+				props: self.props,
+				status,
+			}
+		}
+	}
+
+	pub type OldNodeStatus = bool;
+	pub struct MigrateToV2<T>(sp_std::marker::PhantomData<T>);
+	impl<T: Config> OnRuntimeUpgrade for MigrateToV2<T> {
+		fn on_runtime_upgrade() -> Weight {
+			let current_version = Pallet::<T>::current_storage_version();
+			let onchain_version = Pallet::<T>::on_chain_storage_version();
+			let mut weight = T::DbWeight::get().reads(1);
+
+			if onchain_version == 1 && current_version == 2 {
+				let mut nodes_count_by_cluster: BTreeMap<ClusterId, ClusterNodesCount> =
+					BTreeMap::new();
+
+				let mut translated_clusters = 0u64;
+				v1::Clusters::<T>::translate::<OldCluster<T::AccountId>, _>(
+					|cluster_id, old_cluster| {
+						translated_clusters.saturating_inc();
+						nodes_count_by_cluster.insert(cluster_id, 0);
+						Some(old_cluster.migrate_to_v2())
+					},
+				);
+				weight.saturating_accrue(
+					T::DbWeight::get().reads_writes(translated_clusters, translated_clusters),
+				);
+
+				current_version.put::<Pallet<T>>();
+				weight.saturating_accrue(T::DbWeight::get().writes(1));
+				log::info!(
+					target: LOG_TARGET,
+					"Upgraded {} clusters, storage to version {:?}",
+					translated_clusters,
+					current_version
+				);
+
+				let mut translated_clusters_nodes = 0u64;
+				ClustersNodes::<T>::translate::<OldNodeStatus, _>(
+					|cluster_id, _node_pub_key, _old_value| {
+						translated_clusters_nodes.saturating_inc();
+
+						nodes_count_by_cluster
+							.entry(cluster_id)
+							.and_modify(|count| *count = count.saturating_add(1)) // If exists, update
+							.or_insert(1); // If not, insert with a count of 1
+
+						Some(ClusterNodeState {
+							kind: ClusterNodeKind::External,
+							status: ClusterNodeStatus::ValidationSucceeded,
+							added_at: <frame_system::Pallet<T>>::block_number(),
+						})
+					},
+				);
+				weight.saturating_accrue(
+					T::DbWeight::get()
+						.reads_writes(translated_clusters_nodes, translated_clusters_nodes),
+				);
+				log::info!(
+					target: LOG_TARGET,
+					"Upgraded {} clusters nodes statuses, storage to version {:?}",
+					translated_clusters_nodes,
+					current_version
+				);
+
+				for (cluster_id, nodes_count) in nodes_count_by_cluster.iter() {
+					ClustersNodesStats::<T>::insert(
+						cluster_id,
+						ClusterNodesStats {
+							await_validation: 0,
+							validation_succeeded: *nodes_count,
+							validation_failed: 0,
+						},
+					);
+					weight.saturating_accrue(T::DbWeight::get().writes(1));
+				}
+				log::info!(
+					target: LOG_TARGET,
+					"Upgraded {} clusters statistics, storage to version {:?}",
+					nodes_count_by_cluster.len(),
+					current_version
+				);
+
+				// Update storage version.
+				StorageVersion::new(2).put::<Pallet<T>>();
+
+				weight
+			} else {
+				log::info!(
+					target: LOG_TARGET,
+					"Migration did not execute. This probably should be removed"
+				);
+
+				weight
+			}
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 		}
 
 		#[cfg(feature = "try-runtime")]
@@ -410,6 +585,7 @@ pub mod v2 {
 
 			let post_clusters_count = Clusters::<T>::iter().count() as u32;
 			assert_eq!(
+<<<<<<< HEAD
                 pre_clusters_count, post_clusters_count,
                 "the clusters count before (pre: {}) and after (post: {}) the migration should be the same",
                 pre_clusters_count, post_clusters_count
@@ -427,6 +603,25 @@ pub mod v2 {
                 "the clusters statistics ({}) should be equal to clusters count ({}) after the migration",
                 post_clusters_nodes_stats_count, post_clusters_count
             );
+=======
+				pre_clusters_count, post_clusters_count,
+				"the clusters count before (pre: {}) and after (post: {}) the migration should be the same",
+				pre_clusters_count, post_clusters_count
+			);
+			let post_clusters_nodes_count = ClustersNodes::<T>::iter().count() as u32;
+			assert_eq!(
+				pre_clusters_nodes_count, post_clusters_nodes_count,
+				"the clusters nodes count before (pre: {}) and after (post: {})  the migration should be the same", 
+				pre_clusters_nodes_count, post_clusters_nodes_count
+			);
+
+			let post_clusters_nodes_stats_count = ClustersNodesStats::<T>::iter().count() as u32;
+			assert_eq!(
+				post_clusters_nodes_stats_count, post_clusters_count,
+				"the clusters statistics ({}) should be equal to clusters count ({}) after the migration", 
+				post_clusters_nodes_stats_count, post_clusters_count
+			);
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 
 			let current_version = Pallet::<T>::current_storage_version();
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
@@ -447,6 +642,10 @@ pub mod v2 {
 		}
 	}
 }
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 
 pub mod v3 {
 	use frame_support::{
@@ -458,6 +657,7 @@ pub mod v3 {
 	#[cfg(feature = "try-runtime")]
 	use sp_std::vec::Vec;
 
+<<<<<<< HEAD
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 	pub struct Cluster<AccountId> {
 		pub cluster_id: ClusterId,
@@ -484,6 +684,8 @@ pub mod v3 {
 		Cluster<<T as frame_system::Config>::AccountId>,
 	>;
 
+=======
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 	use super::*;
 	pub fn migrate_to_v3<T: Config>() -> Weight {
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
@@ -497,13 +699,18 @@ pub mod v3 {
 		);
 
 		if on_chain_version == 2 && current_version == 3 {
+<<<<<<< HEAD
 			let mut translated = 0u64;
 			let count = v2::Clusters::<T>::iter().count();
+=======
+			let count = Clusters::<T>::iter().count() as u64;
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 			info!(
 				target: LOG_TARGET,
 				" >>> Updating DDC Cluster storage. Migrating {} clusters...", count
 			);
 
+<<<<<<< HEAD
 			v3::Clusters::<T>::translate::<v2::Cluster<T::AccountId>, _>(
 				|cluster_id: ClusterId, old_cluster: v2::Cluster<T::AccountId>| {
 					info!(target: LOG_TARGET, "     Migrating cluster for cluster ID {:?}...", cluster_id);
@@ -522,6 +729,22 @@ pub mod v3 {
 						},
 						status: old_cluster.status,
 						last_paid_era: 0,
+<<<<<<< HEAD
+=======
+			Clusters::<T>::translate::<v1::Cluster<T::AccountId>, _>(
+				|cluster_id: ClusterId, cluster: v1::Cluster<T::AccountId>| {
+					info!(target: LOG_TARGET, "     Migrating cluster for cluster ID {:?}...", cluster_id);
+
+					Some(Cluster {
+						cluster_id: cluster.cluster_id,
+						manager_id: cluster.manager_id,
+						reserve_id: cluster.reserve_id,
+						props: cluster.props,
+						status: cluster.status,
+						last_validated_era_id: 0,
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
+=======
+>>>>>>> beaea12a (chore: addressing PR comments)
 					})
 				},
 			);
@@ -535,7 +758,11 @@ pub mod v3 {
 				current_version
 			);
 
+<<<<<<< HEAD
 			T::DbWeight::get().reads_writes(translated + 1, translated + 1)
+=======
+			T::DbWeight::get().reads_writes(count + 2, count + 1)
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 		} else {
 			info!(target: LOG_TARGET, " >>> Unused migration!");
 			T::DbWeight::get().reads(1)
@@ -551,7 +778,11 @@ pub mod v3 {
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
+<<<<<<< HEAD
 			let prev_count = v2::Clusters::<T>::iter().count();
+=======
+			let prev_count = Clusters::<T>::iter().count();
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 
 			Ok((prev_count as u64).encode())
 		}
@@ -561,7 +792,11 @@ pub mod v3 {
 			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
 				.expect("pre_upgrade provides a valid state; qed");
 
+<<<<<<< HEAD
 			let post_count = v3::Clusters::<T>::iter().count() as u64;
+=======
+			let post_count = Clusters::<T>::iter().count() as u64;
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
 			ensure!(
 				prev_count == post_count,
 				"the cluster count before and after the migration should be the same"
@@ -610,7 +845,15 @@ pub mod v3 {
 						erasure_coding_total: 48,
 						replication_total: 20,
 					},
+<<<<<<< HEAD
+<<<<<<< HEAD
 					last_paid_era: 0,
+=======
+					last_validated_era_id: 0,
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
+=======
+					last_paid_era: 0,
+>>>>>>> beaea12a (chore: addressing PR comments)
 					status: ClusterStatus::Activated,
 				};
 
@@ -625,7 +868,15 @@ pub mod v3 {
 						erasure_coding_total: 48,
 						replication_total: 20,
 					},
+<<<<<<< HEAD
+<<<<<<< HEAD
 					last_paid_era: 0,
+=======
+					last_validated_era_id: 0,
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
+=======
+					last_paid_era: 0,
+>>>>>>> beaea12a (chore: addressing PR comments)
 					status: ClusterStatus::Activated,
 				};
 
@@ -647,22 +898,51 @@ pub mod v3 {
 				);
 				assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().props.erasure_coding_total, 48);
 				assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().props.replication_total, 20);
+<<<<<<< HEAD
+<<<<<<< HEAD
 				assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().last_paid_era, 0);
+=======
+				assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().last_validated_era_id, 0);
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
+=======
+				assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().last_paid_era, 0);
+>>>>>>> beaea12a (chore: addressing PR comments)
 				assert_eq!(
 					Clusters::<T>::get(cluster_id1).unwrap().props.erasure_coding_required,
 					16
 				);
 				assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().props.erasure_coding_total, 48);
 				assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().props.replication_total, 20);
+<<<<<<< HEAD
+<<<<<<< HEAD
 				assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().last_paid_era, 0);
+=======
+				assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().last_validated_era_id, 0);
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
+=======
+				assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().last_paid_era, 0);
+>>>>>>> beaea12a (chore: addressing PR comments)
 				assert_eq!(
 					Clusters::<T>::get(cluster_id2).unwrap().props.erasure_coding_required,
 					16
 				);
 				assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().props.erasure_coding_total, 48);
 				assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().props.replication_total, 20);
+<<<<<<< HEAD
+<<<<<<< HEAD
 				assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().last_paid_era, 0);
+=======
+				assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().last_validated_era_id, 0);
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
+=======
+				assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().last_paid_era, 0);
+>>>>>>> beaea12a (chore: addressing PR comments)
 			});
 		}
 	}
 }
+<<<<<<< HEAD
+=======
+>>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
+=======
+>>>>>>> 99095ecd (verified copy of PR#393 (#402))
