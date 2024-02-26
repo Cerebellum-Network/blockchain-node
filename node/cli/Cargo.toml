@@ -26,7 +26,7 @@ clap = { workspace = true, optional = true }
 url = { workspace = true }
 
 # Substrate dependencies
-frame-benchmarking = { workspace = true, default-features = true, optional = true }
+frame-benchmarking-cli = { workspace = true, default-features = true, optional = true }
 sc-cli = { workspace = true, default-features = true, optional = true }
 sc-executor = { workspace = true, default-features = true }
 sc-service = { workspace = true, default-features = true, optional = true }
@@ -46,7 +46,7 @@ cli = [
   "clap",
   "sc-cli",
   "sc-service",
-  "frame-benchmarking",
+  "frame-benchmarking-cli",
   "try-runtime-cli",
   "cere-client",
 ]
