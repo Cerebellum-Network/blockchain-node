@@ -919,7 +919,7 @@ dependencies = [
  "cere-client",
  "cere-service",
  "clap",
- "frame-benchmarking-cli",
+ "frame-benchmarking",
  "sc-cli",
  "sc-executor",
  "sc-service",
@@ -1389,17 +1389,6 @@ name = "colorchoice"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
-
-[[package]]
-name = "comfy-table"
-version = "7.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b34115915337defe99b2aff5c2ce6771e5fbc4079f4b506301f5cf394c8452f7"
-dependencies = [
- "strum 0.26.2",
- "strum_macros 0.26.2",
- "unicode-width",
-]
 
 [[package]]
 name = "common"
@@ -2477,54 +2466,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "frame-benchmarking-cli"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-v1.1.0#f60318f68687e601c47de5ad5ca88e2c3f8139a7"
-dependencies = [
- "Inflector",
- "array-bytes",
- "chrono",
- "clap",
- "comfy-table",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "gethostname",
- "handlebars",
- "itertools",
- "lazy_static",
- "linked-hash-map",
- "log",
- "parity-scale-codec",
- "rand 0.8.5",
- "rand_pcg",
- "sc-block-builder",
- "sc-cli",
- "sc-client-api",
- "sc-client-db",
- "sc-executor",
- "sc-service",
- "sc-sysinfo",
- "serde",
- "serde_json",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-database",
- "sp-externalities",
- "sp-inherents",
- "sp-io",
- "sp-keystore",
- "sp-runtime",
- "sp-state-machine",
- "sp-storage",
- "sp-trie",
- "sp-wasm-interface",
- "thiserror",
- "thousands",
-]
-
-[[package]]
 name = "frame-election-provider-solution-type"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-v1.1.0#f60318f68687e601c47de5ad5ca88e2c3f8139a7"
@@ -2911,16 +2852,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gethostname"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1ebd34e35c46e00bb73e81363248d627782724609fe1b6396f553f68fe3862e"
-dependencies = [
- "libc",
- "winapi",
-]
-
-[[package]]
 name = "getrandom"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3025,20 +2956,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
-]
-
-[[package]]
-name = "handlebars"
-version = "4.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "faa67bab9ff362228eb3d00bd024a4965d8231bbb7921167f0cfa66c6626b225"
-dependencies = [
- "log",
- "pest",
- "pest_derive",
- "serde",
- "serde_json",
- "thiserror",
 ]
 
 [[package]]
@@ -5292,7 +5209,7 @@ dependencies = [
  "sp-npos-elections",
  "sp-runtime",
  "sp-std",
- "strum 0.24.1",
+ "strum",
 ]
 
 [[package]]
@@ -6044,51 +5961,6 @@ name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
-
-[[package]]
-name = "pest"
-version = "2.7.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "311fb059dee1a7b802f036316d790138c613a4e8b180c822e3925a662e9f0c95"
-dependencies = [
- "memchr",
- "thiserror",
- "ucd-trie",
-]
-
-[[package]]
-name = "pest_derive"
-version = "2.7.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f73541b156d32197eecda1a4014d7f868fd2bcb3c550d5386087cfba442bf69c"
-dependencies = [
- "pest",
- "pest_generator",
-]
-
-[[package]]
-name = "pest_generator"
-version = "2.7.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c35eeed0a3fab112f75165fdc026b3913f4183133f19b49be773ac9ea966e8bd"
-dependencies = [
- "pest",
- "pest_meta",
- "proc-macro2",
- "quote",
- "syn 2.0.58",
-]
-
-[[package]]
-name = "pest_meta"
-version = "2.7.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2adbf29bb9776f28caece835398781ab24435585fe0d4dc1374a61db5accedca"
-dependencies = [
- "once_cell",
- "pest",
- "sha2 0.10.8",
-]
 
 [[package]]
 name = "petgraph"
@@ -8804,7 +8676,7 @@ dependencies = [
  "lazy_static",
  "sp-core",
  "sp-runtime",
- "strum 0.24.1",
+ "strum",
 ]
 
 [[package]]
@@ -9175,7 +9047,7 @@ checksum = "a0ef947f358b9c238923f764c72a4a9d42f2d637c46e059dbd319d6e7cfb4f82"
 dependencies = [
  "lazy_static",
  "maplit",
- "strum 0.24.1",
+ "strum",
 ]
 
 [[package]]
@@ -9255,14 +9127,8 @@ version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
 dependencies = [
- "strum_macros 0.24.3",
+ "strum_macros",
 ]
-
-[[package]]
-name = "strum"
-version = "0.26.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d8cec3501a5194c432b2b7976db6b7d10ec95c253208b45f83f7136aa985e29"
 
 [[package]]
 name = "strum_macros"
@@ -9275,19 +9141,6 @@ dependencies = [
  "quote",
  "rustversion",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "strum_macros"
-version = "0.26.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6cf59daf282c0a494ba14fd21610a0325f9f90ec9d1231dea26bcb1d696c946"
-dependencies = [
- "heck 0.4.1",
- "proc-macro2",
- "quote",
- "rustversion",
- "syn 2.0.58",
 ]
 
 [[package]]
@@ -9389,7 +9242,7 @@ dependencies = [
  "filetime",
  "parity-wasm",
  "sp-maybe-compressed-blob",
- "strum 0.24.1",
+ "strum",
  "tempfile",
  "toml 0.7.8",
  "walkdir",
@@ -9515,12 +9368,6 @@ dependencies = [
  "quote",
  "syn 2.0.58",
 ]
-
-[[package]]
-name = "thousands"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bf63baf9f5039dadc247375c29eb13706706cfde997d0330d05aa63a77d8820"
 
 [[package]]
 name = "thread_local"
@@ -10034,12 +9881,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42ff0bf0c66b8238c6f3b578df37d0b7848e55df8577b3f74f92a69acceeb825"
 
 [[package]]
-name = "ucd-trie"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed646292ffc8188ef8ea4d1e0e0150fb15a5c2e12ad9b8fc191ae7a8a7f3c4b9"
-
-[[package]]
 name = "uint"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10288,8 +10129,8 @@ checksum = "effbef3bd1dde18acb401f73e740a6f3d4a1bc651e9773bddc512fe4d8d68f67"
 dependencies = [
  "anyhow",
  "libc",
- "strum 0.24.1",
- "strum_macros 0.24.3",
+ "strum",
+ "strum_macros",
  "tempfile",
  "thiserror",
  "wasm-opt-cxx-sys",
