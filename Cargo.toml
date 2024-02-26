@@ -48,6 +48,7 @@ url = { version = "2.4.1" }
 # Please keey format such that:
 # dependency-name = { git = "X", tag = "Y", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
+frame-benchmarking-cli = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
 frame-election-provider-support = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
 frame-executive = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
