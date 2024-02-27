@@ -24,16 +24,18 @@
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use ddc_primitives::traits::pallet::PalletVisitor;
-use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragmen, VoteWeight};
+use frame_election_provider_support::{
+	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
+};
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
-	pallet_prelude::{Get, StorageVersion},
+	pallet_prelude::Get,
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly,
-		Everything, GetStorageVersion, Imbalance, InstanceFilter, KeyOwnerProofSystem,
-		LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, WithdrawReasons,
+		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
+		OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -41,7 +43,7 @@ use frame_support::{
 		},
 		ConstantMultiplier, IdentityFee, Weight,
 	},
-	PalletId, RuntimeDebug,
+	PalletId,
 };
 #[cfg(any(feature = "std", test))]
 pub use frame_system::Call as SystemCall;
@@ -89,6 +91,7 @@ use sp_runtime::{
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
+	RuntimeDebug,
 };
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
@@ -401,6 +404,7 @@ impl pallet_babe::Config for Runtime {
 
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
+	type MaxNominators = MaxNominatorRewardedPerValidator;
 }
 
 parameter_types! {
@@ -524,6 +528,7 @@ parameter_types! {
 	pub const MaxNominatorRewardedPerValidator: u32 = 256;
 	pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
 	pub OffchainRepeat: BlockNumber = 5;
+	pub const MaxNominations: u32 = <NposSolution16 as frame_election_provider_support::NposSolution>::LIMIT as u32;
 }
 
 pub struct StakingBenchmarkingConfig;
@@ -538,7 +543,6 @@ type StakingAdminOrigin = EitherOfDiverse<
 >;
 
 impl pallet_staking::Config for Runtime {
-	type MaxNominations = MaxNominations;
 	type Currency = Balances;
 	type CurrencyBalance = Balance;
 	type UnixTime = Timestamp;
@@ -565,6 +569,7 @@ impl pallet_staking::Config for Runtime {
 	type EventListeners = NominationPools;
 	type WeightInfo = pallet_staking::weights::SubstrateWeight<Runtime>;
 	type BenchmarkingConfig = StakingBenchmarkingConfig;
+	type NominationsQuota = pallet_staking::FixedNominationsQuota<{ MaxNominations::get() }>;
 }
 
 impl pallet_fast_unstake::Config for Runtime {
@@ -611,7 +616,11 @@ parameter_types! {
 	/// Setup election pallet to support maximum winners upto 1200. This will mean Staking Pallet
 	/// cannot have active validators higher than this count.
 	pub const MaxActiveValidators: u32 = 1200;
-	pub MaxNominations: u32 = <NposSolution16 as frame_election_provider_support::NposSolution>::LIMIT as u32;
+	/// We take the top 22500 nominators as electing voters and all of the validators as electable
+	/// targets. Whilst this is the case, we cannot and shall not increase the size of the
+	/// validator intentions.
+	pub ElectionBounds: frame_election_provider_support::bounds::ElectionBounds =
+		ElectionBoundsBuilder::default().voters_count(MaxElectingVoters::get().into()).build();
 }
 
 frame_election_provider_support::generate_solution_type!(
@@ -672,8 +681,7 @@ impl onchain::Config for OnChainSeqPhragmen {
 	>;
 	type DataProvider = <Runtime as pallet_election_provider_multi_phase::Config>::DataProvider;
 	type MaxWinners = MaxActiveValidators;
-	type VotersBound = MaxElectingVoters;
-	type TargetsBound = MaxElectableTargets;
+	type Bounds = ElectionBounds;
 	type WeightInfo = frame_election_provider_support::weights::SubstrateWeight<Runtime>;
 }
 
@@ -726,10 +734,9 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
 	type GovernanceFallback = onchain::OnChainExecution<OnChainSeqPhragmen>;
 	type Solver = SequentialPhragmen<AccountId, SolutionAccuracyOf<Self>, OffchainRandomBalancing>;
 	type ForceOrigin = EnsureRootOrHalfCouncil;
-	type MaxElectableTargets = ConstU16<{ u16::MAX }>;
-	type MaxElectingVoters = MaxElectingVoters;
 	type BenchmarkingConfig = ElectionProviderBenchmarkConfig;
 	type MaxWinners = MaxActiveValidators;
+	type ElectionBounds = ElectionBounds;
 	type WeightInfo = pallet_election_provider_multi_phase::weights::SubstrateWeight<Self>;
 }
 
@@ -1005,6 +1012,8 @@ parameter_types! {
 		.max_total
 		.unwrap_or(RuntimeBlockWeights::get().max_block);
 	pub Schedule: pallet_contracts::Schedule<Runtime> = Default::default();
+	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
+	pub const MaxDelegateDependencies: u32 = 32;
 }
 
 impl pallet_contracts::Config for Runtime {
@@ -1033,12 +1042,12 @@ impl pallet_contracts::Config for Runtime {
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
-	type Migrations = (
-		cere_runtime_common::migrations::ContractsMigration<Runtime>,
-		// pallet_contracts::migration::v10::Migration<Runtime>,
-		pallet_contracts::migration::v11::Migration<Runtime>,
-		pallet_contracts::migration::v12::Migration<Runtime>,
-	);
+	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+	type MaxDelegateDependencies = MaxDelegateDependencies;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type Debug = ();
+	type Environment = ();
+	type Migrations = ();
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -1148,6 +1157,7 @@ impl pallet_grandpa::Config for Runtime {
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
 	type MaxSetIdSessionEntries = MaxSetIdSessionEntries;
+	type MaxNominators = MaxNominatorRewardedPerValidator;
 }
 
 parameter_types! {
@@ -1302,28 +1312,6 @@ impl pallet_nomination_pools::Config for Runtime {
 	type PalletId = PoolsPalletId;
 	type MaxPointsToBalance = MaxPointsToBalance;
 	type WeightInfo = ();
-}
-
-pub struct InitiateNominationPools;
-impl frame_support::traits::OnRuntimeUpgrade for InitiateNominationPools {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		// we use one as an indicator if this has already been set.
-		if pallet_nomination_pools::MaxPools::<Runtime>::get().is_none() {
-			pallet_nomination_pools::MinJoinBond::<Runtime>::put(250 * DOLLARS);
-			pallet_nomination_pools::MinCreateBond::<Runtime>::put(5000 * DOLLARS);
-
-			// Initialize with limits for now.
-			pallet_nomination_pools::MaxPools::<Runtime>::put(0);
-			pallet_nomination_pools::MaxPoolMembersPerPool::<Runtime>::put(0);
-			pallet_nomination_pools::MaxPoolMembers::<Runtime>::put(0);
-
-			log::info!(target: "runtime::cere", "pools config initiated 🎉");
-			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 5)
-		} else {
-			log::info!(target: "runtime::cere", "pools config already initiated 😏");
-			<Runtime as frame_system::Config>::DbWeight::get().reads(1)
-		}
-	}
 }
 
 impl pallet_ddc_staking::Config for Runtime {
@@ -1487,42 +1475,27 @@ pub type UncheckedExtrinsic =
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
-
-pub struct NominationPoolsMigrationV4OldPallet;
-impl Get<Perbill> for NominationPoolsMigrationV4OldPallet {
-	fn get() -> Perbill {
-		Perbill::zero()
-	}
-}
-/// Migrations that set `StorageVersion`s we missed to set.
-pub struct SetStorageVersions;
-
-impl OnRuntimeUpgrade for SetStorageVersions {
-	fn on_runtime_upgrade() -> Weight {
-		// Was missed as part of:
-		// `runtime_common::session::migration::ClearOldSessionStorage<Runtime>`.
-		let storage_version = Historical::on_chain_storage_version();
-		if storage_version < 1 {
-			StorageVersion::new(1).put::<Historical>();
-		}
-
-		RocksDbWeight::get().reads_writes(2, 2)
-	}
-}
 /// Runtime migrations
 type Migrations = (
 	pallet_im_online::migration::v1::Migration<Runtime>,
-	pallet_democracy::migrations::v1::v1::Migration<Runtime>,
-	pallet_fast_unstake::migrations::v1::MigrateToV1<Runtime>,
-	pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
-	pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
-	pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
-	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
-	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
-	pallet_society::migrations::MigrateToV2<Runtime, (), ()>,
-	pallet_contracts::migration::Migration<Runtime>,
-	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
-	SetStorageVersions,
+	// TODO: Leaving this for the OpenGov PR
+	// Gov v1 storage migrations
+	// https://github.com/paritytech/polkadot/issues/6749
+	// pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
+	// pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
+	// pallet_tips::migrations::unreserve_deposits::UnreserveDeposits<UnlockConfig, ()>,
+
+	// Delete all Gov v1 pallet storage key/values.
+	// frame_support::migrations::RemovePallet<DemocracyPalletName, <Runtime as
+	// frame_system::Config>::DbWeight>, frame_support::migrations::RemovePallet<CouncilPalletName,
+	// <Runtime as frame_system::Config>::DbWeight>,
+	// frame_support::migrations::RemovePallet<TechnicalCommitteePalletName, <Runtime as
+	// frame_system::Config>::DbWeight>,
+	// frame_support::migrations::RemovePallet<PhragmenElectionPalletName, <Runtime as
+	// frame_system::Config>::DbWeight>,
+	// frame_support::migrations::RemovePallet<TechnicalMembershipPalletName, <Runtime as
+	// frame_system::Config>::DbWeight>, frame_support::migrations::RemovePallet<TipsPalletName,
+	// <Runtime as frame_system::Config>::DbWeight>,
 );
 
 /// Executive: handles dispatch to the various modules.
@@ -1539,19 +1512,6 @@ type EventRecord = frame_system::EventRecord<
 	<Runtime as frame_system::Config>::RuntimeEvent,
 	<Runtime as frame_system::Config>::Hash,
 >;
-
-mod custom_migration {
-	use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
-	use sp_io::{hashing::twox_128, storage::clear_prefix};
-
-	pub struct Upgrade;
-	impl OnRuntimeUpgrade for Upgrade {
-		fn on_runtime_upgrade() -> Weight {
-			clear_prefix(&twox_128(b"DdcValidator"), None);
-			Weight::from_parts(0, 0)
-		}
-	}
-}
 
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
@@ -1942,7 +1902,8 @@ impl_runtime_apis! {
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch,  TrackedStorageKey};
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch};
+			use sp_storage::TrackedStorageKey;
 
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
 			// issues. To get around that, we separated the Session benchmarks into its own crate,
