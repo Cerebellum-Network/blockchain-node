@@ -178,7 +178,7 @@ where
 		sc_consensus_grandpa::block_import_with_authority_set_hard_forks(
 			client.clone(),
 			GRANDPA_JUSTIFICATION_PERIOD,
-			&(client.clone() as Arc<_>),
+			&client,
 			select_chain.clone(),
 			vec![],
 			telemetry.as_ref().map(|x| x.handle()),
