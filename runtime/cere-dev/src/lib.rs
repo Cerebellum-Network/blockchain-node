@@ -1436,7 +1436,27 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
 /// Runtime migrations
-type Migrations = ();
+type Migrations = (
+	pallet_im_online::migration::v1::Migration<Runtime>,
+	// TODO: Leaving this for the OpenGov PR
+	// Gov v1 storage migrations
+	// https://github.com/paritytech/polkadot/issues/6749
+	// pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
+	// pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
+	// pallet_tips::migrations::unreserve_deposits::UnreserveDeposits<UnlockConfig, ()>,
+
+	// Delete all Gov v1 pallet storage key/values.
+	// frame_support::migrations::RemovePallet<DemocracyPalletName, <Runtime as
+	// frame_system::Config>::DbWeight>, frame_support::migrations::RemovePallet<CouncilPalletName,
+	// <Runtime as frame_system::Config>::DbWeight>,
+	// frame_support::migrations::RemovePallet<TechnicalCommitteePalletName, <Runtime as
+	// frame_system::Config>::DbWeight>,
+	// frame_support::migrations::RemovePallet<PhragmenElectionPalletName, <Runtime as
+	// frame_system::Config>::DbWeight>,
+	// frame_support::migrations::RemovePallet<TechnicalMembershipPalletName, <Runtime as
+	// frame_system::Config>::DbWeight>, frame_support::migrations::RemovePallet<TipsPalletName,
+	// <Runtime as frame_system::Config>::DbWeight>,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
