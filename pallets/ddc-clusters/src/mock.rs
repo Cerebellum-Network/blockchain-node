@@ -20,7 +20,7 @@ use sp_runtime::{
 	traits::{
 		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
 	},
-	BuildStorage, MultiSignature, Perquintill,
+	BuildStorage, MultiSignature, Perbill, Perquintill,
 };
 
 use crate::{self as pallet_ddc_clusters, *};
@@ -38,7 +38,7 @@ type Block = MockBlock<Test>;
 construct_runtime!(
 	pub struct Test
 	{
-		Contracts: contracts::{Pallet, Call, Storage, Event<T>},
+		Contracts: contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
 		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -61,6 +61,8 @@ parameter_types! {
 	pub const MaxValueSize: u32 = 16_384;
 	pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
 	pub static DefaultDepositLimit: Balance = 10_000_000;
+	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
+	pub const MaxDelegateDependencies: u32 = 32;
 }
 
 impl Convert<Weight, BalanceOf<Self>> for Test {
@@ -69,10 +71,9 @@ impl Convert<Weight, BalanceOf<Self>> for Test {
 	}
 }
 
-use contracts::Config as contractsConfig;
-
-type BalanceOf<T> =
-	<<T as contractsConfig>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+type BalanceOf<T> = <<T as crate::pallet::Config>::Currency as Currency<
+	<T as frame_system::Config>::AccountId,
+>>::Balance;
 
 impl contracts::Config for Test {
 	type Time = Timestamp;
@@ -94,6 +95,11 @@ impl contracts::Config for Test {
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+	type MaxDelegateDependencies = MaxDelegateDependencies;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type Debug = ();
+	type Environment = ();
 	type Migrations = ();
 }
 
@@ -174,7 +180,7 @@ impl pallet_balances::Config for Test {
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
 	type MaxHolds = ();
-	type RuntimeHoldReason = ();
+	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 impl pallet_timestamp::Config for Test {
