@@ -1,5 +1,6 @@
 //! Tests for the module.
 
+use codec::Compact;
 use ddc_primitives::{
 	traits::cluster::ClusterManager, ClusterBondingParams, ClusterFeesParams, ClusterId,
 	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodeMode,
@@ -309,7 +310,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(alice.clone()),
 				ENDOWMENT,
 				GAS_LIMIT,
-				None,
+				Some(Compact(100)),
 				wasm.to_vec(),
 				contract_args.clone(),
 				vec![],
