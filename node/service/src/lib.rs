@@ -1,4 +1,5 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
+#![recursion_limit = "8192"]
 
 use std::sync::Arc;
 
