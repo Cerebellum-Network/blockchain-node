@@ -966,6 +966,7 @@ dependencies = [
  "cere-runtime",
  "cere-runtime-common",
  "futures",
+ "hex-literal",
  "jsonrpsee",
  "node-primitives",
  "pallet-im-online",

@@ -4,6 +4,7 @@ use cere_dev_runtime as cere_dev;
 use cere_runtime as cere;
 #[cfg(feature = "cere-dev-native")]
 use cere_runtime_common::constants::currency::DOLLARS as TEST_UNITS;
+use hex_literal::hex;
 use jsonrpsee::core::__reexports::serde_json;
 pub use node_primitives::{AccountId, Balance, Block, Signature};
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -13,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
-use sp_core::{sr25519, Pair, Public};
+use sp_core::{sr25519, ByteArray, Pair, Public};
 use sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	Perbill,
@@ -76,7 +77,7 @@ pub fn authority_keys_from_seed(
 	seed: &str,
 ) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId) {
 	(
-		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
+		get_account_id_from_seed::<sr25519::Public>(seed),
 		get_account_id_from_seed::<sr25519::Public>(seed),
 		get_from_seed::<GrandpaId>(seed),
 		get_from_seed::<BabeId>(seed),
@@ -141,21 +142,22 @@ pub fn cere_dev_genesis(
 
 	// stakers: all validators and nominators.
 	let mut rng = rand::thread_rng();
-	let stakers = initial_authorities
-		.iter()
-		.map(|x| (x.0.clone(), x.1.clone(), STASH, cere_dev::StakerStatus::Validator))
-		.chain(initial_nominators.iter().map(|x| {
-			use rand::{seq::SliceRandom, Rng};
-			let limit = (cere_dev::MaxNominations::get() as usize).min(initial_authorities.len());
-			let count = rng.gen::<usize>() % limit;
-			let nominations = initial_authorities
-				.as_slice()
-				.choose_multiple(&mut rng, count)
-				.map(|choice| choice.0.clone())
-				.collect::<Vec<_>>();
-			(x.clone(), x.clone(), STASH, cere_dev::StakerStatus::Nominator(nominations))
-		}))
-		.collect::<Vec<_>>();
+	let stakers = vec![];
+	// let stakers = initial_authorities
+	// 	.iter()
+	// 	.map(|x| (x.0.clone(), x.1.clone(), STASH, cere_dev::StakerStatus::Validator))
+	// 	.chain(initial_nominators.iter().map(|x| {
+	// 		use rand::{seq::SliceRandom, Rng};
+	// 		let limit = (cere_dev::MaxNominations::get() as usize).min(initial_authorities.len());
+	// 		let count = rng.gen::<usize>() % limit;
+	// 		let nominations = initial_authorities
+	// 			.as_slice()
+	// 			.choose_multiple(&mut rng, count)
+	// 			.map(|choice| choice.0.clone())
+	// 			.collect::<Vec<_>>();
+	// 		(x.clone(), x.clone(), STASH, cere_dev::StakerStatus::Nominator(nominations))
+	// 	}))
+	// 	.collect::<Vec<_>>();
 
 	let num_endowed_accounts = endowed_accounts.len();
 
@@ -249,13 +251,52 @@ pub fn cere_dev_native_chain_spec_properties() -> serde_json::map::Map<String, s
 	.clone()
 }
 
+fn to_initial_authorities<PK: Clone + Into<AccountId>>(
+	public_keys: &[PK],
+) -> Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)> {
+	public_keys
+		.iter()
+		.map(|pk| {
+			let account: AccountId = pk.clone().into();
+			let babe_id = BabeId::from_slice(account.as_ref()).unwrap();
+			let grandpa_id = GrandpaId::from_slice(account.as_ref()).unwrap();
+			let im_online_id = ImOnlineId::from_slice(account.as_ref()).unwrap();
+			let authority_discovery_id =
+				AuthorityDiscoveryId::from_slice(account.as_ref()).unwrap();
+			(account.clone(), account, grandpa_id, babe_id, im_online_id, authority_discovery_id)
+		})
+		.collect()
+}
+
 /// Helper function to create Cere `RuntimeGenesisConfig` for testing
 #[cfg(feature = "cere-dev-native")]
 fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::RuntimeGenesisConfig {
+	const VALIDATOR1: [u8; 32] =
+		hex!("e47cda9a3746ef589e51e3bce16f17fb35ee20aab9e4726868828f89a7e9681a");
+	const VALIDATOR2: [u8; 32] =
+		hex!("30c91436969ae95c6f37598926f075b375f40543110234ab4a6ef95f9393ad02");
+	const VALIDATOR3: [u8; 32] =
+		hex!("aa42e3d612ceb391eba9fd37c7d08ac3e4f541b807b945c8e1b1cf110908727a");
+	const VALIDATOR4: [u8; 32] =
+		hex!("fc45f0cc76a1c350c29680b6cecfe91bac66f098eebc9c2e86e82046ae4dd844");
+	const VALIDATOR5: [u8; 32] =
+		hex!("f8f152eb42532cd029adff2f76394415ac7545f4953b960e96223a08340b6371");
+	const VALIDATOR6: [u8; 32] =
+		hex!("02cb9857942012bdeceea98aeb9172d2bcc168d77b2fdfd795f59133c7c01c52");
+	const VALIDATOR7: [u8; 32] =
+		hex!("723a0be6039134fe555775253a3bad6808d8f48cc72473a300f20327aef46b2e");
+	const VALIDATOR8: [u8; 32] =
+		hex!("e40d551bb76fc04e11a8b4449953020b3da37662f10f537526349ce1fef2a14f");
+
+	const VALIDATORS: [[u8; 32]; 8] = [
+		VALIDATOR1, VALIDATOR2, VALIDATOR3, VALIDATOR4, VALIDATOR5, VALIDATOR6, VALIDATOR7,
+		VALIDATOR8,
+	];
+
 	cere_dev_genesis(
 		wasm_binary,
 		// Initial authorities
-		vec![authority_keys_from_seed("Alice")],
+		to_initial_authorities(&VALIDATORS.to_vec()),
 		// Initial nominators
 		vec![],
 		// Sudo account
