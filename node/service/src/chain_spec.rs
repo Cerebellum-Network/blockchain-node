@@ -273,8 +273,14 @@ fn to_initial_authorities<PK: Clone + Into<AccountId>>(
 fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::RuntimeGenesisConfig {
 	const VALIDATOR1: [u8; 32] =
 		hex!("70fe49088ff5c350deee3d8ebdcfb9bd9397c83c667887e68e12c0f609a1ca69");
+	const VALIDATOR2: [u8; 32] =
+		hex!("34ea11e37e0fe117ce086a0d8c1935c39a98bc97dff6ad10333b06289b934802");
+	const VALIDATOR3: [u8; 32] =
+		hex!("a282be80b54060c73f3fcb65881c34d957f1ccde42dddb6e1c0e3221a3e05404");
+	const VALIDATOR4: [u8; 32] =
+		hex!("14a5c0ff657247ac56093dc8a6cebcc30767a47ee539aed52bf3d4bad8db320b");
 
-	const VALIDATORS: [[u8; 32]; 1] = [VALIDATOR1];
+	const VALIDATORS: [[u8; 32]; 4] = [VALIDATOR1, VALIDATOR2, VALIDATOR3, VALIDATOR4];
 
 	cere_dev_genesis(
 		wasm_binary,
