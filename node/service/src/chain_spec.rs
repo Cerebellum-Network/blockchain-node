@@ -143,21 +143,21 @@ pub fn cere_dev_genesis(
 	// stakers: all validators and nominators.
 	let mut rng = rand::thread_rng();
 	let stakers = vec![];
-	let stakers = initial_authorities
-		.iter()
-		.map(|x| (x.0.clone(), x.1.clone(), STASH, cere_dev::StakerStatus::Validator))
-		.chain(initial_nominators.iter().map(|x| {
-			use rand::{seq::SliceRandom, Rng};
-			let limit = (cere_dev::MaxNominations::get() as usize).min(initial_authorities.len());
-			let count = rng.gen::<usize>() % limit;
-			let nominations = initial_authorities
-				.as_slice()
-				.choose_multiple(&mut rng, count)
-				.map(|choice| choice.0.clone())
-				.collect::<Vec<_>>();
-			(x.clone(), x.clone(), STASH, cere_dev::StakerStatus::Nominator(nominations))
-		}))
-		.collect::<Vec<_>>();
+	// let stakers = initial_authorities
+	// 	.iter()
+	// 	.map(|x| (x.0.clone(), x.1.clone(), STASH, cere_dev::StakerStatus::Validator))
+	// 	.chain(initial_nominators.iter().map(|x| {
+	// 		use rand::{seq::SliceRandom, Rng};
+	// 		let limit = (cere_dev::MaxNominations::get() as usize).min(initial_authorities.len());
+	// 		let count = rng.gen::<usize>() % limit;
+	// 		let nominations = initial_authorities
+	// 			.as_slice()
+	// 			.choose_multiple(&mut rng, count)
+	// 			.map(|choice| choice.0.clone())
+	// 			.collect::<Vec<_>>();
+	// 		(x.clone(), x.clone(), STASH, cere_dev::StakerStatus::Nominator(nominations))
+	// 	}))
+	// 	.collect::<Vec<_>>();
 
 	let num_endowed_accounts = endowed_accounts.len();
 
@@ -272,15 +272,11 @@ fn to_initial_authorities<PK: Clone + Into<AccountId>>(
 #[cfg(feature = "cere-dev-native")]
 fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::RuntimeGenesisConfig {
 	const VALIDATOR1: [u8; 32] =
-		hex!("70fe49088ff5c350deee3d8ebdcfb9bd9397c83c667887e68e12c0f609a1ca69");
+		hex!("6ca3a3f6a78889ed70a6b46c2d621afcd3da2ea68e20a2eddd6f095e7ded586d");
 	const VALIDATOR2: [u8; 32] =
-		hex!("34ea11e37e0fe117ce086a0d8c1935c39a98bc97dff6ad10333b06289b934802");
-	const VALIDATOR3: [u8; 32] =
-		hex!("a282be80b54060c73f3fcb65881c34d957f1ccde42dddb6e1c0e3221a3e05404");
-	const VALIDATOR4: [u8; 32] =
-		hex!("14a5c0ff657247ac56093dc8a6cebcc30767a47ee539aed52bf3d4bad8db320b");
+		hex!("9e0e0270982a25080e436f7de803f06ed881b15209343c0dd16984dcae267406");
 
-	const VALIDATORS: [[u8; 32]; 4] = [VALIDATOR1, VALIDATOR2, VALIDATOR3, VALIDATOR4];
+	const VALIDATORS: [[u8; 32]; 2] = [VALIDATOR1, VALIDATOR2];
 
 	cere_dev_genesis(
 		wasm_binary,
