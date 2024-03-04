@@ -16,8 +16,12 @@
 // limitations under the License.
 
 //! Some configurable implementations as associated type for the substrate runtime.
+use core::marker::PhantomData;
 
 use frame_support::traits::{Currency, OnUnbalanced};
+use hex_literal::hex;
+use pallet_session::SessionManager;
+use sp_std::prelude::*;
 
 use crate::{Authorship, Balances, NegativeImbalance};
 
@@ -27,5 +31,27 @@ impl OnUnbalanced<NegativeImbalance> for Author {
 		if let Some(author) = Authorship::author() {
 			Balances::resolve_creating(&author, amount);
 		}
+	}
+}
+
+pub struct CereSessionManager<T>(PhantomData<T>);
+impl<T: frame_system::Config> SessionManager<T::AccountId> for CereSessionManager<T>
+where
+	<T as frame_system::Config>::AccountId: From<[u8; 32]>,
+{
+	fn new_session(new_index: sp_staking::SessionIndex) -> Option<Vec<T::AccountId>> {
+		const VALIDATOR1: [u8; 32] =
+			hex!("6ca3a3f6a78889ed70a6b46c2d621afcd3da2ea68e20a2eddd6f095e7ded586d");
+		const VALIDATOR2: [u8; 32] =
+			hex!("9e0e0270982a25080e436f7de803f06ed881b15209343c0dd16984dcae267406");
+		Some(vec![VALIDATOR1.into(), VALIDATOR2.into()])
+	}
+
+	fn end_session(end_index: sp_staking::SessionIndex) {
+		// Do nothing
+	}
+
+	fn start_session(start_index: sp_staking::SessionIndex) {
+		// Do nothing
 	}
 }
