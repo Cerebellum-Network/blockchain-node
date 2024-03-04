@@ -98,7 +98,7 @@ use cere_runtime_common::{
 	constants::{currency::*, time::*},
 	CurrencyToVote,
 };
-use impls::Author;
+use impls::{Author, CereSessionManager};
 use sp_runtime::generic::Era;
 
 /// Generated voter bag information.
@@ -489,7 +489,7 @@ impl pallet_session::Config for Runtime {
 	type ValidatorIdOf = pallet_staking::StashOf<Self>;
 	type ShouldEndSession = Babe;
 	type NextSessionRotation = Babe;
-	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+	type SessionManager = CereSessionManager<Self>;
 	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
 	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
