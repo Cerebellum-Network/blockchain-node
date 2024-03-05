@@ -285,7 +285,7 @@ fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::RuntimeGenesisConfig
 	cere_dev_genesis(
 		wasm_binary,
 		// Initial authorities
-		to_initial_authorities(&VALIDATORS.to_vec()),
+		to_initial_authorities(VALIDATORS.as_ref()),
 		// Initial nominators
 		vec![],
 		// Sudo account
