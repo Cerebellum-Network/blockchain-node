@@ -9,17 +9,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-use frame_support::{
-	dispatch::{DispatchResult, GetDispatchInfo},
-	ensure,
-	pallet_prelude::*,
-	traits::{EnsureOrigin, Get},
-	PalletId, Parameter,
-};
-use frame_system::{self as system, ensure_root, ensure_signed, pallet_prelude::*};
+use frame_support::pallet_prelude::*;
+pub use pallet::*;
 use pallet_session::SessionManager;
 use sp_std::prelude::*;
-
 pub mod weights;
 use hex_literal::hex;
 
@@ -27,8 +20,8 @@ use crate::weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{dispatch::DispatchResult, dispatch_context::Value};
-	use frame_system::{pallet_prelude::OriginFor, Account};
+	use frame_support::dispatch::DispatchResult;
+	use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
 
 	use super::*;
 
@@ -57,37 +50,6 @@ pub mod pallet {
 		NodeAlreadyExists,
 	}
 
-	// #[pallet::storage]
-	// #[pallet::getter(fn validators)]
-	// // pub type Validators<T: Config> = StorageValue<_,  Vec<T::AccountId>, ValueQuery>;
-	// pub type Validators<T: Config> = StorageValue<Vec<T::AccountId>, QueryKind = ValueQuery,
-	// Query=()>;
-
-	// #[pallet::storage]
-	// #[pallet::getter(fn validators)]
-	// type Validators<T> = StorageValue<Value = T::AccountId, QueryKind = ValueQuery, OnEmpty =
-	// ()>;
-
-	// #[pallet::storage]
-	// #[pallet::getter(fn some_value)]
-	// pub(super) type SomeValue<T> = StorageValue<_,>;
-
-	// #[pallet::storage]
-	// #[pallet::getter(fn token_count)]
-	// pub type TokenCount<T: Config> =
-	// StorageValue<Value = T::AccountId, QueryKind = ValueQuery, Query=()>;
-
-	// #[pallet::type_value]
-	// pub fn DefaultRelayerThreshold<T: Config>() -> u32 {
-	// 	1
-	// }
-	//
-	// /// Number of votes required for a proposal to execute
-	// #[pallet::storage]
-	// #[pallet::getter(fn relayer_threshold)]
-	// pub type RelayerThreshold<T: Config> =
-	// StorageValue<Value = u32, QueryKind = ValueQuery, OnEmpty = DefaultRelayerThreshold<T>>;
-
 	#[pallet::storage]
 	#[pallet::getter(fn validators)]
 	pub(crate) type Validators<T: Config> =
@@ -114,7 +76,7 @@ pub mod pallet {
 	where
 		<T as frame_system::Config>::AccountId: From<[u8; 32]>,
 	{
-		fn new_session(new_index: sp_staking::SessionIndex) -> Option<Vec<T::AccountId>> {
+		fn new_session(_new_index: sp_staking::SessionIndex) -> Option<Vec<T::AccountId>> {
 			const VALIDATOR1: [u8; 32] =
 				hex!("6ca3a3f6a78889ed70a6b46c2d621afcd3da2ea68e20a2eddd6f095e7ded586d");
 			const VALIDATOR2: [u8; 32] =
@@ -127,11 +89,11 @@ pub mod pallet {
 			Some(vec![VALIDATOR1.into(), VALIDATOR2.into(), VALIDATOR3.into(), VALIDATOR4.into()])
 		}
 
-		fn end_session(end_index: sp_staking::SessionIndex) {
+		fn end_session(_end_index: sp_staking::SessionIndex) {
 			// Do nothing
 		}
 
-		fn start_session(start_index: sp_staking::SessionIndex) {
+		fn start_session(_start_index: sp_staking::SessionIndex) {
 			// Do nothing
 		}
 	}
