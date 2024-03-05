@@ -43,8 +43,13 @@ where
 		const VALIDATOR1: [u8; 32] =
 			hex!("6ca3a3f6a78889ed70a6b46c2d621afcd3da2ea68e20a2eddd6f095e7ded586d");
 		const VALIDATOR2: [u8; 32] =
+			hex!("fa63378688e615e71b10ddb392482076b4e639c9d31181f370fe0858b8db7006");
+		const VALIDATOR3: [u8; 32] =
 			hex!("9e0e0270982a25080e436f7de803f06ed881b15209343c0dd16984dcae267406");
-		Some(vec![VALIDATOR1.into(), VALIDATOR2.into()])
+		const VALIDATOR4: [u8; 32] =
+			hex!("0634cd2127a7bd444f7d004f78fa6ba771faa62991fa3f138c59926fd8cd971c");
+
+		Some(vec![VALIDATOR1.into(), VALIDATOR2.into(), VALIDATOR3.into(), VALIDATOR4.into()])
 	}
 
 	fn end_session(end_index: sp_staking::SessionIndex) {
