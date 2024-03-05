@@ -40,7 +40,7 @@ impl<T: frame_system::Config> SessionManager<T::AccountId> for CereSessionManage
 where
 	<T as frame_system::Config>::AccountId: From<[u8; 32]>,
 {
-	fn new_session(new_index: sp_staking::SessionIndex) -> Option<Vec<T::AccountId>> {
+	fn new_session(_new_index: sp_staking::SessionIndex) -> Option<Vec<T::AccountId>> {
 		const VALIDATOR1: [u8; 32] =
 			hex!("6ca3a3f6a78889ed70a6b46c2d621afcd3da2ea68e20a2eddd6f095e7ded586d");
 		const VALIDATOR2: [u8; 32] =
@@ -53,11 +53,11 @@ where
 		Some(vec![VALIDATOR1.into(), VALIDATOR2.into(), VALIDATOR3.into(), VALIDATOR4.into()])
 	}
 
-	fn end_session(end_index: sp_staking::SessionIndex) {
+	fn end_session(_end_index: sp_staking::SessionIndex) {
 		// Do nothing
 	}
 
-	fn start_session(start_index: sp_staking::SessionIndex) {
+	fn start_session(_start_index: sp_staking::SessionIndex) {
 		// Do nothing
 	}
 }
