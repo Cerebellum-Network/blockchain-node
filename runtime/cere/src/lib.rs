@@ -67,6 +67,7 @@ pub use pallet_staking::StakerStatus;
 pub use pallet_sudo::Call as SudoCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
+pub use pallet_validators;
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
@@ -489,7 +490,7 @@ impl pallet_session::Config for Runtime {
 	type ValidatorIdOf = pallet_staking::StashOf<Self>;
 	type ShouldEndSession = Babe;
 	type NextSessionRotation = Babe;
-	type SessionManager = CereSessionManager<Self>;
+	type SessionManager = Validators;
 	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
 	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
@@ -1257,6 +1258,12 @@ impl pallet_chainbridge::Config for Runtime {
 	type WeightInfo = pallet_chainbridge::weights::SubstrateWeight<Runtime>;
 }
 
+/// Configure the send data pallet
+impl pallet_validators::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_validators::weights::SubstrateWeight<Runtime>;
+}
+
 parameter_types! {
 	pub HashId: pallet_chainbridge::ResourceId = pallet_chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 	// Note: Chain ID is 0 indicating this is native to another chain
@@ -1442,7 +1449,8 @@ construct_runtime!(
 		DdcCustomers: pallet_ddc_customers,
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
-		DdcPayouts: pallet_ddc_payouts
+		DdcPayouts: pallet_ddc_payouts,
+		Validators: pallet_validators::{Pallet, Call, Storage, Event<T>}
 	}
 );
 
