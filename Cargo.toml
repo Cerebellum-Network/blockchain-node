@@ -178,6 +178,7 @@ pallet-ddc-payouts = { path = "pallets/ddc-payouts", default-features = false }
 pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
 pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
+pallet-validators = { path = "pallets/validators", default-features = false }
 
 [profile.release]
 panic = "unwind"
