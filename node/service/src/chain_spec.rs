@@ -274,13 +274,17 @@ fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::RuntimeGenesisConfig
 		hex!("6ca3a3f6a78889ed70a6b46c2d621afcd3da2ea68e20a2eddd6f095e7ded586d");
 	const VALIDATOR2: [u8; 32] =
 		hex!("9e0e0270982a25080e436f7de803f06ed881b15209343c0dd16984dcae267406");
+	const VALIDATOR3: [u8; 32] =
+		hex!("fa63378688e615e71b10ddb392482076b4e639c9d31181f370fe0858b8db7006");
+	const VALIDATOR4: [u8; 32] =
+		hex!("0634cd2127a7bd444f7d004f78fa6ba771faa62991fa3f138c59926fd8cd971c");
 
-	const VALIDATORS: [[u8; 32]; 2] = [VALIDATOR1, VALIDATOR2];
+	const VALIDATORS: [[u8; 32]; 4] = [VALIDATOR1, VALIDATOR2, VALIDATOR3, VALIDATOR4];
 
 	cere_dev_genesis(
 		wasm_binary,
 		// Initial authorities
-		to_initial_authorities(&VALIDATORS.to_vec()),
+		to_initial_authorities(VALIDATORS.as_ref()),
 		// Initial nominators
 		vec![],
 		// Sudo account
