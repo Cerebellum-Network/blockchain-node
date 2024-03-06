@@ -44,6 +44,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		ValidatorAdded { validator: T::AccountId },
 		ValidatorRemoved { validator: T::AccountId },
+		ValidatorsSet { validators: Vec<T::AccountId> },
 		AllValidatorsCleared,
 	}
 
@@ -51,6 +52,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		AlreadyExists,
 		DoNotExists,
+		NoValidatorsPassed,
 	}
 
 	#[pallet::storage]
@@ -92,14 +94,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(2)]
-		#[pallet::weight(T::WeightInfo::clear_all())]
-		pub fn clear_all(origin: OriginFor<T>) -> DispatchResult {
+		#[pallet::call_index(4)]
+		#[pallet::weight(T::WeightInfo::set_list())]
+		pub fn set_list(origin: OriginFor<T>, validators: Vec<T::AccountId>) -> DispatchResult {
 			ensure_root(origin)?;
-
-			Validators::<T>::kill();
-			Self::deposit_event(Event::<T>::AllValidatorsCleared);
-
+			Validators::<T>::set(validators.clone());
+			Self::deposit_event(Event::<T>::ValidatorsSet { validators });
 			Ok(())
 		}
 	}
