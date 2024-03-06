@@ -9,7 +9,7 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
     fn add_one() -> Weight;
     fn remove_one() -> Weight;
-    fn clear_all() -> Weight;
+    fn set_list() -> Weight;
 }
 
 // For the sake of time, the values are to arbitrary
@@ -21,7 +21,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
     fn remove_one() -> Weight {
         Weight::from_parts(200_000_000u64, 0)
     }
-    fn clear_all() -> Weight {
+    fn set_list() -> Weight {
         Weight::from_parts(200_000_000u64, 0)
     }
 }
@@ -35,7 +35,7 @@ impl WeightInfo for () {
     fn remove_one() -> Weight {
         Weight::from_parts(200_000_000u64, 0)
     }
-    fn clear_all() -> Weight {
+    fn set_list() -> Weight {
         Weight::from_parts(200_000_000u64, 0)
     }
 }
