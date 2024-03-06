@@ -42,12 +42,15 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		ValidatorsSet { validators: Vec<T::AccountId> },
+		ValidatorAdded { validator: T::AccountId },
+		ValidatorRemoved { validator: T::AccountId },
+		AllValidatorsCleared,
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
-		NoValidatorsPassed,
+		AlreadyExists,
+		DoNotExists,
 	}
 
 	#[pallet::storage]
@@ -57,15 +60,46 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::set_validators())]
-		pub fn set_validators(
+		#[pallet::weight(T::WeightInfo::add_one())]
+		pub fn add_one(origin: OriginFor<T>, validator_to_add: T::AccountId) -> DispatchResult {
+			ensure_root(origin)?;
+
+			let mut validators = Validators::<T>::get();
+			ensure!(!validators.contains(&validator_to_add), Error::<T>::AlreadyExists);
+			validators.push(validator_to_add.clone());
+			Validators::<T>::put(validators);
+
+			Self::deposit_event(Event::<T>::ValidatorAdded { validator: validator_to_add });
+
+			Ok(())
+		}
+
+		#[pallet::call_index(1)]
+		#[pallet::weight(T::WeightInfo::remove_one())]
+		pub fn remove_one(
 			origin: OriginFor<T>,
-			validators: Vec<T::AccountId>,
+			validator_to_remove: T::AccountId,
 		) -> DispatchResult {
 			ensure_root(origin)?;
-			ensure!(!validators.is_empty(), Error::<T>::NoValidatorsPassed);
-			Validators::<T>::set(validators.clone());
-			Self::deposit_event(Event::<T>::ValidatorsSet { validators });
+			let mut validators = Validators::<T>::get();
+			ensure!(validators.contains(&validator_to_remove), Error::<T>::DoNotExists);
+
+			let index = validators.iter().position(|v| *v == validator_to_remove).unwrap();
+			validators.remove(index);
+
+			Self::deposit_event(Event::<T>::ValidatorRemoved { validator: validator_to_remove });
+
+			Ok(())
+		}
+
+		#[pallet::call_index(2)]
+		#[pallet::weight(T::WeightInfo::clear_all())]
+		pub fn clear_all(origin: OriginFor<T>) -> DispatchResult {
+			ensure_root(origin)?;
+
+			Validators::<T>::kill();
+			Self::deposit_event(Event::<T>::AllValidatorsCleared);
+
 			Ok(())
 		}
 	}
