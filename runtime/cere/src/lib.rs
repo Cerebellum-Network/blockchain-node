@@ -1258,7 +1258,6 @@ impl pallet_chainbridge::Config for Runtime {
 	type WeightInfo = pallet_chainbridge::weights::SubstrateWeight<Runtime>;
 }
 
-/// Configure the send data pallet
 impl pallet_validators::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_validators::weights::SubstrateWeight<Runtime>;

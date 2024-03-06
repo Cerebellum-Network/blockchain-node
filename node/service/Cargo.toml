@@ -11,7 +11,6 @@ repository.workspace = true
 [dependencies]
 # 3rd-party dependencies
 futures = { workspace = true }
-hex-literal = { workspace = true }
 jsonrpsee = { workspace = true }
 rand = { workspace = true, default-features = true }
 serde = { workspace = true, default-features = true }
