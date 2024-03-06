@@ -14,14 +14,13 @@ pub use pallet::*;
 use pallet_session::SessionManager;
 use sp_std::prelude::*;
 pub mod weights;
-use hex_literal::hex;
 
 use crate::weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::dispatch::DispatchResult;
-	use frame_system::{ensure_root, ensure_signed, pallet_prelude::*, Account};
+	use frame_system::{ensure_root, pallet_prelude::*};
 
 	use super::*;
 
@@ -72,7 +71,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> SessionManager<T::AccountId> for Pallet<T> {
-		fn new_session(new_index: sp_staking::SessionIndex) -> Option<Vec<T::AccountId>> {
+		fn new_session(_new_index: sp_staking::SessionIndex) -> Option<Vec<T::AccountId>> {
 			let validators: Vec<T::AccountId> = Validators::<T>::get();
 			if validators.is_empty() {
 				None

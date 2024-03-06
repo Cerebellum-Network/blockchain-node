@@ -99,7 +99,7 @@ use cere_runtime_common::{
 	constants::{currency::*, time::*},
 	CurrencyToVote,
 };
-use impls::{Author, CereSessionManager};
+use impls::Author;
 use sp_runtime::generic::Era;
 
 /// Generated voter bag information.
