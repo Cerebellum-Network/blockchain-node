@@ -66,10 +66,11 @@ pub mod pallet {
 		pub fn add_one(origin: OriginFor<T>, validator_to_add: T::AccountId) -> DispatchResult {
 			ensure_root(origin)?;
 
-			let mut validators = Validators::<T>::get();
-			ensure!(!validators.contains(&validator_to_add), Error::<T>::AlreadyExists);
-			validators.push(validator_to_add.clone());
-			Validators::<T>::put(validators);
+			Validators::<T>::try_mutate(|validators| -> DispatchResult {
+				ensure!(!validators.contains(&validator_to_add), Error::<T>::AlreadyExists);
+				validators.push(validator_to_add.clone());
+				Ok(())
+			})?;
 
 			Self::deposit_event(Event::<T>::ValidatorAdded { validator: validator_to_add });
 
@@ -86,8 +87,11 @@ pub mod pallet {
 			let mut validators = Validators::<T>::get();
 			ensure!(validators.contains(&validator_to_remove), Error::<T>::DoNotExists);
 
-			let index = validators.iter().position(|v| *v == validator_to_remove).unwrap();
-			validators.remove(index);
+			Validators::<T>::try_mutate(|validators| -> DispatchResult {
+				let index = validators.iter().position(|v| *v == validator_to_remove).ok_or(Error::<T>::DoNotExists)?;
+				validators.remove(index);
+				Ok(())
+			})?;
 
 			Self::deposit_event(Event::<T>::ValidatorRemoved { validator: validator_to_remove });
 
