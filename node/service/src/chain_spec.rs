@@ -4,7 +4,6 @@ use cere_dev_runtime as cere_dev;
 use cere_runtime as cere;
 #[cfg(feature = "cere-dev-native")]
 use cere_runtime_common::constants::currency::DOLLARS as TEST_UNITS;
-use hex_literal::hex;
 use jsonrpsee::core::__reexports::serde_json;
 pub use node_primitives::{AccountId, Balance, Block, Signature};
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -14,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
-use sp_core::{sr25519, ByteArray, Pair, Public};
+use sp_core::{sr25519, Pair, Public};
 use sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	Perbill,
@@ -77,7 +76,7 @@ pub fn authority_keys_from_seed(
 	seed: &str,
 ) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId) {
 	(
-		get_account_id_from_seed::<sr25519::Public>(seed),
+		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
 		get_account_id_from_seed::<sr25519::Public>(seed),
 		get_from_seed::<GrandpaId>(seed),
 		get_from_seed::<BabeId>(seed),
