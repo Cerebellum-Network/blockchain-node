@@ -142,22 +142,21 @@ pub fn cere_dev_genesis(
 
 	// stakers: all validators and nominators.
 	let mut rng = rand::thread_rng();
-	let stakers = vec![];
-	// let stakers = initial_authorities
-	// 	.iter()
-	// 	.map(|x| (x.0.clone(), x.1.clone(), STASH, cere_dev::StakerStatus::Validator))
-	// 	.chain(initial_nominators.iter().map(|x| {
-	// 		use rand::{seq::SliceRandom, Rng};
-	// 		let limit = (cere_dev::MaxNominations::get() as usize).min(initial_authorities.len());
-	// 		let count = rng.gen::<usize>() % limit;
-	// 		let nominations = initial_authorities
-	// 			.as_slice()
-	// 			.choose_multiple(&mut rng, count)
-	// 			.map(|choice| choice.0.clone())
-	// 			.collect::<Vec<_>>();
-	// 		(x.clone(), x.clone(), STASH, cere_dev::StakerStatus::Nominator(nominations))
-	// 	}))
-	// 	.collect::<Vec<_>>();
+	let stakers = initial_authorities
+		.iter()
+		.map(|x| (x.0.clone(), x.1.clone(), STASH, cere_dev::StakerStatus::Validator))
+		.chain(initial_nominators.iter().map(|x| {
+			use rand::{seq::SliceRandom, Rng};
+			let limit = (cere_dev::MaxNominations::get() as usize).min(initial_authorities.len());
+			let count = rng.gen::<usize>() % limit;
+			let nominations = initial_authorities
+				.as_slice()
+				.choose_multiple(&mut rng, count)
+				.map(|choice| choice.0.clone())
+				.collect::<Vec<_>>();
+			(x.clone(), x.clone(), STASH, cere_dev::StakerStatus::Nominator(nominations))
+		}))
+		.collect::<Vec<_>>();
 
 	let num_endowed_accounts = endowed_accounts.len();
 
