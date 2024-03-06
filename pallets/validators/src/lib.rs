@@ -84,12 +84,11 @@ pub mod pallet {
 			validator_to_remove: T::AccountId,
 		) -> DispatchResult {
 			ensure_root(origin)?;
-			let mut validators = Validators::<T>::get();
+			let validators = Validators::<T>::get();
 			ensure!(validators.contains(&validator_to_remove), Error::<T>::DoNotExists);
 
 			Validators::<T>::try_mutate(|validators| -> DispatchResult {
-				let index = validators.iter().position(|v| *v == validator_to_remove).ok_or(Error::<T>::DoNotExists)?;
-				validators.remove(index);
+				validators.retain(|validator| *validator != validator_to_remove);
 				Ok(())
 			})?;
 
