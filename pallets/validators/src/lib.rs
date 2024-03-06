@@ -71,7 +71,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: frame_system::Config> SessionManager<T::AccountId> for Pallet<T> {
+	impl<T: Config> SessionManager<T::AccountId> for Pallet<T> {
 		fn new_session(new_index: sp_staking::SessionIndex) -> Option<Vec<T::AccountId>> {
 			let validators: Vec<T::AccountId> = Validators::<T>::get();
 			if validators.is_empty() {
