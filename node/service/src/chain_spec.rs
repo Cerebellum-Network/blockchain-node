@@ -250,37 +250,13 @@ pub fn cere_dev_native_chain_spec_properties() -> serde_json::map::Map<String, s
 	.clone()
 }
 
-fn to_initial_authorities<PK: Clone + Into<AccountId>>(
-	public_keys: &[PK],
-) -> Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)> {
-	public_keys
-		.iter()
-		.map(|pk| {
-			let account: AccountId = pk.clone().into();
-			let babe_id = BabeId::from_slice(account.as_ref()).unwrap();
-			let grandpa_id = GrandpaId::from_slice(account.as_ref()).unwrap();
-			let im_online_id = ImOnlineId::from_slice(account.as_ref()).unwrap();
-			let authority_discovery_id =
-				AuthorityDiscoveryId::from_slice(account.as_ref()).unwrap();
-			(account.clone(), account, grandpa_id, babe_id, im_online_id, authority_discovery_id)
-		})
-		.collect()
-}
-
 /// Helper function to create Cere `RuntimeGenesisConfig` for testing
 #[cfg(feature = "cere-dev-native")]
 fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::RuntimeGenesisConfig {
-	const VALIDATOR1: [u8; 32] =
-		hex!("6ca3a3f6a78889ed70a6b46c2d621afcd3da2ea68e20a2eddd6f095e7ded586d");
-	const VALIDATOR2: [u8; 32] =
-		hex!("9e0e0270982a25080e436f7de803f06ed881b15209343c0dd16984dcae267406");
-
-	const VALIDATORS: [[u8; 32]; 2] = [VALIDATOR1, VALIDATOR2];
-
 	cere_dev_genesis(
 		wasm_binary,
 		// Initial authorities
-		to_initial_authorities(&VALIDATORS.to_vec()),
+		vec![authority_keys_from_seed("Alice")],
 		// Initial nominators
 		vec![],
 		// Sudo account
