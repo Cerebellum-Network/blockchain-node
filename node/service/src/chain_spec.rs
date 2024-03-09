@@ -1,5 +1,5 @@
 #[cfg(feature = "cere-dev-native")]
-use cere_dev_runtime as cere_dev;
+use cere_runtime as cere_dev;
 #[cfg(feature = "cere-native")]
 use cere_runtime as cere;
 #[cfg(feature = "cere-dev-native")]
