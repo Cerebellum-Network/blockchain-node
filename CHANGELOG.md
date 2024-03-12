@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ...
 
+## [5.1.0]
+
+### Changed
+
+- [C] `5.0.1` release changes are reverted
+- [C,D] Off-chain workers are enabled
+
 ## [5.0.0]
 
 ### Changed
