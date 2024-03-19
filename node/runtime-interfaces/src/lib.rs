@@ -32,24 +32,26 @@ mod freeing_bump;
 mod util;
 
 mod sandbox_instance;
-
-mod wasmi_function_executor;
-use wasmi_function_executor::FunctionExecutor;
-
 mod sandbox_wasmi_backend;
+
+mod wasmi_executor;
+use wasmi_executor::FunctionExecutor;
+
+mod wasmtime_executor;
 
 lazy_static! {
 	static ref SANDBOX: ReentrantMutex<RefCell<FunctionExecutor>> =
-	ReentrantMutex::new(RefCell::new(FunctionExecutor::new(
-		// MemoryInstance::alloc(Pages(1000 as usize), Some(Pages(10000000000 as usize))).unwrap(),
-		MemoryInstance::alloc(Pages(65536 as usize), None).unwrap(),
-		10000,
-		// None,
-		Some(TableInstance::alloc(u32::MAX, None).unwrap()),
-		Arc::new(Vec::new()),
-		true,
-		Arc::new(Vec::new())
-	).unwrap()));
+		ReentrantMutex::new(RefCell::new(
+			FunctionExecutor::new(
+				MemoryInstance::alloc(Pages(65536 as usize), None).unwrap(),
+				10000,
+				Some(TableInstance::alloc(u32::MAX, None).unwrap()),
+				Arc::new(Vec::new()),
+				true,
+				Arc::new(Vec::new())
+			)
+			.unwrap()
+		));
 }
 
 /// Something that provides access to the sandbox.

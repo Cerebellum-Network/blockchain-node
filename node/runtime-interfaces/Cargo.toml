@@ -11,6 +11,7 @@ repository.workspace = true
 [dependencies]
 log = { workspace = true }
 wasmi = { workspace = true }
+wasmtime = { workspace = true }
 codec = { workspace = true, features = ["derive"] }
 sp-std = { workspace = true }
 sp-runtime-interface = { workspace = true }
@@ -21,6 +22,7 @@ environmental = { workspace = true }
 thiserror = { workspace = true }
 lazy_static = { workspace = true, default-features = true }
 parking_lot = { workspace = true, default-features = true }
+sc-executor-wasmtime = { workspace = true }
 
 [features]
 default = ["std"]

@@ -151,6 +151,7 @@ impl<'a> SandboxContext for SandboxContextImpl<'a> {
 	}
 }
 
+// impl Sandbox for FunctionExecutor {
 impl FunctionExecutor {
 	pub fn memory_get(
 		&mut self,
