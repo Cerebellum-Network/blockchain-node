@@ -29,7 +29,10 @@ pub struct CereExecutorDispatch;
 
 #[cfg(feature = "cere")]
 impl sc_executor::NativeExecutionDispatch for CereExecutorDispatch {
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+	type ExtendHostFunctions = (
+		frame_benchmarking::benchmarking::HostFunctions,
+		cere_runtime_interfaces::sandbox::HostFunctions,
+	);
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		cere_runtime::api::dispatch(method, data)
@@ -46,7 +49,10 @@ pub struct CereDevExecutorDispatch;
 
 #[cfg(feature = "cere-dev")]
 impl sc_executor::NativeExecutionDispatch for CereDevExecutorDispatch {
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+	type ExtendHostFunctions = (
+		frame_benchmarking::benchmarking::HostFunctions,
+		cere_runtime_interfaces::sandbox::HostFunctions,
+	);
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		cere_dev_runtime::api::dispatch(method, data)
@@ -516,3 +522,52 @@ pub fn benchmark_inherent_data() -> Result<sp_inherents::InherentData, sp_inhere
 
 	Ok(inherent_data)
 }
+
+// use sp_runtime_interface::runtime_interface;
+
+// #[runtime_interface]
+// pub trait Storage {
+// 	fn child_storage_kill(_a: u64, _b: u64, _c: u32) {
+// 		return
+// 	}
+
+// 	fn child_root(_a: u64) -> Option<u64> {
+// 		return Some(_a)
+// 	}
+
+// 	fn child_get(_a: u64, _b: u64, _c: u32, _d: u64) -> Option<u64> {
+// 		return Some(_a)
+// 	}
+
+// 	fn child_storage_key_or_panic(_a: u64) -> u64 {
+// 		return _a
+// 	}
+
+// 	fn child_read(_a: u64, _b: u64, _c: u32, _d: u64, _e: u64, _f: u32) -> Option<u32> {
+// 		return Some(_c)
+// 	}
+
+// 	fn child_clear(_a: u64, _b: u64, _c: u32, _d: u64) {
+// 		return
+// 	}
+
+// 	fn child_set(_a: u64, _b: u64, _c: u32, _d: u64, _e: u64) {
+// 		return
+// 	}
+
+// 	/*
+// 		Not sure if these will be needed in the future but
+// 		commenting out since combing the git history is annoying
+// 	*/
+// 	// fn child_exists(_a: u64, _b: u64, _c: u32, _d: u64) -> bool {
+// 	//     return false;
+// 	// }
+
+// 	// fn child_clear_prefix(_a: u64, _b: u64, _c: u32, _d: u64) {
+// 	//     return;
+// 	// }
+
+// 	// fn child_next_key(_a: u64, _b: u64, _c: u32, _d: u64) -> Option<u64> {
+// 	//     return;
+// 	// }
+// }

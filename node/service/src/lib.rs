@@ -97,6 +97,7 @@ where
 		.with_offchain_heap_alloc_strategy(heap_pages)
 		.with_max_runtime_instances(config.max_runtime_instances)
 		.with_runtime_cache_size(config.runtime_cache_size)
+		// .with_allow_missing_host_functions(true)
 		.build();
 
 	let executor = NativeElseWasmExecutor::<ExecutorDispatch>::new_with_wasm_executor(wasm);
