@@ -11,8 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 
+### Added
+
 - ...
-=======
+
+### Changed
+
+- ...
+
+
+## [5.1.1]
+
+### Added
+
+- [C,D] Missing storage migrations for `pallet_contracts`, `pallet_im_online`, `pallet_democracy`, and `pallet_fast_unstake`
 
 ## [5.1.0]
 
