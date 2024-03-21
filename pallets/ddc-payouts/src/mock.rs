@@ -23,7 +23,7 @@ use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	traits::{BlakeTwo256, Identity, IdentityLookup},
-	BuildStorage, DispatchError, Perquintill,
+	BuildStorage, DispatchError, Perquintill, TryRuntimeError,
 };
 use sp_std::prelude::*;
 
@@ -376,6 +376,11 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 	#[cfg(feature = "runtime-benchmarks")]
 	fn score_update_worst_case(_who: &T::AccountId, _is_increase: bool) -> Self::Score {
 		unimplemented!()
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn try_state() -> Result<(), TryRuntimeError> {
+		Ok(())
 	}
 }
 

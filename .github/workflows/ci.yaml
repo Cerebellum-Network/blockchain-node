@@ -59,6 +59,9 @@ jobs:
         run: >
           pushd node &&
           cargo check --features=runtime-benchmarks --release
+      - name: Check Build for Try-Runtime
+        run: |
+          cargo check --features=try-runtime --release
 
 
   clippy:
@@ -80,7 +83,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Check with Clippy
         run: |
-          cargo clippy --no-deps --all-targets --features runtime-benchmarks --workspace -- --deny warnings
+          cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
 
   tests:
     name: Run tests

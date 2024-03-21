@@ -6,6 +6,7 @@ use frame_support::{
 	weights::Weight,
 };
 use log::info;
+use sp_runtime::DispatchError;
 
 use super::*;
 
@@ -83,19 +84,19 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 		let prev_bucket_id = v0::BucketsCount::<T>::get();
 		let prev_count = v0::Buckets::<T>::iter().count();
 
-		Ok((prev_bucket_id as u64, prev_count as u64).encode())
+		Ok((prev_bucket_id, prev_count as u64).encode())
 	}
 
 	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(prev_state: Vec<u8>) -> Result<(), &'static str> {
+	fn post_upgrade(prev_state: Vec<u8>) -> Result<(), DispatchError> {
 		let (prev_bucket_id, prev_count): (u64, u64) =
 			Decode::decode(&mut &prev_state[..]).expect("pre_upgrade provides a valid state; qed");
 
-		let post_bucket_id = Pallet::<T>::buckets_count() as u64;
+		let post_bucket_id = Pallet::<T>::buckets_count();
 		ensure!(
 			prev_bucket_id == post_bucket_id,
 			"the last bucket ID before and after the migration should be the same"
@@ -118,7 +119,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 
 		Buckets::<T>::iter().try_for_each(|(_id, bucket)| -> Result<(), &'static str> {
 			ensure!(
-				bucket.is_removed == false,
+				!bucket.is_removed,
 				"At this point all the bucket should have is_removed set to false"
 			);
 			Ok(())

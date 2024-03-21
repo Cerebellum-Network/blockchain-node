@@ -28,12 +28,12 @@ use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragm
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
-	pallet_prelude::{Get, StorageVersion},
+	pallet_prelude::Get,
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly,
-		Everything, GetStorageVersion, Imbalance, InstanceFilter, KeyOwnerProofSystem,
-		LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, WithdrawReasons,
+		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
+		OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -128,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 50000,
+	spec_version: 51100,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 15,
@@ -913,7 +913,7 @@ parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 50_000 * DOLLARS;
 	pub const SpendPeriod: BlockNumber = DAYS;
-	pub const Burn: Permill = Permill::from_percent(0);
+	pub const Burn: Permill = Permill::from_parts(0);
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
 	pub const TipReportDepositBase: Balance = 50_000 * DOLLARS;
@@ -1037,7 +1037,12 @@ impl pallet_contracts::Config for Runtime {
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
-	type Migrations = ();
+	type Migrations = (
+		pallet_contracts::migration::v9::Migration<Runtime>,
+		pallet_contracts::migration::v10::Migration<Runtime>,
+		pallet_contracts::migration::v11::Migration<Runtime>,
+		pallet_contracts::migration::v12::Migration<Runtime>,
+	);
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -1486,38 +1491,15 @@ pub type UncheckedExtrinsic =
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
-
-pub struct NominationPoolsMigrationV4OldPallet;
-impl Get<Perbill> for NominationPoolsMigrationV4OldPallet {
-	fn get() -> Perbill {
-		Perbill::zero()
-	}
-}
-/// Migrations that set `StorageVersion`s we missed to set.
-pub struct SetStorageVersions;
-
-impl OnRuntimeUpgrade for SetStorageVersions {
-	fn on_runtime_upgrade() -> Weight {
-		// Was missed as part of:
-		// `runtime_common::session::migration::ClearOldSessionStorage<Runtime>`.
-		let storage_version = Historical::on_chain_storage_version();
-		if storage_version < 1 {
-			StorageVersion::new(1).put::<Historical>();
-		}
-
-		RocksDbWeight::get().reads_writes(2, 2)
-	}
-}
 /// Runtime migrations
 type Migrations = (
-	pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
-	pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
-	pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
-	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
-	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
-	pallet_society::migrations::MigrateToV2<Runtime, (), ()>,
-	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
-	SetStorageVersions,
+	// Contracts migrate in sequence so make them last.
+	// Substrate upgrades run in reverse order so this migration
+	// is the last one to execute.
+	pallet_contracts::migration::Migration<Runtime>,
+	pallet_im_online::migration::v1::Migration<Runtime>,
+	pallet_democracy::migrations::v1::v1::Migration<Runtime>,
+	pallet_fast_unstake::migrations::v1::MigrateToV1<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.
