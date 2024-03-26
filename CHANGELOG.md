@@ -13,7 +13,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C,D] `pallet-ddc-customers`: implemented bucket removal
 - Added ChargeError event to payout pallet
 
+### Added
+
 - ...
+
+### Changed
+
+- ...
+
+
+## [5.1.1]
+
+### Added
+
+- [C,D] Missing storage migrations for `pallet_contracts`, `pallet_im_online`, `pallet_democracy`, and `pallet_fast_unstake`
+
+## [5.1.0]
+
+### Changed
+
+- [C] `5.0.1` release changes are reverted
+- [C,D] Off-chain workers are enabled
 
 ## [5.0.0]
 

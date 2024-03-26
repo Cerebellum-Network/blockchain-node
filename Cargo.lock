@@ -683,7 +683,7 @@ dependencies = [
 
 [[package]]
 name = "cere-cli"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "cere-client",
  "cere-service",
@@ -700,7 +700,7 @@ dependencies = [
 
 [[package]]
 name = "cere-client"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
@@ -732,7 +732,7 @@ dependencies = [
 
 [[package]]
 name = "cere-dev-runtime"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "cere-runtime-common",
  "ddc-primitives",
@@ -821,7 +821,7 @@ dependencies = [
 
 [[package]]
 name = "cere-rpc"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "jsonrpsee",
  "node-primitives",
@@ -850,7 +850,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "cere-runtime-common",
  "ddc-primitives",
@@ -939,7 +939,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime-common"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -958,7 +958,7 @@ dependencies = [
 
 [[package]]
 name = "cere-service"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "cere-client",
  "cere-dev-runtime",
@@ -981,6 +981,7 @@ dependencies = [
  "sc-executor",
  "sc-network",
  "sc-network-common",
+ "sc-offchain",
  "sc-rpc",
  "sc-service",
  "sc-sync-state-rpc",
@@ -1590,7 +1591,7 @@ dependencies = [
 
 [[package]]
 name = "ddc-primitives"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4713,7 +4714,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-chainbridge"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4816,7 +4817,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-clusters"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -4842,7 +4843,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-customers"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -4865,7 +4866,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-nodes"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -4886,7 +4887,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-payouts"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "byte-unit",
  "chrono",
@@ -4910,7 +4911,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-staking"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -5005,7 +5006,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc20"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5024,7 +5025,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc721"
-version = "5.0.0"
+version = "5.1.1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -7325,6 +7326,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "sc-offchain"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v1.0.0#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
+dependencies = [
+ "array-bytes",
+ "bytes",
+ "fnv",
+ "futures",
+ "futures-timer",
+ "hyper",
+ "hyper-rustls",
+ "libp2p",
+ "log",
+ "num_cpus",
+ "once_cell",
+ "parity-scale-codec",
+ "parking_lot 0.12.1",
+ "rand 0.8.5",
+ "sc-client-api",
+ "sc-network",
+ "sc-network-common",
+ "sc-transaction-pool-api",
+ "sc-utils",
+ "sp-api",
+ "sp-core",
+ "sp-externalities",
+ "sp-keystore",
+ "sp-offchain",
+ "sp-runtime",
+ "threadpool",
+ "tracing",
+]
+
+[[package]]
 name = "sc-proposer-metrics"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v1.0.0#948fbd2fd1233dc26dbb9f9bbc1d2cca2c03945d"
@@ -9136,6 +9171,15 @@ checksum = "3fdd6f064ccff2d6567adcb3873ca630700f00b5ad3f060c25b5dcfd9a4ce152"
 dependencies = [
  "cfg-if",
  "once_cell",
+]
+
+[[package]]
+name = "threadpool"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d050e60b33d41c19108b32cea32164033a9013fe3b46cbd4457559bfbf77afaa"
+dependencies = [
+ "num_cpus",
 ]
 
 [[package]]
