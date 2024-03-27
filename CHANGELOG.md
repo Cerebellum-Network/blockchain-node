@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [C,D] Inflation parameters for the staking reward curve are doubled to temporarily increase validators payouts
-- [C,D] Daily burning is set to 0.58 %
+- [C,D] Daily burning is set to 0.058%
 
 
 ## [5.1.1]
