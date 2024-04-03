@@ -11,12 +11,14 @@ repository.workspace = true
 [dependencies]
 codec = { workspace = true }
 log = { workspace = true, default-features = false }
+scale-info = { workspace = true, default-features = false, features = ["derive", "serde"] }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 node-primitives = { workspace = true }
 pallet-contracts = { workspace = true }
 pallet-session = { workspace = true }
+pallet-staking = { workspace = true }
 sp-api = { workspace = true }
 sp-core = { workspace = true }
 sp-io = { workspace = true }

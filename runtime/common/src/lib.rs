@@ -2,6 +2,7 @@
 
 pub mod constants;
 pub mod migrations;
+pub mod staking;
 
 use node_primitives::Balance;
 
