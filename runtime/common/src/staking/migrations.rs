@@ -518,7 +518,7 @@ type StorageVersion<T: Config> = StorageValue<Pallet<T>, ObsoleteReleases, Value
 //     }
 // }
 
-pub mod v1 {
+pub mod v0 {
 	use frame_support::{pallet_prelude::ValueQuery, storage_alias};
 
 	use super::*;
@@ -545,94 +545,140 @@ pub mod v1 {
 
 	#[storage_alias]
 	pub type StorageVersion<T: Config> = StorageValue<Pallet<T>, u32>;
+}
 
-	pub struct MigrateToV1<T>(PhantomData<T>);
-	impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
-		fn on_runtime_upgrade() -> Weight {
-			// Todo: double check unwrap
-			if StorageVersion::<T>::get().unwrap() == 0u32 {
-				let count = Nominators::<T>::count();
+pub mod v1 {
+	use frame_support::{pallet_prelude::ValueQuery, storage_alias};
 
-				log::info!(
-					target: LOG_TARGET,
-					" >>> Updating Nominators storage. Migrating {} Nominations...", count
-				);
+	use super::*;
+	use crate::staking;
 
-				// Todo: use existing implementation
-				let now = <Pallet<T>>::current_era().unwrap_or(Zero::zero());
-				Nominators::<T>::translate::<Vec<T::AccountId>, _>(|key, targets| {
-					Some(Nominations { targets, submitted_in: now, suppressed: false })
-				});
+	/// A record of the nominations made by a specific account.
+	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+	pub struct Nominations<AccountId> {
+		/// The targets of nomination.
+		pub targets: Vec<AccountId>,
+		/// The era the nominations were submitted.
+		pub submitted_in: EraIndex,
+		/// Whether the nominations have been suppressed.
+		pub suppressed: bool,
+	}
 
-				StorageVersion::<T>::put(1u32);
+	#[storage_alias]
+	pub type Nominators<T: Config> = CountedStorageMap<
+		Pallet<T>,
+		Twox64Concat,
+		<T as frame_system::Config>::AccountId,
+		Option<Nominations<<T as frame_system::Config>::AccountId>>,
+	>;
 
-				let count = Nominators::<T>::count();
-				log::info!(
-					target: LOG_TARGET,
-					" <<< Nominators storage updated! Migrated {} Nominations ✅", count
-				);
+	#[storage_alias]
+	pub type StorageVersion<T: Config> = StorageValue<Pallet<T>, u32>;
+}
 
-				T::DbWeight::get().reads_writes((&count + 2) as u64, (count + 1) as u64)
-			} else {
-				log::info!(target: LOG_TARGET, " >>> Unused migration!");
-				T::DbWeight::get().reads(1)
-			}
-		}
+pub struct MigrateToV1<T>(PhantomData<T>);
+impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
+	fn on_runtime_upgrade() -> Weight {
+		let onchain_version = Pallet::<T>::on_chain_storage_version();
 
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
-			ensure!(StorageVersion::<T>::get() == 0, "Expected v0 before upgrading to v1");
+		log::info!(
+			target: LOG_TARGET,
+			"onchain_version is {:?}", onchain_version
+		);
 
-			if Nominators::<T>::exists() {
-				ensure!(
-					T::Nominators::get() == Nominators::<T>::get(),
-					"Provided value of Nominators should be same as the existing storage value"
-				);
-			} else {
-				log::info!("No Nominators in storage; nothing to migrate");
-			}
+		if onchain_version < 1 {
+			let count = v0::Nominators::<T>::count();
 
-			let prev_count = Nominators::<T>::get().count();
+			// Todo: get rid of unwrap, use existing implementation
+			let current_era = <Pallet<T>>::current_era().unwrap_or(Zero::zero());
 
-			Ok(prev_count.encode())
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), TryRuntimeError> {
-			// frame_support::ensure!(
-			// 	StorageVersion::<T>::get() == ObsoleteReleases::V12_0_0,
-			// 	"v12 not applied"
-			// );
-			// Ok(())
-
-			let (prev_count): (u64) = Decode::decode(&mut &prev_state[..])
-				.expect("pre_upgrade provides a valid state; qed");
-
-			let post_count = Nominators::<T>::get().count();
-
-			ensure!(
-				prev_count == post_count,
-				"Nominations count before and after the migration must be the same"
+			log::info!(
+				target: LOG_TARGET,
+				" >>> Updating Nominators storage. Migrating {} Nominations...", count
 			);
 
-			let current_version = Pallet::<T>::current_storage_version();
-			let on_chain_version = Pallet::<T>::on_chain_storage_version();
-
-			ensure!(current_version == ObsoleteReleases::V1_0_0Ancient, "must upgrade");
-			ensure!(
-				current_version == on_chain_version,
-				"after migration, the current_version and on_chain_version should be the same"
+			log::info!(
+				target: LOG_TARGET,
+				"current era is {:?}", current_era
 			);
 
-			Nominators::<T>::iter().try_for_each(|(_id, bucket)| -> Result<(), &'static str> {
-				ensure!(
-					!bucket.is_removed,
-					"At this point all the bucket should have is_removed set to false"
-				);
+			v0::Nominators::<T>::translate::<Vec<T::AccountId>, _>(|_, old_value| {
+				Some(v0::Nominations {
+					targets: old_value,
+					submitted_in: current_era,
+					suppressed: false,
+				})
+			});
+
+			log::info!(
+				target: LOG_TARGET,
+				"migrated {} records", count
+			);
+
+			// Todo: find cleaner way to update the version
+			StorageVersion::<T>::mutate(|version| {
+				*version = ObsoleteReleases::V1_0_0Ancient;
+			});
+
+			log::info!(
+				target: LOG_TARGET,
+				"onchain_version is {:?}", Pallet::<T>::on_chain_storage_version()
+			);
+
+			T::DbWeight::get().reads_writes((&count + 2) as u64, (count + 1) as u64)
+		} else {
+			Weight::zero()
+		}
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+		log::info!(target: LOG_TARGET, "check");
+		ensure!(Pallet::<T>::on_chain_storage_version() == 0, "Expected v0 before upgrading to v1");
+
+		let prev_count = v0::Nominators::<T>::count();
+		let prev_count1 = pallet_staking::Nominators::<T>::count();
+
+		ensure!(
+			prev_count == prev_count1,
+			"Provided count of Nominators should be same as the existing count"
+		);
+
+		Ok(prev_count.encode())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade(prev_state: Vec<u8>) -> Result<(), TryRuntimeError> {
+		log::info!(target: LOG_TARGET, "check2");
+
+		ensure!(Pallet::<T>::on_chain_storage_version() == 1, "v1 not applied");
+
+		let (prev_count): (u32) =
+			Decode::decode(&mut &prev_state[..]).expect("pre_upgrade provides a valid state; qed");
+
+		let post_count = v1::Nominators::<T>::count();
+
+		ensure!(
+			prev_count == post_count,
+			"Nominations count before and after the migration must be the same"
+		);
+
+		let current_version = Pallet::<T>::current_storage_version();
+		let on_chain_version = Pallet::<T>::on_chain_storage_version();
+
+		ensure!(current_version == 1, "must upgrade");
+		ensure!(
+			current_version == on_chain_version,
+			"after migration, the current_version and on_chain_version should be the same"
+		);
+
+		v1::Nominators::<T>::iter().try_for_each(
+			|(_id, nominations)| -> Result<(), &'static str> {
+				ensure!(nominations.is_some(), "At this point all nominations should be Option");
 				Ok(())
-			})?;
+			},
+		)?;
 
-			Ok(())
-		}
+		Ok(())
 	}
 }
