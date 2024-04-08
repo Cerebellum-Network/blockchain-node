@@ -33,7 +33,7 @@ use frame_support::{
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly,
 		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
-		OnUnbalanced, WithdrawReasons,
+		OnRuntimeUpgrade, OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -96,7 +96,7 @@ pub mod impls;
 /// Constant values used within the runtime.
 use cere_runtime_common::{
 	constants::{currency::*, time::*},
-	CurrencyToVote,
+	staking, CurrencyToVote,
 };
 use impls::Author;
 use sp_runtime::generic::Era;
@@ -1472,10 +1472,50 @@ pub type SignedExtra = (
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 
+use frame_support::{log, pallet_prelude::*, DefaultNoBound};
+use sp_io::{hashing::twox_128, storage::clear_prefix};
+#[cfg(feature = "try-runtime")]
+use sp_std::{vec, vec::Vec};
+
+// v11
+// #[derive(Encode, Decode, MaxEncodedLen, DefaultNoBound)]
+// pub struct ClearBagsListPrefix<Runtime>(PhantomData<Runtime>);
+// impl<Runtime> OnRuntimeUpgrade for ClearBagsListPrefix<Runtime>
+// 	where
+// 		Runtime: frame_system::Config + pallet_staking::Config,
+// {
+// 	fn on_runtime_upgrade() -> Weight {
+// 		let version = StorageVersion::get::<pallet_staking::Pallet<Runtime>>();
+// 		log::info!("Checking migration for staking at {:?}", version);
+// 		//StorageVersion::new(pallet_staking::migrations::ObsoleteReleases.V11_0_0).
+// put::<pallet_staking::Pallet<Runtime>>();
+// 		StorageVersion::<T>::put(pallet_staking::migrations::ObsoleteReleases::V11_0_0);
+// 		clear_prefix(&twox_128(b"BagsList"), None);
+// 		Weight::from_parts(0, 0)
+// 	}
+// }
+
 pub struct StakingMigrationV11OldPallet;
 impl Get<&'static str> for StakingMigrationV11OldPallet {
 	fn get() -> &'static str {
-		"VoterList"
+		"BagsList"
+	}
+}
+
+// pub struct UpdatePalletVersionToV9;
+// impl OnRuntimeUpgrade for UpdatePalletVersionToV9 {
+// 	fn on_runtime_upgrade() -> Weight {
+// 		// StorageVersion::new(pallet_staking::migrations::ObsoleteReleases::V9_0_0).
+// put::<pallet_staking::Pallet<Runtime>>();
+// 		StorageVersion::<T>::put(pallet_staking::migrations::ObsoleteReleases::V9_0_0);
+// 		Weight::from_parts(0, 0)
+// 	}
+// }
+
+pub struct MigrateStakingPalletToV8;
+impl OnRuntimeUpgrade for MigrateStakingPalletToV8 {
+	fn on_runtime_upgrade() -> Weight {
+		pallet_staking::migrations::v8::migrate::<Runtime>()
 	}
 }
 
@@ -1487,7 +1527,14 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Runtime migrations
-type Migrations = (cere_runtime_common::staking::migrations::MigrateToV1<Runtime>,);
+type Migrations = (
+	MigrateStakingPalletToV8,
+	pallet_staking::migrations::v9::InjectValidatorsIntoVoterList<Runtime>,
+	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
+	pallet_staking::migrations::v11::MigrateToV11<Runtime, VoterList, StakingMigrationV11OldPallet>,
+	pallet_staking::migrations::v12::MigrateToV12<Runtime>,
+	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<

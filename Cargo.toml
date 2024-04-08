@@ -91,6 +91,7 @@ pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch
 pallet-session = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0", default-features = false, features = ["historical"] }
 pallet-session-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0", default-features = false }
 pallet-society = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0", default-features = false }
+# Moved under Cere dependencies for only one upgrade to modify and execute the storage migrations
 pallet-staking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0", default-features = false }
 pallet-staking-reward-curve = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0", default-features = false }
 pallet-sudo = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v1.0.0", default-features = false }

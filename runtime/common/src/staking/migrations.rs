@@ -518,75 +518,76 @@ type StorageVersion<T: Config> = StorageValue<Pallet<T>, ObsoleteReleases, Value
 //     }
 // }
 
-pub mod v0 {
-	use frame_support::{pallet_prelude::ValueQuery, storage_alias};
+// pub mod v0 {
+// 	use frame_support::{pallet_prelude::ValueQuery, storage_alias};
+//
+// 	use super::*;
+// 	use crate::staking;
+//
+// 	/// A record of the nominations made by a specific account.
+// 	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+// 	pub struct Nominations<AccountId> {
+// 		/// The targets of nomination.
+// 		pub targets: Vec<AccountId>,
+// 		/// The era the nominations were submitted.
+// 		pub submitted_in: EraIndex,
+// 		/// Whether the nominations have been suppressed.
+// 		pub suppressed: bool,
+// 	}
+//
+// 	#[storage_alias]
+// 	pub type Nominators<T: Config> = CountedStorageMap<
+// 		Pallet<T>,
+// 		Twox64Concat,
+// 		<T as frame_system::Config>::AccountId,
+// 		Nominations<<T as frame_system::Config>::AccountId>,
+// 	>;
+//
+// 	// #[storage_alias]
+// 	// pub type StorageVersion<T: Config> = StorageValue<Pallet<T>, u32>;
+// }
 
-	use super::*;
-	use crate::staking;
-
-	/// A record of the nominations made by a specific account.
-	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-	pub struct Nominations<AccountId> {
-		/// The targets of nomination.
-		pub targets: Vec<AccountId>,
-		/// The era the nominations were submitted.
-		pub submitted_in: EraIndex,
-		/// Whether the nominations have been suppressed.
-		pub suppressed: bool,
-	}
-
-	#[storage_alias]
-	pub type Nominators<T: Config> = CountedStorageMap<
-		Pallet<T>,
-		Twox64Concat,
-		<T as frame_system::Config>::AccountId,
-		Nominations<<T as frame_system::Config>::AccountId>,
-	>;
-
-	#[storage_alias]
-	pub type StorageVersion<T: Config> = StorageValue<Pallet<T>, u32>;
-}
-
-pub mod v1 {
-	use frame_support::{pallet_prelude::ValueQuery, storage_alias};
-
-	use super::*;
-	use crate::staking;
-
-	/// A record of the nominations made by a specific account.
-	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-	pub struct Nominations<AccountId> {
-		/// The targets of nomination.
-		pub targets: Vec<AccountId>,
-		/// The era the nominations were submitted.
-		pub submitted_in: EraIndex,
-		/// Whether the nominations have been suppressed.
-		pub suppressed: bool,
-	}
-
-	#[storage_alias]
-	pub type Nominators<T: Config> = CountedStorageMap<
-		Pallet<T>,
-		Twox64Concat,
-		<T as frame_system::Config>::AccountId,
-		Option<Nominations<<T as frame_system::Config>::AccountId>>,
-	>;
-
-	#[storage_alias]
-	pub type StorageVersion<T: Config> = StorageValue<Pallet<T>, u32>;
-}
+// pub mod v1 {
+// 	use frame_support::{pallet_prelude::ValueQuery, storage_alias};
+//
+// 	use super::*;
+// 	use crate::staking;
+//
+// 	/// A record of the nominations made by a specific account.
+// 	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+// 	pub struct Nominations<AccountId> {
+// 		/// The targets of nomination.
+// 		pub targets: Vec<AccountId>,
+// 		/// The era the nominations were submitted.
+// 		pub submitted_in: EraIndex,
+// 		/// Whether the nominations have been suppressed.
+// 		pub suppressed: bool,
+// 	}
+//
+// 	#[storage_alias]
+// 	pub type Nominators<T: Config> = CountedStorageMap<
+// 		Pallet<T>,
+// 		Twox64Concat,
+// 		<T as frame_system::Config>::AccountId,
+// 		Option<Nominations<<T as frame_system::Config>::AccountId>>,
+// 	>;
+//
+// 	// #[storage_alias]
+// 	// pub type StorageVersion<T: Config> = StorageValue<Pallet<T>, u32>;
+// }
 
 pub struct MigrateToV1<T>(PhantomData<T>);
 impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 	fn on_runtime_upgrade() -> Weight {
-		let onchain_version = Pallet::<T>::on_chain_storage_version();
+		let onchain = StorageVersion::<T>::get() as u32;
+		// let current = Pallet::<T>::current_storage_version();
 
 		log::info!(
 			target: LOG_TARGET,
-			"onchain_version is {:?}", onchain_version
+			"onchain pallet version is {:?}", onchain
 		);
 
-		if onchain_version < 1 {
+		if onchain == 0u32 {
 			let count = v0::Nominators::<T>::count();
 
 			// Todo: get rid of unwrap, use existing implementation
@@ -615,14 +616,11 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 				"migrated {} records", count
 			);
 
-			// Todo: find cleaner way to update the version
-			StorageVersion::<T>::mutate(|version| {
-				*version = ObsoleteReleases::V1_0_0Ancient;
-			});
+			StorageVersion::<T>::put(ObsoleteReleases::V1_0_0Ancient);
 
 			log::info!(
 				target: LOG_TARGET,
-				"onchain_version is {:?}", Pallet::<T>::on_chain_storage_version()
+				"onchain pallet version is {:?}", StorageVersion::<T>::get()
 			);
 
 			T::DbWeight::get().reads_writes((&count + 2) as u64, (count + 1) as u64)
@@ -634,15 +632,9 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 	#[cfg(feature = "try-runtime")]
 	fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
 		log::info!(target: LOG_TARGET, "check");
-		ensure!(Pallet::<T>::on_chain_storage_version() == 0, "Expected v0 before upgrading to v1");
+		ensure!(StorageVersion::<T>::get() == 0, "Expected v0 before upgrading to v1");
 
-		let prev_count = v0::Nominators::<T>::count();
-		let prev_count1 = pallet_staking::Nominators::<T>::count();
-
-		ensure!(
-			prev_count == prev_count1,
-			"Provided count of Nominators should be same as the existing count"
-		);
+		let prev_count= v0::Nominators::<T>::count();
 
 		Ok(prev_count.encode())
 	}
