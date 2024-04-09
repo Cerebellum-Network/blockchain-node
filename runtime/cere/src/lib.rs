@@ -33,7 +33,7 @@ use frame_support::{
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly,
 		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
-		OnUnbalanced, WithdrawReasons,
+		OnRuntimeUpgrade, OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -128,7 +128,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 51200,
+	spec_version: 51201,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 15,
@@ -1480,7 +1480,14 @@ pub type SignedExtra = (
 pub struct StakingMigrationV11OldPallet;
 impl Get<&'static str> for StakingMigrationV11OldPallet {
 	fn get() -> &'static str {
-		"VoterList"
+		"BagsList"
+	}
+}
+
+pub struct MigrateStakingPalletToV8;
+impl OnRuntimeUpgrade for MigrateStakingPalletToV8 {
+	fn on_runtime_upgrade() -> Weight {
+		pallet_staking::migrations::v8::migrate::<Runtime>()
 	}
 }
 
@@ -1493,13 +1500,12 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 /// Runtime migrations
 type Migrations = (
-	// Contracts migrate in sequence so make them last.
-	// Substrate upgrades run in reverse order so this migration
-	// is the last one to execute.
-	pallet_contracts::migration::Migration<Runtime>,
-	pallet_im_online::migration::v1::Migration<Runtime>,
-	pallet_democracy::migrations::v1::v1::Migration<Runtime>,
-	pallet_fast_unstake::migrations::v1::MigrateToV1<Runtime>,
+	MigrateStakingPalletToV8,
+	pallet_staking::migrations::v9::InjectValidatorsIntoVoterList<Runtime>,
+	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
+	pallet_staking::migrations::v11::MigrateToV11<Runtime, VoterList, StakingMigrationV11OldPallet>,
+	pallet_staking::migrations::v12::MigrateToV12<Runtime>,
+	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.

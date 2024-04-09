@@ -322,7 +322,7 @@ pub mod v9 {
 
 				log!(
 					info,
-					"injected a total of {} new voters, prev count: {} next count: {}, updating to version 9",
+					"injected a total of {} new voters, prev count: {} next count: {}, updating to version 99",
 					Validators::<T>::count(),
 					prev_count,
 					T::VoterList::count(),
