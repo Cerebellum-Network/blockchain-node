@@ -3,8 +3,8 @@ name = "pallet-staking-reward-curve"
 version = "4.0.0-dev"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
-license = "Apache-2.0"
 homepage = "https://substrate.io"
+license = "Apache-2.0"
 repository = "https://github.com/paritytech/substrate/"
 description = "Reward Curve for FRAME staking pallet"
 
