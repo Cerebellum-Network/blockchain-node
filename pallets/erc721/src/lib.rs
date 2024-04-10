@@ -50,12 +50,12 @@ pub mod pallet {
 	/// Maps tokenId to Erc721 object
 	#[pallet::storage]
 	#[pallet::getter(fn tokens)]
-	pub type Tokens<T: Config> = StorageMap<_, Blake2_128Concat, TokenId, Erc721Token>;
+	pub type Tokens<T: Config> = StorageMap<_, Blake2_256, TokenId, Erc721Token>;
 
 	/// Maps tokenId to owner
 	#[pallet::storage]
 	#[pallet::getter(fn owner_of)]
-	pub type TokenOwner<T: Config> = StorageMap<_, Blake2_128Concat, TokenId, T::AccountId>;
+	pub type TokenOwner<T: Config> = StorageMap<_, Blake2_256, TokenId, T::AccountId>;
 
 	#[pallet::type_value]
 	pub fn DefaultTokenCount<T: Config>() -> U256 {
