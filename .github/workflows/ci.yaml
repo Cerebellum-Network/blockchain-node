@@ -44,7 +44,7 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-05-23
+          toolchain: nightly-2024-03-12
           override: true
           target: wasm32-unknown-unknown
       - name: Rust Cache
