@@ -158,17 +158,17 @@ pub mod pallet {
 	/// All whitelisted chains and their respective transaction counts
 	#[pallet::storage]
 	#[pallet::getter(fn chains)]
-	pub type ChainNonces<T: Config> = StorageMap<_, Blake2_128Concat, ChainId, DepositNonce>;
+	pub type ChainNonces<T: Config> = StorageMap<_, Blake2_256, ChainId, DepositNonce>;
 
 	/// Tracks current relayer set
 	#[pallet::storage]
 	#[pallet::getter(fn relayers)]
-	pub type Relayers<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, bool>;
+	pub type Relayers<T: Config> = StorageMap<_, Blake2_256, T::AccountId, bool>;
 
 	/// Utilized by the bridge software to map resource IDs to actual methods
 	#[pallet::storage]
 	#[pallet::getter(fn resources)]
-	pub type Resources<T: Config> = StorageMap<_, Blake2_128Concat, ResourceId, Vec<u8>>;
+	pub type Resources<T: Config> = StorageMap<_, Blake2_256, ResourceId, Vec<u8>>;
 
 	/// All known proposals.
 	/// The key is the hash of the call and the deposit ID, to ensure it's unique
@@ -176,9 +176,9 @@ pub mod pallet {
 	#[pallet::getter(fn votes)]
 	pub type Votes<T: Config> = StorageDoubleMap<
 		_,
-		Blake2_128Concat,
+		Blake2_256,
 		ChainId,
-		Blake2_128Concat,
+		Blake2_256,
 		(DepositNonce, T::Proposal),
 		ProposalVotes<T::AccountId, BlockNumberFor<T>>,
 	>;

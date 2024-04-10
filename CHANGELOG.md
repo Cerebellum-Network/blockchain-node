@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ...
 
+## [5.1.3]
+
+### Changed
+
+- [C,D] Fixed prefixes for ChainBridge's pallet storage items
+- [C,D] Fixed prefixes for ERC721 pallet storage items
+
 ## [5.1.2]
 
 ### Changed
