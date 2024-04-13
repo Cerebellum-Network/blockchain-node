@@ -1504,7 +1504,7 @@ impl OnRuntimeUpgrade for SetBalancesStorageVersions {
 }
 
 /// Runtime migrations
-type Migrations = (SetBalancesStorageVersions);
+type Migrations = SetBalancesStorageVersions;
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
