@@ -28,12 +28,12 @@ use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragm
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
-	pallet_prelude::Get,
+	pallet_prelude::{Get, StorageVersion},
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly,
-		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
-		OnRuntimeUpgrade, OnUnbalanced, WithdrawReasons,
+		Everything, GetStorageVersion, Imbalance, InstanceFilter, KeyOwnerProofSystem,
+		LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -1489,6 +1489,22 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
+// We don't need to run pallet_balances::pallets::MigrateToTrackInactive or
+// pallet_balances::pallets::MigrateManyToTrackInactive since XCM related only.
+// MigrateToTrackInactive and MigrateManyToTrackInactive simply add CheckingAccount value to
+// InactiveIssuance so it's safe to skip it.
+pub struct SetBalancesStorageVersions;
+impl OnRuntimeUpgrade for SetBalancesStorageVersions {
+	fn on_runtime_upgrade() -> Weight {
+		let storage_version = <Balances>::on_chain_storage_version();
+		if storage_version < 1 {
+			StorageVersion::new(1).put::<Balances>();
+		}
+
+		RocksDbWeight::get().reads_writes(1, 1)
+	}
+}
+
 /// Runtime migrations
 type Migrations = (
 	MigrateStakingPalletToV8,
@@ -1497,6 +1513,7 @@ type Migrations = (
 	pallet_staking::migrations::v11::MigrateToV11<Runtime, VoterList, StakingMigrationV11OldPallet>,
 	pallet_staking::migrations::v12::MigrateToV12<Runtime>,
 	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
+	SetBalancesStorageVersions,
 );
 
 /// Executive: handles dispatch to the various modules.
