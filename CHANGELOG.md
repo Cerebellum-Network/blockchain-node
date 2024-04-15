@@ -13,11 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Missing storage migrations to Staking pallet
+- [C,D] Missing storage migrations to Staking pallet
 
 ### Changed
 
-- ...
+- [C,D] Remove Society pallet
+- [C,D] Bump Balances storage version
 
 ## [5.1.3]
 
