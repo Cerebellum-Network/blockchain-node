@@ -59,7 +59,6 @@ pallet-proxy = { workspace = true }
 pallet-recovery = { workspace = true }
 pallet-scheduler = { workspace = true }
 pallet-session = { workspace = true, features = ["historical"] }
-pallet-society = { workspace = true }
 pallet-staking = { workspace = true }
 pallet-staking-reward-curve = { workspace = true }
 pallet-sudo = { workspace = true }
@@ -162,7 +161,6 @@ std = [
   "sp-transaction-pool/std",
   "pallet-utility/std",
   "sp-version/std",
-  "pallet-society/std",
   "pallet-recovery/std",
   "pallet-vesting/std",
   "log/std",
@@ -210,7 +208,6 @@ runtime-benchmarks = [
   "pallet-proxy/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
-  "pallet-society/runtime-benchmarks",
   "pallet-staking/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "pallet-tips/runtime-benchmarks",
@@ -253,7 +250,6 @@ try-runtime = [
   "pallet-recovery/try-runtime",
   "pallet-scheduler/try-runtime",
   "pallet-session/try-runtime",
-  "pallet-society/try-runtime",
   "pallet-staking/try-runtime",
   "pallet-sudo/try-runtime",
   "pallet-timestamp/try-runtime",

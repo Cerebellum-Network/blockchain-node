@@ -306,7 +306,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				c,
 				RuntimeCall::Democracy(..) |
 					RuntimeCall::Council(..) |
-					RuntimeCall::Society(..) |
 					RuntimeCall::TechnicalCommittee(..) |
 					RuntimeCall::Elections(..) |
 					RuntimeCall::Treasury(..)
@@ -1192,37 +1191,6 @@ impl pallet_recovery::Config for Runtime {
 }
 
 parameter_types! {
-	pub const GraceStrikes: u32 = 10;
-	pub const SocietyVotingPeriod: BlockNumber = 80 * HOURS;
-	pub const ClaimPeriod: BlockNumber = 80 * HOURS;
-	pub const PeriodSpend: Balance = 500 * DOLLARS;
-	pub const MaxLockDuration: BlockNumber = 36 * 30 * DAYS;
-	pub const ChallengePeriod: BlockNumber = 7 * DAYS;
-	pub const MaxPayouts: u32 = 10;
-	pub const MaxBids: u32 = 10;
-	pub const SocietyPalletId: PalletId = PalletId(*b"py/socie");
-}
-
-impl pallet_society::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type PalletId = SocietyPalletId;
-	type Currency = Balances;
-	type Randomness = RandomnessCollectiveFlip;
-	type PeriodSpend = PeriodSpend;
-	type MaxLockDuration = MaxLockDuration;
-	type FounderSetOrigin =
-		pallet_collective::EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>;
-	type ChallengePeriod = ChallengePeriod;
-
-	type GraceStrikes = GraceStrikes;
-	type VotingPeriod = VotingPeriod;
-	type ClaimPeriod = ClaimPeriod;
-	type MaxPayouts = MaxPayouts;
-	type MaxBids = MaxBids;
-	type WeightInfo = pallet_society::weights::SubstrateWeight<Runtime>;
-}
-
-parameter_types! {
 	pub const MinVestedTransfer: Balance = DOLLARS;
 	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons =
 		WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
@@ -1422,7 +1390,6 @@ construct_runtime!(
 		Historical: pallet_session_historical::{Pallet},
 		RandomnessCollectiveFlip: pallet_insecure_randomness_collective_flip,
 		Identity: pallet_identity,
-		Society: pallet_society,
 		Recovery: pallet_recovery,
 		Vesting: pallet_vesting,
 		Preimage: pallet_preimage,
@@ -1509,6 +1476,11 @@ pub type UncheckedExtrinsic =
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
+
+parameter_types! {
+	pub const SocietyPalletName: &'static str = "Society";
+}
+
 /// Runtime migrations
 type Migrations = (
 	MigrateStakingPalletToV8,
@@ -1517,6 +1489,10 @@ type Migrations = (
 	pallet_staking::migrations::v11::MigrateToV11<Runtime, VoterList, StakingMigrationV11OldPallet>,
 	pallet_staking::migrations::v12::MigrateToV12<Runtime>,
 	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
+	frame_support::migrations::RemovePallet<
+		SocietyPalletName,
+		<Runtime as frame_system::Config>::DbWeight,
+	>,
 	SetBalancesStorageVersions,
 );
 
