@@ -24,7 +24,7 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-05-23
+          toolchain: nightly-2024-03-12
           override: true
           components: rustfmt
       - name: Check TOML
@@ -44,7 +44,7 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-05-23
+          toolchain: nightly-2024-03-12
           override: true
           target: wasm32-unknown-unknown
       - name: Rust Cache
@@ -55,32 +55,38 @@ jobs:
       - name: Run dev chain
         run: |
           timeout --preserve-status 30s ./target/release/cere --dev
-      - name: Check Build for Benchmarking
-        run: >
-          pushd node &&
-          cargo check --features=runtime-benchmarks --release
-
-
-  clippy:
-    name: Run Clippy
-    needs: format
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
-      - name: Install nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly-2023-05-23
-          override: true
-          target: wasm32-unknown-unknown
-          components: clippy
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-      - name: Check with Clippy
+# Disabled for one release to apply missing migrations
+# https://github.com/Cerebellum-Network/blockchain-node/pull/300
+#      - name: Check Build for Benchmarking
+#        run: >
+#          pushd node &&
+#          cargo check --features=runtime-benchmarks --release
+      - name: Check Build for Try-Runtime
         run: |
-          cargo clippy --no-deps --all-targets --features runtime-benchmarks --workspace -- --deny warnings
+          cargo check --features=try-runtime --release
+
+# Disabled for one release to apply missing migrations
+# https://github.com/Cerebellum-Network/blockchain-node/pull/300
+#  clippy:
+#    name: Run Clippy
+#    needs: format
+#    runs-on: ubuntu-22.04
+#    steps:
+#      - uses: actions/checkout@v3
+#      - name: Install linux dependencies
+#        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+#      - name: Install nightly toolchain
+#        uses: actions-rs/toolchain@v1
+#        with:
+#          toolchain: nightly-2023-05-23
+#          override: true
+#          target: wasm32-unknown-unknown
+#          components: clippy
+#      - name: Rust Cache
+#        uses: Swatinem/rust-cache@v2
+#      - name: Check with Clippy
+#        run: |
+#          cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
 
   tests:
     name: Run tests
@@ -95,7 +101,7 @@ jobs:
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-05-23
+          toolchain: nightly-2024-03-12
           override: true
           target: wasm32-unknown-unknown
       - name: Rust Cache

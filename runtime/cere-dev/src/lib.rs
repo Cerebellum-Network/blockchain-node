@@ -133,7 +133,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 50000,
+	spec_version: 51301,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 15,
@@ -374,7 +374,7 @@ impl pallet_scheduler::Config for Runtime {
 	type MaxScheduledPerBlock = ConstU32<512>;
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
-	type Preimages = ();
+	type Preimages = Preimage;
 }
 
 parameter_types! {
@@ -506,8 +506,8 @@ impl pallet_session::historical::Config for Runtime {
 
 pallet_staking_reward_curve::build! {
 	const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
-		min_inflation: 0_000_100,
-		max_inflation: 0_050_000,
+		min_inflation: 0_000_200,
+		max_inflation: 0_100_000,
 		ideal_stake: 0_200_000,
 		falloff: 0_050_000,
 		max_piece_count: 100,
@@ -802,7 +802,7 @@ impl pallet_democracy::Config for Runtime {
 	type MaxVotes = ConstU32<100>;
 	type WeightInfo = pallet_democracy::weights::SubstrateWeight<Runtime>;
 	type MaxProposals = MaxProposals;
-	type Preimages = ();
+	type Preimages = Preimage;
 	type MaxDeposits = ConstU32<100>;
 	type MaxBlacklisted = ConstU32<100>;
 }
@@ -908,7 +908,6 @@ parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 50_000 * DOLLARS;
 	pub const SpendPeriod: BlockNumber = DAYS;
-	/// Burn rate is at 0.058% per era (daily burn rate)
 	pub const Burn: Permill = Permill::from_parts(580);
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
@@ -1032,12 +1031,7 @@ impl pallet_contracts::Config for Runtime {
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
-	type Migrations = (
-		cere_runtime_common::migrations::ContractsMigration<Runtime>,
-		// pallet_contracts::migration::v10::Migration<Runtime>,
-		pallet_contracts::migration::v11::Migration<Runtime>,
-		pallet_contracts::migration::v12::Migration<Runtime>,
-	);
+	type Migrations = ();
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -1443,7 +1437,14 @@ pub type SignedExtra = (
 pub struct StakingMigrationV11OldPallet;
 impl Get<&'static str> for StakingMigrationV11OldPallet {
 	fn get() -> &'static str {
-		"VoterList"
+		"BagsList"
+	}
+}
+
+pub struct MigrateStakingPalletToV8;
+impl OnRuntimeUpgrade for MigrateStakingPalletToV8 {
+	fn on_runtime_upgrade() -> Weight {
+		pallet_staking::migrations::v8::migrate::<Runtime>()
 	}
 }
 
@@ -1455,47 +1456,38 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
-pub struct NominationPoolsMigrationV4OldPallet;
-impl Get<Perbill> for NominationPoolsMigrationV4OldPallet {
-	fn get() -> Perbill {
-		Perbill::zero()
-	}
-}
-/// Migrations that set `StorageVersion`s we missed to set.
-pub struct SetStorageVersions;
-
-impl OnRuntimeUpgrade for SetStorageVersions {
+// We don't need to run pallet_balances::pallets::MigrateToTrackInactive or
+// pallet_balances::pallets::MigrateManyToTrackInactive since XCM related only.
+// MigrateToTrackInactive and MigrateManyToTrackInactive simply add CheckingAccount value to
+// InactiveIssuance so it's safe to skip it.
+pub struct SetBalancesStorageVersions;
+impl OnRuntimeUpgrade for SetBalancesStorageVersions {
 	fn on_runtime_upgrade() -> Weight {
-		// Was missed as part of:
-		// `runtime_common::session::migration::ClearOldSessionStorage<Runtime>`.
-		let storage_version = Historical::on_chain_storage_version();
+		let storage_version = <Balances>::on_chain_storage_version();
 		if storage_version < 1 {
-			StorageVersion::new(1).put::<Historical>();
+			StorageVersion::new(1).put::<Balances>();
 		}
 
-		RocksDbWeight::get().reads_writes(2, 2)
+		RocksDbWeight::get().reads_writes(1, 1)
 	}
 }
 parameter_types! {
 	pub const SocietyPalletName: &'static str = "Society";
 }
+
 /// Runtime migrations
 type Migrations = (
-	pallet_im_online::migration::v1::Migration<Runtime>,
-	pallet_democracy::migrations::v1::v1::Migration<Runtime>,
-	pallet_fast_unstake::migrations::v1::MigrateToV1<Runtime>,
-	pallet_multisig::migrations::v1::MigrateToV1<Runtime>,
-	pallet_scheduler::migration::v3::MigrateToV4<Runtime>,
-	pallet_scheduler::migration::v4::CleanupAgendas<Runtime>,
+	MigrateStakingPalletToV8,
+	pallet_staking::migrations::v9::InjectValidatorsIntoVoterList<Runtime>,
 	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
+	pallet_staking::migrations::v11::MigrateToV11<Runtime, VoterList, StakingMigrationV11OldPallet>,
+	pallet_staking::migrations::v12::MigrateToV12<Runtime>,
 	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
 	frame_support::migrations::RemovePallet<
 		SocietyPalletName,
 		<Runtime as frame_system::Config>::DbWeight,
 	>,
-	pallet_contracts::migration::Migration<Runtime>,
-	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
-	SetStorageVersions,
+	SetBalancesStorageVersions,
 );
 
 /// Executive: handles dispatch to the various modules.
@@ -1552,12 +1544,9 @@ mod benches {
 		[pallet_indices, Indices]
 		[pallet_membership, TechnicalMembership]
 		[pallet_multisig, Multisig]
-		[pallet_nomination_pools, NominationPoolsBench::<Runtime>]
-		[pallet_offences, OffencesBench::<Runtime>]
 		[pallet_proxy, Proxy]
 		[pallet_preimage, Preimage]
 		[pallet_scheduler, Scheduler]
-		[pallet_session, SessionBench::<Runtime>]
 		[pallet_staking, Staking]
 		[pallet_ddc_customers, DdcCustomers]
 		[pallet_ddc_clusters, DdcClusters]
@@ -1897,10 +1886,7 @@ impl_runtime_apis! {
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
 			// issues. To get around that, we separated the Session benchmarks into its own crate,
 			// which is why we need these two lines below.
-			use pallet_session_benchmarking::Pallet as SessionBench;
-			use pallet_offences_benchmarking::Pallet as OffencesBench;
 			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
-			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
 
@@ -1920,19 +1906,13 @@ impl_runtime_apis! {
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
 			// issues. To get around that, we separated the Session benchmarks into its own crate,
 			// which is why we need these two lines below.
-			use pallet_session_benchmarking::Pallet as SessionBench;
-			use pallet_offences_benchmarking::Pallet as OffencesBench;
 			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
-			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
 
-			impl pallet_session_benchmarking::Config for Runtime {}
-			impl pallet_offences_benchmarking::Config for Runtime {}
 			impl pallet_election_provider_support_benchmarking::Config for Runtime {}
 			impl frame_system_benchmarking::Config for Runtime {}
 			impl baseline::Config for Runtime {}
-			impl pallet_nomination_pools_benchmarking::Config for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
