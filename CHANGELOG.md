@@ -19,6 +19,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ...
 
+## [5.2.0]
+
+### Added
+
+- [C,D] Missing storage migrations to Staking pallet
+
+### Changed
+
+- [C,D] Remove Society pallet
+- [C,D] Bump Balances storage version
+
+## [5.1.4]
+
+### Changed
+
+- [C,D] Inflation parameters for the staking reward curve are back to normal values
+- [C,D] Daily burning is set to 2.5%
+
+## [5.1.3]
+
+### Changed
+
+- [C,D] Fixed prefixes for ChainBridge's pallet storage items
+- [C,D] Fixed prefixes for ERC721 pallet storage items
+
+## [5.1.2]
+
+### Changed
+
+- [C,D] Inflation parameters for the staking reward curve are doubled to temporarily increase validators payouts
+- [C,D] Daily burning is set to 0.058%
+
+
+## [5.1.1]
+
+### Added
+
+- [C,D] Missing storage migrations for `pallet_contracts`, `pallet_im_online`, `pallet_democracy`, and `pallet_fast_unstake`
+
+## [5.1.0]
+
+### Changed
+
+- [C] `5.0.1` release changes are reverted
+- [C,D] Off-chain workers are enabled
+
 ## [5.1.3]
 
 ### Changed
