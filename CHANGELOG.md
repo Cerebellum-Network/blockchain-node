@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C,D] Remove Society pallet
 - [C,D] Bump Balances storage version
 
+## [5.1.4]
+
+### Changed
+
+- [C,D] Inflation parameters for the staking reward curve are back to normal values
+- [C,D] Daily burning is set to 2.5%
+
 ## [5.1.3]
 
 ### Changed
