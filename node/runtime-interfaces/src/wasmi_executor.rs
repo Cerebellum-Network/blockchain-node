@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc, str, sync::Arc};
+use std::{any::Any, cell::RefCell, rc::Rc, str, sync::Arc};
 
 use codec::{Decode, Encode};
 use sc_executor::error::{Error, Result};
@@ -898,4 +898,73 @@ pub fn create_runtime(
 		allow_missing_func_imports,
 		heap_pages,
 	})
+}
+
+// THIS impl block was added to experiment with the WasmiInstance, it is not a part of original
+// substrate code
+impl WasmiRuntime {
+	pub fn new_instance_wasmi_instance(&self) -> std::result::Result<Box<WasmiInstance>, Error> {
+		let (instance, missing_functions, memory) = instantiate_module(
+			self.heap_pages as usize,
+			&self.module,
+			&self.host_functions,
+			self.allow_missing_func_imports,
+		)
+		.map_err(|e| WasmError::Instantiation(e.to_string()))?;
+
+		Ok(Box::new(WasmiInstance {
+			instance,
+			memory,
+			global_vals_snapshot: self.global_vals_snapshot.clone(),
+			data_segments_snapshot: self.data_segments_snapshot.clone(),
+			host_functions: self.host_functions.clone(),
+			allow_missing_func_imports: self.allow_missing_func_imports,
+			missing_functions: Arc::new(missing_functions),
+		}))
+	}
+}
+
+// THIS impl block was added to experiment with the WasmiInstance, it is not a part of original
+// substrate code
+impl WasmiInstance {
+	pub fn create_function_executor(&self) -> FunctionExecutor {
+		self.memory
+			.erase()
+			.map_err(|e| {
+				// Snapshot restoration failed. This is pretty unexpected since this can happen
+				// if some invariant is broken or if the system is under extreme memory pressure
+				// (so erasing fails).
+				log::error!(target: "wasm-executor", "snapshot restoration failed: {}", e);
+				WasmError::ErasingFailed(e.to_string())
+			})
+			.expect("memory.erase to be ok");
+
+		// Second, reapply data segments into the linear memory.
+		self.data_segments_snapshot
+			.apply(|offset, contents| self.memory.set(offset, contents))
+			.expect("data_segments_snapshot.apply to be ok"); // todo: fix error type
+
+		self.global_vals_snapshot
+			.apply(&self.instance)
+			.expect("global_vals_snapshot.apply to be ok");
+
+		let table = &self
+			.instance
+			.export_by_name("__indirect_function_table")
+			.and_then(|e| e.as_table().cloned());
+
+		let heap_base = get_heap_base(&self.instance).expect("get_heap_base to be ok");
+
+		let function_executor = FunctionExecutor::new(
+			self.memory.clone(),
+			heap_base,
+			table.clone(),
+			self.host_functions.clone(),
+			self.allow_missing_func_imports,
+			self.missing_functions.clone(),
+		)
+		.expect("function_executor to be created");
+
+		function_executor
+	}
 }

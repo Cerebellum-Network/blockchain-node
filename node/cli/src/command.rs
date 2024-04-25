@@ -134,25 +134,28 @@ pub fn run() -> sc_cli::Result<()> {
 			let chain_spec = &runner.config().chain_spec;
 
 			match cmd {
+				// 	BenchmarkCmd::Pallet(cmd) => {
+				// 		if !cfg!(feature = "runtime-benchmarks") {
+				// 			return Err("Runtime benchmarking wasn't enabled when building the node. \
+				// You can enable it with `--features runtime-benchmarks`."
+				// 				.into())
+				// 		}
+
+				// 		#[cfg(feature = "cere-dev-native")]
+				// 		if chain_spec.is_cere_dev() {
+				// 			return runner.sync_run(|config| {
+				// 				cmd.run::<cere_service::cere_dev_runtime::Block, ()>(config)
+				// 			})
+				// 		}
+
+				// 		#[cfg(not(feature = "cere-native"))]
+				// 		#[allow(unreachable_code)]
+				// 		Err(Error::Service(ServiceError::Other(
+				// 			"No runtime feature (cere-native, cere-dev-native) is enabled".to_string(),
+				// 		)))
+				// 	},
 				BenchmarkCmd::Pallet(cmd) => {
-					if !cfg!(feature = "runtime-benchmarks") {
-						return Err("Runtime benchmarking wasn't enabled when building the node. \
-            You can enable it with `--features runtime-benchmarks`."
-							.into())
-					}
-
-					#[cfg(feature = "cere-dev-native")]
-					if chain_spec.is_cere_dev() {
-						return runner.sync_run(|config| {
-							cmd.run::<cere_service::cere_dev_runtime::Block, ()>(config)
-						})
-					}
-
-					#[cfg(not(feature = "cere-native"))]
-					#[allow(unreachable_code)]
-					Err(Error::Service(ServiceError::Other(
-						"No runtime feature (cere-native, cere-dev-native) is enabled".to_string(),
-					)))
+					unimplemented!()
 				},
 				BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {
 					let (client, _, _, _) = cere_service::new_chain_ops(&config)?;

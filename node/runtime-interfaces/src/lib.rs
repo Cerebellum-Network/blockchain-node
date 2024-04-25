@@ -21,10 +21,9 @@
 
 use std::{cell::RefCell, str, sync::Arc};
 
-#[cfg(feature = "cere-dev-native")]
 use cere_dev_runtime as cere_dev;
-#[cfg(feature = "cere-native")]
 use cere_runtime as cere;
+use cere_runtime::wasm_binary_unwrap;
 use lazy_static::lazy_static;
 use parking_lot::ReentrantMutex;
 use sc_executor_common::wasm_runtime::WasmModule;
@@ -40,27 +39,11 @@ mod sandbox_instance;
 mod sandbox_wasmi_backend;
 
 mod wasmi_executor;
-use wasmi_executor::{create_runtime, FunctionExecutor};
+use wasmi_executor::{create_runtime, FunctionExecutor, WasmiInstance};
 
-// mod wasmtime_executor;
-
-#[cfg(feature = "cere-native")]
-pub fn wasm_binary_unwrap() -> &'static [u8] {
-	cere_runtime::WASM_BINARY.expect(
-		"Development wasm binary is not available. This means the client is built with \
-		 `SKIP_WASM_BUILD` flag and it is only usable for production chains. Please rebuild with \
-		 the flag disabled.",
-	)
-}
-
-const DUMMY: [u8; 0] = [];
-#[cfg(not(feature = "cere-native"))]
-pub fn wasm_binary_unwrap() -> &'static [u8] {
-	&DUMMY[..]
-}
-
-pub fn create() {
+pub fn create_function_executor() -> FunctionExecutor {
 	let runtime = wasm_binary_unwrap();
+	log::info!(target: "wasm_binary_unwrap", "===> LENGHT OF WASM BINARY {}", runtime.len());
 	let blob = sc_executor_common::runtime_blob::RuntimeBlob::uncompress_if_needed(runtime)
 		.expect("Runtime Blob to be ok");
 	let heap_pages = 2048;
@@ -74,24 +57,35 @@ pub fn create() {
 	host_functions.extend(benchmarking_host_functions);
 	host_functions.extend(sandbox_host_functions);
 
-	let _ = create_runtime(blob, heap_pages, host_functions, allow_missing_func_imports)
-		.map(|runtime| -> Arc<dyn WasmModule> { Arc::new(runtime) });
+	let runtime = create_runtime(blob, heap_pages, host_functions, allow_missing_func_imports)
+		// .map(|runtime| -> Arc<dyn WasmModule> { Arc::new(runtime) });
+		.expect("Runtime to be created");
+
+	let runtime_wasmi_instance =
+		runtime.new_instance_wasmi_instance().expect("Runtime instance to be created");
+	let function_executor = runtime_wasmi_instance.create_function_executor();
+	function_executor
 }
 
 lazy_static! {
 	static ref SANDBOX: ReentrantMutex<RefCell<FunctionExecutor>> =
-		ReentrantMutex::new(RefCell::new(
-			FunctionExecutor::new(
-				MemoryInstance::alloc(Pages(65536 as usize), None).unwrap(),
-				10000,
-				Some(TableInstance::alloc(u32::MAX, None).unwrap()),
-				Arc::new(Vec::new()),
-				true,
-				Arc::new(Vec::new())
-			)
-			.unwrap()
-		));
+		ReentrantMutex::new(RefCell::new(create_function_executor()));
 }
+
+// lazy_static! {
+// 	static ref SANDBOX: ReentrantMutex<RefCell<FunctionExecutor>> =
+// 		ReentrantMutex::new(RefCell::new(
+// 			FunctionExecutor::new(
+// 				MemoryInstance::alloc(Pages(65536 as usize), None).unwrap(),
+// 				10000,
+// 				Some(TableInstance::alloc(u32::MAX, None).unwrap()),
+// 				Arc::new(Vec::new()),
+// 				true,
+// 				Arc::new(Vec::new())
+// 			)
+// 			.unwrap()
+// 		));
+// }
 
 /// Something that provides access to the sandbox.
 #[runtime_interface(wasm_only)]
