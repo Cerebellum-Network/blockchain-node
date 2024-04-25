@@ -98,6 +98,8 @@ pub enum StorageNodeMode {
 	Storage = 2,
 	/// DDC Storage node operates with enabled caching in RAM and doesn't store data in Hard Drive
 	Cache = 3,
+	// DAC node
+	DAC = 4,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
