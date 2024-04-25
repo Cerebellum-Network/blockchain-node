@@ -23,6 +23,11 @@ thiserror = { workspace = true }
 lazy_static = { workspace = true, default-features = true }
 parking_lot = { workspace = true, default-features = true }
 sc-executor-wasmtime = { workspace = true }
+cere-dev-runtime = { workspace = true }
+cere-runtime = { workspace = true }
+sc-executor-common = { workspace = true }
+sp-io = { workspace = true, default-features = true }
+frame-benchmarking = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

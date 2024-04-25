@@ -970,14 +970,19 @@ dependencies = [
 name = "cere-runtime-interfaces"
 version = "5.1.0"
 dependencies = [
+ "cere-dev-runtime",
+ "cere-runtime",
  "environmental",
+ "frame-benchmarking",
  "lazy_static",
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.1",
  "sc-executor",
+ "sc-executor-common",
  "sc-executor-wasmtime",
  "sp-core",
+ "sp-io",
  "sp-runtime-interface",
  "sp-std",
  "sp-wasm-interface",

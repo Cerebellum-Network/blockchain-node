@@ -21,10 +21,15 @@
 
 use std::{cell::RefCell, str, sync::Arc};
 
+#[cfg(feature = "cere-dev-native")]
+use cere_dev_runtime as cere_dev;
+#[cfg(feature = "cere-native")]
+use cere_runtime as cere;
 use lazy_static::lazy_static;
 use parking_lot::ReentrantMutex;
+use sc_executor_common::wasm_runtime::WasmModule;
 use sp_runtime_interface::runtime_interface;
-use sp_wasm_interface::Pointer;
+use sp_wasm_interface::{HostFunctions, Pointer};
 use wasmi::{memory_units::Pages, MemoryInstance, TableInstance};
 
 mod freeing_bump;
@@ -35,9 +40,43 @@ mod sandbox_instance;
 mod sandbox_wasmi_backend;
 
 mod wasmi_executor;
-use wasmi_executor::FunctionExecutor;
+use wasmi_executor::{create_runtime, FunctionExecutor};
 
-mod wasmtime_executor;
+// mod wasmtime_executor;
+
+#[cfg(feature = "cere-native")]
+pub fn wasm_binary_unwrap() -> &'static [u8] {
+	cere_runtime::WASM_BINARY.expect(
+		"Development wasm binary is not available. This means the client is built with \
+		 `SKIP_WASM_BUILD` flag and it is only usable for production chains. Please rebuild with \
+		 the flag disabled.",
+	)
+}
+
+const DUMMY: [u8; 0] = [];
+#[cfg(not(feature = "cere-native"))]
+pub fn wasm_binary_unwrap() -> &'static [u8] {
+	&DUMMY[..]
+}
+
+pub fn create() {
+	let runtime = wasm_binary_unwrap();
+	let blob = sc_executor_common::runtime_blob::RuntimeBlob::uncompress_if_needed(runtime)
+		.expect("Runtime Blob to be ok");
+	let heap_pages = 2048;
+	let allow_missing_func_imports = true;
+
+	let mut host_functions = sp_io::SubstrateHostFunctions::host_functions();
+	let benchmarking_host_functions =
+		frame_benchmarking::benchmarking::HostFunctions::host_functions();
+	let sandbox_host_functions = crate::sandbox::HostFunctions::host_functions();
+
+	host_functions.extend(benchmarking_host_functions);
+	host_functions.extend(sandbox_host_functions);
+
+	let _ = create_runtime(blob, heap_pages, host_functions, allow_missing_func_imports)
+		.map(|runtime| -> Arc<dyn WasmModule> { Arc::new(runtime) });
+}
 
 lazy_static! {
 	static ref SANDBOX: ReentrantMutex<RefCell<FunctionExecutor>> =

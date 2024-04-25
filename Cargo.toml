@@ -171,6 +171,7 @@ sp-runtime-interface = { git = "https://github.com/paritytech/substrate", branch
 sp-wasm-interface = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
 sc-allocator = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
 sc-executor-wasmtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+sc-executor-common = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
 
 # Cere Dependenies
 cere-client = { path = "node/client" }
