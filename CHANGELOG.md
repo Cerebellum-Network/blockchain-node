@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [vNext]
 
+- DAC ddc node mode
+
 ### Added
 
 - [C,D] Missing storage migrations to Staking pallet
