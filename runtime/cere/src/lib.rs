@@ -1446,13 +1446,6 @@ impl Get<&'static str> for StakingMigrationV11OldPallet {
 	}
 }
 
-pub struct MigrateStakingPalletToV8;
-impl OnRuntimeUpgrade for MigrateStakingPalletToV8 {
-	fn on_runtime_upgrade() -> Weight {
-		pallet_staking::migrations::v8::migrate::<Runtime>()
-	}
-}
-
 // We don't need to run pallet_balances::pallets::MigrateToTrackInactive or
 // pallet_balances::pallets::MigrateManyToTrackInactive since XCM related only.
 // MigrateToTrackInactive and MigrateManyToTrackInactive simply add CheckingAccount value to
@@ -1483,7 +1476,6 @@ parameter_types! {
 
 /// Runtime migrations
 type Migrations = (
-	MigrateStakingPalletToV8,
 	pallet_staking::migrations::v9::InjectValidatorsIntoVoterList<Runtime>,
 	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
 	pallet_staking::migrations::v11::MigrateToV11<Runtime, VoterList, StakingMigrationV11OldPallet>,
