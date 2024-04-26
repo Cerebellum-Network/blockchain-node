@@ -1441,13 +1441,6 @@ impl Get<&'static str> for StakingMigrationV11OldPallet {
 	}
 }
 
-pub struct MigrateStakingPalletToV8;
-impl OnRuntimeUpgrade for MigrateStakingPalletToV8 {
-	fn on_runtime_upgrade() -> Weight {
-		pallet_staking::migrations::v8::migrate::<Runtime>()
-	}
-}
-
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
 	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
@@ -1477,7 +1470,6 @@ parameter_types! {
 
 /// Runtime migrations
 type Migrations = (
-	MigrateStakingPalletToV8,
 	pallet_staking::migrations::v9::InjectValidatorsIntoVoterList<Runtime>,
 	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
 	pallet_staking::migrations::v11::MigrateToV11<Runtime, VoterList, StakingMigrationV11OldPallet>,
