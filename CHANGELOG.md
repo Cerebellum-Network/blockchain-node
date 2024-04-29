@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Legend
+
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
@@ -18,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - ...
+
+
+## [5.2.0]
+
+### Added
+
+- [C,D] Missing storage migrations to Staking pallet
+
+### Changed
+
+- [C,D] Remove Society pallet
+- [C,D] Bump Balances storage version
 
 ## [5.1.4]
 
@@ -93,7 +106,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [C,D] Updated Substrate to polkadot-v0.9.37
-- Changes in `pallet-ddc-payouts::begin_billing_report` crate to accept start and end of the era.
 - More explicit events in `pallet-ddc-payouts` and `pallet-ddc-customers`
 - More explicit events in `pallet-ddc-payouts` about batch index
 
