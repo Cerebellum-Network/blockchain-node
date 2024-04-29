@@ -45,6 +45,7 @@ pub fn create_function_executor() -> FunctionExecutor {
 	// The runtime was at 266 version at block 125423 where the missing sandbox host functions were
 	// applied.
 	let runtime = &include_bytes!("./node_runtime_266.wasm")[..];
+	// let runtime = &include_bytes!("./node_runtime_50000.wasm")[..];
 	log::info!(target: "wasm_binary_unwrap", "LENGHT OF WASM BINARY {} ", runtime.len());
 
 	let blob = sc_executor_common::runtime_blob::RuntimeBlob::uncompress_if_needed(runtime.clone())
