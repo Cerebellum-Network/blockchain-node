@@ -72,7 +72,7 @@ jobs:
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
-            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:staging-latest
+            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:master-latest
 
       - name: Copy wasm artifacts from the image
         run: |
