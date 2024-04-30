@@ -226,7 +226,6 @@ pub fn cere_dev_genesis(
 		grandpa: Default::default(),
 		technical_membership: Default::default(),
 		treasury: Default::default(),
-		society: cere_dev::SocietyConfig { pot: 0 },
 		vesting: Default::default(),
 		transaction_payment: Default::default(),
 		ddc_customers: Default::default(),
