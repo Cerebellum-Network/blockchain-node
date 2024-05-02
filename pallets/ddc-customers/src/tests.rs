@@ -574,7 +574,5 @@ fn remove_bucket_checks_with_multiple_buckets_works() {
 			DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_1), bucket_id_1),
 			Error::<Test>::AlreadyRemoved
 		);
-
 	})
 }
-
