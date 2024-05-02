@@ -2,9 +2,9 @@
 
 use ddc_primitives::{
 	traits::cluster::{
-		ClusterCreator, ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError,
+		ClusterManager, ClusterManagerError, ClusterVisitorError,
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterParams,
+	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams,
 	ClusterPricingParams, NodePubKey, NodeType,
 };
 use frame_support::{
