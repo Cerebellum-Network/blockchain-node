@@ -1444,6 +1444,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 /// Runtime migrations
 type Migrations = (
 	pallet_im_online::migration::v1::Migration<Runtime>,
+	pallet_contracts::migration::Migration<Runtime>,
 	// TODO: Leaving this for the OpenGov PR
 	// Gov v1 storage migrations
 	// https://github.com/paritytech/polkadot/issues/6749
