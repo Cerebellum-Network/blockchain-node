@@ -174,15 +174,14 @@ where
 		task_manager.spawn_essential_handle(),
 		client.clone(),
 	);
-	let (grandpa_block_import, grandpa_link) =
-		sc_consensus_grandpa::block_import_with_authority_set_hard_forks(
-			client.clone(),
-			GRANDPA_JUSTIFICATION_PERIOD,
-			&client,
-			select_chain.clone(),
-			vec![],
-			telemetry.as_ref().map(|x| x.handle()),
-		)?;
+	let (grandpa_block_import, grandpa_link) = sc_consensus_grandpa::block_import(
+		client.clone(),
+		GRANDPA_JUSTIFICATION_PERIOD,
+		&client,
+		select_chain.clone(),
+		telemetry.as_ref().map(|x| x.handle()),
+	)?;
+
 	let justification_import = grandpa_block_import.clone();
 
 	let (block_import, babe_link) = sc_consensus_babe::block_import(
