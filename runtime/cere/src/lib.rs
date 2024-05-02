@@ -1047,7 +1047,11 @@ impl pallet_contracts::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Debug = ();
 	type Environment = ();
-	type Migrations = ();
+	type Migrations = (
+		pallet_contracts::migration::v13::Migration<Runtime>,
+		pallet_contracts::migration::v14::Migration<Runtime, Balances>,
+		pallet_contracts::migration::v15::Migration<Runtime>,
+	);
 }
 
 impl pallet_sudo::Config for Runtime {
