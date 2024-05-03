@@ -107,7 +107,7 @@ use sp_runtime::generic::Era;
 // Governance configurations.
 pub mod governance;
 use governance::{
-	pallet_custom_origins, FellowshipAdmin, GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender,
+	pallet_custom_origins, GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender,
 };
 
 /// Generated voter bag information.

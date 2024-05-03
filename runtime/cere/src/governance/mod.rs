@@ -1,12 +1,12 @@
-use frame_support::{parameter_types, traits::EitherOf};
+use frame_support::parameter_types;
 use frame_system::EnsureRootWithSuccess;
 
 use super::*;
 
 mod origins;
 pub use origins::{
-	pallet_custom_origins, FellowshipAdmin, GeneralAdmin, ReferendumCanceller, ReferendumKiller,
-	Spender, StakingAdmin, Treasurer, WhitelistedCaller,
+	pallet_custom_origins, GeneralAdmin, ReferendumCanceller, ReferendumKiller, Spender,
+	StakingAdmin, Treasurer, WhitelistedCaller,
 };
 
 mod tracks;
