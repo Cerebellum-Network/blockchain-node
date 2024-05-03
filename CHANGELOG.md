@@ -9,7 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
-## [vNext]
+## [VNext]
+
+## [5.3.0]
+
+### Changed
+
+- [C,D] Updated Substrate to polkadot-v1.1.0
+
+## [5.2.0]
 
 ### Added
 
@@ -41,7 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C,D] Inflation parameters for the staking reward curve are doubled to temporarily increase validators payouts
 - [C,D] Daily burning is set to 0.058%
 
-
 ## [5.1.1]
 
 ### Added
@@ -55,11 +62,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] `5.0.1` release changes are reverted
 - [C,D] Off-chain workers are enabled
 
+## [5.0.1]
+
+### Changed
+
+- [C,D] Set burn rate at 0.058% CERE tokens at the end of every era.
+
 ## [5.0.0]
 
 ### Changed
 
 - [C,D] Updated Substrate to polkadot-v1.0.0
+- [C,D] `pallet-ddc-customers`: implemented bucket removal
+
+### Added
+- Added ChargeError event to payout pallet
 
 ## [4.8.9]
 

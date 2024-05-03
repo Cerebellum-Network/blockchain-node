@@ -72,7 +72,7 @@ where
 	Block: BlockT,
 	Backend: BackendT<Block>,
 	Backend::State: sp_api::StateBackend<BlakeTwo256>,
-	Self::Api: RuntimeApiCollection<StateBackend = Backend::State>,
+	Self::Api: RuntimeApiCollection,
 {
 }
 
@@ -91,7 +91,7 @@ where
 		+ Sync
 		+ CallApiAt<Block, StateBackend = Backend::State>
 		+ HeaderMetadata<Block, Error = sp_blockchain::Error>,
-	Client::Api: RuntimeApiCollection<StateBackend = Backend::State>,
+	Client::Api: RuntimeApiCollection,
 {
 }
 
@@ -128,10 +128,9 @@ pub trait ExecuteWithClient {
 	/// Execute whatever should be executed with the given client instance.
 	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
 	where
-		<Api as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
-		Backend: sc_client_api::Backend<Block> + 'static,
+		Backend: sc_client_api::Backend<Block>,
 		Backend::State: sp_api::StateBackend<BlakeTwo256>,
-		Api: crate::RuntimeApiCollection<StateBackend = Backend::State>,
+		Api: crate::RuntimeApiCollection,
 		Client: AbstractClient<Block, Backend, Api = Api> + 'static;
 }
 
@@ -483,13 +482,10 @@ pub trait RuntimeApiCollection:
 	+ sp_offchain::OffchainWorkerApi<Block>
 	+ sp_session::SessionKeys<Block>
 	+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
-where
-	<Self as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
 {
 }
 
-impl<Api> RuntimeApiCollection for Api
-where
+impl<Api> RuntimeApiCollection for Api where
 	Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::ApiExt<Block>
 		+ sp_consensus_babe::BabeApi<Block>
@@ -500,8 +496,7 @@ where
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_session::SessionKeys<Block>
-		+ sp_authority_discovery::AuthorityDiscoveryApi<Block>,
-	<Self as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
+		+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
 {
 }
 
