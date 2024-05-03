@@ -73,6 +73,7 @@ pallet-treasury = { workspace = true }
 pallet-utility = { workspace = true }
 pallet-vesting = { workspace = true }
 sp-api = { workspace = true }
+sp-arithmetic = { workspace = true }
 sp-authority-discovery = { workspace = true }
 sp-block-builder = { workspace = true }
 sp-consensus-babe = { workspace = true }
@@ -87,12 +88,12 @@ sp-std = { workspace = true }
 sp-storage = { workspace = true }
 sp-transaction-pool = { workspace = true }
 sp-version = { workspace = true }
-sp-arithmetic = { workspace = true }
 
 # Cere dependencies
 cere-runtime-common = { workspace = true }
 ddc-primitives = { workspace = true }
 pallet-chainbridge = { workspace = true }
+pallet-conviction-voting = { workspace = true }
 pallet-ddc-clusters = { workspace = true }
 pallet-ddc-customers = { workspace = true }
 pallet-ddc-nodes = { workspace = true }
@@ -100,7 +101,6 @@ pallet-ddc-payouts = { workspace = true }
 pallet-ddc-staking = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
-pallet-conviction-voting = { workspace = true }
 pallet-referenda = { workspace = true }
 pallet-whitelist = { workspace = true }
 
