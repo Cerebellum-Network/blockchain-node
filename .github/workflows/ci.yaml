@@ -51,7 +51,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Check Build
         run: |
-          cargo build --release
+          cargo build --release --features=try-runtime
       - name: Run dev chain
         run: |
           timeout --preserve-status 30s ./target/release/cere --dev
@@ -59,9 +59,11 @@ jobs:
         run: >
           pushd node &&
           cargo check --features=runtime-benchmarks --release
-      - name: Check Build for Try-Runtime
+      - name: Check Try-Runtime
         run: |
-          cargo check --features=try-runtime --release
+          try-runtime \
+            --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm on-runtime-upgrade live \
+            --uri wss://rpc.mainnet.cere.network:443
 
   clippy:
     name: Run Clippy
