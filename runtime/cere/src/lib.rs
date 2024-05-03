@@ -28,12 +28,12 @@ use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragm
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
-	pallet_prelude::{Get, StorageVersion},
+	pallet_prelude::Get,
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly,
-		Everything, GetStorageVersion, Imbalance, InstanceFilter, KeyOwnerProofSystem,
-		LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, WithdrawReasons,
+		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
+		OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -1439,29 +1439,6 @@ pub type SignedExtra = (
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 
-pub struct StakingMigrationV11OldPallet;
-impl Get<&'static str> for StakingMigrationV11OldPallet {
-	fn get() -> &'static str {
-		"BagsList"
-	}
-}
-
-// We don't need to run pallet_balances::pallets::MigrateToTrackInactive or
-// pallet_balances::pallets::MigrateManyToTrackInactive since XCM related only.
-// MigrateToTrackInactive and MigrateManyToTrackInactive simply add CheckingAccount value to
-// InactiveIssuance so it's safe to skip it.
-pub struct SetBalancesStorageVersions;
-impl OnRuntimeUpgrade for SetBalancesStorageVersions {
-	fn on_runtime_upgrade() -> Weight {
-		let storage_version = <Balances>::on_chain_storage_version();
-		if storage_version < 1 {
-			StorageVersion::new(1).put::<Balances>();
-		}
-
-		RocksDbWeight::get().reads_writes(1, 1)
-	}
-}
-
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
 	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
@@ -1470,23 +1447,8 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
-parameter_types! {
-	pub const SocietyPalletName: &'static str = "Society";
-}
-
 /// Runtime migrations
-type Migrations = (
-	pallet_staking::migrations::v9::InjectValidatorsIntoVoterList<Runtime>,
-	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
-	pallet_staking::migrations::v11::MigrateToV11<Runtime, VoterList, StakingMigrationV11OldPallet>,
-	pallet_staking::migrations::v12::MigrateToV12<Runtime>,
-	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
-	frame_support::migrations::RemovePallet<
-		SocietyPalletName,
-		<Runtime as frame_system::Config>::DbWeight,
-	>,
-	SetBalancesStorageVersions,
-);
+type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -1534,9 +1496,12 @@ mod benches {
 		[pallet_indices, Indices]
 		[pallet_membership, TechnicalMembership]
 		[pallet_multisig, Multisig]
+		[pallet_nomination_pools, NominationPoolsBench::<Runtime>]
+		[pallet_offences, OffencesBench::<Runtime>]
 		[pallet_proxy, Proxy]
 		[pallet_preimage, Preimage]
 		[pallet_scheduler, Scheduler]
+		[pallet_session, SessionBench::<Runtime>]
 		[pallet_staking, Staking]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
@@ -1870,7 +1835,10 @@ impl_runtime_apis! {
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
 			// issues. To get around that, we separated the Session benchmarks into its own crate,
 			// which is why we need these two lines below.
+			use pallet_session_benchmarking::Pallet as SessionBench;
+			use pallet_offences_benchmarking::Pallet as OffencesBench;
 			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
 
@@ -1890,13 +1858,19 @@ impl_runtime_apis! {
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
 			// issues. To get around that, we separated the Session benchmarks into its own crate,
 			// which is why we need these two lines below.
+			use pallet_session_benchmarking::Pallet as SessionBench;
+			use pallet_offences_benchmarking::Pallet as OffencesBench;
 			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
 
+			impl pallet_session_benchmarking::Config for Runtime {}
+			impl pallet_offences_benchmarking::Config for Runtime {}
 			impl pallet_election_provider_support_benchmarking::Config for Runtime {}
 			impl frame_system_benchmarking::Config for Runtime {}
 			impl baseline::Config for Runtime {}
+			impl pallet_nomination_pools_benchmarking::Config for Runtime {}
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
