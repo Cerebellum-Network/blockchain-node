@@ -20,12 +20,6 @@ const APP_GENERAL_ADMIN: Curve =
 	Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
 const SUP_GENERAL_ADMIN: Curve =
 	Curve::make_reciprocal(7, 28, percent(10), percent(0), percent(50));
-const APP_AUCTION_ADMIN: Curve =
-	Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
-const SUP_AUCTION_ADMIN: Curve =
-	Curve::make_reciprocal(7, 28, percent(10), percent(0), percent(50));
-const APP_LEASE_ADMIN: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
-const SUP_LEASE_ADMIN: Curve = Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
 const APP_REFERENDUM_CANCELLER: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
 const SUP_REFERENDUM_CANCELLER: Curve =
 	Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
@@ -49,7 +43,7 @@ const APP_WHITELISTED_CALLER: Curve =
 const SUP_WHITELISTED_CALLER: Curve =
 	Curve::make_reciprocal(1, 28, percent(20), percent(5), percent(50));
 
-const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15] = [
+const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13] = [
 	(
 		0,
 		pallet_referenda::TrackInfo {
@@ -107,20 +101,6 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		12,
-		pallet_referenda::TrackInfo {
-			name: "lease_admin",
-			max_deciding: 10,
-			decision_deposit: 5 * GRAND,
-			prepare_period: 2 * HOURS,
-			decision_period: 28 * DAYS,
-			confirm_period: 3 * HOURS,
-			min_enactment_period: 10 * MINUTES,
-			min_approval: APP_LEASE_ADMIN,
-			min_support: SUP_LEASE_ADMIN,
-		},
-	),
-	(
 		13,
 		pallet_referenda::TrackInfo {
 			name: "fellowship_admin",
@@ -146,20 +126,6 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 			min_enactment_period: 10 * MINUTES,
 			min_approval: APP_GENERAL_ADMIN,
 			min_support: SUP_GENERAL_ADMIN,
-		},
-	),
-	(
-		15,
-		pallet_referenda::TrackInfo {
-			name: "auction_admin",
-			max_deciding: 10,
-			decision_deposit: 5 * GRAND,
-			prepare_period: 2 * HOURS,
-			decision_period: 28 * DAYS,
-			confirm_period: 3 * HOURS,
-			min_enactment_period: 10 * MINUTES,
-			min_approval: APP_AUCTION_ADMIN,
-			min_support: SUP_AUCTION_ADMIN,
 		},
 	),
 	(

@@ -1196,8 +1196,8 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment,
 		ElectionProviderMultiPhase: pallet_election_provider_multi_phase,
 		Staking: pallet_staking,
-		Session: pallet_session, // todo: add index to address old governance removal
-		Grandpa: pallet_grandpa, // todo: add index to address old governance removal
+		Session: pallet_session,
+		Grandpa: pallet_grandpa,
 		Treasury: pallet_treasury,
 		Contracts: pallet_contracts,
 		Sudo: pallet_sudo,
@@ -1213,8 +1213,8 @@ construct_runtime!(
 		Scheduler: pallet_scheduler,
 		Proxy: pallet_proxy,
 		Multisig: pallet_multisig,
-		Bounties: pallet_bounties, // todo: add index to address tips removal
-		VoterList: pallet_bags_list::<Instance1>, // todo: add index to address tips removal
+		Bounties: pallet_bounties,
+		VoterList: pallet_bags_list::<Instance1>,
 		ChildBounties: pallet_child_bounties,
 		NominationPools: pallet_nomination_pools,
 		FastUnstake: pallet_fast_unstake,
