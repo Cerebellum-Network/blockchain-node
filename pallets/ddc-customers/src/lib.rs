@@ -613,7 +613,7 @@ pub mod pallet {
 				}
 
 				if unlocking_balance >= value {
-					break
+					break;
 				}
 			}
 
