@@ -1400,7 +1400,6 @@ mod benches {
 		[pallet_conviction_voting, ConvictionVoting]
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
-		[pallet_preimage, Preimage]
 	);
 }
 
