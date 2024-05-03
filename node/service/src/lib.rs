@@ -19,7 +19,6 @@ use sc_service::{
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
-use sp_trie::PrefixedMemoryDB;
 pub mod chain_spec;
 #[cfg(feature = "cere-dev-native")]
 pub use cere_client::CereDevExecutorDispatch;
@@ -38,6 +37,10 @@ pub use sc_service::ChainSpec;
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 pub use sp_api::ConstructRuntimeApi;
 
+/// The minimum period of blocks on which justifications will be
+/// imported and generated.
+const GRANDPA_JUSTIFICATION_PERIOD: u32 = 512;
+
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch> =
 	sc_consensus_grandpa::GrandpaBlockImport<
@@ -53,8 +56,7 @@ where
 		+ Send
 		+ Sync
 		+ 'static,
-	RuntimeApi::RuntimeApi:
-		RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	ExecutorDispatch: NativeExecutionDispatch + 'static,
 {
 	task_manager: TaskManager,
@@ -72,8 +74,7 @@ where
 		+ Send
 		+ Sync
 		+ 'static,
-	RuntimeApi::RuntimeApi:
-		RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	ExecutorDispatch: NativeExecutionDispatch + 'static,
 {
 	let telemetry = config
@@ -130,7 +131,7 @@ fn new_partial<RuntimeApi, ExecutorDispatch>(
 		FullClient<RuntimeApi, ExecutorDispatch>,
 		FullBackend,
 		FullSelectChain,
-		sc_consensus::DefaultImportQueue<Block, FullClient<RuntimeApi, ExecutorDispatch>>,
+		sc_consensus::DefaultImportQueue<Block>,
 		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, ExecutorDispatch>>,
 		(
 			impl Fn(
@@ -161,8 +162,7 @@ where
 		+ Send
 		+ Sync
 		+ 'static,
-	RuntimeApi::RuntimeApi:
-		RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	ExecutorDispatch: NativeExecutionDispatch + 'static,
 {
 	let select_chain = sc_consensus::LongestChain::new(backend.clone());
@@ -174,13 +174,14 @@ where
 		task_manager.spawn_essential_handle(),
 		client.clone(),
 	);
-
 	let (grandpa_block_import, grandpa_link) = sc_consensus_grandpa::block_import(
 		client.clone(),
+		GRANDPA_JUSTIFICATION_PERIOD,
 		&client,
 		select_chain.clone(),
 		telemetry.as_ref().map(|x| x.handle()),
 	)?;
+
 	let justification_import = grandpa_block_import.clone();
 
 	let (block_import, babe_link) = sc_consensus_babe::block_import(
@@ -340,11 +341,10 @@ where
 		+ Send
 		+ Sync
 		+ 'static,
-	RuntimeApi::RuntimeApi:
-		RuntimeApiCollection<StateBackend = sc_client_api::StateBackendFor<FullBackend, Block>>,
+	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	ExecutorDispatch: NativeExecutionDispatch + 'static,
 {
-	use sc_network_common::sync::warp::WarpSyncParams;
+	use sc_service::WarpSyncParams;
 
 	let hwbench = if !disable_hardware_benchmarks {
 		config.database.path().map(|database_path| {
@@ -553,7 +553,7 @@ where
 	let config = sc_consensus_grandpa::Config {
 		// FIXME #1578 make this available through chainspec
 		gossip_duration: std::time::Duration::from_millis(333),
-		justification_period: 512,
+		justification_generation_period: GRANDPA_JUSTIFICATION_PERIOD,
 		name: Some(name),
 		observer_enabled: false,
 		keystore,
@@ -604,10 +604,9 @@ impl ExecuteWithClient for RevertConsensus {
 
 	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
 	where
-		<Api as sp_api::ApiExt<Block>>::StateBackend: sp_api::StateBackend<BlakeTwo256>,
-		Backend: sc_client_api::Backend<Block> + 'static,
+		Backend: sc_client_api::Backend<Block>,
 		Backend::State: sp_api::StateBackend<BlakeTwo256>,
-		Api: RuntimeApiCollection<StateBackend = Backend::State>,
+		Api: RuntimeApiCollection,
 		Client: AbstractClient<Block, Backend, Api = Api> + 'static,
 	{
 		sc_consensus_babe::revert(client.clone(), self.backend, self.blocks)?;
@@ -631,12 +630,7 @@ macro_rules! chain_ops {
 pub fn new_chain_ops(
 	config: &Configuration,
 ) -> Result<
-	(
-		Arc<Client>,
-		Arc<FullBackend>,
-		sc_consensus::BasicQueue<Block, PrefixedMemoryDB<BlakeTwo256>>,
-		TaskManager,
-	),
+	(Arc<Client>, Arc<FullBackend>, sc_consensus::BasicQueue<Block>, TaskManager),
 	ServiceError,
 > {
 	#[cfg(feature = "cere-dev-native")]
