@@ -28,12 +28,12 @@ use frame_election_provider_support::{onchain, BalancingConfig, SequentialPhragm
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
-	pallet_prelude::{Get, StorageVersion},
+	pallet_prelude::Get,
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly,
-		Everything, GetStorageVersion, Imbalance, InstanceFilter, KeyOwnerProofSystem,
-		LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, WithdrawReasons,
+		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
+		OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -1439,29 +1439,6 @@ pub type SignedExtra = (
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 
-pub struct StakingMigrationV11OldPallet;
-impl Get<&'static str> for StakingMigrationV11OldPallet {
-	fn get() -> &'static str {
-		"BagsList"
-	}
-}
-
-// We don't need to run pallet_balances::pallets::MigrateToTrackInactive or
-// pallet_balances::pallets::MigrateManyToTrackInactive since XCM related only.
-// MigrateToTrackInactive and MigrateManyToTrackInactive simply add CheckingAccount value to
-// InactiveIssuance so it's safe to skip it.
-pub struct SetBalancesStorageVersions;
-impl OnRuntimeUpgrade for SetBalancesStorageVersions {
-	fn on_runtime_upgrade() -> Weight {
-		let storage_version = <Balances>::on_chain_storage_version();
-		if storage_version < 1 {
-			StorageVersion::new(1).put::<Balances>();
-		}
-
-		RocksDbWeight::get().reads_writes(1, 1)
-	}
-}
-
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
 	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
@@ -1470,23 +1447,8 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
-parameter_types! {
-	pub const SocietyPalletName: &'static str = "Society";
-}
-
 /// Runtime migrations
-type Migrations = (
-	pallet_staking::migrations::v9::InjectValidatorsIntoVoterList<Runtime>,
-	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
-	pallet_staking::migrations::v11::MigrateToV11<Runtime, VoterList, StakingMigrationV11OldPallet>,
-	pallet_staking::migrations::v12::MigrateToV12<Runtime>,
-	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
-	frame_support::migrations::RemovePallet<
-		SocietyPalletName,
-		<Runtime as frame_system::Config>::DbWeight,
-	>,
-	SetBalancesStorageVersions,
-);
+type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
