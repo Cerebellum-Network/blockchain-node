@@ -157,7 +157,6 @@ std = [
   "pallet-sudo/std",
   "pallet-utility/std",
   "sp-version/std",
-  "pallet-society/std",
   "pallet-recovery/std",
   "pallet-vesting/std",
   "sp-core/std",

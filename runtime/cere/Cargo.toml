@@ -147,7 +147,6 @@ std = [
   "pallet-insecure-randomness-collective-flip/std",
   "pallet-session/std",
   "pallet-staking/std",
-  "pallet-society/std",
   "pallet-sudo/std",
   "pallet-election-provider-multi-phase/std",
   "pallet-timestamp/std",
