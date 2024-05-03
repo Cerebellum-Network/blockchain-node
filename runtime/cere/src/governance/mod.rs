@@ -44,7 +44,7 @@ impl pallet_whitelist::Config for Runtime {
 	type WeightInfo = pallet_whitelist::weights::SubstrateWeight<Runtime>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WhitelistOrigin = EnsureRoot<Self::AccountId>; // todo: add Technical Committee body
+	type WhitelistOrigin = EnsureRoot<Self::AccountId>;
 	type DispatchWhitelistedOrigin = EitherOf<EnsureRoot<Self::AccountId>, WhitelistedCaller>;
 	type Preimages = Preimage;
 }
