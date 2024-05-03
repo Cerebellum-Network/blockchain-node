@@ -1,6 +1,5 @@
 //! Tests for the module.
 
-use ddc_primitives::ClusterId;
 use frame_support::{assert_noop, assert_ok};
 
 use super::{mock::*, *};
@@ -490,6 +489,87 @@ fn remove_bucket_works() {
 		System::assert_last_event(Event::BucketRemoved { bucket_id: 1u64 }.into());
 
 		// Cannot remove bucket twice
+		assert_noop!(
+			DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_1), bucket_id_1),
+			Error::<Test>::AlreadyRemoved
+		);
+	})
+}
+
+#[test]
+fn remove_bucket_checks_with_multiple_buckets_works() {
+	ExtBuilder.build_and_execute(|| {
+		let cluster_id = ClusterId::from([1; 20]);
+		let account_1 = 1;
+		let account_2 = 2;
+		let bucket_id_1 = 1;
+		let bucket_id_2 = 2;
+		let private_bucket_params = BucketParams { is_public: false };
+		let public_bucket_params = BucketParams { is_public: true };
+
+		// Fail to remove non-existing buckets
+		assert_noop!(
+			DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_1), bucket_id_1),
+			Error::<Test>::NoBucketWithId
+		);
+
+		assert_noop!(
+			DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_1), bucket_id_2),
+			Error::<Test>::NoBucketWithId
+		);
+
+		// Bucket created
+		assert_ok!(DdcCustomers::create_bucket(
+			RuntimeOrigin::signed(account_1),
+			cluster_id,
+			private_bucket_params.clone()
+		));
+
+		// Bucket created
+		assert_ok!(DdcCustomers::create_bucket(
+			RuntimeOrigin::signed(account_2),
+			cluster_id,
+			public_bucket_params.clone()
+		));
+
+		// Fail to remove bucket with different owner
+		assert_noop!(
+			DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_1), bucket_id_2),
+			Error::<Test>::NotBucketOwner
+		);
+
+		assert_noop!(
+			DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_2), bucket_id_1),
+			Error::<Test>::NotBucketOwner
+		);
+
+		// Remove bucket with correct owner
+		assert_ok!(DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_1), bucket_id_1));
+
+		// Verify whether bucket has been removed
+		assert_eq!(
+			DdcCustomers::buckets(bucket_id_1),
+			Some(Bucket {
+				bucket_id: bucket_id_1,
+				owner_id: account_1,
+				cluster_id,
+				is_public: private_bucket_params.is_public,
+				is_removed: true,
+			})
+		);
+
+		assert_eq!(
+			DdcCustomers::buckets(bucket_id_2),
+			Some(Bucket {
+				bucket_id: bucket_id_2,
+				owner_id: account_2,
+				cluster_id,
+				is_public: public_bucket_params.is_public,
+				is_removed: false,
+			})
+		);
+
+		// Fail to remove already removed bucket
 		assert_noop!(
 			DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_1), bucket_id_1),
 			Error::<Test>::AlreadyRemoved
