@@ -245,6 +245,7 @@ pub mod pallet {
 		}
 	}
 
+	#[allow(unused_must_use)]
 	#[pallet::genesis_build]
 	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
