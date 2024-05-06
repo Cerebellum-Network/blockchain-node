@@ -604,7 +604,7 @@ pub mod pallet {
 				ensure!(current_cluster == cluster_id, Error::<T>::AlreadyInRole);
 				// Cancel previous "chill" attempts
 				Self::reset_chilling(&controller);
-				return Ok(())
+				return Ok(());
 			} else {
 				// Can't participate in new Storage network if provider hasn't left the previous
 				// cluster yet
@@ -646,13 +646,13 @@ pub mod pallet {
 					.map_err(Into::<Error<T>>::into)?;
 				(cluster, chill_delay)
 			} else {
-				return Ok(()) // node is already chilling or leaving the cluster
+				return Ok(()); // node is already chilling or leaving the cluster
 			};
 
 			if delay == BlockNumberFor::<T>::from(0u32) {
 				// No delay is set, so we can chill right away.
 				Self::chill_stash(&ledger.stash);
-				return Ok(())
+				return Ok(());
 			}
 
 			let can_chill_from = current_block.defensive_saturating_add(delay);
@@ -660,13 +660,13 @@ pub mod pallet {
 				None => {
 					// No previous declarations of desire to chill. Note it to allow chilling soon.
 					Self::chill_stash_soon(&ledger.stash, &controller, cluster, can_chill_from);
-					return Ok(())
+					return Ok(());
 				},
 				Some(chilling) if can_chill_from < chilling => {
 					// Time to chill is not reached yet, but it is allowed to chill earlier. Update
 					// to allow chilling sooner.
 					Self::chill_stash_soon(&ledger.stash, &controller, cluster, can_chill_from);
-					return Ok(())
+					return Ok(());
 				},
 				Some(chilling) if chilling > current_block => Err(Error::<T>::TooEarly)?,
 				Some(_) => (),
