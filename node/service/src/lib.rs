@@ -286,7 +286,7 @@ pub fn build_full(
 			disable_hardware_benchmarks,
 			|_, _| (),
 		)
-		.map(|full| full.with_client(Client::CereDev))
+		.map(|full| full.with_client(Client::CereDev));
 	}
 
 	#[cfg(feature = "cere-native")]
@@ -635,7 +635,7 @@ pub fn new_chain_ops(
 > {
 	#[cfg(feature = "cere-dev-native")]
 	if config.chain_spec.is_cere_dev() {
-		return chain_ops!(config; cere_dev_runtime, CereDevExecutorDispatch, CereDev)
+		return chain_ops!(config; cere_dev_runtime, CereDevExecutorDispatch, CereDev);
 	}
 
 	#[cfg(feature = "cere-native")]
