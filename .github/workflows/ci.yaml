@@ -51,7 +51,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Check Build
         run: |
-          cargo build --release --features=try-runtime
+          cargo build --release --features try-runtime
       - name: Run dev chain
         run: |
           timeout --preserve-status 30s ./target/release/cere --dev
