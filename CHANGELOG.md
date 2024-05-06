@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [C,D] Updated Substrate to polkadot-v1.1.0
+- [C,D] Introduction of the OpenGov
 
 ## [5.2.0]
 

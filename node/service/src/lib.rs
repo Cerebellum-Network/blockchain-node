@@ -11,7 +11,7 @@ pub use cere_dev_runtime;
 pub use cere_runtime;
 use futures::prelude::*;
 use sc_client_api::{Backend, BlockBackend};
-use sc_consensus_babe::{self, SlotProportion};
+use sc_consensus_babe::SlotProportion;
 pub use sc_executor::NativeExecutionDispatch;
 use sc_network::{Event, NetworkEventStream};
 use sc_service::{
