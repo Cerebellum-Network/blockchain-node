@@ -38,7 +38,6 @@ use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	traits::{Currency, DefensiveSaturating, LockIdentifier, LockableCurrency, WithdrawReasons},
-	BoundedVec,
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
