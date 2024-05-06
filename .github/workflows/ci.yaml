@@ -59,6 +59,8 @@ jobs:
         run: >
           pushd node &&
           cargo check --features=runtime-benchmarks --release
+      - name: Install try-runtime
+        run: cargo install --git https://github.com/paritytech/try-runtime-cli --locked
       - name: Check Try-Runtime
         run: |
           try-runtime \
