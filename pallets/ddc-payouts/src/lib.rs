@@ -789,6 +789,7 @@ pub mod pallet {
 					cluster_id,
 					era,
 					batch_index,
+					// !todo: add stored_bytes and transferred_bytes from payee.1
 					node_provider_id,
 					rewarded: reward_,
 					expected_to_reward: amount_to_reward,
@@ -947,6 +948,8 @@ pub mod pallet {
 				amount_to_deduct.saturated_into::<BalanceOf<T>>(),
 				ExistenceRequirement::AllowDeath,
 			)?;
+
+			// !todo emit event validator reward
 		}
 
 		Ok(())
