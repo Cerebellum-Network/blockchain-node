@@ -43,7 +43,12 @@ fn create_cluster_works() {
 				cluster_id,
 				cluster_manager_id.clone(),
 				cluster_reserve_id.clone(),
-				ClusterParams { node_provider_auth_contract: Some(auth_contract.clone()) },
+				ClusterParams {
+					node_provider_auth_contract: Some(auth_contract.clone()),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+				},
 				cluster_gov_params.clone()
 			),
 			BadOrigin
@@ -55,7 +60,12 @@ fn create_cluster_works() {
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
-			ClusterParams { node_provider_auth_contract: Some(auth_contract.clone()) },
+			ClusterParams {
+					node_provider_auth_contract: Some(auth_contract.clone()),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+			},
 			cluster_gov_params.clone()
 		));
 
@@ -111,7 +121,12 @@ fn create_cluster_works() {
 				cluster_id,
 				cluster_manager_id,
 				cluster_reserve_id,
-				ClusterParams { node_provider_auth_contract: Some(auth_contract) },
+				ClusterParams {
+					node_provider_auth_contract: Some(auth_contract),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+				},
 				cluster_gov_params
 			),
 			Error::<Test>::ClusterAlreadyExists
@@ -153,7 +168,12 @@ fn add_and_delete_node_works() {
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
-			ClusterParams { node_provider_auth_contract: Some(cluster_manager_id.clone()) },
+			ClusterParams {
+					node_provider_auth_contract: Some(cluster_manager_id.clone()),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+			},
 			ClusterGovParams {
 				treasury_share: Perquintill::from_float(0.05),
 				validators_share: Perquintill::from_float(0.01),
@@ -219,7 +239,12 @@ fn add_and_delete_node_works() {
 		assert_ok!(DdcClusters::set_cluster_params(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
-			ClusterParams { node_provider_auth_contract: Some(contract_id) },
+			ClusterParams {
+					node_provider_auth_contract: Some(contract_id),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+			},
 		));
 
 		// Node added succesfully
@@ -362,7 +387,12 @@ fn set_cluster_params_works() {
 			DdcClusters::set_cluster_params(
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
-				ClusterParams { node_provider_auth_contract: Some(auth_contract_1.clone()) },
+				ClusterParams {
+					node_provider_auth_contract: Some(auth_contract_1.clone()),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+				},
 			),
 			Error::<Test>::ClusterDoesNotExist
 		);
@@ -373,7 +403,12 @@ fn set_cluster_params_works() {
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
-			ClusterParams { node_provider_auth_contract: Some(auth_contract_1) },
+			ClusterParams {
+					node_provider_auth_contract: Some(auth_contract_1),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+			},
 			ClusterGovParams {
 				treasury_share: Perquintill::from_float(0.05),
 				validators_share: Perquintill::from_float(0.01),
@@ -392,7 +427,12 @@ fn set_cluster_params_works() {
 			DdcClusters::set_cluster_params(
 				RuntimeOrigin::signed(cluster_reserve_id),
 				cluster_id,
-				ClusterParams { node_provider_auth_contract: Some(auth_contract_2.clone()) },
+				ClusterParams {
+					node_provider_auth_contract: Some(auth_contract_2.clone()),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+				},
 			),
 			Error::<Test>::OnlyClusterManager
 		);
@@ -400,7 +440,12 @@ fn set_cluster_params_works() {
 		assert_ok!(DdcClusters::set_cluster_params(
 			RuntimeOrigin::signed(cluster_manager_id),
 			cluster_id,
-			ClusterParams { node_provider_auth_contract: Some(auth_contract_2.clone()) },
+			ClusterParams {
+					node_provider_auth_contract: Some(auth_contract_2.clone()),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+			},
 		));
 
 		let updated_cluster = DdcClusters::clusters(cluster_id).unwrap();
@@ -450,7 +495,12 @@ fn set_cluster_gov_params_works() {
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id,
-			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
+			ClusterParams {
+					node_provider_auth_contract: Some(auth_contract),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+			},
 			cluster_gov_params.clone()
 		));
 
@@ -556,7 +606,12 @@ fn cluster_visitor_works() {
 			cluster_id,
 			cluster_manager_id,
 			cluster_reserve_id.clone(),
-			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
+			ClusterParams {
+					node_provider_auth_contract: Some(auth_contract),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+			},
 			cluster_gov_params
 		));
 
@@ -663,7 +718,12 @@ fn cluster_creator_works() {
 			cluster_id,
 			cluster_manager_id,
 			cluster_reserve_id,
-			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
+			ClusterParams {
+					node_provider_auth_contract: Some(auth_contract),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+			},
 			cluster_gov_params
 		));
 

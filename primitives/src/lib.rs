@@ -20,6 +20,9 @@ pub type StorageNodePubKey = AccountId32;
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterParams<AccountId> {
 	pub node_provider_auth_contract: Option<AccountId>,
+	pub erasure_coding_required: u32,
+	pub erasure_coding_total: u32,
+	pub replication_total: u32,
 }
 
 // ClusterGovParams includes Governance sensitive parameters

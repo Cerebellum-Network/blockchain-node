@@ -20,7 +20,12 @@ pub fn config_cluster<T: Config>(user: T::AccountId, cluster_id: ClusterId)
 where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
-	let cluster_params = ClusterParams { node_provider_auth_contract: Some(user.clone()) };
+	let cluster_params = ClusterParams {
+		node_provider_auth_contract: Some(user.clone()),
+		erasure_coding_required: 4,
+		erasure_coding_total: 6,
+		replication_total: 3
+	};
 	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
 		treasury_share: Perquintill::default(),
 		validators_share: Perquintill::default(),
@@ -52,7 +57,12 @@ pub fn config_cluster_and_node<T: Config>(
 where
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
-	let cluster_params = ClusterParams { node_provider_auth_contract: Some(user.clone()) };
+	let cluster_params = ClusterParams {
+		node_provider_auth_contract: Some(user.clone()),
+		erasure_coding_required: 4,
+		erasure_coding_total: 6,
+		replication_total: 3
+	};
 	let storage_node_params = StorageNodeParams {
 		mode: StorageNodeMode::Storage,
 		host: vec![1u8; 255],
@@ -107,8 +117,12 @@ where
 	auth_contract.authorize_node(node_pub_key)?;
 
 	let updated_cluster_params =
-		ClusterParams { node_provider_auth_contract: Some(auth_contract.contract_id) };
-
+		ClusterParams {
+			node_provider_auth_contract: Some(auth_contract.contract_id),
+			erasure_coding_required: 4,
+			erasure_coding_total: 6,
+			replication_total: 3
+		};
 	// Register auth contract
 	let _ = DdcClusters::<T>::set_cluster_params(
 		RawOrigin::Signed(user).into(),
