@@ -789,7 +789,7 @@ pub mod pallet {
 					cluster_id,
 					era,
 					batch_index,
-					// !todo: add stored_bytes and transferred_bytes from payee.1
+					// !todo: add stored_bytes/transferred_bytes/number_of_puts/number_of_gets from payee.1
 					node_provider_id,
 					rewarded: reward_,
 					expected_to_reward: amount_to_reward,
@@ -1011,8 +1011,8 @@ pub mod pallet {
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
-		total.storage = fraction_of_month *
-			(|| -> Option<u128> {
+		total.storage = fraction_of_month
+			* (|| -> Option<u128> {
 				(usage.stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)
