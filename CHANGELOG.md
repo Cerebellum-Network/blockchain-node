@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - ...
 
+## [5.2.1]
+
+### Changed
+
+- [C,D] Fix inflation parameters for the staking reward curve
 
 ## [5.2.0]
 
