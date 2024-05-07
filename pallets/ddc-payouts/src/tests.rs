@@ -2493,7 +2493,7 @@ fn end_charging_customers_works() {
 
 		let mut balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance - Balances::minimum_balance(), charge);
-		assert_eq!(System::events().len(), 4 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 7 + 1); // 1 for Currency::transfer
 
 		assert_ok!(DdcPayouts::end_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -2517,6 +2517,18 @@ fn end_charging_customers_works() {
 
 		System::assert_has_event(
 			Event::ValidatorFeesCollected { cluster_id, era, amount: validator_fee }.into(),
+		);
+
+		System::assert_has_event(
+			Event::ValidatorsRewarded { validator_id: VALIDATOR1_ACCOUNT_ID, amount: 0 }.into(),
+		);
+
+		System::assert_has_event(
+			Event::ValidatorsRewarded { validator_id: VALIDATOR2_ACCOUNT_ID, amount: 0 }.into(),
+		);
+
+		System::assert_has_event(
+			Event::ValidatorsRewarded { validator_id: VALIDATOR3_ACCOUNT_ID, amount: 0 }.into(),
 		);
 
 		let transfers = 3 + 3 + 3 * 3; // for Currency::transfer
@@ -3216,11 +3228,15 @@ fn send_rewarding_providers_batch_works() {
 		let mut report_reward = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 
 		System::assert_has_event(
-			Event::Rewarded {
+			Event::ProvidersRewarded {
 				cluster_id,
 				era,
 				node_provider_id: node1,
 				batch_index: batch_node_index,
+				stored_bytes: node_usage1.stored_bytes,
+				transferred_bytes: node_usage1.transferred_bytes,
+				number_of_puts: node_usage1.number_of_puts,
+				number_of_gets: node_usage1.number_of_gets,
 				rewarded: balance_node1,
 				expected_to_reward: balance_node1,
 			}
@@ -3254,11 +3270,15 @@ fn send_rewarding_providers_batch_works() {
 		assert_eq!(report_reward.total_distributed_reward, balance_node1 + balance_node2);
 
 		System::assert_has_event(
-			Event::Rewarded {
+			Event::ProvidersRewarded {
 				cluster_id,
 				era,
 				node_provider_id: node2,
 				batch_index: batch_node_index,
+				stored_bytes: node_usage2.stored_bytes,
+				transferred_bytes: node_usage2.transferred_bytes,
+				number_of_puts: node_usage2.number_of_puts,
+				number_of_gets: node_usage2.number_of_gets,
 				rewarded: balance_node2,
 				expected_to_reward: balance_node2,
 			}
@@ -3301,11 +3321,15 @@ fn send_rewarding_providers_batch_works() {
 		assert_eq!(balance_node3, transfer_charge + storage_charge + puts_charge + gets_charge);
 
 		System::assert_has_event(
-			Event::Rewarded {
+			Event::ProvidersRewarded {
 				cluster_id,
 				era,
 				node_provider_id: node3,
 				batch_index: batch_node_index + 1,
+				stored_bytes: node_usage3.stored_bytes,
+				transferred_bytes: node_usage3.transferred_bytes,
+				number_of_puts: node_usage3.number_of_puts,
+				number_of_gets: node_usage3.number_of_gets,
 				rewarded: balance_node3,
 				expected_to_reward: balance_node3,
 			}

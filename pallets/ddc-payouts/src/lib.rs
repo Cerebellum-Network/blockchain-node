@@ -198,13 +198,21 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 		},
-		Rewarded {
+		ProvidersRewarded {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
+			stored_bytes: u64,
+			transferred_bytes: u64,
+			number_of_puts: u64,
+			number_of_gets: u64,
 			node_provider_id: T::AccountId,
 			rewarded: u128,
 			expected_to_reward: u128,
+		},
+		ValidatorsRewarded {
+			validator_id: T::AccountId,
+			amount: u128,
 		},
 		NotDistributedReward {
 			cluster_id: ClusterId,
@@ -785,11 +793,14 @@ pub mod pallet {
 						.ok_or(Error::<T>::ArithmeticOverflow)?;
 				}
 
-				Self::deposit_event(Event::<T>::Rewarded {
+				Self::deposit_event(Event::<T>::ProvidersRewarded {
 					cluster_id,
 					era,
 					batch_index,
-					// !todo: add stored_bytes/transferred_bytes/number_of_puts/number_of_gets from payee.1
+					stored_bytes: payee.1.stored_bytes,
+					transferred_bytes: payee.1.transferred_bytes,
+					number_of_puts: payee.1.number_of_puts,
+					number_of_gets: payee.1.number_of_gets,
 					node_provider_id,
 					rewarded: reward_,
 					expected_to_reward: amount_to_reward,
@@ -949,7 +960,10 @@ pub mod pallet {
 				ExistenceRequirement::AllowDeath,
 			)?;
 
-			// !todo emit event validator reward
+			pallet::Pallet::deposit_event(Event::<T>::ValidatorsRewarded {
+				validator_id: staker_id.clone(),
+				amount: amount_to_deduct,
+			});
 		}
 
 		Ok(())
@@ -1011,8 +1025,8 @@ pub mod pallet {
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
-		total.storage = fraction_of_month
-			* (|| -> Option<u128> {
+		total.storage = fraction_of_month *
+			(|| -> Option<u128> {
 				(usage.stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)
