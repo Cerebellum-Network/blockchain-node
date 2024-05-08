@@ -2546,7 +2546,7 @@ fn end_charging_customers_works() {
 		expected_fees = get_fees(&cluster_id).validators_share * ratio * charge;
 		assert_eq!(balance, expected_fees);
 		System::assert_has_event(
-			Event::ValidatorsRewarded {
+			Event::ValidatorRewarded {
 				cluster_id,
 				era,
 				validator_id: VALIDATOR1_ACCOUNT_ID,
@@ -2563,7 +2563,7 @@ fn end_charging_customers_works() {
 		expected_fees = get_fees(&cluster_id).validators_share * ratio * charge;
 		assert_eq!(balance, expected_fees);
 		System::assert_has_event(
-			Event::ValidatorsRewarded {
+			Event::ValidatorRewarded {
 				cluster_id,
 				era,
 				validator_id: VALIDATOR2_ACCOUNT_ID,
@@ -2580,7 +2580,7 @@ fn end_charging_customers_works() {
 		expected_fees = get_fees(&cluster_id).validators_share * ratio * charge;
 		assert_eq!(balance, expected_fees);
 		System::assert_has_event(
-			Event::ValidatorsRewarded {
+			Event::ValidatorRewarded {
 				cluster_id,
 				era,
 				validator_id: VALIDATOR3_ACCOUNT_ID,
@@ -3248,7 +3248,7 @@ fn send_rewarding_providers_batch_works() {
 		let mut report_reward = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 
 		System::assert_has_event(
-			Event::Rewarded {
+			Event::ProviderRewarded {
 				cluster_id,
 				era,
 				node_provider_id: node1,
@@ -3290,7 +3290,7 @@ fn send_rewarding_providers_batch_works() {
 		assert_eq!(report_reward.total_distributed_reward, balance_node1 + balance_node2);
 
 		System::assert_has_event(
-			Event::Rewarded {
+			Event::ProviderRewarded {
 				cluster_id,
 				era,
 				node_provider_id: node2,
@@ -3341,7 +3341,7 @@ fn send_rewarding_providers_batch_works() {
 		assert_eq!(balance_node3, transfer_charge + storage_charge + puts_charge + gets_charge);
 
 		System::assert_has_event(
-			Event::Rewarded {
+			Event::ProviderRewarded {
 				cluster_id,
 				era,
 				node_provider_id: node3,

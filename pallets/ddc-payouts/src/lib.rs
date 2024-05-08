@@ -198,7 +198,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 		},
-		Rewarded {
+		ProviderRewarded {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
@@ -210,7 +210,7 @@ pub mod pallet {
 			rewarded: u128,
 			expected_to_reward: u128,
 		},
-		ValidatorsRewarded {
+		ValidatorRewarded {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			validator_id: T::AccountId,
@@ -795,7 +795,7 @@ pub mod pallet {
 						.ok_or(Error::<T>::ArithmeticOverflow)?;
 				}
 
-				Self::deposit_event(Event::<T>::Rewarded {
+				Self::deposit_event(Event::<T>::ProviderRewarded {
 					cluster_id,
 					era,
 					batch_index,
@@ -964,7 +964,7 @@ pub mod pallet {
 				ExistenceRequirement::AllowDeath,
 			)?;
 
-			pallet::Pallet::deposit_event(Event::<T>::ValidatorsRewarded {
+			pallet::Pallet::deposit_event(Event::<T>::ValidatorRewarded {
 				cluster_id,
 				era,
 				validator_id: staker_id.clone(),
