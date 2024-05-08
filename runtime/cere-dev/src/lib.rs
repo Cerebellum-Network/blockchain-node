@@ -1268,7 +1268,9 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
 /// Runtime migrations
-type Migrations = migrations::Unreleased;
+type Migrations = (
+	pallet_ddc_clusters::migration::MigrateToV1<Runtime>,
+);
 
 /// The runtime migrations per release.
 #[allow(deprecated, missing_docs)]

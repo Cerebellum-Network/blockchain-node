@@ -26,6 +26,8 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migration;
+
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
@@ -66,7 +68,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+		frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
