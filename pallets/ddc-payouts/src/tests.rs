@@ -3242,7 +3242,7 @@ fn send_rewarding_providers_batch_works() {
 		let mut report_reward = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 
 		System::assert_has_event(
-			Event::ProvidersRewarded {
+			Event::Rewarded {
 				cluster_id,
 				era,
 				node_provider_id: node1,
@@ -3284,7 +3284,7 @@ fn send_rewarding_providers_batch_works() {
 		assert_eq!(report_reward.total_distributed_reward, balance_node1 + balance_node2);
 
 		System::assert_has_event(
-			Event::ProvidersRewarded {
+			Event::Rewarded {
 				cluster_id,
 				era,
 				node_provider_id: node2,
@@ -3335,7 +3335,7 @@ fn send_rewarding_providers_batch_works() {
 		assert_eq!(balance_node3, transfer_charge + storage_charge + puts_charge + gets_charge);
 
 		System::assert_has_event(
-			Event::ProvidersRewarded {
+			Event::Rewarded {
 				cluster_id,
 				era,
 				node_provider_id: node3,

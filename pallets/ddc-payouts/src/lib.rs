@@ -198,7 +198,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 		},
-		ProvidersRewarded {
+		Rewarded {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
@@ -793,7 +793,7 @@ pub mod pallet {
 						.ok_or(Error::<T>::ArithmeticOverflow)?;
 				}
 
-				Self::deposit_event(Event::<T>::ProvidersRewarded {
+				Self::deposit_event(Event::<T>::Rewarded {
 					cluster_id,
 					era,
 					batch_index,
