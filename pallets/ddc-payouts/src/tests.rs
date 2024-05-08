@@ -2493,7 +2493,7 @@ fn end_charging_customers_works() {
 
 		let mut balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance - Balances::minimum_balance(), charge);
-		assert_eq!(System::events().len(), 7 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 4 + 1); // 1 for Currency::transfer
 
 		assert_ok!(DdcPayouts::end_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -2519,20 +2519,9 @@ fn end_charging_customers_works() {
 			Event::ValidatorFeesCollected { cluster_id, era, amount: validator_fee }.into(),
 		);
 
-		System::assert_has_event(
-			Event::ValidatorsRewarded { validator_id: VALIDATOR1_ACCOUNT_ID, amount: 0 }.into(),
-		);
-
-		System::assert_has_event(
-			Event::ValidatorsRewarded { validator_id: VALIDATOR2_ACCOUNT_ID, amount: 0 }.into(),
-		);
-
-		System::assert_has_event(
-			Event::ValidatorsRewarded { validator_id: VALIDATOR3_ACCOUNT_ID, amount: 0 }.into(),
-		);
-
 		let transfers = 3 + 3 + 3 * 3; // for Currency::transfer
-		assert_eq!(System::events().len(), 5 + 1 + 3 + transfers);
+		let rewards = 3;
+		assert_eq!(System::events().len(), 5 + 1 + 3 + transfers + rewards);
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report_after.state, State::CustomersChargedWithFees);
@@ -2543,31 +2532,57 @@ fn end_charging_customers_works() {
 			.left_from_one();
 
 		balance = Balances::free_balance(TREASURY_ACCOUNT_ID);
-		assert_eq!(balance, get_fees(&cluster_id).treasury_share * charge);
+		let mut expected_fees = get_fees(&cluster_id).treasury_share * charge;
+		assert_eq!(balance, expected_fees);
 
 		balance = Balances::free_balance(RESERVE_ACCOUNT_ID);
-		assert_eq!(balance, get_fees(&cluster_id).cluster_reserve_share * charge);
+		expected_fees = get_fees(&cluster_id).cluster_reserve_share * charge;
+		assert_eq!(balance, expected_fees);
 
 		balance = Balances::free_balance(VALIDATOR1_ACCOUNT_ID);
 		let mut ratio = Perquintill::from_rational(
 			VALIDATOR1_SCORE,
 			VALIDATOR1_SCORE + VALIDATOR2_SCORE + VALIDATOR3_SCORE,
 		);
-		assert_eq!(balance, get_fees(&cluster_id).validators_share * ratio * charge);
+		expected_fees = get_fees(&cluster_id).validators_share * ratio * charge;
+		assert_eq!(balance, expected_fees);
+		System::assert_has_event(
+			Event::ValidatorsRewarded {
+				validator_id: VALIDATOR1_ACCOUNT_ID,
+				amount: expected_fees,
+			}
+			.into(),
+		);
 
 		balance = Balances::free_balance(VALIDATOR2_ACCOUNT_ID);
 		ratio = Perquintill::from_rational(
 			VALIDATOR2_SCORE,
 			VALIDATOR1_SCORE + VALIDATOR2_SCORE + VALIDATOR3_SCORE,
 		);
-		assert_eq!(balance, get_fees(&cluster_id).validators_share * ratio * charge);
+		expected_fees = get_fees(&cluster_id).validators_share * ratio * charge;
+		assert_eq!(balance, expected_fees);
+		System::assert_has_event(
+			Event::ValidatorsRewarded {
+				validator_id: VALIDATOR2_ACCOUNT_ID,
+				amount: expected_fees,
+			}
+			.into(),
+		);
 
 		balance = Balances::free_balance(VALIDATOR3_ACCOUNT_ID);
 		ratio = Perquintill::from_rational(
 			VALIDATOR3_SCORE,
 			VALIDATOR1_SCORE + VALIDATOR2_SCORE + VALIDATOR3_SCORE,
 		);
-		assert_eq!(balance, get_fees(&cluster_id).validators_share * ratio * charge);
+		expected_fees = get_fees(&cluster_id).validators_share * ratio * charge;
+		assert_eq!(balance, expected_fees);
+		System::assert_has_event(
+			Event::ValidatorsRewarded {
+				validator_id: VALIDATOR3_ACCOUNT_ID,
+				amount: expected_fees,
+			}
+			.into(),
+		);
 
 		assert_eq!(
 			report_after.total_customer_charge.transfer,
