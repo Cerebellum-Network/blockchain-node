@@ -117,11 +117,11 @@ where
 	auth_contract.authorize_node(node_pub_key)?;
 
 	let updated_cluster_params = ClusterParams {
-			node_provider_auth_contract: Some(auth_contract.contract_id),
-			erasure_coding_required: 4,
-			erasure_coding_total: 6,
-			replication_total: 3,
-		};
+		node_provider_auth_contract: Some(auth_contract.contract_id),
+		erasure_coding_required: 4,
+		erasure_coding_total: 6,
+		replication_total: 3,
+	};
 	// Register auth contract
 	let _ = DdcClusters::<T>::set_cluster_params(
 		RawOrigin::Signed(user).into(),
