@@ -2547,6 +2547,8 @@ fn end_charging_customers_works() {
 		assert_eq!(balance, expected_fees);
 		System::assert_has_event(
 			Event::ValidatorsRewarded {
+				cluster_id,
+				era,
 				validator_id: VALIDATOR1_ACCOUNT_ID,
 				amount: expected_fees,
 			}
@@ -2562,6 +2564,8 @@ fn end_charging_customers_works() {
 		assert_eq!(balance, expected_fees);
 		System::assert_has_event(
 			Event::ValidatorsRewarded {
+				cluster_id,
+				era,
 				validator_id: VALIDATOR2_ACCOUNT_ID,
 				amount: expected_fees,
 			}
@@ -2577,6 +2581,8 @@ fn end_charging_customers_works() {
 		assert_eq!(balance, expected_fees);
 		System::assert_has_event(
 			Event::ValidatorsRewarded {
+				cluster_id,
+				era,
 				validator_id: VALIDATOR3_ACCOUNT_ID,
 				amount: expected_fees,
 			}

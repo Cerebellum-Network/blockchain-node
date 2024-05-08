@@ -211,6 +211,8 @@ pub mod pallet {
 			expected_to_reward: u128,
 		},
 		ValidatorsRewarded {
+			cluster_id: ClusterId,
+			era: DdcEra,
 			validator_id: T::AccountId,
 			amount: u128,
 		},
@@ -640,7 +642,7 @@ pub mod pallet {
 			}
 
 			if validators_fee > 0 {
-				charge_validator_fees::<T>(validators_fee, &billing_report.vault)?;
+				charge_validator_fees::<T>(validators_fee, &billing_report.vault, cluster_id, era)?;
 				Self::deposit_event(Event::<T>::ValidatorFeesCollected {
 					cluster_id,
 					era,
@@ -947,6 +949,8 @@ pub mod pallet {
 	fn charge_validator_fees<T: Config>(
 		validators_fee: u128,
 		vault: &T::AccountId,
+		cluster_id: ClusterId,
+		era: DdcEra,
 	) -> DispatchResult {
 		let stakers = get_current_exposure_ratios::<T>()?;
 
@@ -961,6 +965,8 @@ pub mod pallet {
 			)?;
 
 			pallet::Pallet::deposit_event(Event::<T>::ValidatorsRewarded {
+				cluster_id,
+				era,
 				validator_id: staker_id.clone(),
 				amount: amount_to_deduct,
 			});
