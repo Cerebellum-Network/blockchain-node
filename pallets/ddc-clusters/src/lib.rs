@@ -119,7 +119,7 @@ pub mod pallet {
 		NodeAuthNodeAuthorizationNotSuccessful,
 		ErasureCodingRequiredDidNotMeetMinimum,
 		ErasureCodingTotalNotMeetMinimum,
-		ReplicationTotalDidNotMeetMinimum
+		ReplicationTotalDidNotMeetMinimum,
 	}
 
 	#[pallet::storage]
@@ -309,9 +309,18 @@ pub mod pallet {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
-			ensure!(cluster_params.erasure_coding_required >= T::MinErasureCodingRequiredLimit::get(), Error::<T>::ErasureCodingRequiredDidNotMeetMinimum);
-			ensure!(cluster_params.erasure_coding_total >= T::MinErasureCodingTotalLimit::get(), Error::<T>::ErasureCodingTotalNotMeetMinimum);
-			ensure!(cluster_params.replication_total >= T::MinReplicationTotalLimit::get(), Error::<T>::ReplicationTotalDidNotMeetMinimum);
+			ensure!(
+				cluster_params.erasure_coding_required >= T::MinErasureCodingRequiredLimit::get(),
+				Error::<T>::ErasureCodingRequiredDidNotMeetMinimum
+			);
+			ensure!(
+				cluster_params.erasure_coding_total >= T::MinErasureCodingTotalLimit::get(),
+				Error::<T>::ErasureCodingTotalNotMeetMinimum
+			);
+			ensure!(
+				cluster_params.replication_total >= T::MinReplicationTotalLimit::get(),
+				Error::<T>::ReplicationTotalDidNotMeetMinimum
+			);
 			cluster.set_params(cluster_params).map_err(Into::<Error<T>>::into)?;
 			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });

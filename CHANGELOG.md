@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [VNext]
 - [C,D] `pallet-ddc-clusters`: Added Erasure coding and Replication in cluster params
-- 
+
 ## [5.3.0]
 
 ### Changed

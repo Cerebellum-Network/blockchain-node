@@ -21,6 +21,9 @@ pub struct Cluster<AccountId> {
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 pub struct ClusterProps<AccountId> {
 	pub node_provider_auth_contract: Option<AccountId>,
+	pub erasure_coding_required: u32,
+	pub erasure_coding_total: u32,
+	pub replication_total: u32,
 }
 
 impl<AccountId> Cluster<AccountId> {
@@ -36,6 +39,10 @@ impl<AccountId> Cluster<AccountId> {
 			reserve_id,
 			props: ClusterProps {
 				node_provider_auth_contract: cluster_params.node_provider_auth_contract,
+				erasure_coding_required: cluster_params.erasure_coding_required,
+				erasure_coding_total: cluster_params.erasure_coding_total,
+				replication_total: cluster_params.replication_total,
+
 			},
 		})
 	}
@@ -46,6 +53,9 @@ impl<AccountId> Cluster<AccountId> {
 	) -> Result<(), ClusterError> {
 		self.props = ClusterProps {
 			node_provider_auth_contract: cluster_params.node_provider_auth_contract,
+			erasure_coding_required: cluster_params.erasure_coding_required,
+			erasure_coding_total: cluster_params.erasure_coding_total,
+			replication_total: cluster_params.replication_total,
 		};
 		Ok(())
 	}
