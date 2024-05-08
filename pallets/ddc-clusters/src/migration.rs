@@ -1,61 +1,64 @@
 #[cfg(feature = "try-runtime")]
 use frame_support::ensure;
 use frame_support::{
-    storage_alias,
-    traits::{Get, GetStorageVersion, OnRuntimeUpgrade, StorageVersion},
-    weights::Weight,
+        storage_alias,
+        traits::{Get, GetStorageVersion, OnRuntimeUpgrade, StorageVersion},
+        weights::Weight,
 };
 use log::info;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::DispatchError;
 use sp_runtime::Saturating;
-use crate::cluster::ClusterProps;
-
 use super::*;
+use crate::cluster::ClusterProps;
 
 const LOG_TARGET: &str = "ddc-clusters";
 
 pub mod v0 {
-    use frame_support::pallet_prelude::*;
+        use frame_support::pallet_prelude::*;
 
-    use super::*;
+        use super::*;
 
-    #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-    pub struct Cluster<AccountId> {
-        pub cluster_id: ClusterId,
-        pub manager_id: AccountId,
-        pub reserve_id: AccountId,
-        pub props: ClusterProps<AccountId>,
-    }
+        #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+        pub struct Cluster<AccountId> {
+            pub cluster_id: ClusterId,
+            pub manager_id: AccountId,
+            pub reserve_id: AccountId,
+            pub props: ClusterProps<AccountId>,
+        }
 
-    #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-    pub struct ClusterProps<AccountId> {
-        pub node_provider_auth_contract: Option<AccountId>,
-    }
+        #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+        pub struct ClusterProps<AccountId> {
+            pub node_provider_auth_contract: Option<AccountId>,
+        }
 
-    #[storage_alias]
-    pub(super) type Clusters<T: Config> =
-    StorageMap<crate::Pallet<T>, Blake2_128Concat, ClusterId, Cluster<<T as frame_system::Config>::AccountId>>;
+        #[storage_alias]
+        pub(super) type Clusters<T: Config> = StorageMap<
+            crate::Pallet<T>,
+            Blake2_128Concat,
+            ClusterId,
+            Cluster<<T as frame_system::Config>::AccountId>
+        >;
 }
 
 pub fn migrate_to_v1<T: Config>() -> Weight {
-    let on_chain_version = Pallet::<T>::on_chain_storage_version();
-    let current_version = Pallet::<T>::current_storage_version();
+        let on_chain_version = Pallet::<T>::on_chain_storage_version();
+        let current_version = Pallet::<T>::current_storage_version();
 
-    info!(
-        target: LOG_TARGET,
-		"Running migration with current storage version {:?} / onchain {:?}",
-		current_version,
-		on_chain_version
-	);
-
-    if on_chain_version == 0 && current_version == 1 {
-        let mut translated = 0u64;
-        let count = v0::Clusters::<T>::iter().count();
         info!(
-			target: LOG_TARGET,
-			" >>> Updating DDC Cluster storage. Migrating {} clusters...", count
-		);
+            target: LOG_TARGET,
+		    "Running migration with current storage version {:?} / onchain {:?}",
+		    current_version,
+		    on_chain_version
+	    );
+
+        if on_chain_version == 0 && current_version == 1 {
+            let mut translated = 0u64;
+            let count = v0::Clusters::<T>::iter().count();
+            info!(
+			    target: LOG_TARGET,
+			    " >>> Updating DDC Cluster storage. Migrating {} clusters...", count
+		    );
 
         Clusters::<T>::translate::<v0::Cluster<T::AccountId>, _>(
             |cluster_id: ClusterId, cluster: v0::Cluster<T::AccountId>| {
