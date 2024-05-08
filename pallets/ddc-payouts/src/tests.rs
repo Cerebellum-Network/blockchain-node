@@ -2519,9 +2519,8 @@ fn end_charging_customers_works() {
 			Event::ValidatorFeesCollected { cluster_id, era, amount: validator_fee }.into(),
 		);
 
-		let transfers = 3 + 3 + 3 * 3; // for Currency::transfer
-		let rewards = 3;
-		assert_eq!(System::events().len(), 5 + 1 + 3 + transfers + rewards);
+		let transfers = 3 + 3 + 3 + 3 * 3; // for Currency::transfer
+		assert_eq!(System::events().len(), 5 + 1 + 3 + transfers);
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report_after.state, State::CustomersChargedWithFees);
