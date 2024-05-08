@@ -31,6 +31,8 @@ Please select the branch type you are merging and fill in the relevant template.
 - [ ] Change adds / updates tests if applicable.
 - [ ] Changelog doc updated.
 - [ ] `spec_version` has been incremented.
+- [ ] `network-relayer`'s [events](https://github.com/Cerebellum-Network/network-relayer/blob/dev-cere/shared/substrate/events.go) have been updated according to the blockchain events if applicable.
+- [ ] All CI checks have been passed successfully
 
 ## Checklist for Hotfix
 <!--- All boxes need to be checked. Follow this checklist before requiring PR review -->
@@ -38,10 +40,12 @@ Please select the branch type you are merging and fill in the relevant template.
 - [ ] Change has been tested in Testnet.
 - [ ] Changelog has been updated.
 - [ ] Crate version has been updated.
-- [ ] Spec version has been updated.
+- [ ] `spec_version` has been incremented.
 - [ ] Transaction version has been updated if required.
 - [ ] Pull Request to `dev` has been created.
 - [ ] Pull Request to `staging` has been created.
+- [ ] `network-relayer`'s [events](https://github.com/Cerebellum-Network/network-relayer/blob/dev-cere/shared/substrate/events.go) have been updated according to the blockchain events if applicable.
+- [ ] All CI checks have been passed successfully
 
 ## Checklist for Release
 <!--- All boxes need to be checked. Follow this checklist before requiring PR review -->
@@ -55,3 +59,4 @@ Please select the branch type you are merging and fill in the relevant template.
 - [ ] Crate version has been updated.
 - [ ] Spec version has been updated.
 - [ ] Transaction version has been updated if required.
+- [ ] All CI checks have been passed successfully
