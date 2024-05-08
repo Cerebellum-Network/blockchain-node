@@ -30,6 +30,7 @@ Please select the branch type you are merging and fill in the relevant template.
 - [ ] Change has been tested locally.
 - [ ] Change adds / updates tests if applicable.
 - [ ] Changelog doc updated.
+- [ ] `spec_version` has been incremented.
 
 ## Checklist for Hotfix
 <!--- All boxes need to be checked. Follow this checklist before requiring PR review -->
