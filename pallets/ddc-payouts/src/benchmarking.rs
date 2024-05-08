@@ -64,7 +64,7 @@ fn create_default_cluster<T: Config>(cluster_id: ClusterId) {
 		node_provider_auth_contract: Default::default(),
 		erasure_coding_required: 4,
 		erasure_coding_total: 6,
-		replication_total: 3
+		replication_total: 3,
 	};
 	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
 		treasury_share: Perquintill::from_percent(5),

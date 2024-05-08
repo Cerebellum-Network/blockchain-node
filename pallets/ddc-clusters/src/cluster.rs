@@ -42,7 +42,6 @@ impl<AccountId> Cluster<AccountId> {
 				erasure_coding_required: cluster_params.erasure_coding_required,
 				erasure_coding_total: cluster_params.erasure_coding_total,
 				replication_total: cluster_params.replication_total,
-
 			},
 		})
 	}

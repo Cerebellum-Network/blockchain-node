@@ -116,8 +116,7 @@ where
 	auth_contract = auth_contract.deploy_contract(user.clone())?;
 	auth_contract.authorize_node(node_pub_key)?;
 
-	let updated_cluster_params =
-		ClusterParams {
+	let updated_cluster_params = ClusterParams {
 			node_provider_auth_contract: Some(auth_contract.contract_id),
 			erasure_coding_required: 4,
 			erasure_coding_total: 6,
