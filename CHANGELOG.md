@@ -13,10 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.3.0]
 
-### Changed
-
 - [C,D] Updated Substrate to polkadot-v1.1.0
 - [C,D] Introduction of the OpenGov
+- [C,D] Introduce new events to the DDC Payouts Pallet
 
 ## [5.2.0]
 
