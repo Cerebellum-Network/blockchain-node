@@ -1,5 +1,3 @@
-use super::*;
-use crate::cluster::ClusterProps;
 #[cfg(feature = "try-runtime")]
 use frame_support::ensure;
 use frame_support::{
@@ -11,6 +9,8 @@ use log::info;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::DispatchError;
 use sp_runtime::Saturating;
+use super::*;
+use crate::cluster::ClusterProps;
 
 const LOG_TARGET: &str = "ddc-clusters";
 
@@ -135,9 +135,9 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 #[cfg(feature = "try-runtime")]
 mod test {
 
+	use frame_support::pallet_prelude::StorageVersion;
 	use super::*;
 	use crate::mock::{Test as T, *};
-	use frame_support::pallet_prelude::StorageVersion;
 
 	#[test]
 	fn cluster_migration_works() {
