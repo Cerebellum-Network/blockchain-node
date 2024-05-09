@@ -184,15 +184,15 @@ mod test {
 
 			assert_eq!(StorageVersion::get::<Pallet<T>>(), 1);
 			assert_eq!(cluster_count_after_upgrade, 3);
-			assert_eq!(Clusters::<T>::get(&cluster_id0).unwrap().props.erasure_coding_required, 16);
-			assert_eq!(Clusters::<T>::get(&cluster_id0).unwrap().props.erasure_coding_total, 48);
-			assert_eq!(Clusters::<T>::get(&cluster_id0).unwrap().props.replication_total, 20);
-			assert_eq!(Clusters::<T>::get(&cluster_id1).unwrap().props.erasure_coding_required, 16);
-			assert_eq!(Clusters::<T>::get(&cluster_id1).unwrap().props.erasure_coding_total, 48);
-			assert_eq!(Clusters::<T>::get(&cluster_id1).unwrap().props.replication_total, 20);
-			assert_eq!(Clusters::<T>::get(&cluster_id2).unwrap().props.erasure_coding_required, 16);
-			assert_eq!(Clusters::<T>::get(&cluster_id2).unwrap().props.erasure_coding_total, 48);
-			assert_eq!(Clusters::<T>::get(&cluster_id2).unwrap().props.replication_total, 20);
+			assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().props.erasure_coding_required, 16);
+			assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().props.erasure_coding_total, 48);
+			assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().props.replication_total, 20);
+			assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().props.erasure_coding_required, 16);
+			assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().props.erasure_coding_total, 48);
+			assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().props.replication_total, 20);
+			assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().props.erasure_coding_required, 16);
+			assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().props.erasure_coding_total, 48);
+			assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().props.replication_total, 20);
 		});
 	}
 }
