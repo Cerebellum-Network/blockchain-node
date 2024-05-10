@@ -110,7 +110,7 @@ fn deposit_and_deposit_extra_works() {
 			Error::<Test>::TransferFailed
 		);
 
-		let amount1 = 10_u128;
+		let amount1 = 90_u128;
 		// Deposited
 		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_1), amount1));
 
@@ -140,23 +140,33 @@ fn deposit_and_deposit_extra_works() {
 			Error::<Test>::NotOwner
 		);
 
+		// Deposit of an extra amount that is more than the customer's total balance fails
+		let extra_amount1 = 20_u128;
+		assert_noop!(
+			DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_1), extra_amount1),
+			Error::<Test>::TransferFailed
+		);
+
+		let extra_amount2 = 5_u128;
+
 		// Deposited extra
-		let amount2 = 20_u128;
-		assert_ok!(DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_1), amount2));
+		assert_ok!(DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_1), extra_amount2));
 
 		// Check storage
 		assert_eq!(
 			DdcCustomers::ledger(account_1),
 			Some(AccountsLedger {
 				owner: account_1,
-				total: amount1 + amount2,
-				active: amount1 + amount2,
+				total: amount1 + extra_amount2,
+				active: amount1 + extra_amount2,
 				unlocking: Default::default(),
 			})
 		);
 
 		// Checking that event was emitted
-		System::assert_last_event(Event::Deposited { owner_id: account_1, amount: amount2 }.into());
+		System::assert_last_event(
+			Event::Deposited { owner_id: account_1, amount: extra_amount2 }.into(),
+		);
 	})
 }
 
