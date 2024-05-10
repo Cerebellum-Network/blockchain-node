@@ -430,6 +430,7 @@ parameter_types! {
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
 	pub const MaxReserves: u32 = 50;
+	pub const MaxHolds: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -445,7 +446,7 @@ impl pallet_balances::Config for Runtime {
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = RuntimeHoldReason;
-	type MaxHolds = ConstU32<0>;
+	type MaxHolds = MaxHolds;
 }
 
 parameter_types! {
@@ -1268,7 +1269,7 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
 /// Runtime migrations
-type Migrations = pallet_ddc_clusters::migration::MigrateToV1<Runtime>;
+type Migrations = migrations::Unreleased;
 
 /// The runtime migrations per release.
 #[allow(deprecated, missing_docs)]
@@ -1323,7 +1324,9 @@ pub mod migrations {
 
 	/// Unreleased migrations. Add new ones here:
 	pub type Unreleased = (
+        pallet_ddc_clusters::migration::MigrateToV1<Runtime>,
 		pallet_contracts::migration::Migration<Runtime>,
+		pallet_referenda::migration::v1::MigrateV0ToV1<Runtime>,
 		// Gov v1 storage migrations
 		// https://github.com/paritytech/polkadot/issues/6749
 		pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
