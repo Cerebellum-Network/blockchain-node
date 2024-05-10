@@ -203,6 +203,9 @@ impl crate::pallet::Config for Test {
 	type StakingVisitor = TestStakingVisitor;
 	type StakerCreator = TestStaker;
 	type WeightInfo = ();
+	type MinErasureCodingRequiredLimit = ConstU32<4>;
+	type MinErasureCodingTotalLimit = ConstU32<6>;
+	type MinReplicationTotalLimit = ConstU32<3>;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
@@ -277,7 +280,12 @@ impl ExtBuilder {
 			ClusterId::from([0; 20]),
 			AccountId::from([0; 32]),
 			AccountId::from([0; 32]),
-			ClusterParams { node_provider_auth_contract: Some(AccountId::from([0; 32])) },
+			ClusterParams {
+				node_provider_auth_contract: Some(AccountId::from([0; 32])),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3,
+			},
 		) {
 			let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
 				clusters: vec![cluster],

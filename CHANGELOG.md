@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [C,D] Updated Substrate to polkadot-v1.1.0
 - [C,D] Introduction of the OpenGov
+- [C,D] `pallet-ddc-clusters`: Added Erasure coding and Replication in cluster params
 
 ## [5.2.0]
 
