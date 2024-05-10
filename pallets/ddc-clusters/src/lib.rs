@@ -356,11 +356,24 @@ pub mod pallet {
 			cluster_params: ClusterParams<T::AccountId>,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
+			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
+
+			ensure!(
+				cluster_params.erasure_coding_required >= T::MinErasureCodingRequiredLimit::get(),
+				Error::<T>::ErasureCodingRequiredDidNotMeetMinimum
+			);
+			ensure!(
+				cluster_params.erasure_coding_total >= T::MinErasureCodingTotalLimit::get(),
+				Error::<T>::ErasureCodingTotalNotMeetMinimum
+			);
+			ensure!(
+				cluster_params.replication_total >= T::MinReplicationTotalLimit::get(),
+				Error::<T>::ReplicationTotalDidNotMeetMinimum
+			);
+
 			let cluster =
 				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params)
 					.map_err(Into::<Error<T>>::into)?;
-			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
-
 			Clusters::<T>::insert(cluster_id, cluster);
 			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
