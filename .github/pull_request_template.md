@@ -36,8 +36,6 @@ Please select the branch type you are merging and fill in the relevant template.
 
 ## Checklist for Hotfix
 <!--- All boxes need to be checked. Follow this checklist before requiring PR review -->
-- [ ] Change has been deployed to Testnet.
-- [ ] Change has been tested in Testnet.
 - [ ] Changelog has been updated.
 - [ ] Crate version has been updated.
 - [ ] `spec_version` has been incremented.
