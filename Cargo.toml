@@ -1,5 +1,5 @@
 [workspace.package]
-version = "5.2.1"
+version = "5.2.2"
 authors = ["Cerebellum-Network"]
 edition = "2021"
 homepage = "https://cere.network/"
