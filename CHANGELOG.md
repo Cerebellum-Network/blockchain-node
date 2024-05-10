@@ -10,15 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
-## [vNext]
+## [5.2.2]
 
-### Added
-
-- ...
-
-### Changed
-
-- ...
+- [C,D] Depositing extra amount in ddc-customers pallet is fixed
 
 ## [5.2.1]
 
