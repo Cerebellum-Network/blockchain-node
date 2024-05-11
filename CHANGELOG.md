@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
-## [VNext]
 
 ## [5.3.0]
 
@@ -18,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C,D] Updated Substrate to polkadot-v1.1.0
 - [C,D] Introduction of the OpenGov
 - [C,D] `pallet-ddc-clusters`: Added Erasure coding and Replication in cluster params
+
+## [5.2.2]
+
+- [C,D] Depositing extra amount in ddc-customers pallet is fixed
+
+## [5.2.1]
+
+### Changed
+
+- [C,D] Fix inflation parameters for the staking reward curve
 
 ## [5.2.0]
 
