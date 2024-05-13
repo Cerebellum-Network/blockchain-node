@@ -557,11 +557,12 @@ pub mod pallet {
 		fn update_ledger_and_deposit(
 			owner: &T::AccountId,
 			ledger: &AccountsLedger<T>,
+			amount: BalanceOf<T>,
 		) -> DispatchResult {
 			<T as pallet::Config>::Currency::transfer(
 				owner,
 				&Self::account_id(),
-				ledger.total,
+				amount,
 				ExistenceRequirement::AllowDeath,
 			)?;
 			<Ledger<T>>::insert(owner, ledger);
@@ -693,14 +694,14 @@ pub mod pallet {
 
 			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
 			let value = value.min(owner_balance);
-			let item = AccountsLedger {
+			let ledger = AccountsLedger {
 				owner: owner.clone(),
 				total: value,
 				active: value,
 				unlocking: Default::default(),
 			};
 
-			Self::update_ledger_and_deposit(&owner, &item)
+			Self::update_ledger_and_deposit(&owner, &ledger, value)
 				.map_err(|_| Error::<T>::TransferFailed)?;
 			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: value });
 
@@ -724,7 +725,7 @@ pub mod pallet {
 				Error::<T>::InsufficientDeposit
 			);
 
-			Self::update_ledger_and_deposit(&owner, &ledger)
+			Self::update_ledger_and_deposit(&owner, &ledger, extra)
 				.map_err(|_| Error::<T>::TransferFailed)?;
 			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: extra });
 
