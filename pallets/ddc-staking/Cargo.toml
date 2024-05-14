@@ -11,17 +11,17 @@ repository.workspace = true
 [dependencies]
 # 3rd-party dependencies
 codec = { workspace = true }
-scale-info = { workspace = true }
 hex-literal = { workspace = true }
+scale-info = { workspace = true }
 
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+log = { workspace = true }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
-log = { workspace = true }
 
 # Cere dependencies
 ddc-primitives = { workspace = true }

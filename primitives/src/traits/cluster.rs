@@ -1,8 +1,6 @@
 use frame_system::{pallet_prelude::BlockNumberFor, Config};
-use sp_runtime::{DispatchError, DispatchResult};
-
 use scale_info::TypeInfo;
-use sp_runtime::RuntimeDebug;
+use sp_runtime::{DispatchError, DispatchResult, RuntimeDebug};
 
 use crate::{
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,

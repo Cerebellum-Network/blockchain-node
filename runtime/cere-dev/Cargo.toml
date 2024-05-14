@@ -97,13 +97,13 @@ cere-runtime-common = { workspace = true }
 ddc-primitives = { workspace = true }
 pallet-chainbridge = { workspace = true }
 pallet-ddc-clusters = { workspace = true }
+pallet-ddc-clusters-gov = { workspace = true }
 pallet-ddc-customers = { workspace = true }
 pallet-ddc-nodes = { workspace = true }
 pallet-ddc-payouts = { workspace = true }
 pallet-ddc-staking = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
-pallet-ddc-clusters-gov = { workspace = true }
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }

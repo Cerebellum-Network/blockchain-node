@@ -526,9 +526,8 @@ pub mod pallet {
 						// cluster eventually, we keep its stake till the end of unbonding period.
 						if ledger.active < min_bond_size.saturated_into::<BalanceOf<T>>() {
 							match node_pub_key {
-								NodePubKey::StoragePubKey(_) => {
-									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id)
-								},
+								NodePubKey::StoragePubKey(_) =>
+									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id),
 							};
 
 							Self::deposit_event(Event::<T>::LeaveSoon(ledger.stash.clone()));

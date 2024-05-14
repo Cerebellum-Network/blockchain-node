@@ -6,7 +6,6 @@ use ddc_primitives::{
 	ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
 	ClusterStatus, NodePubKey, NodeType,
 };
-
 use frame_support::{
 	construct_runtime,
 	dispatch::DispatchError,

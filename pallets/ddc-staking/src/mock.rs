@@ -26,9 +26,8 @@ use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage, Perquintill,
+	BuildStorage, DispatchError, DispatchResult, Perquintill,
 };
-use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_map::BTreeMap;
 
 use crate::{self as pallet_ddc_staking, *};

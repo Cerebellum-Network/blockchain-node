@@ -355,12 +355,10 @@ impl DefaultVote for MockedDefaultVote {
 		let lock = MOCK_DEFAULT_VOTE.lock();
 		let mock_ref = lock.borrow();
 		match mock_ref.strategy {
-			DefaultVoteVariant::NayAsDefaultVote => {
-				NayAsDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len)
-			},
-			DefaultVoteVariant::PrimeDefaultVote => {
-				PrimeDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len)
-			},
+			DefaultVoteVariant::NayAsDefaultVote =>
+				NayAsDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len),
+			DefaultVoteVariant::PrimeDefaultVote =>
+				PrimeDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len),
 		}
 	}
 }
@@ -525,9 +523,8 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 		if let Ok(custom_origin) = pallet_custom_origins::Origin::try_from(id.clone()) {
 			match custom_origin {
 				pallet_custom_origins::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
-				pallet_custom_origins::Origin::ClusterGovEditor => {
-					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID)
-				},
+				pallet_custom_origins::Origin::ClusterGovEditor =>
+					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID),
 			}
 		} else {
 			Err(())

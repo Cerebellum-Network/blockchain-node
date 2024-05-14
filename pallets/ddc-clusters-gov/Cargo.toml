@@ -10,33 +10,33 @@ frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 hex-literal = { workspace = true }
+log = { workspace = true }
+pallet-referenda = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
+sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
-sp-io = { workspace = true }
-pallet-referenda = { workspace = true }
-log = { workspace = true }
 
 [dev-dependencies]
 frame-benchmarking = { workspace = true, default-features = true }
+lazy_static = { workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
+pallet-contracts = { workspace = true }
+pallet-conviction-voting = { workspace = true }
+pallet-ddc-clusters = { workspace = true }
+pallet-ddc-nodes = { workspace = true }
+pallet-ddc-staking = { workspace = true }
 pallet-insecure-randomness-collective-flip = { workspace = true, default-features = true }
+pallet-preimage = { workspace = true }
+pallet-scheduler = { workspace = true }
 pallet-timestamp = { workspace = true, default-features = true }
+parking_lot = { workspace = true, default-features = true }
+sp-arithmetic = { workspace = true }
 sp-core = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 sp-tracing = { workspace = true, default-features = true }
-sp-arithmetic = { workspace = true }
 substrate-test-utils = { workspace = true, default-features = true }
-pallet-preimage = { workspace = true }
-pallet-conviction-voting = { workspace = true }
-pallet-scheduler = { workspace = true }
-pallet-contracts = { workspace = true }
-pallet-ddc-nodes = { workspace = true }
-pallet-ddc-clusters = { workspace = true }
-pallet-ddc-staking = { workspace = true }
-lazy_static = { workspace = true, default-features = true }
-parking_lot = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

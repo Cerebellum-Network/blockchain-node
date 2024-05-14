@@ -71,8 +71,9 @@ pub type BalanceOf<T> =
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use ddc_primitives::traits::cluster::ClusterManager;
+
+	use super::*;
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
@@ -680,13 +681,13 @@ pub mod pallet {
 			// todo: replace with ClustersNodes::<T>::contains_prefix in new substrate releases
 			let is_empty_nodes = ClustersNodesStats::<T>::try_get(cluster_id)
 				.map(|status| {
-					status.await_validation + status.validation_succeeded + status.validation_failed
-						== 0
+					status.await_validation + status.validation_succeeded + status.validation_failed ==
+						0
 				})
 				.unwrap_or(false);
 
-			is_empty_nodes
-				&& matches!(cluster.status, ClusterStatus::Bonded | ClusterStatus::Activated)
+			is_empty_nodes &&
+				matches!(cluster.status, ClusterStatus::Bonded | ClusterStatus::Activated)
 		}
 	}
 
@@ -721,9 +722,8 @@ pub mod pallet {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 			match node_type {
-				NodeType::Storage => {
-					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>())
-				},
+				NodeType::Storage =>
+					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
 			}
 		}
 
@@ -911,15 +911,12 @@ pub mod pallet {
 	impl<T> From<NodeProviderAuthContractError> for Error<T> {
 		fn from(error: NodeProviderAuthContractError) -> Self {
 			match error {
-				NodeProviderAuthContractError::ContractCallFailed => {
-					Error::<T>::NodeAuthContractCallFailed
-				},
-				NodeProviderAuthContractError::ContractDeployFailed => {
-					Error::<T>::NodeAuthContractDeployFailed
-				},
-				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful => {
-					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful
-				},
+				NodeProviderAuthContractError::ContractCallFailed =>
+					Error::<T>::NodeAuthContractCallFailed,
+				NodeProviderAuthContractError::ContractDeployFailed =>
+					Error::<T>::NodeAuthContractDeployFailed,
+				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
+					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful,
 			}
 		}
 	}
