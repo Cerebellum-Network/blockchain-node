@@ -15,13 +15,14 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode};
+#[cfg(feature = "runtime-benchmarks")]
+use ddc_primitives::traits::{node::NodeCreator, staking::StakerCreator};
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterEconomics, ClusterManager, ClusterQuery},
 		cluster_gov::{DefaultVote, MemberCount, SeatsConsensus},
-		node::{NodeCreator, NodeVisitor},
+		node::NodeVisitor,
 		pallet::GetDdcOrigin,
-		staking::StakerCreator,
 	},
 	ClusterGovParams, ClusterId, ClusterNodeStatus, ClusterStatus, NodePubKey,
 };

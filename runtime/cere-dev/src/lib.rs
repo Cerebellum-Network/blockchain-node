@@ -33,10 +33,9 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		CallerTrait, ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
+		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
 		EnsureOrigin, EnsureOriginWithArg, EqualPrivilegeOnly, Everything, Imbalance,
-		InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced, OriginTrait,
-		WithdrawReasons,
+		InstanceFilter, KeyOwnerProofSystem, Nothing, OnUnbalanced, OriginTrait, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -113,8 +112,8 @@ use sp_runtime::generic::Era;
 // Governance configurations.
 pub mod governance;
 use governance::{
-	pallet_custom_origins, ClusterGovCreator, ClusterGovEditor, FellowshipAdmin, GeneralAdmin,
-	StakingAdmin, TracksInfo, Treasurer, TreasurySpender, CLUSTER_ACTIVATOR_TRACK_ID,
+	pallet_custom_origins, ClusterGovCreator, ClusterGovEditor, GeneralAdmin, StakingAdmin,
+	TracksInfo, Treasurer, TreasurySpender, CLUSTER_ACTIVATOR_TRACK_ID,
 	CLUSTER_ECONOMICS_UPDATER_TRACK_ID,
 };
 

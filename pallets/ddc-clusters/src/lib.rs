@@ -33,8 +33,7 @@ pub mod migrations; // todo: merge with migration
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterEconomics, ClusterManager, ClusterQuery},
-		pallet::{GetDdcOrigin, PalletsOriginOf},
+		cluster::{ClusterCreator, ClusterEconomics, ClusterQuery},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
@@ -50,11 +49,7 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_core::crypto::UncheckedFrom;
-use sp_io::hashing::blake2_128;
-use sp_runtime::{
-	traits::{AccountIdConversion, Dispatchable},
-	SaturatedConversion,
-};
+use sp_runtime::SaturatedConversion;
 use sp_std::prelude::*;
 
 use crate::{

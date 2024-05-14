@@ -266,7 +266,7 @@ pub mod pallet {
 				));
 			}
 
-			for &(ref cluster_stash, ref cluster_controller, cluster) in &self.clusters {
+			for &(ref cluster_stash, ref cluster_controller, _cluster) in &self.clusters {
 				let amount = T::ClusterBondingAmount::get();
 
 				assert!(

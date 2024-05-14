@@ -30,10 +30,10 @@ pub trait WeightInfo {
 	fn propose_activate_cluster() -> Weight;
 	fn propose_update_cluster_economics() -> Weight;
 	fn vote_proposal() -> Weight;
-	fn close_early_approved(m: u32, ) -> Weight;
-	fn close_approved(m: u32, ) -> Weight;
+	fn close_early_approved(_m: u32, ) -> Weight;
+	fn close_approved(_m: u32, ) -> Weight;
 	fn close_early_disapproved(m: u32, ) -> Weight;
-	fn close_disapproved(m: u32, ) -> Weight;
+	fn close_disapproved(_m: u32, ) -> Weight;
 	fn retract_proposal() -> Weight;
 	fn refund_submission_deposit() -> Weight;
 	fn activate_cluster() -> Weight;
@@ -129,7 +129,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Preimage PreimageFor (r:0 w:1)
 	// Proof: Preimage PreimageFor (max_values: None, max_size: Some(4194344), added: 4196819, mode: MaxEncodedLen)
 	/// The range of component `m` is `[4, 64]`.
-	fn close_approved(m: u32, ) -> Weight {
+	fn close_approved(_m: u32, ) -> Weight {
 		Weight::from_parts(2_121_886_666_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(8_u64))
 			.saturating_add(T::DbWeight::get().writes(10_u64))
@@ -288,7 +288,7 @@ impl WeightInfo for () {
 	// Storage: Preimage PreimageFor (r:0 w:1)
 	// Proof: Preimage PreimageFor (max_values: None, max_size: Some(4194344), added: 4196819, mode: MaxEncodedLen)
 	/// The range of component `m` is `[4, 64]`.
-	fn close_approved(m: u32, ) -> Weight {
+	fn close_approved(_m: u32, ) -> Weight {
 		Weight::from_parts(2_121_886_666_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(8_u64))
 			.saturating_add(RocksDbWeight::get().writes(10_u64))
