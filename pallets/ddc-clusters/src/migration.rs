@@ -77,6 +77,7 @@ pub fn migrate_to_v1<T: Config>() -> Weight {
 					manager_id: cluster.manager_id,
 					reserve_id: cluster.reserve_id,
 					props,
+					status: ClusterStatus::Unbonded,
 				})
 			},
 		);

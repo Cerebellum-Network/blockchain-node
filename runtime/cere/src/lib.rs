@@ -35,7 +35,7 @@ use frame_support::{
 		AsEnsureOriginWithArg, CallerTrait, ConstBool, ConstU128, ConstU16, ConstU32, Currency,
 		EitherOf, EitherOfDiverse, EnsureOrigin, EnsureOriginWithArg, EqualPrivilegeOnly,
 		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
-		OnUnbalanced, OriginTrait, U128CurrencyToVote, WithdrawReasons,
+		OnUnbalanced, OriginTrait, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -57,7 +57,6 @@ use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce};
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
 use pallet_contracts::Determinism;
-pub use pallet_custom_origins;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -375,7 +374,7 @@ impl pallet_scheduler::Config for Runtime {
 	type PalletsOrigin = OriginCaller;
 	type RuntimeCall = RuntimeCall;
 	type MaximumWeight = MaximumSchedulerWeight;
-	type ScheduleOrigin = EitherOf<EnsureRoot<AccountId>, AuctionAdmin>; // todo: remove AuctionAdmin
+	type ScheduleOrigin = EitherOf<EnsureRoot<AccountId>, Treasurer>;
 	type MaxScheduledPerBlock = ConstU32<512>;
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
@@ -1191,21 +1190,6 @@ impl pallet_ddc_staking::Config for Runtime {
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
 
-parameter_types! {
-	pub const PreimageMaxSize: u32 = 4096 * 1024;
-	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
-	pub const PreimageByteDeposit: Balance = deposit(0, 1);
-}
-
-impl pallet_preimage::Config for Runtime {
-	type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
-	type RuntimeEvent = RuntimeEvent;
-	type Currency = Balances;
-	type ManagerOrigin = EnsureRoot<AccountId>;
-	type BaseDeposit = PreimageBaseDeposit;
-	type ByteDeposit = PreimageByteDeposit;
-}
-
 construct_runtime!(
 	pub struct Runtime
 	{
@@ -1251,10 +1235,12 @@ construct_runtime!(
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
 		DdcPayouts: pallet_ddc_payouts,
+		// Start OpenGov.
 		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
 		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
 		Origins: pallet_custom_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
+		// End OpenGov.
 	}
 );
 
@@ -1313,42 +1299,46 @@ pub mod migrations {
 		pub const ElectionPalletId: LockIdentifier = *b"phrelect";
 	}
 
-	// // Special Config for Gov V1 pallets, allowing us to run migrations for them without
-	// // implementing their configs on [`Runtime`].
-	// pub struct UnlockConfig;
-	// impl pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockConfig for
-	// UnlockConfig { 	type Currency = Balances;
-	// 	type MaxVotes = ConstU32<100>;
-	// 	type MaxDeposits = ConstU32<100>;
-	// 	type AccountId = AccountId;
-	// 	type BlockNumber = BlockNumberFor<Runtime>;
-	// 	type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-	// 	type PalletName = DemocracyPalletName;
-	// }
-	// impl pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockConfig
-	// 	for UnlockConfig
-	// {
-	// 	type Currency = Balances;
-	// 	type MaxVotesPerVoter = ConstU32<16>;
-	// 	type PalletId = ElectionPalletId;
-	// 	type AccountId = AccountId;
-	// 	type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-	// 	type PalletName = ElectionPalletName;
-	// }
-	// impl pallet_tips::migrations::unreserve_deposits::UnlockConfig<()> for UnlockConfig {
-	// 	type Currency = Balances;
-	// 	type Hash = Hash;
-	// 	type DataDepositPerByte = DataDepositPerByte;
-	// 	type TipReportDepositBase = TipReportDepositBase;
-	// 	type AccountId = AccountId;
-	// 	type BlockNumber = BlockNumberFor<Runtime>;
-	// 	type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-	// 	type PalletName = TipsPalletName;
-	// }
+	// Special Config for Gov V1 pallets, allowing us to run migrations for them without
+	// implementing their configs on [`Runtime`].
+	pub struct UnlockConfig;
+	impl pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockConfig for UnlockConfig {
+		type Currency = Balances;
+		type MaxVotes = ConstU32<100>;
+		type MaxDeposits = ConstU32<100>;
+		type AccountId = AccountId;
+		type BlockNumber = BlockNumberFor<Runtime>;
+		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
+		type PalletName = DemocracyPalletName;
+	}
+	impl pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockConfig
+		for UnlockConfig
+	{
+		type Currency = Balances;
+		type MaxVotesPerVoter = ConstU32<16>;
+		type PalletId = ElectionPalletId;
+		type AccountId = AccountId;
+		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
+		type PalletName = ElectionPalletName;
+	}
+	impl pallet_tips::migrations::unreserve_deposits::UnlockConfig<()> for UnlockConfig {
+		type Currency = Balances;
+		type Hash = Hash;
+		type DataDepositPerByte = DataDepositPerByte;
+		type TipReportDepositBase = TipReportDepositBase;
+		type AccountId = AccountId;
+		type BlockNumber = BlockNumberFor<Runtime>;
+		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
+		type PalletName = TipsPalletName;
+	}
 
 	/// Unreleased migrations. Add new ones here:
 	pub type Unreleased = (
         pallet_ddc_clusters::migration::MigrateToV1<Runtime>,
+		// ----- ClusterGov -----
+		pallet_ddc_clusters::migrations::v1::MigrateToV1<Runtime>,
+		pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
+		// ----- ClusterGov -----
 		pallet_contracts::migration::Migration<Runtime>,
 		pallet_referenda::migration::v1::MigrateV0ToV1<Runtime>,
 		// Gov v1 storage migrations

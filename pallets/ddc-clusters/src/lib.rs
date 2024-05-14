@@ -33,10 +33,7 @@ pub mod migrations; // todo: merge with migration
 
 use ddc_primitives::{
 	traits::{
-		cluster::{
-			ClusterAdministrator, ClusterCreator, ClusterEconomics, ClusterManager, ClusterQuery,
-			ClusterVisitor,
-		},
+		cluster::{ClusterCreator, ClusterEconomics, ClusterManager, ClusterQuery},
 		pallet::{GetDdcOrigin, PalletsOriginOf},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
@@ -76,8 +73,6 @@ pub type BalanceOf<T> =
 pub mod pallet {
 	use super::*;
 	use ddc_primitives::traits::cluster::ClusterManager;
-	use frame_support::PalletId;
-	use pallet_contracts::chain_extension::UncheckedFrom;
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
@@ -165,7 +160,7 @@ pub mod pallet {
 		ClusterId,
 		Blake2_128Concat,
 		NodePubKey,
-		ClusterNodeState<T::BlockNumber>, // todo: provide migration
+		ClusterNodeState<BlockNumberFor<T>>, // todo: provide migration
 		OptionQuery,
 	>;
 
@@ -423,10 +418,6 @@ pub mod pallet {
 				Error::<T>::ReplicationTotalDidNotMeetMinimum
 			);
 
-			let cluster =
-				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params)
-					.map_err(Into::<Error<T>>::into)?;
-
 			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
 			let cluster =
 				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params);
@@ -493,7 +484,7 @@ pub mod pallet {
 
 		fn do_update_cluster_economics(
 			cluster_id: &ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			ensure!(
 				ClustersGovParams::<T>::contains_key(cluster_id),
@@ -802,7 +793,7 @@ pub mod pallet {
 
 		fn update_cluster_economics(
 			cluster_id: &ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			Self::do_update_cluster_economics(cluster_id, cluster_gov_params)
 		}
@@ -862,7 +853,7 @@ pub mod pallet {
 		fn get_node_state(
 			cluster_id: &ClusterId,
 			node_pub_key: &NodePubKey,
-		) -> Result<ClusterNodeState<T::BlockNumber>, DispatchError> {
+		) -> Result<ClusterNodeState<BlockNumberFor<T>>, DispatchError> {
 			let node_state = ClustersNodes::<T>::try_get(cluster_id, node_pub_key)
 				.map_err(|_| Error::<T>::NodeIsNotAssignedToCluster)?;
 			Ok(node_state)

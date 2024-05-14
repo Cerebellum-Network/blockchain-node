@@ -13,8 +13,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
-#![feature(is_some_and)] // ToDo: delete at rustc > 1.70
 
+use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterEconomics, ClusterManager, ClusterQuery},
@@ -26,20 +26,23 @@ use ddc_primitives::{
 	ClusterGovParams, ClusterId, ClusterNodeStatus, ClusterStatus, NodePubKey,
 };
 use frame_support::{
-	codec::{Decode, Encode},
-	dispatch::{DispatchError, DispatchResult, Dispatchable, GetDispatchInfo, Pays, Weight},
+	dispatch::{GetDispatchInfo, Pays},
 	pallet_prelude::*,
 	traits::{
 		schedule::DispatchTime, Currency, ExistenceRequirement, LockableCurrency, OriginTrait,
 		StorePreimage, UnfilteredDispatchable,
 	},
+	weights::Weight,
 };
 use frame_system::pallet_prelude::*;
 pub use frame_system::Config as SysConfig;
 pub use pallet::*;
 use pallet_referenda::ReferendumIndex;
 use scale_info::TypeInfo;
-use sp_runtime::{traits::AccountIdConversion, RuntimeDebug, SaturatedConversion};
+use sp_runtime::{
+	traits::{AccountIdConversion, Dispatchable},
+	DispatchError, DispatchResult, RuntimeDebug, SaturatedConversion,
+};
 use sp_std::prelude::*;
 
 #[cfg(test)]
@@ -119,13 +122,13 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_referenda::Config {
 		type PalletId: Get<PalletId>;
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		type Currency: LockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
+		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type WeightInfo: WeightInfo;
 		type OpenGovActivatorTrackOrigin: GetDdcOrigin<Self>;
 		type OpenGovActivatorOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		type OpenGovUpdaterTrackOrigin: GetDdcOrigin<Self>;
 		type OpenGovUpdaterOrigin: EnsureOrigin<Self::RuntimeOrigin>;
-		type ClusterProposalDuration: Get<Self::BlockNumber>;
+		type ClusterProposalDuration: Get<BlockNumberFor<Self>>;
 		type ClusterProposalCall: Parameter
 			+ From<Call<Self>>
 			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
@@ -138,7 +141,7 @@ pub mod pallet {
 		type SeatsConsensus: SeatsConsensus;
 		type DefaultVote: DefaultVote;
 		type MinValidatedNodesCount: Get<u16>;
-		type ReferendumEnactmentDuration: Get<Self::BlockNumber>;
+		type ReferendumEnactmentDuration: Get<BlockNumberFor<Self>>;
 		#[cfg(feature = "runtime-benchmarks")]
 		type NodeCreator: NodeCreator<Self>;
 		#[cfg(feature = "runtime-benchmarks")]
@@ -159,7 +162,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn voting)]
 	pub type ClusterProposalVoting<T: Config> =
-		StorageMap<_, Identity, ClusterId, Votes<T::AccountId, T::BlockNumber>, OptionQuery>;
+		StorageMap<_, Identity, ClusterId, Votes<T::AccountId, BlockNumberFor<T>>, OptionQuery>;
 
 	/// Public referendums initiated by clusters
 	#[pallet::storage]
@@ -249,7 +252,7 @@ pub mod pallet {
 		pub fn propose_activate_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 			Self::ensure_cluster_manager(caller_id.clone(), cluster_id)?;
@@ -297,7 +300,7 @@ pub mod pallet {
 		pub fn propose_update_cluster_economics(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 			member: ClusterMember,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
@@ -431,7 +434,7 @@ pub mod pallet {
 		pub fn activate_cluster(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			T::OpenGovActivatorOrigin::ensure_origin(origin)?;
 			T::ClusterCreator::activate_cluster(&cluster_id)?;
@@ -443,7 +446,7 @@ pub mod pallet {
 		pub fn update_cluster_economics(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			T::OpenGovUpdaterOrigin::ensure_origin(origin)?;
 			T::ClusterEconomics::update_cluster_economics(&cluster_id, cluster_gov_params)
@@ -539,7 +542,7 @@ pub mod pallet {
 				if position_yes.is_none() {
 					voting.ayes.push(voter_id.clone());
 				} else {
-					return Err(Error::<T>::DuplicateVote.into())
+					return Err(Error::<T>::DuplicateVote.into());
 				}
 				if let Some(pos) = position_no {
 					voting.nays.swap_remove(pos);
@@ -548,7 +551,7 @@ pub mod pallet {
 				if position_no.is_none() {
 					voting.nays.push(voter_id.clone());
 				} else {
-					return Err(Error::<T>::DuplicateVote.into())
+					return Err(Error::<T>::DuplicateVote.into());
 				}
 				if let Some(pos) = position_yes {
 					voting.ayes.swap_remove(pos);
@@ -592,7 +595,7 @@ pub mod pallet {
 					),
 					Pays::Yes,
 				)
-					.into())
+					.into());
 			} else if disapproved {
 				Self::deposit_event(Event::Closed { cluster_id, yes: yes_votes, no: no_votes });
 				Self::do_disapprove_proposal(cluster_id);
@@ -601,7 +604,7 @@ pub mod pallet {
 					Some(<T as pallet::Config>::WeightInfo::close_early_disapproved(seats)),
 					Pays::Yes,
 				)
-					.into())
+					.into());
 			}
 
 			// Only allow actual closing of the proposal after the voting period has ended.

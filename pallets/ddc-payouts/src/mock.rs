@@ -477,7 +477,7 @@ impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
 
 	fn update_cluster_economics(
 		_cluster_id: &ClusterId,
-		_cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+		_cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 	) -> DispatchResult {
 		unimplemented!()
 	}

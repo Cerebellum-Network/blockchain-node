@@ -1,5 +1,5 @@
-use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::{pallet_prelude::BlockNumberFor, Config};
+use sp_runtime::{DispatchError, DispatchResult};
 
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
@@ -43,7 +43,7 @@ pub trait ClusterEconomics<T: Config, Balance>: ClusterQuery<T> {
 
 	fn update_cluster_economics(
 		cluster_id: &ClusterId,
-		cluster_gov_params: ClusterGovParams<Balance, T::BlockNumber>,
+		cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult;
 
 	fn bond_cluster(cluster_id: &ClusterId) -> DispatchResult;
@@ -85,7 +85,7 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 	fn get_node_state(
 		cluster_id: &ClusterId,
 		node_pub_key: &NodePubKey,
-	) -> Result<ClusterNodeState<T::BlockNumber>, DispatchError>;
+	) -> Result<ClusterNodeState<BlockNumberFor<T>>, DispatchError>;
 
 	fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError>;
 

@@ -21,8 +21,8 @@ pub fn create_funded_user_with_balance<T: Config>(
 	balance_factor: u128,
 ) -> T::AccountId {
 	let user = account(name, n, 0);
-	let balance = <T as pallet::Config>::Currency::minimum_balance() *
-		balance_factor.saturated_into::<BalanceOf<T>>();
+	let balance = <T as pallet::Config>::Currency::minimum_balance()
+		* balance_factor.saturated_into::<BalanceOf<T>>();
 	let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 	user
 }
@@ -40,15 +40,20 @@ pub fn create_cluster_with_nodes<T: Config>(
 		validators_share: Perquintill::from_percent(20),
 		cluster_reserve_share: Perquintill::from_percent(30),
 		storage_bond_size: bond_size,
-		storage_chill_delay: T::BlockNumber::from(20_u32),
-		storage_unbonding_delay: T::BlockNumber::from(20_u32),
+		storage_chill_delay: BlockNumberFor::<T>::from(20_u32),
+		storage_unbonding_delay: BlockNumberFor::<T>::from(20_u32),
 		unit_per_mb_stored: 97656,
 		unit_per_mb_streamed: 48828,
 		unit_per_put_request: 10,
 		unit_per_get_request: 5,
 	};
 
-	let cluster_params = ClusterParams { node_provider_auth_contract: None };
+	let cluster_params = ClusterParams {
+		node_provider_auth_contract: None,
+		erasure_coding_required: 0,
+		erasure_coding_total: 0,
+		replication_total: 0,
+	};
 
 	T::ClusterCreator::create_cluster(
 		cluster_id,
@@ -103,11 +108,11 @@ pub fn create_cluster_with_nodes<T: Config>(
 
 fn next_block<T: Config>() {
 	frame_system::Pallet::<T>::set_block_number(
-		frame_system::Pallet::<T>::block_number() + T::BlockNumber::from(1_u32),
+		frame_system::Pallet::<T>::block_number() + BlockNumberFor::<T>::from(1_u32),
 	);
 }
 
-fn fast_forward_to<T: Config>(n: T::BlockNumber) {
+fn fast_forward_to<T: Config>(n: BlockNumberFor<T>) {
 	while frame_system::Pallet::<T>::block_number() < n {
 		next_block::<T>();
 	}
@@ -298,7 +303,7 @@ benchmarks! {
 		}
 
 		let votes = ClusterProposalVoting::<T>::get(cluster_id).unwrap();
-		fast_forward_to::<T>(votes.end + T::BlockNumber::from(1_u32));
+		fast_forward_to::<T>(votes.end + BlockNumberFor::<T>::from(1_u32));
 
 	}: close_proposal(RawOrigin::Signed(cluster_manager_id.clone()), cluster_id, ClusterMember::ClusterManager)
 	verify {
@@ -376,7 +381,7 @@ benchmarks! {
 		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
 		let votes = ClusterProposalVoting::<T>::get(cluster_id).unwrap();
-		fast_forward_to::<T>(votes.end + T::BlockNumber::from(1_u32));
+		fast_forward_to::<T>(votes.end + BlockNumberFor::<T>::from(1_u32));
 
 	}: close_proposal(RawOrigin::Signed(cluster_manager_id.clone()), cluster_id, ClusterMember::ClusterManager)
 	verify {
@@ -504,8 +509,8 @@ benchmarks! {
 		validators_share: Perquintill::from_percent(10),
 		cluster_reserve_share: Perquintill::from_percent(15),
 		storage_bond_size: 10000_u128.saturated_into::<BalanceOf<T>>(),
-		storage_chill_delay: T::BlockNumber::from(20_u32),
-		storage_unbonding_delay: T::BlockNumber::from(20_u32),
+		storage_chill_delay: BlockNumberFor::<T>::from(20_u32),
+		storage_unbonding_delay: BlockNumberFor::<T>::from(20_u32),
 		unit_per_mb_stored: 97656,
 		unit_per_mb_streamed: 48828,
 		unit_per_put_request: 10,
@@ -516,8 +521,8 @@ benchmarks! {
 		let bonding_params = T::ClusterEconomics::get_bonding_params(&cluster_id).unwrap();
 		let updated_bonding = ClusterBondingParams {
 			storage_bond_size: 10000_u128,
-			storage_chill_delay: T::BlockNumber::from(20_u32),
-			storage_unbonding_delay: T::BlockNumber::from(20_u32)
+			storage_chill_delay: BlockNumberFor::<T>::from(20_u32),
+			storage_unbonding_delay: BlockNumberFor::<T>::from(20_u32)
 		};
 		assert_eq!(bonding_params, updated_bonding);
 	}

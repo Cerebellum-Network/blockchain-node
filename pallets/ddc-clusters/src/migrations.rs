@@ -3,7 +3,7 @@ pub mod v1 {
 		ClusterId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesCount,
 		ClusterNodesStats, ClusterStatus,
 	};
-	use frame_support::{log, pallet_prelude::*, traits::OnRuntimeUpgrade, weights::Weight};
+	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade, weights::Weight};
 	use sp_runtime::Saturating;
 	use sp_std::collections::btree_map::BTreeMap;
 
@@ -125,7 +125,7 @@ pub mod v1 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 			frame_support::ensure!(
 				Pallet::<T>::on_chain_storage_version() == 0,
 				"must upgrade linearly"
@@ -143,7 +143,7 @@ pub mod v1 {
 		}
 
 		#[cfg(feature = "try-runtime")]
-		fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
+		fn post_upgrade(state: Vec<u8>) -> Result<(), DispatchError> {
 			let (pre_clusters_count, pre_clusters_nodes_count): (u32, u32) = Decode::decode(
 				&mut &state[..],
 			)

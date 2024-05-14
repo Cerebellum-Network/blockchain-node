@@ -34,12 +34,9 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		CallerTrait, ConstBool, ConstBool, ConstU128, ConstU128, ConstU16, ConstU16, ConstU32,
-		ConstU32, Currency, Currency, EitherOf, EitherOf, EitherOfDiverse, EitherOfDiverse,
-		EnsureOrigin, EnsureOriginWithArg, EqualPrivilegeOnly, EqualPrivilegeOnly, Everything,
-		Everything, Imbalance, Imbalance, InstanceFilter, InstanceFilter, KeyOwnerProofSystem,
-		KeyOwnerProofSystem, LockIdentifier, LockIdentifier, Nothing, Nothing, OnUnbalanced,
-		OnUnbalanced, OriginTrait, U128CurrencyToVote, U128CurrencyToVote, WithdrawReasons,
+		CallerTrait, ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
+		EnsureOrigin, EnsureOriginWithArg, EqualPrivilegeOnly, Everything, Imbalance,
+		InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced, OriginTrait,
 		WithdrawReasons,
 	},
 	weights::{
@@ -48,7 +45,7 @@ use frame_support::{
 		},
 		ConstantMultiplier, IdentityFee, Weight,
 	},
-	PalletId, RuntimeDebug,
+	PalletId,
 };
 #[cfg(any(feature = "std", test))]
 pub use frame_system::Call as SystemCall;
@@ -62,11 +59,9 @@ use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce};
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
 use pallet_contracts::Determinism;
-pub use pallet_custom_origins;
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
 pub use pallet_ddc_nodes;
-pub use pallet_ddc_origins;
 pub use pallet_ddc_payouts;
 pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
@@ -119,11 +114,9 @@ use sp_runtime::generic::Era;
 // Governance configurations.
 pub mod governance;
 use governance::{
-	pallet_custom_origins,
-	ClusterGovEditor, ClusterGovCreator,
-	CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ECONOMICS_UPDATER_TRACK_ID,
-	FellowshipAdmin, GeneralAdmin, StakingAdmin, TracksInfo, Treasurer,
-	TreasurySpender,
+	pallet_custom_origins, ClusterGovCreator, ClusterGovEditor, FellowshipAdmin, GeneralAdmin,
+	StakingAdmin, TracksInfo, Treasurer, TreasurySpender, CLUSTER_ACTIVATOR_TRACK_ID,
+	CLUSTER_ECONOMICS_UPDATER_TRACK_ID,
 };
 
 /// Generated voter bag information.
@@ -291,21 +284,6 @@ parameter_types! {
 	pub const AnnouncementDepositFactor: Balance = deposit(0, 66);
 }
 
-parameter_types! {
-	pub const PreimageMaxSize: u32 = 4096 * 1024;
-	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
-	pub const PreimageByteDeposit: Balance = deposit(0, 1);
-}
-
-impl pallet_preimage::Config for Runtime {
-	type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
-	type RuntimeEvent = RuntimeEvent;
-	type Currency = Balances;
-	type ManagerOrigin = EnsureRoot<AccountId>;
-	type BaseDeposit = PreimageBaseDeposit;
-	type ByteDeposit = PreimageByteDeposit;
-}
-
 /// The type used to represent the kinds of proxying allowed.
 #[derive(
 	Copy,
@@ -407,7 +385,7 @@ impl pallet_scheduler::Config for Runtime {
 	type PalletsOrigin = OriginCaller;
 	type RuntimeCall = RuntimeCall;
 	type MaximumWeight = MaximumSchedulerWeight;
-	type ScheduleOrigin = EitherOf<EnsureRoot<AccountId>, AuctionAdmin>; // todo: remove AuctionAdmin
+	type ScheduleOrigin = EitherOf<EnsureRoot<AccountId>, Treasurer>;
 	type MaxScheduledPerBlock = ConstU32<512>;
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
@@ -1215,16 +1193,12 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
 }
 
-impl pallet_ddc_origins::Config for Runtime {}
-
 parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
-	pub ClusterGovCreatorOrigin: RuntimeOrigin = pallet_ddc_origins::Origin::ClusterGovCreator.into();
-	pub ClusterGovEditorOrigin: RuntimeOrigin = pallet_ddc_origins::Origin::ClusterGovEditor.into();
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
 	pub const MinValidatedNodesCount: u16 = 3;
-	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterActivator.into();
-	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterEconomicsUpdater.into();
+	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterGovCreator.into();
+	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterGovEditor.into();
 	pub const ReferendumEnactmentDuration: BlockNumber = 1;
 }
 
@@ -1234,9 +1208,9 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
 	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterActivatorTrackOrigin, Self>;
-	type OpenGovActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterGovCreatorOrigin>;
+	type OpenGovActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterGovCreator>;
 	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterUpdaterTrackOrigin, Self>;
-	type OpenGovUpdaterOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterGovEditorOrigin>;
+	type OpenGovUpdaterOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterGovEditor>;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
@@ -1311,54 +1285,6 @@ where
 	}
 }
 
-pub trait TracksInfo {
-	/// The identifier for a track.
-	type Id: Copy + Parameter + Ord + PartialOrd + Send + Sync + 'static + MaxEncodedLen;
-	/// The origin type from which a track is implied.
-	type RuntimeOrigin;
-	/// Determine the voting track for the given `origin`.
-	fn track_for(origin: &Self::RuntimeOrigin) -> Result<Self::Id, ()>;
-}
-
-pub struct DdcTracksInfo;
-impl TracksInfo for DdcTracksInfo {
-	type RuntimeOrigin = <RuntimeOrigin as frame_support::traits::OriginTrait>::PalletsOrigin;
-
-	type Id = u16;
-
-	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
-		if let Ok(system_origin) = frame_system::RawOrigin::try_from(id.clone()) {
-			match system_origin {
-				frame_system::RawOrigin::Root => Ok(0),
-				_ => Err(()),
-			}
-		} else if let Ok(custom_origin) = pallet_ddc_origins::Origin::try_from(id.clone()) {
-			match custom_origin {
-				pallet_ddc_origins::Origin::WhitelistedCaller => Ok(1),
-				// General admin
-				pallet_ddc_origins::Origin::StakingAdmin => Ok(10),
-				pallet_ddc_origins::Origin::Treasurer => Ok(11),
-				pallet_ddc_origins::Origin::FellowshipAdmin => Ok(13),
-				pallet_ddc_origins::Origin::GeneralAdmin => Ok(14),
-				// Referendum admins
-				pallet_ddc_origins::Origin::ReferendumCanceller => Ok(20),
-				pallet_ddc_origins::Origin::ReferendumKiller => Ok(21),
-				// Limited treasury spenders
-				pallet_ddc_origins::Origin::SmallTipper => Ok(30),
-				pallet_ddc_origins::Origin::BigTipper => Ok(31),
-				pallet_ddc_origins::Origin::SmallSpender => Ok(32),
-				pallet_ddc_origins::Origin::MediumSpender => Ok(33),
-				pallet_ddc_origins::Origin::BigSpender => Ok(34),
-				// DDC admins
-				pallet_custom_origins::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
-				pallet_custom_origins::Origin::ClusterGovEditor => Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID),
-			}
-		} else {
-			Err(())
-		}
-	}
-}
-
 construct_runtime!(
 	pub struct Runtime
 	{
@@ -1404,13 +1330,12 @@ construct_runtime!(
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
 		DdcPayouts: pallet_ddc_payouts,
-		// Start OpenGov stuff.
+		// Start OpenGov.
 		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
 		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
 		Origins: pallet_custom_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov.
-		DdcOrigins: pallet_ddc_origins::{Origin},
 		DdcClustersGov: pallet_ddc_clusters_gov,
 	}
 );
@@ -1507,7 +1432,7 @@ pub mod migrations {
 	pub type Unreleased = (
         pallet_ddc_clusters::migration::MigrateToV1<Runtime>,
 		// ----- ClusterGov -----
-		pallet_ddc_clusters::migrations::v1::MigrateToV1<Runtime>
+		pallet_ddc_clusters::migrations::v1::MigrateToV1<Runtime>,
 		pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
 		// ----- ClusterGov -----
 		pallet_contracts::migration::Migration<Runtime>,

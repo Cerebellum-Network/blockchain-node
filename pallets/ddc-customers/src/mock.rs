@@ -193,7 +193,7 @@ impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
 
 	fn update_cluster_economics(
 		_cluster_id: &ClusterId,
-		_cluster_gov_params: ClusterGovParams<BalanceOf<T>, T::BlockNumber>,
+		_cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -259,7 +259,7 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 	fn get_node_state(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
-	) -> Result<ClusterNodeState<T::BlockNumber>, DispatchError> {
+	) -> Result<ClusterNodeState<BlockNumberFor<T>>, DispatchError> {
 		unimplemented!()
 	}
 

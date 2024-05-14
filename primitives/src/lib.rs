@@ -30,7 +30,12 @@ pub struct ClusterParams<AccountId> {
 #[cfg(feature = "std")]
 impl<AccountId> Default for ClusterParams<AccountId> {
 	fn default() -> Self {
-		ClusterParams { node_provider_auth_contract: None }
+		ClusterParams {
+			node_provider_auth_contract: None,
+			erasure_coding_required: 0,
+			erasure_coding_total: 0,
+			replication_total: 0,
+		}
 	}
 }
 
@@ -146,8 +151,7 @@ pub enum NodeParams {
 }
 
 /// DDC cluster status
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 pub enum ClusterStatus {
 	Unbonded,
 	Bonded,
@@ -156,16 +160,14 @@ pub enum ClusterStatus {
 }
 
 /// DDC node kind added to DDC cluster
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 pub enum ClusterNodeKind {
 	Genesis,
 	External,
 }
 
 /// DDC node status in to DDC cluster
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
 pub enum ClusterNodeStatus {
 	AwaitsValidation,
 	ValidationSucceeded,

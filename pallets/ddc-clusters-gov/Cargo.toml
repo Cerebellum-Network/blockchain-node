@@ -4,47 +4,44 @@ version = "4.8.2"
 edition = "2021"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.1.5", default-features = false, features = ["derive"] }
-ddc-primitives = { version = "0.1.0", default-features = false, path = "../../primitives" }
-ddc-traits = { version = "0.1.0", default-features = false, path = "../../traits" }
-frame-benchmarking = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", optional = true }
-frame-support = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-frame-system = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-hex-literal = "^0.3.1"
-pallet-ddc-origins = { version = "4.7.0", default-features = false, path = "../ddc-origins" }
-scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
-serde = { version = "1.0.136", default-features = false, features = ["derive"], optional = true }
-sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-sp-std = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-sp-io = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-referenda = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-log = { version = "0.4.17", default-features = false }
+codec = { workspace = true }
+ddc-primitives = { workspace = true }
+frame-benchmarking = { workspace = true, optional = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+hex-literal = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+sp-io = { workspace = true }
+pallet-referenda = { workspace = true }
+log = { workspace = true }
 
 [dev-dependencies]
-frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-insecure-randomness-collective-flip = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-sp-tracing = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-substrate-test-utils = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-preimage = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-conviction-voting = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-contracts = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
-pallet-ddc-nodes = { version = "4.8.8", path = "../../pallets/ddc-nodes" }
-pallet-ddc-clusters = { version = "4.8.8", path = "../../pallets/ddc-clusters" }
-pallet-ddc-staking = { version = "4.8.8", path = "../../pallets/ddc-staking" }
-lazy_static = "1.4.0"
-parking_lot = "0.12.1"
+frame-benchmarking = { workspace = true, default-features = true }
+pallet-balances = { workspace = true, default-features = true }
+pallet-insecure-randomness-collective-flip = { workspace = true, default-features = true }
+pallet-timestamp = { workspace = true, default-features = true }
+sp-core = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
+sp-tracing = { workspace = true, default-features = true }
+sp-arithmetic = { workspace = true }
+substrate-test-utils = { workspace = true, default-features = true }
+pallet-preimage = { workspace = true }
+pallet-conviction-voting = { workspace = true }
+pallet-scheduler = { workspace = true }
+pallet-contracts = { workspace = true }
+pallet-ddc-nodes = { workspace = true }
+pallet-ddc-clusters = { workspace = true }
+pallet-ddc-staking = { workspace = true }
+lazy_static = { workspace = true, default-features = true }
+parking_lot = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
 std = [
   "codec/std",
-  "serde",
   "ddc-primitives/std",
   "frame-support/std",
   "frame-system/std",

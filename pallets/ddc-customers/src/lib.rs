@@ -152,7 +152,6 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type UnlockingDelay: Get<BlockNumberFor<Self>>;
-		type ClusterVisitor: ClusterVisitor<Self>;
 		type ClusterEconomics: ClusterEconomics<Self, BalanceOf<Self>>;
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;

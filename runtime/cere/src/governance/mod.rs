@@ -8,8 +8,8 @@ use super::*;
 
 mod origins;
 pub use origins::{
-	pallet_custom_origins, GeneralAdmin, ReferendumCanceller, ReferendumKiller, Spender,
-	StakingAdmin, Treasurer, WhitelistedCaller,
+	pallet_custom_origins, ClusterGovCreator, ClusterGovEditor, FellowshipAdmin, GeneralAdmin,
+	ReferendumCanceller, ReferendumKiller, Spender, StakingAdmin, Treasurer, WhitelistedCaller,
 };
 
 mod tracks;

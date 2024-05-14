@@ -272,6 +272,9 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 	),
 ];
 
+pub const CLUSTER_ACTIVATOR_TRACK_ID: u16 = 100;
+pub const CLUSTER_ECONOMICS_UPDATER_TRACK_ID: u16 = 101;
+
 pub struct TracksInfo;
 impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	type Id = u16;
@@ -303,8 +306,8 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 				origins::Origin::MediumSpender => Ok(33),
 				origins::Origin::BigSpender => Ok(34),
 				// DDC admins
-				origins::Origin::ClusterGovCreator => Ok(100),
-				origins::Origin::ClusterGovEditor => Ok(101),
+				origins::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
+				origins::Origin::ClusterGovEditor => Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID),
 			}
 		} else {
 			Err(())

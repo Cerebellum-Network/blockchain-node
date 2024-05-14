@@ -103,7 +103,6 @@ pallet-ddc-payouts = { workspace = true }
 pallet-ddc-staking = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
-pallet-ddc-origins = { workspace = true }
 pallet-ddc-clusters-gov = { workspace = true }
 
 [build-dependencies]

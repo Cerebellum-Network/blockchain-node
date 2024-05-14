@@ -20,11 +20,11 @@ const USER_SEED: u32 = 999666;
 
 fn next_block<T: Config>() {
 	frame_system::Pallet::<T>::set_block_number(
-		frame_system::Pallet::<T>::block_number() + T::BlockNumber::from(1_u32),
+		frame_system::Pallet::<T>::block_number() + BlockNumberFor::<T>::from(1_u32),
 	);
 }
 
-fn fast_forward_to<T: Config>(n: T::BlockNumber) {
+fn fast_forward_to<T: Config>(n: BlockNumberFor<T>) {
 	while frame_system::Pallet::<T>::block_number() < n {
 		next_block::<T>();
 	}
@@ -120,7 +120,7 @@ benchmarks! {
 		assert!(Storages::<T>::contains_key(&storage_stash));
 		frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(1u32));
 		DdcStaking::<T>::chill(RawOrigin::Signed(storage_controller.clone()).into())?;
-		frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(1u32) + T::ClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or_else(|_| BlockNumberFor::<T>::from(10u32)));
+		frame_system::Pallet::<T>::set_block_number(BlockNumberFor::<T>::from(1u32) + T::ClusterEconomics::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or_else(|_| BlockNumberFor::<T>::from(10u32)));
 
 		whitelist_account!(storage_controller);
 	}: _(RawOrigin::Signed(storage_controller))
@@ -156,7 +156,12 @@ benchmarks! {
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
-			ClusterParams { node_provider_auth_contract: None },
+			ClusterParams {
+				node_provider_auth_contract: None,
+				erasure_coding_required: 0,
+				erasure_coding_total: 0,
+				replication_total: 0,
+			},
 			ClusterGovParams::default()
 		)?;
 
@@ -179,7 +184,12 @@ benchmarks! {
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
-			ClusterParams { node_provider_auth_contract: None },
+			ClusterParams {
+				node_provider_auth_contract: None,
+				erasure_coding_required: 0,
+				erasure_coding_total: 0,
+				replication_total: 0,
+			},
 			ClusterGovParams::default()
 		)?;
 
@@ -202,7 +212,12 @@ benchmarks! {
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
-			ClusterParams { node_provider_auth_contract: None },
+			ClusterParams {
+				node_provider_auth_contract: None,
+				erasure_coding_required: 0,
+				erasure_coding_total: 0,
+				replication_total: 0,
+			},
 			ClusterGovParams::default()
 		)?;
 
@@ -210,7 +225,7 @@ benchmarks! {
 		next_block::<T>();
 
 		DdcStaking::<T>::unbond_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id)?;
-		fast_forward_to::<T>(frame_system::Pallet::<T>::block_number() + T::ClusterUnboningDelay::get() + T::BlockNumber::from(1_u32));
+		fast_forward_to::<T>(frame_system::Pallet::<T>::block_number() + T::ClusterUnboningDelay::get() + BlockNumberFor::<T>::from(1_u32));
 
 		whitelist_account!(cluster_reserve_id);
 

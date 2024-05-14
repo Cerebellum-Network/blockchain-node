@@ -471,12 +471,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "assert_matches"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
-
-[[package]]
 name = "async-io"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1002,12 +996,10 @@ dependencies = [
  "pallet-contracts",
  "pallet-contracts-primitives",
  "pallet-conviction-voting",
- "pallet-custom-origins",
  "pallet-ddc-clusters",
  "pallet-ddc-clusters-gov",
  "pallet-ddc-customers",
  "pallet-ddc-nodes",
- "pallet-ddc-origins",
  "pallet-ddc-payouts",
  "pallet-ddc-staking",
  "pallet-democracy",
@@ -1127,8 +1119,8 @@ dependencies = [
  "pallet-contracts",
  "pallet-contracts-primitives",
  "pallet-conviction-voting",
- "pallet-custom-origins",
  "pallet-ddc-clusters",
+ "pallet-ddc-clusters-gov",
  "pallet-ddc-customers",
  "pallet-ddc-nodes",
  "pallet-ddc-payouts",
@@ -5182,23 +5174,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-conviction-voting"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.37#6fa7fe1326ecaab9921c2c3888530ad679cfbb87"
-dependencies = [
- "assert_matches",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-ddc-clusters"
 version = "5.3.0"
 dependencies = [
@@ -5213,7 +5188,6 @@ dependencies = [
  "pallet-contracts-primitives",
  "pallet-ddc-nodes",
  "pallet-insecure-randomness-collective-flip",
- "pallet-ddc-origins",
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
@@ -5231,7 +5205,6 @@ name = "pallet-ddc-clusters-gov"
 version = "4.8.2"
 dependencies = [
  "ddc-primitives",
- "ddc-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5239,7 +5212,6 @@ dependencies = [
  "lazy_static",
  "log",
  "pallet-balances",
- "pallet-ddc-origins",
  "pallet-contracts",
  "pallet-conviction-voting",
  "pallet-ddc-clusters",
@@ -5308,33 +5280,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-ddc-origins"
-version = "4.8.1"
-dependencies = [
- "ddc-primitives",
- "ddc-traits",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex",
- "hex-literal",
- "pallet-balances",
- "pallet-contracts",
- "pallet-ddc-nodes",
- "pallet-randomness-collective-flip",
- "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "sp-tracing",
- "substrate-test-utils",
-]
-
-[[package]]
 name = "pallet-ddc-payouts"
 version = "5.3.0"
 dependencies = [
@@ -5368,6 +5313,7 @@ dependencies = [
  "frame-system",
  "hex-literal",
  "lazy_static",
+ "log",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",

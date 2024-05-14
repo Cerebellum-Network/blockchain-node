@@ -275,8 +275,8 @@ parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
 	pub const ClusterProposalDuration: BlockNumber = 1 * MINUTES;
 	pub const MinValidatedNodesCount: u16 = 3;
-	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterActivator.into();
-	pub ClusterEconomicsUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterEconomicsUpdater.into();
+	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterGovCreator.into();
+	pub ClusterEconomicsUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterGovEditor.into();
 	pub const ReferendumEnactmentDuration: BlockNumber = 1;
 }
 
@@ -286,9 +286,9 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type WeightInfo = ();
 	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterActivatorTrackOrigin, Self>;
-	type OpenGovActivatorOrigin = pallet_custom_origins::ClusterActivator;
+	type OpenGovActivatorOrigin = pallet_custom_origins::ClusterGovCreator;
 	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterEconomicsUpdaterTrackOrigin, Self>;
-	type OpenGovUpdaterOrigin = pallet_custom_origins::ClusterEconomicsUpdater;
+	type OpenGovUpdaterOrigin = pallet_custom_origins::ClusterGovEditor;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
@@ -355,10 +355,12 @@ impl DefaultVote for MockedDefaultVote {
 		let lock = MOCK_DEFAULT_VOTE.lock();
 		let mock_ref = lock.borrow();
 		match mock_ref.strategy {
-			DefaultVoteVariant::NayAsDefaultVote =>
-				NayAsDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len),
-			DefaultVoteVariant::PrimeDefaultVote =>
-				PrimeDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len),
+			DefaultVoteVariant::NayAsDefaultVote => {
+				NayAsDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len)
+			},
+			DefaultVoteVariant::PrimeDefaultVote => {
+				PrimeDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len)
+			},
 		}
 	}
 }
@@ -522,9 +524,10 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
 		if let Ok(custom_origin) = pallet_custom_origins::Origin::try_from(id.clone()) {
 			match custom_origin {
-				pallet_custom_origins::Origin::ClusterActivator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
-				pallet_custom_origins::Origin::ClusterEconomicsUpdater =>
-					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID),
+				pallet_custom_origins::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
+				pallet_custom_origins::Origin::ClusterGovEditor => {
+					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID)
+				},
 			}
 		} else {
 			Err(())
@@ -546,8 +549,8 @@ mod pallet_custom_origins {
 	#[derive(PartialEq, Eq, Clone, MaxEncodedLen, Encode, Decode, TypeInfo, RuntimeDebug)]
 	#[pallet::origin]
 	pub enum Origin {
-		ClusterActivator,
-		ClusterEconomicsUpdater,
+		ClusterGovCreator,
+		ClusterGovEditor,
 	}
 
 	macro_rules! decl_unit_ensures {
@@ -580,7 +583,7 @@ mod pallet_custom_origins {
 		};
 		() => {}
 	}
-	decl_unit_ensures!(ClusterActivator, ClusterEconomicsUpdater,);
+	decl_unit_ensures!(ClusterGovCreator, ClusterGovEditor,);
 
 	macro_rules! decl_ensure {
 		(

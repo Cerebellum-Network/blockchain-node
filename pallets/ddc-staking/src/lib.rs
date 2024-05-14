@@ -185,7 +185,7 @@ pub mod pallet {
 
 		type ClusterBondingAmount: Get<BalanceOf<Self>>;
 
-		type ClusterUnboningDelay: Get<<Self as frame_system::Config>::BlockNumber>;
+		type ClusterUnboningDelay: Get<BlockNumberFor<Self>>;
 	}
 
 	/// Map from all locked "stash" accounts to the controller account.
