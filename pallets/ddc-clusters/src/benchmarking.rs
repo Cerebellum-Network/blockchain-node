@@ -24,7 +24,12 @@ benchmarks! {
 	create_cluster {
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-		let cluster_params = ClusterParams { node_provider_auth_contract: Some(user.clone()) };
+		let cluster_params = ClusterParams {
+								node_provider_auth_contract: Some(user.clone()),
+								erasure_coding_required: 4,
+								erasure_coding_total: 6,
+								replication_total: 3
+							};
 		let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
 			treasury_share: Perquintill::default(),
 			validators_share: Perquintill::default(),
@@ -78,10 +83,23 @@ benchmarks! {
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
 		let user_2 = account::<T::AccountId>("user", USER_SEED_2, 0u32);
 		let _ = config_cluster::<T>(user.clone(), cluster_id);
-		let new_cluster_params = ClusterParams { node_provider_auth_contract: Some(user_2.clone()) };
+		let new_cluster_params = ClusterParams {
+									node_provider_auth_contract: Some(user_2.clone()),
+									erasure_coding_required: 4,
+									erasure_coding_total: 6,
+									replication_total: 3
+								};
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, new_cluster_params)
 	verify {
-		assert_eq!(Clusters::<T>::try_get(cluster_id).unwrap().props, ClusterProps { node_provider_auth_contract: Some(user_2) });
+		assert_eq!(
+			Clusters::<T>::try_get(cluster_id).unwrap().props,
+			ClusterProps {
+				node_provider_auth_contract: Some(user_2),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3
+			}
+		);
 	}
 
 	set_cluster_gov_params {
