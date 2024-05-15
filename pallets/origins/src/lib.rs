@@ -1,11 +1,13 @@
 //! Custom origins for governance interventions.
-pub use pallet_custom_origins::*;
+
+#![cfg_attr(not(feature = "std"), no_std)]
+
+pub use pallet::*;
 
 #[frame_support::pallet]
-pub mod pallet_custom_origins {
+pub mod pallet {
+	use cere_runtime_common::constants::currency::{Balance, DOLLARS, GRAND};
 	use frame_support::pallet_prelude::*;
-
-	use crate::{Balance, DOLLARS, GRAND};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {}

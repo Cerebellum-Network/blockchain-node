@@ -1021,6 +1021,7 @@ dependencies = [
  "pallet-nomination-pools-runtime-api",
  "pallet-offences",
  "pallet-offences-benchmarking",
+ "pallet-origins",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-recovery",
@@ -1144,6 +1145,7 @@ dependencies = [
  "pallet-nomination-pools-runtime-api",
  "pallet-offences",
  "pallet-offences-benchmarking",
+ "pallet-origins",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-recovery",
@@ -1193,9 +1195,11 @@ dependencies = [
  "log",
  "node-primitives",
  "pallet-contracts",
+ "pallet-referenda",
  "pallet-session",
  "parity-scale-codec",
  "sp-api",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -5667,6 +5671,22 @@ dependencies = [
  "scale-info",
  "sp-runtime",
  "sp-staking",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-origins"
+version = "5.3.0"
+dependencies = [
+ "cere-runtime-common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-runtime",
  "sp-std",
 ]
 

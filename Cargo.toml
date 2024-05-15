@@ -20,6 +20,7 @@ members = [
   "pallets/erc20",
   "pallets/erc721",
   "pallets/ddc-clusters-gov",
+  "pallets/origins",
   "primitives",
   "runtime/cere",
   "runtime/cere-dev",
@@ -183,6 +184,7 @@ pallet-ddc-payouts = { path = "pallets/ddc-payouts", default-features = false }
 pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
 pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
+pallet-origins = { path = "pallets/origins", default-features = false }
 
 [profile.release]
 panic = "unwind"

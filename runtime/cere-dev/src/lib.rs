@@ -112,9 +112,7 @@ use sp_runtime::generic::Era;
 // Governance configurations.
 pub mod governance;
 use governance::{
-	pallet_custom_origins, ClusterGovCreator, ClusterGovEditor, GeneralAdmin, StakingAdmin,
-	TracksInfo, Treasurer, TreasurySpender, CLUSTER_ACTIVATOR_TRACK_ID,
-	CLUSTER_ECONOMICS_UPDATER_TRACK_ID,
+	ClusterGovCreator, ClusterGovEditor, GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender,
 };
 
 /// Generated voter bag information.
@@ -1195,8 +1193,8 @@ parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
 	pub const MinValidatedNodesCount: u16 = 3;
-	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterGovCreator.into();
-	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterGovEditor.into();
+	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_origins::Origin::ClusterGovCreator.into();
+	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_origins::Origin::ClusterGovEditor.into();
 	pub const ReferendumEnactmentDuration: BlockNumber = 1;
 }
 
@@ -1238,48 +1236,6 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 {
 	fn get() -> T::RuntimeOrigin {
 		DdcOrigin::get()
-	}
-}
-
-pub struct EnsureOfPermittedReferendaOrigin<T>(PhantomData<T>);
-impl<T: frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
-	for EnsureOfPermittedReferendaOrigin<T>
-where
-	<T as frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
-{
-	type Success = T::AccountId;
-
-	fn try_origin(
-		o: T::RuntimeOrigin,
-		proposal_origin: &PalletsOriginOf<T>,
-	) -> Result<Self::Success, T::RuntimeOrigin> {
-		let origin = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
-
-		let track_id =
-			match <TracksInfo as pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
-				proposal_origin,
-			) {
-				Ok(track_id) => track_id,
-				Err(_) => return Err(o),
-			};
-
-		if track_id == CLUSTER_ACTIVATOR_TRACK_ID || track_id == CLUSTER_ECONOMICS_UPDATER_TRACK_ID
-		{
-			let clusters_governance = <ClustersGovWrapper as PalletVisitor<T>>::get_account_id();
-			if origin == clusters_governance {
-				Ok(origin)
-			} else {
-				Err(o)
-			}
-		} else {
-			Ok(origin)
-		}
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	fn try_successful_origin(proposal_origin: &PalletsOriginOf<T>) -> Result<T::RuntimeOrigin, ()> {
-		let origin = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
-		Ok(frame_system::RawOrigin::Signed(origin).into())
 	}
 }
 
@@ -1331,7 +1287,7 @@ construct_runtime!(
 		// Start OpenGov.
 		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
 		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
-		Origins: pallet_custom_origins::{Origin},
+		Origins: pallet_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov.
 		DdcClustersGov: pallet_ddc_clusters_gov,

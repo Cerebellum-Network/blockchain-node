@@ -7,9 +7,7 @@ use ddc_primitives::{
 	ClusterStatus, NodePubKey, NodeType,
 };
 use frame_support::{
-	construct_runtime,
-	dispatch::DispatchError,
-	parameter_types,
+	construct_runtime, parameter_types,
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
 	weights::constants::RocksDbWeight,
 };
@@ -18,7 +16,7 @@ use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage, DispatchResult, Perquintill,
+	BuildStorage, DispatchError, DispatchResult, Perquintill,
 };
 
 use crate::{self as pallet_ddc_customers, *};

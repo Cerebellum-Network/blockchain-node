@@ -104,6 +104,7 @@ pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
 pallet-referenda = { workspace = true }
 pallet-whitelist = { workspace = true }
+pallet-origins = { workspace = true }
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }
@@ -189,6 +190,7 @@ std = [
   "pallet-referenda/std",
   "pallet-whitelist/std",
   "pallet-preimage/std",
+  "pallet-origins/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",

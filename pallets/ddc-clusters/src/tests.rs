@@ -3,7 +3,8 @@
 use codec::Compact;
 use ddc_primitives::{
 	traits::cluster::ClusterManager, ClusterBondingParams, ClusterFeesParams, ClusterId,
-	ClusterParams, ClusterPricingParams, ClusterStatus, NodeParams, NodePubKey, StorageNodeParams,
+	ClusterParams, ClusterPricingParams, ClusterStatus, NodeParams, NodePubKey, StorageNodeMode,
+	StorageNodeParams,
 };
 use frame_support::{assert_noop, assert_ok};
 use frame_system::Config;

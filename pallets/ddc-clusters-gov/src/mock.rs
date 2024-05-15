@@ -32,9 +32,8 @@ use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
-	testing::Header,
 	traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify},
-	MultiSignature,
+	BuildStorage, MultiSignature, Perbill,
 };
 
 use crate::{self as pallet_ddc_clusters_gov, *};
@@ -54,27 +53,25 @@ pub type Signature = MultiSignature;
 type UncheckedExtrinsic = MockUncheckedExtrinsic<Test>;
 type Block = MockBlock<Test>;
 
-construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+frame_support::construct_runtime!(
+	pub struct Test
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		System: frame_system::{Pallet, Call, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>},
 		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
 		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
-		Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>},
+		Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
 		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
 		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Event<T>},
 		DdcStaking: pallet_ddc_staking::{Pallet, Call, Storage, Event<T>},
-		Origins: pallet_custom_origins::{Origin},
+		Origins: pallet_mock_origins::{Origin},
 		DdcClustersGov: pallet_ddc_clusters_gov::{Pallet, Call, Storage, Event<T>},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 	}
+
 );
 
 pub type BalanceOf<T> = <<T as pallet_referenda::Config>::Currency as Currency<
@@ -93,14 +90,13 @@ impl frame_system::Config for Test {
 	type BlockLength = ();
 	type DbWeight = RocksDbWeight;
 	type RuntimeOrigin = RuntimeOrigin;
-	type Index = AccountIndex;
-	type BlockNumber = BlockNumber;
+	type Nonce = u64;
+	type Block = Block;
 	type RuntimeCall = RuntimeCall;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
@@ -135,6 +131,10 @@ impl pallet_balances::Config for Test {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
+	type FreezeIdentifier = ();
+	type MaxFreezes = ();
+	type MaxHolds = ();
+	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 parameter_types! {
@@ -208,7 +208,18 @@ impl pallet_scheduler::Config for Test {
 parameter_types! {
 	pub const DepositPerItem: Balance = 0;
 	pub const DepositPerByte: Balance = 0;
+	pub const SignedClaimHandicap: BlockNumber = 2;
+	pub const TombstoneDeposit: Balance = 16;
+	pub const StorageSizeOffset: u32 = 8;
+	pub const RentByteFee: Balance = 4;
+	pub const RentDepositOffset: Balance = 10_000;
+	pub const SurchargeReward: Balance = 150;
+	pub const MaxDepth: u32 = 100;
+	pub const MaxValueSize: u32 = 16_384;
 	pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
+	pub static DefaultDepositLimit: Balance = 10_000_000;
+	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
+	pub const MaxDelegateDependencies: u32 = 32;
 }
 
 impl pallet_contracts::Config for Test {
@@ -217,21 +228,26 @@ impl pallet_contracts::Config for Test {
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type CallStack = [pallet_contracts::Frame<Self>; 5];
-	type WeightPrice = Self;
+	type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
 	type WeightInfo = ();
 	type ChainExtension = ();
-	type DeletionQueueDepth = ();
-	type DeletionWeightLimit = ();
 	type Schedule = Schedule;
 	type RuntimeCall = RuntimeCall;
 	type CallFilter = Nothing;
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
+	type DefaultDepositLimit = DefaultDepositLimit;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+	type MaxDelegateDependencies = MaxDelegateDependencies;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type Debug = ();
+	type Environment = ();
+	type Migrations = ();
 }
 
 impl pallet_insecure_randomness_collective_flip::Config for Test {}
@@ -249,6 +265,9 @@ impl pallet_ddc_clusters::Config for Test {
 	type StakerCreator = pallet_ddc_staking::Pallet<Test>;
 	type Currency = Balances;
 	type WeightInfo = ();
+	type MinErasureCodingRequiredLimit = ConstU32<4>;
+	type MinErasureCodingTotalLimit = ConstU32<6>;
+	type MinReplicationTotalLimit = ConstU32<3>;
 }
 
 parameter_types! {
@@ -269,14 +288,14 @@ impl pallet_ddc_staking::Config for Test {
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
 
-impl pallet_custom_origins::Config for Test {}
+impl pallet_mock_origins::Config for Test {}
 
 parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
 	pub const ClusterProposalDuration: BlockNumber = 1 * MINUTES;
 	pub const MinValidatedNodesCount: u16 = 3;
-	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterGovCreator.into();
-	pub ClusterEconomicsUpdaterTrackOrigin: RuntimeOrigin = pallet_custom_origins::Origin::ClusterGovEditor.into();
+	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_mock_origins::Origin::ClusterGovCreator.into();
+	pub ClusterEconomicsUpdaterTrackOrigin: RuntimeOrigin = pallet_mock_origins::Origin::ClusterGovEditor.into();
 	pub const ReferendumEnactmentDuration: BlockNumber = 1;
 }
 
@@ -286,9 +305,9 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type WeightInfo = ();
 	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterActivatorTrackOrigin, Self>;
-	type OpenGovActivatorOrigin = pallet_custom_origins::ClusterGovCreator;
+	type OpenGovActivatorOrigin = pallet_mock_origins::ClusterGovCreator;
 	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterEconomicsUpdaterTrackOrigin, Self>;
-	type OpenGovUpdaterOrigin = pallet_custom_origins::ClusterGovEditor;
+	type OpenGovUpdaterOrigin = pallet_mock_origins::ClusterGovEditor;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
@@ -520,10 +539,10 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 		&TRACKS_DATA[..]
 	}
 	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
-		if let Ok(custom_origin) = pallet_custom_origins::Origin::try_from(id.clone()) {
+		if let Ok(custom_origin) = pallet_mock_origins::Origin::try_from(id.clone()) {
 			match custom_origin {
-				pallet_custom_origins::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
-				pallet_custom_origins::Origin::ClusterGovEditor =>
+				pallet_mock_origins::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
+				pallet_mock_origins::Origin::ClusterGovEditor =>
 					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID),
 			}
 		} else {
@@ -534,7 +553,7 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 pallet_referenda::impl_tracksinfo_get!(TracksInfo, Balance, BlockNumber);
 
 #[frame_support::pallet]
-mod pallet_custom_origins {
+mod pallet_mock_origins {
 	use frame_support::pallet_prelude::*;
 
 	#[pallet::config]
@@ -678,7 +697,7 @@ pub struct ExtBuilder;
 impl ExtBuilder {
 	pub fn build(self, cluster: BuiltCluster, cluster_nodes: Vec<BuiltNode>) -> TestExternalities {
 		sp_tracing::try_init_simple();
-		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 		let mut balances: Vec<(AccountId, Balance)> = Vec::new();
 		let mut storage_nodes: Vec<StorageNode<Test>> = Vec::new();

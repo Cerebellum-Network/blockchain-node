@@ -1,18 +1,23 @@
 use frame_support::{
+	pallet_prelude::EnsureOrigin,
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, EitherOf},
+	traits::{EitherOf, EnsureOriginWithArg, OriginTrait},
 };
-use frame_system::{EnsureRootWithSuccess, EnsureSigned};
+use frame_system::EnsureRootWithSuccess;
+use sp_std::marker::PhantomData;
 
 use super::*;
 
-mod origins;
-pub use origins::{
-	pallet_custom_origins, ClusterGovCreator, ClusterGovEditor, FellowshipAdmin, GeneralAdmin,
-	ReferendumCanceller, ReferendumKiller, Spender, StakingAdmin, Treasurer, WhitelistedCaller,
+mod tracks;
+use cere_runtime_common::constants::tracks::{
+	CLUSTER_ACTIVATOR_TRACK_ID, CLUSTER_ECONOMICS_UPDATER_TRACK_ID,
+};
+use ddc_primitives::traits::pallet::PalletsOriginOf;
+pub use pallet_origins::pallet::{
+	ClusterGovCreator, ClusterGovEditor, FellowshipAdmin, GeneralAdmin, ReferendumCanceller,
+	ReferendumKiller, Spender, StakingAdmin, Treasurer, WhitelistedCaller,
 };
 
-mod tracks;
 pub use tracks::TracksInfo;
 
 parameter_types! {
@@ -41,7 +46,7 @@ parameter_types! {
 }
 pub type TreasurySpender = EitherOf<EnsureRootWithSuccess<AccountId, MaxBalance>, Spender>;
 
-impl origins::pallet_custom_origins::Config for Runtime {}
+impl pallet_origins::Config for Runtime {}
 
 impl pallet_whitelist::Config for Runtime {
 	type WeightInfo = pallet_whitelist::weights::SubstrateWeight<Runtime>;
@@ -58,7 +63,7 @@ impl pallet_referenda::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Scheduler = Scheduler;
 	type Currency = Balances;
-	type SubmitOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type SubmitOrigin = EnsureOfPermittedReferendaOrigin<Self>;
 	type CancelOrigin = EitherOf<EnsureRoot<AccountId>, ReferendumCanceller>;
 	type KillOrigin = EitherOf<EnsureRoot<AccountId>, ReferendumKiller>;
 	type Slash = Treasury;
@@ -70,4 +75,46 @@ impl pallet_referenda::Config for Runtime {
 	type AlarmInterval = AlarmInterval;
 	type Tracks = TracksInfo;
 	type Preimages = Preimage;
+}
+
+pub struct EnsureOfPermittedReferendaOrigin<T>(PhantomData<T>);
+impl<T: frame_system::Config> EnsureOriginWithArg<T::RuntimeOrigin, PalletsOriginOf<T>>
+	for EnsureOfPermittedReferendaOrigin<T>
+where
+	<T as frame_system::Config>::RuntimeOrigin: OriginTrait<PalletsOrigin = OriginCaller>,
+{
+	type Success = T::AccountId;
+
+	fn try_origin(
+		o: T::RuntimeOrigin,
+		proposal_origin: &PalletsOriginOf<T>,
+	) -> Result<Self::Success, T::RuntimeOrigin> {
+		let origin = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
+
+		let track_id =
+			match <TracksInfo as pallet_referenda::TracksInfo<Balance, BlockNumber>>::track_for(
+				proposal_origin,
+			) {
+				Ok(track_id) => track_id,
+				Err(_) => return Err(o),
+			};
+
+		if track_id == CLUSTER_ACTIVATOR_TRACK_ID || track_id == CLUSTER_ECONOMICS_UPDATER_TRACK_ID
+		{
+			let clusters_governance = <ClustersGovWrapper as PalletVisitor<T>>::get_account_id();
+			if origin == clusters_governance {
+				Ok(origin)
+			} else {
+				Err(o)
+			}
+		} else {
+			Ok(origin)
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin(proposal_origin: &PalletsOriginOf<T>) -> Result<T::RuntimeOrigin, ()> {
+		let origin = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
+		Ok(frame_system::RawOrigin::Signed(origin).into())
+	}
 }

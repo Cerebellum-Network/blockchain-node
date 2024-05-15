@@ -100,13 +100,15 @@ use cere_runtime_common::{
 	constants::{currency::*, time::*},
 	CurrencyToVote,
 };
+use ddc_primitives::traits::GetDdcOrigin;
 use impls::Author;
 use sp_runtime::generic::Era;
-
+use sp_std::{marker::PhantomData, prelude::*};
 // Governance configurations.
 pub mod governance;
-use governance::{pallet_custom_origins, GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender};
-
+use governance::{
+	ClusterGovCreator, ClusterGovEditor, GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender,
+};
 /// Generated voter bag information.
 mod voter_bags;
 
@@ -303,20 +305,20 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::Any => true,
 			ProxyType::NonTransfer => !matches!(
 				c,
-				RuntimeCall::Balances(..) |
-					RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
-					RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
-					RuntimeCall::NominationPools(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Balances(..)
+					| RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+					| RuntimeCall::Indices(pallet_indices::Call::transfer { .. })
+					| RuntimeCall::NominationPools(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
-				RuntimeCall::Treasury(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Treasury(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Staking => matches!(c, RuntimeCall::Staking(..)),
 		}
@@ -659,8 +661,8 @@ impl Get<Option<BalancingConfig>> for OffchainRandomBalancing {
 			max => {
 				let seed = sp_io::offchain::random_seed();
 				let random = <u32>::decode(&mut TrailingZeroInput::new(&seed))
-					.expect("input is padded with zeroes; qed") %
-					max.saturating_add(1);
+					.expect("input is padded with zeroes; qed")
+					% max.saturating_add(1);
 				random as usize
 			},
 		};
@@ -1189,6 +1191,56 @@ impl pallet_ddc_staking::Config for Runtime {
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
 
+parameter_types! {
+	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
+	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
+	pub const MinValidatedNodesCount: u16 = 3;
+	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_origins::Origin::ClusterGovCreator.into();
+	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_origins::Origin::ClusterGovEditor.into();
+	pub const ReferendumEnactmentDuration: BlockNumber = 1;
+}
+
+impl pallet_ddc_clusters_gov::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = ClustersGovPalletId;
+	type Currency = Balances;
+	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
+	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterActivatorTrackOrigin, Self>;
+	type OpenGovActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterGovCreator>;
+	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterUpdaterTrackOrigin, Self>;
+	type OpenGovUpdaterOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterGovEditor>;
+	type ClusterProposalCall = RuntimeCall;
+	type ClusterProposalDuration = ClusterProposalDuration;
+	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterEconomics = pallet_ddc_clusters::Pallet<Runtime>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type SeatsConsensus = pallet_ddc_clusters_gov::Unanimous;
+	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
+	type MinValidatedNodesCount = MinValidatedNodesCount;
+	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
+	#[cfg(feature = "runtime-benchmarks")]
+	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
+}
+
+pub struct ClustersGovWrapper;
+impl<T: frame_system::Config> PalletVisitor<T> for ClustersGovWrapper {
+	fn get_account_id() -> T::AccountId {
+		ClustersGovPalletId::get().into_account_truncating()
+	}
+}
+
+pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
+impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
+	for DdcOriginAsNative<DdcOrigin, T>
+{
+	fn get() -> T::RuntimeOrigin {
+		DdcOrigin::get()
+	}
+}
+
 construct_runtime!(
 	pub struct Runtime
 	{
@@ -1237,9 +1289,10 @@ construct_runtime!(
 		// Start OpenGov.
 		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
 		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
-		Origins: pallet_custom_origins::{Origin},
+		Origins: pallet_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov.
+		DdcClustersGov: pallet_ddc_clusters_gov,
 	}
 );
 
@@ -1341,6 +1394,7 @@ mod benches {
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
 		[pallet_preimage, Preimage]
+		[pallet_ddc_clusters_gov, DdcClustersGov]
 	);
 }
 
