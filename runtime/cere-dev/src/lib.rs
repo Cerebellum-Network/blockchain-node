@@ -1373,89 +1373,10 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
 /// Runtime migrations
-type Migrations = migrations::Unreleased;
-
-/// The runtime migrations per release.
-#[allow(deprecated, missing_docs)]
-pub mod migrations {
-	use frame_support::traits::LockIdentifier;
-	use frame_system::pallet_prelude::BlockNumberFor;
-
-	use super::*;
-
-	parameter_types! {
-		pub const DemocracyPalletName: &'static str = "Democracy";
-		pub const CouncilPalletName: &'static str = "Council";
-		pub const TechnicalCommitteePalletName: &'static str = "TechnicalCommittee";
-		pub const ElectionPalletName: &'static str = "Elections";
-		pub const TechnicalMembershipPalletName: &'static str = "TechnicalMembership";
-		pub const TipsPalletName: &'static str = "Tips";
-		pub const ElectionPalletId: LockIdentifier = *b"phrelect";
-	}
-
-	// Special Config for Gov V1 pallets, allowing us to run migrations for them without
-	// implementing their configs on [`Runtime`].
-	pub struct UnlockConfig;
-	impl pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockConfig for UnlockConfig {
-		type Currency = Balances;
-		type MaxVotes = ConstU32<100>;
-		type MaxDeposits = ConstU32<100>;
-		type AccountId = AccountId;
-		type BlockNumber = BlockNumberFor<Runtime>;
-		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-		type PalletName = DemocracyPalletName;
-	}
-	impl pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockConfig
-		for UnlockConfig
-	{
-		type Currency = Balances;
-		type MaxVotesPerVoter = ConstU32<16>;
-		type PalletId = ElectionPalletId;
-		type AccountId = AccountId;
-		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-		type PalletName = ElectionPalletName;
-	}
-	impl pallet_tips::migrations::unreserve_deposits::UnlockConfig<()> for UnlockConfig {
-		type Currency = Balances;
-		type Hash = Hash;
-		type DataDepositPerByte = DataDepositPerByte;
-		type TipReportDepositBase = TipReportDepositBase;
-		type AccountId = AccountId;
-		type BlockNumber = BlockNumberFor<Runtime>;
-		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-		type PalletName = TipsPalletName;
-	}
-
-	/// Unreleased migrations. Add new ones here:
-	pub type Unreleased = (
-        pallet_ddc_clusters::migration::MigrateToV1<Runtime>,
-		// ----- ClusterGov -----
-		pallet_ddc_clusters::migrations::v1::MigrateToV1<Runtime>,
-		pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
-		// ----- ClusterGov -----
-		pallet_contracts::migration::Migration<Runtime>,
-		pallet_referenda::migration::v1::MigrateV0ToV1<Runtime>,
-		// Gov v1 storage migrations
-		// https://github.com/paritytech/polkadot/issues/6749
-		pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
-		pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
-		pallet_tips::migrations::unreserve_deposits::UnreserveDeposits<UnlockConfig, ()>,
-
-		// Delete all Gov v1 pallet storage key/values.
-		frame_support::migrations::RemovePallet<DemocracyPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<CouncilPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<TechnicalCommitteePalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<ElectionPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<TechnicalMembershipPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<TipsPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-	);
-}
+type Migrations = (
+	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
+	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
