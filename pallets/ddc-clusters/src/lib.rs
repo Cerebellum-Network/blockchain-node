@@ -26,6 +26,8 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migration;
+
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
@@ -66,7 +68,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+		frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -81,6 +83,12 @@ pub mod pallet {
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type WeightInfo: WeightInfo;
+		#[pallet::constant]
+		type MinErasureCodingRequiredLimit: Get<u32>;
+		#[pallet::constant]
+		type MinErasureCodingTotalLimit: Get<u32>;
+		#[pallet::constant]
+		type MinReplicationTotalLimit: Get<u32>;
 	}
 
 	#[pallet::event]
@@ -111,6 +119,9 @@ pub mod pallet {
 		NodeAuthContractCallFailed,
 		NodeAuthContractDeployFailed,
 		NodeAuthNodeAuthorizationNotSuccessful,
+		ErasureCodingRequiredDidNotMeetMinimum,
+		ErasureCodingTotalNotMeetMinimum,
+		ReplicationTotalDidNotMeetMinimum,
 	}
 
 	#[pallet::storage]
@@ -171,6 +182,9 @@ pub mod pallet {
 							.props
 							.node_provider_auth_contract
 							.clone(),
+						erasure_coding_required: 4,
+						erasure_coding_total: 6,
+						replication_total: 3
 					},
 					self.clusters_gov_params
 						.iter()
@@ -297,6 +311,18 @@ pub mod pallet {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
+			ensure!(
+				cluster_params.erasure_coding_required >= T::MinErasureCodingRequiredLimit::get(),
+				Error::<T>::ErasureCodingRequiredDidNotMeetMinimum
+			);
+			ensure!(
+				cluster_params.erasure_coding_total >= T::MinErasureCodingTotalLimit::get(),
+				Error::<T>::ErasureCodingTotalNotMeetMinimum
+			);
+			ensure!(
+				cluster_params.replication_total >= T::MinReplicationTotalLimit::get(),
+				Error::<T>::ReplicationTotalDidNotMeetMinimum
+			);
 			cluster.set_params(cluster_params).map_err(Into::<Error<T>>::into)?;
 			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
@@ -330,11 +356,24 @@ pub mod pallet {
 			cluster_params: ClusterParams<T::AccountId>,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
+			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
+
+			ensure!(
+				cluster_params.erasure_coding_required >= T::MinErasureCodingRequiredLimit::get(),
+				Error::<T>::ErasureCodingRequiredDidNotMeetMinimum
+			);
+			ensure!(
+				cluster_params.erasure_coding_total >= T::MinErasureCodingTotalLimit::get(),
+				Error::<T>::ErasureCodingTotalNotMeetMinimum
+			);
+			ensure!(
+				cluster_params.replication_total >= T::MinReplicationTotalLimit::get(),
+				Error::<T>::ReplicationTotalDidNotMeetMinimum
+			);
+
 			let cluster =
 				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params)
 					.map_err(Into::<Error<T>>::into)?;
-			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
-
 			Clusters::<T>::insert(cluster_id, cluster);
 			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });

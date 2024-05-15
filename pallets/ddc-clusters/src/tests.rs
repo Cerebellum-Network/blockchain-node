@@ -1,5 +1,6 @@
 //! Tests for the module.
 
+use codec::Compact;
 use ddc_primitives::{
 	traits::cluster::ClusterManager, ClusterBondingParams, ClusterFeesParams, ClusterId,
 	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodeMode,
@@ -42,7 +43,12 @@ fn create_cluster_works() {
 				cluster_id,
 				cluster_manager_id.clone(),
 				cluster_reserve_id.clone(),
-				ClusterParams { node_provider_auth_contract: Some(auth_contract.clone()) },
+				ClusterParams {
+					node_provider_auth_contract: Some(auth_contract.clone()),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+				},
 				cluster_gov_params.clone()
 			),
 			BadOrigin
@@ -54,7 +60,12 @@ fn create_cluster_works() {
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
-			ClusterParams { node_provider_auth_contract: Some(auth_contract.clone()) },
+			ClusterParams {
+				node_provider_auth_contract: Some(auth_contract.clone()),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3
+			},
 			cluster_gov_params.clone()
 		));
 
@@ -110,7 +121,12 @@ fn create_cluster_works() {
 				cluster_id,
 				cluster_manager_id,
 				cluster_reserve_id,
-				ClusterParams { node_provider_auth_contract: Some(auth_contract) },
+				ClusterParams {
+					node_provider_auth_contract: Some(auth_contract),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+				},
 				cluster_gov_params
 			),
 			Error::<Test>::ClusterAlreadyExists
@@ -152,7 +168,12 @@ fn add_and_delete_node_works() {
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
-			ClusterParams { node_provider_auth_contract: Some(cluster_manager_id.clone()) },
+			ClusterParams {
+				node_provider_auth_contract: Some(cluster_manager_id.clone()),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3
+			},
 			ClusterGovParams {
 				treasury_share: Perquintill::from_float(0.05),
 				validators_share: Perquintill::from_float(0.01),
@@ -218,7 +239,12 @@ fn add_and_delete_node_works() {
 		assert_ok!(DdcClusters::set_cluster_params(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
-			ClusterParams { node_provider_auth_contract: Some(contract_id) },
+			ClusterParams {
+				node_provider_auth_contract: Some(contract_id),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3
+			},
 		));
 
 		// Node added succesfully
@@ -309,7 +335,7 @@ fn add_and_delete_node_works() {
 				RuntimeOrigin::signed(alice.clone()),
 				ENDOWMENT,
 				GAS_LIMIT,
-				None,
+				Some(Compact(100)),
 				wasm.to_vec(),
 				contract_args.clone(),
 				vec![],
@@ -361,7 +387,12 @@ fn set_cluster_params_works() {
 			DdcClusters::set_cluster_params(
 				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
-				ClusterParams { node_provider_auth_contract: Some(auth_contract_1.clone()) },
+				ClusterParams {
+					node_provider_auth_contract: Some(auth_contract_1.clone()),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+				},
 			),
 			Error::<Test>::ClusterDoesNotExist
 		);
@@ -372,7 +403,12 @@ fn set_cluster_params_works() {
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id.clone(),
-			ClusterParams { node_provider_auth_contract: Some(auth_contract_1) },
+			ClusterParams {
+				node_provider_auth_contract: Some(auth_contract_1),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3
+			},
 			ClusterGovParams {
 				treasury_share: Perquintill::from_float(0.05),
 				validators_share: Perquintill::from_float(0.01),
@@ -391,19 +427,74 @@ fn set_cluster_params_works() {
 			DdcClusters::set_cluster_params(
 				RuntimeOrigin::signed(cluster_reserve_id),
 				cluster_id,
-				ClusterParams { node_provider_auth_contract: Some(auth_contract_2.clone()) },
+				ClusterParams {
+					node_provider_auth_contract: Some(auth_contract_2.clone()),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 3
+				},
 			),
 			Error::<Test>::OnlyClusterManager
+		);
+
+		assert_noop!(
+			DdcClusters::set_cluster_params(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				ClusterParams {
+					node_provider_auth_contract: Some(auth_contract_2.clone()),
+					erasure_coding_required: 1,
+					erasure_coding_total: 6,
+					replication_total: 3
+				},
+			),
+			Error::<Test>::ErasureCodingRequiredDidNotMeetMinimum
+		);
+
+		assert_noop!(
+			DdcClusters::set_cluster_params(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				ClusterParams {
+					node_provider_auth_contract: Some(auth_contract_2.clone()),
+					erasure_coding_required: 4,
+					erasure_coding_total: 1,
+					replication_total: 3
+				},
+			),
+			Error::<Test>::ErasureCodingTotalNotMeetMinimum
+		);
+
+		assert_noop!(
+			DdcClusters::set_cluster_params(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				ClusterParams {
+					node_provider_auth_contract: Some(auth_contract_2.clone()),
+					erasure_coding_required: 4,
+					erasure_coding_total: 6,
+					replication_total: 1
+				},
+			),
+			Error::<Test>::ReplicationTotalDidNotMeetMinimum
 		);
 
 		assert_ok!(DdcClusters::set_cluster_params(
 			RuntimeOrigin::signed(cluster_manager_id),
 			cluster_id,
-			ClusterParams { node_provider_auth_contract: Some(auth_contract_2.clone()) },
+			ClusterParams {
+				node_provider_auth_contract: Some(auth_contract_2.clone()),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3
+			},
 		));
 
 		let updated_cluster = DdcClusters::clusters(cluster_id).unwrap();
 		assert_eq!(updated_cluster.props.node_provider_auth_contract, Some(auth_contract_2));
+		assert_eq!(updated_cluster.props.erasure_coding_required, 4);
+		assert_eq!(updated_cluster.props.erasure_coding_total, 6);
+		assert_eq!(updated_cluster.props.replication_total, 3);
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 2);
@@ -449,7 +540,12 @@ fn set_cluster_gov_params_works() {
 			cluster_id,
 			cluster_manager_id.clone(),
 			cluster_reserve_id,
-			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
+			ClusterParams {
+				node_provider_auth_contract: Some(auth_contract),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3
+			},
 			cluster_gov_params.clone()
 		));
 
@@ -555,7 +651,12 @@ fn cluster_visitor_works() {
 			cluster_id,
 			cluster_manager_id,
 			cluster_reserve_id.clone(),
-			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
+			ClusterParams {
+				node_provider_auth_contract: Some(auth_contract),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3
+			},
 			cluster_gov_params
 		));
 
@@ -662,7 +763,12 @@ fn cluster_creator_works() {
 			cluster_id,
 			cluster_manager_id,
 			cluster_reserve_id,
-			ClusterParams { node_provider_auth_contract: Some(auth_contract) },
+			ClusterParams {
+				node_provider_auth_contract: Some(auth_contract),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3
+			},
 			cluster_gov_params
 		));
 

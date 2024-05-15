@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+
+## [5.3.0]
+
+### Changed
+
+- [C,D] Updated Substrate to polkadot-v1.1.0
+- [C,D] Introduction of the OpenGov
+- [C,D] `pallet-ddc-clusters`: Added Erasure coding and Replication in cluster params
+
 ## [5.2.2]
 
 - [C,D] Depositing extra amount in ddc-customers pallet is fixed
@@ -65,12 +74,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] `5.0.1` release changes are reverted
 - [C,D] Off-chain workers are enabled
 
+## [5.0.1]
+
+### Changed
+
+- [C,D] Set burn rate at 0.058% CERE tokens at the end of every era.
+
 ## [5.0.0]
 
 ### Changed
 
 - [C,D] Updated Substrate to polkadot-v1.0.0
 - [C,D] `pallet-ddc-customers`: implemented bucket removal
+
+### Added
+- Added ChargeError event to payout pallet
 
 ## [4.8.9]
 
@@ -85,7 +103,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [C,D] Updated Substrate to polkadot-v0.9.40
+- [C,D] Updated Substrate to polkadot-v0.9.38
+- Changes in `pallet-ddc-payouts::begin_billing_report` crate to accept start and end of the era.
 - More explicit events in `pallet-ddc-payouts` and `pallet-ddc-customers`
 - Introduce a burn rate of 0.058% daily to bring inflation down.
 - More explicit events in `pallet-ddc-payouts` about batch index

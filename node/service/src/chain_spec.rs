@@ -157,8 +157,6 @@ pub fn cere_dev_genesis(
 		}))
 		.collect::<Vec<_>>();
 
-	let num_endowed_accounts = endowed_accounts.len();
-
 	const ENDOWMENT: Balance = 10_000_000_000 * TEST_UNITS;
 	const STASH: Balance = ENDOWMENT / 1000;
 
@@ -194,24 +192,6 @@ pub fn cere_dev_genesis(
 			..Default::default()
 		},
 		ddc_staking: cere_dev::DdcStakingConfig::default(),
-		democracy: cere_dev::DemocracyConfig::default(),
-		elections: cere_dev::ElectionsConfig {
-			members: endowed_accounts
-				.iter()
-				.take((num_endowed_accounts + 1) / 2)
-				.cloned()
-				.map(|member| (member, STASH))
-				.collect(),
-		},
-		council: cere_dev::CouncilConfig::default(),
-		technical_committee: cere_dev::TechnicalCommitteeConfig {
-			members: endowed_accounts
-				.iter()
-				.take((num_endowed_accounts + 1) / 2)
-				.cloned()
-				.collect(),
-			phantom: Default::default(),
-		},
 		sudo: cere_dev::SudoConfig { key: Some(root_key) },
 		babe: cere_dev::BabeConfig {
 			authorities: Default::default(),
@@ -224,7 +204,6 @@ pub fn cere_dev_genesis(
 			..Default::default()
 		},
 		grandpa: Default::default(),
-		technical_membership: Default::default(),
 		treasury: Default::default(),
 		vesting: Default::default(),
 		transaction_payment: Default::default(),

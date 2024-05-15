@@ -1,4 +1,4 @@
-use cere_service::{self, IdentifyVariant};
+use cere_service::IdentifyVariant;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use sc_cli::{Error, SubstrateCli};
 use sc_service::error::Error as ServiceError;
@@ -138,14 +138,14 @@ pub fn run() -> sc_cli::Result<()> {
 					if !cfg!(feature = "runtime-benchmarks") {
 						return Err("Runtime benchmarking wasn't enabled when building the node. \
             You can enable it with `--features runtime-benchmarks`."
-							.into())
+							.into());
 					}
 
 					#[cfg(feature = "cere-dev-native")]
 					if chain_spec.is_cere_dev() {
 						return runner.sync_run(|config| {
 							cmd.run::<cere_service::cere_dev_runtime::Block, ()>(config)
-						})
+						});
 					}
 
 					#[cfg(not(feature = "cere-native"))]

@@ -6,6 +6,7 @@ use frame_support::{
 	weights::Weight,
 };
 use log::info;
+#[cfg(feature = "try-runtime")]
 use sp_runtime::DispatchError;
 
 use super::*;
