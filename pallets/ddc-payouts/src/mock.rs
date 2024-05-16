@@ -200,10 +200,6 @@ impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 	) -> DispatchResult {
 		Ok(())
 	}
-
-	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
-		unimplemented!()
-	}
 }
 
 pub struct TestCustomerDepositor;
@@ -475,6 +471,10 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 		let reserve_account = RESERVE_ACCOUNT_ID.to_ne_bytes();
 		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
+	}
+
+	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
+		unimplemented!()
 	}
 
 	fn update_cluster_protocol(

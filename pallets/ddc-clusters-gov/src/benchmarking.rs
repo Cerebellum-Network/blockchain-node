@@ -102,7 +102,7 @@ pub fn create_cluster_with_nodes<T: Config>(
 	}
 
 	if is_activated {
-		T::ClusterCreator::activate_cluster_protocol(&cluster_id)
+		T::ClusterProtocol::activate_cluster_protocol(&cluster_id)
 			.expect("Could not activate cluster");
 	}
 }

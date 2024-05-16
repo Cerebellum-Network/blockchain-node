@@ -2,7 +2,7 @@ pub mod v1 {
 	#[cfg(feature = "try-runtime")]
 	use ddc_primitives::ClusterStatus;
 	use ddc_primitives::{
-		traits::{ClusterCreator, ClusterProtocol, ClusterQuery, NodeVisitor},
+		traits::{ClusterProtocol, ClusterQuery, NodeVisitor},
 		ClusterId, NodePubKey,
 	};
 	use frame_support::{
@@ -105,7 +105,7 @@ pub mod v1 {
 							<ClusterLedger<T>>::insert(cluster_controller, ledger);
 							weight.saturating_accrue(T::DbWeight::get().writes(1));
 
-							if T::ClusterCreator::activate_cluster_protocol(cluster_id).is_ok() {
+							if T::ClusterProtocol::activate_cluster_protocol(cluster_id).is_ok() {
 								weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
 							} else {
 								weight.saturating_accrue(T::DbWeight::get().reads(1));

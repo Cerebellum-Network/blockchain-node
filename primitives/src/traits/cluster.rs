@@ -38,6 +38,8 @@ pub trait ClusterProtocol<T: Config, Balance>: ClusterQuery<T> {
 
 	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError>;
 
+	fn activate_cluster_protocol(cluster_id: &ClusterId) -> DispatchResult;
+
 	fn update_cluster_protocol(
 		cluster_id: &ClusterId,
 		cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
@@ -58,8 +60,6 @@ pub trait ClusterCreator<T: Config, Balance> {
 		cluster_params: ClusterParams<T::AccountId>,
 		cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult;
-
-	fn activate_cluster_protocol(cluster_id: &ClusterId) -> DispatchResult;
 }
 
 pub trait ClusterManager<T: Config>: ClusterQuery<T> {

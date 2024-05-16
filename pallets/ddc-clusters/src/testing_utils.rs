@@ -1,8 +1,8 @@
 //! DdcStaking pallet benchmarking.
 
 use ddc_primitives::{
-	traits::ClusterCreator, ClusterGovParams, ClusterId, ClusterParams, NodeParams, NodePubKey,
-	StorageNodeMode, StorageNodeParams,
+	ClusterGovParams, ClusterId, ClusterParams, NodeParams, NodePubKey, StorageNodeMode,
+	StorageNodeParams,
 };
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
@@ -111,7 +111,7 @@ where
 	.unwrap();
 
 	<DdcClusters<T> as ClusterProtocol<T, BalanceOf<T>>>::bond_cluster(&cluster_id).unwrap();
-	<DdcClusters<T> as ClusterCreator<T, BalanceOf<T>>>::activate_cluster_protocol(&cluster_id)
+	<DdcClusters<T> as ClusterProtocol<T, BalanceOf<T>>>::activate_cluster_protocol(&cluster_id)
 		.unwrap();
 
 	let mut auth_contract = NodeProviderAuthContract::<T>::new(user.clone(), user.clone());

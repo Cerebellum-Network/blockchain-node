@@ -145,10 +145,6 @@ impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
 	) -> DispatchResult {
 		Ok(())
 	}
-
-	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
-		unimplemented!()
-	}
 }
 
 impl<T: Config> ClusterQuery<T> for TestClusterProtocol {
@@ -229,6 +225,10 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 	}
 
 	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+
+	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
 		unimplemented!()
 	}
 

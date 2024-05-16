@@ -441,7 +441,7 @@ pub mod pallet {
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			T::OpenGovActivatorOrigin::ensure_origin(origin)?;
-			T::ClusterCreator::activate_cluster_protocol(&cluster_id)?;
+			T::ClusterProtocol::activate_cluster_protocol(&cluster_id)?;
 			T::ClusterProtocol::update_cluster_protocol(&cluster_id, cluster_gov_params)
 		}
 

@@ -784,6 +784,10 @@ pub mod pallet {
 			Ok(cluster.reserve_id)
 		}
 
+		fn activate_cluster_protocol(cluster_id: &ClusterId) -> DispatchResult {
+			Self::do_activate_cluster_protocol(cluster_id)
+		}
+
 		fn update_cluster_protocol(
 			cluster_id: &ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
@@ -885,10 +889,6 @@ pub mod pallet {
 				cluster_params,
 				cluster_gov_params,
 			)
-		}
-
-		fn activate_cluster_protocol(cluster_id: &ClusterId) -> DispatchResult {
-			Self::do_activate_cluster_protocol(cluster_id)
 		}
 	}
 

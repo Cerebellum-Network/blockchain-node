@@ -188,6 +188,10 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 		unimplemented!()
 	}
 
+	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
+		unimplemented!()
+	}
+
 	fn update_cluster_protocol(
 		_cluster_id: &ClusterId,
 		_cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
@@ -283,10 +287,6 @@ impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 		_cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult {
 		Ok(())
-	}
-
-	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
-		unimplemented!()
 	}
 }
 
