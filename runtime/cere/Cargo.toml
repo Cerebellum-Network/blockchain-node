@@ -59,6 +59,7 @@ pallet-proxy = { workspace = true }
 pallet-recovery = { workspace = true }
 pallet-scheduler = { workspace = true }
 pallet-session = { workspace = true, features = ["historical"] }
+pallet-session-benchmarking = { workspace = true, optional = true }
 pallet-staking = { workspace = true }
 pallet-staking-reward-curve = { workspace = true }
 pallet-sudo = { workspace = true }
@@ -70,6 +71,7 @@ pallet-treasury = { workspace = true }
 pallet-utility = { workspace = true }
 pallet-vesting = { workspace = true }
 sp-api = { workspace = true }
+sp-arithmetic = { workspace = true }
 sp-authority-discovery = { workspace = true }
 sp-block-builder = { workspace = true }
 sp-consensus-babe = { workspace = true }
@@ -81,6 +83,7 @@ sp-runtime = { workspace = true }
 sp-session = { workspace = true }
 sp-staking = { workspace = true }
 sp-std = { workspace = true }
+sp-storage = { workspace = true }
 sp-transaction-pool = { workspace = true }
 sp-version = { workspace = true }
 
@@ -88,6 +91,7 @@ sp-version = { workspace = true }
 cere-runtime-common = { workspace = true }
 ddc-primitives = { workspace = true }
 pallet-chainbridge = { workspace = true }
+pallet-conviction-voting = { workspace = true }
 pallet-ddc-clusters = { workspace = true }
 pallet-ddc-customers = { workspace = true }
 pallet-ddc-nodes = { workspace = true }
@@ -95,6 +99,8 @@ pallet-ddc-payouts = { workspace = true }
 pallet-ddc-staking = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
+pallet-referenda = { workspace = true }
+pallet-whitelist = { workspace = true }
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }
@@ -103,68 +109,69 @@ substrate-wasm-builder = { workspace = true, default-features = true }
 default = ["std"]
 with-tracing = ["frame-executive/with-tracing"]
 std = [
-  "sp-authority-discovery/std",
+  "codec/std",
+  "scale-info/std",
+  "log/std",
+  "frame-support/std",
+  "frame-benchmarking/std",
+  "frame-system-rpc-runtime-api/std",
+  "frame-system/std",
+  "frame-executive/std",
+  "frame-try-runtime/std",
+  "node-primitives/std",
   "pallet-authority-discovery/std",
   "pallet-authorship/std",
-  "sp-consensus-babe/std",
   "pallet-babe/std",
   "pallet-bags-list/std",
   "pallet-balances/std",
   "pallet-bounties/std",
-  "sp-block-builder/std",
-  "codec/std",
-  "scale-info/std",
   "pallet-collective/std",
   "pallet-contracts/std",
   "pallet-contracts-primitives/std",
   "pallet-democracy/std",
   "pallet-fast-unstake/std",
   "pallet-elections-phragmen/std",
-  "frame-executive/std",
   "pallet-chainbridge/std",
   "pallet-erc721/std",
   "pallet-erc20/std",
   "pallet-grandpa/std",
   "pallet-im-online/std",
   "pallet-indices/std",
-  "sp-inherents/std",
   "pallet-membership/std",
   "pallet-multisig/std",
   "pallet-nomination-pools/std",
   "pallet-nomination-pools-runtime-api/std",
   "pallet-identity/std",
   "pallet-scheduler/std",
-  "node-primitives/std",
   "pallet-offences/std",
   "pallet-proxy/std",
-  "pallet-preimage/std",
-  "sp-core/std",
   "pallet-insecure-randomness-collective-flip/std",
-  "sp-std/std",
   "pallet-session/std",
-  "sp-api/std",
-  "sp-runtime/std",
-  "sp-staking/std",
   "pallet-staking/std",
-  "sp-session/std",
   "pallet-sudo/std",
-  "frame-support/std",
-  "frame-benchmarking/std",
-  "frame-system-rpc-runtime-api/std",
-  "frame-system/std",
   "pallet-election-provider-multi-phase/std",
   "pallet-timestamp/std",
   "pallet-tips/std",
   "pallet-transaction-payment-rpc-runtime-api/std",
   "pallet-transaction-payment/std",
   "pallet-treasury/std",
-  "sp-transaction-pool/std",
   "pallet-utility/std",
   "sp-version/std",
   "pallet-recovery/std",
   "pallet-vesting/std",
-  "log/std",
-  "frame-try-runtime/std",
+  "sp-std/std",
+  "sp-core/std",
+  "sp-inherents/std",
+  "sp-block-builder/std",
+  "sp-consensus-babe/std",
+  "sp-authority-discovery/std",
+  "sp-storage/std",
+  "sp-api/std",
+  "sp-runtime/std",
+  "sp-staking/std",
+  "sp-session/std",
+  "sp-transaction-pool/std",
+  "sp-version/std",
   "sp-io/std",
   "ddc-primitives/std",
   "pallet-child-bounties/std",
@@ -174,6 +181,10 @@ std = [
   "pallet-ddc-payouts/std",
   "pallet-ddc-staking/std",
   "cere-runtime-common/std",
+  "sp-arithmetic/std",
+  "pallet-conviction-voting/std",
+  "pallet-referenda/std",
+  "pallet-whitelist/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -204,10 +215,10 @@ runtime-benchmarks = [
   "pallet-membership/runtime-benchmarks",
   "pallet-multisig/runtime-benchmarks",
   "pallet-nomination-pools/runtime-benchmarks",
-  "pallet-preimage/runtime-benchmarks",
   "pallet-proxy/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
+  "pallet-session-benchmarking/runtime-benchmarks",
   "pallet-staking/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "pallet-tips/runtime-benchmarks",
@@ -218,6 +229,9 @@ runtime-benchmarks = [
   "pallet-chainbridge/runtime-benchmarks",
   "ddc-primitives/runtime-benchmarks",
   "hex-literal",
+  "pallet-conviction-voting/runtime-benchmarks",
+  "pallet-referenda/runtime-benchmarks",
+  "pallet-whitelist/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-executive/try-runtime",
@@ -266,4 +280,7 @@ try-runtime = [
   "pallet-ddc-staking/try-runtime",
   "pallet-erc20/try-runtime",
   "pallet-erc721/try-runtime",
+  "pallet-conviction-voting/try-runtime",
+  "pallet-referenda/try-runtime",
+  "pallet-whitelist/try-runtime",
 ]
