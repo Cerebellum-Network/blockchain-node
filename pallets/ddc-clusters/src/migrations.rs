@@ -215,8 +215,9 @@ pub mod v2 {
 	use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade, weights::Weight};
 	use sp_runtime::Saturating;
 	use sp_std::collections::btree_map::BTreeMap;
+	#[cfg(feature = "try-runtime")]
+	use sp_std::vec::Vec;
 
-	use super::*;
 	use crate::{
 		cluster::{Cluster, ClusterProps},
 		Clusters, ClustersNodes, ClustersNodesStats, Config, Pallet, LOG_TARGET,

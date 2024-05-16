@@ -113,7 +113,9 @@ where
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn try_successful_origin(proposal_origin: &PalletsOriginOf<T>) -> Result<T::RuntimeOrigin, ()> {
+	fn try_successful_origin(
+		_proposal_origin: &PalletsOriginOf<T>,
+	) -> Result<T::RuntimeOrigin, ()> {
 		let origin = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
 		Ok(frame_system::RawOrigin::Signed(origin).into())
 	}

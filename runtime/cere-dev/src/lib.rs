@@ -23,7 +23,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use ddc_primitives::traits::pallet::{GetDdcOrigin, PalletVisitor, PalletsOriginOf};
+use ddc_primitives::traits::pallet::{GetDdcOrigin, PalletVisitor};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
@@ -34,8 +34,8 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EnsureOrigin, EnsureOriginWithArg, EqualPrivilegeOnly, Everything, Imbalance,
-		InstanceFilter, KeyOwnerProofSystem, Nothing, OnUnbalanced, OriginTrait, WithdrawReasons,
+		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, Nothing,
+		OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{

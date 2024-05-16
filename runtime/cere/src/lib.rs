@@ -103,7 +103,7 @@ use cere_runtime_common::{
 use ddc_primitives::traits::GetDdcOrigin;
 use impls::Author;
 use sp_runtime::generic::Era;
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::marker::PhantomData;
 // Governance configurations.
 pub mod governance;
 use governance::{

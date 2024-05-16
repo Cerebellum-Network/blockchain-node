@@ -297,4 +297,6 @@ try-runtime = [
   "pallet-referenda/try-runtime",
   "pallet-whitelist/try-runtime",
   "pallet-preimage/try-runtime",
+  "pallet-origins/try-runtime",
+  "pallet-ddc-clusters-gov/try-runtime",
 ]
