@@ -1,7 +1,5 @@
 use frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 use log::info;
-#[cfg(feature = "try-runtime")]
-use sp_runtime::DispatchError;
 use sp_runtime::Saturating;
 
 use super::*;
