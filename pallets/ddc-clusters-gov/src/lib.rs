@@ -19,7 +19,7 @@ use codec::{Decode, Encode};
 use ddc_primitives::traits::{node::NodeCreator, staking::StakerCreator};
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterEconomics, ClusterManager, ClusterQuery},
+		cluster::{ClusterCreator, ClusterManager, ClusterProtocol, ClusterQuery},
 		cluster_gov::{DefaultVote, MemberCount, SeatsConsensus},
 		node::NodeVisitor,
 		pallet::GetDdcOrigin,
@@ -94,8 +94,8 @@ pub struct Proposal<AccountId, Call> {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub enum ProposalKind {
-	ActivateCluster,
-	UpdateClusterEconomics,
+	ActivateClusterProtocol,
+	UpdateClusterProtocol,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -137,7 +137,7 @@ pub mod pallet {
 			+ GetDispatchInfo;
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type ClusterManager: ClusterManager<Self>;
-		type ClusterEconomics: ClusterEconomics<Self, BalanceOf<Self>>;
+		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
 		type NodeVisitor: NodeVisitor<Self>;
 		type SeatsConsensus: SeatsConsensus;
 		type DefaultVote: DefaultVote;
@@ -249,8 +249,8 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::propose_activate_cluster())]
-		pub fn propose_activate_cluster(
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::propose_activate_cluster_protocol())]
+		pub fn propose_activate_cluster_protocol(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
@@ -261,7 +261,7 @@ pub mod pallet {
 			ensure!(!<ClusterProposal<T>>::contains_key(cluster_id), Error::<T>::ActiveProposal);
 
 			let cluster_status =
-				<T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(&cluster_id)
+				<T::ClusterProtocol as ClusterQuery<T>>::get_cluster_status(&cluster_id)
 					.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_status == ClusterStatus::Bonded, Error::<T>::UnexpectedState);
 
@@ -282,12 +282,15 @@ pub mod pallet {
 				Votes { seats, threshold, ayes: vec![], nays: vec![], start, end }
 			};
 			let call: <T as Config>::ClusterProposalCall =
-				T::ClusterProposalCall::from(Call::<T>::activate_cluster {
+				T::ClusterProposalCall::from(Call::<T>::activate_cluster_protocol {
 					cluster_id,
 					cluster_gov_params,
 				});
-			let proposal =
-				Proposal { call, author: caller_id.clone(), kind: ProposalKind::ActivateCluster };
+			let proposal = Proposal {
+				call,
+				author: caller_id.clone(),
+				kind: ProposalKind::ActivateClusterProtocol,
+			};
 
 			<ClusterProposal<T>>::insert(cluster_id, proposal);
 			<ClusterProposalVoting<T>>::insert(cluster_id, votes);
@@ -297,8 +300,8 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(1)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::propose_update_cluster_economics())]
-		pub fn propose_update_cluster_economics(
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::propose_update_cluster_protocol())]
+		pub fn propose_update_cluster_protocol(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
@@ -310,7 +313,7 @@ pub mod pallet {
 			ensure!(!<ClusterProposal<T>>::contains_key(cluster_id), Error::<T>::ActiveProposal);
 
 			let cluster_status =
-				<T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(&cluster_id)
+				<T::ClusterProtocol as ClusterQuery<T>>::get_cluster_status(&cluster_id)
 					.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_status == ClusterStatus::Activated, Error::<T>::UnexpectedState);
 
@@ -331,14 +334,14 @@ pub mod pallet {
 				Votes { seats, threshold, ayes: vec![], nays: vec![], start, end }
 			};
 			let call: <T as Config>::ClusterProposalCall =
-				T::ClusterProposalCall::from(Call::<T>::update_cluster_economics {
+				T::ClusterProposalCall::from(Call::<T>::update_cluster_protocol {
 					cluster_id,
 					cluster_gov_params,
 				});
 			let proposal = Proposal {
 				call,
 				author: caller_id.clone(),
-				kind: ProposalKind::UpdateClusterEconomics,
+				kind: ProposalKind::UpdateClusterProtocol,
 			};
 
 			<ClusterProposal<T>>::insert(cluster_id, proposal);
@@ -431,26 +434,26 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(6)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::activate_cluster())]
-		pub fn activate_cluster(
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::activate_cluster_protocol())]
+		pub fn activate_cluster_protocol(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			T::OpenGovActivatorOrigin::ensure_origin(origin)?;
-			T::ClusterCreator::activate_cluster(&cluster_id)?;
-			T::ClusterEconomics::update_cluster_economics(&cluster_id, cluster_gov_params)
+			T::ClusterCreator::activate_cluster_protocol(&cluster_id)?;
+			T::ClusterProtocol::update_cluster_protocol(&cluster_id, cluster_gov_params)
 		}
 
 		#[pallet::call_index(7)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::update_cluster_economics())]
-		pub fn update_cluster_economics(
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::update_cluster_protocol())]
+		pub fn update_cluster_protocol(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			T::OpenGovUpdaterOrigin::ensure_origin(origin)?;
-			T::ClusterEconomics::update_cluster_economics(&cluster_id, cluster_gov_params)
+			T::ClusterProtocol::update_cluster_protocol(&cluster_id, cluster_gov_params)
 		}
 	}
 
@@ -698,8 +701,8 @@ pub mod pallet {
 				T::Preimages::bound(call).map_err(|_| Error::<T>::ProposalMissing)?;
 
 			let proposal_origin = match proposal.kind {
-				ProposalKind::ActivateCluster => T::OpenGovActivatorTrackOrigin::get(),
-				ProposalKind::UpdateClusterEconomics => T::OpenGovUpdaterTrackOrigin::get(),
+				ProposalKind::ActivateClusterProtocol => T::OpenGovActivatorTrackOrigin::get(),
+				ProposalKind::UpdateClusterProtocol => T::OpenGovUpdaterTrackOrigin::get(),
 			};
 
 			let pallets_origin: <T::RuntimeOrigin as OriginTrait>::PalletsOrigin =

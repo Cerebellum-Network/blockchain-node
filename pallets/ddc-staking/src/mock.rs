@@ -6,7 +6,7 @@ use std::cell::RefCell;
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterEconomics, ClusterManager},
+		cluster::{ClusterManager, ClusterProtocol},
 		node::NodeVisitor,
 		ClusterQuery,
 	},
@@ -110,7 +110,7 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-	type ClusterEconomics = TestClusterEconomics;
+	type ClusterProtocol = TestClusterProtocol;
 	type ClusterManager = TestClusterManager;
 	type NodeVisitor = MockNodeVisitor;
 	type NodeCreator = TestNodeCreator;
@@ -123,7 +123,7 @@ pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 pub struct TestNodeCreator;
 pub struct TestClusterCreator;
-pub struct TestClusterEconomics;
+pub struct TestClusterProtocol;
 
 impl<T: Config> NodeCreator<T> for TestNodeCreator {
 	fn create_node(
@@ -146,12 +146,12 @@ impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
 		Ok(())
 	}
 
-	fn activate_cluster(_cluster_id: &ClusterId) -> DispatchResult {
+	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
 		unimplemented!()
 	}
 }
 
-impl<T: Config> ClusterQuery<T> for TestClusterEconomics {
+impl<T: Config> ClusterQuery<T> for TestClusterProtocol {
 	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
 		true
 	}
@@ -167,7 +167,7 @@ impl<T: Config> ClusterQuery<T> for TestClusterEconomics {
 	}
 }
 
-impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
+impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
 		Ok(10)
 	}
@@ -208,19 +208,19 @@ impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
 	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, DispatchError> {
 		Ok(ClusterBondingParams {
 			storage_bond_size:
-				<TestClusterEconomics as ClusterEconomics<T, BalanceOf<T>>>::get_bond_size(
+				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_bond_size(
 					cluster_id,
 					NodeType::Storage,
 				)
 				.unwrap_or_default(),
 			storage_chill_delay:
-				<TestClusterEconomics as ClusterEconomics<T, BalanceOf<T>>>::get_chill_delay(
+				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_chill_delay(
 					cluster_id,
 					NodeType::Storage,
 				)
 				.unwrap_or_default(),
 			storage_unbonding_delay:
-				<TestClusterEconomics as ClusterEconomics<T, BalanceOf<T>>>::get_unbonding_delay(
+				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_unbonding_delay(
 					cluster_id,
 					NodeType::Storage,
 				)
@@ -232,7 +232,7 @@ impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
 		unimplemented!()
 	}
 
-	fn update_cluster_economics(
+	fn update_cluster_protocol(
 		_cluster_id: &ClusterId,
 		_cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 	) -> DispatchResult {

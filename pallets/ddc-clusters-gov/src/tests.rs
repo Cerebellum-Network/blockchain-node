@@ -23,7 +23,7 @@ fn fast_forward_to(n: u64) {
 }
 
 #[test]
-fn activation_proposal_initiated() {
+fn cluster_protocol_activation_proposal_initiated() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -67,7 +67,7 @@ fn activation_proposal_initiated() {
 		let not_cluster_manager = AccountId::from([0; 32]);
 		let cluster_gov_params = ClusterGovParams::default();
 		assert_noop!(
-			DdcClustersGov::propose_activate_cluster(
+			DdcClustersGov::propose_activate_cluster_protocol(
 				RuntimeOrigin::signed(not_cluster_manager.clone()),
 				cluster_id,
 				cluster_gov_params.clone()
@@ -78,7 +78,7 @@ fn activation_proposal_initiated() {
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
 		let not_cluster_id = ClusterId::from([0; 20]);
 		assert_noop!(
-			DdcClustersGov::propose_activate_cluster(
+			DdcClustersGov::propose_activate_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				not_cluster_id,
 				cluster_gov_params.clone()
@@ -86,7 +86,7 @@ fn activation_proposal_initiated() {
 			Error::<Test>::NoCluster
 		);
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone()
@@ -97,9 +97,9 @@ fn activation_proposal_initiated() {
 			proposal,
 			Some(Proposal {
 				author: cluster_manager.clone(),
-				kind: ProposalKind::ActivateCluster,
+				kind: ProposalKind::ActivateClusterProtocol,
 				call: <Test as pallet::Config>::ClusterProposalCall::from(
-					Call::<Test>::activate_cluster {
+					Call::<Test>::activate_cluster_protocol {
 						cluster_id,
 						cluster_gov_params: cluster_gov_params.clone(),
 					}
@@ -120,7 +120,7 @@ fn activation_proposal_initiated() {
 }
 
 #[test]
-fn activation_proposal_fails_on_unexpected_state() {
+fn cluster_protocol_activation_proposal_fails_on_unexpected_state() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -165,7 +165,7 @@ fn activation_proposal_fails_on_unexpected_state() {
 		let cluster_gov_params = ClusterGovParams::default();
 
 		assert_noop!(
-			DdcClustersGov::propose_activate_cluster(
+			DdcClustersGov::propose_activate_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
 				cluster_gov_params.clone()
@@ -176,7 +176,7 @@ fn activation_proposal_fails_on_unexpected_state() {
 }
 
 #[test]
-fn activation_proposal_fails_if_there_are_not_enough_validated_nodes() {
+fn cluster_protocol_activation_proposal_fails_if_there_are_not_enough_validated_nodes() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -203,7 +203,7 @@ fn activation_proposal_fails_if_there_are_not_enough_validated_nodes() {
 		let cluster_gov_params = ClusterGovParams::default();
 
 		assert_noop!(
-			DdcClustersGov::propose_activate_cluster(
+			DdcClustersGov::propose_activate_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
 				cluster_gov_params.clone()
@@ -214,7 +214,7 @@ fn activation_proposal_fails_if_there_are_not_enough_validated_nodes() {
 }
 
 #[test]
-fn activation_proposal_fails_if_there_is_active_proposal() {
+fn cluster_protocol_activation_proposal_fails_if_there_is_active_proposal() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -258,14 +258,14 @@ fn activation_proposal_fails_if_there_is_active_proposal() {
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
 		let cluster_gov_params = ClusterGovParams::default();
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone()
 		));
 
 		assert_noop!(
-			DdcClustersGov::propose_activate_cluster(
+			DdcClustersGov::propose_activate_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
 				cluster_gov_params.clone()
@@ -276,7 +276,7 @@ fn activation_proposal_fails_if_there_is_active_proposal() {
 }
 
 #[test]
-fn activation_is_restricted_for_system_origins() {
+fn cluster_protocol_activation_is_restricted_for_system_origins() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -294,7 +294,7 @@ fn activation_is_restricted_for_system_origins() {
 		let cluster_gov_params = ClusterGovParams::default();
 
 		assert_noop!(
-			DdcClustersGov::activate_cluster(
+			DdcClustersGov::activate_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
 				cluster_gov_params.clone()
@@ -303,7 +303,7 @@ fn activation_is_restricted_for_system_origins() {
 		);
 
 		assert_noop!(
-			DdcClustersGov::activate_cluster(
+			DdcClustersGov::activate_cluster_protocol(
 				RuntimeOrigin::root(),
 				cluster_id,
 				cluster_gov_params.clone()
@@ -314,7 +314,7 @@ fn activation_is_restricted_for_system_origins() {
 }
 
 #[test]
-fn activation_is_allowed_for_referenda_activator_track_origin() {
+fn cluster_protocol_activation_is_allowed_for_referenda_cluster_protocol_activator_track_origin() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -341,7 +341,7 @@ fn activation_is_allowed_for_referenda_activator_track_origin() {
 			unit_per_get_request: 5,
 		};
 		let open_gov_activator = <Test as pallet::Config>::OpenGovActivatorTrackOrigin::get();
-		assert_ok!(DdcClustersGov::activate_cluster(
+		assert_ok!(DdcClustersGov::activate_cluster_protocol(
 			open_gov_activator,
 			cluster_id,
 			cluster_gov_params.clone()
@@ -360,7 +360,7 @@ fn activation_is_allowed_for_referenda_activator_track_origin() {
 }
 
 #[test]
-fn activation_proposal_can_be_retracted_by_its_author() {
+fn cluster_protocol_activation_proposal_can_be_retracted_by_its_author() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -407,7 +407,7 @@ fn activation_proposal_can_be_retracted_by_its_author() {
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone()
@@ -444,7 +444,7 @@ fn activation_proposal_can_be_retracted_by_its_author() {
 }
 
 #[test]
-fn activation_proposal_cannot_be_initated_for_active_cluster() {
+fn cluster_protocol_activation_proposal_cannot_be_initated_for_active_cluster() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -488,7 +488,7 @@ fn activation_proposal_cannot_be_initated_for_active_cluster() {
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
 		let cluster_gov_params = ClusterGovParams::default();
 		assert_noop!(
-			DdcClustersGov::propose_activate_cluster(
+			DdcClustersGov::propose_activate_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
 				cluster_gov_params.clone()
@@ -499,7 +499,7 @@ fn activation_proposal_cannot_be_initated_for_active_cluster() {
 }
 
 #[test]
-fn economics_update_proposal_initiated() {
+fn cluster_protocol_update_proposal_initiated() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -559,7 +559,7 @@ fn economics_update_proposal_initiated() {
 		let not_cluster_node_key =
 			NodePubKey::StoragePubKey(AccountId::from(AccountId::from([128; 32])));
 		assert_noop!(
-			DdcClustersGov::propose_update_cluster_economics(
+			DdcClustersGov::propose_update_cluster_protocol(
 				RuntimeOrigin::signed(not_cluster_member.clone()),
 				cluster_id,
 				cluster_gov_params.clone(),
@@ -570,7 +570,7 @@ fn economics_update_proposal_initiated() {
 
 		let not_cluster_id = ClusterId::from([0; 20]);
 		assert_noop!(
-			DdcClustersGov::propose_update_cluster_economics(
+			DdcClustersGov::propose_update_cluster_protocol(
 				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 				not_cluster_id,
 				cluster_gov_params.clone(),
@@ -579,7 +579,7 @@ fn economics_update_proposal_initiated() {
 			Error::<Test>::NotValidatedNode
 		);
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -591,9 +591,9 @@ fn economics_update_proposal_initiated() {
 			proposal,
 			Some(Proposal {
 				author: cluster_node_1_provider.clone(),
-				kind: ProposalKind::UpdateClusterEconomics,
+				kind: ProposalKind::UpdateClusterProtocol,
 				call: <Test as pallet::Config>::ClusterProposalCall::from(
-					Call::<Test>::update_cluster_economics {
+					Call::<Test>::update_cluster_protocol {
 						cluster_id,
 						cluster_gov_params: cluster_gov_params.clone(),
 					}
@@ -614,7 +614,7 @@ fn economics_update_proposal_initiated() {
 }
 
 #[test]
-fn economics_update_proposal_fails_on_unexpected_state() {
+fn cluster_protocol_update_proposal_fails_on_unexpected_state() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -659,7 +659,7 @@ fn economics_update_proposal_fails_on_unexpected_state() {
 		let cluster_gov_params = ClusterGovParams::default();
 
 		assert_noop!(
-			DdcClustersGov::propose_update_cluster_economics(
+			DdcClustersGov::propose_update_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
 				cluster_gov_params.clone(),
@@ -671,7 +671,7 @@ fn economics_update_proposal_fails_on_unexpected_state() {
 }
 
 #[test]
-fn economics_update_proposal_fails_if_there_are_not_enough_validated_nodes() {
+fn cluster_protocol_update_proposal_fails_if_there_are_not_enough_validated_nodes() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -698,7 +698,7 @@ fn economics_update_proposal_fails_if_there_are_not_enough_validated_nodes() {
 		let cluster_gov_params = ClusterGovParams::default();
 
 		assert_noop!(
-			DdcClustersGov::propose_update_cluster_economics(
+			DdcClustersGov::propose_update_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
 				cluster_gov_params.clone(),
@@ -710,7 +710,7 @@ fn economics_update_proposal_fails_if_there_are_not_enough_validated_nodes() {
 }
 
 #[test]
-fn economics_update_proposal_fails_if_there_is_active_proposal() {
+fn cluster_protocol_update_proposal_fails_if_there_is_active_proposal() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -754,7 +754,7 @@ fn economics_update_proposal_fails_if_there_is_active_proposal() {
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
 		let cluster_gov_params = ClusterGovParams::default();
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -762,7 +762,7 @@ fn economics_update_proposal_fails_if_there_is_active_proposal() {
 		));
 
 		assert_noop!(
-			DdcClustersGov::propose_update_cluster_economics(
+			DdcClustersGov::propose_update_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
 				cluster_gov_params.clone(),
@@ -774,7 +774,7 @@ fn economics_update_proposal_fails_if_there_is_active_proposal() {
 }
 
 #[test]
-fn economics_update_is_restricted_for_system_origins() {
+fn cluster_protocol_update_is_restricted_for_system_origins() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -801,7 +801,7 @@ fn economics_update_is_restricted_for_system_origins() {
 		let cluster_gov_params = ClusterGovParams::default();
 
 		assert_noop!(
-			DdcClustersGov::update_cluster_economics(
+			DdcClustersGov::update_cluster_protocol(
 				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 				cluster_id,
 				cluster_gov_params.clone(),
@@ -810,7 +810,7 @@ fn economics_update_is_restricted_for_system_origins() {
 		);
 
 		assert_noop!(
-			DdcClustersGov::update_cluster_economics(
+			DdcClustersGov::update_cluster_protocol(
 				RuntimeOrigin::root(),
 				cluster_id,
 				cluster_gov_params.clone(),
@@ -821,7 +821,7 @@ fn economics_update_is_restricted_for_system_origins() {
 }
 
 #[test]
-fn economics_update_is_allowed_for_referenda_economics_updater_track_origin() {
+fn cluster_protocol_update_is_allowed_for_referenda_cluster_protocol_updater_track_origin() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -848,7 +848,7 @@ fn economics_update_is_allowed_for_referenda_economics_updater_track_origin() {
 			unit_per_get_request: 5,
 		};
 		let open_gov_updater = <Test as pallet::Config>::OpenGovUpdaterTrackOrigin::get();
-		assert_ok!(DdcClustersGov::update_cluster_economics(
+		assert_ok!(DdcClustersGov::update_cluster_protocol(
 			open_gov_updater,
 			cluster_id,
 			cluster_gov_params.clone()
@@ -863,7 +863,7 @@ fn economics_update_is_allowed_for_referenda_economics_updater_track_origin() {
 }
 
 #[test]
-fn economics_update_proposal_can_be_retracted_by_its_author() {
+fn cluster_protocol_update_proposal_can_be_retracted_by_its_author() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -911,7 +911,7 @@ fn economics_update_proposal_can_be_retracted_by_its_author() {
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -949,7 +949,8 @@ fn economics_update_proposal_can_be_retracted_by_its_author() {
 }
 
 #[test]
-fn activation_proposal_early_approved_with_supermajority_consensus_and_prime_default_vote() {
+fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consensus_and_prime_default_vote(
+) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -1008,7 +1009,7 @@ fn activation_proposal_early_approved_with_supermajority_consensus_and_prime_def
 		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
 		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone()
@@ -1224,7 +1225,8 @@ fn activation_proposal_early_approved_with_supermajority_consensus_and_prime_def
 		));
 		let balance_after_decision_deposit = Balances::free_balance(cluster_manager.clone());
 		assert_eq!(
-			balance_before_decision_deposit.saturating_sub(CLUSTER_ACTIVATOR_DECISION_DEPOSIT),
+			balance_before_decision_deposit
+				.saturating_sub(CLUSTER_PROTOCOL_ACTIVATOR_DECISION_DEPOSIT),
 			balance_after_decision_deposit
 		);
 
@@ -1275,7 +1277,8 @@ fn activation_proposal_early_approved_with_supermajority_consensus_and_prime_def
 }
 
 #[test]
-fn activation_proposal_approved_with_supermajority_consensus_and_prime_default_vote() {
+fn cluster_protocol_activation_proposal_approved_with_supermajority_consensus_and_prime_default_vote(
+) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -1329,7 +1332,7 @@ fn activation_proposal_approved_with_supermajority_consensus_and_prime_default_v
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -1403,7 +1406,8 @@ fn activation_proposal_approved_with_supermajority_consensus_and_prime_default_v
 }
 
 #[test]
-fn activation_proposal_early_disapproved_with_supermajority_consensus_and_prime_default_vote() {
+fn cluster_protocol_activation_proposal_early_disapproved_with_supermajority_consensus_and_prime_default_vote(
+) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -1462,7 +1466,7 @@ fn activation_proposal_early_disapproved_with_supermajority_consensus_and_prime_
 		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
 		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -1518,7 +1522,8 @@ fn activation_proposal_early_disapproved_with_supermajority_consensus_and_prime_
 }
 
 #[test]
-fn activation_proposal_disapproved_with_supermajority_consensus_and_prime_default_vote() {
+fn cluster_protocol_activation_proposal_disapproved_with_supermajority_consensus_and_prime_default_vote(
+) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -1571,7 +1576,7 @@ fn activation_proposal_disapproved_with_supermajority_consensus_and_prime_defaul
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone()
@@ -1617,7 +1622,7 @@ fn activation_proposal_disapproved_with_supermajority_consensus_and_prime_defaul
 }
 
 #[test]
-fn activation_proposal_cannot_be_closed_if_threshold_is_not_reached_with_supermajority_consensus_and_prime_default_vote(
+fn cluster_protocol_activation_proposal_cannot_be_closed_if_threshold_is_not_reached_with_supermajority_consensus_and_prime_default_vote(
 ) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
@@ -1668,7 +1673,7 @@ fn activation_proposal_cannot_be_closed_if_threshold_is_not_reached_with_superma
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
 		let cluster_gov_params = ClusterGovParams::default();
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone()
@@ -1696,7 +1701,8 @@ fn activation_proposal_cannot_be_closed_if_threshold_is_not_reached_with_superma
 }
 
 #[test]
-fn activation_proposal_early_approved_with_unanimous_consensus_and_nay_default_vote() {
+fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_and_nay_default_vote(
+) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -1755,7 +1761,7 @@ fn activation_proposal_early_approved_with_unanimous_consensus_and_nay_default_v
 		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
 		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone()
@@ -1971,7 +1977,8 @@ fn activation_proposal_early_approved_with_unanimous_consensus_and_nay_default_v
 		));
 		let balance_after_decision_deposit = Balances::free_balance(cluster_manager.clone());
 		assert_eq!(
-			balance_before_decision_deposit.saturating_sub(CLUSTER_ACTIVATOR_DECISION_DEPOSIT),
+			balance_before_decision_deposit
+				.saturating_sub(CLUSTER_PROTOCOL_ACTIVATOR_DECISION_DEPOSIT),
 			balance_after_decision_deposit
 		);
 
@@ -2022,7 +2029,7 @@ fn activation_proposal_early_approved_with_unanimous_consensus_and_nay_default_v
 }
 
 #[test]
-fn activation_proposal_approved_with_unanimous_consensus_and_nay_default_vote() {
+fn cluster_protocol_activation_proposal_approved_with_unanimous_consensus_and_nay_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -2082,7 +2089,7 @@ fn activation_proposal_approved_with_unanimous_consensus_and_nay_default_vote() 
 		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
 		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -2170,7 +2177,8 @@ fn activation_proposal_approved_with_unanimous_consensus_and_nay_default_vote() 
 }
 
 #[test]
-fn activation_proposal_early_disapproved_with_unanimous_consensus_and_nay_default_vote() {
+fn cluster_protocol_activation_proposal_early_disapproved_with_unanimous_consensus_and_nay_default_vote(
+) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -2229,7 +2237,7 @@ fn activation_proposal_early_disapproved_with_unanimous_consensus_and_nay_defaul
 		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
 		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -2285,7 +2293,8 @@ fn activation_proposal_early_disapproved_with_unanimous_consensus_and_nay_defaul
 }
 
 #[test]
-fn activation_proposal_disapproved_with_unanimous_consensus_and_nay_default_vote() {
+fn cluster_protocol_activation_proposal_disapproved_with_unanimous_consensus_and_nay_default_vote()
+{
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -2342,7 +2351,7 @@ fn activation_proposal_disapproved_with_unanimous_consensus_and_nay_default_vote
 		let cluster_node_2_provider = AccountId::from(NODE_PROVIDER_ID_2);
 		let cluster_node_2_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_2));
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone()
@@ -2395,7 +2404,7 @@ fn activation_proposal_disapproved_with_unanimous_consensus_and_nay_default_vote
 }
 
 #[test]
-fn activation_proposal_cannot_be_closed_if_threshold_is_not_reached_with_unanimous_consensus_and_nay_default_vote(
+fn cluster_protocol_activation_proposal_cannot_be_closed_if_threshold_is_not_reached_with_unanimous_consensus_and_nay_default_vote(
 ) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
@@ -2452,7 +2461,7 @@ fn activation_proposal_cannot_be_closed_if_threshold_is_not_reached_with_unanimo
 		let cluster_node_2_provider = AccountId::from(NODE_PROVIDER_ID_2);
 		let cluster_node_2_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_2));
 
-		assert_ok!(DdcClustersGov::propose_activate_cluster(
+		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone()
@@ -2494,7 +2503,8 @@ fn activation_proposal_cannot_be_closed_if_threshold_is_not_reached_with_unanimo
 }
 
 #[test]
-fn economics_update_proposal_early_approved_with_supermajority_consensus_and_prime_default_vote() {
+fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_and_prime_default_vote(
+) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -2553,7 +2563,7 @@ fn economics_update_proposal_early_approved_with_supermajority_consensus_and_pri
 		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
 		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -2775,7 +2785,7 @@ fn economics_update_proposal_early_approved_with_supermajority_consensus_and_pri
 			Balances::free_balance(cluster_node_3_provider.clone());
 		assert_eq!(
 			balance_before_decision_deposit
-				.saturating_sub(CLUSTER_ECONOMICS_UPDATE_DECISION_DEPOSIT),
+				.saturating_sub(CLUSTER_PROTOCOL_UPDATER_DECISION_DEPOSIT),
 			balance_after_decision_deposit
 		);
 
@@ -2826,7 +2836,7 @@ fn economics_update_proposal_early_approved_with_supermajority_consensus_and_pri
 }
 
 #[test]
-fn economics_update_proposal_approved_with_supermajority_consensus_and_prime_default_vote() {
+fn cluster_protocol_update_proposal_approved_with_supermajority_consensus_and_prime_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -2882,7 +2892,7 @@ fn economics_update_proposal_approved_with_supermajority_consensus_and_prime_def
 		let cluster_node_2_provider = AccountId::from(NODE_PROVIDER_ID_2);
 		let cluster_node_2_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_2));
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -2957,8 +2967,8 @@ fn economics_update_proposal_approved_with_supermajority_consensus_and_prime_def
 }
 
 #[test]
-fn economics_update_proposal_early_disapproved_with_supermajority_consensus_and_prime_default_vote()
-{
+fn cluster_protocol_update_proposal_early_disapproved_with_supermajority_consensus_and_prime_default_vote(
+) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -3017,7 +3027,7 @@ fn economics_update_proposal_early_disapproved_with_supermajority_consensus_and_
 		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
 		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -3074,7 +3084,8 @@ fn economics_update_proposal_early_disapproved_with_supermajority_consensus_and_
 }
 
 #[test]
-fn economics_update_proposal_disapproved_with_supermajority_consensus_and_prime_default_vote() {
+fn cluster_protocol_update_proposal_disapproved_with_supermajority_consensus_and_prime_default_vote(
+) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -3127,7 +3138,7 @@ fn economics_update_proposal_disapproved_with_supermajority_consensus_and_prime_
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -3174,7 +3185,7 @@ fn economics_update_proposal_disapproved_with_supermajority_consensus_and_prime_
 }
 
 #[test]
-fn economics_update_proposal_cannot_be_closed_if_threshold_is_not_reached_with_supermajority_consensus_and_prime_default_vote(
+fn cluster_protocol_update_proposal_cannot_be_closed_if_threshold_is_not_reached_with_supermajority_consensus_and_prime_default_vote(
 ) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
@@ -3227,7 +3238,7 @@ fn economics_update_proposal_cannot_be_closed_if_threshold_is_not_reached_with_s
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -3256,7 +3267,7 @@ fn economics_update_proposal_cannot_be_closed_if_threshold_is_not_reached_with_s
 }
 
 #[test]
-fn economics_update_proposal_early_approved_with_unanimous_consensus_and_nay_default_vote() {
+fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_nay_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -3315,7 +3326,7 @@ fn economics_update_proposal_early_approved_with_unanimous_consensus_and_nay_def
 		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
 		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -3537,7 +3548,7 @@ fn economics_update_proposal_early_approved_with_unanimous_consensus_and_nay_def
 			Balances::free_balance(cluster_node_3_provider.clone());
 		assert_eq!(
 			balance_before_decision_deposit
-				.saturating_sub(CLUSTER_ECONOMICS_UPDATE_DECISION_DEPOSIT),
+				.saturating_sub(CLUSTER_PROTOCOL_UPDATER_DECISION_DEPOSIT),
 			balance_after_decision_deposit
 		);
 
@@ -3588,7 +3599,7 @@ fn economics_update_proposal_early_approved_with_unanimous_consensus_and_nay_def
 }
 
 #[test]
-fn economics_update_proposal_approved_with_unanimous_consensus_and_nay_default_vote() {
+fn cluster_protocol_update_proposal_approved_with_unanimous_consensus_and_nay_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -3647,7 +3658,7 @@ fn economics_update_proposal_approved_with_unanimous_consensus_and_nay_default_v
 		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
 		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -3736,7 +3747,8 @@ fn economics_update_proposal_approved_with_unanimous_consensus_and_nay_default_v
 }
 
 #[test]
-fn economics_update_proposal_early_disapproved_with_unanimous_consensus_and_nay_default_vote() {
+fn cluster_protocol_update_proposal_early_disapproved_with_unanimous_consensus_and_nay_default_vote(
+) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -3795,7 +3807,7 @@ fn economics_update_proposal_early_disapproved_with_unanimous_consensus_and_nay_
 		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
 		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -3852,7 +3864,7 @@ fn economics_update_proposal_early_disapproved_with_unanimous_consensus_and_nay_
 }
 
 #[test]
-fn economics_update_proposal_disapproved_with_unanimous_consensus_and_nay_default_vote() {
+fn cluster_protocol_update_proposal_disapproved_with_unanimous_consensus_and_nay_default_vote() {
 	let cluster = build_cluster(
 		CLUSTER_ID,
 		CLUSTER_MANAGER_ID,
@@ -3909,7 +3921,7 @@ fn economics_update_proposal_disapproved_with_unanimous_consensus_and_nay_defaul
 		let cluster_node_2_provider = AccountId::from(NODE_PROVIDER_ID_2);
 		let cluster_node_2_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_2));
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),
@@ -3963,7 +3975,7 @@ fn economics_update_proposal_disapproved_with_unanimous_consensus_and_nay_defaul
 }
 
 #[test]
-fn economics_update_proposal_cannot_be_closed_if_threshold_is_not_reached_with_unanimous_consensus_and_nay_default_vote(
+fn cluster_protocol_update_proposal_cannot_be_closed_if_threshold_is_not_reached_with_unanimous_consensus_and_nay_default_vote(
 ) {
 	let cluster = build_cluster(
 		CLUSTER_ID,
@@ -4022,7 +4034,7 @@ fn economics_update_proposal_cannot_be_closed_if_threshold_is_not_reached_with_u
 		let cluster_node_3_provider = AccountId::from(NODE_PROVIDER_ID_3);
 		let cluster_node_3_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_3));
 
-		assert_ok!(DdcClustersGov::propose_update_cluster_economics(
+		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
 			cluster_gov_params.clone(),

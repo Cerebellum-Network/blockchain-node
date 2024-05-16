@@ -21,8 +21,8 @@ pub fn create_funded_user_with_balance<T: Config>(
 	balance_factor: u128,
 ) -> T::AccountId {
 	let user = account(name, n, 0);
-	let balance = <T as pallet::Config>::Currency::minimum_balance() *
-		balance_factor.saturated_into::<BalanceOf<T>>();
+	let balance = <T as pallet::Config>::Currency::minimum_balance()
+		* balance_factor.saturated_into::<BalanceOf<T>>();
 	let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 	user
 }
@@ -102,7 +102,8 @@ pub fn create_cluster_with_nodes<T: Config>(
 	}
 
 	if is_activated {
-		T::ClusterCreator::activate_cluster(&cluster_id).expect("Could not activate cluster");
+		T::ClusterCreator::activate_cluster_protocol(&cluster_id)
+			.expect("Could not activate cluster");
 	}
 }
 
@@ -128,7 +129,7 @@ fn assert_has_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 
 benchmarks! {
 
-	propose_activate_cluster {
+	propose_activate_cluster_protocol {
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
@@ -143,13 +144,13 @@ benchmarks! {
 
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 
-	}: propose_activate_cluster(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterGovParams::default())
+	}: propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterGovParams::default())
 	verify {
 		assert!(ClusterProposal::<T>::contains_key(cluster_id));
 		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
 	}
 
-	propose_update_cluster_economics {
+	propose_update_cluster_protocol {
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
@@ -164,7 +165,7 @@ benchmarks! {
 
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes, true);
 
-	}: propose_update_cluster_economics(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterGovParams::default(), ClusterMember::ClusterManager)
+	}: propose_update_cluster_protocol(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterGovParams::default(), ClusterMember::ClusterManager)
 	verify {
 		assert!(ClusterProposal::<T>::contains_key(cluster_id));
 		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
@@ -186,7 +187,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
 		let (node_pub_key_1, node_provider_1) = cluster_nodes.first()
 			.map(|(key, provider)| (key.clone(), provider.clone()))
@@ -216,7 +217,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
 		for j in 0 .. m {
 			let (node_pub_key, node_provider) = &cluster_nodes.get(j as usize).unwrap();
@@ -262,7 +263,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
 		fn is_unanimous<T: Config>() -> bool {
 			let max_seats = 100;
@@ -332,7 +333,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
 		for j in 0 .. m {
 			let (node_pub_key, node_provider) = &cluster_nodes.get(j as usize).unwrap();
@@ -378,7 +379,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
 		let votes = ClusterProposalVoting::<T>::get(cluster_id).unwrap();
 		fast_forward_to::<T>(votes.end + BlockNumberFor::<T>::from(1_u32));
@@ -406,7 +407,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
 		assert!(ClusterProposal::<T>::contains_key(cluster_id));
 		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
@@ -434,7 +435,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
 		for i in 0 .. 3 {
 			let (node_pub_key, node_provider) = &cluster_nodes.get(i as usize).unwrap();
@@ -467,7 +468,7 @@ benchmarks! {
 		assert!(!SubmissionDeposits::<T>::contains_key(referenda_index));
 	}
 
-	activate_cluster {
+	activate_cluster_protocol {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
@@ -482,14 +483,14 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-	}: activate_cluster(RawOrigin::Root, cluster_id, ClusterGovParams::default())
+	}: activate_cluster_protocol(RawOrigin::Root, cluster_id, ClusterGovParams::default())
 	verify {
 		let cluster_id = ClusterId::from([1; 20]);
-		let cluster_status = <T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(&cluster_id).unwrap();
+		let cluster_status = <T::ClusterProtocol as ClusterQuery<T>>::get_cluster_status(&cluster_id).unwrap();
 		assert_eq!(cluster_status, ClusterStatus::Activated);
 	}
 
-	update_cluster_economics {
+	update_cluster_protocol {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
@@ -504,7 +505,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), true);
 		next_block::<T>();
 
-	}: update_cluster_economics(RawOrigin::Root, cluster_id, ClusterGovParams {
+	}: update_cluster_protocol(RawOrigin::Root, cluster_id, ClusterGovParams {
 		treasury_share: Perquintill::from_percent(5),
 		validators_share: Perquintill::from_percent(10),
 		cluster_reserve_share: Perquintill::from_percent(15),
@@ -518,7 +519,7 @@ benchmarks! {
 	})
 	verify {
 		let cluster_id = ClusterId::from([1; 20]);
-		let bonding_params = T::ClusterEconomics::get_bonding_params(&cluster_id).unwrap();
+		let bonding_params = T::ClusterProtocol::get_bonding_params(&cluster_id).unwrap();
 		let updated_bonding = ClusterBondingParams {
 			storage_bond_size: 10000_u128,
 			storage_chill_delay: BlockNumberFor::<T>::from(20_u32),

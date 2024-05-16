@@ -27,8 +27,8 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_ddc_clusters_gov.
 pub trait WeightInfo {
-	fn propose_activate_cluster() -> Weight;
-	fn propose_update_cluster_economics() -> Weight;
+	fn propose_activate_cluster_protocol() -> Weight;
+	fn propose_update_cluster_protocol() -> Weight;
 	fn vote_proposal() -> Weight;
 	fn close_early_approved(_m: u32, ) -> Weight;
 	fn close_approved(_m: u32, ) -> Weight;
@@ -36,8 +36,8 @@ pub trait WeightInfo {
 	fn close_disapproved(_m: u32, ) -> Weight;
 	fn retract_proposal() -> Weight;
 	fn refund_submission_deposit() -> Weight;
-	fn activate_cluster() -> Weight;
-	fn update_cluster_economics() -> Weight;
+	fn activate_cluster_protocol() -> Weight;
+	fn update_cluster_protocol() -> Weight;
 }
 
 /// Weights for pallet_ddc_clusters_gov using the Substrate node and recommended hardware.
@@ -51,7 +51,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Proof Skipped: DdcClusters ClustersNodesStats (max_values: None, max_size: None, mode: Measured)
 	// Storage: DdcClustersGov ClusterProposalVoting (r:0 w:1)
 	// Proof Skipped: DdcClustersGov ClusterProposalVoting (max_values: None, max_size: None, mode: Measured)
-	fn propose_activate_cluster() -> Weight {
+	fn propose_activate_cluster_protocol() -> Weight {
 		Weight::from_parts(401_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
@@ -64,7 +64,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Proof Skipped: DdcClusters ClustersNodesStats (max_values: None, max_size: None, mode: Measured)
 	// Storage: DdcClustersGov ClusterProposalVoting (r:0 w:1)
 	// Proof Skipped: DdcClustersGov ClusterProposalVoting (max_values: None, max_size: None, mode: Measured)
-	fn propose_update_cluster_economics() -> Weight {
+	fn propose_update_cluster_protocol() -> Weight {
 		Weight::from_parts(401_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
@@ -186,14 +186,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Proof Skipped: DdcClusters Clusters (max_values: None, max_size: None, mode: Measured)
 	// Storage: DdcClusters ClustersGovParams (r:1 w:1)
 	// Proof Skipped: DdcClusters ClustersGovParams (max_values: None, max_size: None, mode: Measured)
-	fn activate_cluster() -> Weight {
+	fn activate_cluster_protocol() -> Weight {
 		Weight::from_parts(1_257_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcClusters ClustersGovParams (r:1 w:1)
 	// Proof Skipped: DdcClusters ClustersGovParams (max_values: None, max_size: None, mode: Measured)
-	fn update_cluster_economics() -> Weight {
+	fn update_cluster_protocol() -> Weight {
 		Weight::from_parts(306_000_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
@@ -210,7 +210,7 @@ impl WeightInfo for () {
 	// Proof Skipped: DdcClusters ClustersNodesStats (max_values: None, max_size: None, mode: Measured)
 	// Storage: DdcClustersGov ClusterProposalVoting (r:0 w:1)
 	// Proof Skipped: DdcClustersGov ClusterProposalVoting (max_values: None, max_size: None, mode: Measured)
-	fn propose_activate_cluster() -> Weight {
+	fn propose_activate_cluster_protocol() -> Weight {
 		Weight::from_parts(401_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
@@ -223,7 +223,7 @@ impl WeightInfo for () {
 	// Proof Skipped: DdcClusters ClustersNodesStats (max_values: None, max_size: None, mode: Measured)
 	// Storage: DdcClustersGov ClusterProposalVoting (r:0 w:1)
 	// Proof Skipped: DdcClustersGov ClusterProposalVoting (max_values: None, max_size: None, mode: Measured)
-	fn propose_update_cluster_economics() -> Weight {
+	fn propose_update_cluster_protocol() -> Weight {
 		Weight::from_parts(401_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
@@ -345,14 +345,14 @@ impl WeightInfo for () {
 	// Proof Skipped: DdcClusters Clusters (max_values: None, max_size: None, mode: Measured)
 	// Storage: DdcClusters ClustersGovParams (r:1 w:1)
 	// Proof Skipped: DdcClusters ClustersGovParams (max_values: None, max_size: None, mode: Measured)
-	fn activate_cluster() -> Weight {
+	fn activate_cluster_protocol() -> Weight {
 		Weight::from_parts(1_257_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	// Storage: DdcClusters ClustersGovParams (r:1 w:1)
 	// Proof Skipped: DdcClusters ClustersGovParams (max_values: None, max_size: None, mode: Measured)
-	fn update_cluster_economics() -> Weight {
+	fn update_cluster_protocol() -> Weight {
 		Weight::from_parts(306_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))

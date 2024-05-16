@@ -15,7 +15,7 @@ mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterEconomics, ClusterQuery},
+		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor},
 	},
 	BucketId, ClusterId,
@@ -152,7 +152,7 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type UnlockingDelay: Get<BlockNumberFor<Self>>;
-		type ClusterEconomics: ClusterEconomics<Self, BalanceOf<Self>>;
+		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
 	}
@@ -306,7 +306,7 @@ pub mod pallet {
 				Self::buckets_count().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
 
 			ensure!(
-				<T::ClusterEconomics as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
 				Error::<T>::ClusterDoesNotExist
 			);
 
@@ -452,8 +452,8 @@ pub mod pallet {
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
 
-			let post_info_weight = if ledger.unlocking.is_empty() &&
-				ledger.active < <T as pallet::Config>::Currency::minimum_balance()
+			let post_info_weight = if ledger.unlocking.is_empty()
+				&& ledger.active < <T as pallet::Config>::Currency::minimum_balance()
 			{
 				log::debug!("Killing owner");
 				// This account must have called `unlock_deposit()` with some value that caused the

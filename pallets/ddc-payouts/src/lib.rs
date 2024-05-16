@@ -27,7 +27,7 @@ mod tests;
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator as ClusterCreatorType, ClusterEconomics as ClusterEconomicsType},
+		cluster::{ClusterCreator as ClusterCreatorType, ClusterProtocol as ClusterProtocolType},
 		customer::{
 			CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
 		},
@@ -135,7 +135,7 @@ pub mod pallet {
 		type CustomerCharger: CustomerChargerType<Self>;
 		type CustomerDepositor: CustomerDepositorType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
-		type ClusterEconomics: ClusterEconomicsType<Self, BalanceOf<Self>>;
+		type ClusterProtocol: ClusterProtocolType<Self, BalanceOf<Self>>;
 		type NominatorsAndValidatorsList: SortedListProvider<Self::AccountId>;
 		type ClusterCreator: ClusterCreatorType<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
@@ -586,7 +586,7 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
 
 			// deduct fees
-			let fees = T::ClusterEconomics::get_fees_params(&cluster_id)
+			let fees = T::ClusterProtocol::get_fees_params(&cluster_id)
 				.map_err(|_| Error::<T>::NotExpectedClusterState)?;
 
 			let total_customer_charge = (|| -> Option<u128> {
@@ -621,7 +621,7 @@ pub mod pallet {
 				charge_cluster_reserve_fees::<T>(
 					cluster_reserve_fee,
 					&billing_report.vault,
-					&T::ClusterEconomics::get_reserve_account_id(&cluster_id)
+					&T::ClusterProtocol::get_reserve_account_id(&cluster_id)
 						.map_err(|_| Error::<T>::NotExpectedClusterState)?,
 				)?;
 				Self::deposit_event(Event::<T>::ClusterReserveFeesCollected {
@@ -992,7 +992,7 @@ pub mod pallet {
 	) -> Result<CustomerCharge, Error<T>> {
 		let mut total = CustomerCharge::default();
 
-		let pricing = T::ClusterEconomics::get_pricing_params(&cluster_id)
+		let pricing = T::ClusterProtocol::get_pricing_params(&cluster_id)
 			.map_err(|_| Error::<T>::NotExpectedClusterState)?;
 
 		total.transfer = (|| -> Option<u128> {
@@ -1008,8 +1008,8 @@ pub mod pallet {
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
-		total.storage = fraction_of_month *
-			(|| -> Option<u128> {
+		total.storage = fraction_of_month
+			* (|| -> Option<u128> {
 				(usage.stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)

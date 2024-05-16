@@ -32,7 +32,7 @@ use core::fmt::Debug;
 
 use codec::{Decode, Encode, HasCompact};
 use ddc_primitives::traits::{
-	cluster::{ClusterCreator, ClusterEconomics, ClusterQuery},
+	cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 	node::{NodeCreator, NodeVisitor},
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
@@ -173,7 +173,7 @@ pub mod pallet {
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
-		type ClusterEconomics: ClusterEconomics<Self, BalanceOf<Self>>;
+		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
 
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 
@@ -494,7 +494,7 @@ pub mod pallet {
 
 				let min_active_bond = if let Some(cluster_id) = Self::storages(&ledger.stash) {
 					let bond_size =
-						T::ClusterEconomics::get_bond_size(&cluster_id, NodeType::Storage)
+						T::ClusterProtocol::get_bond_size(&cluster_id, NodeType::Storage)
 							.map_err(|_| Error::<T>::NoClusterGovParams)?;
 					bond_size.saturated_into::<BalanceOf<T>>()
 				} else {
@@ -515,7 +515,7 @@ pub mod pallet {
 						.map_err(|_| Error::<T>::NoCluster)?;
 
 					if let Some(cluster_id) = node_cluster_id {
-						let bonding_params = T::ClusterEconomics::get_bonding_params(&cluster_id)
+						let bonding_params = T::ClusterProtocol::get_bonding_params(&cluster_id)
 							.map_err(|_| Error::<T>::NoClusterGovParams)?;
 
 						let min_bond_size = match node_pub_key {
@@ -526,8 +526,9 @@ pub mod pallet {
 						// cluster eventually, we keep its stake till the end of unbonding period.
 						if ledger.active < min_bond_size.saturated_into::<BalanceOf<T>>() {
 							match node_pub_key {
-								NodePubKey::StoragePubKey(_) =>
-									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id),
+								NodePubKey::StoragePubKey(_) => {
+									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id)
+								},
 							};
 
 							Self::deposit_event(Event::<T>::LeaveSoon(ledger.stash.clone()));
@@ -637,13 +638,13 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 
 			ensure!(
-				<T::ClusterEconomics as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
 				Error::<T>::NoCluster
 			);
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			// Retrieve the respective bond size from Cluster Visitor
-			let bond_size = T::ClusterEconomics::get_bond_size(&cluster_id, NodeType::Storage)
+			let bond_size = T::ClusterProtocol::get_bond_size(&cluster_id, NodeType::Storage)
 				.map_err(|_| Error::<T>::NoClusterGovParams)?;
 			ensure!(
 				ledger.active >= bond_size.saturated_into::<BalanceOf<T>>(),
@@ -702,7 +703,7 @@ pub mod pallet {
 
 			// Extract delay from the cluster settings.
 			let (cluster, delay) = if let Some(cluster) = Self::storages(&ledger.stash) {
-				let chill_delay = T::ClusterEconomics::get_chill_delay(&cluster, NodeType::Storage)
+				let chill_delay = T::ClusterProtocol::get_chill_delay(&cluster, NodeType::Storage)
 					.map_err(|_| Error::<T>::NoClusterGovParams)?;
 				(cluster, chill_delay)
 			} else {
@@ -829,7 +830,7 @@ pub mod pallet {
 		pub fn bond_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let cluster_stash = ensure_signed(origin)?;
 			let (controller, stash) =
-				<T::ClusterEconomics as ClusterQuery<T>>::get_manager_and_reserve_id(&cluster_id)?;
+				<T::ClusterProtocol as ClusterQuery<T>>::get_manager_and_reserve_id(&cluster_id)?;
 
 			ensure!(stash == cluster_stash, Error::<T>::NotStash);
 
@@ -848,7 +849,7 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientBond)?
 			}
 
-			T::ClusterEconomics::bond_cluster(&cluster_id)?;
+			T::ClusterProtocol::bond_cluster(&cluster_id)?;
 
 			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
 
@@ -885,7 +886,7 @@ pub mod pallet {
 				Error::<T>::NoMoreChunks,
 			);
 
-			T::ClusterEconomics::start_unbond_cluster(&cluster_id)?;
+			T::ClusterProtocol::start_unbond_cluster(&cluster_id)?;
 
 			// Unbond the full amount
 			let amount = ledger.active;
@@ -937,7 +938,7 @@ pub mod pallet {
 				Self::kill_cluster_stash(&stash)?;
 				// Remove the lock.
 				T::Currency::remove_lock(DDC_CLUSTER_STAKING_ID, &stash);
-				T::ClusterEconomics::end_unbond_cluster(&cluster_id)?;
+				T::ClusterProtocol::end_unbond_cluster(&cluster_id)?;
 			} else {
 				// This was the consequence of a partial unbond. just update the ledger and move on.
 				Self::update_cluster_ledger(&controller, &ledger);
@@ -1119,7 +1120,7 @@ pub mod pallet {
 				unlocking: Default::default(),
 			};
 			Self::update_cluster_ledger(&cluster_controller, &ledger);
-			T::ClusterEconomics::bond_cluster(&cluster_id)?;
+			T::ClusterProtocol::bond_cluster(&cluster_id)?;
 			Ok(())
 		}
 	}

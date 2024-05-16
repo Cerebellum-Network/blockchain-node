@@ -15,7 +15,7 @@ pub trait ClusterQuery<T: Config> {
 	) -> Result<(T::AccountId, T::AccountId), DispatchError>;
 }
 
-pub trait ClusterEconomics<T: Config, Balance>: ClusterQuery<T> {
+pub trait ClusterProtocol<T: Config, Balance>: ClusterQuery<T> {
 	fn get_bond_size(cluster_id: &ClusterId, node_type: NodeType) -> Result<u128, DispatchError>;
 
 	fn get_pricing_params(cluster_id: &ClusterId) -> Result<ClusterPricingParams, DispatchError>;
@@ -38,7 +38,7 @@ pub trait ClusterEconomics<T: Config, Balance>: ClusterQuery<T> {
 
 	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError>;
 
-	fn update_cluster_economics(
+	fn update_cluster_protocol(
 		cluster_id: &ClusterId,
 		cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult;
@@ -59,7 +59,7 @@ pub trait ClusterCreator<T: Config, Balance> {
 		cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult;
 
-	fn activate_cluster(cluster_id: &ClusterId) -> DispatchResult;
+	fn activate_cluster_protocol(cluster_id: &ClusterId) -> DispatchResult;
 }
 
 pub trait ClusterManager<T: Config>: ClusterQuery<T> {

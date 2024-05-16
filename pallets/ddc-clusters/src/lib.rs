@@ -31,7 +31,7 @@ const LOG_TARGET: &str = "runtime::ddc-clusters";
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterEconomics, ClusterQuery},
+		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
@@ -437,7 +437,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn do_activate_cluster(cluster_id: &ClusterId) -> DispatchResult {
+		fn do_activate_cluster_protocol(cluster_id: &ClusterId) -> DispatchResult {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 			ensure!(cluster.status == ClusterStatus::Bonded, Error::<T>::UnexpectedClusterStatus);
@@ -476,7 +476,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn do_update_cluster_economics(
+		fn do_update_cluster_protocol(
 			cluster_id: &ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
@@ -673,13 +673,13 @@ pub mod pallet {
 
 			let is_empty_nodes = ClustersNodesStats::<T>::try_get(cluster_id)
 				.map(|status| {
-					status.await_validation + status.validation_succeeded + status.validation_failed ==
-						0
+					status.await_validation + status.validation_succeeded + status.validation_failed
+						== 0
 				})
 				.unwrap_or(false);
 
-			is_empty_nodes &&
-				matches!(cluster.status, ClusterStatus::Bonded | ClusterStatus::Activated)
+			is_empty_nodes
+				&& matches!(cluster.status, ClusterStatus::Bonded | ClusterStatus::Activated)
 		}
 	}
 
@@ -703,7 +703,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for Pallet<T>
+	impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for Pallet<T>
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
@@ -714,8 +714,9 @@ pub mod pallet {
 			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
 			match node_type {
-				NodeType::Storage =>
-					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>()),
+				NodeType::Storage => {
+					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>())
+				},
 			}
 		}
 
@@ -783,11 +784,11 @@ pub mod pallet {
 			Ok(cluster.reserve_id)
 		}
 
-		fn update_cluster_economics(
+		fn update_cluster_protocol(
 			cluster_id: &ClusterId,
 			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
-			Self::do_update_cluster_economics(cluster_id, cluster_gov_params)
+			Self::do_update_cluster_protocol(cluster_id, cluster_gov_params)
 		}
 
 		fn bond_cluster(cluster_id: &ClusterId) -> DispatchResult {
@@ -886,8 +887,8 @@ pub mod pallet {
 			)
 		}
 
-		fn activate_cluster(cluster_id: &ClusterId) -> DispatchResult {
-			Self::do_activate_cluster(cluster_id)
+		fn activate_cluster_protocol(cluster_id: &ClusterId) -> DispatchResult {
+			Self::do_activate_cluster_protocol(cluster_id)
 		}
 	}
 
@@ -903,12 +904,15 @@ pub mod pallet {
 	impl<T> From<NodeProviderAuthContractError> for Error<T> {
 		fn from(error: NodeProviderAuthContractError) -> Self {
 			match error {
-				NodeProviderAuthContractError::ContractCallFailed =>
-					Error::<T>::NodeAuthContractCallFailed,
-				NodeProviderAuthContractError::ContractDeployFailed =>
-					Error::<T>::NodeAuthContractDeployFailed,
-				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
-					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful,
+				NodeProviderAuthContractError::ContractCallFailed => {
+					Error::<T>::NodeAuthContractCallFailed
+				},
+				NodeProviderAuthContractError::ContractDeployFailed => {
+					Error::<T>::NodeAuthContractDeployFailed
+				},
+				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful => {
+					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful
+				},
 			}
 		}
 	}

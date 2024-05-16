@@ -2,7 +2,7 @@ pub mod v1 {
 	#[cfg(feature = "try-runtime")]
 	use ddc_primitives::ClusterStatus;
 	use ddc_primitives::{
-		traits::{ClusterCreator, ClusterEconomics, ClusterQuery, NodeVisitor},
+		traits::{ClusterCreator, ClusterProtocol, ClusterQuery, NodeVisitor},
 		ClusterId, NodePubKey,
 	};
 	use frame_support::{
@@ -62,14 +62,14 @@ pub mod v1 {
 
 				for (cluster_id, _) in served_clusters.iter() {
 					if let Ok((cluster_controller, cluster_stash)) =
-						<T::ClusterEconomics as ClusterQuery<T>>::get_manager_and_reserve_id(
+						<T::ClusterProtocol as ClusterQuery<T>>::get_manager_and_reserve_id(
 							cluster_id,
 						) {
 						let cluster_stash_balance = T::Currency::free_balance(&cluster_stash);
 						weight.saturating_accrue(T::DbWeight::get().reads(1));
 
 						if cluster_stash_balance >= cluster_bonding_amount {
-							if T::ClusterEconomics::bond_cluster(cluster_id).is_ok() {
+							if T::ClusterProtocol::bond_cluster(cluster_id).is_ok() {
 								weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
 							} else {
 								weight.saturating_accrue(T::DbWeight::get().reads(1));
@@ -105,7 +105,7 @@ pub mod v1 {
 							<ClusterLedger<T>>::insert(cluster_controller, ledger);
 							weight.saturating_accrue(T::DbWeight::get().writes(1));
 
-							if T::ClusterCreator::activate_cluster(cluster_id).is_ok() {
+							if T::ClusterCreator::activate_cluster_protocol(cluster_id).is_ok() {
 								weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
 							} else {
 								weight.saturating_accrue(T::DbWeight::get().reads(1));
@@ -149,7 +149,7 @@ pub mod v1 {
 			let mut clusters_to_activate: Vec<ClusterId> = Vec::new();
 			for bytes_id in KNOWN_ACTIVE_CLUSTERS.iter() {
 				let cluster_id = ClusterId::from(bytes_id);
-				if <T::ClusterEconomics as ClusterQuery<T>>::cluster_exists(&cluster_id) {
+				if <T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id) {
 					clusters_to_activate.push(cluster_id);
 				}
 			}
@@ -164,10 +164,9 @@ pub mod v1 {
 			);
 
 			for cluster_id in clusters_to_activate.iter() {
-				let (cluster_controller, cluster_stash) = <T::ClusterEconomics as ClusterQuery<
-					T,
-				>>::get_manager_and_reserve_id(cluster_id)
-				.expect("no controller and stash accounts found for activating cluster");
+				let (cluster_controller, cluster_stash) =
+					<T::ClusterProtocol as ClusterQuery<T>>::get_manager_and_reserve_id(cluster_id)
+						.expect("no controller and stash accounts found for activating cluster");
 
 				assert_eq!(
 					<ClusterBonded<T>>::get(cluster_stash)
@@ -183,7 +182,7 @@ pub mod v1 {
 				assert_eq!(ledger.active, bonding_amount);
 
 				let cluster_status =
-					<T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(cluster_id)
+					<T::ClusterProtocol as ClusterQuery<T>>::get_cluster_status(cluster_id)
 						.expect("no activating cluster found");
 
 				assert_eq!(cluster_status, ClusterStatus::Activated);

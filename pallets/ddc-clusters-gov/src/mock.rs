@@ -279,7 +279,7 @@ impl pallet_ddc_staking::Config for Test {
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-	type ClusterEconomics = pallet_ddc_clusters::Pallet<Test>;
+	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
@@ -295,7 +295,7 @@ parameter_types! {
 	pub const ClusterProposalDuration: BlockNumber = MINUTES;
 	pub const MinValidatedNodesCount: u16 = 3;
 	pub ClusterProtocolActivatorTrackOrigin: RuntimeOrigin = pallet_mock_origins::Origin::ClusterProtocolActivator.into();
-	pub ClusterEconomicsUpdaterTrackOrigin: RuntimeOrigin = pallet_mock_origins::Origin::ClusterProtocolUpdater.into();
+	pub ClusterProtocolUpdaterTrackOrigin: RuntimeOrigin = pallet_mock_origins::Origin::ClusterProtocolUpdater.into();
 	pub const ReferendumEnactmentDuration: BlockNumber = 1;
 }
 
@@ -306,13 +306,13 @@ impl crate::pallet::Config for Test {
 	type WeightInfo = ();
 	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterProtocolActivatorTrackOrigin, Self>;
 	type OpenGovActivatorOrigin = pallet_mock_origins::ClusterProtocolActivator;
-	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterEconomicsUpdaterTrackOrigin, Self>;
+	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterProtocolUpdaterTrackOrigin, Self>;
 	type OpenGovUpdaterOrigin = pallet_mock_origins::ClusterProtocolUpdater;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
-	type ClusterEconomics = pallet_ddc_clusters::Pallet<Test>;
+	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
 	type SeatsConsensus = MockedSeatsConsensus;
 	type DefaultVote = MockedDefaultVote; // pallet_ddc_clusters_gov::PrimeDefaultVote;
@@ -500,8 +500,8 @@ const APP_CLUSTER_PROTOCOL_UPDATER: Curve = Curve::make_linear(10, 28, percent(0
 const SUP_CLUSTER_PROTOCOL_UPDATER: Curve =
 	Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
 
-pub const CLUSTER_ACTIVATOR_DECISION_DEPOSIT: Balance = 30 * DOLLARS;
-pub const CLUSTER_ECONOMICS_UPDATE_DECISION_DEPOSIT: Balance = 20 * DOLLARS;
+pub const CLUSTER_PROTOCOL_ACTIVATOR_DECISION_DEPOSIT: Balance = 30 * DOLLARS;
+pub const CLUSTER_PROTOCOL_UPDATER_DECISION_DEPOSIT: Balance = 20 * DOLLARS;
 
 pub const CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID: u16 = 100;
 pub const CLUSTER_PROTOCOL_UPDATER_TRACK_ID: u16 = 101;
@@ -512,7 +512,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 2]
 		pallet_referenda::TrackInfo {
 			name: "cluster_protocol_activator",
 			max_deciding: 50,
-			decision_deposit: CLUSTER_ACTIVATOR_DECISION_DEPOSIT,
+			decision_deposit: CLUSTER_PROTOCOL_ACTIVATOR_DECISION_DEPOSIT,
 			prepare_period: 0,
 			decision_period: MINUTES / 2,
 			confirm_period: MINUTES / 4,
@@ -526,7 +526,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 2]
 		pallet_referenda::TrackInfo {
 			name: "cluster_protocol_updater",
 			max_deciding: 50,
-			decision_deposit: CLUSTER_ECONOMICS_UPDATE_DECISION_DEPOSIT,
+			decision_deposit: CLUSTER_PROTOCOL_UPDATER_DECISION_DEPOSIT,
 			prepare_period: 0,
 			decision_period: MINUTES / 2,
 			confirm_period: MINUTES / 4,
@@ -671,7 +671,7 @@ pub fn build_cluster(
 	manager_id: [u8; 32],
 	reserve_id: [u8; 32],
 	params: ClusterParams<AccountId>,
-	economic_params: ClusterGovParams<Balance, BlockNumber>,
+	protocol_params: ClusterGovParams<Balance, BlockNumber>,
 	status: ClusterStatus,
 ) -> BuiltCluster {
 	let mut cluster = Cluster::new(
@@ -681,7 +681,7 @@ pub fn build_cluster(
 		params,
 	);
 	cluster.status = status;
-	(cluster, economic_params)
+	(cluster, protocol_params)
 }
 
 pub fn build_cluster_node(

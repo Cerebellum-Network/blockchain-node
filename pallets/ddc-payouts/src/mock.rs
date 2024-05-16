@@ -4,7 +4,7 @@
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterEconomics},
+		cluster::{ClusterCreator, ClusterProtocol},
 		customer::{CustomerCharger, CustomerDepositor},
 		pallet::PalletVisitor,
 		ClusterQuery,
@@ -125,7 +125,7 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type CustomerCharger = TestCustomerCharger;
 	type CustomerDepositor = TestCustomerDepositor;
-	type ClusterEconomics = TestClusterEconomics;
+	type ClusterProtocol = TestClusterProtocol;
 	type TreasuryVisitor = TestTreasuryVisitor;
 	type NominatorsAndValidatorsList = TestValidatorVisitor<Self>;
 	type ClusterCreator = TestClusterCreator;
@@ -201,7 +201,7 @@ impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 		Ok(())
 	}
 
-	fn activate_cluster(_cluster_id: &ClusterId) -> DispatchResult {
+	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
 		unimplemented!()
 	}
 }
@@ -422,8 +422,8 @@ pub fn get_pricing(cluster_id: &ClusterId) -> ClusterPricingParams {
 	}
 }
 
-pub struct TestClusterEconomics;
-impl<T: Config> ClusterQuery<T> for TestClusterEconomics {
+pub struct TestClusterProtocol;
+impl<T: Config> ClusterQuery<T> for TestClusterProtocol {
 	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
 		true
 	}
@@ -439,7 +439,7 @@ impl<T: Config> ClusterQuery<T> for TestClusterEconomics {
 	}
 }
 
-impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
+impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
 		Ok(10)
 	}
@@ -477,7 +477,7 @@ impl<T: Config> ClusterEconomics<T, BalanceOf<T>> for TestClusterEconomics {
 		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
 	}
 
-	fn update_cluster_economics(
+	fn update_cluster_protocol(
 		_cluster_id: &ClusterId,
 		_cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
 	) -> DispatchResult {

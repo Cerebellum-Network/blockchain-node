@@ -110,8 +110,9 @@ where
 	)
 	.unwrap();
 
-	<DdcClusters<T> as ClusterEconomics<T, BalanceOf<T>>>::bond_cluster(&cluster_id).unwrap();
-	<DdcClusters<T> as ClusterCreator<T, BalanceOf<T>>>::activate_cluster(&cluster_id).unwrap();
+	<DdcClusters<T> as ClusterProtocol<T, BalanceOf<T>>>::bond_cluster(&cluster_id).unwrap();
+	<DdcClusters<T> as ClusterCreator<T, BalanceOf<T>>>::activate_cluster_protocol(&cluster_id)
+		.unwrap();
 
 	let mut auth_contract = NodeProviderAuthContract::<T>::new(user.clone(), user.clone());
 	auth_contract = auth_contract.deploy_contract(user.clone())?;
@@ -136,12 +137,15 @@ where
 impl From<NodeProviderAuthContractError> for Box<BenchmarkError> {
 	fn from(error: NodeProviderAuthContractError) -> Self {
 		match error {
-			NodeProviderAuthContractError::ContractCallFailed =>
-				Box::new(BenchmarkError::Stop("NodeAuthContractCallFailed")),
-			NodeProviderAuthContractError::ContractDeployFailed =>
-				Box::new(BenchmarkError::Stop("NodeAuthContractDeployFailed")),
-			NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
-				Box::new(BenchmarkError::Stop("NodeAuthNodeAuthorizationNotSuccessful")),
+			NodeProviderAuthContractError::ContractCallFailed => {
+				Box::new(BenchmarkError::Stop("NodeAuthContractCallFailed"))
+			},
+			NodeProviderAuthContractError::ContractDeployFailed => {
+				Box::new(BenchmarkError::Stop("NodeAuthContractDeployFailed"))
+			},
+			NodeProviderAuthContractError::NodeAuthorizationNotSuccessful => {
+				Box::new(BenchmarkError::Stop("NodeAuthNodeAuthorizationNotSuccessful"))
+			},
 		}
 	}
 }
