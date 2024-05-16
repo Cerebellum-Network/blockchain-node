@@ -337,7 +337,7 @@ pub mod v2 {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 			frame_support::ensure!(
-				Pallet::<T>::on_chain_storage_version() == 0,
+				Pallet::<T>::on_chain_storage_version() == 1,
 				"must upgrade linearly"
 			);
 			let pre_clusters_count = Clusters::<T>::iter().count();
@@ -379,7 +379,7 @@ pub mod v2 {
 			let current_version = Pallet::<T>::current_storage_version();
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
 
-			frame_support::ensure!(current_version == 1, "must_upgrade");
+			frame_support::ensure!(current_version == 2, "must_upgrade");
 			assert_eq!(
 				current_version, onchain_version,
 				"after migration, the current_version and onchain_version should be the same"
