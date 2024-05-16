@@ -88,34 +88,3 @@ jobs:
         with:
           name: "cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
           path: "./${{ env.CERE_DEV_RUNTIME }}"
-
-  trigger-e2e-tests:
-    runs-on: ubuntu-latest
-    # e2e tests are in migration process. Disable the tests as recommended in this slack message:
-    # https://cere-network.slack.com/archives/C04LRGSLWG0/p1699892758049319
-    if: false
-    needs: build
-    steps:
-      - name: Get short SHA
-        run: |
-          echo "GITHUB_SHA=${GITHUB_SHA:0:7}" >> ${GITHUB_ENV}
-
-      - name: 'Trigger e2e DDC tests'
-        uses: convictional/trigger-workflow-and-wait@v1.6.5
-        with:
-          owner: Cerebellum-Network
-          repo: ddc-api-e2e-simulations
-          github_token: ${{ secrets.GH_E2E_TOKEN }}
-          comment_github_token: ${{ secrets.GH_E2E_TOKEN }}
-          github_user: devops-cere
-          workflow_file_name: run-basic-ddc-tests.yml
-          client_payload: |-
-            {
-              "POS_NODE_VERSION": "${{ env.GITHUB_SHA }}"
-            }
-          ref: master
-          wait_interval: 30
-          propagate_failure: true
-          trigger_workflow: true
-          wait_workflow: true
-          comment_downstream_url: ${{ github.event.pull_request.comments_url }}
