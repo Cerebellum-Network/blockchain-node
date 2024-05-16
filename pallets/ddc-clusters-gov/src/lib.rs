@@ -455,7 +455,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn account_id() -> T::AccountId {
+		pub fn account_id() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
 

@@ -17,7 +17,6 @@ pub use pallet_origins::pallet::{
 	ClusterGovCreator, ClusterGovEditor, FellowshipAdmin, GeneralAdmin, ReferendumCanceller,
 	ReferendumKiller, Spender, StakingAdmin, Treasurer, WhitelistedCaller,
 };
-
 pub use tracks::TracksInfo;
 
 parameter_types! {

@@ -37,9 +37,8 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 				pallet_origins::pallet::Origin::BigSpender => Ok(34),
 				// DDC admins
 				pallet_origins::pallet::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
-				pallet_origins::pallet::Origin::ClusterGovEditor => {
-					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID)
-				},
+				pallet_origins::pallet::Origin::ClusterGovEditor =>
+					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID),
 			}
 		} else {
 			Err(())

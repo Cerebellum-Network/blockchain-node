@@ -714,6 +714,9 @@ impl ExtBuilder {
 		balances.push((clust.manager_id.clone(), ENDOWMENT));
 		balances.push((clust.reserve_id.clone(), ENDOWMENT));
 
+		// endow system account to allow dispatching transaction
+		balances.push((DdcClustersGov::account_id(), ENDOWMENT));
+
 		let _ =
 			pallet_balances::GenesisConfig::<Test> { balances }.assimilate_storage(&mut storage);
 
