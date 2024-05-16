@@ -102,9 +102,9 @@ pallet-ddc-payouts = { workspace = true }
 pallet-ddc-staking = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
+pallet-origins = { workspace = true }
 pallet-referenda = { workspace = true }
 pallet-whitelist = { workspace = true }
-pallet-origins = { workspace = true }
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }
