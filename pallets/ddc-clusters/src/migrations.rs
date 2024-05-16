@@ -252,7 +252,7 @@ pub mod v2 {
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
 			let mut weight = T::DbWeight::get().reads(1);
 
-			if onchain_version == 0 && current_version == 1 {
+			if onchain_version == 1 && current_version == 2 {
 				let mut nodes_count_by_cluster: BTreeMap<ClusterId, ClusterNodesCount> =
 					BTreeMap::new();
 
