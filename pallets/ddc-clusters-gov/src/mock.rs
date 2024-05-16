@@ -292,7 +292,7 @@ impl pallet_mock_origins::Config for Test {}
 
 parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
-	pub const ClusterProposalDuration: BlockNumber = 1 * MINUTES;
+	pub const ClusterProposalDuration: BlockNumber = MINUTES;
 	pub const MinValidatedNodesCount: u16 = 3;
 	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_mock_origins::Origin::ClusterGovCreator.into();
 	pub ClusterEconomicsUpdaterTrackOrigin: RuntimeOrigin = pallet_mock_origins::Origin::ClusterGovEditor.into();
@@ -554,6 +554,7 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 }
 pallet_referenda::impl_tracksinfo_get!(TracksInfo, Balance, BlockNumber);
 
+#[allow(unused_imports)]
 #[frame_support::pallet]
 mod pallet_mock_origins {
 	use frame_support::pallet_prelude::*;
@@ -603,6 +604,7 @@ mod pallet_mock_origins {
 	}
 	decl_unit_ensures!(ClusterGovCreator, ClusterGovEditor,);
 
+	#[allow(unused_macros)]
 	macro_rules! decl_ensure {
 		(
 			$vis:vis type $name:ident: EnsureOrigin<Success = $success_type:ty> {
