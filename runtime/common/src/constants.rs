@@ -326,11 +326,11 @@ pub mod tracks {
 			pallet_referenda::TrackInfo {
 				name: "cluster_activator",
 				max_deciding: 50,
-				decision_deposit: 0, // todo: define deposit
-				prepare_period: 0,   // todo: define deposit
+				decision_deposit: 0, // todo: define value
+				prepare_period: 0,   // todo: define value
 				decision_period: MINUTES,
 				confirm_period: MINUTES / 2,
-				min_enactment_period: 0 * HOURS,
+				min_enactment_period: 0, // todo: define value
 				min_approval: APP_CLUSTER_ACTIVATOR,
 				min_support: SUP_CLUSTER_ACTIVATOR,
 			},
@@ -340,11 +340,11 @@ pub mod tracks {
 			pallet_referenda::TrackInfo {
 				name: "cluster_economics_updater",
 				max_deciding: 50,
-				decision_deposit: 0, // todo: define deposit
-				prepare_period: 0,   // todo: define deposit
+				decision_deposit: 0, // todo: define value
+				prepare_period: 0,   // todo: define value
 				decision_period: MINUTES,
 				confirm_period: MINUTES / 2,
-				min_enactment_period: 0 * HOURS,
+				min_enactment_period: 0, // todo: define value
 				min_approval: APP_CLUSTER_ECONOMICS_UPDATER,
 				min_support: SUP_CLUSTER_ECONOMICS_UPDATER,
 			},
