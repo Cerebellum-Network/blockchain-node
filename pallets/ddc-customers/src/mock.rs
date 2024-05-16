@@ -8,7 +8,7 @@ use ddc_primitives::{
 };
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
+	traits::{ConstU32, ConstU64, Everything},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::MockBlock;

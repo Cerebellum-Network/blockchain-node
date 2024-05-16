@@ -63,21 +63,20 @@ pub mod v1 {
 				for (cluster_id, _) in served_clusters.iter() {
 					if let Ok((cluster_controller, cluster_stash)) =
 						<T::ClusterEconomics as ClusterQuery<T>>::get_manager_and_reserve_id(
-							&cluster_id,
+							cluster_id,
 						) {
 						let cluster_stash_balance = T::Currency::free_balance(&cluster_stash);
 						weight.saturating_accrue(T::DbWeight::get().reads(1));
 
 						if cluster_stash_balance >= cluster_bonding_amount {
-							if let Ok(_) = T::ClusterEconomics::bond_cluster(&cluster_id) {
+							if T::ClusterEconomics::bond_cluster(cluster_id).is_ok() {
 								weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
 							} else {
 								weight.saturating_accrue(T::DbWeight::get().reads(1));
 								continue;
 							}
 
-							if let Ok(_) = frame_system::Pallet::<T>::inc_consumers(&cluster_stash)
-							{
+							if frame_system::Pallet::<T>::inc_consumers(&cluster_stash).is_ok() {
 								weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
 							} else {
 								weight.saturating_accrue(T::DbWeight::get().reads(1));
@@ -106,7 +105,7 @@ pub mod v1 {
 							<ClusterLedger<T>>::insert(cluster_controller, ledger);
 							weight.saturating_accrue(T::DbWeight::get().writes(1));
 
-							if let Ok(_) = T::ClusterCreator::activate_cluster(&cluster_id) {
+							if T::ClusterCreator::activate_cluster(cluster_id).is_ok() {
 								weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
 							} else {
 								weight.saturating_accrue(T::DbWeight::get().reads(1));
@@ -165,11 +164,10 @@ pub mod v1 {
 			);
 
 			for cluster_id in clusters_to_activate.iter() {
-				let (cluster_controller, cluster_stash) =
-					<T::ClusterEconomics as ClusterQuery<T>>::get_manager_and_reserve_id(
-						&cluster_id,
-					)
-					.expect("no controller and stash accounts found for activating cluster");
+				let (cluster_controller, cluster_stash) = <T::ClusterEconomics as ClusterQuery<
+					T,
+				>>::get_manager_and_reserve_id(cluster_id)
+				.expect("no controller and stash accounts found for activating cluster");
 
 				assert_eq!(
 					<ClusterBonded<T>>::get(cluster_stash)
@@ -185,7 +183,7 @@ pub mod v1 {
 				assert_eq!(ledger.active, bonding_amount);
 
 				let cluster_status =
-					<T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(&cluster_id)
+					<T::ClusterEconomics as ClusterQuery<T>>::get_cluster_status(cluster_id)
 						.expect("no activating cluster found");
 
 				assert_eq!(cluster_status, ClusterStatus::Activated);

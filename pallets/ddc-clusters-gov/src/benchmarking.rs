@@ -89,15 +89,15 @@ pub fn create_cluster_with_nodes<T: Config>(
 			node_provider.clone(),
 			node_provider.clone(),
 			node_pub_key.clone(),
-			bond_size.into(),
+			bond_size,
 			cluster_id,
 		)
 		.expect("Staking is not created");
 
-		T::ClusterManager::add_node(&cluster_id, &node_pub_key, &ClusterNodeKind::Genesis)
+		T::ClusterManager::add_node(&cluster_id, node_pub_key, &ClusterNodeKind::Genesis)
 			.expect("Node could not be added to the cluster");
 
-		T::ClusterManager::validate_node(&cluster_id, &node_pub_key, true)
+		T::ClusterManager::validate_node(&cluster_id, node_pub_key, true)
 			.expect("Node could not be validated in the cluster");
 	}
 
@@ -188,7 +188,7 @@ benchmarks! {
 
 		DdcClustersGov::<T>::propose_activate_cluster(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
 
-		let (node_pub_key_1, node_provider_1) = cluster_nodes.get(0)
+		let (node_pub_key_1, node_provider_1) = cluster_nodes.first()
 			.map(|(key, provider)| (key.clone(), provider.clone()))
 			.unwrap();
 

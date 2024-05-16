@@ -270,12 +270,12 @@ pub mod pallet {
 				let amount = T::ClusterBondingAmount::get();
 
 				assert!(
-					!<ClusterBonded<T>>::contains_key(&cluster_stash),
+					!<ClusterBonded<T>>::contains_key(cluster_stash),
 					"Cluster is already bonded"
 				);
 
 				assert!(
-					!<ClusterLedger<T>>::contains_key(&cluster_controller),
+					!<ClusterLedger<T>>::contains_key(cluster_controller),
 					"Cluster ledger is already exists"
 				);
 
@@ -284,11 +284,11 @@ pub mod pallet {
 					"Cluster Stash do not have enough balance to participate in storage network."
 				);
 
-				assert!(T::Currency::free_balance(&cluster_stash) < amount, "Insufficient bond");
+				assert!(T::Currency::free_balance(cluster_stash) < amount, "Insufficient bond");
 
-				assert_ok!(frame_system::Pallet::<T>::inc_consumers(&cluster_stash));
+				assert_ok!(frame_system::Pallet::<T>::inc_consumers(cluster_stash));
 
-				<ClusterBonded<T>>::insert(&cluster_stash, &cluster_controller);
+				<ClusterBonded<T>>::insert(cluster_stash, cluster_controller);
 
 				let ledger = StakingLedger {
 					stash: cluster_stash.clone(),
@@ -298,7 +298,7 @@ pub mod pallet {
 					unlocking: Default::default(),
 				};
 
-				Pallet::<T>::update_cluster_ledger(&cluster_controller, &ledger);
+				Pallet::<T>::update_cluster_ledger(cluster_controller, &ledger);
 			}
 		}
 	}
