@@ -13,7 +13,7 @@ use ddc_primitives::{
 	StorageNodeParams, DOLLARS,
 };
 use frame_support::{
-	construct_runtime, parameter_types,
+	parameter_types,
 	traits::{
 		ConstBool, ConstU32, ConstU64, EnsureOriginWithArg, EqualPrivilegeOnly, Everything, Nothing,
 	},
@@ -154,7 +154,7 @@ impl pallet_preimage::Config for Test {
 
 parameter_types! {
 	pub const AlarmInterval: BlockNumber = 1;
-	pub const SubmissionDeposit: Balance = 1 * DOLLARS;
+	pub const SubmissionDeposit: Balance = DOLLARS;
 	pub const UndecidingTimeout: BlockNumber = 5 * MINUTES;
 }
 
@@ -271,8 +271,8 @@ impl pallet_ddc_clusters::Config for Test {
 }
 
 parameter_types! {
-	pub const ClusterBondingAmount: Balance = 1 * DOLLARS;
-	pub const ClusterUnboningDelay: BlockNumber = 1 * MINUTES;
+	pub const ClusterBondingAmount: Balance = DOLLARS;
+	pub const ClusterUnboningDelay: BlockNumber = MINUTES;
 }
 
 impl pallet_ddc_staking::Config for Test {
@@ -374,10 +374,12 @@ impl DefaultVote for MockedDefaultVote {
 		let lock = MOCK_DEFAULT_VOTE.lock();
 		let mock_ref = lock.borrow();
 		match mock_ref.strategy {
-			DefaultVoteVariant::NayAsDefaultVote =>
-				NayAsDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len),
-			DefaultVoteVariant::PrimeDefaultVote =>
-				PrimeDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len),
+			DefaultVoteVariant::NayAsDefaultVote => {
+				NayAsDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len)
+			},
+			DefaultVoteVariant::PrimeDefaultVote => {
+				PrimeDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len)
+			},
 		}
 	}
 }
@@ -478,7 +480,9 @@ where
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn try_successful_origin(proposal_origin: &PalletsOriginOf<T>) -> Result<T::RuntimeOrigin, ()> {
+	fn try_successful_origin(
+		_proposal_origin: &PalletsOriginOf<T>,
+	) -> Result<T::RuntimeOrigin, ()> {
 		let origin = frame_benchmarking::account::<T::AccountId>("successful_origin", 0, 0);
 		Ok(frame_system::RawOrigin::Signed(origin).into())
 	}
@@ -542,8 +546,9 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 		if let Ok(custom_origin) = pallet_mock_origins::Origin::try_from(id.clone()) {
 			match custom_origin {
 				pallet_mock_origins::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
-				pallet_mock_origins::Origin::ClusterGovEditor =>
-					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID),
+				pallet_mock_origins::Origin::ClusterGovEditor => {
+					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID)
+				},
 			}
 		} else {
 			Err(())
@@ -681,7 +686,7 @@ pub fn build_cluster_node(
 	status: ClusterNodeStatus,
 	kind: ClusterNodeKind,
 ) -> BuiltNode {
-	let key = NodePubKey::StoragePubKey(AccountId::from(pub_key.clone()));
+	let key = NodePubKey::StoragePubKey(AccountId::from(pub_key));
 	let mut node = StorageNode::new(
 		key.clone(),
 		AccountId::from(provider_id),
@@ -725,8 +730,8 @@ impl ExtBuilder {
 
 		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
 			clusters: vec![clust.clone()],
-			clusters_gov_params: vec![(clust.cluster_id.clone(), cluster_gov_params)],
-			clusters_nodes: vec![(clust.cluster_id.clone(), cluster_storage_nodes)],
+			clusters_gov_params: vec![(clust.cluster_id, cluster_gov_params)],
+			clusters_nodes: vec![(clust.cluster_id, cluster_storage_nodes)],
 		}
 		.assimilate_storage(&mut storage);
 
