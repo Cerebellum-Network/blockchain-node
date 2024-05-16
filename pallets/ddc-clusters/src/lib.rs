@@ -154,14 +154,14 @@ pub mod pallet {
 		ClusterId,
 		Blake2_128Concat,
 		NodePubKey,
-		ClusterNodeState<BlockNumberFor<T>>, // todo: provide migration
+		ClusterNodeState<BlockNumberFor<T>>,
 		OptionQuery,
 	>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_nodes_stats)]
 	pub type ClustersNodesStats<T: Config> =
-		StorageMap<_, Twox64Concat, ClusterId, ClusterNodesStats>; // todo: provide migration
+		StorageMap<_, Twox64Concat, ClusterId, ClusterNodesStats>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -382,7 +382,7 @@ pub mod pallet {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			// todo: allow to execute this extrinsic to Validators only
+			// todo: allow to execute this extrinsic to Validator's OCW only
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
 			Self::do_validate_node(cluster_id, node_pub_key, succeeded)
@@ -671,7 +671,6 @@ pub mod pallet {
 				None => return false,
 			};
 
-			// todo: replace with ClustersNodes::<T>::contains_prefix in new substrate releases
 			let is_empty_nodes = ClustersNodesStats::<T>::try_get(cluster_id)
 				.map(|status| {
 					status.await_validation + status.validation_succeeded + status.validation_failed ==

@@ -223,13 +223,13 @@ pub mod pallet {
 	/// Map from all clusters locked "stash" accounts to the controller account.
 	#[pallet::storage]
 	#[pallet::getter(fn cluster_bonded)]
-	pub type ClusterBonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>; // todo: provide migration
+	pub type ClusterBonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
 
 	/// Map of all clusters staking ledgers.
 	#[pallet::storage]
 	#[pallet::getter(fn cluster_ledger)]
 	pub type ClusterLedger<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>, T>>; // todo: provide migration
+		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>, T>>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
