@@ -432,7 +432,7 @@ pub mod pallet {
 
 			cluster.set_status(ClusterStatus::Bonded);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: cluster_id.clone() });
+			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: *cluster_id });
 
 			Ok(())
 		}
@@ -444,7 +444,7 @@ pub mod pallet {
 
 			cluster.set_status(ClusterStatus::Activated);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterActivated { cluster_id: cluster_id.clone() });
+			Self::deposit_event(Event::<T>::ClusterActivated { cluster_id: *cluster_id });
 
 			Ok(())
 		}
@@ -456,7 +456,7 @@ pub mod pallet {
 
 			cluster.set_status(ClusterStatus::Unbonding);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: cluster_id.clone() });
+			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: *cluster_id });
 
 			Ok(())
 		}
@@ -471,7 +471,7 @@ pub mod pallet {
 
 			cluster.set_status(ClusterStatus::Unbonded);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterUnbonded { cluster_id: cluster_id.clone() });
+			Self::deposit_event(Event::<T>::ClusterUnbonded { cluster_id: *cluster_id });
 
 			Ok(())
 		}
@@ -486,7 +486,7 @@ pub mod pallet {
 			);
 
 			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
-			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id: cluster_id.clone() });
+			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id: *cluster_id });
 
 			Ok(())
 		}
@@ -863,7 +863,7 @@ pub mod pallet {
 			node_pub_key: &NodePubKey,
 			succeeded: bool,
 		) -> Result<(), DispatchError> {
-			Self::do_validate_node(cluster_id.clone(), node_pub_key.clone(), succeeded)
+			Self::do_validate_node(*cluster_id, node_pub_key.clone(), succeeded)
 		}
 	}
 
