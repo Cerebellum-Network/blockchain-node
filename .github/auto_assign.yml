@@ -1,11 +1,10 @@
 addReviewers: true
 addAssignees: author
 reviewers:
-  - rakanalh
   - MRamanenkau
-  - Raid5594
   - aie0
   - yahortsaryk
+  - ayushmishra2005
 skipKeywords:
   - wip
 numberOfReviewers: 1
