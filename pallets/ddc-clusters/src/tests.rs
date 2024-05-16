@@ -3,7 +3,7 @@
 use codec::Compact;
 use ddc_primitives::{
 	traits::cluster::ClusterManager, ClusterBondingParams, ClusterFeesParams, ClusterId,
-	ClusterParams, ClusterPricingParams, ClusterStatus, NodeParams, NodePubKey, StorageNodeMode,
+	ClusterParams, ClusterPricingParams, NodeParams, NodePubKey, StorageNodeMode,
 	StorageNodeParams,
 };
 use frame_support::{assert_noop, assert_ok};
@@ -527,7 +527,7 @@ fn cluster_visitor_works() {
 			cluster_gov_params
 		));
 
-		assert_eq!(<DdcClusters as ClusterQuery<Test>>::cluster_exists(&cluster_id), true);
+		assert!(<DdcClusters as ClusterQuery<Test>>::cluster_exists(&cluster_id));
 
 		assert_eq!(
 			<DdcClusters as ClusterEconomics<Test, BalanceOf<Test>>>::get_bond_size(
