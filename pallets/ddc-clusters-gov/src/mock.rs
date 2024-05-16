@@ -294,8 +294,8 @@ parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
 	pub const ClusterProposalDuration: BlockNumber = MINUTES;
 	pub const MinValidatedNodesCount: u16 = 3;
-	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_mock_origins::Origin::ClusterGovCreator.into();
-	pub ClusterEconomicsUpdaterTrackOrigin: RuntimeOrigin = pallet_mock_origins::Origin::ClusterGovEditor.into();
+	pub ClusterProtocolActivatorTrackOrigin: RuntimeOrigin = pallet_mock_origins::Origin::ClusterProtocolActivator.into();
+	pub ClusterEconomicsUpdaterTrackOrigin: RuntimeOrigin = pallet_mock_origins::Origin::ClusterProtocolUpdater.into();
 	pub const ReferendumEnactmentDuration: BlockNumber = 1;
 }
 
@@ -304,10 +304,10 @@ impl crate::pallet::Config for Test {
 	type PalletId = ClustersGovPalletId;
 	type Currency = Balances;
 	type WeightInfo = ();
-	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterActivatorTrackOrigin, Self>;
-	type OpenGovActivatorOrigin = pallet_mock_origins::ClusterGovCreator;
+	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterProtocolActivatorTrackOrigin, Self>;
+	type OpenGovActivatorOrigin = pallet_mock_origins::ClusterProtocolActivator;
 	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterEconomicsUpdaterTrackOrigin, Self>;
-	type OpenGovUpdaterOrigin = pallet_mock_origins::ClusterGovEditor;
+	type OpenGovUpdaterOrigin = pallet_mock_origins::ClusterProtocolUpdater;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
@@ -374,10 +374,12 @@ impl DefaultVote for MockedDefaultVote {
 		let lock = MOCK_DEFAULT_VOTE.lock();
 		let mock_ref = lock.borrow();
 		match mock_ref.strategy {
-			DefaultVoteVariant::NayAsDefaultVote =>
-				NayAsDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len),
-			DefaultVoteVariant::PrimeDefaultVote =>
-				PrimeDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len),
+			DefaultVoteVariant::NayAsDefaultVote => {
+				NayAsDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len)
+			},
+			DefaultVoteVariant::PrimeDefaultVote => {
+				PrimeDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len)
+			},
 		}
 	}
 }
@@ -464,7 +466,8 @@ where
 				Err(_) => return Err(o),
 			};
 
-		if track_id == CLUSTER_ACTIVATOR_TRACK_ID || track_id == CLUSTER_ECONOMICS_UPDATER_TRACK_ID
+		if track_id == CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID
+			|| track_id == CLUSTER_PROTOCOL_UPDATER_TRACK_ID
 		{
 			let clusters_governance = ClustersGovPalletId::get().into_account_truncating();
 			if origin == clusters_governance {
@@ -490,49 +493,50 @@ const fn percent(x: i32) -> sp_arithmetic::FixedI64 {
 	sp_arithmetic::FixedI64::from_rational(x as u128, 100)
 }
 
-const APP_CLUSTER_ACTIVATOR: Curve = Curve::make_linear(10, 28, percent(0), percent(10));
-const SUP_CLUSTER_ACTIVATOR: Curve =
+const APP_CLUSTER_PROTOCOL_ACTIVATOR: Curve = Curve::make_linear(10, 28, percent(0), percent(10));
+const SUP_CLUSTER_PROTOCOL_ACTIVATOR: Curve =
 	Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
-const APP_CLUSTER_ECONOMICS_UPDATER: Curve = Curve::make_linear(10, 28, percent(0), percent(10));
-const SUP_CLUSTER_ECONOMICS_UPDATER: Curve =
+const APP_CLUSTER_PROTOCOL_UPDATER: Curve = Curve::make_linear(10, 28, percent(0), percent(10));
+const SUP_CLUSTER_PROTOCOL_UPDATER: Curve =
 	Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
 
 pub const CLUSTER_ACTIVATOR_DECISION_DEPOSIT: Balance = 30 * DOLLARS;
 pub const CLUSTER_ECONOMICS_UPDATE_DECISION_DEPOSIT: Balance = 20 * DOLLARS;
 
+pub const CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID: u16 = 100;
+pub const CLUSTER_PROTOCOL_UPDATER_TRACK_ID: u16 = 101;
+
 const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 2] = [
 	(
-		100,
+		CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID,
 		pallet_referenda::TrackInfo {
-			name: "cluster_activator",
+			name: "cluster_protocol_activator",
 			max_deciding: 50,
 			decision_deposit: CLUSTER_ACTIVATOR_DECISION_DEPOSIT,
 			prepare_period: 0,
 			decision_period: MINUTES / 2,
 			confirm_period: MINUTES / 4,
 			min_enactment_period: 0,
-			min_approval: APP_CLUSTER_ACTIVATOR,
-			min_support: SUP_CLUSTER_ACTIVATOR,
+			min_approval: APP_CLUSTER_PROTOCOL_ACTIVATOR,
+			min_support: SUP_CLUSTER_PROTOCOL_ACTIVATOR,
 		},
 	),
 	(
-		101,
+		CLUSTER_PROTOCOL_UPDATER_TRACK_ID,
 		pallet_referenda::TrackInfo {
-			name: "cluster_economics_updater",
+			name: "cluster_protocol_updater",
 			max_deciding: 50,
 			decision_deposit: CLUSTER_ECONOMICS_UPDATE_DECISION_DEPOSIT,
 			prepare_period: 0,
 			decision_period: MINUTES / 2,
 			confirm_period: MINUTES / 4,
 			min_enactment_period: 0,
-			min_approval: APP_CLUSTER_ECONOMICS_UPDATER,
-			min_support: SUP_CLUSTER_ECONOMICS_UPDATER,
+			min_approval: APP_CLUSTER_PROTOCOL_UPDATER,
+			min_support: SUP_CLUSTER_PROTOCOL_UPDATER,
 		},
 	),
 ];
 
-pub const CLUSTER_ACTIVATOR_TRACK_ID: u16 = 100;
-pub const CLUSTER_ECONOMICS_UPDATER_TRACK_ID: u16 = 101;
 pub struct TracksInfo;
 impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	type Id = u16;
@@ -543,9 +547,12 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
 		if let Ok(custom_origin) = pallet_mock_origins::Origin::try_from(id.clone()) {
 			match custom_origin {
-				pallet_mock_origins::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
-				pallet_mock_origins::Origin::ClusterGovEditor =>
-					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID),
+				pallet_mock_origins::Origin::ClusterProtocolActivator => {
+					Ok(CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID)
+				},
+				pallet_mock_origins::Origin::ClusterProtocolUpdater => {
+					Ok(CLUSTER_PROTOCOL_UPDATER_TRACK_ID)
+				},
 			}
 		} else {
 			Err(())
@@ -568,8 +575,8 @@ mod pallet_mock_origins {
 	#[derive(PartialEq, Eq, Clone, MaxEncodedLen, Encode, Decode, TypeInfo, RuntimeDebug)]
 	#[pallet::origin]
 	pub enum Origin {
-		ClusterGovCreator,
-		ClusterGovEditor,
+		ClusterProtocolActivator,
+		ClusterProtocolUpdater,
 	}
 
 	macro_rules! decl_unit_ensures {
@@ -602,7 +609,7 @@ mod pallet_mock_origins {
 		};
 		() => {}
 	}
-	decl_unit_ensures!(ClusterGovCreator, ClusterGovEditor,);
+	decl_unit_ensures!(ClusterProtocolActivator, ClusterProtocolUpdater,);
 
 	#[allow(unused_macros)]
 	macro_rules! decl_ensure {

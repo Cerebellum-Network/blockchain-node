@@ -123,13 +123,14 @@ pub mod tracks {
 	pub const SUP_WHITELISTED_CALLER: Curve =
 		Curve::make_reciprocal(1, 28, percent(20), percent(5), percent(50));
 
-	pub const APP_CLUSTER_ACTIVATOR: Curve = Curve::make_linear(10, 28, percent(0), percent(10));
-	pub const SUP_CLUSTER_ACTIVATOR: Curve =
+	pub const APP_CLUSTER_PROTOCOL_ACTIVATOR: Curve =
+		Curve::make_linear(10, 28, percent(0), percent(10));
+	pub const SUP_CLUSTER_PROTOCOL_ACTIVATOR: Curve =
 		Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
 
-	pub const APP_CLUSTER_ECONOMICS_UPDATER: Curve =
+	pub const APP_CLUSTER_PROTOCOL_UPDATER: Curve =
 		Curve::make_linear(10, 28, percent(0), percent(10));
-	pub const SUP_CLUSTER_ECONOMICS_UPDATER: Curve =
+	pub const SUP_CLUSTER_PROTOCOL_UPDATER: Curve =
 		Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
 
 	// Root track
@@ -151,6 +152,6 @@ pub mod tracks {
 	pub const MEDIUM_SPENDER_TRACK_ID: u16 = 33;
 	pub const BIG_SPENDER_TRACK_ID: u16 = 34;
 	// DDC admins tracks
-	pub const CLUSTER_ACTIVATOR_TRACK_ID: u16 = 100;
-	pub const CLUSTER_ECONOMICS_UPDATER_TRACK_ID: u16 = 101;
+	pub const CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID: u16 = 100;
+	pub const CLUSTER_PROTOCOL_UPDATER_TRACK_ID: u16 = 101;
 }

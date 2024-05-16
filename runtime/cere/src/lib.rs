@@ -107,7 +107,8 @@ use sp_std::marker::PhantomData;
 // Governance configurations.
 pub mod governance;
 use governance::{
-	ClusterGovCreator, ClusterGovEditor, GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender,
+	ClusterProtocolActivator, ClusterProtocolUpdater, GeneralAdmin, StakingAdmin, Treasurer,
+	TreasurySpender,
 };
 /// Generated voter bag information.
 mod voter_bags;
@@ -305,20 +306,20 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::Any => true,
 			ProxyType::NonTransfer => !matches!(
 				c,
-				RuntimeCall::Balances(..) |
-					RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
-					RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
-					RuntimeCall::NominationPools(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Balances(..)
+					| RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+					| RuntimeCall::Indices(pallet_indices::Call::transfer { .. })
+					| RuntimeCall::NominationPools(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
-				RuntimeCall::Treasury(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Treasury(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Staking => matches!(c, RuntimeCall::Staking(..)),
 		}
@@ -661,8 +662,8 @@ impl Get<Option<BalancingConfig>> for OffchainRandomBalancing {
 			max => {
 				let seed = sp_io::offchain::random_seed();
 				let random = <u32>::decode(&mut TrailingZeroInput::new(&seed))
-					.expect("input is padded with zeroes; qed") %
-					max.saturating_add(1);
+					.expect("input is padded with zeroes; qed")
+					% max.saturating_add(1);
 				random as usize
 			},
 		};
@@ -1195,8 +1196,8 @@ parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
 	pub const MinValidatedNodesCount: u16 = 3;
-	pub ClusterActivatorTrackOrigin: RuntimeOrigin = pallet_origins::Origin::ClusterGovCreator.into();
-	pub ClusterUpdaterTrackOrigin: RuntimeOrigin = pallet_origins::Origin::ClusterGovEditor.into();
+	pub ClusterProtocolActivatorTrackOrigin: RuntimeOrigin = pallet_origins::Origin::ClusterProtocolActivator.into();
+	pub ClusterProtocolUpdaterTrackOrigin: RuntimeOrigin = pallet_origins::Origin::ClusterProtocolUpdater.into();
 	pub const ReferendumEnactmentDuration: BlockNumber = 1;
 }
 
@@ -1205,10 +1206,10 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type PalletId = ClustersGovPalletId;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
-	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterActivatorTrackOrigin, Self>;
-	type OpenGovActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterGovCreator>;
-	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterUpdaterTrackOrigin, Self>;
-	type OpenGovUpdaterOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterGovEditor>;
+	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterProtocolActivatorTrackOrigin, Self>;
+	type OpenGovActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterProtocolActivator>;
+	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterProtocolUpdaterTrackOrigin, Self>;
+	type OpenGovUpdaterOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterProtocolUpdater>;
 	type ClusterProposalCall = RuntimeCall;
 	type ClusterProposalDuration = ClusterProposalDuration;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;

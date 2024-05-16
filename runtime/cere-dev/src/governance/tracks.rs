@@ -189,31 +189,31 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		CLUSTER_ACTIVATOR_TRACK_ID,
+		CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID,
 		pallet_referenda::TrackInfo {
-			name: "cluster_activator",
+			name: "cluster_protocol_activator",
 			max_deciding: 50,
-			decision_deposit: 0, // todo: define value for Devnet
-			prepare_period: 0,   // todo: define value for Devnet
-			decision_period: MINUTES,
-			confirm_period: MINUTES / 2,
+			decision_deposit: DOLLARS, // todo: define value for Devnet
+			prepare_period: 0,         // todo: define value for Devnet
+			decision_period: 2 * MINUTES,
+			confirm_period: MINUTES,
 			min_enactment_period: 0, // todo: define value for Devnet
-			min_approval: APP_CLUSTER_ACTIVATOR,
-			min_support: SUP_CLUSTER_ACTIVATOR,
+			min_approval: APP_CLUSTER_PROTOCOL_ACTIVATOR,
+			min_support: SUP_CLUSTER_PROTOCOL_ACTIVATOR,
 		},
 	),
 	(
-		CLUSTER_ECONOMICS_UPDATER_TRACK_ID,
+		CLUSTER_PROTOCOL_UPDATER_TRACK_ID,
 		pallet_referenda::TrackInfo {
-			name: "cluster_economics_updater",
+			name: "cluster_protocol_updater",
 			max_deciding: 50,
-			decision_deposit: 0, // todo: define value for Devnet
-			prepare_period: 0,   // todo: define value for Devnet
-			decision_period: MINUTES,
-			confirm_period: MINUTES / 2,
+			decision_deposit: DOLLARS, // todo: define value for Devnet
+			prepare_period: 0,         // todo: define value for Devnet
+			decision_period: 2 * MINUTES,
+			confirm_period: MINUTES,
 			min_enactment_period: 0, // todo: define value for Devnet
-			min_approval: APP_CLUSTER_ECONOMICS_UPDATER,
-			min_support: SUP_CLUSTER_ECONOMICS_UPDATER,
+			min_approval: APP_CLUSTER_PROTOCOL_UPDATER,
+			min_support: SUP_CLUSTER_PROTOCOL_UPDATER,
 		},
 	),
 ];
@@ -253,9 +253,11 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 				pallet_origins::pallet::Origin::MediumSpender => Ok(MEDIUM_SPENDER_TRACK_ID),
 				pallet_origins::pallet::Origin::BigSpender => Ok(BIG_SPENDER_TRACK_ID),
 				// DDC admins
-				pallet_origins::pallet::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
-				pallet_origins::pallet::Origin::ClusterGovEditor => {
-					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID)
+				pallet_origins::pallet::Origin::ClusterProtocolActivator => {
+					Ok(CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID)
+				},
+				pallet_origins::pallet::Origin::ClusterProtocolUpdater => {
+					Ok(CLUSTER_PROTOCOL_UPDATER_TRACK_ID)
 				},
 			}
 		} else {
