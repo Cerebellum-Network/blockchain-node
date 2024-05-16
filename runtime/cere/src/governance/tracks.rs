@@ -7,7 +7,7 @@ use crate::{Balance, BlockNumber};
 
 const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15] = [
 	(
-		0,
+		ROOT_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "root",
 			max_deciding: 1,
@@ -21,7 +21,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		1,
+		WHITELISTED_CALLER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "whitelisted_caller",
 			max_deciding: 100,
@@ -35,7 +35,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		10,
+		STAKING_ADMIN_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "staking_admin",
 			max_deciding: 10,
@@ -49,7 +49,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		11,
+		TREASURER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "treasurer",
 			max_deciding: 10,
@@ -63,7 +63,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		13,
+		FELLOWSHIP_ADMIN_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "fellowship_admin",
 			max_deciding: 10,
@@ -77,7 +77,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		14,
+		GENERAL_ADMIN_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "general_admin",
 			max_deciding: 10,
@@ -91,7 +91,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		20,
+		REFERENDUM_CANCELER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "referendum_canceller",
 			max_deciding: 1_000,
@@ -105,7 +105,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		21,
+		REFERENDUM_KILLER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "referendum_killer",
 			max_deciding: 1_000,
@@ -119,7 +119,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		30,
+		SMALL_TIPPER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "small_tipper",
 			max_deciding: 200,
@@ -133,7 +133,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		31,
+		BIG_TIPPER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "big_tipper",
 			max_deciding: 100,
@@ -147,7 +147,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		32,
+		SMALL_SPENDER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "small_spender",
 			max_deciding: 50,
@@ -161,7 +161,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		33,
+		MEDIUM_SPENDER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "medium_spender",
 			max_deciding: 50,
@@ -175,7 +175,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		34,
+		BIG_SPENDER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "big_spender",
 			max_deciding: 50,
@@ -189,7 +189,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		100,
+		CLUSTER_ACTIVATOR_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "cluster_activator",
 			max_deciding: 50,
@@ -203,7 +203,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		101,
+		CLUSTER_ECONOMICS_UPDATER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "cluster_economics_updater",
 			max_deciding: 50,
@@ -228,30 +228,35 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
 		if let Ok(system_origin) = frame_system::RawOrigin::try_from(id.clone()) {
 			match system_origin {
-				frame_system::RawOrigin::Root => Ok(0),
+				frame_system::RawOrigin::Root => Ok(ROOT_TRACK_ID),
 				_ => Err(()),
 			}
 		} else if let Ok(custom_origin) = pallet_origins::pallet::Origin::try_from(id.clone()) {
 			match custom_origin {
-				pallet_origins::pallet::Origin::WhitelistedCaller => Ok(1),
+				pallet_origins::pallet::Origin::WhitelistedCaller => {
+					Ok(WHITELISTED_CALLER_TRACK_ID)
+				},
 				// General admin
-				pallet_origins::pallet::Origin::StakingAdmin => Ok(10),
-				pallet_origins::pallet::Origin::Treasurer => Ok(11),
-				pallet_origins::pallet::Origin::FellowshipAdmin => Ok(13),
-				pallet_origins::pallet::Origin::GeneralAdmin => Ok(14),
+				pallet_origins::pallet::Origin::StakingAdmin => Ok(STAKING_ADMIN_TRACK_ID),
+				pallet_origins::pallet::Origin::Treasurer => Ok(TREASURER_TRACK_ID),
+				pallet_origins::pallet::Origin::FellowshipAdmin => Ok(FELLOWSHIP_ADMIN_TRACK_ID),
+				pallet_origins::pallet::Origin::GeneralAdmin => Ok(GENERAL_ADMIN_TRACK_ID),
 				// Referendum admins
-				pallet_origins::pallet::Origin::ReferendumCanceller => Ok(20),
-				pallet_origins::pallet::Origin::ReferendumKiller => Ok(21),
+				pallet_origins::pallet::Origin::ReferendumCanceller => {
+					Ok(REFERENDUM_CANCELER_TRACK_ID)
+				},
+				pallet_origins::pallet::Origin::ReferendumKiller => Ok(REFERENDUM_KILLER_TRACK_ID),
 				// Limited treasury spenders
-				pallet_origins::pallet::Origin::SmallTipper => Ok(30),
-				pallet_origins::pallet::Origin::BigTipper => Ok(31),
-				pallet_origins::pallet::Origin::SmallSpender => Ok(32),
-				pallet_origins::pallet::Origin::MediumSpender => Ok(33),
-				pallet_origins::pallet::Origin::BigSpender => Ok(34),
+				pallet_origins::pallet::Origin::SmallTipper => Ok(SMALL_TIPPER_TRACK_ID),
+				pallet_origins::pallet::Origin::BigTipper => Ok(BIG_TIPPER_TRACK_ID),
+				pallet_origins::pallet::Origin::SmallSpender => Ok(SMALL_SPENDER_TRACK_ID),
+				pallet_origins::pallet::Origin::MediumSpender => Ok(MEDIUM_SPENDER_TRACK_ID),
+				pallet_origins::pallet::Origin::BigSpender => Ok(BIG_SPENDER_TRACK_ID),
 				// DDC admins
 				pallet_origins::pallet::Origin::ClusterGovCreator => Ok(CLUSTER_ACTIVATOR_TRACK_ID),
-				pallet_origins::pallet::Origin::ClusterGovEditor =>
-					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID),
+				pallet_origins::pallet::Origin::ClusterGovEditor => {
+					Ok(CLUSTER_ECONOMICS_UPDATER_TRACK_ID)
+				},
 			}
 		} else {
 			Err(())

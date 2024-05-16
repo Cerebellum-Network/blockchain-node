@@ -132,6 +132,25 @@ pub mod tracks {
 	pub const SUP_CLUSTER_ECONOMICS_UPDATER: Curve =
 		Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
 
+	// Root track
+	pub const ROOT_TRACK_ID: u16 = 0;
+	// Whitelister track
+	pub const WHITELISTED_CALLER_TRACK_ID: u16 = 1;
+	// General admin tracks
+	pub const STAKING_ADMIN_TRACK_ID: u16 = 10;
+	pub const TREASURER_TRACK_ID: u16 = 11;
+	pub const FELLOWSHIP_ADMIN_TRACK_ID: u16 = 13;
+	pub const GENERAL_ADMIN_TRACK_ID: u16 = 14;
+	// Referendum admins tracks
+	pub const REFERENDUM_CANCELER_TRACK_ID: u16 = 20;
+	pub const REFERENDUM_KILLER_TRACK_ID: u16 = 21;
+	// Limited treasury spenders tracks
+	pub const SMALL_TIPPER_TRACK_ID: u16 = 30;
+	pub const BIG_TIPPER_TRACK_ID: u16 = 31;
+	pub const SMALL_SPENDER_TRACK_ID: u16 = 32;
+	pub const MEDIUM_SPENDER_TRACK_ID: u16 = 33;
+	pub const BIG_SPENDER_TRACK_ID: u16 = 34;
+	// DDC admins tracks
 	pub const CLUSTER_ACTIVATOR_TRACK_ID: u16 = 100;
 	pub const CLUSTER_ECONOMICS_UPDATER_TRACK_ID: u16 = 101;
 }
