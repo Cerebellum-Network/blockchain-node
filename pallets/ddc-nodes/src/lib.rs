@@ -185,7 +185,7 @@ pub mod pallet {
 			match node {
 				Node::Storage(storage_node) => {
 					if StorageNodes::<T>::contains_key(&storage_node.pub_key) {
-						return Err(NodeRepositoryError::StorageNodeAlreadyExists)
+						return Err(NodeRepositoryError::StorageNodeAlreadyExists);
 					}
 					StorageNodes::<T>::insert(storage_node.pub_key.clone(), storage_node);
 					Ok(())
@@ -206,7 +206,7 @@ pub mod pallet {
 			match node {
 				Node::Storage(storage_node) => {
 					if !StorageNodes::<T>::contains_key(&storage_node.pub_key) {
-						return Err(NodeRepositoryError::StorageNodeDoesNotExist)
+						return Err(NodeRepositoryError::StorageNodeDoesNotExist);
 					}
 					StorageNodes::<T>::insert(storage_node.pub_key.clone(), storage_node);
 				},
