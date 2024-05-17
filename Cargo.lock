@@ -5206,7 +5206,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-clusters-gov"
-version = "4.8.2"
+version = "5.3.0"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
