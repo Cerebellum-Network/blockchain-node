@@ -1,8 +1,6 @@
 //! storage migrations for pallet
 #![allow(clippy::type_complexity)]
-use frame_support::{
-	log, pallet_prelude::*, traits::OnRuntimeUpgrade, weights::Weight, DefaultNoBound,
-};
+use frame_support::{pallet_prelude::*, traits::OnRuntimeUpgrade, weights::Weight, DefaultNoBound};
 use pallet_contracts::migration::{IsFinished, MigrationStep};
 use sp_std::marker::PhantomData;
 #[cfg(feature = "try-runtime")]
