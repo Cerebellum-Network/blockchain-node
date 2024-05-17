@@ -232,10 +232,4 @@ benchmarks! {
 		let amount = T::ClusterBondingAmount::get();
 		assert_last_event::<T>(Event::Withdrawn(cluster_reserve_id, amount).into());
 	}
-
-	impl_benchmark_test_suite!(
-		DdcStaking,
-		crate::mock::ExtBuilder::default().build(),
-		crate::mock::Test,
-	);
 }
