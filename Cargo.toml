@@ -1,5 +1,5 @@
 [workspace.package]
-version = "5.3.0"
+version = "5.4.0"
 authors = ["Cerebellum-Network"]
 edition = "2021"
 homepage = "https://cere.network/"
@@ -19,6 +19,8 @@ members = [
   "pallets/ddc-staking",
   "pallets/erc20",
   "pallets/erc721",
+  "pallets/ddc-clusters-gov",
+  "pallets/origins",
   "primitives",
   "runtime/cere",
   "runtime/cere-dev",
@@ -175,12 +177,14 @@ cere-service = { path = "node/service" }
 ddc-primitives = { path = "primitives", default-features = false }
 pallet-chainbridge = { path = "pallets/chainbridge", default-features = false }
 pallet-ddc-clusters = { path = "pallets/ddc-clusters", default-features = false }
+pallet-ddc-clusters-gov = { path = "pallets/ddc-clusters-gov", default-features = false }
 pallet-ddc-customers = { path = "pallets/ddc-customers", default-features = false }
 pallet-ddc-nodes = { path = "pallets/ddc-nodes", default-features = false }
 pallet-ddc-payouts = { path = "pallets/ddc-payouts", default-features = false }
 pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
 pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
+pallet-origins = { path = "pallets/origins", default-features = false }
 
 [profile.release]
 panic = "unwind"

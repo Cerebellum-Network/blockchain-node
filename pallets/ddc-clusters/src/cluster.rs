@@ -1,10 +1,8 @@
 use codec::{Decode, Encode};
-use ddc_primitives::{ClusterId, ClusterParams};
+use ddc_primitives::{ClusterId, ClusterParams, ClusterStatus};
 use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
-
-use crate::pallet::Error;
 
 parameter_types! {
 	pub MaxClusterParamsLen: u16 = 2048;
@@ -16,6 +14,7 @@ pub struct Cluster<AccountId> {
 	pub manager_id: AccountId,
 	pub reserve_id: AccountId,
 	pub props: ClusterProps<AccountId>,
+	pub status: ClusterStatus,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
@@ -32,8 +31,8 @@ impl<AccountId> Cluster<AccountId> {
 		manager_id: AccountId,
 		reserve_id: AccountId,
 		cluster_params: ClusterParams<AccountId>,
-	) -> Result<Cluster<AccountId>, ClusterError> {
-		Ok(Cluster {
+	) -> Cluster<AccountId> {
+		Cluster {
 			cluster_id,
 			manager_id,
 			reserve_id,
@@ -43,31 +42,24 @@ impl<AccountId> Cluster<AccountId> {
 				erasure_coding_total: cluster_params.erasure_coding_total,
 				replication_total: cluster_params.replication_total,
 			},
-		})
+			status: ClusterStatus::Unbonded,
+		}
 	}
 
-	pub fn set_params(
-		&mut self,
-		cluster_params: ClusterParams<AccountId>,
-	) -> Result<(), ClusterError> {
+	pub fn set_params(&mut self, cluster_params: ClusterParams<AccountId>) {
 		self.props = ClusterProps {
 			node_provider_auth_contract: cluster_params.node_provider_auth_contract,
 			erasure_coding_required: cluster_params.erasure_coding_required,
 			erasure_coding_total: cluster_params.erasure_coding_total,
 			replication_total: cluster_params.replication_total,
 		};
-		Ok(())
 	}
-}
 
-pub enum ClusterError {
-	ClusterParamsExceedsLimit,
-}
+	pub fn set_status(&mut self, status: ClusterStatus) {
+		self.status = status;
+	}
 
-impl<T> From<ClusterError> for Error<T> {
-	fn from(error: ClusterError) -> Self {
-		match error {
-			ClusterError::ClusterParamsExceedsLimit => Error::<T>::ClusterParamsExceedsLimit,
-		}
+	pub fn can_manage_nodes(&self) -> bool {
+		matches!(self.status, ClusterStatus::Bonded | ClusterStatus::Activated)
 	}
 }

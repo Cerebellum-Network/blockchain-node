@@ -6,15 +6,16 @@ use std::cell::RefCell;
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
-		node::{NodeVisitor, NodeVisitorError},
+		cluster::{ClusterManager, ClusterProtocol},
+		node::NodeVisitor,
+		ClusterQuery,
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
+	ClusterBondingParams, ClusterFeesParams, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus,
+	ClusterNodesStats, ClusterParams, ClusterPricingParams, ClusterProtocolParams, ClusterStatus,
 	NodeParams, NodePubKey, StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime,
-	dispatch::DispatchResult,
 	traits::{ConstU32, ConstU64, Everything},
 	weights::constants::RocksDbWeight,
 };
@@ -25,7 +26,7 @@ use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage, Perquintill,
+	BuildStorage, DispatchError, DispatchResult, Perquintill,
 };
 use sp_std::collections::btree_map::BTreeMap;
 
@@ -52,6 +53,8 @@ construct_runtime!(
 
 parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
+	pub static ClusterBondingAmount: Balance = 1;
+	pub static ClusterUnboningDelay: BlockNumber = 1;
 }
 
 impl frame_system::Config for Test {
@@ -107,18 +110,20 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-	type ClusterVisitor = TestClusterVisitor;
+	type ClusterProtocol = TestClusterProtocol;
 	type ClusterManager = TestClusterManager;
 	type NodeVisitor = MockNodeVisitor;
 	type NodeCreator = TestNodeCreator;
 	type ClusterCreator = TestClusterCreator;
+	type ClusterBondingAmount = ClusterBondingAmount;
+	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 pub struct TestNodeCreator;
 pub struct TestClusterCreator;
-pub struct TestClusterVisitor;
+pub struct TestClusterProtocol;
 
 impl<T: Config> NodeCreator<T> for TestNodeCreator {
 	fn create_node(
@@ -131,43 +136,53 @@ impl<T: Config> NodeCreator<T> for TestNodeCreator {
 }
 
 impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
-	fn create_new_cluster(
+	fn create_cluster(
 		_cluster_id: ClusterId,
 		_cluster_manager_id: T::AccountId,
 		_cluster_reserve_id: T::AccountId,
 		_cluster_params: ClusterParams<T::AccountId>,
-		_cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
+		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult {
 		Ok(())
 	}
 }
 
-impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
-	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
-		Ok(())
+impl<T: Config> ClusterQuery<T> for TestClusterProtocol {
+	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
+		true
 	}
-	fn get_bond_size(
+
+	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_manager_and_reserve_id(
 		_cluster_id: &ClusterId,
-		_node_type: NodeType,
-	) -> Result<u128, ClusterVisitorError> {
+	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
+		unimplemented!()
+	}
+}
+
+impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
+	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
 		Ok(10)
 	}
+
 	fn get_chill_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, ClusterVisitorError> {
-		Ok(BlockNumberFor::<T>::from(10u32))
-	}
-	fn get_unbonding_delay(
-		_cluster_id: &ClusterId,
-		_node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, ClusterVisitorError> {
+	) -> Result<BlockNumberFor<T>, DispatchError> {
 		Ok(BlockNumberFor::<T>::from(10u32))
 	}
 
-	fn get_pricing_params(
+	fn get_unbonding_delay(
 		_cluster_id: &ClusterId,
-	) -> Result<ClusterPricingParams, ClusterVisitorError> {
+		_node_type: NodeType,
+	) -> Result<BlockNumberFor<T>, DispatchError> {
+		Ok(BlockNumberFor::<T>::from(10u32))
+	}
+
+	fn get_pricing_params(_cluster_id: &ClusterId) -> Result<ClusterPricingParams, DispatchError> {
 		Ok(ClusterPricingParams {
 			unit_per_mb_stored: 2,
 			unit_per_mb_streamed: 3,
@@ -176,7 +191,7 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		})
 	}
 
-	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
+	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, DispatchError> {
 		Ok(ClusterFeesParams {
 			treasury_share: Perquintill::from_percent(1),
 			validators_share: Perquintill::from_percent(10),
@@ -184,54 +199,121 @@ impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
 		})
 	}
 
-	fn get_reserve_account_id(
-		_cluster_id: &ClusterId,
-	) -> Result<T::AccountId, ClusterVisitorError> {
-		Err(ClusterVisitorError::ClusterDoesNotExist)
-	}
-
 	fn get_bonding_params(
 		cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, ClusterVisitorError> {
+	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, DispatchError> {
 		Ok(ClusterBondingParams {
-			storage_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
-				cluster_id,
-				NodeType::Storage,
-			)
-			.unwrap_or_default(),
-			storage_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
-				cluster_id,
-				NodeType::Storage,
-			)
-			.unwrap_or_default(),
+			storage_bond_size:
+				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_bond_size(
+					cluster_id,
+					NodeType::Storage,
+				)
+				.unwrap_or_default(),
+			storage_chill_delay:
+				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_chill_delay(
+					cluster_id,
+					NodeType::Storage,
+				)
+				.unwrap_or_default(),
 			storage_unbonding_delay:
-				<TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
+				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_unbonding_delay(
 					cluster_id,
 					NodeType::Storage,
 				)
 				.unwrap_or_default(),
 		})
 	}
+
+	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+
+	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn update_cluster_protocol(
+		_cluster_id: &ClusterId,
+		_cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn bond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn start_unbond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn end_unbond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
+		unimplemented!()
+	}
 }
 
 pub struct TestClusterManager;
+impl<T: Config> ClusterQuery<T> for TestClusterManager {
+	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
+		true
+	}
+
+	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_manager_and_reserve_id(
+		_cluster_id: &ClusterId,
+	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
+		unimplemented!()
+	}
+}
+
 impl<T: Config> ClusterManager<T> for TestClusterManager {
-	fn contains_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
+	fn contains_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+		_validation_status: Option<ClusterNodeStatus>,
+	) -> bool {
 		true
 	}
 
 	fn add_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
-	) -> Result<(), ClusterManagerError> {
+		_node_kind: &ClusterNodeKind,
+	) -> Result<(), DispatchError> {
 		Ok(())
 	}
 
 	fn remove_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
-	) -> Result<(), ClusterManagerError> {
+	) -> Result<(), DispatchError> {
 		Ok(())
+	}
+
+	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_node_state(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<ClusterNodeState<BlockNumberFor<T>>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+		unimplemented!()
+	}
+
+	fn validate_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+		_succeeded: bool,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
 	}
 }
 
@@ -246,11 +328,12 @@ lazy_static! {
 pub struct MockNode {
 	pub cluster_id: Option<ClusterId>,
 	pub exists: bool,
+	pub node_provider_id: AccountId,
 }
 
 impl Default for MockNode {
 	fn default() -> Self {
-		Self { cluster_id: None, exists: true }
+		Self { cluster_id: None, exists: true, node_provider_id: 0 }
 	}
 }
 
@@ -271,8 +354,11 @@ impl MockNodeVisitor {
 	}
 }
 
-impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
-	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, NodeVisitorError> {
+impl<T: Config> NodeVisitor<T> for MockNodeVisitor
+where
+	<T as frame_system::Config>::AccountId: From<u64>,
+{
+	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
 		let lock = MOCK_NODE.lock();
 		let mock_ref = lock.borrow();
 		Ok(mock_ref.cluster_id)
@@ -281,6 +367,12 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 		let lock = MOCK_NODE.lock();
 		let mock_ref = lock.borrow();
 		mock_ref.exists
+	}
+
+	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
+		let lock = MOCK_NODE.lock();
+		let mock_ref = lock.borrow();
+		Ok(mock_ref.node_provider_id.into())
 	}
 }
 
@@ -374,8 +466,8 @@ impl ExtBuilder {
 			];
 		}
 
-		let _ =
-			pallet_ddc_staking::GenesisConfig::<Test> { storages }.assimilate_storage(&mut storage);
+		let _ = pallet_ddc_staking::GenesisConfig::<Test> { storages, clusters: vec![] }
+			.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}
