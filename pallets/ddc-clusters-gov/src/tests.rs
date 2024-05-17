@@ -1,9 +1,9 @@
 //! Tests for the module.
 
-use ddc_primitives::{ClusterGovParams, ClusterNodeKind, ClusterParams, StorageNodeParams};
+use ddc_primitives::{ClusterNodeKind, ClusterParams, ClusterProtocolParams, StorageNodeParams};
 use frame_support::{assert_noop, assert_ok};
 use pallet_conviction_voting::{AccountVote, Conviction, Vote};
-use pallet_ddc_clusters::Event::{ClusterActivated, ClusterGovParamsSet};
+use pallet_ddc_clusters::Event::{ClusterActivated, ClusterProtocolParamsSet};
 use pallet_referenda::ReferendumInfo;
 use sp_runtime::Perquintill;
 
@@ -29,7 +29,7 @@ fn cluster_protocol_activation_proposal_initiated() {
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -65,12 +65,12 @@ fn cluster_protocol_activation_proposal_initiated() {
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let not_cluster_manager = AccountId::from([0; 32]);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 		assert_noop!(
 			DdcClustersGov::propose_activate_cluster_protocol(
 				RuntimeOrigin::signed(not_cluster_manager.clone()),
 				cluster_id,
-				cluster_gov_params.clone()
+				cluster_protocol_params.clone()
 			),
 			Error::<Test>::NotClusterManager
 		);
@@ -81,7 +81,7 @@ fn cluster_protocol_activation_proposal_initiated() {
 			DdcClustersGov::propose_activate_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				not_cluster_id,
-				cluster_gov_params.clone()
+				cluster_protocol_params.clone()
 			),
 			Error::<Test>::NoCluster
 		);
@@ -89,7 +89,7 @@ fn cluster_protocol_activation_proposal_initiated() {
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone()
+			cluster_protocol_params.clone()
 		));
 
 		let proposal = ClusterProposal::<Test>::get(cluster_id);
@@ -101,7 +101,7 @@ fn cluster_protocol_activation_proposal_initiated() {
 				call: <Test as pallet::Config>::ClusterProposalCall::from(
 					Call::<Test>::activate_cluster_protocol {
 						cluster_id,
-						cluster_gov_params: cluster_gov_params.clone(),
+						cluster_protocol_params: cluster_protocol_params.clone(),
 					}
 				)
 			})
@@ -126,7 +126,7 @@ fn cluster_protocol_activation_proposal_fails_on_unexpected_state() {
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Unbonded,
 	);
 
@@ -162,13 +162,13 @@ fn cluster_protocol_activation_proposal_fails_on_unexpected_state() {
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		assert_noop!(
 			DdcClustersGov::propose_activate_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
-				cluster_gov_params.clone()
+				cluster_protocol_params.clone()
 			),
 			Error::<Test>::UnexpectedState
 		);
@@ -182,7 +182,7 @@ fn cluster_protocol_activation_proposal_fails_if_there_are_not_enough_validated_
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -200,13 +200,13 @@ fn cluster_protocol_activation_proposal_fails_if_there_are_not_enough_validated_
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		assert_noop!(
 			DdcClustersGov::propose_activate_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
-				cluster_gov_params.clone()
+				cluster_protocol_params.clone()
 			),
 			Error::<Test>::NotEnoughValidatedNodes
 		);
@@ -220,7 +220,7 @@ fn cluster_protocol_activation_proposal_fails_if_there_is_active_proposal() {
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -256,19 +256,19 @@ fn cluster_protocol_activation_proposal_fails_if_there_is_active_proposal() {
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone()
+			cluster_protocol_params.clone()
 		));
 
 		assert_noop!(
 			DdcClustersGov::propose_activate_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
-				cluster_gov_params.clone()
+				cluster_protocol_params.clone()
 			),
 			Error::<Test>::ActiveProposal
 		);
@@ -282,7 +282,7 @@ fn cluster_protocol_activation_is_restricted_for_system_origins() {
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -291,13 +291,13 @@ fn cluster_protocol_activation_is_restricted_for_system_origins() {
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		assert_noop!(
 			DdcClustersGov::activate_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
-				cluster_gov_params.clone()
+				cluster_protocol_params.clone()
 			),
 			DispatchError::BadOrigin
 		);
@@ -306,7 +306,7 @@ fn cluster_protocol_activation_is_restricted_for_system_origins() {
 			DdcClustersGov::activate_cluster_protocol(
 				RuntimeOrigin::root(),
 				cluster_id,
-				cluster_gov_params.clone()
+				cluster_protocol_params.clone()
 			),
 			DispatchError::BadOrigin
 		);
@@ -320,7 +320,7 @@ fn cluster_protocol_activation_is_allowed_for_referenda_cluster_protocol_activat
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -328,7 +328,7 @@ fn cluster_protocol_activation_is_allowed_for_referenda_cluster_protocol_activat
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
-		let cluster_gov_params = ClusterGovParams {
+		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(5.0),
 			validators_share: Perquintill::from_float(10.0),
 			cluster_reserve_share: Perquintill::from_float(15.0),
@@ -344,18 +344,18 @@ fn cluster_protocol_activation_is_allowed_for_referenda_cluster_protocol_activat
 		assert_ok!(DdcClustersGov::activate_cluster_protocol(
 			open_gov_activator,
 			cluster_id,
-			cluster_gov_params.clone()
+			cluster_protocol_params.clone()
 		));
 
 		let cluster = pallet_ddc_clusters::Clusters::<Test>::get(cluster_id).unwrap();
 		assert_eq!(cluster.status, ClusterStatus::Activated);
 
-		let updated_cluster_gov_params =
+		let updated_cluster_protocol_params =
 			pallet_ddc_clusters::ClustersGovParams::<Test>::get(cluster_id).unwrap();
-		assert_eq!(cluster_gov_params, updated_cluster_gov_params);
+		assert_eq!(cluster_protocol_params, updated_cluster_protocol_params);
 		assert_eq!(System::events().len(), 2);
 		System::assert_has_event(ClusterActivated { cluster_id }.into());
-		System::assert_last_event(ClusterGovParamsSet { cluster_id }.into());
+		System::assert_last_event(ClusterProtocolParamsSet { cluster_id }.into());
 	})
 }
 
@@ -366,7 +366,7 @@ fn cluster_protocol_activation_proposal_can_be_retracted_by_its_author() {
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -402,7 +402,7 @@ fn cluster_protocol_activation_proposal_can_be_retracted_by_its_author() {
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 		let not_cluster_id = ClusterId::from([0; 20]);
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
@@ -410,7 +410,7 @@ fn cluster_protocol_activation_proposal_can_be_retracted_by_its_author() {
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone()
+			cluster_protocol_params.clone()
 		));
 
 		assert!(ClusterProposal::<Test>::contains_key(cluster_id));
@@ -450,7 +450,7 @@ fn cluster_protocol_activation_proposal_cannot_be_initated_for_active_cluster() 
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -486,12 +486,12 @@ fn cluster_protocol_activation_proposal_cannot_be_initated_for_active_cluster() 
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 		assert_noop!(
 			DdcClustersGov::propose_activate_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
-				cluster_gov_params.clone()
+				cluster_protocol_params.clone()
 			),
 			Error::<Test>::UnexpectedState
 		);
@@ -505,7 +505,7 @@ fn cluster_protocol_update_proposal_initiated() {
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -542,7 +542,7 @@ fn cluster_protocol_update_proposal_initiated() {
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
-		let cluster_gov_params = ClusterGovParams {
+		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(5.0),
 			validators_share: Perquintill::from_float(10.0),
 			cluster_reserve_share: Perquintill::from_float(15.0),
@@ -562,7 +562,7 @@ fn cluster_protocol_update_proposal_initiated() {
 			DdcClustersGov::propose_update_cluster_protocol(
 				RuntimeOrigin::signed(not_cluster_member.clone()),
 				cluster_id,
-				cluster_gov_params.clone(),
+				cluster_protocol_params.clone(),
 				ClusterMember::NodeProvider(not_cluster_node_key.clone())
 			),
 			Error::<Test>::NotValidatedNode
@@ -573,7 +573,7 @@ fn cluster_protocol_update_proposal_initiated() {
 			DdcClustersGov::propose_update_cluster_protocol(
 				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 				not_cluster_id,
-				cluster_gov_params.clone(),
+				cluster_protocol_params.clone(),
 				ClusterMember::NodeProvider(cluster_node_1_key.clone())
 			),
 			Error::<Test>::NotValidatedNode
@@ -582,7 +582,7 @@ fn cluster_protocol_update_proposal_initiated() {
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::NodeProvider(cluster_node_1_key)
 		));
 
@@ -595,7 +595,7 @@ fn cluster_protocol_update_proposal_initiated() {
 				call: <Test as pallet::Config>::ClusterProposalCall::from(
 					Call::<Test>::update_cluster_protocol {
 						cluster_id,
-						cluster_gov_params: cluster_gov_params.clone(),
+						cluster_protocol_params: cluster_protocol_params.clone(),
 					}
 				)
 			})
@@ -620,7 +620,7 @@ fn cluster_protocol_update_proposal_fails_on_unexpected_state() {
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Unbonded,
 	);
 
@@ -656,13 +656,13 @@ fn cluster_protocol_update_proposal_fails_on_unexpected_state() {
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		assert_noop!(
 			DdcClustersGov::propose_update_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
-				cluster_gov_params.clone(),
+				cluster_protocol_params.clone(),
 				ClusterMember::ClusterManager
 			),
 			Error::<Test>::UnexpectedState
@@ -677,7 +677,7 @@ fn cluster_protocol_update_proposal_fails_if_there_are_not_enough_validated_node
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -695,13 +695,13 @@ fn cluster_protocol_update_proposal_fails_if_there_are_not_enough_validated_node
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		assert_noop!(
 			DdcClustersGov::propose_update_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
-				cluster_gov_params.clone(),
+				cluster_protocol_params.clone(),
 				ClusterMember::ClusterManager
 			),
 			Error::<Test>::NotEnoughValidatedNodes
@@ -716,7 +716,7 @@ fn cluster_protocol_update_proposal_fails_if_there_is_active_proposal() {
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -752,12 +752,12 @@ fn cluster_protocol_update_proposal_fails_if_there_is_active_proposal() {
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::ClusterManager
 		));
 
@@ -765,7 +765,7 @@ fn cluster_protocol_update_proposal_fails_if_there_is_active_proposal() {
 			DdcClustersGov::propose_update_cluster_protocol(
 				RuntimeOrigin::signed(cluster_manager.clone()),
 				cluster_id,
-				cluster_gov_params.clone(),
+				cluster_protocol_params.clone(),
 				ClusterMember::ClusterManager
 			),
 			Error::<Test>::ActiveProposal
@@ -780,7 +780,7 @@ fn cluster_protocol_update_is_restricted_for_system_origins() {
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -798,13 +798,13 @@ fn cluster_protocol_update_is_restricted_for_system_origins() {
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		assert_noop!(
 			DdcClustersGov::update_cluster_protocol(
 				RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 				cluster_id,
-				cluster_gov_params.clone(),
+				cluster_protocol_params.clone(),
 			),
 			DispatchError::BadOrigin
 		);
@@ -813,7 +813,7 @@ fn cluster_protocol_update_is_restricted_for_system_origins() {
 			DdcClustersGov::update_cluster_protocol(
 				RuntimeOrigin::root(),
 				cluster_id,
-				cluster_gov_params.clone(),
+				cluster_protocol_params.clone(),
 			),
 			DispatchError::BadOrigin
 		);
@@ -827,7 +827,7 @@ fn cluster_protocol_update_is_allowed_for_referenda_cluster_protocol_updater_tra
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -835,7 +835,7 @@ fn cluster_protocol_update_is_allowed_for_referenda_cluster_protocol_updater_tra
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
-		let cluster_gov_params = ClusterGovParams {
+		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(5.0),
 			validators_share: Perquintill::from_float(10.0),
 			cluster_reserve_share: Perquintill::from_float(15.0),
@@ -851,14 +851,14 @@ fn cluster_protocol_update_is_allowed_for_referenda_cluster_protocol_updater_tra
 		assert_ok!(DdcClustersGov::update_cluster_protocol(
 			open_gov_updater,
 			cluster_id,
-			cluster_gov_params.clone()
+			cluster_protocol_params.clone()
 		));
 
-		let updated_cluster_gov_params =
+		let updated_cluster_protocol_params =
 			pallet_ddc_clusters::ClustersGovParams::<Test>::get(cluster_id).unwrap();
-		assert_eq!(cluster_gov_params, updated_cluster_gov_params);
+		assert_eq!(cluster_protocol_params, updated_cluster_protocol_params);
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(ClusterGovParamsSet { cluster_id }.into());
+		System::assert_last_event(ClusterProtocolParamsSet { cluster_id }.into());
 	})
 }
 
@@ -869,7 +869,7 @@ fn cluster_protocol_update_proposal_can_be_retracted_by_its_author() {
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -905,7 +905,7 @@ fn cluster_protocol_update_proposal_can_be_retracted_by_its_author() {
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 		let not_cluster_id = ClusterId::from([0; 20]);
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
@@ -914,7 +914,7 @@ fn cluster_protocol_update_proposal_can_be_retracted_by_its_author() {
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::NodeProvider(cluster_node_1_key)
 		));
 
@@ -956,7 +956,7 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -998,7 +998,7 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -1012,7 +1012,7 @@ fn cluster_protocol_activation_proposal_early_approved_with_supermajority_consen
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone()
+			cluster_protocol_params.clone()
 		));
 		let seats = 4; // 3 validated nodes + 1 cluster manager
 		let threshold = <Test as pallet::Config>::SeatsConsensus::get_threshold(seats);
@@ -1284,7 +1284,7 @@ fn cluster_protocol_activation_proposal_approved_with_supermajority_consensus_an
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -1327,7 +1327,7 @@ fn cluster_protocol_activation_proposal_approved_with_supermajority_consensus_an
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -1335,7 +1335,7 @@ fn cluster_protocol_activation_proposal_approved_with_supermajority_consensus_an
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 		));
 
 		assert_ok!(DdcClustersGov::vote_proposal(
@@ -1413,7 +1413,7 @@ fn cluster_protocol_activation_proposal_early_disapproved_with_supermajority_con
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -1455,7 +1455,7 @@ fn cluster_protocol_activation_proposal_early_disapproved_with_supermajority_con
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -1469,7 +1469,7 @@ fn cluster_protocol_activation_proposal_early_disapproved_with_supermajority_con
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 		));
 
 		assert_ok!(DdcClustersGov::vote_proposal(
@@ -1529,7 +1529,7 @@ fn cluster_protocol_activation_proposal_disapproved_with_supermajority_consensus
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -1571,7 +1571,7 @@ fn cluster_protocol_activation_proposal_disapproved_with_supermajority_consensus
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -1579,7 +1579,7 @@ fn cluster_protocol_activation_proposal_disapproved_with_supermajority_consensus
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone()
+			cluster_protocol_params.clone()
 		));
 
 		assert_ok!(DdcClustersGov::vote_proposal(
@@ -1629,7 +1629,7 @@ fn cluster_protocol_activation_proposal_cannot_be_closed_if_threshold_is_not_rea
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -1671,12 +1671,12 @@ fn cluster_protocol_activation_proposal_cannot_be_closed_if_threshold_is_not_rea
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone()
+			cluster_protocol_params.clone()
 		));
 
 		assert_ok!(DdcClustersGov::vote_proposal(
@@ -1708,7 +1708,7 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -1750,7 +1750,7 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -1764,7 +1764,7 @@ fn cluster_protocol_activation_proposal_early_approved_with_unanimous_consensus_
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone()
+			cluster_protocol_params.clone()
 		));
 		let seats = 4; // 3 validated nodes + 1 cluster manager
 		let threshold = <Test as pallet::Config>::SeatsConsensus::get_threshold(seats);
@@ -2035,7 +2035,7 @@ fn cluster_protocol_activation_proposal_approved_with_unanimous_consensus_and_na
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -2078,7 +2078,7 @@ fn cluster_protocol_activation_proposal_approved_with_unanimous_consensus_and_na
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -2092,7 +2092,7 @@ fn cluster_protocol_activation_proposal_approved_with_unanimous_consensus_and_na
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 		));
 
 		assert_ok!(DdcClustersGov::vote_proposal(
@@ -2184,7 +2184,7 @@ fn cluster_protocol_activation_proposal_early_disapproved_with_unanimous_consens
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -2226,7 +2226,7 @@ fn cluster_protocol_activation_proposal_early_disapproved_with_unanimous_consens
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -2240,7 +2240,7 @@ fn cluster_protocol_activation_proposal_early_disapproved_with_unanimous_consens
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 		));
 
 		assert_ok!(DdcClustersGov::vote_proposal(
@@ -2300,7 +2300,7 @@ fn cluster_protocol_activation_proposal_disapproved_with_unanimous_consensus_and
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -2343,7 +2343,7 @@ fn cluster_protocol_activation_proposal_disapproved_with_unanimous_consensus_and
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -2354,7 +2354,7 @@ fn cluster_protocol_activation_proposal_disapproved_with_unanimous_consensus_and
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone()
+			cluster_protocol_params.clone()
 		));
 
 		assert_ok!(DdcClustersGov::vote_proposal(
@@ -2411,7 +2411,7 @@ fn cluster_protocol_activation_proposal_cannot_be_closed_if_threshold_is_not_rea
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Bonded,
 	);
 
@@ -2453,7 +2453,7 @@ fn cluster_protocol_activation_proposal_cannot_be_closed_if_threshold_is_not_rea
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -2464,7 +2464,7 @@ fn cluster_protocol_activation_proposal_cannot_be_closed_if_threshold_is_not_rea
 		assert_ok!(DdcClustersGov::propose_activate_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone()
+			cluster_protocol_params.clone()
 		));
 
 		assert_ok!(DdcClustersGov::vote_proposal(
@@ -2510,7 +2510,7 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -2552,7 +2552,7 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -2566,7 +2566,7 @@ fn cluster_protocol_update_proposal_early_approved_with_supermajority_consensus_
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::NodeProvider(cluster_node_3_key.clone()),
 		));
 		let seats = 4; // 3 validated nodes + 1 cluster manager
@@ -2842,7 +2842,7 @@ fn cluster_protocol_update_proposal_approved_with_supermajority_consensus_and_pr
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -2884,7 +2884,7 @@ fn cluster_protocol_update_proposal_approved_with_supermajority_consensus_and_pr
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -2895,7 +2895,7 @@ fn cluster_protocol_update_proposal_approved_with_supermajority_consensus_and_pr
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::NodeProvider(cluster_node_1_key.clone())
 		));
 
@@ -2974,7 +2974,7 @@ fn cluster_protocol_update_proposal_early_disapproved_with_supermajority_consens
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -3016,7 +3016,7 @@ fn cluster_protocol_update_proposal_early_disapproved_with_supermajority_consens
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -3030,7 +3030,7 @@ fn cluster_protocol_update_proposal_early_disapproved_with_supermajority_consens
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::ClusterManager
 		));
 
@@ -3091,7 +3091,7 @@ fn cluster_protocol_update_proposal_disapproved_with_supermajority_consensus_and
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -3133,7 +3133,7 @@ fn cluster_protocol_update_proposal_disapproved_with_supermajority_consensus_and
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -3141,7 +3141,7 @@ fn cluster_protocol_update_proposal_disapproved_with_supermajority_consensus_and
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::NodeProvider(cluster_node_1_key.clone())
 		));
 
@@ -3192,7 +3192,7 @@ fn cluster_protocol_update_proposal_cannot_be_closed_if_threshold_is_not_reached
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -3233,7 +3233,7 @@ fn cluster_protocol_update_proposal_cannot_be_closed_if_threshold_is_not_reached
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -3241,7 +3241,7 @@ fn cluster_protocol_update_proposal_cannot_be_closed_if_threshold_is_not_reached
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::NodeProvider(cluster_node_1_key.clone())
 		));
 
@@ -3273,7 +3273,7 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -3315,7 +3315,7 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -3329,7 +3329,7 @@ fn cluster_protocol_update_proposal_early_approved_with_unanimous_consensus_and_
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_3_provider.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::NodeProvider(cluster_node_3_key.clone()),
 		));
 		let seats = 4; // 3 validated nodes + 1 cluster manager
@@ -3605,7 +3605,7 @@ fn cluster_protocol_update_proposal_approved_with_unanimous_consensus_and_nay_de
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -3647,7 +3647,7 @@ fn cluster_protocol_update_proposal_approved_with_unanimous_consensus_and_nay_de
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -3661,7 +3661,7 @@ fn cluster_protocol_update_proposal_approved_with_unanimous_consensus_and_nay_de
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::NodeProvider(cluster_node_1_key.clone())
 		));
 
@@ -3754,7 +3754,7 @@ fn cluster_protocol_update_proposal_early_disapproved_with_unanimous_consensus_a
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -3796,7 +3796,7 @@ fn cluster_protocol_update_proposal_early_disapproved_with_unanimous_consensus_a
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -3810,7 +3810,7 @@ fn cluster_protocol_update_proposal_early_disapproved_with_unanimous_consensus_a
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_manager.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::ClusterManager
 		));
 
@@ -3870,7 +3870,7 @@ fn cluster_protocol_update_proposal_disapproved_with_unanimous_consensus_and_nay
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -3913,7 +3913,7 @@ fn cluster_protocol_update_proposal_disapproved_with_unanimous_consensus_and_nay
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let cluster_manager = AccountId::from(CLUSTER_MANAGER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -3924,7 +3924,7 @@ fn cluster_protocol_update_proposal_disapproved_with_unanimous_consensus_and_nay
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::NodeProvider(cluster_node_1_key.clone())
 		));
 
@@ -3982,7 +3982,7 @@ fn cluster_protocol_update_proposal_cannot_be_closed_if_threshold_is_not_reached
 		CLUSTER_MANAGER_ID,
 		CLUSTER_RESERVE_ID,
 		ClusterParams::default(),
-		ClusterGovParams::default(),
+		ClusterProtocolParams::default(),
 		ClusterStatus::Activated,
 	);
 
@@ -4023,7 +4023,7 @@ fn cluster_protocol_update_proposal_cannot_be_closed_if_threshold_is_not_reached
 		fast_forward_to(1);
 
 		let cluster_id = ClusterId::from(CLUSTER_ID);
-		let cluster_gov_params = ClusterGovParams::default();
+		let cluster_protocol_params = ClusterProtocolParams::default();
 
 		let cluster_node_1_provider = AccountId::from(NODE_PROVIDER_ID_1);
 		let cluster_node_1_key = NodePubKey::StoragePubKey(AccountId::from(NODE_PUB_KEY_1));
@@ -4037,7 +4037,7 @@ fn cluster_protocol_update_proposal_cannot_be_closed_if_threshold_is_not_reached
 		assert_ok!(DdcClustersGov::propose_update_cluster_protocol(
 			RuntimeOrigin::signed(cluster_node_1_provider.clone()),
 			cluster_id,
-			cluster_gov_params.clone(),
+			cluster_protocol_params.clone(),
 			ClusterMember::NodeProvider(cluster_node_1_key.clone())
 		));
 

@@ -2,8 +2,8 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use ddc_primitives::{
-	ClusterBondingParams, ClusterGovParams, ClusterId, ClusterNodeKind, ClusterParams, NodeParams,
-	StorageNodeMode, StorageNodeParams, StorageNodePubKey,
+	ClusterBondingParams, ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams,
+	NodeParams, StorageNodeMode, StorageNodeParams, StorageNodePubKey,
 };
 use frame_benchmarking::{account, benchmarks};
 use frame_system::RawOrigin;
@@ -35,7 +35,7 @@ pub fn create_cluster_with_nodes<T: Config>(
 	is_activated: bool,
 ) {
 	let bond_size: BalanceOf<T> = 10000_u32.saturated_into::<BalanceOf<T>>();
-	let cluster_gov_params = ClusterGovParams {
+	let cluster_protocol_params = ClusterProtocolParams {
 		treasury_share: Perquintill::from_percent(10),
 		validators_share: Perquintill::from_percent(20),
 		cluster_reserve_share: Perquintill::from_percent(30),
@@ -60,7 +60,7 @@ pub fn create_cluster_with_nodes<T: Config>(
 		cluster_manager_id.clone(),
 		cluster_reserve_id.clone(),
 		cluster_params,
-		cluster_gov_params.clone(),
+		cluster_protocol_params.clone(),
 	)
 	.expect("Cluster is not created");
 
@@ -144,7 +144,7 @@ benchmarks! {
 
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 
-	}: propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterGovParams::default())
+	}: propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterProtocolParams::default())
 	verify {
 		assert!(ClusterProposal::<T>::contains_key(cluster_id));
 		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
@@ -165,7 +165,7 @@ benchmarks! {
 
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes, true);
 
-	}: propose_update_cluster_protocol(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterGovParams::default(), ClusterMember::ClusterManager)
+	}: propose_update_cluster_protocol(RawOrigin::Signed(cluster_manager_id), cluster_id, ClusterProtocolParams::default(), ClusterMember::ClusterManager)
 	verify {
 		assert!(ClusterProposal::<T>::contains_key(cluster_id));
 		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
@@ -187,7 +187,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
 
 		let (node_pub_key_1, node_provider_1) = cluster_nodes.first()
 			.map(|(key, provider)| (key.clone(), provider.clone()))
@@ -217,7 +217,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
 
 		for j in 0 .. m {
 			let (node_pub_key, node_provider) = &cluster_nodes.get(j as usize).unwrap();
@@ -263,7 +263,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
 
 		fn is_unanimous<T: Config>() -> bool {
 			let max_seats = 100;
@@ -333,7 +333,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
 
 		for j in 0 .. m {
 			let (node_pub_key, node_provider) = &cluster_nodes.get(j as usize).unwrap();
@@ -379,7 +379,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
 
 		let votes = ClusterProposalVoting::<T>::get(cluster_id).unwrap();
 		fast_forward_to::<T>(votes.end + BlockNumberFor::<T>::from(1_u32));
@@ -407,7 +407,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
 
 		assert!(ClusterProposal::<T>::contains_key(cluster_id));
 		assert!(ClusterProposalVoting::<T>::contains_key(cluster_id));
@@ -435,7 +435,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterGovParams::default())?;
+		DdcClustersGov::<T>::propose_activate_cluster_protocol(RawOrigin::Signed(cluster_manager_id.clone()).into(), cluster_id, ClusterProtocolParams::default())?;
 
 		for i in 0 .. 3 {
 			let (node_pub_key, node_provider) = &cluster_nodes.get(i as usize).unwrap();
@@ -483,7 +483,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), false);
 		next_block::<T>();
 
-	}: activate_cluster_protocol(RawOrigin::Root, cluster_id, ClusterGovParams::default())
+	}: activate_cluster_protocol(RawOrigin::Root, cluster_id, ClusterProtocolParams::default())
 	verify {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_status = <T::ClusterProtocol as ClusterQuery<T>>::get_cluster_status(&cluster_id).unwrap();
@@ -505,7 +505,7 @@ benchmarks! {
 		create_cluster_with_nodes::<T>(cluster_id, cluster_manager_id.clone(), cluster_reserve_id.clone(), cluster_nodes.clone(), true);
 		next_block::<T>();
 
-	}: update_cluster_protocol(RawOrigin::Root, cluster_id, ClusterGovParams {
+	}: update_cluster_protocol(RawOrigin::Root, cluster_id, ClusterProtocolParams {
 		treasury_share: Perquintill::from_percent(5),
 		validators_share: Perquintill::from_percent(10),
 		cluster_reserve_share: Perquintill::from_percent(15),

@@ -23,7 +23,7 @@ fn create_cluster_works() {
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract = AccountId::from([3; 32]);
 
-		let cluster_gov_params = ClusterGovParams {
+		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
 			validators_share: Perquintill::from_float(0.01),
 			cluster_reserve_share: Perquintill::from_float(0.02),
@@ -47,7 +47,7 @@ fn create_cluster_works() {
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
-			cluster_gov_params.clone()
+			cluster_protocol_params.clone()
 		));
 
 		let created_cluster = DdcClusters::clusters(cluster_id).unwrap();
@@ -56,43 +56,47 @@ fn create_cluster_works() {
 		assert_eq!(created_cluster.reserve_id, cluster_reserve_id);
 		assert_eq!(created_cluster.props.node_provider_auth_contract, Some(auth_contract.clone()));
 
-		let created_cluster_gov_params = DdcClusters::clusters_gov_params(cluster_id).unwrap();
-		assert_eq!(created_cluster_gov_params.treasury_share, cluster_gov_params.treasury_share);
+		let created_cluster_protocol_params =
+			DdcClusters::clusters_protocol_params(cluster_id).unwrap();
 		assert_eq!(
-			created_cluster_gov_params.validators_share,
-			cluster_gov_params.validators_share
+			created_cluster_protocol_params.treasury_share,
+			cluster_protocol_params.treasury_share
 		);
 		assert_eq!(
-			created_cluster_gov_params.cluster_reserve_share,
-			cluster_gov_params.cluster_reserve_share
+			created_cluster_protocol_params.validators_share,
+			cluster_protocol_params.validators_share
 		);
 		assert_eq!(
-			created_cluster_gov_params.storage_bond_size,
-			cluster_gov_params.storage_bond_size
+			created_cluster_protocol_params.cluster_reserve_share,
+			cluster_protocol_params.cluster_reserve_share
 		);
 		assert_eq!(
-			created_cluster_gov_params.storage_chill_delay,
-			cluster_gov_params.storage_chill_delay
+			created_cluster_protocol_params.storage_bond_size,
+			cluster_protocol_params.storage_bond_size
 		);
 		assert_eq!(
-			created_cluster_gov_params.storage_unbonding_delay,
-			cluster_gov_params.storage_unbonding_delay
+			created_cluster_protocol_params.storage_chill_delay,
+			cluster_protocol_params.storage_chill_delay
 		);
 		assert_eq!(
-			created_cluster_gov_params.unit_per_mb_stored,
-			cluster_gov_params.unit_per_mb_stored
+			created_cluster_protocol_params.storage_unbonding_delay,
+			cluster_protocol_params.storage_unbonding_delay
 		);
 		assert_eq!(
-			created_cluster_gov_params.unit_per_mb_streamed,
-			cluster_gov_params.unit_per_mb_streamed
+			created_cluster_protocol_params.unit_per_mb_stored,
+			cluster_protocol_params.unit_per_mb_stored
 		);
 		assert_eq!(
-			created_cluster_gov_params.unit_per_put_request,
-			cluster_gov_params.unit_per_put_request
+			created_cluster_protocol_params.unit_per_mb_streamed,
+			cluster_protocol_params.unit_per_mb_streamed
 		);
 		assert_eq!(
-			created_cluster_gov_params.unit_per_get_request,
-			cluster_gov_params.unit_per_get_request
+			created_cluster_protocol_params.unit_per_put_request,
+			cluster_protocol_params.unit_per_put_request
+		);
+		assert_eq!(
+			created_cluster_protocol_params.unit_per_get_request,
+			cluster_protocol_params.unit_per_get_request
 		);
 
 		// Creating cluster with same id should fail
@@ -107,7 +111,7 @@ fn create_cluster_works() {
 					erasure_coding_total: 6,
 					replication_total: 3
 				},
-				cluster_gov_params
+				cluster_protocol_params
 			),
 			Error::<Test>::ClusterAlreadyExists
 		);
@@ -117,7 +121,7 @@ fn create_cluster_works() {
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 2);
 		System::assert_has_event(Event::ClusterCreated { cluster_id }.into());
-		System::assert_last_event(Event::ClusterGovParamsSet { cluster_id }.into());
+		System::assert_last_event(Event::ClusterProtocolParamsSet { cluster_id }.into());
 	})
 }
 
@@ -155,7 +159,7 @@ fn add_and_delete_node_works() {
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
-			ClusterGovParams {
+			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
 				validators_share: Perquintill::from_float(0.01),
 				cluster_reserve_share: Perquintill::from_float(0.02),
@@ -397,7 +401,7 @@ fn set_cluster_params_works() {
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
-			ClusterGovParams {
+			ClusterProtocolParams {
 				treasury_share: Perquintill::from_float(0.05),
 				validators_share: Perquintill::from_float(0.01),
 				cluster_reserve_share: Perquintill::from_float(0.02),
@@ -500,7 +504,7 @@ fn cluster_visitor_works() {
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract = AccountId::from([3; 32]);
 
-		let cluster_gov_params = ClusterGovParams {
+		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
 			validators_share: Perquintill::from_float(0.01),
 			cluster_reserve_share: Perquintill::from_float(0.02),
@@ -524,7 +528,7 @@ fn cluster_visitor_works() {
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
-			cluster_gov_params
+			cluster_protocol_params
 		));
 
 		assert!(<DdcClusters as ClusterQuery<Test>>::cluster_exists(&cluster_id));
@@ -635,7 +639,7 @@ fn cluster_creator_works() {
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract = AccountId::from([3; 32]);
 
-		let cluster_gov_params = ClusterGovParams {
+		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
 			validators_share: Perquintill::from_float(0.01),
 			cluster_reserve_share: Perquintill::from_float(0.02),
@@ -658,7 +662,7 @@ fn cluster_creator_works() {
 				erasure_coding_total: 6,
 				replication_total: 3
 			},
-			cluster_gov_params,
+			cluster_protocol_params,
 		));
 
 		assert!(Clusters::<Test>::contains_key(cluster_id));

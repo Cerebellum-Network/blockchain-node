@@ -1,6 +1,8 @@
 //! DdcStaking pallet benchmarking.
 
-use ddc_primitives::{ClusterGovParams, ClusterId, ClusterNodeKind, ClusterParams, NodePubKey};
+use ddc_primitives::{
+	ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams, NodePubKey,
+};
 pub use frame_benchmarking::{
 	account, benchmarks, impl_benchmark_test_suite, whitelist_account, whitelisted_caller,
 	BenchmarkError,
@@ -34,7 +36,7 @@ benchmarks! {
 								erasure_coding_total: 6,
 								replication_total: 3
 							};
-		let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
+		let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterProtocolParams {
 			treasury_share: Perquintill::default(),
 			validators_share: Perquintill::default(),
 			cluster_reserve_share: Perquintill::default(),
@@ -46,7 +48,7 @@ benchmarks! {
 			unit_per_put_request: 10,
 			unit_per_get_request: 10,
 		};
-	}: _(RawOrigin::Signed(user.clone()), cluster_id, user.clone(), cluster_params, cluster_gov_params)
+	}: _(RawOrigin::Signed(user.clone()), cluster_id, user.clone(), cluster_params, cluster_protocol_params)
 	verify {
 		assert!(Clusters::<T>::contains_key(cluster_id));
 	}

@@ -10,8 +10,8 @@ use ddc_primitives::{
 		node::NodeVisitor,
 		ClusterQuery,
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterNodeKind, ClusterNodeState,
-	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams, ClusterStatus,
+	ClusterBondingParams, ClusterFeesParams, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus,
+	ClusterNodesStats, ClusterParams, ClusterPricingParams, ClusterProtocolParams, ClusterStatus,
 	NodeParams, NodePubKey, StorageNodePubKey,
 };
 use frame_support::{
@@ -141,7 +141,7 @@ impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
 		_cluster_manager_id: T::AccountId,
 		_cluster_reserve_id: T::AccountId,
 		_cluster_params: ClusterParams<T::AccountId>,
-		_cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
+		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult {
 		Ok(())
 	}
@@ -234,7 +234,7 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 
 	fn update_cluster_protocol(
 		_cluster_id: &ClusterId,
-		_cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
+		_cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
 	) -> DispatchResult {
 		unimplemented!()
 	}

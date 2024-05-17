@@ -1,7 +1,7 @@
 //! DdcStaking pallet benchmarking.
 
 use ddc_primitives::{
-	ClusterGovParams, ClusterParams, NodeParams, NodeType, StorageNodeMode, StorageNodeParams,
+	ClusterParams, ClusterProtocolParams, NodeParams, NodeType, StorageNodeMode, StorageNodeParams,
 	StorageNodePubKey,
 };
 pub use frame_benchmarking::{
@@ -158,7 +158,7 @@ benchmarks! {
 				erasure_coding_total: 0,
 				replication_total: 0,
 			},
-			ClusterGovParams::default()
+			ClusterProtocolParams::default()
 		)?;
 
 		whitelist_account!(cluster_reserve_id);
@@ -186,7 +186,7 @@ benchmarks! {
 				erasure_coding_total: 0,
 				replication_total: 0,
 			},
-			ClusterGovParams::default()
+			ClusterProtocolParams::default()
 		)?;
 
 		DdcStaking::<T>::bond_cluster(RawOrigin::Signed(cluster_reserve_id.clone()).into(), cluster_id)?;
@@ -214,7 +214,7 @@ benchmarks! {
 				erasure_coding_total: 0,
 				replication_total: 0,
 			},
-			ClusterGovParams::default()
+			ClusterProtocolParams::default()
 		)?;
 
 		DdcStaking::<T>::bond_cluster(RawOrigin::Signed(cluster_reserve_id.clone()).into(), cluster_id)?;

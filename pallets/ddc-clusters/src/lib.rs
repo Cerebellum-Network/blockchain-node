@@ -34,9 +34,9 @@ use ddc_primitives::{
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
-	ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterStatus, NodePubKey, NodeType,
+	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
+	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
+	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
 };
 use frame_support::{
 	assert_ok,
@@ -100,7 +100,7 @@ pub mod pallet {
 		ClusterNodeAdded { cluster_id: ClusterId, node_pub_key: NodePubKey },
 		ClusterNodeRemoved { cluster_id: ClusterId, node_pub_key: NodePubKey },
 		ClusterParamsSet { cluster_id: ClusterId },
-		ClusterGovParamsSet { cluster_id: ClusterId },
+		ClusterProtocolParamsSet { cluster_id: ClusterId },
 		ClusterActivated { cluster_id: ClusterId },
 		ClusterBonded { cluster_id: ClusterId },
 		ClusterUnbonded { cluster_id: ClusterId },
@@ -131,7 +131,7 @@ pub mod pallet {
 		ClusterAlreadyActivated,
 		UnexpectedClusterStatus,
 		AttemptToValidateNotAssignedNode,
-		ClusterGovParamsNotSet,
+		ClusterProtocolParamsNotSet,
 		ArithmeticOverflow,
 		NodeIsNotAssignedToCluster,
 	}
@@ -142,9 +142,13 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, ClusterId, Cluster<T::AccountId>>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn clusters_gov_params)]
-	pub type ClustersGovParams<T: Config> =
-		StorageMap<_, Twox64Concat, ClusterId, ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>>;
+	#[pallet::getter(fn clusters_protocol_params)]
+	pub type ClustersGovParams<T: Config> = StorageMap<
+		_,
+		Twox64Concat,
+		ClusterId,
+		ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+	>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_nodes)]
@@ -167,8 +171,8 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub clusters: Vec<Cluster<T::AccountId>>,
 		#[allow(clippy::type_complexity)]
-		pub clusters_gov_params:
-			Vec<(ClusterId, ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>)>,
+		pub clusters_protocol_params:
+			Vec<(ClusterId, ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>)>,
 		#[allow(clippy::type_complexity)]
 		pub clusters_nodes: Vec<(ClusterId, Vec<(NodePubKey, ClusterNodeKind, ClusterNodeStatus)>)>,
 	}
@@ -177,7 +181,7 @@ pub mod pallet {
 		fn default() -> Self {
 			GenesisConfig {
 				clusters: Default::default(),
-				clusters_gov_params: Default::default(),
+				clusters_protocol_params: Default::default(),
 				clusters_nodes: Default::default(),
 			}
 		}
@@ -203,7 +207,7 @@ pub mod pallet {
 						erasure_coding_total: 6,
 						replication_total: 3
 					},
-					self.clusters_gov_params
+					self.clusters_protocol_params
 						.iter()
 						.find(|(id, _)| id == &cluster.cluster_id)
 						.unwrap()
@@ -266,7 +270,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
+			initial_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			let cluster_manager_id = ensure_signed(origin)?;
 			Self::do_create_cluster(
@@ -274,7 +278,7 @@ pub mod pallet {
 				cluster_manager_id,
 				cluster_reserve_id,
 				cluster_params,
-				cluster_gov_params,
+				initial_protocol_params,
 			)
 		}
 
@@ -395,7 +399,7 @@ pub mod pallet {
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
+			initial_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
 
@@ -418,8 +422,8 @@ pub mod pallet {
 
 			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
-			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
-			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id });
+			ClustersGovParams::<T>::insert(cluster_id, initial_protocol_params);
+			Self::deposit_event(Event::<T>::ClusterProtocolParamsSet { cluster_id });
 			ClustersNodesStats::<T>::insert(cluster_id, ClusterNodesStats::default());
 
 			Ok(())
@@ -478,15 +482,15 @@ pub mod pallet {
 
 		fn do_update_cluster_protocol(
 			cluster_id: &ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			ensure!(
 				ClustersGovParams::<T>::contains_key(cluster_id),
-				Error::<T>::ClusterGovParamsNotSet
+				Error::<T>::ClusterProtocolParamsNotSet
 			);
 
-			ClustersGovParams::<T>::insert(cluster_id, cluster_gov_params);
-			Self::deposit_event(Event::<T>::ClusterGovParamsSet { cluster_id: *cluster_id });
+			ClustersGovParams::<T>::insert(cluster_id, cluster_protocol_params);
+			Self::deposit_event(Event::<T>::ClusterProtocolParamsSet { cluster_id: *cluster_id });
 
 			Ok(())
 		}
@@ -711,11 +715,11 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			node_type: NodeType,
 		) -> Result<u128, DispatchError> {
-			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
+			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 			match node_type {
 				NodeType::Storage => {
-					Ok(cluster_gov_params.storage_bond_size.saturated_into::<u128>())
+					Ok(cluster_protocol_params.storage_bond_size.saturated_into::<u128>())
 				},
 			}
 		}
@@ -723,24 +727,24 @@ pub mod pallet {
 		fn get_pricing_params(
 			cluster_id: &ClusterId,
 		) -> Result<ClusterPricingParams, DispatchError> {
-			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
+			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 			Ok(ClusterPricingParams {
-				unit_per_mb_stored: cluster_gov_params.unit_per_mb_stored,
-				unit_per_mb_streamed: cluster_gov_params.unit_per_mb_streamed,
-				unit_per_put_request: cluster_gov_params.unit_per_put_request,
-				unit_per_get_request: cluster_gov_params.unit_per_get_request,
+				unit_per_mb_stored: cluster_protocol_params.unit_per_mb_stored,
+				unit_per_mb_streamed: cluster_protocol_params.unit_per_mb_streamed,
+				unit_per_put_request: cluster_protocol_params.unit_per_put_request,
+				unit_per_get_request: cluster_protocol_params.unit_per_get_request,
 			})
 		}
 
 		fn get_fees_params(cluster_id: &ClusterId) -> Result<ClusterFeesParams, DispatchError> {
-			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
+			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 
 			Ok(ClusterFeesParams {
-				treasury_share: cluster_gov_params.treasury_share,
-				validators_share: cluster_gov_params.validators_share,
-				cluster_reserve_share: cluster_gov_params.cluster_reserve_share,
+				treasury_share: cluster_protocol_params.treasury_share,
+				validators_share: cluster_protocol_params.validators_share,
+				cluster_reserve_share: cluster_protocol_params.cluster_reserve_share,
 			})
 		}
 
@@ -748,10 +752,10 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			node_type: NodeType,
 		) -> Result<BlockNumberFor<T>, DispatchError> {
-			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
+			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 			match node_type {
-				NodeType::Storage => Ok(cluster_gov_params.storage_chill_delay),
+				NodeType::Storage => Ok(cluster_protocol_params.storage_chill_delay),
 			}
 		}
 
@@ -759,22 +763,24 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			node_type: NodeType,
 		) -> Result<BlockNumberFor<T>, DispatchError> {
-			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
+			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 			match node_type {
-				NodeType::Storage => Ok(cluster_gov_params.storage_unbonding_delay),
+				NodeType::Storage => Ok(cluster_protocol_params.storage_unbonding_delay),
 			}
 		}
 
 		fn get_bonding_params(
 			cluster_id: &ClusterId,
 		) -> Result<ClusterBondingParams<BlockNumberFor<T>>, DispatchError> {
-			let cluster_gov_params = ClustersGovParams::<T>::try_get(cluster_id)
-				.map_err(|_| Error::<T>::ClusterGovParamsNotSet)?;
+			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
+				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 			Ok(ClusterBondingParams {
-				storage_bond_size: cluster_gov_params.storage_bond_size.saturated_into::<u128>(),
-				storage_chill_delay: cluster_gov_params.storage_chill_delay,
-				storage_unbonding_delay: cluster_gov_params.storage_unbonding_delay,
+				storage_bond_size: cluster_protocol_params
+					.storage_bond_size
+					.saturated_into::<u128>(),
+				storage_chill_delay: cluster_protocol_params.storage_chill_delay,
+				storage_unbonding_delay: cluster_protocol_params.storage_unbonding_delay,
 			})
 		}
 
@@ -790,9 +796,9 @@ pub mod pallet {
 
 		fn update_cluster_protocol(
 			cluster_id: &ClusterId,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
+			cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
-			Self::do_update_cluster_protocol(cluster_id, cluster_gov_params)
+			Self::do_update_cluster_protocol(cluster_id, cluster_protocol_params)
 		}
 
 		fn bond_cluster(cluster_id: &ClusterId) -> DispatchResult {
@@ -880,14 +886,14 @@ pub mod pallet {
 			cluster_manager_id: T::AccountId,
 			cluster_reserve_id: T::AccountId,
 			cluster_params: ClusterParams<T::AccountId>,
-			cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
+			initial_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
 		) -> DispatchResult {
 			Self::do_create_cluster(
 				cluster_id,
 				cluster_manager_id,
 				cluster_reserve_id,
 				cluster_params,
-				cluster_gov_params,
+				initial_protocol_params,
 			)
 		}
 	}

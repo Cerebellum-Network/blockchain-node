@@ -9,7 +9,7 @@ use ddc_primitives::{
 		pallet::{GetDdcOrigin, PalletsOriginOf},
 		SeatsConsensus,
 	},
-	ClusterGovParams, ClusterId, ClusterNodeKind, ClusterParams, NodeParams, NodePubKey,
+	ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams, NodeParams, NodePubKey,
 	StorageNodeParams, DOLLARS,
 };
 use frame_support::{
@@ -662,7 +662,7 @@ pub const NODE_PUB_KEY_3: [u8; 32] = [113; 32];
 pub const ENDOWMENT: u128 = 1000 * CERE;
 
 #[allow(clippy::type_complexity)]
-pub type BuiltCluster = (Cluster<AccountId>, ClusterGovParams<Balance, BlockNumber>);
+pub type BuiltCluster = (Cluster<AccountId>, ClusterProtocolParams<Balance, BlockNumber>);
 #[allow(clippy::type_complexity)]
 pub type BuiltNode = (NodePubKey, StorageNode<Test>, ClusterNodeStatus, ClusterNodeKind);
 
@@ -671,7 +671,7 @@ pub fn build_cluster(
 	manager_id: [u8; 32],
 	reserve_id: [u8; 32],
 	params: ClusterParams<AccountId>,
-	protocol_params: ClusterGovParams<Balance, BlockNumber>,
+	protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
 	status: ClusterStatus,
 ) -> BuiltCluster {
 	let mut cluster = Cluster::new(
@@ -721,7 +721,7 @@ impl ExtBuilder {
 			storage_nodes.push(node.clone());
 		}
 
-		let (clust, cluster_gov_params) = cluster;
+		let (clust, cluster_protocol_params) = cluster;
 		balances.push((clust.manager_id.clone(), ENDOWMENT));
 		balances.push((clust.reserve_id.clone(), ENDOWMENT));
 
@@ -736,7 +736,7 @@ impl ExtBuilder {
 
 		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
 			clusters: vec![clust.clone()],
-			clusters_gov_params: vec![(clust.cluster_id, cluster_gov_params)],
+			clusters_protocol_params: vec![(clust.cluster_id, cluster_protocol_params)],
 			clusters_nodes: vec![(clust.cluster_id, cluster_storage_nodes)],
 		}
 		.assimilate_storage(&mut storage);

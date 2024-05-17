@@ -1,7 +1,7 @@
 //! DdcStaking pallet benchmarking.
 
 use ddc_primitives::{
-	ClusterGovParams, ClusterId, ClusterParams, NodeParams, NodePubKey, StorageNodeMode,
+	ClusterId, ClusterParams, ClusterProtocolParams, NodeParams, NodePubKey, StorageNodeMode,
 	StorageNodeParams,
 };
 pub use frame_benchmarking::{
@@ -26,25 +26,26 @@ where
 		erasure_coding_total: 6,
 		replication_total: 3,
 	};
-	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
-		treasury_share: Perquintill::default(),
-		validators_share: Perquintill::default(),
-		cluster_reserve_share: Perquintill::default(),
-		storage_bond_size: 100u32.into(),
-		storage_chill_delay: 50u32.into(),
-		storage_unbonding_delay: 50u32.into(),
-		unit_per_mb_stored: 10,
-		unit_per_mb_streamed: 10,
-		unit_per_put_request: 10,
-		unit_per_get_request: 10,
-	};
+	let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
+		ClusterProtocolParams {
+			treasury_share: Perquintill::default(),
+			validators_share: Perquintill::default(),
+			cluster_reserve_share: Perquintill::default(),
+			storage_bond_size: 100u32.into(),
+			storage_chill_delay: 50u32.into(),
+			storage_unbonding_delay: 50u32.into(),
+			unit_per_mb_stored: 10,
+			unit_per_mb_streamed: 10,
+			unit_per_put_request: 10,
+			unit_per_get_request: 10,
+		};
 
 	let _ = DdcClusters::<T>::create_cluster(
 		RawOrigin::Signed(user.clone()).into(),
 		cluster_id,
 		user,
 		cluster_params,
-		cluster_gov_params,
+		cluster_protocol_params,
 	);
 }
 
@@ -72,25 +73,26 @@ where
 		p2p_port: 15000u16,
 	};
 
-	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
-		treasury_share: Perquintill::default(),
-		validators_share: Perquintill::default(),
-		cluster_reserve_share: Perquintill::default(),
-		storage_bond_size: 100u32.into(),
-		storage_chill_delay: 50u32.into(),
-		storage_unbonding_delay: 50u32.into(),
-		unit_per_mb_stored: 10,
-		unit_per_mb_streamed: 10,
-		unit_per_put_request: 10,
-		unit_per_get_request: 10,
-	};
+	let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
+		ClusterProtocolParams {
+			treasury_share: Perquintill::default(),
+			validators_share: Perquintill::default(),
+			cluster_reserve_share: Perquintill::default(),
+			storage_bond_size: 100u32.into(),
+			storage_chill_delay: 50u32.into(),
+			storage_unbonding_delay: 50u32.into(),
+			unit_per_mb_stored: 10,
+			unit_per_mb_streamed: 10,
+			unit_per_put_request: 10,
+			unit_per_get_request: 10,
+		};
 
 	let _ = DdcClusters::<T>::create_cluster(
 		RawOrigin::Signed(user.clone()).into(),
 		cluster_id,
 		user.clone(),
 		cluster_params,
-		cluster_gov_params,
+		cluster_protocol_params,
 	);
 
 	if let Ok(new_node) = Node::<T>::new(

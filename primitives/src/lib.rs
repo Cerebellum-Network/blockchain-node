@@ -39,12 +39,12 @@ impl<AccountId> Default for ClusterParams<AccountId> {
 	}
 }
 
-// ClusterGovParams includes Governance sensitive parameters
+// ClusterProtocolParams includes Governance sensitive parameters
 #[derive(
 	Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default, Serialize, Deserialize,
 )]
 #[scale_info(skip_type_params(Balance, BlockNumber, T))]
-pub struct ClusterGovParams<Balance, BlockNumber> {
+pub struct ClusterProtocolParams<Balance, BlockNumber> {
 	pub treasury_share: Perquintill,
 	pub validators_share: Perquintill,
 	pub cluster_reserve_share: Perquintill,

@@ -1,8 +1,8 @@
 //! Testing utils for ddc-staking.
 
 use ddc_primitives::{
-	ClusterGovParams, ClusterId, ClusterParams, NodeParams, StorageNodeMode, StorageNodeParams,
-	StorageNodePubKey,
+	ClusterId, ClusterParams, ClusterProtocolParams, NodeParams, StorageNodeMode,
+	StorageNodeParams, StorageNodePubKey,
 };
 use frame_benchmarking::account;
 use frame_support::traits::Currency;
@@ -117,24 +117,25 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 		erasure_coding_total: 6,
 		replication_total: 3,
 	};
-	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
-		treasury_share: Perquintill::default(),
-		validators_share: Perquintill::default(),
-		cluster_reserve_share: Perquintill::default(),
-		storage_bond_size: 10u32.into(),
-		storage_chill_delay: 50u32.into(),
-		storage_unbonding_delay: 50u32.into(),
-		unit_per_mb_stored: 10,
-		unit_per_mb_streamed: 10,
-		unit_per_put_request: 10,
-		unit_per_get_request: 10,
-	};
+	let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
+		ClusterProtocolParams {
+			treasury_share: Perquintill::default(),
+			validators_share: Perquintill::default(),
+			cluster_reserve_share: Perquintill::default(),
+			storage_bond_size: 10u32.into(),
+			storage_chill_delay: 50u32.into(),
+			storage_unbonding_delay: 50u32.into(),
+			unit_per_mb_stored: 10,
+			unit_per_mb_streamed: 10,
+			unit_per_put_request: 10,
+			unit_per_get_request: 10,
+		};
 	T::ClusterCreator::create_cluster(
 		cluster_id,
 		stash.clone(),
 		stash.clone(),
 		cluster_params,
-		cluster_gov_params,
+		cluster_protocol_params,
 	)?;
 
 	DdcStaking::<T>::bond(

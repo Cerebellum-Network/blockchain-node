@@ -266,7 +266,7 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut t);
 
-		let cluster_gov_params = ClusterGovParams {
+		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
 			validators_share: Perquintill::from_float(0.01),
 			cluster_reserve_share: Perquintill::from_float(0.02),
@@ -295,7 +295,7 @@ impl ExtBuilder {
 
 		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
 			clusters: vec![cluster],
-			clusters_gov_params: vec![(ClusterId::from([0; 20]), cluster_gov_params)],
+			clusters_protocol_params: vec![(ClusterId::from([0; 20]), cluster_protocol_params)],
 			clusters_nodes: vec![(
 				ClusterId::from([0; 20]),
 				vec![(

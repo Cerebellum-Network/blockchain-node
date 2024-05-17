@@ -2,9 +2,9 @@
 
 use ddc_primitives::{
 	traits::cluster::{ClusterCreator, ClusterManager, ClusterProtocol, ClusterQuery},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
-	ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterStatus, NodePubKey, NodeType,
+	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
+	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
+	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
 };
 use frame_support::{
 	construct_runtime, parameter_types,
@@ -194,7 +194,7 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 
 	fn update_cluster_protocol(
 		_cluster_id: &ClusterId,
-		_cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
+		_cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -284,7 +284,7 @@ impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 		_cluster_manager_id: T::AccountId,
 		_cluster_reserve_id: T::AccountId,
 		_cluster_params: ClusterParams<T::AccountId>,
-		_cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
+		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult {
 		Ok(())
 	}

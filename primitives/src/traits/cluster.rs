@@ -2,9 +2,9 @@ use frame_system::{pallet_prelude::BlockNumberFor, Config};
 use sp_runtime::{DispatchError, DispatchResult};
 
 use crate::{
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterId, ClusterNodeKind,
-	ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterStatus, NodePubKey, NodeType,
+	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
+	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
+	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
 };
 
 pub trait ClusterQuery<T: Config> {
@@ -42,7 +42,7 @@ pub trait ClusterProtocol<T: Config, Balance>: ClusterQuery<T> {
 
 	fn update_cluster_protocol(
 		cluster_id: &ClusterId,
-		cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
+		cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult;
 
 	fn bond_cluster(cluster_id: &ClusterId) -> DispatchResult;
@@ -58,7 +58,7 @@ pub trait ClusterCreator<T: Config, Balance> {
 		cluster_manager_id: T::AccountId,
 		cluster_reserve_id: T::AccountId,
 		cluster_params: ClusterParams<T::AccountId>,
-		cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
+		initial_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
 	) -> DispatchResult;
 }
 
