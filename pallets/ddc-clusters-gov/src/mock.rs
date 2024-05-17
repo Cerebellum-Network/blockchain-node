@@ -374,12 +374,10 @@ impl DefaultVote for MockedDefaultVote {
 		let lock = MOCK_DEFAULT_VOTE.lock();
 		let mock_ref = lock.borrow();
 		match mock_ref.strategy {
-			DefaultVoteVariant::NayAsDefaultVote => {
-				NayAsDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len)
-			},
-			DefaultVoteVariant::PrimeDefaultVote => {
-				PrimeDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len)
-			},
+			DefaultVoteVariant::NayAsDefaultVote =>
+				NayAsDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len),
+			DefaultVoteVariant::PrimeDefaultVote =>
+				PrimeDefaultVote::default_vote(prime_vote, yes_votes, no_votes, len),
 		}
 	}
 }
@@ -466,8 +464,8 @@ where
 				Err(_) => return Err(o),
 			};
 
-		if track_id == CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID
-			|| track_id == CLUSTER_PROTOCOL_UPDATER_TRACK_ID
+		if track_id == CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID ||
+			track_id == CLUSTER_PROTOCOL_UPDATER_TRACK_ID
 		{
 			let clusters_governance = ClustersGovPalletId::get().into_account_truncating();
 			if origin == clusters_governance {
@@ -547,12 +545,10 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
 		if let Ok(custom_origin) = pallet_mock_origins::Origin::try_from(id.clone()) {
 			match custom_origin {
-				pallet_mock_origins::Origin::ClusterProtocolActivator => {
-					Ok(CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID)
-				},
-				pallet_mock_origins::Origin::ClusterProtocolUpdater => {
-					Ok(CLUSTER_PROTOCOL_UPDATER_TRACK_ID)
-				},
+				pallet_mock_origins::Origin::ClusterProtocolActivator =>
+					Ok(CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID),
+				pallet_mock_origins::Origin::ClusterProtocolUpdater =>
+					Ok(CLUSTER_PROTOCOL_UPDATER_TRACK_ID),
 			}
 		} else {
 			Err(())

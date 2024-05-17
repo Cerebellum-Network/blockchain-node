@@ -21,8 +21,8 @@ pub fn create_funded_user_with_balance<T: Config>(
 	balance_factor: u128,
 ) -> T::AccountId {
 	let user = account(name, n, 0);
-	let balance = <T as pallet::Config>::Currency::minimum_balance()
-		* balance_factor.saturated_into::<BalanceOf<T>>();
+	let balance = <T as pallet::Config>::Currency::minimum_balance() *
+		balance_factor.saturated_into::<BalanceOf<T>>();
 	let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 	user
 }
