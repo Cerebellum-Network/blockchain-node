@@ -324,6 +324,9 @@ pub mod v2 {
 					current_version
 				);
 
+				// Update storage version.
+				StorageVersion::new(2).put::<Pallet<T>>();
+
 				weight
 			} else {
 				log::info!(
@@ -341,9 +344,9 @@ pub mod v2 {
 				Pallet::<T>::on_chain_storage_version() == 1,
 				"must upgrade linearly"
 			);
-			let pre_clusters_count = Clusters::<T>::iter().count();
-			let pre_clusters_nodes_count = ClustersNodes::<T>::iter().count();
-			let pre_clusters_nodes_stats_count = ClustersNodesStats::<T>::iter().count();
+			let pre_clusters_count = Clusters::<T>::iter_keys().count();
+			let pre_clusters_nodes_count = ClustersNodes::<T>::iter_keys().count();
+			let pre_clusters_nodes_stats_count = ClustersNodesStats::<T>::iter_keys().count();
 
 			assert_eq!(
 				pre_clusters_nodes_stats_count, 0,
@@ -363,18 +366,21 @@ pub mod v2 {
 			let post_clusters_count = Clusters::<T>::iter().count() as u32;
 			assert_eq!(
 				pre_clusters_count, post_clusters_count,
-				"the clusters count before and after the migration should be the same"
+				"the clusters count before (pre: {}) and after (post: {}) the migration should be the same",
+				pre_clusters_count, post_clusters_count
 			);
 			let post_clusters_nodes_count = ClustersNodes::<T>::iter().count() as u32;
 			assert_eq!(
 				pre_clusters_nodes_count, post_clusters_nodes_count,
-				"the clusters nodes count before and after the migration should be the same"
+				"the clusters nodes count before (pre: {}) and after (post: {})  the migration should be the same", 
+				pre_clusters_nodes_count, post_clusters_nodes_count
 			);
 
 			let post_clusters_nodes_stats_count = ClustersNodesStats::<T>::iter().count() as u32;
 			assert_eq!(
-				post_clusters_count, post_clusters_nodes_stats_count,
-				"the clusters statistics should be equal to clusters count after the migration"
+				post_clusters_nodes_stats_count, post_clusters_count,
+				"the clusters statistics ({}) should be equal to clusters count ({}) after the migration", 
+				post_clusters_nodes_stats_count, post_clusters_count
 			);
 
 			let current_version = Pallet::<T>::current_storage_version();
