@@ -95,12 +95,14 @@ ddc-primitives = { workspace = true }
 pallet-chainbridge = { workspace = true }
 pallet-conviction-voting = { workspace = true }
 pallet-ddc-clusters = { workspace = true }
+pallet-ddc-clusters-gov = { workspace = true }
 pallet-ddc-customers = { workspace = true }
 pallet-ddc-nodes = { workspace = true }
 pallet-ddc-payouts = { workspace = true }
 pallet-ddc-staking = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
+pallet-origins = { workspace = true }
 pallet-referenda = { workspace = true }
 pallet-whitelist = { workspace = true }
 
@@ -187,6 +189,8 @@ std = [
   "pallet-conviction-voting/std",
   "pallet-referenda/std",
   "pallet-whitelist/std",
+  "pallet-preimage/std",
+  "pallet-origins/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -236,6 +240,9 @@ runtime-benchmarks = [
   "pallet-conviction-voting/runtime-benchmarks",
   "pallet-referenda/runtime-benchmarks",
   "pallet-whitelist/runtime-benchmarks",
+  "pallet-preimage/runtime-benchmarks",
+  "pallet-ddc-clusters-gov/runtime-benchmarks",
+  "pallet-origins/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-executive/try-runtime",
@@ -287,4 +294,7 @@ try-runtime = [
   "pallet-conviction-voting/try-runtime",
   "pallet-referenda/try-runtime",
   "pallet-whitelist/try-runtime",
+  "pallet-preimage/try-runtime",
+  "pallet-origins/try-runtime",
+  "pallet-ddc-clusters-gov/try-runtime",
 ]

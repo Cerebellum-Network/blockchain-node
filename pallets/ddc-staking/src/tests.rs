@@ -341,7 +341,7 @@ fn staking_should_work() {
 
 		// Removal is scheduled, stashed value of 4 is still lock.
 		let chilling = System::block_number() + 10u64;
-		// TestClusterVisitor::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage)
+		// TestClusterProtocol::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage)
 		// 	.unwrap_or(10_u64);
 		assert_eq!(
 			DdcStaking::ledger(4),
@@ -406,6 +406,7 @@ fn storage_full_unbonding_works() {
 		let lock = MockNodeVisitor::set_and_hold_lock(MockNode {
 			cluster_id: Some(cluster_id),
 			exists: true,
+			node_provider_id: provider_controller,
 		});
 
 		let storage_bond_size = 10_u128;
