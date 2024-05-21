@@ -1242,6 +1242,17 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 	}
 }
 
+parameter_types! {
+	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
+}
+
+impl pallet_ddc_verification::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = VerificationPalletId;
+	type MaxVerificationKeyLimit = ConstU32<500>;
+	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
+}
+
 construct_runtime!(
 	pub struct Runtime
 	{
@@ -1294,6 +1305,7 @@ construct_runtime!(
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov.
 		DdcClustersGov: pallet_ddc_clusters_gov,
+		DdcVerification: pallet_ddc_verification,
 	}
 );
 
@@ -1396,6 +1408,7 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_preimage, Preimage]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
+		[pallet_ddc_verification, DdcVerification]
 	);
 }
 
