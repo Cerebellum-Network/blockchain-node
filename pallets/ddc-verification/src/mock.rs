@@ -1,21 +1,23 @@
-use frame_support::pallet_prelude::ConstU32;
-use frame_support::parameter_types;
-use frame_support::PalletId;
-use frame_support::traits::{ConstU16, ConstU64};
+use frame_support::{
+	pallet_prelude::ConstU32,
+	parameter_types,
+	traits::{ConstU16, ConstU64},
+	PalletId,
+};
 use frame_system::mocking::MockBlock;
 use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage,
 };
+
 use crate::{self as pallet_ddc_verification, *};
 type Block = MockBlock<Test>;
 
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub struct Test
-	{
+	pub struct Test {
 		System: frame_system,
 		DdcVerification: pallet_ddc_verification,
 	}

@@ -4,17 +4,12 @@
 //!
 //! - [`Call`]
 //! - [`Pallet`]
-//!
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-use ddc_primitives::{
-	ClusterId, DdcEra, MmrRootHash
-};
-use frame_support::{
-	pallet_prelude::*,
-};
+use ddc_primitives::{ClusterId, DdcEra, MmrRootHash};
+use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_std::prelude::*;
@@ -58,10 +53,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		BillingReportCreated {
-			cluster_id: ClusterId,
-			era: DdcEra,
-		},
+		BillingReportCreated { cluster_id: ClusterId, era: DdcEra },
 	}
 
 	#[pallet::error]
@@ -87,7 +79,7 @@ pub mod pallet {
 	#[scale_info(skip_type_params(MaxVerificationKeyLimit))]
 	pub struct ReceiptParams<MaxVerificationKeyLimit: Get<u32>> {
 		pub verification_key: BoundedVec<u8, MaxVerificationKeyLimit>,
-		pub merkle_root_hash: MmrRootHash
+		pub merkle_root_hash: MmrRootHash,
 	}
 
 	#[pallet::call]
@@ -99,7 +91,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			merkle_root_hash: MmrRootHash,
-			verification_key: Vec<u8>
+			verification_key: Vec<u8>,
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
@@ -109,12 +101,13 @@ pub mod pallet {
 			);
 
 			let bounded_verification_key: BoundedVec<u8, T::MaxVerificationKeyLimit> =
-				verification_key.clone().try_into().map_err(|_| Error::<T>::BadVerificationKey)?;
+				verification_key
+					.clone()
+					.try_into()
+					.map_err(|_| Error::<T>::BadVerificationKey)?;
 
-			let receipt_params = ReceiptParams{
-				verification_key: bounded_verification_key,
-				merkle_root_hash
-			};
+			let receipt_params =
+				ReceiptParams{ verification_key: bounded_verification_key, merkle_root_hash };
 
 			ActiveBillingReports::<T>::insert(cluster_id, era, receipt_params);
 
@@ -122,6 +115,4 @@ pub mod pallet {
 			Ok(())
 		}
 	}
-
-
 }

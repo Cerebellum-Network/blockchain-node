@@ -12,18 +12,16 @@ fn create_billing_reports_works() {
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let merkel_root_hash: H256 = array_bytes::hex_n_into_unchecked(
-			"95803defe6ea9f41e7ec6afa497064f21bfded027d8812efacbdf984e630cbdc"
+			"95803defe6ea9f41e7ec6afa497064f21bfded027d8812efacbdf984e630cbdc",
 		);
 
-		assert_ok!(
-			DdcVerification::create_billing_reports(
+		assert_ok!(DdcVerification::create_billing_reports(
 				RuntimeOrigin::signed(dac_account),
 				cluster_id,
 				era,
 				merkel_root_hash,
 				vec![],
-			)
-		);
+			));
 
 		System::assert_last_event(Event::BillingReportCreated { cluster_id, era }.into());
 
@@ -40,6 +38,5 @@ fn create_billing_reports_works() {
 			),
 			Error::<Test>::BillingReportAlreadyExist
 		);
-
 	})
 }

@@ -3,8 +3,7 @@
 use codec::{Decode, Encode};
 use scale_info::{prelude::vec::Vec, TypeInfo};
 use serde::{Deserialize, Serialize};
-use sp_core::H256;
-use sp_core::hash::H160;
+use sp_core::{hash::H160, H256};
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
 
 pub mod traits;

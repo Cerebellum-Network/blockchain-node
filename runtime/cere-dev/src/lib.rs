@@ -1250,7 +1250,6 @@ impl pallet_ddc_verification::Config for Runtime {
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
 }
 
-
 construct_runtime!(
 	pub struct Runtime
 	{
