@@ -5,7 +5,6 @@ use frame_system::RawOrigin;
 use sp_std::vec;
 
 use super::*;
-
 #[allow(unused)]
 use crate::Pallet as DdcVerification;
 
@@ -24,9 +23,10 @@ mod benchmarks {
 		#[extrinsic_call]
 		create_billing_reports(
 			RawOrigin::Signed(caller),
-			cluster_id, era,
+			cluster_id,
+			era,
 			merkel_root_hash,
-			vec![]
+			vec![],
 		);
 
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));

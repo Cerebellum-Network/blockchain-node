@@ -14,7 +14,6 @@ use sp_runtime::{
 use crate::{self as pallet_ddc_verification, *};
 type Block = MockBlock<Test>;
 
-
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub struct Test {

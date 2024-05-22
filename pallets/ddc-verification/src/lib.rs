@@ -107,7 +107,7 @@ pub mod pallet {
 					.map_err(|_| Error::<T>::BadVerificationKey)?;
 
 			let receipt_params =
-				ReceiptParams{ verification_key: bounded_verification_key, merkle_root_hash };
+				ReceiptParams { verification_key: bounded_verification_key, merkle_root_hash };
 
 			ActiveBillingReports::<T>::insert(cluster_id, era, receipt_params);
 

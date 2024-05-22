@@ -1,7 +1,8 @@
-use crate::{mock::*, Error, Event};
+use ddc_primitives::ClusterId;
 use frame_support::{assert_noop, assert_ok};
 use sp_core::H256;
-use ddc_primitives::ClusterId;
+
+use crate::{mock::*, Error, Event};
 
 #[test]
 fn create_billing_reports_works() {
@@ -16,12 +17,12 @@ fn create_billing_reports_works() {
 		);
 
 		assert_ok!(DdcVerification::create_billing_reports(
-				RuntimeOrigin::signed(dac_account),
-				cluster_id,
-				era,
-				merkel_root_hash,
-				vec![],
-			));
+			RuntimeOrigin::signed(dac_account),
+			cluster_id,
+			era,
+			merkel_root_hash,
+			vec![],
+		));
 
 		System::assert_last_event(Event::BillingReportCreated { cluster_id, era }.into());
 
