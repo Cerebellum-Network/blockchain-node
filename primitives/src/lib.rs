@@ -3,7 +3,7 @@
 use codec::{Decode, Encode};
 use scale_info::{prelude::vec::Vec, TypeInfo};
 use serde::{Deserialize, Serialize};
-use sp_core::hash::H160;
+use sp_core::{hash::H160, H256};
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
 
 pub mod traits;
@@ -16,6 +16,8 @@ pub type DdcEra = u32;
 pub type BucketId = u64;
 pub type StorageNodePubKey = AccountId32;
 pub type ClusterNodesCount = u16;
+/// The type used to represent an MMR root hash.
+pub type MmrRootHash = H256;
 
 // ClusterParams includes Governance non-sensetive parameters only
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]

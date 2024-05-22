@@ -1002,6 +1002,7 @@ dependencies = [
  "pallet-ddc-nodes",
  "pallet-ddc-payouts",
  "pallet-ddc-staking",
+ "pallet-ddc-verification",
  "pallet-democracy",
  "pallet-election-provider-multi-phase",
  "pallet-election-provider-support-benchmarking",
@@ -1126,6 +1127,7 @@ dependencies = [
  "pallet-ddc-nodes",
  "pallet-ddc-payouts",
  "pallet-ddc-staking",
+ "pallet-ddc-verification",
  "pallet-democracy",
  "pallet-election-provider-multi-phase",
  "pallet-election-provider-support-benchmarking",
@@ -5329,6 +5331,24 @@ dependencies = [
  "sp-std",
  "sp-tracing",
  "substrate-test-utils",
+]
+
+[[package]]
+name = "pallet-ddc-verification"
+version = "5.4.0"
+dependencies = [
+ "array-bytes",
+ "ddc-primitives",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
