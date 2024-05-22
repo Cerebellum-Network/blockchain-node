@@ -143,7 +143,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 54000,
+	spec_version: 54100,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 18,
@@ -1240,6 +1240,16 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 	}
 }
 
+parameter_types! {
+	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
+}
+impl pallet_ddc_verification::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = VerificationPalletId;
+	type MaxVerificationKeyLimit = ConstU32<500>;
+	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
+}
+
 construct_runtime!(
 	pub struct Runtime
 	{
@@ -1285,6 +1295,7 @@ construct_runtime!(
 		DdcNodes: pallet_ddc_nodes,
 		DdcClusters: pallet_ddc_clusters,
 		DdcPayouts: pallet_ddc_payouts,
+		DdcVerification: pallet_ddc_verification,
 		// Start OpenGov.
 		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
 		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
@@ -1394,6 +1405,7 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_preimage, Preimage]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
+		[pallet_ddc_verification, DdcVerification]
 	);
 }
 
