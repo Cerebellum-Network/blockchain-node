@@ -301,5 +301,4 @@ try-runtime = [
   "pallet-origins/try-runtime",
   "pallet-ddc-clusters-gov/try-runtime",
   "pallet-ddc-verification/try-runtime",
-
 ]
