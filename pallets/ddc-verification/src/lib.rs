@@ -10,9 +10,15 @@
 
 use ddc_primitives::{ClusterId, DdcEra, MmrRootHash};
 use frame_support::pallet_prelude::*;
-use frame_system::pallet_prelude::*;
+use frame_system::{
+	offchain::{
+		AppCrypto, CreateSignedTransaction,
+	},
+	pallet_prelude::*,
+};
 pub use pallet::*;
 use sp_std::prelude::*;
+use sp_core::crypto::KeyTypeId;
 
 pub mod weights;
 use crate::weights::WeightInfo;
@@ -24,6 +30,35 @@ pub mod benchmarking;
 pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
+
+pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
+pub mod crypto {
+	use super::KEY_TYPE;
+	use sp_core::sr25519::Signature as Sr25519Signature;
+	use sp_runtime::{
+		app_crypto::{app_crypto, sr25519},
+		traits::Verify,
+		MultiSignature, MultiSigner,
+	};
+	app_crypto!(sr25519, KEY_TYPE);
+
+	pub struct TestAuthId;
+
+	impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for TestAuthId {
+		type RuntimeAppPublic = Public;
+		type GenericSignature = sp_core::sr25519::Signature;
+		type GenericPublic = sp_core::sr25519::Public;
+	}
+
+	// implemented for mock runtime in test
+	impl frame_system::offchain::AppCrypto<<Sr25519Signature as Verify>::Signer, Sr25519Signature>
+	for TestAuthId
+	{
+		type RuntimeAppPublic = Public;
+		type GenericSignature = sp_core::sr25519::Signature;
+		type GenericPublic = sp_core::sr25519::Public;
+	}
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -41,13 +76,14 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: CreateSignedTransaction<Call<Self>> + frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 		#[pallet::constant]
 		type MaxVerificationKeyLimit: Get<u32>;
 		type WeightInfo: WeightInfo;
+		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 	}
 
 	#[pallet::event]
@@ -82,6 +118,22 @@ pub mod pallet {
 		pub merkle_root_hash: MmrRootHash,
 	}
 
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		/// Offchain worker entry point.
+		///
+		/// By implementing `fn offchain_worker` you declare a new offchain worker.
+		/// This function will be called when the node is fully synced and a new best block is
+		/// successfully imported.
+		/// Note that it's not guaranteed for offchain workers to run on EVERY block, there might
+		/// be cases where some blocks are skipped, or for some the worker runs twice (re-orgs),
+		/// so the code should be able to handle that.
+		fn offchain_worker(_block_number: BlockNumberFor<T>) {
+			log::info!("Hello from pallet-ocw.");
+			// The entry point of your code called by offchain worker
+		}
+		// ...
+	}
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
