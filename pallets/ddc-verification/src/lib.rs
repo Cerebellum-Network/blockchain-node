@@ -11,35 +11,27 @@
 use ddc_primitives::{ClusterId, DdcEra, MmrRootHash};
 use frame_support::pallet_prelude::*;
 use frame_system::{
-	offchain::{
-		AppCrypto, CreateSignedTransaction,
-	},
+	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
 	pallet_prelude::*,
 };
 pub use pallet::*;
-use sp_std::prelude::*;
 use sp_core::crypto::KeyTypeId;
+use sp_std::prelude::*;
 
 pub mod weights;
 use crate::weights::WeightInfo;
 
-#[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
-
-#[cfg(test)]
-pub(crate) mod mock;
-#[cfg(test)]
-mod tests;
-
+type BatchIndex = u16;
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
 pub mod crypto {
-	use super::KEY_TYPE;
 	use sp_core::sr25519::Signature as Sr25519Signature;
 	use sp_runtime::{
 		app_crypto::{app_crypto, sr25519},
 		traits::Verify,
 		MultiSignature, MultiSigner,
 	};
+
+	use super::KEY_TYPE;
 	app_crypto!(sr25519, KEY_TYPE);
 
 	pub struct TestAuthId;
@@ -52,7 +44,7 @@ pub mod crypto {
 
 	// implemented for mock runtime in test
 	impl frame_system::offchain::AppCrypto<<Sr25519Signature as Verify>::Signer, Sr25519Signature>
-	for TestAuthId
+		for TestAuthId
 	{
 		type RuntimeAppPublic = Public;
 		type GenericSignature = sp_core::sr25519::Signature;
@@ -90,6 +82,8 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
 		BillingReportCreated { cluster_id: ClusterId, era: DdcEra },
+		VerificationKeyStored { verification_key: Vec<u8> },
+		PayoutBatchCreated { cluster_id: ClusterId, era: DdcEra },
 	}
 
 	#[pallet::error]
@@ -102,37 +96,56 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn active_billing_reports)]
-	pub type ActiveBillingReports<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		ClusterId,
-		Blake2_128Concat,
-		DdcEra,
-		ReceiptParams<T::MaxVerificationKeyLimit>,
-	>;
+	pub type ActiveBillingReports<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, DdcEra, ReceiptParams>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn payout_batch)]
+	pub type PayoutBatch<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, DdcEra, PayoutData<T>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn verification_key)]
+	pub type VerificationKey<T: Config> =
+		StorageValue<_, BoundedVec<u8, T::MaxVerificationKeyLimit>>;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	#[scale_info(skip_type_params(MaxVerificationKeyLimit))]
-	pub struct ReceiptParams<MaxVerificationKeyLimit: Get<u32>> {
-		pub verification_key: BoundedVec<u8, MaxVerificationKeyLimit>,
+	pub struct ReceiptParams {
 		pub merkle_root_hash: MmrRootHash,
+	}
+
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+	#[scale_info(skip_type_params(T))]
+	pub struct PayoutData<T: Config> {
+		pub batch_index: BatchIndex,
+		pub hash: T::Hash,
 	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		/// Offchain worker entry point.
-		///
-		/// By implementing `fn offchain_worker` you declare a new offchain worker.
-		/// This function will be called when the node is fully synced and a new best block is
-		/// successfully imported.
-		/// Note that it's not guaranteed for offchain workers to run on EVERY block, there might
-		/// be cases where some blocks are skipped, or for some the worker runs twice (re-orgs),
-		/// so the code should be able to handle that.
 		fn offchain_worker(_block_number: BlockNumberFor<T>) {
 			log::info!("Hello from pallet-ocw.");
-			// The entry point of your code called by offchain worker
+			let signer = Signer::<T, T::AuthorityId>::all_accounts();
+			if !signer.can_sign() {
+				log::error!("No local accounts available");
+				return
+			}
+
+			let results =
+				signer.send_signed_transaction(|_account| Call::set_validate_payout_batch {
+					cluster_id: Default::default(),
+					era: 0,
+					batch_index: 0,
+					hash: T::Hash::default(),
+				});
+
+			for (acc, res) in &results {
+				match res {
+					Ok(()) => log::info!("[{:?}] Submitted response", acc.id),
+					Err(e) => log::error!("[{:?}] Failed to submit transaction: {:?}", acc.id, e),
+				}
+			}
 		}
-		// ...
 	}
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -143,7 +156,6 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			merkle_root_hash: MmrRootHash,
-			verification_key: Vec<u8>,
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
@@ -152,18 +164,49 @@ pub mod pallet {
 				Error::<T>::BillingReportAlreadyExist
 			);
 
+			let receipt_params = ReceiptParams { merkle_root_hash };
+
+			ActiveBillingReports::<T>::insert(cluster_id, era, receipt_params);
+
+			Self::deposit_event(Event::<T>::BillingReportCreated { cluster_id, era });
+			Ok(())
+		}
+
+		#[pallet::call_index(1)]
+		#[pallet::weight(T::WeightInfo::create_billing_reports())]
+		pub fn set_verification_key(
+			origin: OriginFor<T>,
+			verification_key: Vec<u8>,
+		) -> DispatchResult {
+			ensure_root(origin)?;
 			let bounded_verification_key: BoundedVec<u8, T::MaxVerificationKeyLimit> =
 				verification_key
 					.clone()
 					.try_into()
 					.map_err(|_| Error::<T>::BadVerificationKey)?;
 
-			let receipt_params =
-				ReceiptParams { verification_key: bounded_verification_key, merkle_root_hash };
+			VerificationKey::<T>::put(bounded_verification_key);
+			Self::deposit_event(Event::<T>::VerificationKeyStored { verification_key });
 
-			ActiveBillingReports::<T>::insert(cluster_id, era, receipt_params);
+			Ok(())
+		}
 
-			Self::deposit_event(Event::<T>::BillingReportCreated { cluster_id, era });
+		#[pallet::call_index(2)]
+		#[pallet::weight(T::WeightInfo::create_billing_reports())]
+		pub fn set_validate_payout_batch(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era: DdcEra,
+			batch_index: BatchIndex,
+			hash: T::Hash,
+		) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			let payout_data = PayoutData { batch_index, hash };
+
+			PayoutBatch::<T>::insert(cluster_id, era, payout_data);
+
+			Self::deposit_event(Event::<T>::PayoutBatchCreated { cluster_id, era });
+
 			Ok(())
 		}
 	}

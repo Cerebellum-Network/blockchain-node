@@ -1409,7 +1409,6 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_preimage, Preimage]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
-		[pallet_ddc_verification, DdcVerification]
 	);
 }
 

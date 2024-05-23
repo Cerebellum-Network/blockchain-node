@@ -21,7 +21,6 @@ fn create_billing_reports_works() {
 			cluster_id,
 			era,
 			merkel_root_hash,
-			vec![],
 		));
 
 		System::assert_last_event(Event::BillingReportCreated { cluster_id, era }.into());
@@ -35,7 +34,6 @@ fn create_billing_reports_works() {
 				cluster_id,
 				era,
 				merkel_root_hash,
-				vec![],
 			),
 			Error::<Test>::BillingReportAlreadyExist
 		);

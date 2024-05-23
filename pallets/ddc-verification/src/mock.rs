@@ -57,6 +57,7 @@ impl crate::Config for Test {
 	type PalletId = VerificationPalletId;
 	type MaxVerificationKeyLimit = ConstU32<500>;
 	type WeightInfo = ();
+	type AuthorityId = crypto::TestAuthId;
 }
 
 // Build genesis storage according to the mock runtime.
