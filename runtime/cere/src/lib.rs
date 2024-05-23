@@ -100,13 +100,16 @@ use cere_runtime_common::{
 	constants::{currency::*, time::*},
 	CurrencyToVote,
 };
+use ddc_primitives::traits::GetDdcOrigin;
 use impls::Author;
 use sp_runtime::generic::Era;
-
+use sp_std::marker::PhantomData;
 // Governance configurations.
 pub mod governance;
-use governance::{pallet_custom_origins, GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender};
-
+use governance::{
+	ClusterProtocolActivator, ClusterProtocolUpdater, GeneralAdmin, StakingAdmin, Treasurer,
+	TreasurySpender,
+};
 /// Generated voter bag information.
 mod voter_bags;
 
@@ -134,10 +137,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 53001,
+	spec_version: 54000,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 16,
+	transaction_version: 18,
 	state_version: 0,
 };
 
@@ -373,7 +376,7 @@ impl pallet_scheduler::Config for Runtime {
 	type PalletsOrigin = OriginCaller;
 	type RuntimeCall = RuntimeCall;
 	type MaximumWeight = MaximumSchedulerWeight;
-	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type ScheduleOrigin = EitherOf<EnsureRoot<AccountId>, Treasurer>;
 	type MaxScheduledPerBlock = ConstU32<512>;
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
@@ -1123,7 +1126,7 @@ impl pallet_ddc_customers::Config for Runtime {
 	type Currency = Balances;
 	type PalletId = DdcCustomersPalletId;
 	type RuntimeEvent = RuntimeEvent;
-	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type WeightInfo = pallet_ddc_customers::weights::SubstrateWeight<Runtime>;
 }
@@ -1135,6 +1138,9 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
+	type MinErasureCodingRequiredLimit = ConstU32<4>;
+	type MinErasureCodingTotalLimit = ConstU32<6>;
+	type MinReplicationTotalLimit = ConstU32<3>;
 }
 
 impl pallet_ddc_nodes::Config for Runtime {
@@ -1160,7 +1166,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
 	type CustomerDepositor = DdcCustomers;
-	type ClusterVisitor = DdcClusters;
+	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type ClusterCreator = DdcClusters;
@@ -1168,15 +1174,72 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
 }
 
+parameter_types! {
+	pub const ClusterBondingAmount: Balance = DOLLARS;
+	pub const ClusterUnboningDelay: BlockNumber = MINUTES;
+}
+
 impl pallet_ddc_staking::Config for Runtime {
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_ddc_staking::weights::SubstrateWeight<Runtime>;
-	type ClusterVisitor = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
+	type ClusterBondingAmount = ClusterBondingAmount;
+	type ClusterUnboningDelay = ClusterUnboningDelay;
+}
+
+parameter_types! {
+	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
+	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
+	pub const MinValidatedNodesCount: u16 = 3;
+	pub ClusterProtocolActivatorTrackOrigin: RuntimeOrigin = pallet_origins::Origin::ClusterProtocolActivator.into();
+	pub ClusterProtocolUpdaterTrackOrigin: RuntimeOrigin = pallet_origins::Origin::ClusterProtocolUpdater.into();
+	pub const ReferendumEnactmentDuration: BlockNumber = 1;
+}
+
+impl pallet_ddc_clusters_gov::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = ClustersGovPalletId;
+	type Currency = Balances;
+	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
+	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterProtocolActivatorTrackOrigin, Self>;
+	type OpenGovActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterProtocolActivator>;
+	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterProtocolUpdaterTrackOrigin, Self>;
+	type OpenGovUpdaterOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterProtocolUpdater>;
+	type ClusterProposalCall = RuntimeCall;
+	type ClusterProposalDuration = ClusterProposalDuration;
+	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type SeatsConsensus = pallet_ddc_clusters_gov::Unanimous;
+	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
+	type MinValidatedNodesCount = MinValidatedNodesCount;
+	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
+	#[cfg(feature = "runtime-benchmarks")]
+	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
+}
+
+pub struct ClustersGovWrapper;
+impl<T: frame_system::Config> PalletVisitor<T> for ClustersGovWrapper {
+	fn get_account_id() -> T::AccountId {
+		ClustersGovPalletId::get().into_account_truncating()
+	}
+}
+
+pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
+impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
+	for DdcOriginAsNative<DdcOrigin, T>
+{
+	fn get() -> T::RuntimeOrigin {
+		DdcOrigin::get()
+	}
 }
 
 construct_runtime!(
@@ -1227,9 +1290,10 @@ construct_runtime!(
 		// Start OpenGov.
 		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
 		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
-		Origins: pallet_custom_origins::{Origin},
+		Origins: pallet_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov.
+		DdcClustersGov: pallet_ddc_clusters_gov,
 	}
 );
 
@@ -1268,84 +1332,10 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
 /// Runtime migrations
-type Migrations = migrations::Unreleased;
-
-/// The runtime migrations per release.
-#[allow(deprecated, missing_docs)]
-pub mod migrations {
-	use frame_support::traits::LockIdentifier;
-	use frame_system::pallet_prelude::BlockNumberFor;
-
-	use super::*;
-
-	parameter_types! {
-		pub const DemocracyPalletName: &'static str = "Democracy";
-		pub const CouncilPalletName: &'static str = "Council";
-		pub const TechnicalCommitteePalletName: &'static str = "TechnicalCommittee";
-		pub const ElectionPalletName: &'static str = "Elections";
-		pub const TechnicalMembershipPalletName: &'static str = "TechnicalMembership";
-		pub const TipsPalletName: &'static str = "Tips";
-		pub const ElectionPalletId: LockIdentifier = *b"phrelect";
-	}
-
-	// Special Config for Gov V1 pallets, allowing us to run migrations for them without
-	// implementing their configs on [`Runtime`].
-	pub struct UnlockConfig;
-	impl pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockConfig for UnlockConfig {
-		type Currency = Balances;
-		type MaxVotes = ConstU32<100>;
-		type MaxDeposits = ConstU32<100>;
-		type AccountId = AccountId;
-		type BlockNumber = BlockNumberFor<Runtime>;
-		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-		type PalletName = DemocracyPalletName;
-	}
-	impl pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockConfig
-		for UnlockConfig
-	{
-		type Currency = Balances;
-		type MaxVotesPerVoter = ConstU32<16>;
-		type PalletId = ElectionPalletId;
-		type AccountId = AccountId;
-		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-		type PalletName = ElectionPalletName;
-	}
-	impl pallet_tips::migrations::unreserve_deposits::UnlockConfig<()> for UnlockConfig {
-		type Currency = Balances;
-		type Hash = Hash;
-		type DataDepositPerByte = DataDepositPerByte;
-		type TipReportDepositBase = TipReportDepositBase;
-		type AccountId = AccountId;
-		type BlockNumber = BlockNumberFor<Runtime>;
-		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-		type PalletName = TipsPalletName;
-	}
-
-	/// Unreleased migrations. Add new ones here:
-	pub type Unreleased = (
-		pallet_contracts::migration::Migration<Runtime>,
-		pallet_referenda::migration::v1::MigrateV0ToV1<Runtime>,
-		// Gov v1 storage migrations
-		// https://github.com/paritytech/polkadot/issues/6749
-		pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
-		pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
-		pallet_tips::migrations::unreserve_deposits::UnreserveDeposits<UnlockConfig, ()>,
-
-		// Delete all Gov v1 pallet storage key/values.
-		frame_support::migrations::RemovePallet<DemocracyPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<CouncilPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<TechnicalCommitteePalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<ElectionPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<TechnicalMembershipPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<TipsPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-	);
-}
+type Migrations = (
+	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
+	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -1404,6 +1394,8 @@ mod benches {
 		[pallet_conviction_voting, ConvictionVoting]
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
+		[pallet_preimage, Preimage]
+		[pallet_ddc_clusters_gov, DdcClustersGov]
 	);
 }
 

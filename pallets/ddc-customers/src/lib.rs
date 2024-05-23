@@ -15,7 +15,7 @@ mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterVisitor},
+		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor},
 	},
 	BucketId, ClusterId,
@@ -152,7 +152,7 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type UnlockingDelay: Get<BlockNumberFor<Self>>;
-		type ClusterVisitor: ClusterVisitor<Self>;
+		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
 	}
@@ -305,8 +305,10 @@ pub mod pallet {
 			let cur_bucket_id =
 				Self::buckets_count().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
 
-			<T as pallet::Config>::ClusterVisitor::ensure_cluster(&cluster_id)
-				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ensure!(
+				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
 
 			let bucket = Bucket {
 				bucket_id: cur_bucket_id,
@@ -558,11 +560,12 @@ pub mod pallet {
 		fn update_ledger_and_deposit(
 			owner: &T::AccountId,
 			ledger: &AccountsLedger<T>,
+			amount: BalanceOf<T>,
 		) -> DispatchResult {
 			<T as pallet::Config>::Currency::transfer(
 				owner,
 				&Self::account_id(),
-				ledger.total,
+				amount,
 				ExistenceRequirement::AllowDeath,
 			)?;
 			<Ledger<T>>::insert(owner, ledger);
@@ -694,14 +697,14 @@ pub mod pallet {
 
 			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
 			let value = value.min(owner_balance);
-			let item = AccountsLedger {
+			let ledger = AccountsLedger {
 				owner: owner.clone(),
 				total: value,
 				active: value,
 				unlocking: Default::default(),
 			};
 
-			Self::update_ledger_and_deposit(&owner, &item)
+			Self::update_ledger_and_deposit(&owner, &ledger, value)
 				.map_err(|_| Error::<T>::TransferFailed)?;
 			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: value });
 
@@ -725,7 +728,7 @@ pub mod pallet {
 				Error::<T>::InsufficientDeposit
 			);
 
-			Self::update_ledger_and_deposit(&owner, &ledger)
+			Self::update_ledger_and_deposit(&owner, &ledger, extra)
 				.map_err(|_| Error::<T>::TransferFailed)?;
 			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: extra });
 
