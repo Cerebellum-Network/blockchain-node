@@ -9,13 +9,15 @@
 #![recursion_limit = "256"]
 
 use ddc_primitives::{ClusterId, DdcEra, MmrRootHash};
-use frame_support::pallet_prelude::*;
+use frame_support::{pallet_prelude::*, traits::OneSessionHandler};
 use frame_system::{
 	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
 	pallet_prelude::*,
 };
 pub use pallet::*;
+use sp_application_crypto::RuntimeAppPublic;
 use sp_core::crypto::KeyTypeId;
+use sp_runtime::Percent;
 use sp_std::prelude::*;
 
 pub mod weights;
@@ -23,6 +25,20 @@ use crate::weights::WeightInfo;
 
 type BatchIndex = u16;
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
+pub mod sr25519 {
+	mod app_sr25519 {
+		use sp_application_crypto::{app_crypto, sr25519};
+
+		use crate::KEY_TYPE;
+		app_crypto!(sr25519, KEY_TYPE);
+	}
+
+	sp_application_crypto::with_pair! {
+		pub type AuthorityPair = app_sr25519::Pair;
+	}
+	pub type AuthoritySignature = app_sr25519::Signature;
+	pub type AuthorityId = app_sr25519::Public;
+}
 pub mod crypto {
 	use sp_core::sr25519::Signature as Sr25519Signature;
 	use sp_runtime::{
@@ -34,9 +50,9 @@ pub mod crypto {
 	use super::KEY_TYPE;
 	app_crypto!(sr25519, KEY_TYPE);
 
-	pub struct TestAuthId;
+	pub struct OffchainIdentifierId;
 
-	impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for TestAuthId {
+	impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for OffchainIdentifierId {
 		type RuntimeAppPublic = Public;
 		type GenericSignature = sp_core::sr25519::Signature;
 		type GenericPublic = sp_core::sr25519::Public;
@@ -44,7 +60,7 @@ pub mod crypto {
 
 	// implemented for mock runtime in test
 	impl frame_system::offchain::AppCrypto<<Sr25519Signature as Verify>::Signer, Sr25519Signature>
-		for TestAuthId
+		for OffchainIdentifierId
 	{
 		type RuntimeAppPublic = Public;
 		type GenericSignature = sp_core::sr25519::Signature;
@@ -75,7 +91,17 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxVerificationKeyLimit: Get<u32>;
 		type WeightInfo: WeightInfo;
-		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
+		type AuthorityId: Member
+			+ Parameter
+			+ RuntimeAppPublic
+			+ Ord
+			+ MaybeSerializeDeserialize
+			+ MaxEncodedLen;
+		type AuthorityIdParameter: Parameter
+			+ From<sp_core::sr25519::Public>
+			+ Into<Self::AuthorityId>
+			+ MaxEncodedLen;
+		type OffchainIdentifierId: AppCrypto<Self::Public, Self::Signature>;
 	}
 
 	#[pallet::event]
@@ -92,6 +118,8 @@ pub mod pallet {
 		BillingReportAlreadyExist,
 		BadVerificationKey,
 		BadRequest,
+		NotAValidator,
+		AlreadySigned,
 	}
 
 	#[pallet::storage]
@@ -101,13 +129,35 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn payout_batch)]
-	pub type PayoutBatch<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, DdcEra, PayoutData<T>>;
+	pub type PayoutBatch<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		ClusterId,
+		Blake2_128Concat,
+		DdcEra,
+		PayoutData<T::Hash>,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn payout_validators)]
+	pub type PayoutValidators<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		ClusterId,
+		Blake2_128Concat,
+		DdcEra,
+		Vec<T::AuthorityId>,
+		ValueQuery,
+	>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn verification_key)]
 	pub type VerificationKey<T: Config> =
 		StorageValue<_, BoundedVec<u8, T::MaxVerificationKeyLimit>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn validator_set)]
+	pub type ValidatorSet<T: Config> = StorageValue<_, Vec<T::AuthorityId>>;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct ReceiptParams {
@@ -115,17 +165,18 @@ pub mod pallet {
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	#[scale_info(skip_type_params(T))]
-	pub struct PayoutData<T: Config> {
+	#[scale_info(skip_type_params(Hash))]
+	pub struct PayoutData<Hash> {
 		pub batch_index: BatchIndex,
-		pub hash: T::Hash,
+		pub hash: Hash,
 	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn offchain_worker(_block_number: BlockNumberFor<T>) {
 			log::info!("Hello from pallet-ocw.");
-			let signer = Signer::<T, T::AuthorityId>::all_accounts();
+
+			let signer = Signer::<T, T::OffchainIdentifierId>::all_accounts();
 			if !signer.can_sign() {
 				log::error!("No local accounts available");
 				return
@@ -135,8 +186,7 @@ pub mod pallet {
 				signer.send_signed_transaction(|_account| Call::set_validate_payout_batch {
 					cluster_id: Default::default(),
 					era: 0,
-					batch_index: 0,
-					hash: T::Hash::default(),
+					payout_data: PayoutData { batch_index: 0, hash: T::Hash::default() },
 				});
 
 			for (acc, res) in &results {
@@ -197,17 +247,79 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era: DdcEra,
-			batch_index: BatchIndex,
-			hash: T::Hash,
+			payout_data: PayoutData<T::Hash>,
 		) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
-			let payout_data = PayoutData { batch_index, hash };
+			let who = ensure_signed(origin)?;
+			let account_bytes: [u8; 32] = Self::account_to_bytes(&who)?;
+			let who: T::AuthorityIdParameter =
+				sp_application_crypto::sr25519::Public::from_raw(account_bytes).into();
+			let who: T::AuthorityId = who.into();
+			let authorities = <ValidatorSet<T>>::get().unwrap();
 
-			PayoutBatch::<T>::insert(cluster_id, era, payout_data);
+			ensure!(authorities.contains(&who.clone()), Error::<T>::NotAValidator);
 
-			Self::deposit_event(Event::<T>::PayoutBatchCreated { cluster_id, era });
+			ensure!(
+				!<PayoutValidators<T>>::get(cluster_id, era).contains(&who.clone()),
+				Error::<T>::AlreadySigned
+			);
+
+			<PayoutValidators<T>>::try_mutate(cluster_id, era, |validators| -> DispatchResult {
+				validators.push(who);
+				Ok(())
+			})?;
+
+			const MAJORITY: u8 = 67;
+			let p = Percent::from_percent(MAJORITY);
+			let threshold = p * authorities.len();
+
+			let signed_validators = <PayoutValidators<T>>::get(cluster_id, era);
+
+			if threshold < signed_validators.len() {
+				PayoutBatch::<T>::insert(cluster_id, era, payout_data);
+				Self::deposit_event(Event::<T>::PayoutBatchCreated { cluster_id, era });
+			}
 
 			Ok(())
 		}
 	}
+}
+
+impl<T: Config> Pallet<T> {
+	// This function converts a 32 byte AccountId to its byte-array equivalent form.
+	fn account_to_bytes<AccountId>(account: &AccountId) -> Result<[u8; 32], DispatchError>
+	where
+		AccountId: Encode,
+	{
+		let account_vec = account.encode();
+		ensure!(account_vec.len() == 32, "AccountId must be 32 bytes.");
+		let mut bytes = [0u8; 32];
+		bytes.copy_from_slice(&account_vec);
+		Ok(bytes)
+	}
+}
+impl<T: Config> sp_application_crypto::BoundToRuntimeAppPublic for Pallet<T> {
+	type Public = T::AuthorityId;
+}
+
+impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
+	type Key = T::AuthorityId;
+
+	fn on_genesis_session<'a, I: 'a>(validators: I)
+	where
+		I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
+	{
+		let validators = validators.map(|(_, k)| k).collect::<Vec<_>>();
+
+		ValidatorSet::<T>::put(validators);
+	}
+
+	fn on_new_session<'a, I: 'a>(_changed: bool, validators: I, _queued_authorities: I)
+	where
+		I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
+	{
+		let validators = validators.map(|(_, k)| k).collect::<Vec<_>>();
+		ValidatorSet::<T>::put(validators);
+	}
+
+	fn on_disabled(_i: u32) {}
 }
