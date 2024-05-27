@@ -203,9 +203,9 @@ pub mod pallet {
 							.props
 							.node_provider_auth_contract
 							.clone(),
-						erasure_coding_required: 4,
-						erasure_coding_total: 6,
-						replication_total: 3
+						erasure_coding_required: cluster.props.erasure_coding_required,
+						erasure_coding_total: cluster.props.erasure_coding_total,
+						replication_total: cluster.props.replication_total,
 					},
 					self.clusters_protocol_params
 						.iter()
