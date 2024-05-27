@@ -8,7 +8,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-use ddc_primitives::{BatchIndex, ClusterId, DdcEra, MmrRootHash};
+use ddc_primitives::{ClusterId, DdcEra, MmrRootHash};
 use frame_support::{pallet_prelude::*, traits::OneSessionHandler};
 use frame_system::{
 	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
@@ -22,6 +22,11 @@ use sp_std::prelude::*;
 
 pub mod weights;
 use crate::weights::WeightInfo;
+
+#[cfg(test)]
+pub(crate) mod mock;
+#[cfg(test)]
+mod tests;
 
 const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
 pub mod sr25519 {
@@ -95,7 +100,8 @@ pub mod pallet {
 			+ RuntimeAppPublic
 			+ Ord
 			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen;
+			+ Into<sp_core::sr25519::Public>
+			+ From<sp_core::sr25519::Public>;
 		type AuthorityIdParameter: Parameter
 			+ From<sp_core::sr25519::Public>
 			+ Into<Self::AuthorityId>
@@ -129,23 +135,17 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn payout_batch)]
-	pub type PayoutBatch<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		ClusterId,
-		Blake2_128Concat,
-		DdcEra,
-		PayoutData<T::Hash>,
-	>;
+	pub type PayoutBatch<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, DdcEra, PayoutData>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn payout_validators)]
 	pub type PayoutValidators<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		ClusterId,
+		(ClusterId, DdcEra),
 		Blake2_128Concat,
-		DdcEra,
+		MmrRootHash,
 		Vec<T::AuthorityId>,
 		ValueQuery,
 	>;
@@ -166,9 +166,8 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(Hash))]
-	pub struct PayoutData<Hash> {
-		pub batch_index: BatchIndex,
-		pub hash: Hash,
+	pub struct PayoutData {
+		pub hash: MmrRootHash,
 	}
 
 	#[pallet::hooks]
@@ -186,10 +185,7 @@ pub mod pallet {
 				signer.send_signed_transaction(|_account| Call::set_validate_payout_batch {
 					cluster_id: Default::default(),
 					era: DdcEra::default(),
-					payout_data: PayoutData {
-						batch_index: BatchIndex::default(),
-						hash: T::Hash::default(),
-					},
+					payout_data: PayoutData { hash: MmrRootHash::default() },
 				});
 
 			for (acc, res) in &results {
@@ -250,7 +246,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era: DdcEra,
-			payout_data: PayoutData<T::Hash>,
+			payout_data: PayoutData,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let account_bytes: [u8; 32] = Self::account_to_bytes(&who)?;
@@ -262,19 +258,24 @@ pub mod pallet {
 			ensure!(authorities.contains(&who.clone()), Error::<T>::NotAValidator);
 
 			ensure!(
-				!<PayoutValidators<T>>::get(cluster_id, era).contains(&who.clone()),
+				!<PayoutValidators<T>>::get((cluster_id, era), payout_data.hash)
+					.contains(&who.clone()),
 				Error::<T>::AlreadySigned
 			);
 
-			<PayoutValidators<T>>::try_mutate(cluster_id, era, |validators| -> DispatchResult {
-				validators.push(who);
-				Ok(())
-			})?;
+			<PayoutValidators<T>>::try_mutate(
+				(cluster_id, era),
+				payout_data.hash,
+				|validators| -> DispatchResult {
+					validators.push(who);
+					Ok(())
+				},
+			)?;
 
 			let p = Percent::from_percent(T::MAJORITY);
 			let threshold = p * authorities.len();
 
-			let signed_validators = <PayoutValidators<T>>::get(cluster_id, era);
+			let signed_validators = <PayoutValidators<T>>::get((cluster_id, era), payout_data.hash);
 
 			if threshold < signed_validators.len() {
 				PayoutBatch::<T>::insert(cluster_id, era, payout_data);
