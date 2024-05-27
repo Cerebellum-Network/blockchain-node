@@ -18,6 +18,7 @@ pub type StorageNodePubKey = AccountId32;
 pub type ClusterNodesCount = u16;
 /// The type used to represent an MMR root hash.
 pub type MmrRootHash = H256;
+pub type BatchIndex = u16;
 
 // ClusterParams includes Governance non-sensetive parameters only
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]

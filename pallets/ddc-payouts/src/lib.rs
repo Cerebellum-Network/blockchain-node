@@ -33,7 +33,7 @@ use ddc_primitives::{
 		},
 		pallet::PalletVisitor as PalletVisitorType,
 	},
-	ClusterId, DdcEra, MILLICENTS,
+	BatchIndex, ClusterId, DdcEra, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -47,8 +47,6 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_runtime::{traits::Convert, PerThing, Perquintill};
 use sp_std::prelude::*;
-
-type BatchIndex = u16;
 
 /// Stores usage of customers
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]

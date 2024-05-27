@@ -8,7 +8,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-use ddc_primitives::{ClusterId, DdcEra, MmrRootHash};
+use ddc_primitives::{BatchIndex, ClusterId, DdcEra, MmrRootHash};
 use frame_support::{pallet_prelude::*, traits::OneSessionHandler};
 use frame_system::{
 	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
@@ -23,8 +23,7 @@ use sp_std::prelude::*;
 pub mod weights;
 use crate::weights::WeightInfo;
 
-type BatchIndex = u16;
-pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
+const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
 pub mod sr25519 {
 	mod app_sr25519 {
 		use sp_application_crypto::{app_crypto, sr25519};
@@ -102,6 +101,7 @@ pub mod pallet {
 			+ Into<Self::AuthorityId>
 			+ MaxEncodedLen;
 		type OffchainIdentifierId: AppCrypto<Self::Public, Self::Signature>;
+		const MAJORITY: u8;
 	}
 
 	#[pallet::event]
@@ -185,8 +185,11 @@ pub mod pallet {
 			let results =
 				signer.send_signed_transaction(|_account| Call::set_validate_payout_batch {
 					cluster_id: Default::default(),
-					era: 0,
-					payout_data: PayoutData { batch_index: 0, hash: T::Hash::default() },
+					era: DdcEra::default(),
+					payout_data: PayoutData {
+						batch_index: BatchIndex::default(),
+						hash: T::Hash::default(),
+					},
 				});
 
 			for (acc, res) in &results {
@@ -268,8 +271,7 @@ pub mod pallet {
 				Ok(())
 			})?;
 
-			const MAJORITY: u8 = 67;
-			let p = Percent::from_percent(MAJORITY);
+			let p = Percent::from_percent(T::MAJORITY);
 			let threshold = p * authorities.len();
 
 			let signed_validators = <PayoutValidators<T>>::get(cluster_id, era);
