@@ -65,7 +65,7 @@ frame_support::construct_runtime!(
 		Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
 		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
-		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Event<T>},
+		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcStaking: pallet_ddc_staking::{Pallet, Call, Storage, Event<T>},
 		Origins: pallet_mock_origins::{Origin},
 		DdcClustersGov: pallet_ddc_clusters_gov::{Pallet, Call, Storage, Event<T>},
