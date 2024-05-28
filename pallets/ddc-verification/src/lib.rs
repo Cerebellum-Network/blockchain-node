@@ -142,6 +142,8 @@ pub mod pallet {
 		AlreadySigned,
 		NodeRetrievalError,
 		NodeUsageRetrievalError,
+		ClusterToValidateRetrievalError,
+		EraToValidateRetrievalError,
 	}
 
 	#[pallet::storage]
@@ -165,6 +167,14 @@ pub mod pallet {
 		Vec<T::AuthorityId>,
 		ValueQuery,
 	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn cluster_to_validate)]
+	pub type ClusterToValidate<T: Config> = StorageValue<_, ClusterId>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn era_to_validate)]
+	pub type EraToValidate<T: Config> = StorageValue<_, DdcEra>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn verification_key)]
@@ -250,6 +260,18 @@ pub mod pallet {
 		pub hash: MmrRootHash,
 	}
 
+	macro_rules! unwrap_or_log_error {
+		($result:expr, $error_msg:expr) => {
+			match $result {
+				Ok(val) => val,
+				Err(err) => {
+					log::error!("{}: {:?}", $error_msg, err);
+					return;
+				},
+			}
+		};
+	}
+
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn offchain_worker(_block_number: BlockNumberFor<T>) {
@@ -274,10 +296,40 @@ pub mod pallet {
 					Err(e) => log::error!("[{:?}] Failed to submit transaction: {:?}", acc.id, e),
 				}
 			}
+
+			let era_id = unwrap_or_log_error!(
+				Self::get_era_to_validate(),
+				"Error retrieving era to validate"
+			);
+			let cluster_id = unwrap_or_log_error!(
+				Self::get_cluster_to_validate(),
+				"Error retrieving cluster to validate"
+			);
+			let dac_nodes = unwrap_or_log_error!(
+				Self::get_dac_nodes(&cluster_id),
+				"Error retrieving dac nodes to validate"
+			);
+			let _nodes_usage = unwrap_or_log_error!(
+				Self::fetch_nodes_usage_for_era(&cluster_id, era_id, &dac_nodes),
+				"Error retrieving node activities to validate"
+			);
+
+			let _customers_usage = unwrap_or_log_error!(
+				Self::fetch_customers_usage_for_era(&cluster_id, era_id, &dac_nodes),
+				"Error retrieving customers activities to validate"
+			);
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
+		fn get_era_to_validate() -> Result<DdcEra, Error<T>> {
+			Self::era_to_validate().ok_or(Error::EraToValidateRetrievalError)
+		}
+
+		fn get_cluster_to_validate() -> Result<ClusterId, Error<T>> {
+			Self::cluster_to_validate().ok_or(Error::ClusterToValidateRetrievalError)
+		}
+
 		pub(crate) fn fetch_customers_usage(
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -360,15 +412,15 @@ pub mod pallet {
 		fn fetch_nodes_usage_for_era(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			dac_nodes: Vec<(NodePubKey, StorageNodeParams)>,
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Vec<(NodePubKey, NodeActivity)>, Error<T>> {
 			let mut node_usages = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
-				let usage = Self::fetch_node_usage(cluster_id, era_id, &node_params)
+				let usage = Self::fetch_node_usage(cluster_id, era_id, node_params)
 					.map_err(|_| Error::<T>::NodeUsageRetrievalError)?;
 
-				node_usages.push((node_pub_key, usage));
+				node_usages.push((node_pub_key.clone(), usage));
 			}
 
 			Ok(node_usages)
@@ -377,15 +429,15 @@ pub mod pallet {
 		fn fetch_customers_usage_for_era(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			dac_nodes: Vec<(NodePubKey, StorageNodeParams)>,
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Vec<(NodePubKey, Vec<CustomerActivity>)>, Error<T>> {
 			let mut customers_usages = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
-				let usage = Self::fetch_customers_usage(cluster_id, era_id, &node_params)
+				let usage = Self::fetch_customers_usage(cluster_id, era_id, node_params)
 					.map_err(|_| Error::<T>::NodeUsageRetrievalError)?;
 
-				customers_usages.push((node_pub_key, usage));
+				customers_usages.push((node_pub_key.clone(), usage));
 			}
 
 			Ok(customers_usages)
