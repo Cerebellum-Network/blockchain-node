@@ -12,22 +12,20 @@ repository.workspace = true
 array-bytes = { workspace = true }
 # 3rd-party depdencies
 codec = { workspace = true }
-scale-info = { workspace = true }
-serde = { workspace = true }
-
+# Cere dependencies
+ddc-primitives = { workspace = true }
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+log = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true }
+sp-application-crypto = { workspace = true }
+sp-core = { workspace = true }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
-
-# Cere dependencies
-ddc-primitives = { workspace = true }
-
-[dev-dependencies]
-sp-core = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]
@@ -41,6 +39,8 @@ std = [
   "scale-info/std",
   "sp-runtime/std",
   "sp-io/std",
+  "sp-core/std",
+  "sp-application-crypto/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
