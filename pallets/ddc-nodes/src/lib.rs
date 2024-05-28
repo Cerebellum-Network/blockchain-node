@@ -32,7 +32,7 @@ use ddc_primitives::{
 		node::{NodeCreator, NodeVisitor},
 		staking::StakingVisitor,
 	},
-	ClusterId, NodeParams, NodePubKey, StorageNodePubKey,
+	ClusterId, NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
 };
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
@@ -48,6 +48,7 @@ pub use crate::{
 
 #[frame_support::pallet]
 pub mod pallet {
+	use self::node::NodeProps;
 	use super::*;
 
 	/// The current storage version.
@@ -237,6 +238,27 @@ pub mod pallet {
 		fn get_node_provider_id(node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
 			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
 			Ok(node.get_provider_id().clone())
+		}
+
+		fn get_node_params(node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
+			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
+			let node_props = node.get_props().clone();
+
+			match node_pub_key {
+				NodePubKey::StoragePubKey(_) => match node_props {
+					NodeProps::StorageProps(node_props) => {
+						Ok(ddc_primitives::NodeParams::StorageParams(StorageNodeParams {
+							mode: node_props.mode,
+							host: node_props.host.into(),
+							domain: node_props.domain.into(),
+							ssl: node_props.ssl,
+							http_port: node_props.http_port,
+							grpc_port: node_props.grpc_port,
+							p2p_port: node_props.p2p_port,
+						}))
+					},
+				},
+			}
 		}
 	}
 

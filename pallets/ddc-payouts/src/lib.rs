@@ -33,7 +33,7 @@ use ddc_primitives::{
 		},
 		pallet::PalletVisitor as PalletVisitorType,
 	},
-	ClusterId, DdcEra, MILLICENTS,
+	BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeUsage, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -47,27 +47,6 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_runtime::{traits::Convert, PerThing, Perquintill};
 use sp_std::prelude::*;
-
-type BatchIndex = u16;
-
-/// Stores usage of customers
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
-pub struct CustomerUsage {
-	pub transferred_bytes: u64,
-	pub stored_bytes: u64,
-	pub number_of_puts: u64,
-	pub number_of_gets: u64,
-}
-
-/// Stores usage of node provider
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
-pub struct NodeUsage {
-	pub transferred_bytes: u64,
-	pub stored_bytes: u64,
-	pub number_of_puts: u64,
-	pub number_of_gets: u64,
-}
-
 /// Stores reward in tokens(units) of node provider as per NodeUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct NodeReward {

@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use frame_support::parameter_types;
 use scale_info::{prelude::vec::Vec, TypeInfo};
 use serde::{Deserialize, Serialize};
 use sp_core::{hash::H160, H256};
@@ -8,14 +9,19 @@ use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
 
 pub mod traits;
 
+parameter_types! {
+	pub MaxHostLen: u8 = 255;
+	pub MaxDomainLen: u8 = 255;
+}
+
 pub const MILLICENTS: u128 = 100_000;
 pub const CENTS: u128 = 1_000 * MILLICENTS; // assume this is worth about a cent.
 pub const DOLLARS: u128 = 100 * CENTS;
 pub type ClusterId = H160;
 pub type DdcEra = u32;
 pub type BucketId = u64;
-pub type StorageNodePubKey = AccountId32;
 pub type ClusterNodesCount = u16;
+pub type StorageNodePubKey = AccountId32;
 /// The type used to represent an MMR root hash.
 pub type MmrRootHash = H256;
 
@@ -190,4 +196,30 @@ pub struct ClusterNodesStats {
 	pub await_validation: ClusterNodesCount,
 	pub validation_succeeded: ClusterNodesCount,
 	pub validation_failed: ClusterNodesCount,
+}
+
+pub type BatchIndex = u16;
+
+/// Stores usage of customers
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
+pub struct CustomerUsage {
+	pub transferred_bytes: u64,
+	pub stored_bytes: u64,
+	pub number_of_puts: u64,
+	pub number_of_gets: u64,
+}
+
+/// Stores usage of node provider
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
+pub struct NodeUsage {
+	pub transferred_bytes: u64,
+	pub stored_bytes: u64,
+	pub number_of_puts: u64,
+	pub number_of_gets: u64,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum NodeRepositoryError {
+	StorageNodeAlreadyExists,
+	StorageNodeDoesNotExist,
 }

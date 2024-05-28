@@ -1,3 +1,7 @@
+use ddc_primitives::{
+	traits::{ClusterManager, ClusterQuery},
+	ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterStatus,
+};
 use frame_support::{
 	pallet_prelude::ConstU32,
 	parameter_types,
@@ -57,9 +61,77 @@ impl crate::Config for Test {
 	type PalletId = VerificationPalletId;
 	type MaxVerificationKeyLimit = ConstU32<500>;
 	type WeightInfo = ();
+	type ClusterManager = TestClusterManager;
 }
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	frame_system::GenesisConfig::<Test>::default().build_storage().unwrap().into()
+}
+
+pub struct TestClusterManager;
+impl<T: Config> ClusterQuery<T> for TestClusterManager {
+	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
+		unimplemented!()
+	}
+	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
+		unimplemented!()
+	}
+	fn get_manager_and_reserve_id(
+		_cluster_id: &ClusterId,
+	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
+		unimplemented!()
+	}
+}
+
+impl<T: Config> ClusterManager<T> for TestClusterManager {
+	fn contains_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+		_validation_status: Option<ClusterNodeStatus>,
+	) -> bool {
+		unimplemented!()
+	}
+
+	fn get_nodes(_cluster_id: &ClusterId) -> Vec<NodePubKey> {
+		unimplemented!()
+	}
+
+	fn add_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+		_node_kind: &ClusterNodeKind,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
+
+	fn remove_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_node_state(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<ClusterNodeState<BlockNumberFor<T>>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+		unimplemented!()
+	}
+
+	fn validate_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+		_succeeded: bool,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
 }
