@@ -820,7 +820,7 @@ pub mod pallet {
 			Ok(cluster.manager_id)
 		}
 
-		fn get_nodes(cluster_id: &ClusterId) -> Vec<NodePubKey> {
+		fn get_nodes(cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError> {
 			let mut nodes = Vec::new();
 
 			// Iterate through all nodes associated with the cluster_id
@@ -828,7 +828,7 @@ pub mod pallet {
 				nodes.push(node_pubkey);
 			}
 
-			nodes
+			Ok(nodes)
 		}
 
 		fn contains_node(

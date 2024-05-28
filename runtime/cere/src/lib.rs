@@ -1252,6 +1252,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type MaxVerificationKeyLimit = ConstU32<500>;
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type AuthorityId = pallet_ddc_verification::sr25519::AuthorityId;
 	type AuthorityIdParameter = pallet_ddc_verification::sr25519::AuthorityId;
 	type OffchainIdentifierId = pallet_ddc_verification::crypto::OffchainIdentifierId;

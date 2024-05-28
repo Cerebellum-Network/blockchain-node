@@ -67,6 +67,7 @@ impl crate::Config for Test {
 	type MaxVerificationKeyLimit = ConstU32<500>;
 	type WeightInfo = ();
 	type ClusterManager = TestClusterManager;
+	type NodeVisitor = MockNodeVisitor;
 	type AuthorityId = sr25519::AuthorityId;
 	type AuthorityIdParameter = sr25519::AuthorityId;
 	type OffchainIdentifierId = crypto::OffchainIdentifierId;
@@ -76,6 +77,25 @@ impl crate::Config for Test {
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	frame_system::GenesisConfig::<Test>::default().build_storage().unwrap().into()
+}
+
+pub struct MockNodeVisitor;
+
+impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
+	fn get_node_params(_node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
+		unimplemented!()
+	}
+	fn exists(_node_pub_key: &NodePubKey) -> bool {
+		unimplemented!()
+	}
+
+	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
 }
 
 pub struct TestClusterManager;
@@ -102,7 +122,7 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		unimplemented!()
 	}
 
-	fn get_nodes(_cluster_id: &ClusterId) -> Vec<NodePubKey> {
+	fn get_nodes(_cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError> {
 		unimplemented!()
 	}
 

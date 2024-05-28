@@ -72,7 +72,7 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 		validation_status: Option<ClusterNodeStatus>,
 	) -> bool;
 
-	fn get_nodes(cluster_id: &ClusterId) -> Vec<NodePubKey>;
+	fn get_nodes(cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError>;
 
 	fn add_node(
 		cluster_id: &ClusterId,

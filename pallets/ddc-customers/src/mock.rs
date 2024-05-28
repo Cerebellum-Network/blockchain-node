@@ -234,7 +234,7 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		unimplemented!()
 	}
 
-	fn get_nodes(_cluster_id: &ClusterId) -> Vec<NodePubKey> {
+	fn get_nodes(_cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError> {
 		unimplemented!()
 	}
 
