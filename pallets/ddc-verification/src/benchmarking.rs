@@ -26,7 +26,6 @@ mod benchmarks {
 			cluster_id,
 			era,
 			merkel_root_hash,
-			vec![],
 		);
 
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
