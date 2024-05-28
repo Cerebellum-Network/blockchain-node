@@ -1249,6 +1249,10 @@ impl pallet_ddc_verification::Config for Runtime {
 	type MaxVerificationKeyLimit = ConstU32<500>;
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
+	type AuthorityId = pallet_ddc_verification::sr25519::AuthorityId;
+	type AuthorityIdParameter = pallet_ddc_verification::sr25519::AuthorityId;
+	type OffchainIdentifierId = pallet_ddc_verification::crypto::OffchainIdentifierId;
+	const MAJORITY: u8 = 67;
 }
 
 construct_runtime!(
@@ -1406,7 +1410,6 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_preimage, Preimage]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
-		[pallet_ddc_verification, DdcVerification]
 	);
 }
 

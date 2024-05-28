@@ -246,7 +246,7 @@ pub mod pallet {
 
 			match node_pub_key {
 				NodePubKey::StoragePubKey(_) => match node_props {
-					NodeProps::StorageProps(node_props) => {
+					NodeProps::StorageProps(node_props) =>
 						Ok(ddc_primitives::NodeParams::StorageParams(StorageNodeParams {
 							mode: node_props.mode,
 							host: node_props.host.into(),
@@ -255,8 +255,7 @@ pub mod pallet {
 							http_port: node_props.http_port,
 							grpc_port: node_props.grpc_port,
 							p2p_port: node_props.p2p_port,
-						}))
-					},
+						})),
 				},
 			}
 		}

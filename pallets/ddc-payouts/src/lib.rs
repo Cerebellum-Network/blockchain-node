@@ -47,6 +47,7 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_runtime::{traits::Convert, PerThing, Perquintill};
 use sp_std::prelude::*;
+
 /// Stores reward in tokens(units) of node provider as per NodeUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct NodeReward {
@@ -987,8 +988,8 @@ pub mod pallet {
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
-		total.storage = fraction_of_month *
-			(|| -> Option<u128> {
+		total.storage = fraction_of_month
+			* (|| -> Option<u128> {
 				(usage.stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)
