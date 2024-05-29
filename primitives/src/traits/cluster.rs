@@ -1,5 +1,6 @@
 use frame_system::{pallet_prelude::BlockNumberFor, Config};
 use sp_runtime::{DispatchError, DispatchResult};
+use sp_std::prelude::*;
 
 use crate::{
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
@@ -70,6 +71,8 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 		node_pub_key: &NodePubKey,
 		validation_status: Option<ClusterNodeStatus>,
 	) -> bool;
+
+	fn get_nodes(cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError>;
 
 	fn add_node(
 		cluster_id: &ClusterId,

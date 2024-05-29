@@ -278,6 +278,10 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		true
 	}
 
+	fn get_nodes(_cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError> {
+		unimplemented!()
+	}
+
 	fn add_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
@@ -358,6 +362,10 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor
 where
 	<T as frame_system::Config>::AccountId: From<u64>,
 {
+	fn get_node_params(_node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
+		unimplemented!()
+	}
+
 	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
 		let lock = MOCK_NODE.lock();
 		let mock_ref = lock.borrow();

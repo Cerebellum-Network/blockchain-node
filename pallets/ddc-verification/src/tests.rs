@@ -1,8 +1,15 @@
-use ddc_primitives::ClusterId;
+use ddc_primitives::{ClusterId, StorageNodeParams};
 use frame_support::{assert_noop, assert_ok};
-use sp_core::{Pair, H256};
+use sp_core::{
+	offchain::{
+		testing::{PendingRequest, TestOffchainExt, TestTransactionPoolExt},
+		OffchainDbExt, OffchainWorkerExt, Timestamp, TransactionPoolExt,
+	},
+	Pair, H256,
+};
+use sp_io::TestExternalities;
 
-use crate::{mock::*, Error, Event, *};
+use crate::{mock::*, Error, Event, NodeActivity, *};
 
 #[test]
 fn create_billing_reports_works() {
@@ -170,4 +177,142 @@ fn set_validate_payout_batch_works() {
 		// 9. 2/3rd validators have sent the same data with same hash
 		assert_eq!(DdcVerification::payout_batch(cluster_id, era).unwrap(), payout_data);
 	})
+}
+
+#[test]
+fn fetch_node_usage_works() {
+	let mut ext = TestExternalities::default();
+	let (offchain, offchain_state) = TestOffchainExt::new();
+	let (pool, _) = TestTransactionPoolExt::new();
+
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	ext.execute_with(|| {
+		let mut offchain_state = offchain_state.write();
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host = "example.com";
+		let port = 80;
+		let era_id = 1;
+
+		// Create a sample NodeActivity instance
+		let node_activity = NodeActivity {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			proof: vec![1, 2, 3],
+		};
+		let node_activity_json = serde_json::to_string(&node_activity).unwrap();
+
+		// Mock HTTP request and response
+		let pending_request = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/node?eraId={}", host, port, era_id),
+			response: Some(node_activity_json.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		offchain_state.expect_request(pending_request);
+		drop(offchain_state);
+
+		let era_id = 1;
+		let cluster_id = ClusterId::from([1; 20]);
+		let node_params = StorageNodeParams {
+			ssl: false,
+			host: host.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		};
+
+		let result = Pallet::<Test>::fetch_node_usage(&cluster_id, era_id, &node_params);
+		assert!(result.is_ok());
+		let activity = result.unwrap();
+		assert_eq!(activity.number_of_gets, node_activity.number_of_gets);
+		assert_eq!(activity.number_of_puts, node_activity.number_of_puts);
+		assert_eq!(activity.transferred_bytes, node_activity.transferred_bytes);
+		assert_eq!(activity.stored_bytes, node_activity.stored_bytes);
+	});
+}
+
+#[test]
+fn fetch_customers_usage_works() {
+	let mut ext = TestExternalities::default();
+	let (offchain, offchain_state) = TestOffchainExt::new();
+	let (pool, _) = TestTransactionPoolExt::new();
+
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	ext.execute_with(|| {
+		let mut offchain_state = offchain_state.write();
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host = "example.com";
+		let port = 80;
+		let era_id = 1;
+
+		// Create a sample NodeActivity instance
+		let customer_activity1 = CustomerActivity {
+			bucket_id: 111,
+			customer_id: [1; 32],
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			proof: vec![1, 2, 3],
+		};
+		let customer_activity2 = CustomerActivity {
+			bucket_id: 222,
+			customer_id: [2; 32],
+			stored_bytes: 1000,
+			transferred_bytes: 500,
+			number_of_puts: 100,
+			number_of_gets: 200,
+			proof: vec![4, 5, 6, 7],
+		};
+		let customers_activity_json =
+			serde_json::to_string(&vec![customer_activity1.clone(), customer_activity2.clone()])
+				.unwrap();
+
+		// Mock HTTP request and response
+		let pending_request = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId={}", host, port, era_id),
+			response: Some(customers_activity_json.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		offchain_state.expect_request(pending_request);
+		drop(offchain_state);
+
+		let era_id = 1;
+		let cluster_id = ClusterId::from([1; 20]);
+		let node_params = StorageNodeParams {
+			ssl: false,
+			host: host.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		};
+
+		let result = Pallet::<Test>::fetch_customers_usage(&cluster_id, era_id, &node_params);
+		assert!(result.is_ok());
+		let activities = result.unwrap();
+		assert_eq!(activities[0].number_of_gets, customer_activity1.number_of_gets);
+		assert_eq!(activities[0].number_of_puts, customer_activity1.number_of_puts);
+		assert_eq!(activities[0].transferred_bytes, customer_activity1.transferred_bytes);
+		assert_eq!(activities[0].stored_bytes, customer_activity1.stored_bytes);
+
+		assert_eq!(activities[1].number_of_gets, customer_activity2.number_of_gets);
+		assert_eq!(activities[1].number_of_puts, customer_activity2.number_of_puts);
+		assert_eq!(activities[1].transferred_bytes, customer_activity2.transferred_bytes);
+		assert_eq!(activities[1].stored_bytes, customer_activity2.stored_bytes);
+	});
 }

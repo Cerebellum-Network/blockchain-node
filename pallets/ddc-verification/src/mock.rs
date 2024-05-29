@@ -1,3 +1,7 @@
+use ddc_primitives::{
+	traits::{ClusterManager, ClusterQuery},
+	ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterStatus,
+};
 use frame_support::{
 	pallet_prelude::ConstU32,
 	parameter_types,
@@ -62,6 +66,8 @@ impl crate::Config for Test {
 	type PalletId = VerificationPalletId;
 	type MaxVerificationKeyLimit = ConstU32<500>;
 	type WeightInfo = ();
+	type ClusterManager = TestClusterManager;
+	type NodeVisitor = MockNodeVisitor;
 	type AuthorityId = sr25519::AuthorityId;
 	type AuthorityIdParameter = sr25519::AuthorityId;
 	type OffchainIdentifierId = crypto::OffchainIdentifierId;
@@ -71,6 +77,92 @@ impl crate::Config for Test {
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	frame_system::GenesisConfig::<Test>::default().build_storage().unwrap().into()
+}
+
+pub struct MockNodeVisitor;
+
+impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
+	fn get_node_params(_node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
+		unimplemented!()
+	}
+	fn exists(_node_pub_key: &NodePubKey) -> bool {
+		unimplemented!()
+	}
+
+	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+}
+
+pub struct TestClusterManager;
+impl<T: Config> ClusterQuery<T> for TestClusterManager {
+	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
+		unimplemented!()
+	}
+	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
+		unimplemented!()
+	}
+	fn get_manager_and_reserve_id(
+		_cluster_id: &ClusterId,
+	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
+		unimplemented!()
+	}
+}
+
+impl<T: Config> ClusterManager<T> for TestClusterManager {
+	fn contains_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+		_validation_status: Option<ClusterNodeStatus>,
+	) -> bool {
+		unimplemented!()
+	}
+
+	fn get_nodes(_cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn add_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+		_node_kind: &ClusterNodeKind,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
+
+	fn remove_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_node_state(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+	) -> Result<ClusterNodeState<BlockNumberFor<T>>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
+		unimplemented!()
+	}
+
+	fn validate_node(
+		_cluster_id: &ClusterId,
+		_node_pub_key: &NodePubKey,
+		_succeeded: bool,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
 }
 
 impl frame_system::offchain::SigningTypes for Test {
