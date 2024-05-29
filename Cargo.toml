@@ -45,6 +45,7 @@ scale-info = { version = "2.1.2", default-features = false, features = ["derive"
 serde = { version = "1.0.136", default-features = false, features = ["derive"] }
 static_assertions = { version = "1.1.0" }
 url = { version = "2.4.1" }
+polars = { version = "0.40.0" }
 
 # Substrate Dependencies
 # Please keey format such that:

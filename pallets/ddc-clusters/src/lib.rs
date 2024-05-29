@@ -29,6 +29,10 @@ mod tests;
 pub mod migrations;
 const LOG_TARGET: &str = "runtime::ddc-clusters";
 
+// Import the off-chain worker logic conditionally
+#[cfg(feature = "std")]
+mod offchain;
+
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
@@ -254,6 +258,17 @@ pub mod pallet {
 
 					<ClustersNodesStats<T>>::insert(cluster.cluster_id, stats);
 				}
+			}
+		}
+	}
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn offchain_worker(block_number: BlockNumberFor<T>) {
+			#[cfg(feature = "std")]
+			{
+				// Call the off-chain worker logic
+				crate::offchain::offchain::perform_offchain_work();
 			}
 		}
 	}
