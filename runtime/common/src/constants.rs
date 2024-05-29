@@ -19,11 +19,12 @@
 
 /// Money matters.
 pub mod currency {
-	use node_primitives::Balance;
+	pub use node_primitives::Balance;
 
 	pub const MILLICENTS: Balance = 100_000;
 	pub const CENTS: Balance = 1_000 * MILLICENTS; // assume this is worth about a cent.
 	pub const DOLLARS: Balance = 100 * CENTS;
+	pub const GRAND: Balance = DOLLARS * 1_000;
 
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTS + (bytes as Balance) * 6 * CENTS
@@ -32,7 +33,7 @@ pub mod currency {
 
 /// Time.
 pub mod time {
-	use node_primitives::{BlockNumber, Moment};
+	pub use node_primitives::{BlockNumber, Moment};
 
 	/// Since BABE is probabilistic this is the average expected block time that
 	/// we are targeting. Blocks will be produced at a minimum duration defined
@@ -72,4 +73,85 @@ pub mod time {
 	pub const MINUTES: BlockNumber = 60 / (SECS_PER_BLOCK as BlockNumber);
 	pub const HOURS: BlockNumber = MINUTES * 60;
 	pub const DAYS: BlockNumber = HOURS * 24;
+}
+
+pub mod tracks {
+	pub const fn percent(x: i32) -> sp_arithmetic::FixedI64 {
+		sp_arithmetic::FixedI64::from_rational(x as u128, 100)
+	}
+	pub use pallet_referenda::Curve;
+	pub const APP_ROOT: Curve =
+		Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
+	pub const SUP_ROOT: Curve = Curve::make_linear(28, 28, percent(0), percent(50));
+	pub const APP_STAKING_ADMIN: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
+	pub const SUP_STAKING_ADMIN: Curve =
+		Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
+	pub const APP_TREASURER: Curve =
+		Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
+	pub const SUP_TREASURER: Curve = Curve::make_linear(28, 28, percent(0), percent(50));
+	pub const APP_FELLOWSHIP_ADMIN: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
+	pub const SUP_FELLOWSHIP_ADMIN: Curve =
+		Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
+	pub const APP_GENERAL_ADMIN: Curve =
+		Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
+	pub const SUP_GENERAL_ADMIN: Curve =
+		Curve::make_reciprocal(7, 28, percent(10), percent(0), percent(50));
+	pub const APP_REFERENDUM_CANCELLER: Curve =
+		Curve::make_linear(17, 28, percent(50), percent(100));
+	pub const SUP_REFERENDUM_CANCELLER: Curve =
+		Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
+	pub const APP_REFERENDUM_KILLER: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
+	pub const SUP_REFERENDUM_KILLER: Curve =
+		Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
+	pub const APP_SMALL_TIPPER: Curve = Curve::make_linear(10, 28, percent(50), percent(100));
+	pub const SUP_SMALL_TIPPER: Curve =
+		Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(50));
+	pub const APP_BIG_TIPPER: Curve = Curve::make_linear(10, 28, percent(50), percent(100));
+	pub const SUP_BIG_TIPPER: Curve =
+		Curve::make_reciprocal(8, 28, percent(1), percent(0), percent(50));
+	pub const APP_SMALL_SPENDER: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
+	pub const SUP_SMALL_SPENDER: Curve =
+		Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
+	pub const APP_MEDIUM_SPENDER: Curve = Curve::make_linear(23, 28, percent(50), percent(100));
+	pub const SUP_MEDIUM_SPENDER: Curve =
+		Curve::make_reciprocal(16, 28, percent(1), percent(0), percent(50));
+	pub const APP_BIG_SPENDER: Curve = Curve::make_linear(28, 28, percent(50), percent(100));
+	pub const SUP_BIG_SPENDER: Curve =
+		Curve::make_reciprocal(20, 28, percent(1), percent(0), percent(50));
+	pub const APP_WHITELISTED_CALLER: Curve =
+		Curve::make_reciprocal(16, 28 * 24, percent(96), percent(50), percent(100));
+	pub const SUP_WHITELISTED_CALLER: Curve =
+		Curve::make_reciprocal(1, 28, percent(20), percent(5), percent(50));
+
+	pub const APP_CLUSTER_PROTOCOL_ACTIVATOR: Curve =
+		Curve::make_linear(10, 28, percent(0), percent(10));
+	pub const SUP_CLUSTER_PROTOCOL_ACTIVATOR: Curve =
+		Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
+
+	pub const APP_CLUSTER_PROTOCOL_UPDATER: Curve =
+		Curve::make_linear(10, 28, percent(0), percent(10));
+	pub const SUP_CLUSTER_PROTOCOL_UPDATER: Curve =
+		Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
+
+	// Root track
+	pub const ROOT_TRACK_ID: u16 = 0;
+	// Whitelister track
+	pub const WHITELISTED_CALLER_TRACK_ID: u16 = 1;
+	// General admin tracks
+	pub const STAKING_ADMIN_TRACK_ID: u16 = 10;
+	pub const TREASURER_TRACK_ID: u16 = 11;
+	pub const FELLOWSHIP_ADMIN_TRACK_ID: u16 = 13;
+	pub const GENERAL_ADMIN_TRACK_ID: u16 = 14;
+	// Referendum admins tracks
+	pub const REFERENDUM_CANCELER_TRACK_ID: u16 = 20;
+	pub const REFERENDUM_KILLER_TRACK_ID: u16 = 21;
+	// Limited treasury spenders tracks
+	pub const SMALL_TIPPER_TRACK_ID: u16 = 30;
+	pub const BIG_TIPPER_TRACK_ID: u16 = 31;
+	pub const SMALL_SPENDER_TRACK_ID: u16 = 32;
+	pub const MEDIUM_SPENDER_TRACK_ID: u16 = 33;
+	pub const BIG_SPENDER_TRACK_ID: u16 = 34;
+	// DDC admins tracks
+	pub const CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID: u16 = 100;
+	pub const CLUSTER_PROTOCOL_UPDATER_TRACK_ID: u16 = 101;
 }

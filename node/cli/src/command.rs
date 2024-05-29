@@ -1,4 +1,4 @@
-use cere_service::{self, IdentifyVariant};
+use cere_service::IdentifyVariant;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use sc_cli::{Error, SubstrateCli};
 use sc_service::error::Error as ServiceError;

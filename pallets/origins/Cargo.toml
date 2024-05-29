@@ -1,0 +1,46 @@
+[package]
+name = "pallet-origins"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+
+[dependencies]
+# 3rd-party dependencies
+cere-runtime-common = { workspace = true }
+codec = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true }
+
+# Substrate dependencies
+frame-benchmarking = { workspace = true, optional = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+
+[features]
+default = ["std"]
+std = [
+  "codec/std",
+  "frame-benchmarking/std",
+  "frame-support/std",
+  "frame-system/std",
+  "scale-info/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "sp-core/std",
+]
+runtime-benchmarks = [
+  "frame-benchmarking/runtime-benchmarks",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
+]
+try-runtime = [
+  "frame-system/try-runtime",
+]

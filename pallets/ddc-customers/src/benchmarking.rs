@@ -1,7 +1,7 @@
 //! DdcStaking pallet benchmarking.
 #![cfg(feature = "runtime-benchmarks")]
 
-use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams};
+use ddc_primitives::{ClusterId, ClusterParams, ClusterProtocolParams};
 use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_support::traits::Currency;
 use sp_runtime::Perquintill;
@@ -21,7 +21,7 @@ benchmarks! {
 	create_bucket {
 		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-		let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
+		let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterProtocolParams {
 			treasury_share: Perquintill::default(),
 			validators_share: Perquintill::default(),
 			cluster_reserve_share: Perquintill::default(),
@@ -34,12 +34,17 @@ benchmarks! {
 			unit_per_get_request: 10,
 		};
 
-		let _ = <T as pallet::Config>::ClusterCreator::create_new_cluster(
+		let _ = <T as pallet::Config>::ClusterCreator::create_cluster(
 			ClusterId::from([1; 20]),
 			user.clone(),
 			user.clone(),
-			ClusterParams { node_provider_auth_contract: Some(user.clone()) },
-			cluster_gov_params
+			ClusterParams {
+				node_provider_auth_contract: Some(user.clone()),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3
+			},
+			cluster_protocol_params
 		);
 
 		let bucket_params = BucketParams {
