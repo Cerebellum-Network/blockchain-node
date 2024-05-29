@@ -10,7 +10,7 @@ repository.workspace = true
 
 [dependencies]
 array-bytes = { workspace = true }
-# 3rd-party depdencies
+# 3rd-party dependencies
 codec = { workspace = true }
 # Cere dependencies
 ddc-primitives = { workspace = true }
@@ -21,11 +21,16 @@ frame-system = { workspace = true }
 log = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 sp-application-crypto = { workspace = true }
 sp-core = { workspace = true }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
+
+[dev-dependencies]
+mockall = "0.12.1"
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false, features = ["std"] }
 
 [features]
 default = ["std"]

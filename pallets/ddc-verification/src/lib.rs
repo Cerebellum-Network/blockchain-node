@@ -8,16 +8,27 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-use ddc_primitives::{ClusterId, DdcEra, MmrRootHash};
-use frame_support::{pallet_prelude::*, traits::OneSessionHandler};
+use core::str;
+
+use ddc_primitives::{
+	traits::{ClusterManager, NodeVisitor},
+	ClusterId, CustomerUsage, DdcEra, MmrRootHash, NodeParams, NodePubKey, NodeUsage,
+	StorageNodeMode, StorageNodeParams,
+};
+use frame_support::{
+	pallet_prelude::*,
+	traits::{Get, OneSessionHandler},
+};
 use frame_system::{
 	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
 	pallet_prelude::*,
 };
 pub use pallet::*;
+use scale_info::prelude::format;
+use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
 use sp_core::crypto::KeyTypeId;
-use sp_runtime::Percent;
+use sp_runtime::{offchain as rt_offchain, offchain::http, Percent};
 use sp_std::prelude::*;
 
 pub mod weights;
@@ -74,6 +85,7 @@ pub mod crypto {
 
 #[frame_support::pallet]
 pub mod pallet {
+	use ddc_primitives::BucketId;
 	use frame_support::PalletId;
 
 	use super::*;
@@ -95,6 +107,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxVerificationKeyLimit: Get<u32>;
 		type WeightInfo: WeightInfo;
+		type ClusterManager: ClusterManager<Self>;
+		type NodeVisitor: NodeVisitor<Self>;
 		type AuthorityId: Member
 			+ Parameter
 			+ RuntimeAppPublic
@@ -126,6 +140,10 @@ pub mod pallet {
 		BadRequest,
 		NotAValidator,
 		AlreadySigned,
+		NodeRetrievalError,
+		NodeUsageRetrievalError,
+		ClusterToValidateRetrievalError,
+		EraToValidateRetrievalError,
 	}
 
 	#[pallet::storage]
@@ -151,6 +169,14 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn cluster_to_validate)]
+	pub type ClusterToValidate<T: Config> = StorageValue<_, ClusterId>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn era_to_validate)]
+	pub type EraToValidate<T: Config> = StorageValue<_, DdcEra>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn verification_key)]
 	pub type VerificationKey<T: Config> =
 		StorageValue<_, BoundedVec<u8, T::MaxVerificationKeyLimit>>;
@@ -164,10 +190,86 @@ pub mod pallet {
 		pub merkle_root_hash: MmrRootHash,
 	}
 
+	#[derive(Serialize, Deserialize, Debug, Clone)]
+	pub(crate) struct NodeActivity {
+		#[serde(rename = "totalBytesStored")]
+		pub(crate) stored_bytes: u64,
+
+		#[serde(rename = "totalBytesDelivered")]
+		pub(crate) transferred_bytes: u64,
+
+		#[serde(rename = "totalPutRequests")]
+		pub(crate) number_of_puts: u64,
+
+		#[serde(rename = "totalGetRequests")]
+		pub(crate) number_of_gets: u64,
+
+		#[serde(rename = "proof")]
+		pub(crate) proof: Vec<u8>,
+	}
+
+	#[derive(Debug, Serialize, Deserialize, Clone)]
+	pub struct CustomerActivity {
+		#[serde(rename = "customerId")]
+		pub customer_id: [u8; 32],
+
+		#[serde(rename = "bucketId")]
+		pub bucket_id: BucketId,
+
+		#[serde(rename = "totalBytesStored")]
+		pub stored_bytes: u64,
+
+		#[serde(rename = "totalBytesDelivered")]
+		pub transferred_bytes: u64,
+
+		#[serde(rename = "totalPutRequests")]
+		pub number_of_puts: u64,
+
+		#[serde(rename = "totalGetRequests")]
+		pub number_of_gets: u64,
+
+		#[serde(rename = "proof")]
+		pub proof: Vec<u8>,
+	}
+
+	impl From<CustomerActivity> for CustomerUsage {
+		fn from(activity: CustomerActivity) -> Self {
+			CustomerUsage {
+				transferred_bytes: activity.transferred_bytes,
+				stored_bytes: activity.stored_bytes,
+				number_of_puts: activity.number_of_puts,
+				number_of_gets: activity.number_of_gets,
+			}
+		}
+	}
+
+	impl From<NodeActivity> for NodeUsage {
+		fn from(activity: NodeActivity) -> Self {
+			NodeUsage {
+				transferred_bytes: activity.transferred_bytes,
+				stored_bytes: activity.stored_bytes,
+				number_of_puts: activity.number_of_puts,
+				number_of_gets: activity.number_of_gets,
+			}
+		}
+	}
+
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(Hash))]
 	pub struct PayoutData {
 		pub hash: MmrRootHash,
+	}
+
+	macro_rules! unwrap_or_log_error {
+		($result:expr, $error_msg:expr) => {
+			match $result {
+				Ok(val) => val,
+				Err(err) => {
+					log::error!("{}: {:?}", $error_msg, err);
+					return;
+				},
+			}
+		};
 	}
 
 	#[pallet::hooks]
@@ -178,7 +280,7 @@ pub mod pallet {
 			let signer = Signer::<T, T::OffchainIdentifierId>::all_accounts();
 			if !signer.can_sign() {
 				log::error!("No local accounts available");
-				return
+				return;
 			}
 
 			let results =
@@ -194,8 +296,154 @@ pub mod pallet {
 					Err(e) => log::error!("[{:?}] Failed to submit transaction: {:?}", acc.id, e),
 				}
 			}
+
+			let era_id = unwrap_or_log_error!(
+				Self::get_era_to_validate(),
+				"Error retrieving era to validate"
+			);
+			let cluster_id = unwrap_or_log_error!(
+				Self::get_cluster_to_validate(),
+				"Error retrieving cluster to validate"
+			);
+			let dac_nodes = unwrap_or_log_error!(
+				Self::get_dac_nodes(&cluster_id),
+				"Error retrieving dac nodes to validate"
+			);
+			let _nodes_usage = unwrap_or_log_error!(
+				Self::fetch_nodes_usage_for_era(&cluster_id, era_id, &dac_nodes),
+				"Error retrieving node activities to validate"
+			);
+
+			let _customers_usage = unwrap_or_log_error!(
+				Self::fetch_customers_usage_for_era(&cluster_id, era_id, &dac_nodes),
+				"Error retrieving customers activities to validate"
+			);
 		}
 	}
+
+	impl<T: Config> Pallet<T> {
+		fn get_era_to_validate() -> Result<DdcEra, Error<T>> {
+			Self::era_to_validate().ok_or(Error::EraToValidateRetrievalError)
+		}
+
+		fn get_cluster_to_validate() -> Result<ClusterId, Error<T>> {
+			Self::cluster_to_validate().ok_or(Error::ClusterToValidateRetrievalError)
+		}
+
+		pub(crate) fn fetch_customers_usage(
+			_cluster_id: &ClusterId,
+			era_id: DdcEra,
+			node_params: &StorageNodeParams,
+		) -> Result<Vec<CustomerActivity>, http::Error> {
+			let scheme = if node_params.ssl { "https" } else { "http" };
+			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
+			let url = format!(
+				"{}://{}:{}/activity/buckets?eraId={}",
+				scheme, host, node_params.http_port, era_id
+			);
+
+			let request = http::Request::get(&url);
+			let timeout =
+				sp_io::offchain::timestamp().add(sp_runtime::offchain::Duration::from_millis(3000));
+			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
+
+			let response =
+				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
+			if response.code != 200 {
+				return Err(http::Error::Unknown);
+			}
+
+			let body = response.body().collect::<Vec<u8>>();
+			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+		}
+
+		pub(crate) fn fetch_node_usage(
+			_cluster_id: &ClusterId,
+			era_id: DdcEra,
+			node_params: &StorageNodeParams,
+		) -> Result<NodeActivity, http::Error> {
+			let scheme = if node_params.ssl { "https" } else { "http" };
+			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
+			let url = format!(
+				"{}://{}:{}/activity/node?eraId={}",
+				scheme, host, node_params.http_port, era_id
+			);
+
+			let request = http::Request::get(&url);
+			let timeout =
+				sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(3000));
+			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
+
+			let response =
+				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
+			if response.code != 200 {
+				return Err(http::Error::Unknown);
+			}
+
+			let body = response.body().collect::<Vec<u8>>();
+			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+		}
+
+		fn get_dac_nodes(
+			cluster_id: &ClusterId,
+		) -> Result<Vec<(NodePubKey, StorageNodeParams)>, Error<T>> {
+			let mut dac_nodes = Vec::new();
+
+			let nodes = T::ClusterManager::get_nodes(cluster_id)
+				.map_err(|_| Error::<T>::NodeRetrievalError)?;
+
+			// Iterate over each node
+			for node_pub_key in nodes {
+				// Get the node parameters
+				if let Ok(NodeParams::StorageParams(storage_params)) =
+					T::NodeVisitor::get_node_params(&node_pub_key)
+				{
+					// Check if the mode is StorageNodeMode::DAC
+					if storage_params.mode == StorageNodeMode::DAC {
+						// Add to the results if the mode matches
+						dac_nodes.push((node_pub_key, storage_params));
+					}
+				}
+			}
+
+			Ok(dac_nodes)
+		}
+
+		fn fetch_nodes_usage_for_era(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+		) -> Result<Vec<(NodePubKey, NodeActivity)>, Error<T>> {
+			let mut node_usages = Vec::new();
+
+			for (node_pub_key, node_params) in dac_nodes {
+				let usage = Self::fetch_node_usage(cluster_id, era_id, node_params)
+					.map_err(|_| Error::<T>::NodeUsageRetrievalError)?;
+
+				node_usages.push((node_pub_key.clone(), usage));
+			}
+
+			Ok(node_usages)
+		}
+
+		fn fetch_customers_usage_for_era(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+		) -> Result<Vec<(NodePubKey, Vec<CustomerActivity>)>, Error<T>> {
+			let mut customers_usages = Vec::new();
+
+			for (node_pub_key, node_params) in dac_nodes {
+				let usage = Self::fetch_customers_usage(cluster_id, era_id, node_params)
+					.map_err(|_| Error::<T>::NodeUsageRetrievalError)?;
+
+				customers_usages.push((node_pub_key.clone(), usage));
+			}
+
+			Ok(customers_usages)
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
@@ -285,44 +533,44 @@ pub mod pallet {
 			Ok(())
 		}
 	}
-}
 
-impl<T: Config> Pallet<T> {
-	// This function converts a 32 byte AccountId to its byte-array equivalent form.
-	fn account_to_bytes<AccountId>(account: &AccountId) -> Result<[u8; 32], DispatchError>
-	where
-		AccountId: Encode,
-	{
-		let account_vec = account.encode();
-		ensure!(account_vec.len() == 32, "AccountId must be 32 bytes.");
-		let mut bytes = [0u8; 32];
-		bytes.copy_from_slice(&account_vec);
-		Ok(bytes)
+	impl<T: Config> Pallet<T> {
+		// This function converts a 32 byte AccountId to its byte-array equivalent form.
+		fn account_to_bytes<AccountId>(account: &AccountId) -> Result<[u8; 32], DispatchError>
+		where
+			AccountId: Encode,
+		{
+			let account_vec = account.encode();
+			ensure!(account_vec.len() == 32, "AccountId must be 32 bytes.");
+			let mut bytes = [0u8; 32];
+			bytes.copy_from_slice(&account_vec);
+			Ok(bytes)
+		}
 	}
-}
-impl<T: Config> sp_application_crypto::BoundToRuntimeAppPublic for Pallet<T> {
-	type Public = T::AuthorityId;
-}
-
-impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
-	type Key = T::AuthorityId;
-
-	fn on_genesis_session<'a, I: 'a>(validators: I)
-	where
-		I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
-	{
-		let validators = validators.map(|(_, k)| k).collect::<Vec<_>>();
-
-		ValidatorSet::<T>::put(validators);
+	impl<T: Config> sp_application_crypto::BoundToRuntimeAppPublic for Pallet<T> {
+		type Public = T::AuthorityId;
 	}
 
-	fn on_new_session<'a, I: 'a>(_changed: bool, validators: I, _queued_authorities: I)
-	where
-		I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
-	{
-		let validators = validators.map(|(_, k)| k).collect::<Vec<_>>();
-		ValidatorSet::<T>::put(validators);
-	}
+	impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
+		type Key = T::AuthorityId;
 
-	fn on_disabled(_i: u32) {}
+		fn on_genesis_session<'a, I: 'a>(validators: I)
+		where
+			I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
+		{
+			let validators = validators.map(|(_, k)| k).collect::<Vec<_>>();
+
+			ValidatorSet::<T>::put(validators);
+		}
+
+		fn on_new_session<'a, I: 'a>(_changed: bool, validators: I, _queued_authorities: I)
+		where
+			I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
+		{
+			let validators = validators.map(|(_, k)| k).collect::<Vec<_>>();
+			ValidatorSet::<T>::put(validators);
+		}
+
+		fn on_disabled(_i: u32) {}
+	}
 }
