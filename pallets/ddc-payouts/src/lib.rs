@@ -91,6 +91,7 @@ parameter_types! {
 
 #[frame_support::pallet]
 pub mod pallet {
+	use ddc_primitives::traits::ValidatorVisitor;
 	use frame_support::PalletId;
 	use sp_io::hashing::blake2_128;
 	use sp_runtime::traits::{AccountIdConversion, Zero};
@@ -120,6 +121,7 @@ pub mod pallet {
 		type ClusterCreator: ClusterCreatorType<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
 		type VoteScoreToU64: Convert<VoteScoreOf<Self>, u64>;
+		type ValidatorVisitor: ValidatorVisitor<Self>;
 	}
 
 	#[pallet::event]
@@ -208,9 +210,6 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 		},
-		AuthorisedCaller {
-			authorised_caller: T::AccountId,
-		},
 		ChargeError {
 			cluster_id: ClusterId,
 			era: DdcEra,
@@ -249,10 +248,6 @@ pub mod pallet {
 		DdcEra,
 		BillingReport<T>,
 	>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn authorised_caller)]
-	pub type AuthorisedCaller<T: Config> = StorageValue<_, T::AccountId>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn debtor_customers)]
@@ -317,21 +312,6 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::set_authorised_caller())]
-		pub fn set_authorised_caller(
-			origin: OriginFor<T>,
-			authorised_caller: T::AccountId,
-		) -> DispatchResult {
-			ensure_root(origin)?; // requires Governance approval
-
-			AuthorisedCaller::<T>::put(authorised_caller.clone());
-
-			Self::deposit_event(Event::<T>::AuthorisedCaller { authorised_caller });
-
-			Ok(())
-		}
-
-		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::begin_billing_report())]
 		pub fn begin_billing_report(
 			origin: OriginFor<T>,
@@ -341,7 +321,10 @@ pub mod pallet {
 			end_era: i64,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(
+				T::ValidatorVisitor::get_active_validators().contains(&caller),
+				Error::<T>::Unauthorised
+			);
 
 			ensure!(
 				ActiveBillingReports::<T>::try_get(cluster_id, era).is_err(),
@@ -364,7 +347,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(2)]
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::begin_charging_customers())]
 		pub fn begin_charging_customers(
 			origin: OriginFor<T>,
@@ -373,7 +356,10 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(
+				T::ValidatorVisitor::get_active_validators().contains(&caller),
+				Error::<T>::Unauthorised
+			);
 
 			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
 
@@ -391,7 +377,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(3)]
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::send_charging_customers_batch(payers.len().saturated_into()))]
 		pub fn send_charging_customers_batch(
 			origin: OriginFor<T>,
@@ -401,7 +387,10 @@ pub mod pallet {
 			payers: Vec<(T::AccountId, CustomerUsage)>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(
+				T::ValidatorVisitor::get_active_validators().contains(&caller),
+				Error::<T>::Unauthorised
+			);
 
 			ensure!(
 				!payers.is_empty() && payers.len() <= MaxBatchSize::get() as usize,
@@ -544,7 +533,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(4)]
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::end_charging_customers())]
 		pub fn end_charging_customers(
 			origin: OriginFor<T>,
@@ -552,7 +541,10 @@ pub mod pallet {
 			era: DdcEra,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(
+				T::ValidatorVisitor::get_active_validators().contains(&caller),
+				Error::<T>::Unauthorised
+			);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
@@ -643,7 +635,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(5)]
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::begin_rewarding_providers())]
 		pub fn begin_rewarding_providers(
 			origin: OriginFor<T>,
@@ -653,7 +645,10 @@ pub mod pallet {
 			total_node_usage: NodeUsage,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(
+				T::ValidatorVisitor::get_active_validators().contains(&caller),
+				Error::<T>::Unauthorised
+			);
 
 			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
 
@@ -675,7 +670,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(6)]
+		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::send_rewarding_providers_batch(payees.len().saturated_into()))]
 		pub fn send_rewarding_providers_batch(
 			origin: OriginFor<T>,
@@ -685,7 +680,10 @@ pub mod pallet {
 			payees: Vec<(T::AccountId, NodeUsage)>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(
+				T::ValidatorVisitor::get_active_validators().contains(&caller),
+				Error::<T>::Unauthorised
+			);
 
 			ensure!(
 				!payees.is_empty() && payees.len() <= MaxBatchSize::get() as usize,
@@ -785,7 +783,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(7)]
+		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::end_rewarding_providers())]
 		pub fn end_rewarding_providers(
 			origin: OriginFor<T>,
@@ -793,7 +791,10 @@ pub mod pallet {
 			era: DdcEra,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(
+				T::ValidatorVisitor::get_active_validators().contains(&caller),
+				Error::<T>::Unauthorised
+			);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
@@ -836,7 +837,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(8)]
+		#[pallet::call_index(7)]
 		#[pallet::weight(T::WeightInfo::end_billing_report())]
 		pub fn end_billing_report(
 			origin: OriginFor<T>,
@@ -844,7 +845,10 @@ pub mod pallet {
 			era: DdcEra,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(
+				T::ValidatorVisitor::get_active_validators().contains(&caller),
+				Error::<T>::Unauthorised
+			);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
@@ -1026,17 +1030,12 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub feeder_account: Option<T::AccountId>,
-		pub authorised_caller: Option<T::AccountId>,
 		pub debtor_customers: Vec<(ClusterId, T::AccountId, u128)>,
 	}
 
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			GenesisConfig {
-				feeder_account: None,
-				authorised_caller: Default::default(),
-				debtor_customers: Default::default(),
-			}
+			GenesisConfig { feeder_account: None, debtor_customers: Default::default() }
 		}
 	}
 
@@ -1059,7 +1058,6 @@ pub mod pallet {
 				}
 			}
 
-			AuthorisedCaller::<T>::set(self.authorised_caller.clone());
 			for (cluster_id, customer_id, debt) in &self.debtor_customers {
 				DebtorCustomers::<T>::insert(cluster_id, customer_id, debt);
 			}

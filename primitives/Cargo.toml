@@ -15,6 +15,7 @@ serde = { workspace = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+sp-application-crypto = { workspace = true }
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
@@ -27,6 +28,7 @@ std = [
   "sp-core/std",
   "sp-std/std",
   "sp-runtime/std",
+  "sp-application-crypto/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
