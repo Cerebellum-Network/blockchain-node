@@ -137,6 +137,8 @@ impl<'a> SandboxContext for SandboxContextImpl<'a> {
 		state: u32,
 		func_idx: SupervisorFuncIndex,
 	) -> Result<i64> {
+		log::info!(target: LOG_TARGET, "SandboxContext.invoke START: invoke_args_ptr={:?}, invoke_args_len={:?}, state={:?}, func_idx={:?}, dispatch_thunk={:?}", invoke_args_ptr, invoke_args_len, state, func_idx, &self.dispatch_thunk);
+
 		let result = wasmi::FuncInstance::invoke(
 			&self.dispatch_thunk,
 			&[
@@ -147,11 +149,21 @@ impl<'a> SandboxContext for SandboxContextImpl<'a> {
 			],
 			self.executor,
 		);
+		log::info!(target: LOG_TARGET, "SandboxContext.invoke WIP: invoke_args_ptr={:?}, invoke_args_len={:?}, state={:?}, func_idx={:?}, dispatch_thunk={:?}", invoke_args_ptr, invoke_args_len, state, func_idx, &self.dispatch_thunk);
 
 		match result {
-			Ok(Some(RuntimeValue::I64(val))) => Ok(val),
-			Ok(_) => Err("Supervisor function returned unexpected result!".into()),
-			Err(err) => Err(Error::Other(err.to_string())),
+			Ok(Some(RuntimeValue::I64(val))) => {
+				log::info!(target: LOG_TARGET, "SandboxContext.invoke WIP.A: val={:?}", val);
+				Ok(val)
+			},
+			Ok(res) => {
+				log::info!(target: LOG_TARGET, "SandboxContext.invoke WIP.B: res={:?}", res);
+				Err("Supervisor function returned unexpected result!".into())
+			},
+			Err(err) => {
+				log::info!(target: LOG_TARGET, "SandboxContext.invoke WIP.C: err={:?}", err);
+				Err(Error::Other(err.to_string()))
+			},
 		}
 	}
 
@@ -169,6 +181,8 @@ impl FunctionExecutor {
 		buf_ptr: Pointer<u8>,
 		buf_len: WordSize,
 	) -> WResult<u32> {
+		log::info!(target: LOG_TARGET, "memory_get START: memory_id={:?}, offset={:?}, buf_ptr={:?}, buf_len={:?}", memory_id, offset, buf_ptr, buf_len);
+
 		let sandboxed_memory =
 			self.sandbox_store.borrow().memory(memory_id).map_err(|e| e.to_string())?;
 
@@ -183,6 +197,8 @@ impl FunctionExecutor {
 			return Ok(ERR_OUT_OF_BOUNDS)
 		}
 
+		log::info!(target: LOG_TARGET, "memory_get END: memory_id={:?}, offset={:?}, buf_ptr={:?}, buf_len={:?}", memory_id, offset, buf_ptr, buf_len);
+
 		Ok(ERR_OK)
 	}
 
@@ -193,6 +209,8 @@ impl FunctionExecutor {
 		val_ptr: Pointer<u8>,
 		val_len: WordSize,
 	) -> WResult<u32> {
+		log::info!(target: LOG_TARGET, "memory_set START: memory_id={:?}, offset={:?}, val_ptr={:?}, val_len={:?}", memory_id, offset, val_ptr, val_len);
+
 		let sandboxed_memory =
 			self.sandbox_store.borrow().memory(memory_id).map_err(|e| e.to_string())?;
 
@@ -208,21 +226,36 @@ impl FunctionExecutor {
 			return Ok(ERR_OUT_OF_BOUNDS)
 		}
 
+		log::info!(target: LOG_TARGET, "memory_set END: memory_id={:?}, offset={:?}, val_ptr={:?}, val_len={:?}", memory_id, offset, val_ptr, val_len);
+
 		Ok(ERR_OK)
 	}
 
 	pub fn memory_teardown(&mut self, memory_id: MemoryId) -> WResult<()> {
-		self.sandbox_store
+		log::info!(target: LOG_TARGET, "memory_teardown START: memory_id={:?}", memory_id);
+
+		let res = self
+			.sandbox_store
 			.borrow_mut()
 			.memory_teardown(memory_id)
-			.map_err(|e| e.to_string())
+			.map_err(|e| e.to_string());
+
+		log::info!(target: LOG_TARGET, "memory_teardown END: memory_id={:?}", memory_id);
+		res
 	}
 
 	pub fn memory_new(&mut self, initial: u32, maximum: u32) -> WResult<MemoryId> {
-		self.sandbox_store
+		log::info!(target: LOG_TARGET, "memory_new START: initial={:?}, maximum={:?}", initial, maximum);
+
+		let res = self
+			.sandbox_store
 			.borrow_mut()
 			.new_memory(initial, maximum)
-			.map_err(|e| e.to_string())
+			.map_err(|e| e.to_string());
+
+		log::info!(target: LOG_TARGET, "memory_new END: initial={:?}, maximum={:?}", initial, maximum);
+
+		res
 	}
 
 	pub fn invoke(
@@ -234,7 +267,7 @@ impl FunctionExecutor {
 		return_val_len: WordSize,
 		state: u32,
 	) -> WResult<u32> {
-		// trace!(target: "sp-sandbox", "invoke, instance_idx={}", instance_id);
+		log::info!(target: LOG_TARGET, "invoke START: instance_id={:?}, export_name={:?}, args={:?}, return_val={:?}, return_val_len={:?}, state={:?}", instance_id, export_name, args, return_val, return_val_len, state);
 
 		// Deserialize arguments and convert them into wasmi types.
 		let args = Vec::<sp_wasm_interface::Value>::decode(&mut args)
@@ -251,14 +284,21 @@ impl FunctionExecutor {
 			.dispatch_thunk(instance_id)
 			.map_err(|e| e.to_string())?;
 
-		match instance.invoke(
+		log::info!(target: LOG_TARGET, "invoke WIP 1: ---> {:?}", instance_id);
+
+		let res = match instance.invoke(
 			export_name,
 			&args,
 			state,
 			&mut SandboxContextImpl { dispatch_thunk, executor: self },
 		) {
-			Ok(None) => Ok(ERR_OK),
+			// Ok(None) => Ok(ERR_OK),
+			Ok(None) => {
+				log::info!(target: LOG_TARGET, "invoke WIP 1.A: ---> {:?}", instance_id);
+				Ok(ERR_OK)
+			},
 			Ok(Some(val)) => {
+				log::info!(target: LOG_TARGET, "invoke WIP 1.B: ---> {:?}", instance_id);
 				// Serialize return value and write it back into the memory.
 				sp_wasm_interface::ReturnValue::Value(val).using_encoded(|val| {
 					if val.len() > return_val_len as usize {
@@ -268,15 +308,29 @@ impl FunctionExecutor {
 					Ok(ERR_OK)
 				})
 			},
-			Err(_) => Ok(ERR_EXECUTION),
-		}
+			Err(err) => {
+				log::info!(target: LOG_TARGET, "invoke WIP 1.C: ---> {:?}, error={:?}", instance_id, err);
+				Ok(ERR_EXECUTION)
+			},
+		};
+
+		log::info!(target: LOG_TARGET, "invoke END: instance_id={:?}, export_name={:?}, args={:?}, return_val={:?}, return_val_len={:?}, state={:?}", instance_id, export_name, args, return_val, return_val_len, state);
+
+		res
 	}
 
 	pub fn instance_teardown(&mut self, instance_id: u32) -> WResult<()> {
-		self.sandbox_store
+		log::info!(target: LOG_TARGET, "instance_teardown START: instance_id={:?}", instance_id);
+
+		let res = self
+			.sandbox_store
 			.borrow_mut()
 			.instance_teardown(instance_id)
-			.map_err(|e| e.to_string())
+			.map_err(|e| e.to_string());
+
+		log::info!(target: LOG_TARGET, "instance_teardown END: instance_id={:?}", instance_id);
+
+		res
 	}
 
 	pub fn instance_new(
@@ -286,7 +340,7 @@ impl FunctionExecutor {
 		raw_env_def: &[u8],
 		state: u32,
 	) -> WResult<u32> {
-		log::warn!(target: LOG_TARGET, "dispatch_thunk_id =====>>>>> {:?}", dispatch_thunk_id);
+		log::info!(target: LOG_TARGET, "instance_new START: dispatch_thunk_id={:?}, raw_env_def={:?}, state={:?}", dispatch_thunk_id, raw_env_def, state);
 
 		// Extract a dispatch thunk from instance's table by the specified index.
 		let dispatch_thunk = {
@@ -320,6 +374,8 @@ impl FunctionExecutor {
 				Err(_) => ERR_MODULE,
 			};
 
+		log::info!(target: LOG_TARGET, "instance_new END: dispatch_thunk_id={:?}, raw_env_def={:?}, state={:?}", dispatch_thunk_id, raw_env_def, state);
+
 		Ok(instance_idx_or_err_code)
 	}
 
@@ -328,11 +384,18 @@ impl FunctionExecutor {
 		instance_idx: u32,
 		name: &str,
 	) -> WResult<Option<sp_wasm_interface::Value>> {
-		self.sandbox_store
+		log::info!(target: LOG_TARGET, "get_global_val START: instance_idx={:?}, name={:?}", instance_idx, name);
+
+		let res = self
+			.sandbox_store
 			.borrow()
 			.instance(instance_idx)
 			.map(|i| i.get_global_val(name))
-			.map_err(|e| e.to_string())
+			.map_err(|e| e.to_string());
+
+		log::info!(target: LOG_TARGET, "get_global_val END: instance_idx={:?}, name={:?}", instance_idx, name);
+
+		res
 	}
 }
 
@@ -903,7 +966,7 @@ pub fn create_runtime(
 // THIS impl block was added to experiment with the WasmiInstance, it is not a part of original
 // substrate code
 impl WasmiRuntime {
-	pub fn new_instance_wasmi_instance(&self) -> std::result::Result<Box<WasmiInstance>, Error> {
+	pub fn new_wasmi_instance(&self) -> std::result::Result<Box<WasmiInstance>, Error> {
 		let (instance, missing_functions, memory) = instantiate_module(
 			self.heap_pages as usize,
 			&self.module,

@@ -44,7 +44,8 @@ use wasmi_executor::{create_runtime, FunctionExecutor, WasmiInstance};
 pub fn create_function_executor() -> FunctionExecutor {
 	// The runtime was at 266 version at block 125423 where the missing sandbox host functions were
 	// applied.
-	let runtime = &include_bytes!("./node_runtime_266.wasm")[..];
+	// let runtime = &include_bytes!("./node_runtime_266.wasm")[..];
+	let runtime = &include_bytes!("./cere_runtime.compact.compressed.9cbddef.wasm")[..];
 	// let runtime = &include_bytes!("./node_runtime_50000.wasm")[..];
 	log::info!(target: "wasm_binary_unwrap", "LENGHT OF WASM BINARY {} ", runtime.len());
 
@@ -53,12 +54,13 @@ pub fn create_function_executor() -> FunctionExecutor {
 	let heap_pages = 2048;
 	let allow_missing_func_imports = true;
 
-	let mut host_functions = sp_io::SubstrateHostFunctions::host_functions();
-	let benchmarking_host_functions =
-		frame_benchmarking::benchmarking::HostFunctions::host_functions();
+	let mut host_functions = Vec::new();
+	// let mut host_functions = sp_io::SubstrateHostFunctions::host_functions();
+	// let benchmarking_host_functions =
+	// 	frame_benchmarking::benchmarking::HostFunctions::host_functions();
 	let sandbox_host_functions = crate::sandbox::HostFunctions::host_functions();
 
-	host_functions.extend(benchmarking_host_functions);
+	// host_functions.extend(benchmarking_host_functions);
 	host_functions.extend(sandbox_host_functions);
 
 	let runtime = create_runtime(blob, heap_pages, host_functions, allow_missing_func_imports)
@@ -66,7 +68,7 @@ pub fn create_function_executor() -> FunctionExecutor {
 		.expect("Runtime to be created");
 
 	let runtime_wasmi_instance =
-		runtime.new_instance_wasmi_instance().expect("Runtime instance to be created");
+		runtime.new_wasmi_instance().expect("Runtime instance to be created");
 	let function_executor = runtime_wasmi_instance.create_function_executor();
 	function_executor
 }
@@ -91,6 +93,8 @@ lazy_static! {
 // 		));
 // }
 
+const LOG_TARGET: &str = "runtime-interface-yahor";
+
 /// Something that provides access to the sandbox.
 #[runtime_interface(wasm_only)]
 pub trait Sandbox {
@@ -102,11 +106,17 @@ pub trait Sandbox {
 		env_def: &[u8],
 		state_ptr: Pointer<u8>,
 	) -> u32 {
+		log::info!(target: LOG_TARGET, "instantiate START: dispatch_thunk={:?}, env_def={:?}, state_ptr={:?}", dispatch_thunk, env_def, state_ptr);
+
 		let lock = SANDBOX.lock();
 		let mut sandbox = lock.borrow_mut();
-		sandbox
+		let res = sandbox
 			.instance_new(dispatch_thunk, wasm_code, env_def, state_ptr.into())
-			.expect("Failed to instantiate a new sandbox")
+			.expect("Failed to instantiate a new sandbox");
+
+		log::info!(target: LOG_TARGET, "instantiate END: dispatch_thunk={:?}, env_def={:?}, state_ptr={:?}", dispatch_thunk, env_def, state_ptr);
+
+		res
 	}
 
 	/// Invoke an exported function by a name.

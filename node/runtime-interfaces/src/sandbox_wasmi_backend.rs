@@ -18,6 +18,8 @@ use crate::{
 
 environmental::environmental!(SandboxContextStore: trait SandboxContext);
 
+const LOG_TARGET: &str = "wasmi-backend-yahor";
+
 /// Wasmi provides direct access to its memory using slices.
 ///
 /// This wrapper limits the scope where the slice can be taken to
@@ -71,6 +73,7 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 		SandboxContextStore::with(|sandbox_context| {
 			// Make `index` typesafe again.
 			let index = GuestFuncIndex(index);
+			log::info!(target: LOG_TARGET, "invoke_index START: index={:?}, args={:?}, guest_to_supervisor_mapping={:?}", index, args, self.sandbox_instance.guest_to_supervisor_mapping.funcs);
 
 			// Convert function index from guest to supervisor space
 			let func_idx = self.sandbox_instance
@@ -123,12 +126,14 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 				return Err(trap("Can't write invoke args into memory"))
 			}
 
+			log::info!(target: LOG_TARGET, "invoke_index WIP0: invoke_args_ptr={:?}, invoke_args_len={:?}, state={:?}, func_idx={:?}", invoke_args_ptr, invoke_args_len, state, func_idx);
 			let result = sandbox_context.invoke(
 				invoke_args_ptr,
 				invoke_args_len,
 				state,
 				func_idx,
 			);
+			log::info!(target: LOG_TARGET, "invoke_index WIP1: invoke_args_ptr={:?}, invoke_args_len={:?}, state={:?}, func_idx={:?}", invoke_args_ptr, invoke_args_len, state, func_idx);
 
 			deallocate(
 				sandbox_context.supervisor_context(),
@@ -136,8 +141,10 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 				"Can't deallocate memory for dispatch thunk's invoke arguments",
 			)?;
 
+			log::info!(target: LOG_TARGET, "invoke_index WIP2: invoke_args_ptr={:?}, invoke_args_len={:?}, state={:?}, func_idx={:?}", invoke_args_ptr, invoke_args_len, state, func_idx);
 			// let result = result?;
 			let result = result.map_err(|_| trap("Could not invoke sandbox"))?;
+			log::info!(target: LOG_TARGET, "invoke_index WIP3: result={:?}", result);
 
 			// dispatch_thunk returns pointer to serialized arguments.
 			// Unpack pointer and len of the serialized result data.
