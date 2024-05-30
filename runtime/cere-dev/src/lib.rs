@@ -1187,7 +1187,8 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type ClusterCreator = DdcClusters;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
-	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
+	type VoteScoreToU64 = IdentityConvert;
+	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1250,9 +1251,8 @@ impl pallet_ddc_verification::Config for Runtime {
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
-	type AuthorityId = pallet_ddc_verification::sr25519::AuthorityId;
-	type AuthorityIdParameter = pallet_ddc_verification::sr25519::AuthorityId;
-	type OffchainIdentifierId = pallet_ddc_verification::crypto::OffchainIdentifierId;
+	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
+	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	const MAJORITY: u8 = 67;
 }
 
