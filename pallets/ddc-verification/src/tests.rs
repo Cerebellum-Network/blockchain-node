@@ -202,7 +202,6 @@ fn fetch_node_usage_works() {
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			proof: vec![1, 2, 3],
 		};
 		let node_activity_json = serde_json::to_string(&node_activity).unwrap();
 

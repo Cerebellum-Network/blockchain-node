@@ -170,10 +170,10 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn cluster_to_validate)]
-	pub type ClusterToValidate<T: Config> = StorageValue<_, ClusterId>;
+	pub type ClusterToValidate<T: Config> = StorageValue<_, ClusterId>; // todo! setter out of scope
 
 	#[pallet::storage]
-	#[pallet::getter(fn era_to_validate)]
+	#[pallet::getter(fn era_to_validate)] // last_validated_era
 	pub type EraToValidate<T: Config> = StorageValue<_, DdcEra>;
 
 	#[pallet::storage]
@@ -187,48 +187,32 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct ReceiptParams {
-		pub merkle_root_hash: MmrRootHash,
+		pub payers_merkle_root_hash: MmrRootHash, // this is for  customer usage
+		pub payees_merkle_root_hash: MmrRootHash, // this is for node usage
 	}
 
 	#[derive(Serialize, Deserialize, Debug, Clone)]
 	pub(crate) struct NodeActivity {
-		#[serde(rename = "totalBytesStored")]
 		pub(crate) stored_bytes: u64,
-
-		#[serde(rename = "totalBytesDelivered")]
 		pub(crate) transferred_bytes: u64,
-
-		#[serde(rename = "totalPutRequests")]
 		pub(crate) number_of_puts: u64,
-
-		#[serde(rename = "totalGetRequests")]
 		pub(crate) number_of_gets: u64,
-
-		#[serde(rename = "proof")]
-		pub(crate) proof: Vec<u8>,
 	}
 
 	#[derive(Debug, Serialize, Deserialize, Clone)]
 	pub struct CustomerActivity {
-		#[serde(rename = "customerId")]
 		pub customer_id: [u8; 32],
 
-		#[serde(rename = "bucketId")]
 		pub bucket_id: BucketId,
 
-		#[serde(rename = "totalBytesStored")]
 		pub stored_bytes: u64,
 
-		#[serde(rename = "totalBytesDelivered")]
 		pub transferred_bytes: u64,
 
-		#[serde(rename = "totalPutRequests")]
 		pub number_of_puts: u64,
 
-		#[serde(rename = "totalGetRequests")]
 		pub number_of_gets: u64,
 
-		#[serde(rename = "proof")]
 		pub proof: Vec<u8>,
 	}
 
@@ -318,12 +302,32 @@ pub mod pallet {
 				Self::fetch_customers_usage_for_era(&cluster_id, era_id, &dac_nodes),
 				"Error retrieving customers activities to validate"
 			);
+
+			/* if customer 123 has 5GB in node1 (era 17) and 10GB in node2 (era 17)
+			I get usage of all customers for node1 and node2, then sum usage grouped by customerid
+			=> customer 123 has 15GB */
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
 		fn get_era_to_validate() -> Result<DdcEra, Error<T>> {
 			Self::era_to_validate().ok_or(Error::EraToValidateRetrievalError)
+
+			/*
+			get LAST_VALIDATED_ERA from verification pallet
+			for each dac_node fetch processed eras by calling - https://storage-1.devnet.cere.network/activity/era (similar to fetch_customers_usage_for_era)
+			find ids that all nodes have it and is larger than LAST_VALIDATED_ERA (cause all nodes need to be called for the same era)
+			(if some node has 18 and some have 17, the result is 17)
+			(if all nodes have 17 and 18 and LAST_VALIDATED_ERA is 16, then we return 17 and 18)
+
+			if no new eras then do nothing
+			if there are several new eras then take the smallest
+				then call fetch_nodes_usage_for_era and fetch_customers_usage_for_era for the smallest era
+				payer_list and payee_list - aggregate it (victor todo)
+				create merkle tree for both lists
+				send to validation pallet merkle roots for payer_list and payee_list for the cluster id and era id
+				reach consensus on the merkle roots for payer_list and payee_list for the cluster id and era id in the pallet on-chain
+			*/
 		}
 
 		fn get_cluster_to_validate() -> Result<ClusterId, Error<T>> {

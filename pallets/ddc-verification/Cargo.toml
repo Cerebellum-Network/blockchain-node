@@ -29,8 +29,7 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 [dev-dependencies]
-mockall = "0.12.1"
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false, features = ["std"] }
+sp-core = { workspace = true, features = ["std"] }
 
 [features]
 default = ["std"]
