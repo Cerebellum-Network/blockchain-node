@@ -4,7 +4,7 @@ use codec::{Decode, Encode};
 use frame_support::parameter_types;
 use scale_info::{prelude::vec::Vec, TypeInfo};
 use serde::{Deserialize, Serialize};
-use sp_core::{hash::H160, H256};
+use sp_core::{crypto::KeyTypeId, hash::H160, H256};
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
 
 pub mod traits;
@@ -221,4 +221,48 @@ pub struct NodeUsage {
 pub enum NodeRepositoryError {
 	StorageNodeAlreadyExists,
 	StorageNodeDoesNotExist,
+}
+
+pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
+pub mod sr25519 {
+	mod app_sr25519 {
+		use sp_application_crypto::{app_crypto, sr25519};
+
+		use crate::KEY_TYPE;
+		app_crypto!(sr25519, KEY_TYPE);
+	}
+
+	sp_application_crypto::with_pair! {
+		pub type AuthorityPair = app_sr25519::Pair;
+	}
+	pub type AuthoritySignature = app_sr25519::Signature;
+	pub type AuthorityId = app_sr25519::Public;
+}
+pub mod crypto {
+	use sp_core::sr25519::Signature as Sr25519Signature;
+	use sp_runtime::{
+		app_crypto::{app_crypto, sr25519},
+		traits::Verify,
+		MultiSignature, MultiSigner,
+	};
+
+	use super::KEY_TYPE;
+	app_crypto!(sr25519, KEY_TYPE);
+
+	pub struct OffchainIdentifierId;
+
+	impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for OffchainIdentifierId {
+		type RuntimeAppPublic = Public;
+		type GenericSignature = sp_core::sr25519::Signature;
+		type GenericPublic = sp_core::sr25519::Public;
+	}
+
+	// implemented for mock runtime in test
+	impl frame_system::offchain::AppCrypto<<Sr25519Signature as Verify>::Signer, Sr25519Signature>
+		for OffchainIdentifierId
+	{
+		type RuntimeAppPublic = Public;
+		type GenericSignature = sp_core::sr25519::Signature;
+		type GenericPublic = sp_core::sr25519::Public;
+	}
 }
