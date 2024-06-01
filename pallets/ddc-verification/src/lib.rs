@@ -96,6 +96,7 @@ pub mod pallet {
 		NodeUsageRetrievalError,
 		ClusterToValidateRetrievalError,
 		EraToValidateRetrievalError,
+		EraPerNodeRetrievalError,
 	}
 
 	#[pallet::storage]
@@ -142,6 +143,11 @@ pub mod pallet {
 		pub merkle_root_hash: MmrRootHash,
 	}
 
+	#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+	pub(crate) struct EraActivity {
+		#[serde(rename = "id")]
+		pub era_id: DdcEra,
+	}
 	#[derive(Serialize, Deserialize, Debug, Clone)]
 	pub(crate) struct NodeActivity {
 		#[serde(rename = "totalBytesStored")]
@@ -270,6 +276,7 @@ pub mod pallet {
 				Self::fetch_customers_usage_for_era(&cluster_id, era_id, &dac_nodes),
 				"Error retrieving customers activities to validate"
 			);
+
 		}
 	}
 
@@ -278,10 +285,73 @@ pub mod pallet {
 			Self::era_to_validate().ok_or(Error::EraToValidateRetrievalError)
 		}
 
+		fn get_current_validated_era(dac_nodes: &[(NodePubKey, StorageNodeParams)],) -> Option<EraActivity> {
+			let last_validated_era =
+				Self::get_era_to_validate().map_err(|_| Error::<T>::EraToValidateRetrievalError).unwrap();// TODO! Remove Unwrap
+			let dac_nodes_era: Vec<(NodePubKey, Vec<EraActivity>)>=
+				Self::fetch_processed_era_for_node(&dac_nodes).
+					map_err(|_| Error::<T>::EraPerNodeRetrievalError).unwrap(); // TODO! Remove Unwrap
+			let total_eras: Vec<EraActivity> =
+				dac_nodes_era.iter().flat_map(|(k, eras) | eras.iter()).cloned().collect::<Vec<EraActivity>>();
+
+			// collecting invalid eras
+			let invalid_eras: Vec<EraActivity> = total_eras.clone().into_iter().filter(|x| x.era_id <= last_validated_era).collect();
+
+			if invalid_eras.len() > 0 || total_eras.is_empty() { // If last_validated_era is 16 and any node has 15 or 16, we do nothing
+				None // remove it
+			} else {
+				// collecting valid eras
+				let valid_eras: Vec<EraActivity> = total_eras.into_iter().filter(|x| x.era_id > last_validated_era).collect();
+				if valid_eras.is_empty() {
+                    None
+                } else {
+
+					//groupby by count of era id
+
+					//how many 17, how many 18
+					// (5, 17)  (4, 18)
+					// if 5 == dac_nodes.len  > 17
+					// (5, 17)  (5, 18)
+
+					// smallest one era id
+
+					// (if some node has 18 and some have 17 and last_validated_era is 16, the result is 17)
+					let min_value = valid_eras.iter().min();
+					match min_value {
+						None => valid_eras.first().cloned(),
+						Some(i) => Some(i).cloned()
+					}
+				}
+            }
+		}
+
 		fn get_cluster_to_validate() -> Result<ClusterId, Error<T>> {
 			Self::cluster_to_validate().ok_or(Error::ClusterToValidateRetrievalError)
 		}
 
+		pub(crate) fn fetch_processed_era(
+			node_params: &StorageNodeParams,
+		) -> Result<Vec<EraActivity>, http::Error> {
+			let scheme = if node_params.ssl { "https" } else { "http" };
+			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
+			let url = format!(
+				"{}://{}:{}/activity/era",
+				scheme, host, node_params.http_port
+			);
+			let request = http::Request::get(&url);
+			let timeout =
+				sp_io::offchain::timestamp().add(sp_runtime::offchain::Duration::from_millis(3000));
+			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
+
+			let response =
+				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
+			if response.code != 200 {
+				return Err(http::Error::Unknown);
+			}
+
+			let body = response.body().collect::<Vec<u8>>();
+			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+		}
 		pub(crate) fn fetch_customers_usage(
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -393,6 +463,20 @@ pub mod pallet {
 			}
 
 			Ok(customers_usages)
+		}
+
+		fn fetch_processed_era_for_node(
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+		) -> Result<Vec<(NodePubKey, Vec<EraActivity>)>, Error<T>> {
+			let mut eras = Vec::new();
+
+			for (node_pub_key, node_params) in dac_nodes {
+				let usage = Self::fetch_processed_era(node_params)
+					.map_err(|_| Error::<T>::EraPerNodeRetrievalError)?;
+
+				eras.push((node_pub_key.clone(), usage));
+			}
+			Ok(eras)
 		}
 	}
 
