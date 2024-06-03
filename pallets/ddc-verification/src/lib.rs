@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
 use sp_core::crypto::KeyTypeId;
 use sp_runtime::{offchain as rt_offchain, offchain::http, Percent};
-use sp_std::prelude::*;
+use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub mod weights;
 use crate::weights::WeightInfo;
@@ -127,9 +127,45 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		BillingReportCreated { cluster_id: ClusterId, era: DdcEra },
-		VerificationKeyStored { verification_key: Vec<u8> },
-		PayoutBatchCreated { cluster_id: ClusterId, era: DdcEra },
+		BillingReportCreated {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		VerificationKeyStored {
+			verification_key: Vec<u8>,
+		},
+		PayoutBatchCreated {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		NotEnoughNodesForConsensus {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			customer_id: T::AccountId,
+			bucket_id: BucketId,
+		},
+		CustomerActivityNotInConsensus {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			customer_id: T::AccountId,
+			bucket_id: BucketId,
+		},
+	}
+
+	#[derive(Debug, Encode, Decode)]
+	pub enum ConsensusError<T: Config> {
+		NotEnoughNodesForConsensus {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			customer_id: T::AccountId,
+			bucket_id: BucketId,
+		},
+		CustomerActivityNotInConsensus {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			customer_id: T::AccountId,
+			bucket_id: BucketId,
+		},
 	}
 
 	#[pallet::error]
@@ -187,33 +223,27 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct ReceiptParams {
-		pub payers_merkle_root_hash: MmrRootHash, // this is for  customer usage
-		pub payees_merkle_root_hash: MmrRootHash, // this is for node usage
+		pub merkle_root_hash: MmrRootHash,
 	}
 
 	#[derive(Serialize, Deserialize, Debug, Clone)]
 	pub(crate) struct NodeActivity {
+		pub(crate) node_id: [u8; 32],
+		pub(crate) provider_id: [u8; 32],
 		pub(crate) stored_bytes: u64,
 		pub(crate) transferred_bytes: u64,
 		pub(crate) number_of_puts: u64,
 		pub(crate) number_of_gets: u64,
 	}
 
-	#[derive(Debug, Serialize, Deserialize, Clone)]
-	pub struct CustomerActivity {
-		pub customer_id: [u8; 32],
-
-		pub bucket_id: BucketId,
-
-		pub stored_bytes: u64,
-
-		pub transferred_bytes: u64,
-
-		pub number_of_puts: u64,
-
-		pub number_of_gets: u64,
-
-		pub proof: Vec<u8>,
+	#[derive(Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq)]
+	pub(crate) struct CustomerActivity {
+		pub(crate) customer_id: [u8; 32],
+		pub(crate) bucket_id: BucketId,
+		pub(crate) stored_bytes: u64,
+		pub(crate) transferred_bytes: u64,
+		pub(crate) number_of_puts: u64,
+		pub(crate) number_of_gets: u64,
 	}
 
 	impl From<CustomerActivity> for CustomerUsage {
@@ -298,18 +328,98 @@ pub mod pallet {
 				"Error retrieving node activities to validate"
 			);
 
-			let _customers_usage = unwrap_or_log_error!(
+			let customers_usage = unwrap_or_log_error!(
 				Self::fetch_customers_usage_for_era(&cluster_id, era_id, &dac_nodes),
 				"Error retrieving customers activities to validate"
 			);
 
-			/* if customer 123 has 5GB in node1 (era 17) and 10GB in node2 (era 17)
-			I get usage of all customers for node1 and node2, then sum usage grouped by customerid
-			=> customer 123 has 15GB */
+			let min_nodes = dac_nodes.len().ilog2() as usize;
+			let _ = Self::get_consensus_customers_activity(
+				&cluster_id,
+				era_id,
+				customers_usage,
+				min_nodes,
+				Percent::from_percent(T::MAJORITY),
+			);
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
+		// Function to check if there is a consensus for a particular customer/bucket
+		pub(crate) fn reach_consensus(
+			activities: &[CustomerActivity],
+			threshold: usize,
+		) -> Option<CustomerActivity> {
+			let mut count_map: BTreeMap<CustomerActivity, usize> = BTreeMap::new();
+
+			for activity in activities {
+				*count_map.entry(activity.clone()).or_default() += 1;
+			}
+
+			count_map
+				.into_iter()
+				.find(|&(_, count)| count >= threshold)
+				.map(|(activity, _)| activity)
+		}
+
+		pub(crate) fn get_consensus_customers_activity(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			customers_activity: Vec<(NodePubKey, Vec<CustomerActivity>)>,
+			min_nodes: usize,
+			threshold: Percent,
+		) -> Result<Vec<CustomerActivity>, Vec<ConsensusError<T>>> {
+			let mut customer_buckets: BTreeMap<([u8; 32], BucketId), Vec<CustomerActivity>> =
+				BTreeMap::new();
+
+			// Flatten and collect all customer activities
+			for (_node_id, activities) in customers_activity.iter() {
+				for activity in activities.iter() {
+					customer_buckets
+						.entry((activity.customer_id, activity.bucket_id))
+						.or_default()
+						.push(activity.clone());
+				}
+			}
+
+			let mut consensus_activities = Vec::new();
+			let mut errors = Vec::new();
+			let min_threshold = threshold * min_nodes;
+
+			// Check if each customer/bucket appears in at least `min_nodes` nodes
+			for ((customer_id, bucket_id), activities) in customer_buckets {
+				if activities.len() < min_nodes {
+					if let Ok(account_id) = T::AccountId::decode(&mut &customer_id[..]) {
+						errors.push(ConsensusError::<T>::NotEnoughNodesForConsensus {
+							cluster_id: (*cluster_id),
+							era_id,
+							customer_id: account_id,
+							bucket_id,
+						});
+					} else {
+						unreachable!();
+					}
+				} else if let Some(activity) = Self::reach_consensus(&activities, min_threshold) {
+					consensus_activities.push(activity);
+				} else if let Ok(account_id) = T::AccountId::decode(&mut &customer_id[..]) {
+					errors.push(ConsensusError::<T>::CustomerActivityNotInConsensus {
+						cluster_id: (*cluster_id),
+						era_id,
+						customer_id: account_id,
+						bucket_id,
+					});
+				} else {
+					unreachable!();
+				}
+			}
+
+			if errors.is_empty() {
+				Ok(consensus_activities)
+			} else {
+				Err(errors)
+			}
+		}
+
 		fn get_era_to_validate() -> Result<DdcEra, Error<T>> {
 			Self::era_to_validate().ok_or(Error::EraToValidateRetrievalError)
 
@@ -366,7 +476,7 @@ pub mod pallet {
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
 			node_params: &StorageNodeParams,
-		) -> Result<NodeActivity, http::Error> {
+		) -> Result<Vec<NodeActivity>, http::Error> {
 			let scheme = if node_params.ssl { "https" } else { "http" };
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 			let url = format!(
@@ -418,7 +528,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<(NodePubKey, NodeActivity)>, Error<T>> {
+		) -> Result<Vec<(NodePubKey, Vec<NodeActivity>)>, Error<T>> {
 			let mut node_usages = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
