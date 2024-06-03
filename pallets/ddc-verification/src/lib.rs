@@ -424,14 +424,14 @@ pub mod pallet {
 			Self::era_to_validate().ok_or(Error::EraToValidateRetrievalError)
 
 			/*
-   			Add scheduleer to repeat cycle after 100 blocks
+			   Add scheduleer to repeat cycle after 100 blocks
 			get LAST_VALIDATED_ERA from verification pallet
 			for each dac_node fetch processed eras by calling - https://storage-1.devnet.cere.network/activity/era (similar to fetch_customers_usage_for_era)
 			find ids that all nodes have it and is larger than LAST_VALIDATED_ERA (cause all nodes need to be called for the same era)
 			(if some node has 18 and some have 17, the result is 17)
 			(if all nodes have 17 and 18 and LAST_VALIDATED_ERA is 16, then we return 17 and 18)
 
-			if no new eras then do nothing   
+			if no new eras then do nothing
 			if there are several new eras then take the smallest
 				then call fetch_nodes_usage_for_era and fetch_customers_usage_for_era for the smallest era
 				payer_list and payee_list - aggregate it (victor todo)
