@@ -1,3 +1,4 @@
+use crate::{mock::*, ConsensusError, Error, Event, NodeActivity, *};
 use ddc_primitives::{ClusterId, StorageNodeParams};
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{
@@ -9,8 +10,6 @@ use sp_core::{
 };
 use sp_io::TestExternalities;
 use sp_runtime::AccountId32;
-
-use crate::{mock::*, ConsensusError, Error, Event, NodeActivity, *};
 
 #[test]
 fn create_billing_reports_works() {
@@ -84,25 +83,19 @@ fn set_validate_payout_batch_works() {
 		)
 		.unwrap();
 
-		let validator_one: <Test as Config>::AuthorityId = pair1.public().into();
-		let validator_two: <Test as Config>::AuthorityId = pair2.public().into();
-		let validator_three: <Test as Config>::AuthorityId = pair3.public().into();
-		let validator_four: <Test as Config>::AuthorityId = pair4.public().into();
-		let validator_six: <Test as Config>::AuthorityId = pair6.public().into();
-
-		ValidatorSet::<Test>::put(vec![
-			validator_one,
-			validator_two,
-			validator_three,
-			validator_four,
-			validator_six,
-		]);
-
 		let account_id1 = AccountId::from(pair1.public().0);
 		let account_id2 = AccountId::from(pair2.public().0);
 		let account_id3 = AccountId::from(pair3.public().0);
 		let account_id4 = AccountId::from(pair4.public().0);
 		let account_id6 = AccountId::from(pair6.public().0);
+
+		ValidatorSet::<Test>::put(vec![
+			account_id1.clone(),
+			account_id2.clone(),
+			account_id3.clone(),
+			account_id4.clone(),
+			account_id6.clone(),
+		]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let payout_data = PayoutData { hash: MmrRootHash::default() };

@@ -11,8 +11,8 @@
 use core::str;
 
 use ddc_primitives::{
-	traits::{ClusterManager, NodeVisitor},
-	ClusterId, CustomerUsage, DdcEra, MmrRootHash, NodeParams, NodePubKey, NodeUsage,
+	traits::{ClusterManager, NodeVisitor, ValidatorVisitor},
+	BatchIndex, ClusterId, CustomerUsage, DdcEra, MmrRootHash, NodeParams, NodePubKey, NodeUsage,
 	StorageNodeMode, StorageNodeParams,
 };
 use frame_support::{
@@ -27,7 +27,6 @@ pub use pallet::*;
 use scale_info::prelude::format;
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
-use sp_core::crypto::KeyTypeId;
 use sp_runtime::{offchain as rt_offchain, offchain::http, Percent};
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
@@ -38,50 +37,6 @@ use crate::weights::WeightInfo;
 pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
-
-const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
-pub mod sr25519 {
-	mod app_sr25519 {
-		use sp_application_crypto::{app_crypto, sr25519};
-
-		use crate::KEY_TYPE;
-		app_crypto!(sr25519, KEY_TYPE);
-	}
-
-	sp_application_crypto::with_pair! {
-		pub type AuthorityPair = app_sr25519::Pair;
-	}
-	pub type AuthoritySignature = app_sr25519::Signature;
-	pub type AuthorityId = app_sr25519::Public;
-}
-pub mod crypto {
-	use sp_core::sr25519::Signature as Sr25519Signature;
-	use sp_runtime::{
-		app_crypto::{app_crypto, sr25519},
-		traits::Verify,
-		MultiSignature, MultiSigner,
-	};
-
-	use super::KEY_TYPE;
-	app_crypto!(sr25519, KEY_TYPE);
-
-	pub struct OffchainIdentifierId;
-
-	impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for OffchainIdentifierId {
-		type RuntimeAppPublic = Public;
-		type GenericSignature = sp_core::sr25519::Signature;
-		type GenericPublic = sp_core::sr25519::Public;
-	}
-
-	// implemented for mock runtime in test
-	impl frame_system::offchain::AppCrypto<<Sr25519Signature as Verify>::Signer, Sr25519Signature>
-		for OffchainIdentifierId
-	{
-		type RuntimeAppPublic = Public;
-		type GenericSignature = sp_core::sr25519::Signature;
-		type GenericPublic = sp_core::sr25519::Public;
-	}
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -116,10 +71,7 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ Into<sp_core::sr25519::Public>
 			+ From<sp_core::sr25519::Public>;
-		type AuthorityIdParameter: Parameter
-			+ From<sp_core::sr25519::Public>
-			+ Into<Self::AuthorityId>
-			+ MaxEncodedLen;
+
 		type OffchainIdentifierId: AppCrypto<Self::Public, Self::Signature>;
 		const MAJORITY: u8;
 	}
@@ -200,7 +152,7 @@ pub mod pallet {
 		(ClusterId, DdcEra),
 		Blake2_128Concat,
 		MmrRootHash,
-		Vec<T::AuthorityId>,
+		Vec<T::AccountId>,
 		ValueQuery,
 	>;
 
@@ -209,7 +161,7 @@ pub mod pallet {
 	pub type ClusterToValidate<T: Config> = StorageValue<_, ClusterId>; // todo! setter out of scope
 
 	#[pallet::storage]
-	#[pallet::getter(fn era_to_validate)] // last_validated_era
+	#[pallet::getter(fn era_to_validate)]
 	pub type EraToValidate<T: Config> = StorageValue<_, DdcEra>;
 
 	#[pallet::storage]
@@ -219,7 +171,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn validator_set)]
-	pub type ValidatorSet<T: Config> = StorageValue<_, Vec<T::AuthorityId>>;
+	pub type ValidatorSet<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct ReceiptParams {
@@ -421,8 +373,6 @@ pub mod pallet {
 		}
 
 		fn get_era_to_validate() -> Result<DdcEra, Error<T>> {
-			Self::era_to_validate().ok_or(Error::EraToValidateRetrievalError)
-
 			/*
 			   Add scheduleer to repeat cycle after 100 blocks
 			get LAST_VALIDATED_ERA from verification pallet
@@ -439,6 +389,7 @@ pub mod pallet {
 				send to validation pallet merkle roots for payer_list and payee_list for the cluster id and era id
 				reach consensus on the merkle roots for payer_list and payee_list for the cluster id and era id in the pallet on-chain
 			*/
+			Self::era_to_validate().ok_or(Error::EraToValidateRetrievalError)
 		}
 
 		fn get_cluster_to_validate() -> Result<ClusterId, Error<T>> {
@@ -612,13 +563,9 @@ pub mod pallet {
 			payout_data: PayoutData,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			let account_bytes: [u8; 32] = Self::account_to_bytes(&who)?;
-			let who: T::AuthorityIdParameter =
-				sp_application_crypto::sr25519::Public::from_raw(account_bytes).into();
-			let who: T::AuthorityId = who.into();
-			let authorities = <ValidatorSet<T>>::get().unwrap();
+			let validators = <ValidatorSet<T>>::get();
 
-			ensure!(authorities.contains(&who.clone()), Error::<T>::NotAValidator);
+			ensure!(validators.contains(&who.clone()), Error::<T>::NotAValidator);
 
 			ensure!(
 				!<PayoutValidators<T>>::get((cluster_id, era), payout_data.hash)
@@ -635,8 +582,8 @@ pub mod pallet {
 				},
 			)?;
 
-			let p = Percent::from_percent(T::MAJORITY);
-			let threshold = p * authorities.len();
+			let percent = Percent::from_percent(T::MAJORITY);
+			let threshold = percent * validators.len();
 
 			let signed_validators = <PayoutValidators<T>>::get((cluster_id, era), payout_data.hash);
 
@@ -649,21 +596,34 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> Pallet<T> {
-		// This function converts a 32 byte AccountId to its byte-array equivalent form.
-		fn account_to_bytes<AccountId>(account: &AccountId) -> Result<[u8; 32], DispatchError>
-		where
-			AccountId: Encode,
-		{
-			let account_vec = account.encode();
-			ensure!(account_vec.len() == 32, "AccountId must be 32 bytes.");
-			let mut bytes = [0u8; 32];
-			bytes.copy_from_slice(&account_vec);
-			Ok(bytes)
-		}
-	}
 	impl<T: Config> sp_application_crypto::BoundToRuntimeAppPublic for Pallet<T> {
 		type Public = T::AuthorityId;
+	}
+
+	impl<T: Config> ValidatorVisitor<T> for Pallet<T> {
+		fn setup_validators(validators: Vec<T::AccountId>) {
+			ValidatorSet::<T>::put(validators);
+		}
+		fn get_active_validators() -> Vec<T::AccountId> {
+			Self::validator_set()
+		}
+
+		fn is_customers_batch_valid(
+			_cluster_id: ClusterId,
+			_era: DdcEra,
+			_batch_index: BatchIndex,
+			_payers: Vec<(T::AccountId, CustomerUsage)>,
+		) -> bool {
+			true
+		}
+		fn is_providers_batch_valid(
+			_cluster_id: ClusterId,
+			_era: DdcEra,
+			_batch_index: BatchIndex,
+			_payees: Vec<(T::AccountId, NodeUsage)>,
+		) -> bool {
+			true
+		}
 	}
 
 	impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
@@ -673,7 +633,9 @@ pub mod pallet {
 		where
 			I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
 		{
-			let validators = validators.map(|(_, k)| k).collect::<Vec<_>>();
+			let validators = validators
+				.map(|(_, k)| T::AccountId::decode(&mut &k.into().encode()[..]).unwrap())
+				.collect::<Vec<_>>();
 
 			ValidatorSet::<T>::put(validators);
 		}
@@ -682,7 +644,9 @@ pub mod pallet {
 		where
 			I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
 		{
-			let validators = validators.map(|(_, k)| k).collect::<Vec<_>>();
+			let validators = validators
+				.map(|(_, k)| T::AccountId::decode(&mut &k.into().encode()[..]).unwrap())
+				.collect::<Vec<_>>();
 			ValidatorSet::<T>::put(validators);
 		}
 

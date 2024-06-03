@@ -7,7 +7,7 @@ use ddc_primitives::{
 		cluster::{ClusterCreator, ClusterProtocol},
 		customer::{CustomerCharger, CustomerDepositor},
 		pallet::PalletVisitor,
-		ClusterQuery,
+		ClusterQuery, ValidatorVisitor,
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
 	ClusterProtocolParams, ClusterStatus, NodeType, DOLLARS,
@@ -132,6 +132,39 @@ impl crate::pallet::Config for Test {
 
 	type VoteScoreToU64 = Identity;
 	type WeightInfo = ();
+	type ValidatorVisitor = MockValidatorVisitor;
+}
+
+pub struct MockValidatorVisitor;
+
+impl<T: Config> ValidatorVisitor<T> for MockValidatorVisitor
+where
+	<T as frame_system::Config>::AccountId: From<u128>,
+{
+	fn setup_validators(_validators: Vec<T::AccountId>) {
+		unimplemented!()
+	}
+	fn get_active_validators() -> Vec<T::AccountId> {
+		vec![DAC_ACCOUNT_ID.into(), 123u128.into()]
+	}
+
+	fn is_customers_batch_valid(
+		_cluster_id: ClusterId,
+		_era: DdcEra,
+		_batch_index: BatchIndex,
+		_payers: Vec<(T::AccountId, CustomerUsage)>,
+	) -> bool {
+		true
+	}
+
+	fn is_providers_batch_valid(
+		_cluster_id: ClusterId,
+		_era: DdcEra,
+		_batch_index: BatchIndex,
+		_payees: Vec<(T::AccountId, NodeUsage)>,
+	) -> bool {
+		true
+	}
 }
 
 pub struct TestCustomerCharger;
@@ -212,6 +245,7 @@ impl<T: Config> CustomerDepositor<T> for TestCustomerDepositor {
 	}
 }
 
+pub const DAC_ACCOUNT_ID: AccountId = 2;
 pub const RESERVE_ACCOUNT_ID: AccountId = 999;
 pub const TREASURY_ACCOUNT_ID: AccountId = 888;
 pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
@@ -523,7 +557,6 @@ impl ExtBuilder {
 		let _payout_genesis = pallet_ddc_payouts::GenesisConfig::<Test> {
 			feeder_account: None,
 			debtor_customers: Default::default(),
-			authorised_caller: None,
 		}
 		.assimilate_storage(&mut storage);
 

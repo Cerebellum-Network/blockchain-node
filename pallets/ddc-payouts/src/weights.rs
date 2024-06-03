@@ -27,7 +27,6 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_ddc_payouts.
 pub trait WeightInfo {
-	fn set_authorised_caller() -> Weight;
 	fn begin_billing_report() -> Weight;
 	fn begin_charging_customers() -> Weight;
 	fn send_charging_customers_batch(b: u32, ) -> Weight;
@@ -41,12 +40,7 @@ pub trait WeightInfo {
 /// Weights for pallet_ddc_payouts using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	// Storage: DdcPayouts AuthorisedCaller (r:0 w:1)
-	fn set_authorised_caller() -> Weight {
-		Weight::from_parts(90_258_000_u64, 0)
-			.saturating_add(T::DbWeight::get().writes(1_u64))
-	}
-	// Storage: DdcPayouts AuthorisedCaller (r:1 w:0)
+
 	// Storage: DdcPayouts ActiveBillingReports (r:1 w:1)
 	fn begin_billing_report() -> Weight {
 		Weight::from_parts(214_646_000_u64, 0)
@@ -128,11 +122,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	// Storage: DdcPayouts AuthorisedCaller (r:0 w:1)
-	fn set_authorised_caller() -> Weight {
-		Weight::from_parts(90_258_000_u64, 0)
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
-	}
+
 	// Storage: DdcPayouts AuthorisedCaller (r:1 w:0)
 	// Storage: DdcPayouts ActiveBillingReports (r:1 w:1)
 	fn begin_billing_report() -> Weight {

@@ -1,4 +1,5 @@
 use ddc_primitives::{
+	crypto, sr25519,
 	traits::{ClusterManager, ClusterQuery},
 	ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterStatus,
 };
@@ -69,7 +70,6 @@ impl crate::Config for Test {
 	type ClusterManager = TestClusterManager;
 	type NodeVisitor = MockNodeVisitor;
 	type AuthorityId = sr25519::AuthorityId;
-	type AuthorityIdParameter = sr25519::AuthorityId;
 	type OffchainIdentifierId = crypto::OffchainIdentifierId;
 	const MAJORITY: u8 = 67;
 }
