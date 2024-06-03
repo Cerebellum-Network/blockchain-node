@@ -1,5 +1,6 @@
-use frame_support::parameter_types;
-use frame_system::EnsureRootWithSuccess;
+use frame_support::{parameter_types, traits::EnsureOrigin};
+use frame_system::{Config, EnsureRootWithSuccess};
+use sp_core::crypto::{AccountId32, Ss58Codec};
 
 use super::*;
 
@@ -44,9 +45,35 @@ impl pallet_whitelist::Config for Runtime {
 	type WeightInfo = pallet_whitelist::weights::SubstrateWeight<Runtime>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WhitelistOrigin = EnsureRoot<Self::AccountId>;
-	type DispatchWhitelistedOrigin = EitherOf<EnsureRoot<Self::AccountId>, WhitelistedCaller>;
+	type WhitelistOrigin = EitherOf<EnsureRoot<AccountId>, EnsureTechCommittee<Self>>;
+	type DispatchWhitelistedOrigin = EitherOf<EnsureRoot<AccountId>, WhitelistedCaller>;
 	type Preimages = Preimage;
+}
+
+const TECH_COMMITTEE_MULTISIG: &str = "6QX7ZM6oT9zsG1b8i54TAi35UEGqR6XdjHs9vsA3PNv77yJ5"; // Multisig: Tech Comm #1 + Tech Comm #2, threshold = 2
+pub struct EnsureTechCommittee<T>(sp_std::marker::PhantomData<T>);
+impl<T: Config> EnsureOrigin<T::RuntimeOrigin> for EnsureTechCommittee<T> {
+	type Success = ();
+
+	fn try_origin(o: T::RuntimeOrigin) -> Result<Self::Success, T::RuntimeOrigin> {
+		let tech_comm_account_32: AccountId32 =
+			AccountId32::from_ss58check(TECH_COMMITTEE_MULTISIG).unwrap();
+		let mut bytes = AccountId32::as_ref(&tech_comm_account_32);
+		let tech_comm_id: T::AccountId = T::AccountId::decode(&mut bytes).unwrap();
+		o.into().and_then(|o| match o {
+			frame_system::RawOrigin::Signed(ref who) if who == &tech_comm_id => Ok(()),
+			r => Err(T::RuntimeOrigin::from(r)),
+		})
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin() -> Result<T::RuntimeOrigin, ()> {
+		let tech_comm_account_32: AccountId32 =
+			AccountId32::from_ss58check(TECH_COMMITTEE_MULTISIG).unwrap();
+		let mut bytes = AccountId32::as_ref(&tech_comm_account_32);
+		let tech_comm_id: T::AccountId = T::AccountId::decode(&mut bytes).unwrap();
+		Ok(T::RuntimeOrigin::from(frame_system::RawOrigin::Signed(tech_comm_id)))
+	}
 }
 
 impl pallet_referenda::Config for Runtime {

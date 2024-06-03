@@ -45,32 +45,33 @@ impl pallet_whitelist::Config for Runtime {
 	type WeightInfo = pallet_whitelist::weights::SubstrateWeight<Runtime>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WhitelistOrigin = EnsureTechCommittee<Self>;
-	type DispatchWhitelistedOrigin = EitherOf<EnsureRoot<Self::AccountId>, WhitelistedCaller>;
+	type WhitelistOrigin = EitherOf<EnsureRoot<AccountId>, EnsureTechCommittee<Self>>;
+	type DispatchWhitelistedOrigin = EitherOf<EnsureRoot<AccountId>, WhitelistedCaller>;
 	type Preimages = Preimage;
 }
 
-const TECH_COMMITTEE_MULTISIG: &str = "5F3QVbS78a4aTYLiRAD8N3czjqVoNyV42L19CXyhqUMCh4Ch"; // Alice + Bob, threshold = 2
+const DEV_TECH_COMMITTEE_MULTISIG: &str = "6SVKbVvwk4ZJLFCHHYmQtrp6VfDL3B3JHceiajhKPjV44sd6"; // Multisig: Alice + Bob, threshold = 2
 pub struct EnsureTechCommittee<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> EnsureOrigin<T::RuntimeOrigin> for EnsureTechCommittee<T> {
-	type Success = T::AccountId;
+	type Success = ();
 
 	fn try_origin(o: T::RuntimeOrigin) -> Result<Self::Success, T::RuntimeOrigin> {
-		let account32: AccountId32 = AccountId32::from_ss58check(TECH_COMMITTEE_MULTISIG).unwrap();
-		let mut from32 = AccountId32::as_ref(&account32);
-		let tech_comm_id: T::AccountId = T::AccountId::decode(&mut from32).unwrap();
+		let tech_comm_account_32: AccountId32 =
+			AccountId32::from_ss58check(DEV_TECH_COMMITTEE_MULTISIG).unwrap();
+		let mut bytes = AccountId32::as_ref(&tech_comm_account_32);
+		let tech_comm_id: T::AccountId = T::AccountId::decode(&mut bytes).unwrap();
 		o.into().and_then(|o| match o {
-			frame_system::RawOrigin::Signed(ref who) if who == &tech_comm_id =>
-				Ok(tech_comm_id.clone()),
+			frame_system::RawOrigin::Signed(ref who) if who == &tech_comm_id => Ok(()),
 			r => Err(T::RuntimeOrigin::from(r)),
 		})
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin() -> Result<T::RuntimeOrigin, ()> {
-		let account32: AccountId32 = AccountId32::from_ss58check(TECH_COMMITTEE_MULTISIG).unwrap();
-		let mut from32 = AccountId32::as_ref(&account32);
-		let tech_comm_id: T::AccountId = T::AccountId::decode(&mut from32).unwrap();
+		let tech_comm_account_32: AccountId32 =
+			AccountId32::from_ss58check(DEV_TECH_COMMITTEE_MULTISIG).unwrap();
+		let mut bytes = AccountId32::as_ref(&tech_comm_account_32);
+		let tech_comm_id: T::AccountId = T::AccountId::decode(&mut bytes).unwrap();
 		Ok(T::RuntimeOrigin::from(frame_system::RawOrigin::Signed(tech_comm_id)))
 	}
 }
