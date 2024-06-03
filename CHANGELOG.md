@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [5.3.1]
+
+### Changed
+
+- [C,D] `WhitelistOrigin` is set to the Technical Committee Collective Body
 
 ## [5.3.0]
 
