@@ -7,8 +7,7 @@ use sp_core::{
 	},
 	Pair, H256,
 };
-use sp_io::hashing::blake2_128;
-use sp_io::TestExternalities;
+use sp_io::{hashing::blake2_128, TestExternalities};
 use sp_runtime::AccountId32;
 
 use crate::{mock::*, ConsensusError, Error, Event, NodeActivity, *};
