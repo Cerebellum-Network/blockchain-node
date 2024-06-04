@@ -7,10 +7,21 @@ use sp_core::{
 	},
 	Pair, H256,
 };
+use sp_io::hashing::blake2_128;
 use sp_io::TestExternalities;
 use sp_runtime::AccountId32;
 
 use crate::{mock::*, ConsensusError, Error, Event, NodeActivity, *};
+
+fn get_id_for_node_actity(activity: &NodeActivity) -> [u8; 16] {
+	blake2_128(&activity.node_id)
+}
+
+fn get_id_for_customer_activity(activity: &CustomerActivity) -> [u8; 16] {
+	let mut data = activity.customer_id.to_vec();
+	data.extend_from_slice(&activity.bucket_id.encode());
+	blake2_128(&data)
+}
 
 #[test]
 fn create_billing_reports_works() {
@@ -504,10 +515,10 @@ fn test_get_consensus_customers_activity_success() {
 		),
 	];
 
-	let result = DdcVerification::get_consensus_customers_activity(
+	let result = DdcVerification::get_consensus_for_activities(
 		&cluster_id,
 		era_id,
-		customers_activity,
+		&customers_activity,
 		min_nodes,
 		threshold,
 	);
@@ -551,10 +562,10 @@ fn test_get_consensus_customers_activity_not_enough_nodes() {
 		),
 	];
 
-	let result = DdcVerification::get_consensus_customers_activity(
+	let result = DdcVerification::get_consensus_for_activities(
 		&cluster_id1,
 		era_id1,
-		customers_activity,
+		&customers_activity,
 		min_nodes,
 		threshold,
 	);
@@ -562,14 +573,62 @@ fn test_get_consensus_customers_activity_not_enough_nodes() {
 	let errors = result.err().unwrap();
 	assert_eq!(errors.len(), 1);
 	match &errors[0] {
-		ConsensusError::NotEnoughNodesForConsensus {
-			cluster_id,
-			era_id,
-			customer_id,
-			bucket_id,
-		} => {
-			assert_eq!(customer_id, &AccountId32::new([0; 32]));
-			assert_eq!(*bucket_id, 1);
+		ConsensusError::NotEnoughNodesForConsensus { cluster_id, era_id, id } => {
+			assert_eq!(*id, get_id_for_customer_activity(&customers_activity[0].1[0]));
+			assert_eq!(*cluster_id, cluster_id1);
+			assert_eq!(*era_id, era_id1);
+		},
+		_ => panic!("Expected NotEnoughNodes error"),
+	}
+}
+
+#[test]
+fn test_get_consensus_nodes_activity_not_enough_nodes() {
+	let cluster_id1 = ClusterId::from([1; 20]);
+	let era_id1 = 1;
+	let min_nodes = 3;
+	let threshold = Percent::from_percent(67);
+	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
+	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
+
+	let customers_activity = vec![
+		(
+			node_pubkey_0,
+			vec![NodeActivity {
+				provider_id: [0; 32],
+				node_id: [0; 32],
+				stored_bytes: 100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
+			}],
+		),
+		(
+			node_pubkey_1,
+			vec![NodeActivity {
+				provider_id: [0; 32],
+				node_id: [0; 32],
+				stored_bytes: 100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
+			}],
+		),
+	];
+
+	let result = DdcVerification::get_consensus_for_activities(
+		&cluster_id1,
+		era_id1,
+		&customers_activity,
+		min_nodes,
+		threshold,
+	);
+	assert!(result.is_err());
+	let errors = result.err().unwrap();
+	assert_eq!(errors.len(), 1);
+	match &errors[0] {
+		ConsensusError::NotEnoughNodesForConsensus { cluster_id, era_id, id } => {
+			assert_eq!(*id, get_id_for_node_actity(&customers_activity[0].1[0]));
 			assert_eq!(*cluster_id, cluster_id1);
 			assert_eq!(*era_id, era_id1);
 		},
@@ -624,10 +683,10 @@ fn test_get_consensus_customers_activity_not_in_consensus() {
 		),
 	];
 
-	let result = DdcVerification::get_consensus_customers_activity(
+	let result = DdcVerification::get_consensus_for_activities(
 		&cluster_id1,
 		era_id1,
-		customers_activity,
+		&customers_activity,
 		min_nodes,
 		threshold,
 	);
@@ -635,14 +694,8 @@ fn test_get_consensus_customers_activity_not_in_consensus() {
 	let errors = result.err().unwrap();
 	assert_eq!(errors.len(), 1);
 	match &errors[0] {
-		ConsensusError::CustomerActivityNotInConsensus {
-			cluster_id,
-			era_id,
-			customer_id,
-			bucket_id,
-		} => {
-			assert_eq!(customer_id, &AccountId32::new([0; 32]));
-			assert_eq!(*bucket_id, 1);
+		ConsensusError::ActivityNotInConsensus { cluster_id, era_id, id } => {
+			assert_eq!(*id, get_id_for_customer_activity(&customers_activity[0].1[0]));
 			assert_eq!(*cluster_id, cluster_id1);
 			assert_eq!(*era_id, era_id1);
 		},

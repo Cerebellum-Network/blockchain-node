@@ -27,6 +27,7 @@ pub use pallet::*;
 use scale_info::prelude::format;
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
+use sp_io::hashing::blake2_128;
 use sp_runtime::{offchain as rt_offchain, offchain::http, Percent};
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
@@ -79,45 +80,17 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		BillingReportCreated {
-			cluster_id: ClusterId,
-			era: DdcEra,
-		},
-		VerificationKeyStored {
-			verification_key: Vec<u8>,
-		},
-		PayoutBatchCreated {
-			cluster_id: ClusterId,
-			era: DdcEra,
-		},
-		NotEnoughNodesForConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			customer_id: T::AccountId,
-			bucket_id: BucketId,
-		},
-		CustomerActivityNotInConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			customer_id: T::AccountId,
-			bucket_id: BucketId,
-		},
+		BillingReportCreated { cluster_id: ClusterId, era: DdcEra },
+		VerificationKeyStored { verification_key: Vec<u8> },
+		PayoutBatchCreated { cluster_id: ClusterId, era: DdcEra },
+		NotEnoughNodesForConsensus { cluster_id: ClusterId, era_id: DdcEra, id: [u8; 16] },
+		ActivityNotInConsensus { cluster_id: ClusterId, era_id: DdcEra, id: [u8; 16] },
 	}
 
 	#[derive(Debug, Encode, Decode)]
-	pub enum ConsensusError<T: Config> {
-		NotEnoughNodesForConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			customer_id: T::AccountId,
-			bucket_id: BucketId,
-		},
-		CustomerActivityNotInConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			customer_id: T::AccountId,
-			bucket_id: BucketId,
-		},
+	pub enum ConsensusError {
+		NotEnoughNodesForConsensus { cluster_id: ClusterId, era_id: DdcEra, id: [u8; 16] },
+		ActivityNotInConsensus { cluster_id: ClusterId, era_id: DdcEra, id: [u8; 16] },
 	}
 
 	#[pallet::error]
@@ -178,7 +151,7 @@ pub mod pallet {
 		pub merkle_root_hash: MmrRootHash,
 	}
 
-	#[derive(Serialize, Deserialize, Debug, Clone)]
+	#[derive(Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq)]
 	pub(crate) struct NodeActivity {
 		pub(crate) node_id: [u8; 32],
 		pub(crate) provider_id: [u8; 32],
@@ -196,6 +169,26 @@ pub mod pallet {
 		pub(crate) transferred_bytes: u64,
 		pub(crate) number_of_puts: u64,
 		pub(crate) number_of_gets: u64,
+	}
+
+	// Define a common trait
+	pub trait Activity:
+		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
+	{
+		fn get_id(&self) -> [u8; 16];
+	}
+
+	impl Activity for NodeActivity {
+		fn get_id(&self) -> [u8; 16] {
+			blake2_128(&self.node_id)
+		}
+	}
+	impl Activity for CustomerActivity {
+		fn get_id(&self) -> [u8; 16] {
+			let mut data = self.customer_id.to_vec();
+			data.extend_from_slice(&self.bucket_id.encode());
+			blake2_128(&data)
+		}
 	}
 
 	impl From<CustomerActivity> for CustomerUsage {
@@ -275,7 +268,7 @@ pub mod pallet {
 				Self::get_dac_nodes(&cluster_id),
 				"Error retrieving dac nodes to validate"
 			);
-			let _nodes_usage = unwrap_or_log_error!(
+			let nodes_usage = unwrap_or_log_error!(
 				Self::fetch_nodes_usage_for_era(&cluster_id, era_id, &dac_nodes),
 				"Error retrieving node activities to validate"
 			);
@@ -286,10 +279,17 @@ pub mod pallet {
 			);
 
 			let min_nodes = dac_nodes.len().ilog2() as usize;
-			let _ = Self::get_consensus_customers_activity(
+			let _ = Self::get_consensus_for_activities(
 				&cluster_id,
 				era_id,
-				customers_usage,
+				&customers_usage,
+				min_nodes,
+				Percent::from_percent(T::MAJORITY),
+			);
+			let _ = Self::get_consensus_for_activities(
+				&cluster_id,
+				era_id,
+				&nodes_usage,
 				min_nodes,
 				Percent::from_percent(T::MAJORITY),
 			);
@@ -298,11 +298,11 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		// Function to check if there is a consensus for a particular customer/bucket
-		pub(crate) fn reach_consensus(
-			activities: &[CustomerActivity],
+		pub(crate) fn reach_consensus<A: Activity>(
+			activities: &[A],
 			threshold: usize,
-		) -> Option<CustomerActivity> {
-			let mut count_map: BTreeMap<CustomerActivity, usize> = BTreeMap::new();
+		) -> Option<A> {
+			let mut count_map: BTreeMap<A, usize> = BTreeMap::new();
 
 			for activity in activities {
 				*count_map.entry(activity.clone()).or_default() += 1;
@@ -314,23 +314,19 @@ pub mod pallet {
 				.map(|(activity, _)| activity)
 		}
 
-		pub(crate) fn get_consensus_customers_activity(
+		pub(crate) fn get_consensus_for_activities<A: Activity>(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			customers_activity: Vec<(NodePubKey, Vec<CustomerActivity>)>,
+			activities: &[(NodePubKey, Vec<A>)],
 			min_nodes: usize,
 			threshold: Percent,
-		) -> Result<Vec<CustomerActivity>, Vec<ConsensusError<T>>> {
-			let mut customer_buckets: BTreeMap<([u8; 32], BucketId), Vec<CustomerActivity>> =
-				BTreeMap::new();
+		) -> Result<Vec<A>, Vec<ConsensusError>> {
+			let mut customer_buckets: BTreeMap<[u8; 16], Vec<A>> = BTreeMap::new();
 
 			// Flatten and collect all customer activities
-			for (_node_id, activities) in customers_activity.iter() {
+			for (_node_id, activities) in activities.iter() {
 				for activity in activities.iter() {
-					customer_buckets
-						.entry((activity.customer_id, activity.bucket_id))
-						.or_default()
-						.push(activity.clone());
+					customer_buckets.entry(activity.get_id()).or_default().push(activity.clone());
 				}
 			}
 
@@ -339,29 +335,21 @@ pub mod pallet {
 			let min_threshold = threshold * min_nodes;
 
 			// Check if each customer/bucket appears in at least `min_nodes` nodes
-			for ((customer_id, bucket_id), activities) in customer_buckets {
+			for (id, activities) in customer_buckets {
 				if activities.len() < min_nodes {
-					if let Ok(account_id) = T::AccountId::decode(&mut &customer_id[..]) {
-						errors.push(ConsensusError::<T>::NotEnoughNodesForConsensus {
-							cluster_id: (*cluster_id),
-							era_id,
-							customer_id: account_id,
-							bucket_id,
-						});
-					} else {
-						unreachable!();
-					}
-				} else if let Some(activity) = Self::reach_consensus(&activities, min_threshold) {
-					consensus_activities.push(activity);
-				} else if let Ok(account_id) = T::AccountId::decode(&mut &customer_id[..]) {
-					errors.push(ConsensusError::<T>::CustomerActivityNotInConsensus {
+					errors.push(ConsensusError::NotEnoughNodesForConsensus {
 						cluster_id: (*cluster_id),
 						era_id,
-						customer_id: account_id,
-						bucket_id,
+						id,
 					});
+				} else if let Some(activity) = Self::reach_consensus(&activities, min_threshold) {
+					consensus_activities.push(activity);
 				} else {
-					unreachable!();
+					errors.push(ConsensusError::ActivityNotInConsensus {
+						cluster_id: (*cluster_id),
+						era_id,
+						id,
+					});
 				}
 			}
 
