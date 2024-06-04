@@ -1160,9 +1160,9 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
-	type MinErasureCodingRequiredLimit = ConstU32<4>;
-	type MinErasureCodingTotalLimit = ConstU32<6>;
-	type MinReplicationTotalLimit = ConstU32<3>;
+	type MinErasureCodingRequiredLimit = ConstU32<0>;
+	type MinErasureCodingTotalLimit = ConstU32<0>;
+	type MinReplicationTotalLimit = ConstU32<0>;
 }
 
 parameter_types! {
