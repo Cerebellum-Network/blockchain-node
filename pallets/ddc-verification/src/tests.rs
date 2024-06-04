@@ -1,4 +1,3 @@
-use crate::{mock::*, ConsensusError, Error, Event, NodeActivity, *};
 use ddc_primitives::{ClusterId, StorageNodeParams};
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{
@@ -10,6 +9,8 @@ use sp_core::{
 };
 use sp_io::TestExternalities;
 use sp_runtime::AccountId32;
+
+use crate::{mock::*, ConsensusError, Error, Event, NodeActivity, *};
 
 #[test]
 fn create_billing_reports_works() {
