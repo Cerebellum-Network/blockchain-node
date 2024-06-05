@@ -588,10 +588,6 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> sp_application_crypto::BoundToRuntimeAppPublic for Pallet<T> {
-		type Public = T::AuthorityId;
-	}
-
 	impl<T: Config> ValidatorVisitor<T> for Pallet<T> {
 		fn setup_validators(validators: Vec<T::AccountId>) {
 			ValidatorSet::<T>::put(validators);
@@ -616,6 +612,10 @@ pub mod pallet {
 		) -> bool {
 			true
 		}
+	}
+
+	impl<T: Config> sp_application_crypto::BoundToRuntimeAppPublic for Pallet<T> {
+		type Public = T::AuthorityId;
 	}
 
 	impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
