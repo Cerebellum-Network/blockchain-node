@@ -1256,6 +1256,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+	type ActivityHasher = frame_support::Blake2_128;
 	const MAJORITY: u8 = 67;
 }
 

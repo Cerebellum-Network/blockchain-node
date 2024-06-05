@@ -10,11 +10,10 @@ repository.workspace = true
 
 [dependencies]
 codec = { workspace = true }
-scale-info = { workspace = true }
-serde = { workspace = true }
-
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true }
 sp-application-crypto = { workspace = true }
 sp-core = { workspace = true }
 sp-runtime = { workspace = true }
