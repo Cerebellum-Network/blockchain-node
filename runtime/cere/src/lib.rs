@@ -134,7 +134,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 53003,
+	spec_version: 53100,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 17,
@@ -1182,6 +1182,26 @@ impl pallet_ddc_staking::Config for Runtime {
 	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
+parameter_types! {
+	pub const TechnicalMotionDuration: BlockNumber = 5 * DAYS;
+	pub const TechnicalMaxProposals: u32 = 100;
+	pub const TechnicalMaxMembers: u32 = 100;
+}
+
+type TechCommCollective = pallet_collective::Instance3;
+impl pallet_collective::Config<TechCommCollective> for Runtime {
+	type RuntimeOrigin = RuntimeOrigin;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type MotionDuration = TechnicalMotionDuration;
+	type MaxProposals = TechnicalMaxProposals;
+	type MaxMembers = TechnicalMaxMembers;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
+	type MaxProposalWeight = MaxCollectivesProposalWeight;
+}
+
 construct_runtime!(
 	pub struct Runtime
 	{
@@ -1233,6 +1253,7 @@ construct_runtime!(
 		Origins: pallet_custom_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov.
+		TechComm: pallet_collective::<Instance3>,
 	}
 );
 
@@ -1405,6 +1426,7 @@ mod benches {
 		[pallet_conviction_voting, ConvictionVoting]
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
+		[pallet_collective, TechComm]
 	);
 }
 
