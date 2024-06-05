@@ -158,7 +158,6 @@ pub mod pallet {
 
 	#[derive(Serialize, Copy, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 	pub(crate) struct EraActivity {
-		#[serde(rename = "id")]
 		pub id: DdcEra,
 	}
 	#[derive(Serialize, Deserialize, Debug, Clone)]
@@ -246,8 +245,9 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn offchain_worker(block_number: BlockNumberFor<T>) {
+			log::info!("Hello from ocw!!!!!!!!!!");
 			if block_number.saturated_into::<u32>() % 100u32 == 0 {
-				log::info!("Hello from pallet-ocw.");
+				log::info!("Hello from pallet-ddc-verification.");
 
 				let signer = Signer::<T, T::OffchainIdentifierId>::all_accounts();
 				if !signer.can_sign() {
@@ -306,7 +306,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn get_era_to_validate(
+		pub(crate) fn get_era_to_validate(
 			cluster_id: ClusterId,
 			dac_nodes: Vec<(NodePubKey, StorageNodeParams)>,
 		) -> Result<Option<DdcEra>, Error<T>> {
@@ -325,6 +325,7 @@ pub mod pallet {
 						.filter(|ids| ids.id > last_validated_era.era)
 						.map(|era| era.id)
 				})
+				.sorted()
 				.collect::<Vec<DdcEra>>();
 
 			let mut grouped_data: Vec<(u32, DdcEra)> = Vec::new();

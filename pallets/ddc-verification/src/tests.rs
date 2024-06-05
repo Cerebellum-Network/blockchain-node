@@ -1,4 +1,4 @@
-use ddc_primitives::{ClusterId, StorageNodeParams};
+use ddc_primitives::{ClusterId, StorageNodeParams, StorageNodePubKey};
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{
 	offchain::{
@@ -311,5 +311,211 @@ fn fetch_customers_usage_works() {
 		assert_eq!(activities[1].number_of_puts, customer_activity2.number_of_puts);
 		assert_eq!(activities[1].transferred_bytes, customer_activity2.transferred_bytes);
 		assert_eq!(activities[1].stored_bytes, customer_activity2.stored_bytes);
+	});
+}
+
+#[test]
+fn fetch_processed_era_works() {
+	let mut ext = TestExternalities::default();
+	let (offchain, offchain_state) = TestOffchainExt::new();
+	let (pool, _) = TestTransactionPoolExt::new();
+
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	ext.execute_with(|| {
+		let mut offchain_state = offchain_state.write();
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host = "example1.com";
+		let port = 80;
+
+		// Create a sample EraActivity instance
+		let era_activity1 = EraActivity { id: 17 };
+		let era_activity2 = EraActivity { id: 18 };
+		let era_activity3 = EraActivity { id: 19 };
+		let era_activity_json =
+			serde_json::to_string(&vec![era_activity1, era_activity2, era_activity3]).unwrap();
+
+		// Mock HTTP request and response
+		let pending_request = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/era", host, port),
+			response: Some(era_activity_json.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		offchain_state.expect_request(pending_request);
+		drop(offchain_state);
+
+		let node_params = StorageNodeParams {
+			ssl: false,
+			host: host.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		};
+
+		let result = Pallet::<Test>::fetch_processed_era(node_params);
+		assert!(result.is_ok());
+		let activities = result.unwrap();
+		assert_eq!(activities[0].id, era_activity1.id);
+		assert_eq!(activities[1].id, era_activity2.id);
+	});
+}
+
+#[test]
+fn get_era_to_validate_works() {
+	let mut ext = TestExternalities::default();
+	let (offchain, offchain_state) = TestOffchainExt::new();
+	let (pool, _) = TestTransactionPoolExt::new();
+
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	ext.execute_with(|| {
+		let mut offchain_state = offchain_state.write();
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host1 = "example1.com";
+		let host2 = "example2.com";
+		let host3 = "example3.com";
+		let host4 = "example4.com";
+		let port = 80;
+		let era_activity1 = EraActivity { id: 16 };
+		let era_activity2 = EraActivity { id: 17 };
+		let era_activity3 = EraActivity { id: 18 };
+		let era_activity4 = EraActivity { id: 19 };
+		let era_activity_json1 = serde_json::to_string(&vec![
+			era_activity1,
+			era_activity2,
+			era_activity3,
+			era_activity4,
+		])
+		.unwrap();
+		let era_activity_json2 =
+			serde_json::to_string(&vec![era_activity1, era_activity2, era_activity3]).unwrap();
+		let era_activity_json3 =
+			serde_json::to_string(&vec![era_activity1, era_activity2, era_activity3]).unwrap();
+		let era_activity_json4 =
+			serde_json::to_string(&vec![era_activity1, era_activity2, era_activity3]).unwrap();
+		let pending_request1 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/era", host1, port),
+			response: Some(era_activity_json1.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request2 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/era", host2, port),
+			response: Some(era_activity_json2.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request3 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/era", host3, port),
+			response: Some(era_activity_json3.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request4 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/era", host4, port),
+			response: Some(era_activity_json4.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		offchain_state.expect_request(pending_request1);
+		offchain_state.expect_request(pending_request2);
+		offchain_state.expect_request(pending_request3);
+		offchain_state.expect_request(pending_request4);
+
+		drop(offchain_state);
+
+		let node_params1 = StorageNodeParams {
+			ssl: false,
+			host: host1.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		};
+
+		let node_params2 = StorageNodeParams {
+			ssl: false,
+			host: host2.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		};
+
+		let node_params3 = StorageNodeParams {
+			ssl: false,
+			host: host3.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example4.com".to_vec(),
+		};
+
+		let node_params4 = StorageNodeParams {
+			ssl: false,
+			host: host4.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example5.com".to_vec(),
+		};
+
+		let dac_nodes: Vec<(NodePubKey, StorageNodeParams)> = vec![
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32])), node_params1),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32])), node_params2),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])), node_params3),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4),
+		];
+
+		let dac_account = AccountId::from([1; 32]);
+		let cluster_id = ClusterId::from([12; 20]);
+		let era = 16;
+		let merkel_root_hash: H256 = array_bytes::hex_n_into_unchecked(
+			"95803defe6ea9f41e7ec6afa497064f21bfded027d8812efacbdf984e630cbdc",
+		);
+
+		assert_noop!(
+			Pallet::<Test>::get_era_to_validate(cluster_id, dac_nodes.clone()),
+			Error::<Test>::NoValidatorExist
+		);
+
+		ValidatorSet::<Test>::put(vec![dac_account.clone()]);
+
+		assert_ok!(DdcVerification::set_current_validator(RuntimeOrigin::signed(
+			dac_account.clone()
+		),));
+
+		assert_noop!(
+			Pallet::<Test>::get_era_to_validate(cluster_id, dac_nodes.clone()),
+			Error::<Test>::EraToValidateRetrievalError
+		);
+
+		assert_ok!(DdcVerification::create_billing_reports(
+			RuntimeOrigin::signed(dac_account.clone()),
+			cluster_id,
+			era,
+			merkel_root_hash,
+			merkel_root_hash,
+		));
+
+		let result = Pallet::<Test>::get_era_to_validate(cluster_id, dac_nodes.clone());
+		assert!(result.is_ok());
+		assert_eq!(result.unwrap().unwrap(), era_activity2.id);
 	});
 }
