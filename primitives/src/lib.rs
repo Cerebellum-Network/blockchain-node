@@ -4,7 +4,10 @@ use codec::{Decode, Encode};
 use frame_support::parameter_types;
 use scale_info::{prelude::vec::Vec, TypeInfo};
 use serde::{Deserialize, Serialize};
-use sp_core::{crypto::KeyTypeId, hash::H160, H256};
+use sp_core::{
+	crypto::KeyTypeId,
+	hash::{H160, H256},
+};
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
 pub mod traits;
 
@@ -23,6 +26,7 @@ pub type ClusterNodesCount = u16;
 pub type StorageNodePubKey = AccountId32;
 /// The type used to represent an MMR root hash.
 pub type MmrRootHash = H256;
+pub type ActivityHash = H256;
 pub type BatchIndex = u16;
 
 // ClusterParams includes Governance non-sensetive parameters only
