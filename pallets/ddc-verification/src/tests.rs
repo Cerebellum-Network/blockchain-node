@@ -1,4 +1,4 @@
-use ddc_primitives::{ClusterId, StorageNodeParams, StorageNodePubKey};
+use ddc_primitives::{ClusterId, StorageNodeParams, StorageNodePubKey, KEY_TYPE};
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{
 	offchain::{
@@ -8,6 +8,7 @@ use sp_core::{
 	Pair, H256,
 };
 use sp_io::TestExternalities;
+use sp_keystore::{testing::MemoryKeystore, Keystore, KeystoreExt};
 
 use crate::{mock::*, Error, Event, NodeActivity, *};
 
@@ -389,18 +390,30 @@ fn get_era_to_validate_works() {
 		let era_activity3 = EraActivity { id: 18 };
 		let era_activity4 = EraActivity { id: 19 };
 		let era_activity_json1 = serde_json::to_string(&vec![
-			era_activity1,
-			era_activity2,
-			era_activity3,
-			era_activity4,
+			era_activity1, //16
+			era_activity2, //17
+			era_activity3, //18
+			era_activity4, //19
 		])
 		.unwrap();
-		let era_activity_json2 =
-			serde_json::to_string(&vec![era_activity1, era_activity2, era_activity3]).unwrap();
-		let era_activity_json3 =
-			serde_json::to_string(&vec![era_activity1, era_activity2, era_activity3]).unwrap();
-		let era_activity_json4 =
-			serde_json::to_string(&vec![era_activity1, era_activity2, era_activity3]).unwrap();
+		let era_activity_json2 = serde_json::to_string(&vec![
+			era_activity1, //16
+			era_activity2, //17
+			era_activity3, //18
+		])
+		.unwrap();
+		let era_activity_json3 = serde_json::to_string(&vec![
+			era_activity1, //16
+			era_activity2, //17
+			era_activity3, //18
+		])
+		.unwrap();
+		let era_activity_json4 = serde_json::to_string(&vec![
+			era_activity1, //16
+			era_activity2, //17
+			era_activity3, //18
+		])
+		.unwrap();
 		let pending_request1 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/era", host1, port),
@@ -516,6 +529,68 @@ fn get_era_to_validate_works() {
 
 		let result = Pallet::<Test>::get_era_to_validate(cluster_id, dac_nodes.clone());
 		assert!(result.is_ok());
-		assert_eq!(result.unwrap().unwrap(), era_activity2.id);
+		assert_eq!(result.unwrap().unwrap(), era_activity2.id); //17
+	});
+}
+
+#[test]
+fn off_chain_worker_works() {
+	let mut ext = TestExternalities::default();
+	let (offchain, _offchain_state) = TestOffchainExt::new();
+	let (pool, pool_state) = TestTransactionPoolExt::new();
+	let cluster_id = ClusterId::from([12; 20]);
+	let era = 16;
+	let merkel_root_hash: H256 = array_bytes::hex_n_into_unchecked(
+		"95803defe6ea9f41e7ec6afa497064f21bfded027d8812efacbdf984e630cbdc",
+	);
+	let (pair, _seed) = sp_core::sr25519::Pair::from_phrase(
+		"spider sell nice animal border success square soda stem charge caution echo",
+		None,
+	)
+	.unwrap();
+	let keystore = MemoryKeystore::new();
+	keystore
+		.insert(
+			KEY_TYPE,
+			"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
+			pair.public().as_ref(),
+		)
+		.unwrap();
+
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(offchain));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(KeystoreExt::new(keystore));
+
+	ext.execute_with(|| {
+		// Offchain worker should not be triggered if block number is not divided by 100
+		let block = 102;
+		System::set_block_number(block);
+
+		DdcVerification::offchain_worker(block);
+		assert_eq!(pool_state.write().transactions.pop(), None);
+
+		// // Offchain worker should be triggered if block number is  divided by 100
+		let block = 500;
+		System::set_block_number(block);
+		let validator: AccountId = AccountId::from(pair.public().0);
+		<ValidatorSet<Test>>::put(vec![validator.clone()]);
+
+		ClusterToValidate::<Test>::put(cluster_id);
+		CurrentValidator::<Test>::put(validator.clone());
+		assert_ok!(DdcVerification::create_billing_reports(
+			RuntimeOrigin::signed(validator.clone()),
+			cluster_id,
+			era,
+			merkel_root_hash,
+			merkel_root_hash,
+		));
+		DdcVerification::offchain_worker(block);
+
+		let tx = pool_state.write().transactions.pop().unwrap();
+
+		let tx = Extrinsic::decode(&mut &*tx).unwrap();
+		assert_eq!(tx.signature.unwrap().0, 1);
+		assert_eq!(tx.call, RuntimeCall::DdcVerification(Call::set_current_validator {}));
 	});
 }
