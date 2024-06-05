@@ -30,7 +30,6 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 [dev-dependencies]
-mockall = "0.12.1"
 sp-core = { workspace = true, features = ["std"] }
 sp-keystore = { workspace = true }
 
