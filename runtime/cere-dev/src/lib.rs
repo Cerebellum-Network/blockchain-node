@@ -34,8 +34,9 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, Nothing,
-		OnUnbalanced, WithdrawReasons,
+		EqualPrivilegeOnly, Everything, GetStorageVersion, Imbalance, InstanceFilter,
+		KeyOwnerProofSystem, Nothing, OnRuntimeUpgrade, OnUnbalanced, StorageVersion,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -115,7 +116,6 @@ use governance::{
 	ClusterProtocolActivator, ClusterProtocolUpdater, GeneralAdmin, StakingAdmin, Treasurer,
 	TreasurySpender,
 };
-
 /// Generated voter bag information.
 mod voter_bags;
 
@@ -1350,11 +1350,47 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
+#[cfg(feature = "try-runtime")]
+use sp_runtime::DispatchError;
+pub struct TechCommSetV4Storage;
+impl OnRuntimeUpgrade for TechCommSetV4Storage {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let log_target = "tech-comm-v4-migration";
+		let on_chain_storage_version = <TechComm as GetStorageVersion>::on_chain_storage_version();
+		if on_chain_storage_version == 0 {
+			log::info!(
+				target: log_target,
+				"Upgrading storage version to v4",
+			);
+			StorageVersion::new(4).put::<TechComm>();
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1)
+		} else {
+			log::warn!(
+				target: log_target,
+				"Attempted to apply migration to v4 but failed because storage version is {:?}",
+				on_chain_storage_version,
+			);
+			<Runtime as frame_system::Config>::DbWeight::get().reads(1)
+		}
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
+		let on_chain_storage_version = <TechComm as GetStorageVersion>::on_chain_storage_version();
+		assert_eq!(on_chain_storage_version, 0, "Tech Comm version is not v0");
+		Ok(Vec::new())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade(_prev_state: Vec<u8>) -> Result<(), DispatchError> {
+		let on_chain_storage_version = <TechComm as GetStorageVersion>::on_chain_storage_version();
+		assert_eq!(on_chain_storage_version, 4, "Tech Comm version is not v4");
+		Ok(())
+	}
+}
+
 /// Runtime migrations
-type Migrations = (
-	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
-	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
-);
+type Migrations = (TechCommSetV4Storage,);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
