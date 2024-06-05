@@ -229,6 +229,7 @@ pub enum NodeRepositoryError {
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
 pub mod sr25519 {
 	mod app_sr25519 {
+		use scale_info::prelude::string::String;
 		use sp_application_crypto::{app_crypto, sr25519};
 
 		use crate::KEY_TYPE;
@@ -242,6 +243,7 @@ pub mod sr25519 {
 	pub type AuthorityId = app_sr25519::Public;
 }
 pub mod crypto {
+	use scale_info::prelude::string::String;
 	use sp_core::sr25519::Signature as Sr25519Signature;
 	use sp_runtime::{
 		app_crypto::{app_crypto, sr25519},
