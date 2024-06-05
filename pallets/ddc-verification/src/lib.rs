@@ -12,12 +12,13 @@ use core::str;
 
 use ddc_primitives::{
 	traits::{ClusterManager, NodeVisitor, ValidatorVisitor},
-	BatchIndex, ClusterId, CustomerUsage, DdcEra, MmrRootHash, NodeParams, NodePubKey, NodeUsage,
-	StorageNodeMode, StorageNodeParams,
+	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MmrRootHash, NodeParams,
+	NodePubKey, NodeUsage, StorageNodeMode, StorageNodeParams,
 };
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Get, OneSessionHandler},
+	StorageHasher,
 };
 use frame_system::{
 	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
@@ -27,7 +28,6 @@ pub use pallet::*;
 use scale_info::prelude::format;
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
-use sp_io::hashing::blake2_128;
 use sp_runtime::{offchain as rt_offchain, offchain::http, Percent};
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
@@ -65,6 +65,7 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 		type ClusterManager: ClusterManager<Self>;
 		type NodeVisitor: NodeVisitor<Self>;
+		type ActivityHasher: StorageHasher<Output = ActivityHash>;
 		type AuthorityId: Member
 			+ Parameter
 			+ RuntimeAppPublic
@@ -83,14 +84,14 @@ pub mod pallet {
 		BillingReportCreated { cluster_id: ClusterId, era: DdcEra },
 		VerificationKeyStored { verification_key: Vec<u8> },
 		PayoutBatchCreated { cluster_id: ClusterId, era: DdcEra },
-		NotEnoughNodesForConsensus { cluster_id: ClusterId, era_id: DdcEra, id: [u8; 16] },
-		ActivityNotInConsensus { cluster_id: ClusterId, era_id: DdcEra, id: [u8; 16] },
+		NotEnoughNodesForConsensus { cluster_id: ClusterId, era_id: DdcEra, id: ActivityHash },
+		ActivityNotInConsensus { cluster_id: ClusterId, era_id: DdcEra, id: ActivityHash },
 	}
 
 	#[derive(Debug, Encode, Decode)]
 	pub enum ConsensusError {
-		NotEnoughNodesForConsensus { cluster_id: ClusterId, era_id: DdcEra, id: [u8; 16] },
-		ActivityNotInConsensus { cluster_id: ClusterId, era_id: DdcEra, id: [u8; 16] },
+		NotEnoughNodesForConsensus { cluster_id: ClusterId, era_id: DdcEra, id: ActivityHash },
+		ActivityNotInConsensus { cluster_id: ClusterId, era_id: DdcEra, id: ActivityHash },
 	}
 
 	#[pallet::error]
@@ -175,19 +176,19 @@ pub mod pallet {
 	pub trait Activity:
 		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
 	{
-		fn get_id(&self) -> [u8; 16];
+		fn get_id<T: Config>(&self) -> ActivityHash;
 	}
 
 	impl Activity for NodeActivity {
-		fn get_id(&self) -> [u8; 16] {
-			blake2_128(&self.node_id)
+		fn get_id<T: Config>(&self) -> ActivityHash {
+			T::ActivityHasher::hash(&self.node_id)
 		}
 	}
 	impl Activity for CustomerActivity {
-		fn get_id(&self) -> [u8; 16] {
+		fn get_id<T: Config>(&self) -> ActivityHash {
 			let mut data = self.customer_id.to_vec();
 			data.extend_from_slice(&self.bucket_id.encode());
-			blake2_128(&data)
+			T::ActivityHasher::hash(&data)
 		}
 	}
 
@@ -321,12 +322,15 @@ pub mod pallet {
 			min_nodes: usize,
 			threshold: Percent,
 		) -> Result<Vec<A>, Vec<ConsensusError>> {
-			let mut customer_buckets: BTreeMap<[u8; 16], Vec<A>> = BTreeMap::new();
+			let mut customer_buckets: BTreeMap<ActivityHash, Vec<A>> = BTreeMap::new();
 
 			// Flatten and collect all customer activities
 			for (_node_id, activities) in activities.iter() {
 				for activity in activities.iter() {
-					customer_buckets.entry(activity.get_id()).or_default().push(activity.clone());
+					customer_buckets
+						.entry(activity.get_id::<T>())
+						.or_default()
+						.push(activity.clone());
 				}
 			}
 
