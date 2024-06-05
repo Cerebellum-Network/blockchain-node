@@ -33,7 +33,8 @@ fn create_billing_reports_works() {
 
 		System::assert_last_event(Event::BillingReportCreated { cluster_id, era }.into());
 
-		let report = DdcVerification::active_billing_reports(cluster_id, dac_account.clone()).unwrap();
+		let report =
+			DdcVerification::active_billing_reports(cluster_id, dac_account.clone()).unwrap();
 		assert_eq!(report.payers_merkle_root_hash, merkel_root_hash);
 
 		assert_noop!(

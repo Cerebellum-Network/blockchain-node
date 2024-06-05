@@ -320,7 +320,10 @@ pub mod pallet {
 			let ids_greater_than_last_validated_era: Vec<DdcEra> = all_ids
 				.iter()
 				.flat_map(|eras| {
-					eras.iter().cloned().filter(|ids| ids.id > last_validated_era.era).map(|era| era.id)
+					eras.iter()
+						.cloned()
+						.filter(|ids| ids.id > last_validated_era.era)
+						.map(|era| era.id)
 				})
 				.collect::<Vec<DdcEra>>();
 
