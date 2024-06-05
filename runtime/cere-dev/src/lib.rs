@@ -34,8 +34,9 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, Nothing,
-		OnUnbalanced, WithdrawReasons,
+		EqualPrivilegeOnly, Everything, GetStorageVersion, Imbalance, InstanceFilter,
+		KeyOwnerProofSystem, Nothing, OnRuntimeUpgrade, OnUnbalanced, StorageVersion,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -115,7 +116,6 @@ use governance::{
 	ClusterProtocolActivator, ClusterProtocolUpdater, GeneralAdmin, StakingAdmin, Treasurer,
 	TreasurySpender,
 };
-
 /// Generated voter bag information.
 mod voter_bags;
 
@@ -143,7 +143,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 54001,
+	spec_version: 54002,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 18,
@@ -874,11 +874,7 @@ impl pallet_contracts::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Debug = ();
 	type Environment = ();
-	type Migrations = (
-		pallet_contracts::migration::v13::Migration<Runtime>,
-		pallet_contracts::migration::v14::Migration<Runtime, Balances>,
-		pallet_contracts::migration::v15::Migration<Runtime>,
-	);
+	type Migrations = ();
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -1191,6 +1187,26 @@ impl pallet_ddc_payouts::Config for Runtime {
 }
 
 parameter_types! {
+	pub const TechnicalMotionDuration: BlockNumber = 5 * DAYS;
+	pub const TechnicalMaxProposals: u32 = 100;
+	pub const TechnicalMaxMembers: u32 = 100;
+}
+
+type TechCommCollective = pallet_collective::Instance3;
+impl pallet_collective::Config<TechCommCollective> for Runtime {
+	type RuntimeOrigin = RuntimeOrigin;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type MotionDuration = TechnicalMotionDuration;
+	type MaxProposals = TechnicalMaxProposals;
+	type MaxMembers = TechnicalMaxMembers;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
+	type MaxProposalWeight = MaxCollectivesProposalWeight;
+}
+
+parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
 	pub const MinValidatedNodesCount: u16 = 3;
@@ -1291,6 +1307,7 @@ construct_runtime!(
 		Origins: pallet_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov.
+		TechComm: pallet_collective::<Instance3>,
 		DdcClustersGov: pallet_ddc_clusters_gov,
 	}
 );
@@ -1329,11 +1346,47 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
+#[cfg(feature = "try-runtime")]
+use sp_runtime::DispatchError;
+pub struct TechCommSetV4Storage;
+impl OnRuntimeUpgrade for TechCommSetV4Storage {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		let log_target = "tech-comm-v4-migration";
+		let on_chain_storage_version = <TechComm as GetStorageVersion>::on_chain_storage_version();
+		if on_chain_storage_version == 0 {
+			log::info!(
+				target: log_target,
+				"Upgrading storage version to v4",
+			);
+			StorageVersion::new(4).put::<TechComm>();
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1)
+		} else {
+			log::warn!(
+				target: log_target,
+				"Attempted to apply migration to v4 but failed because storage version is {:?}",
+				on_chain_storage_version,
+			);
+			<Runtime as frame_system::Config>::DbWeight::get().reads(1)
+		}
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
+		let on_chain_storage_version = <TechComm as GetStorageVersion>::on_chain_storage_version();
+		assert_eq!(on_chain_storage_version, 0, "Tech Comm version is not v0");
+		Ok(Vec::new())
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade(_prev_state: Vec<u8>) -> Result<(), DispatchError> {
+		let on_chain_storage_version = <TechComm as GetStorageVersion>::on_chain_storage_version();
+		assert_eq!(on_chain_storage_version, 4, "Tech Comm version is not v4");
+		Ok(())
+	}
+}
+
 /// Runtime migrations
-type Migrations = (
-	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
-	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
-);
+type Migrations = (TechCommSetV4Storage,);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -1393,6 +1446,7 @@ mod benches {
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
 		[pallet_preimage, Preimage]
+		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
 	);
 }
