@@ -2,6 +2,7 @@ use ddc_primitives::{
 	crypto, sr25519,
 	traits::{ClusterManager, ClusterQuery},
 	ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterStatus,
+	StorageNodePubKey,
 };
 use frame_support::{
 	pallet_prelude::ConstU32,
@@ -28,7 +29,7 @@ frame_support::construct_runtime!(
 	}
 );
 
-type Extrinsic = TestXt<RuntimeCall, ()>;
+pub type Extrinsic = TestXt<RuntimeCall, ()>;
 pub type Signature = MultiSignature;
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
@@ -65,7 +66,7 @@ parameter_types! {
 impl crate::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = VerificationPalletId;
-	type MaxVerificationKeyLimit = ConstU32<500>;
+	type MaxVerificationKeyLimit = ConstU32<10>;
 	type WeightInfo = ();
 	type ClusterManager = TestClusterManager;
 	type NodeVisitor = MockNodeVisitor;
@@ -73,6 +74,7 @@ impl crate::Config for Test {
 	type OffchainIdentifierId = crypto::OffchainIdentifierId;
 	type ActivityHasher = Blake2_128;
 	const MAJORITY: u8 = 67;
+	const BLOCK_TO_START: u32 = 100;
 }
 
 // Build genesis storage according to the mock runtime.
@@ -84,7 +86,16 @@ pub struct MockNodeVisitor;
 
 impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 	fn get_node_params(_node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
-		unimplemented!()
+		let storage_node_params = StorageNodeParams {
+			mode: StorageNodeMode::Storage,
+			host: vec![1u8; 255],
+			domain: vec![2u8; 255],
+			ssl: true,
+			http_port: 35000u16,
+			grpc_port: 25000u16,
+			p2p_port: 15000u16,
+		};
+		Ok(NodeParams::StorageParams(storage_node_params))
 	}
 
 	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
@@ -96,6 +107,11 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 
 	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
 		unimplemented!()
+	}
+
+	fn get_current_validator() -> T::AccountId {
+		let temp = [1; 32];
+		T::AccountId::decode(&mut &temp[..]).unwrap()
 	}
 }
 
@@ -124,7 +140,7 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 	}
 
 	fn get_nodes(_cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError> {
-		unimplemented!()
+		Ok(vec![NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32]))])
 	}
 
 	fn add_node(
