@@ -33,8 +33,9 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, Nothing,
-		OnUnbalanced, WithdrawReasons,
+		EqualPrivilegeOnly, Everything, GetStorageVersion, Imbalance, InstanceFilter,
+		KeyOwnerProofSystem, Nothing, OnRuntimeUpgrade, OnUnbalanced, StorageVersion,
+		WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -134,7 +135,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 53003,
+	spec_version: 53101,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 17,
@@ -1182,6 +1183,26 @@ impl pallet_ddc_staking::Config for Runtime {
 	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
 }
 
+parameter_types! {
+	pub const TechnicalMotionDuration: BlockNumber = 5 * DAYS;
+	pub const TechnicalMaxProposals: u32 = 100;
+	pub const TechnicalMaxMembers: u32 = 100;
+}
+
+type TechCommCollective = pallet_collective::Instance3;
+impl pallet_collective::Config<TechCommCollective> for Runtime {
+	type RuntimeOrigin = RuntimeOrigin;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type MotionDuration = TechnicalMotionDuration;
+	type MaxProposals = TechnicalMaxProposals;
+	type MaxMembers = TechnicalMaxMembers;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
+	type MaxProposalWeight = MaxCollectivesProposalWeight;
+}
+
 construct_runtime!(
 	pub struct Runtime
 	{
@@ -1233,6 +1254,7 @@ construct_runtime!(
 		Origins: pallet_custom_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov.
+		TechComm: pallet_collective::<Instance3>,
 	}
 );
 
@@ -1278,6 +1300,8 @@ type Migrations = migrations::Unreleased;
 pub mod migrations {
 	use frame_support::traits::LockIdentifier;
 	use frame_system::pallet_prelude::BlockNumberFor;
+	#[cfg(feature = "try-runtime")]
+	use sp_runtime::DispatchError;
 
 	use super::*;
 
@@ -1348,7 +1372,48 @@ pub mod migrations {
 			<Runtime as frame_system::Config>::DbWeight>,
 		frame_support::migrations::RemovePallet<TipsPalletName,
 			<Runtime as frame_system::Config>::DbWeight>,
+		TechCommSetV4Storage
 	);
+
+	pub struct TechCommSetV4Storage;
+	impl OnRuntimeUpgrade for TechCommSetV4Storage {
+		fn on_runtime_upgrade() -> frame_support::weights::Weight {
+			let log_target = "tech-comm-v4-migration";
+			let on_chain_storage_version =
+				<TechComm as GetStorageVersion>::on_chain_storage_version();
+			if on_chain_storage_version == 0 {
+				log::info!(
+					target: log_target,
+					"Upgrading storage version to v4",
+				);
+				StorageVersion::new(4).put::<TechComm>();
+				<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1)
+			} else {
+				log::warn!(
+					target: log_target,
+					"Attempted to apply migration to v4 but failed because storage version is {:?}",
+					on_chain_storage_version,
+				);
+				<Runtime as frame_system::Config>::DbWeight::get().reads(1)
+			}
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
+			let on_chain_storage_version =
+				<TechComm as GetStorageVersion>::on_chain_storage_version();
+			assert_eq!(on_chain_storage_version, 0, "Tech Comm version is not v0");
+			Ok(Vec::new())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_prev_state: Vec<u8>) -> Result<(), DispatchError> {
+			let on_chain_storage_version =
+				<TechComm as GetStorageVersion>::on_chain_storage_version();
+			assert_eq!(on_chain_storage_version, 4, "Tech Comm version is not v4");
+			Ok(())
+		}
+	}
 }
 
 /// Executive: handles dispatch to the various modules.
@@ -1405,6 +1470,7 @@ mod benches {
 		[pallet_conviction_voting, ConvictionVoting]
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
+		[pallet_collective, TechComm]
 	);
 }
 
