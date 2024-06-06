@@ -1502,18 +1502,26 @@ fn off_chain_worker_works() {
 		let dac_account = AccountId::from([1; 32]);
 
 		ClusterToValidate::<Test>::put(cluster_id);
-		assert_ok!(DdcVerification::create_billing_reports(
+		let _ = DdcVerification::create_billing_reports(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
 			era,
 			merkel_root_hash,
 			merkel_root_hash,
-		));
+		);
 		DdcVerification::offchain_worker(block);
 
 		let tx = pool_state.write().transactions.pop().unwrap();
 
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
 		assert_eq!(tx.signature.unwrap().0, 0);
+		assert_eq!(
+			tx.call,
+			RuntimeCall::DdcVerification(Call::set_validate_payout_batch {
+				cluster_id: Default::default(),
+				era: DdcEra::default(),
+				payout_data: PayoutData { hash: MmrRootHash::default() },
+			})
+		);
 	});
 }
