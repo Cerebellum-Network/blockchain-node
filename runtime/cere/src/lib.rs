@@ -1258,6 +1258,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type ActivityHasher = frame_support::Blake2_128;
 	const MAJORITY: u8 = 67;
+	const BLOCK_TO_START: u32 = 100;
 }
 
 construct_runtime!(

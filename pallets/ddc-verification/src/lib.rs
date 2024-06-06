@@ -79,6 +79,7 @@ pub mod pallet {
 
 		type OffchainIdentifierId: AppCrypto<Self::Public, Self::Signature>;
 		const MAJORITY: u8;
+		const BLOCK_TO_START: u32;
 	}
 
 	#[pallet::event]
@@ -154,10 +155,6 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn validator_set)]
 	pub type ValidatorSet<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn current_validator)]
-	pub type CurrentValidator<T: Config> = StorageValue<_, T::AccountId>;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct ReceiptParams {
@@ -254,77 +251,74 @@ pub mod pallet {
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn offchain_worker(block_number: BlockNumberFor<T>) {
 			log::info!("Hello from ocw!!!!!!!!!!");
-			if block_number.saturated_into::<u32>() % 100u32 == 0 {
-				log::info!("Hello from pallet-ddc-verification.");
-
-				let signer = Signer::<T, T::OffchainIdentifierId>::all_accounts();
-				if !signer.can_sign() {
-					log::error!("No local accounts available");
-					return;
-				}
-
-				let results =
-					signer.send_signed_transaction(|_account| Call::set_validate_payout_batch {
-						cluster_id: Default::default(),
-						era: DdcEra::default(),
-						payout_data: PayoutData { hash: MmrRootHash::default() },
-					});
-
-				for (acc, res) in &results {
-					match res {
-						Ok(()) => log::info!("[{:?}] Submitted response", acc.id),
-						Err(e) =>
-							log::error!("[{:?}] Failed to submit transaction: {:?}", acc.id, e),
-					}
-				}
-
-				let _ = signer.send_signed_transaction(|_account| Call::set_current_validator {});
-
-				let cluster_id = unwrap_or_log_error!(
-					Self::get_cluster_to_validate(),
-					"Error retrieving cluster to validate"
-				);
-
-				let dac_nodes = unwrap_or_log_error!(
-					Self::get_dac_nodes(&cluster_id),
-					"Error retrieving dac nodes to validate"
-				);
-
-				let era_id = unwrap_or_log_error!(
-					Self::get_era_to_validate(cluster_id, dac_nodes.clone()),
-					"Error retrieving era to validate"
-				);
-
-				match era_id {
-					None => (),
-					Some(id) => {
-						let nodes_usage = unwrap_or_log_error!(
-							Self::fetch_nodes_usage_for_era(&cluster_id, id, &dac_nodes),
-							"Error retrieving node activities to validate"
-						);
-
-						let customers_usage = unwrap_or_log_error!(
-							Self::fetch_customers_usage_for_era(&cluster_id, id, &dac_nodes),
-							"Error retrieving customers activities to validate"
-						);
-						let min_nodes = dac_nodes.len().ilog2() as usize;
-						let _ = Self::get_consensus_for_activities(
-							&cluster_id,
-							id,
-							&customers_usage,
-							min_nodes,
-							Percent::from_percent(T::MAJORITY),
-						);
-						let _ = Self::get_consensus_for_activities(
-							&cluster_id,
-							id,
-							&nodes_usage,
-							min_nodes,
-							Percent::from_percent(T::MAJORITY),
-						);
-					},
-				};
+			if block_number.saturated_into::<u32>() % T::BLOCK_TO_START != 0 {
+				return;
 			}
+			log::info!("Hello from pallet-ddc-verification.");
+			let signer = Signer::<T, T::OffchainIdentifierId>::all_accounts();
+			if !signer.can_sign() {
+				log::error!("No local accounts available");
+				return;
+			}
+
+			let results =
+				signer.send_signed_transaction(|_account| Call::set_validate_payout_batch {
+					cluster_id: Default::default(),
+					era: DdcEra::default(),
+					payout_data: PayoutData { hash: MmrRootHash::default() },
+				});
+
+			for (acc, res) in &results {
+				match res {
+					Ok(()) => log::info!("[{:?}] Submitted response", acc.id),
+					Err(e) => log::error!("[{:?}] Failed to submit transaction: {:?}", acc.id, e),
+				}
+			}
+
+			let cluster_id = unwrap_or_log_error!(
+				Self::get_cluster_to_validate(),
+				"Error retrieving cluster to validate"
+			);
+
+			let dac_nodes = unwrap_or_log_error!(
+				Self::get_dac_nodes(&cluster_id),
+				"Error retrieving dac nodes to validate"
+			);
+
+			let era_id = unwrap_or_log_error!(
+				Self::get_era_to_validate(cluster_id, dac_nodes.clone()),
+				"Error retrieving era to validate"
+			);
+
+			match era_id {
+				None => (),
+				Some(id) => {
+					let nodes_usage = unwrap_or_log_error!(
+						Self::fetch_nodes_usage_for_era(&cluster_id, id, &dac_nodes),
+						"Error retrieving node activities to validate"
+					);
+
+					let customers_usage = unwrap_or_log_error!(
+						Self::fetch_customers_usage_for_era(&cluster_id, id, &dac_nodes),
+						"Error retrieving customers activities to validate"
+					);
+					let min_nodes = dac_nodes.len().ilog2() as usize;
+					let _ = Self::get_consensus_for_activities(
+						&cluster_id,
+						id,
+						&customers_usage,
+						min_nodes,
+						Percent::from_percent(T::MAJORITY),
+					);
+					let _ = Self::get_consensus_for_activities(
+						&cluster_id,
+						id,
+						&nodes_usage,
+						min_nodes,
+						Percent::from_percent(T::MAJORITY),
+					);
+				},
+			};
 		}
 	}
 
@@ -333,7 +327,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			dac_nodes: Vec<(NodePubKey, StorageNodeParams)>,
 		) -> Result<Option<DdcEra>, Error<T>> {
-			let current_validator = Self::current_validator().ok_or(Error::NoValidatorExist)?;
+			let current_validator = T::NodeVisitor::get_current_validator();
 			let last_validated_era = Self::active_billing_reports(cluster_id, current_validator)
 				.ok_or(Error::EraToValidateRetrievalError)?;
 
@@ -668,18 +662,6 @@ pub mod pallet {
 				Self::deposit_event(Event::<T>::PayoutBatchCreated { cluster_id, era });
 			}
 
-			Ok(())
-		}
-
-		#[pallet::call_index(3)]
-		#[pallet::weight(T::WeightInfo::create_billing_reports())]
-		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			let validators = <ValidatorSet<T>>::get();
-
-			ensure!(validators.contains(&who.clone()), Error::<T>::NotAValidator);
-
-			CurrentValidator::<T>::put(who);
 			Ok(())
 		}
 	}

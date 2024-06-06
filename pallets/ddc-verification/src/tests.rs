@@ -72,30 +72,6 @@ fn set_verification_key_works() {
 }
 
 #[test]
-fn set_current_validator_works() {
-	new_test_ext().execute_with(|| {
-		let dac_account = AccountId::from([1; 32]);
-
-		assert_noop!(
-			DdcVerification::set_current_validator(RuntimeOrigin::signed(dac_account.clone())),
-			Error::<Test>::NotAValidator
-		);
-		let (pair1, _seed) = sp_core::sr25519::Pair::from_phrase(
-			"spider sell nice animal border success square soda stem charge caution echo",
-			None,
-		)
-		.unwrap();
-		let account_id1 = AccountId::from(pair1.public().0);
-		ValidatorSet::<Test>::put(vec![account_id1.clone()]);
-
-		assert_ok!(DdcVerification::set_current_validator(RuntimeOrigin::signed(
-			account_id1.clone()
-		)));
-		assert_eq!(DdcVerification::current_validator().unwrap(), account_id1);
-	})
-}
-
-#[test]
 fn set_validate_payout_batch_works() {
 	new_test_ext().execute_with(|| {
 		System::set_block_number(1);
@@ -1466,17 +1442,6 @@ fn get_era_to_validate_works() {
 
 		assert_noop!(
 			Pallet::<Test>::get_era_to_validate(cluster_id, dac_nodes.clone()),
-			Error::<Test>::NoValidatorExist
-		);
-
-		ValidatorSet::<Test>::put(vec![dac_account.clone()]);
-
-		assert_ok!(DdcVerification::set_current_validator(RuntimeOrigin::signed(
-			dac_account.clone()
-		),));
-
-		assert_noop!(
-			Pallet::<Test>::get_era_to_validate(cluster_id, dac_nodes.clone()),
 			Error::<Test>::EraToValidateRetrievalError
 		);
 
@@ -1534,13 +1499,11 @@ fn off_chain_worker_works() {
 		// // Offchain worker should be triggered if block number is  divided by 100
 		let block = 500;
 		System::set_block_number(block);
-		let validator: AccountId = AccountId::from(pair.public().0);
-		<ValidatorSet<Test>>::put(vec![validator.clone()]);
+		let dac_account = AccountId::from([1; 32]);
 
 		ClusterToValidate::<Test>::put(cluster_id);
-		CurrentValidator::<Test>::put(validator.clone());
 		assert_ok!(DdcVerification::create_billing_reports(
-			RuntimeOrigin::signed(validator.clone()),
+			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
 			era,
 			merkel_root_hash,
@@ -1551,7 +1514,6 @@ fn off_chain_worker_works() {
 		let tx = pool_state.write().transactions.pop().unwrap();
 
 		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		assert_eq!(tx.signature.unwrap().0, 1);
-		assert_eq!(tx.call, RuntimeCall::DdcVerification(Call::set_current_validator {}));
+		assert_eq!(tx.signature.unwrap().0, 0);
 	});
 }

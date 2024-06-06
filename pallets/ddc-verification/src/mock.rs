@@ -74,6 +74,7 @@ impl crate::Config for Test {
 	type OffchainIdentifierId = crypto::OffchainIdentifierId;
 	type ActivityHasher = Blake2_128;
 	const MAJORITY: u8 = 67;
+	const BLOCK_TO_START: u32 = 100;
 }
 
 // Build genesis storage according to the mock runtime.
@@ -106,6 +107,11 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 
 	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
 		unimplemented!()
+	}
+
+	fn get_current_validator() -> T::AccountId {
+		let temp = [1; 32];
+		T::AccountId::decode(&mut &temp[..]).unwrap()
 	}
 }
 
