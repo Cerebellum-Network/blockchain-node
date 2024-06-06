@@ -212,6 +212,14 @@ pub fn cere_dev_genesis(
 		ddc_clusters: Default::default(),
 		ddc_nodes: Default::default(),
 		ddc_payouts: Default::default(),
+		tech_comm: cere_dev::TechCommConfig {
+			members: endowed_accounts
+				.iter()
+				.take((endowed_accounts.len() + 1) / 2)
+				.cloned()
+				.collect(),
+			phantom: Default::default(),
+		},
 	}
 }
 
