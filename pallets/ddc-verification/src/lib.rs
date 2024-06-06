@@ -290,35 +290,34 @@ pub mod pallet {
 				"Error retrieving era to validate"
 			);
 
-			match era_id {
-				None => (),
-				Some(id) => {
-					let nodes_usage = unwrap_or_log_error!(
-						Self::fetch_nodes_usage_for_era(&cluster_id, id, &dac_nodes),
-						"Error retrieving node activities to validate"
-					);
+			if era_id.is_none() {
+				return;
+			}
+			let id = era_id.unwrap();
+			let nodes_usage = unwrap_or_log_error!(
+				Self::fetch_nodes_usage_for_era(&cluster_id, id, &dac_nodes),
+				"Error retrieving node activities to validate"
+			);
 
-					let customers_usage = unwrap_or_log_error!(
-						Self::fetch_customers_usage_for_era(&cluster_id, id, &dac_nodes),
-						"Error retrieving customers activities to validate"
-					);
-					let min_nodes = dac_nodes.len().ilog2() as usize;
-					let _ = Self::get_consensus_for_activities(
-						&cluster_id,
-						id,
-						&customers_usage,
-						min_nodes,
-						Percent::from_percent(T::MAJORITY),
-					);
-					let _ = Self::get_consensus_for_activities(
-						&cluster_id,
-						id,
-						&nodes_usage,
-						min_nodes,
-						Percent::from_percent(T::MAJORITY),
-					);
-				},
-			};
+			let customers_usage = unwrap_or_log_error!(
+				Self::fetch_customers_usage_for_era(&cluster_id, id, &dac_nodes),
+				"Error retrieving customers activities to validate"
+			);
+			let min_nodes = dac_nodes.len().ilog2() as usize;
+			let _ = Self::get_consensus_for_activities(
+				&cluster_id,
+				id,
+				&customers_usage,
+				min_nodes,
+				Percent::from_percent(T::MAJORITY),
+			);
+			let _ = Self::get_consensus_for_activities(
+				&cluster_id,
+				id,
+				&nodes_usage,
+				min_nodes,
+				Percent::from_percent(T::MAJORITY),
+			);
 		}
 	}
 
