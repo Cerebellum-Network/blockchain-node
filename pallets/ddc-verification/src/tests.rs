@@ -53,6 +53,49 @@ fn create_billing_reports_works() {
 }
 
 #[test]
+fn set_verification_key_works() {
+	new_test_ext().execute_with(|| {
+		let verification_key: Vec<u8> = "This is verification key".as_bytes().to_vec();
+
+		assert_noop!(
+			DdcVerification::set_verification_key(RuntimeOrigin::root(), verification_key.clone(),),
+			Error::<Test>::BadVerificationKey
+		);
+
+		let verification_key: Vec<u8> = "key".as_bytes().to_vec();
+		assert_ok!(DdcVerification::set_verification_key(
+			RuntimeOrigin::root(),
+			verification_key.clone(),
+		));
+		assert_eq!(DdcVerification::verification_key().unwrap().to_vec(), verification_key);
+	})
+}
+
+#[test]
+fn set_current_validator_works() {
+	new_test_ext().execute_with(|| {
+		let dac_account = AccountId::from([1; 32]);
+
+		assert_noop!(
+			DdcVerification::set_current_validator(RuntimeOrigin::signed(dac_account.clone())),
+			Error::<Test>::NotAValidator
+		);
+		let (pair1, _seed) = sp_core::sr25519::Pair::from_phrase(
+			"spider sell nice animal border success square soda stem charge caution echo",
+			None,
+		)
+		.unwrap();
+		let account_id1 = AccountId::from(pair1.public().0);
+		ValidatorSet::<Test>::put(vec![account_id1.clone()]);
+
+		assert_ok!(DdcVerification::set_current_validator(RuntimeOrigin::signed(
+			account_id1.clone()
+		)));
+		assert_eq!(DdcVerification::current_validator().unwrap(), account_id1);
+	})
+}
+
+#[test]
 fn set_validate_payout_batch_works() {
 	new_test_ext().execute_with(|| {
 		System::set_block_number(1);
