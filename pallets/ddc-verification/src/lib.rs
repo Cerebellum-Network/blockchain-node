@@ -9,6 +9,7 @@
 #![recursion_limit = "256"]
 
 use core::str;
+
 use ddc_primitives::{
 	traits::{ClusterManager, NodeVisitor, ValidatorVisitor},
 	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MmrRootHash, NodeParams,
@@ -31,6 +32,8 @@ use sp_runtime::{offchain as rt_offchain, offchain::http, Percent};
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub mod weights;
+use itertools::Itertools;
+
 use crate::weights::WeightInfo;
 
 #[cfg(test)]
@@ -42,6 +45,7 @@ mod tests;
 pub mod pallet {
 	use ddc_primitives::BucketId;
 	use frame_support::PalletId;
+	use sp_runtime::SaturatedConversion;
 
 	use super::*;
 
@@ -75,6 +79,7 @@ pub mod pallet {
 
 		type OffchainIdentifierId: AppCrypto<Self::Public, Self::Signature>;
 		const MAJORITY: u8;
+		const BLOCK_TO_START: u32;
 	}
 
 	#[pallet::event]
@@ -123,12 +128,21 @@ pub mod pallet {
 		NodeUsageRetrievalError,
 		ClusterToValidateRetrievalError,
 		EraToValidateRetrievalError,
+		EraPerNodeRetrievalError,
+		FailToFetchIds,
+		NoValidatorExist,
 	}
 
 	#[pallet::storage]
 	#[pallet::getter(fn active_billing_reports)]
-	pub type ActiveBillingReports<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, DdcEra, ReceiptParams>;
+	pub type ActiveBillingReports<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		ClusterId,
+		Blake2_128Concat,
+		T::AccountId,
+		ReceiptParams,
+	>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn payout_batch)]
@@ -152,10 +166,6 @@ pub mod pallet {
 	pub type ClusterToValidate<T: Config> = StorageValue<_, ClusterId>; // todo! setter out of scope
 
 	#[pallet::storage]
-	#[pallet::getter(fn era_to_validate)]
-	pub type EraToValidate<T: Config> = StorageValue<_, DdcEra>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn verification_key)]
 	pub type VerificationKey<T: Config> =
 		StorageValue<_, BoundedVec<u8, T::MaxVerificationKeyLimit>>;
@@ -166,7 +176,14 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct ReceiptParams {
-		pub merkle_root_hash: MmrRootHash,
+		pub era: DdcEra,
+		pub payers_merkle_root_hash: MmrRootHash,
+		pub payees_merkle_root_hash: MmrRootHash,
+	}
+
+	#[derive(Serialize, Copy, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+	pub(crate) struct EraActivity {
+		pub id: DdcEra,
 	}
 
 	#[derive(
@@ -264,9 +281,12 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		fn offchain_worker(_block_number: BlockNumberFor<T>) {
-			log::info!("Hello from pallet-ocw.");
-
+		fn offchain_worker(block_number: BlockNumberFor<T>) {
+			log::info!("Hello from ocw!!!!!!!!!!");
+			if block_number.saturated_into::<u32>() % T::BLOCK_TO_START != 0 {
+				return;
+			}
+			log::info!("Hello from pallet-ddc-verification.");
 			let signer = Signer::<T, T::OffchainIdentifierId>::all_accounts();
 			if !signer.can_sign() {
 				log::error!("No local accounts available");
@@ -287,33 +307,39 @@ pub mod pallet {
 				}
 			}
 
-			let era_id = unwrap_or_log_error!(
-				Self::get_era_to_validate(),
-				"Error retrieving era to validate"
-			);
 			let cluster_id = unwrap_or_log_error!(
 				Self::get_cluster_to_validate(),
 				"Error retrieving cluster to validate"
 			);
+
 			let dac_nodes = unwrap_or_log_error!(
 				Self::get_dac_nodes(&cluster_id),
 				"Error retrieving dac nodes to validate"
 			);
+
+			let era_id = unwrap_or_log_error!(
+				Self::get_era_to_validate(cluster_id, dac_nodes.clone()),
+				"Error retrieving era to validate"
+			);
+
+			if era_id.is_none() {
+				return;
+			}
+			let id = era_id.unwrap();
 			let nodes_usage = unwrap_or_log_error!(
-				Self::fetch_nodes_usage_for_era(&cluster_id, era_id, &dac_nodes),
+				Self::fetch_nodes_usage_for_era(&cluster_id, id, &dac_nodes),
 				"Error retrieving node activities to validate"
 			);
 
 			let customers_usage = unwrap_or_log_error!(
-				Self::fetch_customers_usage_for_era(&cluster_id, era_id, &dac_nodes),
+				Self::fetch_customers_usage_for_era(&cluster_id, id, &dac_nodes),
 				"Error retrieving customers activities to validate"
 			);
-
 			let min_nodes = dac_nodes.len().ilog2() as usize;
 
 			let _customers_activity_mmr_root = match Self::get_consensus_for_activities(
 				&cluster_id,
-				era_id,
+				id,
 				&customers_usage,
 				min_nodes,
 				Percent::from_percent(T::MAJORITY),
@@ -352,7 +378,7 @@ pub mod pallet {
 
 			let _nodes_activity_mmr_root = match Self::get_consensus_for_activities(
 				&cluster_id,
-				era_id,
+				id,
 				&nodes_usage,
 				min_nodes,
 				Percent::from_percent(T::MAJORITY),
@@ -396,7 +422,44 @@ pub mod pallet {
 			[0u8; 16]
 		}
 
-		// Function to check if there is a consensus for a particular customer/bucket
+		pub(crate) fn get_era_to_validate(
+			cluster_id: ClusterId,
+			dac_nodes: Vec<(NodePubKey, StorageNodeParams)>,
+		) -> Result<Option<DdcEra>, Error<T>> {
+			let current_validator = T::NodeVisitor::get_current_validator();
+			let last_validated_era = Self::active_billing_reports(cluster_id, current_validator)
+				.ok_or(Error::EraToValidateRetrievalError)?;
+
+			let all_ids = Self::fetch_processed_era_for_node(dac_nodes.clone())
+				.map_err(|_| Error::<T>::FailToFetchIds)?;
+
+			let ids_greater_than_last_validated_era: Vec<DdcEra> = all_ids
+				.iter()
+				.flat_map(|eras| {
+					eras.iter()
+						.cloned()
+						.filter(|ids| ids.id > last_validated_era.era)
+						.map(|era| era.id)
+				})
+				.sorted()
+				.collect::<Vec<DdcEra>>();
+
+			let mut grouped_data: Vec<(u32, DdcEra)> = Vec::new();
+			for (key, chunk) in
+				&ids_greater_than_last_validated_era.into_iter().chunk_by(|elt| *elt)
+			{
+				grouped_data.push((chunk.count() as u32, key));
+			}
+
+			let all_node_eras = grouped_data
+				.into_iter()
+				.filter(|(v, _)| *v == dac_nodes.len() as u32)
+				.map(|(_, id)| id)
+				.collect::<Vec<DdcEra>>();
+
+			Ok(all_node_eras.iter().cloned().min())
+		}
+
 		pub(crate) fn reach_consensus<A: Activity>(
 			activities: &[A],
 			threshold: usize,
@@ -462,30 +525,31 @@ pub mod pallet {
 			}
 		}
 
-		fn get_era_to_validate() -> Result<DdcEra, Error<T>> {
-			/*
-			   Add scheduleer to repeat cycle after 100 blocks
-			get LAST_VALIDATED_ERA from verification pallet
-			for each dac_node fetch processed eras by calling - https://storage-1.devnet.cere.network/activity/era (similar to fetch_customers_usage_for_era)
-			find ids that all nodes have it and is larger than LAST_VALIDATED_ERA (cause all nodes need to be called for the same era)
-			(if some node has 18 and some have 17, the result is 17)
-			(if all nodes have 17 and 18 and LAST_VALIDATED_ERA is 16, then we return 17 and 18)
-
-			if no new eras then do nothing
-			if there are several new eras then take the smallest
-				then call fetch_nodes_usage_for_era and fetch_customers_usage_for_era for the smallest era
-				payer_list and payee_list - aggregate it (victor todo)
-				create merkle tree for both lists
-				send to validation pallet merkle roots for payer_list and payee_list for the cluster id and era id
-				reach consensus on the merkle roots for payer_list and payee_list for the cluster id and era id in the pallet on-chain
-			*/
-			Self::era_to_validate().ok_or(Error::EraToValidateRetrievalError)
-		}
-
 		fn get_cluster_to_validate() -> Result<ClusterId, Error<T>> {
 			Self::cluster_to_validate().ok_or(Error::ClusterToValidateRetrievalError)
 		}
 
+		pub(crate) fn fetch_processed_era(
+			node_params: StorageNodeParams,
+		) -> Result<Vec<EraActivity>, http::Error> {
+			let scheme = if node_params.ssl { "https" } else { "http" };
+			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
+			let url = format!("{}://{}:{}/activity/era", scheme, host, node_params.http_port);
+			let request = http::Request::get(&url);
+			let timeout =
+				sp_io::offchain::timestamp().add(sp_runtime::offchain::Duration::from_millis(3000));
+			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
+
+			let response =
+				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
+			if response.code != 200 {
+				return Err(http::Error::Unknown);
+			}
+
+			let body = response.body().collect::<Vec<u8>>();
+
+			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+		}
 		pub(crate) fn fetch_customers_usage(
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -598,6 +662,20 @@ pub mod pallet {
 
 			Ok(customers_usages)
 		}
+
+		fn fetch_processed_era_for_node(
+			dac_nodes: Vec<(NodePubKey, StorageNodeParams)>,
+		) -> Result<Vec<Vec<EraActivity>>, Error<T>> {
+			let mut eras = Vec::new();
+
+			for (_, node_params) in dac_nodes {
+				let ids = Self::fetch_processed_era(node_params)
+					.map_err(|_| Error::<T>::EraPerNodeRetrievalError)?;
+
+				eras.push(ids);
+			}
+			Ok(eras)
+		}
 	}
 
 	#[pallet::call]
@@ -608,18 +686,19 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era: DdcEra,
-			merkle_root_hash: MmrRootHash,
+			payers_merkle_root_hash: MmrRootHash,
+			payees_merkle_root_hash: MmrRootHash,
 		) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
-
+			let who = ensure_signed(origin)?;
 			ensure!(
-				ActiveBillingReports::<T>::get(cluster_id, era).is_none(),
+				ActiveBillingReports::<T>::get(cluster_id, who.clone()).is_none(),
 				Error::<T>::BillingReportAlreadyExist
 			);
 
-			let receipt_params = ReceiptParams { merkle_root_hash };
+			let receipt_params =
+				ReceiptParams { era, payers_merkle_root_hash, payees_merkle_root_hash };
 
-			ActiveBillingReports::<T>::insert(cluster_id, era, receipt_params);
+			ActiveBillingReports::<T>::insert(cluster_id, who, receipt_params);
 
 			Self::deposit_event(Event::<T>::BillingReportCreated { cluster_id, era });
 			Ok(())

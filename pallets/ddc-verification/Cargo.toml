@@ -18,6 +18,7 @@ ddc-primitives = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+itertools = { workspace = true }
 log = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
@@ -30,6 +31,7 @@ sp-std = { workspace = true }
 
 [dev-dependencies]
 sp-core = { workspace = true, features = ["std"] }
+sp-keystore = { workspace = true }
 
 [features]
 default = ["std"]
