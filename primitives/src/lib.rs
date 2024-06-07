@@ -6,7 +6,7 @@ use scale_info::{prelude::vec::Vec, TypeInfo};
 use serde::{Deserialize, Serialize};
 use sp_core::{
 	crypto::KeyTypeId,
-	hash::{H160, H256},
+	hash::H160,
 };
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
 pub mod traits;
@@ -24,9 +24,7 @@ pub type DdcEra = u32;
 pub type BucketId = u64;
 pub type ClusterNodesCount = u16;
 pub type StorageNodePubKey = AccountId32;
-/// The type used to represent an MMR root hash.
-pub type MmrRootHash = H256;
-pub type ActivityHash = [u8; 16];
+pub type ActivityHash = [u8; 32];
 pub type BatchIndex = u16;
 
 // ClusterParams includes Governance non-sensetive parameters only

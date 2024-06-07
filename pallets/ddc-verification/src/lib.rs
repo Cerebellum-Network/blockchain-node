@@ -12,8 +12,8 @@ use core::str;
 
 use ddc_primitives::{
 	traits::{ClusterManager, NodeVisitor, ValidatorVisitor},
-	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MmrRootHash, NodeParams,
-	NodePubKey, NodeUsage, StorageNodeMode, StorageNodeParams,
+	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeParams, NodePubKey, NodeUsage,
+	StorageNodeMode, StorageNodeParams,
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -28,7 +28,7 @@ pub use pallet::*;
 use scale_info::prelude::format;
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
-use sp_runtime::{offchain as rt_offchain, offchain::http, Percent};
+use sp_runtime::{offchain as rt_offchain, offchain::http, traits::Hash, Percent};
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub mod weights;
@@ -156,7 +156,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		(ClusterId, DdcEra),
 		Blake2_128Concat,
-		MmrRootHash,
+		ActivityHash,
 		Vec<T::AccountId>,
 		ValueQuery,
 	>;
@@ -177,8 +177,8 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct ReceiptParams {
 		pub era: DdcEra,
-		pub payers_merkle_root_hash: MmrRootHash,
-		pub payees_merkle_root_hash: MmrRootHash,
+		pub payers_merkle_root_hash: ActivityHash,
+		pub payees_merkle_root_hash: ActivityHash,
 	}
 
 	#[derive(Serialize, Copy, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -264,7 +264,7 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(Hash))]
 	pub struct PayoutData {
-		pub hash: MmrRootHash,
+		pub hash: ActivityHash,
 	}
 
 	macro_rules! unwrap_or_log_error {
@@ -297,7 +297,7 @@ pub mod pallet {
 				signer.send_signed_transaction(|_account| Call::set_validate_payout_batch {
 					cluster_id: Default::default(),
 					era: DdcEra::default(),
-					payout_data: PayoutData { hash: MmrRootHash::default() },
+					payout_data: PayoutData { hash: ActivityHash::default() },
 				});
 
 			for (acc, res) in &results {
@@ -418,8 +418,16 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn create_merkle_root(_leaves: Vec<ActivityHash>) -> ActivityHash {
-			[0u8; 16]
+		pub(crate) fn create_merkle_root(leaves: Vec<ActivityHash>) -> ActivityHash {
+			let hash = sp_runtime::traits::BlakeTwo256::trie_root(
+				leaves
+					.iter()
+					.enumerate()
+					.map(|(i, l)| ((i as u32).encode(), l.encode()))
+					.collect(),
+				Default::default(),
+			);
+			ActivityHash::from(hash)
 		}
 
 		pub(crate) fn get_era_to_validate(
@@ -686,8 +694,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era: DdcEra,
-			payers_merkle_root_hash: MmrRootHash,
-			payees_merkle_root_hash: MmrRootHash,
+			payers_merkle_root_hash: ActivityHash,
+			payees_merkle_root_hash: ActivityHash,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(

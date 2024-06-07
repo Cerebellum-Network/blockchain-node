@@ -30,7 +30,7 @@ mod benchmarks {
 
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();
-		assert_eq!(billing_report.merkle_root_hash, merkel_root_hash);
+		assert_eq!(billing_report.merkle_root_hash, ActivityHash::from(merkel_root_hash));
 	}
 
 	impl_benchmark_test_suite!(DdcVerification, crate::mock::new_test_ext(), crate::mock::Test);

@@ -29,23 +29,23 @@ fn create_billing_reports_works() {
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
 			era,
-			merkel_root_hash,
-			merkel_root_hash,
+			ActivityHash::from(merkel_root_hash),
+			ActivityHash::from(merkel_root_hash),
 		));
 
 		System::assert_last_event(Event::BillingReportCreated { cluster_id, era }.into());
 
 		let report =
 			DdcVerification::active_billing_reports(cluster_id, dac_account.clone()).unwrap();
-		assert_eq!(report.payers_merkle_root_hash, merkel_root_hash);
+		assert_eq!(report.payers_merkle_root_hash, ActivityHash::from(merkel_root_hash));
 
 		assert_noop!(
 			DdcVerification::create_billing_reports(
 				RuntimeOrigin::signed(dac_account),
 				cluster_id,
 				era,
-				merkel_root_hash,
-				merkel_root_hash
+				ActivityHash::from(merkel_root_hash),
+				ActivityHash::from(merkel_root_hash)
 			),
 			Error::<Test>::BillingReportAlreadyExist
 		);
@@ -112,6 +112,9 @@ fn set_validate_payout_batch_works() {
 		let account_id3 = AccountId::from(pair3.public().0);
 		let account_id4 = AccountId::from(pair4.public().0);
 		let account_id6 = AccountId::from(pair6.public().0);
+		let merkel_root_hash: H256 = array_bytes::hex_n_into_unchecked(
+			"95803defe6ea9f41e7ec6afa497064f21bfded027d8812efacbdf984e630cbdc",
+		);
 
 		ValidatorSet::<Test>::put(vec![
 			account_id1.clone(),
@@ -122,8 +125,8 @@ fn set_validate_payout_batch_works() {
 		]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
-		let payout_data = PayoutData { hash: MmrRootHash::default() };
-		let payout_data1 = PayoutData { hash: MmrRootHash::from_low_u64_ne(1) };
+		let payout_data = PayoutData { hash: ActivityHash::default() };
+		let payout_data1 = PayoutData { hash: ActivityHash::from(merkel_root_hash) };
 
 		// 1. If user is not part of validator, he/she won't be able to sign extrinsic
 		assert_noop!(
@@ -630,10 +633,10 @@ fn test_get_consensus_customers_activity_success2() {
 	assert!(result.is_ok());
 	let consensus_activities = result.unwrap();
 	assert_eq!(consensus_activities.len(), 2);
-	assert_eq!(consensus_activities[0].stored_bytes, 100);
-	assert_eq!(consensus_activities[0].bucket_id, 1);
-	assert_eq!(consensus_activities[1].stored_bytes, 110);
-	assert_eq!(consensus_activities[1].bucket_id, 2);
+	assert_eq!(consensus_activities[1].stored_bytes, 100);
+	assert_eq!(consensus_activities[1].bucket_id, 1);
+	assert_eq!(consensus_activities[0].stored_bytes, 110);
+	assert_eq!(consensus_activities[0].bucket_id, 2);
 }
 
 #[test]
@@ -961,7 +964,7 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 	assert!(result.is_err());
 	let errors = result.err().unwrap();
 	assert_eq!(errors.len(), 2);
-	match &errors[0] {
+	match &errors[1] {
 		ConsensusError::ActivityNotInConsensus { cluster_id, era_id, id } => {
 			assert_eq!(*id, customers_activity[0].1[0].get_consensus_id::<mock::Test>());
 			assert_eq!(*cluster_id, cluster_id1);
@@ -969,7 +972,7 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 		},
 		_ => panic!("Expected CustomerActivityNotInConsensus error"),
 	}
-	match &errors[1] {
+	match &errors[0] {
 		ConsensusError::ActivityNotInConsensus { cluster_id, era_id, id } => {
 			assert_eq!(*id, customers_activity[3].1[0].get_consensus_id::<mock::Test>());
 			assert_eq!(*cluster_id, cluster_id1);
@@ -1058,7 +1061,7 @@ fn test_get_consensus_customers_activity_diff_errors() {
 	assert!(result.is_err());
 	let errors = result.err().unwrap();
 	assert_eq!(errors.len(), 2);
-	match &errors[0] {
+	match &errors[1] {
 		ConsensusError::ActivityNotInConsensus { cluster_id, era_id, id } => {
 			assert_eq!(*id, customers_activity[0].1[0].get_consensus_id::<mock::Test>());
 			assert_eq!(*cluster_id, cluster_id1);
@@ -1066,7 +1069,7 @@ fn test_get_consensus_customers_activity_diff_errors() {
 		},
 		_ => panic!("Expected CustomerActivityNotInConsensus error"),
 	}
-	match &errors[1] {
+	match &errors[0] {
 		ConsensusError::NotEnoughNodesForConsensus { cluster_id, era_id, id } => {
 			assert_eq!(*id, customers_activity[3].1[0].get_consensus_id::<mock::Test>());
 			assert_eq!(*cluster_id, cluster_id1);
@@ -1233,7 +1236,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 	assert!(result.is_err());
 	let errors = result.err().unwrap();
 	assert_eq!(errors.len(), 2);
-	match &errors[1] {
+	match &errors[0] {
 		ConsensusError::ActivityNotInConsensus { cluster_id, era_id, id } => {
 			assert_eq!(*id, nodes_activity[0].1[0].get_consensus_id::<mock::Test>());
 			assert_eq!(*cluster_id, cluster_id1);
@@ -1241,7 +1244,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 		},
 		_ => panic!("Expected CustomerActivityNotInConsensus error"),
 	}
-	match &errors[0] {
+	match &errors[1] {
 		ConsensusError::ActivityNotInConsensus { cluster_id, era_id, id } => {
 			assert_eq!(*id, nodes_activity[3].1[0].get_consensus_id::<mock::Test>());
 			assert_eq!(*cluster_id, cluster_id1);
@@ -1330,7 +1333,7 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 	assert!(result.is_err());
 	let errors = result.err().unwrap();
 	assert_eq!(errors.len(), 2);
-	match &errors[1] {
+	match &errors[0] {
 		ConsensusError::ActivityNotInConsensus { cluster_id, era_id, id } => {
 			assert_eq!(*id, nodes_activity[0].1[0].get_consensus_id::<mock::Test>());
 			assert_eq!(*cluster_id, cluster_id1);
@@ -1338,7 +1341,7 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 		},
 		_ => panic!("Expected CustomerActivityNotInConsensus error"),
 	}
-	match &errors[0] {
+	match &errors[1] {
 		ConsensusError::NotEnoughNodesForConsensus { cluster_id, era_id, id } => {
 			assert_eq!(*id, nodes_activity[3].1[0].get_consensus_id::<mock::Test>());
 			assert_eq!(*cluster_id, cluster_id1);
@@ -1545,8 +1548,8 @@ fn get_era_to_validate_works() {
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
 			era,
-			merkel_root_hash,
-			merkel_root_hash,
+			ActivityHash::from(merkel_root_hash),
+			ActivityHash::from(merkel_root_hash),
 		));
 
 		let result = Pallet::<Test>::get_era_to_validate(cluster_id, dac_nodes.clone());
@@ -1602,8 +1605,8 @@ fn off_chain_worker_works() {
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
 			era,
-			merkel_root_hash,
-			merkel_root_hash,
+			ActivityHash::from(merkel_root_hash),
+			ActivityHash::from(merkel_root_hash),
 		);
 		DdcVerification::offchain_worker(block);
 
@@ -1616,7 +1619,7 @@ fn off_chain_worker_works() {
 			RuntimeCall::DdcVerification(Call::set_validate_payout_batch {
 				cluster_id: Default::default(),
 				era: DdcEra::default(),
-				payout_data: PayoutData { hash: MmrRootHash::default() },
+				payout_data: PayoutData { hash: ActivityHash::default() },
 			})
 		);
 	});

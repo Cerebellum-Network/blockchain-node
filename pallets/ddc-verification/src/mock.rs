@@ -72,7 +72,7 @@ impl crate::Config for Test {
 	type NodeVisitor = MockNodeVisitor;
 	type AuthorityId = sr25519::AuthorityId;
 	type OffchainIdentifierId = crypto::OffchainIdentifierId;
-	type ActivityHasher = Blake2_128;
+	type ActivityHasher = Blake2_256;
 	const MAJORITY: u8 = 67;
 	const BLOCK_TO_START: u32 = 100;
 }
