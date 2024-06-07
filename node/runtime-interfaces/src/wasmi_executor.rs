@@ -1016,6 +1016,12 @@ impl WasmiInstance {
 			.export_by_name("__indirect_function_table")
 			.and_then(|e| e.as_table().cloned());
 
+		log::info!(
+			target: LOG_TARGET,
+			"Looking at __indirect_function_table: table={:?}",
+			table.clone().expect("Table to be inited"),
+		);
+
 		let heap_base = get_heap_base(&self.instance).expect("get_heap_base to be ok");
 
 		let function_executor = FunctionExecutor::new(
