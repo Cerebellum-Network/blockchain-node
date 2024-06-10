@@ -18,7 +18,6 @@ use ddc_primitives::{
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Get, OneSessionHandler},
-	StorageHasher,
 };
 use frame_system::{
 	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
@@ -45,6 +44,7 @@ mod tests;
 pub mod pallet {
 	use ddc_primitives::BucketId;
 	use frame_support::PalletId;
+	use sp_core::H256;
 	use sp_runtime::SaturatedConversion;
 
 	use super::*;
@@ -68,7 +68,7 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 		type ClusterManager: ClusterManager<Self>;
 		type NodeVisitor: NodeVisitor<Self>;
-		type ActivityHasher: StorageHasher<Output = ActivityHash>;
+		type ActivityHasher: Hash<Output = H256>;
 		type AuthorityId: Member
 			+ Parameter
 			+ RuntimeAppPublic
@@ -220,22 +220,22 @@ pub mod pallet {
 
 	impl Activity for NodeActivity {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.node_id)
+			T::ActivityHasher::hash(&self.node_id).into()
 		}
 
 		fn hash<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.encode())
+			T::ActivityHasher::hash(&self.encode()).into()
 		}
 	}
 	impl Activity for CustomerActivity {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
 			let mut data = self.customer_id.to_vec();
 			data.extend_from_slice(&self.bucket_id.encode());
-			T::ActivityHasher::hash(&data)
+			T::ActivityHasher::hash(&data).into()
 		}
 
 		fn hash<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.encode())
+			T::ActivityHasher::hash(&self.encode()).into()
 		}
 	}
 
@@ -419,15 +419,9 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn create_merkle_root(leaves: Vec<ActivityHash>) -> ActivityHash {
-			let hash = sp_runtime::traits::BlakeTwo256::trie_root(
-				leaves
-					.iter()
-					.enumerate()
-					.map(|(i, l)| ((i as u32).encode(), l.encode()))
-					.collect(),
-				Default::default(),
-			);
-			ActivityHash::from(hash)
+			let leaves = leaves.iter().map(|l| l.to_vec()).collect::<Vec<Vec<u8>>>();
+
+			T::ActivityHasher::ordered_trie_root(leaves, Default::default()).into()
 		}
 
 		pub(crate) fn get_era_to_validate(
