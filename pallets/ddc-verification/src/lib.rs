@@ -346,8 +346,7 @@ pub mod pallet {
 			) {
 				Ok(customers_activity_in_consensus) => {
 					// Process node_activities
-					let mut sorted_activities = customers_activity_in_consensus.clone();
-					sorted_activities.sort();
+					let sorted_activities = customers_activity_in_consensus.clone();
 
 					let leaves: Vec<ActivityHash> =
 						sorted_activities.iter().map(|activity| activity.hash::<T>()).collect();
@@ -385,8 +384,7 @@ pub mod pallet {
 			) {
 				Ok(nodes_activity_in_consensus) => {
 					// Process node_activities
-					let mut sorted_activities = nodes_activity_in_consensus.clone();
-					sorted_activities.sort();
+					let sorted_activities = nodes_activity_in_consensus.clone();
 
 					let leaves: Vec<ActivityHash> =
 						sorted_activities.iter().map(|activity| activity.hash::<T>()).collect();
