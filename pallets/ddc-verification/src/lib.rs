@@ -12,13 +12,12 @@ use core::str;
 
 use ddc_primitives::{
 	traits::{ClusterManager, NodeVisitor, ValidatorVisitor},
-	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MmrRootHash, NodeParams,
-	NodePubKey, NodeUsage, StorageNodeMode, StorageNodeParams,
+	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeParams, NodePubKey, NodeUsage,
+	StorageNodeMode, StorageNodeParams,
 };
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Get, OneSessionHandler},
-	StorageHasher,
 };
 use frame_system::{
 	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
@@ -28,7 +27,7 @@ pub use pallet::*;
 use scale_info::prelude::format;
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
-use sp_runtime::{offchain as rt_offchain, offchain::http, Percent};
+use sp_runtime::{offchain as rt_offchain, offchain::http, traits::Hash, Percent};
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub mod weights;
@@ -68,7 +67,14 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 		type ClusterManager: ClusterManager<Self>;
 		type NodeVisitor: NodeVisitor<Self>;
-		type ActivityHasher: StorageHasher<Output = ActivityHash>;
+
+		type ActivityHash: Member
+			+ Parameter
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ Into<ActivityHash>
+			+ From<ActivityHash>;
+		type ActivityHasher: Hash<Output = Self::ActivityHash>;
 		type AuthorityId: Member
 			+ Parameter
 			+ RuntimeAppPublic
@@ -85,14 +91,32 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		BillingReportCreated { cluster_id: ClusterId, era: DdcEra },
-		VerificationKeyStored { verification_key: Vec<u8> },
-		PayoutBatchCreated { cluster_id: ClusterId, era: DdcEra },
-		NotEnoughNodesForConsensus { cluster_id: ClusterId, era_id: DdcEra, id: ActivityHash },
-		ActivityNotInConsensus { cluster_id: ClusterId, era_id: DdcEra, id: ActivityHash },
+		BillingReportCreated {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		VerificationKeyStored {
+			verification_key: Vec<u8>,
+		},
+		PayoutBatchCreated {
+			cluster_id: ClusterId,
+			era: DdcEra,
+		},
+		NotEnoughNodesForConsensus {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			id: ActivityHash,
+			validator: T::AccountId,
+		},
+		ActivityNotInConsensus {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			id: ActivityHash,
+			validator: T::AccountId,
+		},
 	}
 
-	#[derive(Debug, Encode, Decode)]
+	#[derive(Debug, Encode, Decode, Clone, TypeInfo, PartialEq)]
 	pub enum ConsensusError {
 		NotEnoughNodesForConsensus { cluster_id: ClusterId, era_id: DdcEra, id: ActivityHash },
 		ActivityNotInConsensus { cluster_id: ClusterId, era_id: DdcEra, id: ActivityHash },
@@ -138,7 +162,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		(ClusterId, DdcEra),
 		Blake2_128Concat,
-		MmrRootHash,
+		ActivityHash,
 		Vec<T::AccountId>,
 		ValueQuery,
 	>;
@@ -159,15 +183,18 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct ReceiptParams {
 		pub era: DdcEra,
-		pub payers_merkle_root_hash: MmrRootHash,
-		pub payees_merkle_root_hash: MmrRootHash,
+		pub payers_merkle_root_hash: ActivityHash,
+		pub payees_merkle_root_hash: ActivityHash,
 	}
 
 	#[derive(Serialize, Copy, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 	pub(crate) struct EraActivity {
 		pub id: DdcEra,
 	}
-	#[derive(Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq)]
+
+	#[derive(
+		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode,
+	)]
 	pub(crate) struct NodeActivity {
 		pub(crate) node_id: [u8; 32],
 		pub(crate) provider_id: [u8; 32],
@@ -177,7 +204,9 @@ pub mod pallet {
 		pub(crate) number_of_gets: u64,
 	}
 
-	#[derive(Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq)]
+	#[derive(
+		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode,
+	)]
 	pub(crate) struct CustomerActivity {
 		pub(crate) customer_id: [u8; 32],
 		pub(crate) bucket_id: BucketId,
@@ -191,19 +220,28 @@ pub mod pallet {
 	pub trait Activity:
 		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
 	{
-		fn get_id<T: Config>(&self) -> ActivityHash;
+		fn get_consensus_id<T: Config>(&self) -> ActivityHash;
+		fn hash<T: Config>(&self) -> ActivityHash;
 	}
 
 	impl Activity for NodeActivity {
-		fn get_id<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.node_id)
+		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
+			T::ActivityHasher::hash(&self.node_id).into()
+		}
+
+		fn hash<T: Config>(&self) -> ActivityHash {
+			T::ActivityHasher::hash(&self.encode()).into()
 		}
 	}
 	impl Activity for CustomerActivity {
-		fn get_id<T: Config>(&self) -> ActivityHash {
+		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
 			let mut data = self.customer_id.to_vec();
 			data.extend_from_slice(&self.bucket_id.encode());
-			T::ActivityHasher::hash(&data)
+			T::ActivityHasher::hash(&data).into()
+		}
+
+		fn hash<T: Config>(&self) -> ActivityHash {
+			T::ActivityHasher::hash(&self.encode()).into()
 		}
 	}
 
@@ -232,7 +270,7 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(Hash))]
 	pub struct PayoutData {
-		pub hash: MmrRootHash,
+		pub hash: ActivityHash,
 	}
 
 	macro_rules! unwrap_or_log_error {
@@ -265,7 +303,7 @@ pub mod pallet {
 				signer.send_signed_transaction(|_account| Call::set_validate_payout_batch {
 					cluster_id: Default::default(),
 					era: DdcEra::default(),
-					payout_data: PayoutData { hash: MmrRootHash::default() },
+					payout_data: PayoutData { hash: ActivityHash::default() },
 				});
 
 			for (acc, res) in &results {
@@ -304,24 +342,92 @@ pub mod pallet {
 				"Error retrieving customers activities to validate"
 			);
 			let min_nodes = dac_nodes.len().ilog2() as usize;
-			let _ = Self::get_consensus_for_activities(
+
+			let _customers_activity_mmr_root = match Self::get_consensus_for_activities(
 				&cluster_id,
 				id,
 				&customers_usage,
 				min_nodes,
 				Percent::from_percent(T::MAJORITY),
-			);
-			let _ = Self::get_consensus_for_activities(
+			) {
+				Ok(customers_activity_in_consensus) => {
+					// Process node_activities
+					let sorted_activities = customers_activity_in_consensus.clone();
+
+					let leaves: Vec<ActivityHash> =
+						sorted_activities.iter().map(|activity| activity.hash::<T>()).collect();
+
+					Some(Self::create_merkle_root(leaves))
+				},
+				Err(errors) => {
+					let results = signer.send_signed_transaction(|_account| {
+						Call::emit_consensus_errors { errors: errors.clone() }
+					});
+
+					for (acc, res) in results {
+						match res {
+							Ok(_) => log::info!(
+								"Successfully submitted error processing tx: {:?}",
+								acc.id
+							),
+							Err(e) => log::error!(
+								"Failed to submit error processing tx: {:?} ({:?})",
+								acc.id,
+								e
+							),
+						}
+					}
+					None
+				},
+			};
+
+			let _nodes_activity_mmr_root = match Self::get_consensus_for_activities(
 				&cluster_id,
 				id,
 				&nodes_usage,
 				min_nodes,
 				Percent::from_percent(T::MAJORITY),
-			);
+			) {
+				Ok(nodes_activity_in_consensus) => {
+					// Process node_activities
+					let sorted_activities = nodes_activity_in_consensus.clone();
+
+					let leaves: Vec<ActivityHash> =
+						sorted_activities.iter().map(|activity| activity.hash::<T>()).collect();
+
+					Some(Self::create_merkle_root(leaves))
+				},
+				Err(errors) => {
+					let results = signer.send_signed_transaction(|_account| {
+						Call::emit_consensus_errors { errors: errors.clone() }
+					});
+
+					for (acc, res) in results {
+						match res {
+							Ok(_) => log::info!(
+								"Successfully submitted error processing tx: {:?}",
+								acc.id
+							),
+							Err(e) => log::error!(
+								"Failed to submit error processing tx: {:?} ({:?})",
+								acc.id,
+								e
+							),
+						}
+					}
+					None
+				},
+			};
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
+		pub(crate) fn create_merkle_root(leaves: Vec<ActivityHash>) -> ActivityHash {
+			let leaves = leaves.iter().map(|l| l.to_vec()).collect::<Vec<Vec<u8>>>();
+
+			T::ActivityHasher::ordered_trie_root(leaves, Default::default()).into()
+		}
+
 		pub(crate) fn get_era_to_validate(
 			cluster_id: ClusterId,
 			dac_nodes: Vec<(NodePubKey, StorageNodeParams)>,
@@ -389,7 +495,7 @@ pub mod pallet {
 			for (_node_id, activities) in activities.iter() {
 				for activity in activities.iter() {
 					customer_buckets
-						.entry(activity.get_id::<T>())
+						.entry(activity.get_consensus_id::<T>())
 						.or_default()
 						.push(activity.clone());
 				}
@@ -586,8 +692,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era: DdcEra,
-			payers_merkle_root_hash: MmrRootHash,
-			payees_merkle_root_hash: MmrRootHash,
+			payers_merkle_root_hash: ActivityHash,
+			payees_merkle_root_hash: ActivityHash,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -605,7 +711,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::create_billing_reports())]
+		#[pallet::weight(T::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_verification_key(
 			origin: OriginFor<T>,
 			verification_key: Vec<u8>,
@@ -624,7 +730,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::WeightInfo::create_billing_reports())]
+		#[pallet::weight(T::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_validate_payout_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -659,6 +765,40 @@ pub mod pallet {
 			if threshold < signed_validators.len() {
 				PayoutBatch::<T>::insert(cluster_id, era, payout_data);
 				Self::deposit_event(Event::<T>::PayoutBatchCreated { cluster_id, era });
+			}
+
+			Ok(())
+		}
+
+		#[pallet::call_index(3)]
+		#[pallet::weight(T::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn emit_consensus_errors(
+			origin: OriginFor<T>,
+			errors: Vec<ConsensusError>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			let validators = <ValidatorSet<T>>::get();
+			ensure!(validators.contains(&who.clone()), Error::<T>::NotAValidator);
+
+			for error in errors {
+				match error {
+					ConsensusError::NotEnoughNodesForConsensus { cluster_id, era_id, id } => {
+						Self::deposit_event(Event::NotEnoughNodesForConsensus {
+							cluster_id,
+							era_id,
+							id,
+							validator: who.clone(),
+						});
+					},
+					ConsensusError::ActivityNotInConsensus { cluster_id, era_id, id } => {
+						Self::deposit_event(Event::ActivityNotInConsensus {
+							cluster_id,
+							era_id,
+							id,
+							validator: who.clone(),
+						});
+					},
+				}
 			}
 
 			Ok(())
