@@ -75,6 +75,7 @@ impl crate::Config for Test {
 	type ActivityHasher = sp_runtime::traits::BlakeTwo256;
 	const MAJORITY: u8 = 67;
 	const BLOCK_TO_START: u32 = 100;
+	type ActivityHash = H256;
 }
 
 // Build genesis storage according to the mock runtime.

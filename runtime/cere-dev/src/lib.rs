@@ -76,7 +76,7 @@ pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdj
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
@@ -1256,6 +1256,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type ActivityHasher = BlakeTwo256;
 	const MAJORITY: u8 = 67;
 	const BLOCK_TO_START: u32 = 100;
+	type ActivityHash = H256;
 }
 
 construct_runtime!(

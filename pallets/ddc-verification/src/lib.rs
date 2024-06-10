@@ -44,7 +44,6 @@ mod tests;
 pub mod pallet {
 	use ddc_primitives::BucketId;
 	use frame_support::PalletId;
-	use sp_core::H256;
 	use sp_runtime::SaturatedConversion;
 
 	use super::*;
@@ -68,7 +67,14 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 		type ClusterManager: ClusterManager<Self>;
 		type NodeVisitor: NodeVisitor<Self>;
-		type ActivityHasher: Hash<Output = H256>;
+
+		type ActivityHash: Member
+			+ Parameter
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ Into<ActivityHash>
+			+ From<ActivityHash>;
+		type ActivityHasher: Hash<Output = Self::ActivityHash>;
 		type AuthorityId: Member
 			+ Parameter
 			+ RuntimeAppPublic
