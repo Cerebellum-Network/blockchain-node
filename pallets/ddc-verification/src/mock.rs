@@ -225,6 +225,8 @@ impl crate::Config for Test {
 	const MAJORITY: u8 = 67;
 	const BLOCK_TO_START: u32 = 100;
 	type ActivityHash = H256;
+	type Staking = Staking;
+	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
 }
 
 // Build genesis storage according to the mock runtime.

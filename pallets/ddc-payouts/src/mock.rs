@@ -144,10 +144,10 @@ where
 	fn setup_validators(_validators: Vec<T::AccountId>) {
 		unimplemented!()
 	}
-	fn get_active_validators() -> Vec<T::AccountId> {
-		vec![DAC_ACCOUNT_ID.into(), 123u128.into()]
+	fn is_ocw_validator(caller: T::AccountId) -> bool {
+		let validators = [DAC_ACCOUNT_ID.into(), 123u128.into()];
+		validators.contains(&caller)
 	}
-
 	fn is_customers_batch_valid(
 		_cluster_id: ClusterId,
 		_era: DdcEra,

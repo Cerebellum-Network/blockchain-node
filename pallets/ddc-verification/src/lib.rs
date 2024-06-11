@@ -24,7 +24,6 @@ use frame_system::{
 	pallet_prelude::*,
 };
 pub use pallet::*;
-pub use pallet_staking::{self as staking};
 use scale_info::prelude::format;
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
@@ -44,8 +43,10 @@ mod tests;
 #[frame_support::pallet]
 pub mod pallet {
 	use ddc_primitives::BucketId;
+	use frame_election_provider_support::SortedListProvider;
 	use frame_support::PalletId;
 	use sp_runtime::SaturatedConversion;
+	use sp_staking::StakingInterface;
 
 	use super::*;
 
@@ -59,9 +60,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config:
-		CreateSignedTransaction<Call<Self>> + frame_system::Config + pallet_staking::Config
-	{
+	pub trait Config: CreateSignedTransaction<Call<Self>> + frame_system::Config {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -89,6 +88,8 @@ pub mod pallet {
 		type OffchainIdentifierId: AppCrypto<Self::Public, Self::Signature>;
 		const MAJORITY: u8;
 		const BLOCK_TO_START: u32;
+		type Staking: StakingInterface<AccountId = Self::AccountId>;
+		type ValidatorList: SortedListProvider<Self::AccountId>;
 	}
 
 	#[pallet::event]
@@ -188,8 +189,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_stash_for_ddc_validator)]
-	pub type DDCValidatorToStashKeys<T: Config> =
-		StorageMap<_, Identity, T::AccountId, T::AccountId>;
+	pub type ValidatorToStashKey<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct ReceiptParams {
@@ -754,7 +754,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			let validators = <ValidatorSet<T>>::get();
 
-			let stash_key = DDCValidatorToStashKeys::<T>::get(who.clone())
+			let stash_key = ValidatorToStashKey::<T>::get(who.clone())
 				.ok_or(Error::<T>::DDCValidatorKeyNotRegistered)?;
 
 			ensure!(validators.contains(&stash_key), Error::<T>::NotAValidator);
@@ -796,7 +796,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			let validators = <ValidatorSet<T>>::get();
 
-			let stash_key = DDCValidatorToStashKeys::<T>::get(who.clone())
+			let stash_key = ValidatorToStashKey::<T>::get(who.clone())
 				.ok_or(Error::<T>::DDCValidatorKeyNotRegistered)?;
 
 			ensure!(validators.contains(&stash_key), Error::<T>::NotAValidator);
@@ -832,14 +832,12 @@ pub mod pallet {
 			ddc_validator_pub: T::AccountId,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			let ledger = staking::Ledger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
+			let stash_account =
+				T::Staking::stash_by_ctrl(&controller).map_err(|_| Error::<T>::NotController)?;
 
-			ensure!(
-				staking::Validators::<T>::contains_key(&ledger.stash),
-				Error::<T>::NotValidatorStash
-			);
+			ensure!(T::ValidatorList::contains(&stash_account), Error::<T>::NotValidatorStash);
 
-			DDCValidatorToStashKeys::<T>::insert(ddc_validator_pub, &ledger.stash);
+			ValidatorToStashKey::<T>::insert(ddc_validator_pub, &stash_account);
 			Ok(())
 		}
 	}
@@ -848,8 +846,12 @@ pub mod pallet {
 		fn setup_validators(validators: Vec<T::AccountId>) {
 			ValidatorSet::<T>::put(validators);
 		}
-		fn get_active_validators() -> Vec<T::AccountId> {
-			Self::validator_set()
+		fn is_ocw_validator(caller: T::AccountId) -> bool {
+			if let Some(stash) = ValidatorToStashKey::<T>::get(caller) {
+				<ValidatorSet<T>>::get().contains(&stash)
+			} else {
+				false
+			}
 		}
 
 		fn is_customers_batch_valid(
