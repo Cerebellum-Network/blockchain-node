@@ -4,6 +4,10 @@ use ddc_primitives::{
 	ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterStatus,
 	StorageNodePubKey,
 };
+use frame_election_provider_support::{
+	bounds::{ElectionBounds, ElectionBoundsBuilder},
+	onchain, SequentialPhragmen,
+};
 use frame_support::{
 	pallet_prelude::ConstU32,
 	parameter_types,
@@ -11,14 +15,18 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::mocking::MockBlock;
+use pallet_staking::BalanceOf;
 use sp_core::H256;
 use sp_runtime::{
-	testing::TestXt,
-	traits::{BlakeTwo256, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify},
-	BuildStorage, MultiSignature,
+	curve::PiecewiseLinear,
+	testing::{TestXt, UintAuthorityId},
+	traits::{BlakeTwo256, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify, Zero},
+	BuildStorage, MultiSignature, Perbill,
 };
+use sp_staking::{EraIndex, SessionIndex};
 
 use crate::{self as pallet_ddc_verification, *};
+
 type Block = MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
@@ -26,12 +34,18 @@ frame_support::construct_runtime!(
 	pub struct Test {
 		System: frame_system,
 		DdcVerification: pallet_ddc_verification,
+		Timestamp: pallet_timestamp,
+		Balances: pallet_balances,
+		Staking: pallet_staking,
+		Session: pallet_session,
 	}
 );
 
 pub type Extrinsic = TestXt<RuntimeCall, ()>;
 pub type Signature = MultiSignature;
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
+type Balance = u64;
+type BlockNumber = u64;
 
 impl frame_system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -50,7 +64,7 @@ impl frame_system::Config for Test {
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<u64>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -59,6 +73,141 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+impl pallet_balances::Config for Test {
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
+	type Balance = Balance;
+	type RuntimeEvent = RuntimeEvent;
+	type DustRemoval = ();
+	type ExistentialDeposit = ConstU64<1>;
+	type AccountStore = System;
+	type WeightInfo = ();
+	type FreezeIdentifier = ();
+	type MaxFreezes = ();
+	type RuntimeHoldReason = ();
+	type MaxHolds = ();
+}
+
+pallet_staking_reward_curve::build! {
+	const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
+		min_inflation: 0_025_000u64,
+		max_inflation: 0_100_000,
+		ideal_stake: 0_500_000,
+		falloff: 0_050_000,
+		max_piece_count: 40,
+		test_precision: 0_005_000,
+	);
+}
+
+parameter_types! {
+	pub static ElectionsBounds: ElectionBounds = ElectionBoundsBuilder::default().build();
+}
+
+pub struct OnChainSeqPhragmen;
+impl onchain::Config for OnChainSeqPhragmen {
+	type System = Test;
+	type Solver = SequentialPhragmen<AccountId, Perbill>;
+	type DataProvider = Staking;
+	type WeightInfo = ();
+	type MaxWinners = ConstU32<100>;
+	type Bounds = ElectionsBounds;
+}
+parameter_types! {
+	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
+	pub static Offset: BlockNumber = 0;
+	pub const Period: BlockNumber = 1;
+	pub static SessionsPerEra: SessionIndex = 6;
+	pub static SlashDeferDuration: EraIndex = 2;
+	pub const BondingDuration: EraIndex = 3;
+	pub static LedgerSlashPerEra: (BalanceOf<Test>, BTreeMap<EraIndex, BalanceOf<Test>>) = (Zero::zero(), BTreeMap::new());
+	pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
+}
+
+impl pallet_staking::Config for Test {
+	type Currency = Balances;
+	type CurrencyBalance = <Self as pallet_balances::Config>::Balance;
+	type UnixTime = Timestamp;
+	type CurrencyToVote = ();
+	type RewardRemainder = ();
+	type RuntimeEvent = RuntimeEvent;
+	type Slash = ();
+	type Reward = ();
+	type SessionsPerEra = SessionsPerEra;
+	type SlashDeferDuration = SlashDeferDuration;
+	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	type BondingDuration = BondingDuration;
+	type SessionInterface = Self;
+	type EraPayout = pallet_staking::ConvertCurve<RewardCurve>;
+	type NextNewSession = Session;
+	type MaxNominatorRewardedPerValidator = ConstU32<64>;
+	type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
+	type ElectionProvider = onchain::OnChainExecution<OnChainSeqPhragmen>;
+	type GenesisElectionProvider = Self::ElectionProvider;
+	type TargetList = pallet_staking::UseValidatorsMap<Self>;
+	type NominationsQuota = pallet_staking::FixedNominationsQuota<16>;
+	type MaxUnlockingChunks = ConstU32<32>;
+	type HistoryDepth = ConstU32<84>;
+	type VoterList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
+	type EventListeners = ();
+	type BenchmarkingConfig = pallet_staking::TestBenchmarkingConfig;
+	type WeightInfo = ();
+}
+
+pub struct OtherSessionHandler;
+impl OneSessionHandler<AccountId> for OtherSessionHandler {
+	type Key = UintAuthorityId;
+
+	fn on_genesis_session<'a, I: 'a>(_: I)
+	where
+		I: Iterator<Item = (&'a AccountId, Self::Key)>,
+		AccountId: 'a,
+	{
+	}
+
+	fn on_new_session<'a, I: 'a>(_: bool, _: I, _: I)
+	where
+		I: Iterator<Item = (&'a AccountId, Self::Key)>,
+		AccountId: 'a,
+	{
+	}
+
+	fn on_disabled(_validator_index: u32) {}
+}
+
+impl sp_runtime::BoundToRuntimeAppPublic for OtherSessionHandler {
+	type Public = UintAuthorityId;
+}
+
+impl pallet_session::historical::Config for Test {
+	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+	type FullIdentificationOf = pallet_staking::ExposureOf<Test>;
+}
+
+sp_runtime::impl_opaque_keys! {
+	pub struct SessionKeys {
+		pub other: OtherSessionHandler,
+	}
+}
+
+impl pallet_session::Config for Test {
+	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Test, Staking>;
+	type Keys = SessionKeys;
+	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
+	type SessionHandler = (OtherSessionHandler,);
+	type RuntimeEvent = RuntimeEvent;
+	type ValidatorId = AccountId;
+	type ValidatorIdOf = pallet_staking::StashOf<Test>;
+	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
+	type WeightInfo = ();
+}
+
+impl pallet_timestamp::Config for Test {
+	type Moment = u64;
+	type OnTimestampSet = ();
+	type MinimumPeriod = ConstU64<5>;
+	type WeightInfo = ();
+}
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
 }
@@ -80,7 +229,79 @@ impl crate::Config for Test {
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	frame_system::GenesisConfig::<Test>::default().build_storage().unwrap().into()
+	let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+
+	let balances = vec![
+		// validator1 stash; has to be equal to the OCW key in the current implementation
+		(AccountId::from([0xa; 32]), 10000),
+		// validator1 controller
+		(AccountId::from([0xaa; 32]), 10000),
+		// validator2 stash
+		(AccountId::from([0xb; 32]), 10000),
+		// validator2 controller
+		(AccountId::from([0xbb; 32]), 10000),
+		// validator3 stash
+		(AccountId::from([0xc; 32]), 10000),
+		// validator3 controller
+		(AccountId::from([0xcc; 32]), 10000),
+		// validator4 stash
+		(AccountId::from([0xd; 32]), 10000),
+		// validator4 controller
+		(AccountId::from([0xdd; 32]), 10000),
+		// validator5 stash
+		(AccountId::from([0xe; 32]), 10000),
+		// validator5 controller
+		(AccountId::from([0xee; 32]), 10000),
+		// validator6 stash
+		(AccountId::from([0xf; 32]), 10000),
+		// validator6 controller
+		(AccountId::from([0xff; 32]), 10000),
+	];
+	let _ = pallet_balances::GenesisConfig::<Test> { balances }.assimilate_storage(&mut storage);
+
+	let stakers = vec![
+		(
+			AccountId::from([0xa; 32]),
+			AccountId::from([0xaa; 32]),
+			1000,
+			pallet_staking::StakerStatus::Validator,
+		),
+		(
+			AccountId::from([0xb; 32]),
+			AccountId::from([0xbb; 32]),
+			1000,
+			pallet_staking::StakerStatus::Validator,
+		),
+		(
+			AccountId::from([0xc; 32]),
+			AccountId::from([0xcc; 32]),
+			1000,
+			pallet_staking::StakerStatus::Validator,
+		),
+		(
+			AccountId::from([0xd; 32]),
+			AccountId::from([0xdd; 32]),
+			1000,
+			pallet_staking::StakerStatus::Validator,
+		),
+		(
+			AccountId::from([0xe; 32]),
+			AccountId::from([0xee; 32]),
+			1000,
+			pallet_staking::StakerStatus::Validator,
+		),
+		(
+			AccountId::from([0xf; 32]),
+			AccountId::from([0xff; 32]),
+			1000,
+			pallet_staking::StakerStatus::Validator,
+		),
+	];
+	let _ =
+		pallet_staking::GenesisConfig::<Test> { stakers: stakers.clone(), ..Default::default() }
+			.assimilate_storage(&mut storage);
+
+	sp_io::TestExternalities::new(storage)
 }
 
 pub struct MockNodeVisitor;

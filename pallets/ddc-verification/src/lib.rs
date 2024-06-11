@@ -24,6 +24,7 @@ use frame_system::{
 	pallet_prelude::*,
 };
 pub use pallet::*;
+pub use pallet_staking::{self as staking};
 use scale_info::prelude::format;
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
@@ -58,7 +59,9 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: CreateSignedTransaction<Call<Self>> + frame_system::Config {
+	pub trait Config:
+		CreateSignedTransaction<Call<Self>> + frame_system::Config + pallet_staking::Config
+	{
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -137,6 +140,9 @@ pub mod pallet {
 		EraPerNodeRetrievalError,
 		FailToFetchIds,
 		NoValidatorExist,
+		NotController,
+		NotValidatorStash,
+		DDCValidatorKeyNotRegistered,
 	}
 
 	#[pallet::storage]
@@ -179,6 +185,11 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn validator_set)]
 	pub type ValidatorSet<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn get_stash_for_ddc_validator)]
+	pub type DDCValidatorToStashKeys<T: Config> =
+		StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct ReceiptParams {
@@ -288,6 +299,9 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn offchain_worker(block_number: BlockNumberFor<T>) {
+			if !sp_io::offchain::is_validator() {
+				return
+			}
 			log::info!("Hello from ocw!!!!!!!!!!");
 			if block_number.saturated_into::<u32>() % T::BLOCK_TO_START != 0 {
 				return;
@@ -687,7 +701,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::create_billing_reports())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())]
 		pub fn create_billing_reports(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -711,7 +725,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_verification_key(
 			origin: OriginFor<T>,
 			verification_key: Vec<u8>,
@@ -730,7 +744,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_validate_payout_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -740,7 +754,10 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			let validators = <ValidatorSet<T>>::get();
 
-			ensure!(validators.contains(&who.clone()), Error::<T>::NotAValidator);
+			let stash_key = DDCValidatorToStashKeys::<T>::get(who.clone())
+				.ok_or(Error::<T>::DDCValidatorKeyNotRegistered)?;
+
+			ensure!(validators.contains(&stash_key), Error::<T>::NotAValidator);
 
 			ensure!(
 				!<PayoutValidators<T>>::get((cluster_id, era), payout_data.hash)
@@ -771,14 +788,18 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight(T::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn emit_consensus_errors(
 			origin: OriginFor<T>,
 			errors: Vec<ConsensusError>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let validators = <ValidatorSet<T>>::get();
-			ensure!(validators.contains(&who.clone()), Error::<T>::NotAValidator);
+
+			let stash_key = DDCValidatorToStashKeys::<T>::get(who.clone())
+				.ok_or(Error::<T>::DDCValidatorKeyNotRegistered)?;
+
+			ensure!(validators.contains(&stash_key), Error::<T>::NotAValidator);
 
 			for error in errors {
 				match error {
@@ -801,6 +822,24 @@ pub mod pallet {
 				}
 			}
 
+			Ok(())
+		}
+
+		#[pallet::call_index(4)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn set_validator_key(
+			origin: OriginFor<T>,
+			ddc_validator_pub: T::AccountId,
+		) -> DispatchResult {
+			let controller = ensure_signed(origin)?;
+			let ledger = staking::Ledger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
+
+			ensure!(
+				staking::Validators::<T>::contains_key(&ledger.stash),
+				Error::<T>::NotValidatorStash
+			);
+
+			DDCValidatorToStashKeys::<T>::insert(ddc_validator_pub, &ledger.stash);
 			Ok(())
 		}
 	}

@@ -20,6 +20,7 @@ frame-support = { workspace = true }
 frame-system = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
+pallet-staking = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -30,8 +31,14 @@ sp-runtime = { workspace = true }
 sp-std = { workspace = true }
 
 [dev-dependencies]
+frame-election-provider-support = { workspace = true }
+pallet-balances = { workspace = true }
+pallet-session = { workspace = true }
+pallet-staking-reward-curve = { workspace = true }
+pallet-timestamp = { workspace = true }
 sp-core = { workspace = true, features = ["std"] }
 sp-keystore = { workspace = true }
+sp-staking = { workspace = true }
 
 [features]
 default = ["std"]
@@ -47,6 +54,7 @@ std = [
   "sp-io/std",
   "sp-core/std",
   "sp-application-crypto/std",
+  "pallet-staking/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
