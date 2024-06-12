@@ -76,42 +76,11 @@ fn set_validate_payout_batch_works() {
 	new_test_ext().execute_with(|| {
 		System::set_block_number(1);
 
-		let (pair1, _seed) = sp_core::sr25519::Pair::from_phrase(
-			"spider sell nice animal border success square soda stem charge caution echo",
-			None,
-		)
-		.unwrap();
-		let (pair2, _seed) = sp_core::sr25519::Pair::from_phrase(
-			"ketchup route purchase humble harsh true glide chef buyer crane infant sponsor",
-			None,
-		)
-		.unwrap();
-		let (pair3, _seed) = sp_core::sr25519::Pair::from_phrase(
-			"hamster diamond design extra december body action relax front sustain heavy gaze",
-			None,
-		)
-		.unwrap();
-		let (pair4, _seed) = sp_core::sr25519::Pair::from_phrase(
-			"clip olympic snack fringe critic claim chaos mother twist shy rule violin",
-			None,
-		)
-		.unwrap();
-		let (pair5, _seed) = sp_core::sr25519::Pair::from_phrase(
-			"bamboo fish such plug arrive vague umbrella today glass venture hour ginger",
-			None,
-		)
-		.unwrap();
-		let (pair6, _seed) = sp_core::sr25519::Pair::from_phrase(
-			"shallow radio below sudden unlock apology brisk shiver hill amateur tiny judge",
-			None,
-		)
-		.unwrap();
-
-		let account_id1 = AccountId::from(pair1.public().0);
-		let account_id2 = AccountId::from(pair2.public().0);
-		let account_id3 = AccountId::from(pair3.public().0);
-		let account_id4 = AccountId::from(pair4.public().0);
-		let account_id6 = AccountId::from(pair6.public().0);
+		let account_id1 = AccountId::from([0xa; 32]);
+		let account_id2 = AccountId::from([0xb; 32]);
+		let account_id3 = AccountId::from([0xc; 32]);
+		let account_id4 = AccountId::from([0xd; 32]);
+		let account_id6 = AccountId::from([0xe; 32]);
 		let merkel_root_hash: H256 = array_bytes::hex_n_into_unchecked(
 			"95803defe6ea9f41e7ec6afa497064f21bfded027d8812efacbdf984e630cbdc",
 		);
@@ -128,10 +97,39 @@ fn set_validate_payout_batch_works() {
 		let payout_data = PayoutData { hash: ActivityHash::default() };
 		let payout_data1 = PayoutData { hash: ActivityHash::from(merkel_root_hash) };
 
+		let validator_0 = AccountId::from([0xaa; 32]);
+		assert_noop!(
+			DdcVerification::set_validator_key(
+				// register validator 1
+				RuntimeOrigin::signed(validator_0.clone()),
+				validator_0.clone(),
+			),
+			Error::<Test>::NotController
+		);
+
+		let validator_1 = AccountId::from([0xf; 32]);
+
+		DdcVerification::set_validator_key(
+			// register validator 1
+			RuntimeOrigin::signed(validator_1.clone()),
+			validator_1.clone(),
+		)
+		.unwrap();
+
 		// 1. If user is not part of validator, he/she won't be able to sign extrinsic
 		assert_noop!(
 			DdcVerification::set_validate_payout_batch(
-				RuntimeOrigin::signed(AccountId::from(pair5.public().0)),
+				RuntimeOrigin::signed(AccountId::from([0xff; 32])),
+				cluster_id,
+				era,
+				payout_data.clone(),
+			),
+			Error::<Test>::DDCValidatorKeyNotRegistered
+		);
+
+		assert_noop!(
+			DdcVerification::set_validate_payout_batch(
+				RuntimeOrigin::signed(validator_1),
 				cluster_id,
 				era,
 				payout_data.clone(),
@@ -140,6 +138,13 @@ fn set_validate_payout_batch_works() {
 		);
 
 		// 2. send signed transaction from valid validator
+		DdcVerification::set_validator_key(
+			// register validator 1
+			RuntimeOrigin::signed(account_id1.clone()),
+			account_id1.clone(),
+		)
+		.unwrap();
+
 		assert_ok!(DdcVerification::set_validate_payout_batch(
 			RuntimeOrigin::signed(account_id1.clone()),
 			cluster_id,
@@ -159,6 +164,13 @@ fn set_validate_payout_batch_works() {
 		);
 
 		// 4. send signed transaction from second valid validator
+		DdcVerification::set_validator_key(
+			// register validator 1
+			RuntimeOrigin::signed(account_id2.clone()),
+			account_id2.clone(),
+		)
+		.unwrap();
+
 		assert_ok!(DdcVerification::set_validate_payout_batch(
 			RuntimeOrigin::signed(account_id2.clone()),
 			cluster_id,
@@ -169,6 +181,13 @@ fn set_validate_payout_batch_works() {
 		// 5. 2/3 rd validators have not signed yet the same data
 		assert_eq!(DdcVerification::payout_batch(cluster_id, era), None);
 
+		DdcVerification::set_validator_key(
+			// register validator 1
+			RuntimeOrigin::signed(account_id3.clone()),
+			account_id3.clone(),
+		)
+		.unwrap();
+
 		assert_ok!(DdcVerification::set_validate_payout_batch(
 			RuntimeOrigin::signed(account_id3.clone()),
 			cluster_id,
@@ -177,6 +196,14 @@ fn set_validate_payout_batch_works() {
 		));
 
 		// 6. send signed transaction from third valid validator but different hash
+
+		DdcVerification::set_validator_key(
+			// register validator 1
+			RuntimeOrigin::signed(account_id6.clone()),
+			account_id6.clone(),
+		)
+		.unwrap();
+
 		assert_ok!(DdcVerification::set_validate_payout_batch(
 			RuntimeOrigin::signed(account_id6.clone()),
 			cluster_id,
@@ -188,6 +215,12 @@ fn set_validate_payout_batch_works() {
 		assert_eq!(DdcVerification::payout_batch(cluster_id, era), None);
 
 		// 8. send signed transaction from fourth valid validator
+		DdcVerification::set_validator_key(
+			// register validator 1
+			RuntimeOrigin::signed(account_id4.clone()),
+			account_id4.clone(),
+		)
+		.unwrap();
 		assert_ok!(DdcVerification::set_validate_payout_batch(
 			RuntimeOrigin::signed(account_id4.clone()),
 			cluster_id,
