@@ -5,7 +5,7 @@ use crate::{BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeUsage};
 
 pub trait ValidatorVisitor<T: Config> {
 	fn setup_validators(validators: Vec<T::AccountId>);
-	fn get_active_validators() -> Vec<T::AccountId>;
+	fn is_ocw_validator(caller: T::AccountId) -> bool;
 	fn is_customers_batch_valid(
 		cluster_id: ClusterId,
 		era: DdcEra,

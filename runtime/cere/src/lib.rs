@@ -1261,6 +1261,8 @@ impl pallet_ddc_verification::Config for Runtime {
 	const MAJORITY: u8 = 67;
 	const BLOCK_TO_START: u32 = 100;
 	type ActivityHash = H256;
+	type Staking = Staking;
+	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
 }
 
 construct_runtime!(

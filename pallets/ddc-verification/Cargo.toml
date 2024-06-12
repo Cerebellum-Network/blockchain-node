@@ -16,10 +16,12 @@ codec = { workspace = true }
 ddc-primitives = { workspace = true }
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }
+frame-election-provider-support = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
+
 scale-info = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -27,9 +29,15 @@ sp-application-crypto = { workspace = true }
 sp-core = { workspace = true }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
+sp-staking = { workspace = true }
 sp-std = { workspace = true }
 
 [dev-dependencies]
+pallet-balances = { workspace = true }
+pallet-session = { workspace = true }
+pallet-staking = { workspace = true }
+pallet-staking-reward-curve = { workspace = true }
+pallet-timestamp = { workspace = true }
 sp-core = { workspace = true, features = ["std"] }
 sp-keystore = { workspace = true }
 
@@ -47,6 +55,8 @@ std = [
   "sp-io/std",
   "sp-core/std",
   "sp-application-crypto/std",
+  "sp-staking/std",
+  "frame-election-provider-support/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
