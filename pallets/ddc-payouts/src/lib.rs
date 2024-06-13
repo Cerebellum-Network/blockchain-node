@@ -33,7 +33,7 @@ use ddc_primitives::{
 		},
 		pallet::PalletVisitor as PalletVisitorType,
 	},
-	BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeUsage, MILLICENTS,
+	BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutState, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -280,7 +280,7 @@ pub mod pallet {
 	impl<T: pallet::Config> Default for BillingReport<T> {
 		fn default() -> Self {
 			Self {
-				state: State::default(),
+				state: PayoutState::default(),
 				vault: T::PalletId::get().into_account_truncating(),
 				start_era: Zero::zero(),
 				end_era: Zero::zero(),
@@ -293,20 +293,6 @@ pub mod pallet {
 				rewarding_processed_batches: BoundedBTreeSet::default(),
 			}
 		}
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
-	// don't remove or change numbers, if needed add a new state to the end with new number
-	// DAC uses the state value for integration!
-	pub enum State {
-		#[default]
-		NotInitialized = 1,
-		Initialized = 2,
-		ChargingCustomers = 3,
-		CustomersChargedWithFees = 4,
-		RewardingProviders = 5,
-		ProvidersRewarded = 6,
-		Finalized = 7,
 	}
 
 	#[pallet::call]
@@ -332,7 +318,7 @@ pub mod pallet {
 
 			let billing_report = BillingReport::<T> {
 				vault: Self::account_id(),
-				state: State::Initialized,
+				state: PayoutState::Initialized,
 				start_era,
 				end_era,
 				..Default::default()
@@ -360,10 +346,10 @@ pub mod pallet {
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
-			ensure!(billing_report.state == State::Initialized, Error::<T>::NotExpectedState);
+			ensure!(billing_report.state == PayoutState::Initialized, Error::<T>::NotExpectedState);
 
 			billing_report.charging_max_batch_index = max_batch_index;
-			billing_report.state = State::ChargingCustomers;
+			billing_report.state = PayoutState::ChargingCustomers;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::ChargingStarted { cluster_id, era });
@@ -391,7 +377,10 @@ pub mod pallet {
 			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
-			ensure!(billing_report.state == State::ChargingCustomers, Error::<T>::NotExpectedState);
+			ensure!(
+				billing_report.state == PayoutState::ChargingCustomers,
+				Error::<T>::NotExpectedState
+			);
 			ensure!(
 				billing_report.charging_max_batch_index >= batch_index,
 				Error::<T>::BatchIndexIsOutOfRange
@@ -537,7 +526,10 @@ pub mod pallet {
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
-			ensure!(billing_report.state == State::ChargingCustomers, Error::<T>::NotExpectedState);
+			ensure!(
+				billing_report.state == PayoutState::ChargingCustomers,
+				Error::<T>::NotExpectedState
+			);
 			validate_batches::<T>(
 				&billing_report.charging_processed_batches,
 				&billing_report.charging_max_batch_index,
@@ -617,7 +609,7 @@ pub mod pallet {
 					total_left_from_one * billing_report.total_customer_charge.gets;
 			}
 
-			billing_report.state = State::CustomersChargedWithFees;
+			billing_report.state = PayoutState::CustomersChargedWithFees;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Ok(())
@@ -641,13 +633,13 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(
-				billing_report.state == State::CustomersChargedWithFees,
+				billing_report.state == PayoutState::CustomersChargedWithFees,
 				Error::<T>::NotExpectedState
 			);
 
 			billing_report.total_node_usage = total_node_usage;
 			billing_report.rewarding_max_batch_index = max_batch_index;
-			billing_report.state = State::RewardingProviders;
+			billing_report.state = PayoutState::RewardingProviders;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::RewardingStarted { cluster_id, era });
@@ -676,7 +668,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(
-				billing_report.state == State::RewardingProviders,
+				billing_report.state == PayoutState::RewardingProviders,
 				Error::<T>::NotExpectedState
 			);
 			ensure!(
@@ -779,7 +771,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
 			ensure!(
-				billing_report.state == State::RewardingProviders,
+				billing_report.state == PayoutState::RewardingProviders,
 				Error::<T>::NotExpectedState
 			);
 
@@ -808,7 +800,7 @@ pub mod pallet {
 				});
 			}
 
-			billing_report.state = State::ProvidersRewarded;
+			billing_report.state = PayoutState::ProvidersRewarded;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
 			Self::deposit_event(Event::<T>::RewardingFinished { cluster_id, era });
@@ -829,11 +821,14 @@ pub mod pallet {
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
-			ensure!(billing_report.state == State::ProvidersRewarded, Error::<T>::NotExpectedState);
+			ensure!(
+				billing_report.state == PayoutState::ProvidersRewarded,
+				Error::<T>::NotExpectedState
+			);
 
 			billing_report.charging_processed_batches.clear();
 			billing_report.rewarding_processed_batches.clear();
-			billing_report.state = State::Finalized;
+			billing_report.state = PayoutState::Finalized;
 
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 			Self::deposit_event(Event::<T>::BillingReportFinalized { cluster_id, era });
@@ -968,8 +963,8 @@ pub mod pallet {
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
-		total.storage = fraction_of_month *
-			(|| -> Option<u128> {
+		total.storage = fraction_of_month
+			* (|| -> Option<u128> {
 				(usage.stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)

@@ -1247,7 +1247,6 @@ parameter_types! {
 impl pallet_ddc_verification::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = VerificationPalletId;
-	type MaxVerificationKeyLimit = ConstU32<500>;
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;

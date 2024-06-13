@@ -25,7 +25,7 @@ fn create_billing_reports_works() {
 			"95803defe6ea9f41e7ec6afa497064f21bfded027d8812efacbdf984e630cbdc",
 		);
 
-		assert_ok!(DdcVerification::create_billing_reports(
+		assert_ok!(DdcVerification::set_prepare_era_for_payout(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
 			era,
@@ -40,7 +40,7 @@ fn create_billing_reports_works() {
 		assert_eq!(report.payers_merkle_root_hash, ActivityHash::from(merkel_root_hash));
 
 		assert_noop!(
-			DdcVerification::create_billing_reports(
+			DdcVerification::set_prepare_era_for_payout(
 				RuntimeOrigin::signed(dac_account),
 				cluster_id,
 				era,
@@ -49,25 +49,6 @@ fn create_billing_reports_works() {
 			),
 			Error::<Test>::BillingReportAlreadyExist
 		);
-	})
-}
-
-#[test]
-fn set_verification_key_works() {
-	new_test_ext().execute_with(|| {
-		let verification_key: Vec<u8> = "This is verification key".as_bytes().to_vec();
-
-		assert_noop!(
-			DdcVerification::set_verification_key(RuntimeOrigin::root(), verification_key.clone(),),
-			Error::<Test>::BadVerificationKey
-		);
-
-		let verification_key: Vec<u8> = "key".as_bytes().to_vec();
-		assert_ok!(DdcVerification::set_verification_key(
-			RuntimeOrigin::root(),
-			verification_key.clone(),
-		));
-		assert_eq!(DdcVerification::verification_key().unwrap().to_vec(), verification_key);
 	})
 }
 
@@ -134,7 +115,7 @@ fn set_validate_payout_batch_works() {
 				era,
 				payout_data.clone(),
 			),
-			Error::<Test>::NotAValidator
+			Error::<Test>::Unauthorised
 		);
 
 		// 2. send signed transaction from valid validator
@@ -160,7 +141,7 @@ fn set_validate_payout_batch_works() {
 				era,
 				payout_data.clone(),
 			),
-			Error::<Test>::AlreadySigned
+			Error::<Test>::AlreadySignedPayoutBatch
 		);
 
 		// 4. send signed transaction from second valid validator
@@ -1437,7 +1418,7 @@ fn fetch_processed_era_works() {
 }
 
 #[test]
-fn get_era_to_validate_works() {
+fn get_era_to_prepare_for_payout_works() {
 	let mut ext = TestExternalities::default();
 	let (offchain, offchain_state) = TestOffchainExt::new();
 	let (pool, _) = TestTransactionPoolExt::new();
@@ -1573,11 +1554,11 @@ fn get_era_to_validate_works() {
 		);
 
 		assert_noop!(
-			Pallet::<Test>::get_era_to_validate(cluster_id, dac_nodes.clone()),
+			Pallet::<Test>::get_era_to_prepare_for_payout(cluster_id, dac_nodes.clone()),
 			Error::<Test>::EraToValidateRetrievalError
 		);
 
-		assert_ok!(DdcVerification::create_billing_reports(
+		assert_ok!(DdcVerification::set_prepare_era_for_payout(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
 			era,
@@ -1585,7 +1566,7 @@ fn get_era_to_validate_works() {
 			ActivityHash::from(merkel_root_hash),
 		));
 
-		let result = Pallet::<Test>::get_era_to_validate(cluster_id, dac_nodes.clone());
+		let result = Pallet::<Test>::get_era_to_prepare_for_payout(cluster_id, dac_nodes.clone());
 		assert!(result.is_ok());
 		assert_eq!(result.unwrap().unwrap(), era_activity2.id); //17
 	});
@@ -1634,7 +1615,7 @@ fn off_chain_worker_works() {
 		let dac_account = AccountId::from([1; 32]);
 
 		ClusterToValidate::<Test>::put(cluster_id);
-		let _ = DdcVerification::create_billing_reports(
+		let _ = DdcVerification::set_prepare_era_for_payout(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
 			era,
