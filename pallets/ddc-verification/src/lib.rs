@@ -2,9 +2,10 @@
 //!
 //! The DDC Verification pallet is used to validate zk-SNARK Proof and Signature
 //!
+//! - [`Config`]
 //! - [`Call`]
 //! - [`Pallet`]
-
+#![allow(clippy::missing_docs_in_private_items)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
@@ -60,23 +61,32 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
+	/// The module configuration trait.
 	pub trait Config: CreateSignedTransaction<Call<Self>> + frame_system::Config {
+		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		/// The accounts's pallet id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
+		/// The maximum length of a verification key.
 		#[pallet::constant]
 		type MaxVerificationKeyLimit: Get<u32>;
+		/// Weight info type.
 		type WeightInfo: WeightInfo;
+		/// DDC clusters nodes manager.
 		type ClusterManager: ClusterManager<Self>;
+		/// DDC nodes read-only registry.
 		type NodeVisitor: NodeVisitor<Self>;
-
+		/// The output of the `ActivityHasher` function.
 		type ActivityHash: Member
 			+ Parameter
 			+ MaybeSerializeDeserialize
 			+ Ord
 			+ Into<ActivityHash>
 			+ From<ActivityHash>;
+		/// The hashing system (algorithm)
 		type ActivityHasher: Hash<Output = Self::ActivityHash>;
+		/// The identifier type for an authority.
 		type AuthorityId: Member
 			+ Parameter
 			+ RuntimeAppPublic
@@ -84,34 +94,40 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ Into<sp_core::sr25519::Public>
 			+ From<sp_core::sr25519::Public>;
-
+		/// The identifier type for an offchain worker.
 		type OffchainIdentifierId: AppCrypto<Self::Public, Self::Signature>;
+		/// The majority of validators.
 		const MAJORITY: u8;
+		/// Block to start from.
 		const BLOCK_TO_START: u32;
+		/// The access to staking functionality.
 		type Staking: StakingInterface<AccountId = Self::AccountId>;
+		/// The access to validator list.
 		type ValidatorList: SortedListProvider<Self::AccountId>;
 	}
 
+	/// The event type.
 	#[pallet::event]
+	/// The `generate_deposit` macro generates a function on `Pallet` called `deposit_event` which
+	/// will properly convert the error type of your pallet into `RuntimeEvent` (recall `type
+	/// RuntimeEvent: From<Event<Self>>`, so it can be converted) and deposit it via
+	/// `frame_system::Pallet::deposit_event`.
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		BillingReportCreated {
-			cluster_id: ClusterId,
-			era: DdcEra,
-		},
-		VerificationKeyStored {
-			verification_key: Vec<u8>,
-		},
-		PayoutBatchCreated {
-			cluster_id: ClusterId,
-			era: DdcEra,
-		},
+		/// A new billing report was created from `ClusterId` and `ERA`.
+		BillingReportCreated { cluster_id: ClusterId, era: DdcEra },
+		/// A verification key was stored with `VerificationKey`.
+		VerificationKeyStored { verification_key: Vec<u8> },
+		/// A new payout batch was created from `ClusterId` and `ERA`.
+		PayoutBatchCreated { cluster_id: ClusterId, era: DdcEra },
+		/// Not enough nodes for consensus.
 		NotEnoughNodesForConsensus {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			id: ActivityHash,
 			validator: T::AccountId,
 		},
+		/// No activity in consensus.
 		ActivityNotInConsensus {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
@@ -120,32 +136,51 @@ pub mod pallet {
 		},
 	}
 
+	/// Consensus Errors
 	#[derive(Debug, Encode, Decode, Clone, TypeInfo, PartialEq)]
 	pub enum ConsensusError {
+		/// Not enough nodes for consensus.
 		NotEnoughNodesForConsensus { cluster_id: ClusterId, era_id: DdcEra, id: ActivityHash },
+		/// No activity in consensus.
 		ActivityNotInConsensus { cluster_id: ClusterId, era_id: DdcEra, id: ActivityHash },
 	}
 
 	#[pallet::error]
 	#[derive(PartialEq)]
 	pub enum Error<T> {
+		/// Billing report already exists.
 		BillingReportAlreadyExist,
+		/// Bad verification key.
 		BadVerificationKey,
+		/// Bad requests.
 		BadRequest,
+		/// Not a validator.
 		NotAValidator,
+		/// Already signed.
 		AlreadySigned,
+		/// Node Retrieval Error.
 		NodeRetrievalError,
+		/// Node Usage Retrieval Error.
 		NodeUsageRetrievalError,
+		/// Cluster To Validate Retrieval Error.
 		ClusterToValidateRetrievalError,
+		/// Era To Validate Retrieval Error.
 		EraToValidateRetrievalError,
+		/// Era Per Node Retrieval Error.
 		EraPerNodeRetrievalError,
+		/// Fail to fetch Ids.
 		FailToFetchIds,
+		/// No validator exists.
 		NoValidatorExist,
+		/// Not a controller.
 		NotController,
+		/// Not a validator stash.
 		NotValidatorStash,
+		/// DDC Validator Key Not Registered
 		DDCValidatorKeyNotRegistered,
 	}
 
+	/// Active billing report of a cluster id and a validator.
 	#[pallet::storage]
 	#[pallet::getter(fn active_billing_reports)]
 	pub type ActiveBillingReports<T: Config> = StorageDoubleMap<
@@ -157,11 +192,13 @@ pub mod pallet {
 		ReceiptParams,
 	>;
 
+	/// Payout data for a cluster id and an era.
 	#[pallet::storage]
 	#[pallet::getter(fn payout_batch)]
 	pub type PayoutBatch<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, DdcEra, PayoutData>;
 
+	/// Payout validators.
 	#[pallet::storage]
 	#[pallet::getter(fn payout_validators)]
 	pub type PayoutValidators<T: Config> = StorageDoubleMap<
@@ -174,56 +211,80 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
+	/// Cluster id storage
 	#[pallet::storage]
 	#[pallet::getter(fn cluster_to_validate)]
 	pub type ClusterToValidate<T: Config> = StorageValue<_, ClusterId>; // todo! setter out of scope
 
+	/// Verification key.
 	#[pallet::storage]
 	#[pallet::getter(fn verification_key)]
 	pub type VerificationKey<T: Config> =
 		StorageValue<_, BoundedVec<u8, T::MaxVerificationKeyLimit>>;
 
+	/// List of validators.
 	#[pallet::storage]
 	#[pallet::getter(fn validator_set)]
 	pub type ValidatorSet<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
+	/// Validator stash key mapping
 	#[pallet::storage]
 	#[pallet::getter(fn get_stash_for_ddc_validator)]
 	pub type ValidatorToStashKey<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
+	/// ReceiptParams of an active billing report.
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct ReceiptParams {
+		/// DDC era.
 		pub era: DdcEra,
+		/// payers merkle root hash.
 		pub payers_merkle_root_hash: ActivityHash,
+		/// payees merkle root hash.
 		pub payees_merkle_root_hash: ActivityHash,
 	}
 
+	/// Era activity of a node.
 	#[derive(Serialize, Copy, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 	pub(crate) struct EraActivity {
+		/// Era id.
 		pub id: DdcEra,
 	}
 
+	/// Node activity of a node.
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode,
 	)]
 	pub(crate) struct NodeActivity {
+		/// Node id.
 		pub(crate) node_id: [u8; 32],
+		/// Provider id.
 		pub(crate) provider_id: [u8; 32],
+		/// Total amount of stored bytes.
 		pub(crate) stored_bytes: u64,
+		/// Total amount of transferred bytes.
 		pub(crate) transferred_bytes: u64,
+		/// Total number of puts.
 		pub(crate) number_of_puts: u64,
+		/// Total number of gets.
 		pub(crate) number_of_gets: u64,
 	}
 
+	/// Customer Activity of a bucket.
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode,
 	)]
 	pub(crate) struct CustomerActivity {
+		/// Customer id.
 		pub(crate) customer_id: [u8; 32],
+		/// Bucket id
 		pub(crate) bucket_id: BucketId,
+		/// Total amount of stored bytes.
 		pub(crate) stored_bytes: u64,
+		/// Total amount of transferred bytes.
 		pub(crate) transferred_bytes: u64,
+		/// Total number of puts.
 		pub(crate) number_of_puts: u64,
+		/// Total number of gets.
 		pub(crate) number_of_gets: u64,
 	}
 
@@ -284,6 +345,7 @@ pub mod pallet {
 		pub hash: ActivityHash,
 	}
 
+	/// Unwrap or send an error log
 	macro_rules! unwrap_or_log_error {
 		($result:expr, $error_msg:expr) => {
 			match $result {
@@ -436,12 +498,21 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		/// Create merkle root of given leaves.
+		///
+		/// Parameters:
+		/// - `leaves`: collection of leaf
 		pub(crate) fn create_merkle_root(leaves: Vec<ActivityHash>) -> ActivityHash {
 			let leaves = leaves.iter().map(|l| l.to_vec()).collect::<Vec<Vec<u8>>>();
 
 			T::ActivityHasher::ordered_trie_root(leaves, Default::default()).into()
 		}
 
+		/// Fetch current era across all DAC nodes to validate.
+		///
+		/// Parameters:
+		/// - `cluster_id`: cluster id of a cluster
+		/// - `dac_nodes`: List of DAC nodes
 		pub(crate) fn get_era_to_validate(
 			cluster_id: ClusterId,
 			dac_nodes: Vec<(NodePubKey, StorageNodeParams)>,
@@ -480,6 +551,7 @@ pub mod pallet {
 			Ok(all_node_eras.iter().cloned().min())
 		}
 
+		/// Reach consensus.
 		pub(crate) fn reach_consensus<A: Activity>(
 			activities: &[A],
 			threshold: usize,
@@ -496,6 +568,7 @@ pub mod pallet {
 				.map(|(activity, _)| activity)
 		}
 
+		/// Fetch consensus for given activities.
 		pub(crate) fn get_consensus_for_activities<A: Activity>(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -545,10 +618,15 @@ pub mod pallet {
 			}
 		}
 
+		/// Fetch cluster to validate.
 		fn get_cluster_to_validate() -> Result<ClusterId, Error<T>> {
 			Self::cluster_to_validate().ok_or(Error::ClusterToValidateRetrievalError)
 		}
 
+		/// Fetch processed era.
+		///
+		/// Parameters:
+		/// - `node_params`: DAC node parameters
 		pub(crate) fn fetch_processed_era(
 			node_params: StorageNodeParams,
 		) -> Result<Vec<EraActivity>, http::Error> {
@@ -570,6 +648,12 @@ pub mod pallet {
 
 			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
 		}
+		/// Fetch customer usage.
+		///
+		/// Parameters:
+		/// - `cluster_id`: cluster id of a cluster
+		/// - `era_id`: era id
+		/// - `node_params`: DAC node parameters
 		pub(crate) fn fetch_customers_usage(
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -597,6 +681,12 @@ pub mod pallet {
 			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
 		}
 
+		/// Fetch node usage.
+		///
+		/// Parameters:
+		/// - `cluster_id`: cluster id of a cluster
+		/// - `era_id`: era id
+		/// - `node_params`: DAC node parameters
 		pub(crate) fn fetch_node_usage(
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -624,6 +714,9 @@ pub mod pallet {
 			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
 		}
 
+		/// Fetch DAC nodes of a cluster.
+		/// Parameters:
+		/// - `cluster_id`: Cluster id of a cluster.
 		fn get_dac_nodes(
 			cluster_id: &ClusterId,
 		) -> Result<Vec<(NodePubKey, StorageNodeParams)>, Error<T>> {
@@ -649,6 +742,12 @@ pub mod pallet {
 			Ok(dac_nodes)
 		}
 
+		/// Fetch node usage of an era.
+		///
+		/// Parameters:
+		/// - `cluster_id`: cluster id of a cluster
+		/// - `era_id`: era id
+		/// - `node_params`: DAC node parameters
 		fn fetch_nodes_usage_for_era(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -666,6 +765,12 @@ pub mod pallet {
 			Ok(node_usages)
 		}
 
+		/// Fetch customer usage for an era.
+		///
+		/// Parameters:
+		/// - `cluster_id`: cluster id of a cluster
+		/// - `era_id`: era id
+		/// - `node_params`: DAC node parameters
 		fn fetch_customers_usage_for_era(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -683,6 +788,10 @@ pub mod pallet {
 			Ok(customers_usages)
 		}
 
+		/// Fetch processed era for across all nodes.
+		///
+		/// Parameters:
+		/// - `node_params`: DAC node parameters
 		fn fetch_processed_era_for_node(
 			dac_nodes: Vec<(NodePubKey, StorageNodeParams)>,
 		) -> Result<Vec<Vec<EraActivity>>, Error<T>> {
@@ -700,6 +809,17 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Create billing reports from a public origin.
+		///
+		/// The origin must be Signed.
+		///
+		/// Parameters:
+		/// - `cluster_id`: Cluster id of a cluster.
+		/// - `era`: Era id.
+		/// - `payers_merkle_root_hash`: Merkle root hash of payers
+		/// - `payees_merkle_root_hash`: Merkle root hash of payees
+		///
+		/// Emits `BillingReportCreated` event when successful.
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())]
 		pub fn create_billing_reports(
@@ -724,6 +844,14 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set verification key from a root origin.
+		///
+		/// The origin must be Root.
+		///
+		/// Parameters:
+		/// - `verification_key`: Verification Key
+		///
+		/// Emits `VerificationKeyStored` event when successful.
 		#[pallet::call_index(1)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_verification_key(
@@ -743,6 +871,16 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set payout batch.
+		///
+		/// The origin must be a validator.
+		///
+		/// Parameters:
+		/// - `cluster_id`: Cluster id of a cluster
+		/// - `era`: Era id
+		/// - `payout_data`: Payout Data
+		///
+		/// Emits `PayoutBatchCreated` event when successful.
 		#[pallet::call_index(2)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_validate_payout_batch(
@@ -787,6 +925,15 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Emit consensus errors.
+		///
+		/// The origin must be a validator.
+		///
+		/// Parameters:
+		/// - errors`: List of consensus errors
+		///
+		/// Emits `NotEnoughNodesForConsensus`  OR `ActivityNotInConsensus` event depend of error
+		/// type, when successful.
 		#[pallet::call_index(3)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn emit_consensus_errors(
@@ -825,6 +972,12 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set validator key.
+		///
+		/// The origin must be a validator.
+		///
+		/// Parameters:
+		/// - `ddc_validator_pub`: validator Key
 		#[pallet::call_index(4)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_validator_key(
