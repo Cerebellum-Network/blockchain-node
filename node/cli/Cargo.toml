@@ -32,6 +32,7 @@ sc-executor = { workspace = true, default-features = true }
 sc-service = { workspace = true, default-features = true, optional = true }
 sp-io = { workspace = true, default-features = true }
 try-runtime-cli = { workspace = true, default-features = true, optional = true }
+log = { workspace = true }
 
 # Local
 cere-client = { workspace = true, optional = true }

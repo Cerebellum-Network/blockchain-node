@@ -25,11 +25,27 @@ use cere_dev_runtime as cere_dev;
 use cere_runtime as cere;
 use cere_runtime::wasm_binary_unwrap;
 use lazy_static::lazy_static;
+use node_primitives::Block;
 use parking_lot::ReentrantMutex;
+use sc_client_api::{backend::Backend, HeaderBackend};
 use sc_executor_common::wasm_runtime::WasmModule;
+use sc_service::{new_db_backend, BasePath, Configuration};
+use sp_api::{ProofRecorder, StorageTransactionCache};
+use sp_core::traits::{Externalities, FetchRuntimeCode, RuntimeCode};
+use sp_runtime::generic::BlockId;
 use sp_runtime_interface::runtime_interface;
+use sp_state_machine::{Ext, OverlayedChanges, StateMachine, StorageProof};
+use sp_std::borrow::Cow;
 use sp_wasm_interface::{HostFunctions, Pointer};
 use wasmi::{memory_units::Pages, MemoryInstance, TableInstance};
+
+// extracted from this node
+mod my_runtime;
+use my_runtime::MY_RUNTIME;
+
+// extracted from working node
+mod runtime_from_working_node;
+use runtime_from_working_node::RUNTIME_FROM_WORKING_NODE;
 
 mod freeing_bump;
 
@@ -41,14 +57,47 @@ mod sandbox_wasmi_backend;
 mod wasmi_executor;
 use wasmi_executor::{create_runtime, FunctionExecutor, WasmiInstance};
 
+pub fn get_runtime_code() -> Cow<'static, [u8]> {
+	let db_config = sc_client_db::DatabaseSettings {
+		trie_cache_maximum_size: Some(67108864),
+		state_pruning: None,
+		source: sc_client_db::DatabaseSource::RocksDb { path: std::path::PathBuf::from("/Users/yahortsaryk/work/blockchain-host-functions/data9-125421-run-1/chains/cere_mainnet/db/full"), cache_size: 1024 },
+		blocks_pruning: sc_client_db::BlocksPruning::KeepFinalized,
+	};
+
+	let backend = new_db_backend::<Block>(db_config).expect("backend to be created");
+
+	let mut overlay = OverlayedChanges::default();
+	let at_hash = backend
+		.blockchain()
+		.expect_block_hash_from_id(&BlockId::number(125421))
+		.expect("at_hash exists");
+
+	let state = backend.state_at(at_hash).expect("state exists");
+	let mut cache =
+		StorageTransactionCache::<Block, sc_client_db::RefTrackingState<Block>>::default();
+
+	let mut _ext = Ext::new(&mut overlay, &mut cache, &state, None);
+	let state_runtime_code = sp_state_machine::backend::BackendRuntimeCode::new(&state);
+	let runtime_code = state_runtime_code
+		.runtime_code()
+		.map_err(sp_blockchain::Error::RuntimeCode)
+		.expect("runtime_code exists");
+
+	let code = runtime_code.fetch_runtime_code().expect("Code to be fetched");
+	Cow::Owned(code.to_vec())
+}
+
 pub fn create_function_executor() -> FunctionExecutor {
 	// The runtime was at 266 version at block 125423 where the missing sandbox host functions were
 	// applied.
-	// let runtime = &include_bytes!("./node_runtime_266.wasm")[..];
-	let runtime = &include_bytes!("./cere_runtime.compact.compressed.9cbddef.wasm")[..];
-	// let runtime = &include_bytes!("./node_runtime_50000.wasm")[..];
-	log::info!(target: "wasm_binary_unwrap", "LENGHT OF WASM BINARY {} ", runtime.len());
+	let runtime = &include_bytes!("./node_runtime_266.wasm")[..];
 
+	// let runtime_cow = get_runtime_code();
+	// let runtime: &[u8] = &*runtime_cow;
+	// let runtime: &[u8] = &MY_RUNTIME;
+
+	log::info!(target: "wasm_binary_unwrap", "LENGHT OF WASM BINARY {} ", runtime.len());
 	let blob = sc_executor_common::runtime_blob::RuntimeBlob::uncompress_if_needed(runtime.clone())
 		.expect("Runtime Blob to be ok");
 	let heap_pages = 2048;
@@ -77,21 +126,6 @@ lazy_static! {
 	static ref SANDBOX: ReentrantMutex<RefCell<FunctionExecutor>> =
 		ReentrantMutex::new(RefCell::new(create_function_executor()));
 }
-
-// lazy_static! {
-// 	static ref SANDBOX: ReentrantMutex<RefCell<FunctionExecutor>> =
-// 		ReentrantMutex::new(RefCell::new(
-// 			FunctionExecutor::new(
-// 				MemoryInstance::alloc(Pages(65536 as usize), None).unwrap(),
-// 				10000,
-// 				Some(TableInstance::alloc(u32::MAX, None).unwrap()),
-// 				Arc::new(Vec::new()),
-// 				true,
-// 				Arc::new(Vec::new())
-// 			)
-// 			.unwrap()
-// 		));
-// }
 
 const LOG_TARGET: &str = "runtime-interface-yahor";
 

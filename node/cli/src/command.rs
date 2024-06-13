@@ -201,6 +201,7 @@ pub fn run() -> sc_cli::Result<()> {
 		None => {
 			let runner = cli.create_runner(&cli.run.base)?;
 			runner.run_node_until_exit(|config| async move {
+				// log::info!("In Runner<Cli>, --> config {:?}", config);
 				cere_service::build_full(config, cli.run.no_hardware_benchmarks)
 					.map(|full| full.task_manager)
 					.map_err(Error::Service)
