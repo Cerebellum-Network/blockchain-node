@@ -275,7 +275,6 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 				// General admin
 				origins::Origin::StakingAdmin => Ok(10),
 				origins::Origin::Treasurer => Ok(11),
-				origins::Origin::FellowshipAdmin => Ok(13),
 				origins::Origin::GeneralAdmin => Ok(14),
 				// Referendum admins
 				origins::Origin::ReferendumCanceller => Ok(20),
