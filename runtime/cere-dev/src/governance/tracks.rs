@@ -12,7 +12,7 @@ const fn percent_perbill(x: Perbill) -> sp_arithmetic::FixedI64 {
 }
 
 const APP_ROOT: Curve = Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
-const SUP_ROOT: Curve = Curve::make_linear(28, 28, percent(10), percent(50));
+const SUP_ROOT: Curve = Curve::make_linear(28, 28, percent(20), percent(50));
 const APP_STAKING_ADMIN: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
 const SUP_STAKING_ADMIN: Curve =
 	Curve::make_reciprocal(12, 28, percent(11), percent(10), percent(50));
