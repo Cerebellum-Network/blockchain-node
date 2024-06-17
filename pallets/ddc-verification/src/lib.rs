@@ -14,14 +14,14 @@ use core::str;
 use ddc_primitives::{
 	traits::{ClusterManager, NodeVisitor, ValidatorVisitor},
 	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeParams, NodePubKey, NodeUsage,
-	PayoutState, StorageNodeMode, StorageNodeParams,
+	StorageNodeMode, StorageNodeParams,
 };
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Get, OneSessionHandler},
 };
 use frame_system::{
-	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
+	offchain::{AppCrypto, CreateSignedTransaction, ForAny, SendSignedTransaction, Signer},
 	pallet_prelude::*,
 };
 pub use pallet::*;
@@ -119,7 +119,7 @@ pub mod pallet {
 		/// A new billing report was created from `ClusterId` and `ERA`.
 		BillingReportCreated {
 			cluster_id: ClusterId,
-			era: DdcEra,
+			era_id: DdcEra,
 		},
 		/// A verification key was stored with `VerificationKey`.
 		VerificationKeyStored {
@@ -128,11 +128,11 @@ pub mod pallet {
 		/// A new payout batch was created from `ClusterId` and `ERA`.
 		PayoutBatchCreated {
 			cluster_id: ClusterId,
-			era: DdcEra,
+			era_id: DdcEra,
 		},
 		EraValidationReady {
 			cluster_id: ClusterId,
-			era: DdcEra,
+			era_id: DdcEra,
 		},
 		/// Not enough nodes for consensus.
 		NotEnoughNodesForConsensus {
@@ -148,15 +148,73 @@ pub mod pallet {
 			id: ActivityHash,
 			validator: T::AccountId,
 		},
+		/// Node Usage Retrieval Error.
+		NodeUsageRetrievalError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			node_pub_key: NodePubKey,
+			validator: T::AccountId,
+		},
+		/// Customer Usage Retrieval Error.
+		CustomerUsageRetrievalError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			node_pub_key: NodePubKey,
+			validator: T::AccountId,
+		},
+		PrepareEraTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			payers_merkle_root_hash: ActivityHash,
+			payees_merkle_root_hash: ActivityHash,
+			validator: T::AccountId,
+		},
+		NoAvailableSigner {
+			validator: T::AccountId,
+		},
+		NotEnoughDACNodes {
+			num_nodes: u16,
+			validator: T::AccountId,
+		},
 	}
 
 	/// Consensus Errors
 	#[derive(Debug, Encode, Decode, Clone, TypeInfo, PartialEq)]
-	pub enum ConsensusError {
+	pub enum OCWError {
 		/// Not enough nodes for consensus.
-		NotEnoughNodesForConsensus { cluster_id: ClusterId, era_id: DdcEra, id: ActivityHash },
+		NotEnoughNodesForConsensus {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			id: ActivityHash,
+		},
 		/// No activity in consensus.
-		ActivityNotInConsensus { cluster_id: ClusterId, era_id: DdcEra, id: ActivityHash },
+		ActivityNotInConsensus {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			id: ActivityHash,
+		},
+		/// Node Usage Retrieval Error.
+		NodeUsageRetrievalError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			node_pub_key: NodePubKey,
+		},
+		/// Customer Usage Retrieval Error.
+		CustomerUsageRetrievalError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			node_pub_key: NodePubKey,
+		},
+		PrepareEraTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			payers_merkle_root_hash: ActivityHash,
+			payees_merkle_root_hash: ActivityHash,
+		},
+		NoAvailableSigner,
+		NotEnoughDACNodes {
+			num_nodes: u16,
+		},
 	}
 
 	#[pallet::error]
@@ -176,8 +234,6 @@ pub mod pallet {
 		AlreadySignedPayoutBatch,
 		/// Node Retrieval Error.
 		NodeRetrievalError,
-		/// Node Usage Retrieval Error.
-		NodeUsageRetrievalError,
 		/// Cluster To Validate Retrieval Error.
 		ClusterToValidateRetrievalError,
 		/// Era To Validate Retrieval Error.
@@ -194,6 +250,8 @@ pub mod pallet {
 		NotValidatorStash,
 		/// DDC Validator Key Not Registered
 		DDCValidatorKeyNotRegistered,
+		TransactionSubmissionError,
+		NoAvailableSigner,
 	}
 
 	/// Active billing report of a cluster id and a validator.
@@ -292,8 +350,7 @@ pub mod pallet {
 	pub struct EraValidation<T: Config> {
 		pub payers_merkle_root_hash: ActivityHash,
 		pub payees_merkle_root_hash: ActivityHash,
-		pub validation_status: EraValidationStatus,
-		pub payout_state: PayoutState,
+		pub status: EraValidationStatus,
 		pub validators: Vec<T::AccountId>, // todo! change to signatures
 	}
 
@@ -423,7 +480,7 @@ pub mod pallet {
 				return;
 			}
 			log::info!("Hello from pallet-ddc-verification.");
-			let signer = Signer::<T, T::OffchainIdentifierId>::all_accounts();
+			let signer = Signer::<T, T::OffchainIdentifierId>::any_account();
 			if !signer.can_sign() {
 				log::error!("No local accounts available");
 				return;
@@ -439,32 +496,153 @@ pub mod pallet {
 				"Error retrieving dac nodes to validate"
 			);
 
-			let min_nodes = dac_nodes.len().ilog2() as usize;
+			match Self::process_dac_data(&cluster_id, &dac_nodes, 100, &signer) {
+				// todo! factor batch_size into config through runtime
+				Ok(_) => {
+					log::info!("DAC data processed successfully");
+				},
+				Err(errors) => {
+					log::error!("Error processing DAC data: {:?}", errors);
+
+					// Send errors as extrinsics
+					if let Some((_, res)) = signer.send_signed_transaction(|_account| {
+						Call::emit_consensus_errors { errors: errors.clone() }
+					}) {
+						// Map any error from transaction submission to TransactionSubmissionError
+						match res {
+							Ok(_) => log::info!("Successfully submitted emit_consensus_errors tx"),
+							Err(_) => log::error!("Failed to submit emit_consensus_errors tx"),
+						}
+					} else {
+						log::error!("No account available to sign the transaction");
+						// Handle case where no signer is available
+					}
+				},
+			}
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		pub(crate) fn process_dac_data(
+			cluster_id: &ClusterId,
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+			batch_size: usize,
+			signer: &Signer<T, T::OffchainIdentifierId, ForAny>,
+		) -> Result<(), Vec<OCWError>> {
+			let min_nodes = dac_nodes.len().ilog2() as u16;
 			if min_nodes < 3 {
 				// todo!: factor out min nodes config
-				return;
+				return Err(vec![OCWError::NotEnoughDACNodes { num_nodes: min_nodes }]);
 			}
 
-			{
-				// process batches for era
-				let era_id_result = unwrap_or_log_error!(
-					Self::get_era_to_prepare_for_payout(cluster_id, &dac_nodes),
-					"Error retrieving era to validate"
-				);
+			let era_id_result =
+				Self::get_era_for_payout(cluster_id, EraValidationStatus::ReadyForPayout);
+			if era_id_result.is_none() {
+				return Ok(());
+			}
+			let era_id = era_id_result.unwrap();
+			let nodes_usage = Self::fetch_nodes_usage_for_era(cluster_id, era_id, dac_nodes)
+				.map_err(|err| vec![err])?;
+			let customers_usage =
+				Self::fetch_customers_usage_for_era(cluster_id, era_id, dac_nodes)
+					.map_err(|err| vec![err])?;
 
-				if era_id_result.is_none() {
-					return;
+			let customers_activity_in_consensus = Self::get_consensus_for_activities(
+				cluster_id,
+				era_id,
+				&customers_usage,
+				min_nodes,
+				Percent::from_percent(T::MAJORITY),
+			)?;
+			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
+				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
+			);
+			let customers_activity_root = Self::create_merkle_root(&customers_activity_batch_roots);
+
+			let nodes_activity_in_consensus = Self::get_consensus_for_activities(
+				cluster_id,
+				era_id,
+				&nodes_usage,
+				min_nodes,
+				Percent::from_percent(T::MAJORITY),
+			)?;
+			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
+				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
+			);
+			let nodes_activity_root = Self::create_merkle_root(&customers_activity_batch_roots);
+
+			Self::store_validation_activities(
+				cluster_id,
+				era_id,
+				&customers_activity_in_consensus,
+				customers_activity_root,
+				&customers_activity_batch_roots,
+				&nodes_activity_in_consensus,
+				nodes_activity_root,
+				&nodes_activity_batch_roots,
+			);
+
+			// todo! factor the call out of here
+			if let Some((_, res)) =
+				signer.send_signed_transaction(|_account| Call::set_prepare_era_for_payout {
+					cluster_id: *cluster_id,
+					era_id,
+					payers_merkle_root_hash: customers_activity_root,
+					payees_merkle_root_hash: nodes_activity_root,
+				}) {
+				match res {
+					Ok(_) => {
+						// Extrinsic call succeeded
+						Ok(())
+					},
+					Err(_) => Err(vec![OCWError::PrepareEraTransactionError {
+						cluster_id: *cluster_id,
+						era_id,
+						payers_merkle_root_hash: customers_activity_root,
+						payees_merkle_root_hash: nodes_activity_root,
+					}]),
 				}
-				let era_id = era_id_result.unwrap();
+			} else {
+				Err(vec![OCWError::NoAvailableSigner])
+			}
+		}
 
-				let (
-					customers_activity_in_consensus,
-					customers_activity_root,
-					customers_activity_batch_roots,
-					nodes_activity_in_consensus,
-					nodes_activity_root,
-					nodes_activity_batch_roots,
-				) = match Self::fetch_activities::<CustomerActivity, NodeActivity>(&cluster_id, era_id)
+		/*
+		pub(crate) fn process_payout(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+		) {
+			// let batches = split into batches customers_activity_in_consensus
+			// for i in batches.len() {
+			// let batch  = batches[i];
+			// let batch_root1 = customers_activity_batch_roots[i]; // C
+			// let batch_root2 = create_merkle_tree(batch)
+			// assert!(batch_root1, batch_root2)
+			// let adjacent_hashes = get_adjacent_hashes(batch_root1, customers_activity_root, customers_activity_batch_roots) // provide hash(D) and hash(A,B).
+			// call payout::send_charging_customers_batch(clusterid, era_id, batch_index, batch, adjacent_hashes)
+			// }
+
+			// process batches for era
+			let era_id_result = unwrap_or_log_error!(
+				Self::get_era_to_prepare_for_payout(cluster_id, &dac_nodes),
+				"Error retrieving era to validate"
+			);
+
+			if era_id_result.is_none() {
+				return;
+			}
+			let era_id = era_id_result.unwrap();
+
+			let (
+				customers_activity_in_consensus,
+				customers_activity_root,
+				customers_activity_batch_roots,
+				nodes_activity_in_consensus,
+				nodes_activity_root,
+				nodes_activity_batch_roots,
+			) =
+				match Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(&cluster_id, era_id)
 				{
 					Some(result) => result,
 					None => {
@@ -487,167 +665,12 @@ pub mod pallet {
 						)
 					},
 				};
-			}
+		} */
 
-			{
-				// prepare era for payout
-				let era_id_result =
-					Self::get_era_for_payout(&cluster_id, EraValidationStatus::ReadyForPayout);
-				if era_id_result.is_none() {
-					return;
-				}
-				let era_id = era_id_result.unwrap();
-
-				// todo! factor this into separate method to be used in process batches for era
-				// section as well
-				let nodes_usage = unwrap_or_log_error!(
-					Self::fetch_nodes_usage_for_era(&cluster_id, era_id, &dac_nodes),
-					"Error retrieving node activities to validate"
-				);
-
-				let customers_usage = unwrap_or_log_error!(
-					Self::fetch_customers_usage_for_era(&cluster_id, era_id, &dac_nodes),
-					"Error retrieving customers activities to validate"
-				);
-
-				let customers_activity_result = match Self::get_consensus_for_activities(
-					&cluster_id,
-					era_id,
-					&customers_usage,
-					min_nodes,
-					Percent::from_percent(T::MAJORITY),
-				) {
-					Ok(customers_activity_in_consensus) => {
-						let leaves: Vec<ActivityHash> =
-							Self::get_batch_hashes(&customers_activity_in_consensus, 100); // todo! factor batch_size into config through runtime
-
-						Some((
-							customers_activity_in_consensus,
-							Self::create_merkle_root(&leaves),
-							leaves,
-						))
-					},
-					Err(errors) => {
-						let results = signer.send_signed_transaction(|_account| {
-							Call::emit_consensus_errors { errors: errors.clone() }
-						});
-
-						for (acc, res) in results {
-							match res {
-							Ok(_) => log::info!( // todo! expand with cluster, era
-								"Successfully submitted emit_consensus_errors tx for customers_activity_root: {:?}",
-								acc.id
-							),
-							Err(e) => log::error!(
-								"Failed to submit emit_consensus_errors tx for customers_activity_root: {:?} ({:?})",
-								acc.id,
-								e
-							),
-						}
-						}
-						None
-					},
-				};
-
-				if customers_activity_result.is_none() {
-					return;
-				}
-				let (
-					customers_activity_in_consensus,
-					customers_activity_root,
-					customers_activity_batch_roots,
-				) = customers_activity_result.unwrap();
-
-				let nodes_activity_result = match Self::get_consensus_for_activities(
-					&cluster_id,
-					era_id,
-					&nodes_usage,
-					min_nodes,
-					Percent::from_percent(T::MAJORITY),
-				) {
-					Ok(nodes_activity_in_consensus) => {
-						let leaves: Vec<ActivityHash> =
-							Self::get_batch_hashes(&nodes_activity_in_consensus, 100); // todo! factor batch_size into config through runtime
-
-						Some((
-							nodes_activity_in_consensus,
-							Self::create_merkle_root(&leaves),
-							leaves,
-						))
-					},
-					Err(errors) => {
-						let results = signer.send_signed_transaction(|_account| {
-							Call::emit_consensus_errors { errors: errors.clone() }
-						});
-
-						for (acc, res) in results {
-							// todo! create macro for this type of loop
-							match res {
-							Ok(_) => log::info!( // todo! expand with cluster, era
-								"Successfully submitted emit_consensus_errors tx for nodes_activit_root: {:?}",
-								acc.id
-							),
-							Err(e) => log::error!(
-								"Failed to submit emit_consensus_errors tx for nodes_activit_root: {:?} ({:?})",
-								acc.id,
-								e
-							),
-						}
-						}
-						None
-					},
-				};
-
-				if nodes_activity_result.is_none() {
-					return;
-				}
-				let (nodes_activity_in_consensus, nodes_activity_root, nodes_activity_batch_roots) =
-					nodes_activity_result.unwrap();
-
-				Self::store_activities(
-					&cluster_id,
-					era_id,
-					&customers_activity_in_consensus,
-					customers_activity_root,
-					&customers_activity_batch_roots,
-					&nodes_activity_in_consensus,
-					nodes_activity_root,
-					&nodes_activity_batch_roots,
-				);
-
-				let results =
-					signer.send_signed_transaction(|_account| Call::set_prepare_era_for_payout {
-						cluster_id,
-						era: era_id,
-						payers_merkle_root_hash: customers_activity_root,
-						payees_merkle_root_hash: nodes_activity_root,
-					});
-
-				for (acc, res) in results {
-					match res {
-						Ok(_) => log::info!(
-							// todo! expand with cluster, era
-							"Successfully submitted set_validate_era tx: {:?}",
-							acc.id
-						),
-						Err(e) => {
-							log::error!(
-								"Failed to submit set_validate_era tx: {:?} ({:?})",
-								acc.id,
-								e
-							)
-						},
-					}
-				}
-			}
-		}
-	}
-
-	impl<T: Config> Pallet<T> {
-		pub(crate) fn get_activities_in_consensus<A: Activity, B: Activity>(
-			cluster_id: &ClusterId,
-			era_id: DdcEra,
-		) -> Result<(Vec<A>, Vec<B>), Vec<ConsensusError>> {
+		pub(crate) fn _get_activities_in_consensus<A: Activity, B: Activity>(
+			_cluster_id: &ClusterId,
+			_era_id: DdcEra,
+		) -> Result<(Vec<A>, Vec<B>), Vec<OCWError>> {
 			unimplemented!()
 		}
 
@@ -655,7 +678,9 @@ pub mod pallet {
 			format!("offchain::activities::{:?}::{:?}", cluster_id, era_id).into_bytes()
 		}
 
-		pub(crate) fn store_activities<A: Encode, B: Encode>(
+		#[allow(clippy::too_many_arguments)] // todo! refactor into 2 different methods (for customers and nodes) + use type info for
+									 // derive_key
+		pub(crate) fn store_validation_activities<A: Encode, B: Encode>(
 			// todo! add tests
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -681,7 +706,9 @@ pub mod pallet {
 			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
 		}
 
-		pub(crate) fn fetch_activities<A: Decode, B: Decode>(
+		#[allow(dead_code)]
+		#[allow(clippy::type_complexity)]
+		pub(crate) fn fetch_validation_activities<A: Decode, B: Decode>(
 			// todo! add tests
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -727,25 +754,35 @@ pub mod pallet {
 			}
 		}
 
-		pub(crate) fn get_batch_hashes<A: Activity>(
+		pub(crate) fn convert_to_batch_merkle_roots<A: Activity>(
+			activities: Vec<Vec<A>>,
+		) -> Vec<ActivityHash> {
+			activities
+				.into_iter()
+				.map(|inner_vec| {
+					let activity_hashes: Vec<ActivityHash> =
+						inner_vec.into_iter().map(|a| a.hash::<T>()).collect();
+					Self::create_merkle_root(&activity_hashes)
+				})
+				.collect()
+		}
+
+		pub(crate) fn split_to_batches<A: Activity>(
 			// todo! add tests
 			activities: &[A],
 			batch_size: usize,
-		) -> Vec<ActivityHash> {
-			let batch_size = (activities.len() + batch_size - 1) / batch_size; // Equivalent to ceil(activities.len() / k)
+		) -> Vec<Vec<A>> {
+			let adjusted_batch_size = (activities.len() + batch_size - 1) / batch_size; // Equivalent to ceil(activities.len() / k)
 
-			activities
-				.iter()
-				.sorted() // Sort the iterator - so that each time we'll receive the same roots
-				.chunks(batch_size) // Split activities into chunks of batch_size
-				.into_iter() // Convert the chunks iterator into an iterator
-				.map(|chunk| {
-					// For each chunk...
-					let hashes: Vec<ActivityHash> =
-						chunk.map(|activity| activity.hash::<T>()).collect();
-					Self::create_merkle_root(&hashes) // Create Merkle root of each batch
-				})
-				.collect() // Collect all the Merkle roots into a final vector
+			// Sort the activities first
+			let mut sorted_activities = activities.to_vec();
+			sorted_activities.sort(); // Sort using the derived Ord trait
+
+			// Split the sorted activities into chunks and collect them into vectors
+			sorted_activities
+				.chunks(adjusted_batch_size)
+				.map(|chunk| chunk.to_vec())
+				.collect()
 		}
 
 		/// Create merkle root of given leaves.
@@ -782,16 +819,17 @@ pub mod pallet {
 		/// Parameters:
 		/// - `cluster_id`: cluster id of a cluster
 		/// - `dac_nodes`: List of DAC nodes
+		#[allow(dead_code)]
 		pub(crate) fn get_era_to_prepare_for_payout(
 			// todo! this needs to be rewriten - too complex and inefficient
-			cluster_id: ClusterId,
+			cluster_id: &ClusterId,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Option<DdcEra>, Error<T>> {
 			let current_validator = T::NodeVisitor::get_current_validator();
 			let last_validated_era = Self::active_billing_reports(cluster_id, current_validator)
 				.ok_or(Error::EraToValidateRetrievalError)?;
 
-			let all_ids = Self::fetch_processed_era_for_node(&dac_nodes)
+			let all_ids = Self::fetch_processed_era_for_node(dac_nodes)
 				.map_err(|_| Error::<T>::FailToFetchIds)?;
 
 			let ids_greater_than_last_validated_era: Vec<DdcEra> = all_ids
@@ -843,9 +881,9 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			activities: &[(NodePubKey, Vec<A>)],
-			min_nodes: usize,
+			min_nodes: u16,
 			threshold: Percent,
-		) -> Result<Vec<A>, Vec<ConsensusError>> {
+		) -> Result<Vec<A>, Vec<OCWError>> {
 			let mut customer_buckets: BTreeMap<ActivityHash, Vec<A>> = BTreeMap::new();
 
 			// Flatten and collect all customer activities
@@ -864,16 +902,18 @@ pub mod pallet {
 
 			// Check if each customer/bucket appears in at least `min_nodes` nodes
 			for (id, activities) in customer_buckets {
-				if activities.len() < min_nodes {
-					errors.push(ConsensusError::NotEnoughNodesForConsensus {
+				if activities.len() < min_nodes.into() {
+					errors.push(OCWError::NotEnoughNodesForConsensus {
 						cluster_id: (*cluster_id),
 						era_id,
 						id,
 					});
-				} else if let Some(activity) = Self::reach_consensus(&activities, min_threshold) {
+				} else if let Some(activity) =
+					Self::reach_consensus(&activities, min_threshold.into())
+				{
 					consensus_activities.push(activity);
 				} else {
-					errors.push(ConsensusError::ActivityNotInConsensus {
+					errors.push(OCWError::ActivityNotInConsensus {
 						cluster_id: (*cluster_id),
 						era_id,
 						id,
@@ -898,6 +938,7 @@ pub mod pallet {
 		///
 		/// Parameters:
 		/// - `node_params`: DAC node parameters
+		#[allow(dead_code)]
 		pub(crate) fn fetch_processed_era(
 			node_params: &StorageNodeParams,
 		) -> Result<Vec<EraActivity>, http::Error> {
@@ -1023,12 +1064,18 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<(NodePubKey, Vec<NodeActivity>)>, Error<T>> {
+		) -> Result<Vec<(NodePubKey, Vec<NodeActivity>)>, OCWError> {
 			let mut node_usages = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
-				let usage = Self::fetch_node_usage(cluster_id, era_id, node_params)
-					.map_err(|_| Error::<T>::NodeUsageRetrievalError)?;
+				let usage =
+					Self::fetch_node_usage(cluster_id, era_id, node_params).map_err(|_| {
+						OCWError::NodeUsageRetrievalError {
+							cluster_id: *cluster_id,
+							era_id,
+							node_pub_key: node_pub_key.clone(),
+						}
+					})?;
 
 				node_usages.push((node_pub_key.clone(), usage));
 			}
@@ -1046,12 +1093,18 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<(NodePubKey, Vec<CustomerActivity>)>, Error<T>> {
+		) -> Result<Vec<(NodePubKey, Vec<CustomerActivity>)>, OCWError> {
 			let mut customers_usages = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
-				let usage = Self::fetch_customers_usage(cluster_id, era_id, node_params)
-					.map_err(|_| Error::<T>::NodeUsageRetrievalError)?;
+				let usage =
+					Self::fetch_customers_usage(cluster_id, era_id, node_params).map_err(|_| {
+						OCWError::CustomerUsageRetrievalError {
+							cluster_id: *cluster_id,
+							era_id,
+							node_pub_key: node_pub_key.clone(),
+						}
+					})?;
 
 				customers_usages.push((node_pub_key.clone(), usage));
 			}
@@ -1063,6 +1116,7 @@ pub mod pallet {
 		///
 		/// Parameters:
 		/// - `node_params`: DAC node parameters
+		#[allow(dead_code)]
 		fn fetch_processed_era_for_node(
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Vec<Vec<EraActivity>>, Error<T>> {
@@ -1097,7 +1151,7 @@ pub mod pallet {
 			// todo! add tests
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			era: DdcEra,
+			era_id: DdcEra,
 			payers_merkle_root_hash: ActivityHash,
 			payees_merkle_root_hash: ActivityHash,
 		) -> DispatchResult {
@@ -1106,7 +1160,7 @@ pub mod pallet {
 
 			ensure!(
 				!<EraValidationsInProgress<T>>::get(
-					(cluster_id, era),
+					(cluster_id, era_id),
 					(payers_merkle_root_hash, payees_merkle_root_hash)
 				)
 				.contains(&caller.clone()),
@@ -1116,7 +1170,7 @@ pub mod pallet {
 			// todo! if there was no any records for (cluster_id, era) in EraValidationsInProgress,
 			// then put 'ValidatingData' status in EraValidations for (cluster_id, era)
 			<EraValidationsInProgress<T>>::try_mutate(
-				(cluster_id, era),
+				(cluster_id, era_id),
 				(payers_merkle_root_hash, payees_merkle_root_hash),
 				|validators| -> DispatchResult {
 					validators.push(caller);
@@ -1128,14 +1182,14 @@ pub mod pallet {
 			let threshold = percent * <ValidatorSet<T>>::get().len();
 
 			let signed_validators = <EraValidationsInProgress<T>>::get(
-				(cluster_id, era),
+				(cluster_id, era_id),
 				(payers_merkle_root_hash, payees_merkle_root_hash),
 			);
 
 			if threshold < signed_validators.len() {
 				EraValidations::<T>::insert(
 					cluster_id,
-					era,
+					era_id,
 					EraValidation {
 						payers_merkle_root_hash,
 						payees_merkle_root_hash,
@@ -1146,7 +1200,7 @@ pub mod pallet {
 
 				// todo! delete from EraValidationsInProgress
 
-				Self::deposit_event(Event::<T>::EraValidationReady { cluster_id, era });
+				Self::deposit_event(Event::<T>::EraValidationReady { cluster_id, era_id });
 			}
 
 			Ok(())
@@ -1167,19 +1221,19 @@ pub mod pallet {
 		pub fn set_validate_payout_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
-			era: DdcEra,
+			era_id: DdcEra,
 			payout_data: PayoutData,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(
-				!<PayoutValidators<T>>::get((cluster_id, era), payout_data.hash)
+				!<PayoutValidators<T>>::get((cluster_id, era_id), payout_data.hash)
 					.contains(&caller.clone()),
 				Error::<T>::AlreadySignedPayoutBatch
 			);
 
 			<PayoutValidators<T>>::try_mutate(
-				(cluster_id, era),
+				(cluster_id, era_id),
 				payout_data.hash,
 				|validators| -> DispatchResult {
 					validators.push(caller);
@@ -1190,11 +1244,12 @@ pub mod pallet {
 			let percent = Percent::from_percent(T::MAJORITY);
 			let threshold = percent * <ValidatorSet<T>>::get().len();
 
-			let signed_validators = <PayoutValidators<T>>::get((cluster_id, era), payout_data.hash);
+			let signed_validators =
+				<PayoutValidators<T>>::get((cluster_id, era_id), payout_data.hash);
 
 			if threshold < signed_validators.len() {
-				PayoutBatch::<T>::insert(cluster_id, era, payout_data);
-				Self::deposit_event(Event::<T>::PayoutBatchCreated { cluster_id, era });
+				PayoutBatch::<T>::insert(cluster_id, era_id, payout_data);
+				Self::deposit_event(Event::<T>::PayoutBatchCreated { cluster_id, era_id });
 			}
 
 			Ok(())
@@ -1213,14 +1268,14 @@ pub mod pallet {
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn emit_consensus_errors(
 			origin: OriginFor<T>,
-			errors: Vec<ConsensusError>,
+			errors: Vec<OCWError>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
 
 			for error in errors {
 				match error {
-					ConsensusError::NotEnoughNodesForConsensus { cluster_id, era_id, id } => {
+					OCWError::NotEnoughNodesForConsensus { cluster_id, era_id, id } => {
 						Self::deposit_event(Event::NotEnoughNodesForConsensus {
 							cluster_id,
 							era_id,
@@ -1228,11 +1283,50 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
-					ConsensusError::ActivityNotInConsensus { cluster_id, era_id, id } => {
+					OCWError::ActivityNotInConsensus { cluster_id, era_id, id } => {
 						Self::deposit_event(Event::ActivityNotInConsensus {
 							cluster_id,
 							era_id,
 							id,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::NodeUsageRetrievalError { cluster_id, era_id, node_pub_key } => {
+						Self::deposit_event(Event::NodeUsageRetrievalError {
+							cluster_id,
+							era_id,
+							node_pub_key,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::CustomerUsageRetrievalError { cluster_id, era_id, node_pub_key } => {
+						Self::deposit_event(Event::CustomerUsageRetrievalError {
+							cluster_id,
+							era_id,
+							node_pub_key,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::PrepareEraTransactionError {
+						cluster_id,
+						era_id,
+						payers_merkle_root_hash,
+						payees_merkle_root_hash,
+					} => {
+						Self::deposit_event(Event::PrepareEraTransactionError {
+							cluster_id,
+							era_id,
+							payers_merkle_root_hash,
+							payees_merkle_root_hash,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::NoAvailableSigner => {
+						Self::deposit_event(Event::NoAvailableSigner { validator: caller.clone() });
+					},
+					OCWError::NotEnoughDACNodes { num_nodes } => {
+						Self::deposit_event(Event::NotEnoughDACNodes {
+							num_nodes,
 							validator: caller.clone(),
 						});
 					},
@@ -1281,7 +1375,8 @@ pub mod pallet {
 			_cluster_id: ClusterId,
 			_era: DdcEra,
 			_batch_index: BatchIndex,
-			_payers: Vec<(T::AccountId, CustomerUsage)>,
+			_payers: &[(T::AccountId, CustomerUsage)],
+			_adjacent_hashes: &[ActivityHash],
 		) -> bool {
 			true
 		}
@@ -1289,7 +1384,8 @@ pub mod pallet {
 			_cluster_id: ClusterId,
 			_era: DdcEra,
 			_batch_index: BatchIndex,
-			_payees: Vec<(T::AccountId, NodeUsage)>,
+			_payees: &[(T::AccountId, NodeUsage)],
+			_adjacent_hashes: &[ActivityHash],
 		) -> bool {
 			true
 		}

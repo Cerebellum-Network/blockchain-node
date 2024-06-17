@@ -236,6 +236,7 @@ pub mod pallet {
 		BatchSizeIsOutOfBounds,
 		ScoreRetrievalError,
 		BadRequest,
+		BatchValidationFailed,
 	}
 
 	#[pallet::storage]
@@ -262,7 +263,7 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct BillingReport<T: Config> {
-		pub state: State,
+		pub state: PayoutState,
 		pub vault: T::AccountId,
 		pub start_era: i64,
 		pub end_era: i64,
@@ -388,6 +389,17 @@ pub mod pallet {
 			ensure!(
 				!billing_report.charging_processed_batches.contains(&batch_index),
 				Error::<T>::BatchIndexAlreadyProcessed
+			);
+
+			ensure!(
+				T::ValidatorVisitor::is_customers_batch_valid(
+					cluster_id,
+					era,
+					batch_index,
+					&payers,
+					&[] // todo! pass from newly added input
+				),
+				Error::<T>::BatchValidationFailed
 			);
 
 			let mut updated_billing_report = billing_report;
@@ -680,6 +692,17 @@ pub mod pallet {
 				Error::<T>::BatchIndexAlreadyProcessed
 			);
 
+			ensure!(
+				T::ValidatorVisitor::is_providers_batch_valid(
+					cluster_id,
+					era,
+					batch_index,
+					&payees,
+					&[] // todo! pass from newly added input
+				),
+				Error::<T>::BatchValidationFailed
+			);
+
 			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
 			for payee in payees {
@@ -963,8 +986,8 @@ pub mod pallet {
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
-		total.storage = fraction_of_month
-			* (|| -> Option<u128> {
+		total.storage = fraction_of_month *
+			(|| -> Option<u128> {
 				(usage.stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)
