@@ -162,6 +162,11 @@ pub mod pallet {
 			node_pub_key: NodePubKey,
 			validator: T::AccountId,
 		},
+		EraRetrievalError {
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+			validator: T::AccountId,
+		},
 		PrepareEraTransactionError {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
@@ -205,6 +210,10 @@ pub mod pallet {
 			era_id: DdcEra,
 			node_pub_key: NodePubKey,
 		},
+		EraRetrievalError {
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		},
 		PrepareEraTransactionError {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
@@ -220,8 +229,6 @@ pub mod pallet {
 	#[pallet::error]
 	#[derive(PartialEq)]
 	pub enum Error<T> {
-		/// Billing report already exists.
-		BillingReportAlreadyExist,
 		/// Bad verification key.
 		BadVerificationKey,
 		/// Bad requests.
@@ -254,51 +261,7 @@ pub mod pallet {
 		NoAvailableSigner,
 	}
 
-	/// Active billing report of a cluster id and a validator.
-	#[pallet::storage]
-	#[pallet::getter(fn active_billing_reports)]
-	pub type ActiveBillingReports<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		ClusterId,
-		Blake2_128Concat,
-		T::AccountId,
-		ReceiptParams,
-	>;
-
-	/// Payout data for a cluster id and an era.
-	#[pallet::storage]
-	#[pallet::getter(fn payout_batch)]
-	pub type PayoutBatch<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, DdcEra, PayoutData>;
-
-	/// Payout validators.
-	#[pallet::storage]
-	#[pallet::getter(fn payout_validators)]
-	pub type PayoutValidators<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		(ClusterId, DdcEra),
-		Blake2_128Concat,
-		ActivityHash,
-		Vec<T::AccountId>,
-		ValueQuery,
-	>;
-
-	/// Payout validators.
-	#[pallet::storage]
-	#[pallet::getter(fn era_validations_in_progress)]
-	pub type EraValidationsInProgress<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		(ClusterId, DdcEra),
-		Blake2_128Concat,
-		(ActivityHash, ActivityHash),
-		Vec<T::AccountId>,
-		ValueQuery,
-	>;
-
-	/// Era validation
+	/// Era validations
 	#[pallet::storage]
 	#[pallet::getter(fn era_validations)]
 	pub type EraValidations<T: Config> = StorageDoubleMap<
@@ -325,20 +288,9 @@ pub mod pallet {
 	#[pallet::getter(fn get_stash_for_ddc_validator)]
 	pub type ValidatorToStashKey<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
-	/// ReceiptParams of an active billing report.
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)] // todo! rename to better naming
-	pub struct ReceiptParams {
-		/// DDC era.
-		pub era: DdcEra,
-		/// payers merkle root hash.
-		pub payers_merkle_root_hash: ActivityHash,
-		/// payees merkle root hash.
-		pub payees_merkle_root_hash: ActivityHash,
-	}
-
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub enum EraValidationStatus {
-		ValidatingData, // todo! put it by the 1st OCW that starts to prepare validation
+		ValidatingData,
 		ReadyForPayout,
 		PayoutInProgress,
 		PayoutFailed,
@@ -348,10 +300,10 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct EraValidation<T: Config> {
+		pub validators: BTreeMap<(ActivityHash, ActivityHash), Vec<T::AccountId>>, // todo! change to signatures (T::AccountId, Signature)
 		pub payers_merkle_root_hash: ActivityHash,
 		pub payees_merkle_root_hash: ActivityHash,
 		pub status: EraValidationStatus,
-		pub validators: Vec<T::AccountId>, // todo! change to signatures
 	}
 
 	/// Era activity of a node.
@@ -450,12 +402,6 @@ pub mod pallet {
 		}
 	}
 
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	#[scale_info(skip_type_params(Hash))]
-	pub struct PayoutData {
-		pub hash: ActivityHash,
-	}
-
 	/// Unwrap or send an error log
 	macro_rules! unwrap_or_log_error {
 		($result:expr, $error_msg:expr) => {
@@ -536,7 +482,7 @@ pub mod pallet {
 			}
 
 			let era_id_result =
-				Self::get_era_for_payout(cluster_id, EraValidationStatus::ReadyForPayout);
+				Self::get_era_for_validation(cluster_id, dac_nodes).map_err(|err| vec![err])?;
 			if era_id_result.is_none() {
 				return Ok(());
 			}
@@ -625,7 +571,7 @@ pub mod pallet {
 
 			// process batches for era
 			let era_id_result = unwrap_or_log_error!(
-				Self::get_era_to_prepare_for_payout(cluster_id, &dac_nodes),
+				Self::get_era_for_validation(cluster_id, &dac_nodes),
 				"Error retrieving era to validate"
 			);
 
@@ -768,21 +714,18 @@ pub mod pallet {
 		}
 
 		pub(crate) fn split_to_batches<A: Activity>(
-			// todo! add tests
 			activities: &[A],
 			batch_size: usize,
 		) -> Vec<Vec<A>> {
-			let adjusted_batch_size = (activities.len() + batch_size - 1) / batch_size; // Equivalent to ceil(activities.len() / k)
-
+			if activities.is_empty() {
+				return vec![];
+			}
 			// Sort the activities first
 			let mut sorted_activities = activities.to_vec();
 			sorted_activities.sort(); // Sort using the derived Ord trait
 
 			// Split the sorted activities into chunks and collect them into vectors
-			sorted_activities
-				.chunks(adjusted_batch_size)
-				.map(|chunk| chunk.to_vec())
-				.collect()
+			sorted_activities.chunks(batch_size).map(|chunk| chunk.to_vec()).collect()
 		}
 
 		/// Create merkle root of given leaves.
@@ -796,6 +739,7 @@ pub mod pallet {
 			T::ActivityHasher::ordered_trie_root(leaves, Default::default()).into()
 		}
 
+		#[allow(dead_code)]
 		pub(crate) fn get_era_for_payout(
 			cluster_id: &ClusterId,
 			status: EraValidationStatus,
@@ -814,31 +758,60 @@ pub mod pallet {
 			smallest_era_id
 		}
 
+		// todo! add tests
+		pub(crate) fn get_last_validated_era(
+			cluster_id: &ClusterId,
+			validator: T::AccountId,
+		) -> Result<Option<DdcEra>, OCWError> {
+			let mut max_era: Option<DdcEra> = None;
+
+			// Iterate through all eras in EraValidations for the given cluster_id
+			<EraValidations<T>>::iter_prefix(cluster_id)
+				.filter_map(|(era, validation)| {
+					// Filter for validators that contain the given validator
+					if validation
+						.validators
+						.values()
+						.any(|validators| validators.contains(&validator))
+					{
+						Some(era)
+					} else {
+						None
+					}
+				})
+				.for_each(|era| {
+					// Update max_era to the maximum era found
+					if let Some(current_max) = max_era {
+						if era > current_max {
+							max_era = Some(era);
+						}
+					} else {
+						max_era = Some(era);
+					}
+				});
+
+			Ok(max_era)
+		}
+
 		/// Fetch current era across all DAC nodes to validate.
 		///
 		/// Parameters:
 		/// - `cluster_id`: cluster id of a cluster
 		/// - `dac_nodes`: List of DAC nodes
-		#[allow(dead_code)]
-		pub(crate) fn get_era_to_prepare_for_payout(
+		pub(crate) fn get_era_for_validation(
 			// todo! this needs to be rewriten - too complex and inefficient
 			cluster_id: &ClusterId,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Option<DdcEra>, Error<T>> {
+		) -> Result<Option<DdcEra>, OCWError> {
 			let current_validator = T::NodeVisitor::get_current_validator();
-			let last_validated_era = Self::active_billing_reports(cluster_id, current_validator)
-				.ok_or(Error::EraToValidateRetrievalError)?;
-
-			let all_ids = Self::fetch_processed_era_for_node(dac_nodes)
-				.map_err(|_| Error::<T>::FailToFetchIds)?;
+			let last_validated_era = Self::get_last_validated_era(cluster_id, current_validator)?
+				.unwrap_or_else(DdcEra::default);
+			let all_ids = Self::fetch_processed_era_for_node(cluster_id, dac_nodes)?;
 
 			let ids_greater_than_last_validated_era: Vec<DdcEra> = all_ids
 				.iter()
 				.flat_map(|eras| {
-					eras.iter()
-						.cloned()
-						.filter(|ids| ids.id > last_validated_era.era)
-						.map(|era| era.id)
+					eras.iter().cloned().filter(|ids| ids.id > last_validated_era).map(|era| era.id)
 				})
 				.sorted()
 				.collect::<Vec<DdcEra>>();
@@ -1068,6 +1041,7 @@ pub mod pallet {
 			let mut node_usages = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
+				// todo! probably shouldn't stop when some DAC is not responding as we can still work with others
 				let usage =
 					Self::fetch_node_usage(cluster_id, era_id, node_params).map_err(|_| {
 						OCWError::NodeUsageRetrievalError {
@@ -1097,6 +1071,7 @@ pub mod pallet {
 			let mut customers_usages = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
+				// todo! probably shouldn't stop when some DAC is not responding as we can still work with others
 				let usage =
 					Self::fetch_customers_usage(cluster_id, era_id, node_params).map_err(|_| {
 						OCWError::CustomerUsageRetrievalError {
@@ -1115,16 +1090,22 @@ pub mod pallet {
 		/// Fetch processed era for across all nodes.
 		///
 		/// Parameters:
+		/// - `cluster_id`: Cluster id
 		/// - `node_params`: DAC node parameters
-		#[allow(dead_code)]
 		fn fetch_processed_era_for_node(
+			cluster_id: &ClusterId,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<Vec<EraActivity>>, Error<T>> {
+		) -> Result<Vec<Vec<EraActivity>>, OCWError> {
 			let mut eras = Vec::new();
 
-			for (_, node_params) in dac_nodes {
-				let ids = Self::fetch_processed_era(node_params)
-					.map_err(|_| Error::<T>::EraPerNodeRetrievalError)?;
+			for (node_pub_key, node_params) in dac_nodes {
+				// todo! probably shouldn't stop when some DAC is not responding as we can still work with others
+				let ids = Self::fetch_processed_era(node_params).map_err(|_| {
+					OCWError::EraRetrievalError {
+						cluster_id: *cluster_id,
+						node_pub_key: node_pub_key.clone(),
+					}
+				})?;
 
 				eras.push(ids);
 			}
@@ -1148,7 +1129,6 @@ pub mod pallet {
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())]
 		pub fn set_prepare_era_for_payout(
-			// todo! add tests
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era_id: DdcEra,
@@ -1158,98 +1138,48 @@ pub mod pallet {
 			let caller = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
 
-			ensure!(
-				!<EraValidationsInProgress<T>>::get(
-					(cluster_id, era_id),
-					(payers_merkle_root_hash, payees_merkle_root_hash)
-				)
-				.contains(&caller.clone()),
-				Error::<T>::AlreadySignedEra
-			);
+			// Retrieve or initialize the EraValidation
+			let mut era_validation = {
+				let era_validations = <EraValidations<T>>::get(cluster_id, era_id);
 
-			// todo! if there was no any records for (cluster_id, era) in EraValidationsInProgress,
-			// then put 'ValidatingData' status in EraValidations for (cluster_id, era)
-			<EraValidationsInProgress<T>>::try_mutate(
-				(cluster_id, era_id),
-				(payers_merkle_root_hash, payees_merkle_root_hash),
-				|validators| -> DispatchResult {
-					validators.push(caller);
-					Ok(())
-				},
-			)?;
+				if era_validations.is_none() {
+					EraValidation {
+						payers_merkle_root_hash: ActivityHash::default(),
+						payees_merkle_root_hash: ActivityHash::default(),
+						validators: Default::default(),
+						status: EraValidationStatus::ValidatingData,
+					}
+				} else {
+					era_validations.unwrap()
+				}
+			};
+
+			// Ensure the validators entry exists for the specified (payers_merkle_root_hash, payees_merkle_root_hash)
+			let signed_validators = era_validation
+				.validators
+				.entry((payers_merkle_root_hash, payees_merkle_root_hash))
+				.or_insert_with(Vec::new);
+
+			ensure!(!signed_validators.contains(&caller.clone()), Error::<T>::AlreadySignedEra);
+			signed_validators.push(caller.clone());
 
 			let percent = Percent::from_percent(T::MAJORITY);
 			let threshold = percent * <ValidatorSet<T>>::get().len();
 
-			let signed_validators = <EraValidationsInProgress<T>>::get(
-				(cluster_id, era_id),
-				(payers_merkle_root_hash, payees_merkle_root_hash),
-			);
-
+			let mut should_deposit_ready_event = false;
 			if threshold < signed_validators.len() {
-				EraValidations::<T>::insert(
-					cluster_id,
-					era_id,
-					EraValidation {
-						payers_merkle_root_hash,
-						payees_merkle_root_hash,
-						status: EraValidationStatus::ReadyForPayout,
-						validators: signed_validators,
-					},
-				);
+				// Update payers_merkle_root_hash and payees_merkle_root_hash as ones passed the threshold
+				era_validation.payers_merkle_root_hash = payers_merkle_root_hash;
+				era_validation.payees_merkle_root_hash = payees_merkle_root_hash;
+				era_validation.status = EraValidationStatus::ReadyForPayout;
 
-				// todo! delete from EraValidationsInProgress
-
-				Self::deposit_event(Event::<T>::EraValidationReady { cluster_id, era_id });
+				should_deposit_ready_event = true;
 			}
 
-			Ok(())
-		}
-
-		/// Set payout batch.
-		///
-		/// The origin must be a validator.
-		///
-		/// Parameters:
-		/// - `cluster_id`: Cluster id of a cluster
-		/// - `era`: Era id
-		/// - `payout_data`: Payout Data
-		///
-		/// Emits `PayoutBatchCreated` event when successful.
-		#[pallet::call_index(1)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn set_validate_payout_batch(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			payout_data: PayoutData,
-		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
-			ensure!(
-				!<PayoutValidators<T>>::get((cluster_id, era_id), payout_data.hash)
-					.contains(&caller.clone()),
-				Error::<T>::AlreadySignedPayoutBatch
-			);
-
-			<PayoutValidators<T>>::try_mutate(
-				(cluster_id, era_id),
-				payout_data.hash,
-				|validators| -> DispatchResult {
-					validators.push(caller);
-					Ok(())
-				},
-			)?;
-
-			let percent = Percent::from_percent(T::MAJORITY);
-			let threshold = percent * <ValidatorSet<T>>::get().len();
-
-			let signed_validators =
-				<PayoutValidators<T>>::get((cluster_id, era_id), payout_data.hash);
-
-			if threshold < signed_validators.len() {
-				PayoutBatch::<T>::insert(cluster_id, era_id, payout_data);
-				Self::deposit_event(Event::<T>::PayoutBatchCreated { cluster_id, era_id });
+			// Update the EraValidations storage
+			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
+			if should_deposit_ready_event {
+				Self::deposit_event(Event::<T>::EraValidationReady { cluster_id, era_id });
 			}
 
 			Ok(())
@@ -1303,6 +1233,13 @@ pub mod pallet {
 						Self::deposit_event(Event::CustomerUsageRetrievalError {
 							cluster_id,
 							era_id,
+							node_pub_key,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::EraRetrievalError { cluster_id, node_pub_key } => {
+						Self::deposit_event(Event::EraRetrievalError {
+							cluster_id,
 							node_pub_key,
 							validator: caller.clone(),
 						});
