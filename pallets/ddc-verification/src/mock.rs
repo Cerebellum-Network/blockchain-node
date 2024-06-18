@@ -215,7 +215,6 @@ parameter_types! {
 impl crate::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = VerificationPalletId;
-	type MaxVerificationKeyLimit = ConstU32<10>;
 	type WeightInfo = ();
 	type ClusterManager = TestClusterManager;
 	type NodeVisitor = MockNodeVisitor;

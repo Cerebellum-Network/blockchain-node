@@ -72,7 +72,7 @@ fn begin_billing_report_works() {
 		System::assert_last_event(Event::BillingReportInitialized { cluster_id, era }.into());
 
 		let report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(report.state, State::Initialized);
+		assert_eq!(report.state, PayoutState::Initialized);
 		assert_eq!(report.start_era, start_era);
 		assert_eq!(report.end_era, end_era);
 	})
@@ -152,7 +152,7 @@ fn begin_charging_customers_works() {
 		System::assert_last_event(Event::ChargingStarted { cluster_id, era }.into());
 
 		let report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(report.state, State::ChargingCustomers);
+		assert_eq!(report.state, PayoutState::ChargingCustomers);
 		assert_eq!(report.charging_max_batch_index, max_batch_index);
 	})
 }
@@ -526,7 +526,7 @@ fn send_charging_customers_batch_works() {
 			report.total_customer_charge.transfer
 		);
 
-		assert_eq!(report.state, State::ChargingCustomers);
+		assert_eq!(report.state, PayoutState::ChargingCustomers);
 		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
@@ -714,7 +714,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 
 		System::assert_has_event(Event::ChargingFinished { cluster_id, era }.into());
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(report_after.state, State::CustomersChargedWithFees);
+		assert_eq!(report_after.state, PayoutState::CustomersChargedWithFees);
 
 		let fees = get_fees(&cluster_id);
 		let total_left_from_one =
@@ -957,7 +957,7 @@ fn send_charging_customers_batch_works_for_day() {
 			report.total_customer_charge.transfer
 		);
 
-		assert_eq!(report.state, State::ChargingCustomers);
+		assert_eq!(report.state, PayoutState::ChargingCustomers);
 		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
@@ -1199,7 +1199,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 			report.total_customer_charge.transfer
 		);
 
-		assert_eq!(report.state, State::ChargingCustomers);
+		assert_eq!(report.state, PayoutState::ChargingCustomers);
 		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
@@ -1441,7 +1441,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 			report.total_customer_charge.transfer
 		);
 
-		assert_eq!(report.state, State::ChargingCustomers);
+		assert_eq!(report.state, PayoutState::ChargingCustomers);
 		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
@@ -1683,7 +1683,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 			report.total_customer_charge.transfer
 		);
 
-		assert_eq!(report.state, State::ChargingCustomers);
+		assert_eq!(report.state, PayoutState::ChargingCustomers);
 		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
@@ -1925,7 +1925,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 			report.total_customer_charge.transfer
 		);
 
-		assert_eq!(report.state, State::ChargingCustomers);
+		assert_eq!(report.state, PayoutState::ChargingCustomers);
 		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
@@ -2167,7 +2167,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 			report.total_customer_charge.transfer
 		);
 
-		assert_eq!(report.state, State::ChargingCustomers);
+		assert_eq!(report.state, PayoutState::ChargingCustomers);
 		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
@@ -2477,7 +2477,7 @@ fn end_charging_customers_works() {
 		assert_eq!(System::events().len(), 4 + 1 + 3 + transfers);
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(report_after.state, State::CustomersChargedWithFees);
+		assert_eq!(report_after.state, PayoutState::CustomersChargedWithFees);
 
 		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
 			get_fees(&cluster_id).validators_share +
@@ -2599,7 +2599,7 @@ fn end_charging_customers_works_zero_fees() {
 		assert_eq!(System::events().len(), 4 + 1);
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(report_after.state, State::CustomersChargedWithFees);
+		assert_eq!(report_after.state, PayoutState::CustomersChargedWithFees);
 
 		let fees = get_fees(&cluster_id);
 
@@ -2805,7 +2805,7 @@ fn begin_rewarding_providers_works() {
 		));
 
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(report.state, State::Initialized);
+		assert_eq!(report.state, PayoutState::Initialized);
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -2839,7 +2839,7 @@ fn begin_rewarding_providers_works() {
 		System::assert_last_event(Event::RewardingStarted { cluster_id, era }.into());
 
 		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(report.state, State::RewardingProviders);
+		assert_eq!(report.state, PayoutState::RewardingProviders);
 	})
 }
 
@@ -4519,7 +4519,7 @@ fn end_rewarding_providers_works() {
 		));
 
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(report.state, State::Initialized);
+		assert_eq!(report.state, PayoutState::Initialized);
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -4567,7 +4567,7 @@ fn end_rewarding_providers_works() {
 		System::assert_last_event(Event::RewardingFinished { cluster_id, era }.into());
 
 		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(report.state, State::ProvidersRewarded);
+		assert_eq!(report.state, PayoutState::ProvidersRewarded);
 	})
 }
 
@@ -4743,7 +4743,7 @@ fn end_billing_report_works() {
 		));
 
 		let report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_eq!(report.state, State::Initialized);
+		assert_eq!(report.state, PayoutState::Initialized);
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -4799,6 +4799,6 @@ fn end_billing_report_works() {
 		let report_end = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert!(report_end.rewarding_processed_batches.is_empty());
 		assert!(report_end.charging_processed_batches.is_empty());
-		assert_eq!(report_end.state, State::Finalized);
+		assert_eq!(report_end.state, PayoutState::Finalized);
 	})
 }
