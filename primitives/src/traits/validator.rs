@@ -1,7 +1,7 @@
 use frame_system::Config;
 use sp_std::prelude::*;
 
-use crate::{BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeUsage};
+use crate::{ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeUsage};
 
 pub trait ValidatorVisitor<T: Config> {
 	fn setup_validators(validators: Vec<T::AccountId>);
@@ -10,12 +10,14 @@ pub trait ValidatorVisitor<T: Config> {
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
-		payers: Vec<(T::AccountId, CustomerUsage)>,
+		payers: &[(T::AccountId, CustomerUsage)],
+		adjacent_hashes: &[ActivityHash],
 	) -> bool;
 	fn is_providers_batch_valid(
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
-		payees: Vec<(T::AccountId, NodeUsage)>,
+		payees: &[(T::AccountId, NodeUsage)],
+		adjacent_hashes: &[ActivityHash],
 	) -> bool;
 }
