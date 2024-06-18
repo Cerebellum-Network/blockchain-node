@@ -48,8 +48,8 @@ const APP_WHITELISTED_CALLER: Curve =
 const SUP_WHITELISTED_CALLER: Curve = Curve::make_reciprocal(
 	1,
 	28,
-	percent_perbill(Perbill::from_parts(12_500_000)), // 1.25 %
-	percent_perbill(Perbill::from_parts(2_500_000)),  // 0.25 %
+	percent_perbill(Perbill::from_parts(1_000_000)), // 0.1 %
+	percent_perbill(Perbill::from_parts(250_000)),   // 0.025 %
 	percent(50),
 );
 
