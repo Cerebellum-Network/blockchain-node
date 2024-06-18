@@ -87,7 +87,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 12
 		pallet_referenda::TrackInfo {
 			name: "staking_admin",
 			max_deciding: 10,
-			decision_deposit: 5 * GRAND,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 2 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 3 * HOURS,
@@ -101,7 +101,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 12
 		pallet_referenda::TrackInfo {
 			name: "treasurer",
 			max_deciding: 10,
-			decision_deposit: GRAND,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 2 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 3 * HOURS,
@@ -115,7 +115,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 12
 		pallet_referenda::TrackInfo {
 			name: "general_admin",
 			max_deciding: 10,
-			decision_deposit: 5 * GRAND,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 2 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 3 * HOURS,
@@ -157,7 +157,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 12
 		pallet_referenda::TrackInfo {
 			name: "small_tipper",
 			max_deciding: 200,
-			decision_deposit: DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: MINUTES,
 			decision_period: 7 * DAYS,
 			confirm_period: 10 * MINUTES,
@@ -171,7 +171,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 12
 		pallet_referenda::TrackInfo {
 			name: "big_tipper",
 			max_deciding: 100,
-			decision_deposit: 10 * DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 10 * MINUTES,
 			decision_period: 7 * DAYS,
 			confirm_period: HOURS,
@@ -185,7 +185,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 12
 		pallet_referenda::TrackInfo {
 			name: "small_spender",
 			max_deciding: 50,
-			decision_deposit: 100 * DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 4 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 12 * HOURS,
@@ -199,7 +199,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 12
 		pallet_referenda::TrackInfo {
 			name: "medium_spender",
 			max_deciding: 50,
-			decision_deposit: 200 * DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 4 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 24 * HOURS,
@@ -213,7 +213,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 12
 		pallet_referenda::TrackInfo {
 			name: "big_spender",
 			max_deciding: 50,
-			decision_deposit: 400 * DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 4 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 48 * HOURS,
