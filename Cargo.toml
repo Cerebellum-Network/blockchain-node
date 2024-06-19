@@ -40,6 +40,7 @@ jsonrpsee = { version = "0.16.2", default-features = false, features = ["server"
 lazy_static = { version = "1.4.0", default-features = false }
 log = { version = "0.4.17", default-features = false }
 parking_lot = { version = "0.12.1", default-features = false }
+polkadot-ckb-merkle-mountain-range = { version = "0.7.0", default-features = false }
 rand = { version = "0.8", default-features = false }
 rand_chacha = { version = "0.2", default-features = false }
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }

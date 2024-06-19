@@ -1,4 +1,6 @@
-use ddc_primitives::{ClusterId, StorageNodeParams, StorageNodePubKey, KEY_TYPE};
+use ddc_primitives::{
+	ClusterId, MergeActivityHash, StorageNodeParams, StorageNodePubKey, KEY_TYPE,
+};
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{
 	offchain::{
@@ -1645,6 +1647,63 @@ fn off_chain_worker_works() {
 				era_id: DdcEra::default(),
 				payout_data: PayoutData { hash: ActivityHash::default() },
 			})
+		);
+	});
+}
+
+#[test]
+fn merkle_tree_create_verify_works() {
+	new_test_ext().execute_with(|| {
+		let a: ActivityHash = [0; 32];
+		let b: ActivityHash = [1; 32];
+		let c: ActivityHash = [2; 32];
+		let d: ActivityHash = [3; 32];
+		let e: ActivityHash = [4; 32];
+		let f: ActivityHash = [5; 32];
+
+		let leaves = vec![a, b, c, d, e];
+
+		let root = DdcVerification::create_merkle_root(&leaves).unwrap();
+
+		assert_eq!(
+			root,
+			[
+				205, 34, 92, 22, 66, 39, 53, 146, 126, 111, 191, 174, 107, 224, 161, 127, 150, 69,
+				255, 15, 237, 252, 116, 39, 186, 26, 40, 154, 180, 110, 185, 7
+			]
+		);
+
+		let store = MemStore::default();
+		let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
+			MemMMR::<_, MergeActivityHash>::new(0, &store);
+		let leaf_position_map: Vec<(ActivityHash, u64)> = leaves
+			.iter()
+			.map(
+				|a| (*a, mmr.push(*a).unwrap()), // todo! Need to remove unwrap
+			)
+			.collect();
+
+		let leaf_position: Vec<(u64, ActivityHash)> = leaf_position_map
+			.into_iter()
+			.filter(|(l, _)| l == &c)
+			.map(|(l, p)| (p, l))
+			.collect();
+		let position: Vec<u64> = leaf_position.clone().into_iter().map(|(p, _)| p).collect();
+
+		assert!(DdcVerification::proof_merkle_leaf(
+			root,
+			mmr.gen_proof(position.clone()).unwrap(),
+			leaf_position
+		)
+		.unwrap());
+
+		assert_noop!(
+			DdcVerification::proof_merkle_leaf(
+				root,
+				mmr.gen_proof(position).unwrap(),
+				vec![(6, f)]
+			),
+			Error::<Test>::FailToVerifyMerkleProof
 		);
 	});
 }

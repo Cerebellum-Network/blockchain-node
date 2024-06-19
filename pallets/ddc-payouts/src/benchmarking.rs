@@ -231,7 +231,7 @@ benchmarks! {
 			(customer, customer_usage)
 		}).collect();
 
-	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payers)
+	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payers, 0, vec![], vec![])
 	verify {
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();

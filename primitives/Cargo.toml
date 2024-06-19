@@ -9,9 +9,11 @@ readme.workspace = true
 repository.workspace = true
 
 [dependencies]
+blake2 = { version = "0.10.4", default-features = false }
 codec = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+polkadot-ckb-merkle-mountain-range = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
 sp-application-crypto = { workspace = true }
@@ -22,6 +24,8 @@ sp-std = { workspace = true }
 [features]
 default = ["std"]
 std = [
+  "blake2/std",
+  "polkadot-ckb-merkle-mountain-range/std",
   "codec/std",
   "scale-info/std",
   "sp-core/std",

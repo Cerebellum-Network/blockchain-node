@@ -25,6 +25,10 @@ use frame_system::{
 	pallet_prelude::*,
 };
 pub use pallet::*;
+use polkadot_ckb_merkle_mountain_range::{
+	util::{MemMMR, MemStore},
+	MerkleProof, MMR,
+};
 use scale_info::prelude::format;
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
@@ -48,7 +52,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::BucketId;
+	use ddc_primitives::{BucketId, MergeActivityHash};
 	use frame_election_provider_support::SortedListProvider;
 	use frame_support::PalletId;
 	use sp_runtime::SaturatedConversion;
@@ -176,6 +180,7 @@ pub mod pallet {
 			num_nodes: u16,
 			validator: T::AccountId,
 		},
+		FailedToCreateMerkleRoot,
 	}
 
 	/// Consensus Errors
@@ -215,6 +220,7 @@ pub mod pallet {
 		NotEnoughDACNodes {
 			num_nodes: u16,
 		},
+		FailedToCreateMerkleRoot,
 	}
 
 	#[pallet::error]
@@ -252,6 +258,12 @@ pub mod pallet {
 		DDCValidatorKeyNotRegistered,
 		TransactionSubmissionError,
 		NoAvailableSigner,
+		/// Fail to generate proof
+		FailToGenerateProof,
+		/// Fail to verify merkle proof
+		FailToVerifyMerkleProof,
+		/// No Era Validation exist
+		NoEraValidation,
 	}
 
 	/// Active billing report of a cluster id and a validator.
@@ -556,8 +568,13 @@ pub mod pallet {
 			)?;
 			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
-			);
-			let customers_activity_root = Self::create_merkle_root(&customers_activity_batch_roots);
+			)
+			.into_iter()
+			.collect::<Result<Vec<ActivityHash>, OCWError>>()
+			.map_err(|err| vec![err])?;
+
+			let customers_activity_root = Self::create_merkle_root(&customers_activity_batch_roots)
+				.map_err(|err| vec![err])?;
 
 			let nodes_activity_in_consensus = Self::get_consensus_for_activities(
 				cluster_id,
@@ -568,8 +585,13 @@ pub mod pallet {
 			)?;
 			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
-			);
-			let nodes_activity_root = Self::create_merkle_root(&customers_activity_batch_roots);
+			)
+			.into_iter()
+			.collect::<Result<Vec<ActivityHash>, OCWError>>()
+			.map_err(|err| vec![err])?;
+
+			let nodes_activity_root =
+				Self::create_merkle_root(&nodes_activity_batch_roots).map_err(|err| vec![err])?;
 
 			Self::store_validation_activities(
 				cluster_id,
@@ -756,13 +778,14 @@ pub mod pallet {
 
 		pub(crate) fn convert_to_batch_merkle_roots<A: Activity>(
 			activities: Vec<Vec<A>>,
-		) -> Vec<ActivityHash> {
+		) -> Vec<Result<ActivityHash, OCWError>> {
 			activities
 				.into_iter()
 				.map(|inner_vec| {
 					let activity_hashes: Vec<ActivityHash> =
 						inner_vec.into_iter().map(|a| a.hash::<T>()).collect();
 					Self::create_merkle_root(&activity_hashes)
+						.map_err(|_| OCWError::FailedToCreateMerkleRoot)
 				})
 				.collect()
 		}
@@ -789,11 +812,31 @@ pub mod pallet {
 		///
 		/// Parameters:
 		/// - `leaves`: collection of leaf
-		pub(crate) fn create_merkle_root(leaves: &[ActivityHash]) -> ActivityHash {
-			// todo! add tests
-			let leaves = leaves.iter().map(|l| l.to_vec()).collect::<Vec<Vec<u8>>>();
+		pub(crate) fn create_merkle_root(
+			leaves: &[ActivityHash],
+		) -> Result<ActivityHash, OCWError> {
+			let store = MemStore::default();
+			let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
+				MemMMR::<_, MergeActivityHash>::new(0, &store);
+			let _ = leaves.iter().map(|a| mmr.push(*a)).collect::<Vec<_>>();
+			let root = mmr.get_root().map_err(|_| OCWError::FailedToCreateMerkleRoot)?;
 
-			T::ActivityHasher::ordered_trie_root(leaves, Default::default()).into()
+			Ok(root)
+		}
+
+		/// Verify whether leaf is part of tree
+		///
+		/// Parameters:
+		/// - `root`: merkle root
+		/// - `leaf`: Leaf of the tree
+		pub(crate) fn proof_merkle_leaf(
+			root: ActivityHash,
+			proof: MerkleProof<ActivityHash, MergeActivityHash>,
+			leaf_with_position: Vec<(u64, ActivityHash)>,
+		) -> Result<bool, Error<T>> {
+			proof
+				.verify(root, leaf_with_position)
+				.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
 		}
 
 		pub(crate) fn get_era_for_payout(
@@ -1330,6 +1373,9 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
+					OCWError::FailedToCreateMerkleRoot => {
+						Self::deposit_event(Event::FailedToCreateMerkleRoot);
+					},
 				}
 			}
 
@@ -1372,13 +1418,23 @@ pub mod pallet {
 		}
 
 		fn is_customers_batch_valid(
-			_cluster_id: ClusterId,
-			_era: DdcEra,
+			cluster_id: ClusterId,
+			era: DdcEra,
 			_batch_index: BatchIndex,
 			_payers: &[(T::AccountId, CustomerUsage)],
-			_adjacent_hashes: &[ActivityHash],
+			proof: MerkleProof<ActivityHash, MergeActivityHash>,
+			leaf_with_position: Vec<(u64, ActivityHash)>,
 		) -> bool {
-			true
+			let validation_era = EraValidations::<T>::get(cluster_id, era);
+
+			match validation_era {
+				Some(valid_era) => {
+					let root = valid_era.payers_merkle_root_hash;
+
+					Self::proof_merkle_leaf(root, proof, leaf_with_position).unwrap_or(false)
+				},
+				None => false,
+			}
 		}
 		fn is_providers_batch_valid(
 			_cluster_id: ClusterId,
