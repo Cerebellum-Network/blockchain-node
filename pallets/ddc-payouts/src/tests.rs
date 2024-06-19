@@ -1,7 +1,7 @@
 //! Tests for the module.
 
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
-use ddc_primitives::ClusterId;
+use ddc_primitives::{ActivityHash, ClusterId};
 use frame_support::{assert_noop, assert_ok, error::BadOrigin, traits::Randomness};
 use sp_core::H256;
 use sp_runtime::Perquintill;
@@ -186,7 +186,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 				payers1.clone(),
 				0,
 				vec![],
-				vec![],
+				(0, ActivityHash::default()),
 			),
 			Error::<Test>::Unauthorised
 		);
@@ -200,7 +200,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 				payers1.clone(),
 				0,
 				vec![],
-				vec![],
+				(0, ActivityHash::default()),
 			),
 			BadOrigin
 		);
@@ -214,7 +214,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 				payers1.clone(),
 				0,
 				vec![],
-				vec![],
+				(0, ActivityHash::default()),
 			),
 			Error::<Test>::BillingReportDoesNotExist
 		);
@@ -236,7 +236,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 				payers1.clone(),
 				0,
 				vec![],
-				vec![],
+				(0, ActivityHash::default()),
 			),
 			Error::<Test>::NotExpectedState
 		);
@@ -256,7 +256,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 			payers1.clone(),
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -268,7 +268,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 				payers1,
 				0,
 				vec![],
-				vec![],
+				(0, ActivityHash::default()),
 			),
 			Error::<Test>::BatchIndexAlreadyProcessed
 		);
@@ -282,7 +282,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 				payers2,
 				0,
 				vec![],
-				vec![],
+				(0, ActivityHash::default()),
 			),
 			Error::<Test>::BatchIndexAlreadyProcessed
 		);
@@ -451,7 +451,7 @@ fn send_charging_customers_batch_works() {
 			payers1,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let usage4_charge = calculate_charge_for_month(cluster_id, usage4.clone());
@@ -520,7 +520,7 @@ fn send_charging_customers_batch_works() {
 			payers2,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		System::assert_last_event(
@@ -570,7 +570,7 @@ fn send_charging_customers_batch_works() {
 			payers3,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let user3_charge = calculate_charge_for_month(cluster_id, usage3.clone());
@@ -682,7 +682,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 			payers1,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
@@ -894,7 +894,7 @@ fn send_charging_customers_batch_works_for_day() {
 			payers1,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
@@ -963,7 +963,7 @@ fn send_charging_customers_batch_works_for_day() {
 			payers2,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		System::assert_last_event(
@@ -1013,7 +1013,7 @@ fn send_charging_customers_batch_works_for_day() {
 			payers3,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
@@ -1145,7 +1145,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 			payers1,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
@@ -1214,7 +1214,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 			payers2,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		System::assert_last_event(
@@ -1264,7 +1264,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 			payers3,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
@@ -1396,7 +1396,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 			payers1,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
@@ -1465,7 +1465,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 			payers2,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		System::assert_last_event(
@@ -1515,7 +1515,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 			payers3,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
@@ -1647,7 +1647,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 			payers1,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
@@ -1716,7 +1716,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 			payers2,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		System::assert_last_event(
@@ -1766,7 +1766,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 			payers3,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
@@ -1898,7 +1898,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 			payers1,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
@@ -1967,7 +1967,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 			payers2,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		System::assert_last_event(
@@ -2017,7 +2017,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 			payers3,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
@@ -2149,7 +2149,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 			payers1,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
@@ -2218,7 +2218,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 			payers2,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		System::assert_last_event(
@@ -2268,7 +2268,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 			payers3,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
@@ -2377,7 +2377,7 @@ fn send_charging_customers_batch_works_zero_fees() {
 			payers5,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let usage5_charge = calculate_charge_for_month(cluster_id, usage5.clone());
@@ -2473,7 +2473,7 @@ fn end_charging_customers_fails_uninitialised() {
 			payers,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -2531,7 +2531,7 @@ fn end_charging_customers_works() {
 			payers,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
@@ -2674,7 +2674,7 @@ fn end_charging_customers_works_zero_fees() {
 			payers,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
@@ -2843,7 +2843,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 			payers.clone(),
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -2865,7 +2865,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 			payers,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -2927,7 +2927,7 @@ fn begin_rewarding_providers_works() {
 			payers,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_ok!(DdcPayouts::end_charging_customers(
@@ -3051,7 +3051,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 			payers1,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -3073,7 +3073,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 			payers2,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -3201,7 +3201,7 @@ fn send_rewarding_providers_batch_works() {
 			payers,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
@@ -3531,7 +3531,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 				batch.to_vec(),
 				0,
 				vec![],
-				vec![],
+				(0, ActivityHash::default()),
 			));
 
 			for (customer_id, usage) in batch.iter() {
@@ -3806,7 +3806,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 				batch.to_vec(),
 				0,
 				vec![],
-				vec![],
+				(0, ActivityHash::default()),
 			));
 
 			for (customer_id, usage) in batch.iter() {
@@ -4081,7 +4081,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 				batch.to_vec(),
 				0,
 				vec![],
-				vec![],
+				(0, ActivityHash::default()),
 			));
 
 			for (customer_id, usage) in batch.iter() {
@@ -4315,7 +4315,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 				batch.to_vec(),
 				0,
 				vec![],
-				vec![],
+				(0, ActivityHash::default()),
 			));
 
 			for (customer_id, usage) in batch.iter() {
@@ -4526,7 +4526,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 			payers1,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -4546,7 +4546,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 			payers2,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -4671,7 +4671,7 @@ fn end_rewarding_providers_works() {
 			payers,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_ok!(DdcPayouts::end_charging_customers(
@@ -4780,7 +4780,7 @@ fn end_billing_report_fails_uninitialised() {
 			payers1,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -4796,7 +4796,7 @@ fn end_billing_report_fails_uninitialised() {
 			payers2,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -4904,7 +4904,7 @@ fn end_billing_report_works() {
 			payers,
 			0,
 			vec![],
-			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_ok!(DdcPayouts::end_charging_customers(

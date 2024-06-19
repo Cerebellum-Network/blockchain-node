@@ -154,7 +154,7 @@ where
 		_batch_index: BatchIndex,
 		_payers: &[(T::AccountId, CustomerUsage)],
 		_proof: MerkleProof<ActivityHash, MergeActivityHash>,
-		_leaf_with_position: Vec<(u64, ActivityHash)>,
+		_leaf_with_position: (u64, ActivityHash),
 	) -> bool {
 		true
 	}

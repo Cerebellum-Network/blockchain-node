@@ -15,7 +15,7 @@ pub trait ValidatorVisitor<T: Config> {
 		batch_index: BatchIndex,
 		payers: &[(T::AccountId, CustomerUsage)],
 		proof: MerkleProof<ActivityHash, MergeActivityHash>,
-		leaf_with_position: Vec<(u64, ActivityHash)>,
+		leaf_with_position: (u64, ActivityHash),
 	) -> bool;
 	fn is_providers_batch_valid(
 		cluster_id: ClusterId,

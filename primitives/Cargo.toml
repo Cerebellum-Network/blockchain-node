@@ -9,7 +9,7 @@ readme.workspace = true
 repository.workspace = true
 
 [dependencies]
-blake2 = { version = "0.10.4", default-features = false }
+blake2 = { workspace = true }
 codec = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }

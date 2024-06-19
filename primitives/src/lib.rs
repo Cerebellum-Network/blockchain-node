@@ -15,9 +15,6 @@ parameter_types! {
 	pub MaxHostLen: u8 = 255;
 	pub MaxDomainLen: u8 = 255;
 }
-// fn new_blake2b() -> Blake2b {
-// 	Blake2bBuilder::new(32).build()
-// }
 
 pub const MILLICENTS: u128 = 100_000;
 pub const CENTS: u128 = 1_000 * MILLICENTS; // assume this is worth about a cent.
@@ -28,13 +25,14 @@ pub type BucketId = u64;
 pub type ClusterNodesCount = u16;
 pub type StorageNodePubKey = AccountId32;
 pub type ActivityHash = [u8; 32];
+pub type BatchIndex = u16;
 
 pub struct MergeActivityHash;
 impl Merge for MergeActivityHash {
 	type Item = ActivityHash;
 	fn merge(
-		lhs: &Self::Item,
-		rhs: &Self::Item,
+		lhs: &Self::Item, // Left side of tree
+		rhs: &Self::Item, // Right side of tree
 	) -> Result<Self::Item, polkadot_ckb_merkle_mountain_range::Error> {
 		let mut hasher = Blake2s256::new();
 
@@ -45,8 +43,6 @@ impl Merge for MergeActivityHash {
 		Ok(ActivityHash::from(sp_core::H256::from_slice(hash.as_slice())))
 	}
 }
-
-pub type BatchIndex = u16;
 
 // ClusterParams includes Governance non-sensetive parameters only
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]

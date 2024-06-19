@@ -185,7 +185,9 @@ pub mod pallet {
 			num_nodes: u16,
 			validator: T::AccountId,
 		},
-		FailedToCreateMerkleRoot,
+		FailedToCreateMerkleRoot {
+			validator: T::AccountId,
+		},
 	}
 
 	/// Consensus Errors
@@ -515,8 +517,6 @@ pub mod pallet {
 			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
 			)
-			.into_iter()
-			.collect::<Result<Vec<ActivityHash>, OCWError>>()
 			.map_err(|err| vec![err])?;
 
 			let customers_activity_root = Self::create_merkle_root(&customers_activity_batch_roots)
@@ -532,8 +532,6 @@ pub mod pallet {
 			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
 			)
-			.into_iter()
-			.collect::<Result<Vec<ActivityHash>, OCWError>>()
 			.map_err(|err| vec![err])?;
 
 			let nodes_activity_root =
@@ -724,7 +722,7 @@ pub mod pallet {
 
 		pub(crate) fn convert_to_batch_merkle_roots<A: Activity>(
 			activities: Vec<Vec<A>>,
-		) -> Vec<Result<ActivityHash, OCWError>> {
+		) -> Result<Vec<ActivityHash>, OCWError> {
 			activities
 				.into_iter()
 				.map(|inner_vec| {
@@ -733,7 +731,7 @@ pub mod pallet {
 					Self::create_merkle_root(&activity_hashes)
 						.map_err(|_| OCWError::FailedToCreateMerkleRoot)
 				})
-				.collect()
+				.collect::<Result<Vec<ActivityHash>, OCWError>>()
 		}
 
 		pub(crate) fn split_to_batches<A: Activity>(
@@ -1316,7 +1314,9 @@ pub mod pallet {
 						});
 					},
 					OCWError::FailedToCreateMerkleRoot => {
-						Self::deposit_event(Event::FailedToCreateMerkleRoot);
+						Self::deposit_event(Event::FailedToCreateMerkleRoot {
+							validator: caller.clone(),
+						});
 					},
 				}
 			}
@@ -1365,7 +1365,7 @@ pub mod pallet {
 			_batch_index: BatchIndex,
 			_payers: &[(T::AccountId, CustomerUsage)],
 			proof: MerkleProof<ActivityHash, MergeActivityHash>,
-			leaf_with_position: Vec<(u64, ActivityHash)>,
+			leaf_with_position: (u64, ActivityHash),
 		) -> bool {
 			let validation_era = EraValidations::<T>::get(cluster_id, era);
 
@@ -1373,7 +1373,7 @@ pub mod pallet {
 				Some(valid_era) => {
 					let root = valid_era.payers_merkle_root_hash;
 
-					Self::proof_merkle_leaf(root, proof, leaf_with_position).unwrap_or(false)
+					Self::proof_merkle_leaf(root, proof, vec![leaf_with_position]).unwrap_or(false)
 				},
 				None => false,
 			}

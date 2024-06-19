@@ -1,6 +1,8 @@
 //! DdcPayouts pallet benchmarking.
 
-use ddc_primitives::{traits::ValidatorVisitor, ClusterId, ClusterParams, ClusterProtocolParams};
+use ddc_primitives::{
+	traits::ValidatorVisitor, ActivityHash, ClusterId, ClusterParams, ClusterProtocolParams,
+};
 pub use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_system::RawOrigin;
 use sp_runtime::Perquintill;
@@ -231,7 +233,7 @@ benchmarks! {
 			(customer, customer_usage)
 		}).collect();
 
-	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payers, 0, vec![], vec![])
+	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payers, 0, vec![], (0, ActivityHash::default()))
 	verify {
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();

@@ -1555,14 +1555,13 @@ fn test_get_last_validated_era() {
 }
 
 #[test]
-fn merkle_tree_create_verify_works() {
+fn create_merkle_root_works() {
 	new_test_ext().execute_with(|| {
 		let a: ActivityHash = [0; 32];
 		let b: ActivityHash = [1; 32];
 		let c: ActivityHash = [2; 32];
 		let d: ActivityHash = [3; 32];
 		let e: ActivityHash = [4; 32];
-		let f: ActivityHash = [5; 32];
 
 		let leaves = vec![a, b, c, d, e];
 
@@ -1575,6 +1574,20 @@ fn merkle_tree_create_verify_works() {
 				255, 15, 237, 252, 116, 39, 186, 26, 40, 154, 180, 110, 185, 7
 			]
 		);
+	});
+}
+
+#[test]
+fn proof_merkle_leaf_works() {
+	new_test_ext().execute_with(|| {
+		let a: ActivityHash = [0; 32];
+		let b: ActivityHash = [1; 32];
+		let c: ActivityHash = [2; 32];
+		let d: ActivityHash = [3; 32];
+		let e: ActivityHash = [4; 32];
+		let f: ActivityHash = [5; 32];
+
+		let leaves = [a, b, c, d, e];
 
 		let store = MemStore::default();
 		let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
@@ -1592,6 +1605,7 @@ fn merkle_tree_create_verify_works() {
 			.map(|(l, p)| (p, l))
 			.collect();
 		let position: Vec<u64> = leaf_position.clone().into_iter().map(|(p, _)| p).collect();
+		let root = mmr.get_root().unwrap();
 
 		assert!(DdcVerification::proof_merkle_leaf(
 			root,

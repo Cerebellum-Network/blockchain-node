@@ -371,7 +371,7 @@ pub mod pallet {
 			payers: Vec<(T::AccountId, CustomerUsage)>,
 			mmr_size: u64,
 			proof: Vec<ActivityHash>,
-			leaf_with_position: Vec<(u64, ActivityHash)>,
+			leaf_with_position: (u64, ActivityHash),
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
