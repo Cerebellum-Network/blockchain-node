@@ -21,7 +21,7 @@ use frame_support::{
 	traits::{Get, OneSessionHandler},
 };
 use frame_system::{
-	offchain::{AppCrypto, CreateSignedTransaction, ForAny, SendSignedTransaction, Signer},
+	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
 	pallet_prelude::*,
 };
 pub use pallet::*;
@@ -101,7 +101,7 @@ pub mod pallet {
 		/// The majority of validators.
 		const MAJORITY: u8;
 		/// Block to start from.
-		const BLOCK_TO_START: u32; // todo! rename to BLOCK_TO_MODULO
+		const BLOCK_TO_START: u32;
 		/// The access to staking functionality.
 		type Staking: StakingInterface<AccountId = Self::AccountId>;
 		/// The access to validator list.
@@ -300,7 +300,7 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct EraValidation<T: Config> {
-		pub validators: BTreeMap<(ActivityHash, ActivityHash), Vec<T::AccountId>>, // todo! change to signatures (T::AccountId, Signature)
+		pub validators: BTreeMap<(ActivityHash, ActivityHash), Vec<T::AccountId>>, /* todo! change to signatures (T::AccountId, Signature) */
 		pub payers_merkle_root_hash: ActivityHash,
 		pub payees_merkle_root_hash: ActivityHash,
 		pub status: EraValidationStatus,
@@ -442,28 +442,89 @@ pub mod pallet {
 				"Error retrieving dac nodes to validate"
 			);
 
-			match Self::process_dac_data(&cluster_id, &dac_nodes, 100, &signer) {
-				// todo! factor batch_size into config through runtime
-				Ok(_) => {
-					log::info!("DAC data processed successfully");
-				},
-				Err(errors) => {
-					log::error!("Error processing DAC data: {:?}", errors);
-
-					// Send errors as extrinsics
-					if let Some((_, res)) = signer.send_signed_transaction(|_account| {
-						Call::emit_consensus_errors { errors: errors.clone() }
-					}) {
-						// Map any error from transaction submission to TransactionSubmissionError
-						match res {
-							Ok(_) => log::info!("Successfully submitted emit_consensus_errors tx"),
-							Err(_) => log::error!("Failed to submit emit_consensus_errors tx"),
+			let min_nodes = 3; // todo! (1): factor out min nodes config
+			let batch_size = 100; // todo! (5) factor batch_size into config through runtime
+			let mut errors: Vec<OCWError> = Vec::new();
+			match Self::process_dac_data(&cluster_id, None, &dac_nodes, min_nodes, batch_size) {
+				Ok(result) => {
+					log::info!("DAC data processed successfully for cluster_id: {:?}", cluster_id);
+					if let Some((era_id, payers_merkle_root_hash, payees_merkle_root_hash)) = result
+					{
+						if let Some((_, res)) = signer.send_signed_transaction(|_account| {
+							Call::set_prepare_era_for_payout {
+								cluster_id,
+								era_id,
+								payers_merkle_root_hash,
+								payees_merkle_root_hash,
+							}
+						}) {
+							match res {
+								Ok(_) => {
+									// Extrinsic call succeeded
+									log::info!(
+										"Merkle roots posted on-chain for cluster_id: {:?}, era_id: {:?}",
+										cluster_id,
+										era_id
+									);
+								},
+								Err(e) => {
+									log::error!(
+										"Error to post merkle roots on-chain for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+									// Extrinsic call failed
+									errors.push(OCWError::PrepareEraTransactionError {
+										cluster_id,
+										era_id,
+										payers_merkle_root_hash,
+										payees_merkle_root_hash,
+									});
+								},
+							}
+						} else {
+							log::error!("No account available to sign the transaction");
+							errors.push(OCWError::NoAvailableSigner);
 						}
-					} else {
-						log::error!("No account available to sign the transaction");
-						// Handle case where no signer is available
 					}
 				},
+				Err(process_errors) => {
+					errors.extend(process_errors);
+				},
+			}
+
+			match Self::process_start_payout(&cluster_id) {
+				Ok(Some(era_id)) => {
+					log::info!(
+						"Start payout processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+					// todo! call payout pallet::begin_billing_report
+				},
+				Ok(None) => {
+					log::info!("No era for payout for cluster_id: {:?}", cluster_id);
+				},
+				Err(e) => {
+					errors.push(e);
+				},
+			}
+
+			if !errors.is_empty() {
+				// Send errors as extrinsics
+				if let Some((_, res)) = signer.send_signed_transaction(|_account| {
+					Call::emit_consensus_errors { errors: errors.clone() }
+				}) {
+					// Map any error from transaction submission to TransactionSubmissionError
+					match res {
+						Ok(_) => log::info!("Successfully submitted emit_consensus_errors tx"),
+						Err(_) => log::error!("Failed to submit emit_consensus_errors tx"),
+					}
+				} else {
+					// Handle case where no signer is available
+					log::error!("No account available to sign the transaction");
+				}
 			}
 		}
 	}
@@ -471,22 +532,26 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn process_dac_data(
 			cluster_id: &ClusterId,
+			era_id_to_process: Option<DdcEra>,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+			min_nodes: u16,
 			batch_size: usize,
-			signer: &Signer<T, T::OffchainIdentifierId, ForAny>,
-		) -> Result<(), Vec<OCWError>> {
-			let min_nodes = dac_nodes.len().ilog2() as u16;
-			if min_nodes < 3 {
-				// todo!: factor out min nodes config
+		) -> Result<Option<(DdcEra, ActivityHash, ActivityHash)>, Vec<OCWError>> {
+			if dac_nodes.len().ilog2() < min_nodes.into() {
 				return Err(vec![OCWError::NotEnoughDACNodes { num_nodes: min_nodes }]);
 			}
 
-			let era_id_result =
-				Self::get_era_for_validation(cluster_id, dac_nodes).map_err(|err| vec![err])?;
-			if era_id_result.is_none() {
-				return Ok(());
-			}
-			let era_id = era_id_result.unwrap();
+			let era_id = if let Some(era_id) = era_id_to_process {
+				era_id
+			} else {
+				match Self::get_era_for_validation(cluster_id, dac_nodes) {
+					Ok(Some(era_id)) => era_id,
+					Ok(None) => return Ok(None), /* No era found, return Ok or handle the error */
+					// scenario
+					Err(err) => return Err(vec![err]), /* Convert OCWError to YourErrorType and
+					                                    * return Err */
+				}
+			};
 			let nodes_usage = Self::fetch_nodes_usage_for_era(cluster_id, era_id, dac_nodes)
 				.map_err(|err| vec![err])?;
 			let customers_usage =
@@ -527,91 +592,32 @@ pub mod pallet {
 				nodes_activity_root,
 				&nodes_activity_batch_roots,
 			);
-
-			// todo! factor the call out of here
-			if let Some((_, res)) =
-				signer.send_signed_transaction(|_account| Call::set_prepare_era_for_payout {
-					cluster_id: *cluster_id,
-					era_id,
-					payers_merkle_root_hash: customers_activity_root,
-					payees_merkle_root_hash: nodes_activity_root,
-				}) {
-				match res {
-					Ok(_) => {
-						// Extrinsic call succeeded
-						Ok(())
-					},
-					Err(_) => Err(vec![OCWError::PrepareEraTransactionError {
-						cluster_id: *cluster_id,
-						era_id,
-						payers_merkle_root_hash: customers_activity_root,
-						payees_merkle_root_hash: nodes_activity_root,
-					}]),
-				}
-			} else {
-				Err(vec![OCWError::NoAvailableSigner])
-			}
+			Ok(Some((era_id, customers_activity_root, nodes_activity_root)))
 		}
 
-		/*
-		pub(crate) fn process_payout(
+		// let batches = split into batches customers_activity_in_consensus
+		// for i in batches.len() {
+		// let batch  = batches[i];
+		// let batch_root1 = customers_activity_batch_roots[i]; // C
+		// let batch_root2 = create_merkle_tree(batch)
+		// assert!(batch_root1, batch_root2)
+		// let adjacent_hashes = get_adjacent_hashes(batch_root1, customers_activity_root,
+		// customers_activity_batch_roots) // provide hash(D) and hash(A,B).
+		// call payout::send_charging_customers_batch(clusterid, era_id, batch_index, batch,
+		// adjacent_hashes) }
+
+		pub(crate) fn process_start_payout(
 			cluster_id: &ClusterId,
-			era_id: DdcEra,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) {
-			// let batches = split into batches customers_activity_in_consensus
-			// for i in batches.len() {
-			// let batch  = batches[i];
-			// let batch_root1 = customers_activity_batch_roots[i]; // C
-			// let batch_root2 = create_merkle_tree(batch)
-			// assert!(batch_root1, batch_root2)
-			// let adjacent_hashes = get_adjacent_hashes(batch_root1, customers_activity_root, customers_activity_batch_roots) // provide hash(D) and hash(A,B).
-			// call payout::send_charging_customers_batch(clusterid, era_id, batch_index, batch, adjacent_hashes)
-			// }
-
-			// process batches for era
-			let era_id_result = unwrap_or_log_error!(
-				Self::get_era_for_validation(cluster_id, &dac_nodes),
-				"Error retrieving era to validate"
-			);
-
+		) -> Result<Option<DdcEra>, OCWError> {
+			let era_id_result =
+				Self::get_era_for_payout(cluster_id, EraValidationStatus::ReadyForPayout);
 			if era_id_result.is_none() {
-				return;
+				return Ok(None);
 			}
 			let era_id = era_id_result.unwrap();
 
-			let (
-				customers_activity_in_consensus,
-				customers_activity_root,
-				customers_activity_batch_roots,
-				nodes_activity_in_consensus,
-				nodes_activity_root,
-				nodes_activity_batch_roots,
-			) =
-				match Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(&cluster_id, era_id)
-				{
-					Some(result) => result,
-					None => {
-						// todo! fetch data (fetch_nodes_usage_for_era,
-						// fetch_customers_usage_for_era) and then use
-						// get_consensus_for_activities
-						// todo! set customers_activity_in_consensus and
-						// nodes_activity_in_consensus
-						Self::get_activities_in_consensus::<CustomerActivity, NodeActivity>(
-							&cluster_id,
-							era_id,
-						);
-						(
-							vec![],
-							ActivityHash::default(),
-							vec![],
-							vec![],
-							ActivityHash::default(),
-							vec![],
-						)
-					},
-				};
-		} */
+			Ok(Some(era_id))
+		}
 
 		pub(crate) fn _get_activities_in_consensus<A: Activity, B: Activity>(
 			_cluster_id: &ClusterId,
@@ -624,10 +630,10 @@ pub mod pallet {
 			format!("offchain::activities::{:?}::{:?}", cluster_id, era_id).into_bytes()
 		}
 
-		#[allow(clippy::too_many_arguments)] // todo! refactor into 2 different methods (for customers and nodes) + use type info for
+		#[allow(clippy::too_many_arguments)] // todo! (2) refactor into 2 different methods (for customers and nodes) + use type info for
 									 // derive_key
 		pub(crate) fn store_validation_activities<A: Encode, B: Encode>(
-			// todo! add tests
+			// todo! (3) add tests
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			customers_activity_in_consensus: &[A],
@@ -655,7 +661,7 @@ pub mod pallet {
 		#[allow(dead_code)]
 		#[allow(clippy::type_complexity)]
 		pub(crate) fn fetch_validation_activities<A: Decode, B: Decode>(
-			// todo! add tests
+			// todo! (4) add tests
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 		) -> Option<(
@@ -700,6 +706,18 @@ pub mod pallet {
 			}
 		}
 
+		/// Converts a vector of activity batches into their corresponding Merkle root hashes.
+		///
+		/// This function takes a vector of activity batches, where each batch is a vector of
+		/// activities. It computes the Merkle root for each batch by first hashing each activity
+		/// and then combining these hashes into a single Merkle root.
+		///
+		/// # Input Parameters
+		/// - `activities: Vec<Vec<A>>`: A vector of vectors, where each inner vector represents a
+		///   batch of activities.
+		///
+		/// # Output
+		/// - `Vec<ActivityHash>`: A vector of Merkle root hashes, one for each batch of activities.
 		pub(crate) fn convert_to_batch_merkle_roots<A: Activity>(
 			activities: Vec<Vec<A>>,
 		) -> Vec<ActivityHash> {
@@ -713,6 +731,17 @@ pub mod pallet {
 				.collect()
 		}
 
+		/// Splits a slice of activities into batches of a specified size.
+		///
+		/// This function sorts the given activities and splits them into batches of the specified
+		/// size. Each batch is returned as a separate vector.
+		///
+		/// # Input Parameters
+		/// - `activities: &[A]`: A slice of activities to be split into batches.
+		/// - `batch_size: usize`: The size of each batch.
+		///
+		/// # Output
+		/// - `Vec<Vec<A>>`: A vector of vectors, where each inner vector is a batch of activities.
 		pub(crate) fn split_to_batches<A: Activity>(
 			activities: &[A],
 			batch_size: usize,
@@ -739,7 +768,6 @@ pub mod pallet {
 			T::ActivityHasher::ordered_trie_root(leaves, Default::default()).into()
 		}
 
-		#[allow(dead_code)]
 		pub(crate) fn get_era_for_payout(
 			cluster_id: &ClusterId,
 			status: EraValidationStatus,
@@ -758,7 +786,24 @@ pub mod pallet {
 			smallest_era_id
 		}
 
-		// todo! add tests
+		/// Retrieves the last era in which the specified validator participated for a given
+		/// cluster.
+		///
+		/// This function iterates through all eras in `EraValidations` for the given `cluster_id`,
+		/// filtering for eras where the specified `validator` is present in the validators list.
+		/// It returns the maximum era found where the validator participated.
+		///
+		/// # Input Parameters
+		/// - `cluster_id: &ClusterId`: The ID of the cluster to check for the validator's
+		///   participation.
+		/// - `validator: T::AccountId`: The account ID of the validator whose participation is
+		///   being checked.
+		///
+		/// # Output
+		/// - `Result<Option<DdcEra>, OCWError>`:
+		///   - `Ok(Some(DdcEra))`: The maximum era in which the validator participated.
+		///   - `Ok(None)`: The validator did not participate in any era for the given cluster.
+		///   - `Err(OCWError)`: An error occurred while retrieving the data.
 		pub(crate) fn get_last_validated_era(
 			cluster_id: &ClusterId,
 			validator: T::AccountId,
@@ -832,7 +877,22 @@ pub mod pallet {
 			Ok(all_node_eras.iter().cloned().min())
 		}
 
-		/// Reach consensus for ddc activity.
+		/// Determines if a consensus is reached for a set of activities based on a specified
+		/// threshold.
+		///
+		/// This function counts the occurrences of each activity in the provided list and checks if
+		/// any activity's count meets or exceeds the given threshold. If such an activity is found,
+		/// it is returned.
+		///
+		/// # Input Parameters
+		/// - `activities: &[A]`: A slice of activities to be analyzed for consensus.
+		/// - `threshold: usize`: The minimum number of occurrences required for an activity to be
+		///   considered in consensus.
+		///
+		/// # Output
+		/// - `Option<A>`:
+		///   - `Some(A)`: An activity that has met or exceeded the threshold.
+		///   - `None`: No activity met the threshold.
 		pub(crate) fn reach_consensus<A: Activity>(
 			activities: &[A],
 			threshold: usize,
@@ -849,7 +909,29 @@ pub mod pallet {
 				.map(|(activity, _)| activity)
 		}
 
-		/// Fetch consensus for given activities.
+		/// Computes the consensus for a set of activities across multiple nodes within a given
+		/// cluster and era.
+		///
+		/// This function collects activities from various nodes, groups them by their consensus ID,
+		/// and then determines if a consensus is reached for each group based on the minimum number
+		/// of nodes and a given threshold. If the consensus is reached, the activity is included
+		/// in the result. Otherwise, appropriate errors are returned.
+		///
+		/// # Input Parameters
+		/// - `cluster_id: &ClusterId`: The ID of the cluster for which consensus is being computed.
+		/// - `era_id: DdcEra`: The era ID within the cluster.
+		/// - `activities: &[(NodePubKey, Vec<A>)]`: A list of tuples, where each tuple contains a
+		///   node's public key and a vector of activities reported by that node.
+		/// - `min_nodes: u16`: The minimum number of nodes that must report an activity for it to
+		///   be considered for consensus.
+		/// - `threshold: Percent`: The threshold percentage that determines if an activity is in
+		///   consensus.
+		///
+		/// # Output
+		/// - `Result<Vec<A>, Vec<OCWError>>`:
+		///   - `Ok(Vec<A>)`: A vector of activities that have reached consensus.
+		///   - `Err(Vec<OCWError>)`: A vector of errors indicating why consensus was not reached
+		///     for some activities.
 		pub(crate) fn get_consensus_for_activities<A: Activity>(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -1041,7 +1123,8 @@ pub mod pallet {
 			let mut node_usages = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
-				// todo! probably shouldn't stop when some DAC is not responding as we can still work with others
+				// todo! probably shouldn't stop when some DAC is not responding as we can still
+				// work with others
 				let usage =
 					Self::fetch_node_usage(cluster_id, era_id, node_params).map_err(|_| {
 						OCWError::NodeUsageRetrievalError {
@@ -1071,7 +1154,8 @@ pub mod pallet {
 			let mut customers_usages = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
-				// todo! probably shouldn't stop when some DAC is not responding as we can still work with others
+				// todo! probably shouldn't stop when some DAC is not responding as we can still
+				// work with others
 				let usage =
 					Self::fetch_customers_usage(cluster_id, era_id, node_params).map_err(|_| {
 						OCWError::CustomerUsageRetrievalError {
@@ -1099,7 +1183,8 @@ pub mod pallet {
 			let mut eras = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
-				// todo! probably shouldn't stop when some DAC is not responding as we can still work with others
+				// todo! probably shouldn't stop when some DAC is not responding as we can still
+				// work with others
 				let ids = Self::fetch_processed_era(node_params).map_err(|_| {
 					OCWError::EraRetrievalError {
 						cluster_id: *cluster_id,
@@ -1154,7 +1239,8 @@ pub mod pallet {
 				}
 			};
 
-			// Ensure the validators entry exists for the specified (payers_merkle_root_hash, payees_merkle_root_hash)
+			// Ensure the validators entry exists for the specified (payers_merkle_root_hash,
+			// payees_merkle_root_hash)
 			let signed_validators = era_validation
 				.validators
 				.entry((payers_merkle_root_hash, payees_merkle_root_hash))
@@ -1168,7 +1254,8 @@ pub mod pallet {
 
 			let mut should_deposit_ready_event = false;
 			if threshold < signed_validators.len() {
-				// Update payers_merkle_root_hash and payees_merkle_root_hash as ones passed the threshold
+				// Update payers_merkle_root_hash and payees_merkle_root_hash as ones passed the
+				// threshold
 				era_validation.payers_merkle_root_hash = payers_merkle_root_hash;
 				era_validation.payees_merkle_root_hash = payees_merkle_root_hash;
 				era_validation.status = EraValidationStatus::ReadyForPayout;
