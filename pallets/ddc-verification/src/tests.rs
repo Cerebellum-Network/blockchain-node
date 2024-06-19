@@ -1,219 +1,27 @@
-use ddc_primitives::{
-	ClusterId, MergeActivityHash, StorageNodeParams, StorageNodePubKey, KEY_TYPE,
-};
+use ddc_primitives::{ClusterId, MergeActivityHash, StorageNodeParams, StorageNodePubKey};
 use frame_support::{assert_noop, assert_ok};
-use sp_core::{
-	offchain::{
-		testing::{PendingRequest, TestOffchainExt, TestTransactionPoolExt},
-		OffchainDbExt, OffchainWorkerExt, Timestamp, TransactionPoolExt,
-	},
-	Pair, H256,
+use sp_core::offchain::{
+	testing::{PendingRequest, TestOffchainExt, TestTransactionPoolExt},
+	OffchainDbExt, OffchainWorkerExt, Timestamp, TransactionPoolExt,
 };
 use sp_io::TestExternalities;
-use sp_keystore::{testing::MemoryKeystore, Keystore, KeystoreExt};
 use sp_runtime::AccountId32;
 
-use crate::{mock::*, Error, Event, NodeActivity, OCWError, *};
+use crate::{mock::*, Error, NodeActivity, OCWError, *};
 
-#[test]
-fn set_prepare_era_for_payout_works() {
-	new_test_ext().execute_with(|| {
-		System::set_block_number(1);
+#[allow(dead_code)]
+fn register_validators(validators: Vec<AccountId32>) {
+	ValidatorSet::<Test>::put(validators.clone());
 
-		let dac_account = AccountId::from([1; 32]);
-		let cluster_id = ClusterId::from([12; 20]);
-		let era_id = 100;
-		let merkel_root_hash: H256 = array_bytes::hex_n_into_unchecked(
-			"95803defe6ea9f41e7ec6afa497064f21bfded027d8812efacbdf984e630cbdc",
-		);
-
-		assert_ok!(DdcVerification::set_prepare_era_for_payout(
-			RuntimeOrigin::signed(dac_account.clone()),
-			cluster_id,
-			era_id,
-			ActivityHash::from(merkel_root_hash),
-			ActivityHash::from(merkel_root_hash),
-		));
-
-		System::assert_last_event(Event::BillingReportCreated { cluster_id, era_id }.into());
-
-		let report =
-			DdcVerification::active_billing_reports(cluster_id, dac_account.clone()).unwrap();
-		assert_eq!(report.payers_merkle_root_hash, ActivityHash::from(merkel_root_hash));
-
-		assert_noop!(
-			DdcVerification::set_prepare_era_for_payout(
-				RuntimeOrigin::signed(dac_account),
-				cluster_id,
-				era_id,
-				ActivityHash::from(merkel_root_hash),
-				ActivityHash::from(merkel_root_hash)
-			),
-			Error::<Test>::BillingReportAlreadyExist
-		);
-	})
-}
-
-#[test]
-fn set_validate_payout_batch_works() {
-	new_test_ext().execute_with(|| {
-		System::set_block_number(1);
-
-		let account_id1 = AccountId::from([0xa; 32]);
-		let account_id2 = AccountId::from([0xb; 32]);
-		let account_id3 = AccountId::from([0xc; 32]);
-		let account_id4 = AccountId::from([0xd; 32]);
-		let account_id6 = AccountId::from([0xe; 32]);
-		let merkel_root_hash: H256 = array_bytes::hex_n_into_unchecked(
-			"95803defe6ea9f41e7ec6afa497064f21bfded027d8812efacbdf984e630cbdc",
-		);
-
-		ValidatorSet::<Test>::put(vec![
-			account_id1.clone(),
-			account_id2.clone(),
-			account_id3.clone(),
-			account_id4.clone(),
-			account_id6.clone(),
-		]);
-		let cluster_id = ClusterId::from([12; 20]);
-		let era = 100;
-		let payout_data = PayoutData { hash: ActivityHash::default() };
-		let payout_data1 = PayoutData { hash: ActivityHash::from(merkel_root_hash) };
-
-		let validator_0 = AccountId::from([0xaa; 32]);
+	for validator in validators {
 		assert_noop!(
 			DdcVerification::set_validator_key(
-				// register validator 1
-				RuntimeOrigin::signed(validator_0.clone()),
-				validator_0.clone(),
+				RuntimeOrigin::signed(validator.clone()),
+				validator.clone(),
 			),
 			Error::<Test>::NotController
 		);
-
-		let validator_1 = AccountId::from([0xf; 32]);
-
-		DdcVerification::set_validator_key(
-			// register validator 1
-			RuntimeOrigin::signed(validator_1.clone()),
-			validator_1.clone(),
-		)
-		.unwrap();
-
-		// 1. If user is not part of validator, he/she won't be able to sign extrinsic
-		assert_noop!(
-			DdcVerification::set_validate_payout_batch(
-				RuntimeOrigin::signed(AccountId::from([0xff; 32])),
-				cluster_id,
-				era,
-				payout_data.clone(),
-			),
-			Error::<Test>::Unauthorised
-		);
-
-		assert_noop!(
-			DdcVerification::set_validate_payout_batch(
-				RuntimeOrigin::signed(validator_1),
-				cluster_id,
-				era,
-				payout_data.clone(),
-			),
-			Error::<Test>::Unauthorised
-		);
-
-		// 2. send signed transaction from valid validator
-		DdcVerification::set_validator_key(
-			// register validator 1
-			RuntimeOrigin::signed(account_id1.clone()),
-			account_id1.clone(),
-		)
-		.unwrap();
-
-		assert_ok!(DdcVerification::set_validate_payout_batch(
-			RuntimeOrigin::signed(account_id1.clone()),
-			cluster_id,
-			era,
-			payout_data.clone(),
-		));
-
-		// 3. If validator already sent the data, he/she won't be able to submit same transaction
-		assert_noop!(
-			DdcVerification::set_validate_payout_batch(
-				RuntimeOrigin::signed(AccountId::from(account_id1)),
-				cluster_id,
-				era,
-				payout_data.clone(),
-			),
-			Error::<Test>::AlreadySignedPayoutBatch
-		);
-
-		// 4. send signed transaction from second valid validator
-		DdcVerification::set_validator_key(
-			// register validator 1
-			RuntimeOrigin::signed(account_id2.clone()),
-			account_id2.clone(),
-		)
-		.unwrap();
-
-		assert_ok!(DdcVerification::set_validate_payout_batch(
-			RuntimeOrigin::signed(account_id2.clone()),
-			cluster_id,
-			era,
-			payout_data.clone(),
-		));
-
-		// 5. 2/3 rd validators have not signed yet the same data
-		assert_eq!(DdcVerification::payout_batch(cluster_id, era), None);
-
-		DdcVerification::set_validator_key(
-			// register validator 1
-			RuntimeOrigin::signed(account_id3.clone()),
-			account_id3.clone(),
-		)
-		.unwrap();
-
-		assert_ok!(DdcVerification::set_validate_payout_batch(
-			RuntimeOrigin::signed(account_id3.clone()),
-			cluster_id,
-			era,
-			payout_data.clone(),
-		));
-
-		// 6. send signed transaction from third valid validator but different hash
-
-		DdcVerification::set_validator_key(
-			// register validator 1
-			RuntimeOrigin::signed(account_id6.clone()),
-			account_id6.clone(),
-		)
-		.unwrap();
-
-		assert_ok!(DdcVerification::set_validate_payout_batch(
-			RuntimeOrigin::signed(account_id6.clone()),
-			cluster_id,
-			era,
-			payout_data1.clone(),
-		));
-
-		// 7. 2/3 rd validators have not signed yet the same data
-		assert_eq!(DdcVerification::payout_batch(cluster_id, era), None);
-
-		// 8. send signed transaction from fourth valid validator
-		DdcVerification::set_validator_key(
-			// register validator 1
-			RuntimeOrigin::signed(account_id4.clone()),
-			account_id4.clone(),
-		)
-		.unwrap();
-		assert_ok!(DdcVerification::set_validate_payout_batch(
-			RuntimeOrigin::signed(account_id4.clone()),
-			cluster_id,
-			era,
-			payout_data.clone(),
-		));
-
-		// 9. 2/3rd validators have sent the same data with same hash
-		assert_eq!(DdcVerification::payout_batch(cluster_id, era).unwrap(), payout_data);
-	})
+	}
 }
 
 #[test]
@@ -1163,6 +971,149 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 }
 
 #[test]
+fn test_empty_activities() {
+	let activities: Vec<NodeActivity> = vec![];
+	let result = DdcVerification::split_to_batches(&activities, 3);
+	assert_eq!(result, Vec::<Vec<NodeActivity>>::new());
+}
+
+#[test]
+fn test_single_batch() {
+	let node1 = NodeActivity {
+		node_id: [0; 32],
+		provider_id: [0; 32],
+		stored_bytes: 100,
+		transferred_bytes: 50,
+		number_of_puts: 10,
+		number_of_gets: 20,
+	};
+	let node2 = NodeActivity {
+		node_id: [1; 32],
+		provider_id: [1; 32],
+		stored_bytes: 101,
+		transferred_bytes: 51,
+		number_of_puts: 11,
+		number_of_gets: 21,
+	};
+	let node3 = NodeActivity {
+		node_id: [2; 32],
+		provider_id: [2; 32],
+		stored_bytes: 102,
+		transferred_bytes: 52,
+		number_of_puts: 12,
+		number_of_gets: 22,
+	};
+	let activities = vec![node1.clone(), node2.clone(), node3.clone()];
+	let mut sorted_activities = vec![node1.clone(), node2.clone(), node3.clone()];
+	sorted_activities.sort();
+	let result = DdcVerification::split_to_batches(&activities, 5);
+	assert_eq!(result, vec![sorted_activities]);
+}
+
+#[test]
+fn test_exact_batches() {
+	let node1 = NodeActivity {
+		node_id: [0; 32],
+		provider_id: [0; 32],
+		stored_bytes: 100,
+		transferred_bytes: 50,
+		number_of_puts: 10,
+		number_of_gets: 20,
+	};
+	let node2 = NodeActivity {
+		node_id: [1; 32],
+		provider_id: [1; 32],
+		stored_bytes: 101,
+		transferred_bytes: 51,
+		number_of_puts: 11,
+		number_of_gets: 21,
+	};
+	let node3 = NodeActivity {
+		node_id: [2; 32],
+		provider_id: [2; 32],
+		stored_bytes: 102,
+		transferred_bytes: 52,
+		number_of_puts: 12,
+		number_of_gets: 22,
+	};
+	let node4 = NodeActivity {
+		node_id: [3; 32],
+		provider_id: [3; 32],
+		stored_bytes: 103,
+		transferred_bytes: 53,
+		number_of_puts: 13,
+		number_of_gets: 23,
+	};
+	let activities = vec![node1.clone(), node2.clone(), node3.clone(), node4.clone()];
+	let mut sorted_activities = vec![node1.clone(), node2.clone(), node3.clone(), node4.clone()];
+	sorted_activities.sort();
+	let result = DdcVerification::split_to_batches(&activities, 2);
+	assert_eq!(
+		result,
+		vec![
+			[sorted_activities[0].clone(), sorted_activities[1].clone()],
+			[sorted_activities[2].clone(), sorted_activities[3].clone()]
+		]
+	);
+}
+#[test]
+#[allow(clippy::vec_init_then_push)]
+fn test_non_exact_batches() {
+	let node1 = NodeActivity {
+		node_id: [0; 32],
+		provider_id: [0; 32],
+		stored_bytes: 100,
+		transferred_bytes: 50,
+		number_of_puts: 10,
+		number_of_gets: 20,
+	};
+	let node2 = NodeActivity {
+		node_id: [1; 32],
+		provider_id: [1; 32],
+		stored_bytes: 101,
+		transferred_bytes: 51,
+		number_of_puts: 11,
+		number_of_gets: 21,
+	};
+	let node3 = NodeActivity {
+		node_id: [2; 32],
+		provider_id: [2; 32],
+		stored_bytes: 102,
+		transferred_bytes: 52,
+		number_of_puts: 12,
+		number_of_gets: 22,
+	};
+	let node4 = NodeActivity {
+		node_id: [3; 32],
+		provider_id: [3; 32],
+		stored_bytes: 103,
+		transferred_bytes: 53,
+		number_of_puts: 13,
+		number_of_gets: 23,
+	};
+	let node5 = NodeActivity {
+		node_id: [3; 32],
+		provider_id: [3; 32],
+		stored_bytes: 104,
+		transferred_bytes: 54,
+		number_of_puts: 14,
+		number_of_gets: 24,
+	};
+	let activities =
+		vec![node1.clone(), node2.clone(), node3.clone(), node4.clone(), node5.clone()];
+	let mut sorted_activities =
+		vec![node1.clone(), node2.clone(), node3.clone(), node4.clone(), node5.clone()];
+	sorted_activities.sort();
+	let result = DdcVerification::split_to_batches(&activities, 2);
+	let mut expected: Vec<Vec<NodeActivity>> = Vec::new();
+	expected.push(vec![sorted_activities[0].clone(), sorted_activities[1].clone()]);
+	expected.push(vec![sorted_activities[2].clone(), sorted_activities[3].clone()]);
+	expected.push(vec![sorted_activities[4].clone()]);
+
+	assert_eq!(result, expected);
+}
+
+#[test]
 fn test_get_consensus_nodes_activity_not_in_consensus2() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
@@ -1420,7 +1371,7 @@ fn fetch_processed_era_works() {
 }
 
 #[test]
-fn get_era_to_prepare_for_payout_works() {
+fn get_era_for_validation_works() {
 	let mut ext = TestExternalities::default();
 	let (offchain, offchain_state) = TestOffchainExt::new();
 	let (pool, _) = TestTransactionPoolExt::new();
@@ -1548,106 +1499,58 @@ fn get_era_to_prepare_for_payout_works() {
 			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4),
 		];
 
-		let dac_account = AccountId::from([1; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
-		let era = 16;
-		let merkel_root_hash: H256 = array_bytes::hex_n_into_unchecked(
-			"95803defe6ea9f41e7ec6afa497064f21bfded027d8812efacbdf984e630cbdc",
-		);
-
-		assert_noop!(
-			Pallet::<Test>::get_era_to_prepare_for_payout(&cluster_id, &dac_nodes),
-			Error::<Test>::EraToValidateRetrievalError
-		);
-
-		ValidatorSet::<Test>::put(vec![dac_account.clone()]);
-		assert_noop!(
-			DdcVerification::set_validator_key(
-				// register validator 1
-				RuntimeOrigin::signed(dac_account.clone()),
-				dac_account.clone(),
-			),
-			Error::<Test>::NotController
-		);
-
-		assert_ok!(DdcVerification::set_prepare_era_for_payout(
-			RuntimeOrigin::signed(dac_account.clone()),
-			cluster_id,
-			era,
-			ActivityHash::from(merkel_root_hash),
-			ActivityHash::from(merkel_root_hash),
-		));
-
-		let result = Pallet::<Test>::get_era_to_prepare_for_payout(&cluster_id, &dac_nodes);
-		assert!(result.is_ok());
-		assert_eq!(result.unwrap().unwrap(), era_activity2.id); //17
+		let result = Pallet::<Test>::get_era_for_validation(&cluster_id, &dac_nodes);
+		assert_eq!(result.unwrap().unwrap(), era_activity1.id); //16
 	});
 }
 
 #[test]
-fn off_chain_worker_works() {
-	let mut ext = TestExternalities::default();
-	let (offchain, _offchain_state) = TestOffchainExt::new();
-	let (pool, pool_state) = TestTransactionPoolExt::new();
+fn test_get_last_validated_era() {
 	let cluster_id = ClusterId::from([12; 20]);
-	let era = 16;
-	let merkel_root_hash: H256 = array_bytes::hex_n_into_unchecked(
-		"95803defe6ea9f41e7ec6afa497064f21bfded027d8812efacbdf984e630cbdc",
-	);
-	let (pair, _seed) = sp_core::sr25519::Pair::from_phrase(
-		"spider sell nice animal border success square soda stem charge caution echo",
-		None,
-	)
-	.unwrap();
-	let keystore = MemoryKeystore::new();
-	keystore
-		.insert(
-			KEY_TYPE,
-			"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
-			pair.public().as_ref(),
-		)
-		.unwrap();
+	let era_1 = 1;
+	let era_2 = 2;
+	let payers_root: ActivityHash = [1; 32];
+	let payees_root: ActivityHash = [2; 32];
+	let validator: AccountId32 = [0; 32].into();
 
-	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
-	ext.register_extension(OffchainDbExt::new(offchain));
-	ext.register_extension(TransactionPoolExt::new(pool));
-	ext.register_extension(KeystoreExt::new(keystore));
+	new_test_ext().execute_with(|| {
+		// Initially, there should be no validated eras
+		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id, validator.clone()).map(
+			|era| {
+				assert_eq!(era, None);
+			}
+		));
 
-	ext.execute_with(|| {
-		// Offchain worker should not be triggered if block number is not divided by 100
-		let block = 102;
-		System::set_block_number(block);
+		// Insert some validations
+		let mut validators_map_1 = BTreeMap::new();
+		validators_map_1.insert((payers_root, payees_root), vec![validator.clone()]);
 
-		DdcVerification::offchain_worker(block);
-		assert_eq!(pool_state.write().transactions.pop(), None);
+		let validation_1 = EraValidation {
+			validators: validators_map_1,
+			payers_merkle_root_hash: payers_root,
+			payees_merkle_root_hash: payees_root,
+			status: EraValidationStatus::ValidatingData,
+		};
 
-		// // Offchain worker should be triggered if block number is  divided by 100
-		let block = 500;
-		System::set_block_number(block);
-		let dac_account = AccountId::from([1; 32]);
+		<EraValidations<Test>>::insert(cluster_id, era_1, validation_1);
 
-		ClusterToValidate::<Test>::put(cluster_id);
-		let _ = DdcVerification::set_prepare_era_for_payout(
-			RuntimeOrigin::signed(dac_account.clone()),
-			cluster_id,
-			era,
-			ActivityHash::from(merkel_root_hash),
-			ActivityHash::from(merkel_root_hash),
-		);
-		DdcVerification::offchain_worker(block);
+		let mut validators_map_2 = BTreeMap::new();
+		validators_map_2.insert((payers_root, payees_root), vec![validator.clone()]);
 
-		let tx = pool_state.write().transactions.pop().unwrap();
+		let validation_2 = EraValidation {
+			validators: validators_map_2,
+			payers_merkle_root_hash: payers_root,
+			payees_merkle_root_hash: payees_root,
+			status: EraValidationStatus::ValidatingData,
+		};
 
-		let tx = Extrinsic::decode(&mut &*tx).unwrap();
-		assert_eq!(tx.signature.unwrap().0, 0);
-		assert_eq!(
-			tx.call,
-			RuntimeCall::DdcVerification(Call::set_validate_payout_batch {
-				cluster_id: Default::default(),
-				era_id: DdcEra::default(),
-				payout_data: PayoutData { hash: ActivityHash::default() },
-			})
-		);
+		<EraValidations<Test>>::insert(cluster_id, era_2, validation_2);
+
+		// Now the last validated era should be ERA_2
+		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id, validator).map(|era| {
+			assert_eq!(era, Some(era_2));
+		}));
 	});
 }
 
