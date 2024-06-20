@@ -15,6 +15,8 @@
 #![recursion_limit = "256"]
 
 pub mod weights;
+use polkadot_ckb_merkle_mountain_range::MerkleProof;
+
 use crate::weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -91,7 +93,7 @@ parameter_types! {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::traits::ValidatorVisitor;
+	use ddc_primitives::{traits::ValidatorVisitor, ActivityHash};
 	use frame_support::PalletId;
 	use sp_io::hashing::blake2_128;
 	use sp_runtime::traits::{AccountIdConversion, Zero};
@@ -360,12 +362,16 @@ pub mod pallet {
 
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::send_charging_customers_batch(payers.len().saturated_into()))]
+		#[allow(clippy::too_many_arguments)] // todo! need to refactor this
 		pub fn send_charging_customers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
 			payers: Vec<(T::AccountId, CustomerUsage)>,
+			mmr_size: u64,
+			proof: Vec<ActivityHash>,
+			leaf_with_position: (u64, ActivityHash),
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
@@ -397,7 +403,8 @@ pub mod pallet {
 					era,
 					batch_index,
 					&payers,
-					&[] // todo! pass from newly added input
+					MerkleProof::new(mmr_size, proof),
+					leaf_with_position
 				),
 				Error::<T>::BatchValidationFailed
 			);
