@@ -14,8 +14,8 @@ use cere_runtime_common::constants::tracks::{
 };
 use ddc_primitives::traits::pallet::PalletsOriginOf;
 pub use pallet_origins::pallet::{
-	ClusterProtocolActivator, ClusterProtocolUpdater, FellowshipAdmin, GeneralAdmin,
-	ReferendumCanceller, ReferendumKiller, Spender, StakingAdmin, Treasurer, WhitelistedCaller,
+	ClusterProtocolActivator, ClusterProtocolUpdater, GeneralAdmin, ReferendumCanceller,
+	ReferendumKiller, Spender, StakingAdmin, Treasurer, WhitelistedCaller,
 };
 pub use tracks::TracksInfo;
 
