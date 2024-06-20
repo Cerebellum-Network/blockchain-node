@@ -1,7 +1,10 @@
 name: "Build Berlin Hackathon branch"
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "berlin-hackathon" ]
+  pull_request:
+    branches: [ "berlin-hackathon" ]
 
 jobs:
   publish_docker_image:
