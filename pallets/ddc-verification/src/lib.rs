@@ -25,6 +25,10 @@ use frame_system::{
 	pallet_prelude::*,
 };
 pub use pallet::*;
+use polkadot_ckb_merkle_mountain_range::{
+	util::{MemMMR, MemStore},
+	MerkleProof, MMR,
+};
 use scale_info::prelude::format;
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
@@ -48,7 +52,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::BucketId;
+	use ddc_primitives::{BucketId, MergeActivityHash};
 	use frame_election_provider_support::SortedListProvider;
 	use frame_support::PalletId;
 	use sp_runtime::SaturatedConversion;
@@ -181,6 +185,9 @@ pub mod pallet {
 			num_nodes: u16,
 			validator: T::AccountId,
 		},
+		FailedToCreateMerkleRoot {
+			validator: T::AccountId,
+		},
 	}
 
 	/// Consensus Errors
@@ -224,6 +231,7 @@ pub mod pallet {
 		NotEnoughDACNodes {
 			num_nodes: u16,
 		},
+		FailedToCreateMerkleRoot,
 	}
 
 	#[pallet::error]
@@ -259,6 +267,12 @@ pub mod pallet {
 		DDCValidatorKeyNotRegistered,
 		TransactionSubmissionError,
 		NoAvailableSigner,
+		/// Fail to generate proof
+		FailToGenerateProof,
+		/// Fail to verify merkle proof
+		FailToVerifyMerkleProof,
+		/// No Era Validation exist
+		NoEraValidation,
 	}
 
 	/// Era validations
@@ -300,7 +314,7 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct EraValidation<T: Config> {
-		pub validators: BTreeMap<(ActivityHash, ActivityHash), Vec<T::AccountId>>, // todo! change to signatures (T::AccountId, Signature)
+		pub validators: BTreeMap<(ActivityHash, ActivityHash), Vec<T::AccountId>>, /* todo! change to signatures (T::AccountId, Signature) */
 		pub payers_merkle_root_hash: ActivityHash,
 		pub payees_merkle_root_hash: ActivityHash,
 		pub status: EraValidationStatus,
@@ -502,8 +516,11 @@ pub mod pallet {
 			)?;
 			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
-			);
-			let customers_activity_root = Self::create_merkle_root(&customers_activity_batch_roots);
+			)
+			.map_err(|err| vec![err])?;
+
+			let customers_activity_root = Self::create_merkle_root(&customers_activity_batch_roots)
+				.map_err(|err| vec![err])?;
 
 			let nodes_activity_in_consensus = Self::get_consensus_for_activities(
 				cluster_id,
@@ -514,8 +531,11 @@ pub mod pallet {
 			)?;
 			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
-			);
-			let nodes_activity_root = Self::create_merkle_root(&customers_activity_batch_roots);
+			)
+			.map_err(|err| vec![err])?;
+
+			let nodes_activity_root =
+				Self::create_merkle_root(&nodes_activity_batch_roots).map_err(|err| vec![err])?;
 
 			Self::store_validation_activities(
 				cluster_id,
@@ -702,15 +722,16 @@ pub mod pallet {
 
 		pub(crate) fn convert_to_batch_merkle_roots<A: Activity>(
 			activities: Vec<Vec<A>>,
-		) -> Vec<ActivityHash> {
+		) -> Result<Vec<ActivityHash>, OCWError> {
 			activities
 				.into_iter()
 				.map(|inner_vec| {
 					let activity_hashes: Vec<ActivityHash> =
 						inner_vec.into_iter().map(|a| a.hash::<T>()).collect();
 					Self::create_merkle_root(&activity_hashes)
+						.map_err(|_| OCWError::FailedToCreateMerkleRoot)
 				})
-				.collect()
+				.collect::<Result<Vec<ActivityHash>, OCWError>>()
 		}
 
 		pub(crate) fn split_to_batches<A: Activity>(
@@ -732,11 +753,31 @@ pub mod pallet {
 		///
 		/// Parameters:
 		/// - `leaves`: collection of leaf
-		pub(crate) fn create_merkle_root(leaves: &[ActivityHash]) -> ActivityHash {
-			// todo! add tests
-			let leaves = leaves.iter().map(|l| l.to_vec()).collect::<Vec<Vec<u8>>>();
+		pub(crate) fn create_merkle_root(
+			leaves: &[ActivityHash],
+		) -> Result<ActivityHash, OCWError> {
+			let store = MemStore::default();
+			let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
+				MemMMR::<_, MergeActivityHash>::new(0, &store);
+			let _ = leaves.iter().map(|a| mmr.push(*a)).collect::<Vec<_>>();
+			let root = mmr.get_root().map_err(|_| OCWError::FailedToCreateMerkleRoot)?;
 
-			T::ActivityHasher::ordered_trie_root(leaves, Default::default()).into()
+			Ok(root)
+		}
+
+		/// Verify whether leaf is part of tree
+		///
+		/// Parameters:
+		/// - `root`: merkle root
+		/// - `leaf`: Leaf of the tree
+		pub(crate) fn proof_merkle_leaf(
+			root: ActivityHash,
+			proof: MerkleProof<ActivityHash, MergeActivityHash>,
+			leaf_with_position: Vec<(u64, ActivityHash)>,
+		) -> Result<bool, Error<T>> {
+			proof
+				.verify(root, leaf_with_position)
+				.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
 		}
 
 		#[allow(dead_code)]
@@ -1041,7 +1082,8 @@ pub mod pallet {
 			let mut node_usages = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
-				// todo! probably shouldn't stop when some DAC is not responding as we can still work with others
+				// todo! probably shouldn't stop when some DAC is not responding as we can still
+				// work with others
 				let usage =
 					Self::fetch_node_usage(cluster_id, era_id, node_params).map_err(|_| {
 						OCWError::NodeUsageRetrievalError {
@@ -1071,7 +1113,8 @@ pub mod pallet {
 			let mut customers_usages = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
-				// todo! probably shouldn't stop when some DAC is not responding as we can still work with others
+				// todo! probably shouldn't stop when some DAC is not responding as we can still
+				// work with others
 				let usage =
 					Self::fetch_customers_usage(cluster_id, era_id, node_params).map_err(|_| {
 						OCWError::CustomerUsageRetrievalError {
@@ -1099,7 +1142,8 @@ pub mod pallet {
 			let mut eras = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
-				// todo! probably shouldn't stop when some DAC is not responding as we can still work with others
+				// todo! probably shouldn't stop when some DAC is not responding as we can still
+				// work with others
 				let ids = Self::fetch_processed_era(node_params).map_err(|_| {
 					OCWError::EraRetrievalError {
 						cluster_id: *cluster_id,
@@ -1154,7 +1198,8 @@ pub mod pallet {
 				}
 			};
 
-			// Ensure the validators entry exists for the specified (payers_merkle_root_hash, payees_merkle_root_hash)
+			// Ensure the validators entry exists for the specified (payers_merkle_root_hash,
+			// payees_merkle_root_hash)
 			let signed_validators = era_validation
 				.validators
 				.entry((payers_merkle_root_hash, payees_merkle_root_hash))
@@ -1168,7 +1213,8 @@ pub mod pallet {
 
 			let mut should_deposit_ready_event = false;
 			if threshold < signed_validators.len() {
-				// Update payers_merkle_root_hash and payees_merkle_root_hash as ones passed the threshold
+				// Update payers_merkle_root_hash and payees_merkle_root_hash as ones passed the
+				// threshold
 				era_validation.payers_merkle_root_hash = payers_merkle_root_hash;
 				era_validation.payees_merkle_root_hash = payees_merkle_root_hash;
 				era_validation.status = EraValidationStatus::ReadyForPayout;
@@ -1267,6 +1313,11 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
+					OCWError::FailedToCreateMerkleRoot => {
+						Self::deposit_event(Event::FailedToCreateMerkleRoot {
+							validator: caller.clone(),
+						});
+					},
 				}
 			}
 
@@ -1309,13 +1360,23 @@ pub mod pallet {
 		}
 
 		fn is_customers_batch_valid(
-			_cluster_id: ClusterId,
-			_era: DdcEra,
+			cluster_id: ClusterId,
+			era: DdcEra,
 			_batch_index: BatchIndex,
 			_payers: &[(T::AccountId, CustomerUsage)],
-			_adjacent_hashes: &[ActivityHash],
+			proof: MerkleProof<ActivityHash, MergeActivityHash>,
+			leaf_with_position: (u64, ActivityHash),
 		) -> bool {
-			true
+			let validation_era = EraValidations::<T>::get(cluster_id, era);
+
+			match validation_era {
+				Some(valid_era) => {
+					let root = valid_era.payers_merkle_root_hash;
+
+					Self::proof_merkle_leaf(root, proof, vec![leaf_with_position]).unwrap_or(false)
+				},
+				None => false,
+			}
 		}
 		fn is_providers_batch_valid(
 			_cluster_id: ClusterId,

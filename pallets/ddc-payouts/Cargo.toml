@@ -13,6 +13,7 @@ repository.workspace = true
 byte-unit = { workspace = true }
 codec = { workspace = true }
 log = { workspace = true }
+polkadot-ckb-merkle-mountain-range = { workspace = true }
 scale-info = { workspace = true }
 
 # Substrate dependencies
@@ -51,6 +52,7 @@ std = [
   "sp-std/std",
   "sp-core/std",
   "frame-election-provider-support/std",
+  "polkadot-ckb-merkle-mountain-range/std",
 ]
 runtime-benchmarks = [
   "ddc-primitives/runtime-benchmarks",

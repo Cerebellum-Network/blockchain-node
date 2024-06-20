@@ -1,4 +1,4 @@
-use ddc_primitives::{ClusterId, StorageNodeParams, StorageNodePubKey};
+use ddc_primitives::{ClusterId, MergeActivityHash, StorageNodeParams, StorageNodePubKey};
 use frame_support::{assert_noop, assert_ok};
 use sp_core::offchain::{
 	testing::{PendingRequest, TestOffchainExt, TestTransactionPoolExt},
@@ -1551,5 +1551,76 @@ fn test_get_last_validated_era() {
 		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id, validator).map(|era| {
 			assert_eq!(era, Some(era_2));
 		}));
+	});
+}
+
+#[test]
+fn create_merkle_root_works() {
+	new_test_ext().execute_with(|| {
+		let a: ActivityHash = [0; 32];
+		let b: ActivityHash = [1; 32];
+		let c: ActivityHash = [2; 32];
+		let d: ActivityHash = [3; 32];
+		let e: ActivityHash = [4; 32];
+
+		let leaves = vec![a, b, c, d, e];
+
+		let root = DdcVerification::create_merkle_root(&leaves).unwrap();
+
+		assert_eq!(
+			root,
+			[
+				205, 34, 92, 22, 66, 39, 53, 146, 126, 111, 191, 174, 107, 224, 161, 127, 150, 69,
+				255, 15, 237, 252, 116, 39, 186, 26, 40, 154, 180, 110, 185, 7
+			]
+		);
+	});
+}
+
+#[test]
+fn proof_merkle_leaf_works() {
+	new_test_ext().execute_with(|| {
+		let a: ActivityHash = [0; 32];
+		let b: ActivityHash = [1; 32];
+		let c: ActivityHash = [2; 32];
+		let d: ActivityHash = [3; 32];
+		let e: ActivityHash = [4; 32];
+		let f: ActivityHash = [5; 32];
+
+		let leaves = [a, b, c, d, e];
+
+		let store = MemStore::default();
+		let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
+			MemMMR::<_, MergeActivityHash>::new(0, &store);
+		let leaf_position_map: Vec<(ActivityHash, u64)> = leaves
+			.iter()
+			.map(
+				|a| (*a, mmr.push(*a).unwrap()), // todo! Need to remove unwrap
+			)
+			.collect();
+
+		let leaf_position: Vec<(u64, ActivityHash)> = leaf_position_map
+			.into_iter()
+			.filter(|(l, _)| l == &c)
+			.map(|(l, p)| (p, l))
+			.collect();
+		let position: Vec<u64> = leaf_position.clone().into_iter().map(|(p, _)| p).collect();
+		let root = mmr.get_root().unwrap();
+
+		assert!(DdcVerification::proof_merkle_leaf(
+			root,
+			mmr.gen_proof(position.clone()).unwrap(),
+			leaf_position
+		)
+		.unwrap());
+
+		assert_noop!(
+			DdcVerification::proof_merkle_leaf(
+				root,
+				mmr.gen_proof(position).unwrap(),
+				vec![(6, f)]
+			),
+			Error::<Test>::FailToVerifyMerkleProof
+		);
 	});
 }

@@ -1,11 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use blake2::{Blake2s256, Digest};
 use codec::{Decode, Encode};
 use frame_support::parameter_types;
+use polkadot_ckb_merkle_mountain_range::Merge;
 use scale_info::{prelude::vec::Vec, TypeInfo};
 use serde::{Deserialize, Serialize};
 use sp_core::{crypto::KeyTypeId, hash::H160};
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
+
 pub mod traits;
 
 parameter_types! {
@@ -23,6 +26,23 @@ pub type ClusterNodesCount = u16;
 pub type StorageNodePubKey = AccountId32;
 pub type ActivityHash = [u8; 32];
 pub type BatchIndex = u16;
+
+pub struct MergeActivityHash;
+impl Merge for MergeActivityHash {
+	type Item = ActivityHash;
+	fn merge(
+		lhs: &Self::Item, // Left side of tree
+		rhs: &Self::Item, // Right side of tree
+	) -> Result<Self::Item, polkadot_ckb_merkle_mountain_range::Error> {
+		let mut hasher = Blake2s256::new();
+
+		hasher.update(lhs.as_slice());
+		hasher.update(rhs.as_slice());
+		let hash = hasher.finalize();
+
+		Ok(ActivityHash::from(sp_core::H256::from_slice(hash.as_slice())))
+	}
+}
 
 // ClusterParams includes Governance non-sensetive parameters only
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
