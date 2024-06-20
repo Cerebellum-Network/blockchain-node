@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [C,D] `WhitelistOrigin` is set to the Technical Committee Collective Body
+- [C,D] The _Support Curve_ in OpenGov Tracks is made more strict
 
 ## [5.3.0]
 
