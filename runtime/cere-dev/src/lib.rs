@@ -34,9 +34,8 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Everything, GetStorageVersion, Imbalance, InstanceFilter,
-		KeyOwnerProofSystem, Nothing, OnRuntimeUpgrade, OnUnbalanced, StorageVersion,
-		WithdrawReasons,
+		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, Nothing,
+		OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -312,20 +311,20 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::Any => true,
 			ProxyType::NonTransfer => !matches!(
 				c,
-				RuntimeCall::Balances(..)
-					| RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
-					| RuntimeCall::Indices(pallet_indices::Call::transfer { .. })
-					| RuntimeCall::NominationPools(..)
-					| RuntimeCall::ConvictionVoting(..)
-					| RuntimeCall::Referenda(..)
-					| RuntimeCall::Whitelist(..)
+				RuntimeCall::Balances(..) |
+					RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
+					RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
+					RuntimeCall::NominationPools(..) |
+					RuntimeCall::ConvictionVoting(..) |
+					RuntimeCall::Referenda(..) |
+					RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
-				RuntimeCall::Treasury(..)
-					| RuntimeCall::ConvictionVoting(..)
-					| RuntimeCall::Referenda(..)
-					| RuntimeCall::Whitelist(..)
+				RuntimeCall::Treasury(..) |
+					RuntimeCall::ConvictionVoting(..) |
+					RuntimeCall::Referenda(..) |
+					RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Staking => matches!(c, RuntimeCall::Staking(..)),
 		}
@@ -665,8 +664,8 @@ impl Get<Option<BalancingConfig>> for OffchainRandomBalancing {
 			max => {
 				let seed = sp_io::offchain::random_seed();
 				let random = <u32>::decode(&mut TrailingZeroInput::new(&seed))
-					.expect("input is padded with zeroes; qed")
-					% max.saturating_add(1);
+					.expect("input is padded with zeroes; qed") %
+					max.saturating_add(1);
 				random as usize
 			},
 		};
@@ -1346,47 +1345,8 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
-#[cfg(feature = "try-runtime")]
-use sp_runtime::DispatchError;
-pub struct TechCommSetV4Storage;
-impl OnRuntimeUpgrade for TechCommSetV4Storage {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		let log_target = "tech-comm-v4-migration";
-		let on_chain_storage_version = <TechComm as GetStorageVersion>::on_chain_storage_version();
-		if on_chain_storage_version == 0 {
-			log::info!(
-				target: log_target,
-				"Upgrading storage version to v4",
-			);
-			StorageVersion::new(4).put::<TechComm>();
-			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1)
-		} else {
-			log::warn!(
-				target: log_target,
-				"Attempted to apply migration to v4 but failed because storage version is {:?}",
-				on_chain_storage_version,
-			);
-			<Runtime as frame_system::Config>::DbWeight::get().reads(1)
-		}
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
-		let on_chain_storage_version = <TechComm as GetStorageVersion>::on_chain_storage_version();
-		assert_eq!(on_chain_storage_version, 0, "Tech Comm version is not v0");
-		Ok(Vec::new())
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade(_prev_state: Vec<u8>) -> Result<(), DispatchError> {
-		let on_chain_storage_version = <TechComm as GetStorageVersion>::on_chain_storage_version();
-		assert_eq!(on_chain_storage_version, 4, "Tech Comm version is not v4");
-		Ok(())
-	}
-}
-
 /// Runtime migrations
-type Migrations = (TechCommSetV4Storage,);
+type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
