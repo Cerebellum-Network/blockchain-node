@@ -79,50 +79,56 @@ pub mod tracks {
 	pub const fn percent(x: i32) -> sp_arithmetic::FixedI64 {
 		sp_arithmetic::FixedI64::from_rational(x as u128, 100)
 	}
+	pub const fn percent_perbill(x: Perbill) -> sp_arithmetic::FixedI64 {
+		sp_arithmetic::FixedI64::from_perbill(x)
+	}
 	pub use pallet_referenda::Curve;
+	use sp_runtime::Perbill;
+
 	pub const APP_ROOT: Curve =
 		Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
-	pub const SUP_ROOT: Curve = Curve::make_linear(28, 28, percent(0), percent(50));
+	pub const SUP_ROOT: Curve = Curve::make_linear(28, 28, percent(20), percent(50));
 	pub const APP_STAKING_ADMIN: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
 	pub const SUP_STAKING_ADMIN: Curve =
-		Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
+		Curve::make_reciprocal(12, 28, percent(11), percent(10), percent(50));
 	pub const APP_TREASURER: Curve =
 		Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
-	pub const SUP_TREASURER: Curve = Curve::make_linear(28, 28, percent(0), percent(50));
-	pub const APP_FELLOWSHIP_ADMIN: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
-	pub const SUP_FELLOWSHIP_ADMIN: Curve =
-		Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
+	pub const SUP_TREASURER: Curve = Curve::make_linear(28, 28, percent(10), percent(50));
 	pub const APP_GENERAL_ADMIN: Curve =
 		Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
 	pub const SUP_GENERAL_ADMIN: Curve =
-		Curve::make_reciprocal(7, 28, percent(10), percent(0), percent(50));
+		Curve::make_reciprocal(7, 28, percent(20), percent(10), percent(50));
 	pub const APP_REFERENDUM_CANCELLER: Curve =
 		Curve::make_linear(17, 28, percent(50), percent(100));
 	pub const SUP_REFERENDUM_CANCELLER: Curve =
-		Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
+		Curve::make_reciprocal(12, 28, percent(11), percent(10), percent(50));
 	pub const APP_REFERENDUM_KILLER: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
 	pub const SUP_REFERENDUM_KILLER: Curve =
-		Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
+		Curve::make_reciprocal(12, 28, percent(11), percent(10), percent(50));
 	pub const APP_SMALL_TIPPER: Curve = Curve::make_linear(10, 28, percent(50), percent(100));
 	pub const SUP_SMALL_TIPPER: Curve =
-		Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(50));
+		Curve::make_reciprocal(1, 28, percent(14), percent(10), percent(50));
 	pub const APP_BIG_TIPPER: Curve = Curve::make_linear(10, 28, percent(50), percent(100));
 	pub const SUP_BIG_TIPPER: Curve =
-		Curve::make_reciprocal(8, 28, percent(1), percent(0), percent(50));
+		Curve::make_reciprocal(8, 28, percent(11), percent(10), percent(50));
 	pub const APP_SMALL_SPENDER: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
 	pub const SUP_SMALL_SPENDER: Curve =
-		Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
+		Curve::make_reciprocal(12, 28, percent(11), percent(10), percent(50));
 	pub const APP_MEDIUM_SPENDER: Curve = Curve::make_linear(23, 28, percent(50), percent(100));
 	pub const SUP_MEDIUM_SPENDER: Curve =
-		Curve::make_reciprocal(16, 28, percent(1), percent(0), percent(50));
+		Curve::make_reciprocal(16, 28, percent(11), percent(10), percent(50));
 	pub const APP_BIG_SPENDER: Curve = Curve::make_linear(28, 28, percent(50), percent(100));
 	pub const SUP_BIG_SPENDER: Curve =
-		Curve::make_reciprocal(20, 28, percent(1), percent(0), percent(50));
+		Curve::make_reciprocal(20, 28, percent(11), percent(10), percent(50));
 	pub const APP_WHITELISTED_CALLER: Curve =
 		Curve::make_reciprocal(16, 28 * 24, percent(96), percent(50), percent(100));
-	pub const SUP_WHITELISTED_CALLER: Curve =
-		Curve::make_reciprocal(1, 28, percent(20), percent(5), percent(50));
-
+	pub const SUP_WHITELISTED_CALLER: Curve = Curve::make_reciprocal(
+		1,
+		28,
+		percent_perbill(Perbill::from_parts(1_000_000)), // 0.1 %
+		percent_perbill(Perbill::from_parts(250_000)),   // 0.025 %
+		percent(50),
+	);
 	pub const APP_CLUSTER_PROTOCOL_ACTIVATOR: Curve =
 		Curve::make_linear(10, 28, percent(0), percent(10));
 	pub const SUP_CLUSTER_PROTOCOL_ACTIVATOR: Curve =
@@ -140,7 +146,6 @@ pub mod tracks {
 	// General admin tracks
 	pub const STAKING_ADMIN_TRACK_ID: u16 = 10;
 	pub const TREASURER_TRACK_ID: u16 = 11;
-	pub const FELLOWSHIP_ADMIN_TRACK_ID: u16 = 13;
 	pub const GENERAL_ADMIN_TRACK_ID: u16 = 14;
 	// Referendum admins tracks
 	pub const REFERENDUM_CANCELER_TRACK_ID: u16 = 20;

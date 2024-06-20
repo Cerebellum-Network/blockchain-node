@@ -1,11 +1,10 @@
 //! Track configurations for governance.
 
-use cere_runtime_common::constants::{currency::*, time::*, tracks::*};
-
 use super::*;
 use crate::{Balance, BlockNumber};
+use cere_runtime_common::constants::tracks::*;
 
-const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15] = [
+const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 14] = [
 	(
 		ROOT_TRACK_ID,
 		pallet_referenda::TrackInfo {
@@ -39,7 +38,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		pallet_referenda::TrackInfo {
 			name: "staking_admin",
 			max_deciding: 10,
-			decision_deposit: 5 * GRAND,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 2 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 3 * HOURS,
@@ -53,7 +52,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		pallet_referenda::TrackInfo {
 			name: "treasurer",
 			max_deciding: 10,
-			decision_deposit: GRAND,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 2 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 3 * HOURS,
@@ -63,25 +62,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		},
 	),
 	(
-		FELLOWSHIP_ADMIN_TRACK_ID,
-		pallet_referenda::TrackInfo {
-			name: "fellowship_admin",
-			max_deciding: 10,
-			decision_deposit: 5 * GRAND,
-			prepare_period: 2 * HOURS,
-			decision_period: 28 * DAYS,
-			confirm_period: 3 * HOURS,
-			min_enactment_period: 10 * MINUTES,
-			min_approval: APP_FELLOWSHIP_ADMIN,
-			min_support: SUP_FELLOWSHIP_ADMIN,
-		},
-	),
-	(
 		GENERAL_ADMIN_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "general_admin",
 			max_deciding: 10,
-			decision_deposit: 5 * GRAND,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 2 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 3 * HOURS,
@@ -123,7 +108,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		pallet_referenda::TrackInfo {
 			name: "small_tipper",
 			max_deciding: 200,
-			decision_deposit: DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: MINUTES,
 			decision_period: 7 * DAYS,
 			confirm_period: 10 * MINUTES,
@@ -137,7 +122,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		pallet_referenda::TrackInfo {
 			name: "big_tipper",
 			max_deciding: 100,
-			decision_deposit: 10 * DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 10 * MINUTES,
 			decision_period: 7 * DAYS,
 			confirm_period: HOURS,
@@ -151,7 +136,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		pallet_referenda::TrackInfo {
 			name: "small_spender",
 			max_deciding: 50,
-			decision_deposit: 100 * DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 4 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 12 * HOURS,
@@ -165,7 +150,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		pallet_referenda::TrackInfo {
 			name: "medium_spender",
 			max_deciding: 50,
-			decision_deposit: 200 * DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 4 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 24 * HOURS,
@@ -179,7 +164,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 15
 		pallet_referenda::TrackInfo {
 			name: "big_spender",
 			max_deciding: 50,
-			decision_deposit: 400 * DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 4 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 48 * HOURS,
@@ -233,16 +218,17 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 			}
 		} else if let Ok(custom_origin) = pallet_origins::pallet::Origin::try_from(id.clone()) {
 			match custom_origin {
-				pallet_origins::pallet::Origin::WhitelistedCaller =>
-					Ok(WHITELISTED_CALLER_TRACK_ID),
+				pallet_origins::pallet::Origin::WhitelistedCaller => {
+					Ok(WHITELISTED_CALLER_TRACK_ID)
+				},
 				// General admin
 				pallet_origins::pallet::Origin::StakingAdmin => Ok(STAKING_ADMIN_TRACK_ID),
 				pallet_origins::pallet::Origin::Treasurer => Ok(TREASURER_TRACK_ID),
-				pallet_origins::pallet::Origin::FellowshipAdmin => Ok(FELLOWSHIP_ADMIN_TRACK_ID),
 				pallet_origins::pallet::Origin::GeneralAdmin => Ok(GENERAL_ADMIN_TRACK_ID),
 				// Referendum admins
-				pallet_origins::pallet::Origin::ReferendumCanceller =>
-					Ok(REFERENDUM_CANCELER_TRACK_ID),
+				pallet_origins::pallet::Origin::ReferendumCanceller => {
+					Ok(REFERENDUM_CANCELER_TRACK_ID)
+				},
 				pallet_origins::pallet::Origin::ReferendumKiller => Ok(REFERENDUM_KILLER_TRACK_ID),
 				// Limited treasury spenders
 				pallet_origins::pallet::Origin::SmallTipper => Ok(SMALL_TIPPER_TRACK_ID),
@@ -251,10 +237,12 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 				pallet_origins::pallet::Origin::MediumSpender => Ok(MEDIUM_SPENDER_TRACK_ID),
 				pallet_origins::pallet::Origin::BigSpender => Ok(BIG_SPENDER_TRACK_ID),
 				// DDC admins
-				pallet_origins::pallet::Origin::ClusterProtocolActivator =>
-					Ok(CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID),
-				pallet_origins::pallet::Origin::ClusterProtocolUpdater =>
-					Ok(CLUSTER_PROTOCOL_UPDATER_TRACK_ID),
+				pallet_origins::pallet::Origin::ClusterProtocolActivator => {
+					Ok(CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID)
+				},
+				pallet_origins::pallet::Origin::ClusterProtocolUpdater => {
+					Ok(CLUSTER_PROTOCOL_UPDATER_TRACK_ID)
+				},
 			}
 		} else {
 			Err(())
