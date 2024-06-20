@@ -958,7 +958,7 @@ pub mod pallet {
 		) -> Result<Vec<EraActivity>, http::Error> {
 			let scheme = if node_params.ssl { "https" } else { "http" };
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let url = format!("{}://{}:{}/activity/era", scheme, host, node_params.http_port);
+			let url = format!("{}://{}:{}/activity/eras", scheme, host, node_params.http_port);
 			let request = http::Request::get(&url);
 			let timeout =
 				sp_io::offchain::timestamp().add(sp_runtime::offchain::Duration::from_millis(3000));
@@ -1021,7 +1021,7 @@ pub mod pallet {
 			let scheme = if node_params.ssl { "https" } else { "http" };
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 			let url = format!(
-				"{}://{}:{}/activity/node?eraId={}",
+				"{}://{}:{}/activity/nodes?eraId={}",
 				scheme, host, node_params.http_port, era_id
 			);
 
