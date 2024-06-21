@@ -29,7 +29,7 @@ use polkadot_ckb_merkle_mountain_range::{
 	util::{MemMMR, MemStore},
 	MerkleProof, MMR,
 };
-use scale_info::prelude::format;
+use scale_info::prelude::{format, string::String};
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
 use sp_runtime::{
@@ -333,9 +333,9 @@ pub mod pallet {
 	)]
 	pub(crate) struct NodeActivity {
 		/// Node id.
-		pub(crate) node_id: [u8; 32],
+		pub(crate) node_id: String,
 		/// Provider id.
-		pub(crate) provider_id: [u8; 32],
+		pub(crate) provider_id: String,
 		/// Total amount of stored bytes.
 		pub(crate) stored_bytes: u64,
 		/// Total amount of transferred bytes.
@@ -352,7 +352,7 @@ pub mod pallet {
 	)]
 	pub(crate) struct CustomerActivity {
 		/// Customer id.
-		pub(crate) customer_id: [u8; 32],
+		pub(crate) customer_id: String,
 		/// Bucket id
 		pub(crate) bucket_id: BucketId,
 		/// Total amount of stored bytes.
@@ -375,7 +375,7 @@ pub mod pallet {
 
 	impl Activity for NodeActivity {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.node_id).into()
+			T::ActivityHasher::hash(self.node_id.as_bytes()).into()
 		}
 
 		fn hash<T: Config>(&self) -> ActivityHash {
@@ -384,7 +384,7 @@ pub mod pallet {
 	}
 	impl Activity for CustomerActivity {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			let mut data = self.customer_id.to_vec();
+			let mut data = self.customer_id.as_bytes().to_vec();
 			data.extend_from_slice(&self.bucket_id.encode());
 			T::ActivityHasher::hash(&data).into()
 		}
@@ -847,6 +847,7 @@ pub mod pallet {
 			let current_validator = T::NodeVisitor::get_current_validator();
 			let last_validated_era = Self::get_last_validated_era(cluster_id, current_validator)?
 				.unwrap_or_else(DdcEra::default);
+
 			let all_ids = Self::fetch_processed_era_for_node(cluster_id, dac_nodes)?;
 
 			let ids_greater_than_last_validated_era: Vec<DdcEra> = all_ids
@@ -1180,8 +1181,8 @@ pub mod pallet {
 			payees_merkle_root_hash: ActivityHash,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
 
+			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
 			// Retrieve or initialize the EraValidation
 			let mut era_validation = {
 				let era_validations = <EraValidations<T>>::get(cluster_id, era_id);
