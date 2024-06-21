@@ -42,40 +42,40 @@ fn get_validators() -> Vec<AccountId32> {
 
 fn get_node_activities() -> Vec<NodeActivity> {
 	let node1 = NodeActivity {
-		node_id: [0; 32],
-		provider_id: [0; 32],
+		node_id: "0".to_string(),
+		provider_id: "0".to_string(),
 		stored_bytes: 100,
 		transferred_bytes: 50,
 		number_of_puts: 10,
 		number_of_gets: 20,
 	};
 	let node2 = NodeActivity {
-		node_id: [1; 32],
-		provider_id: [1; 32],
+		node_id: "1".to_string(),
+		provider_id: "1".to_string(),
 		stored_bytes: 101,
 		transferred_bytes: 51,
 		number_of_puts: 11,
 		number_of_gets: 21,
 	};
 	let node3 = NodeActivity {
-		node_id: [2; 32],
-		provider_id: [2; 32],
+		node_id: "2".to_string(),
+		provider_id: "2".to_string(),
 		stored_bytes: 102,
 		transferred_bytes: 52,
 		number_of_puts: 12,
 		number_of_gets: 22,
 	};
 	let node4 = NodeActivity {
-		node_id: [3; 32],
-		provider_id: [3; 32],
+		node_id: "3".to_string(),
+		provider_id: "3".to_string(),
 		stored_bytes: 103,
 		transferred_bytes: 53,
 		number_of_puts: 13,
 		number_of_gets: 23,
 	};
 	let node5 = NodeActivity {
-		node_id: [4; 32],
-		provider_id: [4; 32],
+		node_id: "4".to_string(),
+		provider_id: "4".to_string(),
 		stored_bytes: 104,
 		transferred_bytes: 54,
 		number_of_puts: 14,
@@ -1039,14 +1039,17 @@ fn test_convert_to_batch_merkle_roots() {
 	let result_roots = DdcVerification::convert_to_batch_merkle_roots(vec![
 		activities_batch_1.clone(),
 		activities_batch_2.clone(),
-	]);
+	])
+	.unwrap();
 	let expected_roots: Vec<ActivityHash> = vec![
 		DdcVerification::create_merkle_root(
 			&activities_batch_1.iter().map(|a| a.hash::<mock::Test>()).collect::<Vec<_>>(),
-		),
+		)
+		.unwrap(),
 		DdcVerification::create_merkle_root(
 			&activities_batch_2.iter().map(|a| a.hash::<mock::Test>()).collect::<Vec<_>>(),
-		),
+		)
+		.unwrap(),
 	];
 
 	assert_eq!(result_roots, expected_roots);
@@ -1336,9 +1339,9 @@ fn fetch_processed_era_works() {
 		let port = 80;
 
 		// Create a sample EraActivity instance
-		let era_activity1 = EraActivity { id: 17 };
-		let era_activity2 = EraActivity { id: 18 };
-		let era_activity3 = EraActivity { id: 19 };
+		let era_activity1 = EraActivity { id: 17, start: 1, end: 2 };
+		let era_activity2 = EraActivity { id: 18, start: 1, end: 2 };
+		let era_activity3 = EraActivity { id: 19, start: 1, end: 2 };
 		let era_activity_json =
 			serde_json::to_string(&vec![era_activity1, era_activity2, era_activity3]).unwrap();
 
@@ -1389,10 +1392,10 @@ fn get_era_for_validation_works() {
 		let host3 = "example3.com";
 		let host4 = "example4.com";
 		let port = 80;
-		let era_activity1 = EraActivity { id: 16 };
-		let era_activity2 = EraActivity { id: 17 };
-		let era_activity3 = EraActivity { id: 18 };
-		let era_activity4 = EraActivity { id: 19 };
+		let era_activity1 = EraActivity { id: 16, start: 1, end: 2 };
+		let era_activity2 = EraActivity { id: 17, start: 1, end: 2 };
+		let era_activity3 = EraActivity { id: 18, start: 1, end: 2 };
+		let era_activity4 = EraActivity { id: 19, start: 1, end: 2 };
 		let era_activity_json1 = serde_json::to_string(&vec![
 			era_activity1, //16
 			era_activity2, //17
@@ -1530,6 +1533,8 @@ fn test_get_last_validated_era() {
 
 		let validation_1 = EraValidation {
 			validators: validators_map_1,
+			start_era: 1,
+			end_era: 2,
 			payers_merkle_root_hash: payers_root,
 			payees_merkle_root_hash: payees_root,
 			status: EraValidationStatus::ValidatingData,
@@ -1555,6 +1560,8 @@ fn test_get_last_validated_era() {
 
 		let validation_2 = EraValidation {
 			validators: validators_map_2,
+			start_era: 1,
+			end_era: 2,
 			payers_merkle_root_hash: payers_root,
 			payees_merkle_root_hash: payees_root,
 			status: EraValidationStatus::ValidatingData,
@@ -1586,12 +1593,16 @@ fn test_get_era_for_payout() {
 	let era_id_2 = 2;
 	let era_validation_1 = EraValidation::<Test> {
 		validators: Default::default(),
+		start_era: 0,
+		end_era: 0,
 		payers_merkle_root_hash: Default::default(),
 		payees_merkle_root_hash: Default::default(),
 		status: EraValidationStatus::ReadyForPayout,
 	};
 	let era_validation_2 = EraValidation::<Test> {
 		validators: Default::default(),
+		start_era: 0,
+		end_era: 0,
 		payers_merkle_root_hash: Default::default(),
 		payees_merkle_root_hash: Default::default(),
 		status: EraValidationStatus::PayoutInProgress,
@@ -1602,7 +1613,7 @@ fn test_get_era_for_payout() {
 		EraValidations::<Test>::insert(cluster_id, era_id_2, &era_validation_2);
 
 		let mut result = Pallet::<Test>::get_era_for_payout(&cluster_id, status);
-		assert_eq!(result, Some(era_id_1));
+		assert_eq!(result, Some((era_id_1, 0, 0)));
 
 		result =
 			Pallet::<Test>::get_era_for_payout(&cluster_id, EraValidationStatus::PayoutSuccess);

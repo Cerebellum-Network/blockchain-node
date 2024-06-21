@@ -877,6 +877,7 @@ pub mod pallet {
 		///   - `Ok(Some(DdcEra))`: The maximum era in which the validator participated.
 		///   - `Ok(None)`: The validator did not participate in any era for the given cluster.
 		///   - `Err(OCWError)`: An error occurred while retrieving the data.
+		// todo! add tests for start and end era
 		pub(crate) fn get_last_validated_era(
 			cluster_id: &ClusterId,
 			validator: T::AccountId,
