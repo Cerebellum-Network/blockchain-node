@@ -1,10 +1,16 @@
-use ddc_primitives::{ClusterId, MergeActivityHash, StorageNodeParams, StorageNodePubKey};
+use ddc_primitives::{
+	ClusterId, MergeActivityHash, StorageNodeParams, StorageNodePubKey, KEY_TYPE,
+};
 use frame_support::{assert_noop, assert_ok};
-use sp_core::offchain::{
-	testing::{PendingRequest, TestOffchainExt, TestTransactionPoolExt},
-	OffchainDbExt, OffchainWorkerExt, Timestamp, TransactionPoolExt,
+use sp_core::{
+	offchain::{
+		testing::{PendingRequest, TestOffchainExt, TestTransactionPoolExt},
+		OffchainDbExt, OffchainWorkerExt, Timestamp, TransactionPoolExt,
+	},
+	Pair,
 };
 use sp_io::TestExternalities;
+use sp_keystore::{testing::MemoryKeystore, Keystore, KeystoreExt};
 use sp_runtime::AccountId32;
 
 use crate::{mock::*, Error, NodeActivity, OCWError, *};
@@ -43,16 +49,16 @@ fn fetch_node_usage_works() {
 
 		// Create a sample NodeActivity instance
 		let node_activity1 = NodeActivity {
-			provider_id: [1; 32],
-			node_id: [1; 32],
+			provider_id: "1".to_string(),
+			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 		};
 		let node_activity2 = NodeActivity {
-			provider_id: [2; 32],
-			node_id: [2; 32],
+			provider_id: "2".to_string(),
+			node_id: "2".to_string(),
 			stored_bytes: 110,
 			transferred_bytes: 510,
 			number_of_puts: 110,
@@ -64,7 +70,7 @@ fn fetch_node_usage_works() {
 		// Mock HTTP request and response
 		let pending_request = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/node?eraId={}", host, port, era_id),
+			uri: format!("http://{}:{}/activity/nodes?eraId={}", host, port, era_id),
 			response: Some(nodes_activity_json.as_bytes().to_vec()),
 			sent: true,
 			..Default::default()
@@ -119,7 +125,7 @@ fn fetch_customers_usage_works() {
 		// Create a sample NodeActivity instance
 		let customer_activity1 = CustomerActivity {
 			bucket_id: 111,
-			customer_id: [1; 32],
+			customer_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
@@ -127,7 +133,7 @@ fn fetch_customers_usage_works() {
 		};
 		let customer_activity2 = CustomerActivity {
 			bucket_id: 222,
-			customer_id: [2; 32],
+			customer_id: "2".to_string(),
 			stored_bytes: 1000,
 			transferred_bytes: 500,
 			number_of_puts: 100,
@@ -186,7 +192,7 @@ fn test_reach_consensus_empty() {
 fn test_reach_consensus_success() {
 	let activities = vec![
 		CustomerActivity {
-			customer_id: [0; 32],
+			customer_id: "0".to_string(),
 			bucket_id: 1,
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -194,7 +200,7 @@ fn test_reach_consensus_success() {
 			number_of_gets: 20,
 		},
 		CustomerActivity {
-			customer_id: [0; 32],
+			customer_id: "0".to_string(),
 			bucket_id: 1,
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -202,7 +208,7 @@ fn test_reach_consensus_success() {
 			number_of_gets: 20,
 		},
 		CustomerActivity {
-			customer_id: [0; 32],
+			customer_id: "0".to_string(),
 			bucket_id: 1,
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -219,7 +225,7 @@ fn test_reach_consensus_success() {
 fn test_reach_consensus_failure() {
 	let activities = vec![
 		CustomerActivity {
-			customer_id: [0; 32],
+			customer_id: "0".to_string(),
 			bucket_id: 1,
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -227,7 +233,7 @@ fn test_reach_consensus_failure() {
 			number_of_gets: 20,
 		},
 		CustomerActivity {
-			customer_id: [0; 32],
+			customer_id: "0".to_string(),
 			bucket_id: 1,
 			stored_bytes: 200,
 			transferred_bytes: 100,
@@ -235,7 +241,7 @@ fn test_reach_consensus_failure() {
 			number_of_gets: 40,
 		},
 		CustomerActivity {
-			customer_id: [0; 32],
+			customer_id: "0".to_string(),
 			bucket_id: 1,
 			stored_bytes: 300,
 			transferred_bytes: 150,
@@ -251,7 +257,7 @@ fn test_reach_consensus_failure() {
 fn test_reach_consensus_threshold() {
 	let activities = vec![
 		CustomerActivity {
-			customer_id: [0; 32],
+			customer_id: "0".to_string(),
 			bucket_id: 1,
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -259,7 +265,7 @@ fn test_reach_consensus_threshold() {
 			number_of_gets: 20,
 		},
 		CustomerActivity {
-			customer_id: [0; 32],
+			customer_id: "0".to_string(),
 			bucket_id: 1,
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -267,7 +273,7 @@ fn test_reach_consensus_threshold() {
 			number_of_gets: 20,
 		},
 		CustomerActivity {
-			customer_id: [0; 32],
+			customer_id: "0".to_string(),
 			bucket_id: 1,
 			stored_bytes: 200,
 			transferred_bytes: 100,
@@ -287,7 +293,7 @@ fn test_reach_consensus_threshold() {
 fn test_reach_consensus_exact_threshold() {
 	let activities = vec![
 		CustomerActivity {
-			customer_id: [0; 32],
+			customer_id: "0".to_string(),
 			bucket_id: 1,
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -295,7 +301,7 @@ fn test_reach_consensus_exact_threshold() {
 			number_of_gets: 20,
 		},
 		CustomerActivity {
-			customer_id: [0; 32],
+			customer_id: "0".to_string(),
 			bucket_id: 1,
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -322,7 +328,7 @@ fn test_get_consensus_customers_activity_success() {
 		(
 			node_pubkey_0,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -333,7 +339,7 @@ fn test_get_consensus_customers_activity_success() {
 		(
 			node_pubkey_1,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -344,7 +350,7 @@ fn test_get_consensus_customers_activity_success() {
 		(
 			node_pubkey_2,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -382,7 +388,7 @@ fn test_get_consensus_customers_activity_success2() {
 		(
 			node_pubkey_0.clone(),
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -393,7 +399,7 @@ fn test_get_consensus_customers_activity_success2() {
 		(
 			node_pubkey_1.clone(),
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -404,7 +410,7 @@ fn test_get_consensus_customers_activity_success2() {
 		(
 			node_pubkey_2.clone(),
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -415,7 +421,7 @@ fn test_get_consensus_customers_activity_success2() {
 		(
 			node_pubkey_0,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 2,
 				stored_bytes: 110,
 				transferred_bytes: 50,
@@ -426,7 +432,7 @@ fn test_get_consensus_customers_activity_success2() {
 		(
 			node_pubkey_1,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 2,
 				stored_bytes: 110,
 				transferred_bytes: 50,
@@ -437,7 +443,7 @@ fn test_get_consensus_customers_activity_success2() {
 		(
 			node_pubkey_2,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 2,
 				stored_bytes: 110,
 				transferred_bytes: 50,
@@ -478,8 +484,8 @@ fn test_get_consensus_nodes_activity_success() {
 		(
 			node_pubkey_0,
 			vec![NodeActivity {
-				provider_id: [0; 32],
-				node_id: [0; 32],
+				provider_id: "0".to_string(),
+				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -489,8 +495,8 @@ fn test_get_consensus_nodes_activity_success() {
 		(
 			node_pubkey_1,
 			vec![NodeActivity {
-				provider_id: [0; 32],
-				node_id: [0; 32],
+				provider_id: "0".to_string(),
+				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -500,8 +506,8 @@ fn test_get_consensus_nodes_activity_success() {
 		(
 			node_pubkey_2,
 			vec![NodeActivity {
-				provider_id: [0; 32],
-				node_id: [0; 32],
+				provider_id: "0".to_string(),
+				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -536,7 +542,7 @@ fn test_get_consensus_customers_activity_not_enough_nodes() {
 		(
 			node_pubkey_0,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -547,7 +553,7 @@ fn test_get_consensus_customers_activity_not_enough_nodes() {
 		(
 			node_pubkey_1,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -590,8 +596,8 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 		(
 			node_pubkey_0,
 			vec![NodeActivity {
-				provider_id: [0; 32],
-				node_id: [0; 32],
+				provider_id: "0".to_string(),
+				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -601,8 +607,8 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 		(
 			node_pubkey_1,
 			vec![NodeActivity {
-				provider_id: [0; 32],
-				node_id: [0; 32],
+				provider_id: "0".to_string(),
+				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -646,7 +652,7 @@ fn test_get_consensus_customers_activity_not_in_consensus() {
 		(
 			node_pubkey_0,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -657,7 +663,7 @@ fn test_get_consensus_customers_activity_not_in_consensus() {
 		(
 			node_pubkey_1,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 200,
 				transferred_bytes: 100,
@@ -668,7 +674,7 @@ fn test_get_consensus_customers_activity_not_in_consensus() {
 		(
 			node_pubkey_2,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 300,
 				transferred_bytes: 150,
@@ -713,7 +719,7 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 		(
 			node_pubkey_0.clone(),
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -724,7 +730,7 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 		(
 			node_pubkey_1.clone(),
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 200,
 				transferred_bytes: 100,
@@ -735,7 +741,7 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 		(
 			node_pubkey_2.clone(),
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 300,
 				transferred_bytes: 150,
@@ -746,7 +752,7 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 		(
 			node_pubkey_0,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 2,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -757,7 +763,7 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 		(
 			node_pubkey_1,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 2,
 				stored_bytes: 200,
 				transferred_bytes: 100,
@@ -768,7 +774,7 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 		(
 			node_pubkey_2,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 2,
 				stored_bytes: 300,
 				transferred_bytes: 150,
@@ -821,7 +827,7 @@ fn test_get_consensus_customers_activity_diff_errors() {
 		(
 			node_pubkey_0.clone(),
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -832,7 +838,7 @@ fn test_get_consensus_customers_activity_diff_errors() {
 		(
 			node_pubkey_1.clone(),
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 200,
 				transferred_bytes: 100,
@@ -843,7 +849,7 @@ fn test_get_consensus_customers_activity_diff_errors() {
 		(
 			node_pubkey_2.clone(),
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 1,
 				stored_bytes: 300,
 				transferred_bytes: 150,
@@ -854,7 +860,7 @@ fn test_get_consensus_customers_activity_diff_errors() {
 		(
 			node_pubkey_0,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 2,
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -865,7 +871,7 @@ fn test_get_consensus_customers_activity_diff_errors() {
 		(
 			node_pubkey_1,
 			vec![CustomerActivity {
-				customer_id: [0; 32],
+				customer_id: "0".to_string(),
 				bucket_id: 2,
 				stored_bytes: 200,
 				transferred_bytes: 100,
@@ -918,8 +924,8 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 		(
 			node_pubkey_0,
 			vec![NodeActivity {
-				node_id: [0; 32],
-				provider_id: [0; 32],
+				node_id: "0".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -929,8 +935,8 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 		(
 			node_pubkey_1,
 			vec![NodeActivity {
-				node_id: [0; 32],
-				provider_id: [0; 32],
+				node_id: "0".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
 				number_of_puts: 20,
@@ -940,8 +946,8 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 		(
 			node_pubkey_2,
 			vec![NodeActivity {
-				node_id: [0; 32],
-				provider_id: [0; 32],
+				node_id: "0".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 300,
 				transferred_bytes: 150,
 				number_of_puts: 30,
@@ -980,24 +986,24 @@ fn test_empty_activities() {
 #[test]
 fn test_single_batch() {
 	let node1 = NodeActivity {
-		node_id: [0; 32],
-		provider_id: [0; 32],
+		node_id: "0".to_string(),
+		provider_id: "0".to_string(),
 		stored_bytes: 100,
 		transferred_bytes: 50,
 		number_of_puts: 10,
 		number_of_gets: 20,
 	};
 	let node2 = NodeActivity {
-		node_id: [1; 32],
-		provider_id: [1; 32],
+		node_id: "1".to_string(),
+		provider_id: "1".to_string(),
 		stored_bytes: 101,
 		transferred_bytes: 51,
 		number_of_puts: 11,
 		number_of_gets: 21,
 	};
 	let node3 = NodeActivity {
-		node_id: [2; 32],
-		provider_id: [2; 32],
+		node_id: "2".to_string(),
+		provider_id: "2".to_string(),
 		stored_bytes: 102,
 		transferred_bytes: 52,
 		number_of_puts: 12,
@@ -1013,32 +1019,32 @@ fn test_single_batch() {
 #[test]
 fn test_exact_batches() {
 	let node1 = NodeActivity {
-		node_id: [0; 32],
-		provider_id: [0; 32],
+		node_id: "0".to_string(),
+		provider_id: "0".to_string(),
 		stored_bytes: 100,
 		transferred_bytes: 50,
 		number_of_puts: 10,
 		number_of_gets: 20,
 	};
 	let node2 = NodeActivity {
-		node_id: [1; 32],
-		provider_id: [1; 32],
+		node_id: "1".to_string(),
+		provider_id: "1".to_string(),
 		stored_bytes: 101,
 		transferred_bytes: 51,
 		number_of_puts: 11,
 		number_of_gets: 21,
 	};
 	let node3 = NodeActivity {
-		node_id: [2; 32],
-		provider_id: [2; 32],
+		node_id: "2".to_string(),
+		provider_id: "2".to_string(),
 		stored_bytes: 102,
 		transferred_bytes: 52,
 		number_of_puts: 12,
 		number_of_gets: 22,
 	};
 	let node4 = NodeActivity {
-		node_id: [3; 32],
-		provider_id: [3; 32],
+		node_id: "3".to_string(),
+		provider_id: "3".to_string(),
 		stored_bytes: 103,
 		transferred_bytes: 53,
 		number_of_puts: 13,
@@ -1060,40 +1066,40 @@ fn test_exact_batches() {
 #[allow(clippy::vec_init_then_push)]
 fn test_non_exact_batches() {
 	let node1 = NodeActivity {
-		node_id: [0; 32],
-		provider_id: [0; 32],
+		node_id: "0".to_string(),
+		provider_id: "0".to_string(),
 		stored_bytes: 100,
 		transferred_bytes: 50,
 		number_of_puts: 10,
 		number_of_gets: 20,
 	};
 	let node2 = NodeActivity {
-		node_id: [1; 32],
-		provider_id: [1; 32],
+		node_id: "1".to_string(),
+		provider_id: "1".to_string(),
 		stored_bytes: 101,
 		transferred_bytes: 51,
 		number_of_puts: 11,
 		number_of_gets: 21,
 	};
 	let node3 = NodeActivity {
-		node_id: [2; 32],
-		provider_id: [2; 32],
+		node_id: "2".to_string(),
+		provider_id: "2".to_string(),
 		stored_bytes: 102,
 		transferred_bytes: 52,
 		number_of_puts: 12,
 		number_of_gets: 22,
 	};
 	let node4 = NodeActivity {
-		node_id: [3; 32],
-		provider_id: [3; 32],
+		node_id: "3".to_string(),
+		provider_id: "3".to_string(),
 		stored_bytes: 103,
 		transferred_bytes: 53,
 		number_of_puts: 13,
 		number_of_gets: 23,
 	};
 	let node5 = NodeActivity {
-		node_id: [3; 32],
-		provider_id: [3; 32],
+		node_id: "3".to_string(),
+		provider_id: "3".to_string(),
 		stored_bytes: 104,
 		transferred_bytes: 54,
 		number_of_puts: 14,
@@ -1128,8 +1134,8 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 		(
 			node_pubkey_0.clone(),
 			vec![NodeActivity {
-				node_id: [0; 32],
-				provider_id: [0; 32],
+				node_id: "0".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -1139,8 +1145,8 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 		(
 			node_pubkey_1.clone(),
 			vec![NodeActivity {
-				node_id: [0; 32],
-				provider_id: [0; 32],
+				node_id: "0".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
 				number_of_puts: 20,
@@ -1150,8 +1156,8 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 		(
 			node_pubkey_2.clone(),
 			vec![NodeActivity {
-				node_id: [0; 32],
-				provider_id: [0; 32],
+				node_id: "0".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 300,
 				transferred_bytes: 150,
 				number_of_puts: 30,
@@ -1161,8 +1167,8 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 		(
 			node_pubkey_0,
 			vec![NodeActivity {
-				node_id: [1; 32],
-				provider_id: [0; 32],
+				node_id: "1".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -1172,8 +1178,8 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 		(
 			node_pubkey_1,
 			vec![NodeActivity {
-				node_id: [1; 32],
-				provider_id: [0; 32],
+				node_id: "1".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
 				number_of_puts: 20,
@@ -1183,8 +1189,8 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 		(
 			node_pubkey_2,
 			vec![NodeActivity {
-				node_id: [1; 32],
-				provider_id: [0; 32],
+				node_id: "1".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 300,
 				transferred_bytes: 150,
 				number_of_puts: 30,
@@ -1236,8 +1242,8 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 		(
 			node_pubkey_0.clone(),
 			vec![NodeActivity {
-				node_id: [0; 32],
-				provider_id: [0; 32],
+				node_id: "0".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -1247,8 +1253,8 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 		(
 			node_pubkey_1.clone(),
 			vec![NodeActivity {
-				node_id: [0; 32],
-				provider_id: [0; 32],
+				node_id: "0".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
 				number_of_puts: 20,
@@ -1258,8 +1264,8 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 		(
 			node_pubkey_2.clone(),
 			vec![NodeActivity {
-				node_id: [0; 32],
-				provider_id: [0; 32],
+				node_id: "0".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 300,
 				transferred_bytes: 150,
 				number_of_puts: 30,
@@ -1269,8 +1275,8 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 		(
 			node_pubkey_0,
 			vec![NodeActivity {
-				node_id: [1; 32],
-				provider_id: [0; 32],
+				node_id: "1".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -1280,8 +1286,8 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 		(
 			node_pubkey_1,
 			vec![NodeActivity {
-				node_id: [1; 32],
-				provider_id: [0; 32],
+				node_id: "1".to_string(),
+				provider_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
 				number_of_puts: 20,
@@ -1344,7 +1350,7 @@ fn fetch_processed_era_works() {
 		// Mock HTTP request and response
 		let pending_request = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/era", host, port),
+			uri: format!("http://{}:{}/activity/eras", host, port),
 			response: Some(era_activity_json.as_bytes().to_vec()),
 			sent: true,
 			..Default::default()
@@ -1419,28 +1425,28 @@ fn get_era_for_validation_works() {
 		.unwrap();
 		let pending_request1 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/era", host1, port),
+			uri: format!("http://{}:{}/activity/eras", host1, port),
 			response: Some(era_activity_json1.as_bytes().to_vec()),
 			sent: true,
 			..Default::default()
 		};
 		let pending_request2 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/era", host2, port),
+			uri: format!("http://{}:{}/activity/eras", host2, port),
 			response: Some(era_activity_json2.as_bytes().to_vec()),
 			sent: true,
 			..Default::default()
 		};
 		let pending_request3 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/era", host3, port),
+			uri: format!("http://{}:{}/activity/eras", host3, port),
 			response: Some(era_activity_json3.as_bytes().to_vec()),
 			sent: true,
 			..Default::default()
 		};
 		let pending_request4 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/era", host4, port),
+			uri: format!("http://{}:{}/activity/eras", host4, port),
 			response: Some(era_activity_json4.as_bytes().to_vec()),
 			sent: true,
 			..Default::default()
@@ -1622,5 +1628,294 @@ fn proof_merkle_leaf_works() {
 			),
 			Error::<Test>::FailToVerifyMerkleProof
 		);
+	});
+}
+
+#[test]
+fn test_single_ocw_pallet_integration() {
+	let mut ext = new_test_ext();
+	let (offchain, offchain_state) = TestOffchainExt::new();
+	let (pool, _pool_state) = TestTransactionPoolExt::new();
+
+	let (pair, _seed) = sp_core::sr25519::Pair::from_phrase(
+		"spider sell nice animal border success square soda stem charge caution echo",
+		None,
+	)
+	.unwrap();
+	let keystore = MemoryKeystore::new();
+	keystore
+		.insert(
+			KEY_TYPE,
+			"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
+			pair.public().as_ref(),
+		)
+		.unwrap();
+
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(offchain));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(KeystoreExt::new(keystore));
+
+	ext.execute_with(|| {
+
+		let mut offchain_state = offchain_state.write();
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host1 = "178.251.228.236";
+		let host2 = "95.217.8.119";
+		let host3 = "178.251.228.42";
+		let host4 = "37.27.30.47";
+		let host5 = "178.251.228.49";
+		let host6 = "159.69.207.65";
+		let host7 = "178.251.228.165";
+		let host8 = "49.13.211.157";
+		let host9 = "178.251.228.44";
+		let port = 8080;
+
+		let pending_request1 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host1, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request2 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host2, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request3 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host3, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request4 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host4, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request5 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host5, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request6 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host6, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request7 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host7, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request8 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host8, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request9 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host9, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+
+		let node_pending_request1 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host1, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request2 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host2, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request3 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host3, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request4 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host4, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request5 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host5, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request6 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host6, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request7 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host7, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request8 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host8, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request9 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host9, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request1 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host1, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request2 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host2, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request3 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host3, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request4 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host4, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request5 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host5, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request6 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host6, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request7 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host7, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request8 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host8, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request9 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host9, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		offchain_state.expect_request(pending_request1);
+		offchain_state.expect_request(pending_request2);
+		offchain_state.expect_request(pending_request3);
+		offchain_state.expect_request(pending_request4);
+		offchain_state.expect_request(pending_request5);
+		offchain_state.expect_request(pending_request6);
+		offchain_state.expect_request(pending_request7);
+		offchain_state.expect_request(pending_request8);
+		offchain_state.expect_request(pending_request9);
+		offchain_state.expect_request(node_pending_request1);
+		offchain_state.expect_request(node_pending_request2);
+		offchain_state.expect_request(node_pending_request3);
+		offchain_state.expect_request(node_pending_request4);
+		offchain_state.expect_request(node_pending_request5);
+		offchain_state.expect_request(node_pending_request6);
+		offchain_state.expect_request(node_pending_request7);
+		offchain_state.expect_request(node_pending_request8);
+		offchain_state.expect_request(node_pending_request9);
+		offchain_state.expect_request(bucket_pending_request1);
+		offchain_state.expect_request(bucket_pending_request2);
+		offchain_state.expect_request(bucket_pending_request3);
+		offchain_state.expect_request(bucket_pending_request4);
+		offchain_state.expect_request(bucket_pending_request5);
+		offchain_state.expect_request(bucket_pending_request6);
+		offchain_state.expect_request(bucket_pending_request7);
+		offchain_state.expect_request(bucket_pending_request8);
+		offchain_state.expect_request(bucket_pending_request9);
+		drop(offchain_state);
+
+		// // Offchain worker should be triggered if block number is  divided by 100
+		let block = 500;
+		System::set_block_number(block);
+		let cluster_id = ClusterId::from([12; 20]);
+
+		ClusterToValidate::<Test>::put(cluster_id);
+		DdcVerification::offchain_worker(block);
+
 	});
 }
