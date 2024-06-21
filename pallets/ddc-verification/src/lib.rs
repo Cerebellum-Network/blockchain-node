@@ -25,7 +25,11 @@ use frame_system::{
 	pallet_prelude::*,
 };
 pub use pallet::*;
-use scale_info::prelude::format;
+use polkadot_ckb_merkle_mountain_range::{
+	util::{MemMMR, MemStore},
+	MerkleProof, MMR,
+};
+use scale_info::prelude::{format, string::String};
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
 use sp_runtime::{
@@ -48,7 +52,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::BucketId;
+	use ddc_primitives::{BucketId, MergeActivityHash};
 	use frame_election_provider_support::SortedListProvider;
 	use frame_support::PalletId;
 	use sp_runtime::SaturatedConversion;
@@ -191,6 +195,9 @@ pub mod pallet {
 			num_nodes: u16,
 			validator: T::AccountId,
 		},
+		FailedToCreateMerkleRoot {
+			validator: T::AccountId,
+		},
 	}
 
 	/// Consensus Errors
@@ -238,6 +245,7 @@ pub mod pallet {
 		NotEnoughDACNodes {
 			num_nodes: u16,
 		},
+		FailedToCreateMerkleRoot,
 	}
 
 	#[pallet::error]
@@ -273,6 +281,12 @@ pub mod pallet {
 		DDCValidatorKeyNotRegistered,
 		TransactionSubmissionError,
 		NoAvailableSigner,
+		/// Fail to generate proof
+		FailToGenerateProof,
+		/// Fail to verify merkle proof
+		FailToVerifyMerkleProof,
+		/// No Era Validation exist
+		NoEraValidation,
 	}
 
 	/// Era validations
@@ -337,9 +351,9 @@ pub mod pallet {
 	)]
 	pub(crate) struct NodeActivity {
 		/// Node id.
-		pub(crate) node_id: [u8; 32],
+		pub(crate) node_id: String,
 		/// Provider id.
-		pub(crate) provider_id: [u8; 32],
+		pub(crate) provider_id: String,
 		/// Total amount of stored bytes.
 		pub(crate) stored_bytes: u64,
 		/// Total amount of transferred bytes.
@@ -356,7 +370,7 @@ pub mod pallet {
 	)]
 	pub(crate) struct CustomerActivity {
 		/// Customer id.
-		pub(crate) customer_id: [u8; 32],
+		pub(crate) customer_id: String,
 		/// Bucket id
 		pub(crate) bucket_id: BucketId,
 		/// Total amount of stored bytes.
@@ -379,7 +393,7 @@ pub mod pallet {
 
 	impl Activity for NodeActivity {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.node_id).into()
+			T::ActivityHasher::hash(self.node_id.as_bytes()).into()
 		}
 
 		fn hash<T: Config>(&self) -> ActivityHash {
@@ -388,7 +402,7 @@ pub mod pallet {
 	}
 	impl Activity for CustomerActivity {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			let mut data = self.customer_id.to_vec();
+			let mut data = self.customer_id.as_bytes().to_vec();
 			data.extend_from_slice(&self.bucket_id.encode());
 			T::ActivityHasher::hash(&data).into()
 		}
@@ -603,8 +617,11 @@ pub mod pallet {
 			)?;
 			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
-			);
-			let customers_activity_root = Self::create_merkle_root(&customers_activity_batch_roots);
+			)
+			.map_err(|err| vec![err])?;
+
+			let customers_activity_root = Self::create_merkle_root(&customers_activity_batch_roots)
+				.map_err(|err| vec![err])?;
 
 			let nodes_activity_in_consensus = Self::get_consensus_for_activities(
 				cluster_id,
@@ -615,8 +632,11 @@ pub mod pallet {
 			)?;
 			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
-			);
-			let nodes_activity_root = Self::create_merkle_root(&customers_activity_batch_roots);
+			)
+			.map_err(|err| vec![err])?;
+
+			let nodes_activity_root =
+				Self::create_merkle_root(&nodes_activity_batch_roots).map_err(|err| vec![err])?;
 
 			Self::store_validation_activities(
 				cluster_id,
@@ -756,15 +776,16 @@ pub mod pallet {
 		/// - `Vec<ActivityHash>`: A vector of Merkle root hashes, one for each batch of activities.
 		pub(crate) fn convert_to_batch_merkle_roots<A: Activity>(
 			activities: Vec<Vec<A>>,
-		) -> Vec<ActivityHash> {
+		) -> Result<Vec<ActivityHash>, OCWError> {
 			activities
 				.into_iter()
 				.map(|inner_vec| {
 					let activity_hashes: Vec<ActivityHash> =
 						inner_vec.into_iter().map(|a| a.hash::<T>()).collect();
 					Self::create_merkle_root(&activity_hashes)
+						.map_err(|_| OCWError::FailedToCreateMerkleRoot)
 				})
-				.collect()
+				.collect::<Result<Vec<ActivityHash>, OCWError>>()
 		}
 
 		/// Splits a slice of activities into batches of a specified size.
@@ -797,11 +818,31 @@ pub mod pallet {
 		///
 		/// Parameters:
 		/// - `leaves`: collection of leaf
-		pub(crate) fn create_merkle_root(leaves: &[ActivityHash]) -> ActivityHash {
-			// todo! add tests
-			let leaves = leaves.iter().map(|l| l.to_vec()).collect::<Vec<Vec<u8>>>();
+		pub(crate) fn create_merkle_root(
+			leaves: &[ActivityHash],
+		) -> Result<ActivityHash, OCWError> {
+			let store = MemStore::default();
+			let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
+				MemMMR::<_, MergeActivityHash>::new(0, &store);
+			let _ = leaves.iter().map(|a| mmr.push(*a)).collect::<Vec<_>>();
+			let root = mmr.get_root().map_err(|_| OCWError::FailedToCreateMerkleRoot)?;
 
-			T::ActivityHasher::ordered_trie_root(leaves, Default::default()).into()
+			Ok(root)
+		}
+
+		/// Verify whether leaf is part of tree
+		///
+		/// Parameters:
+		/// - `root`: merkle root
+		/// - `leaf`: Leaf of the tree
+		pub(crate) fn proof_merkle_leaf(
+			root: ActivityHash,
+			proof: MerkleProof<ActivityHash, MergeActivityHash>,
+			leaf_with_position: Vec<(u64, ActivityHash)>,
+		) -> Result<bool, Error<T>> {
+			proof
+				.verify(root, leaf_with_position)
+				.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
 		}
 
 		pub(crate) fn get_era_for_payout(
@@ -887,6 +928,7 @@ pub mod pallet {
 			let current_validator = T::NodeVisitor::get_current_validator();
 			let last_validated_era = Self::get_last_validated_era(cluster_id, current_validator)?
 				.unwrap_or_else(DdcEra::default);
+
 			let all_ids = Self::fetch_processed_era_for_node(cluster_id, dac_nodes)?;
 
 			let ids_greater_than_last_validated_era: Vec<DdcEra> = all_ids
@@ -1035,7 +1077,7 @@ pub mod pallet {
 		) -> Result<Vec<EraActivity>, http::Error> {
 			let scheme = if node_params.ssl { "https" } else { "http" };
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let url = format!("{}://{}:{}/activity/era", scheme, host, node_params.http_port);
+			let url = format!("{}://{}:{}/activity/eras", scheme, host, node_params.http_port);
 			let request = http::Request::get(&url);
 			let timeout =
 				sp_io::offchain::timestamp().add(sp_runtime::offchain::Duration::from_millis(3000));
@@ -1098,7 +1140,7 @@ pub mod pallet {
 			let scheme = if node_params.ssl { "https" } else { "http" };
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 			let url = format!(
-				"{}://{}:{}/activity/node?eraId={}",
+				"{}://{}:{}/activity/nodes?eraId={}",
 				scheme, host, node_params.http_port, era_id
 			);
 
@@ -1257,8 +1299,8 @@ pub mod pallet {
 			payees_merkle_root_hash: ActivityHash,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
 
+			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
 			// Retrieve or initialize the EraValidation
 			let mut era_validation = {
 				let era_validations = <EraValidations<T>>::get(cluster_id, era_id);
@@ -1399,6 +1441,11 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
+					OCWError::FailedToCreateMerkleRoot => {
+						Self::deposit_event(Event::FailedToCreateMerkleRoot {
+							validator: caller.clone(),
+						});
+					},
 				}
 			}
 
@@ -1441,13 +1488,23 @@ pub mod pallet {
 		}
 
 		fn is_customers_batch_valid(
-			_cluster_id: ClusterId,
-			_era: DdcEra,
+			cluster_id: ClusterId,
+			era: DdcEra,
 			_batch_index: BatchIndex,
 			_payers: &[(T::AccountId, CustomerUsage)],
-			_adjacent_hashes: &[ActivityHash],
+			proof: MerkleProof<ActivityHash, MergeActivityHash>,
+			leaf_with_position: (u64, ActivityHash),
 		) -> bool {
-			true
+			let validation_era = EraValidations::<T>::get(cluster_id, era);
+
+			match validation_era {
+				Some(valid_era) => {
+					let root = valid_era.payers_merkle_root_hash;
+
+					Self::proof_merkle_leaf(root, proof, vec![leaf_with_position]).unwrap_or(false)
+				},
+				None => false,
+			}
 		}
 		fn is_providers_batch_valid(
 			_cluster_id: ClusterId,

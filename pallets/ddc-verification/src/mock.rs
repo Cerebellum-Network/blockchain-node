@@ -327,16 +327,138 @@ impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
 
 pub struct MockNodeVisitor;
 impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
-	fn get_node_params(_node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
-		let storage_node_params = StorageNodeParams {
-			mode: StorageNodeMode::Storage,
-			host: vec![1u8; 255],
-			domain: vec![2u8; 255],
-			ssl: true,
-			http_port: 35000u16,
-			grpc_port: 25000u16,
-			p2p_port: 15000u16,
+	fn get_node_params(node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
+		let key1 =
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a",
+			)));
+		let key2 =
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e",
+			)));
+		let key3 =
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"dcb83f51e6554fb3fca04807f98336d160419bf0c54f479d760b76df1e04bda2",
+			)));
+
+		let key4 =
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"48dbb875df3f77816cd01b5a8ce6f32944ae4ac3b4453b9345c3320689445e88",
+			)));
+		let key5 =
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395",
+			)));
+		let key6 =
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"f2f521014e436b426e4277b23267655ae04d1858c84756d9ed970d17271d19e4",
+			)));
+
+		let key7 =
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72",
+			)));
+		let key8 =
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"69b1897f5f7a8a775ee3a4e00f32e20bb9d30e1cdd42149ce1bd50a9aa206040",
+			)));
+		let _key9 =
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"bf5ca1c9406094b4dea7981ba076f1520c218f18ace853300a3300c5cfe9c2af",
+			)));
+
+		let storage_node_params = if node_pub_key == &key1 {
+			StorageNodeParams {
+				mode: StorageNodeMode::DAC,
+				host: "178.251.228.236".as_bytes().to_vec(),
+				domain: vec![2u8; 255],
+				ssl: false,
+				http_port: 8080u16,
+				grpc_port: 25000u16,
+				p2p_port: 15000u16,
+			}
+		} else if node_pub_key == &key2 {
+			StorageNodeParams {
+				mode: StorageNodeMode::DAC,
+				host: "95.217.8.119".as_bytes().to_vec(),
+				domain: vec![2u8; 255],
+				ssl: false,
+				http_port: 8080u16,
+				grpc_port: 25000u16,
+				p2p_port: 15000u16,
+			}
+		} else if node_pub_key == &key3 {
+			StorageNodeParams {
+				mode: StorageNodeMode::DAC,
+				host: "178.251.228.42".as_bytes().to_vec(),
+				domain: vec![2u8; 255],
+				ssl: false,
+				http_port: 8080u16,
+				grpc_port: 25000u16,
+				p2p_port: 15000u16,
+			}
+		} else if node_pub_key == &key4 {
+			StorageNodeParams {
+				mode: StorageNodeMode::DAC,
+				host: "37.27.30.47".as_bytes().to_vec(),
+				domain: vec![2u8; 255],
+				ssl: false,
+				http_port: 8080u16,
+				grpc_port: 25000u16,
+				p2p_port: 15000u16,
+			}
+		} else if node_pub_key == &key5 {
+			StorageNodeParams {
+				mode: StorageNodeMode::DAC,
+				host: "178.251.228.49".as_bytes().to_vec(),
+				domain: vec![2u8; 255],
+				ssl: false,
+				http_port: 8080u16,
+				grpc_port: 25000u16,
+				p2p_port: 15000u16,
+			}
+		} else if node_pub_key == &key6 {
+			StorageNodeParams {
+				mode: StorageNodeMode::DAC,
+				host: "159.69.207.65".as_bytes().to_vec(),
+				domain: vec![2u8; 255],
+				ssl: false,
+				http_port: 8080u16,
+				grpc_port: 25000u16,
+				p2p_port: 15000u16,
+			}
+		} else if node_pub_key == &key7 {
+			StorageNodeParams {
+				mode: StorageNodeMode::DAC,
+				host: "178.251.228.165".as_bytes().to_vec(),
+				domain: vec![2u8; 255],
+				ssl: false,
+				http_port: 8080u16,
+				grpc_port: 25000u16,
+				p2p_port: 15000u16,
+			}
+		} else if node_pub_key == &key8 {
+			StorageNodeParams {
+				mode: StorageNodeMode::DAC,
+				host: "49.13.211.157".as_bytes().to_vec(),
+				domain: vec![2u8; 255],
+				ssl: false,
+				http_port: 8080u16,
+				grpc_port: 25000u16,
+				p2p_port: 15000u16,
+			}
+		} else {
+			StorageNodeParams {
+				mode: StorageNodeMode::DAC,
+				host: "178.251.228.44".as_bytes().to_vec(),
+				domain: vec![2u8; 255],
+				ssl: false,
+				http_port: 8080u16,
+				grpc_port: 25000u16,
+				p2p_port: 15000u16,
+			}
 		};
+
 		Ok(NodeParams::StorageParams(storage_node_params))
 	}
 
@@ -352,7 +474,9 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 	}
 
 	fn get_current_validator() -> T::AccountId {
-		let temp = [1; 32];
+		let temp: [u8; 32] = array_bytes::hex_n_into_unchecked(
+			"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a",
+		);
 		T::AccountId::decode(&mut &temp[..]).unwrap()
 	}
 }
@@ -382,7 +506,35 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 	}
 
 	fn get_nodes(_cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError> {
-		Ok(vec![NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32]))])
+		Ok(vec![
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a",
+			))),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e",
+			))),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"dcb83f51e6554fb3fca04807f98336d160419bf0c54f479d760b76df1e04bda2",
+			))),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"48dbb875df3f77816cd01b5a8ce6f32944ae4ac3b4453b9345c3320689445e88",
+			))),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395",
+			))),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"f2f521014e436b426e4277b23267655ae04d1858c84756d9ed970d17271d19e4",
+			))),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72",
+			))),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"69b1897f5f7a8a775ee3a4e00f32e20bb9d30e1cdd42149ce1bd50a9aa206040",
+			))),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
+				"bf5ca1c9406094b4dea7981ba076f1520c218f18ace853300a3300c5cfe9c2af",
+			))),
+		])
 	}
 
 	fn add_node(

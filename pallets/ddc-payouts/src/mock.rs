@@ -10,7 +10,7 @@ use ddc_primitives::{
 		ClusterQuery, ValidatorVisitor,
 	},
 	ActivityHash, ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodeType, DOLLARS,
+	ClusterProtocolParams, ClusterStatus, MergeActivityHash, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -153,7 +153,8 @@ where
 		_era: DdcEra,
 		_batch_index: BatchIndex,
 		_payers: &[(T::AccountId, CustomerUsage)],
-		_adjacent_hashes: &[ActivityHash],
+		_proof: MerkleProof<ActivityHash, MergeActivityHash>,
+		_leaf_with_position: (u64, ActivityHash),
 	) -> bool {
 		true
 	}
