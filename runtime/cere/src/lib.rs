@@ -22,7 +22,10 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 use codec::{Decode, Encode, MaxEncodedLen};
-use ddc_primitives::traits::pallet::PalletVisitor;
+use ddc_primitives::{
+	traits::pallet::{GetDdcOrigin, PalletVisitor},
+	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
+};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
@@ -100,7 +103,6 @@ use cere_runtime_common::{
 	constants::{currency::*, time::*},
 	CurrencyToVote,
 };
-use ddc_primitives::traits::GetDdcOrigin;
 use impls::Author;
 use sp_runtime::generic::Era;
 use sp_std::marker::PhantomData;
@@ -1254,14 +1256,19 @@ impl pallet_ddc_verification::Config for Runtime {
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type PayoutVisitor = pallet_ddc_payouts::Pallet<Runtime>;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type ActivityHasher = BlakeTwo256;
 	const MAJORITY: u8 = 67;
-	const BLOCK_TO_START: u32 = 100;
+	const BLOCK_TO_START: u16 = 100; // every 100 blocks
+	const MIN_DAC_NODES_FOR_CONSENSUS: u16 = 3;
+	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
+	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
 	type Staking = Staking;
 	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
+	type Call: From<<Self::PayoutVisitor as PayoutVisitor<Self>>::Call>;
 }
 
 construct_runtime!(

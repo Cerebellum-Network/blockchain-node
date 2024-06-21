@@ -2,7 +2,7 @@ use ddc_primitives::{
 	crypto, sr25519,
 	traits::{ClusterManager, ClusterQuery},
 	ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterStatus,
-	StorageNodePubKey,
+	PayoutState, StorageNodePubKey, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
 };
 use frame_election_provider_support::{
 	bounds::{ElectionBounds, ElectionBoundsBuilder},
@@ -218,11 +218,15 @@ impl crate::Config for Test {
 	type WeightInfo = ();
 	type ClusterManager = TestClusterManager;
 	type NodeVisitor = MockNodeVisitor;
+	type PayoutVisitor = MockPayoutVisitor;
 	type AuthorityId = sr25519::AuthorityId;
 	type OffchainIdentifierId = crypto::OffchainIdentifierId;
 	type ActivityHasher = sp_runtime::traits::BlakeTwo256;
 	const MAJORITY: u8 = 67;
-	const BLOCK_TO_START: u32 = 100;
+	const BLOCK_TO_START: u16 = 100;
+	const MIN_DAC_NODES_FOR_CONSENSUS: u16 = 3;
+	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
+	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
 	type Staking = Staking;
 	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
@@ -305,8 +309,23 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	sp_io::TestExternalities::new(storage)
 }
 
-pub struct MockNodeVisitor;
+pub struct MockPayoutVisitor;
+impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
+	fn call_begin_billing_report(
+		_origin: OriginFor<T>,
+		_cluster_id: ClusterId,
+		_era: DdcEra,
+		_start_era: i64,
+		_end_era: i64,
+	) -> DispatchResult {
+		Ok(())
+	}
+	fn get_billing_report_status(cluster_id: ClusterId, era: DdcEra) -> PayoutState {
+		PayoutState::NotInitialized
+	}
+}
 
+pub struct MockNodeVisitor;
 impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 	fn get_node_params(node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
 		let key1 =

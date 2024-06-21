@@ -34,8 +34,10 @@ use ddc_primitives::{
 			CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
 		},
 		pallet::PalletVisitor as PalletVisitorType,
+		payout::PayoutVisitor,
 	},
-	BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutState, MILLICENTS,
+	BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutState, MAX_PAYOUT_BATCH_COUNT,
+	MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -86,9 +88,9 @@ pub type VoteScoreOf<T> =
 	>>::Score;
 
 parameter_types! {
-	pub MaxBatchesCount: u16 = 1000;
+	pub MaxBatchesCount: u16 = MAX_PAYOUT_BATCH_COUNT;
 	pub MaxDust: u128 = MILLICENTS;
-	pub MaxBatchSize: u16 = 1000;
+	pub MaxBatchSize: u16 = MAX_PAYOUT_BATCH_SIZE;
 }
 
 #[frame_support::pallet]
@@ -1061,6 +1063,33 @@ pub mod pallet {
 
 			for (cluster_id, customer_id, debt) in &self.debtor_customers {
 				DebtorCustomers::<T>::insert(cluster_id, customer_id, debt);
+			}
+		}
+	}
+
+	impl<T: Config> PayoutVisitor<T> for Pallet<T> {
+		type Call = T::Call;
+
+		fn get_begin_billing_report_call(
+			cluster_id: ClusterId,
+			era: DdcEra,
+			start_era: i64,
+			end_era: i64,
+		) -> Self::Call {
+			<Pallet<T> as frame_system::Config>::Call::begin_billing_report {
+				cluster_id,
+				era,
+				start_era,
+				end_era,
+			}
+		}
+
+		fn get_billing_report_status(cluster_id: ClusterId, era: DdcEra) -> PayoutState {
+			let billing_report = ActiveBillingReports::<T>::get(cluster_id, era);
+
+			match billing_report {
+				Some(report) => report.state,
+				None => PayoutState::NotInitialized, // Return NotInitialized if entry doesn't exist
 			}
 		}
 	}

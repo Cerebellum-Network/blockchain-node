@@ -30,6 +30,60 @@ fn register_validators(validators: Vec<AccountId32>) {
 	}
 }
 
+fn get_validators() -> Vec<AccountId32> {
+	let validator1: AccountId32 = [1; 32].into();
+	let validator2: AccountId32 = [2; 32].into();
+	let validator3: AccountId32 = [3; 32].into();
+	let validator4: AccountId32 = [4; 32].into();
+	let validator5: AccountId32 = [5; 32].into();
+
+	vec![validator1, validator2, validator3, validator4, validator5]
+}
+
+fn get_node_activities() -> Vec<NodeActivity> {
+	let node1 = NodeActivity {
+		node_id: "0".to_string(),
+		provider_id: "0".to_string(),
+		stored_bytes: 100,
+		transferred_bytes: 50,
+		number_of_puts: 10,
+		number_of_gets: 20,
+	};
+	let node2 = NodeActivity {
+		node_id: "1".to_string(),
+		provider_id: "1".to_string(),
+		stored_bytes: 101,
+		transferred_bytes: 51,
+		number_of_puts: 11,
+		number_of_gets: 21,
+	};
+	let node3 = NodeActivity {
+		node_id: "2".to_string(),
+		provider_id: "2".to_string(),
+		stored_bytes: 102,
+		transferred_bytes: 52,
+		number_of_puts: 12,
+		number_of_gets: 22,
+	};
+	let node4 = NodeActivity {
+		node_id: "3".to_string(),
+		provider_id: "3".to_string(),
+		stored_bytes: 103,
+		transferred_bytes: 53,
+		number_of_puts: 13,
+		number_of_gets: 23,
+	};
+	let node5 = NodeActivity {
+		node_id: "4".to_string(),
+		provider_id: "4".to_string(),
+		stored_bytes: 104,
+		transferred_bytes: 54,
+		number_of_puts: 14,
+		number_of_gets: 24,
+	};
+	vec![node1, node2, node3, node4, node5]
+}
+
 #[test]
 fn fetch_node_usage_works() {
 	let mut ext = TestExternalities::default();
@@ -977,81 +1031,54 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 }
 
 #[test]
-fn test_empty_activities() {
+fn test_convert_to_batch_merkle_roots() {
+	let nodes = get_node_activities();
+	let activities_batch_1 = vec![nodes[0].clone(), nodes[1].clone(), nodes[2].clone()];
+	let activities_batch_2 = vec![nodes[3].clone(), nodes[4].clone()];
+
+	let result_roots = DdcVerification::convert_to_batch_merkle_roots(vec![
+		activities_batch_1.clone(),
+		activities_batch_2.clone(),
+	])
+	.unwrap();
+	let expected_roots: Vec<ActivityHash> = vec![
+		DdcVerification::create_merkle_root(
+			&activities_batch_1.iter().map(|a| a.hash::<mock::Test>()).collect::<Vec<_>>(),
+		)
+		.unwrap(),
+		DdcVerification::create_merkle_root(
+			&activities_batch_2.iter().map(|a| a.hash::<mock::Test>()).collect::<Vec<_>>(),
+		)
+		.unwrap(),
+	];
+
+	assert_eq!(result_roots, expected_roots);
+}
+
+#[test]
+fn test_split_to_batches_empty_activities() {
 	let activities: Vec<NodeActivity> = vec![];
 	let result = DdcVerification::split_to_batches(&activities, 3);
 	assert_eq!(result, Vec::<Vec<NodeActivity>>::new());
 }
 
 #[test]
-fn test_single_batch() {
-	let node1 = NodeActivity {
-		node_id: "0".to_string(),
-		provider_id: "0".to_string(),
-		stored_bytes: 100,
-		transferred_bytes: 50,
-		number_of_puts: 10,
-		number_of_gets: 20,
-	};
-	let node2 = NodeActivity {
-		node_id: "1".to_string(),
-		provider_id: "1".to_string(),
-		stored_bytes: 101,
-		transferred_bytes: 51,
-		number_of_puts: 11,
-		number_of_gets: 21,
-	};
-	let node3 = NodeActivity {
-		node_id: "2".to_string(),
-		provider_id: "2".to_string(),
-		stored_bytes: 102,
-		transferred_bytes: 52,
-		number_of_puts: 12,
-		number_of_gets: 22,
-	};
-	let activities = vec![node1.clone(), node2.clone(), node3.clone()];
-	let mut sorted_activities = vec![node1.clone(), node2.clone(), node3.clone()];
+fn test_split_to_batches_single_batch() {
+	let nodes = get_node_activities();
+	let activities = vec![nodes[0].clone(), nodes[1].clone(), nodes[2].clone()];
+	let mut sorted_activities = vec![nodes[0].clone(), nodes[1].clone(), nodes[2].clone()];
+
 	sorted_activities.sort();
 	let result = DdcVerification::split_to_batches(&activities, 5);
 	assert_eq!(result, vec![sorted_activities]);
 }
 
 #[test]
-fn test_exact_batches() {
-	let node1 = NodeActivity {
-		node_id: "0".to_string(),
-		provider_id: "0".to_string(),
-		stored_bytes: 100,
-		transferred_bytes: 50,
-		number_of_puts: 10,
-		number_of_gets: 20,
-	};
-	let node2 = NodeActivity {
-		node_id: "1".to_string(),
-		provider_id: "1".to_string(),
-		stored_bytes: 101,
-		transferred_bytes: 51,
-		number_of_puts: 11,
-		number_of_gets: 21,
-	};
-	let node3 = NodeActivity {
-		node_id: "2".to_string(),
-		provider_id: "2".to_string(),
-		stored_bytes: 102,
-		transferred_bytes: 52,
-		number_of_puts: 12,
-		number_of_gets: 22,
-	};
-	let node4 = NodeActivity {
-		node_id: "3".to_string(),
-		provider_id: "3".to_string(),
-		stored_bytes: 103,
-		transferred_bytes: 53,
-		number_of_puts: 13,
-		number_of_gets: 23,
-	};
-	let activities = vec![node1.clone(), node2.clone(), node3.clone(), node4.clone()];
-	let mut sorted_activities = vec![node1.clone(), node2.clone(), node3.clone(), node4.clone()];
+fn test_split_to_batches_exact_batches() {
+	let nodes = get_node_activities();
+	let activities = vec![nodes[0].clone(), nodes[1].clone(), nodes[2].clone(), nodes[3].clone()];
+	let mut sorted_activities =
+		vec![nodes[0].clone(), nodes[1].clone(), nodes[2].clone(), nodes[3].clone()];
 	sorted_activities.sort();
 	let result = DdcVerification::split_to_batches(&activities, 2);
 	assert_eq!(
@@ -1064,51 +1091,22 @@ fn test_exact_batches() {
 }
 #[test]
 #[allow(clippy::vec_init_then_push)]
-fn test_non_exact_batches() {
-	let node1 = NodeActivity {
-		node_id: "0".to_string(),
-		provider_id: "0".to_string(),
-		stored_bytes: 100,
-		transferred_bytes: 50,
-		number_of_puts: 10,
-		number_of_gets: 20,
-	};
-	let node2 = NodeActivity {
-		node_id: "1".to_string(),
-		provider_id: "1".to_string(),
-		stored_bytes: 101,
-		transferred_bytes: 51,
-		number_of_puts: 11,
-		number_of_gets: 21,
-	};
-	let node3 = NodeActivity {
-		node_id: "2".to_string(),
-		provider_id: "2".to_string(),
-		stored_bytes: 102,
-		transferred_bytes: 52,
-		number_of_puts: 12,
-		number_of_gets: 22,
-	};
-	let node4 = NodeActivity {
-		node_id: "3".to_string(),
-		provider_id: "3".to_string(),
-		stored_bytes: 103,
-		transferred_bytes: 53,
-		number_of_puts: 13,
-		number_of_gets: 23,
-	};
-	let node5 = NodeActivity {
-		node_id: "3".to_string(),
-		provider_id: "3".to_string(),
-		stored_bytes: 104,
-		transferred_bytes: 54,
-		number_of_puts: 14,
-		number_of_gets: 24,
-	};
-	let activities =
-		vec![node1.clone(), node2.clone(), node3.clone(), node4.clone(), node5.clone()];
-	let mut sorted_activities =
-		vec![node1.clone(), node2.clone(), node3.clone(), node4.clone(), node5.clone()];
+fn test_split_to_batches_non_exact_batches() {
+	let nodes = get_node_activities();
+	let activities = vec![
+		nodes[0].clone(),
+		nodes[1].clone(),
+		nodes[2].clone(),
+		nodes[3].clone(),
+		nodes[4].clone(),
+	];
+	let mut sorted_activities = vec![
+		nodes[0].clone(),
+		nodes[1].clone(),
+		nodes[2].clone(),
+		nodes[3].clone(),
+		nodes[4].clone(),
+	];
 	sorted_activities.sort();
 	let result = DdcVerification::split_to_batches(&activities, 2);
 	let mut expected: Vec<Vec<NodeActivity>> = Vec::new();
@@ -1341,9 +1339,9 @@ fn fetch_processed_era_works() {
 		let port = 80;
 
 		// Create a sample EraActivity instance
-		let era_activity1 = EraActivity { id: 17 };
-		let era_activity2 = EraActivity { id: 18 };
-		let era_activity3 = EraActivity { id: 19 };
+		let era_activity1 = EraActivity { id: 17, start: 1, end: 2 };
+		let era_activity2 = EraActivity { id: 18, start: 1, end: 2 };
+		let era_activity3 = EraActivity { id: 19, start: 1, end: 2 };
 		let era_activity_json =
 			serde_json::to_string(&vec![era_activity1, era_activity2, era_activity3]).unwrap();
 
@@ -1394,10 +1392,10 @@ fn get_era_for_validation_works() {
 		let host3 = "example3.com";
 		let host4 = "example4.com";
 		let port = 80;
-		let era_activity1 = EraActivity { id: 16 };
-		let era_activity2 = EraActivity { id: 17 };
-		let era_activity3 = EraActivity { id: 18 };
-		let era_activity4 = EraActivity { id: 19 };
+		let era_activity1 = EraActivity { id: 16, start: 1, end: 2 };
+		let era_activity2 = EraActivity { id: 17, start: 1, end: 2 };
+		let era_activity3 = EraActivity { id: 18, start: 1, end: 2 };
+		let era_activity4 = EraActivity { id: 19, start: 1, end: 2 };
 		let era_activity_json1 = serde_json::to_string(&vec![
 			era_activity1, //16
 			era_activity2, //17
@@ -1513,50 +1511,113 @@ fn get_era_for_validation_works() {
 
 #[test]
 fn test_get_last_validated_era() {
-	let cluster_id = ClusterId::from([12; 20]);
+	let cluster_id1 = ClusterId::from([12; 20]);
+	let cluster_id2 = ClusterId::from([13; 20]);
 	let era_1 = 1;
 	let era_2 = 2;
 	let payers_root: ActivityHash = [1; 32];
 	let payees_root: ActivityHash = [2; 32];
-	let validator: AccountId32 = [0; 32].into();
+	let validators = get_validators();
 
 	new_test_ext().execute_with(|| {
-		// Initially, there should be no validated eras
-		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id, validator.clone()).map(
-			|era| {
+		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id1, validators[0].clone())
+			.map(|era| {
 				assert_eq!(era, None);
-			}
-		));
+			}));
 
-		// Insert some validations
 		let mut validators_map_1 = BTreeMap::new();
-		validators_map_1.insert((payers_root, payees_root), vec![validator.clone()]);
+		validators_map_1.insert(
+			(payers_root, payees_root),
+			vec![validators[1].clone(), validators[2].clone(), validators[3].clone()],
+		);
 
 		let validation_1 = EraValidation {
 			validators: validators_map_1,
+			start_era: 1,
+			end_era: 2,
 			payers_merkle_root_hash: payers_root,
 			payees_merkle_root_hash: payees_root,
 			status: EraValidationStatus::ValidatingData,
 		};
 
-		<EraValidations<Test>>::insert(cluster_id, era_1, validation_1);
+		<EraValidations<Test>>::insert(cluster_id1, era_1, validation_1);
+
+		// still no - different accountid
+		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id1, validators[0].clone())
+			.map(|era| {
+				assert_eq!(era, None);
+			}));
+
+		// still no - different cluster id
+		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id2, validators[1].clone())
+			.map(|era| {
+				assert_eq!(era, None);
+			}));
 
 		let mut validators_map_2 = BTreeMap::new();
-		validators_map_2.insert((payers_root, payees_root), vec![validator.clone()]);
+		validators_map_2
+			.insert((payers_root, payees_root), vec![validators[2].clone(), validators[3].clone()]);
 
 		let validation_2 = EraValidation {
 			validators: validators_map_2,
+			start_era: 1,
+			end_era: 2,
 			payers_merkle_root_hash: payers_root,
 			payees_merkle_root_hash: payees_root,
 			status: EraValidationStatus::ValidatingData,
 		};
 
-		<EraValidations<Test>>::insert(cluster_id, era_2, validation_2);
+		<EraValidations<Test>>::insert(cluster_id1, era_2, validation_2);
 
 		// Now the last validated era should be ERA_2
-		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id, validator).map(|era| {
-			assert_eq!(era, Some(era_2));
-		}));
+		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id1, validators[2].clone())
+			.map(|era| {
+				assert_eq!(era, Some(era_2));
+			}));
+
+		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id1, validators[1].clone())
+			.map(|era| {
+				assert_eq!(era, Some(era_1));
+			}));
+	});
+}
+
+#[test]
+fn test_get_era_for_payout() {
+	// Initialize test data
+	let cluster_id = ClusterId::default(); // Replace with actual initialization
+	let status = EraValidationStatus::ReadyForPayout; // Test with different statuses
+
+	// Insert some era validations into storage
+	let era_id_1 = 1;
+	let era_id_2 = 2;
+	let era_validation_1 = EraValidation::<Test> {
+		validators: Default::default(),
+		start_era: 0,
+		end_era: 0,
+		payers_merkle_root_hash: Default::default(),
+		payees_merkle_root_hash: Default::default(),
+		status: EraValidationStatus::ReadyForPayout,
+	};
+	let era_validation_2 = EraValidation::<Test> {
+		validators: Default::default(),
+		start_era: 0,
+		end_era: 0,
+		payers_merkle_root_hash: Default::default(),
+		payees_merkle_root_hash: Default::default(),
+		status: EraValidationStatus::PayoutInProgress,
+	};
+
+	new_test_ext().execute_with(|| {
+		EraValidations::<Test>::insert(cluster_id, era_id_1, &era_validation_1);
+		EraValidations::<Test>::insert(cluster_id, era_id_2, &era_validation_2);
+
+		let mut result = Pallet::<Test>::get_era_for_payout(&cluster_id, status);
+		assert_eq!(result, Some((era_id_1, 0, 0)));
+
+		result =
+			Pallet::<Test>::get_era_for_payout(&cluster_id, EraValidationStatus::PayoutSuccess);
+		assert_eq!(result, None);
 	});
 }
 
