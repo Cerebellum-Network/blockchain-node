@@ -253,7 +253,7 @@ impl FunctionExecutor {
 			.new_memory(initial, maximum)
 			.map_err(|e| e.to_string());
 
-		log::info!(target: LOG_TARGET, "memory_new END: initial={:?}, maximum={:?}", initial, maximum);
+		log::info!(target: LOG_TARGET, "memory_new END: initial={:?}, maximum={:?}, new_memory={:?}", initial, maximum, res);
 
 		res
 	}
@@ -374,7 +374,7 @@ impl FunctionExecutor {
 				Err(_) => ERR_MODULE,
 			};
 
-		log::info!(target: LOG_TARGET, "instance_new END: dispatch_thunk_id={:?}, raw_env_def={:?}, state={:?}", dispatch_thunk_id, raw_env_def, state);
+		log::info!(target: LOG_TARGET, "instance_new END: dispatch_thunk_id={:?}, raw_env_def={:?}, state={:?}, instance_idx_or_err_code={:?}", dispatch_thunk_id, raw_env_def, state, instance_idx_or_err_code);
 
 		Ok(instance_idx_or_err_code)
 	}

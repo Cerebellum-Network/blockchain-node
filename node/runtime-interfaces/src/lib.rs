@@ -112,9 +112,16 @@ pub fn create_function_executor() -> FunctionExecutor {
 	// host_functions.extend(benchmarking_host_functions);
 	host_functions.extend(sandbox_host_functions);
 
+	// let mut version: Option<_> = read_embedded_version(&blob)?;
+
 	let runtime = create_runtime(blob, heap_pages, host_functions, allow_missing_func_imports)
-		// .map(|runtime| -> Arc<dyn WasmModule> { Arc::new(runtime) });
+		// .map(|runtime| -> Arc<dyn WasmModule> { Arc::new(runtime) })
 		.expect("Runtime to be created");
+
+	// let instance = runtime
+	// 	.new_instance()
+	// 	.map_err(|e| format!("Failed to create instance: {}", e))
+	// 	.expect("Instance to be created");
 
 	let runtime_wasmi_instance =
 		runtime.new_wasmi_instance().expect("Runtime instance to be created");
