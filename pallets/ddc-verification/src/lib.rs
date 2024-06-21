@@ -38,7 +38,7 @@ use sp_runtime::{
 	traits::Hash,
 	Percent,
 };
-use sp_std::{cmp::min, collections::btree_map::BTreeMap, prelude::*};
+use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub mod weights;
 use itertools::Itertools;
@@ -329,8 +329,8 @@ pub mod pallet {
 	#[scale_info(skip_type_params(T))]
 	pub struct EraValidation<T: Config> {
 		pub validators: BTreeMap<(ActivityHash, ActivityHash), Vec<T::AccountId>>, /* todo! change to signatures (T::AccountId, Signature) */
-		pub start_era: u64,
-		pub end_era: u64,
+		pub start_era: i64,
+		pub end_era: i64,
 		pub payers_merkle_root_hash: ActivityHash,
 		pub payees_merkle_root_hash: ActivityHash,
 		pub status: EraValidationStatus,
@@ -665,14 +665,7 @@ pub mod pallet {
 		pub(crate) fn process_start_payout(
 			cluster_id: &ClusterId,
 		) -> Result<Option<(DdcEra, i64, i64)>, OCWError> {
-			let era_id_result =
-				Self::get_era_for_payout(cluster_id, EraValidationStatus::ReadyForPayout);
-			if era_id_result.is_none() {
-				return Ok(None);
-			}
-			let era_id = era_id_result.unwrap();
-
-			Ok(Some((era_id, 0, 0))) // todo! fix start and end
+			Ok(Self::get_era_for_payout(cluster_id, EraValidationStatus::ReadyForPayout))
 		}
 
 		pub(crate) fn _get_activities_in_consensus<A: Activity, B: Activity>(
@@ -848,19 +841,22 @@ pub mod pallet {
 		pub(crate) fn get_era_for_payout(
 			cluster_id: &ClusterId,
 			status: EraValidationStatus,
-		) -> Option<DdcEra> {
+		) -> Option<(DdcEra, i64, i64)> {
 			let mut smallest_era_id: Option<DdcEra> = None;
+			let mut start_era: i64 = Default::default();
+			let mut end_era: i64 = Default::default();
 
 			for (stored_cluster_id, era_id, validation) in EraValidations::<T>::iter() {
 				if stored_cluster_id == *cluster_id && validation.status == status {
-					smallest_era_id = match smallest_era_id {
-						Some(current_smallest) => Some(min(current_smallest, era_id)),
-						None => Some(era_id),
-					};
+					if smallest_era_id.is_none() || era_id < smallest_era_id.unwrap() {
+						smallest_era_id = Some(era_id);
+						start_era = validation.start_era;
+						end_era = validation.end_era;
+					}
 				}
 			}
 
-			smallest_era_id
+			smallest_era_id.map(|era_id| (era_id, start_era, end_era))
 		}
 
 		/// Retrieves the last era in which the specified validator participated for a given
