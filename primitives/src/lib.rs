@@ -13,6 +13,8 @@ parameter_types! {
 	pub MaxDomainLen: u8 = 255;
 }
 
+pub const MAX_PAYOUT_BATCH_COUNT: u16 = 1000;
+pub const MAX_PAYOUT_BATCH_SIZE: u16 = 1000;
 pub const MILLICENTS: u128 = 100_000;
 pub const CENTS: u128 = 1_000 * MILLICENTS; // assume this is worth about a cent.
 pub const DOLLARS: u128 = 100 * CENTS;

@@ -12,7 +12,7 @@
 use core::str;
 
 use ddc_primitives::{
-	traits::{ClusterManager, NodeVisitor, ValidatorVisitor},
+	traits::{ClusterManager, NodeVisitor, PayoutVisitor, ValidatorVisitor},
 	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeParams, NodePubKey, NodeUsage,
 	StorageNodeMode, StorageNodeParams,
 };
@@ -77,6 +77,7 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 		/// DDC clusters nodes manager.
 		type ClusterManager: ClusterManager<Self>;
+		type PayoutVisitor: PayoutVisitor<Self>;
 		/// DDC nodes read-only registry.
 		type NodeVisitor: NodeVisitor<Self>;
 		/// The output of the `ActivityHasher` function.
@@ -101,11 +102,15 @@ pub mod pallet {
 		/// The majority of validators.
 		const MAJORITY: u8;
 		/// Block to start from.
-		const BLOCK_TO_START: u32;
+		const BLOCK_TO_START: u16;
+		const MIN_DAC_NODES_FOR_CONSENSUS: u16;
+		const MAX_PAYOUT_BATCH_COUNT: u16;
+		const MAX_PAYOUT_BATCH_SIZE: u16;
 		/// The access to staking functionality.
 		type Staking: StakingInterface<AccountId = Self::AccountId>;
 		/// The access to validator list.
 		type ValidatorList: SortedListProvider<Self::AccountId>;
+		type Call: From<<Self::PayoutVisitor as PayoutVisitor<Self>>::Call>;
 	}
 
 	/// The event type.
@@ -174,6 +179,11 @@ pub mod pallet {
 			payees_merkle_root_hash: ActivityHash,
 			validator: T::AccountId,
 		},
+		BeginBillingReportTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			validator: T::AccountId,
+		},
 		NoAvailableSigner {
 			validator: T::AccountId,
 		},
@@ -219,6 +229,10 @@ pub mod pallet {
 			era_id: DdcEra,
 			payers_merkle_root_hash: ActivityHash,
 			payees_merkle_root_hash: ActivityHash,
+		},
+		BeginBillingReportTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
 		},
 		NoAvailableSigner,
 		NotEnoughDACNodes {
@@ -301,6 +315,8 @@ pub mod pallet {
 	#[scale_info(skip_type_params(T))]
 	pub struct EraValidation<T: Config> {
 		pub validators: BTreeMap<(ActivityHash, ActivityHash), Vec<T::AccountId>>, /* todo! change to signatures (T::AccountId, Signature) */
+		pub start_era: u64,
+		pub end_era: u64,
 		pub payers_merkle_root_hash: ActivityHash,
 		pub payees_merkle_root_hash: ActivityHash,
 		pub status: EraValidationStatus,
@@ -311,6 +327,8 @@ pub mod pallet {
 	pub(crate) struct EraActivity {
 		/// Era id.
 		pub id: DdcEra,
+		pub start: i64,
+		pub end: i64,
 	}
 
 	/// Node activity of a node.
@@ -422,7 +440,7 @@ pub mod pallet {
 				return;
 			}
 			log::info!("Hello from ocw!!!!!!!!!!");
-			if block_number.saturated_into::<u32>() % T::BLOCK_TO_START != 0 {
+			if (block_number.saturated_into::<u32>() % T::BLOCK_TO_START as u32) != 0 {
 				return;
 			}
 			log::info!("Hello from pallet-ddc-verification.");
@@ -442,52 +460,59 @@ pub mod pallet {
 				"Error retrieving dac nodes to validate"
 			);
 
-			let min_nodes = 3; // todo! (1): factor out min nodes config
-			let batch_size = 100; // todo! (5) factor batch_size into config through runtime
+			let min_nodes = T::MIN_DAC_NODES_FOR_CONSENSUS;
+			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 			let mut errors: Vec<OCWError> = Vec::new();
-			match Self::process_dac_data(&cluster_id, None, &dac_nodes, min_nodes, batch_size) {
-				Ok(result) => {
-					log::info!("DAC data processed successfully for cluster_id: {:?}", cluster_id);
-					if let Some((era_id, payers_merkle_root_hash, payees_merkle_root_hash)) = result
-					{
-						if let Some((_, res)) = signer.send_signed_transaction(|_account| {
-							Call::set_prepare_era_for_payout {
-								cluster_id,
-								era_id,
-								payers_merkle_root_hash,
-								payees_merkle_root_hash,
-							}
-						}) {
-							match res {
-								Ok(_) => {
-									// Extrinsic call succeeded
-									log::info!(
+			match Self::process_dac_data(
+				&cluster_id,
+				None,
+				&dac_nodes,
+				min_nodes,
+				batch_size.into(),
+			) {
+				Ok(Some((era_id, payers_merkle_root_hash, payees_merkle_root_hash))) => {
+					log::info!("Processing era_id: {:?} for cluster_id: {:?}", era_id, cluster_id);
+
+					if let Some((_, res)) = signer.send_signed_transaction(|_account| {
+						Call::set_prepare_era_for_payout {
+							cluster_id,
+							era_id,
+							payers_merkle_root_hash,
+							payees_merkle_root_hash,
+						}
+					}) {
+						match res {
+							Ok(_) => {
+								// Extrinsic call succeeded
+								log::info!(
 										"Merkle roots posted on-chain for cluster_id: {:?}, era_id: {:?}",
 										cluster_id,
 										era_id
 									);
-								},
-								Err(e) => {
-									log::error!(
+							},
+							Err(e) => {
+								log::error!(
 										"Error to post merkle roots on-chain for cluster_id: {:?}, era_id: {:?}: {:?}",
 										cluster_id,
 										era_id,
 										e
 									);
-									// Extrinsic call failed
-									errors.push(OCWError::PrepareEraTransactionError {
-										cluster_id,
-										era_id,
-										payers_merkle_root_hash,
-										payees_merkle_root_hash,
-									});
-								},
-							}
-						} else {
-							log::error!("No account available to sign the transaction");
-							errors.push(OCWError::NoAvailableSigner);
+								// Extrinsic call failed
+								errors.push(OCWError::PrepareEraTransactionError {
+									cluster_id,
+									era_id,
+									payers_merkle_root_hash,
+									payees_merkle_root_hash,
+								});
+							},
 						}
+					} else {
+						log::error!("No account available to sign the transaction");
+						errors.push(OCWError::NoAvailableSigner);
 					}
+				},
+				Ok(None) => {
+					log::info!("No eras for DAC process for cluster_id: {:?}", cluster_id);
 				},
 				Err(process_errors) => {
 					errors.extend(process_errors);
@@ -495,13 +520,26 @@ pub mod pallet {
 			}
 
 			match Self::process_start_payout(&cluster_id) {
-				Ok(Some(era_id)) => {
+				Ok(Some((era_id, start_era, end_era))) => {
 					log::info!(
 						"Start payout processed successfully for cluster_id: {:?}, era_id: {:?}",
 						cluster_id,
 						era_id
 					);
-					// todo! call payout pallet::begin_billing_report
+
+					if let Some((_, res)) = signer.send_signed_transaction(|_acct| {
+						let call = T::PayoutVisitor::get_begin_billing_report_call(
+							cluster_id, era_id, start_era, end_era,
+						);
+						call.into() // Convert to Call<T>
+					}) {
+						match res {
+							Ok(_) => log::info!("Successfully sent signed transaction"),
+							Err(e) => log::error!("Failed to send signed transaction: {:?}", e),
+						}
+					} else {
+						log::error!("No local account available");
+					}
 				},
 				Ok(None) => {
 					log::info!("No era for payout for cluster_id: {:?}", cluster_id);
@@ -546,10 +584,8 @@ pub mod pallet {
 			} else {
 				match Self::get_era_for_validation(cluster_id, dac_nodes) {
 					Ok(Some(era_id)) => era_id,
-					Ok(None) => return Ok(None), /* No era found, return Ok or handle the error */
-					// scenario
-					Err(err) => return Err(vec![err]), /* Convert OCWError to YourErrorType and
-					                                    * return Err */
+					Ok(None) => return Ok(None),
+					Err(err) => return Err(vec![err]),
 				}
 			};
 			let nodes_usage = Self::fetch_nodes_usage_for_era(cluster_id, era_id, dac_nodes)
@@ -608,7 +644,7 @@ pub mod pallet {
 
 		pub(crate) fn process_start_payout(
 			cluster_id: &ClusterId,
-		) -> Result<Option<DdcEra>, OCWError> {
+		) -> Result<Option<(DdcEra, i64, i64)>, OCWError> {
 			let era_id_result =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::ReadyForPayout);
 			if era_id_result.is_none() {
@@ -616,7 +652,7 @@ pub mod pallet {
 			}
 			let era_id = era_id_result.unwrap();
 
-			Ok(Some(era_id))
+			Ok(Some((era_id, 0, 0))) // todo! fix start and end
 		}
 
 		pub(crate) fn _get_activities_in_consensus<A: Activity, B: Activity>(
@@ -1231,6 +1267,8 @@ pub mod pallet {
 					EraValidation {
 						payers_merkle_root_hash: ActivityHash::default(),
 						payees_merkle_root_hash: ActivityHash::default(),
+						start_era: Default::default(),
+						end_era: Default::default(),
 						validators: Default::default(),
 						status: EraValidationStatus::ValidatingData,
 					}
@@ -1342,6 +1380,13 @@ pub mod pallet {
 							era_id,
 							payers_merkle_root_hash,
 							payees_merkle_root_hash,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::BeginBillingReportTransactionError { cluster_id, era_id } => {
+						Self::deposit_event(Event::BeginBillingReportTransactionError {
+							cluster_id,
+							era_id,
 							validator: caller.clone(),
 						});
 					},
