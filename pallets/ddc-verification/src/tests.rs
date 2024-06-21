@@ -64,7 +64,7 @@ fn fetch_node_usage_works() {
 		// Mock HTTP request and response
 		let pending_request = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/node?eraId={}", host, port, era_id),
+			uri: format!("http://{}:{}/activity/nodes?eraId={}", host, port, era_id),
 			response: Some(nodes_activity_json.as_bytes().to_vec()),
 			sent: true,
 			..Default::default()
@@ -1344,7 +1344,7 @@ fn fetch_processed_era_works() {
 		// Mock HTTP request and response
 		let pending_request = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/era", host, port),
+			uri: format!("http://{}:{}/activity/eras", host, port),
 			response: Some(era_activity_json.as_bytes().to_vec()),
 			sent: true,
 			..Default::default()
@@ -1419,28 +1419,28 @@ fn get_era_for_validation_works() {
 		.unwrap();
 		let pending_request1 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/era", host1, port),
+			uri: format!("http://{}:{}/activity/eras", host1, port),
 			response: Some(era_activity_json1.as_bytes().to_vec()),
 			sent: true,
 			..Default::default()
 		};
 		let pending_request2 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/era", host2, port),
+			uri: format!("http://{}:{}/activity/eras", host2, port),
 			response: Some(era_activity_json2.as_bytes().to_vec()),
 			sent: true,
 			..Default::default()
 		};
 		let pending_request3 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/era", host3, port),
+			uri: format!("http://{}:{}/activity/eras", host3, port),
 			response: Some(era_activity_json3.as_bytes().to_vec()),
 			sent: true,
 			..Default::default()
 		};
 		let pending_request4 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/era", host4, port),
+			uri: format!("http://{}:{}/activity/eras", host4, port),
 			response: Some(era_activity_json4.as_bytes().to_vec()),
 			sent: true,
 			..Default::default()
