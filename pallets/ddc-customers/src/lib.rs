@@ -763,10 +763,10 @@ pub mod pallet {
 
 			// todo! factor out into BucketManager::inc_total_customer_usage
 			Self::inc_total_customer_usage(
-				&cluster_id,
+				cluster_id,
 				bucket_id,
 				content_owner.clone(),
-				&customer_usage,
+				customer_usage,
 			)?;
 
 			<T as pallet::Config>::Currency::transfer(

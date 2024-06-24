@@ -1,5 +1,6 @@
-use crate::{BucketId, ClusterId, CustomerUsage, NodeUsage};
 use sp_runtime::DispatchResult;
+
+use crate::{BucketId, ClusterId, CustomerUsage, NodeUsage};
 
 pub trait BucketManager<T: frame_system::Config> {
 	fn inc_total_customer_usage(
