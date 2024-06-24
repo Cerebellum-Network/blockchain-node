@@ -114,7 +114,6 @@ pub mod pallet {
 		type Staking: StakingInterface<AccountId = Self::AccountId>;
 		/// The access to validator list.
 		type ValidatorList: SortedListProvider<Self::AccountId>;
-		type Call: From<<Self::PayoutVisitor as PayoutVisitor<Self>>::Call>;
 	}
 
 	/// The event type.
@@ -532,7 +531,7 @@ pub mod pallet {
 					errors.extend(process_errors);
 				},
 			}
-
+			/*
 			match Self::process_start_payout(&cluster_id) {
 				Ok(Some((era_id, start_era, end_era))) => {
 					log::info!(
@@ -562,7 +561,7 @@ pub mod pallet {
 					errors.push(e);
 				},
 			}
-
+			 */
 			if !errors.is_empty() {
 				// Send errors as extrinsics
 				if let Some((_, res)) = signer.send_signed_transaction(|_account| {
