@@ -18,7 +18,7 @@ use ddc_primitives::{
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor},
 	},
-	BucketId, ClusterId,
+	BucketId, ClusterId, CustomerUsage, NodeUsage,
 };
 use frame_support::{
 	parameter_types,
@@ -66,6 +66,8 @@ pub struct Bucket<T: Config> {
 	cluster_id: ClusterId,
 	is_public: bool,
 	is_removed: bool,
+	total_customers_usage: Option<CustomerUsage>,
+	total_nodes_usage: Option<NodeUsage>,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -180,7 +182,6 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		// todo! name events
 		/// An account has deposited this amount. \[owner, amount\]
 		///
 		/// NOTE: This event is only emitted when funds are deposited via a dispatchable. Notably,
@@ -194,9 +195,27 @@ pub mod pallet {
 		/// The account has been charged for the usage
 		Charged { owner_id: T::AccountId, charged: BalanceOf<T>, expected_to_charge: BalanceOf<T> },
 		/// Bucket with specific id created
-		BucketCreated { bucket_id: BucketId },
+		BucketCreated { cluster_id: ClusterId, bucket_id: BucketId },
 		/// Bucket with specific id updated
 		BucketUpdated { bucket_id: BucketId },
+		/// Bucket nodes usage with specific id updated
+		BucketTotalNodesUsageUpdated {
+			cluster_id: ClusterId,
+			bucket_id: BucketId,
+			transferred_bytes: u64,
+			stored_bytes: u64,
+			number_of_puts: u64,
+			number_of_gets: u64,
+		},
+		/// Bucket customers usage with specific id updated
+		BucketTotalCustomersUsageUpdated {
+			cluster_id: ClusterId,
+			bucket_id: BucketId,
+			transferred_bytes: u64,
+			stored_bytes: u64,
+			number_of_puts: u64,
+			number_of_gets: u64,
+		},
 		/// Bucket with specific id marked as removed
 		BucketRemoved { bucket_id: BucketId },
 	}
@@ -316,12 +335,14 @@ pub mod pallet {
 				cluster_id,
 				is_public: bucket_params.is_public,
 				is_removed: false,
+				total_customers_usage: None,
+				total_nodes_usage: None,
 			};
 
 			<BucketsCount<T>>::set(cur_bucket_id);
 			<Buckets<T>>::insert(cur_bucket_id, bucket);
 
-			Self::deposit_event(Event::<T>::BucketCreated { bucket_id: cur_bucket_id });
+			Self::deposit_event(Event::<T>::BucketCreated { cluster_id, bucket_id: cur_bucket_id });
 
 			Ok(())
 		}
@@ -625,9 +646,87 @@ pub mod pallet {
 	}
 
 	impl<T: Config> CustomerCharger<T> for Pallet<T> {
+		fn inc_total_customer_usage(
+			cluster_id: &ClusterId,
+			bucket_id: BucketId,
+			content_owner: T::AccountId,
+			customer_usage: &CustomerUsage,
+		) -> DispatchResult {
+			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+			ensure!(bucket.owner_id == content_owner, Error::<T>::NotBucketOwner);
+
+			// Update or initialize total_customers_usage
+			match &mut bucket.total_customers_usage {
+				Some(total_customers_usage) => {
+					total_customers_usage.transferred_bytes += customer_usage.transferred_bytes;
+					total_customers_usage.stored_bytes += customer_usage.stored_bytes;
+					total_customers_usage.number_of_puts += customer_usage.number_of_puts;
+					total_customers_usage.number_of_gets += customer_usage.number_of_gets;
+				},
+				None => {
+					bucket.total_customers_usage = Some(CustomerUsage {
+						transferred_bytes: customer_usage.transferred_bytes,
+						stored_bytes: customer_usage.stored_bytes,
+						number_of_puts: customer_usage.number_of_puts,
+						number_of_gets: customer_usage.number_of_gets,
+					});
+				},
+			}
+
+			Self::deposit_event(Event::<T>::BucketTotalCustomersUsageUpdated {
+				cluster_id: *cluster_id,
+				bucket_id,
+				transferred_bytes: customer_usage.transferred_bytes,
+				stored_bytes: customer_usage.stored_bytes,
+				number_of_puts: customer_usage.number_of_puts,
+				number_of_gets: customer_usage.number_of_gets,
+			});
+
+			Ok(())
+		}
+
+		fn inc_total_node_usage(
+			cluster_id: &ClusterId,
+			bucket_id: BucketId,
+			node_usage: &NodeUsage,
+		) -> DispatchResult {
+			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+
+			// Update or initialize total_nodes_usage
+			match &mut bucket.total_nodes_usage {
+				Some(total_nodes_usage) => {
+					total_nodes_usage.transferred_bytes += node_usage.transferred_bytes;
+					total_nodes_usage.stored_bytes += node_usage.stored_bytes;
+					total_nodes_usage.number_of_puts += node_usage.number_of_puts;
+					total_nodes_usage.number_of_gets += node_usage.number_of_gets;
+				},
+				None => {
+					bucket.total_nodes_usage = Some(NodeUsage {
+						transferred_bytes: node_usage.transferred_bytes,
+						stored_bytes: node_usage.stored_bytes,
+						number_of_puts: node_usage.number_of_puts,
+						number_of_gets: node_usage.number_of_gets,
+					});
+				},
+			}
+
+			Self::deposit_event(Event::<T>::BucketTotalCustomersUsageUpdated {
+				cluster_id: *cluster_id,
+				bucket_id,
+				transferred_bytes: node_usage.transferred_bytes,
+				stored_bytes: node_usage.stored_bytes,
+				number_of_puts: node_usage.number_of_puts,
+				number_of_gets: node_usage.number_of_gets,
+			});
+			Ok(())
+		}
+
 		fn charge_content_owner(
+			cluster_id: &ClusterId,
+			bucket_id: BucketId,
 			content_owner: T::AccountId,
 			billing_vault: T::AccountId,
+			customer_usage: &CustomerUsage,
 			amount: u128,
 		) -> Result<u128, DispatchError> {
 			let actually_charged: BalanceOf<T>;
@@ -661,6 +760,14 @@ pub mod pallet {
 
 				actually_charged.checked_add(&charged).ok_or(Error::<T>::ArithmeticUnderflow)?;
 			}
+
+			// todo! factor out into BucketManager::inc_total_customer_usage
+			Self::inc_total_customer_usage(
+				cluster_id,
+				bucket_id,
+				content_owner.clone(),
+				customer_usage,
+			)?;
 
 			<T as pallet::Config>::Currency::transfer(
 				&Self::account_id(),

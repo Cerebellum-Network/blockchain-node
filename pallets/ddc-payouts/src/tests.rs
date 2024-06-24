@@ -168,8 +168,10 @@ fn send_charging_customers_batch_fails_uninitialised() {
 		let era = 100;
 		let max_batch_index = 2;
 		let batch_index = 1;
-		let payers1 = vec![(user1, CustomerUsage::default())];
-		let payers2 = vec![(user2, CustomerUsage::default())];
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let payers1 = vec![(user1, bucket_id1, CustomerUsage::default())];
+		let payers2 = vec![(user2, bucket_id2, CustomerUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -389,6 +391,11 @@ fn send_charging_customers_batch_works() {
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let bucket_id3: BucketId = 3;
+		let bucket_id4: BucketId = 4;
+
 		let usage1 = CustomerUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
@@ -417,9 +424,10 @@ fn send_charging_customers_batch_works() {
 			number_of_puts: 3456345,
 			number_of_gets: 242334563456423,
 		};
-		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
-		let payers2 = vec![(user1, usage1.clone())];
-		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let payers1 =
+			vec![(user2_debtor, bucket_id2, usage2.clone()), (user4, bucket_id4, usage4.clone())];
+		let payers2 = vec![(user1, bucket_id1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -479,6 +487,7 @@ fn send_charging_customers_batch_works() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -491,6 +500,7 @@ fn send_charging_customers_batch_works() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -501,6 +511,7 @@ fn send_charging_customers_batch_works() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -528,6 +539,7 @@ fn send_charging_customers_batch_works() {
 				cluster_id,
 				era,
 				batch_index,
+				bucket_id: bucket_id1,
 				customer_id: user1,
 				amount: calculate_charge_for_month(cluster_id, usage1.clone()),
 			}
@@ -606,6 +618,7 @@ fn send_charging_customers_batch_works() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -618,6 +631,7 @@ fn send_charging_customers_batch_works() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
 			}
@@ -638,6 +652,9 @@ fn end_charging_customers_works_small_usage_1_hour() {
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
+		let bucket_id6: BucketId = 6;
+		let bucket_id7: BucketId = 7;
+
 		let usage6 = CustomerUsage {
 			transferred_bytes: 0,
 			stored_bytes: 474_957,
@@ -650,7 +667,8 @@ fn end_charging_customers_works_small_usage_1_hour() {
 			number_of_puts: 0,
 			number_of_gets: 0,
 		};
-		let payers1 = vec![(user6, usage6.clone()), (user7, usage7.clone())];
+		let payers1 =
+			vec![(user6, bucket_id6, usage6.clone()), (user7, bucket_id7, usage7.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -703,6 +721,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 				cluster_id,
 				era,
 				customer_id: user6,
+				bucket_id: bucket_id6,
 				batch_index,
 				amount: usage6_charge,
 			}
@@ -714,6 +733,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 				cluster_id,
 				era,
 				customer_id: user7,
+				bucket_id: bucket_id7,
 				batch_index,
 				amount: usage7_charge,
 			}
@@ -832,6 +852,11 @@ fn send_charging_customers_batch_works_for_day() {
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let bucket_id3: BucketId = 3;
+		let bucket_id4: BucketId = 4;
+
 		let usage1 = CustomerUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
@@ -860,9 +885,10 @@ fn send_charging_customers_batch_works_for_day() {
 			number_of_puts: 3456345,
 			number_of_gets: 242334563456423,
 		};
-		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
-		let payers2 = vec![(user1, usage1.clone())];
-		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let payers1 =
+			vec![(user2_debtor, bucket_id2, usage2.clone()), (user4, bucket_id4, usage4.clone())];
+		let payers2 = vec![(user1, bucket_id1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -922,6 +948,7 @@ fn send_charging_customers_batch_works_for_day() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -934,6 +961,7 @@ fn send_charging_customers_batch_works_for_day() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -944,6 +972,7 @@ fn send_charging_customers_batch_works_for_day() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -972,6 +1001,7 @@ fn send_charging_customers_batch_works_for_day() {
 				era,
 				batch_index,
 				customer_id: user1,
+				bucket_id: bucket_id1,
 				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
 			}
 			.into(),
@@ -1049,6 +1079,7 @@ fn send_charging_customers_batch_works_for_day() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -1061,6 +1092,7 @@ fn send_charging_customers_batch_works_for_day() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
 			}
@@ -1083,6 +1115,11 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let bucket_id3: BucketId = 3;
+		let bucket_id4: BucketId = 4;
+
 		let usage1 = CustomerUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
@@ -1111,9 +1148,10 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 			number_of_puts: 3456345,
 			number_of_gets: 242334563456423,
 		};
-		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
-		let payers2 = vec![(user1, usage1.clone())];
-		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let payers1 =
+			vec![(user2_debtor, bucket_id2, usage2.clone()), (user4, bucket_id4, usage4.clone())];
+		let payers2 = vec![(user1, bucket_id1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -1173,6 +1211,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -1185,6 +1224,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -1195,6 +1235,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -1223,6 +1264,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				era,
 				batch_index,
 				customer_id: user1,
+				bucket_id: bucket_id1,
 				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
 			}
 			.into(),
@@ -1300,6 +1342,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -1312,6 +1355,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
 			}
@@ -1334,6 +1378,11 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let bucket_id3: BucketId = 3;
+		let bucket_id4: BucketId = 4;
+
 		let usage1 = CustomerUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
@@ -1362,9 +1411,10 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 			number_of_puts: 3456345,
 			number_of_gets: 242334563456423,
 		};
-		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
-		let payers2 = vec![(user1, usage1.clone())];
-		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let payers1 =
+			vec![(user2_debtor, bucket_id2, usage2.clone()), (user4, bucket_id4, usage4.clone())];
+		let payers2 = vec![(user1, bucket_id1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -1424,6 +1474,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -1436,6 +1487,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -1446,6 +1498,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -1474,6 +1527,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				era,
 				batch_index,
 				customer_id: user1,
+				bucket_id: bucket_id1,
 				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
 			}
 			.into(),
@@ -1551,6 +1605,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -1563,6 +1618,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
 			}
@@ -1585,6 +1641,11 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let bucket_id3: BucketId = 3;
+		let bucket_id4: BucketId = 4;
+
 		let usage1 = CustomerUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
@@ -1613,9 +1674,10 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 			number_of_puts: 3456345,
 			number_of_gets: 242334563456423,
 		};
-		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
-		let payers2 = vec![(user1, usage1.clone())];
-		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let payers1 =
+			vec![(user2_debtor, bucket_id2, usage2.clone()), (user4, bucket_id4, usage4.clone())];
+		let payers2 = vec![(user1, bucket_id1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -1675,6 +1737,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -1687,6 +1750,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -1697,6 +1761,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -1725,6 +1790,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				era,
 				batch_index,
 				customer_id: user1,
+				bucket_id: bucket_id1,
 				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
 			}
 			.into(),
@@ -1802,6 +1868,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -1814,6 +1881,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
 			}
@@ -1836,6 +1904,11 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let bucket_id3: BucketId = 3;
+		let bucket_id4: BucketId = 4;
+
 		let usage1 = CustomerUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
@@ -1864,9 +1937,10 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 			number_of_puts: 3456345,
 			number_of_gets: 242334563456423,
 		};
-		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
-		let payers2 = vec![(user1, usage1.clone())];
-		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let payers1 =
+			vec![(user2_debtor, bucket_id2, usage2.clone()), (user4, bucket_id4, usage4.clone())];
+		let payers2 = vec![(user1, bucket_id1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -1926,6 +2000,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -1938,6 +2013,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -1948,6 +2024,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -1975,6 +2052,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				cluster_id,
 				era,
 				batch_index,
+				bucket_id: bucket_id1,
 				customer_id: user1,
 				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
 			}
@@ -2053,6 +2131,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -2065,6 +2144,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
 			}
@@ -2087,6 +2167,11 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let bucket_id3: BucketId = 3;
+		let bucket_id4: BucketId = 4;
+
 		let usage1 = CustomerUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
@@ -2115,9 +2200,10 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 			number_of_puts: 3456345,
 			number_of_gets: 242334563456423,
 		};
-		let payers1 = vec![(user2_debtor, usage2.clone()), (user4, usage4.clone())];
-		let payers2 = vec![(user1, usage1.clone())];
-		let payers3 = vec![(user3_debtor, usage3.clone())];
+		let payers1 =
+			vec![(user2_debtor, bucket_id2, usage2.clone()), (user4, bucket_id4, usage4.clone())];
+		let payers2 = vec![(user1, bucket_id1, usage1.clone())];
+		let payers3 = vec![(user3_debtor, bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -2177,6 +2263,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -2189,6 +2276,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -2199,6 +2287,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -2226,6 +2315,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				cluster_id,
 				era,
 				batch_index,
+				bucket_id: bucket_id1,
 				customer_id: user1,
 				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
 			}
@@ -2304,6 +2394,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -2315,6 +2406,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				cluster_id,
 				era,
 				batch_index,
+				bucket_id: bucket_id3,
 				customer_id: user3_debtor,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
@@ -2335,6 +2427,7 @@ fn send_charging_customers_batch_works_zero_fees() {
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
+		let bucket_id5: BucketId = 5;
 		let usage5 = CustomerUsage {
 			// should pass without debt
 			transferred_bytes: 1024,
@@ -2342,7 +2435,7 @@ fn send_charging_customers_batch_works_zero_fees() {
 			number_of_puts: 1,
 			number_of_gets: 1,
 		};
-		let payers5 = vec![(user5, usage5.clone())];
+		let payers5 = vec![(user5, bucket_id5, usage5.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -2414,7 +2507,8 @@ fn end_charging_customers_fails_uninitialised() {
 		let era = 100;
 		let max_batch_index = 2;
 		let batch_index = 1;
-		let payers = vec![(user1, CustomerUsage::default())];
+		let bucket_id1: BucketId = 1;
+		let payers = vec![(user1, bucket_id1, CustomerUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -2494,13 +2588,14 @@ fn end_charging_customers_works() {
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
+		let bucket_id1: BucketId = 1;
 		let usage1 = CustomerUsage {
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 4456456345234523,
 			number_of_gets: 523423,
 		};
-		let payers = vec![(user1, usage1.clone())];
+		let payers = vec![(user1, bucket_id1, usage1.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -2537,8 +2632,15 @@ fn end_charging_customers_works() {
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let charge = calculate_charge_for_month(cluster_id, usage1);
 		System::assert_last_event(
-			Event::Charged { cluster_id, era, batch_index, customer_id: user1, amount: charge }
-				.into(),
+			Event::Charged {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user1,
+				amount: charge,
+				bucket_id: bucket_id1,
+			}
+			.into(),
 		);
 
 		let mut balance = Balances::free_balance(DdcPayouts::account_id());
@@ -2637,13 +2739,14 @@ fn end_charging_customers_works_zero_fees() {
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
+		let bucket_id1: BucketId = 1;
 		let usage1 = CustomerUsage {
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 1,
 			number_of_gets: 1,
 		};
-		let payers = vec![(user1, usage1.clone())];
+		let payers = vec![(user1, bucket_id1, usage1.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -2680,8 +2783,15 @@ fn end_charging_customers_works_zero_fees() {
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let charge = calculate_charge_for_month(cluster_id, usage1);
 		System::assert_last_event(
-			Event::Charged { cluster_id, era, customer_id: user1, batch_index, amount: charge }
-				.into(),
+			Event::Charged {
+				cluster_id,
+				era,
+				customer_id: user1,
+				bucket_id: bucket_id1,
+				batch_index,
+				amount: charge,
+			}
+			.into(),
 		);
 
 		let mut balance = Balances::free_balance(DdcPayouts::account_id());
@@ -2756,7 +2866,8 @@ fn begin_rewarding_providers_fails_uninitialised() {
 		let era = 100;
 		let max_batch_index = 2;
 		let batch_index = 1;
-		let payers = vec![(user1, CustomerUsage::default())];
+		let bucket_id1: BucketId = 1;
+		let payers = vec![(user1, bucket_id1, CustomerUsage::default())];
 		let node_usage = NodeUsage::default();
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
@@ -2892,8 +3003,9 @@ fn begin_rewarding_providers_works() {
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
+		let bucket_id1: BucketId = 1;
 		let total_node_usage = NodeUsage::default();
-		let payers = vec![(user1, CustomerUsage::default())];
+		let payers = vec![(user1, bucket_id1, CustomerUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -2963,9 +3075,11 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		let era = 100;
 		let max_batch_index = 1;
 		let batch_index = 0;
-		let payers1 = vec![(user1, CustomerUsage::default())];
-		let payers2 = vec![(user2, CustomerUsage::default())];
-		let payees = vec![(node1, NodeUsage::default())];
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let payers1 = vec![(user1, bucket_id1, CustomerUsage::default())];
+		let payers2 = vec![(user2, bucket_id2, CustomerUsage::default())];
+		let payees = vec![(node1, bucket_id1, NodeUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -3122,6 +3236,9 @@ fn send_rewarding_providers_batch_works() {
 		let max_node_batch_index = 1;
 		let batch_index = 0;
 		let batch_node_index = 0;
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let bucket_id3: BucketId = 3;
 		let usage1 = CustomerUsage {
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
@@ -3168,9 +3285,12 @@ fn send_rewarding_providers_batch_works() {
 				node_usage3.number_of_gets,
 		};
 
-		let payers = vec![(user1, usage1)];
-		let payees1 = vec![(node1, node_usage1.clone()), (node2, node_usage2.clone())];
-		let payees2 = vec![(node3, node_usage3.clone())];
+		let payers = vec![(user1, bucket_id1, usage1)];
+		let payees1 = vec![
+			(node1, bucket_id1, node_usage1.clone()),
+			(node2, bucket_id2, node_usage2.clone()),
+		];
+		let payees2 = vec![(node3, bucket_id3, node_usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -3281,6 +3401,7 @@ fn send_rewarding_providers_batch_works() {
 				cluster_id,
 				era,
 				node_provider_id: node1,
+				bucket_id: bucket_id1,
 				batch_index: batch_node_index,
 				rewarded: balance_node1,
 				expected_to_reward: balance_node1,
@@ -3318,6 +3439,7 @@ fn send_rewarding_providers_batch_works() {
 			Event::Rewarded {
 				cluster_id,
 				era,
+				bucket_id: bucket_id2,
 				node_provider_id: node2,
 				batch_index: batch_node_index,
 				rewarded: balance_node2,
@@ -3365,6 +3487,7 @@ fn send_rewarding_providers_batch_works() {
 			Event::Rewarded {
 				cluster_id,
 				era,
+				bucket_id: bucket_id3,
 				node_provider_id: node3,
 				batch_index: batch_node_index + 1,
 				rewarded: balance_node3,
@@ -3406,6 +3529,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		let era = 100;
 		let user_batch_size = 10;
 		let node_batch_size = 10;
+		let bucketid1: BucketId = 1;
 		let mut batch_user_index = 0;
 		let mut batch_node_index = 0;
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
@@ -3445,8 +3569,8 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			number_of_gets: usage1.number_of_gets * 2,
 		};
 
-		let mut payees: Vec<Vec<(u128, NodeUsage)>> = Vec::new();
-		let mut node_batch: Vec<(u128, NodeUsage)> = Vec::new();
+		let mut payees: Vec<Vec<(u128, BucketId, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(u128, BucketId, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
 		for i in 10..10 + num_nodes {
 			let node_usage = match i % 3 {
@@ -3460,7 +3584,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
 			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
 
-			node_batch.push((i, node_usage));
+			node_batch.push((i, bucketid1, node_usage));
 			if node_batch.len() == node_batch_size {
 				payees.push(node_batch.clone());
 				node_batch.clear();
@@ -3471,8 +3595,8 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		}
 
 		let mut total_charge = 0u128;
-		let mut payers: Vec<Vec<(u128, CustomerUsage)>> = Vec::new();
-		let mut user_batch: Vec<(u128, CustomerUsage)> = Vec::new();
+		let mut payers: Vec<Vec<(u128, BucketId, CustomerUsage)>> = Vec::new();
+		let mut user_batch: Vec<(u128, BucketId, CustomerUsage)> = Vec::new();
 		for user_id in 1000..1000 + num_users {
 			let ratio = match user_id % 5 {
 				0 => Perquintill::one(),
@@ -3498,7 +3622,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			.unwrap();
 			total_charge += expected_charge;
 
-			user_batch.push((user_id, user_usage));
+			user_batch.push((user_id, bucketid1, user_usage));
 			if user_batch.len() == user_batch_size {
 				payers.push(user_batch.clone());
 				user_batch.clear();
@@ -3534,13 +3658,14 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 				(0, ActivityHash::default()),
 			));
 
-			for (customer_id, usage) in batch.iter() {
+			for (customer_id, _bucket_id, usage) in batch.iter() {
 				let charge = calculate_charge_for_month(cluster_id, usage.clone());
 
 				System::assert_has_event(
 					Event::Charged {
 						cluster_id,
 						era,
+						bucket_id: bucketid1,
 						customer_id: *customer_id,
 						batch_index: batch_user_index,
 						amount: charge,
@@ -3613,7 +3738,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			));
 
 			let mut batch_charge = 0;
-			for (node1, node_usage1) in batch.iter() {
+			for (node1, _bucket_id, node_usage1) in batch.iter() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
 					total_nodes_usage.transferred_bytes,
@@ -3674,8 +3799,10 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		let era = 100;
 		let user_batch_size = 10;
 		let node_batch_size = 10;
+		let bucketid1: BucketId = 1;
 		let mut batch_user_index = 0;
 		let mut batch_node_index = 0;
+		let bucket_id: BucketId = 1;
 		let usage1 = CustomerUsage {
 			transferred_bytes: 1024,
 			stored_bytes: 1024,
@@ -3707,8 +3834,8 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			number_of_gets: usage1.number_of_gets * 2,
 		};
 
-		let mut payees: Vec<Vec<(u128, NodeUsage)>> = Vec::new();
-		let mut node_batch: Vec<(u128, NodeUsage)> = Vec::new();
+		let mut payees: Vec<Vec<(u128, BucketId, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(u128, BucketId, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
 		for i in 10..10 + num_nodes {
 			let ratio = match i % 5 {
@@ -3735,7 +3862,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
 			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
 
-			node_batch.push((i, node_usage));
+			node_batch.push((i, bucketid1, node_usage));
 			if node_batch.len() == node_batch_size {
 				payees.push(node_batch.clone());
 				node_batch.clear();
@@ -3746,8 +3873,8 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		}
 
 		let mut total_charge = 0u128;
-		let mut payers: Vec<Vec<(u128, CustomerUsage)>> = Vec::new();
-		let mut user_batch: Vec<(u128, CustomerUsage)> = Vec::new();
+		let mut payers: Vec<Vec<(u128, BucketId, CustomerUsage)>> = Vec::new();
+		let mut user_batch: Vec<(u128, BucketId, CustomerUsage)> = Vec::new();
 		for user_id in 1000..1000 + num_users {
 			let ratio = match user_id % 5 {
 				0 => Perquintill::from_float(1_000_000.0),
@@ -3773,7 +3900,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			.unwrap();
 			total_charge += expected_charge;
 
-			user_batch.push((user_id, user_usage));
+			user_batch.push((user_id, bucket_id, user_usage));
 			if user_batch.len() == user_batch_size {
 				payers.push(user_batch.clone());
 				user_batch.clear();
@@ -3809,13 +3936,14 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 				(0, ActivityHash::default()),
 			));
 
-			for (customer_id, usage) in batch.iter() {
+			for (customer_id, _bucket_id, usage) in batch.iter() {
 				let charge = calculate_charge_for_month(cluster_id, usage.clone());
 
 				System::assert_has_event(
 					Event::Charged {
 						cluster_id,
 						era,
+						bucket_id: bucketid1,
 						customer_id: *customer_id,
 						batch_index: batch_user_index,
 						amount: charge,
@@ -3888,7 +4016,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			));
 
 			let mut batch_charge = 0;
-			for (node1, node_usage1) in batch.iter() {
+			for (node1, _bucket_id, node_usage1) in batch.iter() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
 					total_nodes_usage.transferred_bytes,
@@ -3947,6 +4075,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		let bank = 1u128;
 		let cluster_id = ONE_CLUSTER_ID;
 		let era = 100;
+		let bucketid1: BucketId = 1;
 		let user_batch_size = 10;
 		let node_batch_size = 10;
 		let mut batch_user_index = 0;
@@ -3982,8 +4111,8 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			number_of_gets: usage1.number_of_gets * 2,
 		};
 
-		let mut payees: Vec<Vec<(u128, NodeUsage)>> = Vec::new();
-		let mut node_batch: Vec<(u128, NodeUsage)> = Vec::new();
+		let mut payees: Vec<Vec<(u128, BucketId, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(u128, BucketId, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
 		for i in 10..10 + num_nodes {
 			let ratio = match i % 5 {
@@ -4010,7 +4139,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
 			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
 
-			node_batch.push((i, node_usage));
+			node_batch.push((i, bucketid1, node_usage));
 			if node_batch.len() == node_batch_size {
 				payees.push(node_batch.clone());
 				node_batch.clear();
@@ -4021,8 +4150,8 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		}
 
 		let mut total_charge = 0u128;
-		let mut payers: Vec<Vec<(u128, CustomerUsage)>> = Vec::new();
-		let mut user_batch: Vec<(u128, CustomerUsage)> = Vec::new();
+		let mut payers: Vec<Vec<(u128, BucketId, CustomerUsage)>> = Vec::new();
+		let mut user_batch: Vec<(u128, BucketId, CustomerUsage)> = Vec::new();
 		for user_id in 1000..1000 + num_users {
 			let ratio = match user_id % 5 {
 				0 => Perquintill::from_float(1_000_000.0),
@@ -4048,7 +4177,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			.unwrap();
 			total_charge += expected_charge;
 
-			user_batch.push((user_id, user_usage));
+			user_batch.push((user_id, bucketid1, user_usage));
 			if user_batch.len() == user_batch_size {
 				payers.push(user_batch.clone());
 				user_batch.clear();
@@ -4084,7 +4213,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 				(0, ActivityHash::default()),
 			));
 
-			for (customer_id, usage) in batch.iter() {
+			for (customer_id, _bucket_id, usage) in batch.iter() {
 				let charge = calculate_charge_for_month(cluster_id, usage.clone());
 
 				System::assert_has_event(
@@ -4092,6 +4221,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 						cluster_id,
 						era,
 						customer_id: *customer_id,
+						bucket_id: bucketid1,
 						batch_index: batch_user_index,
 						amount: charge,
 					}
@@ -4163,7 +4293,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			));
 
 			let mut batch_charge = 0;
-			for (node1, node_usage1) in batch.iter() {
+			for (node1, _bucket_id, node_usage1) in batch.iter() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
 					total_nodes_usage.transferred_bytes,
@@ -4236,8 +4366,9 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		let node_batch_size = 10;
 		let mut batch_user_index = 0;
 		let mut batch_node_index = 0;
-		let mut payees: Vec<Vec<(u128, NodeUsage)>> = Vec::new();
-		let mut node_batch: Vec<(u128, NodeUsage)> = Vec::new();
+		let bucket_id1: BucketId = 1;
+		let mut payees: Vec<Vec<(u128, BucketId, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(u128, BucketId, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
 		for i in 10..10 + num_nodes {
 			let node_usage = NodeUsage {
@@ -4252,7 +4383,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
 			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
 
-			node_batch.push((i, node_usage));
+			node_batch.push((i, bucket_id1, node_usage));
 			if node_batch.len() == node_batch_size {
 				payees.push(node_batch.clone());
 				node_batch.clear();
@@ -4263,8 +4394,8 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		}
 
 		let mut total_charge = 0u128;
-		let mut payers: Vec<Vec<(u128, CustomerUsage)>> = Vec::new();
-		let mut user_batch: Vec<(u128, CustomerUsage)> = Vec::new();
+		let mut payers: Vec<Vec<(u128, BucketId, CustomerUsage)>> = Vec::new();
+		let mut user_batch: Vec<(u128, BucketId, CustomerUsage)> = Vec::new();
 		for user_id in 1000..1000 + num_users {
 			let user_usage = CustomerUsage {
 				transferred_bytes: generate_random_u64(&mock_randomness, min, max),
@@ -4282,7 +4413,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			.unwrap();
 			total_charge += expected_charge;
 
-			user_batch.push((user_id, user_usage));
+			user_batch.push((user_id, bucket_id1, user_usage));
 			if user_batch.len() == user_batch_size {
 				payers.push(user_batch.clone());
 				user_batch.clear();
@@ -4318,13 +4449,14 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 				(0, ActivityHash::default()),
 			));
 
-			for (customer_id, usage) in batch.iter() {
+			for (customer_id, _bucket_id, usage) in batch.iter() {
 				let charge = calculate_charge_for_month(cluster_id, usage.clone());
 
 				System::assert_has_event(
 					Event::Charged {
 						cluster_id,
 						era,
+						bucket_id: bucket_id1,
 						customer_id: *customer_id,
 						batch_index: batch_user_index,
 						amount: charge,
@@ -4397,7 +4529,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			));
 
 			let mut batch_charge = 0;
-			for (node1, node_usage1) in batch.iter() {
+			for (node1, _bucket_id, node_usage1) in batch.iter() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
 					total_nodes_usage.transferred_bytes,
@@ -4451,9 +4583,11 @@ fn end_rewarding_providers_fails_uninitialised() {
 		let era = 100;
 		let max_batch_index = 1;
 		let batch_index = 0;
-		let payers1 = vec![(user1, CustomerUsage::default())];
-		let payers2 = vec![(user2, CustomerUsage::default())];
-		let payees = vec![(node1, NodeUsage::default())];
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let payers1 = vec![(user1, bucket_id1, CustomerUsage::default())];
+		let payers2 = vec![(user2, bucket_id2, CustomerUsage::default())];
+		let payees = vec![(node1, bucket_id1, NodeUsage::default())];
 		let total_node_usage = NodeUsage::default();
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
@@ -4627,6 +4761,8 @@ fn end_rewarding_providers_works() {
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
 		let usage1 = CustomerUsage {
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
@@ -4642,8 +4778,8 @@ fn end_rewarding_providers_works() {
 			number_of_gets: usage1.number_of_gets * 2 / 3,
 		};
 		let total_node_usage = node_usage1.clone();
-		let payers = vec![(user1, usage1)];
-		let payees = vec![(node1, node_usage1)];
+		let payers = vec![(user1, bucket_id1, usage1)];
+		let payees = vec![(node1, bucket_id2, node_usage1)];
 
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account),
@@ -4727,9 +4863,11 @@ fn end_billing_report_fails_uninitialised() {
 		let era = 100;
 		let max_batch_index = 1;
 		let batch_index = 0;
-		let payers1 = vec![(user1, CustomerUsage::default())];
-		let payers2 = vec![(user2, CustomerUsage::default())];
-		let payees = vec![(node1, NodeUsage::default())];
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let payers1 = vec![(user1, bucket_id1, CustomerUsage::default())];
+		let payers2 = vec![(user2, bucket_id2, CustomerUsage::default())];
+		let payees = vec![(node1, bucket_id1, NodeUsage::default())];
 		let total_node_usage = NodeUsage::default();
 
 		assert_noop!(
@@ -4875,8 +5013,10 @@ fn end_billing_report_works() {
 		let max_batch_index = 0;
 		let batch_index = 0;
 		let total_node_usage = NodeUsage::default();
-		let payers = vec![(user1, CustomerUsage::default())];
-		let payees = vec![(node1, NodeUsage::default())];
+		let bucket_id1 = 1;
+		let bucket_id2 = 2;
+		let payers = vec![(user1, bucket_id1, CustomerUsage::default())];
+		let payees = vec![(node1, bucket_id2, NodeUsage::default())];
 
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account),

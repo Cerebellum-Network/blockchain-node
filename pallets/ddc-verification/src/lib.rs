@@ -1490,7 +1490,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			_batch_index: BatchIndex,
-			_payers: &[(T::AccountId, CustomerUsage)],
+			_payers: &[(T::AccountId, BucketId, CustomerUsage)],
 			proof: MerkleProof<ActivityHash, MergeActivityHash>,
 			leaf_with_position: (u64, ActivityHash),
 		) -> bool {
@@ -1509,7 +1509,7 @@ pub mod pallet {
 			_cluster_id: ClusterId,
 			_era: DdcEra,
 			_batch_index: BatchIndex,
-			_payees: &[(T::AccountId, NodeUsage)],
+			_payees: &[(T::AccountId, BucketId, NodeUsage)],
 			_adjacent_hashes: &[ActivityHash],
 		) -> bool {
 			true

@@ -152,7 +152,7 @@ where
 		_cluster_id: ClusterId,
 		_era: DdcEra,
 		_batch_index: BatchIndex,
-		_payers: &[(T::AccountId, CustomerUsage)],
+		_payers: &[(T::AccountId, BucketId, CustomerUsage)],
 		_proof: MerkleProof<ActivityHash, MergeActivityHash>,
 		_leaf_with_position: (u64, ActivityHash),
 	) -> bool {
@@ -163,7 +163,7 @@ where
 		_cluster_id: ClusterId,
 		_era: DdcEra,
 		_batch_index: BatchIndex,
-		_payees: &[(T::AccountId, NodeUsage)],
+		_payees: &[(T::AccountId, BucketId, NodeUsage)],
 		_adjacent_hashes: &[ActivityHash],
 	) -> bool {
 		true
@@ -172,9 +172,29 @@ where
 
 pub struct TestCustomerCharger;
 impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
+	fn inc_total_customer_usage(
+		_cluster_id: &ClusterId,
+		_bucket_id: BucketId,
+		_content_owner: T::AccountId,
+		_customer_usage: &CustomerUsage,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn inc_total_node_usage(
+		_cluster_id: &ClusterId,
+		_bucket_id: BucketId,
+		_node_usage: &NodeUsage,
+	) -> DispatchResult {
+		Ok(())
+	}
+
 	fn charge_content_owner(
+		_cluster_id: &ClusterId,
+		_bucket_id: BucketId,
 		content_owner: T::AccountId,
 		billing_vault: T::AccountId,
+		_customer_usage: &CustomerUsage,
 		amount: u128,
 	) -> Result<u128, DispatchError> {
 		let mut amount_to_charge = amount;

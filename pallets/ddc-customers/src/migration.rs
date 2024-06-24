@@ -39,8 +39,35 @@ pub mod v0 {
 	>;
 }
 
+pub mod v1 {
+	use frame_support::pallet_prelude::*;
+
+	use super::*;
+
+	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+	pub struct Bucket<AccountId> {
+		pub bucket_id: BucketId,
+		pub owner_id: AccountId,
+		pub cluster_id: ClusterId,
+		pub is_public: bool,
+		pub is_removed: bool,
+	}
+
+	#[storage_alias]
+	pub(super) type BucketsCount<T: Config> = StorageValue<crate::Pallet<T>, BucketId, ValueQuery>;
+
+	#[storage_alias]
+	pub(super) type Buckets<T: Config> = StorageMap<
+		crate::Pallet<T>,
+		Twox64Concat,
+		BucketId,
+		Bucket<<T as frame_system::Config>::AccountId>,
+		OptionQuery,
+	>;
+}
+
 // Migrate to removable buckets
-pub fn migrate_to_v1<T: Config>() -> Weight {
+pub fn migrate_from_v0_to_v2<T: Config>() -> Weight {
 	let on_chain_version = Pallet::<T>::on_chain_storage_version();
 	if on_chain_version == 0 {
 		let count = v0::BucketsCount::<T>::get();
@@ -59,13 +86,56 @@ pub fn migrate_to_v1<T: Config>() -> Weight {
 					cluster_id: bucket.cluster_id,
 					is_public: bucket.is_public,
 					is_removed: false,
+					total_customers_usage: None,
+					total_nodes_usage: None,
 				})
 			},
 		);
 
 		// Update storage version.
-		StorageVersion::new(1).put::<Pallet<T>>();
+		StorageVersion::new(2).put::<Pallet<T>>();
 		let count = v0::BucketsCount::<T>::get();
+		info!(
+			target: LOG_TARGET,
+			" <<< DDC Customers storage updated! Migrated {} buckets ✅", count
+		);
+
+		T::DbWeight::get().reads_writes(count + 2, count + 1)
+	} else {
+		info!(target: LOG_TARGET, " >>> Unused migration!");
+		T::DbWeight::get().reads(1)
+	}
+}
+
+// Migrate to removable buckets
+pub fn migrate_from_v1_to_v2<T: Config>() -> Weight {
+	let on_chain_version = Pallet::<T>::on_chain_storage_version();
+	if on_chain_version == 1 {
+		let count = v1::BucketsCount::<T>::get();
+		info!(
+			target: LOG_TARGET,
+			" >>> Updating DDC Customers storage. Migrating {} buckets...", count
+		);
+
+		Buckets::<T>::translate::<v1::Bucket<T::AccountId>, _>(
+			|bucket_id: BucketId, bucket: v1::Bucket<T::AccountId>| {
+				info!(target: LOG_TARGET, "     Migrating bucket for bucket ID {:?}...", bucket_id);
+
+				Some(Bucket {
+					bucket_id: bucket.bucket_id,
+					owner_id: bucket.owner_id,
+					cluster_id: bucket.cluster_id,
+					is_public: bucket.is_public,
+					is_removed: false,
+					total_customers_usage: None,
+					total_nodes_usage: None,
+				})
+			},
+		);
+
+		// Update storage version.
+		StorageVersion::new(2).put::<Pallet<T>>();
+		let count = v1::BucketsCount::<T>::get();
 		info!(
 			target: LOG_TARGET,
 			" <<< DDC Customers storage updated! Migrated {} buckets ✅", count
@@ -81,7 +151,7 @@ pub fn migrate_to_v1<T: Config>() -> Weight {
 pub struct MigrateToV1<T>(sp_std::marker::PhantomData<T>);
 impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 	fn on_runtime_upgrade() -> Weight {
-		migrate_to_v1::<T>()
+		migrate_from_v1_to_v2::<T>()
 	}
 
 	#[cfg(feature = "try-runtime")]

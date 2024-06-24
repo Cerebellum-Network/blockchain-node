@@ -30,12 +30,14 @@ fn create_bucket_works() {
 				cluster_id,
 				is_public: bucket_params.is_public,
 				is_removed: false,
+				total_customers_usage: None,
+				total_nodes_usage: None
 			})
 		);
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::BucketCreated { bucket_id: 1u64 }.into())
+		System::assert_last_event(Event::BucketCreated { cluster_id, bucket_id: 1u64 }.into())
 	})
 }
 
@@ -56,14 +58,14 @@ fn create_two_buckets_works() {
 			bucket_1_params.clone()
 		));
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::BucketCreated { bucket_id: 1u64 }.into());
+		System::assert_last_event(Event::BucketCreated { cluster_id, bucket_id: 1u64 }.into());
 		assert_ok!(DdcCustomers::create_bucket(
 			RuntimeOrigin::signed(account_1),
 			cluster_id,
 			bucket_2_params.clone()
 		));
 		assert_eq!(System::events().len(), 2);
-		System::assert_last_event(Event::BucketCreated { bucket_id: 2u64 }.into());
+		System::assert_last_event(Event::BucketCreated { cluster_id, bucket_id: 2u64 }.into());
 
 		// Check storage
 		assert_eq!(DdcCustomers::buckets_count(), 2);
@@ -75,6 +77,8 @@ fn create_two_buckets_works() {
 				cluster_id,
 				is_public: bucket_1_params.is_public,
 				is_removed: false,
+				total_customers_usage: None,
+				total_nodes_usage: None
 			})
 		);
 		assert_eq!(
@@ -85,6 +89,8 @@ fn create_two_buckets_works() {
 				cluster_id,
 				is_public: bucket_2_params.is_public,
 				is_removed: false,
+				total_customers_usage: None,
+				total_nodes_usage: None
 			})
 		);
 	})
@@ -175,9 +181,26 @@ fn charge_content_owner_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
+		let bucket_id1: BucketId = 1;
+		let bucket_id2: BucketId = 2;
+		let cluster_id = ClusterId::from([1; 20]);
+		let bucket_1_params = BucketParams { is_public: false };
+		let customer_usage = CustomerUsage {
+			transferred_bytes: 1,
+			stored_bytes: 2,
+			number_of_puts: 3,
+			number_of_gets: 4,
+		};
+		let account_2: u128 = 2;
 		let account_3: u128 = 3;
 		let vault: u128 = 4;
 		let deposit = 100_u128;
+
+		assert_ok!(DdcCustomers::create_bucket(
+			RuntimeOrigin::signed(account_3),
+			cluster_id,
+			bucket_1_params.clone()
+		));
 
 		let balance_before_deposit = Balances::free_balance(account_3);
 		// Deposited
@@ -204,8 +227,28 @@ fn charge_content_owner_works() {
 
 		// successful transfer
 		let charge1 = 10;
-		let charged = DdcCustomers::charge_content_owner(account_3, vault, charge1).unwrap();
+		let charged = DdcCustomers::charge_content_owner(
+			&cluster_id,
+			bucket_id1,
+			account_3,
+			vault,
+			&customer_usage,
+			charge1,
+		)
+		.unwrap();
 		assert_eq!(charge1, charged);
+
+		System::assert_has_event(
+			Event::BucketTotalCustomersUsageUpdated {
+				cluster_id,
+				bucket_id: bucket_id1,
+				transferred_bytes: customer_usage.transferred_bytes,
+				stored_bytes: customer_usage.stored_bytes,
+				number_of_puts: customer_usage.number_of_puts,
+				number_of_gets: customer_usage.number_of_gets,
+			}
+			.into(),
+		);
 
 		let vault_balance = Balances::free_balance(vault);
 		assert_eq!(charged, vault_balance);
@@ -234,7 +277,15 @@ fn charge_content_owner_works() {
 
 		// failed transfer
 		let charge2 = 100u128;
-		let charge_result = DdcCustomers::charge_content_owner(account_3, vault, charge2).unwrap();
+		let charge_result = DdcCustomers::charge_content_owner(
+			&cluster_id,
+			bucket_id1,
+			account_3,
+			vault,
+			&customer_usage,
+			charge2,
+		)
+		.unwrap();
 		assert_eq!(
 			DdcCustomers::ledger(account_3),
 			Some(AccountsLedger {
@@ -275,6 +326,31 @@ fn charge_content_owner_works() {
 		assert_eq!(
 			deposit,
 			Balances::free_balance(DdcCustomers::account_id()) - Balances::minimum_balance()
+		);
+
+		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_2), 50_u128));
+		assert_noop!(
+			DdcCustomers::charge_content_owner(
+				&cluster_id,
+				bucket_id1,
+				account_2,
+				vault,
+				&customer_usage,
+				charge1,
+			),
+			Error::<Test>::NotBucketOwner
+		);
+
+		assert_noop!(
+			DdcCustomers::charge_content_owner(
+				&cluster_id,
+				bucket_id2,
+				account_3,
+				vault,
+				&customer_usage,
+				charge1,
+			),
+			Error::<Test>::NoBucketWithId
 		);
 	})
 }
@@ -363,7 +439,7 @@ fn set_bucket_params_works() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::BucketCreated { bucket_id: 1u64 }.into());
+		System::assert_last_event(Event::BucketCreated { cluster_id, bucket_id: 1u64 }.into());
 
 		let bucket_id = 1;
 		let update_bucket_params = BucketParams { is_public: true };
@@ -382,6 +458,8 @@ fn set_bucket_params_works() {
 				cluster_id,
 				is_public: update_bucket_params.is_public,
 				is_removed: false,
+				total_customers_usage: None,
+				total_nodes_usage: None
 			})
 		);
 
@@ -409,7 +487,7 @@ fn set_bucket_params_checks_work() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::BucketCreated { bucket_id: 1u64 }.into());
+		System::assert_last_event(Event::BucketCreated { cluster_id, bucket_id: 1u64 }.into());
 		let bucket_id = 1;
 
 		let non_existent_bucket_id = 2;
@@ -475,6 +553,8 @@ fn remove_bucket_works() {
 				cluster_id,
 				is_public: bucket_params.is_public,
 				is_removed: false,
+				total_customers_usage: None,
+				total_nodes_usage: None
 			})
 		);
 
@@ -491,6 +571,8 @@ fn remove_bucket_works() {
 				cluster_id,
 				is_public: bucket_params.is_public,
 				is_removed: true,
+				total_customers_usage: None,
+				total_nodes_usage: None
 			})
 		);
 
@@ -565,6 +647,8 @@ fn remove_bucket_checks_with_multiple_buckets_works() {
 				cluster_id,
 				is_public: private_bucket_params.is_public,
 				is_removed: true,
+				total_customers_usage: None,
+				total_nodes_usage: None
 			})
 		);
 
@@ -576,6 +660,8 @@ fn remove_bucket_checks_with_multiple_buckets_works() {
 				cluster_id,
 				is_public: public_bucket_params.is_public,
 				is_removed: false,
+				total_customers_usage: None,
+				total_nodes_usage: None
 			})
 		);
 
