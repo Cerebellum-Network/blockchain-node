@@ -15,15 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [C,D] `pallet-ddc-verification`: Introduction of the Verification pallet to ensure the secure posting and retrieval of verification keys to and from the blockchain.
 
+
 ## [5.4.0]
 
-### Changed
-
+- [C,D] Introduce new events to the DDC Payouts Pallet
 - [C,D] `pallet-ddc-clusters-gov`: Introduction of the Cluster Governance pallet for managing clusters protocol parameters.
+- [C,D] `WhitelistOrigin` is set to the Technical Committee Collective Body
+- [C,D] The _Support Curve_ in OpenGov Tracks is made more strict
 
 ## [5.3.0]
-
-### Changed
 
 - [C,D] Updated Substrate to polkadot-v1.1.0
 - [C,D] Introduction of the OpenGov

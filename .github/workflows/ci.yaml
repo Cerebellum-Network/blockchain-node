@@ -49,9 +49,15 @@ jobs:
           target: wasm32-unknown-unknown
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
+      - name: Install try-runtime
+        run: cargo install --git https://github.com/paritytech/try-runtime-cli --locked
       - name: Check Build
         run: |
-          cargo build --release
+          cargo build --release --features try-runtime
+      - name: Check Try-Runtime
+        run: |
+          try-runtime --runtime ./target/release/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm \
+          on-runtime-upgrade --disable-idempotency-checks live --uri wss://rpc.devnet.cere.network:443
       - name: Run dev chain
         run: |
           timeout --preserve-status 30s ./target/release/cere --dev
@@ -59,9 +65,6 @@ jobs:
         run: >
           pushd node &&
           cargo check --features=runtime-benchmarks --release
-      - name: Check Build for Try-Runtime
-        run: |
-          cargo check --features=try-runtime --release
 
   clippy:
     name: Run Clippy
