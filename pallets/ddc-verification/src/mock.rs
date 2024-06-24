@@ -311,7 +311,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 pub struct MockPayoutVisitor;
 impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
-	fn get_billing_report_status(cluster_id: ClusterId, era: DdcEra) -> PayoutState {
+	fn get_billing_report_status(_cluster_id: ClusterId, _era: DdcEra) -> PayoutState {
 		PayoutState::NotInitialized
 	}
 }
