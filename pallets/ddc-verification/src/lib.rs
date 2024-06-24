@@ -846,12 +846,13 @@ pub mod pallet {
 			let mut end_era: i64 = Default::default();
 
 			for (stored_cluster_id, era_id, validation) in EraValidations::<T>::iter() {
-				if stored_cluster_id == *cluster_id && validation.status == status {
-					if smallest_era_id.is_none() || era_id < smallest_era_id.unwrap() {
-						smallest_era_id = Some(era_id);
-						start_era = validation.start_era;
-						end_era = validation.end_era;
-					}
+				if stored_cluster_id == *cluster_id
+					&& validation.status == status
+					&& (smallest_era_id.is_none() || era_id < smallest_era_id.unwrap())
+				{
+					smallest_era_id = Some(era_id);
+					start_era = validation.start_era;
+					end_era = validation.end_era;
 				}
 			}
 
