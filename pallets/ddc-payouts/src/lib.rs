@@ -36,8 +36,8 @@ use ddc_primitives::{
 		pallet::PalletVisitor as PalletVisitorType,
 		payout::PayoutVisitor,
 	},
-	BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutState, MAX_PAYOUT_BATCH_COUNT,
-	MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
+	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutState,
+	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -370,7 +370,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payers: Vec<(T::AccountId, CustomerUsage)>,
+			payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
 			mmr_size: u64,
 			proof: Vec<ActivityHash>,
 			leaf_with_position: (u64, ActivityHash),
@@ -415,7 +415,7 @@ pub mod pallet {
 			for payer in payers {
 				let mut customer_charge = get_customer_charge::<T>(
 					cluster_id,
-					&payer.1,
+					&payer.2,
 					updated_billing_report.start_era,
 					updated_billing_report.end_era,
 				)?;
@@ -430,8 +430,11 @@ pub mod pallet {
 
 				let customer_id = payer.0.clone();
 				let amount_actually_charged = match T::CustomerCharger::charge_content_owner(
+					&cluster_id,
+					payer.1,
 					customer_id.clone(),
 					updated_billing_report.vault.clone(),
+					&payer.2,
 					total_customer_charge,
 				) {
 					Ok(actually_charged) => actually_charged,
@@ -675,7 +678,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payees: Vec<(T::AccountId, NodeUsage)>,
+			payees: Vec<(T::AccountId, BucketId, NodeUsage)>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
@@ -714,9 +717,9 @@ pub mod pallet {
 
 			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
-			for payee in payees {
+			for (node_provider_id, bucket_id, node_usage) in payees {
 				let node_reward = get_node_reward(
-					&payee.1,
+					&node_usage,
 					&billing_report.total_node_usage,
 					&billing_report.total_customer_charge,
 				)
@@ -730,7 +733,6 @@ pub mod pallet {
 				})()
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-				let node_provider_id = payee.0;
 				let mut reward_ = amount_to_reward;
 				let mut reward: BalanceOf<T> = amount_to_reward.saturated_into::<BalanceOf<T>>();
 				if amount_to_reward > 0 {
@@ -768,6 +770,8 @@ pub mod pallet {
 						.checked_add(reward_)
 						.ok_or(Error::<T>::ArithmeticOverflow)?;
 				}
+
+				T::CustomerCharger::inc_total_node_usage(&cluster_id, bucket_id, &node_usage)?;
 
 				Self::deposit_event(Event::<T>::Rewarded {
 					cluster_id,

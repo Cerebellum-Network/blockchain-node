@@ -3,7 +3,8 @@ use polkadot_ckb_merkle_mountain_range::MerkleProof;
 use sp_std::prelude::*;
 
 use crate::{
-	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MergeActivityHash, NodeUsage,
+	ActivityHash, BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MergeActivityHash,
+	NodeUsage,
 };
 
 pub trait ValidatorVisitor<T: Config> {
@@ -13,7 +14,7 @@ pub trait ValidatorVisitor<T: Config> {
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
-		payers: &[(T::AccountId, CustomerUsage)],
+		payers: &[(T::AccountId, BucketId, CustomerUsage)],
 		proof: MerkleProof<ActivityHash, MergeActivityHash>,
 		leaf_with_position: (u64, ActivityHash),
 	) -> bool;
@@ -21,7 +22,7 @@ pub trait ValidatorVisitor<T: Config> {
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
-		payees: &[(T::AccountId, NodeUsage)],
+		payees: &[(T::AccountId, BucketId, NodeUsage)],
 		adjacent_hashes: &[ActivityHash],
 	) -> bool;
 }
