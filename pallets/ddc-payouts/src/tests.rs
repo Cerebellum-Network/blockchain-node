@@ -300,8 +300,8 @@ fn calculate_charge_parts_for_day(cluster_id: ClusterId, usage: CustomerUsage) -
 	let fraction_of_month =
 		Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
-	let storage = fraction_of_month *
-		(|| -> Option<u128> {
+	let storage = fraction_of_month
+		* (|| -> Option<u128> {
 			(usage.stored_bytes as u128)
 				.checked_mul(pricing_params.unit_per_mb_stored)?
 				.checked_div(byte_unit::MEBIBYTE)
@@ -309,8 +309,8 @@ fn calculate_charge_parts_for_day(cluster_id: ClusterId, usage: CustomerUsage) -
 		.unwrap();
 
 	CustomerCharge {
-		transfer: pricing_params.unit_per_mb_streamed * (usage.transferred_bytes as u128) /
-			byte_unit::MEBIBYTE,
+		transfer: pricing_params.unit_per_mb_streamed * (usage.transferred_bytes as u128)
+			/ byte_unit::MEBIBYTE,
 		storage,
 		puts: pricing_params.unit_per_put_request * (usage.number_of_puts as u128),
 		gets: pricing_params.unit_per_get_request * (usage.number_of_gets as u128),
@@ -326,8 +326,8 @@ fn calculate_charge_parts_for_month(cluster_id: ClusterId, usage: CustomerUsage)
 	let pricing_params = get_pricing(&cluster_id);
 
 	let fraction_of_month = Perquintill::one();
-	let storage = fraction_of_month *
-		(|| -> Option<u128> {
+	let storage = fraction_of_month
+		* (|| -> Option<u128> {
 			(usage.stored_bytes as u128)
 				.checked_mul(pricing_params.unit_per_mb_stored)?
 				.checked_div(byte_unit::MEBIBYTE)
@@ -335,8 +335,8 @@ fn calculate_charge_parts_for_month(cluster_id: ClusterId, usage: CustomerUsage)
 		.unwrap();
 
 	CustomerCharge {
-		transfer: pricing_params.unit_per_mb_streamed * (usage.transferred_bytes as u128) /
-			byte_unit::MEBIBYTE,
+		transfer: pricing_params.unit_per_mb_streamed * (usage.transferred_bytes as u128)
+			/ byte_unit::MEBIBYTE,
 		storage,
 		puts: pricing_params.unit_per_put_request * (usage.number_of_puts as u128),
 		gets: pricing_params.unit_per_get_request * (usage.number_of_gets as u128),
@@ -350,8 +350,8 @@ fn calculate_charge_parts_for_hour(cluster_id: ClusterId, usage: CustomerUsage) 
 	let seconds_in_month = 30.44 * 24.0 * 3600.0;
 	let fraction_of_hour =
 		Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
-	let storage = fraction_of_hour *
-		(|| -> Option<u128> {
+	let storage = fraction_of_hour
+		* (|| -> Option<u128> {
 			(usage.stored_bytes as u128)
 				.checked_mul(pricing_params.unit_per_mb_stored)?
 				.checked_div(byte_unit::MEBIBYTE)
@@ -359,8 +359,8 @@ fn calculate_charge_parts_for_hour(cluster_id: ClusterId, usage: CustomerUsage) 
 		.unwrap();
 
 	CustomerCharge {
-		transfer: pricing_params.unit_per_mb_streamed * (usage.transferred_bytes as u128) /
-			byte_unit::MEBIBYTE,
+		transfer: pricing_params.unit_per_mb_streamed * (usage.transferred_bytes as u128)
+			/ byte_unit::MEBIBYTE,
 		storage,
 		puts: pricing_params.unit_per_put_request * (usage.number_of_puts as u128),
 		gets: pricing_params.unit_per_get_request * (usage.number_of_gets as u128),
@@ -487,6 +487,7 @@ fn send_charging_customers_batch_works() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -499,6 +500,7 @@ fn send_charging_customers_batch_works() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -509,6 +511,7 @@ fn send_charging_customers_batch_works() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -536,6 +539,7 @@ fn send_charging_customers_batch_works() {
 				cluster_id,
 				era,
 				batch_index,
+				bucket_id: bucket_id1,
 				customer_id: user1,
 				amount: calculate_charge_for_month(cluster_id, usage1.clone()),
 			}
@@ -614,6 +618,7 @@ fn send_charging_customers_batch_works() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -626,6 +631,7 @@ fn send_charging_customers_batch_works() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
 			}
@@ -715,6 +721,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 				cluster_id,
 				era,
 				customer_id: user6,
+				bucket_id: bucket_id6,
 				batch_index,
 				amount: usage6_charge,
 			}
@@ -726,6 +733,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 				cluster_id,
 				era,
 				customer_id: user7,
+				bucket_id: bucket_id7,
 				batch_index,
 				amount: usage7_charge,
 			}
@@ -768,10 +776,10 @@ fn end_charging_customers_works_small_usage_1_hour() {
 
 		assert_eq!(
 			total_left_from_one,
-			Perquintill::one() -
-				(PRICING_FEES_HIGH.treasury_share +
-					PRICING_FEES_HIGH.validators_share +
-					PRICING_FEES_HIGH.cluster_reserve_share)
+			Perquintill::one()
+				- (PRICING_FEES_HIGH.treasury_share
+					+ PRICING_FEES_HIGH.validators_share
+					+ PRICING_FEES_HIGH.cluster_reserve_share)
 		);
 		assert_eq!(fees.treasury_share, PRICING_FEES_HIGH.treasury_share);
 		assert_eq!(fees.validators_share, PRICING_FEES_HIGH.validators_share);
@@ -940,6 +948,7 @@ fn send_charging_customers_batch_works_for_day() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -952,6 +961,7 @@ fn send_charging_customers_batch_works_for_day() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -962,6 +972,7 @@ fn send_charging_customers_batch_works_for_day() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -990,6 +1001,7 @@ fn send_charging_customers_batch_works_for_day() {
 				era,
 				batch_index,
 				customer_id: user1,
+				bucket_id: bucket_id1,
 				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
 			}
 			.into(),
@@ -1067,6 +1079,7 @@ fn send_charging_customers_batch_works_for_day() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -1079,6 +1092,7 @@ fn send_charging_customers_batch_works_for_day() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
 			}
@@ -1197,6 +1211,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -1209,6 +1224,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -1219,6 +1235,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -1247,6 +1264,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				era,
 				batch_index,
 				customer_id: user1,
+				bucket_id: bucket_id1,
 				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
 			}
 			.into(),
@@ -1324,6 +1342,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -1336,6 +1355,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
 			}
@@ -1454,6 +1474,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -1466,6 +1487,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -1476,6 +1498,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -1504,6 +1527,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				era,
 				batch_index,
 				customer_id: user1,
+				bucket_id: bucket_id1,
 				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
 			}
 			.into(),
@@ -1581,6 +1605,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -1593,6 +1618,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
 			}
@@ -1711,6 +1737,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -1723,6 +1750,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -1733,6 +1761,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -1761,6 +1790,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				era,
 				batch_index,
 				customer_id: user1,
+				bucket_id: bucket_id1,
 				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
 			}
 			.into(),
@@ -1838,6 +1868,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -1850,6 +1881,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
 			}
@@ -1968,6 +2000,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -1980,6 +2013,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -1990,6 +2024,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -2017,6 +2052,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				cluster_id,
 				era,
 				batch_index,
+				bucket_id: bucket_id1,
 				customer_id: user1,
 				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
 			}
@@ -2095,6 +2131,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -2107,6 +2144,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				era,
 				batch_index,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
 			}
@@ -2225,6 +2263,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				charged: USER2_BALANCE,
 				expected_to_charge: expected_charge2,
@@ -2237,6 +2276,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				cluster_id,
 				era,
 				customer_id: user2_debtor,
+				bucket_id: bucket_id2,
 				batch_index,
 				amount: debt,
 			}
@@ -2247,6 +2287,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				cluster_id,
 				era,
 				customer_id: user4,
+				bucket_id: bucket_id4,
 				batch_index,
 				amount: usage4_charge,
 			}
@@ -2274,6 +2315,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				cluster_id,
 				era,
 				batch_index,
+				bucket_id: bucket_id1,
 				customer_id: user1,
 				amount: calculate_charge_for_day(cluster_id, usage1.clone()),
 			}
@@ -2352,6 +2394,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				cluster_id,
 				era,
 				customer_id: user3_debtor,
+				bucket_id: bucket_id3,
 				batch_index,
 				amount: user3_debt,
 			}
@@ -2363,6 +2406,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				cluster_id,
 				era,
 				batch_index,
+				bucket_id: bucket_id3,
 				customer_id: user3_debtor,
 				charged: PARTIAL_CHARGE,
 				expected_to_charge: user3_charge,
@@ -2588,8 +2632,15 @@ fn end_charging_customers_works() {
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let charge = calculate_charge_for_month(cluster_id, usage1);
 		System::assert_last_event(
-			Event::Charged { cluster_id, era, batch_index, customer_id: user1, amount: charge }
-				.into(),
+			Event::Charged {
+				cluster_id,
+				era,
+				batch_index,
+				customer_id: user1,
+				amount: charge,
+				bucket_id: bucket_id1,
+			}
+			.into(),
 		);
 
 		let mut balance = Balances::free_balance(DdcPayouts::account_id());
@@ -2626,9 +2677,9 @@ fn end_charging_customers_works() {
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report_after.state, PayoutState::CustomersChargedWithFees);
 
-		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
-			get_fees(&cluster_id).validators_share +
-			get_fees(&cluster_id).cluster_reserve_share)
+		let total_left_from_one = (get_fees(&cluster_id).treasury_share
+			+ get_fees(&cluster_id).validators_share
+			+ get_fees(&cluster_id).cluster_reserve_share)
 			.left_from_one();
 
 		balance = Balances::free_balance(TREASURY_ACCOUNT_ID);
@@ -2732,8 +2783,15 @@ fn end_charging_customers_works_zero_fees() {
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let charge = calculate_charge_for_month(cluster_id, usage1);
 		System::assert_last_event(
-			Event::Charged { cluster_id, era, customer_id: user1, batch_index, amount: charge }
-				.into(),
+			Event::Charged {
+				cluster_id,
+				era,
+				customer_id: user1,
+				bucket_id: bucket_id1,
+				batch_index,
+				amount: charge,
+			}
+			.into(),
 		);
 
 		let mut balance = Balances::free_balance(DdcPayouts::account_id());
@@ -3213,18 +3271,18 @@ fn send_rewarding_providers_batch_works() {
 		};
 
 		let total_nodes_usage = NodeUsage {
-			transferred_bytes: node_usage1.transferred_bytes +
-				node_usage2.transferred_bytes +
-				node_usage3.transferred_bytes,
-			stored_bytes: node_usage1.stored_bytes +
-				node_usage2.stored_bytes +
-				node_usage3.stored_bytes,
-			number_of_puts: node_usage1.number_of_puts +
-				node_usage2.number_of_puts +
-				node_usage3.number_of_puts,
-			number_of_gets: node_usage1.number_of_gets +
-				node_usage2.number_of_gets +
-				node_usage3.number_of_gets,
+			transferred_bytes: node_usage1.transferred_bytes
+				+ node_usage2.transferred_bytes
+				+ node_usage3.transferred_bytes,
+			stored_bytes: node_usage1.stored_bytes
+				+ node_usage2.stored_bytes
+				+ node_usage3.stored_bytes,
+			number_of_puts: node_usage1.number_of_puts
+				+ node_usage2.number_of_puts
+				+ node_usage3.number_of_puts,
+			number_of_gets: node_usage1.number_of_gets
+				+ node_usage2.number_of_gets
+				+ node_usage3.number_of_gets,
 		};
 
 		let payers = vec![(user1, bucket_id1, usage1)];
@@ -3274,9 +3332,9 @@ fn send_rewarding_providers_batch_works() {
 		));
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
-			get_fees(&cluster_id).validators_share +
-			get_fees(&cluster_id).cluster_reserve_share)
+		let total_left_from_one = (get_fees(&cluster_id).treasury_share
+			+ get_fees(&cluster_id).validators_share
+			+ get_fees(&cluster_id).cluster_reserve_share)
 			.left_from_one();
 
 		assert_eq!(
@@ -3343,6 +3401,7 @@ fn send_rewarding_providers_batch_works() {
 				cluster_id,
 				era,
 				node_provider_id: node1,
+				bucket_id: bucket_id1,
 				batch_index: batch_node_index,
 				rewarded: balance_node1,
 				expected_to_reward: balance_node1,
@@ -3380,6 +3439,7 @@ fn send_rewarding_providers_batch_works() {
 			Event::Rewarded {
 				cluster_id,
 				era,
+				bucket_id: bucket_id2,
 				node_provider_id: node2,
 				batch_index: batch_node_index,
 				rewarded: balance_node2,
@@ -3427,6 +3487,7 @@ fn send_rewarding_providers_batch_works() {
 			Event::Rewarded {
 				cluster_id,
 				era,
+				bucket_id: bucket_id3,
 				node_provider_id: node3,
 				batch_index: batch_node_index + 1,
 				rewarded: balance_node3,
@@ -3440,10 +3501,10 @@ fn send_rewarding_providers_batch_works() {
 			balance_node1 + balance_node2 + balance_node3
 		);
 
-		let expected_amount_to_reward = report_reward.total_customer_charge.transfer +
-			report_reward.total_customer_charge.storage +
-			report_reward.total_customer_charge.puts +
-			report_reward.total_customer_charge.gets;
+		let expected_amount_to_reward = report_reward.total_customer_charge.transfer
+			+ report_reward.total_customer_charge.storage
+			+ report_reward.total_customer_charge.puts
+			+ report_reward.total_customer_charge.gets;
 
 		assert!(expected_amount_to_reward - report_reward.total_distributed_reward <= 20000);
 
@@ -3604,6 +3665,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 					Event::Charged {
 						cluster_id,
 						era,
+						bucket_id: bucketid1,
 						customer_id: *customer_id,
 						batch_index: batch_user_index,
 						amount: charge,
@@ -3628,15 +3690,15 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		));
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
-			get_fees(&cluster_id).validators_share +
-			get_fees(&cluster_id).cluster_reserve_share)
+		let total_left_from_one = (get_fees(&cluster_id).treasury_share
+			+ get_fees(&cluster_id).validators_share
+			+ get_fees(&cluster_id).cluster_reserve_share)
 			.left_from_one();
 
-		let total_charge = report_after.total_customer_charge.transfer +
-			report_before.total_customer_charge.storage +
-			report_before.total_customer_charge.puts +
-			report_before.total_customer_charge.gets;
+		let total_charge = report_after.total_customer_charge.transfer
+			+ report_before.total_customer_charge.storage
+			+ report_before.total_customer_charge.puts
+			+ report_before.total_customer_charge.gets;
 		let balance_after = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(total_charge, balance_after - Balances::minimum_balance());
 
@@ -3703,8 +3765,8 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 
 				let balance_node1 = Balances::free_balance(node1);
 				assert!(
-					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1 <
-						MAX_DUST.into()
+					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1
+						< MAX_DUST.into()
 				);
 
 				batch_charge += transfer_charge + storage_charge + puts_charge + gets_charge;
@@ -3881,6 +3943,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 					Event::Charged {
 						cluster_id,
 						era,
+						bucket_id: bucketid1,
 						customer_id: *customer_id,
 						batch_index: batch_user_index,
 						amount: charge,
@@ -3905,15 +3968,15 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		));
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
-			get_fees(&cluster_id).validators_share +
-			get_fees(&cluster_id).cluster_reserve_share)
+		let total_left_from_one = (get_fees(&cluster_id).treasury_share
+			+ get_fees(&cluster_id).validators_share
+			+ get_fees(&cluster_id).cluster_reserve_share)
 			.left_from_one();
 
-		let total_charge = report_after.total_customer_charge.transfer +
-			report_before.total_customer_charge.storage +
-			report_before.total_customer_charge.puts +
-			report_before.total_customer_charge.gets;
+		let total_charge = report_after.total_customer_charge.transfer
+			+ report_before.total_customer_charge.storage
+			+ report_before.total_customer_charge.puts
+			+ report_before.total_customer_charge.gets;
 		let balance_after = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(total_charge, balance_after - Balances::minimum_balance());
 
@@ -3980,8 +4043,8 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 
 				let balance_node1 = Balances::free_balance(node1);
 				assert!(
-					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1 <
-						MAX_DUST.into()
+					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1
+						< MAX_DUST.into()
 				);
 
 				batch_charge += transfer_charge + storage_charge + puts_charge + gets_charge;
@@ -4158,6 +4221,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 						cluster_id,
 						era,
 						customer_id: *customer_id,
+						bucket_id: bucketid1,
 						batch_index: batch_user_index,
 						amount: charge,
 					}
@@ -4181,15 +4245,15 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		));
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
-			get_fees(&cluster_id).validators_share +
-			get_fees(&cluster_id).cluster_reserve_share)
+		let total_left_from_one = (get_fees(&cluster_id).treasury_share
+			+ get_fees(&cluster_id).validators_share
+			+ get_fees(&cluster_id).cluster_reserve_share)
 			.left_from_one();
 
-		let total_charge = report_after.total_customer_charge.transfer +
-			report_before.total_customer_charge.storage +
-			report_before.total_customer_charge.puts +
-			report_before.total_customer_charge.gets;
+		let total_charge = report_after.total_customer_charge.transfer
+			+ report_before.total_customer_charge.storage
+			+ report_before.total_customer_charge.puts
+			+ report_before.total_customer_charge.gets;
 		let balance_after = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(total_charge, balance_after - Balances::minimum_balance());
 
@@ -4256,8 +4320,8 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 
 				let balance_node1 = Balances::free_balance(node1);
 				assert!(
-					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1 <
-						MAX_DUST.into()
+					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1
+						< MAX_DUST.into()
 				);
 
 				batch_charge += transfer_charge + storage_charge + puts_charge + gets_charge;
@@ -4392,6 +4456,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 					Event::Charged {
 						cluster_id,
 						era,
+						bucket_id: bucket_id1,
 						customer_id: *customer_id,
 						batch_index: batch_user_index,
 						amount: charge,
@@ -4416,15 +4481,15 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		));
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
-			get_fees(&cluster_id).validators_share +
-			get_fees(&cluster_id).cluster_reserve_share)
+		let total_left_from_one = (get_fees(&cluster_id).treasury_share
+			+ get_fees(&cluster_id).validators_share
+			+ get_fees(&cluster_id).cluster_reserve_share)
 			.left_from_one();
 
-		let total_charge = report_after.total_customer_charge.transfer +
-			report_before.total_customer_charge.storage +
-			report_before.total_customer_charge.puts +
-			report_before.total_customer_charge.gets;
+		let total_charge = report_after.total_customer_charge.transfer
+			+ report_before.total_customer_charge.storage
+			+ report_before.total_customer_charge.puts
+			+ report_before.total_customer_charge.gets;
 		let balance_after = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(total_charge, balance_after - Balances::minimum_balance());
 
@@ -4491,8 +4556,8 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 
 				let balance_node1 = Balances::free_balance(node1);
 				assert!(
-					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1 <
-						MAX_DUST.into()
+					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1
+						< MAX_DUST.into()
 				);
 
 				batch_charge += transfer_charge + storage_charge + puts_charge + gets_charge;

@@ -144,6 +144,7 @@ pub mod pallet {
 			era: DdcEra,
 			batch_index: BatchIndex,
 			customer_id: T::AccountId,
+			bucket_id: BucketId,
 			amount: u128,
 		},
 		ChargeFailed {
@@ -151,6 +152,7 @@ pub mod pallet {
 			era: DdcEra,
 			batch_index: BatchIndex,
 			customer_id: T::AccountId,
+			bucket_id: BucketId,
 			charged: u128,
 			expected_to_charge: u128,
 		},
@@ -159,6 +161,7 @@ pub mod pallet {
 			era: DdcEra,
 			batch_index: BatchIndex,
 			customer_id: T::AccountId,
+			bucket_id: BucketId,
 			amount: u128,
 		},
 		ChargingFinished {
@@ -189,6 +192,7 @@ pub mod pallet {
 			era: DdcEra,
 			batch_index: BatchIndex,
 			node_provider_id: T::AccountId,
+			bucket_id: BucketId,
 			rewarded: u128,
 			expected_to_reward: u128,
 		},
@@ -197,6 +201,7 @@ pub mod pallet {
 			era: DdcEra,
 			batch_index: BatchIndex,
 			node_provider_id: T::AccountId,
+			bucket_id: BucketId,
 			expected_reward: u128,
 			distributed_reward: BalanceOf<T>,
 		},
@@ -412,10 +417,10 @@ pub mod pallet {
 			);
 
 			let mut updated_billing_report = billing_report;
-			for payer in payers {
+			for (customer_id, bucket_id, customer_usage) in payers {
 				let mut customer_charge = get_customer_charge::<T>(
 					cluster_id,
-					&payer.2,
+					&customer_usage,
 					updated_billing_report.start_era,
 					updated_billing_report.end_era,
 				)?;
@@ -428,13 +433,12 @@ pub mod pallet {
 				})()
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-				let customer_id = payer.0.clone();
 				let amount_actually_charged = match T::CustomerCharger::charge_content_owner(
 					&cluster_id,
-					payer.1,
+					bucket_id,
 					customer_id.clone(),
 					updated_billing_report.vault.clone(),
-					&payer.2,
+					&customer_usage,
 					total_customer_charge,
 				) {
 					Ok(actually_charged) => actually_charged,
@@ -471,6 +475,7 @@ pub mod pallet {
 						era,
 						batch_index,
 						customer_id: customer_id.clone(),
+						bucket_id,
 						amount: debt,
 					});
 
@@ -479,6 +484,7 @@ pub mod pallet {
 						era,
 						batch_index,
 						customer_id,
+						bucket_id,
 						charged: amount_actually_charged,
 						expected_to_charge: total_customer_charge,
 					});
@@ -498,6 +504,7 @@ pub mod pallet {
 						era,
 						batch_index,
 						customer_id,
+						bucket_id,
 						amount: total_customer_charge,
 					});
 				}
@@ -748,6 +755,7 @@ pub mod pallet {
 								era,
 								batch_index,
 								node_provider_id: node_provider_id.clone(),
+								bucket_id,
 								expected_reward: amount_to_reward,
 								distributed_reward: vault_balance,
 							});
@@ -778,6 +786,7 @@ pub mod pallet {
 					era,
 					batch_index,
 					node_provider_id,
+					bucket_id,
 					rewarded: reward_,
 					expected_to_reward: amount_to_reward,
 				});
@@ -999,8 +1008,8 @@ pub mod pallet {
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
-		total.storage = fraction_of_month *
-			(|| -> Option<u128> {
+		total.storage = fraction_of_month
+			* (|| -> Option<u128> {
 				(usage.stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)
