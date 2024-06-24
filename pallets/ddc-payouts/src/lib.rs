@@ -995,8 +995,8 @@ pub mod pallet {
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
-		total.storage = fraction_of_month *
-			(|| -> Option<u128> {
+		total.storage = fraction_of_month
+			* (|| -> Option<u128> {
 				(usage.stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)
@@ -1068,22 +1068,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> PayoutVisitor<T> for Pallet<T> {
-		type Call = T::Call;
-
-		fn get_begin_billing_report_call(
-			cluster_id: ClusterId,
-			era: DdcEra,
-			start_era: i64,
-			end_era: i64,
-		) -> Self::Call {
-			<Pallet<T> as frame_system::Config>::Call::begin_billing_report {
-				cluster_id,
-				era,
-				start_era,
-				end_era,
-			}
-		}
-
 		fn get_billing_report_status(cluster_id: ClusterId, era: DdcEra) -> PayoutState {
 			let billing_report = ActiveBillingReports::<T>::get(cluster_id, era);
 
