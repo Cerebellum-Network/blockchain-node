@@ -661,6 +661,7 @@ pub mod pallet {
 		// call payout::send_charging_customers_batch(clusterid, era_id, batch_index, batch,
 		// adjacent_hashes) }
 
+		#[allow(dead_code)]
 		pub(crate) fn process_start_payout(
 			cluster_id: &ClusterId,
 		) -> Result<Option<(DdcEra, i64, i64)>, OCWError> {
@@ -837,6 +838,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
 		}
 
+		#[allow(dead_code)]
 		pub(crate) fn get_era_for_payout(
 			cluster_id: &ClusterId,
 			status: EraValidationStatus,
@@ -846,9 +848,9 @@ pub mod pallet {
 			let mut end_era: i64 = Default::default();
 
 			for (stored_cluster_id, era_id, validation) in EraValidations::<T>::iter() {
-				if stored_cluster_id == *cluster_id
-					&& validation.status == status
-					&& (smallest_era_id.is_none() || era_id < smallest_era_id.unwrap())
+				if stored_cluster_id == *cluster_id &&
+					validation.status == status &&
+					(smallest_era_id.is_none() || era_id < smallest_era_id.unwrap())
 				{
 					smallest_era_id = Some(era_id);
 					start_era = validation.start_era;
