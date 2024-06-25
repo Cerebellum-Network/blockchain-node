@@ -520,7 +520,7 @@ pub mod pallet {
 							},
 						}
 					} else {
-						log::error!("No account available to sign the transaction");
+						log::error!("No account available to set prepare_era for payout");
 						errors.push(OCWError::NoAvailableSigner);
 					}
 				},
@@ -574,7 +574,7 @@ pub mod pallet {
 					}
 				} else {
 					// Handle case where no signer is available
-					log::error!("No account available to sign the transaction");
+					log::error!("No account available to emit consensus errors.");
 				}
 			}
 		}
@@ -1470,6 +1470,17 @@ pub mod pallet {
 			ensure!(T::ValidatorList::contains(&stash_account), Error::<T>::NotValidatorStash);
 
 			ValidatorToStashKey::<T>::insert(ddc_validator_pub, &stash_account);
+			Ok(())
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn set_cluster_to_validate(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+			ClusterToValidate::<T>::put(cluster_id);
 			Ok(())
 		}
 	}
