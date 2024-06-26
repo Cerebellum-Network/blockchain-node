@@ -259,10 +259,6 @@ pub mod pallet {
 				},
 			}
 		}
-
-		fn get_current_validator() -> T::AccountId {
-			todo!()
-		}
 	}
 
 	impl<T: Config> NodeCreator<T> for Pallet<T> {

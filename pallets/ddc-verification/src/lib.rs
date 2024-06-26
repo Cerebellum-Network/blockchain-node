@@ -303,7 +303,7 @@ pub mod pallet {
 	/// Cluster id storage
 	#[pallet::storage]
 	#[pallet::getter(fn cluster_to_validate)]
-	pub type ClusterToValidate<T: Config> = StorageValue<_, ClusterId>; // todo! setter out of scope
+	pub type ClusterToValidate<T: Config> = StorageValue<_, ClusterId>;
 
 	/// List of validators.
 	#[pallet::storage]
@@ -314,6 +314,10 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_stash_for_ddc_validator)]
 	pub type ValidatorToStashKey<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn current_validator)]
+	pub type CurrentValidator<T: Config> = StorageValue<_, T::AccountId>;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub enum EraValidationStatus {
@@ -463,6 +467,9 @@ pub mod pallet {
 				return;
 			}
 
+			//set_current_validator
+			let _ = signer.send_signed_transaction(|_account| Call::set_current_validator {});
+
 			let cluster_id = unwrap_or_log_error!(
 				Self::get_cluster_to_validate(),
 				"Error retrieving cluster to validate"
@@ -520,7 +527,7 @@ pub mod pallet {
 							},
 						}
 					} else {
-						log::error!("No account available to sign the transaction");
+						log::error!("No account available to set prepare_era for payout");
 						errors.push(OCWError::NoAvailableSigner);
 					}
 				},
@@ -574,7 +581,7 @@ pub mod pallet {
 					}
 				} else {
 					// Handle case where no signer is available
-					log::error!("No account available to sign the transaction");
+					log::error!("No account available to emit consensus errors.");
 				}
 			}
 		}
@@ -924,7 +931,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Option<DdcEra>, OCWError> {
-			let current_validator = T::NodeVisitor::get_current_validator();
+			let current_validator = Self::current_validator().ok_or(OCWError::NoAvailableSigner)?;
 			let last_validated_era = Self::get_last_validated_era(cluster_id, current_validator)?
 				.unwrap_or_else(DdcEra::default);
 
@@ -1470,6 +1477,25 @@ pub mod pallet {
 			ensure!(T::ValidatorList::contains(&stash_account), Error::<T>::NotValidatorStash);
 
 			ValidatorToStashKey::<T>::insert(ddc_validator_pub, &stash_account);
+			Ok(())
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn set_cluster_to_validate(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+			ClusterToValidate::<T>::put(cluster_id);
+			Ok(())
+		}
+
+		#[pallet::call_index(6)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
+			let validator: T::AccountId = ensure_signed(origin)?;
+			CurrentValidator::<T>::put(validator);
 			Ok(())
 		}
 	}
