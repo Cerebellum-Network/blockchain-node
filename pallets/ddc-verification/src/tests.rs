@@ -1503,6 +1503,13 @@ fn get_era_for_validation_works() {
 			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4),
 		];
 
+		let temp: [u8; 32] = array_bytes::hex_n_into_unchecked(
+			"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a",
+		);
+		let account_id = AccountId::decode(&mut &temp[..]).unwrap();
+
+		<CurrentValidator<Test>>::set(Some(account_id));
+
 		let cluster_id = ClusterId::from([12; 20]);
 		let result = Pallet::<Test>::get_era_for_validation(&cluster_id, &dac_nodes);
 		assert_eq!(result.unwrap().unwrap(), era_activity1.id); //16
@@ -1975,6 +1982,13 @@ fn test_single_ocw_pallet_integration() {
 		System::set_block_number(block);
 		let cluster_id = ClusterId::from([12; 20]);
 
+		let temp: [u8; 32] = array_bytes::hex_n_into_unchecked(
+			"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a",
+		);
+		let account_id = AccountId::decode(&mut &temp[..]).unwrap();
+		let _ = DdcVerification::set_current_validator(
+			RuntimeOrigin::signed(account_id),
+		);
 		ClusterToValidate::<Test>::put(cluster_id);
 		DdcVerification::offchain_worker(block);
 

@@ -542,13 +542,6 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
 		unimplemented!()
 	}
-
-	fn get_current_validator() -> T::AccountId {
-		let temp: [u8; 32] = array_bytes::hex_n_into_unchecked(
-			"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a",
-		);
-		T::AccountId::decode(&mut &temp[..]).unwrap()
-	}
 }
 
 pub struct TestClusterManager;
