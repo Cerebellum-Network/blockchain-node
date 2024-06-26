@@ -382,10 +382,6 @@ where
 		let mock_ref = lock.borrow();
 		Ok(mock_ref.node_provider_id.into())
 	}
-
-	fn get_current_validator() -> T::AccountId {
-		todo!()
-	}
 }
 
 pub struct ExtBuilder {
