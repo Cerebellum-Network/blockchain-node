@@ -1643,18 +1643,8 @@ pub mod pallet {
 			let mut era_validation = <EraValidations<T>>::get(cluster_id, era_id).unwrap(); // should exist
 			era_validation.status = EraValidationStatus::PayoutInProgress;
 			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
-      
-      Ok(())
-		}
 
-		pub fn set_cluster_to_validate(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-		) -> DispatchResult {
-			ensure_root(origin)?;
-			ClusterToValidate::<T>::put(cluster_id);
-
-      Ok(())
+			Ok(())
 		}
 
 		#[pallet::call_index(6)]
@@ -1784,15 +1774,29 @@ pub mod pallet {
 			let mut era_validation = <EraValidations<T>>::get(cluster_id, era_id).unwrap(); // should exist
 			era_validation.status = EraValidationStatus::PayoutSuccess;
 			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
-      
-      Ok(())
-    }
 
+			Ok(())
+		}
+
+		#[pallet::call_index(13)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
 			let validator: T::AccountId = ensure_signed(origin)?;
 			CurrentValidator::<T>::put(validator);
 
-      Ok(())
+			Ok(())
+		}
+
+		#[pallet::call_index(14)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn set_cluster_to_validate(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+			ClusterToValidate::<T>::put(cluster_id);
+
+			Ok(())
 		}
 	}
 
