@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+
+## [5.4.0]
+
+- [C,D] Introduce new events to the DDC Payouts Pallet
+- [C,D] `pallet-ddc-clusters-gov`: Introduction of the Cluster Governance pallet for managing clusters protocol parameters.
+
 ## [5.3.1]
 
 ### Changed
@@ -18,8 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C,D] The _Support Curve_ in OpenGov Tracks is made more strict
 
 ## [5.3.0]
-
-### Changed
 
 - [C,D] Updated Substrate to polkadot-v1.1.0
 - [C,D] Introduction of the OpenGov

@@ -95,40 +95,10 @@
           ]
         ]
       },
-      "democracy": {
-        "phantom": null
-      },
-      "council": {
-        "phantom": null,
-        "members": []
-      },
-      "technicalCommittee": {
-        "phantom": null,
-        "members": [
-          "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-          "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
-        ]
-      },
-      "elections": {
-        "members": [
-          [
-            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-            10000000000
-          ],
-          [
-            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
-            10000000000
-          ]
-        ]
-      },
-      "technicalMembership": {
-        "members": [],
-        "phantom": null
-      },
       "grandpa": {
         "authorities": []
       },
-      "treasury": null,
+      "treasury": {},
       "sudo": {
         "key": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
       },
@@ -138,14 +108,6 @@
       "authorityDiscovery": {
         "keys": []
       },
-      "society": {
-        "pot": 0,
-        "members": [
-          "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-          "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
-        ],
-        "maxMembers": 999
-      },
       "vesting": {
         "vesting": []
       },
@@ -154,18 +116,25 @@
         "minCreateBond": 0,
         "maxPools": 16,
         "maxMembersPerPool": 32,
-        "maxMembers": 512
+        "maxMembers": 512,
+        "globalMaxCommission": null
       },
       "ddcStaking": {
-        "storages": []
+        "storages": [],
+        "clusters": []
       },
       "ddcCustomers": {
+        "feederAccount": null,
         "buckets": [
           [
-            "0x0000000000000000000000000000000000000001",
-            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
-            10000000000,
-            false
+            {
+              "bucket_id": 1,
+              "owner_id": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+              "cluster_id": "0x0000000000000000000000000000000000000001",
+              "is_public": true,
+              "is_removed": false
+            },
+            10000000000
           ]
         ]
       },
@@ -204,11 +173,15 @@
             "manager_id": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
             "reserve_id": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
             "props": {
-              "node_provider_auth_contract": null
-            }
+              "node_provider_auth_contract": null,
+              "erasure_coding_required": 4,
+              "erasure_coding_total": 6,
+              "replication_total": 3
+            },
+            "status": "Activated"
           }
         ],
-        "clustersGovParams": [
+        "clustersProtocolParams": [
           [
             "0x0000000000000000000000000000000000000001",
             {
@@ -229,14 +202,19 @@
           [
             "0x0000000000000000000000000000000000000001",
             [
-              {
-                "StoragePubKey": "5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y"
-              }
+              [
+                {
+                  "StoragePubKey": "5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y"
+                },
+                "Genesis",
+                "ValidationSucceeded"
+              ]
             ]
           ]
         ]
       },
       "ddcPayouts": {
+        "feederAccount": null,
         "authorisedCaller": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
         "debtorCustomers": [
           [

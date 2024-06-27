@@ -15,8 +15,10 @@ pub type ClusterId = H160;
 pub type DdcEra = u32;
 pub type BucketId = u64;
 pub type StorageNodePubKey = AccountId32;
+pub type ClusterNodesCount = u16;
 
 // ClusterParams includes Governance non-sensetive parameters only
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterParams<AccountId> {
 	pub node_provider_auth_contract: Option<AccountId>,
@@ -25,12 +27,24 @@ pub struct ClusterParams<AccountId> {
 	pub replication_total: u32,
 }
 
-// ClusterGovParams includes Governance sensitive parameters
+#[cfg(feature = "std")]
+impl<AccountId> Default for ClusterParams<AccountId> {
+	fn default() -> Self {
+		ClusterParams {
+			node_provider_auth_contract: None,
+			erasure_coding_required: 0,
+			erasure_coding_total: 0,
+			replication_total: 0,
+		}
+	}
+}
+
+// ClusterProtocolParams includes Governance sensitive parameters
 #[derive(
 	Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default, Serialize, Deserialize,
 )]
 #[scale_info(skip_type_params(Balance, BlockNumber, T))]
-pub struct ClusterGovParams<Balance, BlockNumber> {
+pub struct ClusterProtocolParams<Balance, BlockNumber> {
 	pub treasury_share: Perquintill,
 	pub validators_share: Perquintill,
 	pub cluster_reserve_share: Perquintill,
@@ -103,6 +117,7 @@ pub enum StorageNodeMode {
 	Cache = 3,
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNodeParams {
 	pub mode: StorageNodeMode,
@@ -114,8 +129,61 @@ pub struct StorageNodeParams {
 	pub p2p_port: u16,
 }
 
+#[cfg(feature = "std")]
+impl Default for StorageNodeParams {
+	fn default() -> Self {
+		StorageNodeParams {
+			mode: StorageNodeMode::Full,
+			host: Default::default(),
+			domain: Default::default(),
+			ssl: Default::default(),
+			http_port: Default::default(),
+			grpc_port: Default::default(),
+			p2p_port: Default::default(),
+		}
+	}
+}
+
 // Params fields are always coming from extrinsic input
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodeParams {
 	StorageParams(StorageNodeParams),
+}
+
+/// DDC cluster status
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+pub enum ClusterStatus {
+	Unbonded,
+	Bonded,
+	Activated,
+	Unbonding,
+}
+
+/// DDC node kind added to DDC cluster
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+pub enum ClusterNodeKind {
+	Genesis,
+	External,
+}
+
+/// DDC node status in to DDC cluster
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+pub enum ClusterNodeStatus {
+	AwaitsValidation,
+	ValidationSucceeded,
+	ValidationFailed,
+}
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub struct ClusterNodeState<BlockNumber> {
+	pub kind: ClusterNodeKind,
+	pub status: ClusterNodeStatus,
+	pub added_at: BlockNumber,
+}
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
+pub struct ClusterNodesStats {
+	pub await_validation: ClusterNodesCount,
+	pub validation_succeeded: ClusterNodesCount,
+	pub validation_failed: ClusterNodesCount,
 }
