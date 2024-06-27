@@ -199,7 +199,7 @@ impl fmt::Display for CustomHostError {
 
 impl wasmi::HostError for CustomHostError {}
 /// Construct trap error from specified message
-pub fn trap(msg: &'static str) -> Trap {
+pub fn trap(msg: &str) -> Trap {
 	Trap::host(CustomHostError(msg.into()))
 }
 

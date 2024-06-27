@@ -99,6 +99,12 @@ impl wasmi::Externals for FunctionExecutor {
 			wasmi::RuntimeValue::F64(val) => Value::F64(val.into()),
 		});
 
+		let host_functions_names: Vec<&str> =
+			self.host_functions.iter().map(|f| f.name()).collect();
+
+		log::info!(target: LOG_TARGET, "---> index={:?}, host_functions.len()={:?}", index, host_functions_names.len());
+		log::info!(target: LOG_TARGET, "---> host_functions={:?}", host_functions_names);
+
 		if let Some(function) = self.host_functions.clone().get(index) {
 			function
 				.execute(self, &mut args)
@@ -117,7 +123,13 @@ impl wasmi::Externals for FunctionExecutor {
 			index >= self.host_functions.len() &&
 			index < self.host_functions.len() + self.missing_functions.len()
 		{
-			Err(trap("Function is only a stub. Calling a stub is not allowed."))
+			Err(trap(
+				format!(
+					"Function is only a stub. Calling a stub is not allowed - index {:?}",
+					index
+				)
+				.as_str(),
+			))
 		} else {
 			Err(trap("Could not find host function with index"))
 		}
@@ -950,7 +962,9 @@ pub fn create_runtime(
 			allow_missing_func_imports,
 		)
 		.map_err(|e| WasmError::Instantiation(e.to_string()))?;
-		GlobalValsSnapshot::take(&instance)
+		let vals = GlobalValsSnapshot::take(&instance);
+		std::mem::forget(instance);
+		vals
 	};
 
 	Ok(WasmiRuntime {

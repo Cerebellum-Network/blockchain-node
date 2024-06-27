@@ -103,29 +103,23 @@ pub fn create_function_executor() -> FunctionExecutor {
 	let heap_pages = 2048;
 	let allow_missing_func_imports = true;
 
-	let mut host_functions = Vec::new();
-	// let mut host_functions = sp_io::SubstrateHostFunctions::host_functions();
-	// let benchmarking_host_functions =
-	// 	frame_benchmarking::benchmarking::HostFunctions::host_functions();
+	let mut host_functions = sp_io::SubstrateHostFunctions::host_functions();
 	let sandbox_host_functions = crate::sandbox::HostFunctions::host_functions();
+	let benchmarking_host_functions =
+		frame_benchmarking::benchmarking::HostFunctions::host_functions();
 
-	// host_functions.extend(benchmarking_host_functions);
 	host_functions.extend(sandbox_host_functions);
-
-	// let mut version: Option<_> = read_embedded_version(&blob)?;
+	host_functions.extend(benchmarking_host_functions);
 
 	let runtime = create_runtime(blob, heap_pages, host_functions, allow_missing_func_imports)
 		// .map(|runtime| -> Arc<dyn WasmModule> { Arc::new(runtime) })
 		.expect("Runtime to be created");
 
-	// let instance = runtime
-	// 	.new_instance()
-	// 	.map_err(|e| format!("Failed to create instance: {}", e))
-	// 	.expect("Instance to be created");
-
 	let runtime_wasmi_instance =
 		runtime.new_wasmi_instance().expect("Runtime instance to be created");
 	let function_executor = runtime_wasmi_instance.create_function_executor();
+	std::mem::forget(*runtime_wasmi_instance);
+
 	function_executor
 }
 
