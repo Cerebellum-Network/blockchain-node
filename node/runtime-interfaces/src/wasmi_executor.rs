@@ -962,9 +962,7 @@ pub fn create_runtime(
 			allow_missing_func_imports,
 		)
 		.map_err(|e| WasmError::Instantiation(e.to_string()))?;
-		let vals = GlobalValsSnapshot::take(&instance);
-		std::mem::forget(instance);
-		vals
+		GlobalValsSnapshot::take(&instance)
 	};
 
 	Ok(WasmiRuntime {

@@ -88,7 +88,7 @@ pub fn get_runtime_code() -> Cow<'static, [u8]> {
 	Cow::Owned(code.to_vec())
 }
 
-pub fn create_function_executor() -> FunctionExecutor {
+pub fn create_wasmi_instance() -> WasmiInstance {
 	// The runtime was at 266 version at block 125423 where the missing sandbox host functions were
 	// applied.
 	let runtime = &include_bytes!("./node_runtime_266.wasm")[..];
@@ -117,15 +117,15 @@ pub fn create_function_executor() -> FunctionExecutor {
 
 	let runtime_wasmi_instance =
 		runtime.new_wasmi_instance().expect("Runtime instance to be created");
-	let function_executor = runtime_wasmi_instance.create_function_executor();
-	std::mem::forget(*runtime_wasmi_instance);
-
-	function_executor
+	*runtime_wasmi_instance
 }
 
 lazy_static! {
-	static ref SANDBOX: ReentrantMutex<RefCell<FunctionExecutor>> =
-		ReentrantMutex::new(RefCell::new(create_function_executor()));
+	static ref WASMI_INSTANCE: ReentrantMutex<RefCell<WasmiInstance>> =
+		ReentrantMutex::new(RefCell::new(create_wasmi_instance()));
+	static ref SANDBOX: ReentrantMutex<RefCell<FunctionExecutor>> = ReentrantMutex::new(
+		RefCell::new(WASMI_INSTANCE.lock().borrow().create_function_executor())
+	);
 }
 
 const LOG_TARGET: &str = "runtime-interface-yahor";
