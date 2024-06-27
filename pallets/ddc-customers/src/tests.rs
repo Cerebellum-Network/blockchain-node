@@ -465,7 +465,7 @@ fn set_bucket_params_works() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 2);
-		System::assert_last_event(Event::BucketUpdated { bucket_id }.into());
+		System::assert_last_event(Event::BucketUpdated { cluster_id, bucket_id }.into());
 	})
 }
 

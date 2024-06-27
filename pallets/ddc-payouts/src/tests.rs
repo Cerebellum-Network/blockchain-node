@@ -3094,6 +3094,9 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 				era,
 				batch_index,
 				payees.clone(),
+				0,
+				vec![],
+				(0, ActivityHash::default()),
 			),
 			Error::<Test>::Unauthorised
 		);
@@ -3105,6 +3108,9 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 				era,
 				batch_index,
 				payees.clone(),
+				0,
+				vec![],
+				(0, ActivityHash::default()),
 			),
 			BadOrigin
 		);
@@ -3116,6 +3122,9 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 				era,
 				batch_index,
 				payees.clone(),
+				0,
+				vec![],
+				(0, ActivityHash::default()),
 			),
 			Error::<Test>::BillingReportDoesNotExist
 		);
@@ -3135,6 +3144,9 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 				era,
 				batch_index,
 				payees.clone(),
+				0,
+				vec![],
+				(0, ActivityHash::default()),
 			),
 			Error::<Test>::NotExpectedState
 		);
@@ -3153,6 +3165,9 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 				era,
 				batch_index,
 				payees.clone(),
+				0,
+				vec![],
+				(0, ActivityHash::default()),
 			),
 			Error::<Test>::NotExpectedState
 		);
@@ -3175,6 +3190,9 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 				era,
 				batch_index,
 				payees.clone(),
+				0,
+				vec![],
+				(0, ActivityHash::default()),
 			),
 			Error::<Test>::NotExpectedState
 		);
@@ -3197,6 +3215,9 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 				era,
 				batch_index,
 				payees.clone(),
+				0,
+				vec![],
+				(0, ActivityHash::default()),
 			),
 			Error::<Test>::NotExpectedState
 		);
@@ -3214,6 +3235,9 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 				era,
 				batch_index,
 				payees,
+				0,
+				vec![],
+				(0, ActivityHash::default()),
 			),
 			Error::<Test>::NotExpectedState
 		);
@@ -3368,6 +3392,9 @@ fn send_rewarding_providers_batch_works() {
 			era,
 			batch_node_index,
 			payees1,
+			0,
+			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let ratio1_transfer = Perquintill::from_rational(
@@ -3455,6 +3482,9 @@ fn send_rewarding_providers_batch_works() {
 			era,
 			batch_node_index + 1,
 			payees2,
+			0,
+			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		let ratio3_transfer = Perquintill::from_rational(
@@ -3735,6 +3765,9 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 				era,
 				batch_node_index,
 				batch.to_vec(),
+				0,
+				vec![],
+				(0, ActivityHash::default()),
 			));
 
 			let mut batch_charge = 0;
@@ -4013,6 +4046,9 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 				era,
 				batch_node_index,
 				batch.to_vec(),
+				0,
+				vec![],
+				(0, ActivityHash::default()),
 			));
 
 			let mut batch_charge = 0;
@@ -4290,6 +4326,9 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 				era,
 				batch_node_index,
 				batch.to_vec(),
+				0,
+				vec![],
+				(0, ActivityHash::default()),
 			));
 
 			let mut batch_charge = 0;
@@ -4526,6 +4565,9 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 				era,
 				batch_node_index,
 				batch.to_vec(),
+				0,
+				vec![],
+				(0, ActivityHash::default()),
 			));
 
 			let mut batch_charge = 0;
@@ -4730,6 +4772,9 @@ fn end_rewarding_providers_fails_uninitialised() {
 			era,
 			batch_index,
 			payees,
+			0,
+			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -4830,6 +4875,9 @@ fn end_rewarding_providers_works() {
 			era,
 			batch_index,
 			payees,
+			0,
+			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_ok!(DdcPayouts::end_rewarding_providers(
@@ -4972,6 +5020,9 @@ fn end_billing_report_fails_uninitialised() {
 			era,
 			batch_index,
 			payees.clone(),
+			0,
+			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -4985,6 +5036,9 @@ fn end_billing_report_fails_uninitialised() {
 			era,
 			batch_index + 1,
 			payees,
+			0,
+			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_noop!(
@@ -5067,6 +5121,9 @@ fn end_billing_report_works() {
 			era,
 			batch_index,
 			payees,
+			0,
+			vec![],
+			(0, ActivityHash::default()),
 		));
 
 		assert_ok!(DdcPayouts::end_rewarding_providers(

@@ -23,6 +23,7 @@ pub trait ValidatorVisitor<T: Config> {
 		era: DdcEra,
 		batch_index: BatchIndex,
 		payees: &[(T::AccountId, BucketId, NodeUsage)],
-		adjacent_hashes: &[ActivityHash],
+		proof: MerkleProof<ActivityHash, MergeActivityHash>,
+		leaf_with_position: (u64, ActivityHash),
 	) -> bool;
 }

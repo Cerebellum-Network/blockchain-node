@@ -197,7 +197,7 @@ pub mod pallet {
 		/// Bucket with specific id created
 		BucketCreated { cluster_id: ClusterId, bucket_id: BucketId },
 		/// Bucket with specific id updated
-		BucketUpdated { bucket_id: BucketId },
+		BucketUpdated { cluster_id: ClusterId, bucket_id: BucketId },
 		/// Bucket nodes usage with specific id updated
 		BucketTotalNodesUsageUpdated {
 			cluster_id: ClusterId,
@@ -532,8 +532,9 @@ pub mod pallet {
 			ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
 
 			bucket.is_public = bucket_params.is_public;
+			let cluster_id = bucket.cluster_id;
 			<Buckets<T>>::insert(bucket_id, bucket);
-			Self::deposit_event(Event::<T>::BucketUpdated { bucket_id });
+			Self::deposit_event(Event::<T>::BucketUpdated { cluster_id, bucket_id });
 
 			Ok(())
 		}
