@@ -2,7 +2,8 @@ use scale_info::prelude::vec::Vec;
 use sp_runtime::DispatchResult;
 
 use crate::{
-	ActivityHash, BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutState,
+	ActivityHash, BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutError,
+	PayoutState,
 };
 
 pub trait PayoutProcessor<T: frame_system::Config> {}
@@ -84,4 +85,18 @@ pub trait PayoutVisitor<T: frame_system::Config> {
 	) -> DispatchResult;
 
 	fn get_billing_report_status(cluster_id: &ClusterId, era: DdcEra) -> PayoutState;
+
+	fn all_customer_batches_processed(cluster_id: &ClusterId, era_id: DdcEra) -> bool;
+
+	fn all_provider_batches_processed(cluster_id: &ClusterId, era_id: DdcEra) -> bool;
+
+	fn get_next_customer_batch_for_payment(
+		cluster_id: &ClusterId,
+		era_id: DdcEra,
+	) -> Result<Option<BatchIndex>, PayoutError>;
+
+	fn get_next_provider_batch_for_payment(
+		cluster_id: &ClusterId,
+		era_id: DdcEra,
+	) -> Result<Option<BatchIndex>, PayoutError>;
 }
