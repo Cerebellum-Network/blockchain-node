@@ -36,7 +36,7 @@ use ddc_primitives::{
 		pallet::PalletVisitor as PalletVisitorType,
 		payout::PayoutVisitor,
 	},
-	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutState,
+	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutError, PayoutState,
 	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
@@ -570,7 +570,7 @@ pub mod pallet {
 				billing_report.state == PayoutState::ChargingCustomers,
 				Error::<T>::NotExpectedState
 			);
-			validate_batches::<T>(
+			Self::validate_batches(
 				&billing_report.charging_processed_batches,
 				&billing_report.charging_max_batch_index,
 			)?;
@@ -841,7 +841,7 @@ pub mod pallet {
 				Error::<T>::NotExpectedState
 			);
 
-			validate_batches::<T>(
+			Self::validate_batches(
 				&billing_report.rewarding_processed_batches,
 				&billing_report.rewarding_max_batch_index,
 			)?;
@@ -1050,22 +1050,6 @@ pub mod pallet {
 		Ok(total)
 	}
 
-	fn validate_batches<T: Config>(
-		batches: &BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
-		max_batch_index: &BatchIndex,
-	) -> DispatchResult {
-		// Check if the Vec contains all integers between 1 and rewarding_max_batch_index
-		ensure!(!batches.is_empty(), Error::<T>::BatchesMissed);
-
-		ensure!((*max_batch_index + 1) as usize == batches.len(), Error::<T>::BatchesMissed);
-
-		for index in 0..*max_batch_index + 1 {
-			ensure!(batches.contains(&index), Error::<T>::BatchesMissed);
-		}
-
-		Ok(())
-	}
-
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub feeder_account: Option<T::AccountId>,
@@ -1223,6 +1207,66 @@ pub mod pallet {
 				None => PayoutState::NotInitialized, // Return NotInitialized if entry doesn't exist
 			}
 		}
+
+		fn all_customer_batches_processed(cluster_id: &ClusterId, era_id: DdcEra) -> bool {
+			let billing_report = match ActiveBillingReports::<T>::try_get(cluster_id, era_id) {
+				Ok(report) => report,
+				Err(_) => return false, /* Return false if there's any error (e.g.,
+				                         * BillingReportDoesNotExist) */
+			};
+
+			Self::validate_batches(
+				&billing_report.charging_processed_batches,
+				&billing_report.charging_max_batch_index,
+			)
+			.is_ok()
+		}
+
+		fn all_provider_batches_processed(cluster_id: &ClusterId, era_id: DdcEra) -> bool {
+			let billing_report = match ActiveBillingReports::<T>::try_get(cluster_id, era_id) {
+				Ok(report) => report,
+				Err(_) => return false, /* Return false if there's any error (e.g.,
+				                         * BillingReportDoesNotExist) */
+			};
+
+			Self::validate_batches(
+				&billing_report.rewarding_processed_batches,
+				&billing_report.rewarding_max_batch_index,
+			)
+			.is_ok()
+		}
+
+		fn get_next_customer_batch_for_payment(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+		) -> Result<Option<BatchIndex>, PayoutError> {
+			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era_id)
+				.map_err(|_| PayoutError::BillingReportDoesNotExist)?;
+
+			for batch_index in 0..=billing_report.charging_max_batch_index {
+				if !billing_report.charging_processed_batches.contains(&batch_index) {
+					return Ok(Some(batch_index));
+				}
+			}
+
+			Ok(None)
+		}
+
+		fn get_next_provider_batch_for_payment(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+		) -> Result<Option<BatchIndex>, PayoutError> {
+			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era_id)
+				.map_err(|_| PayoutError::BillingReportDoesNotExist)?;
+
+			for batch_index in 0..=billing_report.rewarding_max_batch_index {
+				if !billing_report.rewarding_processed_batches.contains(&batch_index) {
+					return Ok(Some(batch_index));
+				}
+			}
+
+			Ok(None)
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -1240,6 +1284,22 @@ pub mod pallet {
 			// safe from the truncation and possible collisions caused by it. The rest 4 bytes will
 			// be fulfilled with trailing zeros.
 			T::PalletId::get().into_sub_account_truncating(hash)
+		}
+
+		pub(crate) fn validate_batches(
+			batches: &BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
+			max_batch_index: &BatchIndex,
+		) -> DispatchResult {
+			// Check if the Vec contains all integers between 1 and rewarding_max_batch_index
+			ensure!(!batches.is_empty(), Error::<T>::BatchesMissed);
+
+			ensure!((*max_batch_index + 1) as usize == batches.len(), Error::<T>::BatchesMissed);
+
+			for index in 0..*max_batch_index + 1 {
+				ensure!(batches.contains(&index), Error::<T>::BatchesMissed);
+			}
+
+			Ok(())
 		}
 	}
 }

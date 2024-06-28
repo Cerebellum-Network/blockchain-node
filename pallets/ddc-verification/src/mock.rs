@@ -2,7 +2,8 @@ use ddc_primitives::{
 	crypto, sr25519,
 	traits::{ClusterManager, ClusterQuery},
 	BucketId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats,
-	ClusterStatus, PayoutState, StorageNodePubKey, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
+	ClusterStatus, PayoutError, PayoutState, StorageNodePubKey, MAX_PAYOUT_BATCH_COUNT,
+	MAX_PAYOUT_BATCH_SIZE,
 };
 use frame_election_provider_support::{
 	bounds::{ElectionBounds, ElectionBoundsBuilder},
@@ -311,6 +312,28 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 pub struct MockPayoutVisitor;
 impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
+	fn get_next_customer_batch_for_payment(
+		_cluster_id: &ClusterId,
+		_era_id: DdcEra,
+	) -> Result<Option<BatchIndex>, PayoutError> {
+		Ok(None)
+	}
+
+	fn get_next_provider_batch_for_payment(
+		_cluster_id: &ClusterId,
+		_era_id: DdcEra,
+	) -> Result<Option<BatchIndex>, PayoutError> {
+		Ok(None)
+	}
+
+	fn all_customer_batches_processed(_cluster_id: &ClusterId, _era_id: DdcEra) -> bool {
+		true
+	}
+
+	fn all_provider_batches_processed(_cluster_id: &ClusterId, _era_id: DdcEra) -> bool {
+		true
+	}
+
 	fn get_billing_report_status(_cluster_id: &ClusterId, _era_id: DdcEra) -> PayoutState {
 		PayoutState::NotInitialized
 	}
