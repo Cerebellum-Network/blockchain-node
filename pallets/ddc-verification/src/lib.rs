@@ -539,7 +539,8 @@ pub mod pallet {
 			if !sp_io::offchain::is_validator() {
 				return;
 			}
-			log::info!("Hello from ocw!!!!!!!!!!");
+			log::info!("Hello from ocw!!!!!!!!!!"); // todo! add public key
+										// todo! add emoji for all logs
 			if (block_number.saturated_into::<u32>() % T::BLOCK_TO_START as u32) != 0 {
 				return;
 			}

@@ -545,6 +545,7 @@ pub mod pallet {
 		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::remove_bucket())]
 		pub fn remove_bucket(origin: OriginFor<T>, bucket_id: BucketId) -> DispatchResult {
+			// todo! can we set total_usage to None and save bytes
 			let owner = ensure_signed(origin)?;
 
 			<Buckets<T>>::try_mutate(bucket_id, |maybe_bucket| -> DispatchResult {
