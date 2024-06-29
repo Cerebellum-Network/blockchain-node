@@ -1,8 +1,9 @@
 use ddc_primitives::{
 	crypto, sr25519,
 	traits::{ClusterManager, ClusterQuery},
-	ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats, ClusterStatus,
-	PayoutState, StorageNodePubKey, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
+	BucketId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats,
+	ClusterStatus, PayoutError, PayoutState, StorageNodePubKey, MAX_PAYOUT_BATCH_COUNT,
+	MAX_PAYOUT_BATCH_SIZE,
 };
 use frame_election_provider_support::{
 	bounds::{ElectionBounds, ElectionBoundsBuilder},
@@ -311,8 +312,109 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 pub struct MockPayoutVisitor;
 impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
-	fn get_billing_report_status(_cluster_id: ClusterId, _era: DdcEra) -> PayoutState {
+	fn get_next_customer_batch_for_payment(
+		_cluster_id: &ClusterId,
+		_era_id: DdcEra,
+	) -> Result<Option<BatchIndex>, PayoutError> {
+		Ok(None)
+	}
+
+	fn get_next_provider_batch_for_payment(
+		_cluster_id: &ClusterId,
+		_era_id: DdcEra,
+	) -> Result<Option<BatchIndex>, PayoutError> {
+		Ok(None)
+	}
+
+	fn all_customer_batches_processed(_cluster_id: &ClusterId, _era_id: DdcEra) -> bool {
+		true
+	}
+
+	fn all_provider_batches_processed(_cluster_id: &ClusterId, _era_id: DdcEra) -> bool {
+		true
+	}
+
+	fn get_billing_report_status(_cluster_id: &ClusterId, _era_id: DdcEra) -> PayoutState {
 		PayoutState::NotInitialized
+	}
+
+	fn begin_billing_report(
+		_origin: T::AccountId,
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+		_start_era: i64,
+		_end_era: i64,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn begin_charging_customers(
+		_origin: T::AccountId,
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+		_max_batch_index: BatchIndex,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn send_charging_customers_batch(
+		_origin: T::AccountId,
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+		_batch_index: BatchIndex,
+		_payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
+		_mmr_size: u64,
+		_proof: Vec<ActivityHash>,
+		_leaf_with_position: (u64, ActivityHash),
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn end_charging_customers(
+		_origin: T::AccountId,
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn begin_rewarding_providers(
+		_origin: T::AccountId,
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+		_max_batch_index: BatchIndex,
+		_total_node_usage: NodeUsage,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn send_rewarding_providers_batch(
+		_origin: T::AccountId,
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+		_batch_index: BatchIndex,
+		_payees: Vec<(T::AccountId, BucketId, NodeUsage)>,
+		_mmr_size: u64,
+		_proof: Vec<ActivityHash>,
+		_leaf_with_position: (u64, ActivityHash),
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn end_rewarding_providers(
+		_origin: T::AccountId,
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn end_billing_report(
+		_origin: T::AccountId,
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+	) -> DispatchResult {
+		Ok(())
 	}
 }
 

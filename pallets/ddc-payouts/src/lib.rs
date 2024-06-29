@@ -36,7 +36,7 @@ use ddc_primitives::{
 		pallet::PalletVisitor as PalletVisitorType,
 		payout::PayoutVisitor,
 	},
-	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutState,
+	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutError, PayoutState,
 	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
@@ -307,6 +307,8 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
+		// PayoutProcessor trait
 		#[pallet::call_index(0)]
 		#[pallet::weight(T::WeightInfo::begin_billing_report())]
 		pub fn begin_billing_report(
@@ -340,6 +342,8 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
+		// PayoutProcessor trait
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::begin_charging_customers())]
 		pub fn begin_charging_customers(
@@ -367,9 +371,12 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
+		// + pass values by reference PayoutProcessor trait
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::send_charging_customers_batch(payers.len().saturated_into()))]
-		#[allow(clippy::too_many_arguments)] // todo! need to refactor this
+		// todo! remove clippy::too_many_arguments
+		#[allow(clippy::too_many_arguments)]
 		pub fn send_charging_customers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -544,6 +551,8 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
+		// PayoutProcessor trait
 		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::end_charging_customers())]
 		pub fn end_charging_customers(
@@ -561,7 +570,7 @@ pub mod pallet {
 				billing_report.state == PayoutState::ChargingCustomers,
 				Error::<T>::NotExpectedState
 			);
-			validate_batches::<T>(
+			Self::validate_batches(
 				&billing_report.charging_processed_batches,
 				&billing_report.charging_max_batch_index,
 			)?;
@@ -646,6 +655,8 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
+		// PayoutProcessor trait
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::begin_rewarding_providers())]
 		pub fn begin_rewarding_providers(
@@ -678,14 +689,21 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
+		// + pass values by reference PayoutProcessor trait
 		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::send_rewarding_providers_batch(payees.len().saturated_into()))]
+		// todo! remove clippy::too_many_arguments
+		#[allow(clippy::too_many_arguments)]
 		pub fn send_rewarding_providers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
 			payees: Vec<(T::AccountId, BucketId, NodeUsage)>,
+			mmr_size: u64,
+			proof: Vec<ActivityHash>,
+			leaf_with_position: (u64, ActivityHash),
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
@@ -717,7 +735,8 @@ pub mod pallet {
 					era,
 					batch_index,
 					&payees,
-					&[] // todo! pass from newly added input
+					MerkleProof::new(mmr_size, proof),
+					leaf_with_position
 				),
 				Error::<T>::BatchValidationFailed
 			);
@@ -802,6 +821,8 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
+		// PayoutProcessor trait
 		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::end_rewarding_providers())]
 		pub fn end_rewarding_providers(
@@ -820,7 +841,7 @@ pub mod pallet {
 				Error::<T>::NotExpectedState
 			);
 
-			validate_batches::<T>(
+			Self::validate_batches(
 				&billing_report.rewarding_processed_batches,
 				&billing_report.rewarding_max_batch_index,
 			)?;
@@ -853,6 +874,8 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
+		// PayoutProcessor trait
 		#[pallet::call_index(7)]
 		#[pallet::weight(T::WeightInfo::end_billing_report())]
 		pub fn end_billing_report(
@@ -1027,22 +1050,6 @@ pub mod pallet {
 		Ok(total)
 	}
 
-	fn validate_batches<T: Config>(
-		batches: &BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
-		max_batch_index: &BatchIndex,
-	) -> DispatchResult {
-		// Check if the Vec contains all integers between 1 and rewarding_max_batch_index
-		ensure!(!batches.is_empty(), Error::<T>::BatchesMissed);
-
-		ensure!((*max_batch_index + 1) as usize == batches.len(), Error::<T>::BatchesMissed);
-
-		for index in 0..*max_batch_index + 1 {
-			ensure!(batches.contains(&index), Error::<T>::BatchesMissed);
-		}
-
-		Ok(())
-	}
-
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub feeder_account: Option<T::AccountId>,
@@ -1081,13 +1088,184 @@ pub mod pallet {
 	}
 
 	impl<T: Config> PayoutVisitor<T> for Pallet<T> {
-		fn get_billing_report_status(cluster_id: ClusterId, era: DdcEra) -> PayoutState {
+		fn begin_billing_report(
+			origin: T::AccountId,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			start_era: i64,
+			end_era: i64,
+		) -> DispatchResult {
+			let origin = frame_system::RawOrigin::Signed(origin).into();
+			Self::begin_billing_report(origin, cluster_id, era_id, start_era, end_era)
+		}
+
+		fn begin_charging_customers(
+			origin: T::AccountId,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			max_batch_index: BatchIndex,
+		) -> DispatchResult {
+			let origin = frame_system::RawOrigin::Signed(origin).into();
+			Self::begin_charging_customers(origin, cluster_id, era_id, max_batch_index)
+		}
+
+		fn send_charging_customers_batch(
+			origin: T::AccountId,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			batch_index: BatchIndex,
+			payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
+			mmr_size: u64,
+			proof: Vec<ActivityHash>,
+			leaf_with_position: (u64, ActivityHash),
+		) -> DispatchResult {
+			let origin = frame_system::RawOrigin::Signed(origin).into();
+			Self::send_charging_customers_batch(
+				origin,
+				cluster_id,
+				era_id,
+				batch_index,
+				payers,
+				mmr_size,
+				proof,
+				leaf_with_position,
+			)
+		}
+
+		fn end_charging_customers(
+			origin: T::AccountId,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let origin = frame_system::RawOrigin::Signed(origin).into();
+			Self::end_charging_customers(origin, cluster_id, era_id)
+		}
+
+		fn begin_rewarding_providers(
+			origin: T::AccountId,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			max_batch_index: BatchIndex,
+			total_node_usage: NodeUsage,
+		) -> DispatchResult {
+			let origin = frame_system::RawOrigin::Signed(origin).into();
+			Self::begin_rewarding_providers(
+				origin,
+				cluster_id,
+				era_id,
+				max_batch_index,
+				total_node_usage,
+			)
+		}
+
+		fn send_rewarding_providers_batch(
+			origin: T::AccountId,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			batch_index: BatchIndex,
+			payees: Vec<(T::AccountId, BucketId, NodeUsage)>,
+			mmr_size: u64,
+			proof: Vec<ActivityHash>,
+			leaf_with_position: (u64, ActivityHash),
+		) -> DispatchResult {
+			let origin = frame_system::RawOrigin::Signed(origin).into();
+			Self::send_rewarding_providers_batch(
+				origin,
+				cluster_id,
+				era_id,
+				batch_index,
+				payees,
+				mmr_size,
+				proof,
+				leaf_with_position,
+			)
+		}
+
+		fn end_rewarding_providers(
+			origin: T::AccountId,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let origin = frame_system::RawOrigin::Signed(origin).into();
+			Self::end_rewarding_providers(origin, cluster_id, era_id)
+		}
+
+		fn end_billing_report(
+			origin: T::AccountId,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let origin = frame_system::RawOrigin::Signed(origin).into();
+			Self::end_billing_report(origin, cluster_id, era_id)
+		}
+
+		fn get_billing_report_status(cluster_id: &ClusterId, era: DdcEra) -> PayoutState {
 			let billing_report = ActiveBillingReports::<T>::get(cluster_id, era);
 
 			match billing_report {
 				Some(report) => report.state,
 				None => PayoutState::NotInitialized, // Return NotInitialized if entry doesn't exist
 			}
+		}
+
+		fn all_customer_batches_processed(cluster_id: &ClusterId, era_id: DdcEra) -> bool {
+			let billing_report = match ActiveBillingReports::<T>::try_get(cluster_id, era_id) {
+				Ok(report) => report,
+				Err(_) => return false, /* Return false if there's any error (e.g.,
+				                         * BillingReportDoesNotExist) */
+			};
+
+			Self::validate_batches(
+				&billing_report.charging_processed_batches,
+				&billing_report.charging_max_batch_index,
+			)
+			.is_ok()
+		}
+
+		fn all_provider_batches_processed(cluster_id: &ClusterId, era_id: DdcEra) -> bool {
+			let billing_report = match ActiveBillingReports::<T>::try_get(cluster_id, era_id) {
+				Ok(report) => report,
+				Err(_) => return false, /* Return false if there's any error (e.g.,
+				                         * BillingReportDoesNotExist) */
+			};
+
+			Self::validate_batches(
+				&billing_report.rewarding_processed_batches,
+				&billing_report.rewarding_max_batch_index,
+			)
+			.is_ok()
+		}
+
+		fn get_next_customer_batch_for_payment(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+		) -> Result<Option<BatchIndex>, PayoutError> {
+			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era_id)
+				.map_err(|_| PayoutError::BillingReportDoesNotExist)?;
+
+			for batch_index in 0..=billing_report.charging_max_batch_index {
+				if !billing_report.charging_processed_batches.contains(&batch_index) {
+					return Ok(Some(batch_index));
+				}
+			}
+
+			Ok(None)
+		}
+
+		fn get_next_provider_batch_for_payment(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+		) -> Result<Option<BatchIndex>, PayoutError> {
+			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era_id)
+				.map_err(|_| PayoutError::BillingReportDoesNotExist)?;
+
+			for batch_index in 0..=billing_report.rewarding_max_batch_index {
+				if !billing_report.rewarding_processed_batches.contains(&batch_index) {
+					return Ok(Some(batch_index));
+				}
+			}
+
+			Ok(None)
 		}
 	}
 
@@ -1106,6 +1284,22 @@ pub mod pallet {
 			// safe from the truncation and possible collisions caused by it. The rest 4 bytes will
 			// be fulfilled with trailing zeros.
 			T::PalletId::get().into_sub_account_truncating(hash)
+		}
+
+		pub(crate) fn validate_batches(
+			batches: &BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
+			max_batch_index: &BatchIndex,
+		) -> DispatchResult {
+			// Check if the Vec contains all integers between 1 and rewarding_max_batch_index
+			ensure!(!batches.is_empty(), Error::<T>::BatchesMissed);
+
+			ensure!((*max_batch_index + 1) as usize == batches.len(), Error::<T>::BatchesMissed);
+
+			for index in 0..*max_batch_index + 1 {
+				ensure!(batches.contains(&index), Error::<T>::BatchesMissed);
+			}
+
+			Ok(())
 		}
 	}
 }

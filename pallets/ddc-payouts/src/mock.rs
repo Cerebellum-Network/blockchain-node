@@ -164,7 +164,8 @@ where
 		_era: DdcEra,
 		_batch_index: BatchIndex,
 		_payees: &[(T::AccountId, BucketId, NodeUsage)],
-		_adjacent_hashes: &[ActivityHash],
+		_proof: MerkleProof<ActivityHash, MergeActivityHash>,
+		_leaf_with_position: (u64, ActivityHash),
 	) -> bool {
 		true
 	}

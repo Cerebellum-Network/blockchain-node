@@ -247,6 +247,11 @@ pub enum NodeRepositoryError {
 	StorageNodeDoesNotExist,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum PayoutError {
+	BillingReportDoesNotExist,
+}
+
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
 // don't remove or change numbers, if needed add a new state to the end with new number
 // DAC uses the state value for integration!

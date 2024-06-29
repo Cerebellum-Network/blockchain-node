@@ -14,7 +14,7 @@ use core::str;
 use ddc_primitives::{
 	traits::{ClusterManager, NodeVisitor, PayoutVisitor, ValidatorVisitor},
 	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeParams, NodePubKey, NodeUsage,
-	StorageNodeMode, StorageNodeParams,
+	PayoutState, StorageNodeMode, StorageNodeParams,
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -193,6 +193,52 @@ pub mod pallet {
 			era_id: DdcEra,
 			validator: T::AccountId,
 		},
+		BeginChargingCustomersTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			validator: T::AccountId,
+		},
+		SendChargingCustomersBatchTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			batch_index: BatchIndex,
+			validator: T::AccountId,
+		},
+		EndChargingCustomersTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			validator: T::AccountId,
+		},
+		BeginRewardingProvidersTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			validator: T::AccountId,
+		},
+		EndRewardingProvidersTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			validator: T::AccountId,
+		},
+		EndBillingReportTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			validator: T::AccountId,
+		},
+		BillingReportDoesNotExist {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			validator: T::AccountId,
+		},
+		EmptyCustomerActivity {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			validator: T::AccountId,
+		},
+		BatchIndexConversionFailed {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			validator: T::AccountId,
+		},
 		NoAvailableSigner {
 			validator: T::AccountId,
 		},
@@ -246,6 +292,43 @@ pub mod pallet {
 			payees_merkle_root_hash: ActivityHash,
 		},
 		BeginBillingReportTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		},
+		BeginChargingCustomersTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		},
+		SendChargingCustomersBatchTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			batch_index: BatchIndex,
+		},
+		EndChargingCustomersTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		},
+		BeginRewardingProvidersTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		},
+		EndRewardingProvidersTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		},
+		EndBillingReportTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		},
+		BillingReportDoesNotExist {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		},
+		EmptyCustomerActivity {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		},
+		BatchIndexConversionFailed {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		},
@@ -496,13 +579,8 @@ pub mod pallet {
 			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 			let mut errors: Vec<OCWError> = Vec::new();
 
-			let processed_dac_data = Self::process_dac_data(
-				&cluster_id,
-				Some(477656),
-				&dac_nodes,
-				min_nodes,
-				batch_size.into(),
-			);
+			let processed_dac_data =
+				Self::process_dac_data(&cluster_id, None, &dac_nodes, min_nodes, batch_size.into());
 
 			match processed_dac_data {
 				Ok(Some((era_id, payers_merkle_root_hash, payees_merkle_root_hash))) => {
@@ -556,26 +634,44 @@ pub mod pallet {
 				},
 			};
 
-			/* match Self::process_start_payout(&cluster_id) {
+			// todo! factor out as macro as this is repetitive
+			match Self::prepare_begin_billing_report(&cluster_id) {
 				Ok(Some((era_id, start_era, end_era))) => {
 					log::info!(
-						"Start payout processed successfully for cluster_id: {:?}, era_id: {:?}",
+						"🚀 process_start_payout processed successfully for cluster_id: {:?}, era_id: {:?}",
 						cluster_id,
 						era_id
 					);
 
-					if let Some((_, res)) = signer.send_signed_transaction(|_acct| {
-						let call = T::PayoutVisitor::get_begin_billing_report_call(
-							cluster_id, era_id, start_era, end_era,
-						);
-						call.into() // Convert to Call<T>
+					if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
+						Call::begin_billing_report { cluster_id, era_id, start_era, end_era }
 					}) {
 						match res {
-							Ok(_) => log::info!("Successfully sent signed transaction"),
-							Err(e) => log::error!("Failed to send signed transaction: {:?}", e),
+							Ok(_) => {
+								// Extrinsic call succeeded
+								log::info!(
+									"Sent begin_billing_report successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+							},
+							Err(e) => {
+								log::error!(
+										"Error to post begin_billing_report for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+								// Extrinsic call failed
+								errors.push(OCWError::BeginBillingReportTransactionError {
+									cluster_id,
+									era_id,
+								});
+							},
 						}
 					} else {
-						log::error!("No local account available");
+						log::error!("No account available to sign the transaction");
+						errors.push(OCWError::NoAvailableSigner);
 					}
 				},
 				Ok(None) => {
@@ -584,7 +680,263 @@ pub mod pallet {
 				Err(e) => {
 					errors.push(e);
 				},
-			} */
+			}
+
+			// todo! factor out as macro as this is repetitive
+			match Self::prepare_begin_charging_customers(&cluster_id) {
+				Ok(Some((era_id, max_batch_index))) => {
+					log::info!(
+						"prepare_begin_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+
+					if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
+						Call::begin_charging_customers { cluster_id, era_id, max_batch_index }
+					}) {
+						match res {
+							Ok(_) => {
+								// Extrinsic call succeeded
+								log::info!(
+									"Sent begin_charging_customers successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+							},
+							Err(e) => {
+								log::error!(
+										"Error to post begin_charging_customers for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+								// Extrinsic call failed
+								errors.push(OCWError::BeginChargingCustomersTransactionError {
+									cluster_id,
+									era_id,
+								});
+							},
+						}
+					} else {
+						log::error!("No account available to sign the transaction");
+						errors.push(OCWError::NoAvailableSigner);
+					}
+				},
+				Ok(None) => {
+					log::info!(
+						"No era for begin_charging_customers for cluster_id: {:?}",
+						cluster_id
+					);
+				},
+				Err(e) => {
+					errors.push(e);
+				},
+			}
+
+			// todo! factor out as macro as this is repetitive
+			match Self::prepare_end_charging_customers(&cluster_id) {
+				Ok(Some(era_id)) => {
+					log::info!(
+						"prepare_end_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+
+					if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
+						Call::end_charging_customers { cluster_id, era_id }
+					}) {
+						match res {
+							Ok(_) => {
+								// Extrinsic call succeeded
+								log::info!(
+									"Sent end_charging_customers successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+							},
+							Err(e) => {
+								log::error!(
+										"Error to post end_charging_customers for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+								// Extrinsic call failed
+								errors.push(OCWError::EndChargingCustomersTransactionError {
+									cluster_id,
+									era_id,
+								});
+							},
+						}
+					} else {
+						log::error!("No account available to sign the transaction");
+						errors.push(OCWError::NoAvailableSigner);
+					}
+				},
+				Ok(None) => {
+					log::info!(
+						"No era for end_charging_customers for cluster_id: {:?}",
+						cluster_id
+					);
+				},
+				Err(e) => {
+					errors.push(e);
+				},
+			}
+
+			// todo! factor out as macro as this is repetitive
+			match Self::prepare_begin_rewarding_providers(&cluster_id) {
+				Ok(Some((era_id, max_batch_index, total_node_usage))) => {
+					log::info!(
+						"prepare_begin_rewarding_providers processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+
+					if let Some((_, res)) =
+						signer.send_signed_transaction(|_acc| Call::begin_rewarding_providers {
+							cluster_id,
+							era_id,
+							max_batch_index,
+							total_node_usage: total_node_usage.clone(),
+						}) {
+						match res {
+							Ok(_) => {
+								// Extrinsic call succeeded
+								log::info!(
+									"Sent begin_rewarding_providers successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+							},
+							Err(e) => {
+								log::error!(
+										"Error to post begin_rewarding_providers for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+								// Extrinsic call failed
+								errors.push(OCWError::BeginRewardingProvidersTransactionError {
+									cluster_id,
+									era_id,
+								});
+							},
+						}
+					} else {
+						log::error!("No account available to sign the transaction");
+						errors.push(OCWError::NoAvailableSigner);
+					}
+				},
+				Ok(None) => {
+					log::info!(
+						"No era for begin_rewarding_providers for cluster_id: {:?}",
+						cluster_id
+					);
+				},
+				Err(e) => {
+					errors.push(e);
+				},
+			}
+
+			// todo! factor out as macro as this is repetitive
+			match Self::prepare_end_rewarding_providers(&cluster_id) {
+				Ok(Some(era_id)) => {
+					log::info!(
+						"prepare_end_rewarding_providers processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+
+					if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
+						Call::end_rewarding_providers { cluster_id, era_id }
+					}) {
+						match res {
+							Ok(_) => {
+								// Extrinsic call succeeded
+								log::info!(
+									"Sent end_rewarding_providers successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+							},
+							Err(e) => {
+								log::error!(
+										"Error to post end_rewarding_providers for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+								// Extrinsic call failed
+								errors.push(OCWError::EndRewardingProvidersTransactionError {
+									cluster_id,
+									era_id,
+								});
+							},
+						}
+					} else {
+						log::error!("No account available to sign the transaction");
+						errors.push(OCWError::NoAvailableSigner);
+					}
+				},
+				Ok(None) => {
+					log::info!(
+						"No era for end_rewarding_providers for cluster_id: {:?}",
+						cluster_id
+					);
+				},
+				Err(e) => {
+					errors.push(e);
+				},
+			}
+
+			// todo! factor out as macro as this is repetitive
+			match Self::prepare_end_billing_report(&cluster_id) {
+				Ok(Some(era_id)) => {
+					log::info!(
+						"prepare_end_billing_report processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+
+					if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
+						Call::end_billing_report { cluster_id, era_id }
+					}) {
+						match res {
+							Ok(_) => {
+								// Extrinsic call succeeded
+								log::info!(
+									"Sent end_billing_report successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+							},
+							Err(e) => {
+								log::error!(
+										"Error to post end_billing_report for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+								// Extrinsic call failed
+								errors.push(OCWError::EndBillingReportTransactionError {
+									cluster_id,
+									era_id,
+								});
+							},
+						}
+					} else {
+						log::error!("No account available to sign the transaction");
+						errors.push(OCWError::NoAvailableSigner);
+					}
+				},
+				Ok(None) => {
+					log::info!("No era for end_billing_report for cluster_id: {:?}", cluster_id);
+				},
+				Err(e) => {
+					errors.push(e);
+				},
+			}
 
 			if !errors.is_empty() {
 				let results = signer.send_signed_transaction(|_account| {
@@ -686,17 +1038,197 @@ pub mod pallet {
 		// adjacent_hashes) }
 
 		#[allow(dead_code)]
-		pub(crate) fn process_start_payout(
+		pub(crate) fn prepare_begin_billing_report(
 			cluster_id: &ClusterId,
 		) -> Result<Option<(DdcEra, i64, i64)>, OCWError> {
 			Ok(Self::get_era_for_payout(cluster_id, EraValidationStatus::ReadyForPayout))
+			// todo! get start and end values based on result
 		}
 
-		pub(crate) fn _get_activities_in_consensus<A: Activity, B: Activity>(
-			_cluster_id: &ClusterId,
-			_era_id: DdcEra,
-		) -> Result<(Vec<A>, Vec<B>), Vec<OCWError>> {
-			unimplemented!()
+		pub(crate) fn prepare_begin_charging_customers(
+			cluster_id: &ClusterId,
+		) -> Result<Option<(DdcEra, BatchIndex)>, OCWError> {
+			if let Some((era_id, _start, _end)) =
+				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
+			{
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+					PayoutState::Initialized
+				{
+					if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
+						Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
+							cluster_id, era_id,
+						) {
+						if let Some(max_batch_index) =
+							customers_activity_batch_roots.len().checked_sub(1)
+						// todo! remove this -1 to support empty usage
+						{
+							let max_batch_index: u16 =
+								max_batch_index.try_into().map_err(|_| {
+									OCWError::BatchIndexConversionFailed {
+										cluster_id: *cluster_id,
+										era_id,
+									}
+								})?;
+							return Ok(Some((era_id, max_batch_index)));
+						} else {
+							return Err(OCWError::EmptyCustomerActivity {
+								cluster_id: *cluster_id,
+								era_id,
+							});
+						}
+					} /*else {
+						 // todo! no data - reconstruct the data from DAC
+					 }*/
+				}
+			}
+			Ok(None)
+		}
+
+		#[allow(dead_code)]
+		pub(crate) fn prepare_send_charging_customers_batch(
+			cluster_id: &ClusterId,
+		) -> Result<Option<(DdcEra, BatchIndex)>, OCWError> {
+			if let Some((era_id, _start, _end)) =
+				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
+			{
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+					PayoutState::ChargingCustomers
+				{
+					if let Some((
+						_customers_activity_in_consensus,
+						_customers_activity_root,
+						_customers_activity_batch_roots,
+						_,
+						_,
+						_,
+					)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
+						cluster_id, era_id,
+					) {
+						let _batch_index = T::PayoutVisitor::get_next_customer_batch_for_payment(
+							cluster_id, era_id,
+						)
+						.map_err(|_| OCWError::BillingReportDoesNotExist {
+							cluster_id: *cluster_id,
+							era_id,
+						})?;
+						// todo! get root for a batch_index
+						// todo! get batch by batch_index
+						// todo! create proof
+					} /*else {
+						 // todo! no data - reconstruct the data from DAC
+					 }*/
+				}
+			}
+			Ok(None)
+		}
+
+		pub(crate) fn prepare_end_charging_customers(
+			cluster_id: &ClusterId,
+		) -> Result<Option<DdcEra>, OCWError> {
+			if let Some((era_id, _start, _end)) =
+				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
+			{
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+					PayoutState::ChargingCustomers &&
+					T::PayoutVisitor::all_customer_batches_processed(cluster_id, era_id)
+				{
+					return Ok(Some(era_id));
+				}
+			}
+			Ok(None)
+		}
+
+		pub(crate) fn prepare_begin_rewarding_providers(
+			cluster_id: &ClusterId,
+		) -> Result<Option<(DdcEra, BatchIndex, NodeUsage)>, OCWError> {
+			if let Some((era_id, _start, _end)) =
+				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
+			{
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+					PayoutState::CustomersChargedWithFees
+				{
+					if let Some((
+						_,
+						_,
+						_,
+						nodes_activity_in_consensus,
+						_,
+						nodes_activity_batch_roots,
+					)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
+						cluster_id, era_id,
+					) {
+						if let Some(max_batch_index) =
+							nodes_activity_batch_roots.len().checked_sub(1)
+						{
+							// todo! remove this -1 to support empty usage
+							let max_batch_index: u16 =
+								max_batch_index.try_into().map_err(|_| {
+									OCWError::BatchIndexConversionFailed {
+										cluster_id: *cluster_id,
+										era_id,
+									}
+								})?;
+
+							let total_node_usage = nodes_activity_in_consensus.into_iter().fold(
+								NodeUsage {
+									transferred_bytes: 0,
+									stored_bytes: 0,
+									number_of_puts: 0,
+									number_of_gets: 0,
+								},
+								|mut acc, activity| {
+									acc.transferred_bytes += activity.transferred_bytes;
+									acc.stored_bytes += activity.stored_bytes;
+									acc.number_of_puts += activity.number_of_puts;
+									acc.number_of_gets += activity.number_of_gets;
+									acc
+								},
+							);
+
+							return Ok(Some((era_id, max_batch_index, total_node_usage)));
+						} else {
+							return Err(OCWError::EmptyCustomerActivity {
+								cluster_id: *cluster_id,
+								era_id,
+							});
+						}
+					} /*else {
+						 // todo! no data - reconstruct the data from DAC
+					 }*/
+				}
+			}
+			Ok(None)
+		}
+
+		pub(crate) fn prepare_end_rewarding_providers(
+			cluster_id: &ClusterId,
+		) -> Result<Option<DdcEra>, OCWError> {
+			if let Some((era_id, _start, _end)) =
+				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
+			{
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+					PayoutState::RewardingProviders &&
+					T::PayoutVisitor::all_provider_batches_processed(cluster_id, era_id)
+				{
+					return Ok(Some(era_id));
+				}
+			}
+			Ok(None)
+		}
+
+		pub(crate) fn prepare_end_billing_report(
+			cluster_id: &ClusterId,
+		) -> Result<Option<DdcEra>, OCWError> {
+			if let Some((era_id, _start, _end)) =
+				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
+			{
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+					PayoutState::ProvidersRewarded
+				{
+					return Ok(Some(era_id));
+				}
+			}
+			Ok(None)
 		}
 
 		pub(crate) fn derive_key(cluster_id: &ClusterId, era_id: DdcEra) -> Vec<u8> {
@@ -722,6 +1254,7 @@ pub mod pallet {
 
 		#[allow(clippy::too_many_arguments)] // todo! (2) refactor into 2 different methods (for customers and nodes) + use type info for
 									 // derive_key
+									 // todo! introduce new struct for input and remove clippy::type_complexity
 		pub(crate) fn store_validation_activities<A: Encode, B: Encode>(
 			// todo! (3) add tests
 			cluster_id: &ClusterId,
@@ -748,10 +1281,10 @@ pub mod pallet {
 			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
 		}
 
-		#[allow(dead_code)]
 		#[allow(clippy::type_complexity)]
 		pub(crate) fn fetch_validation_activities<A: Decode, B: Decode>(
 			// todo! (4) add tests
+			// todo! introduce new struct for results and remove clippy::type_complexity
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 		) -> Option<(
@@ -877,7 +1410,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
 		}
 
-		#[allow(dead_code)]
+		// todo! simplify method by removing start/end from the result
 		pub(crate) fn get_era_for_payout(
 			cluster_id: &ClusterId,
 			status: EraValidationStatus,
@@ -1476,6 +2009,74 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
+					OCWError::BeginChargingCustomersTransactionError { cluster_id, era_id } => {
+						Self::deposit_event(Event::BeginChargingCustomersTransactionError {
+							cluster_id,
+							era_id,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::SendChargingCustomersBatchTransactionError {
+						cluster_id,
+						era_id,
+						batch_index,
+					} => {
+						Self::deposit_event(Event::SendChargingCustomersBatchTransactionError {
+							cluster_id,
+							era_id,
+							batch_index,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::EndChargingCustomersTransactionError { cluster_id, era_id } => {
+						Self::deposit_event(Event::EndChargingCustomersTransactionError {
+							cluster_id,
+							era_id,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::BeginRewardingProvidersTransactionError { cluster_id, era_id } => {
+						Self::deposit_event(Event::BeginRewardingProvidersTransactionError {
+							cluster_id,
+							era_id,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::EndRewardingProvidersTransactionError { cluster_id, era_id } => {
+						Self::deposit_event(Event::EndRewardingProvidersTransactionError {
+							cluster_id,
+							era_id,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::EndBillingReportTransactionError { cluster_id, era_id } => {
+						Self::deposit_event(Event::EndBillingReportTransactionError {
+							cluster_id,
+							era_id,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::BillingReportDoesNotExist { cluster_id, era_id } => {
+						Self::deposit_event(Event::BillingReportDoesNotExist {
+							cluster_id,
+							era_id,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::EmptyCustomerActivity { cluster_id, era_id } => {
+						Self::deposit_event(Event::EmptyCustomerActivity {
+							cluster_id,
+							era_id,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::BatchIndexConversionFailed { cluster_id, era_id } => {
+						Self::deposit_event(Event::BatchIndexConversionFailed {
+							cluster_id,
+							era_id,
+							validator: caller.clone(),
+						});
+					},
 					OCWError::NoAvailableSigner => {
 						Self::deposit_event(Event::NoAvailableSigner { validator: caller.clone() });
 					},
@@ -1525,20 +2126,172 @@ pub mod pallet {
 
 		#[pallet::call_index(3)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn begin_billing_report(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			start_era: i64,
+			end_era: i64,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutVisitor::begin_billing_report(sender, cluster_id, era_id, start_era, end_era)?;
+
+			let mut era_validation = <EraValidations<T>>::get(cluster_id, era_id).unwrap(); // should exist
+			era_validation.status = EraValidationStatus::PayoutInProgress;
+			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
+
+			Ok(())
+		}
+
+		#[pallet::call_index(4)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn begin_charging_customers(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			max_batch_index: BatchIndex,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutVisitor::begin_charging_customers(sender, cluster_id, era_id, max_batch_index)
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		// todo! remove clippy::too_many_arguments
+		#[allow(clippy::too_many_arguments)]
+		pub fn send_charging_customers_batch(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			batch_index: BatchIndex,
+			payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
+			mmr_size: u64,
+			proof: Vec<ActivityHash>,
+			leaf_with_position: (u64, ActivityHash),
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutVisitor::send_charging_customers_batch(
+				sender,
+				cluster_id,
+				era_id,
+				batch_index,
+				payers,
+				mmr_size,
+				proof,
+				leaf_with_position,
+			)
+		}
+
+		#[pallet::call_index(6)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn end_charging_customers(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutVisitor::end_charging_customers(sender, cluster_id, era_id)
+		}
+
+		#[pallet::call_index(7)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn begin_rewarding_providers(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			max_batch_index: BatchIndex,
+			total_node_usage: NodeUsage,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutVisitor::begin_rewarding_providers(
+				sender,
+				cluster_id,
+				era_id,
+				max_batch_index,
+				total_node_usage,
+			)
+		}
+
+		#[pallet::call_index(8)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		// todo! remove clippy::too_many_arguments
+		#[allow(clippy::too_many_arguments)]
+		pub fn send_rewarding_providers_batch(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			batch_index: BatchIndex,
+			payees: Vec<(T::AccountId, BucketId, NodeUsage)>,
+			mmr_size: u64,
+			proof: Vec<ActivityHash>,
+			leaf_with_position: (u64, ActivityHash),
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutVisitor::send_rewarding_providers_batch(
+				sender,
+				cluster_id,
+				era_id,
+				batch_index,
+				payees,
+				mmr_size,
+				proof,
+				leaf_with_position,
+			)
+		}
+
+		#[pallet::call_index(9)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn end_rewarding_providers(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutVisitor::end_rewarding_providers(sender, cluster_id, era_id)
+		}
+
+		#[pallet::call_index(10)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn end_billing_report(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutVisitor::end_billing_report(sender, cluster_id, era_id)?;
+
+			let mut era_validation = <EraValidations<T>>::get(cluster_id, era_id).unwrap(); // should exist
+			era_validation.status = EraValidationStatus::PayoutSuccess;
+			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
+
+			Ok(())
+		}
+
+		#[pallet::call_index(11)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
+			let validator: T::AccountId = ensure_signed(origin)?;
+			Self::store_current_validator(validator.encode());
+			Ok(())
+		}
+
+		#[pallet::call_index(12)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_cluster_to_validate(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 		) -> DispatchResult {
 			ensure_root(origin)?;
 			ClusterToValidate::<T>::put(cluster_id);
-			Ok(())
-		}
 
-		#[pallet::call_index(4)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
-			let validator: T::AccountId = ensure_signed(origin)?;
-			Self::store_current_validator(validator.encode());
 			Ok(())
 		}
 	}
@@ -1555,33 +2308,44 @@ pub mod pallet {
 			}
 		}
 
+		// todo! use batch_index and payers as part of the validation
 		fn is_customers_batch_valid(
 			cluster_id: ClusterId,
-			era: DdcEra,
+			era_id: DdcEra,
 			_batch_index: BatchIndex,
 			_payers: &[(T::AccountId, BucketId, CustomerUsage)],
 			proof: MerkleProof<ActivityHash, MergeActivityHash>,
 			leaf_with_position: (u64, ActivityHash),
 		) -> bool {
-			let validation_era = EraValidations::<T>::get(cluster_id, era);
+			let validation_era = EraValidations::<T>::get(cluster_id, era_id);
 
 			match validation_era {
 				Some(valid_era) => {
 					let root = valid_era.payers_merkle_root_hash;
-
 					Self::proof_merkle_leaf(root, proof, vec![leaf_with_position]).unwrap_or(false)
 				},
 				None => false,
 			}
 		}
+
+		// todo! use batch_index and payees as part of the validation
 		fn is_providers_batch_valid(
-			_cluster_id: ClusterId,
-			_era: DdcEra,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
 			_batch_index: BatchIndex,
 			_payees: &[(T::AccountId, BucketId, NodeUsage)],
-			_adjacent_hashes: &[ActivityHash],
+			proof: MerkleProof<ActivityHash, MergeActivityHash>,
+			leaf_with_position: (u64, ActivityHash),
 		) -> bool {
-			true
+			let validation_era = EraValidations::<T>::get(cluster_id, era_id);
+
+			match validation_era {
+				Some(valid_era) => {
+					let root = valid_era.payees_merkle_root_hash;
+					Self::proof_merkle_leaf(root, proof, vec![leaf_with_position]).unwrap_or(false)
+				},
+				None => false,
+			}
 		}
 	}
 
