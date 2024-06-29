@@ -1220,6 +1220,7 @@ dependencies = [
  "cere-rpc",
  "cere-runtime",
  "cere-runtime-common",
+ "ddc-primitives",
  "futures",
  "jsonrpsee",
  "node-primitives",

@@ -42,6 +42,8 @@ use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub mod weights;
 use itertools::Itertools;
+use sp_io::offchain_index;
+use sp_runtime::offchain::storage::StorageValueRef;
 
 use crate::weights::WeightInfo;
 
@@ -52,7 +54,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::{BucketId, MergeActivityHash};
+	use ddc_primitives::{BucketId, MergeActivityHash, KEY_TYPE};
 	use frame_election_provider_support::SortedListProvider;
 	use frame_support::PalletId;
 	use sp_runtime::SaturatedConversion;
@@ -142,6 +144,10 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		},
+		EraValidationNotReady {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		},
 		/// Not enough nodes for consensus.
 		NotEnoughNodesForConsensus {
 			cluster_id: ClusterId,
@@ -197,6 +203,9 @@ pub mod pallet {
 		FailedToCreateMerkleRoot {
 			validator: T::AccountId,
 		},
+		FailedToFetchCurrentValidator {
+			validator: T::AccountId,
+		},
 	}
 
 	/// Consensus Errors
@@ -245,6 +254,7 @@ pub mod pallet {
 			num_nodes: u16,
 		},
 		FailedToCreateMerkleRoot,
+		FailedToFetchCurrentValidator,
 	}
 
 	#[pallet::error]
@@ -315,10 +325,8 @@ pub mod pallet {
 	#[pallet::getter(fn get_stash_for_ddc_validator)]
 	pub type ValidatorToStashKey<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn current_validator)]
-	pub type CurrentValidator<T: Config> = StorageValue<_, T::AccountId>;
-
+	#[derive(Debug, Deserialize, Encode, Decode, Default)]
+	struct IndexingData(Vec<u8>, Vec<u8>);
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub enum EraValidationStatus {
 		ValidatingData,
@@ -456,63 +464,75 @@ pub mod pallet {
 			if !sp_io::offchain::is_validator() {
 				return;
 			}
-			log::info!("Hello from ocw!!!!!!!!!!");
+
+			let signer = Signer::<T, T::OffchainIdentifierId>::any_account();
+			if !signer.can_sign() {
+				log::error!("🚨No OCW is available.");
+				return;
+			}
+
+			if (block_number.saturated_into::<u32>() % (T::BLOCK_TO_START - 5) as u32) == 0 {
+				log::info!("🏄‍ Setting current validator...");
+				let _ = signer.send_signed_transaction(|_account| Call::set_current_validator {});
+			}
+
 			if (block_number.saturated_into::<u32>() % T::BLOCK_TO_START as u32) != 0 {
 				return;
 			}
-			log::info!("Hello from pallet-ddc-verification.");
-			let signer = Signer::<T, T::OffchainIdentifierId>::any_account();
-			if !signer.can_sign() {
-				log::error!("No local accounts available");
-				return;
-			}
 
-			//set_current_validator
-			let _ = signer.send_signed_transaction(|_account| Call::set_current_validator {});
+			log::info!("👋 Hello from pallet-ddc-verification.");
 
 			let cluster_id = unwrap_or_log_error!(
 				Self::get_cluster_to_validate(),
-				"Error retrieving cluster to validate"
+				"🦀🦀🦀🦀 Error retrieving cluster to validate 🦀🦀🦀🦀"
 			);
 
 			let dac_nodes = unwrap_or_log_error!(
 				Self::get_dac_nodes(&cluster_id),
-				"Error retrieving dac nodes to validate"
+				"🦀🦀🦀🦀 Error retrieving dac nodes to validate 🦀🦀🦀🦀"
 			);
 
 			let min_nodes = T::MIN_DAC_NODES_FOR_CONSENSUS;
 			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 			let mut errors: Vec<OCWError> = Vec::new();
-			match Self::process_dac_data(
+
+			let processed_dac_data = Self::process_dac_data(
 				&cluster_id,
-				None,
+				Some(477656),
 				&dac_nodes,
 				min_nodes,
 				batch_size.into(),
-			) {
-				Ok(Some((era_id, payers_merkle_root_hash, payees_merkle_root_hash))) => {
-					log::info!("Processing era_id: {:?} for cluster_id: {:?}", era_id, cluster_id);
+			);
 
-					if let Some((_, res)) = signer.send_signed_transaction(|_account| {
+			match processed_dac_data {
+				Ok(Some((era_id, payers_merkle_root_hash, payees_merkle_root_hash))) => {
+					log::info!(
+						"🚀 Processing era_id: {:?} for cluster_id: {:?}",
+						era_id,
+						cluster_id
+					);
+
+					let results = signer.send_signed_transaction(|_account| {
 						Call::set_prepare_era_for_payout {
 							cluster_id,
 							era_id,
 							payers_merkle_root_hash,
 							payees_merkle_root_hash,
 						}
-					}) {
+					});
+
+					for (_, res) in &results {
 						match res {
-							Ok(_) => {
-								// Extrinsic call succeeded
+							Ok(()) => {
 								log::info!(
-										"Merkle roots posted on-chain for cluster_id: {:?}, era_id: {:?}",
+										"⛳️ Merkle roots posted on-chain for cluster_id: {:?}, era_id: {:?}",
 										cluster_id,
 										era_id
 									);
 							},
 							Err(e) => {
 								log::error!(
-										"Error to post merkle roots on-chain for cluster_id: {:?}, era_id: {:?}: {:?}",
+										"🦀 Error to post merkle roots on-chain for cluster_id: {:?}, era_id: {:?}: {:?}",
 										cluster_id,
 										era_id,
 										e
@@ -526,18 +546,15 @@ pub mod pallet {
 								});
 							},
 						}
-					} else {
-						log::error!("No account available to set prepare_era for payout");
-						errors.push(OCWError::NoAvailableSigner);
 					}
 				},
 				Ok(None) => {
-					log::info!("No eras for DAC process for cluster_id: {:?}", cluster_id);
+					log::info!("ℹ️ No eras for DAC process for cluster_id: {:?}", cluster_id);
 				},
 				Err(process_errors) => {
 					errors.extend(process_errors);
 				},
-			}
+			};
 
 			/* match Self::process_start_payout(&cluster_id) {
 				Ok(Some((era_id, start_era, end_era))) => {
@@ -570,18 +587,15 @@ pub mod pallet {
 			} */
 
 			if !errors.is_empty() {
-				// Send errors as extrinsics
-				if let Some((_, res)) = signer.send_signed_transaction(|_account| {
+				let results = signer.send_signed_transaction(|_account| {
 					Call::emit_consensus_errors { errors: errors.clone() }
-				}) {
-					// Map any error from transaction submission to TransactionSubmissionError
+				});
+
+				for (_, res) in &results {
 					match res {
-						Ok(_) => log::info!("Successfully submitted emit_consensus_errors tx"),
-						Err(_) => log::error!("Failed to submit emit_consensus_errors tx"),
+						Ok(()) => log::info!("✅ Successfully submitted emit_consensus_errors tx"),
+						Err(_) => log::error!("🦀 Failed to submit emit_consensus_errors tx"),
 					}
-				} else {
-					// Handle case where no signer is available
-					log::error!("No account available to emit consensus errors.");
 				}
 			}
 		}
@@ -595,10 +609,10 @@ pub mod pallet {
 			min_nodes: u16,
 			batch_size: usize,
 		) -> Result<Option<(DdcEra, ActivityHash, ActivityHash)>, Vec<OCWError>> {
+			log::info!("🚀 Processing dac data for cluster_id: {:?}", cluster_id);
 			if dac_nodes.len().ilog2() < min_nodes.into() {
 				return Err(vec![OCWError::NotEnoughDACNodes { num_nodes: min_nodes }]);
 			}
-
 			let era_id = if let Some(era_id) = era_id_to_process {
 				era_id
 			} else {
@@ -621,6 +635,7 @@ pub mod pallet {
 				min_nodes,
 				Percent::from_percent(T::MAJORITY),
 			)?;
+
 			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
 			)
@@ -636,6 +651,7 @@ pub mod pallet {
 				min_nodes,
 				Percent::from_percent(T::MAJORITY),
 			)?;
+
 			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
 			)
@@ -654,6 +670,7 @@ pub mod pallet {
 				nodes_activity_root,
 				&nodes_activity_batch_roots,
 			);
+			log::info!("🙇‍ Dac data processing completed for cluster_id: {:?}", cluster_id);
 			Ok(Some((era_id, customers_activity_root, nodes_activity_root)))
 		}
 
@@ -684,6 +701,23 @@ pub mod pallet {
 
 		pub(crate) fn derive_key(cluster_id: &ClusterId, era_id: DdcEra) -> Vec<u8> {
 			format!("offchain::activities::{:?}::{:?}", cluster_id, era_id).into_bytes()
+		}
+
+		pub(crate) fn store_current_validator(validator: Vec<u8>) {
+			let key = KEY_TYPE.encode();
+			let data = IndexingData(b"current_validator".to_vec(), validator);
+			offchain_index::set(&key, &data.encode());
+		}
+
+		pub(crate) fn fetch_current_validator() -> Result<Vec<u8>, OCWError> {
+			let key = KEY_TYPE.encode();
+			let oci_mem = StorageValueRef::persistent(&key);
+
+			if let Ok(Some(data)) = oci_mem.get::<IndexingData>() {
+				Ok(data.1)
+			} else {
+				Err(OCWError::FailedToFetchCurrentValidator)
+			}
 		}
 
 		#[allow(clippy::too_many_arguments)] // todo! (2) refactor into 2 different methods (for customers and nodes) + use type info for
@@ -756,7 +790,7 @@ pub mod pallet {
 				)),
 				Err(err) => {
 					// Print error message with details of the decoding error
-					log::error!("Decoding error: {:?}", err);
+					log::error!("🦀Decoding error: {:?}", err);
 					None
 				},
 			}
@@ -825,9 +859,7 @@ pub mod pallet {
 			let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
 				MemMMR::<_, MergeActivityHash>::new(0, &store);
 			let _ = leaves.iter().map(|a| mmr.push(*a)).collect::<Vec<_>>();
-			let root = mmr.get_root().map_err(|_| OCWError::FailedToCreateMerkleRoot)?;
-
-			Ok(root)
+			mmr.get_root().map_err(|_| OCWError::FailedToCreateMerkleRoot)
 		}
 
 		/// Verify whether leaf is part of tree
@@ -931,7 +963,10 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Option<DdcEra>, OCWError> {
-			let current_validator = Self::current_validator().ok_or(OCWError::NoAvailableSigner)?;
+			let current_validator_data = Self::fetch_current_validator()?;
+
+			let current_validator = T::AccountId::decode(&mut &current_validator_data[..]).unwrap();
+
 			let last_validated_era = Self::get_last_validated_era(cluster_id, current_validator)?
 				.unwrap_or_else(DdcEra::default);
 
@@ -1085,8 +1120,8 @@ pub mod pallet {
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 			let url = format!("{}://{}:{}/activity/eras", scheme, host, node_params.http_port);
 			let request = http::Request::get(&url);
-			let timeout =
-				sp_io::offchain::timestamp().add(sp_runtime::offchain::Duration::from_millis(3000));
+			let timeout = sp_io::offchain::timestamp()
+				.add(sp_runtime::offchain::Duration::from_millis(10000));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
@@ -1118,8 +1153,8 @@ pub mod pallet {
 			);
 
 			let request = http::Request::get(&url);
-			let timeout =
-				sp_io::offchain::timestamp().add(sp_runtime::offchain::Duration::from_millis(3000));
+			let timeout = sp_io::offchain::timestamp()
+				.add(sp_runtime::offchain::Duration::from_millis(10000));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
@@ -1152,7 +1187,7 @@ pub mod pallet {
 
 			let request = http::Request::get(&url);
 			let timeout =
-				sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(3000));
+				sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(10000));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
@@ -1296,7 +1331,7 @@ pub mod pallet {
 		///
 		/// Emits `BillingReportCreated` event when successful.
 		#[pallet::call_index(0)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_prepare_era_for_payout(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -1306,8 +1341,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 
-			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
-			// Retrieve or initialize the EraValidation
+			//ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised); // todo!
+			// need to refactor this Retrieve or initialize the EraValidation
 			let mut era_validation = {
 				let era_validations = <EraValidations<T>>::get(cluster_id, era_id);
 
@@ -1353,6 +1388,8 @@ pub mod pallet {
 			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
 			if should_deposit_ready_event {
 				Self::deposit_event(Event::<T>::EraValidationReady { cluster_id, era_id });
+			} else {
+				Self::deposit_event(Event::<T>::EraValidationNotReady { cluster_id, era_id });
 			}
 
 			Ok(())
@@ -1367,14 +1404,15 @@ pub mod pallet {
 		///
 		/// Emits `NotEnoughNodesForConsensus`  OR `ActivityNotInConsensus` event depend of error
 		/// type, when successful.
-		#[pallet::call_index(3)]
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn emit_consensus_errors(
 			origin: OriginFor<T>,
 			errors: Vec<OCWError>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
+			//ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised); // todo!
+			// need to refactor this
 
 			for error in errors {
 				match error {
@@ -1452,6 +1490,11 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
+					OCWError::FailedToFetchCurrentValidator => {
+						Self::deposit_event(Event::FailedToFetchCurrentValidator {
+							validator: caller.clone(),
+						});
+					},
 				}
 			}
 
@@ -1464,7 +1507,7 @@ pub mod pallet {
 		///
 		/// Parameters:
 		/// - `ddc_validator_pub`: validator Key
-		#[pallet::call_index(4)]
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_validator_key(
 			origin: OriginFor<T>,
@@ -1480,7 +1523,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(5)]
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_cluster_to_validate(
 			origin: OriginFor<T>,
@@ -1491,11 +1534,11 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(6)]
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
 			let validator: T::AccountId = ensure_signed(origin)?;
-			CurrentValidator::<T>::put(validator);
+			Self::store_current_validator(validator.encode());
 			Ok(())
 		}
 	}
@@ -1553,6 +1596,7 @@ pub mod pallet {
 		where
 			I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
 		{
+			log::info!("🙌Adding Validator from genesis session.");
 			let validators = validators
 				.map(|(_, k)| T::AccountId::decode(&mut &k.into().encode()[..]).unwrap())
 				.collect::<Vec<_>>();
@@ -1564,6 +1608,7 @@ pub mod pallet {
 		where
 			I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
 		{
+			log::info!("🙌Adding Validator from new session.");
 			let validators = validators
 				.map(|(_, k)| T::AccountId::decode(&mut &k.into().encode()[..]).unwrap())
 				.collect::<Vec<_>>();
