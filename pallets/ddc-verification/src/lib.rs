@@ -551,7 +551,11 @@ pub mod pallet {
 
 			if Self::fetch_current_validator().is_err() {
 				log::info!("🏄‍ Setting current validator...");
-				let _ = signer.send_signed_transaction(|_account| Call::set_current_validator {});
+				let _ = signer.send_signed_transaction(|account| {
+					Self::store_current_validator(account.id.encode());
+
+					Call::set_current_validator {}
+				});
 			}
 
 			if (block_number.saturated_into::<u32>() % T::BLOCK_TO_START as u32) != 0 {
@@ -2271,11 +2275,11 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// todo! Need to remove this
 		#[pallet::call_index(11)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
-			let validator: T::AccountId = ensure_signed(origin)?;
-			Self::store_current_validator(validator.encode());
+			let _: T::AccountId = ensure_signed(origin)?;
 			Ok(())
 		}
 
