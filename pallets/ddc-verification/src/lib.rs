@@ -42,8 +42,6 @@ use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub mod weights;
 use itertools::Itertools;
-use sp_io::offchain_index;
-use sp_runtime::offchain::storage::StorageValueRef;
 
 use crate::weights::WeightInfo;
 
@@ -407,9 +405,6 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_stash_for_ddc_validator)]
 	pub type ValidatorToStashKey<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
-
-	#[derive(Debug, Deserialize, Encode, Decode, Default)]
-	struct IndexingData(Vec<u8>, Vec<u8>);
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub enum EraValidationStatus {
 		ValidatingData,
@@ -554,7 +549,7 @@ pub mod pallet {
 				return;
 			}
 
-			if (block_number.saturated_into::<u32>() % (T::BLOCK_TO_START - 5) as u32) == 0 {
+			if Self::fetch_current_validator().is_err() {
 				log::info!("🏄‍ Setting current validator...");
 				let _ = signer.send_signed_transaction(|_account| Call::set_current_validator {});
 			}
@@ -965,6 +960,7 @@ pub mod pallet {
 			if dac_nodes.len().ilog2() < min_nodes.into() {
 				return Err(vec![OCWError::NotEnoughDACNodes { num_nodes: min_nodes }]);
 			}
+
 			let era_id = if let Some(era_id) = era_id_to_process {
 				era_id
 			} else {
@@ -974,6 +970,7 @@ pub mod pallet {
 					Err(err) => return Err(vec![err]),
 				}
 			};
+
 			let nodes_usage = Self::fetch_nodes_usage_for_era(cluster_id, era_id, dac_nodes)
 				.map_err(|err| vec![err])?;
 			let customers_usage =
@@ -1236,19 +1233,16 @@ pub mod pallet {
 		}
 
 		pub(crate) fn store_current_validator(validator: Vec<u8>) {
-			let key = KEY_TYPE.encode();
-			let data = IndexingData(b"current_validator".to_vec(), validator);
-			offchain_index::set(&key, &data.encode());
+			let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
+			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &validator);
 		}
 
 		pub(crate) fn fetch_current_validator() -> Result<Vec<u8>, OCWError> {
-			let key = KEY_TYPE.encode();
-			let oci_mem = StorageValueRef::persistent(&key);
+			let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
 
-			if let Ok(Some(data)) = oci_mem.get::<IndexingData>() {
-				Ok(data.1)
-			} else {
-				Err(OCWError::FailedToFetchCurrentValidator)
+			match sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key) {
+				Some(data) => Ok(data),
+				None => Err(OCWError::FailedToFetchCurrentValidator),
 			}
 		}
 
@@ -1837,6 +1831,7 @@ pub mod pallet {
 			for (node_pub_key, node_params) in dac_nodes {
 				// todo! probably shouldn't stop when some DAC is not responding as we can still
 				// work with others
+
 				let ids = Self::fetch_processed_era(node_params).map_err(|_| {
 					OCWError::EraRetrievalError {
 						cluster_id: *cluster_id,
@@ -1846,6 +1841,7 @@ pub mod pallet {
 
 				eras.push(ids);
 			}
+
 			Ok(eras)
 		}
 	}

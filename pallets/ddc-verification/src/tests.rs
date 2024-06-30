@@ -5,7 +5,7 @@ use frame_support::{assert_noop, assert_ok};
 use sp_core::{
 	offchain::{
 		testing::{PendingRequest, TestOffchainExt, TestTransactionPoolExt},
-		OffchainDbExt, OffchainWorkerExt, Timestamp, TransactionPoolExt,
+		OffchainDbExt, OffchainStorage, OffchainWorkerExt, Timestamp, TransactionPoolExt,
 	},
 	Pair,
 };
@@ -1374,140 +1374,154 @@ fn fetch_processed_era_works() {
 	});
 }
 
-// #[test]
-// fn get_era_for_validation_works() {
-// 	let mut ext = TestExternalities::default();
-// 	let (offchain, offchain_state) = TestOffchainExt::new();
-// 	let (pool, _) = TestTransactionPoolExt::new();
-//
-// 	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
-// 	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
-// 	ext.register_extension(TransactionPoolExt::new(pool));
-//
-// 	ext.execute_with(|| {
-// 		let mut offchain_state = offchain_state.write();
-// 		offchain_state.timestamp = Timestamp::from_unix_millis(0);
-// 		let host1 = "example1.com";
-// 		let host2 = "example2.com";
-// 		let host3 = "example3.com";
-// 		let host4 = "example4.com";
-// 		let port = 80;
-// 		let era_activity1 = EraActivity { id: 16, start: 1, end: 2 };
-// 		let era_activity2 = EraActivity { id: 17, start: 1, end: 2 };
-// 		let era_activity3 = EraActivity { id: 18, start: 1, end: 2 };
-// 		let era_activity4 = EraActivity { id: 19, start: 1, end: 2 };
-// 		let era_activity_json1 = serde_json::to_string(&vec![
-// 			era_activity1, //16
-// 			era_activity2, //17
-// 			era_activity3, //18
-// 			era_activity4, //19
-// 		])
-// 		.unwrap();
-// 		let era_activity_json2 = serde_json::to_string(&vec![
-// 			era_activity1, //16
-// 			era_activity2, //17
-// 			era_activity3, //18
-// 		])
-// 		.unwrap();
-// 		let era_activity_json3 = serde_json::to_string(&vec![
-// 			era_activity1, //16
-// 			era_activity2, //17
-// 			era_activity3, //18
-// 		])
-// 		.unwrap();
-// 		let era_activity_json4 = serde_json::to_string(&vec![
-// 			era_activity1, //16
-// 			era_activity2, //17
-// 			era_activity3, //18
-// 		])
-// 		.unwrap();
-// 		let pending_request1 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host1, port),
-// 			response: Some(era_activity_json1.as_bytes().to_vec()),
-// 			sent: true,
-// 			..Default::default()
-// 		};
-// 		let pending_request2 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host2, port),
-// 			response: Some(era_activity_json2.as_bytes().to_vec()),
-// 			sent: true,
-// 			..Default::default()
-// 		};
-// 		let pending_request3 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host3, port),
-// 			response: Some(era_activity_json3.as_bytes().to_vec()),
-// 			sent: true,
-// 			..Default::default()
-// 		};
-// 		let pending_request4 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host4, port),
-// 			response: Some(era_activity_json4.as_bytes().to_vec()),
-// 			sent: true,
-// 			..Default::default()
-// 		};
-// 		offchain_state.expect_request(pending_request1);
-// 		offchain_state.expect_request(pending_request2);
-// 		offchain_state.expect_request(pending_request3);
-// 		offchain_state.expect_request(pending_request4);
-//
-// 		drop(offchain_state);
-//
-// 		let node_params1 = StorageNodeParams {
-// 			ssl: false,
-// 			host: host1.as_bytes().to_vec(),
-// 			http_port: port,
-// 			mode: StorageNodeMode::DAC,
-// 			p2p_port: 5555,
-// 			grpc_port: 4444,
-// 			domain: b"example2.com".to_vec(),
-// 		};
-//
-// 		let node_params2 = StorageNodeParams {
-// 			ssl: false,
-// 			host: host2.as_bytes().to_vec(),
-// 			http_port: port,
-// 			mode: StorageNodeMode::DAC,
-// 			p2p_port: 5555,
-// 			grpc_port: 4444,
-// 			domain: b"example3.com".to_vec(),
-// 		};
-//
-// 		let node_params3 = StorageNodeParams {
-// 			ssl: false,
-// 			host: host3.as_bytes().to_vec(),
-// 			http_port: port,
-// 			mode: StorageNodeMode::DAC,
-// 			p2p_port: 5555,
-// 			grpc_port: 4444,
-// 			domain: b"example4.com".to_vec(),
-// 		};
-//
-// 		let node_params4 = StorageNodeParams {
-// 			ssl: false,
-// 			host: host4.as_bytes().to_vec(),
-// 			http_port: port,
-// 			mode: StorageNodeMode::DAC,
-// 			p2p_port: 5555,
-// 			grpc_port: 4444,
-// 			domain: b"example5.com".to_vec(),
-// 		};
-//
-// 		let dac_nodes: Vec<(NodePubKey, StorageNodeParams)> = vec![
-// 			(NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32])), node_params1),
-// 			(NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32])), node_params2),
-// 			(NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])), node_params3),
-// 			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4),
-// 		];
-//
-// 		let cluster_id = ClusterId::from([12; 20]);
-// 		let result = Pallet::<Test>::get_era_for_validation(&cluster_id, &dac_nodes);
-// 		assert_eq!(result.unwrap().unwrap(), era_activity1.id); //16
-// 	});
-// }
+#[test]
+fn get_era_for_validation_works() {
+	let mut ext = TestExternalities::default();
+	let (offchain, offchain_state) = TestOffchainExt::new();
+	let (pool, _) = TestTransactionPoolExt::new();
+
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(Box::new(offchain.clone())));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	ext.execute_with(|| {
+		let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
+
+		let mut offchain_state = offchain_state.write();
+		offchain_state.persistent_storage.set(
+			b"",
+			&key,
+			b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
+		);
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host1 = "example1.com";
+		let host2 = "example2.com";
+		let host3 = "example3.com";
+		let host4 = "example4.com";
+		let port = 80;
+		let era_activity1 = EraActivity { id: 16, start: 1, end: 2 };
+		let era_activity2 = EraActivity { id: 17, start: 1, end: 2 };
+		let era_activity3 = EraActivity { id: 18, start: 1, end: 2 };
+		let era_activity4 = EraActivity { id: 19, start: 1, end: 2 };
+		let era_activity_json1 = serde_json::to_string(&vec![
+			era_activity1, //16
+			era_activity2, //17
+			era_activity3, //18
+			era_activity4, //19
+		])
+		.unwrap();
+		let era_activity_json2 = serde_json::to_string(&vec![
+			era_activity1, //16
+			era_activity2, //17
+			era_activity3, //18
+		])
+		.unwrap();
+		let era_activity_json3 = serde_json::to_string(&vec![
+			era_activity1, //16
+			era_activity2, //17
+			era_activity3, //18
+		])
+		.unwrap();
+		let era_activity_json4 = serde_json::to_string(&vec![
+			era_activity1, //16
+			era_activity2, //17
+			era_activity3, //18
+		])
+		.unwrap();
+		let pending_request1 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host1, port),
+			response: Some(era_activity_json1.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request2 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host2, port),
+			response: Some(era_activity_json2.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request3 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host3, port),
+			response: Some(era_activity_json3.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request4 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host4, port),
+			response: Some(era_activity_json4.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		offchain_state.expect_request(pending_request1);
+		offchain_state.expect_request(pending_request2);
+		offchain_state.expect_request(pending_request3);
+		offchain_state.expect_request(pending_request4);
+
+		drop(offchain_state);
+
+		let node_params1 = StorageNodeParams {
+			ssl: false,
+			host: host1.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		};
+
+		let node_params2 = StorageNodeParams {
+			ssl: false,
+			host: host2.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		};
+
+		let node_params3 = StorageNodeParams {
+			ssl: false,
+			host: host3.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example4.com".to_vec(),
+		};
+
+		let node_params4 = StorageNodeParams {
+			ssl: false,
+			host: host4.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example5.com".to_vec(),
+		};
+
+		let dac_nodes: Vec<(NodePubKey, StorageNodeParams)> = vec![
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32])), node_params1),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32])), node_params2),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])), node_params3),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4),
+		];
+
+		// let temp: [u8; 32] = array_bytes::hex_n_into_unchecked(
+		// 	"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a",
+		// );
+		// let account_id = AccountId::decode(&mut &temp[..]).unwrap();
+		//
+		// <CurrentValidator<Test>>::set(Some(account_id));
+
+		let cluster_id = ClusterId::from([12; 20]);
+		let result = Pallet::<Test>::get_era_for_validation(&cluster_id, &dac_nodes);
+		assert_eq!(result.unwrap().unwrap(), era_activity1.id); //16
+	});
+}
 
 #[test]
 fn test_get_last_validated_era() {
@@ -1691,418 +1705,296 @@ fn proof_merkle_leaf_works() {
 		);
 	});
 }
-//
-// #[test]
-// fn test_single_ocw_pallet_integration() {
-// 	let mut ext = new_test_ext();
-// 	let (offchain, offchain_state) = TestOffchainExt::new();
-// 	let (pool, _pool_state) = TestTransactionPoolExt::new();
-//
-// 	let (pair, _seed) = sp_core::sr25519::Pair::from_phrase(
-// 		"spider sell nice animal border success square soda stem charge caution echo",
-// 		None,
-// 	)
-// 	.unwrap();
-// 	let keystore = MemoryKeystore::new();
-// 	keystore
-// 		.insert(
-// 			KEY_TYPE,
-// 			"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
-// 			pair.public().as_ref(),
-// 		)
-// 		.unwrap();
-//
-// 	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
-// 	ext.register_extension(OffchainDbExt::new(offchain));
-// 	ext.register_extension(TransactionPoolExt::new(pool));
-// 	ext.register_extension(KeystoreExt::new(keystore));
-//
-// 	ext.execute_with(|| {
-//
-// 		let mut offchain_state = offchain_state.write();
-// 		offchain_state.timestamp = Timestamp::from_unix_millis(0);
-// 		let host1 = "178.251.228.236";
-// 		let host2 = "95.217.8.119";
-// 		let host3 = "178.251.228.42";
-// 		let host4 = "37.27.30.47";
-// 		let host5 = "178.251.228.49";
-// 		let host6 = "159.69.207.65";
-// 		let host7 = "178.251.228.165";
-// 		let host8 = "49.13.211.157";
-// 		let host9 = "178.251.228.44";
-// 		let port = 8080;
-//
-// 		let pending_request1 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host1, port),
-// 			response:
-// Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
-// total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
-// total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
-// processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
-// 1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
-// 28}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-// 		let pending_request2 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host2, port),
-// 			response:
-// Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
-// total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
-// total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
-// processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
-// 1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
-// 28}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-// 		let pending_request3 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host3, port),
-// 			response:
-// Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
-// total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
-// total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
-// processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
-// 1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
-// 28}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-// 		let pending_request4 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host4, port),
-// 			response:
-// Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
-// total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
-// total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
-// processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
-// 1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
-// 28}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-// 		let pending_request5 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host5, port),
-// 			response:
-// Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
-// total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
-// total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
-// processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
-// 1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
-// 28}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-// 		let pending_request6 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host6, port),
-// 			response:
-// Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
-// total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
-// total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
-// processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
-// 1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
-// 28}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-// 		let pending_request7 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host7, port),
-// 			response:
-// Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
-// total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
-// total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
-// processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
-// 1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
-// 28}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-// 		let pending_request8 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host8, port),
-// 			response:
-// Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
-// total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
-// total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
-// processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
-// 1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
-// 28}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-// 		let pending_request9 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/eras", host9, port),
-// 			response:
-// Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
-// total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
-// total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
-// processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
-// 1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
-// 28}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-//
-// 		let node_pending_request1 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host1, port),
-// 			response: Some(br#"[{"node_id":
-// "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
-// "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
-// 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
-// "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
-// "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
-// "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let node_pending_request2 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host2, port),
-// 			response: Some(br#"[{"node_id":
-// "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
-// "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
-// 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
-// "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
-// "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
-// "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let node_pending_request3 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host3, port),
-// 			response: Some(br#"[{"node_id":
-// "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
-// "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
-// 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
-// "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
-// "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
-// "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let node_pending_request4 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host4, port),
-// 			response: Some(br#"[{"node_id":
-// "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
-// "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
-// 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
-// "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
-// "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
-// "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let node_pending_request5 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host5, port),
-// 			response: Some(br#"[{"node_id":
-// "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
-// "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
-// 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
-// "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
-// "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
-// "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let node_pending_request6 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host6, port),
-// 			response: Some(br#"[{"node_id":
-// "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
-// "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
-// 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
-// "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
-// "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
-// "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let node_pending_request7 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host7, port),
-// 			response: Some(br#"[{"node_id":
-// "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
-// "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
-// 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
-// "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
-// "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
-// "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let node_pending_request8 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host8, port),
-// 			response: Some(br#"[{"node_id":
-// "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
-// "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
-// 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
-// "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
-// "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
-// "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let node_pending_request9 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host9, port),
-// 			response: Some(br#"[{"node_id":
-// "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
-// "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
-// 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
-// "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
-// "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
-// "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let bucket_pending_request1 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host1, port),
-// 			response: Some(br#"[{"bucket_id": 90235,"customer_id":
-// "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id":
-// 90236,"customer_id":
-// "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let bucket_pending_request2 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host2, port),
-// 			response: Some(br#"[{"bucket_id": 90235,"customer_id":
-// "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id":
-// 90236,"customer_id":
-// "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let bucket_pending_request3 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host3, port),
-// 			response: Some(br#"[{"bucket_id": 90235,"customer_id":
-// "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id":
-// 90236,"customer_id":
-// "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let bucket_pending_request4 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host4, port),
-// 			response: Some(br#"[{"bucket_id": 90235,"customer_id":
-// "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id":
-// 90236,"customer_id":
-// "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let bucket_pending_request5 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host5, port),
-// 			response: Some(br#"[{"bucket_id": 90235,"customer_id":
-// "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id":
-// 90236,"customer_id":
-// "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let bucket_pending_request6 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host6, port),
-// 			response: Some(br#"[{"bucket_id": 90235,"customer_id":
-// "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id":
-// 90236,"customer_id":
-// "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let bucket_pending_request7 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host7, port),
-// 			response: Some(br#"[{"bucket_id": 90235,"customer_id":
-// "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id":
-// 90236,"customer_id":
-// "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let bucket_pending_request8 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host8, port),
-// 			response: Some(br#"[{"bucket_id": 90235,"customer_id":
-// "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id":
-// 90236,"customer_id":
-// "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		let bucket_pending_request9 = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host9, port),
-// 			response: Some(br#"[{"bucket_id": 90235,"customer_id":
-// "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id":
-// 90236,"customer_id":
-// "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes":
-// 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()), 			sent: true,
-// 			..Default::default()
-// 		};
-//
-// 		offchain_state.expect_request(pending_request1);
-// 		offchain_state.expect_request(pending_request2);
-// 		offchain_state.expect_request(pending_request3);
-// 		offchain_state.expect_request(pending_request4);
-// 		offchain_state.expect_request(pending_request5);
-// 		offchain_state.expect_request(pending_request6);
-// 		offchain_state.expect_request(pending_request7);
-// 		offchain_state.expect_request(pending_request8);
-// 		offchain_state.expect_request(pending_request9);
-// 		offchain_state.expect_request(node_pending_request1);
-// 		offchain_state.expect_request(node_pending_request2);
-// 		offchain_state.expect_request(node_pending_request3);
-// 		offchain_state.expect_request(node_pending_request4);
-// 		offchain_state.expect_request(node_pending_request5);
-// 		offchain_state.expect_request(node_pending_request6);
-// 		offchain_state.expect_request(node_pending_request7);
-// 		offchain_state.expect_request(node_pending_request8);
-// 		offchain_state.expect_request(node_pending_request9);
-// 		offchain_state.expect_request(bucket_pending_request1);
-// 		offchain_state.expect_request(bucket_pending_request2);
-// 		offchain_state.expect_request(bucket_pending_request3);
-// 		offchain_state.expect_request(bucket_pending_request4);
-// 		offchain_state.expect_request(bucket_pending_request5);
-// 		offchain_state.expect_request(bucket_pending_request6);
-// 		offchain_state.expect_request(bucket_pending_request7);
-// 		offchain_state.expect_request(bucket_pending_request8);
-// 		offchain_state.expect_request(bucket_pending_request9);
-// 		drop(offchain_state);
-//
-// 		// // Offchain worker should be triggered if block number is  divided by 100
-// 		let block = 500;
-// 		System::set_block_number(block);
-// 		let cluster_id = ClusterId::from([12; 20]);
-//
-// 		ClusterToValidate::<Test>::put(cluster_id);
-// 		DdcVerification::offchain_worker(block);
-//
-// 	});
-// }
+
+#[test]
+fn test_single_ocw_pallet_integration() {
+	let mut ext = new_test_ext();
+	let (offchain, offchain_state) = TestOffchainExt::new();
+	let (pool, _pool_state) = TestTransactionPoolExt::new();
+
+	let (pair, _seed) = sp_core::sr25519::Pair::from_phrase(
+		"spider sell nice animal border success square soda stem charge caution echo",
+		None,
+	)
+	.unwrap();
+	let keystore = MemoryKeystore::new();
+	keystore
+		.insert(
+			KEY_TYPE,
+			"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
+			pair.public().as_ref(),
+		)
+		.unwrap();
+
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(offchain));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(KeystoreExt::new(keystore));
+
+	ext.execute_with(|| {
+		let mut offchain_state = offchain_state.write();
+		let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
+		offchain_state.persistent_storage.set(
+			b"",
+			&key,
+			b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
+		);
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host1 = "178.251.228.236";
+		let host2 = "95.217.8.119";
+		let host3 = "178.251.228.42";
+		let host4 = "37.27.30.47";
+		let host5 = "178.251.228.49";
+		let host6 = "159.69.207.65";
+		let host7 = "178.251.228.165";
+		let host8 = "49.13.211.157";
+		let host9 = "178.251.228.44";
+		let port = 8080;
+
+		let pending_request1 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host1, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request2 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host2, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request3 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host3, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request4 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host4, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request5 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host5, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request6 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host6, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request7 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host7, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request8 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host8, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		let pending_request9 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/eras", host9, port),
+			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+
+		let node_pending_request1 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host1, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request2 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host2, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request3 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host3, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request4 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host4, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request5 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host5, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request6 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host6, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request7 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host7, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request8 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host8, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let node_pending_request9 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host9, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request1 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host1, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request2 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host2, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request3 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host3, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request4 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host4, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request5 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host5, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request6 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host6, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request7 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host7, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request8 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host8, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let bucket_pending_request9 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host9, port),
+			response: Some(br#"[{"bucket_id": 90235,"customer_id": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1},{"bucket_id": 90236,"customer_id": "0x9cc588b1d749b6d727d665463641cfeb1c8c843e81faf468d21922d6296b6f45","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		offchain_state.expect_request(pending_request1);
+		offchain_state.expect_request(pending_request2);
+		offchain_state.expect_request(pending_request3);
+		offchain_state.expect_request(pending_request4);
+		offchain_state.expect_request(pending_request5);
+		offchain_state.expect_request(pending_request6);
+		offchain_state.expect_request(pending_request7);
+		offchain_state.expect_request(pending_request8);
+		offchain_state.expect_request(pending_request9);
+		offchain_state.expect_request(node_pending_request1);
+		offchain_state.expect_request(node_pending_request2);
+		offchain_state.expect_request(node_pending_request3);
+		offchain_state.expect_request(node_pending_request4);
+		offchain_state.expect_request(node_pending_request5);
+		offchain_state.expect_request(node_pending_request6);
+		offchain_state.expect_request(node_pending_request7);
+		offchain_state.expect_request(node_pending_request8);
+		offchain_state.expect_request(node_pending_request9);
+		offchain_state.expect_request(bucket_pending_request1);
+		offchain_state.expect_request(bucket_pending_request2);
+		offchain_state.expect_request(bucket_pending_request3);
+		offchain_state.expect_request(bucket_pending_request4);
+		offchain_state.expect_request(bucket_pending_request5);
+		offchain_state.expect_request(bucket_pending_request6);
+		offchain_state.expect_request(bucket_pending_request7);
+		offchain_state.expect_request(bucket_pending_request8);
+		offchain_state.expect_request(bucket_pending_request9);
+		drop(offchain_state);
+
+		// // Offchain worker should be triggered if block number is  divided by 100
+		let block = 500;
+		System::set_block_number(block);
+		let cluster_id = ClusterId::from([12; 20]);
+
+		ClusterToValidate::<Test>::put(cluster_id);
+		DdcVerification::offchain_worker(block);
+	});
+}
