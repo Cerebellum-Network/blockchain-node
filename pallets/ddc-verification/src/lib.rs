@@ -550,7 +550,7 @@ pub mod pallet {
 			}
 
 			if Self::fetch_current_validator().is_err() {
-				log::info!("🏄‍ Setting current validator...");
+				log::info!("🏄‍ Setting current validator..."); // todo! add public key
 				let _ = signer.send_signed_transaction(|account| {
 					Self::store_current_validator(account.id.encode());
 
