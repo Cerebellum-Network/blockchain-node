@@ -5,7 +5,7 @@ use frame_support::{assert_noop, assert_ok};
 use sp_core::{
 	offchain::{
 		testing::{PendingRequest, TestOffchainExt, TestTransactionPoolExt},
-		OffchainDbExt, OffchainWorkerExt, Timestamp, TransactionPoolExt,
+		OffchainDbExt, OffchainStorage, OffchainWorkerExt, Timestamp, TransactionPoolExt,
 	},
 	Pair,
 };
@@ -1381,11 +1381,18 @@ fn get_era_for_validation_works() {
 	let (pool, _) = TestTransactionPoolExt::new();
 
 	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
-	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
+	ext.register_extension(OffchainDbExt::new(Box::new(offchain.clone())));
 	ext.register_extension(TransactionPoolExt::new(pool));
 
 	ext.execute_with(|| {
+		let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
+
 		let mut offchain_state = offchain_state.write();
+		offchain_state.persistent_storage.set(
+			b"",
+			&key,
+			b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
+		);
 		offchain_state.timestamp = Timestamp::from_unix_millis(0);
 		let host1 = "example1.com";
 		let host2 = "example2.com";
@@ -1503,12 +1510,12 @@ fn get_era_for_validation_works() {
 			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4),
 		];
 
-		let temp: [u8; 32] = array_bytes::hex_n_into_unchecked(
-			"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a",
-		);
-		let account_id = AccountId::decode(&mut &temp[..]).unwrap();
-
-		<CurrentValidator<Test>>::set(Some(account_id));
+		// let temp: [u8; 32] = array_bytes::hex_n_into_unchecked(
+		// 	"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a",
+		// );
+		// let account_id = AccountId::decode(&mut &temp[..]).unwrap();
+		//
+		// <CurrentValidator<Test>>::set(Some(account_id));
 
 		let cluster_id = ClusterId::from([12; 20]);
 		let result = Pallet::<Test>::get_era_for_validation(&cluster_id, &dac_nodes);
@@ -1725,8 +1732,13 @@ fn test_single_ocw_pallet_integration() {
 	ext.register_extension(KeystoreExt::new(keystore));
 
 	ext.execute_with(|| {
-
 		let mut offchain_state = offchain_state.write();
+		let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
+		offchain_state.persistent_storage.set(
+			b"",
+			&key,
+			b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
+		);
 		offchain_state.timestamp = Timestamp::from_unix_millis(0);
 		let host1 = "178.251.228.236";
 		let host2 = "95.217.8.119";
@@ -1982,15 +1994,7 @@ fn test_single_ocw_pallet_integration() {
 		System::set_block_number(block);
 		let cluster_id = ClusterId::from([12; 20]);
 
-		let temp: [u8; 32] = array_bytes::hex_n_into_unchecked(
-			"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a",
-		);
-		let account_id = AccountId::decode(&mut &temp[..]).unwrap();
-		let _ = DdcVerification::set_current_validator(
-			RuntimeOrigin::signed(account_id),
-		);
 		ClusterToValidate::<Test>::put(cluster_id);
 		DdcVerification::offchain_worker(block);
-
 	});
 }
