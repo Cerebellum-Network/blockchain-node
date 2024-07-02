@@ -1342,8 +1342,12 @@ fn fetch_processed_era_works() {
 		let era_activity1 = EraActivity { id: 17, start: 1, end: 2 };
 		let era_activity2 = EraActivity { id: 18, start: 1, end: 2 };
 		let era_activity3 = EraActivity { id: 19, start: 1, end: 2 };
-		let era_activity_json =
-			serde_json::to_string(&vec![era_activity1, era_activity2, era_activity3]).unwrap();
+		let era_activity_json = serde_json::to_string(&vec![
+			era_activity1.clone(),
+			era_activity2.clone(),
+			era_activity3,
+		])
+		.unwrap();
 
 		// Mock HTTP request and response
 		let pending_request = PendingRequest {
@@ -1404,28 +1408,28 @@ fn get_era_for_validation_works() {
 		let era_activity3 = EraActivity { id: 18, start: 1, end: 2 };
 		let era_activity4 = EraActivity { id: 19, start: 1, end: 2 };
 		let era_activity_json1 = serde_json::to_string(&vec![
-			era_activity1, //16
-			era_activity2, //17
-			era_activity3, //18
-			era_activity4, //19
+			era_activity1.clone(), //16
+			era_activity2.clone(), //17
+			era_activity3.clone(), //18
+			era_activity4.clone(), //19
 		])
 		.unwrap();
 		let era_activity_json2 = serde_json::to_string(&vec![
-			era_activity1, //16
-			era_activity2, //17
-			era_activity3, //18
+			era_activity1.clone(), //16
+			era_activity2.clone(), //17
+			era_activity3.clone(), //18
 		])
 		.unwrap();
 		let era_activity_json3 = serde_json::to_string(&vec![
-			era_activity1, //16
-			era_activity2, //17
-			era_activity3, //18
+			era_activity1.clone(), //16
+			era_activity2.clone(), //17
+			era_activity3.clone(), //18
 		])
 		.unwrap();
 		let era_activity_json4 = serde_json::to_string(&vec![
-			era_activity1, //16
-			era_activity2, //17
-			era_activity3, //18
+			era_activity1.clone(), //16
+			era_activity2.clone(), //17
+			era_activity3.clone(), //18
 		])
 		.unwrap();
 		let pending_request1 = PendingRequest {
@@ -1510,16 +1514,9 @@ fn get_era_for_validation_works() {
 			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4),
 		];
 
-		// let temp: [u8; 32] = array_bytes::hex_n_into_unchecked(
-		// 	"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a",
-		// );
-		// let account_id = AccountId::decode(&mut &temp[..]).unwrap();
-		//
-		// <CurrentValidator<Test>>::set(Some(account_id));
-
 		let cluster_id = ClusterId::from([12; 20]);
 		let result = Pallet::<Test>::get_era_for_validation(&cluster_id, &dac_nodes);
-		assert_eq!(result.unwrap().unwrap(), era_activity1.id); //16
+		assert_eq!(result.unwrap().unwrap(), era_activity1); //16
 	});
 }
 
