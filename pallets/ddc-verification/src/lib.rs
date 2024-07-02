@@ -968,7 +968,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn process_dac_data(
 			cluster_id: &ClusterId,
-			era_id_to_process: Option<DdcEra>,
+			era_id_to_process: Option<EraActivity>,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 			min_nodes: u16,
 			batch_size: usize,
@@ -978,8 +978,12 @@ pub mod pallet {
 				return Err(vec![OCWError::NotEnoughDACNodes { num_nodes: min_nodes }]);
 			}
 
-			let era_activity = if let Some(era_id) = era_id_to_process {
-				EraActivity { id: era_id, start: Default::default(), end: Default::default() }
+			let era_activity = if let Some(era_activity) = era_id_to_process {
+				EraActivity {
+					id: era_activity.id,
+					start: era_activity.start,
+					end: era_activity.end,
+				}
 			} else {
 				match Self::get_era_for_validation(cluster_id, dac_nodes) {
 					Ok(Some(era_activity)) => era_activity,
@@ -1003,6 +1007,7 @@ pub mod pallet {
 				Percent::from_percent(T::MAJORITY),
 			)?;
 
+			log::info!("🪅 customers_activity_in_consensus executed successfully. ");
 			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
 			)
@@ -1019,8 +1024,9 @@ pub mod pallet {
 				Percent::from_percent(T::MAJORITY),
 			)?;
 
+			log::info!("🪅 nodes_activity_in_consensus executed successfully. ");
 			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
-				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
+				Self::split_to_batches(&nodes_activity_in_consensus, batch_size),
 			)
 			.map_err(|err| vec![err])?;
 
@@ -2156,13 +2162,18 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised); // todo!
 			// need to refactor this
+
 			T::PayoutVisitor::begin_billing_report(sender, cluster_id, era_id, start_era, end_era)?;
 
-			EraValidations::<T>::mutate(cluster_id, era_id, |maybe_era_validations| {
-				if let Some(ref mut era_validation) = maybe_era_validations {
-					era_validation.status = EraValidationStatus::PayoutInProgress
-				}
-			});
+			EraValidations::<T>::try_mutate(
+				cluster_id,
+				era_id,
+				|maybe_era_validations| -> DispatchResult {
+					maybe_era_validations.as_mut().ok_or(Error::<T>::NoEraValidation)?.status =
+						EraValidationStatus::PayoutInProgress;
+					Ok(())
+				},
+			)?;
 
 			Ok(())
 		}
