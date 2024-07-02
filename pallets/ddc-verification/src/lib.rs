@@ -10,6 +10,7 @@
 #![recursion_limit = "256"]
 
 use core::str;
+
 use ddc_primitives::{
 	traits::{ClusterManager, NodeVisitor, PayoutVisitor, ValidatorVisitor},
 	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeParams, NodePubKey,
@@ -24,10 +25,9 @@ use frame_system::{
 	pallet_prelude::*,
 };
 pub use pallet::*;
-use polkadot_ckb_merkle_mountain_range::MerkleProof;
 use polkadot_ckb_merkle_mountain_range::{
 	util::{MemMMR, MemStore},
-	MMR,
+	MerkleProof, MMR,
 };
 use scale_info::prelude::{format, string::String};
 use serde::{Deserialize, Serialize};
@@ -447,6 +447,12 @@ pub mod pallet {
 		pub end: i64,
 	}
 
+	pub struct BatchPayout<T: Config> {
+		pub(crate) batch_index: BatchIndex,
+		pub(crate) payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
+		pub(crate) batch_proof: MMRProof,
+	}
+
 	/// Node activity of a node.
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
@@ -747,7 +753,7 @@ pub mod pallet {
 
 			// todo! factor out as macro as this is repetitive
 			match Self::prepare_send_charging_customers_batch(&cluster_id) {
-				Ok(Some((era_id, batch_index, payers, batch_proof))) => {
+				Ok(Some((era_id, batch_payout))) => {
 					log::info!(
 						"🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
 						cluster_id,
@@ -758,9 +764,9 @@ pub mod pallet {
 						signer.send_signed_transaction(|_acc| Call::send_charging_customers_batch {
 							cluster_id,
 							era_id,
-							batch_index,
-							payers: payers.clone(),
-							batch_proof: batch_proof.clone(),
+							batch_index: batch_payout.batch_index,
+							payers: batch_payout.payers.clone(),
+							batch_proof: batch_payout.batch_proof.clone(),
 						}) {
 						match res {
 							Ok(_) => {
@@ -782,7 +788,7 @@ pub mod pallet {
 								errors.push(OCWError::SendChargingCustomersBatchTransactionError {
 									cluster_id,
 									era_id,
-									batch_index,
+									batch_index: batch_payout.batch_index,
 								});
 							},
 						}
@@ -1123,8 +1129,8 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
-					== PayoutState::Initialized
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+					PayoutState::Initialized
 				{
 					if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
 						Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
@@ -1159,15 +1165,12 @@ pub mod pallet {
 		#[allow(dead_code)]
 		pub(crate) fn prepare_send_charging_customers_batch(
 			cluster_id: &ClusterId,
-		) -> Result<
-			Option<(DdcEra, BatchIndex, Vec<(T::AccountId, BucketId, CustomerUsage)>, MMRProof)>,
-			OCWError,
-		> {
+		) -> Result<Option<(DdcEra, BatchPayout<T>)>, OCWError> {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
-					== PayoutState::ChargingCustomers
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+					PayoutState::ChargingCustomers
 				{
 					if let Some((
 						_customers_activity_in_consensus,
@@ -1203,9 +1206,9 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
-					== PayoutState::ChargingCustomers
-					&& T::PayoutVisitor::all_customer_batches_processed(cluster_id, era_id)
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+					PayoutState::ChargingCustomers &&
+					T::PayoutVisitor::all_customer_batches_processed(cluster_id, era_id)
 				{
 					return Ok(Some(era_id));
 				}
@@ -1219,8 +1222,8 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
-					== PayoutState::CustomersChargedWithFees
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+					PayoutState::CustomersChargedWithFees
 				{
 					if let Some((
 						_,
@@ -1281,9 +1284,9 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
-					== PayoutState::RewardingProviders
-					&& T::PayoutVisitor::all_provider_batches_processed(cluster_id, era_id)
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+					PayoutState::RewardingProviders &&
+					T::PayoutVisitor::all_provider_batches_processed(cluster_id, era_id)
 				{
 					return Ok(Some(era_id));
 				}
@@ -1297,8 +1300,8 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
-					== PayoutState::ProvidersRewarded
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+					PayoutState::ProvidersRewarded
 				{
 					return Ok(Some(era_id));
 				}
@@ -1493,9 +1496,9 @@ pub mod pallet {
 			let mut end_era: i64 = Default::default();
 
 			for (stored_cluster_id, era_id, validation) in EraValidations::<T>::iter() {
-				if stored_cluster_id == *cluster_id
-					&& validation.status == status
-					&& (smallest_era_id.is_none() || era_id < smallest_era_id.unwrap())
+				if stored_cluster_id == *cluster_id &&
+					validation.status == status &&
+					(smallest_era_id.is_none() || era_id < smallest_era_id.unwrap())
 				{
 					smallest_era_id = Some(era_id);
 					start_era = validation.start_era;

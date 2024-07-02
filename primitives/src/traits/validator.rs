@@ -1,7 +1,7 @@
 use frame_system::Config;
 use sp_std::prelude::*;
 
-use crate::{BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, MMRProof};
+use crate::{BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeUsage};
 
 pub trait ValidatorVisitor<T: Config> {
 	fn setup_validators(validators: Vec<T::AccountId>);

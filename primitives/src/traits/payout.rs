@@ -1,8 +1,8 @@
 use sp_runtime::DispatchResult;
 
 use crate::{
-	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, MMRProof,
-	PayoutError, PayoutState,
+	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeUsage, PayoutError,
+	PayoutState,
 };
 
 pub trait PayoutProcessor<T: frame_system::Config> {}

@@ -1665,7 +1665,6 @@ fn proof_merkle_leaf_works() {
 		let e: ActivityHash = [4; 32];
 		let f: ActivityHash = [5; 32];
 
-		let mmr_size: u64 = 19;
 		let leaves = [a, b, c, d, e];
 		let store = MemStore::default();
 		let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
@@ -1686,7 +1685,7 @@ fn proof_merkle_leaf_works() {
 		assert!(DdcVerification::proof_merkle_leaf(
 			root,
 			&MMRProof {
-				mmr_size,
+				mmr_size: mmr.mmr_size(),
 				proof: mmr.gen_proof(position.clone()).unwrap().proof_items().to_vec(),
 				leaf_with_position: leaf_position[0]
 			}
