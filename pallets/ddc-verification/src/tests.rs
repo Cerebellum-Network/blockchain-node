@@ -584,6 +584,35 @@ fn test_get_consensus_nodes_activity_success() {
 }
 
 #[test]
+fn test_get_consensus_customers_activity_empty() {
+	let cluster_id = ClusterId::from([1; 20]);
+	let era_id = 1;
+	let min_nodes = 3;
+	let threshold = Percent::from_percent(67);
+
+	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
+	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
+	let node_pubkey_2 = NodePubKey::StoragePubKey(AccountId32::new([2; 32]));
+
+	let customers_activity = vec![
+		(node_pubkey_0.clone(), Vec::<CustomerActivity>::new()),
+		(node_pubkey_1.clone(), Vec::<CustomerActivity>::new()),
+		(node_pubkey_2.clone(), Vec::<CustomerActivity>::new()),
+	];
+
+	let result = DdcVerification::get_consensus_for_activities(
+		&cluster_id,
+		era_id,
+		&customers_activity,
+		min_nodes,
+		threshold,
+	);
+	assert!(result.is_ok());
+	let consensus_activities = result.unwrap();
+	assert_eq!(consensus_activities.len(), 0);
+}
+
+#[test]
 fn test_get_consensus_customers_activity_not_enough_nodes() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
@@ -1051,6 +1080,15 @@ fn test_convert_to_batch_merkle_roots() {
 		)
 		.unwrap(),
 	];
+
+	assert_eq!(result_roots, expected_roots);
+}
+
+#[test]
+fn test_convert_to_batch_merkle_roots_empty() {
+	let result_roots =
+		DdcVerification::convert_to_batch_merkle_roots(Vec::<Vec<NodeActivity>>::new()).unwrap();
+	let expected_roots: Vec<ActivityHash> = Vec::<ActivityHash>::new();
 
 	assert_eq!(result_roots, expected_roots);
 }
@@ -1652,6 +1690,16 @@ fn create_merkle_root_works() {
 				255, 15, 237, 252, 116, 39, 186, 26, 40, 154, 180, 110, 185, 7
 			]
 		);
+	});
+}
+
+#[test]
+fn create_merkle_root_empty() {
+	new_test_ext().execute_with(|| {
+		let leaves = Vec::<ActivityHash>::new();
+		let root = DdcVerification::create_merkle_root(&leaves).unwrap();
+
+		assert_eq!(root, ActivityHash::default());
 	});
 }
 
