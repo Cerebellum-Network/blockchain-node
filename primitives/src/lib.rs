@@ -241,6 +241,13 @@ pub struct NodeUsage {
 	pub number_of_gets: u64,
 }
 
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
+pub struct MMRProof {
+	pub mmr_size: u64, // todo! factor this into verification pallet config
+	pub proof: Vec<ActivityHash>,
+	pub leaf_with_position: (u64, ActivityHash),
+}
+
 #[derive(Debug, PartialEq)]
 pub enum NodeRepositoryError {
 	StorageNodeAlreadyExists,

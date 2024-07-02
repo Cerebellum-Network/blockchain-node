@@ -13,8 +13,8 @@ use core::str;
 
 use ddc_primitives::{
 	traits::{ClusterManager, NodeVisitor, PayoutVisitor, ValidatorVisitor},
-	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, NodeParams, NodePubKey, NodeUsage,
-	PayoutState, StorageNodeMode, StorageNodeParams,
+	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeParams, NodePubKey,
+	NodeUsage, PayoutState, StorageNodeMode, StorageNodeParams,
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -447,6 +447,12 @@ pub mod pallet {
 		pub end: i64,
 	}
 
+	pub struct BatchPayout<T: Config> {
+		pub(crate) batch_index: BatchIndex,
+		pub(crate) payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
+		pub(crate) batch_proof: MMRProof,
+	}
+
 	/// Node activity of a node.
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
@@ -726,6 +732,63 @@ pub mod pallet {
 								errors.push(OCWError::BeginChargingCustomersTransactionError {
 									cluster_id,
 									era_id,
+								});
+							},
+						}
+					} else {
+						log::error!("🦀 No account available to sign the transaction");
+						errors.push(OCWError::NoAvailableSigner);
+					}
+				},
+				Ok(None) => {
+					log::info!(
+						"🦀 No era for begin_charging_customers for cluster_id: {:?}",
+						cluster_id
+					);
+				},
+				Err(e) => {
+					errors.push(e);
+				},
+			}
+
+			// todo! factor out as macro as this is repetitive
+			match Self::prepare_send_charging_customers_batch(&cluster_id) {
+				Ok(Some((era_id, batch_payout))) => {
+					log::info!(
+						"🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+
+					if let Some((_, res)) =
+						signer.send_signed_transaction(|_acc| Call::send_charging_customers_batch {
+							cluster_id,
+							era_id,
+							batch_index: batch_payout.batch_index,
+							payers: batch_payout.payers.clone(),
+							batch_proof: batch_payout.batch_proof.clone(),
+						}) {
+						match res {
+							Ok(_) => {
+								// Extrinsic call succeeded
+								log::info!(
+									"🚀 Sent send_charging_customers_batch successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+							},
+							Err(e) => {
+								log::error!(
+										"🦀 Error to post send_charging_customers_batch for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+								// Extrinsic call failed
+								errors.push(OCWError::SendChargingCustomersBatchTransactionError {
+									cluster_id,
+									era_id,
+									batch_index: batch_payout.batch_index,
 								});
 							},
 						}
@@ -1108,7 +1171,7 @@ pub mod pallet {
 		#[allow(dead_code)]
 		pub(crate) fn prepare_send_charging_customers_batch(
 			cluster_id: &ClusterId,
-		) -> Result<Option<(DdcEra, BatchIndex)>, OCWError> {
+		) -> Result<Option<(DdcEra, BatchPayout<T>)>, OCWError> {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
@@ -1424,11 +1487,12 @@ pub mod pallet {
 		/// - `leaf`: Leaf of the tree
 		pub(crate) fn proof_merkle_leaf(
 			root: ActivityHash,
-			proof: MerkleProof<ActivityHash, MergeActivityHash>,
-			leaf_with_position: Vec<(u64, ActivityHash)>,
+			batch_proof: &MMRProof,
 		) -> Result<bool, Error<T>> {
+			let proof: MerkleProof<ActivityHash, MergeActivityHash> =
+				MerkleProof::new(batch_proof.mmr_size, batch_proof.proof.clone());
 			proof
-				.verify(root, leaf_with_position)
+				.verify(root, vec![batch_proof.leaf_with_position])
 				.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
 		}
 
@@ -2205,17 +2269,14 @@ pub mod pallet {
 
 		#[pallet::call_index(5)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		// todo! remove clippy::too_many_arguments
-		#[allow(clippy::too_many_arguments)]
+																			   // todo! remove clippy::too_many_arguments
 		pub fn send_charging_customers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
 			payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
-			mmr_size: u64,
-			proof: Vec<ActivityHash>,
-			leaf_with_position: (u64, ActivityHash),
+			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
@@ -2224,10 +2285,8 @@ pub mod pallet {
 				cluster_id,
 				era_id,
 				batch_index,
-				payers,
-				mmr_size,
-				proof,
-				leaf_with_position,
+				&payers,
+				batch_proof,
 			)
 		}
 
@@ -2265,17 +2324,13 @@ pub mod pallet {
 
 		#[pallet::call_index(8)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		// todo! remove clippy::too_many_arguments
-		#[allow(clippy::too_many_arguments)]
 		pub fn send_rewarding_providers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
 			payees: Vec<(T::AccountId, BucketId, NodeUsage)>,
-			mmr_size: u64,
-			proof: Vec<ActivityHash>,
-			leaf_with_position: (u64, ActivityHash),
+			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
@@ -2284,10 +2339,8 @@ pub mod pallet {
 				cluster_id,
 				era_id,
 				batch_index,
-				payees,
-				mmr_size,
-				proof,
-				leaf_with_position,
+				&payees,
+				batch_proof,
 			)
 		}
 
@@ -2360,15 +2413,14 @@ pub mod pallet {
 			era_id: DdcEra,
 			_batch_index: BatchIndex,
 			_payers: &[(T::AccountId, BucketId, CustomerUsage)],
-			proof: MerkleProof<ActivityHash, MergeActivityHash>,
-			leaf_with_position: (u64, ActivityHash),
+			batch_proof: &MMRProof,
 		) -> bool {
 			let validation_era = EraValidations::<T>::get(cluster_id, era_id);
 
 			match validation_era {
 				Some(valid_era) => {
 					let root = valid_era.payers_merkle_root_hash;
-					Self::proof_merkle_leaf(root, proof, vec![leaf_with_position]).unwrap_or(false)
+					Self::proof_merkle_leaf(root, batch_proof).unwrap_or(false)
 				},
 				None => false,
 			}
@@ -2380,15 +2432,14 @@ pub mod pallet {
 			era_id: DdcEra,
 			_batch_index: BatchIndex,
 			_payees: &[(T::AccountId, BucketId, NodeUsage)],
-			proof: MerkleProof<ActivityHash, MergeActivityHash>,
-			leaf_with_position: (u64, ActivityHash),
+			batch_proof: &MMRProof,
 		) -> bool {
 			let validation_era = EraValidations::<T>::get(cluster_id, era_id);
 
 			match validation_era {
 				Some(valid_era) => {
 					let root = valid_era.payees_merkle_root_hash;
-					Self::proof_merkle_leaf(root, proof, vec![leaf_with_position]).unwrap_or(false)
+					Self::proof_merkle_leaf(root, batch_proof).unwrap_or(false)
 				},
 				None => false,
 			}
