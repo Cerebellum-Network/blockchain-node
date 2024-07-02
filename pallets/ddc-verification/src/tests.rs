@@ -1714,16 +1714,11 @@ fn proof_merkle_leaf_works() {
 		let f: ActivityHash = [5; 32];
 
 		let leaves = [a, b, c, d, e];
-
 		let store = MemStore::default();
 		let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
 			MemMMR::<_, MergeActivityHash>::new(0, &store);
-		let leaf_position_map: Vec<(ActivityHash, u64)> = leaves
-			.iter()
-			.map(
-				|a| (*a, mmr.push(*a).unwrap()), // todo! Need to remove unwrap
-			)
-			.collect();
+		let leaf_position_map: Vec<(ActivityHash, u64)> =
+			leaves.iter().map(|a| (*a, mmr.push(*a).unwrap())).collect();
 
 		let leaf_position: Vec<(u64, ActivityHash)> = leaf_position_map
 			.into_iter()
@@ -1733,18 +1728,26 @@ fn proof_merkle_leaf_works() {
 		let position: Vec<u64> = leaf_position.clone().into_iter().map(|(p, _)| p).collect();
 		let root = mmr.get_root().unwrap();
 
+		assert_eq!(leaf_position.len(), 1);
+		assert_eq!(position.len(), 1);
 		assert!(DdcVerification::proof_merkle_leaf(
 			root,
-			mmr.gen_proof(position.clone()).unwrap(),
-			leaf_position
+			&MMRProof {
+				mmr_size: mmr.mmr_size(),
+				proof: mmr.gen_proof(position.clone()).unwrap().proof_items().to_vec(),
+				leaf_with_position: leaf_position[0]
+			}
 		)
 		.unwrap());
 
 		assert_noop!(
 			DdcVerification::proof_merkle_leaf(
 				root,
-				mmr.gen_proof(position).unwrap(),
-				vec![(6, f)]
+				&MMRProof {
+					mmr_size: 0,
+					proof: mmr.gen_proof(position).unwrap().proof_items().to_vec(),
+					leaf_with_position: (6, f)
+				}
 			),
 			Error::<Test>::FailToVerifyMerkleProof
 		);

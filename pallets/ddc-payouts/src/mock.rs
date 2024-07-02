@@ -9,8 +9,8 @@ use ddc_primitives::{
 		pallet::PalletVisitor,
 		ClusterQuery, ValidatorVisitor,
 	},
-	ActivityHash, ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, MergeActivityHash, NodeType, DOLLARS,
+	ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
+	ClusterProtocolParams, ClusterStatus, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -153,8 +153,7 @@ where
 		_era: DdcEra,
 		_batch_index: BatchIndex,
 		_payers: &[(T::AccountId, BucketId, CustomerUsage)],
-		_proof: MerkleProof<ActivityHash, MergeActivityHash>,
-		_leaf_with_position: (u64, ActivityHash),
+		_batch_proof: &MMRProof,
 	) -> bool {
 		true
 	}
@@ -164,8 +163,7 @@ where
 		_era: DdcEra,
 		_batch_index: BatchIndex,
 		_payees: &[(T::AccountId, BucketId, NodeUsage)],
-		_proof: MerkleProof<ActivityHash, MergeActivityHash>,
-		_leaf_with_position: (u64, ActivityHash),
+		_batch_proof: &MMRProof,
 	) -> bool {
 		true
 	}
