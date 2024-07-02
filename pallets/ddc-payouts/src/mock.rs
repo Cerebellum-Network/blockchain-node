@@ -9,8 +9,8 @@ use ddc_primitives::{
 		pallet::PalletVisitor,
 		ClusterQuery, ValidatorVisitor,
 	},
-	ActivityHash, ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, MergeActivityHash, NodeType, DOLLARS,
+	ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
+	ClusterProtocolParams, ClusterStatus, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -153,8 +153,7 @@ where
 		_era: DdcEra,
 		_batch_index: BatchIndex,
 		_payers: &[(T::AccountId, BucketId, CustomerUsage)],
-		_proof: MerkleProof<ActivityHash, MergeActivityHash>,
-		_leaf_with_position: (u64, ActivityHash),
+		_batch_proof: &MMRProof,
 	) -> bool {
 		true
 	}
@@ -164,8 +163,7 @@ where
 		_era: DdcEra,
 		_batch_index: BatchIndex,
 		_payees: &[(T::AccountId, BucketId, NodeUsage)],
-		_proof: MerkleProof<ActivityHash, MergeActivityHash>,
-		_leaf_with_position: (u64, ActivityHash),
+		_batch_proof: &MMRProof,
 	) -> bool {
 		true
 	}
@@ -210,10 +208,10 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		temp = ACCOUNT_ID_5.to_ne_bytes();
 		let account_5 = T::AccountId::decode(&mut &temp[..]).unwrap();
 
-		if content_owner == account_1 ||
-			content_owner == account_3 ||
-			content_owner == account_4 ||
-			content_owner == account_5
+		if content_owner == account_1
+			|| content_owner == account_3
+			|| content_owner == account_4
+			|| content_owner == account_5
 		{
 			ensure!(amount > 1_000_000, DispatchError::BadOrigin); //  any error will do
 		}
@@ -446,9 +444,9 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 }
 
 pub fn get_fees(cluster_id: &ClusterId) -> ClusterFeesParams {
-	if *cluster_id == NO_FEE_CLUSTER_ID ||
-		*cluster_id == ONE_CLUSTER_ID ||
-		*cluster_id == CERE_CLUSTER_ID
+	if *cluster_id == NO_FEE_CLUSTER_ID
+		|| *cluster_id == ONE_CLUSTER_ID
+		|| *cluster_id == CERE_CLUSTER_ID
 	{
 		PRICING_FEES_ZERO
 	} else if *cluster_id == HIGH_FEES_CLUSTER_ID {

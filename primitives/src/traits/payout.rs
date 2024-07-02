@@ -1,9 +1,8 @@
-use scale_info::prelude::vec::Vec;
 use sp_runtime::DispatchResult;
 
 use crate::{
-	ActivityHash, BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutError,
-	PayoutState,
+	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, MMRProof,
+	PayoutError, PayoutState,
 };
 
 pub trait PayoutProcessor<T: frame_system::Config> {}
@@ -27,17 +26,13 @@ pub trait PayoutVisitor<T: frame_system::Config> {
 	) -> DispatchResult;
 
 	// todo! factor out into PayoutProcessor
-	// todo! remove clippy::too_many_arguments
-	#[allow(clippy::too_many_arguments)]
 	fn send_charging_customers_batch(
 		origin: T::AccountId,
 		cluster_id: ClusterId,
 		era_id: DdcEra,
 		batch_index: BatchIndex,
-		payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
-		mmr_size: u64,
-		proof: Vec<ActivityHash>,
-		leaf_with_position: (u64, ActivityHash),
+		payers: &[(T::AccountId, BucketId, CustomerUsage)],
+		batch_proof: MMRProof,
 	) -> DispatchResult;
 
 	// todo! factor out into PayoutProcessor
@@ -57,17 +52,13 @@ pub trait PayoutVisitor<T: frame_system::Config> {
 	) -> DispatchResult;
 
 	// todo! factor out into PayoutProcessor
-	// todo! remove clippy::too_many_arguments
-	#[allow(clippy::too_many_arguments)]
 	fn send_rewarding_providers_batch(
 		origin: T::AccountId,
 		cluster_id: ClusterId,
 		era_id: DdcEra,
 		batch_index: BatchIndex,
-		payees: Vec<(T::AccountId, BucketId, NodeUsage)>,
-		mmr_size: u64,
-		proof: Vec<ActivityHash>,
-		leaf_with_position: (u64, ActivityHash),
+		payees: &[(T::AccountId, BucketId, NodeUsage)],
+		batch_proof: MMRProof,
 	) -> DispatchResult;
 
 	// todo! factor out into PayoutProcessor

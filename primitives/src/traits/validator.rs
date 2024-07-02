@@ -1,11 +1,7 @@
 use frame_system::Config;
-use polkadot_ckb_merkle_mountain_range::MerkleProof;
 use sp_std::prelude::*;
 
-use crate::{
-	ActivityHash, BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MergeActivityHash,
-	NodeUsage,
-};
+use crate::{BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, MMRProof};
 
 pub trait ValidatorVisitor<T: Config> {
 	fn setup_validators(validators: Vec<T::AccountId>);
@@ -15,15 +11,13 @@ pub trait ValidatorVisitor<T: Config> {
 		era: DdcEra,
 		batch_index: BatchIndex,
 		payers: &[(T::AccountId, BucketId, CustomerUsage)],
-		proof: MerkleProof<ActivityHash, MergeActivityHash>,
-		leaf_with_position: (u64, ActivityHash),
+		batch_proof: &MMRProof,
 	) -> bool;
 	fn is_providers_batch_valid(
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
 		payees: &[(T::AccountId, BucketId, NodeUsage)],
-		proof: MerkleProof<ActivityHash, MergeActivityHash>,
-		leaf_with_position: (u64, ActivityHash),
+		batch_proof: &MMRProof,
 	) -> bool;
 }

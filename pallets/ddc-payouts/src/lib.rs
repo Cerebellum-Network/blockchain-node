@@ -15,7 +15,6 @@
 #![recursion_limit = "256"]
 
 pub mod weights;
-use polkadot_ckb_merkle_mountain_range::MerkleProof;
 
 use crate::weights::WeightInfo;
 
@@ -36,8 +35,8 @@ use ddc_primitives::{
 		pallet::PalletVisitor as PalletVisitorType,
 		payout::PayoutVisitor,
 	},
-	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, NodeUsage, PayoutError, PayoutState,
-	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
+	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeUsage, PayoutError,
+	PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -95,7 +94,7 @@ parameter_types! {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::{traits::ValidatorVisitor, ActivityHash};
+	use ddc_primitives::traits::ValidatorVisitor;
 	use frame_support::PalletId;
 	use sp_io::hashing::blake2_128;
 	use sp_runtime::traits::{AccountIdConversion, Zero};
@@ -377,17 +376,13 @@ pub mod pallet {
 		// + pass values by reference PayoutProcessor trait
 		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::send_charging_customers_batch(payers.len().saturated_into()))]
-		// todo! remove clippy::too_many_arguments
-		#[allow(clippy::too_many_arguments)]
 		pub fn send_charging_customers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
 			payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
-			mmr_size: u64,
-			proof: Vec<ActivityHash>,
-			leaf_with_position: (u64, ActivityHash),
+			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
@@ -419,8 +414,7 @@ pub mod pallet {
 					era,
 					batch_index,
 					&payers,
-					MerkleProof::new(mmr_size, proof),
-					leaf_with_position
+					&batch_proof
 				),
 				Error::<T>::BatchValidationFailed
 			);
@@ -695,17 +689,13 @@ pub mod pallet {
 		// + pass values by reference PayoutProcessor trait
 		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::send_rewarding_providers_batch(payees.len().saturated_into()))]
-		// todo! remove clippy::too_many_arguments
-		#[allow(clippy::too_many_arguments)]
 		pub fn send_rewarding_providers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
 			payees: Vec<(T::AccountId, BucketId, NodeUsage)>,
-			mmr_size: u64,
-			proof: Vec<ActivityHash>,
-			leaf_with_position: (u64, ActivityHash),
+			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
@@ -737,8 +727,7 @@ pub mod pallet {
 					era,
 					batch_index,
 					&payees,
-					MerkleProof::new(mmr_size, proof),
-					leaf_with_position
+					&batch_proof
 				),
 				Error::<T>::BatchValidationFailed
 			);
@@ -1033,8 +1022,8 @@ pub mod pallet {
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
-		total.storage = fraction_of_month *
-			(|| -> Option<u128> {
+		total.storage = fraction_of_month
+			* (|| -> Option<u128> {
 				(usage.stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)
@@ -1116,10 +1105,8 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
-			mmr_size: u64,
-			proof: Vec<ActivityHash>,
-			leaf_with_position: (u64, ActivityHash),
+			payers: &[(T::AccountId, BucketId, CustomerUsage)],
+			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::send_charging_customers_batch(
@@ -1127,10 +1114,8 @@ pub mod pallet {
 				cluster_id,
 				era_id,
 				batch_index,
-				payers,
-				mmr_size,
-				proof,
-				leaf_with_position,
+				(*payers).to_vec(),
+				batch_proof,
 			)
 		}
 
@@ -1165,10 +1150,8 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payees: Vec<(T::AccountId, BucketId, NodeUsage)>,
-			mmr_size: u64,
-			proof: Vec<ActivityHash>,
-			leaf_with_position: (u64, ActivityHash),
+			payees: &[(T::AccountId, BucketId, NodeUsage)],
+			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::send_rewarding_providers_batch(
@@ -1176,10 +1159,8 @@ pub mod pallet {
 				cluster_id,
 				era_id,
 				batch_index,
-				payees,
-				mmr_size,
-				proof,
-				leaf_with_position,
+				(*payees).to_vec(),
+				batch_proof,
 			)
 		}
 
