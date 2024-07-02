@@ -1400,6 +1400,10 @@ pub mod pallet {
 		pub(crate) fn create_merkle_root(
 			leaves: &[ActivityHash],
 		) -> Result<ActivityHash, OCWError> {
+			if leaves.is_empty() {
+				return Ok(ActivityHash::default());
+			}
+
 			let store = MemStore::default();
 			let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
 				MemMMR::<_, MergeActivityHash>::new(0, &store);
@@ -1924,9 +1928,16 @@ pub mod pallet {
 				// threshold
 				era_validation.payers_merkle_root_hash = payers_merkle_root_hash;
 				era_validation.payees_merkle_root_hash = payees_merkle_root_hash;
-				era_validation.status = EraValidationStatus::ReadyForPayout;
 				era_validation.start_era = era_activity.start;
 				era_validation.end_era = era_activity.end;
+
+				if payers_merkle_root_hash == ActivityHash::default() &&
+					payees_merkle_root_hash == payers_merkle_root_hash
+				{
+					era_validation.status = EraValidationStatus::PayoutSuccess;
+				} else {
+					era_validation.status = EraValidationStatus::ReadyForPayout;
+				}
 
 				should_deposit_ready_event = true;
 			}
