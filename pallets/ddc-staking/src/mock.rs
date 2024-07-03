@@ -28,7 +28,6 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage, DispatchError, DispatchResult, Perquintill,
 };
-use sp_std::collections::btree_map::BTreeMap;
 
 use crate::{self as pallet_ddc_staking, *};
 
@@ -376,104 +375,118 @@ where
 	}
 }
 
-pub struct ExtBuilder {
-	has_storages: bool,
-	stakes: BTreeMap<AccountId, Balance>,
-	storages: Vec<(AccountId, AccountId, Balance, ClusterId)>,
+// (stash, controller, cluster)
+#[allow(clippy::type_complexity)]
+pub(crate) type ClusterBond = (AccountId, AccountId, ClusterId);
+
+// (stash, controller, node, stake, cluster)
+#[allow(clippy::type_complexity)]
+pub(crate) type NodeBond = (AccountId, AccountId, NodePubKey, Balance, ClusterId);
+
+pub const CLUSTER_ID: [u8; 20] = [1; 20];
+
+pub const NODE_PUB_KEY_1: [u8; 32] = [12; 32];
+pub const NODE_STASH_1: u64 = 11;
+pub const NODE_CONTROLLER_1: u64 = 10;
+
+pub const NODE_PUB_KEY_2: [u8; 32] = [22; 32];
+pub const NODE_STASH_2: u64 = 21;
+pub const NODE_CONTROLLER_2: u64 = 20;
+
+pub const NODE_PUB_KEY_3: [u8; 32] = [32; 32];
+pub const NODE_STASH_3: u64 = 31;
+pub const NODE_CONTROLLER_3: u64 = 30;
+
+pub const NODE_PUB_KEY_4: [u8; 32] = [42; 32];
+pub const NODE_STASH_4: u64 = 41;
+pub const NODE_CONTROLLER_4: u64 = 40;
+
+pub const CLUSTER_STASH_1: u64 = 102;
+pub const CLUSTER_CONTROLLER_1: u64 = 101;
+
+pub const NODE_ENDOWMENT: u128 = 100;
+pub const CLUSTER_ENDOWMENT: u128 = 100;
+
+pub(crate) fn build_nodes_bondes() -> Vec<NodeBond> {
+	vec![
+		(
+			NODE_STASH_1,
+			NODE_CONTROLLER_1,
+			NodePubKey::StoragePubKey(StorageNodePubKey::from(NODE_PUB_KEY_1)),
+			NODE_ENDOWMENT,
+			ClusterId::from(CLUSTER_ID),
+		),
+		(
+			NODE_STASH_2,
+			NODE_CONTROLLER_2,
+			NodePubKey::StoragePubKey(StorageNodePubKey::from(NODE_PUB_KEY_2)),
+			NODE_ENDOWMENT,
+			ClusterId::from(CLUSTER_ID),
+		),
+		(
+			NODE_STASH_3,
+			NODE_CONTROLLER_3,
+			NodePubKey::StoragePubKey(StorageNodePubKey::from(NODE_PUB_KEY_3)),
+			NODE_ENDOWMENT,
+			ClusterId::from(CLUSTER_ID),
+		),
+		(
+			NODE_STASH_4,
+			NODE_CONTROLLER_4,
+			NodePubKey::StoragePubKey(StorageNodePubKey::from(NODE_PUB_KEY_4)),
+			NODE_ENDOWMENT,
+			ClusterId::from(CLUSTER_ID),
+		),
+	]
 }
 
-impl Default for ExtBuilder {
-	fn default() -> Self {
-		Self { has_storages: true, stakes: Default::default(), storages: Default::default() }
-	}
+pub(crate) fn build_cluster_bondes() -> Vec<ClusterBond> {
+	vec![(CLUSTER_STASH_1, CLUSTER_CONTROLLER_1, ClusterId::from(CLUSTER_ID))]
 }
+
+pub struct ExtBuilder;
 
 impl ExtBuilder {
-	pub fn has_storages(mut self, has: bool) -> Self {
-		self.has_storages = has;
-		self
-	}
-	pub fn set_stake(mut self, who: AccountId, stake: Balance) -> Self {
-		self.stakes.insert(who, stake);
-		self
-	}
-	pub fn add_storage(
-		mut self,
-		stash: AccountId,
-		controller: AccountId,
-		stake: Balance,
-		cluster: ClusterId,
-	) -> Self {
-		self.storages.push((stash, controller, stake, cluster));
-		self
-	}
-	pub fn build(self) -> TestExternalities {
+	pub fn build(
+		self,
+		clusters_bonds: Vec<ClusterBond>,
+		nodes_bondes: Vec<NodeBond>,
+	) -> TestExternalities {
 		sp_tracing::try_init_simple();
-
 		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
-		let _ = pallet_balances::GenesisConfig::<Test> {
-			balances: vec![
-				(1, 100),
-				(2, 100),
-				(3, 100),
-				(4, 100),
-				// storage controllers
-				(10, 100),
-				(20, 100),
-				(30, 100),
-				(40, 100),
-				// storage stashes
-				(11, 100),
-				(21, 100),
-				(31, 100),
-				(41, 100),
-			],
-		}
-		.assimilate_storage(&mut storage);
-		let mut storages = vec![];
-		if self.has_storages {
-			storages = vec![
-				// (stash, controller, node, stake, cluster)
-				(
-					11,
-					10,
-					NodePubKey::StoragePubKey(StorageNodePubKey::new([12; 32])),
-					100,
-					ClusterId::from([1; 20]),
-				),
-				(
-					21,
-					20,
-					NodePubKey::StoragePubKey(StorageNodePubKey::new([22; 32])),
-					100,
-					ClusterId::from([1; 20]),
-				),
-				(
-					31,
-					30,
-					NodePubKey::StoragePubKey(StorageNodePubKey::new([32; 32])),
-					100,
-					ClusterId::from([1; 20]),
-				),
-				(
-					41,
-					40,
-					NodePubKey::StoragePubKey(StorageNodePubKey::new([42; 32])),
-					100,
-					ClusterId::from([1; 20]),
-				),
-			];
+		let mut balances: Vec<(AccountId, Balance)> = vec![(1, 100), (2, 100), (3, 100), (4, 100)]; // users balances
+
+		for (stash, controller, _) in clusters_bonds.iter() {
+			balances.push((stash.clone(), CLUSTER_ENDOWMENT));
+			balances.push((controller.clone(), CLUSTER_ENDOWMENT));
 		}
 
-		let _ = pallet_ddc_staking::GenesisConfig::<Test> { storages, clusters: vec![] }
-			.assimilate_storage(&mut storage);
+		for (stash, controller, _, _, _) in nodes_bondes.iter() {
+			balances.push((stash.clone(), NODE_ENDOWMENT));
+			balances.push((controller.clone(), NODE_ENDOWMENT));
+		}
+
+		let _ =
+			pallet_balances::GenesisConfig::<Test> { balances }.assimilate_storage(&mut storage);
+
+		let _ = pallet_ddc_staking::GenesisConfig::<Test> {
+			storages: nodes_bondes,
+			clusters: clusters_bonds,
+		}
+		.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}
-	pub fn build_and_execute(self, test: impl FnOnce()) {
+
+	pub fn build_and_execute(
+		self,
+		clusters_bonds: Vec<ClusterBond>,
+		nodes_bondes: Vec<NodeBond>,
+		test: impl FnOnce(),
+	) {
 		sp_tracing::try_init_simple();
-		let mut ext = self.build();
+		let mut ext = self.build(clusters_bonds, nodes_bondes);
 		ext.execute_with(test);
 		ext.execute_with(post_condition);
 	}

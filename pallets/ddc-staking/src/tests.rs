@@ -11,8 +11,9 @@ pub const INIT_TIMESTAMP: u64 = 30_000;
 
 #[test]
 fn test_default_staking_ledger() {
-	// Verifies initial conditions of mock
-	ExtBuilder::default().build_and_execute(|| {
+	let nodes_bondes = build_nodes_bondes();
+	let clusters_bonds = build_cluster_bondes();
+	ExtBuilder.build_and_execute(clusters_bonds, nodes_bondes, || {
 		let default_staking_ledger = StakingLedger::<
 			<Test as frame_system::Config>::AccountId,
 			BalanceOf<Test>,
@@ -26,8 +27,9 @@ fn test_default_staking_ledger() {
 
 #[test]
 fn basic_setup_works() {
-	// Verifies initial conditions of mock
-	ExtBuilder::default().build_and_execute(|| {
+	let nodes_bondes = build_nodes_bondes();
+	let clusters_bonds = build_cluster_bondes();
+	ExtBuilder.build_and_execute(clusters_bonds, nodes_bondes, || {
 		// Account 11 is stashed and locked, and account 10 is the controller
 		assert_eq!(DdcStaking::bonded(11), Some(10));
 		// Account 21 is stashed and locked, and account 20 is the controller
@@ -64,7 +66,9 @@ fn basic_setup_works() {
 
 #[test]
 fn change_controller_works() {
-	ExtBuilder::default().build_and_execute(|| {
+	let nodes_bondes = build_nodes_bondes();
+	let clusters_bonds = build_cluster_bondes();
+	ExtBuilder.build_and_execute(clusters_bonds, nodes_bondes, || {
 		// 10 and 11 are bonded as stash controller.
 		assert_eq!(DdcStaking::bonded(11), Some(10));
 
@@ -91,7 +95,9 @@ fn change_controller_works() {
 
 #[test]
 fn not_enough_inital_bond_flow() {
-	ExtBuilder::default().build_and_execute(|| {
+	let nodes_bondes = build_nodes_bondes();
+	let clusters_bonds = build_cluster_bondes();
+	ExtBuilder.build_and_execute(clusters_bonds, nodes_bondes, || {
 		System::set_block_number(1);
 
 		// Add new Storage participant, account 3 controlled by 4 with node 5.
@@ -156,7 +162,9 @@ fn not_enough_inital_bond_flow() {
 
 #[test]
 fn unbonding_edge_cases_work() {
-	ExtBuilder::default().build_and_execute(|| {
+	let nodes_bondes = build_nodes_bondes();
+	let clusters_bonds = build_cluster_bondes();
+	ExtBuilder.build_and_execute(clusters_bonds, nodes_bondes, || {
 		System::set_block_number(1);
 
 		// Add new Storage participant, account 3 controlled by 4 with node 5.
@@ -182,7 +190,9 @@ fn unbonding_edge_cases_work() {
 
 #[test]
 fn set_node_works() {
-	ExtBuilder::default().build_and_execute(|| {
+	let nodes_bondes = build_nodes_bondes();
+	let clusters_bonds = build_cluster_bondes();
+	ExtBuilder.build_and_execute(clusters_bonds, nodes_bondes, || {
 		System::set_block_number(1);
 		// 10 and 11 are bonded as stash controller.
 		assert_eq!(DdcStaking::bonded(11), Some(10));
@@ -221,7 +231,9 @@ fn set_node_works() {
 
 #[test]
 fn cancel_previous_chill_works() {
-	ExtBuilder::default().build_and_execute(|| {
+	let nodes_bondes = build_nodes_bondes();
+	let clusters_bonds = build_cluster_bondes();
+	ExtBuilder.build_and_execute(clusters_bonds, nodes_bondes, || {
 		System::set_block_number(1);
 
 		let cluster_id = ClusterId::from([1; 20]);
@@ -260,7 +272,9 @@ fn cancel_previous_chill_works() {
 
 #[test]
 fn staking_should_work() {
-	ExtBuilder::default().build_and_execute(|| {
+	let nodes_bondes = build_nodes_bondes();
+	let clusters_bonds = build_cluster_bondes();
+	ExtBuilder.build_and_execute(clusters_bonds, nodes_bondes, || {
 		System::set_block_number(1);
 
 		// Put some money in account that we'll use.
@@ -395,7 +409,9 @@ fn staking_should_work() {
 
 #[test]
 fn storage_full_unbonding_works() {
-	ExtBuilder::default().build_and_execute(|| {
+	let nodes_bondes = build_nodes_bondes();
+	let clusters_bonds = build_cluster_bondes();
+	ExtBuilder.build_and_execute(clusters_bonds, nodes_bondes, || {
 		System::set_block_number(1);
 
 		let provider_stash: u64 = 3;
@@ -483,8 +499,9 @@ fn storage_full_unbonding_works() {
 
 #[test]
 fn staking_creator_works() {
-	// Verifies initial conditions of mock
-	ExtBuilder::default().build_and_execute(|| {
+	let nodes_bondes = build_nodes_bondes();
+	let clusters_bonds = build_cluster_bondes();
+	ExtBuilder.build_and_execute(clusters_bonds, nodes_bondes, || {
 		let stash: u64 = 1;
 		let controller: u64 = 2;
 		let cluster_id = ClusterId::from([1; 20]);
@@ -505,8 +522,9 @@ fn staking_creator_works() {
 
 #[test]
 fn staking_visitor_works() {
-	// Verifies initial conditions of mock
-	ExtBuilder::default().build_and_execute(|| {
+	let nodes_bondes = build_nodes_bondes();
+	let clusters_bonds = build_cluster_bondes();
+	ExtBuilder.build_and_execute(clusters_bonds, nodes_bondes, || {
 		let cluster_id = ClusterId::from([1; 20]);
 		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32]));
 
