@@ -12,7 +12,7 @@ use ddc_primitives::{
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus,
 	ClusterNodesStats, ClusterParams, ClusterPricingParams, ClusterProtocolParams, ClusterStatus,
-	NodeParams, NodePubKey, StorageNodePubKey,
+	NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime,
@@ -22,7 +22,7 @@ use frame_support::{
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use lazy_static::lazy_static;
 use pallet_ddc_clusters::cluster::Cluster;
-use pallet_ddc_nodes::{Node, NodeRepository, NodeRepositoryError};
+use pallet_ddc_nodes::{Node, NodeRepository, NodeRepositoryError, StorageNode};
 use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -53,6 +53,7 @@ construct_runtime!(
 		Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
 		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 		DdcStaking: pallet_ddc_staking::{Pallet, Call, Config<T>, Storage, Event<T>},
+		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
 		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Config<T>, Event<T>},
 	}
 );
@@ -169,9 +170,15 @@ impl pallet_contracts::Config for Test {
 
 impl pallet_insecure_randomness_collective_flip::Config for Test {}
 
+impl pallet_ddc_nodes::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type StakingVisitor = pallet_ddc_staking::Pallet<Test>;
+	type WeightInfo = ();
+}
+
 impl pallet_ddc_clusters::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
-	type NodeRepository = MockNodeRepository;
+	type NodeRepository = pallet_ddc_nodes::Pallet<Test>;
 	type StakingVisitor = pallet_ddc_staking::Pallet<Test>;
 	type StakerCreator = pallet_ddc_staking::Pallet<Test>;
 	type Currency = Balances;
@@ -187,56 +194,56 @@ impl crate::pallet::Config for Test {
 	type WeightInfo = ();
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
-	type NodeVisitor = MockNodeVisitor;
-	type NodeCreator = TestNodeCreator;
-	type ClusterCreator = TestClusterCreator;
+	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
+	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
 	type ClusterBondingAmount = ClusterBondingAmount;
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
-pub struct TestNodeCreator;
-pub struct TestClusterCreator;
-pub struct TestClusterProtocol;
+// pub struct TestNodeCreator;
+// pub struct TestClusterCreator;
+// pub struct TestClusterProtocol;
 
-pub struct MockNodeRepository;
-impl<T: Config> NodeRepository<T> for MockNodeRepository {
-	fn create(node: Node<T>) -> Result<(), NodeRepositoryError> {
-		unimplemented!()
-	}
-	fn get(node_pub_key: NodePubKey) -> Result<Node<T>, NodeRepositoryError> {
-		unimplemented!()
-	}
-	fn update(node: Node<T>) -> Result<(), NodeRepositoryError> {
-		unimplemented!()
-	}
-	fn delete(node_pub_key: NodePubKey) -> Result<(), NodeRepositoryError> {
-		unimplemented!()
-	}
-}
+// pub struct MockNodeRepository;
+// impl<T: Config> NodeRepository<T> for MockNodeRepository {
+// 	fn create(node: Node<T>) -> Result<(), NodeRepositoryError> {
+// 		unimplemented!()
+// 	}
+// 	fn get(node_pub_key: NodePubKey) -> Result<Node<T>, NodeRepositoryError> {
+// 		unimplemented!()
+// 	}
+// 	fn update(node: Node<T>) -> Result<(), NodeRepositoryError> {
+// 		unimplemented!()
+// 	}
+// 	fn delete(node_pub_key: NodePubKey) -> Result<(), NodeRepositoryError> {
+// 		unimplemented!()
+// 	}
+// }
 
-impl<T: Config> NodeCreator<T> for TestNodeCreator {
-	fn create_node(
-		_node_pub_key: NodePubKey,
-		_provider_id: T::AccountId,
-		_node_params: NodeParams,
-	) -> DispatchResult {
-		Ok(())
-	}
-}
+// impl<T: Config> NodeCreator<T> for TestNodeCreator {
+// 	fn create_node(
+// 		_node_pub_key: NodePubKey,
+// 		_provider_id: T::AccountId,
+// 		_node_params: NodeParams,
+// 	) -> DispatchResult {
+// 		Ok(())
+// 	}
+// }
 
-impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
-	fn create_cluster(
-		_cluster_id: ClusterId,
-		_cluster_manager_id: T::AccountId,
-		_cluster_reserve_id: T::AccountId,
-		_cluster_params: ClusterParams<T::AccountId>,
-		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
-	) -> DispatchResult {
-		Ok(())
-	}
-}
+// impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
+// 	fn create_cluster(
+// 		_cluster_id: ClusterId,
+// 		_cluster_manager_id: T::AccountId,
+// 		_cluster_reserve_id: T::AccountId,
+// 		_cluster_params: ClusterParams<T::AccountId>,
+// 		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
+// 	) -> DispatchResult {
+// 		Ok(())
+// 	}
+// }
 
 lazy_static! {
 	// We have to use the ReentrantMutex as every test's thread that needs to perform some configuration on the mock acquires the lock at least 2 times:
@@ -307,6 +314,9 @@ pub(crate) type BuiltNodeBond = (AccountId, AccountId, NodePubKey, Balance, Clus
 #[allow(clippy::type_complexity)]
 pub(crate) type BuiltCluster = (Cluster<AccountId>, ClusterProtocolParams<Balance, BlockNumber>);
 
+#[allow(clippy::type_complexity)]
+pub type BuiltNode = (NodePubKey, StorageNode<Test>, ClusterNodeStatus, ClusterNodeKind);
+
 pub const KEY_1: [u8; 32] = [1; 32];
 pub const KEY_2: [u8; 32] = [2; 32];
 pub const KEY_3: [u8; 32] = [3; 32];
@@ -334,8 +344,8 @@ pub const CLUSTER_CONTROLLER: [u8; 32] = [101; 32];
 
 pub const ENDOWMENT: u128 = 100;
 
-pub(crate) fn build_default_setup() -> (Vec<BuiltCluster>, Vec<BuiltClusterBond>, Vec<BuiltNodeBond>)
-{
+pub(crate) fn build_default_setup(
+) -> (Vec<BuiltCluster>, Vec<Vec<BuiltNode>>, Vec<BuiltClusterBond>, Vec<BuiltNodeBond>) {
 	(
 		vec![build_cluster(
 			CLUSTER_ID,
@@ -356,6 +366,40 @@ pub(crate) fn build_default_setup() -> (Vec<BuiltCluster>, Vec<BuiltClusterBond>
 			},
 			ClusterStatus::Unbonded,
 		)],
+		vec![vec![
+			build_cluster_node(
+				NODE_PUB_KEY_1,
+				NODE_CONTROLLER_1,
+				StorageNodeParams::default(),
+				CLUSTER_ID,
+				ClusterNodeStatus::ValidationSucceeded,
+				ClusterNodeKind::Genesis,
+			),
+			build_cluster_node(
+				NODE_PUB_KEY_2,
+				NODE_CONTROLLER_2,
+				StorageNodeParams::default(),
+				CLUSTER_ID,
+				ClusterNodeStatus::ValidationSucceeded,
+				ClusterNodeKind::Genesis,
+			),
+			build_cluster_node(
+				NODE_PUB_KEY_3,
+				NODE_CONTROLLER_3,
+				StorageNodeParams::default(),
+				CLUSTER_ID,
+				ClusterNodeStatus::ValidationSucceeded,
+				ClusterNodeKind::Genesis,
+			),
+			build_cluster_node(
+				NODE_PUB_KEY_4,
+				NODE_CONTROLLER_4,
+				StorageNodeParams::default(),
+				CLUSTER_ID,
+				ClusterNodeStatus::ValidationSucceeded,
+				ClusterNodeKind::Genesis,
+			),
+		]],
 		vec![build_cluster_bond(CLUSTER_STASH, CLUSTER_CONTROLLER, CLUSTER_ID)],
 		vec![
 			build_node_bond(NODE_STASH_1, NODE_CONTROLLER_1, NODE_PUB_KEY_1, ENDOWMENT, CLUSTER_ID),
@@ -382,6 +426,25 @@ pub(crate) fn build_cluster(
 	);
 	cluster.status = status;
 	(cluster, protocol_params)
+}
+
+pub fn build_cluster_node(
+	pub_key: [u8; 32],
+	provider_id: [u8; 32],
+	params: StorageNodeParams,
+	cluster_id: [u8; 20],
+	status: ClusterNodeStatus,
+	kind: ClusterNodeKind,
+) -> BuiltNode {
+	let key = NodePubKey::StoragePubKey(AccountId::from(pub_key));
+	let mut node = StorageNode::new(
+		key.clone(),
+		AccountId::from(provider_id),
+		NodeParams::StorageParams(params),
+	)
+	.unwrap();
+	node.cluster_id = Some(ClusterId::from(cluster_id));
+	(key, node, status, kind)
 }
 
 pub(crate) fn build_cluster_bond(
@@ -414,6 +477,7 @@ impl ExtBuilder {
 	pub fn build(
 		self,
 		clusts: Vec<BuiltCluster>,
+		clusters_nodes: Vec<Vec<BuiltNode>>,
 		clusters_bonds: Vec<BuiltClusterBond>,
 		nodes_bondes: Vec<BuiltNodeBond>,
 	) -> TestExternalities {
@@ -427,6 +491,26 @@ impl ExtBuilder {
 			(AccountId::from(KEY_4), ENDOWMENT),
 		];
 
+		let mut storage_nodes = Vec::new();
+		let mut clusters_storage_nodes = Vec::new();
+		for cluster_nodes in clusters_nodes.iter() {
+			let mut cluster_id = ClusterId::default();
+			let mut cluster_storage_nodes = Vec::new();
+			for (pub_key, node, status, kind) in cluster_nodes.iter() {
+				cluster_id = node.cluster_id.expect("Cluster node should be assigned to cluster");
+				cluster_storage_nodes.push((pub_key.clone(), kind.clone(), status.clone()));
+				storage_nodes.push(node.clone());
+			}
+			clusters_storage_nodes.push((cluster_id, cluster_storage_nodes));
+		}
+
+		let mut clusters = Vec::new();
+		let mut clusters_protocol_params = Vec::new();
+		for (cluster, cluster_protocol_params) in clusts.iter() {
+			clusters.push(cluster.clone());
+			clusters_protocol_params.push((cluster.cluster_id, cluster_protocol_params.clone()));
+		}
+
 		for (stash, controller, _) in clusters_bonds.iter() {
 			balances.push((stash.clone(), ENDOWMENT));
 			balances.push((controller.clone(), ENDOWMENT));
@@ -437,22 +521,18 @@ impl ExtBuilder {
 			balances.push((controller.clone(), ENDOWMENT));
 		}
 
-		let mut clusters = Vec::new();
-		let mut clusters_protocol_params = Vec::new();
-		for (cluster, cluster_protocol_params) in clusts.iter() {
-			clusters.push(cluster.clone());
-			clusters_protocol_params.push((cluster.cluster_id, cluster_protocol_params.clone()));
-		}
+		let _ =
+			pallet_balances::GenesisConfig::<Test> { balances }.assimilate_storage(&mut storage);
+
+		let _ = pallet_ddc_nodes::GenesisConfig::<Test> { storage_nodes }
+			.assimilate_storage(&mut storage);
 
 		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
 			clusters,
 			clusters_protocol_params,
-			clusters_nodes: vec![],
+			clusters_nodes: clusters_storage_nodes,
 		}
 		.assimilate_storage(&mut storage);
-
-		let _ =
-			pallet_balances::GenesisConfig::<Test> { balances }.assimilate_storage(&mut storage);
 
 		let _ = pallet_ddc_staking::GenesisConfig::<Test> {
 			storages: nodes_bondes,
@@ -466,12 +546,13 @@ impl ExtBuilder {
 	pub fn build_and_execute(
 		self,
 		clusters: Vec<BuiltCluster>,
+		clusters_nodes: Vec<Vec<BuiltNode>>,
 		clusters_bonds: Vec<BuiltClusterBond>,
 		nodes_bondes: Vec<BuiltNodeBond>,
 		test: impl FnOnce(),
 	) {
 		sp_tracing::try_init_simple();
-		let mut ext = self.build(clusters, clusters_bonds, nodes_bondes);
+		let mut ext = self.build(clusters, clusters_nodes, clusters_bonds, nodes_bondes);
 		ext.execute_with(test);
 		ext.execute_with(post_condition);
 	}
