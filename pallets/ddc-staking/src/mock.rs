@@ -219,30 +219,33 @@ pub(crate) struct ClusterAssignment {
 	pub(crate) kind: ClusterNodeKind,
 }
 
-pub const KEY_1: [u8; 32] = [1; 32];
-pub const KEY_2: [u8; 32] = [2; 32];
-pub const KEY_3: [u8; 32] = [3; 32];
-pub const KEY_4: [u8; 32] = [4; 32];
+pub const PROVIDER_KEY_1: [u8; 32] = [1; 32];
+pub const PROVIDER_KEY_2: [u8; 32] = [2; 32];
+pub const PROVIDER_KEY_3: [u8; 32] = [3; 32];
+pub const PROVIDER_KEY_4: [u8; 32] = [4; 32];
 
-pub const NODE_PUB_KEY_1: [u8; 32] = [12; 32];
+pub const NODE_KEY_1: [u8; 32] = [12; 32];
 pub const NODE_STASH_1: [u8; 32] = [11; 32];
 pub const NODE_CONTROLLER_1: [u8; 32] = [10; 32];
 
-pub const NODE_PUB_KEY_2: [u8; 32] = [22; 32];
+pub const NODE_KEY_2: [u8; 32] = [22; 32];
 pub const NODE_STASH_2: [u8; 32] = [21; 32];
 pub const NODE_CONTROLLER_2: [u8; 32] = [20; 32];
 
-pub const NODE_PUB_KEY_3: [u8; 32] = [32; 32];
+pub const NODE_KEY_3: [u8; 32] = [32; 32];
 pub const NODE_STASH_3: [u8; 32] = [31; 32];
 pub const NODE_CONTROLLER_3: [u8; 32] = [30; 32];
 
-pub const NODE_PUB_KEY_4: [u8; 32] = [42; 32];
+pub const NODE_KEY_4: [u8; 32] = [42; 32];
 pub const NODE_STASH_4: [u8; 32] = [41; 32];
 pub const NODE_CONTROLLER_4: [u8; 32] = [40; 32];
 
 pub const CLUSTER_ID: [u8; 20] = [1; 20];
 pub const CLUSTER_STASH: [u8; 32] = [102; 32];
 pub const CLUSTER_CONTROLLER: [u8; 32] = [101; 32];
+
+pub const NODE_KEY_5: [u8; 32] = [52; 32];
+pub const NODE_KEY_6: [u8; 32] = [62; 32];
 
 pub const ENDOWMENT: u128 = 100;
 
@@ -266,20 +269,20 @@ pub(crate) fn build_default_setup(
 				unit_per_put_request: 4,
 				unit_per_get_request: 5,
 			},
-			ClusterStatus::Unbonded,
+			ClusterStatus::Activated,
 		)],
 		vec![
-			build_node(NODE_PUB_KEY_1, NODE_CONTROLLER_1, StorageNodeParams::default(), None),
-			build_node(NODE_PUB_KEY_2, NODE_CONTROLLER_2, StorageNodeParams::default(), None),
-			build_node(NODE_PUB_KEY_3, NODE_CONTROLLER_3, StorageNodeParams::default(), None),
-			build_node(NODE_PUB_KEY_4, NODE_CONTROLLER_4, StorageNodeParams::default(), None),
+			build_node(NODE_KEY_1, NODE_CONTROLLER_1, StorageNodeParams::default(), None),
+			build_node(NODE_KEY_2, NODE_CONTROLLER_2, StorageNodeParams::default(), None),
+			build_node(NODE_KEY_3, NODE_CONTROLLER_3, StorageNodeParams::default(), None),
+			build_node(NODE_KEY_4, NODE_CONTROLLER_4, StorageNodeParams::default(), None),
 		],
 		vec![build_cluster_bond(CLUSTER_STASH, CLUSTER_CONTROLLER, CLUSTER_ID)],
 		vec![
-			build_node_bond(NODE_STASH_1, NODE_CONTROLLER_1, NODE_PUB_KEY_1, ENDOWMENT, CLUSTER_ID),
-			build_node_bond(NODE_STASH_2, NODE_CONTROLLER_2, NODE_PUB_KEY_2, ENDOWMENT, CLUSTER_ID),
-			build_node_bond(NODE_STASH_3, NODE_CONTROLLER_3, NODE_PUB_KEY_3, ENDOWMENT, CLUSTER_ID),
-			build_node_bond(NODE_STASH_4, NODE_CONTROLLER_4, NODE_PUB_KEY_4, ENDOWMENT, CLUSTER_ID),
+			build_node_bond(NODE_STASH_1, NODE_CONTROLLER_1, NODE_KEY_1, ENDOWMENT, CLUSTER_ID),
+			build_node_bond(NODE_STASH_2, NODE_CONTROLLER_2, NODE_KEY_2, ENDOWMENT, CLUSTER_ID),
+			build_node_bond(NODE_STASH_3, NODE_CONTROLLER_3, NODE_KEY_3, ENDOWMENT, CLUSTER_ID),
+			build_node_bond(NODE_STASH_4, NODE_CONTROLLER_4, NODE_KEY_4, ENDOWMENT, CLUSTER_ID),
 		],
 	)
 }
@@ -362,10 +365,10 @@ impl ExtBuilder {
 		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 		let mut balances: Vec<(AccountId, Balance)> = vec![
-			(AccountId::from(KEY_1), ENDOWMENT),
-			(AccountId::from(KEY_2), ENDOWMENT),
-			(AccountId::from(KEY_3), ENDOWMENT),
-			(AccountId::from(KEY_4), ENDOWMENT),
+			(AccountId::from(PROVIDER_KEY_1), ENDOWMENT),
+			(AccountId::from(PROVIDER_KEY_2), ENDOWMENT),
+			(AccountId::from(PROVIDER_KEY_3), ENDOWMENT),
+			(AccountId::from(PROVIDER_KEY_4), ENDOWMENT),
 		];
 
 		let mut storage_nodes = Vec::new();

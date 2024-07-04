@@ -20,9 +20,9 @@ fn test_default_staking_ledger() {
 			<Test as frame_system::Config>::AccountId,
 			BalanceOf<Test>,
 			Test,
-		>::default_from(AccountId::from(KEY_1));
+		>::default_from(AccountId::from(PROVIDER_KEY_1));
 		// Account 11 is stashed and locked, and account 10 is the controller
-		assert_eq!(default_staking_ledger.stash, AccountId::from(KEY_1));
+		assert_eq!(default_staking_ledger.stash, AccountId::from(PROVIDER_KEY_1));
 		assert_eq!(default_staking_ledger.total, Zero::zero());
 	});
 }
@@ -42,7 +42,7 @@ fn basic_setup_works() {
 			Some(AccountId::from(NODE_CONTROLLER_2))
 		);
 		// Account 1 is not a stashed
-		assert_eq!(DdcStaking::bonded(AccountId::from(KEY_1)), None);
+		assert_eq!(DdcStaking::bonded(AccountId::from(PROVIDER_KEY_1)), None);
 
 		// Account 10 controls the stash from account 11, which is 100 units
 		assert_eq!(
@@ -67,7 +67,7 @@ fn basic_setup_works() {
 			})
 		);
 		// Account 1 does not control any stash
-		assert_eq!(DdcStaking::ledger(AccountId::from(KEY_1)), None);
+		assert_eq!(DdcStaking::ledger(AccountId::from(PROVIDER_KEY_1)), None);
 	});
 }
 
@@ -89,16 +89,19 @@ fn change_controller_works() {
 		// Change controller.
 		assert_ok!(DdcStaking::set_controller(
 			RuntimeOrigin::signed(AccountId::from(NODE_STASH_1)),
-			AccountId::from(KEY_3)
+			AccountId::from(PROVIDER_KEY_3)
 		));
 		assert_noop!(
 			DdcStaking::set_controller(
 				RuntimeOrigin::signed(AccountId::from(NODE_STASH_1)),
-				AccountId::from(KEY_3)
+				AccountId::from(PROVIDER_KEY_3)
 			),
 			Error::<Test>::AlreadyPaired
 		);
-		assert_eq!(DdcStaking::bonded(AccountId::from(NODE_STASH_1)), Some(AccountId::from(KEY_3)));
+		assert_eq!(
+			DdcStaking::bonded(AccountId::from(NODE_STASH_1)),
+			Some(AccountId::from(PROVIDER_KEY_3))
+		);
 
 		// 10 is no longer in control.
 		assert_noop!(
@@ -110,7 +113,7 @@ fn change_controller_works() {
 		);
 		// 3 is a new controller.
 		assert_ok!(DdcStaking::store(
-			RuntimeOrigin::signed(AccountId::from(KEY_3)),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_3)),
 			ClusterId::from(CLUSTER_ID)
 		));
 	})
@@ -119,9 +122,9 @@ fn change_controller_works() {
 #[test]
 fn not_enough_inital_bond_flow() {
 	let (clusters, mut nodes, clusters_bonds, nodes_bondes) = build_default_setup();
-	let node_5 = build_node([5; 32], KEY_4, StorageNodeParams::default(), None);
-	let node_6 = build_node([3; 32], KEY_2, StorageNodeParams::default(), None);
 
+	let node_5 = build_node(NODE_KEY_5, PROVIDER_KEY_4, StorageNodeParams::default(), None);
+	let node_6 = build_node(NODE_KEY_6, PROVIDER_KEY_2, StorageNodeParams::default(), None);
 	nodes.push(node_5);
 	nodes.push(node_6);
 
@@ -130,33 +133,33 @@ fn not_enough_inital_bond_flow() {
 
 		// Add new Storage participant, account 3 controlled by 4 with node 5.
 		assert_ok!(DdcStaking::bond(
-			RuntimeOrigin::signed(AccountId::from(KEY_3)),
-			AccountId::from(KEY_4),
-			NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32])),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_3)),
+			AccountId::from(PROVIDER_KEY_4),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5)),
 			5
 		));
 
 		// Not enough tokens bonded to serve
 		assert_noop!(
 			DdcStaking::store(
-				RuntimeOrigin::signed(AccountId::from(KEY_4)),
+				RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4)),
 				ClusterId::from(CLUSTER_ID)
 			),
 			Error::<Test>::InsufficientBond
 		);
 
-		// Add new Storage participant, account 1 controlled by 2 with node 3.
+		// Add new Storage participant, account 1 controlled by 2 with node 6.
 		assert_ok!(DdcStaking::bond(
-			RuntimeOrigin::signed(AccountId::from(KEY_1)),
-			AccountId::from(KEY_2),
-			NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_1)),
+			AccountId::from(PROVIDER_KEY_2),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_6)),
 			100
 		));
 
 		// Not enough tokens bonded to store
 		assert_noop!(
 			DdcStaking::store(
-				RuntimeOrigin::signed(AccountId::from(KEY_4)),
+				RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4)),
 				ClusterId::from(CLUSTER_ID)
 			),
 			Error::<Test>::InsufficientBond
@@ -165,33 +168,35 @@ fn not_enough_inital_bond_flow() {
 		// Can not bond extra
 		assert_noop!(
 			DdcStaking::bond(
-				RuntimeOrigin::signed(AccountId::from(KEY_3)),
-				AccountId::from(KEY_4),
-				NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32])),
+				RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_3)),
+				AccountId::from(PROVIDER_KEY_4),
+				NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5)),
 				5
 			),
 			Error::<Test>::AlreadyBonded
 		);
 
 		// Unbond all bonded amount
-		assert_ok!(DdcStaking::unbond(RuntimeOrigin::signed(AccountId::from(KEY_4)), 5));
-		System::assert_last_event(Event::Unbonded(AccountId::from(KEY_3), 5).into());
+		assert_ok!(DdcStaking::unbond(RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4)), 5));
+		System::assert_last_event(Event::Unbonded(AccountId::from(PROVIDER_KEY_3), 5).into());
 		System::set_block_number(11);
 		// Withdraw unbonded tokens to clear up the stash controller pair
-		assert_ok!(DdcStaking::withdraw_unbonded(RuntimeOrigin::signed(AccountId::from(KEY_4))));
-		System::assert_last_event(Event::Withdrawn(AccountId::from(KEY_3), 5).into());
+		assert_ok!(DdcStaking::withdraw_unbonded(RuntimeOrigin::signed(AccountId::from(
+			PROVIDER_KEY_4
+		))));
+		System::assert_last_event(Event::Withdrawn(AccountId::from(PROVIDER_KEY_3), 5).into());
 
 		// Bond sufficient amount
 		assert_ok!(DdcStaking::bond(
-			RuntimeOrigin::signed(AccountId::from(KEY_3)),
-			AccountId::from(KEY_4),
-			NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32])),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_3)),
+			AccountId::from(PROVIDER_KEY_4),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5)),
 			10
 		));
 
 		// Serving should work
 		assert_ok!(DdcStaking::store(
-			RuntimeOrigin::signed(AccountId::from(KEY_4)),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4)),
 			ClusterId::from(CLUSTER_ID)
 		));
 	})
@@ -201,8 +206,7 @@ fn not_enough_inital_bond_flow() {
 fn unbonding_edge_cases_work() {
 	let (clusters, mut nodes, clusters_bonds, nodes_bondes) = build_default_setup();
 
-	let node_5 = build_node([5; 32], KEY_4, StorageNodeParams::default(), None);
-
+	let node_5 = build_node(NODE_KEY_5, PROVIDER_KEY_4, StorageNodeParams::default(), None);
 	nodes.push(node_5);
 
 	ExtBuilder.build_and_execute(clusters, nodes, clusters_bonds, nodes_bondes, || {
@@ -210,26 +214,29 @@ fn unbonding_edge_cases_work() {
 
 		// Add new Storage participant, account 3 controlled by 4 with node 5.
 		assert_ok!(DdcStaking::bond(
-			RuntimeOrigin::signed(AccountId::from(KEY_3)),
-			AccountId::from(KEY_4),
-			NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32])),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_3)),
+			AccountId::from(PROVIDER_KEY_4),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5)),
 			100
 		));
 
 		assert_ok!(DdcStaking::store(
-			RuntimeOrigin::signed(AccountId::from(KEY_4)),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4)),
 			ClusterId::from(CLUSTER_ID)
 		));
 
-		assert_ok!(DdcStaking::unbond(RuntimeOrigin::signed(AccountId::from(KEY_4)), 1));
+		assert_ok!(DdcStaking::unbond(RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4)), 1));
 		while System::block_number() < 33 {
-			assert_ok!(DdcStaking::unbond(RuntimeOrigin::signed(AccountId::from(KEY_4)), 1));
-			System::assert_last_event(Event::Unbonded(AccountId::from(KEY_3), 1).into());
+			assert_ok!(DdcStaking::unbond(
+				RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4)),
+				1
+			));
+			System::assert_last_event(Event::Unbonded(AccountId::from(PROVIDER_KEY_3), 1).into());
 			System::set_block_number(System::block_number() + 1);
 		}
 
 		assert_noop!(
-			DdcStaking::unbond(RuntimeOrigin::signed(AccountId::from(KEY_4)), 1),
+			DdcStaking::unbond(RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4)), 1),
 			Error::<Test>::NoMoreChunks
 		);
 	})
@@ -250,7 +257,7 @@ fn set_node_works() {
 		assert_noop!(
 			DdcStaking::set_node(
 				RuntimeOrigin::signed(AccountId::from(NODE_CONTROLLER_1)),
-				NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_PUB_KEY_1))
+				NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_1))
 			),
 			Error::<Test>::AlreadyPaired
 		);
@@ -259,7 +266,7 @@ fn set_node_works() {
 		assert_noop!(
 			DdcStaking::set_node(
 				RuntimeOrigin::signed(AccountId::from(NODE_STASH_1)),
-				NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_PUB_KEY_1))
+				NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_1))
 			),
 			Error::<Test>::AlreadyInRole
 		);
@@ -282,8 +289,8 @@ fn set_node_works() {
 fn cancel_previous_chill_works() {
 	let (clusters, mut nodes, clusters_bonds, nodes_bondes) = build_default_setup();
 
-	let node_5 = build_node([5; 32], KEY_4, StorageNodeParams::default(), None);
-	let node_6 = build_node([3; 32], KEY_2, StorageNodeParams::default(), None);
+	let node_5 = build_node(NODE_KEY_5, PROVIDER_KEY_4, StorageNodeParams::default(), None);
+	let node_6 = build_node(NODE_KEY_6, PROVIDER_KEY_2, StorageNodeParams::default(), None);
 
 	nodes.push(node_5);
 	nodes.push(node_6);
@@ -294,37 +301,46 @@ fn cancel_previous_chill_works() {
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		// Add new Storage participant, account 3 controlled by 4 with node 5.
 		assert_ok!(DdcStaking::bond(
-			RuntimeOrigin::signed(AccountId::from(KEY_3)),
-			AccountId::from(KEY_4),
-			NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32])),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_3)),
+			AccountId::from(PROVIDER_KEY_4),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5)),
 			100
 		));
 
-		// Add new Storage participant, account 1 controlled by 2 with node 3.
+		// Add new Storage participant, account 1 controlled by 2 with node 6.
 		assert_ok!(DdcStaking::bond(
-			RuntimeOrigin::signed(AccountId::from(KEY_1)),
-			AccountId::from(KEY_2),
-			NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_1)),
+			AccountId::from(PROVIDER_KEY_2),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_6)),
 			100
 		));
 
 		// Not enough tokens bonded to serve
-		assert_ok!(DdcStaking::store(RuntimeOrigin::signed(AccountId::from(KEY_4)), cluster_id));
+		assert_ok!(DdcStaking::store(
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4)),
+			cluster_id
+		));
 
 		assert_ok!(DdcStaking::store(
-			RuntimeOrigin::signed(AccountId::from(KEY_2)),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_2)),
 			ClusterId::from(CLUSTER_ID)
 		));
 
 		// Schedule Storage participant removal.
-		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(AccountId::from(KEY_4))));
+		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4))));
 		// Not enough tokens bonded to serve
-		assert_ok!(DdcStaking::store(RuntimeOrigin::signed(AccountId::from(KEY_4)), cluster_id));
+		assert_ok!(DdcStaking::store(
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4)),
+			cluster_id
+		));
 
 		// Schedule Storage participant removal.
-		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(AccountId::from(KEY_2))));
+		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_2))));
 		// Not enough tokens bonded to serve
-		assert_ok!(DdcStaking::store(RuntimeOrigin::signed(AccountId::from(KEY_2)), cluster_id));
+		assert_ok!(DdcStaking::store(
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_2)),
+			cluster_id
+		));
 	})
 }
 
@@ -333,8 +349,8 @@ fn staking_should_work() {
 	let (clusters, mut nodes, clusters_bonds, nodes_bondes) = build_default_setup();
 
 	let node_5 = build_node(
-		[5; 32],
-		KEY_4,
+		NODE_KEY_5,
+		PROVIDER_KEY_4,
 		StorageNodeParams::default(),
 		Some(ClusterAssignment {
 			cluster_id: CLUSTER_ID,
@@ -343,7 +359,7 @@ fn staking_should_work() {
 		}),
 	);
 
-	let node_10 = build_node([10; 32], KEY_4, StorageNodeParams::default(), None);
+	let node_10 = build_node([10; 32], PROVIDER_KEY_4, StorageNodeParams::default(), None);
 
 	nodes.push(node_5);
 	nodes.push(node_10);
@@ -351,21 +367,18 @@ fn staking_should_work() {
 	ExtBuilder.build_and_execute(clusters, nodes, clusters_bonds, nodes_bondes, || {
 		System::set_block_number(1);
 
-		const KEY_5: [u8; 32] = [5; 32];
-		const KEY_6: [u8; 32] = [6; 32];
-
 		// Put some money in account that we'll use.
-		let _ = Balances::make_free_balance_be(&AccountId::from(KEY_1), 2000);
-		let _ = Balances::make_free_balance_be(&AccountId::from(KEY_2), 2000);
-		let _ = Balances::make_free_balance_be(&AccountId::from(KEY_3), 2000);
-		let _ = Balances::make_free_balance_be(&AccountId::from(KEY_4), 2000);
+		let _ = Balances::make_free_balance_be(&AccountId::from(PROVIDER_KEY_1), 2000);
+		let _ = Balances::make_free_balance_be(&AccountId::from(PROVIDER_KEY_2), 2000);
+		let _ = Balances::make_free_balance_be(&AccountId::from(PROVIDER_KEY_3), 2000);
+		let _ = Balances::make_free_balance_be(&AccountId::from(PROVIDER_KEY_4), 2000);
 
 		// Bond dust should fail
 		assert_noop!(
 			DdcStaking::bond(
-				RuntimeOrigin::signed(AccountId::from(KEY_3)),
-				AccountId::from(KEY_4),
-				NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32])),
+				RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_3)),
+				AccountId::from(PROVIDER_KEY_4),
+				NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5)),
 				0
 			),
 			Error::<Test>::InsufficientBond
@@ -373,28 +386,28 @@ fn staking_should_work() {
 
 		// Add new Storage participant, account 3 controlled by 4 with node 5.
 		assert_ok!(DdcStaking::bond(
-			RuntimeOrigin::signed(AccountId::from(KEY_3)),
-			AccountId::from(KEY_4),
-			NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32])),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_3)),
+			AccountId::from(PROVIDER_KEY_4),
+			NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5)),
 			1500
 		));
 		let events = System::events();
 		assert_eq!(
 			events[events.len() - 2].event,
-			Event::Bonded(AccountId::from(KEY_3), 1500).into()
+			Event::Bonded(AccountId::from(PROVIDER_KEY_3), 1500).into()
 		);
 		assert_ok!(DdcStaking::store(
-			RuntimeOrigin::signed(AccountId::from(KEY_4)),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4)),
 			ClusterId::from(CLUSTER_ID)
 		));
-		System::assert_last_event(Event::Activated(AccountId::from(KEY_3)).into());
+		System::assert_last_event(Event::Activated(AccountId::from(PROVIDER_KEY_3)).into());
 
 		// Controller already paired
 		assert_noop!(
 			DdcStaking::bond(
-				RuntimeOrigin::signed(AccountId::from(KEY_5)),
-				AccountId::from(KEY_4),
-				NodePubKey::StoragePubKey(StorageNodePubKey::new([10; 32])),
+				RuntimeOrigin::signed(AccountId::from([115; 32])),
+				AccountId::from(PROVIDER_KEY_4),
+				NodePubKey::StoragePubKey(StorageNodePubKey::new([117; 32])),
 				10
 			),
 			Error::<Test>::AlreadyPaired
@@ -403,9 +416,9 @@ fn staking_should_work() {
 		// Node already paired
 		assert_noop!(
 			DdcStaking::bond(
-				RuntimeOrigin::signed(AccountId::from(KEY_5)),
-				AccountId::from(KEY_6),
-				NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32])),
+				RuntimeOrigin::signed(AccountId::from([115; 32])),
+				AccountId::from([116; 32]),
+				NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5)),
 				10
 			),
 			Error::<Test>::AlreadyPaired
@@ -413,30 +426,37 @@ fn staking_should_work() {
 
 		// Account 4 controls the stash from account 3, which is 1500 units, 3 is a Storage
 		// participant, 5 is a DDC node.
-		assert_eq!(DdcStaking::bonded(AccountId::from(KEY_3)), Some(AccountId::from(KEY_4)));
 		assert_eq!(
-			DdcStaking::ledger(AccountId::from(KEY_4)),
+			DdcStaking::bonded(AccountId::from(PROVIDER_KEY_3)),
+			Some(AccountId::from(PROVIDER_KEY_4))
+		);
+		assert_eq!(
+			DdcStaking::ledger(AccountId::from(PROVIDER_KEY_4)),
 			Some(StakingLedger {
-				stash: AccountId::from(KEY_3),
+				stash: AccountId::from(PROVIDER_KEY_3),
 				total: 1500,
 				active: 1500,
 				chilling: Default::default(),
 				unlocking: Default::default(),
 			})
 		);
-		assert_eq!(DdcStaking::storages(AccountId::from(KEY_3)), Some(ClusterId::from(CLUSTER_ID)));
 		assert_eq!(
-			DdcStaking::nodes(NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32]))),
-			Some(AccountId::from(KEY_3))
+			DdcStaking::storages(AccountId::from(PROVIDER_KEY_3)),
+			Some(ClusterId::from(CLUSTER_ID))
+		);
+		assert_eq!(
+			DdcStaking::nodes(NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5))),
+			Some(AccountId::from(PROVIDER_KEY_3))
 		);
 
 		// Set initial block timestamp.
 		Timestamp::set_timestamp(System::block_number() * BLOCK_TIME + INIT_TIMESTAMP);
 
 		// Schedule Storage participant removal.
-		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(AccountId::from(KEY_4))));
+		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4))));
 		System::assert_last_event(
-			Event::ChillSoon(AccountId::from(KEY_3), ClusterId::from(CLUSTER_ID), 11).into(),
+			Event::ChillSoon(AccountId::from(PROVIDER_KEY_3), ClusterId::from(CLUSTER_ID), 11)
+				.into(),
 		);
 
 		// Removal is scheduled, stashed value of 4 is still lock.
@@ -444,9 +464,9 @@ fn staking_should_work() {
 		// TestClusterProtocol::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage)
 		// 	.unwrap_or(10_u64);
 		assert_eq!(
-			DdcStaking::ledger(AccountId::from(KEY_4)),
+			DdcStaking::ledger(AccountId::from(PROVIDER_KEY_4)),
 			Some(StakingLedger {
-				stash: AccountId::from(KEY_3),
+				stash: AccountId::from(PROVIDER_KEY_3),
 				total: 1500,
 				active: 1500,
 				chilling: Some(chilling),
@@ -455,20 +475,20 @@ fn staking_should_work() {
 		);
 		// It cannot reserve more than 500 that it has free from the total 2000
 		assert_noop!(
-			Balances::reserve(&AccountId::from(KEY_3), 501),
+			Balances::reserve(&AccountId::from(PROVIDER_KEY_3), 501),
 			BalancesError::<Test, _>::LiquidityRestrictions
 		);
-		assert_ok!(Balances::reserve(&AccountId::from(KEY_3), 409));
+		assert_ok!(Balances::reserve(&AccountId::from(PROVIDER_KEY_3), 409));
 
 		// Too early to call chill the second time
 		assert_noop!(
-			DdcStaking::chill(RuntimeOrigin::signed(AccountId::from(KEY_4))),
+			DdcStaking::chill(RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4))),
 			Error::<Test>::TooEarly
 		);
 
 		// Fast chill should not be allowed
 		assert_noop!(
-			DdcStaking::fast_chill(RuntimeOrigin::signed(AccountId::from(KEY_4))),
+			DdcStaking::fast_chill(RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4))),
 			Error::<Test>::FastChillProhibited
 		);
 
@@ -480,9 +500,9 @@ fn staking_should_work() {
 
 		// Ledger is not changed until we make another call to `chill`.
 		assert_eq!(
-			DdcStaking::ledger(AccountId::from(KEY_4)),
+			DdcStaking::ledger(AccountId::from(PROVIDER_KEY_4)),
 			Some(StakingLedger {
-				stash: AccountId::from(KEY_3),
+				stash: AccountId::from(PROVIDER_KEY_3),
 				total: 1500,
 				active: 1500,
 				chilling: Some(chilling),
@@ -491,11 +511,11 @@ fn staking_should_work() {
 		);
 
 		// Actual Storage participant removal.
-		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(AccountId::from(KEY_4))));
-		System::assert_last_event(Event::Chilled(AccountId::from(KEY_3)).into());
+		assert_ok!(DdcStaking::chill(RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4))));
+		System::assert_last_event(Event::Chilled(AccountId::from(PROVIDER_KEY_3)).into());
 
 		// Account 3 is no longer a Storage participant.
-		assert_eq!(DdcStaking::storages(AccountId::from(KEY_3)), None);
+		assert_eq!(DdcStaking::storages(AccountId::from(PROVIDER_KEY_3)), None);
 	});
 }
 
@@ -504,8 +524,8 @@ fn storage_full_unbonding_works() {
 	let (clusters, mut nodes, clusters_bonds, nodes_bondes) = build_default_setup();
 
 	let node_5 = build_node(
-		[2; 32],
-		KEY_4,
+		NODE_KEY_5,
+		PROVIDER_KEY_4,
 		StorageNodeParams::default(),
 		Some(ClusterAssignment {
 			cluster_id: CLUSTER_ID,
@@ -519,10 +539,10 @@ fn storage_full_unbonding_works() {
 	ExtBuilder.build_and_execute(clusters, nodes, clusters_bonds, nodes_bondes, || {
 		System::set_block_number(1);
 
-		let provider_stash = AccountId::from(KEY_3);
-		let provider_controller = AccountId::from(KEY_4);
+		let provider_stash = AccountId::from(PROVIDER_KEY_3);
+		let provider_controller = AccountId::from(PROVIDER_KEY_4);
 		let cluster_id = ClusterId::from(CLUSTER_ID);
-		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
+		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5));
 
 		let storage_bond_size = 10_u128;
 		let storage_chill_delay = 10_u64;
@@ -609,11 +629,11 @@ fn storage_full_unbonding_works() {
 fn staking_creator_works() {
 	let (clusters, nodes, clusters_bonds, nodes_bondes) = build_default_setup();
 	ExtBuilder.build_and_execute(clusters, nodes, clusters_bonds, nodes_bondes, || {
-		let stash = AccountId::from(KEY_1);
-		let controller = AccountId::from(KEY_2);
+		let stash = AccountId::from(PROVIDER_KEY_1);
+		let controller = AccountId::from(PROVIDER_KEY_2);
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let value = 5;
-		let storage_node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
+		let storage_node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5));
 
 		assert_ok!(
 			<DdcStaking as StakerCreator<Test, BalanceOf<Test>>>::bond_stake_and_participate(
@@ -632,8 +652,8 @@ fn staking_visitor_works() {
 	let (clusters, mut nodes, clusters_bonds, nodes_bondes) = build_default_setup();
 
 	let node_5 = build_node(
-		[5; 32],
-		KEY_4,
+		NODE_KEY_5,
+		PROVIDER_KEY_4,
 		StorageNodeParams::default(),
 		Some(ClusterAssignment {
 			cluster_id: CLUSTER_ID,
@@ -646,12 +666,12 @@ fn staking_visitor_works() {
 
 	ExtBuilder.build_and_execute(clusters, nodes, clusters_bonds, nodes_bondes, || {
 		let cluster_id = ClusterId::from(CLUSTER_ID);
-		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32]));
+		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5));
 
 		// Add new Storage participant, account 3 controlled by 4 with node 5.
 		assert_ok!(DdcStaking::bond(
-			RuntimeOrigin::signed(AccountId::from(KEY_3)),
-			AccountId::from(KEY_4),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_3)),
+			AccountId::from(PROVIDER_KEY_4),
 			node_pub_key.clone(),
 			100
 		));
@@ -665,7 +685,7 @@ fn staking_visitor_works() {
 		}
 
 		assert_ok!(DdcStaking::store(
-			RuntimeOrigin::signed(AccountId::from(KEY_4)),
+			RuntimeOrigin::signed(AccountId::from(PROVIDER_KEY_4)),
 			ClusterId::from(CLUSTER_ID)
 		));
 
