@@ -243,7 +243,7 @@ pub struct NodeUsage {
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
 pub struct MMRProof {
-	pub mmr_size: u64, // todo! factor this into verification pallet config
+	pub mmr_size: u64,
 	pub proof: Vec<ActivityHash>,
 	pub leaf_with_position: (u64, ActivityHash),
 }

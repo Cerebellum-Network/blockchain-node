@@ -245,6 +245,13 @@ pub mod pallet {
 			validator: T::AccountId,
 		},
 		FailedToCreateMerkleRoot {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			validator: T::AccountId,
+		},
+		FailedToCreateMerkleProof {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
 			validator: T::AccountId,
 		},
 		FailedToFetchCurrentValidator {
@@ -334,7 +341,14 @@ pub mod pallet {
 		NotEnoughDACNodes {
 			num_nodes: u16,
 		},
-		FailedToCreateMerkleRoot,
+		FailedToCreateMerkleRoot {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		},
+		FailedToCreateMerkleProof {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		},
 		FailedToFetchCurrentValidator,
 	}
 
@@ -570,7 +584,8 @@ pub mod pallet {
 
 			if Self::fetch_current_validator().is_err() {
 				let _ = signer.send_signed_transaction(|account| {
-					log::info!("🏄‍ Setting current validator...  {:?}", account.id);
+					log::info!("🏭📋‍ Setting current validator...  {:?}", account.id); // todo! consistent emojis in logs with 2 icons, one for OCW 🏭, other is
+																   // log📋/error❌
 
 					Self::store_current_validator(account.id.encode());
 
@@ -586,7 +601,9 @@ pub mod pallet {
 
 			let cluster_id = unwrap_or_log_error!(
 				Self::get_cluster_to_validate(),
-				"🦀🦀🦀🦀 Error retrieving cluster to validate 🦀🦀🦀🦀"
+				"🏭❌ Error retrieving cluster to validate" /* todo! consistent emojis in logs
+				                                             * with 2 icons, one for OCW 🏭,
+				                                             * other is log📋/error❌ */
 			);
 
 			let dac_nodes = unwrap_or_log_error!(
@@ -752,7 +769,7 @@ pub mod pallet {
 			}
 
 			// todo! factor out as macro as this is repetitive
-			match Self::prepare_send_charging_customers_batch(&cluster_id) {
+			match Self::prepare_send_charging_customers_batch(&cluster_id, batch_size.into()) {
 				Ok(Some((era_id, batch_payout))) => {
 					log::info!(
 						"🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
@@ -1072,12 +1089,18 @@ pub mod pallet {
 
 			log::info!("🪅 customers_activity_in_consensus executed successfully. ");
 			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
+				cluster_id,
+				era_activity.id,
 				Self::split_to_batches(&customers_activity_in_consensus, batch_size),
 			)
 			.map_err(|err| vec![err])?;
 
-			let customers_activity_root = Self::create_merkle_root(&customers_activity_batch_roots)
-				.map_err(|err| vec![err])?;
+			let customers_activity_root = Self::create_merkle_root(
+				cluster_id,
+				era_activity.id,
+				&customers_activity_batch_roots,
+			)
+			.map_err(|err| vec![err])?;
 
 			let nodes_activity_in_consensus = Self::get_consensus_for_activities(
 				cluster_id,
@@ -1089,12 +1112,15 @@ pub mod pallet {
 
 			log::info!("🪅 nodes_activity_in_consensus executed successfully. ");
 			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
+				cluster_id,
+				era_activity.id,
 				Self::split_to_batches(&nodes_activity_in_consensus, batch_size),
 			)
 			.map_err(|err| vec![err])?;
 
 			let nodes_activity_root =
-				Self::create_merkle_root(&nodes_activity_batch_roots).map_err(|err| vec![err])?;
+				Self::create_merkle_root(cluster_id, era_activity.id, &nodes_activity_batch_roots)
+					.map_err(|err| vec![err])?;
 
 			Self::store_validation_activities(
 				cluster_id,
@@ -1109,17 +1135,6 @@ pub mod pallet {
 			log::info!("🙇‍ Dac data processing completed for cluster_id: {:?}", cluster_id);
 			Ok(Some((era_activity, customers_activity_root, nodes_activity_root)))
 		}
-
-		// let batches = split into batches customers_activity_in_consensus
-		// for i in batches.len() {
-		// let batch  = batches[i];
-		// let batch_root1 = customers_activity_batch_roots[i]; // C
-		// let batch_root2 = create_merkle_tree(batch)
-		// assert!(batch_root1, batch_root2)
-		// let adjacent_hashes = get_adjacent_hashes(batch_root1, customers_activity_root,
-		// customers_activity_batch_roots) // provide hash(D) and hash(A,B).
-		// call payout::send_charging_customers_batch(clusterid, era_id, batch_index, batch,
-		// adjacent_hashes) }
 
 		#[allow(dead_code)]
 		pub(crate) fn prepare_begin_billing_report(
@@ -1144,7 +1159,7 @@ pub mod pallet {
 						) {
 						if let Some(max_batch_index) =
 							customers_activity_batch_roots.len().checked_sub(1)
-						// todo! remove this -1 to support empty usage
+						// -1 cause payout expects max_index, not length
 						{
 							let max_batch_index: u16 =
 								max_batch_index.try_into().map_err(|_| {
@@ -1168,9 +1183,9 @@ pub mod pallet {
 			Ok(None)
 		}
 
-		#[allow(dead_code)]
 		pub(crate) fn prepare_send_charging_customers_batch(
 			cluster_id: &ClusterId,
+			batch_size: usize,
 		) -> Result<Option<(DdcEra, BatchPayout<T>)>, OCWError> {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
@@ -1179,25 +1194,93 @@ pub mod pallet {
 					PayoutState::ChargingCustomers
 				{
 					if let Some((
-						_customers_activity_in_consensus,
-						_customers_activity_root,
-						_customers_activity_batch_roots,
+						customers_activity_in_consensus,
+						_,
+						customers_activity_batch_roots,
 						_,
 						_,
 						_,
 					)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
 						cluster_id, era_id,
 					) {
-						let _batch_index = T::PayoutVisitor::get_next_customer_batch_for_payment(
+						let batch_index = T::PayoutVisitor::get_next_customer_batch_for_payment(
 							cluster_id, era_id,
 						)
 						.map_err(|_| OCWError::BillingReportDoesNotExist {
 							cluster_id: *cluster_id,
 							era_id,
 						})?;
-						// todo! get root for a batch_index
-						// todo! get batch by batch_index
-						// todo! create proof
+
+						if let Some(index) = batch_index {
+							let i: usize = index.into();
+							// todo! store batched activity to avoid splitting it again each time
+							let customers_activity_batched = Self::split_to_batches(
+								&customers_activity_in_consensus,
+								batch_size,
+							);
+
+							let batch_root = customers_activity_batch_roots[i];
+							let store = MemStore::default();
+							let mut mmr: MMR<
+								ActivityHash,
+								MergeActivityHash,
+								&MemStore<ActivityHash>,
+							> = MemMMR::<_, MergeActivityHash>::new(0, &store);
+
+							let leaf_position_map: Vec<(ActivityHash, u64)> =
+								customers_activity_batch_roots
+									.iter()
+									.map(|a| (*a, mmr.push(*a).unwrap()))
+									.collect();
+
+							let leaf_position: Vec<(u64, ActivityHash)> = leaf_position_map
+								.iter()
+								.filter(|&(l, _)| l == &batch_root)
+								.map(|&(ref l, p)| (p, *l))
+								.collect();
+							let position: Vec<u64> =
+								leaf_position.clone().into_iter().map(|(p, _)| p).collect();
+
+							let proof = mmr
+								.gen_proof(position)
+								.map_err(|_| OCWError::FailedToCreateMerkleProof {
+									cluster_id: *cluster_id,
+									era_id,
+								})?
+								.proof_items()
+								.to_vec();
+
+							let batch_proof = MMRProof {
+								mmr_size: mmr.mmr_size(),
+								proof,
+								leaf_with_position: leaf_position[0],
+							};
+							return Ok(Some((
+								era_id,
+								BatchPayout {
+									batch_index: index,
+									payers: customers_activity_batched[i]
+										.iter()
+										.map(|activity| {
+											let account_id = T::AccountId::decode(
+												&mut &activity.customer_id.as_bytes()[..],
+											)
+											.unwrap();
+											let customer_usage = CustomerUsage {
+												transferred_bytes: activity.transferred_bytes,
+												stored_bytes: activity.stored_bytes,
+												number_of_puts: activity.number_of_puts,
+												number_of_gets: activity.number_of_gets,
+											};
+											(account_id, activity.bucket_id, customer_usage)
+										})
+										.collect(),
+									batch_proof,
+								},
+							)));
+						} else {
+							return Ok(None);
+						}
 					} /*else {
 						 // todo! no data - reconstruct the data from DAC
 					 }*/
@@ -1243,8 +1326,8 @@ pub mod pallet {
 					) {
 						if let Some(max_batch_index) =
 							nodes_activity_batch_roots.len().checked_sub(1)
+						// -1 cause payout expects max_index, not length
 						{
-							// todo! remove this -1 to support empty usage
 							let max_batch_index: u16 =
 								max_batch_index.try_into().map_err(|_| {
 									OCWError::BatchIndexConversionFailed {
@@ -1410,7 +1493,7 @@ pub mod pallet {
 			}
 		}
 
-		/// Converts a vector of activity batches into their corresponding Merkle root hashes.
+		/// Converts a vector of activity batches into their corresponding Merkle roots.
 		///
 		/// This function takes a vector of activity batches, where each batch is a vector of
 		/// activities. It computes the Merkle root for each batch by first hashing each activity
@@ -1421,8 +1504,10 @@ pub mod pallet {
 		///   batch of activities.
 		///
 		/// # Output
-		/// - `Vec<ActivityHash>`: A vector of Merkle root hashes, one for each batch of activities.
+		/// - `Vec<ActivityHash>`: A vector of Merkle roots, one for each batch of activities.
 		pub(crate) fn convert_to_batch_merkle_roots<A: Activity>(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
 			activities: Vec<Vec<A>>,
 		) -> Result<Vec<ActivityHash>, OCWError> {
 			activities
@@ -1430,8 +1515,9 @@ pub mod pallet {
 				.map(|inner_vec| {
 					let activity_hashes: Vec<ActivityHash> =
 						inner_vec.into_iter().map(|a| a.hash::<T>()).collect();
-					Self::create_merkle_root(&activity_hashes)
-						.map_err(|_| OCWError::FailedToCreateMerkleRoot)
+					Self::create_merkle_root(cluster_id, era_id, &activity_hashes).map_err(|_| {
+						OCWError::FailedToCreateMerkleRoot { cluster_id: *cluster_id, era_id }
+					})
 				})
 				.collect::<Result<Vec<ActivityHash>, OCWError>>()
 		}
@@ -1462,11 +1548,26 @@ pub mod pallet {
 			sorted_activities.chunks(batch_size).map(|chunk| chunk.to_vec()).collect()
 		}
 
-		/// Create merkle root of given leaves.
+		/// Creates a Merkle root from a list of activity hashes.
 		///
-		/// Parameters:
-		/// - `leaves`: collection of leaf
+		/// This function takes a slice of `ActivityHash` and constructs a Merkle tree
+		/// using an in-memory store. It returns a tuple containing the Merkle root hash,
+		/// the size of the Merkle tree, and a vector mapping each input leaf to its position
+		/// in the Merkle tree.
+		///
+		/// # Input Parameters
+		///
+		/// * `leaves` - A slice of `ActivityHash` representing the leaves of the Merkle tree.
+		///
+		/// # Output
+		///
+		/// A `Result` containing:
+		/// * A tuple with the Merkle root `ActivityHash`, the size of the Merkle tree, and a vector
+		///   mapping each input leaf to its position in the Merkle tree.
+		/// * `OCWError::FailedToCreateMerkleRoot` if there is an error creating the Merkle root.
 		pub(crate) fn create_merkle_root(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
 			leaves: &[ActivityHash],
 		) -> Result<ActivityHash, OCWError> {
 			if leaves.is_empty() {
@@ -1476,8 +1577,23 @@ pub mod pallet {
 			let store = MemStore::default();
 			let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
 				MemMMR::<_, MergeActivityHash>::new(0, &store);
-			let _ = leaves.iter().map(|a| mmr.push(*a)).collect::<Vec<_>>();
-			mmr.get_root().map_err(|_| OCWError::FailedToCreateMerkleRoot)
+
+			let mut leaves_with_position: Vec<(u64, ActivityHash)> =
+				Vec::with_capacity(leaves.len());
+
+			for &leaf in leaves {
+				match mmr.push(leaf) {
+					Ok(pos) => leaves_with_position.push((pos, leaf)),
+					Err(_) =>
+						return Err(OCWError::FailedToCreateMerkleRoot {
+							cluster_id: *cluster_id,
+							era_id,
+						}),
+				}
+			}
+
+			mmr.get_root()
+				.map_err(|_| OCWError::FailedToCreateMerkleRoot { cluster_id: *cluster_id, era_id })
 		}
 
 		/// Verify whether leaf is part of tree
@@ -2187,8 +2303,17 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
-					OCWError::FailedToCreateMerkleRoot => {
+					OCWError::FailedToCreateMerkleRoot { cluster_id, era_id } => {
 						Self::deposit_event(Event::FailedToCreateMerkleRoot {
+							cluster_id,
+							era_id,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::FailedToCreateMerkleProof { cluster_id, era_id } => {
+						Self::deposit_event(Event::FailedToCreateMerkleProof {
+							cluster_id,
+							era_id,
 							validator: caller.clone(),
 						});
 					},
@@ -2419,6 +2544,8 @@ pub mod pallet {
 
 			match validation_era {
 				Some(valid_era) => {
+					//Self::create_merkle_root(leaves)
+
 					let root = valid_era.payers_merkle_root_hash;
 					Self::proof_merkle_leaf(root, batch_proof).unwrap_or(false)
 				},
@@ -2462,7 +2589,8 @@ pub mod pallet {
 				.map(|(_, k)| T::AccountId::decode(&mut &k.into().encode()[..]).unwrap())
 				.collect::<Vec<_>>();
 
-			ValidatorSet::<T>::put(validators);
+			ValidatorSet::<T>::put(validators); // only active validators in session - this is NOT all the
+			                        // validators
 		}
 
 		fn on_new_session<'a, I: 'a>(_changed: bool, validators: I, _queued_authorities: I)
