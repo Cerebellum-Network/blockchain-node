@@ -219,11 +219,6 @@ pub(crate) struct ClusterAssignment {
 	pub(crate) kind: ClusterNodeKind,
 }
 
-pub const PROVIDER_KEY_1: [u8; 32] = [1; 32];
-pub const PROVIDER_KEY_2: [u8; 32] = [2; 32];
-pub const PROVIDER_KEY_3: [u8; 32] = [3; 32];
-pub const PROVIDER_KEY_4: [u8; 32] = [4; 32];
-
 pub const NODE_KEY_1: [u8; 32] = [12; 32];
 pub const NODE_STASH_1: [u8; 32] = [11; 32];
 pub const NODE_CONTROLLER_1: [u8; 32] = [10; 32];
@@ -243,6 +238,11 @@ pub const NODE_CONTROLLER_4: [u8; 32] = [40; 32];
 pub const CLUSTER_ID: [u8; 20] = [1; 20];
 pub const CLUSTER_STASH: [u8; 32] = [102; 32];
 pub const CLUSTER_CONTROLLER: [u8; 32] = [101; 32];
+
+pub const PROVIDER_KEY_1: [u8; 32] = [1; 32];
+pub const PROVIDER_KEY_2: [u8; 32] = [2; 32];
+pub const PROVIDER_KEY_3: [u8; 32] = [3; 32];
+pub const PROVIDER_KEY_4: [u8; 32] = [4; 32];
 
 pub const NODE_KEY_5: [u8; 32] = [52; 32];
 pub const NODE_KEY_6: [u8; 32] = [62; 32];
@@ -272,10 +272,46 @@ pub(crate) fn build_default_setup(
 			ClusterStatus::Activated,
 		)],
 		vec![
-			build_node(NODE_KEY_1, NODE_CONTROLLER_1, StorageNodeParams::default(), None),
-			build_node(NODE_KEY_2, NODE_CONTROLLER_2, StorageNodeParams::default(), None),
-			build_node(NODE_KEY_3, NODE_CONTROLLER_3, StorageNodeParams::default(), None),
-			build_node(NODE_KEY_4, NODE_CONTROLLER_4, StorageNodeParams::default(), None),
+			build_node(
+				NODE_KEY_1,
+				NODE_CONTROLLER_1,
+				StorageNodeParams::default(),
+				Some(ClusterAssignment {
+					cluster_id: CLUSTER_ID,
+					status: ClusterNodeStatus::ValidationSucceeded,
+					kind: ClusterNodeKind::Genesis,
+				}),
+			),
+			build_node(
+				NODE_KEY_2,
+				NODE_CONTROLLER_2,
+				StorageNodeParams::default(),
+				Some(ClusterAssignment {
+					cluster_id: CLUSTER_ID,
+					status: ClusterNodeStatus::ValidationSucceeded,
+					kind: ClusterNodeKind::Genesis,
+				}),
+			),
+			build_node(
+				NODE_KEY_3,
+				NODE_CONTROLLER_3,
+				StorageNodeParams::default(),
+				Some(ClusterAssignment {
+					cluster_id: CLUSTER_ID,
+					status: ClusterNodeStatus::ValidationSucceeded,
+					kind: ClusterNodeKind::Genesis,
+				}),
+			),
+			build_node(
+				NODE_KEY_4,
+				NODE_CONTROLLER_4,
+				StorageNodeParams::default(),
+				Some(ClusterAssignment {
+					cluster_id: CLUSTER_ID,
+					status: ClusterNodeStatus::ValidationSucceeded,
+					kind: ClusterNodeKind::Genesis,
+				}),
+			),
 		],
 		vec![build_cluster_bond(CLUSTER_STASH, CLUSTER_CONTROLLER, CLUSTER_ID)],
 		vec![
