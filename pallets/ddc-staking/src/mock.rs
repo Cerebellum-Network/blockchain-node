@@ -200,65 +200,6 @@ impl crate::pallet::Config for Test {
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
 
-lazy_static! {
-	// We have to use the ReentrantMutex as every test's thread that needs to perform some configuration on the mock acquires the lock at least 2 times:
-	// the first time when the mock configuration happens, and
-	// the second time when the pallet calls the MockNodeVisitor during execution
-	static ref MOCK_NODE: ReentrantMutex<RefCell<MockNode>> =
-		ReentrantMutex::new(RefCell::new(MockNode::default()));
-}
-
-pub struct MockNode {
-	pub cluster_id: Option<ClusterId>,
-	pub exists: bool,
-	pub node_provider_id: AccountId,
-}
-
-impl Default for MockNode {
-	fn default() -> Self {
-		Self { cluster_id: None, exists: true, node_provider_id: AccountId::from([128; 32]) }
-	}
-}
-
-pub struct MockNodeVisitor;
-
-impl MockNodeVisitor {
-	// Every test's thread must hold the lock till the end of its test
-	pub fn set_and_hold_lock(mock: MockNode) -> ReentrantMutexGuard<'static, RefCell<MockNode>> {
-		let lock = MOCK_NODE.lock();
-		*lock.borrow_mut() = mock;
-		lock
-	}
-
-	// Every test's thread must release the lock that it previously acquired in the end of its
-	// test
-	pub fn reset_and_release_lock(lock: ReentrantMutexGuard<'static, RefCell<MockNode>>) {
-		*lock.borrow_mut() = MockNode::default();
-	}
-}
-
-impl<T: Config> NodeVisitor<T> for MockNodeVisitor
-where
-	<T as frame_system::Config>::AccountId: From<AccountId>,
-{
-	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
-		let lock = MOCK_NODE.lock();
-		let mock_ref = lock.borrow();
-		Ok(mock_ref.cluster_id)
-	}
-	fn exists(_node_pub_key: &NodePubKey) -> bool {
-		let lock = MOCK_NODE.lock();
-		let mock_ref = lock.borrow();
-		mock_ref.exists
-	}
-
-	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
-		let lock = MOCK_NODE.lock();
-		let mock_ref = lock.borrow();
-		Ok(mock_ref.node_provider_id.clone().into())
-	}
-}
-
 // (stash, controller, cluster)
 #[allow(clippy::type_complexity)]
 pub(crate) type BuiltClusterBond = (AccountId, AccountId, ClusterId);
@@ -270,7 +211,13 @@ pub(crate) type BuiltNodeBond = (AccountId, AccountId, NodePubKey, Balance, Clus
 pub(crate) type BuiltCluster = (Cluster<AccountId>, ClusterProtocolParams<Balance, BlockNumber>);
 
 #[allow(clippy::type_complexity)]
-pub type BuiltNode = (NodePubKey, StorageNode<Test>, ClusterNodeStatus, ClusterNodeKind);
+pub(crate) type BuiltNode = (NodePubKey, StorageNode<Test>, Option<ClusterAssignment>);
+
+pub(crate) struct ClusterAssignment {
+	pub(crate) cluster_id: [u8; 20],
+	pub(crate) status: ClusterNodeStatus,
+	pub(crate) kind: ClusterNodeKind,
+}
 
 pub const KEY_1: [u8; 32] = [1; 32];
 pub const KEY_2: [u8; 32] = [2; 32];
@@ -322,38 +269,10 @@ pub(crate) fn build_default_setup(
 			ClusterStatus::Unbonded,
 		)],
 		vec![
-			build_node(
-				NODE_PUB_KEY_1,
-				NODE_CONTROLLER_1,
-				StorageNodeParams::default(),
-				None,
-				ClusterNodeStatus::ValidationSucceeded,
-				ClusterNodeKind::Genesis,
-			),
-			build_node(
-				NODE_PUB_KEY_2,
-				NODE_CONTROLLER_2,
-				StorageNodeParams::default(),
-				None,
-				ClusterNodeStatus::ValidationSucceeded,
-				ClusterNodeKind::Genesis,
-			),
-			build_node(
-				NODE_PUB_KEY_3,
-				NODE_CONTROLLER_3,
-				StorageNodeParams::default(),
-				None,
-				ClusterNodeStatus::ValidationSucceeded,
-				ClusterNodeKind::Genesis,
-			),
-			build_node(
-				NODE_PUB_KEY_4,
-				NODE_CONTROLLER_4,
-				StorageNodeParams::default(),
-				None,
-				ClusterNodeStatus::ValidationSucceeded,
-				ClusterNodeKind::Genesis,
-			),
+			build_node(NODE_PUB_KEY_1, NODE_CONTROLLER_1, StorageNodeParams::default(), None),
+			build_node(NODE_PUB_KEY_2, NODE_CONTROLLER_2, StorageNodeParams::default(), None),
+			build_node(NODE_PUB_KEY_3, NODE_CONTROLLER_3, StorageNodeParams::default(), None),
+			build_node(NODE_PUB_KEY_4, NODE_CONTROLLER_4, StorageNodeParams::default(), None),
 		],
 		vec![build_cluster_bond(CLUSTER_STASH, CLUSTER_CONTROLLER, CLUSTER_ID)],
 		vec![
@@ -387,9 +306,7 @@ pub fn build_node(
 	pub_key: [u8; 32],
 	provider_id: [u8; 32],
 	params: StorageNodeParams,
-	cluster_id: Option<[u8; 20]>,
-	status: ClusterNodeStatus,
-	kind: ClusterNodeKind,
+	assignment: Option<ClusterAssignment>,
 ) -> BuiltNode {
 	let key = NodePubKey::StoragePubKey(AccountId::from(pub_key));
 	let mut node = StorageNode::new(
@@ -398,11 +315,13 @@ pub fn build_node(
 		NodeParams::StorageParams(params),
 	)
 	.unwrap();
-	node.cluster_id = match cluster_id {
-		Some(id) => Some(ClusterId::from(id)),
+
+	node.cluster_id = match assignment {
+		Some(ClusterAssignment { cluster_id, .. }) => Some(ClusterId::from(cluster_id)),
 		None => None,
 	};
-	(key, node, status, kind)
+
+	(key, node, assignment)
 }
 
 pub(crate) fn build_cluster_bond(
@@ -451,11 +370,13 @@ impl ExtBuilder {
 
 		let mut storage_nodes = Vec::new();
 		let mut clusters_storage_nodes = Vec::new();
-		for (pub_key, node, status, kind) in nodes.iter() {
+		for (pub_key, node, cluster_assignment) in nodes.iter() {
 			storage_nodes.push(node.clone());
-			if let Some(cluster_id) = node.cluster_id {
-				clusters_storage_nodes
-					.push((cluster_id, vec![(pub_key.clone(), kind.clone(), status.clone())]));
+			if let Some(ClusterAssignment { cluster_id, kind, status }) = cluster_assignment {
+				clusters_storage_nodes.push((
+					ClusterId::from(cluster_id),
+					vec![(pub_key.clone(), kind.clone(), status.clone())],
+				));
 			}
 		}
 

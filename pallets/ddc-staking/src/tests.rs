@@ -1,8 +1,8 @@
 //! Tests for the module.
 
 use ddc_primitives::{
-	ClusterNodeKind, ClusterParams, ClusterProtocolParams, ClusterStatus, StorageNodeParams,
-	StorageNodePubKey,
+	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
+	StorageNodeParams, StorageNodePubKey,
 };
 use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
 use pallet_balances::Error as BalancesError;
@@ -119,24 +119,8 @@ fn change_controller_works() {
 #[test]
 fn not_enough_inital_bond_flow() {
 	let (clusters, mut nodes, clusters_bonds, nodes_bondes) = build_default_setup();
-
-	let node_5 = build_node(
-		[5; 32],
-		KEY_4,
-		StorageNodeParams::default(),
-		None,
-		ddc_primitives::ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
-	);
-
-	let node_6 = build_node(
-		[3; 32],
-		KEY_2,
-		StorageNodeParams::default(),
-		None,
-		ddc_primitives::ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
-	);
+	let node_5 = build_node([5; 32], KEY_4, StorageNodeParams::default(), None);
+	let node_6 = build_node([3; 32], KEY_2, StorageNodeParams::default(), None);
 
 	nodes.push(node_5);
 	nodes.push(node_6);
@@ -217,14 +201,7 @@ fn not_enough_inital_bond_flow() {
 fn unbonding_edge_cases_work() {
 	let (clusters, mut nodes, clusters_bonds, nodes_bondes) = build_default_setup();
 
-	let node_5 = build_node(
-		[5; 32],
-		KEY_4,
-		StorageNodeParams::default(),
-		None,
-		ddc_primitives::ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
-	);
+	let node_5 = build_node([5; 32], KEY_4, StorageNodeParams::default(), None);
 
 	nodes.push(node_5);
 
@@ -305,23 +282,8 @@ fn set_node_works() {
 fn cancel_previous_chill_works() {
 	let (clusters, mut nodes, clusters_bonds, nodes_bondes) = build_default_setup();
 
-	let node_5 = build_node(
-		[5; 32],
-		KEY_4,
-		StorageNodeParams::default(),
-		None,
-		ddc_primitives::ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
-	);
-
-	let node_6 = build_node(
-		[3; 32],
-		KEY_2,
-		StorageNodeParams::default(),
-		None,
-		ddc_primitives::ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
-	);
+	let node_5 = build_node([5; 32], KEY_4, StorageNodeParams::default(), None);
+	let node_6 = build_node([3; 32], KEY_2, StorageNodeParams::default(), None);
 
 	nodes.push(node_5);
 	nodes.push(node_6);
@@ -374,19 +336,14 @@ fn staking_should_work() {
 		[5; 32],
 		KEY_4,
 		StorageNodeParams::default(),
-		Some(CLUSTER_ID),
-		ddc_primitives::ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
+		Some(ClusterAssignment {
+			cluster_id: CLUSTER_ID,
+			status: ClusterNodeStatus::ValidationSucceeded,
+			kind: ClusterNodeKind::Genesis,
+		}),
 	);
 
-	let node_10 = build_node(
-		[10; 32],
-		KEY_4,
-		StorageNodeParams::default(),
-		None,
-		ddc_primitives::ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
-	);
+	let node_10 = build_node([10; 32], KEY_4, StorageNodeParams::default(), None);
 
 	nodes.push(node_5);
 	nodes.push(node_10);
@@ -550,9 +507,11 @@ fn storage_full_unbonding_works() {
 		[2; 32],
 		KEY_4,
 		StorageNodeParams::default(),
-		Some(CLUSTER_ID),
-		ddc_primitives::ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
+		Some(ClusterAssignment {
+			cluster_id: CLUSTER_ID,
+			status: ClusterNodeStatus::ValidationSucceeded,
+			kind: ClusterNodeKind::Genesis,
+		}),
 	);
 
 	nodes.push(node_5);
@@ -676,9 +635,11 @@ fn staking_visitor_works() {
 		[5; 32],
 		KEY_4,
 		StorageNodeParams::default(),
-		Some(CLUSTER_ID),
-		ddc_primitives::ClusterNodeStatus::ValidationSucceeded,
-		ClusterNodeKind::Genesis,
+		Some(ClusterAssignment {
+			cluster_id: CLUSTER_ID,
+			status: ClusterNodeStatus::ValidationSucceeded,
+			kind: ClusterNodeKind::Genesis,
+		}),
 	);
 
 	nodes.push(node_5);
