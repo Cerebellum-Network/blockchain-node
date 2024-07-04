@@ -239,10 +239,10 @@ pub const CLUSTER_ID: [u8; 20] = [1; 20];
 pub const CLUSTER_STASH: [u8; 32] = [102; 32];
 pub const CLUSTER_CONTROLLER: [u8; 32] = [101; 32];
 
-pub const PROVIDER_KEY_1: [u8; 32] = [1; 32];
-pub const PROVIDER_KEY_2: [u8; 32] = [2; 32];
-pub const PROVIDER_KEY_3: [u8; 32] = [3; 32];
-pub const PROVIDER_KEY_4: [u8; 32] = [4; 32];
+pub const USER_KEY_1: [u8; 32] = [1; 32];
+pub const USER_KEY_2: [u8; 32] = [2; 32];
+pub const USER_KEY_3: [u8; 32] = [3; 32];
+pub const USER_KEY_4: [u8; 32] = [4; 32];
 
 pub const NODE_KEY_5: [u8; 32] = [52; 32];
 pub const NODE_KEY_6: [u8; 32] = [62; 32];
@@ -401,10 +401,10 @@ impl ExtBuilder {
 		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 		let mut balances: Vec<(AccountId, Balance)> = vec![
-			(AccountId::from(PROVIDER_KEY_1), ENDOWMENT),
-			(AccountId::from(PROVIDER_KEY_2), ENDOWMENT),
-			(AccountId::from(PROVIDER_KEY_3), ENDOWMENT),
-			(AccountId::from(PROVIDER_KEY_4), ENDOWMENT),
+			(AccountId::from(USER_KEY_1), ENDOWMENT),
+			(AccountId::from(USER_KEY_2), ENDOWMENT),
+			(AccountId::from(USER_KEY_3), ENDOWMENT),
+			(AccountId::from(USER_KEY_4), ENDOWMENT),
 		];
 
 		let mut storage_nodes = Vec::new();
