@@ -134,6 +134,7 @@ pub mod pallet {
 		ClusterProtocolParamsNotSet,
 		ArithmeticOverflow,
 		NodeIsNotAssignedToCluster,
+		ControllerDoesNotExist,
 	}
 
 	#[pallet::storage]
@@ -913,6 +914,7 @@ pub mod pallet {
 			match error {
 				StakingVisitorError::NodeStakeDoesNotExist => Error::<T>::NodeHasNoActivatedStake,
 				StakingVisitorError::NodeStakeIsInBadState => Error::<T>::NodeStakeIsInvalid,
+				StakingVisitorError::ControllerDoesNotExist => Error::<T>::ControllerDoesNotExist,
 			}
 		}
 	}

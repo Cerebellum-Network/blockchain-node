@@ -52,11 +52,9 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::{BucketId, MergeActivityHash, KEY_TYPE};
-	use frame_election_provider_support::SortedListProvider;
+	use ddc_primitives::{traits::StakingVisitor, BucketId, MergeActivityHash, KEY_TYPE};
 	use frame_support::PalletId;
 	use sp_runtime::SaturatedConversion;
-	use sp_staking::StakingInterface;
 
 	use super::*;
 
@@ -111,9 +109,7 @@ pub mod pallet {
 		const MAX_PAYOUT_BATCH_COUNT: u16;
 		const MAX_PAYOUT_BATCH_SIZE: u16;
 		/// The access to staking functionality.
-		type Staking: StakingInterface<AccountId = Self::AccountId>;
-		/// The access to validator list.
-		type ValidatorList: SortedListProvider<Self::AccountId>;
+		type StakingVisitor: StakingVisitor<Self>;
 	}
 
 	/// The event type.
@@ -565,13 +561,11 @@ pub mod pallet {
 			if Self::fetch_current_validator().is_err() {
 				let _ = signer.send_signed_transaction(|account| {
 					log::info!("🏄‍ Setting current validator...  {:?}", account.id);
-
 					Self::store_current_validator(account.id.encode());
 
 					Call::set_current_validator {}
 				});
 			}
-
 			if (block_number.saturated_into::<u32>() % T::BLOCK_TO_START as u32) != 0 {
 				return;
 			}
@@ -1896,8 +1890,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 
-			//ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised); // todo!
-			// need to refactor this Retrieve or initialize the EraValidation
+			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
 			let mut era_validation = {
 				let era_validations = <EraValidations<T>>::get(cluster_id, era_activity.id);
 
@@ -1981,8 +1974,7 @@ pub mod pallet {
 			errors: Vec<OCWError>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised); // todo!
-			// need to refactor this
+			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
 
 			for error in errors {
 				match error {
@@ -2152,10 +2144,13 @@ pub mod pallet {
 			ddc_validator_pub: T::AccountId,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			let stash_account =
-				T::Staking::stash_by_ctrl(&controller).map_err(|_| Error::<T>::NotController)?;
+			let stash_account = T::StakingVisitor::stash_by_ctrl(&controller)
+				.map_err(|_| Error::<T>::NotController)?;
 
-			ensure!(T::ValidatorList::contains(&stash_account), Error::<T>::NotValidatorStash);
+			ensure!(
+				<ValidatorSet<T>>::get().contains(&stash_account),
+				Error::<T>::NotValidatorStash
+			);
 
 			ValidatorToStashKey::<T>::insert(ddc_validator_pub, &stash_account);
 			Ok(())
@@ -2171,8 +2166,7 @@ pub mod pallet {
 			end_era: i64,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised); // todo!
-			// need to refactor this
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
 
 			T::PayoutVisitor::begin_billing_report(sender, cluster_id, era_id, start_era, end_era)?;
 
@@ -2198,8 +2192,7 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised); // todo!
-			// need to refactor this
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
 			T::PayoutVisitor::begin_charging_customers(sender, cluster_id, era_id, max_batch_index)
 		}
 
@@ -2325,7 +2318,14 @@ pub mod pallet {
 		#[pallet::call_index(11)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
-			let _: T::AccountId = ensure_signed(origin)?;
+			let caller: T::AccountId = ensure_signed(origin)?;
+
+			if Self::is_ocw_validator(caller.clone()) {
+				log::info!("🏄‍ is_ocw_validator is a validator  {:?}", caller.clone());
+			} else {
+				log::info!("🏄‍ is_ocw_validator is not a validator  {:?}", caller.clone());
+			}
+
 			Ok(())
 		}
 
