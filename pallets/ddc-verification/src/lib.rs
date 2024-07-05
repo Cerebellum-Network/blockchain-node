@@ -52,11 +52,9 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::{BucketId, MergeActivityHash, KEY_TYPE};
-	use frame_election_provider_support::SortedListProvider;
+	use ddc_primitives::{traits::StakingVisitor, BucketId, MergeActivityHash, KEY_TYPE};
 	use frame_support::PalletId;
 	use sp_runtime::SaturatedConversion;
-	use sp_staking::StakingInterface;
 
 	use super::*;
 
@@ -111,9 +109,7 @@ pub mod pallet {
 		const MAX_PAYOUT_BATCH_COUNT: u16;
 		const MAX_PAYOUT_BATCH_SIZE: u16;
 		/// The access to staking functionality.
-		type Staking: StakingInterface<AccountId = Self::AccountId>;
-		/// The access to validator list.
-		type ValidatorList: SortedListProvider<Self::AccountId>;
+		type StakingVisitor: StakingVisitor<Self>;
 	}
 
 	/// The event type.
@@ -592,7 +588,6 @@ pub mod pallet {
 					Call::set_current_validator {}
 				});
 			}
-
 			if (block_number.saturated_into::<u32>() % T::BLOCK_TO_START as u32) != 0 {
 				return;
 			}
@@ -718,7 +713,12 @@ pub mod pallet {
 			}
 
 			// todo! factor out as macro as this is repetitive
-			match Self::prepare_begin_charging_customers(&cluster_id) {
+			match Self::prepare_begin_charging_customers(
+				&cluster_id,
+				&dac_nodes,
+				min_nodes,
+				batch_size.into(),
+			) {
 				Ok(Some((era_id, max_batch_index))) => {
 					log::info!(
 						"🎁 prepare_begin_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
@@ -763,9 +763,7 @@ pub mod pallet {
 						cluster_id
 					);
 				},
-				Err(e) => {
-					errors.push(e);
-				},
+				Err(e) => errors.extend(e),
 			}
 
 			// todo! factor out as macro as this is repetitive
@@ -1146,8 +1144,11 @@ pub mod pallet {
 
 		pub(crate) fn prepare_begin_charging_customers(
 			cluster_id: &ClusterId,
-		) -> Result<Option<(DdcEra, BatchIndex)>, OCWError> {
-			if let Some((era_id, _start, _end)) =
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+			min_nodes: u16,
+			batch_size: usize,
+		) -> Result<Option<(DdcEra, BatchIndex)>, Vec<OCWError>> {
+			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
 				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
@@ -1157,30 +1158,55 @@ pub mod pallet {
 						Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
 							cluster_id, era_id,
 						) {
-						if let Some(max_batch_index) =
-							customers_activity_batch_roots.len().checked_sub(1)
-						// -1 cause payout expects max_index, not length
-						{
-							let max_batch_index: u16 =
-								max_batch_index.try_into().map_err(|_| {
-									OCWError::BatchIndexConversionFailed {
-										cluster_id: *cluster_id,
-										era_id,
-									}
-								})?;
-							return Ok(Some((era_id, max_batch_index)));
-						} else {
-							return Err(OCWError::EmptyCustomerActivity {
-								cluster_id: *cluster_id,
+						Self::fetch_customer_activity(
+							cluster_id,
+							era_id,
+							customers_activity_batch_roots,
+						)
+						.map_err(|err| vec![err])?;
+					} else {
+						let era_activity = EraActivity { id: era_id, start, end };
+
+						let _ = Self::process_dac_data(
+							cluster_id,
+							Some(era_activity),
+							dac_nodes,
+							min_nodes,
+							batch_size,
+						)?;
+
+						if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
+							Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
+								cluster_id, era_id,
+							) {
+							Self::fetch_customer_activity(
+								cluster_id,
 								era_id,
-							});
+								customers_activity_batch_roots,
+							)
+							.map_err(|err| vec![err])?;
 						}
-					} /*else {
-						 // todo! no data - reconstruct the data from DAC
-					 }*/
+					}
 				}
 			}
 			Ok(None)
+		}
+
+		pub(crate) fn fetch_customer_activity(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			customers_activity_batch_roots: Vec<ActivityHash>,
+		) -> Result<Option<(DdcEra, u16)>, OCWError> {
+			if let Some(max_batch_index) = customers_activity_batch_roots.len().checked_sub(1)
+			// -1 cause payout expects max_index, not length
+			{
+				let max_batch_index: u16 = max_batch_index.try_into().map_err(|_| {
+					OCWError::BatchIndexConversionFailed { cluster_id: *cluster_id, era_id }
+				})?;
+				Ok(Some((era_id, max_batch_index)))
+			} else {
+				Err(OCWError::EmptyCustomerActivity { cluster_id: *cluster_id, era_id })
+			}
 		}
 
 		pub(crate) fn prepare_send_charging_customers_batch(
@@ -2076,8 +2102,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 
-			//ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised); // todo!
-			// need to refactor this Retrieve or initialize the EraValidation
+			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
 			let mut era_validation = {
 				let era_validations = <EraValidations<T>>::get(cluster_id, era_activity.id);
 
@@ -2161,8 +2186,7 @@ pub mod pallet {
 			errors: Vec<OCWError>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised); // todo!
-			// need to refactor this
+			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
 
 			for error in errors {
 				match error {
@@ -2341,10 +2365,13 @@ pub mod pallet {
 			ddc_validator_pub: T::AccountId,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			let stash_account =
-				T::Staking::stash_by_ctrl(&controller).map_err(|_| Error::<T>::NotController)?;
+			let stash_account = T::StakingVisitor::stash_by_ctrl(&controller)
+				.map_err(|_| Error::<T>::NotController)?;
 
-			ensure!(T::ValidatorList::contains(&stash_account), Error::<T>::NotValidatorStash);
+			ensure!(
+				<ValidatorSet<T>>::get().contains(&stash_account),
+				Error::<T>::NotValidatorStash
+			);
 
 			ValidatorToStashKey::<T>::insert(ddc_validator_pub, &stash_account);
 			Ok(())
@@ -2360,8 +2387,7 @@ pub mod pallet {
 			end_era: i64,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised); // todo!
-			// need to refactor this
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
 
 			T::PayoutVisitor::begin_billing_report(sender, cluster_id, era_id, start_era, end_era)?;
 
@@ -2387,8 +2413,7 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised); // todo!
-			// need to refactor this
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
 			T::PayoutVisitor::begin_charging_customers(sender, cluster_id, era_id, max_batch_index)
 		}
 
@@ -2503,7 +2528,14 @@ pub mod pallet {
 		#[pallet::call_index(11)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
-			let _: T::AccountId = ensure_signed(origin)?;
+			let caller: T::AccountId = ensure_signed(origin)?;
+
+			if Self::is_ocw_validator(caller.clone()) {
+				log::info!("🏄‍ is_ocw_validator is a validator  {:?}", caller.clone());
+			} else {
+				log::info!("🏄‍ is_ocw_validator is not a validator  {:?}", caller.clone());
+			}
+
 			Ok(())
 		}
 
