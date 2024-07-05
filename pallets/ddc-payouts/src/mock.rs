@@ -4,13 +4,14 @@
 
 use ddc_primitives::{
 	traits::{
+		bucket::BucketVisitor,
 		cluster::{ClusterCreator, ClusterProtocol},
 		customer::{CustomerCharger, CustomerDepositor},
 		pallet::PalletVisitor,
 		ClusterQuery, ValidatorVisitor,
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodeType, DOLLARS,
+	BucketVisitorError, ClusterBondingParams, ClusterFeesParams, ClusterParams,
+	ClusterPricingParams, ClusterProtocolParams, ClusterStatus, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -124,6 +125,7 @@ impl crate::pallet::Config for Test {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = TestCustomerCharger;
+	type BucketVisitor = TestBucketVisitor;
 	type CustomerDepositor = TestCustomerDepositor;
 	type ClusterProtocol = TestClusterProtocol;
 	type TreasuryVisitor = TestTreasuryVisitor;
@@ -162,32 +164,26 @@ where
 		_cluster_id: ClusterId,
 		_era: DdcEra,
 		_batch_index: BatchIndex,
-		_payees: &[(T::AccountId, BucketId, NodeUsage)],
+		_payees: &[(T::AccountId, NodeUsage)],
 		_batch_proof: &MMRProof,
 	) -> bool {
 		true
 	}
 }
 
+pub struct TestBucketVisitor;
+impl<T: Config> BucketVisitor<T> for TestBucketVisitor {
+	fn get_total_customer_usage(
+		_cluster_id: &ClusterId,
+		_bucket_id: BucketId,
+		_content_owner: &T::AccountId,
+	) -> Result<Option<CustomerUsage>, BucketVisitorError> {
+		Ok(None)
+	}
+}
+
 pub struct TestCustomerCharger;
 impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
-	fn inc_total_customer_usage(
-		_cluster_id: &ClusterId,
-		_bucket_id: BucketId,
-		_content_owner: T::AccountId,
-		_customer_usage: &CustomerUsage,
-	) -> DispatchResult {
-		Ok(())
-	}
-
-	fn inc_total_node_usage(
-		_cluster_id: &ClusterId,
-		_bucket_id: BucketId,
-		_node_usage: &NodeUsage,
-	) -> DispatchResult {
-		Ok(())
-	}
-
 	fn charge_content_owner(
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,

@@ -3007,7 +3007,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		let bucket_id2: BucketId = 2;
 		let payers1 = vec![(user1, bucket_id1, CustomerUsage::default())];
 		let payers2 = vec![(user2, bucket_id2, CustomerUsage::default())];
-		let payees = vec![(node1, bucket_id1, NodeUsage::default())];
+		let payees = vec![(node1, NodeUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -3169,8 +3169,6 @@ fn send_rewarding_providers_batch_works() {
 		let batch_index = 0;
 		let batch_node_index = 0;
 		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
-		let bucket_id3: BucketId = 3;
 		let usage1 = CustomerUsage {
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
@@ -3218,11 +3216,8 @@ fn send_rewarding_providers_batch_works() {
 		};
 
 		let payers = vec![(user1, bucket_id1, usage1)];
-		let payees1 = vec![
-			(node1, bucket_id1, node_usage1.clone()),
-			(node2, bucket_id2, node_usage2.clone()),
-		];
-		let payees2 = vec![(node3, bucket_id3, node_usage3.clone())];
+		let payees1 = vec![(node1, node_usage1.clone()), (node2, node_usage2.clone())];
+		let payees2 = vec![(node3, node_usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -3332,7 +3327,6 @@ fn send_rewarding_providers_batch_works() {
 				cluster_id,
 				era,
 				node_provider_id: node1,
-				bucket_id: bucket_id1,
 				batch_index: batch_node_index,
 				rewarded: balance_node1,
 				expected_to_reward: balance_node1,
@@ -3370,7 +3364,6 @@ fn send_rewarding_providers_batch_works() {
 			Event::Rewarded {
 				cluster_id,
 				era,
-				bucket_id: bucket_id2,
 				node_provider_id: node2,
 				batch_index: batch_node_index,
 				rewarded: balance_node2,
@@ -3419,7 +3412,6 @@ fn send_rewarding_providers_batch_works() {
 			Event::Rewarded {
 				cluster_id,
 				era,
-				bucket_id: bucket_id3,
 				node_provider_id: node3,
 				batch_index: batch_node_index + 1,
 				rewarded: balance_node3,
@@ -3501,8 +3493,8 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			number_of_gets: usage1.number_of_gets * 2,
 		};
 
-		let mut payees: Vec<Vec<(u128, BucketId, NodeUsage)>> = Vec::new();
-		let mut node_batch: Vec<(u128, BucketId, NodeUsage)> = Vec::new();
+		let mut payees: Vec<Vec<(u128, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(u128, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
 		for i in 10..10 + num_nodes {
 			let node_usage = match i % 3 {
@@ -3516,7 +3508,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
 			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
 
-			node_batch.push((i, bucketid1, node_usage));
+			node_batch.push((i, node_usage));
 			if node_batch.len() == node_batch_size {
 				payees.push(node_batch.clone());
 				node_batch.clear();
@@ -3669,7 +3661,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			));
 
 			let mut batch_charge = 0;
-			for (node1, _bucket_id, node_usage1) in batch.iter() {
+			for (node1, node_usage1) in batch.iter() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
 					total_nodes_usage.transferred_bytes,
@@ -3765,8 +3757,8 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			number_of_gets: usage1.number_of_gets * 2,
 		};
 
-		let mut payees: Vec<Vec<(u128, BucketId, NodeUsage)>> = Vec::new();
-		let mut node_batch: Vec<(u128, BucketId, NodeUsage)> = Vec::new();
+		let mut payees: Vec<Vec<(u128, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(u128, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
 		for i in 10..10 + num_nodes {
 			let ratio = match i % 5 {
@@ -3793,7 +3785,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
 			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
 
-			node_batch.push((i, bucketid1, node_usage));
+			node_batch.push((i, node_usage));
 			if node_batch.len() == node_batch_size {
 				payees.push(node_batch.clone());
 				node_batch.clear();
@@ -3946,7 +3938,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			));
 
 			let mut batch_charge = 0;
-			for (node1, _bucket_id, node_usage1) in batch.iter() {
+			for (node1, node_usage1) in batch.iter() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
 					total_nodes_usage.transferred_bytes,
@@ -4041,8 +4033,8 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			number_of_gets: usage1.number_of_gets * 2,
 		};
 
-		let mut payees: Vec<Vec<(u128, BucketId, NodeUsage)>> = Vec::new();
-		let mut node_batch: Vec<(u128, BucketId, NodeUsage)> = Vec::new();
+		let mut payees: Vec<Vec<(u128, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(u128, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
 		for i in 10..10 + num_nodes {
 			let ratio = match i % 5 {
@@ -4069,7 +4061,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
 			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
 
-			node_batch.push((i, bucketid1, node_usage));
+			node_batch.push((i, node_usage));
 			if node_batch.len() == node_batch_size {
 				payees.push(node_batch.clone());
 				node_batch.clear();
@@ -4222,7 +4214,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			));
 
 			let mut batch_charge = 0;
-			for (node1, _bucket_id, node_usage1) in batch.iter() {
+			for (node1, node_usage1) in batch.iter() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
 					total_nodes_usage.transferred_bytes,
@@ -4296,8 +4288,8 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		let mut batch_user_index = 0;
 		let mut batch_node_index = 0;
 		let bucket_id1: BucketId = 1;
-		let mut payees: Vec<Vec<(u128, BucketId, NodeUsage)>> = Vec::new();
-		let mut node_batch: Vec<(u128, BucketId, NodeUsage)> = Vec::new();
+		let mut payees: Vec<Vec<(u128, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(u128, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
 		for i in 10..10 + num_nodes {
 			let node_usage = NodeUsage {
@@ -4312,7 +4304,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
 			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
 
-			node_batch.push((i, bucket_id1, node_usage));
+			node_batch.push((i, node_usage));
 			if node_batch.len() == node_batch_size {
 				payees.push(node_batch.clone());
 				node_batch.clear();
@@ -4457,7 +4449,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			));
 
 			let mut batch_charge = 0;
-			for (node1, _bucket_id, node_usage1) in batch.iter() {
+			for (node1, node_usage1) in batch.iter() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
 					total_nodes_usage.transferred_bytes,
@@ -4515,7 +4507,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 		let bucket_id2: BucketId = 2;
 		let payers1 = vec![(user1, bucket_id1, CustomerUsage::default())];
 		let payers2 = vec![(user2, bucket_id2, CustomerUsage::default())];
-		let payees = vec![(node1, bucket_id1, NodeUsage::default())];
+		let payees = vec![(node1, NodeUsage::default())];
 		let total_node_usage = NodeUsage::default();
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
@@ -4687,7 +4679,6 @@ fn end_rewarding_providers_works() {
 		let max_batch_index = 0;
 		let batch_index = 0;
 		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
 		let usage1 = CustomerUsage {
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
@@ -4704,7 +4695,7 @@ fn end_rewarding_providers_works() {
 		};
 		let total_node_usage = node_usage1.clone();
 		let payers = vec![(user1, bucket_id1, usage1)];
-		let payees = vec![(node1, bucket_id2, node_usage1)];
+		let payees = vec![(node1, node_usage1)];
 
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account),
@@ -4791,7 +4782,7 @@ fn end_billing_report_fails_uninitialised() {
 		let bucket_id2: BucketId = 2;
 		let payers1 = vec![(user1, bucket_id1, CustomerUsage::default())];
 		let payers2 = vec![(user2, bucket_id2, CustomerUsage::default())];
-		let payees = vec![(node1, bucket_id1, NodeUsage::default())];
+		let payees = vec![(node1, NodeUsage::default())];
 		let total_node_usage = NodeUsage::default();
 
 		assert_noop!(
@@ -4936,9 +4927,8 @@ fn end_billing_report_works() {
 		let batch_index = 0;
 		let total_node_usage = NodeUsage::default();
 		let bucket_id1 = 1;
-		let bucket_id2 = 2;
 		let payers = vec![(user1, bucket_id1, CustomerUsage::default())];
-		let payees = vec![(node1, bucket_id2, NodeUsage::default())];
+		let payees = vec![(node1, NodeUsage::default())];
 
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account),

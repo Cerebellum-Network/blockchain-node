@@ -15,10 +15,11 @@ mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
+		bucket::{BucketManager, BucketVisitor},
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor},
 	},
-	BucketId, ClusterId, CustomerUsage, NodeUsage,
+	BucketId, BucketVisitorError, ClusterId, CustomerUsage,
 };
 use frame_support::{
 	parameter_types,
@@ -67,7 +68,6 @@ pub struct Bucket<T: Config> {
 	is_public: bool,
 	is_removed: bool,
 	total_customers_usage: Option<CustomerUsage>,
-	total_nodes_usage: Option<NodeUsage>,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -336,7 +336,6 @@ pub mod pallet {
 				is_public: bucket_params.is_public,
 				is_removed: false,
 				total_customers_usage: None,
-				total_nodes_usage: None,
 			};
 
 			<BucketsCount<T>>::set(cur_bucket_id);
@@ -647,7 +646,21 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> CustomerCharger<T> for Pallet<T> {
+	impl<T: Config> BucketVisitor<T> for Pallet<T> {
+		fn get_total_customer_usage(
+			cluster_id: &ClusterId,
+			bucket_id: BucketId,
+			content_owner: &T::AccountId,
+		) -> Result<Option<CustomerUsage>, BucketVisitorError> {
+			let bucket = Self::buckets(bucket_id).ok_or(BucketVisitorError::NoBucketWithId)?;
+			ensure!(bucket.owner_id == *content_owner, BucketVisitorError::NotBucketOwner);
+			ensure!(bucket.cluster_id == *cluster_id, BucketVisitorError::NoBucketWithId);
+
+			Ok(bucket.total_customers_usage)
+		}
+	}
+
+	impl<T: Config> BucketManager<T> for Pallet<T> {
 		fn inc_total_customer_usage(
 			cluster_id: &ClusterId,
 			bucket_id: BucketId,
@@ -686,43 +699,9 @@ pub mod pallet {
 
 			Ok(())
 		}
+	}
 
-		fn inc_total_node_usage(
-			cluster_id: &ClusterId,
-			bucket_id: BucketId,
-			node_usage: &NodeUsage,
-		) -> DispatchResult {
-			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
-
-			// Update or initialize total_nodes_usage
-			match &mut bucket.total_nodes_usage {
-				Some(total_nodes_usage) => {
-					total_nodes_usage.transferred_bytes += node_usage.transferred_bytes;
-					total_nodes_usage.stored_bytes += node_usage.stored_bytes;
-					total_nodes_usage.number_of_puts += node_usage.number_of_puts;
-					total_nodes_usage.number_of_gets += node_usage.number_of_gets;
-				},
-				None => {
-					bucket.total_nodes_usage = Some(NodeUsage {
-						transferred_bytes: node_usage.transferred_bytes,
-						stored_bytes: node_usage.stored_bytes,
-						number_of_puts: node_usage.number_of_puts,
-						number_of_gets: node_usage.number_of_gets,
-					});
-				},
-			}
-
-			Self::deposit_event(Event::<T>::BucketTotalCustomersUsageUpdated {
-				cluster_id: *cluster_id,
-				bucket_id,
-				transferred_bytes: node_usage.transferred_bytes,
-				stored_bytes: node_usage.stored_bytes,
-				number_of_puts: node_usage.number_of_puts,
-				number_of_gets: node_usage.number_of_gets,
-			});
-			Ok(())
-		}
-
+	impl<T: Config> CustomerCharger<T> for Pallet<T> {
 		fn charge_content_owner(
 			cluster_id: &ClusterId,
 			bucket_id: BucketId,
@@ -763,7 +742,6 @@ pub mod pallet {
 				actually_charged.checked_add(&charged).ok_or(Error::<T>::ArithmeticUnderflow)?;
 			}
 
-			// todo! factor out into BucketManager::inc_total_customer_usage
 			Self::inc_total_customer_usage(
 				cluster_id,
 				bucket_id,
