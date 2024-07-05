@@ -1064,18 +1064,25 @@ fn test_convert_to_batch_merkle_roots() {
 	let nodes = get_node_activities();
 	let activities_batch_1 = vec![nodes[0].clone(), nodes[1].clone(), nodes[2].clone()];
 	let activities_batch_2 = vec![nodes[3].clone(), nodes[4].clone()];
+	let cluster_id = ClusterId::default();
+	let era_id_1 = 1;
 
-	let result_roots = DdcVerification::convert_to_batch_merkle_roots(vec![
-		activities_batch_1.clone(),
-		activities_batch_2.clone(),
-	])
+	let result_roots = DdcVerification::convert_to_batch_merkle_roots(
+		&cluster_id,
+		era_id_1,
+		vec![activities_batch_1.clone(), activities_batch_2.clone()],
+	)
 	.unwrap();
 	let expected_roots: Vec<ActivityHash> = vec![
 		DdcVerification::create_merkle_root(
+			&cluster_id,
+			era_id_1,
 			&activities_batch_1.iter().map(|a| a.hash::<mock::Test>()).collect::<Vec<_>>(),
 		)
 		.unwrap(),
 		DdcVerification::create_merkle_root(
+			&cluster_id,
+			era_id_1,
 			&activities_batch_2.iter().map(|a| a.hash::<mock::Test>()).collect::<Vec<_>>(),
 		)
 		.unwrap(),
@@ -1086,8 +1093,14 @@ fn test_convert_to_batch_merkle_roots() {
 
 #[test]
 fn test_convert_to_batch_merkle_roots_empty() {
-	let result_roots =
-		DdcVerification::convert_to_batch_merkle_roots(Vec::<Vec<NodeActivity>>::new()).unwrap();
+	let cluster_id = ClusterId::default();
+	let era_id_1 = 1;
+	let result_roots = DdcVerification::convert_to_batch_merkle_roots(
+		&cluster_id,
+		era_id_1,
+		Vec::<Vec<NodeActivity>>::new(),
+	)
+	.unwrap();
 	let expected_roots: Vec<ActivityHash> = Vec::<ActivityHash>::new();
 
 	assert_eq!(result_roots, expected_roots);
@@ -1678,10 +1691,12 @@ fn create_merkle_root_works() {
 		let c: ActivityHash = [2; 32];
 		let d: ActivityHash = [3; 32];
 		let e: ActivityHash = [4; 32];
+		let cluster_id = ClusterId::default();
+		let era_id_1 = 1;
 
 		let leaves = vec![a, b, c, d, e];
 
-		let root = DdcVerification::create_merkle_root(&leaves).unwrap();
+		let root = DdcVerification::create_merkle_root(&cluster_id, era_id_1, &leaves).unwrap();
 
 		assert_eq!(
 			root,
@@ -1696,8 +1711,10 @@ fn create_merkle_root_works() {
 #[test]
 fn create_merkle_root_empty() {
 	new_test_ext().execute_with(|| {
+		let cluster_id = ClusterId::default();
+		let era_id_1 = 1;
 		let leaves = Vec::<ActivityHash>::new();
-		let root = DdcVerification::create_merkle_root(&leaves).unwrap();
+		let root = DdcVerification::create_merkle_root(&cluster_id, era_id_1, &leaves).unwrap();
 
 		assert_eq!(root, ActivityHash::default());
 	});
@@ -1714,37 +1731,40 @@ fn proof_merkle_leaf_works() {
 		let f: ActivityHash = [5; 32];
 
 		let leaves = [a, b, c, d, e];
-
 		let store = MemStore::default();
 		let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
 			MemMMR::<_, MergeActivityHash>::new(0, &store);
-		let leaf_position_map: Vec<(ActivityHash, u64)> = leaves
-			.iter()
-			.map(
-				|a| (*a, mmr.push(*a).unwrap()), // todo! Need to remove unwrap
-			)
-			.collect();
+		let leaf_position_map: Vec<(ActivityHash, u64)> =
+			leaves.iter().map(|a| (*a, mmr.push(*a).unwrap())).collect();
 
 		let leaf_position: Vec<(u64, ActivityHash)> = leaf_position_map
-			.into_iter()
-			.filter(|(l, _)| l == &c)
-			.map(|(l, p)| (p, l))
+			.iter()
+			.filter(|&(l, _)| l == &c)
+			.map(|&(ref l, p)| (p, *l))
 			.collect();
 		let position: Vec<u64> = leaf_position.clone().into_iter().map(|(p, _)| p).collect();
 		let root = mmr.get_root().unwrap();
 
+		assert_eq!(leaf_position.len(), 1);
+		assert_eq!(position.len(), 1);
 		assert!(DdcVerification::proof_merkle_leaf(
 			root,
-			mmr.gen_proof(position.clone()).unwrap(),
-			leaf_position
+			&MMRProof {
+				mmr_size: mmr.mmr_size(),
+				proof: mmr.gen_proof(position.clone()).unwrap().proof_items().to_vec(),
+				leaf_with_position: leaf_position[0]
+			}
 		)
 		.unwrap());
 
 		assert_noop!(
 			DdcVerification::proof_merkle_leaf(
 				root,
-				mmr.gen_proof(position).unwrap(),
-				vec![(6, f)]
+				&MMRProof {
+					mmr_size: 0,
+					proof: mmr.gen_proof(position).unwrap().proof_items().to_vec(),
+					leaf_with_position: (6, f)
+				}
 			),
 			Error::<Test>::FailToVerifyMerkleProof
 		);

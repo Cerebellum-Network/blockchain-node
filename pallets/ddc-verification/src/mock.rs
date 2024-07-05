@@ -380,10 +380,8 @@ impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
 		_cluster_id: ClusterId,
 		_era_id: DdcEra,
 		_batch_index: BatchIndex,
-		_payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
-		_mmr_size: u64,
-		_proof: Vec<ActivityHash>,
-		_leaf_with_position: (u64, ActivityHash),
+		_payers: &[(T::AccountId, BucketId, CustomerUsage)],
+		_batch_proof: MMRProof,
 	) -> DispatchResult {
 		Ok(())
 	}
@@ -411,10 +409,8 @@ impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
 		_cluster_id: ClusterId,
 		_era_id: DdcEra,
 		_batch_index: BatchIndex,
-		_payees: Vec<(T::AccountId, BucketId, NodeUsage)>,
-		_mmr_size: u64,
-		_proof: Vec<ActivityHash>,
-		_leaf_with_position: (u64, ActivityHash),
+		_payees: &[(T::AccountId, BucketId, NodeUsage)],
+		_batch_proof: MMRProof,
 	) -> DispatchResult {
 		Ok(())
 	}
