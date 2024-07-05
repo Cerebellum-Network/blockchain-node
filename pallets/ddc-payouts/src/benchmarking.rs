@@ -383,7 +383,7 @@ benchmarks! {
 		whitelist_account!(dac_account);
 
 		let batch_index: BatchIndex = 0;
-		let payees: Vec<(T::AccountId, BucketId, NodeUsage)> = (0..b).map(|i| {
+		let payees: Vec<(T::AccountId, NodeUsage)> = (0..b).map(|i| {
 			let provider = create_account::<T>("provider", i, i);
 			endow_account::<T>(&provider, T::Currency::minimum_balance().saturated_into());
 			let node_usage = NodeUsage {
@@ -392,8 +392,7 @@ benchmarks! {
 				number_of_gets: 10, // 10 gets
 				number_of_puts: 5, // 5 puts
 			};
-			let bucket_id: BucketId = 1;
-			(provider, bucket_id, node_usage)
+			(provider, node_usage)
 		}).collect();
 
 	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payees, MMRProof::default())

@@ -28,6 +28,7 @@ mod tests;
 
 use ddc_primitives::{
 	traits::{
+		bucket::BucketVisitor as BucketVisitorType,
 		cluster::{ClusterCreator as ClusterCreatorType, ClusterProtocol as ClusterProtocolType},
 		customer::{
 			CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
@@ -117,6 +118,7 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type CustomerCharger: CustomerChargerType<Self>;
+		type BucketVisitor: BucketVisitorType<Self>;
 		type CustomerDepositor: CustomerDepositorType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
 		type ClusterProtocol: ClusterProtocolType<Self, BalanceOf<Self>>;
@@ -191,7 +193,6 @@ pub mod pallet {
 			era: DdcEra,
 			batch_index: BatchIndex,
 			node_provider_id: T::AccountId,
-			bucket_id: BucketId,
 			rewarded: u128,
 			expected_to_reward: u128,
 		},
@@ -200,7 +201,6 @@ pub mod pallet {
 			era: DdcEra,
 			batch_index: BatchIndex,
 			node_provider_id: T::AccountId,
-			bucket_id: BucketId,
 			expected_reward: u128,
 			distributed_reward: BalanceOf<T>,
 		},
@@ -241,6 +241,7 @@ pub mod pallet {
 		BoundedVecOverflow,
 		ArithmeticOverflow,
 		NotExpectedClusterState,
+		NotExpectedBucketState,
 		BatchSizeIsOutOfBounds,
 		ScoreRetrievalError,
 		BadRequest,
@@ -422,8 +423,10 @@ pub mod pallet {
 			let mut updated_billing_report = billing_report;
 			for (customer_id, bucket_id, customer_usage) in payers {
 				let mut customer_charge = get_customer_charge::<T>(
-					cluster_id,
+					&cluster_id,
 					&customer_usage,
+					bucket_id,
+					&customer_id,
 					updated_billing_report.start_era,
 					updated_billing_report.end_era,
 				)?;
@@ -694,7 +697,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payees: Vec<(T::AccountId, BucketId, NodeUsage)>,
+			payees: Vec<(T::AccountId, NodeUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
@@ -734,7 +737,7 @@ pub mod pallet {
 
 			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
-			for (node_provider_id, bucket_id, node_usage) in payees {
+			for (node_provider_id, node_usage) in payees {
 				let node_reward = get_node_reward(
 					&node_usage,
 					&billing_report.total_node_usage,
@@ -765,7 +768,6 @@ pub mod pallet {
 								era,
 								batch_index,
 								node_provider_id: node_provider_id.clone(),
-								bucket_id,
 								expected_reward: amount_to_reward,
 								distributed_reward: vault_balance,
 							});
@@ -789,14 +791,11 @@ pub mod pallet {
 						.ok_or(Error::<T>::ArithmeticOverflow)?;
 				}
 
-				T::CustomerCharger::inc_total_node_usage(&cluster_id, bucket_id, &node_usage)?;
-
 				Self::deposit_event(Event::<T>::Rewarded {
 					cluster_id,
 					era,
 					batch_index,
 					node_provider_id,
-					bucket_id,
 					rewarded: reward_,
 					expected_to_reward: amount_to_reward,
 				});
@@ -999,14 +998,16 @@ pub mod pallet {
 	}
 
 	fn get_customer_charge<T: Config>(
-		cluster_id: ClusterId,
+		cluster_id: &ClusterId,
 		usage: &CustomerUsage,
+		bucket_id: BucketId,
+		customer_id: &T::AccountId,
 		start_era: i64,
 		end_era: i64,
 	) -> Result<CustomerCharge, Error<T>> {
 		let mut total = CustomerCharge::default();
 
-		let pricing = T::ClusterProtocol::get_pricing_params(&cluster_id)
+		let pricing = T::ClusterProtocol::get_pricing_params(cluster_id)
 			.map_err(|_| Error::<T>::NotExpectedClusterState)?;
 
 		total.transfer = (|| -> Option<u128> {
@@ -1022,9 +1023,15 @@ pub mod pallet {
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
+		let mut total_stored_bytes =
+			T::BucketVisitor::get_total_customer_usage(cluster_id, bucket_id, customer_id)
+				.map_err(|_| Error::<T>::NotExpectedBucketState)?
+				.map_or(0, |customer_usage| customer_usage.stored_bytes);
+		total_stored_bytes += usage.stored_bytes;
+
 		total.storage = fraction_of_month *
 			(|| -> Option<u128> {
-				(usage.stored_bytes as u128)
+				(total_stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)
 			})()
@@ -1150,7 +1157,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payees: &[(T::AccountId, BucketId, NodeUsage)],
+			payees: &[(T::AccountId, NodeUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let origin = frame_system::RawOrigin::Signed(origin).into();
