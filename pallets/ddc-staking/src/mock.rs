@@ -2,16 +2,9 @@
 
 #![allow(dead_code)]
 
-use std::cell::RefCell;
-
 use ddc_primitives::{
-	traits::{
-		cluster,
-		node::{self, NodeVisitor},
-	},
-	ClusterBondingParams, ClusterFeesParams, ClusterNodeKind, ClusterNodeStatus, ClusterNodesStats,
-	ClusterParams, ClusterPricingParams, ClusterProtocolParams, ClusterStatus, NodeParams,
-	NodePubKey, StorageNodeParams, StorageNodePubKey,
+	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
+	NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime,
@@ -19,15 +12,13 @@ use frame_support::{
 	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
-use lazy_static::lazy_static;
 use pallet_ddc_clusters::cluster::Cluster;
 use pallet_ddc_nodes::StorageNode;
-use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify},
-	BuildStorage, DispatchError, DispatchResult, MultiSignature, Perbill, Perquintill,
+	BuildStorage, MultiSignature, Perbill, Perquintill,
 };
 
 use crate::{self as pallet_ddc_staking, *};
@@ -358,10 +349,12 @@ pub fn build_node(
 	)
 	.unwrap();
 
-	node.cluster_id = match assignment {
-		Some(ClusterAssignment { cluster_id, .. }) => Some(ClusterId::from(cluster_id)),
-		None => None,
+	let cluster_id_opt = if let Some(ClusterAssignment { cluster_id, .. }) = assignment {
+		Some(ClusterId::from(cluster_id))
+	} else {
+		None
 	};
+	node.cluster_id = cluster_id_opt;
 
 	(key, node, assignment)
 }
