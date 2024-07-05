@@ -60,7 +60,7 @@ construct_runtime!(
 parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
 	pub static ClusterBondingAmount: Balance = 50;
-	pub static ClusterUnboningDelay: BlockNumber = 1;
+	pub static ClusterUnboningDelay: BlockNumber = 2;
 }
 
 impl Convert<Weight, BalanceOf<Self>> for Test {

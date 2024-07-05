@@ -10,6 +10,7 @@ use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
 use pallet_balances::Error as BalancesError;
 use pallet_ddc_clusters::cluster::{Cluster, ClusterProps};
 use pallet_ddc_clusters::Error as ClustersError;
+use pallet_ddc_clusters::Event as ClustersEvent;
 
 use super::{mock::*, *};
 
@@ -853,4 +854,163 @@ fn bond_cluster_works_only_for_unbonded_cluster() {
 			);
 		},
 	);
+}
+#[test]
+fn unbond_bonded_cluster_works() {
+	const BONDED_CLUSTER_ID: [u8; 20] = [10; 20];
+	let cluster_1 = build_cluster(
+		BONDED_CLUSTER_ID,
+		USER_KEY_1,
+		USER_KEY_1,
+		ClusterParams::default(),
+		ClusterProtocolParams::default(),
+		ClusterStatus::Bonded,
+	);
+	let bond_1 = build_cluster_bond(USER_KEY_1, USER_KEY_1, BONDED_CLUSTER_ID);
+
+	ExtBuilder.build_and_execute(vec![cluster_1], vec![], vec![bond_1], vec![], || {
+		System::set_block_number(1);
+
+		assert_noop!(
+			DdcStaking::unbond_cluster(
+				RuntimeOrigin::signed(AccountId::from(USER_KEY_4)),
+				ClusterId::from(BONDED_CLUSTER_ID)
+			),
+			Error::<Test>::NotController
+		);
+
+		assert_noop!(
+			DdcStaking::unbond_cluster(
+				RuntimeOrigin::signed(AccountId::from(USER_KEY_4)),
+				ClusterId::from([111; 20])
+			),
+			ClustersError::<Test>::ClusterDoesNotExist
+		);
+
+		assert_ok!(DdcStaking::unbond_cluster(
+			RuntimeOrigin::signed(AccountId::from(USER_KEY_1)),
+			ClusterId::from(BONDED_CLUSTER_ID)
+		));
+
+		let mut unlocking = Vec::new();
+		let chunk = UnlockChunk { value: 50u128, block: 3u64 };
+		unlocking.push(chunk);
+
+		assert_eq!(
+			DdcStaking::cluster_ledger(AccountId::from(USER_KEY_1)),
+			Some(StakingLedger {
+				stash: AccountId::from(USER_KEY_1),
+				total: 50,
+				active: 0,
+				chilling: Default::default(),
+				unlocking: unlocking.try_into().unwrap()
+			})
+		);
+
+		System::assert_has_event(Event::Unbonded(AccountId::from(USER_KEY_1), 50).into());
+
+		assert_eq!(
+			DdcClusters::clusters(ClusterId::from(BONDED_CLUSTER_ID)),
+			Some(Cluster {
+				cluster_id: ClusterId::from(BONDED_CLUSTER_ID),
+				manager_id: AccountId::from(USER_KEY_1),
+				reserve_id: AccountId::from(USER_KEY_1),
+				props: ClusterProps::<AccountId> {
+					node_provider_auth_contract: None,
+					erasure_coding_required: 0,
+					erasure_coding_total: 0,
+					replication_total: 0
+				},
+				status: ClusterStatus::Unbonding,
+			})
+		);
+
+		assert_noop!(
+			DdcStaking::unbond_cluster(
+				RuntimeOrigin::signed(AccountId::from(USER_KEY_1)),
+				ClusterId::from(BONDED_CLUSTER_ID)
+			),
+			ClustersError::<Test>::UnexpectedClusterStatus
+		);
+	});
+}
+
+#[test]
+fn unbond_activated_cluster_works() {
+	const ACTIVATED_CLUSTER_ID: [u8; 20] = [11; 20];
+	let cluster_1 = build_cluster(
+		ACTIVATED_CLUSTER_ID,
+		USER_KEY_1,
+		USER_KEY_1,
+		ClusterParams::default(),
+		ClusterProtocolParams::default(),
+		ClusterStatus::Activated,
+	);
+	let bond_1 = build_cluster_bond(USER_KEY_1, USER_KEY_1, ACTIVATED_CLUSTER_ID);
+
+	ExtBuilder.build_and_execute(vec![cluster_1], vec![], vec![bond_1], vec![], || {
+		System::set_block_number(1);
+
+		assert_noop!(
+			DdcStaking::unbond_cluster(
+				RuntimeOrigin::signed(AccountId::from(USER_KEY_4)),
+				ClusterId::from(ACTIVATED_CLUSTER_ID)
+			),
+			Error::<Test>::NotController
+		);
+
+		assert_noop!(
+			DdcStaking::unbond_cluster(
+				RuntimeOrigin::signed(AccountId::from(USER_KEY_4)),
+				ClusterId::from([111; 20])
+			),
+			ClustersError::<Test>::ClusterDoesNotExist
+		);
+
+		assert_ok!(DdcStaking::unbond_cluster(
+			RuntimeOrigin::signed(AccountId::from(USER_KEY_1)),
+			ClusterId::from(ACTIVATED_CLUSTER_ID)
+		));
+
+		let mut unlocking = Vec::new();
+		let chunk = UnlockChunk { value: 50u128, block: 3u64 };
+		unlocking.push(chunk);
+
+		assert_eq!(
+			DdcStaking::cluster_ledger(AccountId::from(USER_KEY_1)),
+			Some(StakingLedger {
+				stash: AccountId::from(USER_KEY_1),
+				total: 50,
+				active: 0,
+				chilling: Default::default(),
+				unlocking: unlocking.try_into().unwrap()
+			})
+		);
+
+		System::assert_has_event(Event::Unbonded(AccountId::from(USER_KEY_1), 50).into());
+
+		assert_eq!(
+			DdcClusters::clusters(ClusterId::from(ACTIVATED_CLUSTER_ID)),
+			Some(Cluster {
+				cluster_id: ClusterId::from(ACTIVATED_CLUSTER_ID),
+				manager_id: AccountId::from(USER_KEY_1),
+				reserve_id: AccountId::from(USER_KEY_1),
+				props: ClusterProps::<AccountId> {
+					node_provider_auth_contract: None,
+					erasure_coding_required: 0,
+					erasure_coding_total: 0,
+					replication_total: 0
+				},
+				status: ClusterStatus::Unbonding,
+			})
+		);
+
+		assert_noop!(
+			DdcStaking::unbond_cluster(
+				RuntimeOrigin::signed(AccountId::from(USER_KEY_1)),
+				ClusterId::from(ACTIVATED_CLUSTER_ID)
+			),
+			ClustersError::<Test>::UnexpectedClusterStatus
+		);
+	});
 }

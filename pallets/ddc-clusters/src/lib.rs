@@ -103,6 +103,7 @@ pub mod pallet {
 		ClusterProtocolParamsSet { cluster_id: ClusterId },
 		ClusterActivated { cluster_id: ClusterId },
 		ClusterBonded { cluster_id: ClusterId },
+		ClusterUnbonding { cluster_id: ClusterId },
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
 	}
@@ -460,7 +461,7 @@ pub mod pallet {
 
 			cluster.set_status(ClusterStatus::Unbonding);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: *cluster_id });
+			Self::deposit_event(Event::<T>::ClusterUnbonding { cluster_id: *cluster_id });
 
 			Ok(())
 		}
@@ -677,13 +678,13 @@ pub mod pallet {
 
 			let is_empty_nodes = ClustersNodesStats::<T>::try_get(cluster_id)
 				.map(|status| {
-					status.await_validation + status.validation_succeeded + status.validation_failed ==
-						0
+					status.await_validation + status.validation_succeeded + status.validation_failed
+						== 0
 				})
 				.unwrap_or(false);
 
-			is_empty_nodes &&
-				matches!(cluster.status, ClusterStatus::Bonded | ClusterStatus::Activated)
+			is_empty_nodes
+				&& matches!(cluster.status, ClusterStatus::Bonded | ClusterStatus::Activated)
 		}
 	}
 
@@ -718,8 +719,9 @@ pub mod pallet {
 			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 			match node_type {
-				NodeType::Storage =>
-					Ok(cluster_protocol_params.storage_bond_size.saturated_into::<u128>()),
+				NodeType::Storage => {
+					Ok(cluster_protocol_params.storage_bond_size.saturated_into::<u128>())
+				},
 			}
 		}
 
@@ -909,12 +911,15 @@ pub mod pallet {
 	impl<T> From<NodeProviderAuthContractError> for Error<T> {
 		fn from(error: NodeProviderAuthContractError) -> Self {
 			match error {
-				NodeProviderAuthContractError::ContractCallFailed =>
-					Error::<T>::NodeAuthContractCallFailed,
-				NodeProviderAuthContractError::ContractDeployFailed =>
-					Error::<T>::NodeAuthContractDeployFailed,
-				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
-					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful,
+				NodeProviderAuthContractError::ContractCallFailed => {
+					Error::<T>::NodeAuthContractCallFailed
+				},
+				NodeProviderAuthContractError::ContractDeployFailed => {
+					Error::<T>::NodeAuthContractDeployFailed
+				},
+				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful => {
+					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful
+				},
 			}
 		}
 	}
