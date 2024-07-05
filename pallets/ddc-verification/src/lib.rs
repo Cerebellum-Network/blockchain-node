@@ -933,7 +933,12 @@ pub mod pallet {
 			}
 
 			// todo! factor out as macro as this is repetitive
-			match Self::prepare_send_rewarding_providers_batch(&cluster_id, batch_size.into()) {
+			match Self::prepare_send_rewarding_providers_batch(
+				&cluster_id,
+				batch_size.into(),
+				&dac_nodes,
+				min_nodes,
+			) {
 				Ok(Some((era_id, batch_payout))) => {
 					log::info!(
 						"🎁 prepare_send_rewarding_providers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
@@ -988,7 +993,7 @@ pub mod pallet {
 					);
 				},
 				Err(e) => {
-					errors.push(e);
+					errors.extend(e);
 				},
 			}
 
@@ -1548,8 +1553,10 @@ pub mod pallet {
 		pub(crate) fn prepare_send_rewarding_providers_batch(
 			cluster_id: &ClusterId,
 			batch_size: usize,
-		) -> Result<Option<(DdcEra, ProviderBatch<T>)>, OCWError> {
-			if let Some((era_id, _start, _end)) =
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+			min_nodes: u16,
+		) -> Result<Option<(DdcEra, ProviderBatch<T>)>, Vec<OCWError>> {
+			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
 				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
@@ -1565,90 +1572,134 @@ pub mod pallet {
 					)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
 						cluster_id, era_id,
 					) {
-						let batch_index = T::PayoutVisitor::get_next_provider_batch_for_payment(
-							cluster_id, era_id,
+						Self::fetch_reward_provider_batch(
+							cluster_id,
+							batch_size,
+							era_id,
+							nodes_activity_in_consensus,
+							nodes_activity_batch_roots,
 						)
-						.map_err(|_| OCWError::BillingReportDoesNotExist {
+					} else {
+						let era_activity = EraActivity { id: era_id, start, end };
+
+						let _ = Self::process_dac_data(
+							cluster_id,
+							Some(era_activity),
+							dac_nodes,
+							min_nodes,
+							batch_size,
+						)?;
+
+						if let Some((
+							_,
+							_,
+							_,
+							nodes_activity_in_consensus,
+							_,
+							nodes_activity_batch_roots,
+						)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
+							cluster_id, era_id,
+						) {
+							Self::fetch_reward_provider_batch(
+								cluster_id,
+								batch_size,
+								era_id,
+								nodes_activity_in_consensus,
+								nodes_activity_batch_roots,
+							)
+						} else {
+							Ok(None)
+						}
+					}
+				} else {
+					Ok(None)
+				}
+			} else {
+				Ok(None)
+			}
+		}
+
+		fn fetch_reward_provider_batch(
+			cluster_id: &ClusterId,
+			batch_size: usize,
+			era_id: DdcEra,
+			nodes_activity_in_consensus: Vec<NodeActivity>,
+			nodes_activity_batch_roots: Vec<ActivityHash>,
+		) -> Result<Option<(DdcEra, ProviderBatch<T>)>, Vec<OCWError>> {
+			let batch_index = T::PayoutVisitor::get_next_provider_batch_for_payment(
+				cluster_id, era_id,
+			)
+			.map_err(|_| {
+				vec![OCWError::BillingReportDoesNotExist { cluster_id: *cluster_id, era_id }]
+			})?;
+
+			if let Some(index) = batch_index {
+				let i: usize = index.into();
+				// todo! store batched activity to avoid splitting it again each time
+				let nodes_activity_batched =
+					Self::split_to_batches(&nodes_activity_in_consensus, batch_size);
+
+				let batch_root = nodes_activity_batch_roots[i];
+				let store = MemStore::default();
+				let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
+					MemMMR::<_, MergeActivityHash>::new(0, &store);
+
+				let leaf_position_map: Vec<(ActivityHash, u64)> = nodes_activity_batch_roots
+					.iter()
+					.map(|a| (*a, mmr.push(*a).unwrap()))
+					.collect();
+
+				let leaf_position: Vec<(u64, ActivityHash)> = leaf_position_map
+					.iter()
+					.filter(|&(l, _)| l == &batch_root)
+					.map(|&(ref l, p)| (p, *l))
+					.collect();
+				let position: Vec<u64> =
+					leaf_position.clone().into_iter().map(|(p, _)| p).collect();
+
+				let proof = mmr
+					.gen_proof(position)
+					.map_err(|_| {
+						vec![OCWError::FailedToCreateMerkleProof {
 							cluster_id: *cluster_id,
 							era_id,
-						})?;
+						}]
+					})?
+					.proof_items()
+					.to_vec();
 
-						if let Some(index) = batch_index {
-							let i: usize = index.into();
-							// todo! store batched activity to avoid splitting it again each time
-							let nodes_activity_batched =
-								Self::split_to_batches(&nodes_activity_in_consensus, batch_size);
-
-							let batch_root = nodes_activity_batch_roots[i];
-							let store = MemStore::default();
-							let mut mmr: MMR<
-								ActivityHash,
-								MergeActivityHash,
-								&MemStore<ActivityHash>,
-							> = MemMMR::<_, MergeActivityHash>::new(0, &store);
-
-							let leaf_position_map: Vec<(ActivityHash, u64)> =
-								nodes_activity_batch_roots
-									.iter()
-									.map(|a| (*a, mmr.push(*a).unwrap()))
-									.collect();
-
-							let leaf_position: Vec<(u64, ActivityHash)> = leaf_position_map
-								.iter()
-								.filter(|&(l, _)| l == &batch_root)
-								.map(|&(ref l, p)| (p, *l))
-								.collect();
-							let position: Vec<u64> =
-								leaf_position.clone().into_iter().map(|(p, _)| p).collect();
-
-							let proof = mmr
-								.gen_proof(position)
-								.map_err(|_| OCWError::FailedToCreateMerkleProof {
-									cluster_id: *cluster_id,
-									era_id,
-								})?
-								.proof_items()
-								.to_vec();
-
-							// todo! attend [i] through get(i).ok_or()
-							// todo! attend accountid conversion
-							let batch_proof = MMRProof {
-								mmr_size: mmr.mmr_size(),
-								proof,
-								leaf_with_position: leaf_position[0],
-							};
-							return Ok(Some((
-								era_id,
-								ProviderBatch {
-									batch_index: index,
-									payees: nodes_activity_batched[i]
-										.iter()
-										.map(|activity| {
-											let provider_id = T::AccountId::decode(
-												&mut &activity.provider_id.as_bytes()[..],
-											)
-											.unwrap();
-											let node_usage = NodeUsage {
-												transferred_bytes: activity.transferred_bytes,
-												stored_bytes: activity.stored_bytes,
-												number_of_puts: activity.number_of_puts,
-												number_of_gets: activity.number_of_gets,
-											};
-											(provider_id, node_usage)
-										})
-										.collect(),
-									batch_proof,
-								},
-							)));
-						} else {
-							return Ok(None);
-						}
-					} /*else {
-						 // todo! no data - reconstruct the data from DAC
-					 }*/
-				}
+				// todo! attend [i] through get(i).ok_or()
+				// todo! attend accountid conversion
+				let batch_proof = MMRProof {
+					mmr_size: mmr.mmr_size(),
+					proof,
+					leaf_with_position: leaf_position[0],
+				};
+				Ok(Some((
+					era_id,
+					ProviderBatch {
+						batch_index: index,
+						payees: nodes_activity_batched[i]
+							.iter()
+							.map(|activity| {
+								let provider_id =
+									T::AccountId::decode(&mut &activity.provider_id.as_bytes()[..])
+										.unwrap();
+								let node_usage = NodeUsage {
+									transferred_bytes: activity.transferred_bytes,
+									stored_bytes: activity.stored_bytes,
+									number_of_puts: activity.number_of_puts,
+									number_of_gets: activity.number_of_gets,
+								};
+								(provider_id, node_usage)
+							})
+							.collect(),
+						batch_proof,
+					},
+				)))
+			} else {
+				Ok(None)
 			}
-			Ok(None)
 		}
 
 		pub(crate) fn prepare_end_rewarding_providers(
