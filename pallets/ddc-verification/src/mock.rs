@@ -1,6 +1,6 @@
 use ddc_primitives::{
 	crypto, sr25519,
-	traits::{ClusterManager, ClusterQuery},
+	traits::{ClusterManager, ClusterQuery, StakingVisitor, StakingVisitorError},
 	BucketId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats,
 	ClusterStatus, PayoutError, PayoutState, StorageNodePubKey, MAX_PAYOUT_BATCH_COUNT,
 	MAX_PAYOUT_BATCH_SIZE,
@@ -229,8 +229,26 @@ impl crate::Config for Test {
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
-	type Staking = Staking;
-	type ValidatorList = pallet_staking::UseValidatorsMap<Self>;
+	type StakingVisitor = TestStakingVisitor;
+}
+
+pub struct TestStakingVisitor;
+impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
+	fn has_activated_stake(
+		_node_pub_key: &NodePubKey,
+		_cluster_id: &ClusterId,
+	) -> Result<bool, StakingVisitorError> {
+		Ok(true)
+	}
+	fn has_stake(_node_pub_key: &NodePubKey) -> bool {
+		true
+	}
+	fn has_chilling_attempt(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
+		Ok(false)
+	}
+	fn stash_by_ctrl(controller: &T::AccountId) -> Result<T::AccountId, StakingVisitorError> {
+		Ok(controller.clone())
+	}
 }
 
 // Build genesis storage according to the mock runtime.
