@@ -255,6 +255,12 @@ pub enum NodeRepositoryError {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum BucketVisitorError {
+	NoBucketWithId,
+	NotBucketOwner,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum PayoutError {
 	BillingReportDoesNotExist,
 }

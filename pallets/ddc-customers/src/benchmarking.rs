@@ -163,7 +163,6 @@ benchmarks! {
 			is_public: false,
 			is_removed: false,
 			total_customers_usage: None,
-			total_nodes_usage: None
 		};
 
 		<BucketsCount<T>>::set(bucket_id);
@@ -193,7 +192,6 @@ benchmarks! {
 			is_public: false,
 			is_removed: false,
 			total_customers_usage: None,
-			total_nodes_usage: None
 		};
 
 		<BucketsCount<T>>::set(bucket_id);

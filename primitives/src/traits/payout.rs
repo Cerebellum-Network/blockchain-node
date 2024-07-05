@@ -57,7 +57,7 @@ pub trait PayoutVisitor<T: frame_system::Config> {
 		cluster_id: ClusterId,
 		era_id: DdcEra,
 		batch_index: BatchIndex,
-		payees: &[(T::AccountId, BucketId, NodeUsage)],
+		payees: &[(T::AccountId, NodeUsage)],
 		batch_proof: MMRProof,
 	) -> DispatchResult;
 

@@ -1185,6 +1185,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
+	type BucketVisitor = DdcCustomers;
 	type CustomerDepositor = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;

@@ -87,7 +87,6 @@ pub fn migrate_from_v0_to_v2<T: Config>() -> Weight {
 					is_public: bucket.is_public,
 					is_removed: false,
 					total_customers_usage: None,
-					total_nodes_usage: None,
 				})
 			},
 		);
@@ -128,7 +127,6 @@ pub fn migrate_from_v1_to_v2<T: Config>() -> Weight {
 					is_public: bucket.is_public,
 					is_removed: false,
 					total_customers_usage: None,
-					total_nodes_usage: None,
 				})
 			},
 		);
