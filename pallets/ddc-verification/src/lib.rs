@@ -873,7 +873,12 @@ pub mod pallet {
 			}
 
 			// todo! factor out as macro as this is repetitive
-			match Self::prepare_begin_rewarding_providers(&cluster_id) {
+			match Self::prepare_begin_rewarding_providers(
+				&cluster_id,
+				&dac_nodes,
+				min_nodes,
+				batch_size.into(),
+			) {
 				Ok(Some((era_id, max_batch_index, total_node_usage))) => {
 					log::info!(
 						"🏭📝prepare_begin_rewarding_providers processed successfully for cluster_id: {:?}, era_id: {:?}",
@@ -923,7 +928,7 @@ pub mod pallet {
 					);
 				},
 				Err(e) => {
-					errors.push(e);
+					errors.extend(e);
 				},
 			}
 
@@ -1303,7 +1308,6 @@ pub mod pallet {
 							customers_activity_batch_roots,
 						)
 					} else {
-						// todo! no data - reconstruct the data from DAC
 						let era_activity = EraActivity { id: era_id, start, end };
 
 						let _ = Self::process_dac_data(
@@ -1441,8 +1445,11 @@ pub mod pallet {
 
 		pub(crate) fn prepare_begin_rewarding_providers(
 			cluster_id: &ClusterId,
-		) -> Result<Option<(DdcEra, BatchIndex, NodeUsage)>, OCWError> {
-			if let Some((era_id, _start, _end)) =
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+			min_nodes: u16,
+			batch_size: usize,
+		) -> Result<Option<(DdcEra, BatchIndex, NodeUsage)>, Vec<OCWError>> {
+			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
 				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
@@ -1458,47 +1465,84 @@ pub mod pallet {
 					)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
 						cluster_id, era_id,
 					) {
-						if let Some(max_batch_index) =
-							nodes_activity_batch_roots.len().checked_sub(1)
-						// -1 cause payout expects max_index, not length
-						{
-							let max_batch_index: u16 =
-								max_batch_index.try_into().map_err(|_| {
-									OCWError::BatchIndexConversionFailed {
-										cluster_id: *cluster_id,
-										era_id,
-									}
-								})?;
+						Self::fetch_reward_activities(
+							cluster_id,
+							era_id,
+							nodes_activity_in_consensus,
+							nodes_activity_batch_roots,
+						)
+					} else {
+						let era_activity = EraActivity { id: era_id, start, end };
 
-							let total_node_usage = nodes_activity_in_consensus.into_iter().fold(
-								NodeUsage {
-									transferred_bytes: 0,
-									stored_bytes: 0,
-									number_of_puts: 0,
-									number_of_gets: 0,
-								},
-								|mut acc, activity| {
-									acc.transferred_bytes += activity.transferred_bytes;
-									acc.stored_bytes += activity.stored_bytes;
-									acc.number_of_puts += activity.number_of_puts;
-									acc.number_of_gets += activity.number_of_gets;
-									acc
-								},
-							);
+						let _ = Self::process_dac_data(
+							cluster_id,
+							Some(era_activity),
+							dac_nodes,
+							min_nodes,
+							batch_size,
+						)?;
 
-							return Ok(Some((era_id, max_batch_index, total_node_usage)));
-						} else {
-							return Err(OCWError::EmptyCustomerActivity {
-								cluster_id: *cluster_id,
+						if let Some((
+							_,
+							_,
+							_,
+							nodes_activity_in_consensus,
+							_,
+							nodes_activity_batch_roots,
+						)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
+							cluster_id, era_id,
+						) {
+							Self::fetch_reward_activities(
+								cluster_id,
 								era_id,
-							});
+								nodes_activity_in_consensus,
+								nodes_activity_batch_roots,
+							)
+						} else {
+							Ok(None)
 						}
-					} /*else {
-						 // todo! no data - reconstruct the data from DAC
-					 }*/
+					}
+				} else {
+					Ok(None)
 				}
+			} else {
+				Ok(None)
 			}
-			Ok(None)
+		}
+
+		fn fetch_reward_activities(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			nodes_activity_in_consensus: Vec<NodeActivity>,
+			nodes_activity_batch_roots: Vec<ActivityHash>,
+		) -> Result<Option<(DdcEra, BatchIndex, NodeUsage)>, Vec<OCWError>> {
+			if let Some(max_batch_index) = nodes_activity_batch_roots.len().checked_sub(1)
+			// -1 cause payout expects max_index, not length
+			{
+				let max_batch_index: u16 = max_batch_index.try_into().map_err(|_| {
+					vec![OCWError::BatchIndexConversionFailed { cluster_id: *cluster_id, era_id }]
+				})?;
+
+				let total_node_usage = nodes_activity_in_consensus.into_iter().fold(
+					NodeUsage {
+						transferred_bytes: 0,
+						stored_bytes: 0,
+						number_of_puts: 0,
+						number_of_gets: 0,
+					},
+					|mut acc, activity| {
+						acc.transferred_bytes += activity.transferred_bytes;
+						acc.stored_bytes += activity.stored_bytes;
+						acc.number_of_puts += activity.number_of_puts;
+						acc.number_of_gets += activity.number_of_gets;
+						acc
+					},
+				);
+
+				Ok(Some((era_id, max_batch_index, total_node_usage)))
+			} else {
+				Err(vec![OCWError::EmptyCustomerActivity { cluster_id: *cluster_id, era_id }])
+			}
 		}
 
 		pub(crate) fn prepare_send_rewarding_providers_batch(
