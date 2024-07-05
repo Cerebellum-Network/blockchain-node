@@ -8,7 +8,6 @@ use scale_info::{prelude::vec::Vec, TypeInfo};
 use serde::{Deserialize, Serialize};
 use sp_core::{crypto::KeyTypeId, hash::H160};
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
-
 pub mod traits;
 
 parameter_types! {
