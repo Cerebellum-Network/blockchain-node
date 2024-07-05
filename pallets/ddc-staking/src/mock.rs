@@ -5,10 +5,13 @@
 use std::cell::RefCell;
 
 use ddc_primitives::{
-	traits::node::NodeVisitor, ClusterBondingParams, ClusterFeesParams, ClusterNodeKind,
-	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodeParams, NodePubKey, StorageNodeParams,
-	StorageNodePubKey,
+	traits::{
+		cluster,
+		node::{self, NodeVisitor},
+	},
+	ClusterBondingParams, ClusterFeesParams, ClusterNodeKind, ClusterNodeStatus, ClusterNodesStats,
+	ClusterParams, ClusterPricingParams, ClusterProtocolParams, ClusterStatus, NodeParams,
+	NodePubKey, StorageNodeParams, StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime,
@@ -56,7 +59,7 @@ construct_runtime!(
 
 parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
-	pub static ClusterBondingAmount: Balance = 1;
+	pub static ClusterBondingAmount: Balance = 50;
 	pub static ClusterUnboningDelay: BlockNumber = 1;
 }
 
@@ -387,6 +390,16 @@ pub(crate) fn build_node_bond(
 	)
 }
 
+fn insert_unique_balance(
+	account_vec: &mut Vec<(AccountId, Balance)>,
+	account_id: AccountId,
+	balance: Balance,
+) {
+	if !account_vec.iter().any(|(id, _)| *id == account_id) {
+		account_vec.push((account_id, balance));
+	}
+}
+
 pub struct ExtBuilder;
 
 impl ExtBuilder {
@@ -426,14 +439,23 @@ impl ExtBuilder {
 			clusters_protocol_params.push((cluster.cluster_id, cluster_protocol_params.clone()));
 		}
 
+		for cluster in clusters.iter() {
+			insert_unique_balance(&mut balances, cluster.manager_id.clone(), ENDOWMENT);
+			insert_unique_balance(&mut balances, cluster.reserve_id.clone(), ENDOWMENT);
+		}
+
 		for (stash, controller, _) in clusters_bonds.iter() {
-			balances.push((stash.clone(), ENDOWMENT));
-			balances.push((controller.clone(), ENDOWMENT));
+			insert_unique_balance(&mut balances, stash.clone(), ENDOWMENT);
+			insert_unique_balance(&mut balances, controller.clone(), ENDOWMENT);
+		}
+
+		for (_, node, _) in nodes.iter() {
+			insert_unique_balance(&mut balances, node.provider_id.clone(), ENDOWMENT);
 		}
 
 		for (stash, controller, _, _, _) in nodes_bondes.iter() {
-			balances.push((stash.clone(), ENDOWMENT));
-			balances.push((controller.clone(), ENDOWMENT));
+			insert_unique_balance(&mut balances, stash.clone(), ENDOWMENT);
+			insert_unique_balance(&mut balances, controller.clone(), ENDOWMENT);
 		}
 
 		let _ =
