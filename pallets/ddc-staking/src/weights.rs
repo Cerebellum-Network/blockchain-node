@@ -59,7 +59,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `Balances::Freezes` (r:1 w:0)
 	// Proof: `Balances::Freezes` (`max_values`: None, `max_size`: Some(49), added: 2524, mode: `MaxEncodedLen`)
 	fn bond() -> Weight {
-		Weight::from_parts(85_481_000_u64, 0)
+		Weight::from_parts(91_663_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(7_u64))
 			.saturating_add(T::DbWeight::get().writes(5_u64))
 	}
@@ -78,7 +78,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `System::Account` (r:1 w:1)
 	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn unbond() -> Weight {
-		Weight::from_parts(72_986_000_u64, 0)
+		Weight::from_parts(76_793_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(7_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
@@ -95,7 +95,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcStaking::LeavingStorages` (r:1 w:0)
 	// Proof: `DdcStaking::LeavingStorages` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn withdraw_unbonded() -> Weight {
-		Weight::from_parts(67_597_000_u64, 0)
+		Weight::from_parts(70_663_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(6_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
@@ -112,7 +112,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcStaking::LeavingStorages` (r:1 w:0)
 	// Proof: `DdcStaking::LeavingStorages` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn store() -> Weight {
-		Weight::from_parts(46_567_000_u64, 0)
+		Weight::from_parts(48_231_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(6_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -123,7 +123,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcClusters::ClustersGovParams` (r:1 w:0)
 	// Proof: `DdcClusters::ClustersGovParams` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn chill() -> Weight {
-		Weight::from_parts(39_454_000_u64, 0)
+		Weight::from_parts(41_127_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
@@ -132,7 +132,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcStaking::Ledger` (r:2 w:2)
 	// Proof: `DdcStaking::Ledger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn set_controller() -> Weight {
-		Weight::from_parts(27_412_000_u64, 0)
+		Weight::from_parts(28_604_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
@@ -145,15 +145,25 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcStaking::LeavingStorages` (r:1 w:0)
 	// Proof: `DdcStaking::LeavingStorages` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn set_node() -> Weight {
-		Weight::from_parts(28_653_000_u64, 0)
+		Weight::from_parts(30_047_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(4_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
-
+	// Storage: `DdcStaking::Ledger` (r:1 w:1)
+	// Proof: `DdcStaking::Ledger` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	// Storage: `DdcStaking::Providers` (r:1 w:0)
+	// Proof: `DdcStaking::Providers` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	// Storage: `DdcStaking::Nodes` (r:1 w:0)
+	// Proof: `DdcStaking::Nodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	// Storage: `DdcStaking::Storages` (r:1 w:0)
+	// Proof: `DdcStaking::Storages` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	// Storage: `DdcClusters::ClustersNodes` (r:1 w:0)
+	// Proof: `DdcClusters::ClustersNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn fast_chill() -> Weight {
-		Weight::from_parts(28_000_000_u64, 0)
+		Weight::from_parts(48_291_000_u64, 0)
+			.saturating_add(T::DbWeight::get().reads(5_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-
 	// Storage: `DdcClusters::Clusters` (r:1 w:1)
 	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	// Storage: `DdcStaking::ClusterBonded` (r:1 w:1)
@@ -165,7 +175,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `Balances::Freezes` (r:1 w:0)
 	// Proof: `Balances::Freezes` (`max_values`: None, `max_size`: Some(49), added: 2524, mode: `MaxEncodedLen`)
 	fn bond_cluster() -> Weight {
-		Weight::from_parts(85_580_000_u64, 0)
+		Weight::from_parts(92_223_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(5_u64))
 			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
@@ -182,7 +192,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `System::Account` (r:1 w:1)
 	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn unbond_cluster() -> Weight {
-		Weight::from_parts(79_248_000_u64, 0)
+		Weight::from_parts(84_528_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(6_u64))
 			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
@@ -197,7 +207,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `Balances::Freezes` (r:1 w:0)
 	// Proof: `Balances::Freezes` (`max_values`: None, `max_size`: Some(49), added: 2524, mode: `MaxEncodedLen`)
 	fn withdraw_unbonded_cluster() -> Weight {
-		Weight::from_parts(91_802_000_u64, 0)
+		Weight::from_parts(99_307_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(5_u64))
 			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
@@ -220,7 +230,7 @@ impl WeightInfo for () {
 	// Storage: `Balances::Freezes` (r:1 w:0)
 	// Proof: `Balances::Freezes` (`max_values`: None, `max_size`: Some(49), added: 2524, mode: `MaxEncodedLen`)
 	fn bond() -> Weight {
-		Weight::from_parts(85_481_000_u64, 0)
+		Weight::from_parts(91_663_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(7_u64))
 			.saturating_add(RocksDbWeight::get().writes(5_u64))
 	}
@@ -239,7 +249,7 @@ impl WeightInfo for () {
 	// Storage: `System::Account` (r:1 w:1)
 	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn unbond() -> Weight {
-		Weight::from_parts(72_986_000_u64, 0)
+		Weight::from_parts(76_793_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(7_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
@@ -256,7 +266,7 @@ impl WeightInfo for () {
 	// Storage: `DdcStaking::LeavingStorages` (r:1 w:0)
 	// Proof: `DdcStaking::LeavingStorages` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn withdraw_unbonded() -> Weight {
-		Weight::from_parts(67_597_000_u64, 0)
+		Weight::from_parts(70_663_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
@@ -273,7 +283,7 @@ impl WeightInfo for () {
 	// Storage: `DdcStaking::LeavingStorages` (r:1 w:0)
 	// Proof: `DdcStaking::LeavingStorages` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn store() -> Weight {
-		Weight::from_parts(46_567_000_u64, 0)
+		Weight::from_parts(48_231_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -284,7 +294,7 @@ impl WeightInfo for () {
 	// Storage: `DdcClusters::ClustersGovParams` (r:1 w:0)
 	// Proof: `DdcClusters::ClustersGovParams` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn chill() -> Weight {
-		Weight::from_parts(39_454_000_u64, 0)
+		Weight::from_parts(41_127_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
@@ -293,7 +303,7 @@ impl WeightInfo for () {
 	// Storage: `DdcStaking::Ledger` (r:2 w:2)
 	// Proof: `DdcStaking::Ledger` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn set_controller() -> Weight {
-		Weight::from_parts(27_412_000_u64, 0)
+		Weight::from_parts(28_604_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
@@ -306,13 +316,24 @@ impl WeightInfo for () {
 	// Storage: `DdcStaking::LeavingStorages` (r:1 w:0)
 	// Proof: `DdcStaking::LeavingStorages` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn set_node() -> Weight {
-		Weight::from_parts(28_653_000_u64, 0)
+		Weight::from_parts(30_047_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(4_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
-
+	// Storage: `DdcStaking::Ledger` (r:1 w:1)
+	// Proof: `DdcStaking::Ledger` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	// Storage: `DdcStaking::Providers` (r:1 w:0)
+	// Proof: `DdcStaking::Providers` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	// Storage: `DdcStaking::Nodes` (r:1 w:0)
+	// Proof: `DdcStaking::Nodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	// Storage: `DdcStaking::Storages` (r:1 w:0)
+	// Proof: `DdcStaking::Storages` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	// Storage: `DdcClusters::ClustersNodes` (r:1 w:0)
+	// Proof: `DdcClusters::ClustersNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn fast_chill() -> Weight {
-		Weight::from_parts(28_000_000_u64, 0)
+		Weight::from_parts(48_291_000_u64, 0)
+			.saturating_add(RocksDbWeight::get().reads(5_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	// Storage: `DdcClusters::Clusters` (r:1 w:1)
 	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
@@ -325,7 +346,7 @@ impl WeightInfo for () {
 	// Storage: `Balances::Freezes` (r:1 w:0)
 	// Proof: `Balances::Freezes` (`max_values`: None, `max_size`: Some(49), added: 2524, mode: `MaxEncodedLen`)
 	fn bond_cluster() -> Weight {
-		Weight::from_parts(85_580_000_u64, 0)
+		Weight::from_parts(92_223_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(5_u64))
 			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
@@ -342,7 +363,7 @@ impl WeightInfo for () {
 	// Storage: `System::Account` (r:1 w:1)
 	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn unbond_cluster() -> Weight {
-		Weight::from_parts(79_248_000_u64, 0)
+		Weight::from_parts(84_528_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
@@ -357,7 +378,7 @@ impl WeightInfo for () {
 	// Storage: `Balances::Freezes` (r:1 w:0)
 	// Proof: `Balances::Freezes` (`max_values`: None, `max_size`: Some(49), added: 2524, mode: `MaxEncodedLen`)
 	fn withdraw_unbonded_cluster() -> Weight {
-		Weight::from_parts(91_802_000_u64, 0)
+		Weight::from_parts(99_307_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(5_u64))
 			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
