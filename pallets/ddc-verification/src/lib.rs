@@ -689,7 +689,12 @@ pub mod pallet {
 			}
 
 			// todo! factor out as macro as this is repetitive
-			match Self::prepare_begin_charging_customers(&cluster_id) {
+			match Self::prepare_begin_charging_customers(
+				&cluster_id,
+				&dac_nodes,
+				min_nodes,
+				batch_size.into(),
+			) {
 				Ok(Some((era_id, max_batch_index))) => {
 					log::info!(
 						"🎁 prepare_begin_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
@@ -734,9 +739,7 @@ pub mod pallet {
 						cluster_id
 					);
 				},
-				Err(e) => {
-					errors.push(e);
-				},
+				Err(e) => errors.extend(e),
 			}
 
 			// todo! factor out as macro as this is repetitive
@@ -1062,8 +1065,11 @@ pub mod pallet {
 
 		pub(crate) fn prepare_begin_charging_customers(
 			cluster_id: &ClusterId,
-		) -> Result<Option<(DdcEra, BatchIndex)>, OCWError> {
-			if let Some((era_id, _start, _end)) =
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+			min_nodes: u16,
+			batch_size: usize,
+		) -> Result<Option<(DdcEra, BatchIndex)>, Vec<OCWError>> {
+			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
 				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
@@ -1073,30 +1079,55 @@ pub mod pallet {
 						Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
 							cluster_id, era_id,
 						) {
-						if let Some(max_batch_index) =
-							customers_activity_batch_roots.len().checked_sub(1)
-						// todo! remove this -1 to support empty usage
-						{
-							let max_batch_index: u16 =
-								max_batch_index.try_into().map_err(|_| {
-									OCWError::BatchIndexConversionFailed {
-										cluster_id: *cluster_id,
-										era_id,
-									}
-								})?;
-							return Ok(Some((era_id, max_batch_index)));
-						} else {
-							return Err(OCWError::EmptyCustomerActivity {
-								cluster_id: *cluster_id,
+						Self::fetch_customer_activity(
+							cluster_id,
+							era_id,
+							customers_activity_batch_roots,
+						)
+						.map_err(|err| vec![err])?;
+					} else {
+						let era_activity = EraActivity { id: era_id, start, end };
+
+						let _ = Self::process_dac_data(
+							cluster_id,
+							Some(era_activity),
+							dac_nodes,
+							min_nodes,
+							batch_size,
+						)?;
+
+						if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
+							Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
+								cluster_id, era_id,
+							) {
+							Self::fetch_customer_activity(
+								cluster_id,
 								era_id,
-							});
+								customers_activity_batch_roots,
+							)
+							.map_err(|err| vec![err])?;
 						}
-					} /*else {
-						 // todo! no data - reconstruct the data from DAC
-					 }*/
+					}
 				}
 			}
 			Ok(None)
+		}
+
+		pub(crate) fn fetch_customer_activity(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			customers_activity_batch_roots: Vec<ActivityHash>,
+		) -> Result<Option<(DdcEra, u16)>, OCWError> {
+			if let Some(max_batch_index) = customers_activity_batch_roots.len().checked_sub(1)
+			// todo! remove this -1 to support empty usage
+			{
+				let max_batch_index: u16 = max_batch_index.try_into().map_err(|_| {
+					OCWError::BatchIndexConversionFailed { cluster_id: *cluster_id, era_id }
+				})?;
+				Ok(Some((era_id, max_batch_index)))
+			} else {
+				Err(OCWError::EmptyCustomerActivity { cluster_id: *cluster_id, era_id })
+			}
 		}
 
 		#[allow(dead_code)]
