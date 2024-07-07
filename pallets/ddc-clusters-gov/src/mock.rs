@@ -643,7 +643,6 @@ mod pallet_mock_origins {
 }
 
 pub const CLUSTER_ID: [u8; 20] = [1; 20];
-
 pub const CLUSTER_MANAGER_ID: [u8; 32] = [1; 32];
 pub const CLUSTER_RESERVE_ID: [u8; 32] = [2; 32];
 
