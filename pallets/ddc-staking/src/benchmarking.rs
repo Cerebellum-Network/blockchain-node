@@ -30,8 +30,8 @@ fn fast_forward_to<T: Config>(n: BlockNumberFor<T>) {
 	}
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
-	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+fn assert_has_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+	frame_system::Pallet::<T>::assert_has_event(generic_event.into());
 }
 
 benchmarks! {
@@ -143,6 +143,19 @@ benchmarks! {
 		assert!(Nodes::<T>::contains_key(&new_node));
 	}
 
+	fast_chill {
+		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32]));
+		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterProtocol::get_bond_size(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or(100u128), node_pub_key)?;
+		DdcStaking::<T>::store(RawOrigin::Signed(controller.clone()).into(), ClusterId::from([1; 20]))?;
+
+		whitelist_account!(controller);
+	}: _(RawOrigin::Signed(controller.clone()))
+	verify {
+		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created after")?;
+		let chilling = ledger.chilling;
+		assert!(chilling.is_some());
+	}
+
 	bond_cluster {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5000);
@@ -168,7 +181,7 @@ benchmarks! {
 		assert!(ClusterBonded::<T>::contains_key(&cluster_reserve_id));
 		assert!(ClusterLedger::<T>::contains_key(&cluster_manager_id));
 		let amount = T::ClusterBondingAmount::get();
-		assert_last_event::<T>(Event::Bonded(cluster_reserve_id, amount).into());
+		assert_has_event::<T>(Event::Bonded(cluster_reserve_id, amount).into());
 	}
 
 	unbond_cluster {
@@ -196,7 +209,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(cluster_manager_id.clone()), cluster_id)
 	verify {
 		let amount = T::ClusterBondingAmount::get();
-		assert_last_event::<T>(Event::Unbonded(cluster_reserve_id, amount).into());
+		assert_has_event::<T>(Event::Unbonded(cluster_reserve_id, amount).into());
 	}
 
 	withdraw_unbonded_cluster {
@@ -230,6 +243,6 @@ benchmarks! {
 		assert!(!ClusterBonded::<T>::contains_key(&cluster_reserve_id));
 		assert!(!ClusterLedger::<T>::contains_key(&cluster_manager_id));
 		let amount = T::ClusterBondingAmount::get();
-		assert_last_event::<T>(Event::Withdrawn(cluster_reserve_id, amount).into());
+		assert_has_event::<T>(Event::Withdrawn(cluster_reserve_id, amount).into());
 	}
 }

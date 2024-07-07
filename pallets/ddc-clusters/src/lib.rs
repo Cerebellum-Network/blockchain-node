@@ -103,6 +103,7 @@ pub mod pallet {
 		ClusterProtocolParamsSet { cluster_id: ClusterId },
 		ClusterActivated { cluster_id: ClusterId },
 		ClusterBonded { cluster_id: ClusterId },
+		ClusterUnbonding { cluster_id: ClusterId },
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
 	}
@@ -460,7 +461,7 @@ pub mod pallet {
 
 			cluster.set_status(ClusterStatus::Unbonding);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: *cluster_id });
+			Self::deposit_event(Event::<T>::ClusterUnbonding { cluster_id: *cluster_id });
 
 			Ok(())
 		}
