@@ -13,7 +13,7 @@ use core::str;
 
 use codec::{Decode, Encode};
 use ddc_primitives::{
-	traits::{ClusterManager, NodeVisitor, PayoutVisitor, ValidatorVisitor},
+	traits::{ClusterManager, NodeVisitor, PayoutVisitor, SessionVisitor, ValidatorVisitor},
 	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeParams, NodePubKey,
 	NodeUsage, PayoutState, StorageNodeMode, StorageNodeParams,
 };
@@ -86,6 +86,7 @@ pub mod pallet {
 		/// DDC clusters nodes manager.
 		type ClusterManager: ClusterManager<Self>;
 		type PayoutVisitor: PayoutVisitor<Self>;
+		type SessionVisitor: SessionVisitor<Self>;
 		/// DDC nodes read-only registry.
 		type NodeVisitor: NodeVisitor<Self>;
 		/// The output of the `ActivityHasher` function.
@@ -2439,7 +2440,17 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn assign_batches(
+		pub(crate) fn get_random(seed: u16, session_index: SessionIndex) -> Result<u16, OCWError> {
+			let i: u16 = seed.try_into().map_err(|_| OCWError::FailedToGenerateAssignment)?;
+
+			let subject = (T::PalletId::get(), i, session_index).encode();
+			let (random_seed, _) = T::Randomness::random(&subject);
+
+			<u16>::decode(&mut random_seed.as_ref())
+				.map_err(|_| OCWError::FailedToGenerateAssignment)
+		}
+
+		pub(crate) fn assign_batches(
 			session_index: u32,
 			validator: &T::AccountId,
 			batches: &Vec<u16>,
@@ -2450,10 +2461,17 @@ pub mod pallet {
 			for (i, batch) in batches.iter().enumerate() {
 				let hash =
 					T::ActivityHasher::hash(&(session_index, validator_index, i as u16).encode());
-				let assigned = u16::from_le_bytes(hash[0..2].try_into().unwrap())
-					% T::REDUNDANT_PROCESSING.into();
-				if assigned == validator_index % T::REDUNDANT_PROCESSING.into() {
-					assigned_batches.push(*batch);
+
+				let mut hash_bytes = hash.as_ref();
+				if hash_bytes.len() >= 2 {
+					// Extract the first two bytes and convert to u16
+					let mut bytes_array = [0u8; 2];
+					bytes_array.copy_from_slice(&hash_bytes[0..2]);
+					let assigned = u16::from_le_bytes(bytes_array) % T::REDUNDANT_PROCESSING.into();
+
+					if assigned == validator_index % T::REDUNDANT_PROCESSING.into() {
+						assigned_batches.push(*batch);
+					}
 				}
 			}
 			assigned_batches
@@ -3027,6 +3045,7 @@ pub mod pallet {
 
 			let N1: u16 = 10;
 			let N2: u16 = 10;
+			let session_index = T::SessionVisitor::current_index();
 
 			let mut customer_batch_indices: Vec<BatchIndex> = (0..N1).collect();
 			let mut provider_batch_indices: Vec<BatchIndex> = (0..N2).collect();
@@ -3039,8 +3058,10 @@ pub mod pallet {
 				Self::deposit_event(Event::FailedToGenerateAssignment {});
 			}
 
+			let mut count = 0;
 			for (index, (validator, _)) in validators.enumerate() {
 				let validator_index = index as u16;
+
 				let customer_batch_index = customer_batch_indices.pop().unwrap_or_default();
 				let provider_batch_index = provider_batch_indices.pop().unwrap_or_default();
 
@@ -3049,8 +3070,10 @@ pub mod pallet {
 					provider_batch_index: vec![provider_batch_index],
 				};
 
+				count += 1;
 				<ValidatorAssignments<T>>::insert(&validator, assignment);
 			}
+			ValidatorCount::<T>::put(count);
 		}
 
 		fn on_disabled(_i: u32) {}
