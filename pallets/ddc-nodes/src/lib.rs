@@ -124,7 +124,7 @@ pub mod pallet {
 			let node = Node::<T>::new(node_pub_key.clone(), caller_id, node_params)
 				.map_err(Into::<Error<T>>::into)?;
 			Self::create(node).map_err(Into::<Error<T>>::into)?;
-			Self::deposit_event(Event::<T>::NodeCreated { node_pub_key });
+			Self::deposit_event(Event::NodeCreated { node_pub_key });
 			Ok(())
 		}
 
@@ -138,7 +138,7 @@ pub mod pallet {
 			let has_stake = T::StakingVisitor::has_stake(&node_pub_key);
 			ensure!(!has_stake, Error::<T>::NodeHasDanglingStake);
 			Self::delete(node_pub_key.clone()).map_err(Into::<Error<T>>::into)?;
-			Self::deposit_event(Event::<T>::NodeDeleted { node_pub_key });
+			Self::deposit_event(Event::NodeDeleted { node_pub_key });
 			Ok(())
 		}
 
@@ -154,7 +154,7 @@ pub mod pallet {
 			ensure!(node.get_provider_id() == &caller_id, Error::<T>::OnlyNodeProvider);
 			node.set_params(node_params).map_err(Into::<Error<T>>::into)?;
 			Self::update(node).map_err(Into::<Error<T>>::into)?;
-			Self::deposit_event(Event::<T>::NodeParamsChanged { node_pub_key });
+			Self::deposit_event(Event::NodeParamsChanged { node_pub_key });
 			Ok(())
 		}
 	}
@@ -246,7 +246,7 @@ pub mod pallet {
 
 			match node_pub_key {
 				NodePubKey::StoragePubKey(_) => match node_props {
-					NodeProps::StorageProps(node_props) =>
+					NodeProps::StorageProps(node_props) => {
 						Ok(ddc_primitives::NodeParams::StorageParams(StorageNodeParams {
 							mode: node_props.mode,
 							host: node_props.host.into(),
@@ -255,7 +255,8 @@ pub mod pallet {
 							http_port: node_props.http_port,
 							grpc_port: node_props.grpc_port,
 							p2p_port: node_props.p2p_port,
-						})),
+						}))
+					},
 				},
 			}
 		}

@@ -13,7 +13,7 @@ const CERE: u128 = 10000000000;
 
 fn create_dac_account<T: Config>() -> T::AccountId {
 	let dac_account = create_account::<T>("dac_account", 0, 0);
-	T::ValidatorVisitor::setup_validators(vec![dac_account.clone()]);
+	//T::ValidatorVisitor::setup_validators(vec![dac_account.clone()]);
 	dac_account
 }
 

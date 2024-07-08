@@ -12,7 +12,7 @@ use frame_election_provider_support::{
 use frame_support::{
 	pallet_prelude::ConstU32,
 	parameter_types,
-	traits::{ConstU16, ConstU64},
+	traits::{ConstU16, ConstU64, Randomness},
 	PalletId,
 };
 use frame_system::mocking::MockBlock;
@@ -223,6 +223,7 @@ impl crate::Config for Test {
 	type AuthorityId = sr25519::AuthorityId;
 	type OffchainIdentifierId = crypto::OffchainIdentifierId;
 	type ActivityHasher = sp_runtime::traits::BlakeTwo256;
+	type Randomness = TestRandomness;
 	const MAJORITY: u8 = 67;
 	const BLOCK_TO_START: u16 = 100;
 	const MIN_DAC_NODES_FOR_CONSENSUS: u16 = 3;
@@ -230,6 +231,14 @@ impl crate::Config for Test {
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
 	type StakingVisitor = TestStakingVisitor;
+}
+
+pub struct TestRandomness;
+impl Randomness<H256> for TestRandomness {
+	fn random(subject: &[u8]) -> (H256, H256) {
+		// Return a predictable value for testing
+		(H256::repeat_byte(42), H256::repeat_byte(42))
+	}
 }
 
 pub struct TestStakingVisitor;

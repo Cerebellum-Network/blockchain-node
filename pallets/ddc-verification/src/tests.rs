@@ -17,7 +17,7 @@ use crate::{mock::*, Error, NodeActivity, OCWError, *};
 
 #[allow(dead_code)]
 fn register_validators(validators: Vec<AccountId32>) {
-	ValidatorSet::<Test>::put(validators.clone());
+	ValidatorAssignments::<Test>::put(validators.clone());
 
 	for validator in validators {
 		assert_noop!(

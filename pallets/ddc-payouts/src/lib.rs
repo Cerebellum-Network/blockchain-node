@@ -338,7 +338,7 @@ pub mod pallet {
 			};
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
-			Self::deposit_event(Event::<T>::BillingReportInitialized { cluster_id, era });
+			Self::deposit_event(Event::BillingReportInitialized { cluster_id, era });
 
 			Ok(())
 		}
@@ -368,7 +368,7 @@ pub mod pallet {
 			billing_report.state = PayoutState::ChargingCustomers;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
-			Self::deposit_event(Event::<T>::ChargingStarted { cluster_id, era });
+			Self::deposit_event(Event::ChargingStarted { cluster_id, era });
 
 			Ok(())
 		}
@@ -449,7 +449,7 @@ pub mod pallet {
 				) {
 					Ok(actually_charged) => actually_charged,
 					Err(e) => {
-						Self::deposit_event(Event::<T>::ChargeError {
+						Self::deposit_event(Event::ChargeError {
 							cluster_id,
 							era,
 							batch_index,
@@ -476,7 +476,7 @@ pub mod pallet {
 
 					DebtorCustomers::<T>::insert(cluster_id, customer_id.clone(), customer_debt);
 
-					Self::deposit_event(Event::<T>::Indebted {
+					Self::deposit_event(Event::Indebted {
 						cluster_id,
 						era,
 						batch_index,
@@ -485,7 +485,7 @@ pub mod pallet {
 						amount: debt,
 					});
 
-					Self::deposit_event(Event::<T>::ChargeFailed {
+					Self::deposit_event(Event::ChargeFailed {
 						cluster_id,
 						era,
 						batch_index,
@@ -505,7 +505,7 @@ pub mod pallet {
 					customer_charge.gets = ratio * customer_charge.gets;
 					customer_charge.puts = ratio * customer_charge.puts;
 				} else {
-					Self::deposit_event(Event::<T>::Charged {
+					Self::deposit_event(Event::Charged {
 						cluster_id,
 						era,
 						batch_index,
@@ -574,7 +574,7 @@ pub mod pallet {
 				&billing_report.charging_max_batch_index,
 			)?;
 
-			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
+			Self::deposit_event(Event::ChargingFinished { cluster_id, era });
 
 			// deduct fees
 			let fees = T::ClusterProtocol::get_fees_params(&cluster_id)
@@ -601,7 +601,7 @@ pub mod pallet {
 					&T::TreasuryVisitor::get_account_id(),
 				)?;
 
-				Self::deposit_event(Event::<T>::TreasuryFeesCollected {
+				Self::deposit_event(Event::TreasuryFeesCollected {
 					cluster_id,
 					era,
 					amount: treasury_fee,
@@ -615,7 +615,7 @@ pub mod pallet {
 					&T::ClusterProtocol::get_reserve_account_id(&cluster_id)
 						.map_err(|_| Error::<T>::NotExpectedClusterState)?,
 				)?;
-				Self::deposit_event(Event::<T>::ClusterReserveFeesCollected {
+				Self::deposit_event(Event::ClusterReserveFeesCollected {
 					cluster_id,
 					era,
 					amount: cluster_reserve_fee,
@@ -624,7 +624,7 @@ pub mod pallet {
 
 			if validators_fee > 0 {
 				charge_validator_fees::<T>(validators_fee, &billing_report.vault)?;
-				Self::deposit_event(Event::<T>::ValidatorFeesCollected {
+				Self::deposit_event(Event::ValidatorFeesCollected {
 					cluster_id,
 					era,
 					amount: validators_fee,
@@ -683,7 +683,7 @@ pub mod pallet {
 			billing_report.state = PayoutState::RewardingProviders;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
-			Self::deposit_event(Event::<T>::RewardingStarted { cluster_id, era });
+			Self::deposit_event(Event::RewardingStarted { cluster_id, era });
 
 			Ok(())
 		}
@@ -763,7 +763,7 @@ pub mod pallet {
 					// 10000000000001 > 10000000000000 but is still ok
 					if reward > vault_balance {
 						if reward - vault_balance > max_dust {
-							Self::deposit_event(Event::<T>::NotDistributedReward {
+							Self::deposit_event(Event::NotDistributedReward {
 								cluster_id,
 								era,
 								batch_index,
@@ -791,7 +791,7 @@ pub mod pallet {
 						.ok_or(Error::<T>::ArithmeticOverflow)?;
 				}
 
-				Self::deposit_event(Event::<T>::Rewarded {
+				Self::deposit_event(Event::Rewarded {
 					cluster_id,
 					era,
 					batch_index,
@@ -848,7 +848,7 @@ pub mod pallet {
 
 			if expected_amount_to_reward - billing_report.total_distributed_reward > MaxDust::get()
 			{
-				Self::deposit_event(Event::<T>::NotDistributedOverallReward {
+				Self::deposit_event(Event::NotDistributedOverallReward {
 					cluster_id,
 					era,
 					expected_reward: expected_amount_to_reward,
@@ -859,7 +859,7 @@ pub mod pallet {
 			billing_report.state = PayoutState::ProvidersRewarded;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
 
-			Self::deposit_event(Event::<T>::RewardingFinished { cluster_id, era });
+			Self::deposit_event(Event::RewardingFinished { cluster_id, era });
 
 			Ok(())
 		}
@@ -889,7 +889,7 @@ pub mod pallet {
 			billing_report.state = PayoutState::Finalized;
 
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
-			Self::deposit_event(Event::<T>::BillingReportFinalized { cluster_id, era });
+			Self::deposit_event(Event::BillingReportFinalized { cluster_id, era });
 
 			Ok(())
 		}
@@ -1029,8 +1029,8 @@ pub mod pallet {
 				.map_or(0, |customer_usage| customer_usage.stored_bytes);
 		total_stored_bytes += usage.stored_bytes;
 
-		total.storage = fraction_of_month *
-			(|| -> Option<u128> {
+		total.storage = fraction_of_month
+			* (|| -> Option<u128> {
 				(total_stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)
