@@ -920,7 +920,7 @@ dependencies = [
 
 [[package]]
 name = "cere-cli"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "cere-client",
  "cere-service",
@@ -937,7 +937,7 @@ dependencies = [
 
 [[package]]
 name = "cere-client"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
@@ -969,7 +969,7 @@ dependencies = [
 
 [[package]]
 name = "cere-dev-runtime"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "cere-runtime-common",
  "ddc-primitives",
@@ -997,6 +997,7 @@ dependencies = [
  "pallet-contracts-primitives",
  "pallet-conviction-voting",
  "pallet-ddc-clusters",
+ "pallet-ddc-clusters-gov",
  "pallet-ddc-customers",
  "pallet-ddc-nodes",
  "pallet-ddc-payouts",
@@ -1016,8 +1017,11 @@ dependencies = [
  "pallet-membership",
  "pallet-multisig",
  "pallet-nomination-pools",
+ "pallet-nomination-pools-benchmarking",
  "pallet-nomination-pools-runtime-api",
  "pallet-offences",
+ "pallet-offences-benchmarking",
+ "pallet-origins",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-recovery",
@@ -1060,7 +1064,7 @@ dependencies = [
 
 [[package]]
 name = "cere-rpc"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "jsonrpsee",
  "node-primitives",
@@ -1089,7 +1093,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "cere-runtime-common",
  "ddc-primitives",
@@ -1117,6 +1121,7 @@ dependencies = [
  "pallet-contracts-primitives",
  "pallet-conviction-voting",
  "pallet-ddc-clusters",
+ "pallet-ddc-clusters-gov",
  "pallet-ddc-customers",
  "pallet-ddc-nodes",
  "pallet-ddc-payouts",
@@ -1136,8 +1141,11 @@ dependencies = [
  "pallet-membership",
  "pallet-multisig",
  "pallet-nomination-pools",
+ "pallet-nomination-pools-benchmarking",
  "pallet-nomination-pools-runtime-api",
  "pallet-offences",
+ "pallet-offences-benchmarking",
+ "pallet-origins",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-recovery",
@@ -1180,16 +1188,18 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime-common"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
  "log",
  "node-primitives",
  "pallet-contracts",
+ "pallet-referenda",
  "pallet-session",
  "parity-scale-codec",
  "sp-api",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -1199,7 +1209,7 @@ dependencies = [
 
 [[package]]
 name = "cere-service"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "cere-client",
  "cere-dev-runtime",
@@ -1846,7 +1856,7 @@ dependencies = [
 
 [[package]]
 name = "ddc-primitives"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5048,7 +5058,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-chainbridge"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5169,7 +5179,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-clusters"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -5195,8 +5205,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-ddc-clusters-gov"
+version = "5.4.0"
+dependencies = [
+ "ddc-primitives",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "lazy_static",
+ "log",
+ "pallet-balances",
+ "pallet-contracts",
+ "pallet-conviction-voting",
+ "pallet-ddc-clusters",
+ "pallet-ddc-nodes",
+ "pallet-ddc-staking",
+ "pallet-insecure-randomness-collective-flip",
+ "pallet-preimage",
+ "pallet-referenda",
+ "pallet-scheduler",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "parking_lot 0.12.1",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "sp-tracing",
+ "substrate-test-utils",
+]
+
+[[package]]
 name = "pallet-ddc-customers"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -5219,7 +5264,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-nodes"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -5240,7 +5285,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-payouts"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "byte-unit",
  "chrono",
@@ -5264,14 +5309,20 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-staking"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "hex-literal",
  "lazy_static",
+ "log",
  "pallet-balances",
+ "pallet-contracts",
+ "pallet-ddc-clusters",
+ "pallet-ddc-nodes",
+ "pallet-insecure-randomness-collective-flip",
  "pallet-timestamp",
  "parity-scale-codec",
  "parking_lot 0.12.1",
@@ -5360,7 +5411,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc20"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5379,7 +5430,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc721"
-version = "5.3.1"
+version = "5.4.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5556,6 +5607,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-nomination-pools-benchmarking"
+version = "1.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-v1.1.0#f60318f68687e601c47de5ad5ca88e2c3f8139a7"
+dependencies = [
+ "frame-benchmarking",
+ "frame-election-provider-support",
+ "frame-support",
+ "frame-system",
+ "pallet-bags-list",
+ "pallet-nomination-pools",
+ "pallet-staking",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-runtime",
+ "sp-runtime-interface",
+ "sp-staking",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-nomination-pools-runtime-api"
 version = "1.0.0-dev"
 source = "git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-v1.1.0#f60318f68687e601c47de5ad5ca88e2c3f8139a7"
@@ -5580,6 +5651,46 @@ dependencies = [
  "serde",
  "sp-runtime",
  "sp-staking",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-offences-benchmarking"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-v1.1.0#f60318f68687e601c47de5ad5ca88e2c3f8139a7"
+dependencies = [
+ "frame-benchmarking",
+ "frame-election-provider-support",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-babe",
+ "pallet-balances",
+ "pallet-grandpa",
+ "pallet-im-online",
+ "pallet-offences",
+ "pallet-session",
+ "pallet-staking",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-origins"
+version = "5.4.0"
+dependencies = [
+ "cere-runtime-common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-runtime",
  "sp-std",
 ]
 

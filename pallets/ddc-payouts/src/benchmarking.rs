@@ -1,6 +1,6 @@
 //! DdcPayouts pallet benchmarking.
 
-use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams};
+use ddc_primitives::{ClusterId, ClusterParams, ClusterProtocolParams};
 pub use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_system::RawOrigin;
 use sp_runtime::Perquintill;
@@ -45,14 +45,14 @@ fn create_cluster<T: Config>(
 	cluster_manager_id: T::AccountId,
 	cluster_reserve_id: T::AccountId,
 	cluster_params: ClusterParams<T::AccountId>,
-	cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
+	cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
 ) {
-	T::ClusterCreator::create_new_cluster(
+	T::ClusterCreator::create_cluster(
 		cluster_id,
 		cluster_manager_id,
 		cluster_reserve_id,
 		cluster_params,
-		cluster_gov_params,
+		cluster_protocol_params,
 	)
 	.expect("Cluster is not created");
 }
@@ -66,23 +66,24 @@ fn create_default_cluster<T: Config>(cluster_id: ClusterId) {
 		erasure_coding_total: 6,
 		replication_total: 3,
 	};
-	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
-		treasury_share: Perquintill::from_percent(5),
-		validators_share: Perquintill::from_percent(10),
-		cluster_reserve_share: Perquintill::from_percent(15),
-		unit_per_mb_stored: CERE,
-		unit_per_mb_streamed: CERE,
-		unit_per_put_request: CERE,
-		unit_per_get_request: CERE,
-		..Default::default()
-	};
+	let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
+		ClusterProtocolParams {
+			treasury_share: Perquintill::from_percent(5),
+			validators_share: Perquintill::from_percent(10),
+			cluster_reserve_share: Perquintill::from_percent(15),
+			unit_per_mb_stored: CERE,
+			unit_per_mb_streamed: CERE,
+			unit_per_put_request: CERE,
+			unit_per_get_request: CERE,
+			..Default::default()
+		};
 
 	create_cluster::<T>(
 		cluster_id,
 		cluster_manager,
 		cluster_reserve,
 		cluster_params,
-		cluster_gov_params,
+		cluster_protocol_params,
 	);
 }
 
