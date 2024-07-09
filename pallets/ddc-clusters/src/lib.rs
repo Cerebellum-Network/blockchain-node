@@ -36,7 +36,7 @@ use ddc_primitives::{
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, DdcEra, NodePubKey, NodeType,
 };
 use frame_support::{
 	assert_ok,
@@ -105,6 +105,7 @@ pub mod pallet {
 		ClusterBonded { cluster_id: ClusterId },
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
+		ClusterEraValidated { cluster_id: ClusterId, era_id: DdcEra },
 	}
 
 	#[pallet::error]
@@ -387,7 +388,7 @@ pub mod pallet {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			// todo: allow to execute this extrinsic to Validator's OCW only
+			// todo: allow to execute this extrinsic to Validator's manager only
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
 			Self::do_validate_node(cluster_id, node_pub_key, succeeded)
@@ -815,6 +816,23 @@ pub mod pallet {
 	}
 
 	impl<T: Config> ClusterManager<T> for Pallet<T> {
+		fn set_last_validated_era(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+		) -> Result<(), DispatchError> {
+			let mut cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+
+			cluster.last_validated_era_id = era_id;
+			Clusters::<T>::insert(cluster_id, cluster);
+			Self::deposit_event(Event::<T>::ClusterEraValidated {
+				cluster_id: *cluster_id,
+				era_id,
+			});
+
+			Ok(())
+		}
+
 		fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;

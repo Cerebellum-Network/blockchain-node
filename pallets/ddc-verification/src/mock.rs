@@ -597,6 +597,13 @@ impl<T: Config> ClusterQuery<T> for TestClusterManager {
 }
 
 impl<T: Config> ClusterManager<T> for TestClusterManager {
+	fn set_last_validated_era(
+		_cluster_id: &ClusterId,
+		_era_id: DdcEra,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
+
 	fn contains_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,

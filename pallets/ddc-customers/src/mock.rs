@@ -4,7 +4,7 @@ use ddc_primitives::{
 	traits::cluster::{ClusterCreator, ClusterManager, ClusterProtocol, ClusterQuery},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, DdcEra, NodePubKey, NodeType,
 };
 use frame_support::{
 	construct_runtime, parameter_types,
@@ -230,6 +230,13 @@ impl<T: Config> ClusterQuery<T> for TestClusterManager {
 }
 
 impl<T: Config> ClusterManager<T> for TestClusterManager {
+	fn set_last_validated_era(
+		_cluster_id: &ClusterId,
+		_era_id: DdcEra,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
+
 	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 		unimplemented!()
 	}

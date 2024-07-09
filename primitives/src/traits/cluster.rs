@@ -5,7 +5,7 @@ use sp_std::prelude::*;
 use crate::{
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, DdcEra, NodePubKey, NodeType,
 };
 
 pub trait ClusterQuery<T: Config> {
@@ -94,4 +94,22 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 		node_pub_key: &NodePubKey,
 		succeeded: bool,
 	) -> Result<(), DispatchError>;
+
+	/// Updates the `last_validated_era_id` for the given cluster and emits an event indicating the
+	/// update.
+	///
+	/// # Parameters
+	///
+	/// - `cluster_id`: A reference to the unique identifier of the cluster that needs its last
+	///   validated era updated.
+	/// - `era_id`: The new era identifier to be set as the last validated era for the cluster.
+	///
+	/// # Returns
+	///
+	/// Returns `Ok(())` if the operation was successful, otherwise returns a `DispatchError`.
+	///
+	/// # Events
+	///
+	/// Emits `ClusterEraValidated` event if the operation is successful.
+	fn set_last_validated_era(cluster_id: &ClusterId, era_id: DdcEra) -> Result<(), DispatchError>;
 }
