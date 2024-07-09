@@ -180,6 +180,7 @@ impl<'a> SandboxContext for SandboxContextImpl<'a> {
 	}
 
 	fn supervisor_context(&mut self) -> &mut dyn FunctionContext {
+		log::info!(target: LOG_TARGET, "supervisor_context executor");
 		self.executor
 	}
 }

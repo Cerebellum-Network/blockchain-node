@@ -155,11 +155,13 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 				let len = (v & 0xFFFFFFFF) as u32;
 				(Pointer::new(ptr), len)
 			};
+			log::info!(target: LOG_TARGET, "invoke_index => serialized_result_val_ptr={:?}, serialized_result_val_len={:?}", serialized_result_val_ptr, serialized_result_val_len);
 
 			let serialized_result_val = sandbox_context
 				.supervisor_context()
 				.read_memory(serialized_result_val_ptr, serialized_result_val_len)
 				.map_err(|_| trap("Can't read the serialized result from dispatch thunk"));
+			log::info!(target: LOG_TARGET, "invoke_index => serialized_result_val={:?}", serialized_result_val);
 
 			deallocate(
 				sandbox_context.supervisor_context(),
@@ -168,8 +170,10 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 			)
 			.and(serialized_result_val)
 			.and_then(|serialized_result_val| {
+				log::info!(target: LOG_TARGET, "Before HostError 1 result_val={:?}", serialized_result_val);
 				let result_val = std::result::Result::<ReturnValue, HostError>::decode(&mut serialized_result_val.as_slice())
 					.map_err(|_| trap("Decoding Result<ReturnValue, HostError> failed!"))?;
+				log::info!(target: LOG_TARGET, "Before HostError 2 result_val={:?}", result_val);
 
 				match result_val {
 					Ok(return_value) => Ok(match return_value {
@@ -311,7 +315,10 @@ pub fn wasmi_invoke(
 	state: u32,
 	sandbox_context: &mut dyn SandboxContext,
 ) -> std::result::Result<Option<Value>, Error> {
+	log::info!(target: LOG_TARGET, "wasmi_invoke WIP 1");
 	with_guest_externals(instance, state, |guest_externals| {
+		log::info!(target: LOG_TARGET, "wasmi_invoke in-closure WIP 1");
+
 		SandboxContextStore::using(sandbox_context, || {
 			let args = args
 				.iter()
@@ -324,7 +331,9 @@ pub fn wasmi_invoke(
 				})
 				.collect::<Vec<_>>();
 
-			module
+			log::info!(target: LOG_TARGET, "wasmi_invoke in-closure WIP 2");
+
+			let res = module
 				.invoke_export(export_name, &args, guest_externals)
 				.map(|result| {
 					result.map(|value| match value {
@@ -334,7 +343,11 @@ pub fn wasmi_invoke(
 						wasmi::RuntimeValue::F64(val) => Value::F64(val.into()),
 					})
 				})
-				.map_err(|error| Error::Other(error.to_string()))
+				.map_err(|error| Error::Other(error.to_string()));
+
+			log::info!(target: LOG_TARGET, "wasmi_invoke in-closure WIP 3 res={:?}", res);
+
+			res
 		})
 	})
 }
