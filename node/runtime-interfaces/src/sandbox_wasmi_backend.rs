@@ -104,6 +104,8 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 			// Move serialized arguments inside the memory, invoke dispatch thunk and
 			// then free allocated memory.
 			let invoke_args_len = invoke_args_data.len() as WordSize;
+
+			// HERE IS DEVIATION IN Pointer begins (2000296 vs 1327384)
 			let invoke_args_ptr = sandbox_context
 				.supervisor_context()
 				.allocate_memory(invoke_args_len)
