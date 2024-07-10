@@ -36,7 +36,7 @@ use sp_runtime::generic::BlockId;
 use sp_runtime_interface::runtime_interface;
 use sp_state_machine::{Ext, OverlayedChanges, StateMachine, StorageProof};
 use sp_std::borrow::Cow;
-use sp_wasm_interface::{HostFunctions, Pointer};
+use sp_wasm_interface::{FunctionContext, HostFunctions, Pointer};
 use wasmi::{memory_units::Pages, MemoryInstance, TableInstance};
 
 // extracted from this node
@@ -123,9 +123,9 @@ pub fn create_wasmi_instance() -> WasmiInstance {
 lazy_static! {
 	static ref WASMI_INSTANCE: ReentrantMutex<RefCell<WasmiInstance>> =
 		ReentrantMutex::new(RefCell::new(create_wasmi_instance()));
-	static ref SANDBOX: ReentrantMutex<RefCell<FunctionExecutor>> = ReentrantMutex::new(
-		RefCell::new(WASMI_INSTANCE.lock().borrow().create_function_executor())
-	);
+	// static ref SANDBOX: ReentrantMutex<RefCell<FunctionExecutor>> = ReentrantMutex::new(
+	// 	RefCell::new(WASMI_INSTANCE.lock().borrow().create_function_executor())
+	// );
 }
 
 const LOG_TARGET: &str = "runtime-interface-yahor";
@@ -143,8 +143,15 @@ pub trait Sandbox {
 	) -> u32 {
 		log::info!(target: LOG_TARGET, "instantiate START: dispatch_thunk={:?}, env_def={:?}, state_ptr={:?}", dispatch_thunk, env_def, state_ptr);
 
-		let lock = SANDBOX.lock();
-		let mut sandbox = lock.borrow_mut();
+		// let lock = SANDBOX.lock();
+		// let mut sandbox = lock.borrow_mut();
+		let binding = WASMI_INSTANCE.lock();
+		let binding = binding.borrow();
+		let mut sandbox = binding.create_function_executor();
+		let ref_to_ctx: &dyn FunctionContext = *self;
+		let arc_from_ref = Arc::new(ref_to_ctx);
+		sandbox.set_runtime_memory(arc_from_ref);
+
 		let res = sandbox
 			.instance_new(dispatch_thunk, wasm_code, env_def, state_ptr.into())
 			.expect("Failed to instantiate a new sandbox");
@@ -164,8 +171,15 @@ pub trait Sandbox {
 		return_val_len: u32,
 		state_ptr: Pointer<u8>,
 	) -> u32 {
-		let lock = SANDBOX.lock();
-		let mut sandbox = lock.borrow_mut();
+		// let lock = SANDBOX.lock();
+		// let mut sandbox = lock.borrow_mut();
+		let binding = WASMI_INSTANCE.lock();
+		let binding = binding.borrow();
+		let mut sandbox = binding.create_function_executor();
+		let ref_to_ctx: &dyn FunctionContext = *self;
+		let arc_from_ref = Arc::new(ref_to_ctx);
+		sandbox.set_runtime_memory(arc_from_ref);
+
 		sandbox
 			.invoke(instance_idx, function, args, return_val_ptr, return_val_len, state_ptr.into())
 			.expect("Failed to invoke function with sandbox")
@@ -174,8 +188,15 @@ pub trait Sandbox {
 	/// Create a new memory instance with the given `initial` size and the `maximum` size.
 	/// The size is given in wasm pages.
 	fn memory_new(&mut self, initial: u32, maximum: u32) -> u32 {
-		let lock = SANDBOX.lock();
-		let mut sandbox = lock.borrow_mut();
+		// let lock = SANDBOX.lock();
+		// let mut sandbox = lock.borrow_mut();
+		let binding = WASMI_INSTANCE.lock();
+		let binding = binding.borrow();
+		let mut sandbox = binding.create_function_executor();
+		let ref_to_ctx: &dyn FunctionContext = *self;
+		let arc_from_ref = Arc::new(ref_to_ctx);
+		sandbox.set_runtime_memory(arc_from_ref);
+
 		sandbox
 			.memory_new(initial, maximum)
 			.expect("Failed to create new memory with sandbox")
@@ -189,8 +210,14 @@ pub trait Sandbox {
 		buf_ptr: Pointer<u8>,
 		buf_len: u32,
 	) -> u32 {
-		let lock = SANDBOX.lock();
-		let mut sandbox = lock.borrow_mut();
+		// let lock = SANDBOX.lock();
+		// let mut sandbox = lock.borrow_mut();
+		let binding = WASMI_INSTANCE.lock();
+		let binding = binding.borrow();
+		let mut sandbox = binding.create_function_executor();
+		let ref_to_ctx: &dyn FunctionContext = *self;
+		let arc_from_ref = Arc::new(ref_to_ctx);
+		sandbox.set_runtime_memory(arc_from_ref);
 
 		let mut vec = Vec::new();
 		let data = vec.as_mut_slice();
@@ -212,8 +239,15 @@ pub trait Sandbox {
 		val_ptr: Pointer<u8>,
 		val_len: u32,
 	) -> u32 {
-		let lock = SANDBOX.lock();
-		let mut sandbox = lock.borrow_mut();
+		// let lock = SANDBOX.lock();
+		// let mut sandbox = lock.borrow_mut();
+		let binding = WASMI_INSTANCE.lock();
+		let binding = binding.borrow();
+		let mut sandbox = binding.create_function_executor();
+
+		let ref_to_ctx: &dyn FunctionContext = *self;
+		let arc_from_ref = Arc::new(ref_to_ctx);
+		sandbox.set_runtime_memory(arc_from_ref);
 
 		let data = self.read_memory(val_ptr, val_len).unwrap();
 
@@ -224,8 +258,15 @@ pub trait Sandbox {
 
 	/// Delete a memory instance.
 	fn memory_teardown(&mut self, memory_idx: u32) {
-		let lock = SANDBOX.lock();
-		let mut sandbox = lock.borrow_mut();
+		// let lock = SANDBOX.lock();
+		// let mut sandbox = lock.borrow_mut();
+		let binding = WASMI_INSTANCE.lock();
+		let binding = binding.borrow();
+		let mut sandbox = binding.create_function_executor();
+		let ref_to_ctx: &dyn FunctionContext = *self;
+		let arc_from_ref = Arc::new(ref_to_ctx);
+		sandbox.set_runtime_memory(arc_from_ref);
+
 		sandbox
 			.memory_teardown(memory_idx)
 			.expect("Failed to teardown memory with sandbox")
@@ -233,8 +274,15 @@ pub trait Sandbox {
 
 	/// Delete a sandbox instance.
 	fn instance_teardown(&mut self, instance_idx: u32) {
-		let lock = SANDBOX.lock();
-		let mut sandbox = lock.borrow_mut();
+		// let lock = SANDBOX.lock();
+		// let mut sandbox = lock.borrow_mut();
+		let binding = WASMI_INSTANCE.lock();
+		let binding = binding.borrow();
+		let mut sandbox = binding.create_function_executor();
+		let ref_to_ctx: &dyn FunctionContext = *self;
+		let arc_from_ref = Arc::new(ref_to_ctx);
+		sandbox.set_runtime_memory(arc_from_ref);
+
 		sandbox
 			.instance_teardown(instance_idx)
 			.expect("Failed to teardown sandbox instance")
@@ -247,8 +295,16 @@ pub trait Sandbox {
 		instance_idx: u32,
 		name: &str,
 	) -> Option<sp_wasm_interface::Value> {
-		let lock = SANDBOX.lock();
-		let sandbox = lock.borrow();
+		// let lock = SANDBOX.lock();
+		// let sandbox = lock.borrow();
+		let binding = WASMI_INSTANCE.lock();
+		let binding = binding.borrow();
+		let mut sandbox = binding.create_function_executor();
+
+		let ref_to_ctx: &dyn FunctionContext = *self;
+		let arc_from_ref = Arc::new(ref_to_ctx);
+		sandbox.set_runtime_memory(arc_from_ref);
+
 		sandbox
 			.get_global_val(instance_idx, name)
 			.expect("Failed to get global from sandbox")

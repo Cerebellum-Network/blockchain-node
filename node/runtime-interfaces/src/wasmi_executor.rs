@@ -26,7 +26,7 @@ use crate::{
 
 const LOG_TARGET: &str = "wasmi_function_executor";
 
-pub struct FunctionExecutor {
+pub struct FunctionExecutor<'a> {
 	sandbox_store: Rc<RefCell<Store<wasmi::FuncRef>>>,
 	heap: RefCell<FreeingBumpHeapAllocator>,
 	memory: MemoryRef,
@@ -35,10 +35,34 @@ pub struct FunctionExecutor {
 	allow_missing_func_imports: bool,
 	missing_functions: Arc<Vec<String>>,
 	panic_message: Option<String>,
+	runtime_memory: Option<Arc<&'a dyn FunctionContext>>,
 }
-unsafe impl Send for FunctionExecutor {}
+unsafe impl Send for FunctionExecutor<'_> {}
 
-impl FunctionExecutor {
+// struct DummyFunctionContext;
+// impl FunctionContext for DummyFunctionContext {
+// 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
+// 		unimplemented!()
+// 	}
+
+// 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
+// 		unimplemented!()
+// 	}
+
+// 	fn allocate_memory(&mut self, size: WordSize) -> WResult<Pointer<u8>> {
+// 		unimplemented!()
+// 	}
+
+// 	fn deallocate_memory(&mut self, ptr: Pointer<u8>) -> WResult<()> {
+// 		unimplemented!()
+// 	}
+
+// 	fn register_panic_error_message(&mut self, message: &str) {
+// 		unimplemented!()
+// 	}
+// }
+
+impl<'a> FunctionExecutor<'a> {
 	pub fn new(
 		m: MemoryRef,
 		heap_base: u32,
@@ -56,13 +80,48 @@ impl FunctionExecutor {
 			allow_missing_func_imports,
 			missing_functions,
 			panic_message: None,
+			// runtime_memory: Arc::new(&DummyFunctionContext),
+			runtime_memory: None,
 		})
+	}
+
+	pub fn set_runtime_memory(&mut self, runtime_memory: Arc<&'a dyn FunctionContext>) {
+		self.runtime_memory = Some(runtime_memory);
 	}
 }
 
-impl FunctionContext for FunctionExecutor {
+// impl FunctionContext for FunctionExecutor<'_> {
+// 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
+// 		self.memory.get_into(address.into(), dest).map_err(|e| e.to_string())
+// 	}
+
+// 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
+// 		self.memory.set(address.into(), data).map_err(|e| e.to_string())
+// 	}
+
+// 	fn allocate_memory(&mut self, size: WordSize) -> WResult<Pointer<u8>> {
+// 		let heap = &mut self.heap.borrow_mut();
+// 		self.memory
+// 			.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()))
+// 	}
+
+// 	fn deallocate_memory(&mut self, ptr: Pointer<u8>) -> WResult<()> {
+// 		let heap = &mut self.heap.borrow_mut();
+// 		self.memory
+// 			.with_direct_access_mut(|mem| heap.deallocate(mem, ptr).map_err(|e| e.to_string()))
+// 	}
+
+// 	fn register_panic_error_message(&mut self, message: &str) {
+// 		self.panic_message = Some(message.to_owned());
+// 	}
+// }
+
+impl FunctionContext for FunctionExecutor<'_> {
 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
-		self.memory.get_into(address.into(), dest).map_err(|e| e.to_string())
+		self.runtime_memory
+			.as_ref()
+			.expect("Runtime memory to be set")
+			.read_memory_into(address, dest)
 	}
 
 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
@@ -86,7 +145,7 @@ impl FunctionContext for FunctionExecutor {
 	}
 }
 
-impl wasmi::Externals for FunctionExecutor {
+impl wasmi::Externals for FunctionExecutor<'_> {
 	fn invoke_index(
 		&mut self,
 		index: usize,
@@ -136,12 +195,12 @@ impl wasmi::Externals for FunctionExecutor {
 	}
 }
 
-struct SandboxContextImpl<'a> {
-	executor: &'a mut FunctionExecutor,
+struct SandboxContextImpl<'a, 'b> {
+	executor: &'a mut FunctionExecutor<'b>,
 	dispatch_thunk: wasmi::FuncRef,
 }
 
-impl<'a> SandboxContext for SandboxContextImpl<'a> {
+impl<'a, 'b> SandboxContext for SandboxContextImpl<'a, 'b> {
 	fn invoke(
 		&mut self,
 		invoke_args_ptr: Pointer<u8>,
@@ -187,7 +246,7 @@ impl<'a> SandboxContext for SandboxContextImpl<'a> {
 }
 
 // impl Sandbox for FunctionExecutor {
-impl FunctionExecutor {
+impl FunctionExecutor<'_> {
 	pub fn memory_get(
 		&mut self,
 		memory_id: MemoryId,
