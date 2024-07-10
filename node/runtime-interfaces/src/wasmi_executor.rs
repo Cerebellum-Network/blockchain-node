@@ -80,7 +80,6 @@ impl<'a> FunctionExecutor<'a> {
 			allow_missing_func_imports,
 			missing_functions,
 			panic_message: None,
-			// runtime_memory: Arc::new(&DummyFunctionContext),
 			runtime_memory: None,
 		})
 	}
@@ -518,6 +517,7 @@ impl WasmModule for WasmiRuntime {
 			host_functions: self.host_functions.clone(),
 			allow_missing_func_imports: self.allow_missing_func_imports,
 			missing_functions: Arc::new(missing_functions),
+			is_inited: false,
 		}))
 	}
 }
@@ -581,6 +581,9 @@ pub struct WasmiInstance {
 	allow_missing_func_imports: bool,
 	/// List of missing functions detected during function resolution
 	missing_functions: Arc<Vec<String>>,
+
+	// custom field
+	is_inited: bool,
 }
 
 // This is safe because `WasmiInstance` does not leak any references to `self.memory` and
@@ -1068,6 +1071,7 @@ impl WasmiRuntime {
 			host_functions: self.host_functions.clone(),
 			allow_missing_func_imports: self.allow_missing_func_imports,
 			missing_functions: Arc::new(missing_functions),
+			is_inited: false,
 		}))
 	}
 }
@@ -1120,5 +1124,73 @@ impl WasmiInstance {
 		.expect("function_executor to be created");
 
 		function_executor
+	}
+
+	pub fn create_function_executor_2(&mut self) -> FunctionExecutor {
+		if !self.is_inited {
+			self.memory
+				.erase()
+				.map_err(|e| {
+					// Snapshot restoration failed. This is pretty unexpected since this can happen
+					// if some invariant is broken or if the system is under extreme memory pressure
+					// (so erasing fails).
+					log::error!(target: "wasm-executor", "snapshot restoration failed: {}", e);
+					WasmError::ErasingFailed(e.to_string())
+				})
+				.expect("memory.erase to be ok");
+
+			// Second, reapply data segments into the linear memory.
+			self.data_segments_snapshot
+				.apply(|offset, contents| self.memory.set(offset, contents))
+				.expect("data_segments_snapshot.apply to be ok"); // todo: fix error type
+
+			self.global_vals_snapshot
+				.apply(&self.instance)
+				.expect("global_vals_snapshot.apply to be ok");
+
+			let table = &self
+				.instance
+				.export_by_name("__indirect_function_table")
+				.and_then(|e| e.as_table().cloned());
+
+			log::info!(
+				target: LOG_TARGET,
+				"Looking at __indirect_function_table: table={:?}",
+				table.clone().expect("Table to be inited"),
+			);
+
+			let heap_base = get_heap_base(&self.instance).expect("get_heap_base to be ok");
+
+			let function_executor = FunctionExecutor::new(
+				self.memory.clone(),
+				heap_base,
+				table.clone(),
+				self.host_functions.clone(),
+				self.allow_missing_func_imports,
+				self.missing_functions.clone(),
+			)
+			.expect("function_executor to be created");
+
+			self.is_inited = true;
+			function_executor
+		} else {
+			let heap_base = get_heap_base(&self.instance).expect("get_heap_base to be ok");
+
+			let table = &self
+				.instance
+				.export_by_name("__indirect_function_table")
+				.and_then(|e| e.as_table().cloned());
+
+			let function_executor = FunctionExecutor::new(
+				self.memory.clone(),
+				heap_base,
+				table.clone(),
+				self.host_functions.clone(),
+				self.allow_missing_func_imports,
+				self.missing_functions.clone(),
+			)
+			.expect("function_executor to be created");
+			function_executor
+		}
 	}
 }
