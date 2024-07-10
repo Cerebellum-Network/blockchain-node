@@ -148,8 +148,8 @@ pub trait Sandbox {
 		let binding = WASMI_INSTANCE.lock();
 		let binding = binding.borrow();
 		let mut sandbox = binding.create_function_executor();
-		let ref_to_ctx: &dyn FunctionContext = *self;
-		let arc_from_ref = Arc::new(ref_to_ctx);
+		let ref_to_ctx: &mut dyn FunctionContext = *self;
+		let arc_from_ref = Box::new(ref_to_ctx);
 		sandbox.set_runtime_memory(arc_from_ref);
 
 		let res = sandbox
@@ -172,12 +172,13 @@ pub trait Sandbox {
 		state_ptr: Pointer<u8>,
 	) -> u32 {
 		// let lock = SANDBOX.lock();
+
 		// let mut sandbox = lock.borrow_mut();
 		let binding = WASMI_INSTANCE.lock();
 		let binding = binding.borrow();
 		let mut sandbox = binding.create_function_executor();
-		let ref_to_ctx: &dyn FunctionContext = *self;
-		let arc_from_ref = Arc::new(ref_to_ctx);
+		let ref_to_ctx: &mut dyn FunctionContext = *self;
+		let arc_from_ref = Box::new(ref_to_ctx);
 		sandbox.set_runtime_memory(arc_from_ref);
 
 		sandbox
@@ -193,8 +194,8 @@ pub trait Sandbox {
 		let binding = WASMI_INSTANCE.lock();
 		let binding = binding.borrow();
 		let mut sandbox = binding.create_function_executor();
-		let ref_to_ctx: &dyn FunctionContext = *self;
-		let arc_from_ref = Arc::new(ref_to_ctx);
+		let ref_to_ctx: &mut dyn FunctionContext = *self;
+		let arc_from_ref = Box::new(ref_to_ctx);
 		sandbox.set_runtime_memory(arc_from_ref);
 
 		sandbox
@@ -215,8 +216,8 @@ pub trait Sandbox {
 		let binding = WASMI_INSTANCE.lock();
 		let binding = binding.borrow();
 		let mut sandbox = binding.create_function_executor();
-		let ref_to_ctx: &dyn FunctionContext = *self;
-		let arc_from_ref = Arc::new(ref_to_ctx);
+		let ref_to_ctx: &mut dyn FunctionContext = *self;
+		let arc_from_ref = Box::new(ref_to_ctx);
 		sandbox.set_runtime_memory(arc_from_ref);
 
 		let mut vec = Vec::new();
@@ -244,12 +245,11 @@ pub trait Sandbox {
 		let binding = WASMI_INSTANCE.lock();
 		let binding = binding.borrow();
 		let mut sandbox = binding.create_function_executor();
+		let data = self.read_memory(val_ptr, val_len).unwrap().clone();
 
-		let ref_to_ctx: &dyn FunctionContext = *self;
-		let arc_from_ref = Arc::new(ref_to_ctx);
+		let ref_to_ctx: &mut dyn FunctionContext = *self;
+		let arc_from_ref = Box::new(ref_to_ctx);
 		sandbox.set_runtime_memory(arc_from_ref);
-
-		let data = self.read_memory(val_ptr, val_len).unwrap();
 
 		sandbox
 			.memory_set(memory_idx, offset, &data)
@@ -263,8 +263,8 @@ pub trait Sandbox {
 		let binding = WASMI_INSTANCE.lock();
 		let binding = binding.borrow();
 		let mut sandbox = binding.create_function_executor();
-		let ref_to_ctx: &dyn FunctionContext = *self;
-		let arc_from_ref = Arc::new(ref_to_ctx);
+		let ref_to_ctx: &mut dyn FunctionContext = *self;
+		let arc_from_ref = Box::new(ref_to_ctx);
 		sandbox.set_runtime_memory(arc_from_ref);
 
 		sandbox
@@ -279,8 +279,8 @@ pub trait Sandbox {
 		let binding = WASMI_INSTANCE.lock();
 		let binding = binding.borrow();
 		let mut sandbox = binding.create_function_executor();
-		let ref_to_ctx: &dyn FunctionContext = *self;
-		let arc_from_ref = Arc::new(ref_to_ctx);
+		let ref_to_ctx: &mut dyn FunctionContext = *self;
+		let arc_from_ref = Box::new(ref_to_ctx);
 		sandbox.set_runtime_memory(arc_from_ref);
 
 		sandbox
@@ -301,8 +301,8 @@ pub trait Sandbox {
 		let binding = binding.borrow();
 		let mut sandbox = binding.create_function_executor();
 
-		let ref_to_ctx: &dyn FunctionContext = *self;
-		let arc_from_ref = Arc::new(ref_to_ctx);
+		let ref_to_ctx: &mut dyn FunctionContext = *self;
+		let arc_from_ref = Box::new(ref_to_ctx);
 		sandbox.set_runtime_memory(arc_from_ref);
 
 		sandbox

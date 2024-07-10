@@ -35,7 +35,7 @@ pub struct FunctionExecutor<'a> {
 	allow_missing_func_imports: bool,
 	missing_functions: Arc<Vec<String>>,
 	panic_message: Option<String>,
-	runtime_memory: Option<Arc<&'a dyn FunctionContext>>,
+	runtime_memory: Option<Box<&'a mut dyn FunctionContext>>,
 }
 unsafe impl Send for FunctionExecutor<'_> {}
 
@@ -85,7 +85,7 @@ impl<'a> FunctionExecutor<'a> {
 		})
 	}
 
-	pub fn set_runtime_memory(&mut self, runtime_memory: Arc<&'a dyn FunctionContext>) {
+	pub fn set_runtime_memory(&mut self, runtime_memory: Box<&'a mut dyn FunctionContext>) {
 		self.runtime_memory = Some(runtime_memory);
 	}
 }
@@ -125,7 +125,11 @@ impl FunctionContext for FunctionExecutor<'_> {
 	}
 
 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
-		self.memory.set(address.into(), data).map_err(|e| e.to_string())
+		// self.memory.set(address.into(), data).map_err(|e| e.to_string())
+		self.runtime_memory
+			.as_mut()
+			.expect("Runtime memory to be set")
+			.write_memory(address, data)
 	}
 
 	fn allocate_memory(&mut self, size: WordSize) -> WResult<Pointer<u8>> {
