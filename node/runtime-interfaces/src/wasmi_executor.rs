@@ -39,29 +39,6 @@ pub struct FunctionExecutor<'a> {
 }
 unsafe impl Send for FunctionExecutor<'_> {}
 
-// struct DummyFunctionContext;
-// impl FunctionContext for DummyFunctionContext {
-// 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
-// 		unimplemented!()
-// 	}
-
-// 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
-// 		unimplemented!()
-// 	}
-
-// 	fn allocate_memory(&mut self, size: WordSize) -> WResult<Pointer<u8>> {
-// 		unimplemented!()
-// 	}
-
-// 	fn deallocate_memory(&mut self, ptr: Pointer<u8>) -> WResult<()> {
-// 		unimplemented!()
-// 	}
-
-// 	fn register_panic_error_message(&mut self, message: &str) {
-// 		unimplemented!()
-// 	}
-// }
-
 impl<'a> FunctionExecutor<'a> {
 	pub fn new(
 		m: MemoryRef,
@@ -70,9 +47,13 @@ impl<'a> FunctionExecutor<'a> {
 		host_functions: Arc<Vec<&'static dyn Function>>,
 		allow_missing_func_imports: bool,
 		missing_functions: Arc<Vec<String>>,
+		sandbox_store: Option<Rc<RefCell<Store<wasmi::FuncRef>>>>,
 	) -> Result<Self> {
 		Ok(FunctionExecutor {
-			sandbox_store: Rc::new(RefCell::new(Store::new(SandboxBackend::Wasmi))),
+			sandbox_store: match sandbox_store {
+				Some(store) => store,
+				None => Rc::new(RefCell::new(Store::new(SandboxBackend::Wasmi))),
+			},
 			heap: RefCell::new(FreeingBumpHeapAllocator::new(heap_base)),
 			memory: m,
 			table: t,
@@ -254,35 +235,95 @@ impl<'a, 'b> SandboxContext for SandboxContextImpl<'a, 'b> {
 
 // impl Sandbox for FunctionExecutor {
 impl FunctionExecutor<'_> {
+	// pub fn memory_get(
+	// 	&mut self,
+	// 	memory_id: MemoryId,
+	// 	offset: WordSize,
+	// 	data: &mut [u8],
+	// 	// buf_ptr: Pointer<u8>,
+	// 	// buf_len: WordSize,
+	// ) -> WResult<u32> {
+	// 	log::info!(target: LOG_TARGET, "memory_get START: memory_id={:?}, offset={:?}", memory_id,
+	// offset);
+
+	// 	let sandboxed_memory =
+	// 		self.sandbox_store.borrow().memory(memory_id).map_err(|e| e.to_string())?;
+
+	// 	// let len = buf_len as usize;
+
+	// 	// let buffer = match sandboxed_memory.read(Pointer::new(offset as u32), len) {
+	// 	// 	Err(_) => return Ok(ERR_OUT_OF_BOUNDS),
+	// 	// 	Ok(buffer) => buffer,
+	// 	// };
+
+	// 	// if self.memory.set(buf_ptr.into(), &buffer).is_err() {
+	// 	// 	return Ok(ERR_OUT_OF_BOUNDS)
+	// 	// }
+
+	// 	if sandboxed_memory.read_into(Pointer::new(offset as u32), data).is_err() {
+	// 		return Ok(ERR_OUT_OF_BOUNDS)
+	// 	}
+
+	// 	log::info!(target: LOG_TARGET, "memory_get END: memory_id={:?}, offset={:?}", memory_id,
+	// offset);
+
+	// 	Ok(ERR_OK)
+	// }
+
+	// pub fn memory_set(
+	// 	&mut self,
+	// 	memory_id: MemoryId,
+	// 	offset: WordSize,
+	// 	data: &[u8],
+	// ) -> WResult<u32> {
+	// 	log::info!(target: LOG_TARGET, "memory_set START: memory_id={:?}, offset={:?}", memory_id,
+	// offset);
+
+	// 	let sandboxed_memory =
+	// 		self.sandbox_store.borrow().memory(memory_id).map_err(|e| e.to_string())?;
+
+	// 	// let len = val_len as usize;
+
+	// 	// #[allow(deprecated)]
+	// 	// let buffer = match self.memory.get(val_ptr.into(), len) {
+	// 	// 	Err(_) => return Ok(ERR_OUT_OF_BOUNDS),
+	// 	// 	Ok(buffer) => buffer,
+	// 	// };
+
+	// 	if sandboxed_memory.write_from(Pointer::new(offset as u32), &data).is_err() {
+	// 		return Ok(ERR_OUT_OF_BOUNDS)
+	// 	}
+
+	// 	log::info!(target: LOG_TARGET, "memory_set END: memory_id={:?}, offset={:?}", memory_id,
+	// offset);
+
+	// 	Ok(ERR_OK)
+	// }
+
 	pub fn memory_get(
 		&mut self,
 		memory_id: MemoryId,
 		offset: WordSize,
-		data: &mut [u8],
-		// buf_ptr: Pointer<u8>,
-		// buf_len: WordSize,
+		buf_ptr: Pointer<u8>,
+		buf_len: WordSize,
 	) -> WResult<u32> {
-		log::info!(target: LOG_TARGET, "memory_get START: memory_id={:?}, offset={:?}", memory_id, offset);
+		log::info!(target: LOG_TARGET, "memory_get START: memory_id={:?}, offset={:?}, buf_ptr={:?}, buf_len={:?}", memory_id, offset, buf_ptr, buf_len);
 
 		let sandboxed_memory =
 			self.sandbox_store.borrow().memory(memory_id).map_err(|e| e.to_string())?;
 
-		// let len = buf_len as usize;
+		let len = buf_len as usize;
 
-		// let buffer = match sandboxed_memory.read(Pointer::new(offset as u32), len) {
-		// 	Err(_) => return Ok(ERR_OUT_OF_BOUNDS),
-		// 	Ok(buffer) => buffer,
-		// };
+		let buffer = match sandboxed_memory.read(Pointer::new(offset as u32), len) {
+			Err(_) => return Ok(ERR_OUT_OF_BOUNDS),
+			Ok(buffer) => buffer,
+		};
 
-		// if self.memory.set(buf_ptr.into(), &buffer).is_err() {
-		// 	return Ok(ERR_OUT_OF_BOUNDS)
-		// }
-
-		if sandboxed_memory.read_into(Pointer::new(offset as u32), data).is_err() {
+		if self.memory.set(buf_ptr.into(), &buffer).is_err() {
 			return Ok(ERR_OUT_OF_BOUNDS)
 		}
 
-		log::info!(target: LOG_TARGET, "memory_get END: memory_id={:?}, offset={:?}", memory_id, offset);
+		log::info!(target: LOG_TARGET, "memory_get END: memory_id={:?}, offset={:?}, buf_ptr={:?}, buf_len={:?}", memory_id, offset, buf_ptr, buf_len);
 
 		Ok(ERR_OK)
 	}
@@ -291,26 +332,27 @@ impl FunctionExecutor<'_> {
 		&mut self,
 		memory_id: MemoryId,
 		offset: WordSize,
-		data: &[u8],
+		val_ptr: Pointer<u8>,
+		val_len: WordSize,
 	) -> WResult<u32> {
-		log::info!(target: LOG_TARGET, "memory_set START: memory_id={:?}, offset={:?}", memory_id, offset);
+		log::info!(target: LOG_TARGET, "memory_set START: memory_id={:?}, offset={:?}, val_ptr={:?}, val_len={:?}", memory_id, offset, val_ptr, val_len);
 
 		let sandboxed_memory =
 			self.sandbox_store.borrow().memory(memory_id).map_err(|e| e.to_string())?;
 
-		// let len = val_len as usize;
+		let len = val_len as usize;
 
-		// #[allow(deprecated)]
-		// let buffer = match self.memory.get(val_ptr.into(), len) {
-		// 	Err(_) => return Ok(ERR_OUT_OF_BOUNDS),
-		// 	Ok(buffer) => buffer,
-		// };
+		#[allow(deprecated)]
+		let buffer = match self.memory.get(val_ptr.into(), len) {
+			Err(_) => return Ok(ERR_OUT_OF_BOUNDS),
+			Ok(buffer) => buffer,
+		};
 
-		if sandboxed_memory.write_from(Pointer::new(offset as u32), &data).is_err() {
+		if sandboxed_memory.write_from(Pointer::new(offset as u32), &buffer).is_err() {
 			return Ok(ERR_OUT_OF_BOUNDS)
 		}
 
-		log::info!(target: LOG_TARGET, "memory_set END: memory_id={:?}, offset={:?}", memory_id, offset);
+		log::info!(target: LOG_TARGET, "memory_set END: memory_id={:?}, offset={:?}, val_ptr={:?}, val_len={:?}", memory_id, offset, val_ptr, val_len);
 
 		Ok(ERR_OK)
 	}
@@ -518,6 +560,7 @@ impl WasmModule for WasmiRuntime {
 			allow_missing_func_imports: self.allow_missing_func_imports,
 			missing_functions: Arc::new(missing_functions),
 			is_inited: false,
+			sandbox_store: None,
 		}))
 	}
 }
@@ -584,6 +627,7 @@ pub struct WasmiInstance {
 
 	// custom field
 	is_inited: bool,
+	sandbox_store: Option<Rc<RefCell<Store<wasmi::FuncRef>>>>,
 }
 
 // This is safe because `WasmiInstance` does not leak any references to `self.memory` and
@@ -700,6 +744,7 @@ fn call_in_wasm_module(
 		host_functions,
 		allow_missing_func_imports,
 		missing_functions,
+		None,
 	)?;
 
 	// Write the call data
@@ -1072,6 +1117,7 @@ impl WasmiRuntime {
 			allow_missing_func_imports: self.allow_missing_func_imports,
 			missing_functions: Arc::new(missing_functions),
 			is_inited: false,
+			sandbox_store: None,
 		}))
 	}
 }
@@ -1120,6 +1166,7 @@ impl WasmiInstance {
 			self.host_functions.clone(),
 			self.allow_missing_func_imports,
 			self.missing_functions.clone(),
+			None,
 		)
 		.expect("function_executor to be created");
 
@@ -1127,6 +1174,8 @@ impl WasmiInstance {
 	}
 
 	pub fn create_function_executor_2(&mut self) -> FunctionExecutor {
+		log::info!(target: "wasm-executor", "is_inited ---> {}", self.is_inited);
+
 		if !self.is_inited {
 			self.memory
 				.erase()
@@ -1161,6 +1210,8 @@ impl WasmiInstance {
 
 			let heap_base = get_heap_base(&self.instance).expect("get_heap_base to be ok");
 
+			self.sandbox_store = Some(Rc::new(RefCell::new(Store::new(SandboxBackend::Wasmi))));
+
 			let function_executor = FunctionExecutor::new(
 				self.memory.clone(),
 				heap_base,
@@ -1168,18 +1219,27 @@ impl WasmiInstance {
 				self.host_functions.clone(),
 				self.allow_missing_func_imports,
 				self.missing_functions.clone(),
+				self.sandbox_store.clone(),
 			)
 			.expect("function_executor to be created");
 
 			self.is_inited = true;
 			function_executor
 		} else {
-			let heap_base = get_heap_base(&self.instance).expect("get_heap_base to be ok");
+			// self.data_segments_snapshot
+			// 	.apply(|offset, contents| self.memory.set(offset, contents))
+			// 	.expect("data_segments_snapshot.apply to be ok"); // todo: fix error type
+
+			// self.global_vals_snapshot
+			// 	.apply(&self.instance)
+			// 	.expect("global_vals_snapshot.apply to be ok");
 
 			let table = &self
 				.instance
 				.export_by_name("__indirect_function_table")
 				.and_then(|e| e.as_table().cloned());
+
+			let heap_base = get_heap_base(&self.instance).expect("get_heap_base to be ok");
 
 			let function_executor = FunctionExecutor::new(
 				self.memory.clone(),
@@ -1188,6 +1248,7 @@ impl WasmiInstance {
 				self.host_functions.clone(),
 				self.allow_missing_func_imports,
 				self.missing_functions.clone(),
+				self.sandbox_store.clone(),
 			)
 			.expect("function_executor to be created");
 			function_executor

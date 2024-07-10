@@ -203,6 +203,59 @@ pub trait Sandbox {
 			.expect("Failed to create new memory with sandbox")
 	}
 
+	// /// Get sandbox memory from the `memory_id` instance at `offset` into the given buffer.
+	// fn memory_get(
+	// 	&mut self,
+	// 	memory_idx: u32,
+	// 	offset: u32,
+	// 	buf_ptr: Pointer<u8>,
+	// 	buf_len: u32,
+	// ) -> u32 {
+	// 	// let lock = SANDBOX.lock();
+	// 	// let mut sandbox = lock.borrow_mut();
+	// 	let binding = WASMI_INSTANCE.lock();
+	// 	let mut binding = binding.borrow_mut();
+	// 	let mut sandbox = binding.create_function_executor_2();
+	// 	let ref_to_ctx: &mut dyn FunctionContext = *self;
+	// 	let arc_from_ref = Box::new(ref_to_ctx);
+	// 	sandbox.set_runtime_memory(arc_from_ref);
+
+	// 	let mut vec = Vec::new();
+	// 	let data = vec.as_mut_slice();
+
+	// 	let res = sandbox
+	// 		.memory_get(memory_idx, offset, data)
+	// 		.expect("Failed to get memory with sandbox");
+
+	// 	let _ = self.write_memory(buf_ptr, data).unwrap();
+
+	// 	res
+	// }
+
+	// /// Set sandbox memory from the given value.
+	// fn memory_set(
+	// 	&mut self,
+	// 	memory_idx: u32,
+	// 	offset: u32,
+	// 	val_ptr: Pointer<u8>,
+	// 	val_len: u32,
+	// ) -> u32 {
+	// 	// let lock = SANDBOX.lock();
+	// 	// let mut sandbox = lock.borrow_mut();
+	// 	let binding = WASMI_INSTANCE.lock();
+	// 	let mut binding = binding.borrow_mut();
+	// 	let mut sandbox = binding.create_function_executor_2();
+	// 	let data = self.read_memory(val_ptr, val_len).unwrap().clone();
+
+	// 	let ref_to_ctx: &mut dyn FunctionContext = *self;
+	// 	let arc_from_ref = Box::new(ref_to_ctx);
+	// 	sandbox.set_runtime_memory(arc_from_ref);
+
+	// 	sandbox
+	// 		.memory_set(memory_idx, offset, &data)
+	// 		.expect("Failed to set memory with sandbox")
+	// }
+
 	/// Get sandbox memory from the `memory_id` instance at `offset` into the given buffer.
 	fn memory_get(
 		&mut self,
@@ -211,8 +264,6 @@ pub trait Sandbox {
 		buf_ptr: Pointer<u8>,
 		buf_len: u32,
 	) -> u32 {
-		// let lock = SANDBOX.lock();
-		// let mut sandbox = lock.borrow_mut();
 		let binding = WASMI_INSTANCE.lock();
 		let mut binding = binding.borrow_mut();
 		let mut sandbox = binding.create_function_executor_2();
@@ -220,16 +271,9 @@ pub trait Sandbox {
 		let arc_from_ref = Box::new(ref_to_ctx);
 		sandbox.set_runtime_memory(arc_from_ref);
 
-		let mut vec = Vec::new();
-		let data = vec.as_mut_slice();
-
-		let res = sandbox
-			.memory_get(memory_idx, offset, data)
-			.expect("Failed to get memory with sandbox");
-
-		let _ = self.write_memory(buf_ptr, data).unwrap();
-
-		res
+		sandbox
+			.memory_get(memory_idx, offset, buf_ptr, buf_len)
+			.expect("Failed to get memory with sandbox")
 	}
 
 	/// Set sandbox memory from the given value.
@@ -240,19 +284,16 @@ pub trait Sandbox {
 		val_ptr: Pointer<u8>,
 		val_len: u32,
 	) -> u32 {
-		// let lock = SANDBOX.lock();
-		// let mut sandbox = lock.borrow_mut();
 		let binding = WASMI_INSTANCE.lock();
 		let mut binding = binding.borrow_mut();
 		let mut sandbox = binding.create_function_executor_2();
-		let data = self.read_memory(val_ptr, val_len).unwrap().clone();
 
 		let ref_to_ctx: &mut dyn FunctionContext = *self;
 		let arc_from_ref = Box::new(ref_to_ctx);
 		sandbox.set_runtime_memory(arc_from_ref);
 
 		sandbox
-			.memory_set(memory_idx, offset, &data)
+			.memory_set(memory_idx, offset, val_ptr, val_len)
 			.expect("Failed to set memory with sandbox")
 	}
 
