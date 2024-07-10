@@ -664,6 +664,7 @@ impl WasmInstance for WasmiInstance {
 			self.host_functions.clone(),
 			self.allow_missing_func_imports,
 			self.missing_functions.clone(),
+			self.sandbox_store.clone(),
 		)
 	}
 
@@ -730,6 +731,7 @@ fn call_in_wasm_module(
 	host_functions: Arc<Vec<&'static dyn Function>>,
 	allow_missing_func_imports: bool,
 	missing_functions: Arc<Vec<String>>,
+	sandbox_store: Option<Rc<RefCell<Store<wasmi::FuncRef>>>>,
 ) -> std::result::Result<Vec<u8>, Error> {
 	// Initialize FunctionExecutor.
 	let table: Option<TableRef> = module_instance
@@ -744,7 +746,7 @@ fn call_in_wasm_module(
 		host_functions,
 		allow_missing_func_imports,
 		missing_functions,
-		None,
+		sandbox_store,
 	)?;
 
 	// Write the call data
