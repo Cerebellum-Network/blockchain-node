@@ -12,7 +12,7 @@ use ddc_primitives::{
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus,
 	ClusterNodesStats, ClusterParams, ClusterPricingParams, ClusterProtocolParams, ClusterStatus,
-	DdcEra, NodeParams, NodePubKey, StorageNodePubKey,
+	NodeParams, NodePubKey, StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime,
@@ -270,13 +270,6 @@ impl<T: Config> ClusterQuery<T> for TestClusterManager {
 }
 
 impl<T: Config> ClusterManager<T> for TestClusterManager {
-	fn set_last_validated_era(
-		_cluster_id: &ClusterId,
-		_era_id: DdcEra,
-	) -> Result<(), DispatchError> {
-		unimplemented!()
-	}
-
 	fn contains_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,

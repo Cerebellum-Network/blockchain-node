@@ -12,7 +12,7 @@
 use core::str;
 
 use ddc_primitives::{
-	traits::{ClusterManager, NodeVisitor, PayoutVisitor, ValidatorVisitor},
+	traits::{ClusterManager, ClusterValidator, NodeVisitor, PayoutVisitor, ValidatorVisitor},
 	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeParams, NodePubKey,
 	NodeUsage, PayoutState, StorageNodeMode, StorageNodeParams,
 };
@@ -78,6 +78,7 @@ pub mod pallet {
 		/// Weight info type.
 		type WeightInfo: WeightInfo;
 		/// DDC clusters nodes manager.
+		type ClusterValidator: ClusterValidator<Self>;
 		type ClusterManager: ClusterManager<Self>;
 		type PayoutVisitor: PayoutVisitor<Self>;
 		/// DDC nodes read-only registry.
@@ -2843,7 +2844,7 @@ pub mod pallet {
 			era_validation.status = EraValidationStatus::PayoutSuccess;
 			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
 
-			T::ClusterManager::set_last_validated_era(&cluster_id, era_id)
+			T::ClusterValidator::set_last_validated_era(&cluster_id, era_id)
 		}
 
 		// todo! Need to remove this

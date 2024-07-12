@@ -1258,6 +1258,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type PalletId = VerificationPalletId;
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type PayoutVisitor = pallet_ddc_payouts::Pallet<Runtime>;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;

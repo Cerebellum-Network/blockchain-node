@@ -1,6 +1,6 @@
 use ddc_primitives::{
 	crypto, sr25519,
-	traits::{ClusterManager, ClusterQuery, StakingVisitor, StakingVisitorError},
+	traits::{ClusterManager, ClusterQuery, ClusterValidator, StakingVisitor, StakingVisitorError},
 	BucketId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats,
 	ClusterStatus, PayoutError, PayoutState, StorageNodePubKey, MAX_PAYOUT_BATCH_COUNT,
 	MAX_PAYOUT_BATCH_SIZE,
@@ -218,6 +218,7 @@ impl crate::Config for Test {
 	type PalletId = VerificationPalletId;
 	type WeightInfo = ();
 	type ClusterManager = TestClusterManager;
+	type ClusterValidator = TestClusterValidator;
 	type NodeVisitor = MockNodeVisitor;
 	type PayoutVisitor = MockPayoutVisitor;
 	type AuthorityId = sr25519::AuthorityId;
@@ -581,6 +582,16 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 	}
 }
 
+pub struct TestClusterValidator;
+impl<T: Config> ClusterValidator<T> for TestClusterValidator {
+	fn set_last_validated_era(
+		_cluster_id: &ClusterId,
+		_era_id: DdcEra,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
+}
+
 pub struct TestClusterManager;
 impl<T: Config> ClusterQuery<T> for TestClusterManager {
 	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
@@ -597,13 +608,6 @@ impl<T: Config> ClusterQuery<T> for TestClusterManager {
 }
 
 impl<T: Config> ClusterManager<T> for TestClusterManager {
-	fn set_last_validated_era(
-		_cluster_id: &ClusterId,
-		_era_id: DdcEra,
-	) -> Result<(), DispatchError> {
-		unimplemented!()
-	}
-
 	fn contains_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,

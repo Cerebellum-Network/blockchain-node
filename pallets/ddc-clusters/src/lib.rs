@@ -31,7 +31,7 @@ const LOG_TARGET: &str = "runtime::ddc-clusters";
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
+		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery, ClusterValidator},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
@@ -814,8 +814,7 @@ pub mod pallet {
 			Self::do_end_unbond_cluster(cluster_id)
 		}
 	}
-
-	impl<T: Config> ClusterManager<T> for Pallet<T> {
+	impl<T: Config> ClusterValidator<T> for Pallet<T> {
 		fn set_last_validated_era(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -832,7 +831,9 @@ pub mod pallet {
 
 			Ok(())
 		}
+	}
 
+	impl<T: Config> ClusterManager<T> for Pallet<T> {
 		fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
