@@ -20,8 +20,6 @@ Use the following command to build the node without launching it:
 cargo +1.77.0 build --release
 ```
 
-On MacOs, if `error: failed to build archive: 'wasm32.o': section too large` appears, refer to [this](https://github.com/surrealdb/surrealdb.wasm/issues/41#issuecomment-1769845769) issue.
-
 ## Run
 
 ### Single-Node Development Chain

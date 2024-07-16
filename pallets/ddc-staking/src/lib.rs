@@ -284,8 +284,6 @@ pub mod pallet {
 					"Cluster Stash do not have enough balance to participate in storage network."
 				);
 
-				assert!(T::Currency::free_balance(cluster_stash) < amount, "Insufficient bond");
-
 				assert_ok!(frame_system::Pallet::<T>::inc_consumers(cluster_stash));
 
 				<ClusterBonded<T>>::insert(cluster_stash, cluster_controller);

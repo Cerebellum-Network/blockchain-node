@@ -196,6 +196,12 @@ pub mod pallet {
 			rewarded: u128,
 			expected_to_reward: u128,
 		},
+		ValidatorRewarded {
+			cluster_id: ClusterId,
+			era: DdcEra,
+			validator_id: T::AccountId,
+			amount: u128,
+		},
 		NotDistributedReward {
 			cluster_id: ClusterId,
 			era: DdcEra,
@@ -217,6 +223,9 @@ pub mod pallet {
 		BillingReportFinalized {
 			cluster_id: ClusterId,
 			era: DdcEra,
+		},
+		AuthorisedCaller {
+			authorised_caller: T::AccountId,
 		},
 		ChargeError {
 			cluster_id: ClusterId,
@@ -258,6 +267,10 @@ pub mod pallet {
 		DdcEra,
 		BillingReport<T>,
 	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn authorised_caller)]
+	pub type AuthorisedCaller<T: Config> = StorageValue<_, T::AccountId>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn debtor_customers)]
@@ -305,11 +318,40 @@ pub mod pallet {
 		}
 	}
 
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
+	// don't remove or change numbers, if needed add a new state to the end with new number
+	// DAC uses the state value for integration!
+	pub enum State {
+		#[default]
+		NotInitialized = 1,
+		Initialized = 2,
+		ChargingCustomers = 3,
+		CustomersChargedWithFees = 4,
+		RewardingProviders = 5,
+		ProvidersRewarded = 6,
+		Finalized = 7,
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
 		// PayoutProcessor trait
 		#[pallet::call_index(0)]
+		#[pallet::weight(T::WeightInfo::set_authorised_caller())]
+		pub fn set_authorised_caller(
+			origin: OriginFor<T>,
+			authorised_caller: T::AccountId,
+		) -> DispatchResult {
+			ensure_root(origin)?; // requires Governance approval
+
+			AuthorisedCaller::<T>::put(authorised_caller.clone());
+
+			Self::deposit_event(Event::<T>::AuthorisedCaller { authorised_caller });
+
+			Ok(())
+		}
+
+		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::begin_billing_report())]
 		pub fn begin_billing_report(
 			origin: OriginFor<T>,
@@ -319,6 +361,7 @@ pub mod pallet {
 			end_era: i64,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
+			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised); //
 																				  // todo! need to refactor this
 
@@ -345,7 +388,7 @@ pub mod pallet {
 
 		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
 		// PayoutProcessor trait
-		#[pallet::call_index(1)]
+		#[pallet::call_index(2)]
 		#[pallet::weight(T::WeightInfo::begin_charging_customers())]
 		pub fn begin_charging_customers(
 			origin: OriginFor<T>,
@@ -354,6 +397,7 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
+			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised); //
 																				  // todo! need to refactor this
 
@@ -375,7 +419,7 @@ pub mod pallet {
 
 		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
 		// + pass values by reference PayoutProcessor trait
-		#[pallet::call_index(2)]
+		#[pallet::call_index(3)]
 		#[pallet::weight(T::WeightInfo::send_charging_customers_batch(payers.len().saturated_into()))]
 		pub fn send_charging_customers_batch(
 			origin: OriginFor<T>,
@@ -386,6 +430,7 @@ pub mod pallet {
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
+			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			ensure!(
@@ -552,7 +597,7 @@ pub mod pallet {
 
 		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
 		// PayoutProcessor trait
-		#[pallet::call_index(3)]
+		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::end_charging_customers())]
 		pub fn end_charging_customers(
 			origin: OriginFor<T>,
@@ -560,6 +605,7 @@ pub mod pallet {
 			era: DdcEra,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
+			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
@@ -623,7 +669,7 @@ pub mod pallet {
 			}
 
 			if validators_fee > 0 {
-				charge_validator_fees::<T>(validators_fee, &billing_report.vault)?;
+				charge_validator_fees::<T>(validators_fee, &billing_report.vault, cluster_id, era)?;
 				Self::deposit_event(Event::<T>::ValidatorFeesCollected {
 					cluster_id,
 					era,
@@ -656,7 +702,7 @@ pub mod pallet {
 
 		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
 		// PayoutProcessor trait
-		#[pallet::call_index(4)]
+		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::begin_rewarding_providers())]
 		pub fn begin_rewarding_providers(
 			origin: OriginFor<T>,
@@ -666,6 +712,7 @@ pub mod pallet {
 			total_node_usage: NodeUsage,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
+			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
@@ -690,7 +737,7 @@ pub mod pallet {
 
 		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
 		// + pass values by reference PayoutProcessor trait
-		#[pallet::call_index(5)]
+		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::send_rewarding_providers_batch(payees.len().saturated_into()))]
 		pub fn send_rewarding_providers_batch(
 			origin: OriginFor<T>,
@@ -701,6 +748,7 @@ pub mod pallet {
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
+			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			ensure!(
@@ -813,7 +861,7 @@ pub mod pallet {
 
 		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
 		// PayoutProcessor trait
-		#[pallet::call_index(6)]
+		#[pallet::call_index(7)]
 		#[pallet::weight(T::WeightInfo::end_rewarding_providers())]
 		pub fn end_rewarding_providers(
 			origin: OriginFor<T>,
@@ -821,6 +869,7 @@ pub mod pallet {
 			era: DdcEra,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
+			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
@@ -866,7 +915,7 @@ pub mod pallet {
 
 		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
 		// PayoutProcessor trait
-		#[pallet::call_index(7)]
+		#[pallet::call_index(8)]
 		#[pallet::weight(T::WeightInfo::end_billing_report())]
 		pub fn end_billing_report(
 			origin: OriginFor<T>,
@@ -874,6 +923,7 @@ pub mod pallet {
 			era: DdcEra,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
+			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
@@ -948,6 +998,8 @@ pub mod pallet {
 	fn charge_validator_fees<T: Config>(
 		validators_fee: u128,
 		vault: &T::AccountId,
+		cluster_id: ClusterId,
+		era: DdcEra,
 	) -> DispatchResult {
 		let stakers = get_current_exposure_ratios::<T>()?;
 
@@ -960,6 +1012,13 @@ pub mod pallet {
 				amount_to_deduct.saturated_into::<BalanceOf<T>>(),
 				ExistenceRequirement::AllowDeath,
 			)?;
+
+			pallet::Pallet::deposit_event(Event::<T>::ValidatorRewarded {
+				cluster_id,
+				era,
+				validator_id: staker_id.clone(),
+				amount: amount_to_deduct,
+			});
 		}
 
 		Ok(())
@@ -1051,12 +1110,17 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub feeder_account: Option<T::AccountId>,
+		pub authorised_caller: Option<T::AccountId>,
 		pub debtor_customers: Vec<(ClusterId, T::AccountId, u128)>,
 	}
 
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			GenesisConfig { feeder_account: None, debtor_customers: Default::default() }
+			GenesisConfig {
+				feeder_account: None,
+				authorised_caller: Default::default(),
+				debtor_customers: Default::default(),
+			}
 		}
 	}
 
@@ -1079,6 +1143,7 @@ pub mod pallet {
 				}
 			}
 
+			AuthorisedCaller::<T>::set(self.authorised_caller.clone());
 			for (cluster_id, customer_id, debt) in &self.debtor_customers {
 				DebtorCustomers::<T>::insert(cluster_id, customer_id, debt);
 			}

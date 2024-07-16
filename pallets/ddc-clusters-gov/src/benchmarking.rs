@@ -27,6 +27,13 @@ pub fn create_funded_user_with_balance<T: Config>(
 	user
 }
 
+pub fn fund_user<T: Config>(user: T::AccountId, balance_factor: u128) -> T::AccountId {
+	let balance = <T as pallet::Config>::Currency::minimum_balance() *
+		balance_factor.saturated_into::<BalanceOf<T>>();
+	let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
+	user
+}
+
 pub fn create_cluster_with_nodes<T: Config>(
 	cluster_id: ClusterId,
 	cluster_manager_id: T::AccountId,
@@ -205,6 +212,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let _ = fund_user::<T>(DdcClustersGov::<T>::account_id(), 1000);
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 
@@ -251,6 +259,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let _ = fund_user::<T>(DdcClustersGov::<T>::account_id(), 1000);
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 
@@ -424,6 +433,7 @@ benchmarks! {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5);
 		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5);
+		let _ = fund_user::<T>(DdcClustersGov::<T>::account_id(), 1000);
 
 		let mut cluster_nodes: Vec<(NodePubKey, T::AccountId)> = Vec::new();
 		for i in 0 .. 3 {

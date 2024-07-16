@@ -29,7 +29,7 @@ lazy_static = { workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
 pallet-contracts = { workspace = true }
 pallet-conviction-voting = { workspace = true }
-pallet-ddc-clusters = { workspace = true }
+pallet-ddc-clusters = { workspace = true, default-features = true }
 pallet-ddc-nodes = { workspace = true }
 pallet-ddc-staking = { workspace = true }
 pallet-insecure-randomness-collective-flip = { workspace = true, default-features = true }

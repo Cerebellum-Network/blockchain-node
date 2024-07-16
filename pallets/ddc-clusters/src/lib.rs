@@ -103,6 +103,7 @@ pub mod pallet {
 		ClusterProtocolParamsSet { cluster_id: ClusterId },
 		ClusterActivated { cluster_id: ClusterId },
 		ClusterBonded { cluster_id: ClusterId },
+		ClusterUnbonding { cluster_id: ClusterId },
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
 	}
@@ -204,9 +205,9 @@ pub mod pallet {
 							.props
 							.node_provider_auth_contract
 							.clone(),
-						erasure_coding_required: 4,
-						erasure_coding_total: 6,
-						replication_total: 3
+						erasure_coding_required: cluster.props.erasure_coding_required,
+						erasure_coding_total: cluster.props.erasure_coding_total,
+						replication_total: cluster.props.replication_total,
 					},
 					self.clusters_protocol_params
 						.iter()
@@ -461,7 +462,7 @@ pub mod pallet {
 
 			cluster.set_status(ClusterStatus::Unbonding);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: *cluster_id });
+			Self::deposit_event(Event::<T>::ClusterUnbonding { cluster_id: *cluster_id });
 
 			Ok(())
 		}

@@ -5,17 +5,13 @@ on:
     branches:
       - berlin-hackaton
 
-permissions:
-  contents: read
-  id-token: write
+env:
+  PROFILE: release
 
 jobs:
   build:
-    runs-on: [self-hosted, cere-network-large]
-    permissions:
-      contents: read
-      id-token: write
-
+    runs-on: ubuntu-latest
+    concurrency: dev
     steps:
       - uses: actions/checkout@v3
 
@@ -44,10 +40,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Process version
-        id: version
-        run: |
-          echo "image_tag=berlin-${{ github.run_attempt}}-$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+      - name: Configure AWS credentials ORG
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.ORG_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ORG_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Login to Amazon ECR ORG
+        id: login-ecr-org
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
       - name: Build and push docker image to ECR Docker
         uses: docker/build-push-action@v4
@@ -55,5 +60,5 @@ jobs:
           context: .
           file: Dockerfile.tests
           push: true
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.image_tag }}
+          build-args: |
+            "ECR_REGISTRY=${{ steps.login-ecr-org.outputs.registry }}-berlin"

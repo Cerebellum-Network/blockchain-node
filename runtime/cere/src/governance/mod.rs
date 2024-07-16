@@ -14,8 +14,8 @@ use cere_runtime_common::constants::tracks::{
 };
 use ddc_primitives::traits::pallet::PalletsOriginOf;
 pub use pallet_origins::pallet::{
-	ClusterProtocolActivator, ClusterProtocolUpdater, FellowshipAdmin, GeneralAdmin,
-	ReferendumCanceller, ReferendumKiller, Spender, StakingAdmin, Treasurer, WhitelistedCaller,
+	ClusterProtocolActivator, ClusterProtocolUpdater, GeneralAdmin, ReferendumCanceller,
+	ReferendumKiller, Spender, StakingAdmin, Treasurer, WhitelistedCaller,
 };
 pub use tracks::TracksInfo;
 
@@ -51,8 +51,11 @@ impl pallet_whitelist::Config for Runtime {
 	type WeightInfo = pallet_whitelist::weights::SubstrateWeight<Runtime>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WhitelistOrigin = EnsureRoot<Self::AccountId>;
-	type DispatchWhitelistedOrigin = EitherOf<EnsureRoot<Self::AccountId>, WhitelistedCaller>;
+	type WhitelistOrigin = EitherOfDiverse<
+		EnsureRoot<AccountId>,
+		pallet_collective::EnsureMembers<AccountId, TechCommCollective, 3>,
+	>;
+	type DispatchWhitelistedOrigin = EitherOf<EnsureRoot<AccountId>, WhitelistedCaller>;
 	type Preimages = Preimage;
 }
 
