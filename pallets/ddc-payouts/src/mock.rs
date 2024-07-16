@@ -143,9 +143,6 @@ impl<T: Config> ValidatorVisitor<T> for MockValidatorVisitor
 where
 	<T as frame_system::Config>::AccountId: From<u128>,
 {
-	fn setup_validators(_validators: Vec<T::AccountId>) {
-		unimplemented!()
-	}
 	fn is_ocw_validator(caller: T::AccountId) -> bool {
 		let validators = [DAC_ACCOUNT_ID.into(), 123u128.into()];
 		validators.contains(&caller)

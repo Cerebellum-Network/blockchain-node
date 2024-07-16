@@ -434,7 +434,7 @@ pub mod pallet {
 
 			let stash_balance = T::Currency::free_balance(&stash);
 			let value = value.min(stash_balance);
-			Self::deposit_event(Event::<T>::Bonded(stash.clone(), value));
+			Self::deposit_event(Event::Bonded(stash.clone(), value));
 			let item = StakingLedger {
 				stash,
 				total: value,
@@ -526,11 +526,12 @@ pub mod pallet {
 						// cluster eventually, we keep its stake till the end of unbonding period.
 						if ledger.active < min_bond_size.saturated_into::<BalanceOf<T>>() {
 							match node_pub_key {
-								NodePubKey::StoragePubKey(_) =>
-									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id),
+								NodePubKey::StoragePubKey(_) => {
+									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id)
+								},
 							};
 
-							Self::deposit_event(Event::<T>::LeaveSoon(ledger.stash.clone()));
+							Self::deposit_event(Event::LeaveSoon(ledger.stash.clone()));
 						};
 
 						match node_pub_key {
@@ -563,7 +564,7 @@ pub mod pallet {
 
 				Self::update_ledger(&controller, &ledger);
 
-				Self::deposit_event(Event::<T>::Unbonded(ledger.stash, value));
+				Self::deposit_event(Event::Unbonded(ledger.stash, value));
 			}
 			Ok(())
 		}
@@ -606,7 +607,7 @@ pub mod pallet {
 				// Already checked that this won't overflow by entry condition.
 				let value =
 					old_total.checked_sub(&ledger.total).ok_or(Error::<T>::ArithmeticUnderflow)?;
-				Self::deposit_event(Event::<T>::Withdrawn(stash.clone(), value));
+				Self::deposit_event(Event::Withdrawn(stash.clone(), value));
 
 				// If provider aimed to leave the cluster and the unbonding period ends, remove
 				// the node from the cluster
@@ -617,7 +618,7 @@ pub mod pallet {
 
 					<LeavingStorages<T>>::remove(&stash);
 
-					Self::deposit_event(Event::<T>::Left(stash));
+					Self::deposit_event(Event::Left(stash));
 				}
 			}
 
@@ -672,7 +673,7 @@ pub mod pallet {
 			}
 
 			Self::do_add_storage(stash, cluster_id);
-			Self::deposit_event(Event::<T>::Activated(stash.clone()));
+			Self::deposit_event(Event::Activated(stash.clone()));
 
 			Ok(())
 		}
@@ -859,7 +860,7 @@ pub mod pallet {
 				return Err(Error::<T>::InsufficientBond)?;
 			}
 
-			Self::deposit_event(Event::<T>::Bonded(stash.clone(), amount));
+			Self::deposit_event(Event::Bonded(stash.clone(), amount));
 			let ledger = StakingLedger {
 				stash,
 				total: amount,
@@ -910,7 +911,7 @@ pub mod pallet {
 
 			Self::update_cluster_ledger(&controller, &ledger);
 
-			Self::deposit_event(Event::<T>::Unbonded(ledger.stash, amount));
+			Self::deposit_event(Event::Unbonded(ledger.stash, amount));
 
 			Ok(())
 		}
@@ -948,7 +949,7 @@ pub mod pallet {
 			if ledger.total < old_total {
 				// Already checked that this won't overflow by entry condition.
 				let value = old_total - ledger.total;
-				Self::deposit_event(Event::<T>::Withdrawn(stash, value));
+				Self::deposit_event(Event::Withdrawn(stash, value));
 			}
 
 			Ok(())
@@ -992,7 +993,7 @@ pub mod pallet {
 		fn chill_stash(stash: &T::AccountId) {
 			let chilled_as_storage = Self::do_remove_storage(stash);
 			if chilled_as_storage {
-				Self::deposit_event(Event::<T>::Chilled(stash.clone()));
+				Self::deposit_event(Event::Chilled(stash.clone()));
 			}
 		}
 
@@ -1008,7 +1009,7 @@ pub mod pallet {
 					ledger.chilling = Some(can_chill_from)
 				}
 			});
-			Self::deposit_event(Event::<T>::ChillSoon(stash.clone(), cluster, can_chill_from));
+			Self::deposit_event(Event::ChillSoon(stash.clone(), cluster, can_chill_from));
 		}
 
 		/// Remove all associated data of a stash account from the staking system.
@@ -1087,7 +1088,7 @@ pub mod pallet {
 			Bonded::<T>::insert(&stash, &controller);
 			let stash_balance = T::Currency::free_balance(&stash);
 			let value = value.min(stash_balance);
-			Self::deposit_event(Event::<T>::Bonded(stash.clone(), value));
+			Self::deposit_event(Event::Bonded(stash.clone(), value));
 			let item = StakingLedger {
 				stash: stash.clone(),
 				total: value,
@@ -1110,7 +1111,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ClusterBonded::<T>::insert(&cluster_stash, &cluster_controller);
 			let amount = T::ClusterBondingAmount::get();
-			Self::deposit_event(Event::<T>::Bonded(cluster_stash.clone(), amount));
+			Self::deposit_event(Event::Bonded(cluster_stash.clone(), amount));
 			let ledger = StakingLedger {
 				stash: cluster_stash,
 				total: amount,

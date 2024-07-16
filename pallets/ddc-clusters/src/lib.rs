@@ -371,7 +371,7 @@ pub mod pallet {
 			);
 			cluster.set_params(cluster_params);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
+			Self::deposit_event(Event::ClusterParamsSet { cluster_id });
 
 			Ok(())
 		}
@@ -422,9 +422,9 @@ pub mod pallet {
 				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params);
 
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
+			Self::deposit_event(Event::ClusterCreated { cluster_id });
 			ClustersGovParams::<T>::insert(cluster_id, initial_protocol_params);
-			Self::deposit_event(Event::<T>::ClusterProtocolParamsSet { cluster_id });
+			Self::deposit_event(Event::ClusterProtocolParamsSet { cluster_id });
 			ClustersNodesStats::<T>::insert(cluster_id, ClusterNodesStats::default());
 
 			Ok(())
@@ -437,7 +437,7 @@ pub mod pallet {
 
 			cluster.set_status(ClusterStatus::Bonded);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: *cluster_id });
+			Self::deposit_event(Event::ClusterBonded { cluster_id: *cluster_id });
 
 			Ok(())
 		}
@@ -449,7 +449,7 @@ pub mod pallet {
 
 			cluster.set_status(ClusterStatus::Activated);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterActivated { cluster_id: *cluster_id });
+			Self::deposit_event(Event::ClusterActivated { cluster_id: *cluster_id });
 
 			Ok(())
 		}
@@ -461,7 +461,7 @@ pub mod pallet {
 
 			cluster.set_status(ClusterStatus::Unbonding);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: *cluster_id });
+			Self::deposit_event(Event::ClusterBonded { cluster_id: *cluster_id });
 
 			Ok(())
 		}
@@ -476,7 +476,7 @@ pub mod pallet {
 
 			cluster.set_status(ClusterStatus::Unbonded);
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterUnbonded { cluster_id: *cluster_id });
+			Self::deposit_event(Event::ClusterUnbonded { cluster_id: *cluster_id });
 
 			Ok(())
 		}
@@ -491,7 +491,7 @@ pub mod pallet {
 			);
 
 			ClustersGovParams::<T>::insert(cluster_id, cluster_protocol_params);
-			Self::deposit_event(Event::<T>::ClusterProtocolParamsSet { cluster_id: *cluster_id });
+			Self::deposit_event(Event::ClusterProtocolParamsSet { cluster_id: *cluster_id });
 
 			Ok(())
 		}
@@ -519,7 +519,7 @@ pub mod pallet {
 					added_at: frame_system::Pallet::<T>::block_number(),
 				},
 			);
-			Self::deposit_event(Event::<T>::ClusterNodeAdded {
+			Self::deposit_event(Event::ClusterNodeAdded {
 				cluster_id: cluster.cluster_id,
 				node_pub_key,
 			});
@@ -557,7 +557,7 @@ pub mod pallet {
 			let current_node_state =
 				ClustersNodes::<T>::take(cluster.cluster_id, node_pub_key.clone())
 					.ok_or(Error::<T>::AttemptToRemoveNotAssignedNode)?;
-			Self::deposit_event(Event::<T>::ClusterNodeRemoved {
+			Self::deposit_event(Event::ClusterNodeRemoved {
 				cluster_id: cluster.cluster_id,
 				node_pub_key,
 			});
@@ -660,7 +660,7 @@ pub mod pallet {
 			};
 
 			ClustersNodes::<T>::insert(cluster_id, node_pub_key.clone(), current_node_state);
-			Self::deposit_event(Event::<T>::ClusterNodeValidated {
+			Self::deposit_event(Event::ClusterNodeValidated {
 				cluster_id,
 				node_pub_key,
 				succeeded,
@@ -678,13 +678,13 @@ pub mod pallet {
 
 			let is_empty_nodes = ClustersNodesStats::<T>::try_get(cluster_id)
 				.map(|status| {
-					status.await_validation + status.validation_succeeded + status.validation_failed ==
-						0
+					status.await_validation + status.validation_succeeded + status.validation_failed
+						== 0
 				})
 				.unwrap_or(false);
 
-			is_empty_nodes &&
-				matches!(cluster.status, ClusterStatus::Bonded | ClusterStatus::Activated)
+			is_empty_nodes
+				&& matches!(cluster.status, ClusterStatus::Bonded | ClusterStatus::Activated)
 		}
 	}
 
@@ -719,8 +719,9 @@ pub mod pallet {
 			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 			match node_type {
-				NodeType::Storage =>
-					Ok(cluster_protocol_params.storage_bond_size.saturated_into::<u128>()),
+				NodeType::Storage => {
+					Ok(cluster_protocol_params.storage_bond_size.saturated_into::<u128>())
+				},
 			}
 		}
 
@@ -922,12 +923,15 @@ pub mod pallet {
 	impl<T> From<NodeProviderAuthContractError> for Error<T> {
 		fn from(error: NodeProviderAuthContractError) -> Self {
 			match error {
-				NodeProviderAuthContractError::ContractCallFailed =>
-					Error::<T>::NodeAuthContractCallFailed,
-				NodeProviderAuthContractError::ContractDeployFailed =>
-					Error::<T>::NodeAuthContractDeployFailed,
-				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
-					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful,
+				NodeProviderAuthContractError::ContractCallFailed => {
+					Error::<T>::NodeAuthContractCallFailed
+				},
+				NodeProviderAuthContractError::ContractDeployFailed => {
+					Error::<T>::NodeAuthContractDeployFailed
+				},
+				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful => {
+					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful
+				},
 			}
 		}
 	}

@@ -11,14 +11,16 @@
 
 use core::str;
 
+use codec::{Decode, Encode};
 use ddc_primitives::{
-	traits::{ClusterManager, NodeVisitor, PayoutVisitor, ValidatorVisitor},
+	traits::{ClusterManager, NodeVisitor, PayoutVisitor, SessionVisitor, ValidatorVisitor},
 	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeParams, NodePubKey,
 	NodeUsage, PayoutState, StorageNodeMode, StorageNodeParams,
 };
 use frame_support::{
 	pallet_prelude::*,
-	traits::{Get, OneSessionHandler},
+	parameter_types,
+	traits::{Get, OneSessionHandler, Randomness},
 };
 use frame_system::{
 	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
@@ -50,6 +52,10 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+parameter_types! {
+	pub ValidatorAssignmentsLen: u8 = 255;
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use ddc_primitives::{traits::StakingVisitor, BucketId, MergeActivityHash, KEY_TYPE};
@@ -80,6 +86,7 @@ pub mod pallet {
 		/// DDC clusters nodes manager.
 		type ClusterManager: ClusterManager<Self>;
 		type PayoutVisitor: PayoutVisitor<Self>;
+		type SessionVisitor: SessionVisitor<Self>;
 		/// DDC nodes read-only registry.
 		type NodeVisitor: NodeVisitor<Self>;
 		/// The output of the `ActivityHasher` function.
@@ -103,6 +110,8 @@ pub mod pallet {
 		type OffchainIdentifierId: AppCrypto<Self::Public, Self::Signature>;
 		/// The majority of validators.
 		const MAJORITY: u8;
+		// Redundancy factor for OCW
+		const REDUNDANT_PROCESSING: u8;
 		/// Block to start from.
 		const BLOCK_TO_START: u16;
 		const MIN_DAC_NODES_FOR_CONSENSUS: u16;
@@ -110,6 +119,7 @@ pub mod pallet {
 		const MAX_PAYOUT_BATCH_SIZE: u16;
 		/// The access to staking functionality.
 		type StakingVisitor: StakingVisitor<Self>;
+		type Randomness: Randomness<Self::Hash, BlockNumberFor<Self>>;
 	}
 
 	/// The event type.
@@ -259,6 +269,7 @@ pub mod pallet {
 		FailedToFetchCurrentValidator {
 			validator: T::AccountId,
 		},
+		FailedToGenerateAssignment,
 	}
 
 	/// Consensus Errors
@@ -357,6 +368,7 @@ pub mod pallet {
 			era_id: DdcEra,
 		},
 		FailedToFetchCurrentValidator,
+		FailedToGenerateAssignment,
 	}
 
 	#[pallet::error]
@@ -420,8 +432,13 @@ pub mod pallet {
 
 	/// List of validators.
 	#[pallet::storage]
-	#[pallet::getter(fn validator_set)]
-	pub type ValidatorSet<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+	#[pallet::getter(fn validator_assignment)]
+	pub type ValidatorAssignments<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, ValidatorAssignment>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn validator_assignment_count)]
+	pub type ValidatorCount<T: Config> = StorageValue<_, u16>;
 
 	/// Validator stash key mapping
 	#[pallet::storage]
@@ -434,6 +451,12 @@ pub mod pallet {
 		PayoutInProgress,
 		PayoutFailed,
 		PayoutSuccess,
+	}
+
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+	pub struct ValidatorAssignment {
+		pub customer_batch_index: Vec<BatchIndex>,
+		pub provider_batch_index: Vec<BatchIndex>,
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -570,7 +593,7 @@ pub mod pallet {
 
 			let signer = Signer::<T, T::OffchainIdentifierId>::any_account();
 			if !signer.can_sign() {
-				log::error!("🚨No OCW is available.");
+				log::error!("🏭❌ No OCW is available.");
 				return;
 			}
 
@@ -610,7 +633,7 @@ pub mod pallet {
 			match processed_dac_data {
 				Ok(Some((era_activity, payers_merkle_root_hash, payees_merkle_root_hash))) => {
 					log::info!(
-						"🏭🚀 Processing era_id: {:?} for cluster_id: {:?}",
+						"🏭‍‍📋 Processing era_id: {:?} for cluster_id: {:?}",
 						era_activity.clone(),
 						cluster_id
 					);
@@ -652,7 +675,7 @@ pub mod pallet {
 					}
 				},
 				Ok(None) => {
-					log::info!("🏭ℹ️ No eras for DAC process for cluster_id: {:?}", cluster_id);
+					log::info!("🏭‍‍📋 No eras for DAC process for cluster_id: {:?}", cluster_id);
 				},
 				Err(process_errors) => {
 					errors.extend(process_errors);
@@ -663,7 +686,7 @@ pub mod pallet {
 			match Self::prepare_begin_billing_report(&cluster_id) {
 				Ok(Some((era_id, start_era, end_era))) => {
 					log::info!(
-						"🏭🚀 process_start_payout processed successfully for cluster_id: {:?}, era_id: {:?},  start_era: {:?},  end_era: {:?} ",
+						"🏭‍‍📋 process_start_payout processed successfully for cluster_id: {:?}, era_id: {:?},  start_era: {:?},  end_era: {:?} ",
 						cluster_id,
 						era_id,
 						start_era,
@@ -677,7 +700,7 @@ pub mod pallet {
 						match res {
 							Ok(()) => {
 								log::info!(
-									"🏭🏄‍ Sent begin_billing_report successfully for cluster_id: {:?}, era_id: {:?}",
+									"🏭‍‍📋‍ Sent begin_billing_report successfully for cluster_id: {:?}, era_id: {:?}",
 									cluster_id,
 									era_id
 								);
@@ -715,7 +738,7 @@ pub mod pallet {
 			) {
 				Ok(Some((era_id, max_batch_index))) => {
 					log::info!(
-						"🏭🎁 prepare_begin_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
+						"🏭‍‍📋 prepare_begin_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
 						cluster_id,
 						era_id
 					);
@@ -727,7 +750,7 @@ pub mod pallet {
 							Ok(_) => {
 								// Extrinsic call succeeded
 								log::info!(
-									"🏭🚀 Sent begin_charging_customers successfully for cluster_id: {:?}, era_id: {:?}",
+									"🏭‍‍📋 Sent begin_charging_customers successfully for cluster_id: {:?}, era_id: {:?}",
 									cluster_id,
 									era_id
 								);
@@ -753,7 +776,7 @@ pub mod pallet {
 				},
 				Ok(None) => {
 					log::error!(
-						"🏭🦀 No era for begin_charging_customers for cluster_id: {:?}",
+						"🏭‍‍📋 No era for begin_charging_customers for cluster_id: {:?}",
 						cluster_id
 					);
 				},
@@ -769,7 +792,7 @@ pub mod pallet {
 			) {
 				Ok(Some((era_id, batch_payout))) => {
 					log::info!(
-						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
+						"🏭‍‍📋 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
 						cluster_id,
 						era_id
 					);
@@ -786,7 +809,7 @@ pub mod pallet {
 							Ok(_) => {
 								// Extrinsic call succeeded
 								log::info!(
-									"🏭🚀 Sent send_charging_customers_batch successfully for cluster_id: {:?}, era_id: {:?}",
+									"🏭‍‍📋 Sent send_charging_customers_batch successfully for cluster_id: {:?}, era_id: {:?}",
 									cluster_id,
 									era_id
 								);
@@ -813,7 +836,7 @@ pub mod pallet {
 				},
 				Ok(None) => {
 					log::info!(
-						"🏭🦀 No era for send_charging_customers_batch for cluster_id: {:?}",
+						"🏭‍‍📋 No era for send_charging_customers_batch for cluster_id: {:?}",
 						cluster_id
 					);
 				},
@@ -942,7 +965,7 @@ pub mod pallet {
 			) {
 				Ok(Some((era_id, batch_payout))) => {
 					log::info!(
-						"🎁 prepare_send_rewarding_providers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
+						"‍‍📋 prepare_send_rewarding_providers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
 						cluster_id,
 						era_id
 					);
@@ -960,14 +983,14 @@ pub mod pallet {
 							Ok(_) => {
 								// Extrinsic call succeeded
 								log::info!(
-									"🚀 Sent send_rewarding_providers_batch successfully for cluster_id: {:?}, era_id: {:?}",
+									"‍‍📋 Sent send_rewarding_providers_batch successfully for cluster_id: {:?}, era_id: {:?}",
 									cluster_id,
 									era_id
 								);
 							},
 							Err(e) => {
 								log::error!(
-										"🦀 Error to post send_rewarding_providers_batch for cluster_id: {:?}, era_id: {:?}: {:?}",
+										"‍‍📋 Error to post send_rewarding_providers_batch for cluster_id: {:?}, era_id: {:?}: {:?}",
 										cluster_id,
 										era_id,
 										e
@@ -983,13 +1006,13 @@ pub mod pallet {
 							},
 						}
 					} else {
-						log::error!("🦀 No account available to sign the transaction");
+						log::error!("‍‍📋 No account available to sign the transaction");
 						errors.push(OCWError::NoAvailableSigner);
 					}
 				},
 				Ok(None) => {
 					log::info!(
-						"🦀 No era for send_rewarding_providers_batch for cluster_id: {:?}",
+						"‍‍📋 No era for send_rewarding_providers_batch for cluster_id: {:?}",
 						cluster_id
 					);
 				},
@@ -1123,7 +1146,7 @@ pub mod pallet {
 			min_nodes: u16,
 			batch_size: usize,
 		) -> Result<Option<(EraActivity, ActivityHash, ActivityHash)>, Vec<OCWError>> {
-			log::info!("🚀 Processing dac data for cluster_id: {:?}", cluster_id);
+			log::info!("‍‍📋 Processing dac data for cluster_id: {:?}", cluster_id);
 			if dac_nodes.len().ilog2() < min_nodes.into() {
 				return Err(vec![OCWError::NotEnoughDACNodes { num_nodes: min_nodes }]);
 			}
@@ -1223,8 +1246,8 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::Initialized
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::Initialized
 				{
 					if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
 						Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
@@ -1293,8 +1316,8 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::ChargingCustomers
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::ChargingCustomers
 				{
 					if let Some((
 						customers_activity_in_consensus,
@@ -1439,9 +1462,9 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::ChargingCustomers &&
-					T::PayoutVisitor::all_customer_batches_processed(cluster_id, era_id)
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::ChargingCustomers
+					&& T::PayoutVisitor::all_customer_batches_processed(cluster_id, era_id)
 				{
 					return Ok(Some(era_id));
 				}
@@ -1458,8 +1481,8 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::CustomersChargedWithFees
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::CustomersChargedWithFees
 				{
 					if let Some((
 						_,
@@ -1560,8 +1583,8 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::RewardingProviders
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::RewardingProviders
 				{
 					if let Some((
 						_,
@@ -1709,9 +1732,9 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::RewardingProviders &&
-					T::PayoutVisitor::all_provider_batches_processed(cluster_id, era_id)
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::RewardingProviders
+					&& T::PayoutVisitor::all_provider_batches_processed(cluster_id, era_id)
 				{
 					return Ok(Some(era_id));
 				}
@@ -1725,8 +1748,8 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::ProvidersRewarded
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::ProvidersRewarded
 				{
 					return Ok(Some(era_id));
 				}
@@ -1823,7 +1846,7 @@ pub mod pallet {
 				)),
 				Err(err) => {
 					// Print error message with details of the decoding error
-					log::error!("🦀Decoding error: {:?}", err);
+					log::error!("‍‍📋Decoding error: {:?}", err);
 					None
 				},
 			}
@@ -1920,11 +1943,12 @@ pub mod pallet {
 			for &leaf in leaves {
 				match mmr.push(leaf) {
 					Ok(pos) => leaves_with_position.push((pos, leaf)),
-					Err(_) =>
+					Err(_) => {
 						return Err(OCWError::FailedToCreateMerkleRoot {
 							cluster_id: *cluster_id,
 							era_id,
-						}),
+						})
+					},
 				}
 			}
 
@@ -1958,9 +1982,9 @@ pub mod pallet {
 			let mut end_era: i64 = Default::default();
 
 			for (stored_cluster_id, era_id, validation) in EraValidations::<T>::iter() {
-				if stored_cluster_id == *cluster_id &&
-					validation.status == status &&
-					(smallest_era_id.is_none() || era_id < smallest_era_id.unwrap())
+				if stored_cluster_id == *cluster_id
+					&& validation.status == status
+					&& (smallest_era_id.is_none() || era_id < smallest_era_id.unwrap())
 				{
 					smallest_era_id = Some(era_id);
 					start_era = validation.start_era;
@@ -2388,6 +2412,73 @@ pub mod pallet {
 
 			Ok(eras)
 		}
+
+		/// Shuffle batch indices randomly using the Fisher-Yates algorithm.
+		///
+		/// This function takes a mutable reference to a vector of `BatchIndex` and shuffles
+		/// the indices in place. The shuffling is done using the Fisher-Yates algorithm,
+		/// where seeds are generated for the shuffling process.
+		///
+		/// # Parameters
+		///
+		/// - `indices`: A mutable reference to a vector of `BatchIndex` to be shuffled.
+		///
+		/// # Returns
+		///
+		/// - `Ok(())`: If the shuffling is successful.
+		/// - `Err(OCWError::FailedToGenerateAssignment)`: If there is an error during the shuffling
+		///   process, such as failure to generate a random assignment.
+		fn shuffle_indices(indices: &mut Vec<BatchIndex>) -> Result<(), OCWError> {
+			for index in (1..indices.len()).rev() {
+				let i: u16 = index.try_into().map_err(|_| OCWError::FailedToGenerateAssignment)?;
+
+				let subject = (T::PalletId::get(), i).encode();
+				let (random_seed, _) = T::Randomness::random(&subject);
+
+				let j: u16 = <u16>::decode(&mut random_seed.as_ref())
+					.map_err(|_| OCWError::FailedToGenerateAssignment)?
+					% (i + 1);
+				indices.swap(i.into(), j.into());
+			}
+			Ok(())
+		}
+
+		pub(crate) fn get_random(seed: u16, session_index: SessionIndex) -> Result<u16, OCWError> {
+			let i: u16 = seed.try_into().map_err(|_| OCWError::FailedToGenerateAssignment)?;
+
+			let subject = (T::PalletId::get(), i, session_index).encode();
+			let (random_seed, _) = T::Randomness::random(&subject);
+
+			<u16>::decode(&mut random_seed.as_ref())
+				.map_err(|_| OCWError::FailedToGenerateAssignment)
+		}
+
+		pub(crate) fn assign_batches(
+			session_index: u32,
+			validator: &T::AccountId,
+			batches: &Vec<u16>,
+			validator_index: u16,
+		) -> Vec<u16> {
+			let mut assigned_batches = Vec::new();
+
+			for (i, batch) in batches.iter().enumerate() {
+				let hash =
+					T::ActivityHasher::hash(&(session_index, validator_index, i as u16).encode());
+
+				let mut hash_bytes = hash.as_ref();
+				if hash_bytes.len() >= 2 {
+					// Extract the first two bytes and convert to u16
+					let mut bytes_array = [0u8; 2];
+					bytes_array.copy_from_slice(&hash_bytes[0..2]);
+					let assigned = u16::from_le_bytes(bytes_array) % T::REDUNDANT_PROCESSING.into();
+
+					if assigned == validator_index % T::REDUNDANT_PROCESSING.into() {
+						assigned_batches.push(*batch);
+					}
+				}
+			}
+			assigned_batches
+		}
 	}
 
 	#[pallet::call]
@@ -2449,10 +2540,11 @@ pub mod pallet {
 			signed_validators.push(caller.clone());
 
 			let percent = Percent::from_percent(T::MAJORITY);
-			let threshold = percent * <ValidatorSet<T>>::get().len();
+			let threshold =
+				percent * Self::validator_assignment_count().ok_or(Error::<T>::NoValidatorExist)?;
 
 			let mut should_deposit_ready_event = false;
-			if threshold < signed_validators.len() {
+			if usize::from(threshold) < signed_validators.len() {
 				// Update payers_merkle_root_hash and payees_merkle_root_hash as ones passed the
 				// threshold
 				era_validation.payers_merkle_root_hash = payers_merkle_root_hash;
@@ -2460,8 +2552,8 @@ pub mod pallet {
 				era_validation.start_era = era_activity.start; // todo! start/end is set by the last validator and is not in consensus
 				era_validation.end_era = era_activity.end;
 
-				if payers_merkle_root_hash == ActivityHash::default() &&
-					payees_merkle_root_hash == payers_merkle_root_hash
+				if payers_merkle_root_hash == ActivityHash::default()
+					&& payees_merkle_root_hash == payers_merkle_root_hash
 				{
 					era_validation.status = EraValidationStatus::PayoutSuccess;
 				} else {
@@ -2474,12 +2566,12 @@ pub mod pallet {
 			// Update the EraValidations storage
 			<EraValidations<T>>::insert(cluster_id, era_activity.id, era_validation);
 			if should_deposit_ready_event {
-				Self::deposit_event(Event::<T>::EraValidationReady {
+				Self::deposit_event(Event::EraValidationReady {
 					cluster_id,
 					era_id: era_activity.id,
 				});
 			} else {
-				Self::deposit_event(Event::<T>::EraValidationNotReady {
+				Self::deposit_event(Event::EraValidationNotReady {
 					cluster_id,
 					era_id: era_activity.id,
 				});
@@ -2494,9 +2586,6 @@ pub mod pallet {
 		///
 		/// Parameters:
 		/// - errors`: List of consensus errors
-		///
-		/// Emits `NotEnoughNodesForConsensus`  OR `ActivityNotInConsensus` event depend of error
-		/// type, when successful.
 		#[pallet::call_index(1)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn emit_consensus_errors(
@@ -2506,6 +2595,7 @@ pub mod pallet {
 			let caller = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
 
+			// todo! combine OCWError and Event<T: Config> and removing mapping code
 			for error in errors {
 				match error {
 					OCWError::NotEnoughNodesForConsensus { cluster_id, era_id, id } => {
@@ -2676,6 +2766,9 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
+					OCWError::FailedToGenerateAssignment => {
+						Self::deposit_event(Event::FailedToGenerateAssignment);
+					},
 				}
 			}
 
@@ -2699,7 +2792,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::NotController)?;
 
 			ensure!(
-				<ValidatorSet<T>>::get().contains(&stash_account),
+				<ValidatorAssignments<T>>::contains_key(&stash_account),
 				Error::<T>::NotValidatorStash
 			);
 
@@ -2854,16 +2947,16 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// todo! Need to remove this
+		// todo! Need to remove this and extract account without making a call
 		#[pallet::call_index(11)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
 			let caller: T::AccountId = ensure_signed(origin)?;
 
 			if Self::is_ocw_validator(caller.clone()) {
-				log::info!("🏄‍ is_ocw_validator is a validator  {:?}", caller.clone());
+				log::info!("‍‍📋‍ is_ocw_validator is a validator  {:?}", caller.clone());
 			} else {
-				log::info!("🏄‍ is_ocw_validator is not a validator  {:?}", caller.clone());
+				log::info!("‍‍📋‍ is_ocw_validator is not a validator  {:?}", caller.clone());
 			}
 
 			Ok(())
@@ -2883,12 +2976,9 @@ pub mod pallet {
 	}
 
 	impl<T: Config> ValidatorVisitor<T> for Pallet<T> {
-		fn setup_validators(validators: Vec<T::AccountId>) {
-			ValidatorSet::<T>::put(validators);
-		}
 		fn is_ocw_validator(caller: T::AccountId) -> bool {
 			if let Some(stash) = ValidatorToStashKey::<T>::get(caller) {
-				<ValidatorSet<T>>::get().contains(&stash)
+				<ValidatorAssignments<T>>::contains_key(&stash)
 			} else {
 				false
 			}
@@ -2942,17 +3032,11 @@ pub mod pallet {
 	impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 		type Key = T::AuthorityId;
 
-		fn on_genesis_session<'a, I: 'a>(validators: I)
+		fn on_genesis_session<'a, I: 'a>(_validators: I)
 		where
 			I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
 		{
-			log::info!("🙌Adding Validator from genesis session.");
-			let validators = validators
-				.map(|(_, k)| T::AccountId::decode(&mut &k.into().encode()[..]).unwrap())
-				.collect::<Vec<_>>();
-
-			ValidatorSet::<T>::put(validators); // only active validators in session - this is NOT all the
-			                        // validators
+			log::info!("Generis session - no need to do anything as OCW don't run during blockchain sync-up");
 		}
 
 		fn on_new_session<'a, I: 'a>(_changed: bool, validators: I, _queued_authorities: I)
@@ -2960,10 +3044,45 @@ pub mod pallet {
 			I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
 		{
 			log::info!("🙌Adding Validator from new session.");
-			let validators = validators
-				.map(|(_, k)| T::AccountId::decode(&mut &k.into().encode()[..]).unwrap())
-				.collect::<Vec<_>>();
-			ValidatorSet::<T>::put(validators);
+
+			// Clear previous session's assignments - shouldn't be a lot of assignments
+			let removal_results =
+				<ValidatorAssignments<T>>::clear(ValidatorAssignmentsLen::get() as u32, None);
+			if removal_results.maybe_cursor.is_some() {
+				Self::deposit_event(Event::FailedToGenerateAssignment {});
+			}
+
+			let N1: u16 = 10;
+			let N2: u16 = 10;
+			let session_index = T::SessionVisitor::current_index();
+
+			let mut customer_batch_indices: Vec<BatchIndex> = (0..N1).collect();
+			let mut provider_batch_indices: Vec<BatchIndex> = (0..N2).collect();
+
+			if let Err(_) = Self::shuffle_indices(&mut customer_batch_indices) {
+				Self::deposit_event(Event::FailedToGenerateAssignment {});
+			}
+
+			if let Err(_) = Self::shuffle_indices(&mut provider_batch_indices) {
+				Self::deposit_event(Event::FailedToGenerateAssignment {});
+			}
+
+			let mut count = 0;
+			for (index, (validator, _)) in validators.enumerate() {
+				let validator_index = index as u16;
+
+				let customer_batch_index = customer_batch_indices.pop().unwrap_or_default();
+				let provider_batch_index = provider_batch_indices.pop().unwrap_or_default();
+
+				let assignment = ValidatorAssignment {
+					customer_batch_index: vec![customer_batch_index],
+					provider_batch_index: vec![provider_batch_index],
+				};
+
+				count += 1;
+				<ValidatorAssignments<T>>::insert(&validator, assignment);
+			}
+			ValidatorCount::<T>::put(count);
 		}
 
 		fn on_disabled(_i: u32) {}

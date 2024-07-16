@@ -1,10 +1,7 @@
-use frame_system::Config;
-use sp_std::prelude::*;
-
 use crate::{BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeUsage};
+use frame_system::Config;
 
 pub trait ValidatorVisitor<T: Config> {
-	fn setup_validators(validators: Vec<T::AccountId>);
 	fn is_ocw_validator(caller: T::AccountId) -> bool;
 	fn is_customers_batch_valid(
 		cluster_id: ClusterId,
