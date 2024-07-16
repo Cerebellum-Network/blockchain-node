@@ -146,7 +146,6 @@ pub mod tracks {
 	// General admin tracks
 	pub const STAKING_ADMIN_TRACK_ID: u16 = 10;
 	pub const TREASURER_TRACK_ID: u16 = 11;
-	pub const FELLOWSHIP_ADMIN_TRACK_ID: u16 = 13;
 	pub const GENERAL_ADMIN_TRACK_ID: u16 = 14;
 	// Referendum admins tracks
 	pub const REFERENDUM_CANCELER_TRACK_ID: u16 = 20;
