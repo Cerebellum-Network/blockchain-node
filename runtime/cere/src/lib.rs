@@ -1387,6 +1387,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 type Migrations = (
 	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
 	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.
