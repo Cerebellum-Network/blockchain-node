@@ -1,6 +1,6 @@
 //! DdcPayouts pallet benchmarking.
 
-use ddc_primitives::{traits::ValidatorVisitor, ClusterId, ClusterParams, ClusterProtocolParams};
+use ddc_primitives::{ClusterId, ClusterParams, ClusterProtocolParams};
 pub use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_system::RawOrigin;
 use sp_runtime::Perquintill;
@@ -12,9 +12,8 @@ use crate::Pallet as DdcPayouts;
 const CERE: u128 = 10000000000;
 
 fn create_dac_account<T: Config>() -> T::AccountId {
-	let dac_account = create_account::<T>("dac_account", 0, 0);
+	create_account::<T>("dac_account", 0, 0)
 	//T::ValidatorVisitor::setup_validators(vec![dac_account.clone()]);
-	dac_account
 }
 
 fn create_account<T: Config>(name: &'static str, idx: u32, seed: u32) -> T::AccountId {

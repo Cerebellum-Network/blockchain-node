@@ -1,5 +1,6 @@
-use crate::{BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeUsage};
 use frame_system::Config;
+
+use crate::{BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeUsage};
 
 pub trait ValidatorVisitor<T: Config> {
 	fn is_ocw_validator(caller: T::AccountId) -> bool;

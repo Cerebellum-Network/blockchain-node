@@ -12,7 +12,7 @@ use frame_election_provider_support::{
 use frame_support::{
 	pallet_prelude::ConstU32,
 	parameter_types,
-	traits::{ConstU16, ConstU64, Randomness},
+	traits::{ConstU16, ConstU64},
 	PalletId,
 };
 use frame_system::mocking::MockBlock;
@@ -220,25 +220,19 @@ impl crate::Config for Test {
 	type ClusterManager = TestClusterManager;
 	type NodeVisitor = MockNodeVisitor;
 	type PayoutVisitor = MockPayoutVisitor;
+	type SessionVisitor = MockSessionVisitor;
+	type EraVisitor = MockEraVisitor;
 	type AuthorityId = sr25519::AuthorityId;
 	type OffchainIdentifierId = crypto::OffchainIdentifierId;
 	type ActivityHasher = sp_runtime::traits::BlakeTwo256;
-	type Randomness = TestRandomness;
 	const MAJORITY: u8 = 67;
 	const BLOCK_TO_START: u16 = 100;
 	const MIN_DAC_NODES_FOR_CONSENSUS: u16 = 3;
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
+	const REDUNDANT_BATCH_PROCESSING: u8 = 3;
 	type ActivityHash = H256;
 	type StakingVisitor = TestStakingVisitor;
-}
-
-pub struct TestRandomness;
-impl Randomness<H256> for TestRandomness {
-	fn random(subject: &[u8]) -> (H256, H256) {
-		// Return a predictable value for testing
-		(H256::repeat_byte(42), H256::repeat_byte(42))
-	}
 }
 
 pub struct TestStakingVisitor;
@@ -335,6 +329,20 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			.assimilate_storage(&mut storage);
 
 	sp_io::TestExternalities::new(storage)
+}
+
+pub struct MockSessionVisitor;
+impl<T: Config> SessionVisitor<T> for MockSessionVisitor {
+	fn current_index() -> sp_staking::SessionIndex {
+		1
+	}
+}
+
+pub struct MockEraVisitor;
+impl<T: Config> EraVisitor<T> for MockEraVisitor {
+	fn current_era() -> Option<sp_staking::EraIndex> {
+		Some(2)
+	}
 }
 
 pub struct MockPayoutVisitor;

@@ -24,7 +24,10 @@
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use ddc_primitives::{
-	traits::pallet::{GetDdcOrigin, PalletVisitor},
+	traits::{
+		pallet::{GetDdcOrigin, PalletVisitor},
+		EraVisitor, SessionVisitor,
+	},
 	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
 };
 use frame_election_provider_support::{
@@ -315,20 +318,20 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::Any => true,
 			ProxyType::NonTransfer => !matches!(
 				c,
-				RuntimeCall::Balances(..)
-					| RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
-					| RuntimeCall::Indices(pallet_indices::Call::transfer { .. })
-					| RuntimeCall::NominationPools(..)
-					| RuntimeCall::ConvictionVoting(..)
-					| RuntimeCall::Referenda(..)
-					| RuntimeCall::Whitelist(..)
+				RuntimeCall::Balances(..) |
+					RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
+					RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
+					RuntimeCall::NominationPools(..) |
+					RuntimeCall::ConvictionVoting(..) |
+					RuntimeCall::Referenda(..) |
+					RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
-				RuntimeCall::Treasury(..)
-					| RuntimeCall::ConvictionVoting(..)
-					| RuntimeCall::Referenda(..)
-					| RuntimeCall::Whitelist(..)
+				RuntimeCall::Treasury(..) |
+					RuntimeCall::ConvictionVoting(..) |
+					RuntimeCall::Referenda(..) |
+					RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Staking => matches!(c, RuntimeCall::Staking(..)),
 		}
@@ -669,8 +672,8 @@ impl Get<Option<BalancingConfig>> for OffchainRandomBalancing {
 			max => {
 				let seed = sp_io::offchain::random_seed();
 				let random = <u32>::decode(&mut TrailingZeroInput::new(&seed))
-					.expect("input is padded with zeroes; qed")
-					% max.saturating_add(1);
+					.expect("input is padded with zeroes; qed") %
+					max.saturating_add(1);
 				random as usize
 			},
 		};
@@ -1173,6 +1176,20 @@ parameter_types! {
 	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
 }
 
+pub struct SessionWrapper;
+impl<T: frame_system::Config + pallet_session::Config> SessionVisitor<T> for SessionWrapper {
+	fn current_index() -> sp_staking::SessionIndex {
+		pallet_session::Pallet::<T>::current_index()
+	}
+}
+
+pub struct EraWrapper;
+impl<T: frame_system::Config + pallet_staking::Config> EraVisitor<T> for EraWrapper {
+	fn current_era() -> Option<sp_staking::EraIndex> {
+		pallet_staking::Pallet::<T>::current_era()
+	}
+}
+
 pub struct TreasuryWrapper;
 impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 	fn get_account_id() -> T::AccountId {
@@ -1255,13 +1272,14 @@ impl pallet_ddc_verification::Config for Runtime {
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type SessionVisitor = SessionWrapper;
+	type EraVisitor = EraWrapper;
 	type PayoutVisitor = pallet_ddc_payouts::Pallet<Runtime>;
-	type Randomness = RandomnessCollectiveFlip;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type ActivityHasher = BlakeTwo256;
 	const MAJORITY: u8 = 67;
-	const REDUNDANT_PROCESSING: u8 = 3;
+	const REDUNDANT_BATCH_PROCESSING: u8 = 3;
 	const BLOCK_TO_START: u16 = 100; // every 100 blocks
 	const MIN_DAC_NODES_FOR_CONSENSUS: u16 = 3;
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;

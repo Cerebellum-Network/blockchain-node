@@ -1029,8 +1029,8 @@ pub mod pallet {
 				.map_or(0, |customer_usage| customer_usage.stored_bytes);
 		total_stored_bytes += usage.stored_bytes;
 
-		total.storage = fraction_of_month
-			* (|| -> Option<u128> {
+		total.storage = fraction_of_month *
+			(|| -> Option<u128> {
 				(total_stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)

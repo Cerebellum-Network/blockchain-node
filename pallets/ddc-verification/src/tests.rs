@@ -15,21 +15,6 @@ use sp_runtime::AccountId32;
 
 use crate::{mock::*, Error, NodeActivity, OCWError, *};
 
-#[allow(dead_code)]
-fn register_validators(validators: Vec<AccountId32>) {
-	ValidatorAssignments::<Test>::put(validators.clone());
-
-	for validator in validators {
-		assert_noop!(
-			DdcVerification::set_validator_key(
-				RuntimeOrigin::signed(validator.clone()),
-				validator.clone(),
-			),
-			Error::<Test>::NotController
-		);
-	}
-}
-
 fn get_validators() -> Vec<AccountId32> {
 	let validator1: AccountId32 = [1; 32].into();
 	let validator2: AccountId32 = [2; 32].into();
