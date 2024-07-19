@@ -1045,6 +1045,64 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 }
 
 #[test]
+fn test_assign_batches_to_validators_single_validator() {
+	let account_id = AccountId32::new([3; 32]);
+	let validators = vec![&account_id];
+	let total_batches = 10;
+	let session_index = 1;
+	let era_index = 1;
+	let redundancy = 3;
+
+	let assignments = DdcVerification::assign_batches_to_validators(
+		total_batches,
+		&validators,
+		session_index,
+		era_index,
+		redundancy,
+	);
+
+	let expected_batch_count = cmp::max(
+		cmp::max(total_batches / validators.len(), validators.len() / total_batches),
+		redundancy as usize,
+	);
+
+	assert_eq!(assignments.len(), 1);
+	assert_eq!(assignments[&account_id].len(), expected_batch_count as usize);
+
+	let mut all_batch_indices: Vec<BatchIndex> = (0..total_batches as BatchIndex).collect();
+	all_batch_indices.sort();
+	let mut assigned_indices = assignments[&account_id].clone();
+	assigned_indices.sort();
+	assert_eq!(assigned_indices, all_batch_indices);
+}
+
+#[test]
+fn test_assign_batches_to_validators_multiple_validators() {
+	let account_id3 = AccountId32::new([4; 32]);
+	let account_id4 = AccountId32::new([3; 32]);
+
+	let validators = vec![&account_id3, &account_id4];
+	let total_batches = 10;
+	let session_index = 1;
+	let era_index = 1;
+	let redundancy = 3;
+
+	let assignments = DdcVerification::assign_batches_to_validators(
+		total_batches,
+		&validators,
+		session_index,
+		era_index,
+		redundancy,
+	);
+
+	let expected_batch_count = redundancy;
+
+	assert_eq!(assignments.len(), 2);
+	assert_eq!(assignments[&account_id3].len(), expected_batch_count as usize);
+	assert_eq!(assignments[&account_id4].len(), expected_batch_count as usize);
+}
+
+#[test]
 fn test_convert_to_batch_merkle_roots() {
 	let nodes = get_node_activities();
 	let activities_batch_1 = vec![nodes[0].clone(), nodes[1].clone(), nodes[2].clone()];

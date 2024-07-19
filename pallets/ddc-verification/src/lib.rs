@@ -1253,8 +1253,8 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::Initialized
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::Initialized
 				{
 					if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
 						Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
@@ -1323,8 +1323,8 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::ChargingCustomers
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::ChargingCustomers
 				{
 					if let Some((
 						customers_activity_in_consensus,
@@ -1469,9 +1469,9 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::ChargingCustomers &&
-					T::PayoutVisitor::all_customer_batches_processed(cluster_id, era_id)
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::ChargingCustomers
+					&& T::PayoutVisitor::all_customer_batches_processed(cluster_id, era_id)
 				{
 					return Ok(Some(era_id));
 				}
@@ -1488,8 +1488,8 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::CustomersChargedWithFees
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::CustomersChargedWithFees
 				{
 					if let Some((
 						_,
@@ -1590,8 +1590,8 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::RewardingProviders
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::RewardingProviders
 				{
 					if let Some((
 						_,
@@ -1739,9 +1739,9 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::RewardingProviders &&
-					T::PayoutVisitor::all_provider_batches_processed(cluster_id, era_id)
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::RewardingProviders
+					&& T::PayoutVisitor::all_provider_batches_processed(cluster_id, era_id)
 				{
 					return Ok(Some(era_id));
 				}
@@ -1755,8 +1755,8 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::ProvidersRewarded
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::ProvidersRewarded
 				{
 					return Ok(Some(era_id));
 				}
@@ -1950,11 +1950,12 @@ pub mod pallet {
 			for &leaf in leaves {
 				match mmr.push(leaf) {
 					Ok(pos) => leaves_with_position.push((pos, leaf)),
-					Err(_) =>
+					Err(_) => {
 						return Err(OCWError::FailedToCreateMerkleRoot {
 							cluster_id: *cluster_id,
 							era_id,
-						}),
+						})
+					},
 				}
 			}
 
@@ -1988,9 +1989,9 @@ pub mod pallet {
 			let mut end_era: i64 = Default::default();
 
 			for (stored_cluster_id, era_id, validation) in EraValidations::<T>::iter() {
-				if stored_cluster_id == *cluster_id &&
-					validation.status == status &&
-					(smallest_era_id.is_none() || era_id < smallest_era_id.unwrap())
+				if stored_cluster_id == *cluster_id
+					&& validation.status == status
+					&& (smallest_era_id.is_none() || era_id < smallest_era_id.unwrap())
 				{
 					smallest_era_id = Some(era_id);
 					start_era = validation.start_era;
@@ -2187,6 +2188,7 @@ pub mod pallet {
 					consensus_activities.push(activity);
 				} else {
 					errors.push(OCWError::ActivityNotInConsensus {
+						// todo! expand this event with information about activities from all nodes
 						cluster_id: (*cluster_id),
 						era_id,
 						id,
@@ -2438,9 +2440,14 @@ pub mod pallet {
 			validators: &'a [&'a T::AccountId],
 			session_index: SessionIndex,
 			era_index: EraIndex,
-			redundancy: usize,
+			min_redundancy: u8,
 		) -> BTreeMap<&'a T::AccountId, Vec<BatchIndex>> {
 			let mut assignments: BTreeMap<&'a T::AccountId, Vec<BatchIndex>> = BTreeMap::new();
+
+			let redundancy = cmp::max(
+				cmp::max(total_batches / validators.len(), validators.len() / total_batches),
+				min_redundancy as usize,
+			);
 
 			for (validator_index, &validator) in validators.iter().enumerate() {
 				let mut batch_indices = Vec::new();
@@ -2460,7 +2467,7 @@ pub mod pallet {
 					}
 
 					let batch_index: BatchIndex =
-						(hash_value % (total_batches as u128)).try_into().unwrap(); // convert all try_into().unwrap to try_into().map_error
+						(hash_value % (total_batches as u128)).try_into().unwrap(); // convert all try_into().unwrap to try_into().map_error and return Result
 					batch_indices.push(batch_index);
 				}
 				assignments.entry(validator).or_insert(batch_indices);
@@ -2535,8 +2542,8 @@ pub mod pallet {
 				era_validation.start_era = era_activity.start;
 				era_validation.end_era = era_activity.end;
 
-				if payers_merkle_root_hash == ActivityHash::default() &&
-					payees_merkle_root_hash == payers_merkle_root_hash
+				if payers_merkle_root_hash == ActivityHash::default()
+					&& payees_merkle_root_hash == payers_merkle_root_hash
 				{
 					era_validation.status = EraValidationStatus::PayoutSuccess;
 				} else {
@@ -2548,6 +2555,14 @@ pub mod pallet {
 
 			// Update the EraValidations storage
 			<EraValidations<T>>::insert(cluster_id, era_activity.id, era_validation);
+			Self::deposit_event(Event::EraValidationRootsPosted {
+				cluster_id,
+				era_id: era_activity.id,
+				validator: caller,
+				payers_merkle_root_hash,
+				payees_merkle_root_hash,
+			});
+
 			if should_deposit_ready_event {
 				Self::deposit_event(Event::EraValidationReady {
 					cluster_id,
@@ -3032,6 +3047,8 @@ pub mod pallet {
 				.ok_or(Error::<T>::ClusterToValidateRetrievalError)
 				.unwrap();
 
+			// todo! subset is_ocw
+
 			// Sort validators to make deterministic and negate effect of manipulation of
 			// validator_index used in hashing
 			let mut sorted_validators: Vec<&'a T::AccountId> =
@@ -3058,10 +3075,7 @@ pub mod pallet {
 				&sorted_validators,
 				era_index,
 				session_index,
-				cmp::max(
-					total_customer_batches / sorted_validators.len(),
-					T::REDUNDANT_BATCH_PROCESSING as usize,
-				),
+				T::REDUNDANT_BATCH_PROCESSING,
 			);
 
 			let provider_assignments = Self::assign_batches_to_validators(
@@ -3069,10 +3083,7 @@ pub mod pallet {
 				&sorted_validators,
 				era_index,
 				session_index,
-				cmp::max(
-					total_provider_batches / sorted_validators.len(),
-					T::REDUNDANT_BATCH_PROCESSING as usize,
-				),
+				T::REDUNDANT_BATCH_PROCESSING,
 			);
 
 			for validator in sorted_validators.iter() {
