@@ -42,6 +42,7 @@ use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub mod weights;
 use itertools::Itertools;
+use sp_staking::StakingInterface;
 
 use crate::weights::WeightInfo;
 
@@ -52,7 +53,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::{traits::StakingVisitor, BucketId, MergeActivityHash, KEY_TYPE};
+	use ddc_primitives::{BucketId, MergeActivityHash, KEY_TYPE};
 	use frame_support::PalletId;
 	use sp_runtime::SaturatedConversion;
 
@@ -109,7 +110,7 @@ pub mod pallet {
 		const MAX_PAYOUT_BATCH_COUNT: u16;
 		const MAX_PAYOUT_BATCH_SIZE: u16;
 		/// The access to staking functionality.
-		type StakingVisitor: StakingVisitor<Self>;
+		type StakingVisitor: StakingInterface<AccountId = Self::AccountId>;
 	}
 
 	/// The event type.
@@ -2742,15 +2743,18 @@ pub mod pallet {
 			ddc_validator_pub: T::AccountId,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			let stash_account = T::StakingVisitor::stash_by_ctrl(&controller)
-				.map_err(|_| Error::<T>::NotController)?;
 
 			ensure!(
-				<ValidatorSet<T>>::get().contains(&stash_account),
+				T::StakingVisitor::stash_by_ctrl(&controller).is_ok(),
+				Error::<T>::NotController
+			);
+
+			ensure!(
+				<ValidatorSet<T>>::get().contains(&ddc_validator_pub),
 				Error::<T>::NotValidatorStash
 			);
 
-			ValidatorToStashKey::<T>::insert(ddc_validator_pub, &stash_account);
+			ValidatorToStashKey::<T>::insert(&ddc_validator_pub, &ddc_validator_pub);
 			Ok(())
 		}
 
@@ -2906,6 +2910,8 @@ pub mod pallet {
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
 			let caller: T::AccountId = ensure_signed(origin)?;
+
+			ensure!(<ValidatorSet<T>>::get().contains(&caller), Error::<T>::NotValidatorStash);
 
 			if Self::is_ocw_validator(caller.clone()) {
 				log::info!("🏄‍ is_ocw_validator is a validator  {:?}", caller.clone());

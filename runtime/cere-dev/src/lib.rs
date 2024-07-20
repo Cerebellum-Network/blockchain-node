@@ -496,6 +496,15 @@ impl pallet_authorship::Config for Runtime {
 }
 
 impl_opaque_keys! {
+	pub struct OldSessionKeys {
+		pub grandpa: Grandpa,
+		pub babe: Babe,
+		pub im_online: ImOnline,
+		pub authority_discovery: AuthorityDiscovery,
+	}
+}
+
+impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub grandpa: Grandpa,
 		pub babe: Babe,
@@ -505,6 +514,22 @@ impl_opaque_keys! {
 	}
 }
 
+fn transform_session_keys(v: AccountId, old: OldSessionKeys) -> SessionKeys {
+	SessionKeys {
+		grandpa: old.grandpa,
+		babe: old.babe,
+		im_online: old.im_online,
+		authority_discovery: old.authority_discovery,
+		ddc_verification: {
+			let mut id: ddc_primitives::sr25519::AuthorityId =
+				sp_core::sr25519::Public::from_raw([0u8; 32]).into();
+			let id_raw: &mut [u8] = id.as_mut();
+			id_raw[0..32].copy_from_slice(v.as_ref());
+			id_raw[0..4].copy_from_slice(b"cer!");
+			id
+		},
+	}
+}
 impl pallet_session::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
@@ -1281,7 +1306,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
-	type StakingVisitor = pallet_ddc_staking::Pallet<Runtime>;
+	type StakingVisitor = pallet_staking::Pallet<Runtime>;
 }
 
 construct_runtime!(
@@ -1376,7 +1401,13 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
 /// Runtime migrations
-type Migrations = (pallet_ddc_customers::migration::MigrateToV1<Runtime>,);
+type Migrations = (
+	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
+	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV2<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
+	migrations::Unreleased,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -1387,6 +1418,22 @@ pub type Executive = frame_executive::Executive<
 	AllPalletsWithSystem,
 	Migrations,
 >;
+
+pub mod migrations {
+	use super::*;
+
+	/// When this is removed, should also remove `OldSessionKeys`.
+	pub struct UpgradeSessionKeys;
+	impl frame_support::traits::OnRuntimeUpgrade for UpgradeSessionKeys {
+		fn on_runtime_upgrade() -> Weight {
+			Session::upgrade_keys::<OldSessionKeys, _>(transform_session_keys);
+			Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block
+		}
+	}
+
+	/// Unreleased migrations. Add new ones here:
+	pub type Unreleased = (UpgradeSessionKeys,);
+}
 
 type EventRecord = frame_system::EventRecord<
 	<Runtime as frame_system::Config>::RuntimeEvent,
