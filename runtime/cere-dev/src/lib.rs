@@ -521,8 +521,8 @@ fn transform_session_keys(v: AccountId, old: OldSessionKeys) -> SessionKeys {
 		im_online: old.im_online,
 		authority_discovery: old.authority_discovery,
 		ddc_verification: {
-
-			let mut id: ddc_primitives::sr25519::AuthorityId = sp_core::sr25519::Public::from_raw([0u8; 32]).into();
+			let mut id: ddc_primitives::sr25519::AuthorityId =
+				sp_core::sr25519::Public::from_raw([0u8; 32]).into();
 			let id_raw: &mut [u8] = id.as_mut();
 			id_raw[0..32].copy_from_slice(v.as_ref());
 			id_raw[0..4].copy_from_slice(b"cer!");
@@ -1401,7 +1401,13 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
 /// Runtime migrations
-type Migrations = (pallet_ddc_customers::migration::MigrateToV1<Runtime>, migrations::Unreleased);
+type Migrations = (
+	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
+	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV2<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
+	migrations::Unreleased,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -1412,7 +1418,6 @@ pub type Executive = frame_executive::Executive<
 	AllPalletsWithSystem,
 	Migrations,
 >;
-
 
 pub mod migrations {
 	use super::*;
@@ -1427,9 +1432,7 @@ pub mod migrations {
 	}
 
 	/// Unreleased migrations. Add new ones here:
-	pub type Unreleased = (
-		UpgradeSessionKeys,
-	);
+	pub type Unreleased = (UpgradeSessionKeys,);
 }
 
 type EventRecord = frame_system::EventRecord<

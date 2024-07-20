@@ -42,9 +42,9 @@ use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub mod weights;
 use itertools::Itertools;
+use sp_staking::StakingInterface;
 
 use crate::weights::WeightInfo;
-use sp_staking::StakingInterface;
 
 #[cfg(test)]
 pub(crate) mod mock;
@@ -53,7 +53,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::{traits::StakingVisitor, BucketId, MergeActivityHash, KEY_TYPE};
+	use ddc_primitives::{BucketId, MergeActivityHash, KEY_TYPE};
 	use frame_support::PalletId;
 	use sp_runtime::SaturatedConversion;
 
@@ -2864,11 +2864,7 @@ pub mod pallet {
 		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
 			let caller: T::AccountId = ensure_signed(origin)?;
 
-
-			ensure!(
-				<ValidatorSet<T>>::get().contains(&caller),
-				Error::<T>::NotValidatorStash
-			);
+			ensure!(<ValidatorSet<T>>::get().contains(&caller), Error::<T>::NotValidatorStash);
 
 			if Self::is_ocw_validator(caller.clone()) {
 				log::info!("🏄‍ is_ocw_validator is a validator  {:?}", caller.clone());
