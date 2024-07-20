@@ -17,7 +17,7 @@ use frame_support::{
 };
 use frame_system::mocking::MockBlock;
 use pallet_staking::BalanceOf;
-use sp_core::H256;
+use sp_core::{ByteArray, H256};
 use sp_runtime::{
 	curve::PiecewiseLinear,
 	testing::{TestXt, UintAuthorityId},
@@ -558,7 +558,10 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 	}
 
 	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
-		unimplemented!()
+		let temp: AccountId = AccountId::from([0xa; 32]);
+		let account_1 = T::AccountId::decode(&mut &temp.as_slice()[..]).unwrap();
+
+		Ok(account_1)
 	}
 }
 

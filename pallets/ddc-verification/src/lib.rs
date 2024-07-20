@@ -260,6 +260,9 @@ pub mod pallet {
 		FailedToFetchCurrentValidator {
 			validator: T::AccountId,
 		},
+		FailedToFetchNodeProvider {
+			validator: T::AccountId,
+		},
 	}
 
 	/// Consensus Errors
@@ -358,6 +361,7 @@ pub mod pallet {
 			era_id: DdcEra,
 		},
 		FailedToFetchCurrentValidator,
+		FailedToFetchNodeProvider,
 	}
 
 	#[pallet::error]
@@ -489,8 +493,6 @@ pub mod pallet {
 	pub(crate) struct NodeActivity {
 		/// Node id.
 		pub(crate) node_id: String,
-		/// Provider id.
-		pub(crate) provider_id: String,
 		/// Total amount of stored bytes.
 		pub(crate) stored_bytes: u64,
 		/// Total amount of transferred bytes.
@@ -1684,9 +1686,10 @@ pub mod pallet {
 						payees: nodes_activity_batched[i]
 							.iter()
 							.map(|activity| {
-								let provider_id =
-									T::AccountId::decode(&mut &activity.provider_id.as_bytes()[..])
-										.unwrap();
+								let node_id = activity.clone().node_id;
+
+								let provider_id = Self::fetch_provider_id(node_id).unwrap(); // todo! remove unwrap
+
 								let node_usage = NodeUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
@@ -1830,6 +1833,36 @@ pub mod pallet {
 			}
 		}
 
+		pub(crate) fn store_provider_id<A: Encode>(
+			// todo! (3) add tests
+			node_id: String,
+			provider_id: A,
+		) {
+			let key = format!("offchain::activities::provider_id::{:?}", node_id).into_bytes();
+			let encoded_tuple = provider_id.encode();
+
+			// Store the serialized data in local offchain storage
+			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
+		}
+
+		pub(crate) fn fetch_provider_id<A: Decode>(node_id: String) -> Option<A> {
+			let key = format!("offchain::activities::provider_id::{:?}", node_id).into_bytes();
+			// Retrieve encoded tuple from local storage
+			let encoded_tuple =
+				match sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key) {
+					Some(data) => data,
+					None => return None,
+				};
+
+			match Decode::decode(&mut &encoded_tuple[..]) {
+				Ok(provider_id) => Some(provider_id),
+				Err(err) => {
+					// Print error message with details of the decoding error
+					log::error!("🦀Decoding error while fetching provider id: {:?}", err);
+					None
+				},
+			}
+		}
 		/// Converts a vector of activity batches into their corresponding Merkle roots.
 		///
 		/// This function takes a vector of activity batches, where each batch is a vector of
@@ -2300,6 +2333,11 @@ pub mod pallet {
 			Ok(dac_nodes)
 		}
 
+		fn get_node_provider_id(node_pub_key: &NodePubKey) -> Result<T::AccountId, OCWError> {
+			T::NodeVisitor::get_node_provider_id(node_pub_key)
+				.map_err(|_| OCWError::FailedToFetchNodeProvider)
+		}
+
 		/// Fetch node usage of an era.
 		///
 		/// Parameters:
@@ -2324,6 +2362,10 @@ pub mod pallet {
 							node_pub_key: node_pub_key.clone(),
 						}
 					})?;
+				for node_activity in usage.clone() {
+					let provider_id = Self::get_node_provider_id(node_pub_key).unwrap();
+					Self::store_provider_id(node_activity.node_id, provider_id);
+				}
 
 				node_usages.push((node_pub_key.clone(), usage));
 			}
@@ -2674,6 +2716,11 @@ pub mod pallet {
 					},
 					OCWError::FailedToFetchCurrentValidator => {
 						Self::deposit_event(Event::FailedToFetchCurrentValidator {
+							validator: caller.clone(),
+						});
+					},
+					OCWError::FailedToFetchNodeProvider => {
+						Self::deposit_event(Event::FailedToFetchNodeProvider {
 							validator: caller.clone(),
 						});
 					},
