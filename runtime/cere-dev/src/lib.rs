@@ -315,20 +315,20 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::Any => true,
 			ProxyType::NonTransfer => !matches!(
 				c,
-				RuntimeCall::Balances(..) |
-					RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
-					RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
-					RuntimeCall::NominationPools(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Balances(..)
+					| RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+					| RuntimeCall::Indices(pallet_indices::Call::transfer { .. })
+					| RuntimeCall::NominationPools(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
-				RuntimeCall::Treasury(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Treasury(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Staking => matches!(c, RuntimeCall::Staking(..)),
 		}
@@ -669,8 +669,8 @@ impl Get<Option<BalancingConfig>> for OffchainRandomBalancing {
 			max => {
 				let seed = sp_io::offchain::random_seed();
 				let random = <u32>::decode(&mut TrailingZeroInput::new(&seed))
-					.expect("input is padded with zeroes; qed") %
-					max.saturating_add(1);
+					.expect("input is padded with zeroes; qed")
+					% max.saturating_add(1);
 				random as usize
 			},
 		};
@@ -878,11 +878,7 @@ impl pallet_contracts::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Debug = ();
 	type Environment = ();
-	type Migrations = (
-		pallet_contracts::migration::v13::Migration<Runtime>,
-		pallet_contracts::migration::v14::Migration<Runtime, Balances>,
-		pallet_contracts::migration::v15::Migration<Runtime>,
-	);
+	type Migrations = ();
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -1164,9 +1160,9 @@ impl pallet_ddc_clusters::Config for Runtime {
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 	type Currency = Balances;
 	type WeightInfo = pallet_ddc_clusters::weights::SubstrateWeight<Runtime>;
-	type MinErasureCodingRequiredLimit = ConstU32<4>;
-	type MinErasureCodingTotalLimit = ConstU32<6>;
-	type MinReplicationTotalLimit = ConstU32<3>;
+	type MinErasureCodingRequiredLimit = ConstU32<0>;
+	type MinErasureCodingTotalLimit = ConstU32<0>;
+	type MinReplicationTotalLimit = ConstU32<0>;
 }
 
 parameter_types! {
@@ -1192,8 +1188,28 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type ClusterCreator = DdcClusters;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
-	type VoteScoreToU64 = IdentityConvert;
+	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
 	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
+}
+
+parameter_types! {
+	pub const TechnicalMotionDuration: BlockNumber = 5 * DAYS;
+	pub const TechnicalMaxProposals: u32 = 100;
+	pub const TechnicalMaxMembers: u32 = 100;
+}
+
+type TechCommCollective = pallet_collective::Instance3;
+impl pallet_collective::Config<TechCommCollective> for Runtime {
+	type RuntimeOrigin = RuntimeOrigin;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type MotionDuration = TechnicalMotionDuration;
+	type MaxProposals = TechnicalMaxProposals;
+	type MaxMembers = TechnicalMaxMembers;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
+	type MaxProposalWeight = MaxCollectivesProposalWeight;
 }
 
 parameter_types! {
@@ -1321,6 +1337,7 @@ construct_runtime!(
 		Origins: pallet_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov.
+		TechComm: pallet_collective::<Instance3>,
 		DdcClustersGov: pallet_ddc_clusters_gov,
 	}
 );
@@ -1364,6 +1381,8 @@ type Migrations = (
 	pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
 	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
 	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV2<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.
@@ -1424,6 +1443,7 @@ mod benches {
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
 		[pallet_preimage, Preimage]
+		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
 	);
 }

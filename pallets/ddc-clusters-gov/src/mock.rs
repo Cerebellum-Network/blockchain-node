@@ -65,7 +65,7 @@ frame_support::construct_runtime!(
 		Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
 		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
-		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Event<T>},
+		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Config<T>, Event<T>},
 		DdcStaking: pallet_ddc_staking::{Pallet, Call, Storage, Event<T>},
 		Origins: pallet_mock_origins::{Origin},
 		DdcClustersGov: pallet_ddc_clusters_gov::{Pallet, Call, Storage, Event<T>},
@@ -265,9 +265,9 @@ impl pallet_ddc_clusters::Config for Test {
 	type StakerCreator = pallet_ddc_staking::Pallet<Test>;
 	type Currency = Balances;
 	type WeightInfo = ();
-	type MinErasureCodingRequiredLimit = ConstU32<4>;
-	type MinErasureCodingTotalLimit = ConstU32<6>;
-	type MinReplicationTotalLimit = ConstU32<3>;
+	type MinErasureCodingRequiredLimit = ConstU32<0>;
+	type MinErasureCodingTotalLimit = ConstU32<0>;
+	type MinReplicationTotalLimit = ConstU32<0>;
 }
 
 parameter_types! {
@@ -643,7 +643,6 @@ mod pallet_mock_origins {
 }
 
 pub const CLUSTER_ID: [u8; 20] = [1; 20];
-
 pub const CLUSTER_MANAGER_ID: [u8; 32] = [1; 32];
 pub const CLUSTER_RESERVE_ID: [u8; 32] = [2; 32];
 

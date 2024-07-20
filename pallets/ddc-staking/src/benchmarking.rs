@@ -143,6 +143,19 @@ benchmarks! {
 		assert!(Nodes::<T>::contains_key(&new_node));
 	}
 
+	fast_chill {
+		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32]));
+		let (stash, controller, _) = create_stash_controller_node_with_balance::<T>(0, T::ClusterProtocol::get_bond_size(&ClusterId::from([1; 20]), NodeType::Storage).unwrap_or(100u128), node_pub_key)?;
+		DdcStaking::<T>::store(RawOrigin::Signed(controller.clone()).into(), ClusterId::from([1; 20]))?;
+
+		whitelist_account!(controller);
+	}: _(RawOrigin::Signed(controller.clone()))
+	verify {
+		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created after")?;
+		let chilling = ledger.chilling;
+		assert!(chilling.is_some());
+	}
+
 	bond_cluster {
 		let cluster_id = ClusterId::from([1; 20]);
 		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5000);

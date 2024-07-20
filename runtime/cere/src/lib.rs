@@ -1200,6 +1200,26 @@ impl pallet_ddc_staking::Config for Runtime {
 }
 
 parameter_types! {
+	pub const TechnicalMotionDuration: BlockNumber = 5 * DAYS;
+	pub const TechnicalMaxProposals: u32 = 100;
+	pub const TechnicalMaxMembers: u32 = 100;
+}
+
+type TechCommCollective = pallet_collective::Instance3;
+impl pallet_collective::Config<TechCommCollective> for Runtime {
+	type RuntimeOrigin = RuntimeOrigin;
+	type Proposal = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type MotionDuration = TechnicalMotionDuration;
+	type MaxProposals = TechnicalMaxProposals;
+	type MaxMembers = TechnicalMaxMembers;
+	type SetMembersOrigin = EnsureRoot<AccountId>;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
+	type MaxProposalWeight = MaxCollectivesProposalWeight;
+}
+
+parameter_types! {
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
 	pub const MinValidatedNodesCount: u16 = 3;
@@ -1324,6 +1344,7 @@ construct_runtime!(
 		Origins: pallet_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov.
+		TechComm: pallet_collective::<Instance3>,
 		DdcClustersGov: pallet_ddc_clusters_gov,
 		DdcVerification: pallet_ddc_verification,
 	}
@@ -1368,6 +1389,8 @@ type Migrations = (
 	pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
 	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
 	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV2<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.
@@ -1428,6 +1451,7 @@ mod benches {
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
 		[pallet_preimage, Preimage]
+		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
 	);
 }

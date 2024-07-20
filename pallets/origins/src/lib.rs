@@ -23,8 +23,6 @@ pub mod pallet {
 		/// Origin for spending up to $10,000,000 DOT from the treasury as well as generally
 		/// administering it.
 		Treasurer,
-		/// Origin for managing the composition of the fellowship.
-		FellowshipAdmin,
 		/// Origin for managing the registrar.
 		GeneralAdmin,
 		/// Origin able to cancel referenda.
@@ -82,7 +80,6 @@ pub mod pallet {
 	decl_unit_ensures!(
 		StakingAdmin,
 		Treasurer,
-		FellowshipAdmin,
 		GeneralAdmin,
 		ReferendumCanceller,
 		ReferendumKiller,

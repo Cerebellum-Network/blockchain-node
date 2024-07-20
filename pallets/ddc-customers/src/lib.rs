@@ -182,6 +182,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
+		// todo! name events
 		/// An account has deposited this amount. \[owner, amount\]
 		///
 		/// NOTE: This event is only emitted when funds are deposited via a dispatchable. Notably,

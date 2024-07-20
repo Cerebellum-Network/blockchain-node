@@ -371,6 +371,7 @@ pub mod pallet {
 		Unauthorised,
 		/// Already signed era.
 		AlreadySignedEra,
+		NotExpectedState,
 		/// Already signed payout batch.
 		AlreadySignedPayoutBatch,
 		/// Node Retrieval Error.
@@ -2194,6 +2195,8 @@ pub mod pallet {
 				.add(sp_runtime::offchain::Duration::from_millis(10000));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
+			// todo! filter by status == PROCESSED
+
 			let response =
 				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
 			if response.code != 200 {
@@ -2431,6 +2434,12 @@ pub mod pallet {
 				}
 			};
 
+			// disallow signatures after era status change
+			ensure!(
+				era_validation.status == EraValidationStatus::ValidatingData,
+				Error::<T>::NotExpectedState
+			);
+
 			// Ensure the validators entry exists for the specified (payers_merkle_root_hash,
 			// payees_merkle_root_hash)
 			let signed_validators = era_validation
@@ -2450,7 +2459,7 @@ pub mod pallet {
 				// threshold
 				era_validation.payers_merkle_root_hash = payers_merkle_root_hash;
 				era_validation.payees_merkle_root_hash = payees_merkle_root_hash;
-				era_validation.start_era = era_activity.start;
+				era_validation.start_era = era_activity.start; // todo! start/end is set by the last validator and is not in consensus
 				era_validation.end_era = era_activity.end;
 
 				if payers_merkle_root_hash == ActivityHash::default() &&
