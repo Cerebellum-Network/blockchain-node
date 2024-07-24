@@ -157,7 +157,11 @@ impl wasmi::Externals for FunctionExecutor<'_> {
 
 		if let Some(function) = self.host_functions.clone().get(index) {
 			function
-				.execute(self, &mut args)
+				// .execute(self, &mut args)
+				.execute(
+					**self.runtime_memory.as_mut().expect("Runtime memory to be set"),
+					&mut args,
+				)
 				// .map_err(|msg| Error::FunctionExecution(function.name().to_string(), msg))
 				.map_err(|msg| {
 					log::info!(target: LOG_TARGET, "---> FunctionExecutor.invoke_index ---> error 1 {:?}", msg);

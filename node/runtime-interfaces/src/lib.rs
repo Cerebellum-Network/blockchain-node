@@ -180,9 +180,13 @@ pub trait Sandbox {
 		let arc_from_ref = Box::new(ref_to_ctx);
 		sandbox.set_runtime_memory(arc_from_ref);
 
-		sandbox
+		let res = sandbox
 			.invoke(instance_idx, function, args, return_val_ptr, return_val_len, state_ptr.into())
-			.expect("Failed to invoke function with sandbox")
+			.expect("Failed to invoke function with sandbox");
+
+		log::info!(target: LOG_TARGET, "invoke END: instance_idx={:?}, function={:?}", instance_idx, function);
+
+		res
 	}
 
 	/// Create a new memory instance with the given `initial` size and the `maximum` size.
@@ -198,9 +202,13 @@ pub trait Sandbox {
 		let arc_from_ref = Box::new(ref_to_ctx);
 		sandbox.set_runtime_memory(arc_from_ref);
 
-		sandbox
+		let res = sandbox
 			.memory_new(initial, maximum)
-			.expect("Failed to create new memory with sandbox")
+			.expect("Failed to create new memory with sandbox");
+
+		log::info!(target: LOG_TARGET, "memory_new END: initial={:?}, maximum={:?}", initial, maximum);
+
+		res
 	}
 
 	// /// Get sandbox memory from the `memory_id` instance at `offset` into the given buffer.
