@@ -21,6 +21,7 @@ members = [
   "pallets/erc721",
   "pallets/ddc-clusters-gov",
   "pallets/origins",
+  "pallets/ddc-verification",
   "primitives",
   "runtime/cere",
   "runtime/cere-dev",
@@ -138,6 +139,7 @@ sc-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk.git", 
 sc-transaction-pool-api = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.2.0", default-features = false }
 sc-offchain = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.2.0", default-features = false }
 sp-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.2.0", default-features = false }
+sp-application-crypto = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.2.0", default-features = false }
 sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.2.0", default-features = false }
 sp-authority-discovery = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.2.0", default-features = false }
 sp-block-builder = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.2.0", default-features = false }
@@ -188,6 +190,7 @@ pallet-ddc-customers = { path = "pallets/ddc-customers", default-features = fals
 pallet-ddc-nodes = { path = "pallets/ddc-nodes", default-features = false }
 pallet-ddc-payouts = { path = "pallets/ddc-payouts", default-features = false }
 pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
+pallet-ddc-verification = { path = "pallets/ddc-verification", default-features = false }
 pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
 pallet-origins = { path = "pallets/origins", default-features = false }

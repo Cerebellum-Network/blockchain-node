@@ -4,13 +4,14 @@
 
 use ddc_primitives::{
 	traits::{
+		bucket::BucketVisitor,
 		cluster::{ClusterCreator, ClusterProtocol},
 		customer::{CustomerCharger, CustomerDepositor},
 		pallet::PalletVisitor,
-		ClusterQuery,
+		ClusterQuery, ValidatorVisitor,
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodeType, DOLLARS,
+	BucketVisitorError, ClusterBondingParams, ClusterFeesParams, ClusterParams,
+	ClusterPricingParams, ClusterProtocolParams, ClusterStatus, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -124,6 +125,7 @@ impl crate::pallet::Config for Test {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = TestCustomerCharger;
+	type BucketVisitor = TestBucketVisitor;
 	type CustomerDepositor = TestCustomerDepositor;
 	type ClusterProtocol = TestClusterProtocol;
 	type TreasuryVisitor = TestTreasuryVisitor;
@@ -132,13 +134,62 @@ impl crate::pallet::Config for Test {
 
 	type VoteScoreToU64 = Identity;
 	type WeightInfo = ();
+	type ValidatorVisitor = MockValidatorVisitor;
+}
+
+pub struct MockValidatorVisitor;
+
+impl<T: Config> ValidatorVisitor<T> for MockValidatorVisitor
+where
+	<T as frame_system::Config>::AccountId: From<u128>,
+{
+	fn setup_validators(_validators: Vec<T::AccountId>) {
+		unimplemented!()
+	}
+	fn is_ocw_validator(caller: T::AccountId) -> bool {
+		let validators = [DAC_ACCOUNT_ID.into(), 123u128.into()];
+		validators.contains(&caller)
+	}
+	fn is_customers_batch_valid(
+		_cluster_id: ClusterId,
+		_era: DdcEra,
+		_batch_index: BatchIndex,
+		_payers: &[(T::AccountId, BucketId, CustomerUsage)],
+		_batch_proof: &MMRProof,
+	) -> bool {
+		true
+	}
+
+	fn is_providers_batch_valid(
+		_cluster_id: ClusterId,
+		_era: DdcEra,
+		_batch_index: BatchIndex,
+		_payees: &[(T::AccountId, NodeUsage)],
+		_batch_proof: &MMRProof,
+	) -> bool {
+		true
+	}
+}
+
+pub struct TestBucketVisitor;
+impl<T: Config> BucketVisitor<T> for TestBucketVisitor {
+	fn get_total_customer_usage(
+		_cluster_id: &ClusterId,
+		_bucket_id: BucketId,
+		_content_owner: &T::AccountId,
+	) -> Result<Option<CustomerUsage>, BucketVisitorError> {
+		Ok(None)
+	}
 }
 
 pub struct TestCustomerCharger;
 impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 	fn charge_content_owner(
+		_cluster_id: &ClusterId,
+		_bucket_id: BucketId,
 		content_owner: T::AccountId,
 		billing_vault: T::AccountId,
+		_customer_usage: &CustomerUsage,
 		amount: u128,
 	) -> Result<u128, DispatchError> {
 		let mut amount_to_charge = amount;
@@ -212,6 +263,7 @@ impl<T: Config> CustomerDepositor<T> for TestCustomerDepositor {
 	}
 }
 
+pub const DAC_ACCOUNT_ID: AccountId = 2;
 pub const RESERVE_ACCOUNT_ID: AccountId = 999;
 pub const TREASURY_ACCOUNT_ID: AccountId = 888;
 pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
