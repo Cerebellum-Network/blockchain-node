@@ -21,6 +21,7 @@ members = [
   "pallets/erc721",
   "pallets/ddc-clusters-gov",
   "pallets/origins",
+  "pallets/ddc-verification",
   "primitives",
   "runtime/cere",
   "runtime/cere-dev",
@@ -29,6 +30,7 @@ resolver = "2"
 
 [workspace.dependencies]
 # 3rd-party dependencies
+blake2 = { version = "0.10.4", default-features = false }
 byte-unit = { version = "4.0.19", default-features = false, features = ["u128"] }
 chrono = { version = "0.4.31", default-features = false }
 clap = { version = "4.2.5", features = ["derive"] }
@@ -39,13 +41,16 @@ jsonrpsee = { version = "0.16.2", default-features = false, features = ["server"
 lazy_static = { version = "1.4.0", default-features = false }
 log = { version = "0.4.17", default-features = false }
 parking_lot = { version = "0.12.1", default-features = false }
+polkadot-ckb-merkle-mountain-range = { version = "0.7.0", default-features = false }
 rand = { version = "0.8", default-features = false }
 rand_chacha = { version = "0.2", default-features = false }
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
 serde = { version = "1.0.136", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0", default-features = false }
 static_assertions = { version = "1.1.0" }
 url = { version = "2.4.1" }
-
+array-bytes = { version = "6.1" }
+itertools = { version = "0.13.0", default-features = false, features = ["use_alloc"] }
 # Substrate Dependencies
 # Please keey format such that:
 # dependency-name = { git = "X", tag = "Y", default-features = false }
@@ -132,6 +137,7 @@ sc-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk.git", 
 sc-transaction-pool-api = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
 sc-offchain = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
 sp-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
+sp-application-crypto = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
 sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
 sp-authority-discovery = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
 sp-block-builder = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
@@ -182,6 +188,7 @@ pallet-ddc-customers = { path = "pallets/ddc-customers", default-features = fals
 pallet-ddc-nodes = { path = "pallets/ddc-nodes", default-features = false }
 pallet-ddc-payouts = { path = "pallets/ddc-payouts", default-features = false }
 pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
+pallet-ddc-verification = { path = "pallets/ddc-verification", default-features = false }
 pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
 pallet-origins = { path = "pallets/origins", default-features = false }

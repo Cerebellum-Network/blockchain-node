@@ -135,6 +135,7 @@ pub mod pallet {
 		ClusterProtocolParamsNotSet,
 		ArithmeticOverflow,
 		NodeIsNotAssignedToCluster,
+		ControllerDoesNotExist,
 	}
 
 	#[pallet::storage]
@@ -821,6 +822,17 @@ pub mod pallet {
 			Ok(cluster.manager_id)
 		}
 
+		fn get_nodes(cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError> {
+			let mut nodes = Vec::new();
+
+			// Iterate through all nodes associated with the cluster_id
+			for (node_pubkey, _) in ClustersNodes::<T>::iter_prefix(cluster_id) {
+				nodes.push(node_pubkey);
+			}
+
+			Ok(nodes)
+		}
+
 		fn contains_node(
 			cluster_id: &ClusterId,
 			node_pub_key: &NodePubKey,
@@ -903,6 +915,7 @@ pub mod pallet {
 			match error {
 				StakingVisitorError::NodeStakeDoesNotExist => Error::<T>::NodeHasNoActivatedStake,
 				StakingVisitorError::NodeStakeIsInBadState => Error::<T>::NodeStakeIsInvalid,
+				StakingVisitorError::ControllerDoesNotExist => Error::<T>::ControllerDoesNotExist,
 			}
 		}
 	}

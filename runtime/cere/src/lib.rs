@@ -22,7 +22,10 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 use codec::{Decode, Encode, MaxEncodedLen};
-use ddc_primitives::traits::pallet::PalletVisitor;
+use ddc_primitives::{
+	traits::pallet::{GetDdcOrigin, PalletVisitor},
+	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
+};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
@@ -70,7 +73,7 @@ pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdj
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
@@ -100,10 +103,10 @@ use cere_runtime_common::{
 	constants::{currency::*, time::*},
 	CurrencyToVote,
 };
-use ddc_primitives::traits::GetDdcOrigin;
 use impls::Author;
 use sp_runtime::generic::Era;
 use sp_std::marker::PhantomData;
+
 // Governance configurations.
 pub mod governance;
 use governance::{
@@ -137,10 +140,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 54004,
+	spec_version: 54100,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 18,
+	transaction_version: 19,
 	state_version: 0,
 };
 
@@ -487,11 +490,38 @@ impl pallet_authorship::Config for Runtime {
 }
 
 impl_opaque_keys! {
+	pub struct OldSessionKeys {
+		pub grandpa: Grandpa,
+		pub babe: Babe,
+		pub im_online: ImOnline,
+		pub authority_discovery: AuthorityDiscovery,
+	}
+}
+
+impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub grandpa: Grandpa,
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
+		pub ddc_verification: DdcVerification,
+	}
+}
+
+fn transform_session_keys(v: AccountId, old: OldSessionKeys) -> SessionKeys {
+	SessionKeys {
+		grandpa: old.grandpa,
+		babe: old.babe,
+		im_online: old.im_online,
+		authority_discovery: old.authority_discovery,
+		ddc_verification: {
+			let mut id: ddc_primitives::sr25519::AuthorityId =
+				sp_core::sr25519::Public::from_raw([0u8; 32]).into();
+			let id_raw: &mut [u8] = id.as_mut();
+			id_raw[0..32].copy_from_slice(v.as_ref());
+			id_raw[0..4].copy_from_slice(b"cer!");
+			id
+		},
 	}
 }
 
@@ -1165,13 +1195,15 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
+	type BucketVisitor = DdcCustomers;
 	type CustomerDepositor = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type ClusterCreator = DdcClusters;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
-	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
+	type VoteScoreToU64 = IdentityConvert;
+	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -1262,6 +1294,29 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 	}
 }
 
+parameter_types! {
+	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
+}
+
+impl pallet_ddc_verification::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = VerificationPalletId;
+	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
+	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type PayoutVisitor = pallet_ddc_payouts::Pallet<Runtime>;
+	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
+	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+	type ActivityHasher = BlakeTwo256;
+	const MAJORITY: u8 = 67;
+	const BLOCK_TO_START: u16 = 100; // every 100 blocks
+	const MIN_DAC_NODES_FOR_CONSENSUS: u16 = 3;
+	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
+	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
+	type ActivityHash = H256;
+	type StakingVisitor = pallet_staking::Pallet<Runtime>;
+}
+
 construct_runtime!(
 	pub struct Runtime
 	{
@@ -1315,6 +1370,7 @@ construct_runtime!(
 		// End OpenGov.
 		TechComm: pallet_collective::<Instance3>,
 		DdcClustersGov: pallet_ddc_clusters_gov,
+		DdcVerification: pallet_ddc_verification,
 	}
 );
 
@@ -1356,8 +1412,25 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 type Migrations = (
 	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
 	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV2<Runtime>,
+	migrations::Unreleased,
 );
 
+pub mod migrations {
+	use super::*;
+
+	/// When this is removed, should also remove `OldSessionKeys`.
+	pub struct UpgradeSessionKeys;
+	impl frame_support::traits::OnRuntimeUpgrade for UpgradeSessionKeys {
+		fn on_runtime_upgrade() -> Weight {
+			Session::upgrade_keys::<OldSessionKeys, _>(transform_session_keys);
+			Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block
+		}
+	}
+
+	/// Unreleased migrations. Add new ones here:
+	pub type Unreleased = (UpgradeSessionKeys,);
+}
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Runtime,

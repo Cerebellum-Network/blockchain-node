@@ -110,6 +110,10 @@ impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
 	fn has_chilling_attempt(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
 		Ok(false)
 	}
+
+	fn stash_by_ctrl(_controller: &T::AccountId) -> Result<T::AccountId, StakingVisitorError> {
+		todo!()
+	}
 }
 
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
