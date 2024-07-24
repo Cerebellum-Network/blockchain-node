@@ -55,6 +55,7 @@ cere-runtime-common = { workspace = true, optional = true }
 
 cere-dev-runtime = { workspace = true, optional = true }
 cere-runtime = { workspace = true, optional = true }
+ddc-primitives = { workspace = true }
 
 [features]
 default = ["cere-native"]
