@@ -70,68 +70,68 @@ impl<'a> FunctionExecutor<'a> {
 	}
 }
 
-// impl FunctionContext for FunctionExecutor<'_> {
-// 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
-// 		self.memory.get_into(address.into(), dest).map_err(|e| e.to_string())
-// 	}
-
-// 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
-// 		self.memory.set(address.into(), data).map_err(|e| e.to_string())
-// 	}
-
-// 	fn allocate_memory(&mut self, size: WordSize) -> WResult<Pointer<u8>> {
-// 		let heap = &mut self.heap.borrow_mut();
-// 		self.memory
-// 			.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()))
-// 	}
-
-// 	fn deallocate_memory(&mut self, ptr: Pointer<u8>) -> WResult<()> {
-// 		let heap = &mut self.heap.borrow_mut();
-// 		self.memory
-// 			.with_direct_access_mut(|mem| heap.deallocate(mem, ptr).map_err(|e| e.to_string()))
-// 	}
-
-// 	fn register_panic_error_message(&mut self, message: &str) {
-// 		self.panic_message = Some(message.to_owned());
-// 	}
-// }
-
 impl FunctionContext for FunctionExecutor<'_> {
 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
-		self.runtime_memory
-			.as_ref()
-			.expect("Runtime memory to be set")
-			.read_memory_into(address, dest)
+		self.memory.get_into(address.into(), dest).map_err(|e| e.to_string())
 	}
 
 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
-		self.runtime_memory
-			.as_mut()
-			.expect("Runtime memory to be set")
-			.write_memory(address, data)
+		self.memory.set(address.into(), data).map_err(|e| e.to_string())
 	}
 
 	fn allocate_memory(&mut self, size: WordSize) -> WResult<Pointer<u8>> {
-		self.runtime_memory
-			.as_mut()
-			.expect("Runtime memory to be set")
-			.allocate_memory(size)
+		let heap = &mut self.heap.borrow_mut();
+		self.memory
+			.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()))
 	}
 
 	fn deallocate_memory(&mut self, ptr: Pointer<u8>) -> WResult<()> {
-		self.runtime_memory
-			.as_mut()
-			.expect("Runtime memory to be set")
-			.deallocate_memory(ptr)
+		let heap = &mut self.heap.borrow_mut();
+		self.memory
+			.with_direct_access_mut(|mem| heap.deallocate(mem, ptr).map_err(|e| e.to_string()))
 	}
 
 	fn register_panic_error_message(&mut self, message: &str) {
-		self.runtime_memory
-			.as_mut()
-			.expect("Runtime memory to be set")
-			.register_panic_error_message(message)
+		self.panic_message = Some(message.to_owned());
 	}
 }
+
+// impl FunctionContext for FunctionExecutor<'_> {
+// 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
+// 		self.runtime_memory
+// 			.as_ref()
+// 			.expect("Runtime memory to be set")
+// 			.read_memory_into(address, dest)
+// 	}
+
+// 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
+// 		self.runtime_memory
+// 			.as_mut()
+// 			.expect("Runtime memory to be set")
+// 			.write_memory(address, data)
+// 	}
+
+// 	fn allocate_memory(&mut self, size: WordSize) -> WResult<Pointer<u8>> {
+// 		self.runtime_memory
+// 			.as_mut()
+// 			.expect("Runtime memory to be set")
+// 			.allocate_memory(size)
+// 	}
+
+// 	fn deallocate_memory(&mut self, ptr: Pointer<u8>) -> WResult<()> {
+// 		self.runtime_memory
+// 			.as_mut()
+// 			.expect("Runtime memory to be set")
+// 			.deallocate_memory(ptr)
+// 	}
+
+// 	fn register_panic_error_message(&mut self, message: &str) {
+// 		self.runtime_memory
+// 			.as_mut()
+// 			.expect("Runtime memory to be set")
+// 			.register_panic_error_message(message)
+// 	}
+// }
 
 impl wasmi::Externals for FunctionExecutor<'_> {
 	fn invoke_index(
@@ -148,28 +148,39 @@ impl wasmi::Externals for FunctionExecutor<'_> {
 
 		let host_functions_names: Vec<&str> =
 			self.host_functions.iter().map(|f| f.name()).collect();
+		log::info!(target: LOG_TARGET, "---> FunctionExecutor.invoke_index {:?}, name: {:?}", index, host_functions_names.get(index));
 
-		log::info!(target: LOG_TARGET, "---> index={:?}, host_functions.len()={:?}", index, host_functions_names.len());
-		log::info!(target: LOG_TARGET, "---> host_functions={:?}", host_functions_names);
+		// log::info!(target: LOG_TARGET, "---> index={:?}, host_functions.len()={:?}", index,
+		// host_functions_names.len()); log::info!(target: LOG_TARGET, "---> host_functions={:?}",
+		// host_functions_names);
 
 		if let Some(function) = self.host_functions.clone().get(index) {
 			function
 				.execute(self, &mut args)
 				// .map_err(|msg| Error::FunctionExecution(function.name().to_string(), msg))
-				.map_err(|_msg| trap("Function call failed"))
-				.map_err(wasmi::Trap::from)
+				.map_err(|msg| {
+					log::info!(target: LOG_TARGET, "---> FunctionExecutor.invoke_index ---> error 1 {:?}", msg);
+					trap("Function call failed")
+				})
+				.map_err(|err| {
+					log::info!(target: LOG_TARGET, "---> FunctionExecutor.invoke_index ---> error 2 {:?}", err);
+					wasmi::Trap::from(err)
+				})
 				.map(|v| {
-					v.map(|value| match value {
+					let reslt = v.map(|value| match value {
 						Value::I32(val) => RuntimeValue::I32(val),
 						Value::I64(val) => RuntimeValue::I64(val),
 						Value::F32(val) => RuntimeValue::F32(val.into()),
 						Value::F64(val) => RuntimeValue::F64(val.into()),
-					})
+					});
+					log::info!(target: LOG_TARGET, "---> FunctionExecutor.invoke_index ===> reslt {:?}", reslt);
+					reslt
 				})
 		} else if self.allow_missing_func_imports &&
 			index >= self.host_functions.len() &&
 			index < self.host_functions.len() + self.missing_functions.len()
 		{
+			log::info!(target: LOG_TARGET, "---> FunctionExecutor.invoke_index ---> error 3 Function is only a stub. Calling a stub is not allowed - index {:?}", index);
 			Err(trap(
 				format!(
 					"Function is only a stub. Calling a stub is not allowed - index {:?}",
@@ -178,6 +189,7 @@ impl wasmi::Externals for FunctionExecutor<'_> {
 				.as_str(),
 			))
 		} else {
+			log::info!(target: LOG_TARGET, "---> FunctionExecutor.invoke_index ---> error 4 Could not find host function with index");
 			Err(trap("Could not find host function with index"))
 		}
 	}
@@ -230,6 +242,11 @@ impl<'a, 'b> SandboxContext for SandboxContextImpl<'a, 'b> {
 	fn supervisor_context(&mut self) -> &mut dyn FunctionContext {
 		log::info!(target: LOG_TARGET, "supervisor_context executor");
 		self.executor
+	}
+
+	fn historical_runtime_context(&mut self) -> &mut dyn FunctionContext {
+		log::info!(target: LOG_TARGET, "supervisor_context executor runtime_memory");
+		**self.executor.runtime_memory.as_mut().expect("Runtime memory to be set")
 	}
 }
 
@@ -411,6 +428,7 @@ impl FunctionExecutor<'_> {
 			.map_err(|e| e.to_string())?;
 
 		log::info!(target: LOG_TARGET, "invoke WIP 1: ---> {:?}", instance_id);
+		log::info!(target: LOG_TARGET, "executor.memory={:?}, executor.sandbox_store.instances={:?}, sandbox_store.memories={:?}", self.memory, self.sandbox_store.borrow().instances.len(), self.sandbox_store.borrow().memories);
 
 		let res = match instance.invoke(
 			export_name,
