@@ -522,7 +522,7 @@ pub trait SandboxContext {
 	fn supervisor_context(&mut self) -> &mut dyn FunctionContext;
 
 	// this is the context of the runtime that existed in the current synchronizing block
-	fn historical_runtime_context(&mut self) -> &mut dyn FunctionContext;
+	fn current_block_runtime_context(&mut self) -> &mut dyn FunctionContext;
 }
 
 /// Sandbox backend to use

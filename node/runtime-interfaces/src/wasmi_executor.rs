@@ -151,7 +151,8 @@ impl wasmi::Externals for FunctionExecutor<'_> {
 		log::info!(target: LOG_TARGET, "---> FunctionExecutor.invoke_index {:?}, name: {:?}", index, host_functions_names.get(index));
 
 		// log::info!(target: LOG_TARGET, "---> index={:?}, host_functions.len()={:?}", index,
-		// host_functions_names.len()); log::info!(target: LOG_TARGET, "---> host_functions={:?}",
+		// host_functions_names.len());
+		// log::info!(target: LOG_TARGET, "---> host_functions={:?}",
 		// host_functions_names);
 
 		if let Some(function) = self.host_functions.clone().get(index) {
@@ -244,7 +245,7 @@ impl<'a, 'b> SandboxContext for SandboxContextImpl<'a, 'b> {
 		self.executor
 	}
 
-	fn historical_runtime_context(&mut self) -> &mut dyn FunctionContext {
+	fn current_block_runtime_context(&mut self) -> &mut dyn FunctionContext {
 		log::info!(target: LOG_TARGET, "supervisor_context executor runtime_memory");
 		**self.executor.runtime_memory.as_mut().expect("Runtime memory to be set")
 	}
@@ -1145,58 +1146,60 @@ impl WasmiRuntime {
 // THIS impl block was added to experiment with the WasmiInstance, it is not a part of original
 // substrate code
 impl WasmiInstance {
-	pub fn create_function_executor(&self) -> FunctionExecutor {
-		self.memory
-			.erase()
-			.map_err(|e| {
-				// Snapshot restoration failed. This is pretty unexpected since this can happen
-				// if some invariant is broken or if the system is under extreme memory pressure
-				// (so erasing fails).
-				log::error!(target: "wasm-executor", "snapshot restoration failed: {}", e);
-				WasmError::ErasingFailed(e.to_string())
-			})
-			.expect("memory.erase to be ok");
+	// pub fn create_function_executor(&self) -> FunctionExecutor {
+	// 	self.memory
+	// 		.erase()
+	// 		.map_err(|e| {
+	// 			// Snapshot restoration failed. This is pretty unexpected since this can happen
+	// 			// if some invariant is broken or if the system is under extreme memory pressure
+	// 			// (so erasing fails).
+	// 			log::error!(target: "wasm-executor", "snapshot restoration failed: {}", e);
+	// 			WasmError::ErasingFailed(e.to_string())
+	// 		})
+	// 		.expect("memory.erase to be ok");
 
-		// Second, reapply data segments into the linear memory.
-		self.data_segments_snapshot
-			.apply(|offset, contents| self.memory.set(offset, contents))
-			.expect("data_segments_snapshot.apply to be ok"); // todo: fix error type
+	// 	// Second, reapply data segments into the linear memory.
+	// 	self.data_segments_snapshot
+	// 		.apply(|offset, contents| self.memory.set(offset, contents))
+	// 		.expect("data_segments_snapshot.apply to be ok"); // todo: fix error type
 
-		self.global_vals_snapshot
-			.apply(&self.instance)
-			.expect("global_vals_snapshot.apply to be ok");
+	// 	self.global_vals_snapshot
+	// 		.apply(&self.instance)
+	// 		.expect("global_vals_snapshot.apply to be ok");
 
-		let table = &self
-			.instance
-			.export_by_name("__indirect_function_table")
-			.and_then(|e| e.as_table().cloned());
+	// 	let table = &self
+	// 		.instance
+	// 		.export_by_name("__indirect_function_table")
+	// 		.and_then(|e| e.as_table().cloned());
 
-		log::info!(
-			target: LOG_TARGET,
-			"Looking at __indirect_function_table: table={:?}",
-			table.clone().expect("Table to be inited"),
-		);
+	// 	log::info!(
+	// 		target: LOG_TARGET,
+	// 		"Looking at __indirect_function_table: table={:?}",
+	// 		table.clone().expect("Table to be inited"),
+	// 	);
 
-		let heap_base = get_heap_base(&self.instance).expect("get_heap_base to be ok");
+	// 	let heap_base = get_heap_base(&self.instance).expect("get_heap_base to be ok");
 
-		let function_executor = FunctionExecutor::new(
-			self.memory.clone(),
-			heap_base,
-			table.clone(),
-			self.host_functions.clone(),
-			self.allow_missing_func_imports,
-			self.missing_functions.clone(),
-			None,
-		)
-		.expect("function_executor to be created");
+	// 	let function_executor = FunctionExecutor::new(
+	// 		self.memory.clone(),
+	// 		heap_base,
+	// 		table.clone(),
+	// 		self.host_functions.clone(),
+	// 		self.allow_missing_func_imports,
+	// 		self.missing_functions.clone(),
+	// 		None,
+	// 	)
+	// 	.expect("function_executor to be created");
 
-		function_executor
-	}
+	// 	function_executor
+	// }
 
 	pub fn create_function_executor_2(&mut self) -> FunctionExecutor {
 		log::info!(target: "wasm-executor", "is_inited ---> {}", self.is_inited);
 
 		if !self.is_inited {
+			log::info!(target: LOG_TARGET, "Creating new function_executor");
+
 			self.memory
 				.erase()
 				.map_err(|e| {
@@ -1243,6 +1246,8 @@ impl WasmiInstance {
 			)
 			.expect("function_executor to be created");
 
+			log::info!(target: LOG_TARGET, "Returning new function_executor");
+
 			self.is_inited = true;
 			function_executor
 		} else {
@@ -1253,6 +1258,8 @@ impl WasmiInstance {
 			// self.global_vals_snapshot
 			// 	.apply(&self.instance)
 			// 	.expect("global_vals_snapshot.apply to be ok");
+
+			log::info!(target: LOG_TARGET, "Getting already instantiated function_executor");
 
 			let table = &self
 				.instance
@@ -1271,6 +1278,8 @@ impl WasmiInstance {
 				self.sandbox_store.clone(),
 			)
 			.expect("function_executor to be created");
+
+			log::info!(target: LOG_TARGET, "Returning already instantiated function_executor");
 			function_executor
 		}
 	}

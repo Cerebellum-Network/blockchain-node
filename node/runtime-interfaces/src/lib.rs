@@ -128,7 +128,7 @@ lazy_static! {
 	// );
 }
 
-const LOG_TARGET: &str = "runtime-interface-yahor";
+const LOG_TARGET: &str = "yahor-runtime-interface-sandbox";
 
 /// Something that provides access to the sandbox.
 #[runtime_interface(wasm_only)]
@@ -142,7 +142,6 @@ pub trait Sandbox {
 		state_ptr: Pointer<u8>,
 	) -> u32 {
 		log::info!(target: LOG_TARGET, "instantiate START: dispatch_thunk={:?}, env_def={:?}, state_ptr={:?}", dispatch_thunk, env_def, state_ptr);
-
 		// let lock = SANDBOX.lock();
 		// let mut sandbox = lock.borrow_mut();
 		let binding = WASMI_INSTANCE.lock();
@@ -171,8 +170,8 @@ pub trait Sandbox {
 		return_val_len: u32,
 		state_ptr: Pointer<u8>,
 	) -> u32 {
+		log::info!(target: LOG_TARGET, "invoke START: instance_idx={:?}, function={:?}", instance_idx, function);
 		// let lock = SANDBOX.lock();
-
 		// let mut sandbox = lock.borrow_mut();
 		let binding = WASMI_INSTANCE.lock();
 		let mut binding = binding.borrow_mut();
@@ -189,6 +188,7 @@ pub trait Sandbox {
 	/// Create a new memory instance with the given `initial` size and the `maximum` size.
 	/// The size is given in wasm pages.
 	fn memory_new(&mut self, initial: u32, maximum: u32) -> u32 {
+		log::info!(target: LOG_TARGET, "memory_new START: initial={:?}, maximum={:?}", initial, maximum);
 		// let lock = SANDBOX.lock();
 		// let mut sandbox = lock.borrow_mut();
 		let binding = WASMI_INSTANCE.lock();

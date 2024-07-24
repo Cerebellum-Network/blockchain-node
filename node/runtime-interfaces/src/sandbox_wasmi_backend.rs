@@ -73,7 +73,7 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 		SandboxContextStore::with(|sandbox_context| {
 			// Make `index` typesafe again.
 			let index = GuestFuncIndex(index);
-			log::info!(target: LOG_TARGET, "GuestExternals.invoke_index START: index={:?}, args={:?}, guest_to_supervisor_mapping={:?}", index, args, self.sandbox_instance.guest_to_supervisor_mapping.funcs);
+			log::info!(target: LOG_TARGET, "GuestExternals.invoke_index START: index={:?}, args={:?}", index, args);
 
 			// Convert function index from guest to supervisor space
 			let func_idx = self.sandbox_instance
@@ -108,7 +108,7 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 			// HERE IS DEVIATION IN Pointer begins (2000296 vs 1327384)
 			let invoke_args_ptr = sandbox_context
 				.supervisor_context()
-				// .historical_runtime_context()
+				// .current_block_runtime_context()
 				.allocate_memory(invoke_args_len)
 				.map_err(|_| trap("Can't allocate memory in supervisor for the arguments"))?;
 
@@ -118,13 +118,13 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 
 			if sandbox_context
 				.supervisor_context()
-				// .historical_runtime_context()
+				// .current_block_runtime_context()
 				.write_memory(invoke_args_ptr, &invoke_args_data)
 				.is_err()
 			{
 				deallocate(
 					sandbox_context.supervisor_context(),
-					// sandbox_context.historical_runtime_context(),
+					// sandbox_context.current_block_runtime_context(),
 					invoke_args_ptr,
 					"Failed dealloction after failed write of invoke arguments",
 				)?;
@@ -142,7 +142,7 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 
 			deallocate(
 				sandbox_context.supervisor_context(),
-				// sandbox_context.historical_runtime_context(),
+				// sandbox_context.current_block_runtime_context(),
 				invoke_args_ptr,
 				"Can't deallocate memory for dispatch thunk's invoke arguments",
 			)?;
@@ -168,7 +168,7 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 
 			let serialized_result_val = sandbox_context
 				.supervisor_context()
-				// .historical_runtime_context()
+				// .current_block_runtime_context()
 				.read_memory(serialized_result_val_ptr, serialized_result_val_len)
 				.map_err(|_| trap("Can't read the serialized result from dispatch thunk"));
 			log::info!(target: LOG_TARGET, "GuestExternals.invoke_index => serialized_result_val={:?}", serialized_result_val);
