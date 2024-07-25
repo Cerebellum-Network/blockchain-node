@@ -131,14 +131,14 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 				return Err(trap("Can't write invoke args into memory"))
 			}
 
-			log::info!(target: LOG_TARGET, "GuestExternals.invoke_index WIP0: invoke_args_ptr={:?}, invoke_args_len={:?}, state={:?}, func_idx={:?}", invoke_args_ptr, invoke_args_len, state, func_idx);
+			log::info!(target: LOG_TARGET, "GuestExternals.invoke_index WIP0: invoke_args_ptr={:?}, invoke_args_len={:?}, state={:?}, index={:?}, func_idx={:?}", invoke_args_ptr, invoke_args_len, state, index, func_idx);
 			let result = sandbox_context.invoke(
 				invoke_args_ptr,
 				invoke_args_len,
 				state,
 				func_idx,
 			);
-			log::info!(target: LOG_TARGET, "GuestExternals.invoke_index WIP1: invoke_args_ptr={:?}, invoke_args_len={:?}, state={:?}, func_idx={:?}", invoke_args_ptr, invoke_args_len, state, func_idx);
+			log::info!(target: LOG_TARGET, "GuestExternals.invoke_index WIP1: invoke_args_ptr={:?}, invoke_args_len={:?}, state={:?}, index={:?}, func_idx={:?}", invoke_args_ptr, invoke_args_len, state, index, func_idx);
 
 			deallocate(
 				// sandbox_context.supervisor_context(),
@@ -150,7 +150,7 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 			log::info!(target: LOG_TARGET, "GuestExternals.invoke_index WIP2: invoke_args_ptr={:?}, invoke_args_len={:?}, state={:?}, func_idx={:?}", invoke_args_ptr, invoke_args_len, state, func_idx);
 			// let result = result?;
 			let result = result.map_err(|err| {
-				log::info!(target: LOG_TARGET, "GuestExternals.invoke_index result.map_err err={:?}",err);
+				log::info!(target: LOG_TARGET, "GuestExternals.invoke_index result.map_err err={:?}, index={:?}, func_idx={:?}, guest_to_supervisor_mapping={:?}", err, index, func_idx, self.sandbox_instance.guest_to_supervisor_mapping.funcs);
 				trap("updated Could not invoke sandbox")
 			})?;
 			log::info!(target: LOG_TARGET, "GuestExternals.invoke_index WIP3: result={:?}", result);

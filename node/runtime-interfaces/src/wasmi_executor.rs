@@ -245,12 +245,10 @@ impl<'a, 'b> SandboxContext for SandboxContextImpl<'a, 'b> {
 	}
 
 	fn supervisor_context(&mut self) -> &mut dyn FunctionContext {
-		log::info!(target: LOG_TARGET, "supervisor_context executor");
 		self.executor
 	}
 
 	fn current_block_runtime_context(&mut self) -> &mut dyn FunctionContext {
-		log::info!(target: LOG_TARGET, "supervisor_context executor runtime_memory");
 		**self.executor.runtime_memory.as_mut().expect("Runtime memory to be set")
 	}
 }
@@ -1202,8 +1200,6 @@ impl WasmiInstance {
 		log::info!(target: "wasm-executor", "is_inited ---> {}", self.is_inited);
 
 		if !self.is_inited {
-			log::info!(target: LOG_TARGET, "Creating new function_executor");
-
 			self.memory
 				.erase()
 				.map_err(|e| {
@@ -1250,8 +1246,6 @@ impl WasmiInstance {
 			)
 			.expect("function_executor to be created");
 
-			log::info!(target: LOG_TARGET, "Returning new function_executor");
-
 			self.is_inited = true;
 			function_executor
 		} else {
@@ -1262,8 +1256,6 @@ impl WasmiInstance {
 			// self.global_vals_snapshot
 			// 	.apply(&self.instance)
 			// 	.expect("global_vals_snapshot.apply to be ok");
-
-			log::info!(target: LOG_TARGET, "Getting already instantiated function_executor");
 
 			let table = &self
 				.instance
@@ -1283,7 +1275,6 @@ impl WasmiInstance {
 			)
 			.expect("function_executor to be created");
 
-			log::info!(target: LOG_TARGET, "Returning already instantiated function_executor");
 			function_executor
 		}
 	}
