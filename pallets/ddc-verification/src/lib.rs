@@ -14,7 +14,7 @@ use core::str;
 use ddc_primitives::{
 	traits::{ClusterManager, NodeVisitor, PayoutVisitor, ValidatorVisitor},
 	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeParams, NodePubKey,
-	NodeUsage, PayoutState, StorageNodeMode, StorageNodeParams,
+	NodeUsage, PayoutState, StorageNodeParams,
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -2324,11 +2324,8 @@ pub mod pallet {
 				if let Ok(NodeParams::StorageParams(storage_params)) =
 					T::NodeVisitor::get_node_params(&node_pub_key)
 				{
-					// Check if the mode is StorageNodeMode::DAC
-					if storage_params.mode == StorageNodeMode::DAC {
-						// Add to the results if the mode matches
-						dac_nodes.push((node_pub_key, storage_params));
-					}
+					// Add to the results if the mode matches
+					dac_nodes.push((node_pub_key, storage_params));
 				}
 			}
 
