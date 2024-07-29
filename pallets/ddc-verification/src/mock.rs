@@ -2,8 +2,8 @@ use ddc_primitives::{
 	crypto, sr25519,
 	traits::{ClusterManager, ClusterQuery},
 	BucketId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats,
-	ClusterStatus, PayoutError, PayoutState, StorageNodePubKey, MAX_PAYOUT_BATCH_COUNT,
-	MAX_PAYOUT_BATCH_SIZE,
+	ClusterStatus, PayoutError, PayoutState, StorageNodeMode, StorageNodePubKey,
+	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
 };
 use frame_election_provider_support::{
 	bounds::{ElectionBounds, ElectionBoundsBuilder},

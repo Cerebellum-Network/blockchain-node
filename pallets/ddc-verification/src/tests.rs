@@ -1,5 +1,5 @@
 use ddc_primitives::{
-	ClusterId, MergeActivityHash, StorageNodeParams, StorageNodePubKey, KEY_TYPE,
+	ClusterId, MergeActivityHash, StorageNodeMode, StorageNodeParams, StorageNodePubKey, KEY_TYPE,
 };
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{
