@@ -5351,7 +5351,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-verification"
-version = "5.4.1"
+version = "5.5.0"
 dependencies = [
  "array-bytes",
  "ddc-primitives",
