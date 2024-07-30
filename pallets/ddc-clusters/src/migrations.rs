@@ -37,8 +37,26 @@ pub mod v0 {
 pub mod v1 {
 	use ddc_primitives::ClusterStatus;
 	use frame_support::pallet_prelude::*;
+	use serde::{Deserialize, Serialize};
 
 	use super::*;
+
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+	pub struct Cluster<AccountId> {
+		pub cluster_id: ClusterId,
+		pub manager_id: AccountId,
+		pub reserve_id: AccountId,
+		pub props: ClusterProps<AccountId>,
+		pub status: ClusterStatus,
+	}
+
+	#[storage_alias]
+	pub(super) type Clusters<T: Config> = StorageMap<
+		crate::Pallet<T>,
+		Blake2_128Concat,
+		ClusterId,
+		Cluster<<T as frame_system::Config>::AccountId>,
+	>;
 
 	pub fn migrate_to_v1<T: Config>() -> Weight {
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
@@ -59,7 +77,7 @@ pub mod v1 {
 				" >>> Updating DDC Cluster storage. Migrating {} clusters...", count
 			);
 
-			Clusters::<T>::translate::<v0::Cluster<T::AccountId>, _>(
+			v1::Clusters::<T>::translate::<v0::Cluster<T::AccountId>, _>(
 				|cluster_id: ClusterId, cluster: v0::Cluster<T::AccountId>| {
 					info!(target: LOG_TARGET, "     Migrating cluster for cluster ID {:?}...", cluster_id);
 					translated.saturating_inc();
@@ -70,7 +88,7 @@ pub mod v1 {
 						replication_total: 20,
 					};
 
-					Some(Cluster {
+					Some(v1::Cluster {
 						cluster_id: cluster.cluster_id,
 						manager_id: cluster.manager_id,
 						reserve_id: cluster.reserve_id,
@@ -207,7 +225,6 @@ pub mod v1 {
 }
 
 pub mod v2 {
-
 	use ddc_primitives::{
 		ClusterId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesCount,
 		ClusterNodesStats, ClusterStatus,
@@ -218,9 +235,9 @@ pub mod v2 {
 	#[cfg(feature = "try-runtime")]
 	use sp_std::vec::Vec;
 
+	use super::*;
 	use crate::{
-		cluster::{Cluster, ClusterProps},
-		Clusters, ClustersNodes, ClustersNodesStats, Config, Pallet, LOG_TARGET,
+		cluster::ClusterProps, ClustersNodes, ClustersNodesStats, Config, Pallet, LOG_TARGET,
 	};
 
 	#[derive(Decode)]
@@ -232,10 +249,10 @@ pub mod v2 {
 	}
 
 	impl<AccountId> OldCluster<AccountId> {
-		fn migrate_to_v2(self) -> Cluster<AccountId> {
+		fn migrate_to_v2(self) -> v1::Cluster<AccountId> {
 			// all clusters are unbonded by default
 			let status = ClusterStatus::Unbonded;
-			Cluster {
+			v1::Cluster {
 				cluster_id: self.cluster_id,
 				manager_id: self.manager_id,
 				reserve_id: self.reserve_id,
@@ -258,7 +275,7 @@ pub mod v2 {
 					BTreeMap::new();
 
 				let mut translated_clusters = 0u64;
-				Clusters::<T>::translate::<OldCluster<T::AccountId>, _>(
+				v1::Clusters::<T>::translate::<OldCluster<T::AccountId>, _>(
 					|cluster_id, old_cluster| {
 						translated_clusters.saturating_inc();
 						nodes_count_by_cluster.insert(cluster_id, 0);
@@ -399,6 +416,191 @@ pub mod v2 {
 				)
 			});
 			Ok(())
+		}
+	}
+}
+
+pub mod v3 {
+	use frame_support::{
+		pallet_prelude::*,
+		traits::{Get, OnRuntimeUpgrade},
+		weights::Weight,
+	};
+	use sp_std::marker::PhantomData;
+	#[cfg(feature = "try-runtime")]
+	use sp_std::vec::Vec;
+
+	use super::*;
+	pub fn migrate_to_v3<T: Config>() -> Weight {
+		let on_chain_version = Pallet::<T>::on_chain_storage_version();
+		let current_version = Pallet::<T>::current_storage_version();
+
+		info!(
+			target: LOG_TARGET,
+			"Running migration with current storage version {:?} / onchain {:?}",
+			current_version,
+			on_chain_version
+		);
+
+		if on_chain_version == 2 && current_version == 3 {
+			let count = Clusters::<T>::iter().count() as u64;
+			info!(
+				target: LOG_TARGET,
+				" >>> Updating DDC Cluster storage. Migrating {} clusters...", count
+			);
+
+			Clusters::<T>::translate::<v1::Cluster<T::AccountId>, _>(
+				|cluster_id: ClusterId, cluster: v1::Cluster<T::AccountId>| {
+					info!(target: LOG_TARGET, "     Migrating cluster for cluster ID {:?}...", cluster_id);
+
+					Some(Cluster {
+						cluster_id: cluster.cluster_id,
+						manager_id: cluster.manager_id,
+						reserve_id: cluster.reserve_id,
+						props: cluster.props,
+						status: cluster.status,
+						last_validated_era_id: 0,
+					})
+				},
+			);
+
+			// Update storage version.
+			StorageVersion::new(3).put::<Pallet<T>>();
+			info!(
+				target: LOG_TARGET,
+				"Upgraded {} records, storage to version {:?}",
+				count,
+				current_version
+			);
+
+			T::DbWeight::get().reads_writes(count + 2, count + 1)
+		} else {
+			info!(target: LOG_TARGET, " >>> Unused migration!");
+			T::DbWeight::get().reads(1)
+		}
+	}
+
+	pub struct MigrateToV3<T>(PhantomData<T>);
+
+	impl<T: Config> OnRuntimeUpgrade for MigrateToV3<T> {
+		fn on_runtime_upgrade() -> Weight {
+			migrate_to_v3::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
+			let prev_count = Clusters::<T>::iter().count();
+
+			Ok((prev_count as u64).encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
+			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
+				.expect("pre_upgrade provides a valid state; qed");
+
+			let post_count = Clusters::<T>::iter().count() as u64;
+			ensure!(
+				prev_count == post_count,
+				"the cluster count before and after the migration should be the same"
+			);
+
+			let current_version = Pallet::<T>::current_storage_version();
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+
+			ensure!(current_version == 3, "must_upgrade");
+			ensure!(
+				current_version == on_chain_version,
+				"after migration, the current_version and on_chain_version should be the same"
+			);
+			Ok(())
+		}
+	}
+
+	#[cfg(test)]
+	#[cfg(feature = "try-runtime")]
+	mod test {
+		use ddc_primitives::ClusterStatus;
+		use frame_support::pallet_prelude::StorageVersion;
+
+		use super::*;
+		use crate::mock::{Test as T, *};
+
+		#[test]
+		fn cluster_migration_works() {
+			ExtBuilder.build_and_execute(|| {
+				let cluster_id0 = ClusterId::from([0; 20]);
+				let cluster_id1 = ClusterId::from([1; 20]);
+				let cluster_id2 = ClusterId::from([2; 20]);
+				let cluster_manager_id = AccountId::from([1; 32]);
+				let cluster_reserve_id = AccountId::from([2; 32]);
+				let auth_contract = AccountId::from([3; 32]);
+
+				assert_eq!(StorageVersion::get::<Pallet<T>>(), 2);
+
+				let cluster1 = Cluster {
+					cluster_id: cluster_id1,
+					manager_id: cluster_manager_id.clone(),
+					reserve_id: cluster_reserve_id.clone(),
+					props: ClusterProps {
+						node_provider_auth_contract: Some(auth_contract.clone()),
+						erasure_coding_required: 16,
+						erasure_coding_total: 48,
+						replication_total: 20,
+					},
+					last_validated_era_id: 0,
+					status: ClusterStatus::Activated,
+				};
+
+				Clusters::<T>::insert(cluster_id1, cluster1);
+				let cluster2 = Cluster {
+					cluster_id: cluster_id2,
+					manager_id: cluster_manager_id,
+					reserve_id: cluster_reserve_id,
+					props: ClusterProps {
+						node_provider_auth_contract: Some(auth_contract.clone()),
+						erasure_coding_required: 16,
+						erasure_coding_total: 48,
+						replication_total: 20,
+					},
+					last_validated_era_id: 0,
+					status: ClusterStatus::Activated,
+				};
+
+				Clusters::<T>::insert(cluster_id2, cluster2);
+				let cluster_count = Clusters::<T>::iter_values().count() as u32;
+
+				assert_eq!(cluster_count, 3);
+				let state = MigrateToV3::<T>::pre_upgrade().unwrap();
+				let _weight = MigrateToV3::<T>::on_runtime_upgrade();
+				MigrateToV3::<T>::post_upgrade(state).unwrap();
+
+				let cluster_count_after_upgrade = Clusters::<T>::iter_values().count() as u32;
+
+				assert_eq!(StorageVersion::get::<Pallet<T>>(), 3);
+				assert_eq!(cluster_count_after_upgrade, 3);
+				assert_eq!(
+					Clusters::<T>::get(cluster_id0).unwrap().props.erasure_coding_required,
+					16
+				);
+				assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().props.erasure_coding_total, 48);
+				assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().props.replication_total, 20);
+				assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().last_validated_era_id, 0);
+				assert_eq!(
+					Clusters::<T>::get(cluster_id1).unwrap().props.erasure_coding_required,
+					16
+				);
+				assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().props.erasure_coding_total, 48);
+				assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().props.replication_total, 20);
+				assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().last_validated_era_id, 0);
+				assert_eq!(
+					Clusters::<T>::get(cluster_id2).unwrap().props.erasure_coding_required,
+					16
+				);
+				assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().props.erasure_coding_total, 48);
+				assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().props.replication_total, 20);
+				assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().last_validated_era_id, 0);
+			});
 		}
 	}
 }

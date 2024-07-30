@@ -495,6 +495,59 @@ fn set_cluster_params_works() {
 }
 
 #[test]
+fn set_last_validated_era_works() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let cluster_manager_id = AccountId::from([1; 32]);
+		let cluster_reserve_id = AccountId::from([2; 32]);
+		let auth_contract_1 = AccountId::from([3; 32]);
+		let era_id: DdcEra = 22;
+
+		// Cluster doesn't exist
+		assert_noop!(
+			DdcClusters::set_last_validated_era(&cluster_id, era_id),
+			Error::<Test>::ClusterDoesNotExist
+		);
+
+		// Creating 1 cluster should work fine
+		assert_ok!(DdcClusters::create_cluster(
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
+			cluster_id,
+			cluster_reserve_id.clone(),
+			ClusterParams {
+				node_provider_auth_contract: Some(auth_contract_1),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3
+			},
+			ClusterProtocolParams {
+				treasury_share: Perquintill::from_float(0.05),
+				validators_share: Perquintill::from_float(0.01),
+				cluster_reserve_share: Perquintill::from_float(0.02),
+				storage_bond_size: 100,
+				storage_chill_delay: 50,
+				storage_unbonding_delay: 50,
+				unit_per_mb_stored: 10,
+				unit_per_mb_streamed: 10,
+				unit_per_put_request: 10,
+				unit_per_get_request: 10,
+			}
+		));
+
+		assert_ok!(DdcClusters::set_last_validated_era(&cluster_id, era_id));
+
+		let updated_cluster = DdcClusters::clusters(cluster_id).unwrap();
+		assert_eq!(updated_cluster.last_validated_era_id, era_id);
+
+		// Checking that event was emitted
+		assert_eq!(System::events().len(), 3);
+		System::assert_last_event(Event::ClusterEraValidated { cluster_id, era_id }.into())
+	})
+}
+
+#[test]
 fn cluster_visitor_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);

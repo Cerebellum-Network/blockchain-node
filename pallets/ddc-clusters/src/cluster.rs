@@ -1,5 +1,5 @@
 use codec::{Decode, Encode};
-use ddc_primitives::{ClusterId, ClusterParams, ClusterStatus};
+use ddc_primitives::{ClusterId, ClusterParams, ClusterStatus, DdcEra};
 use frame_support::{pallet_prelude::*, parameter_types};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,7 @@ pub struct Cluster<AccountId> {
 	pub reserve_id: AccountId,
 	pub props: ClusterProps<AccountId>,
 	pub status: ClusterStatus,
+	pub last_validated_era_id: DdcEra,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
@@ -43,6 +44,7 @@ impl<AccountId> Cluster<AccountId> {
 				replication_total: cluster_params.replication_total,
 			},
 			status: ClusterStatus::Unbonded,
+			last_validated_era_id: DdcEra::default(),
 		}
 	}
 

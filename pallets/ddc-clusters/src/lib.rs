@@ -31,12 +31,12 @@ const LOG_TARGET: &str = "runtime::ddc-clusters";
 
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
+		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery, ClusterValidator},
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, DdcEra, NodePubKey, NodeType,
 };
 use frame_support::{
 	assert_ok,
@@ -106,6 +106,7 @@ pub mod pallet {
 		ClusterUnbonding { cluster_id: ClusterId },
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
+		ClusterEraValidated { cluster_id: ClusterId, era_id: DdcEra },
 	}
 
 	#[pallet::error]
@@ -388,7 +389,7 @@ pub mod pallet {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-			// todo: allow to execute this extrinsic to Validator's OCW only
+			// todo: allow to execute this extrinsic to Validator's manager only
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
 			Self::do_validate_node(cluster_id, node_pub_key, succeeded)
@@ -812,6 +813,24 @@ pub mod pallet {
 
 		fn end_unbond_cluster(cluster_id: &ClusterId) -> DispatchResult {
 			Self::do_end_unbond_cluster(cluster_id)
+		}
+	}
+	impl<T: Config> ClusterValidator<T> for Pallet<T> {
+		fn set_last_validated_era(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+		) -> Result<(), DispatchError> {
+			let mut cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+
+			cluster.last_validated_era_id = era_id;
+			Clusters::<T>::insert(cluster_id, cluster);
+			Self::deposit_event(Event::<T>::ClusterEraValidated {
+				cluster_id: *cluster_id,
+				era_id,
+			});
+
+			Ok(())
 		}
 	}
 
