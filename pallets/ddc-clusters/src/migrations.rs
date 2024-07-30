@@ -520,6 +520,7 @@ pub mod v3 {
 	#[cfg(test)]
 	#[cfg(feature = "try-runtime")]
 	mod test {
+		use ddc_primitives::ClusterStatus;
 		use frame_support::pallet_prelude::StorageVersion;
 
 		use super::*;
@@ -547,7 +548,8 @@ pub mod v3 {
 						erasure_coding_total: 48,
 						replication_total: 20,
 					},
-					status: ClusterStatus::Active,
+					last_validated_era_id: 0,
+					status: ClusterStatus::Activated,
 				};
 
 				Clusters::<T>::insert(cluster_id1, cluster1);
@@ -561,7 +563,8 @@ pub mod v3 {
 						erasure_coding_total: 48,
 						replication_total: 20,
 					},
-					status: ClusterStatus::Active,
+					last_validated_era_id: 0,
+					status: ClusterStatus::Activated,
 				};
 
 				Clusters::<T>::insert(cluster_id2, cluster2);
