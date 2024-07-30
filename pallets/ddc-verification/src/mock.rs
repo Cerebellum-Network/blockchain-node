@@ -218,6 +218,7 @@ impl crate::Config for Test {
 	type PalletId = VerificationPalletId;
 	type WeightInfo = ();
 	type ClusterManager = TestClusterManager;
+	type ClusterValidator = TestClusterValidator;
 	type NodeVisitor = MockNodeVisitor;
 	type PayoutVisitor = MockPayoutVisitor;
 	type AuthorityId = sr25519::AuthorityId;
@@ -307,6 +308,16 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			.assimilate_storage(&mut storage);
 
 	sp_io::TestExternalities::new(storage)
+}
+
+pub struct TestClusterValidator;
+impl<T: Config> ClusterValidator<T> for TestClusterValidator {
+	fn set_last_validated_era(
+		_cluster_id: &ClusterId,
+		_era_id: DdcEra,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
 }
 
 pub struct MockPayoutVisitor;
