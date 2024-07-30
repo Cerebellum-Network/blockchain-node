@@ -593,6 +593,13 @@ pub mod pallet {
 					Call::set_current_validator {}
 				});
 			}
+			if (block_number.saturated_into::<u32>() % (T::BLOCK_TO_START as u32 - 30)) == 0 {
+				let _ = signer.send_signed_transaction(|account| {
+					log::info!("🏭📋‍ Setting current validator...  {:?}", account.id);
+
+					Call::set_current_validator {}
+				});
+			}
 			if (block_number.saturated_into::<u32>() % T::BLOCK_TO_START as u32) != 0 {
 				return;
 			}
