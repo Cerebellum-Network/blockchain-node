@@ -577,17 +577,19 @@ pub mod pallet {
 				return;
 			}
 
-			if Self::fetch_current_validator().is_err() {
-				let _ = signer.send_signed_transaction(|account| {
-					Self::store_current_validator(account.id.encode());
-
-					Call::set_current_validator {}
-				});
-			}
+			// todo! Need to uncomment this code
+			// if Self::fetch_current_validator().is_err() {
+			// 	let _ = signer.send_signed_transaction(|account| {
+			// 		Self::store_current_validator(account.id.encode());
+			//
+			// 		Call::set_current_validator {}
+			// 	});
+			// }
+			// todo! need to remove below code
 			if (block_number.saturated_into::<u32>() % (T::BLOCK_TO_START as u32 - 30)) == 0 {
 				let _ = signer.send_signed_transaction(|account| {
+					Self::store_current_validator(account.id.encode());
 					log::info!("🏭📋‍ Setting current validator...  {:?}", account.id);
-
 					Call::set_current_validator {}
 				});
 			}
@@ -2075,6 +2077,17 @@ pub mod pallet {
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Option<EraActivity>, OCWError> {
 			let current_validator_data = Self::fetch_current_validator()?;
+
+			let validator_id = str::from_utf8(current_validator_data.as_slice());
+			if validator_id.is_ok() {
+				log::info!(
+					"➡️ get_era_for_validation cluster_id: {:?}  current_validator_data: {:?}",
+					cluster_id,
+					str::from_utf8(current_validator_data.as_slice()).unwrap()
+				);
+			} else {
+				log::error!("❌ Not able to find validator ");
+			}
 
 			let current_validator = T::AccountId::decode(&mut &current_validator_data[..]).unwrap();
 
