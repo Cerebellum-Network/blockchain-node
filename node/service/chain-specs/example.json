@@ -95,36 +95,6 @@
           ]
         ]
       },
-      "democracy": {
-        "phantom": null
-      },
-      "council": {
-        "phantom": null,
-        "members": []
-      },
-      "technicalCommittee": {
-        "phantom": null,
-        "members": [
-          "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-          "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
-        ]
-      },
-      "elections": {
-        "members": [
-          [
-            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-            10000000000
-          ],
-          [
-            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
-            10000000000
-          ]
-        ]
-      },
-      "technicalMembership": {
-        "members": [],
-        "phantom": null
-      },
       "grandpa": {
         "authorities": []
       },

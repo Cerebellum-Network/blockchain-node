@@ -140,7 +140,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 54102,
+	spec_version: 54103,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 19,
@@ -1415,7 +1415,6 @@ type Migrations = (
 	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
 	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
 	pallet_ddc_customers::migration::MigrateToV2<Runtime>,
-	pallet_ddc_customers::migration::MigrateToV1<Runtime>,
 	migrations::Unreleased,
 );
 
