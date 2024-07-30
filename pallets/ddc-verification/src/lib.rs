@@ -586,7 +586,7 @@ pub mod pallet {
 			// 	});
 			// }
 			// todo! need to remove below code
-			if (block_number.saturated_into::<u32>() % (T::BLOCK_TO_START as u32 - 30)) == 0 {
+			if (block_number.saturated_into::<u32>() % 70) == 0 {
 				let _ = signer.send_signed_transaction(|account| {
 					Self::store_current_validator(account.id.encode());
 					log::info!("🏭📋‍ Setting current validator...  {:?}", account.id);
