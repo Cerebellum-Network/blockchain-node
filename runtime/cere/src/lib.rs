@@ -1312,6 +1312,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type PalletId = VerificationPalletId;
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type PayoutVisitor = pallet_ddc_payouts::Pallet<Runtime>;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
@@ -1433,8 +1434,11 @@ pub mod migrations {
 	}
 
 	/// Unreleased migrations. Add new ones here:
-	pub type Unreleased =
-		(pallet_ddc_customers::migration::MigrateToV2<Runtime>, UpgradeSessionKeys);
+	pub type Unreleased = (
+		pallet_ddc_customers::migration::MigrateToV2<Runtime>,
+		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
+		UpgradeSessionKeys,
+	);
 }
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<

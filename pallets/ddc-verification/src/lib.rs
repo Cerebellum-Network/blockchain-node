@@ -12,7 +12,7 @@
 use core::str;
 
 use ddc_primitives::{
-	traits::{ClusterManager, NodeVisitor, PayoutVisitor, ValidatorVisitor},
+	traits::{ClusterManager, ClusterValidator, NodeVisitor, PayoutVisitor, ValidatorVisitor},
 	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeParams, NodePubKey,
 	NodeUsage, PayoutState, StorageNodeParams,
 };
@@ -79,6 +79,7 @@ pub mod pallet {
 		/// Weight info type.
 		type WeightInfo: WeightInfo;
 		/// DDC clusters nodes manager.
+		type ClusterValidator: ClusterValidator<Self>;
 		type ClusterManager: ClusterManager<Self>;
 		type PayoutVisitor: PayoutVisitor<Self>;
 		/// DDC nodes read-only registry.
@@ -600,6 +601,7 @@ pub mod pallet {
 
 			log::info!("👋 Hello from pallet-ddc-verification.");
 
+			// todo! fetch clusters from ddc-clusters and loop the whole process for each cluster
 			let cluster_id = unwrap_or_log_error!(
 				Self::get_cluster_to_validate(),
 				"🏭❌ Error retrieving cluster to validate"
@@ -1696,9 +1698,7 @@ pub mod pallet {
 							.iter()
 							.map(|activity| {
 								let node_id = activity.clone().node_id;
-
 								let provider_id = Self::fetch_provider_id(node_id).unwrap(); // todo! remove unwrap
-
 								let node_usage = NodeUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
@@ -2381,7 +2381,8 @@ pub mod pallet {
 					})?;
 				for node_activity in usage.clone() {
 					let provider_id = Self::get_node_provider_id(node_pub_key).unwrap();
-					Self::store_provider_id(node_activity.node_id, provider_id);
+					Self::store_provider_id(node_activity.node_id, provider_id); // todo! this is not good - needs to be
+					                                         // moved payout pallet
 				}
 
 				node_usages.push((node_pub_key.clone(), usage));
@@ -2919,7 +2920,7 @@ pub mod pallet {
 			era_validation.status = EraValidationStatus::PayoutSuccess;
 			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
 
-			Ok(())
+			T::ClusterValidator::set_last_validated_era(&cluster_id, era_id)
 		}
 
 		// todo! Need to remove this
