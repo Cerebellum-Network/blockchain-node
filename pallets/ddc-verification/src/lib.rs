@@ -577,20 +577,23 @@ pub mod pallet {
 				return;
 			}
 
-			if Self::fetch_current_validator().is_err() {
+			// todo! Need to uncomment this code
+			// if Self::fetch_current_validator().is_err() {
+			// 	let _ = signer.send_signed_transaction(|account| {
+			// 		Self::store_current_validator(account.id.encode());
+			//
+			// 		Call::set_current_validator {}
+			// 	});
+			// }
+			// todo! need to remove below code
+			if (block_number.saturated_into::<u32>() % 70) == 0 {
 				let _ = signer.send_signed_transaction(|account| {
 					Self::store_current_validator(account.id.encode());
-
-					Call::set_current_validator {}
-				});
-			}
-			if (block_number.saturated_into::<u32>() % (T::BLOCK_TO_START as u32 - 30)) == 0 {
-				let _ = signer.send_signed_transaction(|account| {
 					log::info!("🏭📋‍ Setting current validator...  {:?}", account.id);
-
 					Call::set_current_validator {}
 				});
 			}
+
 			if (block_number.saturated_into::<u32>() % T::BLOCK_TO_START as u32) != 0 {
 				return;
 			}
@@ -2076,6 +2079,17 @@ pub mod pallet {
 		) -> Result<Option<EraActivity>, OCWError> {
 			let current_validator_data = Self::fetch_current_validator()?;
 
+			// todo! remove this after debugging
+			let validator_id = str::from_utf8(current_validator_data.as_slice());
+			if validator_id.is_ok() {
+				log::info!(
+					"➡️ get_era_for_validation cluster_id: {:?}  current_validator_data: {:?}",
+					cluster_id,
+					str::from_utf8(current_validator_data.as_slice()).unwrap()
+				);
+			} else {
+				log::error!("❌ Not able to find validator ");
+			}
 			let current_validator = T::AccountId::decode(&mut &current_validator_data[..]).unwrap();
 
 			let last_validated_era = Self::get_last_validated_era(cluster_id, current_validator)?
@@ -2230,7 +2244,7 @@ pub mod pallet {
 			let url = format!("{}://{}:{}/activity/eras", scheme, host, node_params.http_port);
 			let request = http::Request::get(&url);
 			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(10000));
+				.add(sp_runtime::offchain::Duration::from_millis(20000));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			// todo! filter by status == PROCESSED
@@ -2265,7 +2279,7 @@ pub mod pallet {
 
 			let request = http::Request::get(&url);
 			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(10000));
+				.add(sp_runtime::offchain::Duration::from_millis(20000));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
@@ -2298,7 +2312,7 @@ pub mod pallet {
 
 			let request = http::Request::get(&url);
 			let timeout =
-				sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(10000));
+				sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(20000));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
