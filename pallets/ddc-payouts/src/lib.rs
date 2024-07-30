@@ -361,7 +361,6 @@ pub mod pallet {
 			end_era: i64,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised); //
 																				  // todo! need to refactor this
 
@@ -397,7 +396,6 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised); //
 																				  // todo! need to refactor this
 
@@ -430,7 +428,6 @@ pub mod pallet {
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			ensure!(
@@ -605,7 +602,6 @@ pub mod pallet {
 			era: DdcEra,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
@@ -712,7 +708,6 @@ pub mod pallet {
 			total_node_usage: NodeUsage,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
@@ -748,7 +743,6 @@ pub mod pallet {
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			ensure!(
@@ -869,7 +863,6 @@ pub mod pallet {
 			era: DdcEra,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
@@ -923,7 +916,6 @@ pub mod pallet {
 			era: DdcEra,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller.clone()), Error::<T>::Unauthorised);
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)

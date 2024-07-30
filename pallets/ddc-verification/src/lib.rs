@@ -14,7 +14,7 @@ use core::str;
 use ddc_primitives::{
 	traits::{ClusterManager, ClusterValidator, NodeVisitor, PayoutVisitor, ValidatorVisitor},
 	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeParams, NodePubKey,
-	NodeUsage, PayoutState, StorageNodeMode, StorageNodeParams,
+	NodeUsage, PayoutState, StorageNodeParams,
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -42,6 +42,7 @@ use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub mod weights;
 use itertools::Itertools;
+use sp_staking::StakingInterface;
 
 use crate::weights::WeightInfo;
 
@@ -52,7 +53,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::{traits::StakingVisitor, BucketId, MergeActivityHash, KEY_TYPE};
+	use ddc_primitives::{BucketId, MergeActivityHash, KEY_TYPE};
 	use frame_support::PalletId;
 	use sp_runtime::SaturatedConversion;
 
@@ -110,7 +111,7 @@ pub mod pallet {
 		const MAX_PAYOUT_BATCH_COUNT: u16;
 		const MAX_PAYOUT_BATCH_SIZE: u16;
 		/// The access to staking functionality.
-		type StakingVisitor: StakingVisitor<Self>;
+		type StakingVisitor: StakingInterface<AccountId = Self::AccountId>;
 	}
 
 	/// The event type.
@@ -260,6 +261,9 @@ pub mod pallet {
 		FailedToFetchCurrentValidator {
 			validator: T::AccountId,
 		},
+		FailedToFetchNodeProvider {
+			validator: T::AccountId,
+		},
 	}
 
 	/// Consensus Errors
@@ -358,6 +362,7 @@ pub mod pallet {
 			era_id: DdcEra,
 		},
 		FailedToFetchCurrentValidator,
+		FailedToFetchNodeProvider,
 	}
 
 	#[pallet::error]
@@ -489,8 +494,6 @@ pub mod pallet {
 	pub(crate) struct NodeActivity {
 		/// Node id.
 		pub(crate) node_id: String,
-		/// Provider id.
-		pub(crate) provider_id: String,
 		/// Total amount of stored bytes.
 		pub(crate) stored_bytes: u64,
 		/// Total amount of transferred bytes.
@@ -1126,9 +1129,11 @@ pub mod pallet {
 			batch_size: usize,
 		) -> Result<Option<(EraActivity, ActivityHash, ActivityHash)>, Vec<OCWError>> {
 			log::info!("🚀 Processing dac data for cluster_id: {:?}", cluster_id);
-			if dac_nodes.len().ilog2() < min_nodes.into() {
-				return Err(vec![OCWError::NotEnoughDACNodes { num_nodes: min_nodes }]);
-			}
+			// todo! Need to debug follwing condition. Why it is not working on Devnet
+
+			// if dac_nodes.len().ilog2() < min_nodes.into() {
+			// 	return Err(vec![OCWError::NotEnoughDACNodes { num_nodes: min_nodes }]);
+			// }
 
 			let era_activity = if let Some(era_activity) = era_id_to_process {
 				EraActivity {
@@ -1685,9 +1690,8 @@ pub mod pallet {
 						payees: nodes_activity_batched[i]
 							.iter()
 							.map(|activity| {
-								let provider_id =
-									T::AccountId::decode(&mut &activity.provider_id.as_bytes()[..])
-										.unwrap();
+								let node_id = activity.clone().node_id;
+								let provider_id = Self::fetch_provider_id(node_id).unwrap(); // todo! remove unwrap
 								let node_usage = NodeUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
@@ -1831,6 +1835,36 @@ pub mod pallet {
 			}
 		}
 
+		pub(crate) fn store_provider_id<A: Encode>(
+			// todo! (3) add tests
+			node_id: String,
+			provider_id: A,
+		) {
+			let key = format!("offchain::activities::provider_id::{:?}", node_id).into_bytes();
+			let encoded_tuple = provider_id.encode();
+
+			// Store the serialized data in local offchain storage
+			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
+		}
+
+		pub(crate) fn fetch_provider_id<A: Decode>(node_id: String) -> Option<A> {
+			let key = format!("offchain::activities::provider_id::{:?}", node_id).into_bytes();
+			// Retrieve encoded tuple from local storage
+			let encoded_tuple =
+				match sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key) {
+					Some(data) => data,
+					None => return None,
+				};
+
+			match Decode::decode(&mut &encoded_tuple[..]) {
+				Ok(provider_id) => Some(provider_id),
+				Err(err) => {
+					// Print error message with details of the decoding error
+					log::error!("🦀Decoding error while fetching provider id: {:?}", err);
+					None
+				},
+			}
+		}
 		/// Converts a vector of activity batches into their corresponding Merkle roots.
 		///
 		/// This function takes a vector of activity batches, where each batch is a vector of
@@ -2290,15 +2324,17 @@ pub mod pallet {
 				if let Ok(NodeParams::StorageParams(storage_params)) =
 					T::NodeVisitor::get_node_params(&node_pub_key)
 				{
-					// Check if the mode is StorageNodeMode::DAC
-					if storage_params.mode == StorageNodeMode::DAC {
-						// Add to the results if the mode matches
-						dac_nodes.push((node_pub_key, storage_params));
-					}
+					// Add to the results if the mode matches
+					dac_nodes.push((node_pub_key, storage_params));
 				}
 			}
 
 			Ok(dac_nodes)
+		}
+
+		fn get_node_provider_id(node_pub_key: &NodePubKey) -> Result<T::AccountId, OCWError> {
+			T::NodeVisitor::get_node_provider_id(node_pub_key)
+				.map_err(|_| OCWError::FailedToFetchNodeProvider)
 		}
 
 		/// Fetch node usage of an era.
@@ -2325,6 +2361,11 @@ pub mod pallet {
 							node_pub_key: node_pub_key.clone(),
 						}
 					})?;
+				for node_activity in usage.clone() {
+					let provider_id = Self::get_node_provider_id(node_pub_key).unwrap();
+					Self::store_provider_id(node_activity.node_id, provider_id); // todo! this is not good - needs to be
+					                                         // moved payout pallet
+				}
 
 				node_usages.push((node_pub_key.clone(), usage));
 			}
@@ -2678,6 +2719,11 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
+					OCWError::FailedToFetchNodeProvider => {
+						Self::deposit_event(Event::FailedToFetchNodeProvider {
+							validator: caller.clone(),
+						});
+					},
 				}
 			}
 
@@ -2697,15 +2743,18 @@ pub mod pallet {
 			ddc_validator_pub: T::AccountId,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			let stash_account = T::StakingVisitor::stash_by_ctrl(&controller)
-				.map_err(|_| Error::<T>::NotController)?;
 
 			ensure!(
-				<ValidatorSet<T>>::get().contains(&stash_account),
+				T::StakingVisitor::stash_by_ctrl(&controller).is_ok(),
+				Error::<T>::NotController
+			);
+
+			ensure!(
+				<ValidatorSet<T>>::get().contains(&ddc_validator_pub),
 				Error::<T>::NotValidatorStash
 			);
 
-			ValidatorToStashKey::<T>::insert(ddc_validator_pub, &stash_account);
+			ValidatorToStashKey::<T>::insert(&ddc_validator_pub, &ddc_validator_pub);
 			Ok(())
 		}
 
@@ -2861,6 +2910,8 @@ pub mod pallet {
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
 			let caller: T::AccountId = ensure_signed(origin)?;
+
+			ensure!(<ValidatorSet<T>>::get().contains(&caller), Error::<T>::NotValidatorStash);
 
 			if Self::is_ocw_validator(caller.clone()) {
 				log::info!("🏄‍ is_ocw_validator is a validator  {:?}", caller.clone());

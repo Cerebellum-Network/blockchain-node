@@ -1,9 +1,9 @@
 use ddc_primitives::{
 	crypto, sr25519,
-	traits::{ClusterManager, ClusterQuery, ClusterValidator, StakingVisitor, StakingVisitorError},
+	traits::{ClusterManager, ClusterQuery},
 	BucketId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats,
-	ClusterStatus, PayoutError, PayoutState, StorageNodePubKey, MAX_PAYOUT_BATCH_COUNT,
-	MAX_PAYOUT_BATCH_SIZE,
+	ClusterStatus, PayoutError, PayoutState, StorageNodeMode, StorageNodePubKey,
+	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
 };
 use frame_election_provider_support::{
 	bounds::{ElectionBounds, ElectionBoundsBuilder},
@@ -17,7 +17,7 @@ use frame_support::{
 };
 use frame_system::mocking::MockBlock;
 use pallet_staking::BalanceOf;
-use sp_core::H256;
+use sp_core::{ByteArray, H256};
 use sp_runtime::{
 	curve::PiecewiseLinear,
 	testing::{TestXt, UintAuthorityId},
@@ -230,26 +230,7 @@ impl crate::Config for Test {
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
-	type StakingVisitor = TestStakingVisitor;
-}
-
-pub struct TestStakingVisitor;
-impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
-	fn has_activated_stake(
-		_node_pub_key: &NodePubKey,
-		_cluster_id: &ClusterId,
-	) -> Result<bool, StakingVisitorError> {
-		Ok(true)
-	}
-	fn has_stake(_node_pub_key: &NodePubKey) -> bool {
-		true
-	}
-	fn has_chilling_attempt(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
-		Ok(false)
-	}
-	fn stash_by_ctrl(controller: &T::AccountId) -> Result<T::AccountId, StakingVisitorError> {
-		Ok(controller.clone())
-	}
+	type StakingVisitor = Staking;
 }
 
 // Build genesis storage according to the mock runtime.
@@ -327,6 +308,16 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 			.assimilate_storage(&mut storage);
 
 	sp_io::TestExternalities::new(storage)
+}
+
+pub struct TestClusterValidator;
+impl<T: Config> ClusterValidator<T> for TestClusterValidator {
+	fn set_last_validated_era(
+		_cluster_id: &ClusterId,
+		_era_id: DdcEra,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
 }
 
 pub struct MockPayoutVisitor;
@@ -578,17 +569,10 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 	}
 
 	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
-		unimplemented!()
-	}
-}
+		let temp: AccountId = AccountId::from([0xa; 32]);
+		let account_1 = T::AccountId::decode(&mut &temp.as_slice()[..]).unwrap();
 
-pub struct TestClusterValidator;
-impl<T: Config> ClusterValidator<T> for TestClusterValidator {
-	fn set_last_validated_era(
-		_cluster_id: &ClusterId,
-		_era_id: DdcEra,
-	) -> Result<(), DispatchError> {
-		unimplemented!()
+		Ok(account_1)
 	}
 }
 

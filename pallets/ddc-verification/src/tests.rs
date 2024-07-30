@@ -1,5 +1,5 @@
 use ddc_primitives::{
-	ClusterId, MergeActivityHash, StorageNodeParams, StorageNodePubKey, KEY_TYPE,
+	ClusterId, MergeActivityHash, StorageNodeMode, StorageNodeParams, StorageNodePubKey, KEY_TYPE,
 };
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{
@@ -43,7 +43,6 @@ fn get_validators() -> Vec<AccountId32> {
 fn get_node_activities() -> Vec<NodeActivity> {
 	let node1 = NodeActivity {
 		node_id: "0".to_string(),
-		provider_id: "0".to_string(),
 		stored_bytes: 100,
 		transferred_bytes: 50,
 		number_of_puts: 10,
@@ -51,7 +50,6 @@ fn get_node_activities() -> Vec<NodeActivity> {
 	};
 	let node2 = NodeActivity {
 		node_id: "1".to_string(),
-		provider_id: "1".to_string(),
 		stored_bytes: 101,
 		transferred_bytes: 51,
 		number_of_puts: 11,
@@ -59,7 +57,6 @@ fn get_node_activities() -> Vec<NodeActivity> {
 	};
 	let node3 = NodeActivity {
 		node_id: "2".to_string(),
-		provider_id: "2".to_string(),
 		stored_bytes: 102,
 		transferred_bytes: 52,
 		number_of_puts: 12,
@@ -67,7 +64,6 @@ fn get_node_activities() -> Vec<NodeActivity> {
 	};
 	let node4 = NodeActivity {
 		node_id: "3".to_string(),
-		provider_id: "3".to_string(),
 		stored_bytes: 103,
 		transferred_bytes: 53,
 		number_of_puts: 13,
@@ -75,7 +71,6 @@ fn get_node_activities() -> Vec<NodeActivity> {
 	};
 	let node5 = NodeActivity {
 		node_id: "4".to_string(),
-		provider_id: "4".to_string(),
 		stored_bytes: 104,
 		transferred_bytes: 54,
 		number_of_puts: 14,
@@ -103,7 +98,6 @@ fn fetch_node_usage_works() {
 
 		// Create a sample NodeActivity instance
 		let node_activity1 = NodeActivity {
-			provider_id: "1".to_string(),
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -111,7 +105,6 @@ fn fetch_node_usage_works() {
 			number_of_gets: 20,
 		};
 		let node_activity2 = NodeActivity {
-			provider_id: "2".to_string(),
 			node_id: "2".to_string(),
 			stored_bytes: 110,
 			transferred_bytes: 510,
@@ -538,7 +531,6 @@ fn test_get_consensus_nodes_activity_success() {
 		(
 			node_pubkey_0,
 			vec![NodeActivity {
-				provider_id: "0".to_string(),
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -549,7 +541,6 @@ fn test_get_consensus_nodes_activity_success() {
 		(
 			node_pubkey_1,
 			vec![NodeActivity {
-				provider_id: "0".to_string(),
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -560,7 +551,6 @@ fn test_get_consensus_nodes_activity_success() {
 		(
 			node_pubkey_2,
 			vec![NodeActivity {
-				provider_id: "0".to_string(),
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -679,7 +669,6 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 		(
 			node_pubkey_0,
 			vec![NodeActivity {
-				provider_id: "0".to_string(),
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -690,7 +679,6 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 		(
 			node_pubkey_1,
 			vec![NodeActivity {
-				provider_id: "0".to_string(),
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -1008,7 +996,6 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 			node_pubkey_0,
 			vec![NodeActivity {
 				node_id: "0".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -1019,7 +1006,6 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 			node_pubkey_1,
 			vec![NodeActivity {
 				node_id: "0".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
 				number_of_puts: 20,
@@ -1030,7 +1016,6 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 			node_pubkey_2,
 			vec![NodeActivity {
 				node_id: "0".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 300,
 				transferred_bytes: 150,
 				number_of_puts: 30,
@@ -1184,7 +1169,6 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 			node_pubkey_0.clone(),
 			vec![NodeActivity {
 				node_id: "0".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -1195,7 +1179,6 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 			node_pubkey_1.clone(),
 			vec![NodeActivity {
 				node_id: "0".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
 				number_of_puts: 20,
@@ -1206,7 +1189,6 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 			node_pubkey_2.clone(),
 			vec![NodeActivity {
 				node_id: "0".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 300,
 				transferred_bytes: 150,
 				number_of_puts: 30,
@@ -1217,7 +1199,6 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 			node_pubkey_0,
 			vec![NodeActivity {
 				node_id: "1".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -1228,7 +1209,6 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 			node_pubkey_1,
 			vec![NodeActivity {
 				node_id: "1".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
 				number_of_puts: 20,
@@ -1239,7 +1219,6 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 			node_pubkey_2,
 			vec![NodeActivity {
 				node_id: "1".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 300,
 				transferred_bytes: 150,
 				number_of_puts: 30,
@@ -1292,7 +1271,6 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 			node_pubkey_0.clone(),
 			vec![NodeActivity {
 				node_id: "0".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -1303,7 +1281,6 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 			node_pubkey_1.clone(),
 			vec![NodeActivity {
 				node_id: "0".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
 				number_of_puts: 20,
@@ -1314,7 +1291,6 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 			node_pubkey_2.clone(),
 			vec![NodeActivity {
 				node_id: "0".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 300,
 				transferred_bytes: 150,
 				number_of_puts: 30,
@@ -1325,7 +1301,6 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 			node_pubkey_0,
 			vec![NodeActivity {
 				node_id: "1".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
@@ -1336,7 +1311,6 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 			node_pubkey_1,
 			vec![NodeActivity {
 				node_id: "1".to_string(),
-				provider_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
 				number_of_puts: 20,
