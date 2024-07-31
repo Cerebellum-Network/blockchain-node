@@ -48,6 +48,8 @@ wasmi = { version = "0.13", default-features = false }
 wasmtime = { version = "1.0.0", default-features = false }
 environmental = { version = "1.1.3" }
 thiserror = { version = "1.0.48" }
+wasm-instrument = { version = "0.4.0" }
+parity-wasm = { version = "0.45.0" }
 
 # Substrate Dependencies
 # Please keey format such that:

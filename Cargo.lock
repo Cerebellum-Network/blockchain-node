@@ -979,6 +979,7 @@ dependencies = [
  "log",
  "node-primitives",
  "parity-scale-codec",
+ "parity-wasm",
  "parking_lot 0.12.1",
  "sc-client-api",
  "sc-client-db",
@@ -997,6 +998,7 @@ dependencies = [
  "sp-std",
  "sp-wasm-interface",
  "thiserror",
+ "wasm-instrument 0.4.0",
  "wasmi 0.13.2",
  "wasmtime 1.0.2",
 ]

@@ -37,6 +37,8 @@ node-primitives = { workspace = true, default-features = true }
 sc-state-db = { workspace = true }
 sc-client-api = { workspace = true, default-features = true }
 sp-blockchain = { workspace = true, default-features = true }
+wasm-instrument = { workspace = true, default-features = true }
+parity-wasm = { workspace = true }
 
 [features]
 default = ["std"]

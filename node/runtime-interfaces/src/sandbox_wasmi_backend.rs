@@ -3,6 +3,7 @@ use std::{fmt, rc::Rc, str};
 use codec::{Decode, Encode};
 use sc_executor::error::{Error, Result};
 use sp_wasm_interface::{FunctionContext, Pointer, ReturnValue, Value, WordSize};
+use wasm_instrument::gas_metering;
 use wasmi::{
 	memory_units::Pages, ImportResolver, MemoryInstance, ModuleInstance, RuntimeArgs, RuntimeValue,
 	Trap,

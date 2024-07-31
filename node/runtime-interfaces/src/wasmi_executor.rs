@@ -1095,8 +1095,13 @@ pub fn create_runtime(
 	let data_segments_snapshot =
 		DataSegmentsSnapshot::take(&blob).map_err(|e| WasmError::Other(e.to_string()))?;
 
-	let module =
-		Module::from_parity_wasm_module(blob.into_inner()).map_err(|_| WasmError::InvalidModule)?;
+	let module: parity_wasm::elements::Module = blob.into_inner();
+
+	// let rules = wasm_instrument::gas_metering::ConstantCostRules::default();
+	// let backend = wasm_instrument::gas_metering::host_function::Injector::new("env", "gas");
+	// let module = wasm_instrument::gas_metering::inject(module, backend, &rules).unwrap();
+
+	let module = Module::from_parity_wasm_module(module).map_err(|_| WasmError::InvalidModule)?;
 
 	let global_vals_snapshot = {
 		let (instance, _, _) = instantiate_module(
