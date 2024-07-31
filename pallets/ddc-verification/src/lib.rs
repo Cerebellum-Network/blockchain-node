@@ -2079,17 +2079,6 @@ pub mod pallet {
 		) -> Result<Option<EraActivity>, OCWError> {
 			let current_validator_data = Self::fetch_current_validator()?;
 
-			// todo! remove this after debugging
-			let validator_id = str::from_utf8(current_validator_data.as_slice());
-			if validator_id.is_ok() {
-				log::info!(
-					"➡️ get_era_for_validation cluster_id: {:?}  current_validator_data: {:?}",
-					cluster_id,
-					str::from_utf8(current_validator_data.as_slice()).unwrap()
-				);
-			} else {
-				log::error!("❌ Not able to find validator ");
-			}
 			let current_validator = T::AccountId::decode(&mut &current_validator_data[..]).unwrap();
 
 			let last_validated_era = Self::get_last_validated_era(cluster_id, current_validator)?
