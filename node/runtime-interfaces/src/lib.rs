@@ -93,10 +93,6 @@ pub fn create_wasmi_instance() -> WasmiInstance {
 	// applied.
 	let runtime = &include_bytes!("./node_runtime_266.wasm")[..];
 
-	// let runtime_cow = get_runtime_code();
-	// let runtime: &[u8] = &*runtime_cow;
-	// let runtime: &[u8] = &MY_RUNTIME;
-
 	log::info!(target: "wasm_binary_unwrap", "LENGHT OF WASM BINARY {} ", runtime.len());
 	let blob = sc_executor_common::runtime_blob::RuntimeBlob::uncompress_if_needed(runtime.clone())
 		.expect("Runtime Blob to be ok");

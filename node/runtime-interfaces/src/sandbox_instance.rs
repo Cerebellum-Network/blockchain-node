@@ -481,10 +481,11 @@ fn decode_environment_definition(
 					guest_to_supervisor_mapping.define(SupervisorFuncIndex(func_idx as usize));
 
 				log::info!(
-					"ENV DEF func_map: externals_idx={:?}, module_str={:?}, field_str={:?}",
+					"ENV DEF func_map: externals_idx={:?}, func_idx={:?}, module_str={:?}, field_str={:?}",
 					// module,
 					// field,
 					externals_idx,
+					SupervisorFuncIndex(func_idx as usize),
 					String::from_utf8(module.clone()).unwrap_or(String::from("UNKNOWN !!!")),
 					String::from_utf8(field.clone()).unwrap_or(String::from("UNKNOWN !!!")),
 				);
