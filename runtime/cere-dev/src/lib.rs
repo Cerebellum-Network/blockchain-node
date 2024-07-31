@@ -501,7 +501,6 @@ impl_opaque_keys! {
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
-		pub ddc_verification: DdcVerification,
 	}
 }
 
@@ -1403,7 +1402,11 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
 /// Runtime migrations
-type Migrations = (pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,);
+type Migrations = (
+	pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
+	pallet_ddc_customers::migration::MigrateToV2<Runtime>,
+	migrations::Unreleased,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
