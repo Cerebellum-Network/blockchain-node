@@ -39,14 +39,6 @@ use sp_std::borrow::Cow;
 use sp_wasm_interface::{FunctionContext, HostFunctions, Pointer};
 use wasmi::{memory_units::Pages, MemoryInstance, TableInstance};
 
-// extracted from this node
-mod my_runtime;
-use my_runtime::MY_RUNTIME;
-
-// extracted from working node
-mod runtime_from_working_node;
-use runtime_from_working_node::RUNTIME_FROM_WORKING_NODE;
-
 mod freeing_bump;
 
 mod util;
