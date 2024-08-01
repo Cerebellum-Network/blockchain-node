@@ -784,9 +784,10 @@ pub mod pallet {
 			) {
 				Ok(Some((era_id, batch_payout))) => {
 					log::info!(
-						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
+						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:?}",
 						cluster_id,
-						era_id
+						era_id,
+						batch_payout.payers
 					);
 
 					if let Some((_, res)) =
