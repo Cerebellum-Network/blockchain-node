@@ -1433,7 +1433,7 @@ pub mod pallet {
 							.map(|activity| {
 								let customer_id = activity.clone().customer_id.into_bytes();
 								let account_id =
-									T::AccountId::decode(&mut &customer_id[..]).unwrap();
+									T::AccountId::decode(&mut &customer_id[..]).unwrap(); // todo! Remove Unwrap
 								let customer_usage = CustomerUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
