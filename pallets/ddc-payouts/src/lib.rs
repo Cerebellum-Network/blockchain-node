@@ -36,8 +36,8 @@ use ddc_primitives::{
 		pallet::PalletVisitor as PalletVisitorType,
 		payout::PayoutVisitor,
 	},
-	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeUsage, PayoutError,
-	PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
+	BatchIndex, BucketId, BucketVisitorError, ClusterId, CustomerUsage, DdcEra, MMRProof,
+	NodeUsage, PayoutError, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -51,7 +51,6 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_runtime::{traits::Convert, PerThing, Perquintill};
 use sp_std::prelude::*;
-
 /// Stores reward in tokens(units) of node provider as per NodeUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct NodeReward {
@@ -255,6 +254,9 @@ pub mod pallet {
 		ScoreRetrievalError,
 		BadRequest,
 		BatchValidationFailed,
+		NoBucketWithId,
+		NotBucketOwner,
+		IncorrectClusterId,
 	}
 
 	#[pallet::storage]
@@ -1091,7 +1093,7 @@ pub mod pallet {
 
 		let mut total_stored_bytes =
 			T::BucketVisitor::get_total_customer_usage(cluster_id, bucket_id, customer_id)
-				.map_err(|_| Error::<T>::NotExpectedBucketState)?
+				.map_err(Into::<Error<T>>::into)?
 				.map_or(0, |customer_usage| customer_usage.stored_bytes);
 		total_stored_bytes += usage.stored_bytes;
 
@@ -1112,6 +1114,16 @@ pub mod pallet {
 			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 		Ok(total)
+	}
+
+	impl<T> From<BucketVisitorError> for Error<T> {
+		fn from(error: BucketVisitorError) -> Self {
+			match error {
+				BucketVisitorError::NoBucketWithId => Error::<T>::NoBucketWithId,
+				BucketVisitorError::NotBucketOwner => Error::<T>::NotBucketOwner,
+				BucketVisitorError::IncorrectClusterId => Error::<T>::IncorrectClusterId,
+			}
+		}
 	}
 
 	#[pallet::genesis_config]
@@ -1165,7 +1177,7 @@ pub mod pallet {
 			start_era: i64,
 			end_era: i64,
 		) -> DispatchResult {
-			log::info!("🏭begin_billing_report called by: {:?}", origin);
+			log::info!("🏭begin_billing_report called by: {:#?}", origin.encode());
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::begin_billing_report(origin, cluster_id, era_id, start_era, end_era)
 		}
@@ -1176,7 +1188,7 @@ pub mod pallet {
 			era_id: DdcEra,
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
-			log::info!("🏭begin_charging_customers called by: {:?}", origin);
+			log::info!("🏭begin_charging_customers called by: {:#?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::begin_charging_customers(origin, cluster_id, era_id, max_batch_index)
 		}
@@ -1189,7 +1201,7 @@ pub mod pallet {
 			payers: &[(T::AccountId, BucketId, CustomerUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
-			log::info!("🏭send_charging_customers_batch called by: {:?}", origin);
+			log::info!("🏭send_charging_customers_batch called by: {:#?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::send_charging_customers_batch(
 				origin,
@@ -1206,7 +1218,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
-			log::info!("🏭end_charging_customers called by: {:?}", origin);
+			log::info!("🏭end_charging_customers called by: {:#?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::end_charging_customers(origin, cluster_id, era_id)
 		}
@@ -1218,7 +1230,7 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 			total_node_usage: NodeUsage,
 		) -> DispatchResult {
-			log::info!("🏭begin_rewarding_providers called by: {:?}", origin);
+			log::info!("🏭begin_rewarding_providers called by: {:#?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::begin_rewarding_providers(
 				origin,
@@ -1237,7 +1249,7 @@ pub mod pallet {
 			payees: &[(T::AccountId, NodeUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
-			log::info!("🏭send_rewarding_providers_batch called by: {:?}", origin);
+			log::info!("🏭send_rewarding_providers_batch called by: {:#?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::send_rewarding_providers_batch(
 				origin,
@@ -1254,7 +1266,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
-			log::info!("🏭end_rewarding_providers called by: {:?}", origin);
+			log::info!("🏭end_rewarding_providers called by: {:#?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::end_rewarding_providers(origin, cluster_id, era_id)
 		}
@@ -1264,7 +1276,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
-			log::info!("🏭end_billing_report called by: {:?}", origin);
+			log::info!("🏭end_billing_report called by: {:#?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::end_billing_report(origin, cluster_id, era_id)
 		}
