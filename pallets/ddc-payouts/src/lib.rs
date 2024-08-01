@@ -361,8 +361,7 @@ pub mod pallet {
 			end_era: i64,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised); //
-																				  // todo! need to refactor this
+			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
 			ensure!(
 				ActiveBillingReports::<T>::try_get(cluster_id, era).is_err(),
@@ -430,6 +429,9 @@ pub mod pallet {
 			let caller = ensure_signed(origin)?;
 			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
 
+			// todo! remove this log after debugging
+			log::info!("🏭send_charging_customers_batch batch_index: {:?}", batch_index);
+
 			ensure!(
 				!payers.is_empty() && payers.len() <= MaxBatchSize::get() as usize,
 				Error::<T>::BatchSizeIsOutOfBounds
@@ -442,10 +444,21 @@ pub mod pallet {
 				billing_report.state == PayoutState::ChargingCustomers,
 				Error::<T>::NotExpectedState
 			);
+
+			// todo! remove this log after debugging
+			log::info!(
+				"🏭send_charging_customers_batch billing_report.charging_max_batch_index: {:?}",
+				billing_report.charging_max_batch_index
+			);
+
 			ensure!(
 				billing_report.charging_max_batch_index >= batch_index,
 				Error::<T>::BatchIndexIsOutOfRange
 			);
+
+			// todo! remove this log after debugging
+			log::info!("🏭send_charging_customers_batch billing_report.charging_processed_batches.contains(&batch_index): {:?}", billing_report.charging_processed_batches.contains(&batch_index));
+
 			ensure!(
 				!billing_report.charging_processed_batches.contains(&batch_index),
 				Error::<T>::BatchIndexAlreadyProcessed
@@ -464,6 +477,8 @@ pub mod pallet {
 
 			let mut updated_billing_report = billing_report;
 			for (customer_id, bucket_id, customer_usage) in payers {
+				// todo! remove this log after debugging
+				log::info!("🏭send_charging_customers_batch customer_id: {:?} -  bucket_id: {:?} - customer_usage:{:?}", customer_id, bucket_id, customer_usage);
 				let mut customer_charge = get_customer_charge::<T>(
 					&cluster_id,
 					&customer_usage,
@@ -1150,6 +1165,7 @@ pub mod pallet {
 			start_era: i64,
 			end_era: i64,
 		) -> DispatchResult {
+			log::info!("🏭begin_billing_report called by: {:?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::begin_billing_report(origin, cluster_id, era_id, start_era, end_era)
 		}
@@ -1160,6 +1176,7 @@ pub mod pallet {
 			era_id: DdcEra,
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
+			log::info!("🏭begin_charging_customers called by: {:?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::begin_charging_customers(origin, cluster_id, era_id, max_batch_index)
 		}
@@ -1172,6 +1189,7 @@ pub mod pallet {
 			payers: &[(T::AccountId, BucketId, CustomerUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
+			log::info!("🏭send_charging_customers_batch called by: {:?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::send_charging_customers_batch(
 				origin,
@@ -1188,6 +1206,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
+			log::info!("🏭end_charging_customers called by: {:?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::end_charging_customers(origin, cluster_id, era_id)
 		}
@@ -1199,6 +1218,7 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 			total_node_usage: NodeUsage,
 		) -> DispatchResult {
+			log::info!("🏭begin_rewarding_providers called by: {:?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::begin_rewarding_providers(
 				origin,
@@ -1217,6 +1237,7 @@ pub mod pallet {
 			payees: &[(T::AccountId, NodeUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
+			log::info!("🏭send_rewarding_providers_batch called by: {:?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::send_rewarding_providers_batch(
 				origin,
@@ -1233,6 +1254,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
+			log::info!("🏭end_rewarding_providers called by: {:?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::end_rewarding_providers(origin, cluster_id, era_id)
 		}
@@ -1242,6 +1264,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
+			log::info!("🏭end_billing_report called by: {:?}", origin);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::end_billing_report(origin, cluster_id, era_id)
 		}
