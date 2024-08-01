@@ -784,7 +784,7 @@ pub mod pallet {
 			) {
 				Ok(Some((era_id, batch_payout))) => {
 					log::info!(
-						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:#?}",
+						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:?}",
 						cluster_id,
 						era_id,
 						batch_payout.payers
@@ -1431,9 +1431,9 @@ pub mod pallet {
 						payers: customers_activity_batched[i]
 							.iter()
 							.map(|activity| {
+								let customer_id = activity.clone().customer_id.into_bytes();
 								let account_id =
-									T::AccountId::decode(&mut &activity.customer_id.as_bytes()[..])
-										.unwrap();
+									T::AccountId::decode(&mut &customer_id[..]).unwrap();
 								let customer_usage = CustomerUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
@@ -2336,7 +2336,7 @@ pub mod pallet {
 					T::NodeVisitor::get_node_params(&node_pub_key)
 				{
 					log::info!(
-						"🏭📝Get DAC Node for cluster_id: {:?} and node_pub_key: {:#?}",
+						"🏭📝Get DAC Node for cluster_id: {:?} and node_pub_key: {:?}",
 						cluster_id,
 						node_pub_key.encode()
 					);
