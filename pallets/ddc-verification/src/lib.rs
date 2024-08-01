@@ -264,6 +264,9 @@ pub mod pallet {
 		FailedToFetchNodeProvider {
 			validator: T::AccountId,
 		},
+		ValidatorKeySet {
+			validator: T::AccountId,
+		},
 	}
 
 	/// Consensus Errors
@@ -781,9 +784,10 @@ pub mod pallet {
 			) {
 				Ok(Some((era_id, batch_payout))) => {
 					log::info!(
-						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
+						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:?}",
 						cluster_id,
-						era_id
+						era_id,
+						batch_payout.payers
 					);
 
 					if let Some((_, res)) =
@@ -2331,6 +2335,11 @@ pub mod pallet {
 				if let Ok(NodeParams::StorageParams(storage_params)) =
 					T::NodeVisitor::get_node_params(&node_pub_key)
 				{
+					log::info!(
+						"🏭📝Get DAC Node for cluster_id: {:?} and node_pub_key: {:?}",
+						cluster_id,
+						node_pub_key
+					);
 					// Add to the results if the mode matches
 					dac_nodes.push((node_pub_key, storage_params));
 				}
@@ -2762,6 +2771,7 @@ pub mod pallet {
 			);
 
 			ValidatorToStashKey::<T>::insert(&ddc_validator_pub, &ddc_validator_pub);
+			Self::deposit_event(Event::<T>::ValidatorKeySet { validator: ddc_validator_pub });
 			Ok(())
 		}
 
@@ -2912,18 +2922,7 @@ pub mod pallet {
 			T::ClusterValidator::set_last_validated_era(&cluster_id, era_id)
 		}
 
-		// todo! Need to remove this
 		#[pallet::call_index(11)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
-			let validator = ensure_signed(origin)?;
-
-			ValidatorSet::<T>::append(validator);
-
-			Ok(())
-		}
-
-		#[pallet::call_index(12)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_cluster_to_validate(
 			origin: OriginFor<T>,
@@ -2931,6 +2930,19 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 			ClusterToValidate::<T>::put(cluster_id);
+
+			Ok(())
+		}
+
+		// todo! Need to remove this
+		#[pallet::call_index(12)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
+			let validator = ensure_signed(origin)?;
+
+			if !<ValidatorSet<T>>::get().contains(&validator) {
+				ValidatorSet::<T>::append(validator);
+			}
 
 			Ok(())
 		}
