@@ -784,7 +784,7 @@ pub mod pallet {
 			) {
 				Ok(Some((era_id, batch_payout))) => {
 					log::info!(
-						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:?}",
+						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:#?}",
 						cluster_id,
 						era_id,
 						batch_payout.payers
@@ -2336,9 +2336,9 @@ pub mod pallet {
 					T::NodeVisitor::get_node_params(&node_pub_key)
 				{
 					log::info!(
-						"🏭📝Get DAC Node for cluster_id: {:?} and node_pub_key: {:?}",
+						"🏭📝Get DAC Node for cluster_id: {:?} and node_pub_key: {:#?}",
 						cluster_id,
-						node_pub_key
+						node_pub_key.encode()
 					);
 					// Add to the results if the mode matches
 					dac_nodes.push((node_pub_key, storage_params));

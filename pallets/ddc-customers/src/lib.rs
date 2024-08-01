@@ -655,7 +655,7 @@ pub mod pallet {
 		) -> Result<Option<CustomerUsage>, BucketVisitorError> {
 			let bucket = Self::buckets(bucket_id).ok_or(BucketVisitorError::NoBucketWithId)?;
 			ensure!(bucket.owner_id == *content_owner, BucketVisitorError::NotBucketOwner);
-			ensure!(bucket.cluster_id == *cluster_id, BucketVisitorError::NoBucketWithId);
+			ensure!(bucket.cluster_id == *cluster_id, BucketVisitorError::IncorrectClusterId);
 
 			Ok(bucket.total_customers_usage)
 		}
