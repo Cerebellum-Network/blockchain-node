@@ -258,6 +258,7 @@ pub enum NodeRepositoryError {
 pub enum BucketVisitorError {
 	NoBucketWithId,
 	NotBucketOwner,
+	IncorrectClusterId,
 }
 
 #[derive(Debug, PartialEq)]

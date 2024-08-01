@@ -36,8 +36,8 @@ use ddc_primitives::{
 		pallet::PalletVisitor as PalletVisitorType,
 		payout::PayoutVisitor,
 	},
-	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeUsage, PayoutError,
-	PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
+	BatchIndex, BucketId, BucketVisitorError, ClusterId, CustomerUsage, DdcEra, MMRProof,
+	NodeUsage, PayoutError, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -51,7 +51,6 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_runtime::{traits::Convert, PerThing, Perquintill};
 use sp_std::prelude::*;
-
 /// Stores reward in tokens(units) of node provider as per NodeUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct NodeReward {
@@ -255,6 +254,9 @@ pub mod pallet {
 		ScoreRetrievalError,
 		BadRequest,
 		BatchValidationFailed,
+		NoBucketWithId,
+		NotBucketOwner,
+		IncorrectClusterId,
 	}
 
 	#[pallet::storage]
@@ -1091,7 +1093,7 @@ pub mod pallet {
 
 		let mut total_stored_bytes =
 			T::BucketVisitor::get_total_customer_usage(cluster_id, bucket_id, customer_id)
-				.map_err(|_| Error::<T>::NotExpectedBucketState)?
+				.map_err(Into::<Error<T>>::into)?
 				.map_or(0, |customer_usage| customer_usage.stored_bytes);
 		total_stored_bytes += usage.stored_bytes;
 
@@ -1112,6 +1114,16 @@ pub mod pallet {
 			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 		Ok(total)
+	}
+
+	impl<T> From<BucketVisitorError> for Error<T> {
+		fn from(error: BucketVisitorError) -> Self {
+			match error {
+				BucketVisitorError::NoBucketWithId => Error::<T>::NoBucketWithId,
+				BucketVisitorError::NotBucketOwner => Error::<T>::NotBucketOwner,
+				BucketVisitorError::IncorrectClusterId => Error::<T>::IncorrectClusterId,
+			}
+		}
 	}
 
 	#[pallet::genesis_config]
