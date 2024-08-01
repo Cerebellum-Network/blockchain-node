@@ -296,6 +296,16 @@ pub fn wasmi_instantiate(
 ) -> std::result::Result<Rc<SandboxInstance>, InstantiationError> {
 	let wasmi_module =
 		wasmi::Module::from_buffer(wasm).map_err(|_| InstantiationError::ModuleDecoding)?;
+
+	// let module = parity_wasm::elements::Module::from_bytes(wasm)
+	// 	.expect("Contract wasm to be parity_wasm::elements::Module");
+	// let rules = wasm_instrument::gas_metering::ConstantCostRules::default();
+	// let backend = wasm_instrument::gas_metering::host_function::Injector::new("seal0", "gas");
+	// let module = wasm_instrument::gas_metering::inject(module, backend, &rules)
+	// 	.expect("Gas meter to be injected to contract wasm");
+	// let wasmi_module = wasmi::Module::from_parity_wasm_module(module)
+	// 	.map_err(|_| InstantiationError::ModuleDecoding)?;
+
 	let wasmi_instance = ModuleInstance::new(&wasmi_module, &guest_env.imports)
 		.map_err(|_| InstantiationError::Instantiation)?;
 

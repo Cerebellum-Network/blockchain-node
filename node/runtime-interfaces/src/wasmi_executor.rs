@@ -561,31 +561,6 @@ pub struct WasmiRuntime {
 	data_segments_snapshot: DataSegmentsSnapshot,
 }
 
-impl WasmModule for WasmiRuntime {
-	fn new_instance(&self) -> std::result::Result<Box<dyn WasmInstance>, Error> {
-		// Instantiate this module.
-		let (instance, missing_functions, memory) = instantiate_module(
-			self.heap_pages as usize,
-			&self.module,
-			&self.host_functions,
-			self.allow_missing_func_imports,
-		)
-		.map_err(|e| WasmError::Instantiation(e.to_string()))?;
-
-		Ok(Box::new(WasmiInstance {
-			instance,
-			memory,
-			global_vals_snapshot: self.global_vals_snapshot.clone(),
-			data_segments_snapshot: self.data_segments_snapshot.clone(),
-			host_functions: self.host_functions.clone(),
-			allow_missing_func_imports: self.allow_missing_func_imports,
-			missing_functions: Arc::new(missing_functions),
-			is_inited: false,
-			sandbox_store: None,
-		}))
-	}
-}
-
 /// A state snapshot of an instance taken just after instantiation.
 ///
 /// It is used for restoring the state of the module after execution.
@@ -1122,6 +1097,31 @@ pub fn create_runtime(
 		allow_missing_func_imports,
 		heap_pages,
 	})
+}
+
+impl WasmModule for WasmiRuntime {
+	fn new_instance(&self) -> std::result::Result<Box<dyn WasmInstance>, Error> {
+		// Instantiate this module.
+		let (instance, missing_functions, memory) = instantiate_module(
+			self.heap_pages as usize,
+			&self.module,
+			&self.host_functions,
+			self.allow_missing_func_imports,
+		)
+		.map_err(|e| WasmError::Instantiation(e.to_string()))?;
+
+		Ok(Box::new(WasmiInstance {
+			instance,
+			memory,
+			global_vals_snapshot: self.global_vals_snapshot.clone(),
+			data_segments_snapshot: self.data_segments_snapshot.clone(),
+			host_functions: self.host_functions.clone(),
+			allow_missing_func_imports: self.allow_missing_func_imports,
+			missing_functions: Arc::new(missing_functions),
+			is_inited: false,
+			sandbox_store: None,
+		}))
+	}
 }
 
 // THIS impl block was added to experiment with the WasmiInstance, it is not a part of original
