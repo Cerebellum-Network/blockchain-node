@@ -1431,9 +1431,11 @@ pub mod pallet {
 						payers: customers_activity_batched[i]
 							.iter()
 							.map(|activity| {
-								let customer_id = activity.clone().customer_id.into_bytes();
-								let account_id =
-									T::AccountId::decode(&mut &customer_id[..]).unwrap(); // todo! Remove Unwrap
+								let binding = activity.clone();
+								let customer_id = binding.customer_id.as_str();
+								let key = customer_id.trim_start_matches("0x");
+								let h_key = hex::decode(key).unwrap();
+								let account_id = T::AccountId::decode(&mut &h_key[..]).unwrap(); // todo! Remove Unwrap
 								let customer_usage = CustomerUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,

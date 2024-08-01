@@ -19,6 +19,7 @@ frame-benchmarking = { workspace = true, optional = true }
 frame-election-provider-support = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+hex = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 polkadot-ckb-merkle-mountain-range = { workspace = true }
@@ -44,6 +45,7 @@ sp-keystore = { workspace = true }
 [features]
 default = ["std"]
 std = [
+  "hex/std",
   "polkadot-ckb-merkle-mountain-range/std",
   "codec/std",
   "frame-benchmarking?/std",
