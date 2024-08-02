@@ -1073,7 +1073,10 @@ pub fn create_runtime(
 	let module: parity_wasm::elements::Module = blob.into_inner();
 
 	// let rules = wasm_instrument::gas_metering::ConstantCostRules::default();
-	// let backend = wasm_instrument::gas_metering::host_function::Injector::new("env", "gas");
+	// let backend = wasm_instrument::gas_metering::host_function::Injector::new(
+	// 	"env",
+	// 	"ext_custom_host_functions_gas_version_1",
+	// );
 	// let module = wasm_instrument::gas_metering::inject(module, backend, &rules).unwrap();
 
 	let module = Module::from_parity_wasm_module(module).map_err(|_| WasmError::InvalidModule)?;

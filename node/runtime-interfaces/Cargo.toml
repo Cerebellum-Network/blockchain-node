@@ -39,6 +39,10 @@ sc-client-api = { workspace = true, default-features = true }
 sp-blockchain = { workspace = true, default-features = true }
 wasm-instrument = { workspace = true, default-features = true }
 parity-wasm = { workspace = true }
+pallet-contracts-proc-macro = { workspace = true }
+pallet-contracts = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
 
 [features]
 default = ["std"]

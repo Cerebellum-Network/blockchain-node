@@ -99,6 +99,9 @@ pub fn create_wasmi_instance() -> WasmiInstance {
 	host_functions.extend(sandbox_host_functions);
 	host_functions.extend(benchmarking_host_functions);
 
+	let custom_host_fn = custom_host_functions::HostFunctions::host_functions();
+	host_functions.extend(custom_host_fn);
+
 	let runtime = create_runtime(blob, heap_pages, host_functions, allow_missing_func_imports)
 		// .map(|runtime| -> Arc<dyn WasmModule> { Arc::new(runtime) })
 		.expect("Runtime to be created");
@@ -346,4 +349,9 @@ pub trait Sandbox {
 			.get_global_val(instance_idx, name)
 			.expect("Failed to get global from sandbox")
 	}
+}
+
+#[runtime_interface]
+pub trait CustomHostFunctions {
+	fn gas(amount: u64) {}
 }
