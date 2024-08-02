@@ -257,6 +257,7 @@ pub mod pallet {
 		NoBucketWithId,
 		NotBucketOwner,
 		IncorrectClusterId,
+		ClusterProtocolParamsNotSet,
 	}
 
 	#[pallet::storage]
@@ -624,7 +625,7 @@ pub mod pallet {
 
 			// deduct fees
 			let fees = T::ClusterProtocol::get_fees_params(&cluster_id)
-				.map_err(|_| Error::<T>::NotExpectedClusterState)?;
+				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 
 			let total_customer_charge = (|| -> Option<u128> {
 				billing_report
