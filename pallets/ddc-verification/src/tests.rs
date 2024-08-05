@@ -13,7 +13,7 @@ use sp_io::TestExternalities;
 use sp_keystore::{testing::MemoryKeystore, Keystore, KeystoreExt};
 use sp_runtime::AccountId32;
 
-use crate::{mock::*, Error, NodeActivity, OCWError, *};
+use crate::{mock::*, Error, NodeActivity, OCWError, OCWError::TotalNodeUsageLessThanZero, *};
 
 #[allow(dead_code)]
 fn register_validators(validators: Vec<AccountId32>) {
@@ -43,14 +43,14 @@ fn get_validators() -> Vec<AccountId32> {
 fn get_node_activities() -> Vec<NodeActivity> {
 	let node1 = NodeActivity {
 		node_id: "0".to_string(),
-		stored_bytes: 100,
+		stored_bytes: -100,
 		transferred_bytes: 50,
 		number_of_puts: 10,
 		number_of_gets: 20,
 	};
 	let node2 = NodeActivity {
 		node_id: "1".to_string(),
-		stored_bytes: 101,
+		stored_bytes: -101,
 		transferred_bytes: 51,
 		number_of_puts: 11,
 		number_of_gets: 21,
@@ -2036,4 +2036,26 @@ fn test_single_ocw_pallet_integration() {
 		ClusterToValidate::<Test>::put(cluster_id);
 		DdcVerification::offchain_worker(block);
 	});
+}
+
+#[test]
+fn fetch_reward_activities_works() {
+	let cluster_id = ClusterId::from([12; 20]);
+	let a: ActivityHash = [0; 32];
+	let b: ActivityHash = [1; 32];
+	let c: ActivityHash = [2; 32];
+	let d: ActivityHash = [3; 32];
+	let e: ActivityHash = [4; 32];
+
+	let leaves = [a, b, c, d, e];
+	let era_id = 1;
+
+	let result = DdcVerification::fetch_reward_activities(
+		&cluster_id,
+		era_id,
+		get_node_activities(),
+		leaves.to_vec(),
+	);
+
+	assert_eq!(result.unwrap_err(), vec![TotalNodeUsageLessThanZero { cluster_id, era_id }]);
 }
