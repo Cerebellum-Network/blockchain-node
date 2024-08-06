@@ -201,7 +201,13 @@ fn send_charging_customers_batch_fails_uninitialised() {
 		let batch_index = 1;
 		let bucket_id1: BucketId = 1;
 		let bucket_id2: BucketId = 2;
-		let payers1 = vec![(user1, bucket_id1, CustomerUsage::default())];
+		let customer_usage = CustomerUsage {
+			transferred_bytes: 100,
+			stored_bytes: -800,
+			number_of_gets: 100,
+			number_of_puts: 200,
+		};
+		let payers1 = vec![(user1, bucket_id1, customer_usage)];
 		let payers2 = vec![(user2, bucket_id2, CustomerUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
@@ -275,6 +281,19 @@ fn send_charging_customers_batch_fails_uninitialised() {
 			max_batch_index,
 		));
 
+		assert_noop!(
+			DdcPayouts::send_charging_customers_batch(
+				RuntimeOrigin::signed(dac_account),
+				cluster_id,
+				era,
+				batch_index,
+				payers1.clone(),
+				MMRProof::default(),
+			),
+			Error::<Test>::ArithmeticOverflow
+		);
+
+		let payers1 = vec![(user2, bucket_id2, CustomerUsage::default())];
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,

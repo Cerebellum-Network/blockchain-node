@@ -1083,7 +1083,10 @@ pub mod pallet {
 			T::BucketVisitor::get_total_customer_usage(cluster_id, bucket_id, customer_id)
 				.map_err(Into::<Error<T>>::into)?
 				.map_or(0, |customer_usage| customer_usage.stored_bytes);
-		total_stored_bytes += usage.stored_bytes;
+
+		total_stored_bytes = total_stored_bytes
+			.checked_add(usage.stored_bytes)
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 		total.storage = fraction_of_month *
 			(|| -> Option<u128> {
