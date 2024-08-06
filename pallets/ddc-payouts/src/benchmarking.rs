@@ -364,7 +364,7 @@ benchmarks! {
 		let total_distributed_reward : u128 = 0;
 		let total_node_usage = NodeUsage {
 			transferred_bytes: 200000000u64.saturating_mul(b.into()), // 200 mb per provider
-			stored_bytes: 100000000u64.saturating_mul(b.into()), // 100 mb per provider
+			stored_bytes: 100000000i64.saturating_mul(b.into()), // 100 mb per provider
 			number_of_gets: 10u64.saturating_mul(b.into()), // 10 gets per provider
 			number_of_puts: 10u64.saturating_mul(b.into()), // 5 puts per provider
 		};
