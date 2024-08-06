@@ -201,7 +201,13 @@ fn send_charging_customers_batch_fails_uninitialised() {
 		let batch_index = 1;
 		let bucket_id1: BucketId = 1;
 		let bucket_id2: BucketId = 2;
-		let payers1 = vec![(user1, bucket_id1, CustomerUsage::default())];
+		let customer_usage = CustomerUsage {
+			transferred_bytes: 100,
+			stored_bytes: -800,
+			number_of_gets: 100,
+			number_of_puts: 200,
+		};
+		let payers1 = vec![(user1, bucket_id1, customer_usage)];
 		let payers2 = vec![(user2, bucket_id2, CustomerUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
@@ -275,6 +281,19 @@ fn send_charging_customers_batch_fails_uninitialised() {
 			max_batch_index,
 		));
 
+		assert_noop!(
+			DdcPayouts::send_charging_customers_batch(
+				RuntimeOrigin::signed(dac_account),
+				cluster_id,
+				era,
+				batch_index,
+				payers1.clone(),
+				MMRProof::default(),
+			),
+			Error::<Test>::ArithmeticOverflow
+		);
+
+		let payers1 = vec![(user2, bucket_id2, CustomerUsage::default())];
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account),
 			cluster_id,
@@ -3390,8 +3409,10 @@ fn send_rewarding_providers_batch_works() {
 		);
 		let mut transfer_charge = ratio1_transfer * report_after.total_customer_charge.transfer;
 
-		let ratio1_storage =
-			Perquintill::from_rational(node_usage1.stored_bytes, total_nodes_usage.stored_bytes);
+		let ratio1_storage = Perquintill::from_rational(
+			node_usage1.stored_bytes as u64,
+			total_nodes_usage.stored_bytes as u64,
+		);
 		let mut storage_charge = ratio1_storage * report_after.total_customer_charge.storage;
 
 		let ratio1_puts = Perquintill::from_rational(
@@ -3428,8 +3449,10 @@ fn send_rewarding_providers_batch_works() {
 		);
 		transfer_charge = ratio2_transfer * report_after.total_customer_charge.transfer;
 
-		let ratio2_storage =
-			Perquintill::from_rational(node_usage2.stored_bytes, total_nodes_usage.stored_bytes);
+		let ratio2_storage = Perquintill::from_rational(
+			node_usage2.stored_bytes as u64,
+			total_nodes_usage.stored_bytes as u64,
+		);
 		storage_charge = ratio2_storage * report_after.total_customer_charge.storage;
 
 		let ratio2_puts = Perquintill::from_rational(
@@ -3476,8 +3499,10 @@ fn send_rewarding_providers_batch_works() {
 		);
 		transfer_charge = ratio3_transfer * report_after.total_customer_charge.transfer;
 
-		let ratio3_storage =
-			Perquintill::from_rational(node_usage3.stored_bytes, total_nodes_usage.stored_bytes);
+		let ratio3_storage = Perquintill::from_rational(
+			node_usage3.stored_bytes as u64,
+			total_nodes_usage.stored_bytes as u64,
+		);
 		storage_charge = ratio3_storage * report_after.total_customer_charge.storage;
 
 		let ratio3_puts = Perquintill::from_rational(
@@ -3621,7 +3646,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 
 			let mut user_usage = usage1.clone();
 			user_usage.transferred_bytes = ratio * user_usage.transferred_bytes;
-			user_usage.stored_bytes = ratio * user_usage.stored_bytes;
+			user_usage.stored_bytes = (ratio * user_usage.stored_bytes as u64) as i64;
 			user_usage.number_of_puts = ratio * user_usage.number_of_puts;
 			user_usage.number_of_gets = ratio * user_usage.number_of_gets;
 
@@ -3759,8 +3784,8 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 				let transfer_charge = ratio1_transfer * report_after.total_customer_charge.transfer;
 
 				let ratio1_storage = Perquintill::from_rational(
-					node_usage1.stored_bytes,
-					total_nodes_usage.stored_bytes,
+					node_usage1.stored_bytes as u64,
+					total_nodes_usage.stored_bytes as u64,
 				);
 				let storage_charge = ratio1_storage * report_after.total_customer_charge.storage;
 
@@ -3866,7 +3891,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 				_ => unreachable!(),
 			};
 			node_usage.transferred_bytes = ratio * node_usage.transferred_bytes;
-			node_usage.stored_bytes = ratio * node_usage.stored_bytes;
+			node_usage.stored_bytes = (ratio * node_usage.stored_bytes as u64) as i64;
 			node_usage.number_of_puts = ratio * node_usage.number_of_puts;
 			node_usage.number_of_gets = ratio * node_usage.number_of_gets;
 
@@ -3900,7 +3925,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 
 			let mut user_usage = usage1.clone();
 			user_usage.transferred_bytes = ratio * user_usage.transferred_bytes;
-			user_usage.stored_bytes = ratio * user_usage.stored_bytes;
+			user_usage.stored_bytes = (ratio * user_usage.stored_bytes as u64) as i64;
 			user_usage.number_of_puts = ratio * user_usage.number_of_puts;
 			user_usage.number_of_gets = ratio * user_usage.number_of_gets;
 
@@ -4038,8 +4063,8 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 				let transfer_charge = ratio1_transfer * report_after.total_customer_charge.transfer;
 
 				let ratio1_storage = Perquintill::from_rational(
-					node_usage1.stored_bytes,
-					total_nodes_usage.stored_bytes,
+					node_usage1.stored_bytes as u64,
+					total_nodes_usage.stored_bytes as u64,
 				);
 				let storage_charge = ratio1_storage * report_after.total_customer_charge.storage;
 
@@ -4144,7 +4169,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 				_ => unreachable!(),
 			};
 			node_usage.transferred_bytes = ratio * node_usage.transferred_bytes;
-			node_usage.stored_bytes = ratio * node_usage.stored_bytes;
+			node_usage.stored_bytes = (ratio * node_usage.stored_bytes as u64) as i64;
 			node_usage.number_of_puts = ratio * node_usage.number_of_puts;
 			node_usage.number_of_gets = ratio * node_usage.number_of_gets;
 
@@ -4178,7 +4203,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 
 			let mut user_usage = usage1.clone();
 			user_usage.transferred_bytes = ratio * user_usage.transferred_bytes;
-			user_usage.stored_bytes = ratio * user_usage.stored_bytes;
+			user_usage.stored_bytes = (ratio * user_usage.stored_bytes as u64) as i64;
 			user_usage.number_of_puts = ratio * user_usage.number_of_puts;
 			user_usage.number_of_gets = ratio * user_usage.number_of_gets;
 
@@ -4316,8 +4341,8 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 				let transfer_charge = ratio1_transfer * report_after.total_customer_charge.transfer;
 
 				let ratio1_storage = Perquintill::from_rational(
-					node_usage1.stored_bytes,
-					total_nodes_usage.stored_bytes,
+					node_usage1.stored_bytes as u64,
+					total_nodes_usage.stored_bytes as u64,
 				);
 				let storage_charge = ratio1_storage * report_after.total_customer_charge.storage;
 
@@ -4388,7 +4413,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		for i in 10..10 + num_nodes {
 			let node_usage = NodeUsage {
 				transferred_bytes: generate_random_u64(&mock_randomness, min, max),
-				stored_bytes: generate_random_u64(&mock_randomness, min, max),
+				stored_bytes: (generate_random_u64(&mock_randomness, min, max)) as i64,
 				number_of_puts: generate_random_u64(&mock_randomness, min, max),
 				number_of_gets: generate_random_u64(&mock_randomness, min, max),
 			};
@@ -4414,7 +4439,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		for user_id in 1000..1000 + num_users {
 			let user_usage = CustomerUsage {
 				transferred_bytes: generate_random_u64(&mock_randomness, min, max),
-				stored_bytes: generate_random_u64(&mock_randomness, min, max),
+				stored_bytes: (generate_random_u64(&mock_randomness, min, max)) as i64,
 				number_of_puts: generate_random_u64(&mock_randomness, min, max),
 				number_of_gets: generate_random_u64(&mock_randomness, min, max),
 			};
@@ -4553,8 +4578,8 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 				let transfer_charge = ratio1_transfer * report_after.total_customer_charge.transfer;
 
 				let ratio1_storage = Perquintill::from_rational(
-					node_usage1.stored_bytes,
-					total_nodes_usage.stored_bytes,
+					node_usage1.stored_bytes as u64,
+					total_nodes_usage.stored_bytes as u64,
 				);
 				let storage_charge = ratio1_storage * report_after.total_customer_charge.storage;
 

@@ -267,6 +267,11 @@ pub mod pallet {
 		ValidatorKeySet {
 			validator: T::AccountId,
 		},
+		TotalNodeUsageLessThanZero {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			validator: T::AccountId,
+		},
 	}
 
 	/// Consensus Errors
@@ -366,6 +371,10 @@ pub mod pallet {
 		},
 		FailedToFetchCurrentValidator,
 		FailedToFetchNodeProvider,
+		TotalNodeUsageLessThanZero {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		},
 	}
 
 	#[pallet::error]
@@ -498,7 +507,7 @@ pub mod pallet {
 		/// Node id.
 		pub(crate) node_id: String,
 		/// Total amount of stored bytes.
-		pub(crate) stored_bytes: u64,
+		pub(crate) stored_bytes: i64,
 		/// Total amount of transferred bytes.
 		pub(crate) transferred_bytes: u64,
 		/// Total number of puts.
@@ -517,7 +526,7 @@ pub mod pallet {
 		/// Bucket id
 		pub(crate) bucket_id: BucketId,
 		/// Total amount of stored bytes.
-		pub(crate) stored_bytes: u64,
+		pub(crate) stored_bytes: i64,
 		/// Total amount of transferred bytes.
 		pub(crate) transferred_bytes: u64,
 		/// Total number of puts.
@@ -1536,7 +1545,7 @@ pub mod pallet {
 			}
 		}
 
-		fn fetch_reward_activities(
+		pub(crate) fn fetch_reward_activities(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			nodes_activity_in_consensus: Vec<NodeActivity>,
@@ -1549,21 +1558,33 @@ pub mod pallet {
 					vec![OCWError::BatchIndexConversionFailed { cluster_id: *cluster_id, era_id }]
 				})?;
 
-				let total_node_usage = nodes_activity_in_consensus.into_iter().fold(
-					NodeUsage {
-						transferred_bytes: 0,
-						stored_bytes: 0,
-						number_of_puts: 0,
-						number_of_gets: 0,
-					},
-					|mut acc, activity| {
-						acc.transferred_bytes += activity.transferred_bytes;
-						acc.stored_bytes += activity.stored_bytes;
-						acc.number_of_puts += activity.number_of_puts;
-						acc.number_of_gets += activity.number_of_gets;
-						acc
-					},
-				);
+				let total_node_usage = nodes_activity_in_consensus
+					.into_iter()
+					.try_fold(
+						NodeUsage {
+							transferred_bytes: 0,
+							stored_bytes: 0,
+							number_of_puts: 0,
+							number_of_gets: 0,
+						},
+						|mut acc: NodeUsage, activity| {
+							let total_stored_bytes = acc.stored_bytes + activity.stored_bytes;
+
+							if total_stored_bytes < 0 {
+								Err(OCWError::TotalNodeUsageLessThanZero {
+									cluster_id: *cluster_id,
+									era_id,
+								})
+							} else {
+								acc.transferred_bytes += activity.transferred_bytes;
+								acc.stored_bytes = total_stored_bytes;
+								acc.number_of_puts += activity.number_of_puts;
+								acc.number_of_gets += activity.number_of_gets;
+								Ok(acc)
+							}
+						},
+					)
+					.map_err(|e| vec![e])?;
 
 				Ok(Some((era_id, max_batch_index, total_node_usage)))
 			} else {
@@ -2742,6 +2763,13 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
+					OCWError::TotalNodeUsageLessThanZero { cluster_id, era_id } => {
+						Self::deposit_event(Event::TotalNodeUsageLessThanZero {
+							cluster_id,
+							era_id,
+							validator: caller.clone(),
+						});
+					},
 				}
 			}
 
@@ -2762,17 +2790,15 @@ pub mod pallet {
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 
-			ensure!(
-				T::StakingVisitor::stash_by_ctrl(&controller).is_ok(),
-				Error::<T>::NotController
-			);
+			let stash = T::StakingVisitor::stash_by_ctrl(&controller)
+				.map_err(|_| Error::<T>::NotController)?;
 
 			ensure!(
 				<ValidatorSet<T>>::get().contains(&ddc_validator_pub),
 				Error::<T>::NotValidatorStash
 			);
 
-			ValidatorToStashKey::<T>::insert(&ddc_validator_pub, &ddc_validator_pub);
+			ValidatorToStashKey::<T>::insert(&ddc_validator_pub, &stash);
 			Self::deposit_event(Event::<T>::ValidatorKeySet { validator: ddc_validator_pub });
 			Ok(())
 		}
@@ -2955,8 +2981,8 @@ pub mod pallet {
 			ValidatorSet::<T>::put(validators);
 		}
 		fn is_ocw_validator(caller: T::AccountId) -> bool {
-			if let Some(stash) = ValidatorToStashKey::<T>::get(caller) {
-				<ValidatorSet<T>>::get().contains(&stash)
+			if ValidatorToStashKey::<T>::contains_key(caller.clone()) {
+				<ValidatorSet<T>>::get().contains(&caller)
 			} else {
 				false
 			}
