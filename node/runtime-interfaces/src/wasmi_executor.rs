@@ -429,6 +429,7 @@ impl FunctionExecutor<'_> {
 			.borrow()
 			.dispatch_thunk(instance_id)
 			.map_err(|e| e.to_string())?;
+		log::info!(target: LOG_TARGET, "invoke dispatch_thunk={:?}", dispatch_thunk);
 
 		log::info!(target: LOG_TARGET, "invoke WIP 1: ---> {:?}", instance_id);
 		log::info!(target: LOG_TARGET, "executor.memory={:?}, executor.sandbox_store.instances={:?}, sandbox_store.memories={:?}", self.memory, self.sandbox_store.borrow().instances.len(), self.sandbox_store.borrow().memories);
@@ -500,6 +501,7 @@ impl FunctionExecutor<'_> {
 				.map_err(|_| "dispatch_thunk_idx is out of the table bounds")?
 				.ok_or("dispatch_thunk_idx points on an empty table entry")?
 		};
+		log::info!(target: LOG_TARGET, "instance_new dispatch_thunk={:?}", dispatch_thunk);
 
 		let guest_env = match GuestEnvironment::decode(&*self.sandbox_store.borrow(), raw_env_def) {
 			Ok(guest_env) => guest_env,
@@ -761,23 +763,30 @@ fn call_in_wasm_module(
 	}
 
 	let result = match method {
-		InvokeMethod::Export(method) => module_instance
-			.invoke_export(
+		InvokeMethod::Export(method) => {
+			log::info!(
+				target: LOG_TARGET,
+				"call_in_wasm_module ---> method={}",
 				method,
-				&[
-					wasmi::RuntimeValue::I32(u32::from(offset) as i32),
-					wasmi::RuntimeValue::I32(data.len() as i32),
-				],
-				&mut function_executor,
-			)
-			.map_err(|error| {
-				if let wasmi::Error::Trap(trap) = error {
-					convert_trap(&mut function_executor, trap)
-				} else {
-					// error.into()
-					Error::Other(String::from("I dunno"))
-				}
-			}),
+			);
+			module_instance
+				.invoke_export(
+					method,
+					&[
+						wasmi::RuntimeValue::I32(u32::from(offset) as i32),
+						wasmi::RuntimeValue::I32(data.len() as i32),
+					],
+					&mut function_executor,
+				)
+				.map_err(|error| {
+					if let wasmi::Error::Trap(trap) = error {
+						convert_trap(&mut function_executor, trap)
+					} else {
+						// error.into()
+						Error::Other(String::from("I dunno"))
+					}
+				})
+		},
 		InvokeMethod::Table(func_ref) => {
 			let func = table
 				.ok_or(Error::NoTable)?
@@ -1257,14 +1266,6 @@ impl WasmiInstance {
 			self.is_inited = true;
 			function_executor
 		} else {
-			// self.data_segments_snapshot
-			// 	.apply(|offset, contents| self.memory.set(offset, contents))
-			// 	.expect("data_segments_snapshot.apply to be ok"); // todo: fix error type
-
-			// self.global_vals_snapshot
-			// 	.apply(&self.instance)
-			// 	.expect("global_vals_snapshot.apply to be ok");
-
 			let table = &self
 				.instance
 				.export_by_name("__indirect_function_table")
