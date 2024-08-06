@@ -135,6 +135,7 @@ impl crate::pallet::Config for Test {
 	type VoteScoreToU64 = Identity;
 	type WeightInfo = ();
 	type ValidatorVisitor = MockValidatorVisitor;
+	type AccountIdConverter = AccountId;
 }
 
 pub struct MockValidatorVisitor;
