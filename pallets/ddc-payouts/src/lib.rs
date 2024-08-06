@@ -1084,7 +1084,7 @@ pub mod pallet {
 				.map_err(Into::<Error<T>>::into)?
 				.map_or(0, |customer_usage| customer_usage.stored_bytes);
 
-		ensure!(total_stored_bytes > 0, Error::<T>::ArithmeticOverflow);
+		ensure!(total_stored_bytes >= 0, Error::<T>::ArithmeticOverflow);
 
 		total_stored_bytes = total_stored_bytes
 			.checked_add(usage.stored_bytes)
