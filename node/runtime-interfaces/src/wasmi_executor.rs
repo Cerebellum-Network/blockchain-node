@@ -70,31 +70,79 @@ impl<'a> FunctionExecutor<'a> {
 	}
 }
 
+// The closest output to 4.8.4 invocation - 2967592, 2000280
 impl FunctionContext for FunctionExecutor<'_> {
 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
-		self.memory.get_into(address.into(), dest).map_err(|e| e.to_string())
+		// self.memory.get_into(address.into(), dest).map_err(|e| e.to_string())
+		self.runtime_memory
+			.as_ref()
+			.expect("Runtime memory to be set")
+			.read_memory_into(address, dest)
 	}
 
 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
-		self.memory.set(address.into(), data).map_err(|e| e.to_string())
+		self.memory.set(address.clone().into(), data.clone()).map_err(|e| e.to_string());
+		self.runtime_memory
+			.as_mut()
+			.expect("Runtime memory to be set")
+			.write_memory(address, data)
 	}
 
 	fn allocate_memory(&mut self, size: WordSize) -> WResult<Pointer<u8>> {
 		let heap = &mut self.heap.borrow_mut();
 		self.memory
-			.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()))
+			.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()));
+		self.runtime_memory
+			.as_mut()
+			.expect("Runtime memory to be set")
+			.allocate_memory(size)
 	}
 
 	fn deallocate_memory(&mut self, ptr: Pointer<u8>) -> WResult<()> {
 		let heap = &mut self.heap.borrow_mut();
-		self.memory
-			.with_direct_access_mut(|mem| heap.deallocate(mem, ptr).map_err(|e| e.to_string()))
+		self.memory.with_direct_access_mut(|mem| {
+			heap.deallocate(mem, ptr.clone()).map_err(|e| e.to_string())
+		});
+		self.runtime_memory
+			.as_mut()
+			.expect("Runtime memory to be set")
+			.deallocate_memory(ptr)
 	}
 
 	fn register_panic_error_message(&mut self, message: &str) {
-		self.panic_message = Some(message.to_owned());
+		self.panic_message = Some(message.clone().to_owned());
+		self.runtime_memory
+			.as_mut()
+			.expect("Runtime memory to be set")
+			.register_panic_error_message(message)
 	}
 }
+
+// impl FunctionContext for FunctionExecutor<'_> {
+// 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
+// 		self.memory.get_into(address.into(), dest).map_err(|e| e.to_string())
+// 	}
+
+// 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
+// 		self.memory.set(address.into(), data).map_err(|e| e.to_string())
+// 	}
+
+// 	fn allocate_memory(&mut self, size: WordSize) -> WResult<Pointer<u8>> {
+// 		let heap = &mut self.heap.borrow_mut();
+// 		self.memory
+// 			.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()))
+// 	}
+
+// 	fn deallocate_memory(&mut self, ptr: Pointer<u8>) -> WResult<()> {
+// 		let heap = &mut self.heap.borrow_mut();
+// 		self.memory
+// 			.with_direct_access_mut(|mem| heap.deallocate(mem, ptr).map_err(|e| e.to_string()))
+// 	}
+
+// 	fn register_panic_error_message(&mut self, message: &str) {
+// 		self.panic_message = Some(message.to_owned());
+// 	}
+// }
 
 // impl FunctionContext for FunctionExecutor<'_> {
 // 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
@@ -162,7 +210,7 @@ impl wasmi::Externals for FunctionExecutor<'_> {
 				// 	**self.runtime_memory.as_mut().expect("Runtime memory to be set"),
 				// 	&mut args,
 				// )
-				// .map_err(|msg| Error::FunctionExecution(function.name().to_string(), msg))
+				.map_err(|msg| Error::FunctionExecution(function.name().to_string(), msg))
 				.map_err(|msg| {
 					log::info!(target: LOG_TARGET, "---> FunctionExecutor.invoke_index ---> error 1 {:?}", msg);
 					trap("Function call failed")
