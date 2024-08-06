@@ -660,8 +660,10 @@ pub mod pallet {
 							era_activity: era_activity.clone(),
 							payers_merkle_root_hash,
 							payees_merkle_root_hash,
-							payers_batch_merkle_root_hashes: payers_batch_merkle_root_hashes.clone(),
-							payees_batch_merkle_root_hashes: payees_batch_merkle_root_hashes.clone(),
+							payers_batch_merkle_root_hashes: payers_batch_merkle_root_hashes
+								.clone(),
+							payees_batch_merkle_root_hashes: payees_batch_merkle_root_hashes
+								.clone(),
 						}
 					});
 
@@ -1218,11 +1220,17 @@ pub mod pallet {
 			)
 			.map_err(|err| vec![err])?;
 
+			let customer_batch_roots_string: Vec<String> = customers_activity_batch_roots
+				.clone()
+				.into_iter()
+				.map(hex::encode)
+				.collect();
+
 			log::info!(
 				"🧗‍ Customer Activity_batch_roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
 				cluster_id,
 				era_activity.id,
-				customers_activity_batch_roots
+				customer_batch_roots_string
 			);
 
 			let customers_activity_root = Self::create_merkle_root(
@@ -1236,7 +1244,7 @@ pub mod pallet {
 				"🧗‍ Customer Activity _ roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
 				cluster_id,
 				era_activity.id,
-				customers_activity_root
+				hex::encode(customers_activity_root)
 			);
 
 			let nodes_activity_in_consensus = Self::get_consensus_for_activities(
@@ -1260,11 +1268,17 @@ pub mod pallet {
 			)
 			.map_err(|err| vec![err])?;
 
+			let nodes_activity_batch_roots_string: Vec<String> = nodes_activity_batch_roots
+				.clone()
+				.into_iter()
+				.map(hex::encode)
+				.collect();
+
 			log::info!(
 				"🧗‍ Node Activity_batch_roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
 				cluster_id,
 				era_activity.id,
-				nodes_activity_batch_roots
+				nodes_activity_batch_roots_string
 			);
 			let nodes_activity_root =
 				Self::create_merkle_root(cluster_id, era_activity.id, &nodes_activity_batch_roots)
@@ -1274,7 +1288,7 @@ pub mod pallet {
 				"🧗‍ Node Activity _ roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
 				cluster_id,
 				era_activity.id,
-				nodes_activity_root
+				hex::encode(nodes_activity_root)
 			);
 
 			Self::store_validation_activities(
@@ -2427,11 +2441,15 @@ pub mod pallet {
 				if let Ok(NodeParams::StorageParams(storage_params)) =
 					T::NodeVisitor::get_node_params(&node_pub_key)
 				{
+					let NodePubKey::StoragePubKey(key) = node_pub_key.clone();
+					let node_pub_key_ref: &[u8; 32] = key.as_ref();
+					let node_pub_key_string = hex::encode(node_pub_key_ref);
 					log::info!(
 						"🏭📝Get DAC Node for cluster_id: {:?} and node_pub_key: {:?}",
 						cluster_id,
-						node_pub_key.encode()
+						node_pub_key_string
 					);
+
 					// Add to the results if the mode matches
 					dac_nodes.push((node_pub_key, storage_params));
 				}
