@@ -1220,11 +1220,8 @@ pub mod pallet {
 			)
 			.map_err(|err| vec![err])?;
 
-			let customer_batch_roots_string: Vec<String> = customers_activity_batch_roots
-				.clone()
-				.into_iter()
-				.map(hex::encode)
-				.collect();
+			let customer_batch_roots_string: Vec<String> =
+				customers_activity_batch_roots.clone().into_iter().map(hex::encode).collect();
 
 			log::info!(
 				"🧗‍ Customer Activity_batch_roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
@@ -1268,11 +1265,8 @@ pub mod pallet {
 			)
 			.map_err(|err| vec![err])?;
 
-			let nodes_activity_batch_roots_string: Vec<String> = nodes_activity_batch_roots
-				.clone()
-				.into_iter()
-				.map(hex::encode)
-				.collect();
+			let nodes_activity_batch_roots_string: Vec<String> =
+				nodes_activity_batch_roots.clone().into_iter().map(hex::encode).collect();
 
 			log::info!(
 				"🧗‍ Node Activity_batch_roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
