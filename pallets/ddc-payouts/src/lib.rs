@@ -1079,10 +1079,12 @@ pub mod pallet {
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
-		let mut total_stored_bytes =
+		let mut total_stored_bytes: i64 =
 			T::BucketVisitor::get_total_customer_usage(cluster_id, bucket_id, customer_id)
 				.map_err(Into::<Error<T>>::into)?
 				.map_or(0, |customer_usage| customer_usage.stored_bytes);
+
+		ensure!(total_stored_bytes > 0, Error::<T>::ArithmeticOverflow);
 
 		total_stored_bytes = total_stored_bytes
 			.checked_add(usage.stored_bytes)
