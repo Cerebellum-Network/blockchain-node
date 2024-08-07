@@ -1207,6 +1207,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type VoteScoreToU64 = IdentityConvert;
 	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
 }
 

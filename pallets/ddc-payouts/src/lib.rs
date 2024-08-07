@@ -33,6 +33,7 @@ use ddc_primitives::{
 		customer::{
 			CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
 		},
+		node::NodeVisitor as NodeVisitorType,
 		pallet::PalletVisitor as PalletVisitorType,
 		payout::PayoutVisitor,
 	},
@@ -119,6 +120,7 @@ pub mod pallet {
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type CustomerCharger: CustomerChargerType<Self>;
 		type BucketVisitor: BucketVisitorType<Self>;
+		type NodeVisitor: NodeVisitorType<Self>;
 		type CustomerDepositor: CustomerDepositorType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
 		type ClusterProtocol: ClusterProtocolType<Self, BalanceOf<Self>>;
@@ -747,7 +749,8 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payees: Vec<(T::AccountId, NodeUsage)>,
+			payees: Vec<(T::AccountId, NodeUsage)>, /* todo! we need to pass NodePubKey inside
+			                                         * NodeUsage and more provider_id */
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
@@ -787,7 +790,23 @@ pub mod pallet {
 
 			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
-			for (node_provider_id, node_usage) in payees {
+			for (node_provider_id, delta_node_usage) in payees {
+				// todo! deduce node_provider_id from delta_node_usage.node_id
+				// todo! get T::NodeVisitor::get_total_usage(delta_node_usage.node_id).stored_bytes
+				let mut total_node_stored_bytes: i64 = 0;
+
+				total_node_stored_bytes = total_node_stored_bytes
+					.checked_add(delta_node_usage.stored_bytes)
+					.ok_or(Error::<T>::ArithmeticOverflow)?
+					.max(0);
+
+				let node_usage = NodeUsage {
+					stored_bytes: total_node_stored_bytes,
+					transferred_bytes: delta_node_usage.transferred_bytes,
+					number_of_puts: delta_node_usage.number_of_puts,
+					number_of_gets: delta_node_usage.number_of_gets,
+				};
+
 				let node_reward = get_node_reward(
 					&node_usage,
 					&billing_report.total_node_usage,
@@ -832,6 +851,8 @@ pub mod pallet {
 						reward,
 						ExistenceRequirement::AllowDeath,
 					)?;
+
+					// todo! update total usage of node with NodeManager
 
 					reward_ = reward.saturated_into::<u128>();
 
@@ -1087,11 +1108,10 @@ pub mod pallet {
 				.map_err(Into::<Error<T>>::into)?
 				.map_or(0, |customer_usage| customer_usage.stored_bytes);
 
-		ensure!(total_stored_bytes >= 0, Error::<T>::TotalStoredBytesLessThanZero);
-
 		total_stored_bytes = total_stored_bytes
 			.checked_add(usage.stored_bytes)
-			.ok_or(Error::<T>::ArithmeticOverflow)?;
+			.ok_or(Error::<T>::ArithmeticOverflow)?
+			.max(0);
 
 		total.storage = fraction_of_month *
 			(|| -> Option<u128> {
