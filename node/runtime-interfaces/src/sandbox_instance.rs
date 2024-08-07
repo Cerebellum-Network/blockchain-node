@@ -544,6 +544,10 @@ pub trait SandboxContext {
 
 	// this is the context of the runtime that existed in the current synchronizing block
 	fn current_block_runtime_context(&mut self) -> &mut dyn FunctionContext;
+
+	fn use_runtime_fn_context(&mut self, is_runtime_context: bool);
+
+	fn is_runtime_fn_context(&mut self) -> bool;
 }
 
 /// Sandbox backend to use

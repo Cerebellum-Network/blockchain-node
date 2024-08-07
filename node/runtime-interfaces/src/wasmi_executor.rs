@@ -36,6 +36,8 @@ pub struct FunctionExecutor<'a> {
 	missing_functions: Arc<Vec<String>>,
 	panic_message: Option<String>,
 	runtime_memory: Option<Box<&'a mut dyn FunctionContext>>,
+	is_runtime_context: bool,
+	debug_memory: bool,
 }
 unsafe impl Send for FunctionExecutor<'_> {}
 
@@ -62,6 +64,8 @@ impl<'a> FunctionExecutor<'a> {
 			missing_functions,
 			panic_message: None,
 			runtime_memory: None,
+			is_runtime_context: true,
+			debug_memory: false,
 		})
 	}
 
@@ -70,51 +74,199 @@ impl<'a> FunctionExecutor<'a> {
 	}
 }
 
+fn display_runtime_memory(method: &'static str, ctx: &dyn FunctionContext) {
+	let memory_size: WordSize = 135593984; // based on 4.8.4
+	let offset: WordSize = 0;
+
+	let buffer = ctx
+		.read_memory(Pointer::new(offset), memory_size)
+		.expect("Could not read memory of size 135593984");
+
+	let buffer_slice = buffer.as_slice();
+	let buffer_hash = sp_core::blake2_256(buffer_slice);
+	let buffer_hash_hex_string: String =
+		buffer_hash.iter().map(|byte| format!("{:02x}", byte)).collect();
+
+	log::info!("MemoryRef {:?} ===> buffer_hash={:?}", method, buffer_hash_hex_string,);
+}
+
+fn display_fn_executor_memory(method: &'static str, memory: &MemoryRef) {
+	let limits = memory.0.limits.clone();
+	let initial = memory.0.initial;
+	let maximum = memory.0.maximum;
+	let current_size = memory.0.current_size.clone();
+	let buffer = memory.0.buffer.borrow();
+	let buffer_slice = buffer.as_slice();
+	let buffer_hash = sp_core::blake2_256(buffer_slice);
+	let buffer_hash_hex_string: String =
+		buffer_hash.iter().map(|byte| format!("{:02x}", byte)).collect();
+
+	log::info!(
+		"MemoryRef {:?} ===> buffer_hash={:?} limits={:?}, initial={:?}, maximum={:?}, current_size={:?}, buffer={:?}",
+		method,
+		buffer_hash_hex_string,
+		limits,
+		initial,
+		maximum,
+		current_size,
+		buffer.len()
+	);
+}
+
 // The closest output to 4.8.4 invocation - 2967592, 2000280
 impl FunctionContext for FunctionExecutor<'_> {
 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
-		// self.memory.get_into(address.into(), dest).map_err(|e| e.to_string())
-		self.runtime_memory
-			.as_ref()
-			.expect("Runtime memory to be set")
-			.read_memory_into(address, dest)
+		if self.is_runtime_context {
+			if self.debug_memory {
+				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+				display_runtime_memory("PRE read_memory_into", **runtime_memory);
+			}
+
+			let res = self
+				.runtime_memory
+				.as_ref()
+				.expect("Runtime memory to be set")
+				.read_memory_into(address, dest);
+
+			if self.debug_memory {
+				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+				display_runtime_memory("POST read_memory_into", **runtime_memory);
+			}
+
+			res
+		} else {
+			if self.debug_memory {
+				display_fn_executor_memory("PRE read_memory_into", &self.memory);
+			}
+			let res = self.memory.get_into(address.into(), dest).map_err(|e| e.to_string());
+			if self.debug_memory {
+				display_fn_executor_memory("POST read_memory_into", &self.memory);
+			}
+
+			res
+		}
 	}
 
 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
-		self.memory.set(address.clone().into(), data.clone()).map_err(|e| e.to_string());
-		self.runtime_memory
-			.as_mut()
-			.expect("Runtime memory to be set")
-			.write_memory(address, data)
+		if self.is_runtime_context {
+			if self.debug_memory {
+				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+				display_runtime_memory("PRE write_memory", **runtime_memory);
+			}
+			let res = self
+				.runtime_memory
+				.as_mut()
+				.expect("Runtime memory to be set")
+				.write_memory(address, data);
+
+			if self.debug_memory {
+				let runtime_memory: &Box<&mut dyn FunctionContext> =
+					self.runtime_memory.as_ref().unwrap();
+				display_runtime_memory("POST write_memory", **runtime_memory);
+			}
+
+			res
+		} else {
+			if self.debug_memory {
+				display_fn_executor_memory("PRE write_memory", &self.memory);
+			}
+			let res =
+				self.memory.set(address.clone().into(), data.clone()).map_err(|e| e.to_string());
+			if self.debug_memory {
+				display_fn_executor_memory("POST write_memory", &self.memory);
+			}
+
+			res
+		}
 	}
 
 	fn allocate_memory(&mut self, size: WordSize) -> WResult<Pointer<u8>> {
-		let heap = &mut self.heap.borrow_mut();
-		self.memory
-			.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()));
-		self.runtime_memory
-			.as_mut()
-			.expect("Runtime memory to be set")
-			.allocate_memory(size)
+		if self.is_runtime_context {
+			if self.debug_memory {
+				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+				display_runtime_memory("PRE allocate_memory", **runtime_memory);
+			}
+			let res = self
+				.runtime_memory
+				.as_mut()
+				.expect("Runtime memory to be set")
+				.allocate_memory(size);
+			if self.debug_memory {
+				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+				display_runtime_memory("POST allocate_memory", **runtime_memory);
+			}
+
+			res
+		} else {
+			if self.debug_memory {
+				display_fn_executor_memory("PRE allocate_memory", &self.memory);
+			}
+			let heap = &mut self.heap.borrow_mut();
+			let res = self
+				.memory
+				.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()));
+
+			if self.debug_memory {
+				display_fn_executor_memory("POST allocate_memory", &self.memory);
+			}
+
+			res
+		}
 	}
 
 	fn deallocate_memory(&mut self, ptr: Pointer<u8>) -> WResult<()> {
-		let heap = &mut self.heap.borrow_mut();
-		self.memory.with_direct_access_mut(|mem| {
-			heap.deallocate(mem, ptr.clone()).map_err(|e| e.to_string())
-		});
-		self.runtime_memory
-			.as_mut()
-			.expect("Runtime memory to be set")
-			.deallocate_memory(ptr)
+		if self.is_runtime_context {
+			if self.debug_memory {
+				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+				display_runtime_memory("PRE deallocate_memory", **runtime_memory);
+			}
+			let res = self
+				.runtime_memory
+				.as_mut()
+				.expect("Runtime memory to be set")
+				.deallocate_memory(ptr);
+
+			if self.debug_memory {
+				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+				display_runtime_memory("POST deallocate_memory", **runtime_memory);
+			}
+
+			res
+		} else {
+			if self.debug_memory {
+				display_fn_executor_memory("PRE deallocate_memory", &self.memory);
+			}
+
+			let heap = &mut self.heap.borrow_mut();
+			let res = self.memory.with_direct_access_mut(|mem| {
+				heap.deallocate(mem, ptr.clone()).map_err(|e| e.to_string())
+			});
+
+			if self.debug_memory {
+				display_fn_executor_memory("POST deallocate_memory", &self.memory);
+			}
+
+			res
+		}
 	}
 
 	fn register_panic_error_message(&mut self, message: &str) {
-		self.panic_message = Some(message.clone().to_owned());
-		self.runtime_memory
-			.as_mut()
-			.expect("Runtime memory to be set")
-			.register_panic_error_message(message)
+		if self.is_runtime_context {
+			if self.debug_memory {
+				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+				display_runtime_memory("register_panic_error_message", **runtime_memory);
+			}
+
+			self.runtime_memory
+				.as_mut()
+				.expect("Runtime memory to be set")
+				.register_panic_error_message(message);
+		} else {
+			if self.debug_memory {
+				display_fn_executor_memory("register_panic_error_message", &self.memory);
+			}
+			self.panic_message = Some(message.clone().to_owned());
+		}
 	}
 }
 
@@ -204,7 +356,7 @@ impl wasmi::Externals for FunctionExecutor<'_> {
 		// host_functions_names);
 
 		if let Some(function) = self.host_functions.clone().get(index) {
-			function
+			let res = function
 				.execute(self, &mut args)
 				// .execute(
 				// 	**self.runtime_memory.as_mut().expect("Runtime memory to be set"),
@@ -228,7 +380,8 @@ impl wasmi::Externals for FunctionExecutor<'_> {
 					});
 					log::info!(target: LOG_TARGET, "---> FunctionExecutor.invoke_index ===> reslt {:?}", reslt);
 					reslt
-				})
+				});
+			res
 		} else if self.allow_missing_func_imports &&
 			index >= self.host_functions.len() &&
 			index < self.host_functions.len() + self.missing_functions.len()
@@ -298,6 +451,14 @@ impl<'a, 'b> SandboxContext for SandboxContextImpl<'a, 'b> {
 
 	fn current_block_runtime_context(&mut self) -> &mut dyn FunctionContext {
 		**self.executor.runtime_memory.as_mut().expect("Runtime memory to be set")
+	}
+
+	fn use_runtime_fn_context(&mut self, is_runtime_context: bool) {
+		self.executor.is_runtime_context = is_runtime_context;
+	}
+
+	fn is_runtime_fn_context(&mut self) -> bool {
+		self.executor.is_runtime_context
 	}
 }
 
@@ -461,6 +622,10 @@ impl FunctionExecutor<'_> {
 		return_val_len: WordSize,
 		state: u32,
 	) -> WResult<u32> {
+		if instance_id == 0u32 {
+			self.debug_memory = true;
+		}
+
 		log::info!(target: LOG_TARGET, "invoke START: instance_id={:?}, export_name={:?}, args={:?}, return_val={:?}, return_val_len={:?}, state={:?}", instance_id, export_name, args, return_val, return_val_len, state);
 
 		// Deserialize arguments and convert them into wasmi types.
@@ -512,6 +677,10 @@ impl FunctionExecutor<'_> {
 
 		log::info!(target: LOG_TARGET, "invoke END: instance_id={:?}, export_name={:?}, args={:?}, return_val={:?}, return_val_len={:?}, state={:?}", instance_id, export_name, args, return_val, return_val_len, state);
 
+		if instance_id == 0u32 {
+			self.debug_memory = false;
+		}
+
 		res
 	}
 
@@ -536,6 +705,8 @@ impl FunctionExecutor<'_> {
 		raw_env_def: &[u8],
 		state: u32,
 	) -> WResult<u32> {
+		self.debug_memory = true;
+
 		log::info!(target: LOG_TARGET, "instance_new START: dispatch_thunk_id={:?}, raw_env_def={:?}, state={:?}", dispatch_thunk_id, raw_env_def, state);
 
 		// Extract a dispatch thunk from instance's table by the specified index.
@@ -572,6 +743,8 @@ impl FunctionExecutor<'_> {
 			};
 
 		log::info!(target: LOG_TARGET, "instance_new END: dispatch_thunk_id={:?}, raw_env_def={:?}, state={:?}, instance_idx_or_err_code={:?}", dispatch_thunk_id, raw_env_def, state, instance_idx_or_err_code);
+
+		self.debug_memory = false;
 
 		Ok(instance_idx_or_err_code)
 	}
