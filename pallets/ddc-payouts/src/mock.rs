@@ -26,15 +26,16 @@ use sp_io::TestExternalities;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
 use sp_runtime::{
-	traits::{BlakeTwo256, Identity, IdentityLookup},
-	BuildStorage, DispatchError, Perquintill,
+	traits::{BlakeTwo256, IdentifyAccount, Identity, IdentityLookup, Verify},
+	BuildStorage, DispatchError, MultiSignature, Perquintill,
 };
 use sp_std::prelude::*;
 
 use crate::{self as pallet_ddc_payouts, *};
 
+pub type Signature = MultiSignature;
 /// The AccountId alias in this test module.
-pub type AccountId = u128;
+pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 pub(crate) type AccountIndex = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
@@ -135,19 +136,25 @@ impl crate::pallet::Config for Test {
 	type VoteScoreToU64 = Identity;
 	type WeightInfo = ();
 	type ValidatorVisitor = MockValidatorVisitor;
+	type AccountIdConverter = AccountId;
 }
 
 pub struct MockValidatorVisitor;
 
 impl<T: Config> ValidatorVisitor<T> for MockValidatorVisitor
 where
-	<T as frame_system::Config>::AccountId: From<u128>,
+	<T as frame_system::Config>::AccountId: From<AccountId>,
 {
 	fn setup_validators(_validators: Vec<T::AccountId>) {
 		unimplemented!()
 	}
 	fn is_ocw_validator(caller: T::AccountId) -> bool {
-		let validators = [DAC_ACCOUNT_ID.into(), 123u128.into()];
+		let account_id: [u8; 32] = [123; 32];
+		let dac: [u8; 32] = DAC_ACCOUNT_ID;
+		let validators = [
+			T::AccountId::decode(&mut &dac[..]).unwrap(),
+			T::AccountId::decode(&mut &account_id[..]).unwrap(),
+		];
 		validators.contains(&caller)
 	}
 	fn is_customers_batch_valid(
@@ -193,15 +200,15 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		amount: u128,
 	) -> Result<u128, DispatchError> {
 		let mut amount_to_charge = amount;
-		let mut temp = ACCOUNT_ID_1.to_ne_bytes();
+		let mut temp: [u8; 32] = ACCOUNT_ID_1;
 		let account_1 = T::AccountId::decode(&mut &temp[..]).unwrap();
-		temp = ACCOUNT_ID_2.to_ne_bytes();
+		temp = ACCOUNT_ID_2;
 		let account_2 = T::AccountId::decode(&mut &temp[..]).unwrap();
-		temp = ACCOUNT_ID_3.to_ne_bytes();
+		temp = ACCOUNT_ID_3;
 		let account_3 = T::AccountId::decode(&mut &temp[..]).unwrap();
-		temp = ACCOUNT_ID_4.to_ne_bytes();
+		temp = ACCOUNT_ID_4;
 		let account_4 = T::AccountId::decode(&mut &temp[..]).unwrap();
-		temp = ACCOUNT_ID_5.to_ne_bytes();
+		temp = ACCOUNT_ID_5;
 		let account_5 = T::AccountId::decode(&mut &temp[..]).unwrap();
 
 		if content_owner == account_1 ||
@@ -233,13 +240,13 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 	}
 }
 
-pub const ACCOUNT_ID_1: AccountId = 1;
-pub const ACCOUNT_ID_2: AccountId = 2;
-pub const ACCOUNT_ID_3: AccountId = 3;
-pub const ACCOUNT_ID_4: AccountId = 4;
-pub const ACCOUNT_ID_5: AccountId = 5;
-pub const ACCOUNT_ID_6: AccountId = 6;
-pub const ACCOUNT_ID_7: AccountId = 7;
+pub const ACCOUNT_ID_1: [u8; 32] = [1; 32];
+pub const ACCOUNT_ID_2: [u8; 32] = [2; 32];
+pub const ACCOUNT_ID_3: [u8; 32] = [3; 32];
+pub const ACCOUNT_ID_4: [u8; 32] = [4; 32];
+pub const ACCOUNT_ID_5: [u8; 32] = [5; 32];
+pub const ACCOUNT_ID_6: [u8; 32] = [6; 32];
+pub const ACCOUNT_ID_7: [u8; 32] = [7; 32];
 pub struct TestClusterCreator;
 impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 	fn create_cluster(
@@ -263,12 +270,12 @@ impl<T: Config> CustomerDepositor<T> for TestCustomerDepositor {
 	}
 }
 
-pub const DAC_ACCOUNT_ID: AccountId = 2;
-pub const RESERVE_ACCOUNT_ID: AccountId = 999;
-pub const TREASURY_ACCOUNT_ID: AccountId = 888;
-pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
-pub const VALIDATOR2_ACCOUNT_ID: AccountId = 222;
-pub const VALIDATOR3_ACCOUNT_ID: AccountId = 333;
+pub const DAC_ACCOUNT_ID: [u8; 32] = [2; 32];
+pub const RESERVE_ACCOUNT_ID: [u8; 32] = [9; 32];
+pub const TREASURY_ACCOUNT_ID: [u8; 32] = [8; 32];
+pub const VALIDATOR1_ACCOUNT_ID: [u8; 32] = [111; 32];
+pub const VALIDATOR2_ACCOUNT_ID: [u8; 32] = [222; 32];
+pub const VALIDATOR3_ACCOUNT_ID: [u8; 32] = [250; 32];
 
 pub const VALIDATOR1_SCORE: u64 = 30;
 pub const VALIDATOR2_SCORE: u64 = 45;
@@ -358,14 +365,13 @@ pub const PRICING_FEES_ZERO: ClusterFeesParams = ClusterFeesParams {
 pub struct TestTreasuryVisitor;
 impl<T: frame_system::Config> PalletVisitor<T> for TestTreasuryVisitor {
 	fn get_account_id() -> T::AccountId {
-		let reserve_account = TREASURY_ACCOUNT_ID.to_ne_bytes();
+		let reserve_account: [u8; 32] = TREASURY_ACCOUNT_ID;
 		T::AccountId::decode(&mut &reserve_account[..]).unwrap()
 	}
 }
 
-fn create_account_id_from_u128<T: frame_system::Config>(id: u128) -> T::AccountId {
-	let bytes = id.to_ne_bytes();
-	T::AccountId::decode(&mut &bytes[..]).unwrap()
+fn create_account_id_from_u128<T: frame_system::Config>(id: [u8; 32]) -> T::AccountId {
+	T::AccountId::decode(&mut &id[..]).unwrap()
 }
 
 pub struct TestValidatorVisitor<T>(sp_std::marker::PhantomData<T>);
@@ -521,7 +527,7 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 	}
 
 	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
-		let reserve_account = RESERVE_ACCOUNT_ID.to_ne_bytes();
+		let reserve_account: [u8; 32] = RESERVE_ACCOUNT_ID;
 		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
 	}
 
@@ -561,13 +567,13 @@ impl ExtBuilder {
 
 		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
-				(1, 10000000000000000000000000000),
-				(2, USER2_BALANCE), // < PARTIAL_CHARGE
-				(3, USER3_BALANCE), // > PARTIAL_CHARGE
-				(4, 1000000000000000000000000),
-				(5, 1000000000000000000000000),
-				(6, 1000000000000000000000000),
-				(7, 1000000000000000000000000),
+				([1; 32].into(), 10000000000000000000000000000),
+				([2; 32].into(), USER2_BALANCE), // < PARTIAL_CHARGE
+				([3; 32].into(), USER3_BALANCE), // > PARTIAL_CHARGE
+				([4; 32].into(), 1000000000000000000000000),
+				([5; 32].into(), 1000000000000000000000000),
+				([6; 32].into(), 1000000000000000000000000),
+				([7; 32].into(), 1000000000000000000000000),
 			],
 		}
 		.assimilate_storage(&mut storage);

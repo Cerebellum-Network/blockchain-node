@@ -231,6 +231,7 @@ impl crate::Config for Test {
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
 	type StakingVisitor = Staking;
+	type AccountIdConverter = AccountId;
 }
 
 // Build genesis storage according to the mock runtime.

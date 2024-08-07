@@ -73,7 +73,10 @@ pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdj
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
+use sp_core::{
+	crypto::{AccountId32, KeyTypeId},
+	OpaqueMetadata, H256,
+};
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
@@ -1213,6 +1216,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type VoteScoreToU64 = IdentityConvert;
 	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
+	type AccountIdConverter = AccountId32;
 }
 
 parameter_types! {
@@ -1325,6 +1329,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
 	type StakingVisitor = pallet_staking::Pallet<Runtime>;
+	type AccountIdConverter = AccountId32;
 }
 
 construct_runtime!(

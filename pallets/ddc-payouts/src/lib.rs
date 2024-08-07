@@ -49,7 +49,8 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
-use sp_runtime::{traits::Convert, PerThing, Perquintill};
+use scale_info::prelude::string::String;
+use sp_runtime::{traits::Convert, AccountId32, PerThing, Perquintill};
 use sp_std::prelude::*;
 /// Stores reward in tokens(units) of node provider as per NodeUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
@@ -126,6 +127,7 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 		type VoteScoreToU64: Convert<VoteScoreOf<Self>, u64>;
 		type ValidatorVisitor: ValidatorVisitor<Self>;
+		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
 	}
 
 	#[pallet::event]
@@ -258,6 +260,7 @@ pub mod pallet {
 		NotBucketOwner,
 		IncorrectClusterId,
 		ClusterProtocolParamsNotSet,
+		TotalStoredBytesLessThanZero,
 	}
 
 	#[pallet::storage]
@@ -468,7 +471,7 @@ pub mod pallet {
 
 			let mut updated_billing_report = billing_report;
 			for (customer_id, bucket_id, customer_usage) in payers {
-				log::info!("🏭send_charging_customers_batch get_customer_charge customer_id: {:?} -  bucket_id: {:?} - era:{:?} - cluster-id:{:?}", customer_id.encode(), bucket_id, era, cluster_id);
+				log::info!("🏭send_charging_customers_batch get_customer_charge customer_id: {:?} -  bucket_id: {:?} - era:{:?} - cluster-id:{:?}", Self::get_account_id_string(customer_id.clone()), bucket_id, era, cluster_id);
 				let mut customer_charge = get_customer_charge::<T>(
 					&cluster_id,
 					&customer_usage,
@@ -1084,7 +1087,7 @@ pub mod pallet {
 				.map_err(Into::<Error<T>>::into)?
 				.map_or(0, |customer_usage| customer_usage.stored_bytes);
 
-		ensure!(total_stored_bytes >= 0, Error::<T>::ArithmeticOverflow);
+		ensure!(total_stored_bytes >= 0, Error::<T>::TotalStoredBytesLessThanZero);
 
 		total_stored_bytes = total_stored_bytes
 			.checked_add(usage.stored_bytes)
@@ -1170,7 +1173,10 @@ pub mod pallet {
 			start_era: i64,
 			end_era: i64,
 		) -> DispatchResult {
-			log::info!("🏭begin_billing_report called by: {:?}", origin.encode());
+			log::info!(
+				"🏭begin_billing_report called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::begin_billing_report(origin, cluster_id, era_id, start_era, end_era)
 		}
@@ -1181,7 +1187,10 @@ pub mod pallet {
 			era_id: DdcEra,
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
-			log::info!("🏭begin_charging_customers called by: {:?}", origin.encode());
+			log::info!(
+				"🏭begin_charging_customers called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::begin_charging_customers(origin, cluster_id, era_id, max_batch_index)
 		}
@@ -1194,7 +1203,10 @@ pub mod pallet {
 			payers: &[(T::AccountId, BucketId, CustomerUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
-			log::info!("🏭send_charging_customers_batch called by: {:?}", origin.encode());
+			log::info!(
+				"🏭send_charging_customers_batch called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::send_charging_customers_batch(
 				origin,
@@ -1211,7 +1223,10 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
-			log::info!("🏭end_charging_customers called by: {:?}", origin.encode());
+			log::info!(
+				"🏭end_charging_customers called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::end_charging_customers(origin, cluster_id, era_id)
 		}
@@ -1223,7 +1238,10 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 			total_node_usage: NodeUsage,
 		) -> DispatchResult {
-			log::info!("🏭begin_rewarding_providers called by: {:?}", origin.encode());
+			log::info!(
+				"🏭begin_rewarding_providers called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::begin_rewarding_providers(
 				origin,
@@ -1242,7 +1260,10 @@ pub mod pallet {
 			payees: &[(T::AccountId, NodeUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
-			log::info!("🏭send_rewarding_providers_batch called by: {:?}", origin.encode());
+			log::info!(
+				"🏭send_rewarding_providers_batch called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::send_rewarding_providers_batch(
 				origin,
@@ -1259,7 +1280,10 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
-			log::info!("🏭end_rewarding_providers called by: {:?}", origin.encode());
+			log::info!(
+				"🏭end_rewarding_providers called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::end_rewarding_providers(origin, cluster_id, era_id)
 		}
@@ -1269,7 +1293,10 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
-			log::info!("🏭end_billing_report called by: {:?}", origin.encode());
+			log::info!(
+				"🏭end_billing_report called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::end_billing_report(origin, cluster_id, era_id)
 		}
@@ -1349,6 +1376,12 @@ pub mod pallet {
 			T::PalletId::get().into_account_truncating()
 		}
 
+		pub fn get_account_id_string(caller: T::AccountId) -> String {
+			let account_id: T::AccountIdConverter = caller.into();
+			let account_id_32: AccountId32 = account_id.into();
+			let account_ref: &[u8; 32] = account_id_32.as_ref();
+			hex::encode(account_ref)
+		}
 		pub fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
 			let mut bytes = Vec::new();
 			bytes.extend_from_slice(&cluster_id[..]);
