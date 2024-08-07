@@ -87,7 +87,7 @@ fn display_runtime_memory(method: &'static str, ctx: &dyn FunctionContext) {
 	let buffer_hash_hex_string: String =
 		buffer_hash.iter().map(|byte| format!("{:02x}", byte)).collect();
 
-	log::info!("MemoryRef {:?} ===> buffer_hash={:?}", method, buffer_hash_hex_string,);
+	log::info!("MemoryRef {} ===> buffer_hash={:?}", method, buffer_hash_hex_string,);
 }
 
 fn display_fn_executor_memory(method: &'static str, memory: &MemoryRef) {
@@ -102,7 +102,7 @@ fn display_fn_executor_memory(method: &'static str, memory: &MemoryRef) {
 		buffer_hash.iter().map(|byte| format!("{:02x}", byte)).collect();
 
 	log::info!(
-		"MemoryRef {:?} ===> buffer_hash={:?} limits={:?}, initial={:?}, maximum={:?}, current_size={:?}, buffer={:?}",
+		"MemoryRef {} ===> buffer_hash={:?} limits={:?}, initial={:?}, maximum={:?}, current_size={:?}, buffer={:?}",
 		method,
 		buffer_hash_hex_string,
 		limits,
@@ -119,7 +119,7 @@ impl FunctionContext for FunctionExecutor<'_> {
 		if self.is_runtime_context {
 			if self.debug_memory {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
-				display_runtime_memory("PRE read_memory_into", **runtime_memory);
+				display_runtime_memory("PRE 🚩 read_memory_into", **runtime_memory);
 			}
 
 			let res = self
@@ -130,17 +130,17 @@ impl FunctionContext for FunctionExecutor<'_> {
 
 			if self.debug_memory {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
-				display_runtime_memory("POST read_memory_into", **runtime_memory);
+				display_runtime_memory("POST 🏁 read_memory_into", **runtime_memory);
 			}
 
 			res
 		} else {
 			if self.debug_memory {
-				display_fn_executor_memory("PRE read_memory_into", &self.memory);
+				display_fn_executor_memory("PRE 🚩 read_memory_into", &self.memory);
 			}
 			let res = self.memory.get_into(address.into(), dest).map_err(|e| e.to_string());
 			if self.debug_memory {
-				display_fn_executor_memory("POST read_memory_into", &self.memory);
+				display_fn_executor_memory("POST 🏁 read_memory_into", &self.memory);
 			}
 
 			res
@@ -151,7 +151,7 @@ impl FunctionContext for FunctionExecutor<'_> {
 		if self.is_runtime_context {
 			if self.debug_memory {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
-				display_runtime_memory("PRE write_memory", **runtime_memory);
+				display_runtime_memory("PRE 🚩 write_memory", **runtime_memory);
 			}
 			let res = self
 				.runtime_memory
@@ -162,18 +162,18 @@ impl FunctionContext for FunctionExecutor<'_> {
 			if self.debug_memory {
 				let runtime_memory: &Box<&mut dyn FunctionContext> =
 					self.runtime_memory.as_ref().unwrap();
-				display_runtime_memory("POST write_memory", **runtime_memory);
+				display_runtime_memory("POST 🏁 write_memory", **runtime_memory);
 			}
 
 			res
 		} else {
 			if self.debug_memory {
-				display_fn_executor_memory("PRE write_memory", &self.memory);
+				display_fn_executor_memory("PRE 🚩 write_memory", &self.memory);
 			}
 			let res =
 				self.memory.set(address.clone().into(), data.clone()).map_err(|e| e.to_string());
 			if self.debug_memory {
-				display_fn_executor_memory("POST write_memory", &self.memory);
+				display_fn_executor_memory("POST 🏁 write_memory", &self.memory);
 			}
 
 			res
@@ -184,7 +184,7 @@ impl FunctionContext for FunctionExecutor<'_> {
 		if self.is_runtime_context {
 			if self.debug_memory {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
-				display_runtime_memory("PRE allocate_memory", **runtime_memory);
+				display_runtime_memory("PRE 🚩 allocate_memory", **runtime_memory);
 			}
 			let res = self
 				.runtime_memory
@@ -193,13 +193,13 @@ impl FunctionContext for FunctionExecutor<'_> {
 				.allocate_memory(size);
 			if self.debug_memory {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
-				display_runtime_memory("POST allocate_memory", **runtime_memory);
+				display_runtime_memory("POST 🏁 allocate_memory", **runtime_memory);
 			}
 
 			res
 		} else {
 			if self.debug_memory {
-				display_fn_executor_memory("PRE allocate_memory", &self.memory);
+				display_fn_executor_memory("PRE 🚩 allocate_memory", &self.memory);
 			}
 			let heap = &mut self.heap.borrow_mut();
 			let res = self
@@ -207,7 +207,7 @@ impl FunctionContext for FunctionExecutor<'_> {
 				.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()));
 
 			if self.debug_memory {
-				display_fn_executor_memory("POST allocate_memory", &self.memory);
+				display_fn_executor_memory("POST 🏁 allocate_memory", &self.memory);
 			}
 
 			res
@@ -218,7 +218,7 @@ impl FunctionContext for FunctionExecutor<'_> {
 		if self.is_runtime_context {
 			if self.debug_memory {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
-				display_runtime_memory("PRE deallocate_memory", **runtime_memory);
+				display_runtime_memory("PRE 🚩 deallocate_memory", **runtime_memory);
 			}
 			let res = self
 				.runtime_memory
@@ -228,13 +228,13 @@ impl FunctionContext for FunctionExecutor<'_> {
 
 			if self.debug_memory {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
-				display_runtime_memory("POST deallocate_memory", **runtime_memory);
+				display_runtime_memory("POST 🏁 deallocate_memory", **runtime_memory);
 			}
 
 			res
 		} else {
 			if self.debug_memory {
-				display_fn_executor_memory("PRE deallocate_memory", &self.memory);
+				display_fn_executor_memory("PRE 🚩 deallocate_memory", &self.memory);
 			}
 
 			let heap = &mut self.heap.borrow_mut();
@@ -243,7 +243,7 @@ impl FunctionContext for FunctionExecutor<'_> {
 			});
 
 			if self.debug_memory {
-				display_fn_executor_memory("POST deallocate_memory", &self.memory);
+				display_fn_executor_memory("POST 🏁 deallocate_memory", &self.memory);
 			}
 
 			res
