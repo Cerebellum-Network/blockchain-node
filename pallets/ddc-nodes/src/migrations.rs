@@ -117,6 +117,12 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 			current_version == on_chain_version,
 			"after migration, the current_version and on_chain_version should be the same"
 		);
+
+		// Ensure all nodes have total_usage set to None
+		for (_key, node) in StorageNodes::<T>::iter() {
+			ensure!(node.total_usage.is_none(), "total_usage should be None");
+		}
+
 		Ok(())
 	}
 }
