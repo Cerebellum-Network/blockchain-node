@@ -221,7 +221,7 @@ pub struct ClusterNodesStats {
 
 /// Stores usage of customers
 #[derive(
-	PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone, Serialize, Deserialize,
+	PartialEq, Eq, Encode, Decode, Debug, TypeInfo, Default, Clone, Serialize, Deserialize,
 )]
 pub struct CustomerUsage {
 	pub transferred_bytes: u64,
@@ -232,7 +232,7 @@ pub struct CustomerUsage {
 
 /// Stores usage of node provider
 #[derive(
-	PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone, Serialize, Deserialize,
+	PartialEq, Eq, Encode, Decode, Debug, TypeInfo, Default, Clone, Serialize, Deserialize,
 )]
 pub struct NodeUsage {
 	pub transferred_bytes: u64,

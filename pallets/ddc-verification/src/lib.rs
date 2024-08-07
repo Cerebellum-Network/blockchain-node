@@ -55,6 +55,7 @@ mod tests;
 pub mod pallet {
 	use ddc_primitives::{BucketId, MergeActivityHash, KEY_TYPE};
 	use frame_support::PalletId;
+	use sp_core::crypto::AccountId32;
 	use sp_runtime::SaturatedConversion;
 
 	use super::*;
@@ -112,6 +113,7 @@ pub mod pallet {
 		const MAX_PAYOUT_BATCH_SIZE: u16;
 		/// The access to staking functionality.
 		type StakingVisitor: StakingInterface<AccountId = Self::AccountId>;
+		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
 	}
 
 	/// The event type.
@@ -271,6 +273,15 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			validator: T::AccountId,
+		},
+		EraValidationRootsPosted {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			validator: T::AccountId,
+			payers_merkle_root_hash: ActivityHash,
+			payees_merkle_root_hash: ActivityHash,
+			payers_batch_merkle_root_hashes: Vec<ActivityHash>,
+			payees_batch_merkle_root_hashes: Vec<ActivityHash>,
 		},
 	}
 
@@ -632,7 +643,13 @@ pub mod pallet {
 				Self::process_dac_data(&cluster_id, None, &dac_nodes, min_nodes, batch_size.into());
 
 			match processed_dac_data {
-				Ok(Some((era_activity, payers_merkle_root_hash, payees_merkle_root_hash))) => {
+				Ok(Some((
+					era_activity,
+					payers_merkle_root_hash,
+					payees_merkle_root_hash,
+					payers_batch_merkle_root_hashes,
+					payees_batch_merkle_root_hashes,
+				))) => {
 					log::info!(
 						"🏭🚀 Processing era_id: {:?} for cluster_id: {:?}",
 						era_activity.clone(),
@@ -645,6 +662,10 @@ pub mod pallet {
 							era_activity: era_activity.clone(),
 							payers_merkle_root_hash,
 							payees_merkle_root_hash,
+							payers_batch_merkle_root_hashes: payers_batch_merkle_root_hashes
+								.clone(),
+							payees_batch_merkle_root_hashes: payees_batch_merkle_root_hashes
+								.clone(),
 						}
 					});
 
@@ -792,11 +813,22 @@ pub mod pallet {
 				min_nodes,
 			) {
 				Ok(Some((era_id, batch_payout))) => {
+					let payers_log: Vec<(String, BucketId, CustomerUsage)> = batch_payout
+						.payers
+						.clone()
+						.into_iter()
+						.map(|(acc_id, bucket_id, customer_usage)| {
+							let account_id: T::AccountIdConverter = acc_id.into();
+							let account_id_32: AccountId32 = account_id.into();
+							let account_ref: &[u8; 32] = account_id_32.as_ref();
+							(hex::encode(account_ref), bucket_id, customer_usage)
+						})
+						.collect();
 					log::info!(
 						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:?}",
 						cluster_id,
 						era_id,
-						batch_payout.payers
+						payers_log
 					);
 
 					if let Some((_, res)) =
@@ -1141,13 +1173,17 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		#[allow(clippy::type_complexity)]
 		pub(crate) fn process_dac_data(
 			cluster_id: &ClusterId,
 			era_id_to_process: Option<EraActivity>,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 			min_nodes: u16,
 			batch_size: usize,
-		) -> Result<Option<(EraActivity, ActivityHash, ActivityHash)>, Vec<OCWError>> {
+		) -> Result<
+			Option<(EraActivity, ActivityHash, ActivityHash, Vec<ActivityHash>, Vec<ActivityHash>)>,
+			Vec<OCWError>,
+		> {
 			log::info!("🚀 Processing dac data for cluster_id: {:?}", cluster_id);
 			// todo! Need to debug follwing condition. Why it is not working on Devnet
 
@@ -1184,7 +1220,12 @@ pub mod pallet {
 				Percent::from_percent(T::MAJORITY),
 			)?;
 
-			log::info!("🪅 customers_activity_in_consensus executed successfully. ");
+			log::info!(
+				"🧗‍ Customer Activity for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				cluster_id,
+				era_activity.id,
+				customers_activity_in_consensus
+			);
 			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				cluster_id,
 				era_activity.id,
@@ -1192,12 +1233,29 @@ pub mod pallet {
 			)
 			.map_err(|err| vec![err])?;
 
+			let customer_batch_roots_string: Vec<String> =
+				customers_activity_batch_roots.clone().into_iter().map(hex::encode).collect();
+
+			log::info!(
+				"🧗‍ Customer Activity_batch_roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				cluster_id,
+				era_activity.id,
+				customer_batch_roots_string
+			);
+
 			let customers_activity_root = Self::create_merkle_root(
 				cluster_id,
 				era_activity.id,
 				&customers_activity_batch_roots,
 			)
 			.map_err(|err| vec![err])?;
+
+			log::info!(
+				"🧗‍ Customer Activity _ roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				cluster_id,
+				era_activity.id,
+				hex::encode(customers_activity_root)
+			);
 
 			let nodes_activity_in_consensus = Self::get_consensus_for_activities(
 				cluster_id,
@@ -1207,7 +1265,12 @@ pub mod pallet {
 				Percent::from_percent(T::MAJORITY),
 			)?;
 
-			log::info!("🪅 nodes_activity_in_consensus executed successfully. ");
+			log::info!(
+				"🧗‍ Node Activity for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				cluster_id,
+				era_activity.id,
+				nodes_activity_in_consensus
+			);
 			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				cluster_id,
 				era_activity.id,
@@ -1215,9 +1278,25 @@ pub mod pallet {
 			)
 			.map_err(|err| vec![err])?;
 
+			let nodes_activity_batch_roots_string: Vec<String> =
+				nodes_activity_batch_roots.clone().into_iter().map(hex::encode).collect();
+
+			log::info!(
+				"🧗‍ Node Activity_batch_roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				cluster_id,
+				era_activity.id,
+				nodes_activity_batch_roots_string
+			);
 			let nodes_activity_root =
 				Self::create_merkle_root(cluster_id, era_activity.id, &nodes_activity_batch_roots)
 					.map_err(|err| vec![err])?;
+
+			log::info!(
+				"🧗‍ Node Activity _ roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				cluster_id,
+				era_activity.id,
+				hex::encode(nodes_activity_root)
+			);
 
 			Self::store_validation_activities(
 				cluster_id,
@@ -1230,7 +1309,13 @@ pub mod pallet {
 				&nodes_activity_batch_roots,
 			);
 			log::info!("🙇‍ Dac data processing completed for cluster_id: {:?}", cluster_id);
-			Ok(Some((era_activity, customers_activity_root, nodes_activity_root)))
+			Ok(Some((
+				era_activity,
+				customers_activity_root,
+				nodes_activity_root,
+				customers_activity_batch_roots,
+				nodes_activity_batch_roots,
+			)))
 		}
 
 		#[allow(dead_code)]
@@ -1835,6 +1920,11 @@ pub mod pallet {
 			ActivityHash,
 			Vec<ActivityHash>,
 		)> {
+			log::info!(
+				"🏠 Off-chain validation_activities cache hit for ClusterId: {:?} EraId: {:?}",
+				cluster_id,
+				era_id
+			);
 			let key = Self::derive_key(cluster_id, era_id);
 
 			// Retrieve encoded tuple from local storage
@@ -2358,11 +2448,15 @@ pub mod pallet {
 				if let Ok(NodeParams::StorageParams(storage_params)) =
 					T::NodeVisitor::get_node_params(&node_pub_key)
 				{
+					let NodePubKey::StoragePubKey(key) = node_pub_key.clone();
+					let node_pub_key_ref: &[u8; 32] = key.as_ref();
+					let node_pub_key_string = hex::encode(node_pub_key_ref);
 					log::info!(
 						"🏭📝Get DAC Node for cluster_id: {:?} and node_pub_key: {:?}",
 						cluster_id,
-						node_pub_key.encode()
+						node_pub_key_string
 					);
+
 					// Add to the results if the mode matches
 					dac_nodes.push((node_pub_key, storage_params));
 				}
@@ -2493,6 +2587,8 @@ pub mod pallet {
 			era_activity: EraActivity,
 			payers_merkle_root_hash: ActivityHash,
 			payees_merkle_root_hash: ActivityHash,
+			payers_batch_merkle_root_hashes: Vec<ActivityHash>,
+			payees_batch_merkle_root_hashes: Vec<ActivityHash>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 
@@ -2555,6 +2651,15 @@ pub mod pallet {
 
 			// Update the EraValidations storage
 			<EraValidations<T>>::insert(cluster_id, era_activity.id, era_validation);
+			Self::deposit_event(Event::<T>::EraValidationRootsPosted {
+				cluster_id,
+				era_id: era_activity.id,
+				validator: caller,
+				payers_merkle_root_hash,
+				payees_merkle_root_hash,
+				payers_batch_merkle_root_hashes,
+				payees_batch_merkle_root_hashes,
+			});
 			if should_deposit_ready_event {
 				Self::deposit_event(Event::<T>::EraValidationReady {
 					cluster_id,
