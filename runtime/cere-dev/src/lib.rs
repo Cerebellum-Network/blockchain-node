@@ -1312,6 +1312,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
 	type StakingVisitor = pallet_staking::Pallet<Runtime>;
+	type AccountIdConverter = AccountId32;
 }
 
 construct_runtime!(

@@ -55,6 +55,7 @@ mod tests;
 pub mod pallet {
 	use ddc_primitives::{BucketId, MergeActivityHash, KEY_TYPE};
 	use frame_support::PalletId;
+	use sp_core::crypto::AccountId32;
 	use sp_runtime::SaturatedConversion;
 
 	use super::*;
@@ -112,6 +113,7 @@ pub mod pallet {
 		const MAX_PAYOUT_BATCH_SIZE: u16;
 		/// The access to staking functionality.
 		type StakingVisitor: StakingInterface<AccountId = Self::AccountId>;
+		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
 	}
 
 	/// The event type.
@@ -811,11 +813,22 @@ pub mod pallet {
 				min_nodes,
 			) {
 				Ok(Some((era_id, batch_payout))) => {
+					let payers_log: Vec<(String, BucketId, CustomerUsage)> = batch_payout
+						.payers
+						.clone()
+						.into_iter()
+						.map(|(acc_id, bucket_id, customer_usage)| {
+							let account_id: T::AccountIdConverter = acc_id.into();
+							let account_id_32: AccountId32 = account_id.into();
+							let account_ref: &[u8; 32] = account_id_32.as_ref();
+							(hex::encode(account_ref), bucket_id, customer_usage)
+						})
+						.collect();
 					log::info!(
 						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:?}",
 						cluster_id,
 						era_id,
-						batch_payout.payers
+						payers_log
 					);
 
 					if let Some((_, res)) =
