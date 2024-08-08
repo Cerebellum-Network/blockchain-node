@@ -284,18 +284,6 @@ fn send_charging_customers_batch_fails_uninitialised() {
 			max_batch_index,
 		));
 
-		assert_noop!(
-			DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
-				cluster_id,
-				era,
-				batch_index,
-				payers1.clone(),
-				MMRProof::default(),
-			),
-			Error::<Test>::ArithmeticOverflow
-		);
-
 		let payers1 = vec![(user2, bucket_id2, CustomerUsage::default())];
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account.clone()),

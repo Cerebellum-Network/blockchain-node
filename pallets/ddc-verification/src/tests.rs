@@ -13,7 +13,7 @@ use sp_io::TestExternalities;
 use sp_keystore::{testing::MemoryKeystore, Keystore, KeystoreExt};
 use sp_runtime::AccountId32;
 
-use crate::{mock::*, Error, NodeActivity, OCWError, OCWError::TotalNodeUsageLessThanZero, *};
+use crate::{mock::*, Error, NodeActivity, OCWError, *};
 
 #[allow(dead_code)]
 fn register_validators(validators: Vec<AccountId32>) {
@@ -2049,13 +2049,33 @@ fn fetch_reward_activities_works() {
 
 	let leaves = [a, b, c, d, e];
 	let era_id = 1;
+	let total_usage: i64 = 56;
 
 	let result = DdcVerification::fetch_reward_activities(
 		&cluster_id,
 		era_id,
 		get_node_activities(),
 		leaves.to_vec(),
+		total_usage,
 	);
 
-	assert_eq!(result.unwrap_err(), vec![TotalNodeUsageLessThanZero { cluster_id, era_id }]);
+	let usage = get_node_activities().iter().fold(
+		NodeUsage { transferred_bytes: 0, stored_bytes: 0, number_of_puts: 0, number_of_gets: 0 },
+		|mut acc, activity| {
+			acc.transferred_bytes += activity.transferred_bytes;
+			acc.stored_bytes += activity.stored_bytes;
+			acc.number_of_puts += activity.number_of_puts;
+			acc.number_of_gets += activity.number_of_gets;
+			acc
+		},
+	);
+
+	let ex_result = NodeUsage {
+		stored_bytes: total_usage + usage.stored_bytes,
+		number_of_puts: usage.number_of_puts,
+		number_of_gets: usage.number_of_gets,
+		transferred_bytes: usage.transferred_bytes,
+	};
+
+	assert_eq!(result.unwrap(), Some((era_id, (leaves.len() - 1) as u16, ex_result)));
 }

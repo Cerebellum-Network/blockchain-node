@@ -149,7 +149,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 54112,
+	spec_version: 54113,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 19,
@@ -1218,6 +1218,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
 	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
 }
 
@@ -1407,7 +1408,7 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
 /// Runtime migrations
-type Migrations = ();
+type Migrations = (pallet_ddc_nodes::migrations::MigrateToV1<Runtime>,);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
