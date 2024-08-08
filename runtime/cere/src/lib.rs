@@ -1216,6 +1216,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type VoteScoreToU64 = IdentityConvert;
 	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
 }
 
@@ -1442,6 +1443,7 @@ pub mod migrations {
 	pub type Unreleased = (
 		pallet_ddc_customers::migration::MigrateToV2<Runtime>,
 		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
+		pallet_ddc_nodes::migrations::MigrateToV1<Runtime>,
 		UpgradeSessionKeys,
 	);
 }

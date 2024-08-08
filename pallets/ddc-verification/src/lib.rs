@@ -269,9 +269,9 @@ pub mod pallet {
 		ValidatorKeySet {
 			validator: T::AccountId,
 		},
-		TotalNodeUsageLessThanZero {
+		FailedToFetchNodeTotalUsage {
 			cluster_id: ClusterId,
-			era_id: DdcEra,
+			node_pub_key: NodePubKey,
 			validator: T::AccountId,
 		},
 		EraValidationRootsPosted {
@@ -382,9 +382,9 @@ pub mod pallet {
 		},
 		FailedToFetchCurrentValidator,
 		FailedToFetchNodeProvider,
-		TotalNodeUsageLessThanZero {
+		FailedToFetchNodeTotalUsage {
 			cluster_id: ClusterId,
-			era_id: DdcEra,
+			node_pub_key: NodePubKey,
 		},
 	}
 
@@ -1572,6 +1572,13 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
+				let nodes_total_usages = Self::get_nodes_total_usage(cluster_id, dac_nodes)?;
+
+				let nodes_total_usage: i64 = nodes_total_usages
+					.iter()
+					.filter_map(|usage| usage.as_ref().map(|u| u.stored_bytes))
+					.sum();
+
 				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::CustomersChargedWithFees
 				{
@@ -1590,6 +1597,7 @@ pub mod pallet {
 							era_id,
 							nodes_activity_in_consensus,
 							nodes_activity_batch_roots,
+							nodes_total_usage,
 						)
 					} else {
 						let era_activity = EraActivity { id: era_id, start, end };
@@ -1617,6 +1625,7 @@ pub mod pallet {
 								era_id,
 								nodes_activity_in_consensus,
 								nodes_activity_batch_roots,
+								nodes_total_usage,
 							)
 						} else {
 							Ok(None)
@@ -1635,6 +1644,7 @@ pub mod pallet {
 			era_id: DdcEra,
 			nodes_activity_in_consensus: Vec<NodeActivity>,
 			nodes_activity_batch_roots: Vec<ActivityHash>,
+			current_nodes_total_usage: i64,
 		) -> Result<Option<(DdcEra, BatchIndex, NodeUsage)>, Vec<OCWError>> {
 			if let Some(max_batch_index) = nodes_activity_batch_roots.len().checked_sub(1)
 			// -1 cause payout expects max_index, not length
@@ -1643,33 +1653,19 @@ pub mod pallet {
 					vec![OCWError::BatchIndexConversionFailed { cluster_id: *cluster_id, era_id }]
 				})?;
 
-				let total_node_usage = nodes_activity_in_consensus
-					.into_iter()
-					.try_fold(
-						NodeUsage {
-							transferred_bytes: 0,
-							stored_bytes: 0,
-							number_of_puts: 0,
-							number_of_gets: 0,
-						},
-						|mut acc: NodeUsage, activity| {
-							let total_stored_bytes = acc.stored_bytes + activity.stored_bytes;
+				let mut total_node_usage = NodeUsage {
+					transferred_bytes: 0,
+					stored_bytes: current_nodes_total_usage,
+					number_of_puts: 0,
+					number_of_gets: 0,
+				};
 
-							if total_stored_bytes < 0 {
-								Err(OCWError::TotalNodeUsageLessThanZero {
-									cluster_id: *cluster_id,
-									era_id,
-								})
-							} else {
-								acc.transferred_bytes += activity.transferred_bytes;
-								acc.stored_bytes = total_stored_bytes;
-								acc.number_of_puts += activity.number_of_puts;
-								acc.number_of_gets += activity.number_of_gets;
-								Ok(acc)
-							}
-						},
-					)
-					.map_err(|e| vec![e])?;
+				for activity in nodes_activity_in_consensus {
+					total_node_usage.transferred_bytes += activity.transferred_bytes;
+					total_node_usage.stored_bytes += activity.stored_bytes;
+					total_node_usage.number_of_puts += activity.number_of_puts;
+					total_node_usage.number_of_gets += activity.number_of_gets;
+				}
 
 				Ok(Some((era_id, max_batch_index, total_node_usage)))
 			} else {
@@ -1904,6 +1900,32 @@ pub mod pallet {
 
 			// Store the serialized data in local offchain storage
 			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
+		}
+
+		pub(crate) fn get_nodes_total_usage(
+			cluster_id: &ClusterId,
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+		) -> Result<Vec<Option<NodeUsage>>, Vec<OCWError>> {
+			let mut results: Vec<Option<NodeUsage>> = Vec::new();
+			let mut errors: Vec<OCWError> = Vec::new();
+
+			for (node_pub_key, _params) in dac_nodes.iter() {
+				match T::NodeVisitor::get_total_usage(node_pub_key) {
+					Ok(usage) => results.push(usage),
+					Err(_err) => {
+						errors.push(OCWError::FailedToFetchNodeTotalUsage {
+							cluster_id: *cluster_id,
+							node_pub_key: node_pub_key.clone(),
+						});
+					},
+				}
+			}
+
+			if !errors.is_empty() {
+				return Err(errors);
+			}
+
+			Ok(results)
 		}
 
 		#[allow(clippy::type_complexity)]
@@ -2868,10 +2890,10 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
-					OCWError::TotalNodeUsageLessThanZero { cluster_id, era_id } => {
-						Self::deposit_event(Event::TotalNodeUsageLessThanZero {
+					OCWError::FailedToFetchNodeTotalUsage { cluster_id, node_pub_key } => {
+						Self::deposit_event(Event::FailedToFetchNodeTotalUsage {
 							cluster_id,
-							era_id,
+							node_pub_key,
 							validator: caller.clone(),
 						});
 					},
