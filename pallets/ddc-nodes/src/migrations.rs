@@ -1,5 +1,6 @@
 #[cfg(feature = "try-runtime")]
 use ddc_primitives::StorageNodePubKey;
+use frame_benchmarking::__private::log;
 #[cfg(feature = "try-runtime")]
 use frame_support::ensure;
 use frame_support::{
@@ -51,13 +52,15 @@ pub fn migrate_to_v1<T: Config>() -> Weight {
 	if on_chain_version == 0 && current_version == 1 {
 		let weight = T::DbWeight::get().reads(1);
 
-		let count = StorageNodes::<T>::iter().count();
+		let count = v0::StorageNodes::<T>::iter().count();
 		info!(
 			target: LOG_TARGET,
 			" >>> Updating DDC Storage Nodes. Migrating {} nodes...", count
 		);
 		StorageNodes::<T>::translate::<v0::StorageNode<T>, _>(|_, old: v0::StorageNode<T>| {
-			info!(target: LOG_TARGET, "     Migrating node for node ID {:?}...", old.pub_key);
+			let node_pub_key_ref: &[u8; 32] = old.pub_key.as_ref();
+			let node_pub_key_string = hex::encode(node_pub_key_ref);
+			info!(target: LOG_TARGET, "     Migrating node for node ID {:?}...", node_pub_key_string);
 
 			Some(StorageNode {
 				pub_key: old.pub_key,
@@ -70,6 +73,7 @@ pub fn migrate_to_v1<T: Config>() -> Weight {
 
 		// Update storage version.
 		StorageVersion::new(1).put::<Pallet<T>>();
+		let count = StorageNodes::<T>::iter().count();
 		info!(
 			target: LOG_TARGET,
 			"Upgraded {} records, storage to version {:?}",
