@@ -7,11 +7,13 @@ use ddc_primitives::{
 		bucket::BucketVisitor,
 		cluster::{ClusterCreator, ClusterProtocol},
 		customer::{CustomerCharger, CustomerDepositor},
+		node::NodeVisitor,
 		pallet::PalletVisitor,
 		ClusterQuery, ValidatorVisitor,
 	},
 	BucketVisitorError, ClusterBondingParams, ClusterFeesParams, ClusterParams,
-	ClusterPricingParams, ClusterProtocolParams, ClusterStatus, NodeType, DOLLARS,
+	ClusterPricingParams, ClusterProtocolParams, ClusterStatus, NodeParams, NodePubKey, NodeType,
+	DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -136,11 +138,33 @@ impl crate::pallet::Config for Test {
 	type VoteScoreToU64 = Identity;
 	type WeightInfo = ();
 	type ValidatorVisitor = MockValidatorVisitor;
+	type NodeVisitor = MockNodeVisitor;
 	type AccountIdConverter = AccountId;
 }
 
-pub struct MockValidatorVisitor;
+pub struct MockNodeVisitor;
+impl<T: Config> NodeVisitor<T> for MockNodeVisitor
+where
+	<T as frame_system::Config>::AccountId: From<AccountId>,
+{
+	fn get_total_usage(_node_pub_key: &NodePubKey) -> Result<Option<NodeUsage>, DispatchError> {
+		unimplemented!()
+	}
+	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
+		unimplemented!()
+	}
+	fn exists(_node_pub_key: &NodePubKey) -> bool {
+		unimplemented!()
+	}
+	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+	fn get_node_params(_node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
+		unimplemented!()
+	}
+}
 
+pub struct MockValidatorVisitor;
 impl<T: Config> ValidatorVisitor<T> for MockValidatorVisitor
 where
 	<T as frame_system::Config>::AccountId: From<AccountId>,

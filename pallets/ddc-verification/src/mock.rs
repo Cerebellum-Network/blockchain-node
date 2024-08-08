@@ -427,6 +427,10 @@ impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
 
 pub struct MockNodeVisitor;
 impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
+	fn get_total_usage(_node_pub_key: &NodePubKey) -> Result<Option<NodeUsage>, DispatchError> {
+		Ok(None) // todo! add more complex mock
+	}
+
 	fn get_node_params(node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
 		let key1 =
 			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
