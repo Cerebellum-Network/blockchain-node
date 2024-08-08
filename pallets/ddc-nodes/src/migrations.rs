@@ -1,6 +1,5 @@
 #[cfg(feature = "try-runtime")]
 use ddc_primitives::StorageNodePubKey;
-use frame_benchmarking::__private::log;
 #[cfg(feature = "try-runtime")]
 use frame_support::ensure;
 use frame_support::{
