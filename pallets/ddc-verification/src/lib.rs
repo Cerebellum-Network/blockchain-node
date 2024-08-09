@@ -283,6 +283,9 @@ pub mod pallet {
 			payers_batch_merkle_root_hashes: Vec<ActivityHash>,
 			payees_batch_merkle_root_hashes: Vec<ActivityHash>,
 		},
+		ClusterToValidateRetrievalError {
+			validator: T::AccountId,
+		},
 	}
 
 	/// Consensus Errors
@@ -386,6 +389,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
 		},
+		ClusterToValidateRetrievalError,
 	}
 
 	#[pallet::error]
@@ -441,11 +445,6 @@ pub mod pallet {
 		DdcEra,
 		EraValidation<T>,
 	>;
-
-	/// Cluster id storage
-	#[pallet::storage]
-	#[pallet::getter(fn cluster_to_validate)]
-	pub type ClusterToValidate<T: Config> = StorageValue<_, ClusterId>;
 
 	/// List of validators.
 	#[pallet::storage]
@@ -624,540 +623,10 @@ pub mod pallet {
 
 			log::info!("👋 Hello from pallet-ddc-verification.");
 
-			// todo! fetch clusters from ddc-clusters and loop the whole process for each cluster
-			let cluster_id = unwrap_or_log_error!(
-				Self::get_cluster_to_validate(),
-				"🏭❌ Error retrieving cluster to validate"
-			);
+			let cluster_ids_result = T::ClusterManager::get_all_clusters();
 
-			let dac_nodes = unwrap_or_log_error!(
-				Self::get_dac_nodes(&cluster_id),
-				"🏭❌ Error retrieving dac nodes to validate"
-			);
-
-			let min_nodes = T::MIN_DAC_NODES_FOR_CONSENSUS;
-			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
-			let mut errors: Vec<OCWError> = Vec::new();
-
-			let processed_dac_data =
-				Self::process_dac_data(&cluster_id, None, &dac_nodes, min_nodes, batch_size.into());
-
-			match processed_dac_data {
-				Ok(Some((
-					era_activity,
-					payers_merkle_root_hash,
-					payees_merkle_root_hash,
-					payers_batch_merkle_root_hashes,
-					payees_batch_merkle_root_hashes,
-				))) => {
-					log::info!(
-						"🏭🚀 Processing era_id: {:?} for cluster_id: {:?}",
-						era_activity.clone(),
-						cluster_id
-					);
-
-					let results = signer.send_signed_transaction(|_account| {
-						Call::set_prepare_era_for_payout {
-							cluster_id,
-							era_activity: era_activity.clone(),
-							payers_merkle_root_hash,
-							payees_merkle_root_hash,
-							payers_batch_merkle_root_hashes: payers_batch_merkle_root_hashes
-								.clone(),
-							payees_batch_merkle_root_hashes: payees_batch_merkle_root_hashes
-								.clone(),
-						}
-					});
-
-					for (_, res) in &results {
-						match res {
-							Ok(()) => {
-								log::info!(
-										"🏭⛳️ Merkle roots posted on-chain for cluster_id: {:?}, era: {:?}",
-										cluster_id,
-										era_activity.clone()
-									);
-							},
-							Err(e) => {
-								log::error!(
-										"🏭❌ Error to post merkle roots on-chain for cluster_id: {:?}, era: {:?}: {:?}",
-										cluster_id,
-										era_activity.clone(),
-										e
-									);
-								// Extrinsic call failed
-								errors.push(OCWError::PrepareEraTransactionError {
-									cluster_id,
-									era_id: era_activity.id,
-									payers_merkle_root_hash,
-									payees_merkle_root_hash,
-								});
-							},
-						}
-					}
-				},
-				Ok(None) => {
-					log::info!("🏭ℹ️ No eras for DAC process for cluster_id: {:?}", cluster_id);
-				},
-				Err(process_errors) => {
-					errors.extend(process_errors);
-				},
-			};
-
-			// todo! factor out as macro as this is repetitive
-			match Self::prepare_begin_billing_report(&cluster_id) {
-				Ok(Some((era_id, start_era, end_era))) => {
-					log::info!(
-						"🏭🚀 process_start_payout processed successfully for cluster_id: {:?}, era_id: {:?},  start_era: {:?},  end_era: {:?} ",
-						cluster_id,
-						era_id,
-						start_era,
-						end_era
-					);
-					let results = signer.send_signed_transaction(|_account| {
-						Call::begin_billing_report { cluster_id, era_id, start_era, end_era }
-					});
-
-					for (_, res) in &results {
-						match res {
-							Ok(()) => {
-								log::info!(
-									"🏭🏄‍ Sent begin_billing_report successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-							},
-							Err(e) => {
-								log::error!(
-										"🏭❌ Error to post begin_billing_report for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-								// Extrinsic call failed
-								errors.push(OCWError::BeginBillingReportTransactionError {
-									cluster_id,
-									era_id,
-								});
-							},
-						}
-					}
-				},
-				Ok(None) => {
-					log::info!("🏭❌ No era for payout for cluster_id: {:?}", cluster_id);
-				},
-				Err(e) => {
-					errors.push(e);
-				},
-			}
-
-			// todo! factor out as macro as this is repetitive
-			match Self::prepare_begin_charging_customers(
-				&cluster_id,
-				&dac_nodes,
-				min_nodes,
-				batch_size.into(),
-			) {
-				Ok(Some((era_id, max_batch_index))) => {
-					log::info!(
-						"🏭🎁 prepare_begin_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
-						cluster_id,
-						era_id
-					);
-
-					if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
-						Call::begin_charging_customers { cluster_id, era_id, max_batch_index }
-					}) {
-						match res {
-							Ok(_) => {
-								// Extrinsic call succeeded
-								log::info!(
-									"🏭🚀 Sent begin_charging_customers successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-							},
-							Err(e) => {
-								log::error!(
-										"🏭❌ Error to post begin_charging_customers for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-								// Extrinsic call failed
-								errors.push(OCWError::BeginChargingCustomersTransactionError {
-									cluster_id,
-									era_id,
-								});
-							},
-						}
-					} else {
-						log::error!("🏭❌ No account available to sign the transaction");
-						errors.push(OCWError::NoAvailableSigner);
-					}
-				},
-				Ok(None) => {
-					log::error!(
-						"🏭🦀 No era for begin_charging_customers for cluster_id: {:?}",
-						cluster_id
-					);
-				},
-				Err(e) => errors.extend(e),
-			}
-
-			// todo! factor out as macro as this is repetitive
-			match Self::prepare_send_charging_customers_batch(
-				&cluster_id,
-				batch_size.into(),
-				&dac_nodes,
-				min_nodes,
-			) {
-				Ok(Some((era_id, batch_payout))) => {
-					let payers_log: Vec<(String, BucketId, CustomerUsage)> = batch_payout
-						.payers
-						.clone()
-						.into_iter()
-						.map(|(acc_id, bucket_id, customer_usage)| {
-							let account_id: T::AccountIdConverter = acc_id.into();
-							let account_id_32: AccountId32 = account_id.into();
-							let account_ref: &[u8; 32] = account_id_32.as_ref();
-							(hex::encode(account_ref), bucket_id, customer_usage)
-						})
-						.collect();
-					log::info!(
-						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:?}",
-						cluster_id,
-						era_id,
-						payers_log
-					);
-
-					if let Some((_, res)) =
-						signer.send_signed_transaction(|_acc| Call::send_charging_customers_batch {
-							cluster_id,
-							era_id,
-							batch_index: batch_payout.batch_index,
-							payers: batch_payout.payers.clone(),
-							batch_proof: batch_payout.batch_proof.clone(),
-						}) {
-						match res {
-							Ok(_) => {
-								// Extrinsic call succeeded
-								log::info!(
-									"🏭🚀 Sent send_charging_customers_batch successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-							},
-							Err(e) => {
-								log::error!(
-										"🏭❌ Error to post send_charging_customers_batch for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-								// Extrinsic call failed
-								errors.push(OCWError::SendChargingCustomersBatchTransactionError {
-									cluster_id,
-									era_id,
-									batch_index: batch_payout.batch_index,
-								});
-							},
-						}
-					} else {
-						log::error!("🏭❌ No account available to sign the transaction");
-						errors.push(OCWError::NoAvailableSigner);
-					}
-				},
-				Ok(None) => {
-					log::info!(
-						"🏭🦀 No era for send_charging_customers_batch for cluster_id: {:?}",
-						cluster_id
-					);
-				},
-				Err(e) => {
-					errors.extend(e);
-				},
-			}
-
-			// todo! factor out as macro as this is repetitive
-			match Self::prepare_end_charging_customers(&cluster_id) {
-				Ok(Some(era_id)) => {
-					log::info!(
-						"🏭📝prepare_end_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
-						cluster_id,
-						era_id
-					);
-
-					if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
-						Call::end_charging_customers { cluster_id, era_id }
-					}) {
-						match res {
-							Ok(_) => {
-								// Extrinsic call succeeded
-								log::info!(
-									"🏭📝Sent end_charging_customers successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-							},
-							Err(e) => {
-								log::error!(
-										"🏭❌Error to post end_charging_customers for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-								// Extrinsic call failed
-								errors.push(OCWError::EndChargingCustomersTransactionError {
-									cluster_id,
-									era_id,
-								});
-							},
-						}
-					} else {
-						log::error!("🏭❌No account available to sign the transaction");
-						errors.push(OCWError::NoAvailableSigner);
-					}
-				},
-				Ok(None) => {
-					log::info!(
-						"🏭📝No era for end_charging_customers for cluster_id: {:?}",
-						cluster_id
-					);
-				},
-				Err(e) => {
-					errors.push(e);
-				},
-			}
-
-			// todo! factor out as macro as this is repetitive
-			match Self::prepare_begin_rewarding_providers(
-				&cluster_id,
-				&dac_nodes,
-				min_nodes,
-				batch_size.into(),
-			) {
-				Ok(Some((era_id, max_batch_index, total_node_usage))) => {
-					log::info!(
-						"🏭📝prepare_begin_rewarding_providers processed successfully for cluster_id: {:?}, era_id: {:?}",
-						cluster_id,
-						era_id
-					);
-
-					if let Some((_, res)) =
-						signer.send_signed_transaction(|_acc| Call::begin_rewarding_providers {
-							cluster_id,
-							era_id,
-							max_batch_index,
-							total_node_usage: total_node_usage.clone(),
-						}) {
-						match res {
-							Ok(_) => {
-								// Extrinsic call succeeded
-								log::info!(
-									"🏭📝Sent begin_rewarding_providers successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-							},
-							Err(e) => {
-								log::error!(
-										"🏭❌Error to post begin_rewarding_providers for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-								// Extrinsic call failed
-								errors.push(OCWError::BeginRewardingProvidersTransactionError {
-									cluster_id,
-									era_id,
-								});
-							},
-						}
-					} else {
-						log::error!("🏭❌No account available to sign the transaction");
-						errors.push(OCWError::NoAvailableSigner);
-					}
-				},
-				Ok(None) => {
-					log::info!(
-						"🏭📝No era for begin_rewarding_providers for cluster_id: {:?}",
-						cluster_id
-					);
-				},
-				Err(e) => {
-					errors.extend(e);
-				},
-			}
-
-			// todo! factor out as macro as this is repetitive
-			match Self::prepare_send_rewarding_providers_batch(
-				&cluster_id,
-				batch_size.into(),
-				&dac_nodes,
-				min_nodes,
-			) {
-				Ok(Some((era_id, batch_payout))) => {
-					log::info!(
-						"🎁 prepare_send_rewarding_providers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
-						cluster_id,
-						era_id
-					);
-
-					if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
-						Call::send_rewarding_providers_batch {
-							cluster_id,
-							era_id,
-							batch_index: batch_payout.batch_index,
-							payees: batch_payout.payees.clone(),
-							batch_proof: batch_payout.batch_proof.clone(),
-						}
-					}) {
-						match res {
-							Ok(_) => {
-								// Extrinsic call succeeded
-								log::info!(
-									"🚀 Sent send_rewarding_providers_batch successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-							},
-							Err(e) => {
-								log::error!(
-										"🦀 Error to post send_rewarding_providers_batch for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-								// Extrinsic call failed
-								errors.push(
-									OCWError::SendRewardingProvidersBatchTransactionError {
-										cluster_id,
-										era_id,
-										batch_index: batch_payout.batch_index,
-									},
-								);
-							},
-						}
-					} else {
-						log::error!("🦀 No account available to sign the transaction");
-						errors.push(OCWError::NoAvailableSigner);
-					}
-				},
-				Ok(None) => {
-					log::info!(
-						"🦀 No era for send_rewarding_providers_batch for cluster_id: {:?}",
-						cluster_id
-					);
-				},
-				Err(e) => {
-					errors.extend(e);
-				},
-			}
-
-			// todo! factor out as macro as this is repetitive
-			match Self::prepare_end_rewarding_providers(&cluster_id) {
-				Ok(Some(era_id)) => {
-					log::info!(
-						"🏭📝prepare_end_rewarding_providers processed successfully for cluster_id: {:?}, era_id: {:?}",
-						cluster_id,
-						era_id
-					);
-
-					if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
-						Call::end_rewarding_providers { cluster_id, era_id }
-					}) {
-						match res {
-							Ok(_) => {
-								// Extrinsic call succeeded
-								log::info!(
-									"🏭📝Sent end_rewarding_providers successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-							},
-							Err(e) => {
-								log::error!(
-										"🏭❌Error to post end_rewarding_providers for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-								// Extrinsic call failed
-								errors.push(OCWError::EndRewardingProvidersTransactionError {
-									cluster_id,
-									era_id,
-								});
-							},
-						}
-					} else {
-						log::error!("🏭❌No account available to sign the transaction");
-						errors.push(OCWError::NoAvailableSigner);
-					}
-				},
-				Ok(None) => {
-					log::info!(
-						"🏭📝No era for end_rewarding_providers for cluster_id: {:?}",
-						cluster_id
-					);
-				},
-				Err(e) => {
-					errors.push(e);
-				},
-			}
-
-			// todo! factor out as macro as this is repetitive
-			match Self::prepare_end_billing_report(&cluster_id) {
-				Ok(Some(era_id)) => {
-					log::info!(
-						"🏭📝prepare_end_billing_report processed successfully for cluster_id: {:?}, era_id: {:?}",
-						cluster_id,
-						era_id
-					);
-
-					if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
-						Call::end_billing_report { cluster_id, era_id }
-					}) {
-						match res {
-							Ok(_) => {
-								// Extrinsic call succeeded
-								log::info!(
-									"🏭📝Sent end_billing_report successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-							},
-							Err(e) => {
-								log::error!(
-										"🏭❌Error to post end_billing_report for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-								// Extrinsic call failed
-								errors.push(OCWError::EndBillingReportTransactionError {
-									cluster_id,
-									era_id,
-								});
-							},
-						}
-					} else {
-						log::error!("🏭❌No account available to sign the transaction");
-						errors.push(OCWError::NoAvailableSigner);
-					}
-				},
-				Ok(None) => {
-					log::info!(
-						"🏭📝No era for end_billing_report for cluster_id: {:?}",
-						cluster_id
-					);
-				},
-				Err(e) => {
-					errors.push(e);
-				},
-			}
-
-			if !errors.is_empty() {
+			if cluster_ids_result.is_err() {
+				let errors = vec![OCWError::ClusterToValidateRetrievalError];
 				let results = signer.send_signed_transaction(|_account| {
 					Call::emit_consensus_errors { errors: errors.clone() }
 				});
@@ -1166,6 +635,562 @@ pub mod pallet {
 					match res {
 						Ok(()) => log::info!("✅ Successfully submitted emit_consensus_errors tx"),
 						Err(_) => log::error!("🏭❌ Failed to submit emit_consensus_errors tx"),
+					}
+				}
+
+				return;
+			}
+
+			for cluster_id in cluster_ids_result.unwrap() {
+				let dac_nodes = unwrap_or_log_error!(
+					Self::get_dac_nodes(&cluster_id),
+					"🏭❌ Error retrieving dac nodes to validate"
+				);
+
+				let min_nodes = T::MIN_DAC_NODES_FOR_CONSENSUS;
+				let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
+				let mut errors: Vec<OCWError> = Vec::new();
+
+				let processed_dac_data = Self::process_dac_data(
+					&cluster_id,
+					None,
+					&dac_nodes,
+					min_nodes,
+					batch_size.into(),
+				);
+
+				match processed_dac_data {
+					Ok(Some((
+						era_activity,
+						payers_merkle_root_hash,
+						payees_merkle_root_hash,
+						payers_batch_merkle_root_hashes,
+						payees_batch_merkle_root_hashes,
+					))) => {
+						log::info!(
+							"🏭🚀 Processing era_id: {:?} for cluster_id: {:?}",
+							era_activity.clone(),
+							cluster_id
+						);
+
+						let results = signer.send_signed_transaction(|_account| {
+							Call::set_prepare_era_for_payout {
+								cluster_id,
+								era_activity: era_activity.clone(),
+								payers_merkle_root_hash,
+								payees_merkle_root_hash,
+								payers_batch_merkle_root_hashes: payers_batch_merkle_root_hashes
+									.clone(),
+								payees_batch_merkle_root_hashes: payees_batch_merkle_root_hashes
+									.clone(),
+							}
+						});
+
+						for (_, res) in &results {
+							match res {
+								Ok(()) => {
+									log::info!(
+										"🏭⛳️ Merkle roots posted on-chain for cluster_id: {:?}, era: {:?}",
+										cluster_id,
+										era_activity.clone()
+									);
+								},
+								Err(e) => {
+									log::error!(
+										"🏭❌ Error to post merkle roots on-chain for cluster_id: {:?}, era: {:?}: {:?}",
+										cluster_id,
+										era_activity.clone(),
+										e
+									);
+									// Extrinsic call failed
+									errors.push(OCWError::PrepareEraTransactionError {
+										cluster_id,
+										era_id: era_activity.id,
+										payers_merkle_root_hash,
+										payees_merkle_root_hash,
+									});
+								},
+							}
+						}
+					},
+					Ok(None) => {
+						log::info!("🏭ℹ️ No eras for DAC process for cluster_id: {:?}", cluster_id);
+					},
+					Err(process_errors) => {
+						errors.extend(process_errors);
+					},
+				};
+
+				// todo! factor out as macro as this is repetitive
+				match Self::prepare_begin_billing_report(&cluster_id) {
+					Ok(Some((era_id, start_era, end_era))) => {
+						log::info!(
+						"🏭🚀 process_start_payout processed successfully for cluster_id: {:?}, era_id: {:?},  start_era: {:?},  end_era: {:?} ",
+						cluster_id,
+						era_id,
+						start_era,
+						end_era
+					);
+						let results = signer.send_signed_transaction(|_account| {
+							Call::begin_billing_report { cluster_id, era_id, start_era, end_era }
+						});
+
+						for (_, res) in &results {
+							match res {
+								Ok(()) => {
+									log::info!(
+									"🏭🏄‍ Sent begin_billing_report successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+								},
+								Err(e) => {
+									log::error!(
+										"🏭❌ Error to post begin_billing_report for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+									// Extrinsic call failed
+									errors.push(OCWError::BeginBillingReportTransactionError {
+										cluster_id,
+										era_id,
+									});
+								},
+							}
+						}
+					},
+					Ok(None) => {
+						log::info!("🏭❌ No era for payout for cluster_id: {:?}", cluster_id);
+					},
+					Err(e) => {
+						errors.push(e);
+					},
+				}
+
+				// todo! factor out as macro as this is repetitive
+				match Self::prepare_begin_charging_customers(
+					&cluster_id,
+					&dac_nodes,
+					min_nodes,
+					batch_size.into(),
+				) {
+					Ok(Some((era_id, max_batch_index))) => {
+						log::info!(
+						"🏭🎁 prepare_begin_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+
+						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
+							Call::begin_charging_customers { cluster_id, era_id, max_batch_index }
+						}) {
+							match res {
+								Ok(_) => {
+									// Extrinsic call succeeded
+									log::info!(
+									"🏭🚀 Sent begin_charging_customers successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+								},
+								Err(e) => {
+									log::error!(
+										"🏭❌ Error to post begin_charging_customers for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+									// Extrinsic call failed
+									errors.push(OCWError::BeginChargingCustomersTransactionError {
+										cluster_id,
+										era_id,
+									});
+								},
+							}
+						} else {
+							log::error!("🏭❌ No account available to sign the transaction");
+							errors.push(OCWError::NoAvailableSigner);
+						}
+					},
+					Ok(None) => {
+						log::error!(
+							"🏭🦀 No era for begin_charging_customers for cluster_id: {:?}",
+							cluster_id
+						);
+					},
+					Err(e) => errors.extend(e),
+				}
+
+				// todo! factor out as macro as this is repetitive
+				match Self::prepare_send_charging_customers_batch(
+					&cluster_id,
+					batch_size.into(),
+					&dac_nodes,
+					min_nodes,
+				) {
+					Ok(Some((era_id, batch_payout))) => {
+						let payers_log: Vec<(String, BucketId, CustomerUsage)> = batch_payout
+							.payers
+							.clone()
+							.into_iter()
+							.map(|(acc_id, bucket_id, customer_usage)| {
+								let account_id: T::AccountIdConverter = acc_id.into();
+								let account_id_32: AccountId32 = account_id.into();
+								let account_ref: &[u8; 32] = account_id_32.as_ref();
+								(hex::encode(account_ref), bucket_id, customer_usage)
+							})
+							.collect();
+						log::info!(
+						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:?}",
+						cluster_id,
+						era_id,
+						payers_log
+					);
+
+						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
+							Call::send_charging_customers_batch {
+								cluster_id,
+								era_id,
+								batch_index: batch_payout.batch_index,
+								payers: batch_payout.payers.clone(),
+								batch_proof: batch_payout.batch_proof.clone(),
+							}
+						}) {
+							match res {
+								Ok(_) => {
+									// Extrinsic call succeeded
+									log::info!(
+									"🏭🚀 Sent send_charging_customers_batch successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+								},
+								Err(e) => {
+									log::error!(
+										"🏭❌ Error to post send_charging_customers_batch for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+									// Extrinsic call failed
+									errors.push(
+										OCWError::SendChargingCustomersBatchTransactionError {
+											cluster_id,
+											era_id,
+											batch_index: batch_payout.batch_index,
+										},
+									);
+								},
+							}
+						} else {
+							log::error!("🏭❌ No account available to sign the transaction");
+							errors.push(OCWError::NoAvailableSigner);
+						}
+					},
+					Ok(None) => {
+						log::info!(
+							"🏭🦀 No era for send_charging_customers_batch for cluster_id: {:?}",
+							cluster_id
+						);
+					},
+					Err(e) => {
+						errors.extend(e);
+					},
+				}
+
+				// todo! factor out as macro as this is repetitive
+				match Self::prepare_end_charging_customers(&cluster_id) {
+					Ok(Some(era_id)) => {
+						log::info!(
+						"🏭📝prepare_end_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+
+						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
+							Call::end_charging_customers { cluster_id, era_id }
+						}) {
+							match res {
+								Ok(_) => {
+									// Extrinsic call succeeded
+									log::info!(
+									"🏭📝Sent end_charging_customers successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+								},
+								Err(e) => {
+									log::error!(
+										"🏭❌Error to post end_charging_customers for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+									// Extrinsic call failed
+									errors.push(OCWError::EndChargingCustomersTransactionError {
+										cluster_id,
+										era_id,
+									});
+								},
+							}
+						} else {
+							log::error!("🏭❌No account available to sign the transaction");
+							errors.push(OCWError::NoAvailableSigner);
+						}
+					},
+					Ok(None) => {
+						log::info!(
+							"🏭📝No era for end_charging_customers for cluster_id: {:?}",
+							cluster_id
+						);
+					},
+					Err(e) => {
+						errors.push(e);
+					},
+				}
+
+				// todo! factor out as macro as this is repetitive
+				match Self::prepare_begin_rewarding_providers(
+					&cluster_id,
+					&dac_nodes,
+					min_nodes,
+					batch_size.into(),
+				) {
+					Ok(Some((era_id, max_batch_index, total_node_usage))) => {
+						log::info!(
+						"🏭📝prepare_begin_rewarding_providers processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+
+						if let Some((_, res)) =
+							signer.send_signed_transaction(|_acc| Call::begin_rewarding_providers {
+								cluster_id,
+								era_id,
+								max_batch_index,
+								total_node_usage: total_node_usage.clone(),
+							}) {
+							match res {
+								Ok(_) => {
+									// Extrinsic call succeeded
+									log::info!(
+									"🏭📝Sent begin_rewarding_providers successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+								},
+								Err(e) => {
+									log::error!(
+										"🏭❌Error to post begin_rewarding_providers for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+									// Extrinsic call failed
+									errors.push(
+										OCWError::BeginRewardingProvidersTransactionError {
+											cluster_id,
+											era_id,
+										},
+									);
+								},
+							}
+						} else {
+							log::error!("🏭❌No account available to sign the transaction");
+							errors.push(OCWError::NoAvailableSigner);
+						}
+					},
+					Ok(None) => {
+						log::info!(
+							"🏭📝No era for begin_rewarding_providers for cluster_id: {:?}",
+							cluster_id
+						);
+					},
+					Err(e) => {
+						errors.extend(e);
+					},
+				}
+
+				// todo! factor out as macro as this is repetitive
+				match Self::prepare_send_rewarding_providers_batch(
+					&cluster_id,
+					batch_size.into(),
+					&dac_nodes,
+					min_nodes,
+				) {
+					Ok(Some((era_id, batch_payout))) => {
+						log::info!(
+						"🎁 prepare_send_rewarding_providers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+
+						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
+							Call::send_rewarding_providers_batch {
+								cluster_id,
+								era_id,
+								batch_index: batch_payout.batch_index,
+								payees: batch_payout.payees.clone(),
+								batch_proof: batch_payout.batch_proof.clone(),
+							}
+						}) {
+							match res {
+								Ok(_) => {
+									// Extrinsic call succeeded
+									log::info!(
+									"🚀 Sent send_rewarding_providers_batch successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+								},
+								Err(e) => {
+									log::error!(
+										"🦀 Error to post send_rewarding_providers_batch for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+									// Extrinsic call failed
+									errors.push(
+										OCWError::SendRewardingProvidersBatchTransactionError {
+											cluster_id,
+											era_id,
+											batch_index: batch_payout.batch_index,
+										},
+									);
+								},
+							}
+						} else {
+							log::error!("🦀 No account available to sign the transaction");
+							errors.push(OCWError::NoAvailableSigner);
+						}
+					},
+					Ok(None) => {
+						log::info!(
+							"🦀 No era for send_rewarding_providers_batch for cluster_id: {:?}",
+							cluster_id
+						);
+					},
+					Err(e) => {
+						errors.extend(e);
+					},
+				}
+
+				// todo! factor out as macro as this is repetitive
+				match Self::prepare_end_rewarding_providers(&cluster_id) {
+					Ok(Some(era_id)) => {
+						log::info!(
+						"🏭📝prepare_end_rewarding_providers processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+
+						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
+							Call::end_rewarding_providers { cluster_id, era_id }
+						}) {
+							match res {
+								Ok(_) => {
+									// Extrinsic call succeeded
+									log::info!(
+									"🏭📝Sent end_rewarding_providers successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+								},
+								Err(e) => {
+									log::error!(
+										"🏭❌Error to post end_rewarding_providers for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+									// Extrinsic call failed
+									errors.push(OCWError::EndRewardingProvidersTransactionError {
+										cluster_id,
+										era_id,
+									});
+								},
+							}
+						} else {
+							log::error!("🏭❌No account available to sign the transaction");
+							errors.push(OCWError::NoAvailableSigner);
+						}
+					},
+					Ok(None) => {
+						log::info!(
+							"🏭📝No era for end_rewarding_providers for cluster_id: {:?}",
+							cluster_id
+						);
+					},
+					Err(e) => {
+						errors.push(e);
+					},
+				}
+
+				// todo! factor out as macro as this is repetitive
+				match Self::prepare_end_billing_report(&cluster_id) {
+					Ok(Some(era_id)) => {
+						log::info!(
+						"🏭📝prepare_end_billing_report processed successfully for cluster_id: {:?}, era_id: {:?}",
+						cluster_id,
+						era_id
+					);
+
+						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
+							Call::end_billing_report { cluster_id, era_id }
+						}) {
+							match res {
+								Ok(_) => {
+									// Extrinsic call succeeded
+									log::info!(
+									"🏭📝Sent end_billing_report successfully for cluster_id: {:?}, era_id: {:?}",
+									cluster_id,
+									era_id
+								);
+								},
+								Err(e) => {
+									log::error!(
+										"🏭❌Error to post end_billing_report for cluster_id: {:?}, era_id: {:?}: {:?}",
+										cluster_id,
+										era_id,
+										e
+									);
+									// Extrinsic call failed
+									errors.push(OCWError::EndBillingReportTransactionError {
+										cluster_id,
+										era_id,
+									});
+								},
+							}
+						} else {
+							log::error!("🏭❌No account available to sign the transaction");
+							errors.push(OCWError::NoAvailableSigner);
+						}
+					},
+					Ok(None) => {
+						log::info!(
+							"🏭📝No era for end_billing_report for cluster_id: {:?}",
+							cluster_id
+						);
+					},
+					Err(e) => {
+						errors.push(e);
+					},
+				}
+
+				if !errors.is_empty() {
+					let results = signer.send_signed_transaction(|_account| {
+						Call::emit_consensus_errors { errors: errors.clone() }
+					});
+
+					for (_, res) in &results {
+						match res {
+							Ok(()) => {
+								log::info!("✅ Successfully submitted emit_consensus_errors tx")
+							},
+							Err(_) => log::error!("🏭❌ Failed to submit emit_consensus_errors tx"),
+						}
 					}
 				}
 			}
@@ -2353,12 +2378,6 @@ pub mod pallet {
 			}
 		}
 
-		/// Fetch cluster to validate.
-		fn get_cluster_to_validate() -> Result<ClusterId, Error<T>> {
-			// todo! to implement
-			Self::cluster_to_validate().ok_or(Error::ClusterToValidateRetrievalError)
-		}
-
 		/// Fetch processed era.
 		///
 		/// Parameters:
@@ -2897,6 +2916,11 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
+					OCWError::ClusterToValidateRetrievalError => {
+						Self::deposit_event(Event::ClusterToValidateRetrievalError {
+							validator: caller.clone(),
+						});
+					},
 				}
 			}
 
@@ -3077,20 +3101,8 @@ pub mod pallet {
 			T::ClusterValidator::set_last_validated_era(&cluster_id, era_id)
 		}
 
-		#[pallet::call_index(11)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn set_cluster_to_validate(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-		) -> DispatchResult {
-			ensure_root(origin)?;
-			ClusterToValidate::<T>::put(cluster_id);
-
-			Ok(())
-		}
-
 		// todo! Need to remove this
-		#[pallet::call_index(12)]
+		#[pallet::call_index(11)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
 			let validator = ensure_signed(origin)?;
