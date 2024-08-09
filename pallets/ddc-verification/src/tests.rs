@@ -2031,9 +2031,6 @@ fn test_single_ocw_pallet_integration() {
 		// // Offchain worker should be triggered if block number is  divided by 100
 		let block = 500;
 		System::set_block_number(block);
-		let cluster_id = ClusterId::from([12; 20]);
-
-		ClusterToValidate::<Test>::put(cluster_id);
 		DdcVerification::offchain_worker(block);
 	});
 }

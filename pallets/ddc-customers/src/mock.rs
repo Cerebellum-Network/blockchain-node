@@ -230,6 +230,9 @@ impl<T: Config> ClusterQuery<T> for TestClusterManager {
 }
 
 impl<T: Config> ClusterManager<T> for TestClusterManager {
+	fn get_all_clusters() -> Result<Vec<ClusterId>, DispatchError> {
+		unimplemented!()
+	}
 	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 		unimplemented!()
 	}
