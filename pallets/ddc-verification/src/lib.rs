@@ -1245,11 +1245,17 @@ pub mod pallet {
 				Percent::from_percent(T::MAJORITY),
 			)?;
 
+			let customer_activity_hashes: Vec<ActivityHash> = customers_activity_in_consensus
+				.clone()
+				.into_iter()
+				.map(|c| c.hash::<T>())
+				.collect();
+
 			log::info!(
-				"🧗‍ Customer Activity for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				"🧗‍ Customer Activity hashes for ClusterId: {:?} EraId: {:?}  is: {:?}",
 				cluster_id,
 				era_activity.id,
-				customers_activity_in_consensus
+				customer_activity_hashes
 			);
 			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				cluster_id,
@@ -1261,12 +1267,16 @@ pub mod pallet {
 			let customer_batch_roots_string: Vec<String> =
 				customers_activity_batch_roots.clone().into_iter().map(hex::encode).collect();
 
-			log::info!(
-				"🧗‍ Customer Activity_batch_roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
+			for (pos, batch_root) in customer_batch_roots_string.iter().enumerate() {
+				log::info!(
+				"🧗‍  Customer Activity batches for ClusterId: {:?} EraId: {:?}  is: batch {:?} with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
-				customer_batch_roots_string
-			);
+					pos,
+					batch_root,
+					customer_activity_hashes
+				);
+			}
 
 			let customers_activity_root = Self::create_merkle_root(
 				cluster_id,
@@ -1276,10 +1286,11 @@ pub mod pallet {
 			.map_err(|err| vec![err])?;
 
 			log::info!(
-				"🧗‍ Customer Activity _ roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				"🧗‍  Customer Activity batches tree for ClusterId: {:?} EraId: {:?}  is: batch with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
-				hex::encode(customers_activity_root)
+				hex::encode(customers_activity_root),
+					customer_batch_roots_string,
 			);
 
 			let nodes_activity_in_consensus = Self::get_consensus_for_activities(
@@ -1290,12 +1301,16 @@ pub mod pallet {
 				Percent::from_percent(T::MAJORITY),
 			)?;
 
+			let node_activity_hashes: Vec<ActivityHash> =
+				nodes_activity_in_consensus.clone().into_iter().map(|c| c.hash::<T>()).collect();
+
 			log::info!(
-				"🧗‍ Node Activity for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				"🧗‍ Node Activity hashes for ClusterId: {:?} EraId: {:?}  is: {:?}",
 				cluster_id,
 				era_activity.id,
-				nodes_activity_in_consensus
+				node_activity_hashes
 			);
+
 			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				cluster_id,
 				era_activity.id,
@@ -1307,20 +1322,23 @@ pub mod pallet {
 				nodes_activity_batch_roots.clone().into_iter().map(hex::encode).collect();
 
 			log::info!(
-				"🧗‍ Node Activity_batch_roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				"🧗‍  Node Activity batches for ClusterId: {:?} EraId: {:?}  is: batch 1 with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
-				nodes_activity_batch_roots_string
+					nodes_activity_batch_roots_string,
+					node_activity_hashes
 			);
+
 			let nodes_activity_root =
 				Self::create_merkle_root(cluster_id, era_activity.id, &nodes_activity_batch_roots)
 					.map_err(|err| vec![err])?;
 
 			log::info!(
-				"🧗‍ Node Activity _ roots for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				"🧗‍  Node Activity batches tree for ClusterId: {:?} EraId: {:?}  is: batch 1 with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
-				hex::encode(nodes_activity_root)
+				hex::encode(nodes_activity_root),
+					nodes_activity_batch_roots_string,
 			);
 
 			Self::store_validation_activities(
@@ -2248,6 +2266,7 @@ pub mod pallet {
 			let last_validated_era = Self::get_last_validated_era(cluster_id, current_validator)?
 				.unwrap_or_else(DdcEra::default);
 
+			log::info!("🚀 last_validated_era for cluster_id: {:?}", last_validated_era);
 			let all_ids = Self::fetch_processed_era_for_node(cluster_id, dac_nodes)?;
 
 			let ids_greater_than_last_validated_era: Vec<EraActivity> = all_ids
