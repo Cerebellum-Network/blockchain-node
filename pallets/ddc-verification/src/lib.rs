@@ -1242,13 +1242,16 @@ pub mod pallet {
 			let customer_batch_roots_string: Vec<String> =
 				customers_activity_batch_roots.clone().into_iter().map(hex::encode).collect();
 
-			log::info!(
-				"🧗‍  Customer Activity batches for ClusterId: {:?} EraId: {:?}  is: batch 1 with root {:?} for activities {:?}",
+			for (pos, batch_root) in customer_batch_roots_string.iter().enumerate() {
+				log::info!(
+				"🧗‍  Customer Activity batches for ClusterId: {:?} EraId: {:?}  is: batch {:?} with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
-					customer_batch_roots_string,
+					pos,
+					batch_root,
 					customer_activity_hashes
-			);
+				);
+			}
 
 			let customers_activity_root = Self::create_merkle_root(
 				cluster_id,
@@ -1258,7 +1261,7 @@ pub mod pallet {
 			.map_err(|err| vec![err])?;
 
 			log::info!(
-				"🧗‍  Customer Activity batches tree for ClusterId: {:?} EraId: {:?}  is: batch 1 with root {:?} for activities {:?}",
+				"🧗‍  Customer Activity batches tree for ClusterId: {:?} EraId: {:?}  is: batch with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
 				hex::encode(customers_activity_root),
