@@ -1226,11 +1226,14 @@ pub mod pallet {
 				.map(|c| c.hash::<T>())
 				.collect();
 
+			let customer_activity_hashes_string: Vec<String> =
+				customer_activity_hashes.clone().into_iter().map(hex::encode).collect();
+
 			log::info!(
 				"🧗‍ Customer Activity hashes for ClusterId: {:?} EraId: {:?}  is: {:?}",
 				cluster_id,
 				era_activity.id,
-				customer_activity_hashes
+				customer_activity_hashes_string
 			);
 			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				cluster_id,
@@ -1247,9 +1250,9 @@ pub mod pallet {
 				"🧗‍  Customer Activity batches for ClusterId: {:?} EraId: {:?}  is: batch {:?} with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
-					pos,
+					pos + 1,
 					batch_root,
-					customer_activity_hashes
+					customer_activity_hashes_string
 				);
 			}
 
@@ -1279,11 +1282,14 @@ pub mod pallet {
 			let node_activity_hashes: Vec<ActivityHash> =
 				nodes_activity_in_consensus.clone().into_iter().map(|c| c.hash::<T>()).collect();
 
+			let node_activity_hashes_string: Vec<String> =
+				node_activity_hashes.clone().into_iter().map(hex::encode).collect();
+
 			log::info!(
 				"🧗‍ Node Activity hashes for ClusterId: {:?} EraId: {:?}  is: {:?}",
 				cluster_id,
 				era_activity.id,
-				node_activity_hashes
+				node_activity_hashes_string
 			);
 
 			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
@@ -1296,20 +1302,23 @@ pub mod pallet {
 			let nodes_activity_batch_roots_string: Vec<String> =
 				nodes_activity_batch_roots.clone().into_iter().map(hex::encode).collect();
 
-			log::info!(
-				"🧗‍  Node Activity batches for ClusterId: {:?} EraId: {:?}  is: batch 1 with root {:?} for activities {:?}",
+			for (pos, batch_root) in nodes_activity_batch_roots_string.iter().enumerate() {
+				log::info!(
+				"🧗‍  Node Activity batches for ClusterId: {:?} EraId: {:?}  is: batch {:?} with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
-					nodes_activity_batch_roots_string,
-					node_activity_hashes
-			);
+					pos + 1,
+					batch_root,
+					node_activity_hashes_string
+				);
+			}
 
 			let nodes_activity_root =
 				Self::create_merkle_root(cluster_id, era_activity.id, &nodes_activity_batch_roots)
 					.map_err(|err| vec![err])?;
 
 			log::info!(
-				"🧗‍  Node Activity batches tree for ClusterId: {:?} EraId: {:?}  is: batch 1 with root {:?} for activities {:?}",
+				"🧗‍  Node Activity batches tree for ClusterId: {:?} EraId: {:?}  is: batch with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
 				hex::encode(nodes_activity_root),
