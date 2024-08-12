@@ -10,8 +10,9 @@ use sc_executor_common::{
 use sp_runtime_interface::unpack_ptr_and_len;
 use sp_wasm_interface::{Function, FunctionContext, Pointer, Result as WResult, Value, WordSize};
 use wasmi::{
-	memory_units::Pages, Error as WasmiError, FuncInstance, ImportsBuilder, MemoryInstance,
-	MemoryRef, Module, ModuleInstance, ModuleRef, RuntimeValue, TableRef,
+	func::FuncInstanceInternal, memory_units::Pages, Error as WasmiError, FuncInstance,
+	ImportsBuilder, MemoryInstance, MemoryRef, Module, ModuleInstance, ModuleRef, RuntimeValue,
+	TableRef,
 };
 
 use crate::{
@@ -783,6 +784,14 @@ impl FunctionExecutor<'_> {
 				.map_err(|_| "dispatch_thunk_idx is out of the table bounds")?
 				.ok_or("dispatch_thunk_idx points on an empty table entry")?
 		};
+
+		match dispatch_thunk.as_internal() {
+			FuncInstanceInternal::Internal { ref signature, ref body, ref module } => {
+				log::info!(target: LOG_TARGET, " dispatch_thunk FuncRef signature={:?} body.code.len()={:?}, body.locals.len()={:?} body={:?}", signature, body.code.vec.len(), body.locals.len(), body);
+			},
+			_ => {},
+		}
+
 		log::info!(target: LOG_TARGET, "instance_new dispatch_thunk={:?}", dispatch_thunk);
 
 		let guest_env = match GuestEnvironment::decode(&*self.sandbox_store.borrow(), raw_env_def) {
@@ -1548,10 +1557,12 @@ impl WasmiInstance {
 				.apply(&self.instance)
 				.expect("global_vals_snapshot.apply to be ok");
 
-			let table = &self
-				.instance
-				.export_by_name("__indirect_function_table")
-				.and_then(|e| e.as_table().cloned());
+			// let table = &self
+			// 	.instance
+			// 	.export_by_name("__indirect_function_table")
+			// 	.and_then(|e| e.as_table().cloned());
+
+			let table = &self.instance.table_by_index(0).clone();
 
 			log::info!(
 				target: LOG_TARGET,
@@ -1577,10 +1588,12 @@ impl WasmiInstance {
 			self.is_inited = true;
 			function_executor
 		} else {
-			let table = &self
-				.instance
-				.export_by_name("__indirect_function_table")
-				.and_then(|e| e.as_table().cloned());
+			// let table = &self
+			// 	.instance
+			// 	.export_by_name("__indirect_function_table")
+			// 	.and_then(|e| e.as_table().cloned());
+
+			let table = &self.instance.table_by_index(0);
 
 			let heap_base = get_heap_base(&self.instance).expect("get_heap_base to be ok");
 
