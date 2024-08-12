@@ -1,4 +1,11 @@
-use std::{any::Any, cell::RefCell, rc::Rc, str, sync::Arc};
+use std::{
+	any::Any,
+	cell::RefCell,
+	collections::HashMap,
+	rc::Rc,
+	str,
+	sync::{Arc, Mutex, OnceLock},
+};
 
 use codec::{Decode, Encode};
 use sc_executor::error::{Error, Result};
@@ -114,7 +121,6 @@ fn display_fn_executor_memory(method: &'static str, memory: &MemoryRef) {
 	);
 }
 
-// The closest output to 4.8.4 invocation - 2967592, 2000280
 impl FunctionContext for FunctionExecutor<'_> {
 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
 		if self.is_runtime_context {
@@ -154,7 +160,7 @@ impl FunctionContext for FunctionExecutor<'_> {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
 				display_runtime_memory("PRE 🚩 write_memory", **runtime_memory);
 			}
-			// self.memory.set(address.clone().into(), data.clone()).map_err(|e| e.to_string());
+
 			let res = self
 				.runtime_memory
 				.as_mut()
@@ -188,9 +194,7 @@ impl FunctionContext for FunctionExecutor<'_> {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
 				display_runtime_memory("PRE 🚩 allocate_memory", **runtime_memory);
 			}
-			// let heap = &mut self.heap.borrow_mut();
-			// self.memory
-			// 	.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()));
+
 			let res = self
 				.runtime_memory
 				.as_mut()
@@ -225,10 +229,7 @@ impl FunctionContext for FunctionExecutor<'_> {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
 				display_runtime_memory("PRE 🚩 deallocate_memory", **runtime_memory);
 			}
-			// let heap = &mut self.heap.borrow_mut();
-			// self.memory.with_direct_access_mut(|mem| {
-			// 	heap.deallocate(mem, ptr.clone()).map_err(|e| e.to_string())
-			// });
+
 			let res = self
 				.runtime_memory
 				.as_mut()
@@ -266,7 +267,6 @@ impl FunctionContext for FunctionExecutor<'_> {
 				display_runtime_memory("register_panic_error_message", **runtime_memory);
 			}
 
-			// self.panic_message = Some(message.clone().to_owned());
 			self.runtime_memory
 				.as_mut()
 				.expect("Runtime memory to be set")
@@ -279,6 +279,382 @@ impl FunctionContext for FunctionExecutor<'_> {
 		}
 	}
 }
+
+fn get_pointers() -> &'static Mutex<HashMap<u32, Pointer<u8>>> {
+	static ARRAY: OnceLock<Mutex<HashMap<u32, Pointer<u8>>>> = OnceLock::new();
+	ARRAY.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn put_pointer(key: Pointer<u8>, value: Pointer<u8>) {
+	let mut map = get_pointers().lock().unwrap();
+	let key_u32: u32 = key.into();
+	map.insert(key_u32, value);
+}
+
+fn get_pointer(key: Pointer<u8>) -> Pointer<u8> {
+	let mut map = get_pointers().lock().unwrap();
+	let key_u32: u32 = key.into();
+	map.get(&key_u32).unwrap().clone()
+}
+
+// // The closest output to 4.8.4 invocation - 2967592, 2000280
+// impl FunctionContext for FunctionExecutor<'_> {
+// 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
+// 		if self.is_runtime_context {
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("PRE 🚩 read_memory_into", **runtime_memory);
+// 			}
+
+// 			let res = self
+// 				.runtime_memory
+// 				.as_ref()
+// 				.expect("Runtime memory to be set")
+// 				.read_memory_into(address, dest);
+
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("POST 🏁 read_memory_into", **runtime_memory);
+// 			}
+
+// 			res
+// 		} else {
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("PRE 🚩 read_memory_into", &self.memory);
+// 			}
+// 			let res = self.memory.get_into(address.into(), dest).map_err(|e| e.to_string());
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("POST 🏁 read_memory_into", &self.memory);
+// 			}
+
+// 			res
+// 		}
+// 	}
+
+// 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
+// 		if self.is_runtime_context {
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("PRE 🚩 write_memory", **runtime_memory);
+// 			}
+// 			let _ =
+// 				self.memory.set(address.clone().into(), data.clone()).map_err(|e| e.to_string());
+
+// 			let res = self
+// 				.runtime_memory
+// 				.as_mut()
+// 				.expect("Runtime memory to be set")
+// 				.write_memory(address, data);
+
+// 			if self.debug_memory {
+// 				let runtime_memory: &Box<&mut dyn FunctionContext> =
+// 					self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("POST 🏁 write_memory", **runtime_memory);
+// 			}
+
+// 			res
+// 		} else {
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("PRE 🚩 write_memory", &self.memory);
+// 			}
+// 			let res =
+// 				self.memory.set(address.clone().into(), data.clone()).map_err(|e| e.to_string());
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("POST 🏁 write_memory", &self.memory);
+// 			}
+
+// 			res
+// 		}
+// 	}
+
+// 	fn allocate_memory(&mut self, size: WordSize) -> WResult<Pointer<u8>> {
+// 		if self.is_runtime_context {
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("PRE 🚩 allocate_memory", **runtime_memory);
+// 			}
+// 			let heap = &mut self.heap.borrow_mut();
+// 			let fn_executor_ptr = self
+// 				.memory
+// 				.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()));
+
+// 			let runtime_ptr = self
+// 				.runtime_memory
+// 				.as_mut()
+// 				.expect("Runtime memory to be set")
+// 				.allocate_memory(size);
+
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("POST 🏁 allocate_memory", **runtime_memory);
+// 			}
+
+// 			put_pointer(
+// 				runtime_ptr.as_ref().unwrap().clone(),
+// 				fn_executor_ptr.as_ref().unwrap().clone(),
+// 			);
+
+// 			runtime_ptr
+// 		} else {
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("PRE 🚩 allocate_memory", &self.memory);
+// 			}
+// 			let heap = &mut self.heap.borrow_mut();
+// 			let res = self
+// 				.memory
+// 				.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()));
+
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("POST 🏁 allocate_memory", &self.memory);
+// 			}
+
+// 			res
+// 		}
+// 	}
+
+// 	fn deallocate_memory(&mut self, ptr: Pointer<u8>) -> WResult<()> {
+// 		if self.is_runtime_context {
+// 			let runtime_ptr = ptr;
+
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("PRE 🚩 deallocate_memory", **runtime_memory);
+// 			}
+
+// 			let fn_executor_ptr = get_pointer(runtime_ptr);
+
+// 			let heap = &mut self.heap.borrow_mut();
+// 			let _ = self.memory.with_direct_access_mut(|mem| {
+// 				heap.deallocate(mem, fn_executor_ptr.clone()).map_err(|e| e.to_string())
+// 			});
+
+// 			let res = self
+// 				.runtime_memory
+// 				.as_mut()
+// 				.expect("Runtime memory to be set")
+// 				.deallocate_memory(runtime_ptr);
+
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("POST 🏁 deallocate_memory", **runtime_memory);
+// 			}
+
+// 			res
+// 		} else {
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("PRE 🚩 deallocate_memory", &self.memory);
+// 			}
+
+// 			let heap = &mut self.heap.borrow_mut();
+// 			let res = self.memory.with_direct_access_mut(|mem| {
+// 				heap.deallocate(mem, ptr.clone()).map_err(|e| e.to_string())
+// 			});
+
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("POST 🏁 deallocate_memory", &self.memory);
+// 			}
+
+// 			res
+// 		}
+// 	}
+
+// 	fn register_panic_error_message(&mut self, message: &str) {
+// 		if self.is_runtime_context {
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("register_panic_error_message", **runtime_memory);
+// 			}
+
+// 			// self.panic_message = Some(message.clone().to_owned());
+// 			self.runtime_memory
+// 				.as_mut()
+// 				.expect("Runtime memory to be set")
+// 				.register_panic_error_message(message);
+// 		} else {
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("register_panic_error_message", &self.memory);
+// 			}
+// 			self.panic_message = Some(message.clone().to_owned());
+// 		}
+// 	}
+// }
+
+// impl FunctionContext for FunctionExecutor<'_> {
+// 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
+// 		if self.is_runtime_context {
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("PRE 🚩 read_memory_into", **runtime_memory);
+// 			}
+
+// 			let res = self.memory.get_into(address.into(), dest).map_err(|e| e.to_string());
+
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("POST 🏁 read_memory_into", **runtime_memory);
+// 			}
+
+// 			res
+// 		} else {
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("PRE 🚩 read_memory_into", &self.memory);
+// 			}
+// 			let res = self.memory.get_into(address.into(), dest).map_err(|e| e.to_string());
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("POST 🏁 read_memory_into", &self.memory);
+// 			}
+
+// 			res
+// 		}
+// 	}
+
+// 	fn write_memory(&mut self, address: Pointer<u8>, data: &[u8]) -> WResult<()> {
+// 		if self.is_runtime_context {
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("PRE 🚩 write_memory", **runtime_memory);
+// 			}
+// 			let res =
+// 				self.memory.set(address.clone().into(), data.clone()).map_err(|e| e.to_string());
+
+// 			let _ = self
+// 				.runtime_memory
+// 				.as_mut()
+// 				.expect("Runtime memory to be set")
+// 				.write_memory(address, data);
+
+// 			if self.debug_memory {
+// 				let runtime_memory: &Box<&mut dyn FunctionContext> =
+// 					self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("POST 🏁 write_memory", **runtime_memory);
+// 			}
+
+// 			res
+// 		} else {
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("PRE 🚩 write_memory", &self.memory);
+// 			}
+// 			let res =
+// 				self.memory.set(address.clone().into(), data.clone()).map_err(|e| e.to_string());
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("POST 🏁 write_memory", &self.memory);
+// 			}
+
+// 			res
+// 		}
+// 	}
+
+// 	fn allocate_memory(&mut self, size: WordSize) -> WResult<Pointer<u8>> {
+// 		if self.is_runtime_context {
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("PRE 🚩 allocate_memory", **runtime_memory);
+// 			}
+// 			let heap = &mut self.heap.borrow_mut();
+// 			let fn_executor_ptr = self
+// 				.memory
+// 				.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()));
+
+// 			let runtime_ptr = self
+// 				.runtime_memory
+// 				.as_mut()
+// 				.expect("Runtime memory to be set")
+// 				.allocate_memory(size);
+
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("POST 🏁 allocate_memory", **runtime_memory);
+// 			}
+
+// 			put_pointer(
+// 				fn_executor_ptr.as_ref().unwrap().clone(),
+// 				runtime_ptr.as_ref().unwrap().clone(),
+// 			);
+
+// 			fn_executor_ptr
+// 		} else {
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("PRE 🚩 allocate_memory", &self.memory);
+// 			}
+// 			let heap = &mut self.heap.borrow_mut();
+// 			let res = self
+// 				.memory
+// 				.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()));
+
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("POST 🏁 allocate_memory", &self.memory);
+// 			}
+
+// 			res
+// 		}
+// 	}
+
+// 	fn deallocate_memory(&mut self, ptr: Pointer<u8>) -> WResult<()> {
+// 		if self.is_runtime_context {
+// 			let fn_executor_ptr = ptr;
+
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("PRE 🚩 deallocate_memory", **runtime_memory);
+// 			}
+
+// 			let runtime_ptr = get_pointer(fn_executor_ptr);
+
+// 			let heap = &mut self.heap.borrow_mut();
+// 			let res = self.memory.with_direct_access_mut(|mem| {
+// 				heap.deallocate(mem, fn_executor_ptr.clone()).map_err(|e| e.to_string())
+// 			});
+
+// 			let _ = self
+// 				.runtime_memory
+// 				.as_mut()
+// 				.expect("Runtime memory to be set")
+// 				.deallocate_memory(runtime_ptr);
+
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("POST 🏁 deallocate_memory", **runtime_memory);
+// 			}
+
+// 			res
+// 		} else {
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("PRE 🚩 deallocate_memory", &self.memory);
+// 			}
+
+// 			let heap = &mut self.heap.borrow_mut();
+// 			let res = self.memory.with_direct_access_mut(|mem| {
+// 				heap.deallocate(mem, ptr.clone()).map_err(|e| e.to_string())
+// 			});
+
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("POST 🏁 deallocate_memory", &self.memory);
+// 			}
+
+// 			res
+// 		}
+// 	}
+
+// 	fn register_panic_error_message(&mut self, message: &str) {
+// 		if self.is_runtime_context {
+// 			if self.debug_memory {
+// 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
+// 				display_runtime_memory("register_panic_error_message", **runtime_memory);
+// 			}
+
+// 			// self.panic_message = Some(message.clone().to_owned());
+// 			self.runtime_memory
+// 				.as_mut()
+// 				.expect("Runtime memory to be set")
+// 				.register_panic_error_message(message);
+// 		} else {
+// 			if self.debug_memory {
+// 				display_fn_executor_memory("register_panic_error_message", &self.memory);
+// 			}
+// 			self.panic_message = Some(message.clone().to_owned());
+// 		}
+// 	}
+// }
 
 // impl FunctionContext for FunctionExecutor<'_> {
 // 	fn read_memory_into(&self, address: Pointer<u8>, dest: &mut [u8]) -> WResult<()> {
