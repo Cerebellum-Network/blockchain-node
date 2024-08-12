@@ -71,7 +71,8 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 		index: usize,
 		args: RuntimeArgs,
 	) -> std::result::Result<Option<RuntimeValue>, Trap> {
-		SandboxContextStore::with(|sandbox_context| {
+		let res = SandboxContextStore::with(|sandbox_context| {
+			// sandbox_context.use_runtime_fn_context(true);
 			// Make `index` typesafe again.
 			let index = GuestFuncIndex(index);
 			log::info!(target: LOG_TARGET, "GuestExternals.invoke_index START: index={:?}, args={:?}", index, args);
@@ -174,7 +175,7 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 				.map_err(|_| trap("Can't read the serialized result from dispatch thunk"));
 			log::info!(target: LOG_TARGET, "GuestExternals.invoke_index => serialized_result_val={:?}", serialized_result_val);
 
-			deallocate(
+			let res = deallocate(
 				sandbox_context.supervisor_context(),
 				// sandbox_context.current_block_runtime_context(),
 				serialized_result_val_ptr,
@@ -199,8 +200,15 @@ impl<'a> wasmi::Externals for GuestExternals<'a> {
 					}),
 					Err(HostError) => Err(trap("Supervisor function returned sandbox::HostError")),
 				}
-			})
-		}).expect("SandboxContextStore is set when invoking sandboxed functions; qed")
+			});
+			
+			// sandbox_context.use_runtime_fn_context(false);
+
+			res
+
+		}).expect("SandboxContextStore is set when invoking sandboxed functions; qed");
+
+		res
 	}
 }
 

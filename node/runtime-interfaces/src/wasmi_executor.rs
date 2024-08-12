@@ -153,6 +153,7 @@ impl FunctionContext for FunctionExecutor<'_> {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
 				display_runtime_memory("PRE 🚩 write_memory", **runtime_memory);
 			}
+			// self.memory.set(address.clone().into(), data.clone()).map_err(|e| e.to_string());
 			let res = self
 				.runtime_memory
 				.as_mut()
@@ -186,6 +187,9 @@ impl FunctionContext for FunctionExecutor<'_> {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
 				display_runtime_memory("PRE 🚩 allocate_memory", **runtime_memory);
 			}
+			// let heap = &mut self.heap.borrow_mut();
+			// self.memory
+			// 	.with_direct_access_mut(|mem| heap.allocate(mem, size).map_err(|e| e.to_string()));
 			let res = self
 				.runtime_memory
 				.as_mut()
@@ -220,6 +224,10 @@ impl FunctionContext for FunctionExecutor<'_> {
 				let runtime_memory = self.runtime_memory.as_ref().unwrap();
 				display_runtime_memory("PRE 🚩 deallocate_memory", **runtime_memory);
 			}
+			// let heap = &mut self.heap.borrow_mut();
+			// self.memory.with_direct_access_mut(|mem| {
+			// 	heap.deallocate(mem, ptr.clone()).map_err(|e| e.to_string())
+			// });
 			let res = self
 				.runtime_memory
 				.as_mut()
@@ -257,6 +265,7 @@ impl FunctionContext for FunctionExecutor<'_> {
 				display_runtime_memory("register_panic_error_message", **runtime_memory);
 			}
 
+			// self.panic_message = Some(message.clone().to_owned());
 			self.runtime_memory
 				.as_mut()
 				.expect("Runtime memory to be set")
@@ -339,6 +348,8 @@ impl wasmi::Externals for FunctionExecutor<'_> {
 		index: usize,
 		args: wasmi::RuntimeArgs,
 	) -> std::result::Result<Option<wasmi::RuntimeValue>, wasmi::Trap> {
+		// self.is_runtime_context = false;
+
 		let mut args = args.as_ref().iter().copied().map(|value| match value {
 			wasmi::RuntimeValue::I32(val) => Value::I32(val),
 			wasmi::RuntimeValue::I64(val) => Value::I64(val),
@@ -355,7 +366,7 @@ impl wasmi::Externals for FunctionExecutor<'_> {
 		// log::info!(target: LOG_TARGET, "---> host_functions={:?}",
 		// host_functions_names);
 
-		if let Some(function) = self.host_functions.clone().get(index) {
+		let res = if let Some(function) = self.host_functions.clone().get(index) {
 			let res = function
 				.execute(self, &mut args)
 				// .execute(
@@ -397,7 +408,11 @@ impl wasmi::Externals for FunctionExecutor<'_> {
 		} else {
 			log::info!(target: LOG_TARGET, "---> FunctionExecutor.invoke_index ---> error 4 Could not find host function with index");
 			Err(trap("Could not find host function with index"))
-		}
+		};
+
+		// self.is_runtime_context = true;
+
+		res
 	}
 }
 
@@ -414,7 +429,21 @@ impl<'a, 'b> SandboxContext for SandboxContextImpl<'a, 'b> {
 		state: u32,
 		func_idx: SupervisorFuncIndex,
 	) -> Result<i64> {
+		// self.executor.is_runtime_context = false;
 		log::info!(target: LOG_TARGET, "SandboxContext.invoke START: invoke_args_ptr={:?}, invoke_args_len={:?}, state={:?}, func_idx={:?}, dispatch_thunk={:?}", invoke_args_ptr, invoke_args_len, state, func_idx, &self.dispatch_thunk);
+
+		if self.executor.debug_memory {
+			display_fn_executor_memory(
+				"PRE 🚩 wasmi::FuncInstance::invoke fn_executor_memory",
+				&self.executor.memory,
+			);
+
+			let runtime_memory = self.executor.runtime_memory.as_ref().unwrap();
+			display_runtime_memory(
+				"PRE 🚩 wasmi::FuncInstance::invoke runtime_memory",
+				**runtime_memory,
+			);
+		}
 
 		// here the host_functions table is rendered
 		let result = wasmi::FuncInstance::invoke(
@@ -429,7 +458,7 @@ impl<'a, 'b> SandboxContext for SandboxContextImpl<'a, 'b> {
 		);
 		log::info!(target: LOG_TARGET, "SandboxContext.invoke WIP: invoke_args_ptr={:?}, invoke_args_len={:?}, state={:?}, func_idx={:?}, dispatch_thunk={:?}", invoke_args_ptr, invoke_args_len, state, func_idx, &self.dispatch_thunk);
 
-		match result {
+		let res = match result {
 			Ok(Some(RuntimeValue::I64(val))) => {
 				log::info!(target: LOG_TARGET, "SandboxContext.invoke WIP.A: val={:?}", val);
 				Ok(val)
@@ -442,7 +471,24 @@ impl<'a, 'b> SandboxContext for SandboxContextImpl<'a, 'b> {
 				log::info!(target: LOG_TARGET, "SandboxContext.invoke WIP.C: err={:?}", err);
 				Err(Error::Other(err.to_string()))
 			},
+		};
+
+		if self.executor.debug_memory {
+			display_fn_executor_memory(
+				"POST 🏁 wasmi::FuncInstance::invoke fn_executor_memory",
+				&self.executor.memory,
+			);
+
+			let runtime_memory = self.executor.runtime_memory.as_ref().unwrap();
+			display_runtime_memory(
+				"POST 🏁 wasmi::FuncInstance::invoke runtime_memory",
+				**runtime_memory,
+			);
 		}
+
+		// self.executor.is_runtime_context = true;
+
+		res
 	}
 
 	fn supervisor_context(&mut self) -> &mut dyn FunctionContext {
@@ -647,6 +693,13 @@ impl FunctionExecutor<'_> {
 		log::info!(target: LOG_TARGET, "invoke WIP 1: ---> {:?}", instance_id);
 		log::info!(target: LOG_TARGET, "executor.memory={:?}, executor.sandbox_store.instances={:?}, sandbox_store.memories={:?}", self.memory, self.sandbox_store.borrow().instances.len(), self.sandbox_store.borrow().memories);
 
+		if self.debug_memory {
+			display_fn_executor_memory("PRE 🚩 instance.invoke() fn_executor_memory", &self.memory);
+
+			let runtime_memory = self.runtime_memory.as_ref().unwrap();
+			display_runtime_memory("PRE 🚩 instance.invoke(...) runtime_memory", **runtime_memory);
+		}
+
 		let res = match instance.invoke(
 			export_name,
 			&args,
@@ -674,6 +727,16 @@ impl FunctionExecutor<'_> {
 				Ok(ERR_EXECUTION)
 			},
 		};
+
+		if self.debug_memory {
+			display_fn_executor_memory(
+				"POST 🏁 instance.invoke() fn_executor_memory",
+				&self.memory,
+			);
+
+			let runtime_memory = self.runtime_memory.as_ref().unwrap();
+			display_runtime_memory("POST 🏁 instance.invoke() runtime_memory", **runtime_memory);
+		}
 
 		log::info!(target: LOG_TARGET, "invoke END: instance_id={:?}, export_name={:?}, args={:?}, return_val={:?}, return_val_len={:?}, state={:?}", instance_id, export_name, args, return_val, return_val_len, state);
 
@@ -728,12 +791,39 @@ impl FunctionExecutor<'_> {
 		};
 
 		let store = self.sandbox_store.clone();
+
+		if self.debug_memory {
+			display_fn_executor_memory(
+				"PRE 🚩 store.instantiate(...) fn_executor_memory",
+				&self.memory,
+			);
+
+			let runtime_memory = self.runtime_memory.as_ref().unwrap();
+			display_runtime_memory(
+				"PRE 🚩 store.instantiate(...) runtime_memory",
+				**runtime_memory,
+			);
+		}
+
 		let result = store.borrow_mut().instantiate(
 			wasm,
 			guest_env,
 			state,
 			&mut SandboxContextImpl { executor: self, dispatch_thunk: dispatch_thunk.clone() },
 		);
+
+		if self.debug_memory {
+			display_fn_executor_memory(
+				"POST 🏁 store.instantiate(...) fn_executor_memory",
+				&self.memory,
+			);
+
+			let runtime_memory = self.runtime_memory.as_ref().unwrap();
+			display_runtime_memory(
+				"POST 🏁 store.instantiate(...) runtime_memory",
+				**runtime_memory,
+			);
+		}
 
 		let instance_idx_or_err_code =
 			match result.map(|i| i.register(&mut store.borrow_mut(), dispatch_thunk)) {
