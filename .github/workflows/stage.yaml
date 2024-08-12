@@ -7,7 +7,7 @@ on:
       - 'release/**'
       - 'hotfix/**'
       - 'hotfix/**'
-      - 'dev_12_mins_era/**'
+      - 'dev_12_mins_era'
 
 env:
   PROFILE: release
