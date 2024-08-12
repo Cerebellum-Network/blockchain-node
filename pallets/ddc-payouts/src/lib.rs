@@ -33,6 +33,7 @@ use ddc_primitives::{
 		customer::{
 			CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
 		},
+		node::NodeVisitor as NodeVisitorType,
 		pallet::PalletVisitor as PalletVisitorType,
 		payout::PayoutVisitor,
 	},
@@ -49,7 +50,8 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
-use sp_runtime::{traits::Convert, PerThing, Perquintill};
+use scale_info::prelude::string::String;
+use sp_runtime::{traits::Convert, AccountId32, PerThing, Perquintill};
 use sp_std::prelude::*;
 /// Stores reward in tokens(units) of node provider as per NodeUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
@@ -118,6 +120,7 @@ pub mod pallet {
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type CustomerCharger: CustomerChargerType<Self>;
 		type BucketVisitor: BucketVisitorType<Self>;
+		type NodeVisitor: NodeVisitorType<Self>;
 		type CustomerDepositor: CustomerDepositorType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
 		type ClusterProtocol: ClusterProtocolType<Self, BalanceOf<Self>>;
@@ -126,6 +129,7 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 		type VoteScoreToU64: Convert<VoteScoreOf<Self>, u64>;
 		type ValidatorVisitor: ValidatorVisitor<Self>;
+		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
 	}
 
 	#[pallet::event]
@@ -258,6 +262,7 @@ pub mod pallet {
 		NotBucketOwner,
 		IncorrectClusterId,
 		ClusterProtocolParamsNotSet,
+		TotalStoredBytesLessThanZero,
 	}
 
 	#[pallet::storage]
@@ -468,7 +473,7 @@ pub mod pallet {
 
 			let mut updated_billing_report = billing_report;
 			for (customer_id, bucket_id, customer_usage) in payers {
-				log::info!("🏭send_charging_customers_batch get_customer_charge customer_id: {:?} -  bucket_id: {:?} - era:{:?} - cluster-id:{:?}", customer_id.encode(), bucket_id, era, cluster_id);
+				log::info!("🏭send_charging_customers_batch get_customer_charge customer_id: {:?} -  bucket_id: {:?} - era:{:?} - cluster-id:{:?}", Self::get_account_id_string(customer_id.clone()), bucket_id, era, cluster_id);
 				let mut customer_charge = get_customer_charge::<T>(
 					&cluster_id,
 					&customer_usage,
@@ -744,7 +749,8 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payees: Vec<(T::AccountId, NodeUsage)>,
+			payees: Vec<(T::AccountId, NodeUsage)>, /* todo! we need to pass NodePubKey inside
+			                                         * NodeUsage and more provider_id */
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
@@ -784,7 +790,23 @@ pub mod pallet {
 
 			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
-			for (node_provider_id, node_usage) in payees {
+			for (node_provider_id, delta_node_usage) in payees {
+				// todo! deduce node_provider_id from delta_node_usage.node_id
+				// todo! get T::NodeVisitor::get_total_usage(delta_node_usage.node_id).stored_bytes
+				let mut total_node_stored_bytes: i64 = 0;
+
+				total_node_stored_bytes = total_node_stored_bytes
+					.checked_add(delta_node_usage.stored_bytes)
+					.ok_or(Error::<T>::ArithmeticOverflow)?
+					.max(0);
+
+				let node_usage = NodeUsage {
+					stored_bytes: total_node_stored_bytes,
+					transferred_bytes: delta_node_usage.transferred_bytes,
+					number_of_puts: delta_node_usage.number_of_puts,
+					number_of_gets: delta_node_usage.number_of_gets,
+				};
+
 				let node_reward = get_node_reward(
 					&node_usage,
 					&billing_report.total_node_usage,
@@ -829,6 +851,8 @@ pub mod pallet {
 						reward,
 						ExistenceRequirement::AllowDeath,
 					)?;
+
+					// todo! update total usage of node with NodeManager
 
 					reward_ = reward.saturated_into::<u128>();
 
@@ -1079,11 +1103,15 @@ pub mod pallet {
 		let fraction_of_month =
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
-		let mut total_stored_bytes =
+		let mut total_stored_bytes: i64 =
 			T::BucketVisitor::get_total_customer_usage(cluster_id, bucket_id, customer_id)
 				.map_err(Into::<Error<T>>::into)?
 				.map_or(0, |customer_usage| customer_usage.stored_bytes);
-		total_stored_bytes += usage.stored_bytes;
+
+		total_stored_bytes = total_stored_bytes
+			.checked_add(usage.stored_bytes)
+			.ok_or(Error::<T>::ArithmeticOverflow)?
+			.max(0);
 
 		total.storage = fraction_of_month *
 			(|| -> Option<u128> {
@@ -1165,7 +1193,10 @@ pub mod pallet {
 			start_era: i64,
 			end_era: i64,
 		) -> DispatchResult {
-			log::info!("🏭begin_billing_report called by: {:?}", origin.encode());
+			log::info!(
+				"🏭begin_billing_report called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::begin_billing_report(origin, cluster_id, era_id, start_era, end_era)
 		}
@@ -1176,7 +1207,10 @@ pub mod pallet {
 			era_id: DdcEra,
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
-			log::info!("🏭begin_charging_customers called by: {:?}", origin.encode());
+			log::info!(
+				"🏭begin_charging_customers called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::begin_charging_customers(origin, cluster_id, era_id, max_batch_index)
 		}
@@ -1189,7 +1223,10 @@ pub mod pallet {
 			payers: &[(T::AccountId, BucketId, CustomerUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
-			log::info!("🏭send_charging_customers_batch called by: {:?}", origin.encode());
+			log::info!(
+				"🏭send_charging_customers_batch called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::send_charging_customers_batch(
 				origin,
@@ -1206,7 +1243,10 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
-			log::info!("🏭end_charging_customers called by: {:?}", origin.encode());
+			log::info!(
+				"🏭end_charging_customers called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::end_charging_customers(origin, cluster_id, era_id)
 		}
@@ -1218,7 +1258,10 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 			total_node_usage: NodeUsage,
 		) -> DispatchResult {
-			log::info!("🏭begin_rewarding_providers called by: {:?}", origin.encode());
+			log::info!(
+				"🏭begin_rewarding_providers called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::begin_rewarding_providers(
 				origin,
@@ -1237,7 +1280,10 @@ pub mod pallet {
 			payees: &[(T::AccountId, NodeUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
-			log::info!("🏭send_rewarding_providers_batch called by: {:?}", origin.encode());
+			log::info!(
+				"🏭send_rewarding_providers_batch called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::send_rewarding_providers_batch(
 				origin,
@@ -1254,7 +1300,10 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
-			log::info!("🏭end_rewarding_providers called by: {:?}", origin.encode());
+			log::info!(
+				"🏭end_rewarding_providers called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::end_rewarding_providers(origin, cluster_id, era_id)
 		}
@@ -1264,7 +1313,10 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
-			log::info!("🏭end_billing_report called by: {:?}", origin.encode());
+			log::info!(
+				"🏭end_billing_report called by: {:?}",
+				Self::get_account_id_string(origin.clone())
+			);
 			let origin = frame_system::RawOrigin::Signed(origin).into();
 			Self::end_billing_report(origin, cluster_id, era_id)
 		}
@@ -1344,6 +1396,12 @@ pub mod pallet {
 			T::PalletId::get().into_account_truncating()
 		}
 
+		pub fn get_account_id_string(caller: T::AccountId) -> String {
+			let account_id: T::AccountIdConverter = caller.into();
+			let account_id_32: AccountId32 = account_id.into();
+			let account_ref: &[u8; 32] = account_id_32.as_ref();
+			hex::encode(account_ref)
+		}
 		pub fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
 			let mut bytes = Vec::new();
 			bytes.extend_from_slice(&cluster_id[..]);

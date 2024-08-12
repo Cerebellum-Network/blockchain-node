@@ -32,12 +32,13 @@ use ddc_primitives::{
 		node::{NodeCreator, NodeVisitor},
 		staking::StakingVisitor,
 	},
-	ClusterId, NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
+	ClusterId, NodeParams, NodePubKey, NodeUsage, StorageNodeParams, StorageNodePubKey,
 };
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_std::prelude::*;
+pub mod migrations;
 mod node;
 mod storage_node;
 
@@ -53,7 +54,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+		frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -258,6 +259,13 @@ pub mod pallet {
 						})),
 				},
 			}
+		}
+
+		fn get_total_usage(node_pub_key: &NodePubKey) -> Result<Option<NodeUsage>, DispatchError> {
+			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
+			let total_usage = node.get_total_usage().clone();
+
+			Ok(total_usage)
 		}
 	}
 
