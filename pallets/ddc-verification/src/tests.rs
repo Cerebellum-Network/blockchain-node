@@ -963,7 +963,7 @@ fn test_get_consensus_customers_activity_diff_errors() {
 	assert!(result.is_err());
 	let errors = result.err().unwrap();
 	assert_eq!(errors.len(), 3);
-	match &errors[1] {
+	match &errors[2] {
 		OCWError::ActivityNotInConsensus { cluster_id, era_id, id } => {
 			assert_eq!(*id, customers_activity[0].1[0].get_consensus_id::<mock::Test>());
 			assert_eq!(*cluster_id, cluster_id1);
@@ -971,7 +971,7 @@ fn test_get_consensus_customers_activity_diff_errors() {
 		},
 		_ => panic!("Expected CustomerActivityNotInConsensus error"),
 	}
-	match &errors[0] {
+	match &errors[1] {
 		OCWError::NotEnoughBucketsForConsensus { cluster_id, era_id, customer_id, bucket_id } => {
 			assert_eq!(*customer_id, "0".to_string());
 			assert_eq!(*bucket_id, 2);
