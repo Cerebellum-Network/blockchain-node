@@ -645,7 +645,7 @@ fn test_get_consensus_customers_activity_not_enough_nodes() {
 	);
 	assert!(result.is_err());
 	let errors = result.err().unwrap();
-	assert_eq!(errors.len(), 1);
+	assert_eq!(errors.len(), 2);
 	match &errors[0] {
 		OCWError::NotEnoughBucketsForConsensus { cluster_id, era_id, customer_id, bucket_id } => {
 			assert_eq!(*customer_id, "0".to_string());
@@ -698,7 +698,7 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 	);
 	assert!(result.is_err());
 	let errors = result.err().unwrap();
-	assert_eq!(errors.len(), 1);
+	assert_eq!(errors.len(), 2);
 	match &errors[0] {
 		OCWError::NotEnoughNodesForConsensus { cluster_id, era_id, node_id } => {
 			assert_eq!(*node_id, "0".to_string());
@@ -962,7 +962,7 @@ fn test_get_consensus_customers_activity_diff_errors() {
 	);
 	assert!(result.is_err());
 	let errors = result.err().unwrap();
-	assert_eq!(errors.len(), 2);
+	assert_eq!(errors.len(), 3);
 	match &errors[1] {
 		OCWError::ActivityNotInConsensus { cluster_id, era_id, id } => {
 			assert_eq!(*id, customers_activity[0].1[0].get_consensus_id::<mock::Test>());
@@ -1330,7 +1330,7 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 	);
 	assert!(result.is_err());
 	let errors = result.err().unwrap();
-	assert_eq!(errors.len(), 2);
+	assert_eq!(errors.len(), 3);
 	match &errors[0] {
 		OCWError::ActivityNotInConsensus { cluster_id, era_id, id } => {
 			assert_eq!(*id, nodes_activity[0].1[0].get_consensus_id::<mock::Test>());
