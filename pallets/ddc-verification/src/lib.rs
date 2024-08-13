@@ -150,7 +150,15 @@ pub mod pallet {
 		NotEnoughNodesForConsensus {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			id: ActivityHash,
+			node_id: String,
+			validator: T::AccountId,
+		},
+		/// Not enough buckets for consensus.
+		NotEnoughBucketsForConsensus {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			customer_id: String,
+			bucket_id: BucketId,
 			validator: T::AccountId,
 		},
 		/// No activity in consensus.
@@ -292,7 +300,13 @@ pub mod pallet {
 		NotEnoughNodesForConsensus {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			id: ActivityHash,
+			node_id: String,
+		},
+		NotEnoughBucketsForConsensus {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			customer_id: String,
+			bucket_id: BucketId,
 		},
 		/// No activity in consensus.
 		ActivityNotInConsensus {
@@ -552,6 +566,8 @@ pub mod pallet {
 	{
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash;
 		fn hash<T: Config>(&self) -> ActivityHash;
+
+		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError;
 	}
 
 	impl Activity for NodeActivity {
@@ -561,6 +577,12 @@ pub mod pallet {
 
 		fn hash<T: Config>(&self) -> ActivityHash {
 			T::ActivityHasher::hash(&self.encode()).into()
+		}
+
+		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
+			let node_id = &self.node_id;
+
+			OCWError::NotEnoughNodesForConsensus { cluster_id, era_id, node_id: node_id.clone() }
 		}
 	}
 	impl Activity for CustomerActivity {
@@ -572,6 +594,18 @@ pub mod pallet {
 
 		fn hash<T: Config>(&self) -> ActivityHash {
 			T::ActivityHasher::hash(&self.encode()).into()
+		}
+
+		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
+			let customer_id = &self.customer_id;
+			let bucket_id = &self.bucket_id;
+
+			OCWError::NotEnoughBucketsForConsensus {
+				cluster_id,
+				era_id,
+				customer_id: customer_id.clone(),
+				bucket_id: *bucket_id,
+			}
 		}
 	}
 
@@ -2356,11 +2390,12 @@ pub mod pallet {
 			// Check if each customer/bucket appears in at least `min_nodes` nodes
 			for (id, activities) in customer_buckets {
 				if activities.len() < min_nodes.into() {
-					errors.push(OCWError::NotEnoughNodesForConsensus {
-						cluster_id: (*cluster_id),
-						era_id,
-						id,
-					});
+					let errs: Vec<OCWError> = activities
+						.into_iter()
+						.map(|a| a.get_consensus_error(*cluster_id, era_id))
+						.collect();
+
+					errors.extend(errs);
 				} else if let Some(activity) =
 					Self::reach_consensus(&activities, min_threshold.into())
 				{
@@ -2745,11 +2780,25 @@ pub mod pallet {
 
 			for error in errors {
 				match error {
-					OCWError::NotEnoughNodesForConsensus { cluster_id, era_id, id } => {
+					OCWError::NotEnoughNodesForConsensus { cluster_id, era_id, node_id } => {
 						Self::deposit_event(Event::NotEnoughNodesForConsensus {
 							cluster_id,
 							era_id,
-							id,
+							node_id,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::NotEnoughBucketsForConsensus {
+						cluster_id,
+						era_id,
+						customer_id,
+						bucket_id,
+					} => {
+						Self::deposit_event(Event::NotEnoughBucketsForConsensus {
+							cluster_id,
+							era_id,
+							customer_id,
+							bucket_id,
 							validator: caller.clone(),
 						});
 					},
