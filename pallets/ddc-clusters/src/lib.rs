@@ -838,12 +838,15 @@ pub mod pallet {
 		fn get_all_clusters() -> Result<Vec<ClusterId>, DispatchError> {
 			let mut cluster_ids = Vec::new();
 
-			for cluster_id in <Clusters<T>>::iter_keys() {
-				cluster_ids.push(cluster_id);
+			for (cluster_id, cluster) in <Clusters<T>>::iter() {
+				if cluster.status == ClusterStatus::Activated {
+					cluster_ids.push(cluster_id);
+				}
 			}
 
 			Ok(cluster_ids)
 		}
+
 		fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
