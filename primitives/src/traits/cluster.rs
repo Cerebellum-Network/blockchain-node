@@ -94,6 +94,8 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 		node_pub_key: &NodePubKey,
 		succeeded: bool,
 	) -> Result<(), DispatchError>;
+
+	fn get_all_clusters() -> Result<Vec<ClusterId>, DispatchError>;
 }
 pub trait ClusterValidator<T: Config> {
 	/// Updates the `last_validated_era_id` for the given cluster and emits an event indicating the
