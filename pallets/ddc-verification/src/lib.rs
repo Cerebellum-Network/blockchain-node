@@ -673,8 +673,22 @@ pub mod pallet {
 			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 			let mut errors: Vec<OCWError> = Vec::new();
 
-			let processed_dac_data =
-				Self::process_dac_data(&cluster_id, None, &dac_nodes, min_nodes, batch_size.into());
+			let validated_era =
+				Self::get_era_for_payout(&cluster_id, EraValidationStatus::ValidatingData);
+
+			let era_activity = if let Some((id, start, end)) = validated_era {
+				Some(EraActivity { id, start, end })
+			} else {
+				None
+			};
+
+			let processed_dac_data = Self::process_dac_data(
+				&cluster_id,
+				era_activity,
+				&dac_nodes,
+				min_nodes,
+				batch_size.into(),
+			);
 
 			match processed_dac_data {
 				Ok(Some((
