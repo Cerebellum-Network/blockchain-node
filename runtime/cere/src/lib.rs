@@ -137,7 +137,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 54004,
+	spec_version: 54005,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 18,
@@ -1171,8 +1171,8 @@ impl pallet_ddc_payouts::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ClusterBondingAmount: Balance = DOLLARS;
-	pub const ClusterUnboningDelay: BlockNumber = MINUTES;
+	pub const ClusterBondingAmount: Balance = 100 * GRAND;
+	pub const ClusterUnboningDelay: BlockNumber = 28 * DAYS;
 }
 
 impl pallet_ddc_staking::Config for Runtime {

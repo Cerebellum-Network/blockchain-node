@@ -130,14 +130,23 @@ pub mod tracks {
 		percent(50),
 	);
 	pub const APP_CLUSTER_PROTOCOL_ACTIVATOR: Curve =
-		Curve::make_linear(10, 28, percent(0), percent(10));
-	pub const SUP_CLUSTER_PROTOCOL_ACTIVATOR: Curve =
-		Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
-
+		Curve::make_reciprocal(16, 28 * 24, percent(96), percent(50), percent(100));
+	pub const SUP_CLUSTER_PROTOCOL_ACTIVATOR: Curve = Curve::make_reciprocal(
+		1,
+		28,
+		percent_perbill(Perbill::from_parts(100_000)), // 0.01 %
+		percent_perbill(Perbill::from_parts(25_000)),  // 0.0025 %
+		percent(50),
+	);
 	pub const APP_CLUSTER_PROTOCOL_UPDATER: Curve =
-		Curve::make_linear(10, 28, percent(0), percent(10));
-	pub const SUP_CLUSTER_PROTOCOL_UPDATER: Curve =
-		Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(10));
+		Curve::make_reciprocal(16, 28 * 24, percent(96), percent(50), percent(100));
+	pub const SUP_CLUSTER_PROTOCOL_UPDATER: Curve = Curve::make_reciprocal(
+		1,
+		28,
+		percent_perbill(Perbill::from_parts(100_000)), // 0.01 %
+		percent_perbill(Perbill::from_parts(25_000)),  // 0.0025 %
+		percent(50),
+	);
 
 	// Root track
 	pub const ROOT_TRACK_ID: u16 = 0;

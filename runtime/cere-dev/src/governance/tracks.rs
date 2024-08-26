@@ -179,11 +179,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 14
 		pallet_referenda::TrackInfo {
 			name: "cluster_protocol_activator",
 			max_deciding: 50,
-			decision_deposit: DOLLARS, // todo: define value for Devnet
-			prepare_period: 0,         // todo: define value for Devnet
+			decision_deposit: DOLLARS,
+			prepare_period: 0,
 			decision_period: 2 * MINUTES,
 			confirm_period: MINUTES,
-			min_enactment_period: 0, // todo: define value for Devnet
+			min_enactment_period: 0,
 			min_approval: APP_CLUSTER_PROTOCOL_ACTIVATOR,
 			min_support: SUP_CLUSTER_PROTOCOL_ACTIVATOR,
 		},
@@ -193,11 +193,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 14
 		pallet_referenda::TrackInfo {
 			name: "cluster_protocol_updater",
 			max_deciding: 50,
-			decision_deposit: DOLLARS, // todo: define value for Devnet
-			prepare_period: 0,         // todo: define value for Devnet
+			decision_deposit: DOLLARS,
+			prepare_period: 0,
 			decision_period: 2 * MINUTES,
 			confirm_period: MINUTES,
-			min_enactment_period: 0, // todo: define value for Devnet
+			min_enactment_period: 0,
 			min_approval: APP_CLUSTER_PROTOCOL_UPDATER,
 			min_support: SUP_CLUSTER_PROTOCOL_UPDATER,
 		},
