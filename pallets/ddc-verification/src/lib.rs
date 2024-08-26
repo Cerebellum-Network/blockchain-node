@@ -2722,8 +2722,9 @@ pub mod pallet {
 				.entry((payers_merkle_root_hash, payees_merkle_root_hash))
 				.or_insert_with(Vec::new);
 
-			ensure!(!signed_validators.contains(&caller.clone()), Error::<T>::AlreadySignedEra);
-			signed_validators.push(caller.clone());
+			if !signed_validators.contains(&caller.clone()) {
+				signed_validators.push(caller.clone());
+			}
 
 			let percent = Percent::from_percent(T::MAJORITY);
 			let threshold = percent * <ValidatorSet<T>>::get().len();
