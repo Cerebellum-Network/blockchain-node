@@ -2722,6 +2722,10 @@ pub mod pallet {
 				.entry((payers_merkle_root_hash, payees_merkle_root_hash))
 				.or_insert_with(Vec::new);
 
+			// todo! Uncomment below code once we process unprocessed era on Devnet
+			// ensure!(!signed_validators.contains(&caller.clone()), Error::<T>::AlreadySignedEra);
+			// signed_validators.push(caller.clone());
+			// todo! Remove below code once we process unprocessed era on Devnet
 			if !signed_validators.contains(&caller.clone()) {
 				signed_validators.push(caller.clone());
 			}
@@ -3276,6 +3280,7 @@ pub mod pallet {
 			let validators = validators
 				.map(|(_, k)| T::AccountId::decode(&mut &k.into().encode()[..]).unwrap())
 				.collect::<Vec<_>>();
+			log::info!("🙌Total validator from new session. {:?}", validators.len());
 			ValidatorSet::<T>::put(validators);
 		}
 
