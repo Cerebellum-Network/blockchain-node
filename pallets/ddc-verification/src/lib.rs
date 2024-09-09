@@ -291,6 +291,19 @@ pub mod pallet {
 			payers_batch_merkle_root_hashes: Vec<ActivityHash>,
 			payees_batch_merkle_root_hashes: Vec<ActivityHash>,
 		},
+		BucketSubAggregatesError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			bucket_id: BucketId,
+			node_pub_key: NodePubKey,
+			validator: T::AccountId,
+		},
+		NotEnoughSubAggregatesForConsensus {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			node_id: String,
+			validator: T::AccountId,
+		},
 	}
 
 	/// Consensus Errors
@@ -328,6 +341,13 @@ pub mod pallet {
 		},
 		EraRetrievalError {
 			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		},
+		/// Bucket Sub aggregates Error.
+		BucketSubAggregatesError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			bucket_id: BucketId,
 			node_pub_key: NodePubKey,
 		},
 		PrepareEraTransactionError {
@@ -399,6 +419,12 @@ pub mod pallet {
 		FailedToFetchNodeTotalUsage {
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
+		},
+		/// Not enough subaggregates for consensus.
+		NotEnoughSubAggregatesForConsensus {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			node_id: String,
 		},
 	}
 
@@ -560,6 +586,32 @@ pub mod pallet {
 		pub(crate) number_of_gets: u64,
 	}
 
+	/// Sub Aggregates of a bucket.
+	#[derive(
+		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
+	)]
+	pub(crate) struct SubAggregates {
+		/// Node id.
+		pub(crate) node_id: String,
+		/// Total amount of stored bytes.
+		pub(crate) stored_bytes: i64,
+		/// Total amount of transferred bytes.
+		pub(crate) transferred_bytes: u64,
+		/// Total number of puts.
+		pub(crate) number_of_puts: u64,
+		/// Total number of gets.
+		pub(crate) number_of_gets: u64,
+	}
+
+	/// Bucket aggregate by bucket id.
+	#[derive(
+		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
+	)]
+	pub(crate) struct BucketSubAggregates {
+		/// SubAggregates.
+		pub(crate) subaggregates: Vec<SubAggregates>,
+	}
+
 	// Define a common trait
 	pub trait Activity:
 		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
@@ -605,6 +657,31 @@ pub mod pallet {
 				era_id,
 				customer_id: customer_id.clone(),
 				bucket_id: *bucket_id,
+			}
+		}
+	}
+
+	impl Activity for SubAggregates {
+		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
+			let mut data = self.node_id.as_bytes().to_vec();
+			data.extend_from_slice(&self.stored_bytes.encode());
+			data.extend_from_slice(&self.transferred_bytes.encode());
+			data.extend_from_slice(&self.number_of_gets.encode());
+			data.extend_from_slice(&self.number_of_puts.encode());
+			T::ActivityHasher::hash(&data).into()
+		}
+
+		fn hash<T: Config>(&self) -> ActivityHash {
+			T::ActivityHasher::hash(&self.encode()).into()
+		}
+
+		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
+			let node_id = &self.node_id;
+
+			OCWError::NotEnoughSubAggregatesForConsensus {
+				cluster_id,
+				era_id,
+				node_id: node_id.clone(),
 			}
 		}
 	}
@@ -1268,6 +1345,14 @@ pub mod pallet {
 				Percent::from_percent(T::MAJORITY),
 			)?;
 
+			let _minimum_sub_tree = Self::fetch_minimum_sub_aggregates(
+				cluster_id,
+				era_activity.id,
+				customers_activity_in_consensus.clone(),
+				dac_nodes,
+				min_nodes,
+			)?;
+
 			let customer_activity_hashes: Vec<ActivityHash> = customers_activity_in_consensus
 				.clone()
 				.into_iter()
@@ -1393,6 +1478,34 @@ pub mod pallet {
 			)))
 		}
 
+		pub(crate) fn fetch_minimum_sub_aggregates(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			customer_activities: Vec<CustomerActivity>,
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+			min_nodes: u16,
+		) -> Result<(Vec<SubAggregates>, Vec<SubAggregates>), Vec<OCWError>> {
+			let mut sub_aggregates: Vec<SubAggregates> = Vec::new();
+
+			for customer_activity in customer_activities.clone() {
+				let aggregates = Self::fetch_bucket_sub_aggregates_for_era(
+					cluster_id,
+					era_id,
+					&customer_activity.bucket_id,
+					dac_nodes,
+				)
+				.map_err(|err| vec![err])?;
+				sub_aggregates.extend(aggregates);
+			}
+
+			Self::get_consensus_for_sub_aggregates(
+				cluster_id,
+				era_id,
+				sub_aggregates,
+				min_nodes,
+				Percent::from_percent(T::MAJORITY),
+			)
+		}
 		#[allow(dead_code)]
 		pub(crate) fn prepare_begin_billing_report(
 			cluster_id: &ClusterId,
@@ -2430,6 +2543,52 @@ pub mod pallet {
 			}
 		}
 
+		pub(crate) fn get_consensus_for_sub_aggregates(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			activities: Vec<SubAggregates>,
+			min_nodes: u16,
+			threshold: Percent,
+		) -> Result<(Vec<SubAggregates>, Vec<SubAggregates>), Vec<OCWError>> {
+			let mut customer_buckets: BTreeMap<ActivityHash, Vec<SubAggregates>> = BTreeMap::new();
+
+			// Flatten and collect all customer activities
+			for activity in activities.iter() {
+				customer_buckets
+					.entry(activity.get_consensus_id::<T>())
+					.or_default()
+					.push(activity.clone());
+			}
+
+			let mut consensus_activities = Vec::new();
+			let mut not_consensus_activities = Vec::new();
+			let mut errors = Vec::new();
+			let min_threshold = threshold * min_nodes;
+
+			// Check if each customer/bucket appears in at least `min_nodes` nodes
+			for (id, activities) in customer_buckets {
+				if activities.len() < min_nodes.into() {
+					not_consensus_activities.extend(activities);
+				} else if let Some(activity) =
+					Self::reach_consensus(&activities, min_threshold.into())
+				{
+					consensus_activities.push(activity);
+				} else {
+					errors.push(OCWError::ActivityNotInConsensus {
+						cluster_id: (*cluster_id),
+						era_id,
+						id,
+					});
+				}
+			}
+
+			if errors.is_empty() {
+				Ok((consensus_activities, not_consensus_activities))
+			} else {
+				Err(errors)
+			}
+		}
+
 		/// Fetch cluster to validate.
 		fn get_cluster_to_validate() -> Result<ClusterId, Error<T>> {
 			// todo! to implement
@@ -2530,6 +2689,72 @@ pub mod pallet {
 			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
 		}
 
+		/// Fetch bucket subaggregates.
+		///
+		/// Parameters:
+		/// - `cluster_id`: cluster id of a cluster
+		/// - `bucket_id`: Bucket Id
+		/// - `era_id`: era id
+		/// - `node_params`: DAC node parameters
+		pub(crate) fn fetch_bucket_sub_aggregates(
+			_cluster_id: &ClusterId,
+			era_id: DdcEra,
+			bucket_id: &BucketId,
+			node_params: &StorageNodeParams,
+		) -> Result<BucketSubAggregates, http::Error> {
+			let scheme = "http";
+			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
+			let url = format!(
+				"{}://{}:{}/activity/buckets/{}?eraId={}",
+				scheme, host, node_params.http_port, bucket_id, era_id
+			);
+
+			let request = http::Request::get(&url);
+			let timeout =
+				sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(20000));
+			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
+
+			let response =
+				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
+			if response.code != 200 {
+				return Err(http::Error::Unknown);
+			}
+
+			let body = response.body().collect::<Vec<u8>>();
+			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+		}
+
+		/// Fetch bucket_sub_aggregates for an era.
+		///
+		/// Parameters:
+		/// - `cluster_id`: cluster id of a cluster
+		/// - `era_id`: era id
+		/// - `node_params`: DAC node parameters
+		fn fetch_bucket_sub_aggregates_for_era(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			bucket_id: &BucketId,
+			dac_nodes: &[(NodePubKey, StorageNodeParams)],
+		) -> Result<Vec<SubAggregates>, OCWError> {
+			let mut sub_aggregates = Vec::new();
+
+			for (node_pub_key, node_params) in dac_nodes {
+				// todo! probably shouldn't stop when some DAC is not responding as we can still
+				// work with others
+				let aggregates =
+					Self::fetch_bucket_sub_aggregates(cluster_id, era_id, bucket_id, node_params)
+						.map_err(|_| OCWError::BucketSubAggregatesError {
+						cluster_id: *cluster_id,
+						era_id,
+						bucket_id: *bucket_id,
+						node_pub_key: node_pub_key.clone(),
+					})?;
+
+				sub_aggregates.extend(aggregates.subaggregates);
+			}
+
+			Ok(sub_aggregates)
+		}
 		/// Fetch DAC nodes of a cluster.
 		/// Parameters:
 		/// - `cluster_id`: Cluster id of a cluster.
@@ -2990,6 +3215,32 @@ pub mod pallet {
 						Self::deposit_event(Event::FailedToFetchNodeTotalUsage {
 							cluster_id,
 							node_pub_key,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::BucketSubAggregatesError {
+						cluster_id,
+						era_id,
+						bucket_id,
+						node_pub_key,
+					} => {
+						Self::deposit_event(Event::BucketSubAggregatesError {
+							cluster_id,
+							era_id,
+							bucket_id,
+							node_pub_key,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::NotEnoughSubAggregatesForConsensus {
+						cluster_id,
+						era_id,
+						node_id,
+					} => {
+						Self::deposit_event(Event::NotEnoughSubAggregatesForConsensus {
+							cluster_id,
+							era_id,
+							node_id,
 							validator: caller.clone(),
 						});
 					},
