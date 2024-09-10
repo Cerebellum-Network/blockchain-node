@@ -6,6 +6,7 @@ on:
       - dev
       - staging
       - master
+      - dev-docker-image-fix
   pull_request:
     branches:
       - 'release/**'
