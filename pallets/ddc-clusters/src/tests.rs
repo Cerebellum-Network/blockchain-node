@@ -126,7 +126,7 @@ fn create_cluster_works() {
 }
 
 #[test]
-fn add_and_delete_node_works() {
+fn add_join_and_delete_node_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
@@ -290,11 +290,27 @@ fn add_and_delete_node_works() {
 		// Remove node should fail
 		assert_noop!(
 			DdcClusters::remove_node(
-				RuntimeOrigin::signed(cluster_manager_id),
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
 				cluster_id,
-				NodePubKey::StoragePubKey(node_pub_key),
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::AttemptToRemoveNotAssignedNode
+		);
+
+		// Node joined successfully
+		assert_ok!(DdcClusters::join_cluster(
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
+			cluster_id,
+			NodePubKey::StoragePubKey(node_pub_key.clone()),
+		));
+
+		// Checking that event was emitted
+		System::assert_last_event(
+			Event::ClusterNodeAdded {
+				cluster_id,
+				node_pub_key: NodePubKey::StoragePubKey(node_pub_key.clone()),
+			}
+			.into(),
 		);
 
 		pub const CTOR_SELECTOR: [u8; 4] = hex!("9bae9d5e");
