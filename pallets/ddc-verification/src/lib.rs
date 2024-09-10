@@ -64,6 +64,9 @@ pub mod pallet {
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
 		frame_support::traits::StorageVersion::new(0);
 
+	const RESPONSE_CODE: u16 = 200;
+	const RESPONSE_DURATION: u64 = 20000;
+
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
 	#[pallet::without_storage_info]
@@ -1345,7 +1348,7 @@ pub mod pallet {
 				Percent::from_percent(T::MAJORITY),
 			)?;
 
-			let _minimum_sub_tree = Self::fetch_minimum_sub_aggregates(
+			let _minimum_sub_trees = Self::fetch_minimum_sub_aggregates(
 				cluster_id,
 				era_activity.id,
 				customers_activity_in_consensus.clone(),
@@ -2608,14 +2611,14 @@ pub mod pallet {
 			let url = format!("{}://{}:{}/activity/eras", scheme, host, node_params.http_port);
 			let request = http::Request::get(&url);
 			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(20000));
+				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_DURATION));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			// todo! filter by status == PROCESSED
 
 			let response =
 				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != 200 {
+			if response.code != RESPONSE_CODE {
 				return Err(http::Error::Unknown);
 			}
 
@@ -2643,12 +2646,12 @@ pub mod pallet {
 
 			let request = http::Request::get(&url);
 			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(20000));
+				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_DURATION));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
 				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != 200 {
+			if response.code != RESPONSE_CODE {
 				return Err(http::Error::Unknown);
 			}
 
@@ -2676,12 +2679,12 @@ pub mod pallet {
 
 			let request = http::Request::get(&url);
 			let timeout =
-				sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(20000));
+				sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(RESPONSE_DURATION));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
 				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != 200 {
+			if response.code != RESPONSE_CODE {
 				return Err(http::Error::Unknown);
 			}
 
@@ -2711,12 +2714,12 @@ pub mod pallet {
 
 			let request = http::Request::get(&url);
 			let timeout =
-				sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(20000));
+				sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(RESPONSE_DURATION));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
 				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != 200 {
+			if response.code != RESPONSE_CODE {
 				return Err(http::Error::Unknown);
 			}
 
