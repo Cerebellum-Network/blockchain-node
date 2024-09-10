@@ -2678,8 +2678,8 @@ pub mod pallet {
 			);
 
 			let request = http::Request::get(&url);
-			let timeout =
-				sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(RESPONSE_DURATION));
+			let timeout = sp_io::offchain::timestamp()
+				.add(rt_offchain::Duration::from_millis(RESPONSE_DURATION));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
@@ -2713,8 +2713,8 @@ pub mod pallet {
 			);
 
 			let request = http::Request::get(&url);
-			let timeout =
-				sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(RESPONSE_DURATION));
+			let timeout = sp_io::offchain::timestamp()
+				.add(rt_offchain::Duration::from_millis(RESPONSE_DURATION));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
