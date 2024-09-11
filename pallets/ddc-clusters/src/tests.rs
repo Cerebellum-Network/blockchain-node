@@ -134,6 +134,7 @@ fn add_join_and_delete_node_works() {
 		let cluster_manager_id = AccountId::from([1; 32]);
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let node_pub_key = AccountId::from([3; 32]);
+		let node_pub_key2 = AccountId::from([4; 32]);
 
 		let contract_id = deploy_contract();
 
@@ -147,6 +148,14 @@ fn add_join_and_delete_node_works() {
 			),
 			Error::<Test>::ClusterDoesNotExist
 		);
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
+			),
+			Error::<Test>::ClusterDoesNotExist
+		);
 
 		// Creating 1 cluster should work fine
 		assert_ok!(DdcClusters::create_cluster(
@@ -154,7 +163,7 @@ fn add_join_and_delete_node_works() {
 			cluster_id,
 			cluster_reserve_id.clone(),
 			ClusterParams {
-				node_provider_auth_contract: Some(cluster_manager_id.clone()),
+				node_provider_auth_contract: None,
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3
@@ -171,6 +180,28 @@ fn add_join_and_delete_node_works() {
 				unit_per_put_request: 10,
 				unit_per_get_request: 10,
 			}
+		));
+
+		// Cluster has no auth smart contract
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
+			),
+			Error::<Test>::NodeIsNotAuthorized
+		);
+
+		// Set an incorrect address for auth contract
+		assert_ok!(DdcClusters::set_cluster_params(
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
+			cluster_id,
+			ClusterParams {
+				node_provider_auth_contract: Some(cluster_manager_id.clone()),
+				erasure_coding_required: 4,
+				erasure_coding_total: 6,
+				replication_total: 3
+			},
 		));
 
 		// Not Cluster Manager
@@ -194,6 +225,14 @@ fn add_join_and_delete_node_works() {
 			),
 			Error::<Test>::AttemptToAddNonExistentNode
 		);
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
+			),
+			Error::<Test>::AttemptToAddNonExistentNode
+		);
 
 		let storage_node_params = StorageNodeParams {
 			mode: StorageNodeMode::Storage,
@@ -209,7 +248,7 @@ fn add_join_and_delete_node_works() {
 		assert_ok!(DdcNodes::create_node(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			NodePubKey::StoragePubKey(node_pub_key.clone()),
-			NodeParams::StorageParams(storage_node_params)
+			NodeParams::StorageParams(storage_node_params.clone()),
 		));
 
 		// Node doesn't exist
@@ -221,6 +260,16 @@ fn add_join_and_delete_node_works() {
 				ClusterNodeKind::Genesis
 			),
 			Error::<Test>::NodeAuthContractCallFailed
+		);
+
+		// Not node provider
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(node_pub_key.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
+			),
+			Error::<Test>::OnlyNodeProvider
 		);
 
 		// Set the correct address for auth contract
@@ -236,6 +285,21 @@ fn add_join_and_delete_node_works() {
 		));
 
 		assert_ok!(DdcClusters::bond_cluster(&cluster_id));
+
+		// Node is not authorized to join
+		assert_ok!(DdcNodes::create_node(
+			RuntimeOrigin::signed(cluster_manager_id.clone()),
+			NodePubKey::StoragePubKey(node_pub_key2.clone()),
+			NodeParams::StorageParams(storage_node_params.clone()),
+		));
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key2.clone()),
+			),
+			Error::<Test>::NodeIsNotAuthorized
+		);
 
 		// Node added successfully
 		assert_ok!(DdcClusters::add_node(
@@ -258,6 +322,14 @@ fn add_join_and_delete_node_works() {
 				cluster_id,
 				NodePubKey::StoragePubKey(node_pub_key.clone()),
 				ClusterNodeKind::Genesis
+			),
+			Error::<Test>::AttemptToAddAlreadyAssignedNode
+		);
+		assert_noop!(
+			DdcClusters::join_cluster(
+				RuntimeOrigin::signed(cluster_manager_id.clone()),
+				cluster_id,
+				NodePubKey::StoragePubKey(node_pub_key.clone()),
 			),
 			Error::<Test>::AttemptToAddAlreadyAssignedNode
 		);
@@ -302,6 +374,12 @@ fn add_join_and_delete_node_works() {
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
 			NodePubKey::StoragePubKey(node_pub_key.clone()),
+		));
+
+		assert!(<DdcClusters as ClusterManager<Test>>::contains_node(
+			&cluster_id,
+			&NodePubKey::StoragePubKey(node_pub_key.clone()),
+			None
 		));
 
 		// Checking that event was emitted
