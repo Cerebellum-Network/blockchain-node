@@ -237,7 +237,7 @@ fn add_join_and_delete_node_works() {
 
 		assert_ok!(DdcClusters::bond_cluster(&cluster_id));
 
-		// Node added succesfully
+		// Node added successfully
 		assert_ok!(DdcClusters::add_node(
 			RuntimeOrigin::signed(cluster_manager_id.clone()),
 			cluster_id,
