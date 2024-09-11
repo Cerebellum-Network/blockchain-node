@@ -405,11 +405,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
 
-			// Node with this public key exists and belongs to the caller.
-			let node = T::NodeRepository::get(node_pub_key.clone())
-				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
-			ensure!(*node.get_provider_id() == caller_id, Error::<T>::OnlyNodeProvider);
-
 			// Cluster with a given id exists and has an auth smart contract.
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
@@ -418,6 +413,11 @@ pub mod pallet {
 				.node_provider_auth_contract
 				.clone()
 				.ok_or(Error::<T>::NodeIsNotAuthorized)?;
+
+			// Node with this public key exists and belongs to the caller.
+			let node = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+			ensure!(*node.get_provider_id() == caller_id, Error::<T>::OnlyNodeProvider);
 
 			// Sufficient funds are locked at the DDC Staking module.
 			let has_activated_stake =
