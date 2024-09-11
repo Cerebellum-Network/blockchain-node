@@ -1490,6 +1490,12 @@ pub mod pallet {
 		) -> Result<(Vec<SubAggregates>, Vec<SubAggregates>), Vec<OCWError>> {
 			let mut sub_aggregates: Vec<SubAggregates> = Vec::new();
 
+			log::info!(
+				"🏠⏳ Starting fetching sub-aggregates for cluster_id: {:?} for era_id: {:?}",
+				cluster_id,
+				era_id
+			);
+
 			for customer_activity in customer_activities.clone() {
 				let aggregates = Self::fetch_bucket_sub_aggregates_for_era(
 					cluster_id,
@@ -1498,6 +1504,7 @@ pub mod pallet {
 					dac_nodes,
 				)
 				.map_err(|err| vec![err])?;
+				log::info!("🏠🚀 Fetched sub-aggregates for cluster_id: {:?} for era_id: {:?} for bucket_id {:?}::: Sub-Aggregates are {:?}", cluster_id, era_id, customer_activity.bucket_id, aggregates);
 				sub_aggregates.extend(aggregates);
 			}
 
@@ -2585,6 +2592,8 @@ pub mod pallet {
 				}
 			}
 
+			log::info!("🏠👍 Sub-aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, consensus_activities);
+			log::info!("🏠👎 Sub-aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, not_consensus_activities);
 			if errors.is_empty() {
 				Ok((consensus_activities, not_consensus_activities))
 			} else {
