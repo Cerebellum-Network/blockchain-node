@@ -2514,7 +2514,7 @@ fn test_minimum_sub_aggregates() {
 			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4),
 		];
 
-		let result = DdcVerification::fetch_minimum_sub_aggregates(
+		let result = DdcVerification::fetch_sub_trees(
 			&cluster_id,
 			era_id,
 			result.unwrap(),
@@ -2526,7 +2526,7 @@ fn test_minimum_sub_aggregates() {
 		// Sub_aggregates which are in consensus
 		assert_eq!(
 			result.clone().unwrap().0,
-			[SubAggregates {
+			[BucketSubAggregate {
 				node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318"
 					.to_string(),
 				stored_bytes: 578,
@@ -2539,7 +2539,7 @@ fn test_minimum_sub_aggregates() {
 		assert_eq!(
 			result.unwrap().1,
 			[
-				SubAggregates {
+				BucketSubAggregate {
 					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
 						.to_string(),
 					stored_bytes: 0,
@@ -2547,7 +2547,7 @@ fn test_minimum_sub_aggregates() {
 					number_of_puts: 0,
 					number_of_gets: 1
 				},
-				SubAggregates {
+				BucketSubAggregate {
 					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
 						.to_string(),
 					stored_bytes: 0,
@@ -2555,7 +2555,7 @@ fn test_minimum_sub_aggregates() {
 					number_of_puts: 0,
 					number_of_gets: 1
 				},
-				SubAggregates {
+				BucketSubAggregate {
 					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
 						.to_string(),
 					stored_bytes: 0,

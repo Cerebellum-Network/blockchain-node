@@ -64,8 +64,8 @@ pub mod pallet {
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
 		frame_support::traits::StorageVersion::new(0);
 
-	const RESPONSE_CODE: u16 = 200;
-	const RESPONSE_DURATION: u64 = 20000;
+	const SUCCESS_CODE: u16 = 200;
+	const RESPONSE_TIMEOUT: u64 = 20000;
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -294,7 +294,7 @@ pub mod pallet {
 			payers_batch_merkle_root_hashes: Vec<ActivityHash>,
 			payees_batch_merkle_root_hashes: Vec<ActivityHash>,
 		},
-		BucketSubAggregatesError {
+		BucketAggregatesRetrievalError {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			bucket_id: BucketId,
@@ -346,8 +346,8 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
 		},
-		/// Bucket Sub aggregates Error.
-		BucketSubAggregatesError {
+		/// Bucket aggregates Retrieval Error.
+		BucketAggregatesRetrievalError {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			bucket_id: BucketId,
@@ -593,7 +593,7 @@ pub mod pallet {
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub(crate) struct SubAggregates {
+	pub(crate) struct BucketSubAggregate {
 		/// Node id.
 		pub(crate) node_id: String,
 		/// Total amount of stored bytes.
@@ -610,9 +610,9 @@ pub mod pallet {
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub(crate) struct BucketSubAggregates {
+	pub(crate) struct BucketAggregate {
 		/// SubAggregates.
-		pub(crate) subaggregates: Vec<SubAggregates>,
+		pub(crate) subaggregates: Vec<BucketSubAggregate>,
 	}
 
 	// Define a common trait
@@ -664,7 +664,7 @@ pub mod pallet {
 		}
 	}
 
-	impl Activity for SubAggregates {
+	impl Activity for BucketSubAggregate {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
 			let mut data = self.node_id.as_bytes().to_vec();
 			data.extend_from_slice(&self.stored_bytes.encode());
@@ -1348,7 +1348,7 @@ pub mod pallet {
 				Percent::from_percent(T::MAJORITY),
 			)?;
 
-			let _minimum_sub_trees = Self::fetch_minimum_sub_aggregates(
+			let _sub_trees = Self::fetch_sub_trees(
 				cluster_id,
 				era_activity.id,
 				customers_activity_in_consensus.clone(),
@@ -1481,14 +1481,14 @@ pub mod pallet {
 			)))
 		}
 
-		pub(crate) fn fetch_minimum_sub_aggregates(
+		pub(crate) fn fetch_sub_trees(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			customer_activities: Vec<CustomerActivity>,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 			min_nodes: u16,
-		) -> Result<(Vec<SubAggregates>, Vec<SubAggregates>), Vec<OCWError>> {
-			let mut sub_aggregates: Vec<SubAggregates> = Vec::new();
+		) -> Result<(Vec<BucketSubAggregate>, Vec<BucketSubAggregate>), Vec<OCWError>> {
+			let mut sub_aggregates: Vec<BucketSubAggregate> = Vec::new();
 
 			log::info!(
 				"🏠⏳ Starting fetching sub-aggregates for cluster_id: {:?} for era_id: {:?}",
@@ -1497,7 +1497,7 @@ pub mod pallet {
 			);
 
 			for customer_activity in customer_activities.clone() {
-				let aggregates = Self::fetch_bucket_sub_aggregates_for_era(
+				let aggregates = Self::fetch_bucket_aggregates_for_era(
 					cluster_id,
 					era_id,
 					&customer_activity.bucket_id,
@@ -1508,7 +1508,7 @@ pub mod pallet {
 				sub_aggregates.extend(aggregates);
 			}
 
-			Self::get_consensus_for_sub_aggregates(
+			Self::get_consensus_for_sub_trees(
 				cluster_id,
 				era_id,
 				sub_aggregates,
@@ -2553,14 +2553,15 @@ pub mod pallet {
 			}
 		}
 
-		pub(crate) fn get_consensus_for_sub_aggregates(
+		pub(crate) fn get_consensus_for_sub_trees(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			activities: Vec<SubAggregates>,
+			activities: Vec<BucketSubAggregate>,
 			min_nodes: u16,
 			threshold: Percent,
-		) -> Result<(Vec<SubAggregates>, Vec<SubAggregates>), Vec<OCWError>> {
-			let mut customer_buckets: BTreeMap<ActivityHash, Vec<SubAggregates>> = BTreeMap::new();
+		) -> Result<(Vec<BucketSubAggregate>, Vec<BucketSubAggregate>), Vec<OCWError>> {
+			let mut customer_buckets: BTreeMap<ActivityHash, Vec<BucketSubAggregate>> =
+				BTreeMap::new();
 
 			// Flatten and collect all customer activities
 			for activity in activities.iter() {
@@ -2592,8 +2593,9 @@ pub mod pallet {
 				}
 			}
 
-			log::info!("🏠👍 Sub-aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, consensus_activities);
-			log::info!("🏠👎 Sub-aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, not_consensus_activities);
+			// todo! Reduce log size and put small message
+			log::info!("🏠👍 Sub-Trees, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, consensus_activities);
+			log::info!("🏠👎 Sub-Trees, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, not_consensus_activities);
 			if errors.is_empty() {
 				Ok((consensus_activities, not_consensus_activities))
 			} else {
@@ -2620,14 +2622,14 @@ pub mod pallet {
 			let url = format!("{}://{}:{}/activity/eras", scheme, host, node_params.http_port);
 			let request = http::Request::get(&url);
 			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_DURATION));
+				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_TIMEOUT));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			// todo! filter by status == PROCESSED
 
 			let response =
 				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != RESPONSE_CODE {
+			if response.code != SUCCESS_CODE {
 				return Err(http::Error::Unknown);
 			}
 
@@ -2655,12 +2657,12 @@ pub mod pallet {
 
 			let request = http::Request::get(&url);
 			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_DURATION));
+				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_TIMEOUT));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
 				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != RESPONSE_CODE {
+			if response.code != SUCCESS_CODE {
 				return Err(http::Error::Unknown);
 			}
 
@@ -2688,12 +2690,12 @@ pub mod pallet {
 
 			let request = http::Request::get(&url);
 			let timeout = sp_io::offchain::timestamp()
-				.add(rt_offchain::Duration::from_millis(RESPONSE_DURATION));
+				.add(rt_offchain::Duration::from_millis(RESPONSE_TIMEOUT));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
 				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != RESPONSE_CODE {
+			if response.code != SUCCESS_CODE {
 				return Err(http::Error::Unknown);
 			}
 
@@ -2701,19 +2703,19 @@ pub mod pallet {
 			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
 		}
 
-		/// Fetch bucket subaggregates.
+		/// Fetch bucket aggregates.
 		///
 		/// Parameters:
 		/// - `cluster_id`: cluster id of a cluster
 		/// - `bucket_id`: Bucket Id
 		/// - `era_id`: era id
 		/// - `node_params`: DAC node parameters
-		pub(crate) fn fetch_bucket_sub_aggregates(
+		pub(crate) fn fetch_bucket_aggregates(
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
 			bucket_id: &BucketId,
 			node_params: &StorageNodeParams,
-		) -> Result<BucketSubAggregates, http::Error> {
+		) -> Result<BucketAggregate, http::Error> {
 			let scheme = "http";
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 			let url = format!(
@@ -2723,12 +2725,12 @@ pub mod pallet {
 
 			let request = http::Request::get(&url);
 			let timeout = sp_io::offchain::timestamp()
-				.add(rt_offchain::Duration::from_millis(RESPONSE_DURATION));
+				.add(rt_offchain::Duration::from_millis(RESPONSE_TIMEOUT));
 			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
 
 			let response =
 				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != RESPONSE_CODE {
+			if response.code != SUCCESS_CODE {
 				return Err(http::Error::Unknown);
 			}
 
@@ -2736,36 +2738,36 @@ pub mod pallet {
 			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
 		}
 
-		/// Fetch bucket_sub_aggregates for an era.
+		/// Fetch bucket aggregates for an era.
 		///
 		/// Parameters:
 		/// - `cluster_id`: cluster id of a cluster
 		/// - `era_id`: era id
 		/// - `node_params`: DAC node parameters
-		fn fetch_bucket_sub_aggregates_for_era(
+		fn fetch_bucket_aggregates_for_era(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			bucket_id: &BucketId,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<SubAggregates>, OCWError> {
-			let mut sub_aggregates = Vec::new();
+		) -> Result<Vec<BucketSubAggregate>, OCWError> {
+			let mut bucket_sub_aggregates = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
 				// todo! probably shouldn't stop when some DAC is not responding as we can still
 				// work with others
 				let aggregates =
-					Self::fetch_bucket_sub_aggregates(cluster_id, era_id, bucket_id, node_params)
-						.map_err(|_| OCWError::BucketSubAggregatesError {
-						cluster_id: *cluster_id,
-						era_id,
-						bucket_id: *bucket_id,
-						node_pub_key: node_pub_key.clone(),
-					})?;
+					Self::fetch_bucket_aggregates(cluster_id, era_id, bucket_id, node_params)
+						.map_err(|_| OCWError::BucketAggregatesRetrievalError {
+							cluster_id: *cluster_id,
+							era_id,
+							bucket_id: *bucket_id,
+							node_pub_key: node_pub_key.clone(),
+						})?;
 
-				sub_aggregates.extend(aggregates.subaggregates);
+				bucket_sub_aggregates.extend(aggregates.subaggregates);
 			}
 
-			Ok(sub_aggregates)
+			Ok(bucket_sub_aggregates)
 		}
 		/// Fetch DAC nodes of a cluster.
 		/// Parameters:
@@ -3230,13 +3232,13 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
-					OCWError::BucketSubAggregatesError {
+					OCWError::BucketAggregatesRetrievalError {
 						cluster_id,
 						era_id,
 						bucket_id,
 						node_pub_key,
 					} => {
-						Self::deposit_event(Event::BucketSubAggregatesError {
+						Self::deposit_event(Event::BucketAggregatesRetrievalError {
 							cluster_id,
 							era_id,
 							bucket_id,
