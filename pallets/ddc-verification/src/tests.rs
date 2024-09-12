@@ -2253,7 +2253,7 @@ fn fetch_reward_activities_works() {
 }
 
 #[test]
-fn test_minimum_sub_aggregates() {
+fn test_bucket_node_aggregates() {
 	let mut ext = new_test_ext();
 	let (offchain, offchain_state) = TestOffchainExt::new();
 	let (pool, _pool_state) = TestTransactionPoolExt::new();
@@ -2526,7 +2526,9 @@ fn test_minimum_sub_aggregates() {
 		// Sub_aggregates which are in consensus
 		assert_eq!(
 			result.clone().unwrap().0,
-			[BucketSubAggregate {
+			[BucketNodeAggregatesActivity {
+				customer_id: "0".to_string(),
+				bucket_id: 1,
 				node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318"
 					.to_string(),
 				stored_bytes: 578,
@@ -2539,27 +2541,33 @@ fn test_minimum_sub_aggregates() {
 		assert_eq!(
 			result.unwrap().1,
 			[
-				BucketSubAggregate {
-					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
-						.to_string(),
-					stored_bytes: 0,
-					transferred_bytes: 505,
-					number_of_puts: 0,
-					number_of_gets: 1
-				},
-				BucketSubAggregate {
-					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
-						.to_string(),
-					stored_bytes: 0,
-					transferred_bytes: 505,
-					number_of_puts: 0,
-					number_of_gets: 1
-				},
-				BucketSubAggregate {
+				BucketNodeAggregatesActivity {
+					customer_id: "0".to_string(),
+					bucket_id: 1,
 					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
 						.to_string(),
 					stored_bytes: 0,
 					transferred_bytes: 506,
+					number_of_puts: 0,
+					number_of_gets: 1
+				},
+				BucketNodeAggregatesActivity {
+					customer_id: "0".to_string(),
+					bucket_id: 1,
+					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
+						.to_string(),
+					stored_bytes: 0,
+					transferred_bytes: 505,
+					number_of_puts: 0,
+					number_of_gets: 1
+				},
+				BucketNodeAggregatesActivity {
+					customer_id: "0".to_string(),
+					bucket_id: 1,
+					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
+						.to_string(),
+					stored_bytes: 0,
+					transferred_bytes: 505,
 					number_of_puts: 0,
 					number_of_gets: 1
 				}
