@@ -297,7 +297,6 @@ pub mod pallet {
 		BucketAggregatesRetrievalError {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			bucket_id: BucketId,
 			node_pub_key: NodePubKey,
 			validator: T::AccountId,
 		},
@@ -366,7 +365,6 @@ pub mod pallet {
 		BucketAggregatesRetrievalError {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			bucket_id: BucketId,
 			node_pub_key: NodePubKey,
 		},
 		PrepareEraTransactionError {
@@ -629,6 +627,8 @@ pub mod pallet {
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
 	pub(crate) struct BucketAggregate {
+		/// Bucket id.
+		pub(crate) bucket_id: BucketId,
 		/// SubAggregates.
 		pub(crate) subaggregates: Vec<BucketSubAggregate>,
 	}
@@ -1583,8 +1583,8 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::Initialized
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::Initialized
 				{
 					if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
 						Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
@@ -1653,8 +1653,8 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::ChargingCustomers
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::ChargingCustomers
 				{
 					if let Some((
 						customers_activity_in_consensus,
@@ -1801,9 +1801,9 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::ChargingCustomers &&
-					T::PayoutVisitor::all_customer_batches_processed(cluster_id, era_id)
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::ChargingCustomers
+					&& T::PayoutVisitor::all_customer_batches_processed(cluster_id, era_id)
 				{
 					return Ok(Some(era_id));
 				}
@@ -1827,8 +1827,8 @@ pub mod pallet {
 					.filter_map(|usage| usage.as_ref().map(|u| u.stored_bytes))
 					.sum();
 
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::CustomersChargedWithFees
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::CustomersChargedWithFees
 				{
 					if let Some((
 						_,
@@ -1930,8 +1930,8 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::RewardingProviders
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::RewardingProviders
 				{
 					if let Some((
 						_,
@@ -2078,9 +2078,9 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::RewardingProviders &&
-					T::PayoutVisitor::all_provider_batches_processed(cluster_id, era_id)
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::RewardingProviders
+					&& T::PayoutVisitor::all_provider_batches_processed(cluster_id, era_id)
 				{
 					return Ok(Some(era_id));
 				}
@@ -2094,8 +2094,8 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
-					PayoutState::ProvidersRewarded
+				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id)
+					== PayoutState::ProvidersRewarded
 				{
 					return Ok(Some(era_id));
 				}
@@ -2350,11 +2350,12 @@ pub mod pallet {
 			for &leaf in leaves {
 				match mmr.push(leaf) {
 					Ok(pos) => leaves_with_position.push((pos, leaf)),
-					Err(_) =>
+					Err(_) => {
 						return Err(OCWError::FailedToCreateMerkleRoot {
 							cluster_id: *cluster_id,
 							era_id,
-						}),
+						})
+					},
 				}
 			}
 
@@ -2388,9 +2389,9 @@ pub mod pallet {
 			let mut end_era: i64 = Default::default();
 
 			for (stored_cluster_id, era_id, validation) in EraValidations::<T>::iter() {
-				if stored_cluster_id == *cluster_id &&
-					validation.status == status &&
-					(smallest_era_id.is_none() || era_id < smallest_era_id.unwrap())
+				if stored_cluster_id == *cluster_id
+					&& validation.status == status
+					&& (smallest_era_id.is_none() || era_id < smallest_era_id.unwrap())
 				{
 					smallest_era_id = Some(era_id);
 					start_era = validation.start_era;
@@ -2765,20 +2766,18 @@ pub mod pallet {
 		///
 		/// Parameters:
 		/// - `cluster_id`: cluster id of a cluster
-		/// - `bucket_id`: Bucket Id
 		/// - `era_id`: era id
 		/// - `node_params`: DAC node parameters
-		pub(crate) fn fetch_bucket_aggregates(
+		pub(crate) fn fetch_buckets_aggregates(
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
-			bucket_id: &BucketId,
 			node_params: &StorageNodeParams,
-		) -> Result<BucketAggregate, http::Error> {
+		) -> Result<Vec<BucketAggregate>, http::Error> {
 			let scheme = "http";
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 			let url = format!(
-				"{}://{}:{}/activity/buckets/{}?eraId={}",
-				scheme, host, node_params.http_port, bucket_id, era_id
+				"{}://{}:{}/activity/buckets?eraId={}",
+				scheme, host, node_params.http_port, era_id
 			);
 
 			let request = http::Request::get(&url);
@@ -2809,28 +2808,27 @@ pub mod pallet {
 			customer_activity: &CustomerActivity,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Vec<BucketNodeAggregatesActivity>, OCWError> {
-			let mut bucket_node_aggregates_activities = Vec::new();
-
+			let mut buckets_subaggregates: Vec<BucketAggregate> = Vec::new();
 			for (node_pub_key, node_params) in dac_nodes {
 				// todo! probably shouldn't stop when some DAC is not responding as we can still
 				// work with others
-				let aggregates = Self::fetch_bucket_aggregates(
-					cluster_id,
-					era_id,
-					&customer_activity.bucket_id,
-					node_params,
-				)
-				.map_err(|_| OCWError::BucketAggregatesRetrievalError {
-					cluster_id: *cluster_id,
-					era_id,
-					bucket_id: customer_activity.bucket_id,
-					node_pub_key: node_pub_key.clone(),
-				})?;
+				let mut subaggregates =
+					Self::fetch_buckets_aggregates(cluster_id, era_id, node_params).map_err(
+						|_| OCWError::BucketAggregatesRetrievalError {
+							cluster_id: *cluster_id,
+							era_id,
+							node_pub_key: node_pub_key.clone(),
+						},
+					)?;
+				buckets_subaggregates.append(&mut subaggregates);
+			}
 
-				for bucket_sub_aggregate in aggregates.subaggregates {
+			let mut bucket_node_aggregates_activities = Vec::new();
+			for bucket in buckets_subaggregates {
+				for bucket_sub_aggregate in bucket.subaggregates {
 					let bucket_node_aggregates_activity = BucketNodeAggregatesActivity {
 						customer_id: customer_activity.customer_id.clone(),
-						bucket_id: customer_activity.bucket_id,
+						bucket_id: bucket.bucket_id,
 						node_id: bucket_sub_aggregate.node_id,
 						stored_bytes: bucket_sub_aggregate.stored_bytes,
 						transferred_bytes: bucket_sub_aggregate.transferred_bytes,
@@ -3056,8 +3054,8 @@ pub mod pallet {
 				era_validation.start_era = era_activity.start; // todo! start/end is set by the last validator and is not in consensus
 				era_validation.end_era = era_activity.end;
 
-				if payers_merkle_root_hash == ActivityHash::default() &&
-					payees_merkle_root_hash == payers_merkle_root_hash
+				if payers_merkle_root_hash == ActivityHash::default()
+					&& payees_merkle_root_hash == payers_merkle_root_hash
 				{
 					era_validation.status = EraValidationStatus::PayoutSuccess;
 				} else {
@@ -3310,13 +3308,11 @@ pub mod pallet {
 					OCWError::BucketAggregatesRetrievalError {
 						cluster_id,
 						era_id,
-						bucket_id,
 						node_pub_key,
 					} => {
 						Self::deposit_event(Event::BucketAggregatesRetrievalError {
 							cluster_id,
 							era_id,
-							bucket_id,
 							node_pub_key,
 							validator: caller.clone(),
 						});
