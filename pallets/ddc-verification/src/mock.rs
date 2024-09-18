@@ -232,8 +232,18 @@ impl crate::Config for Test {
 	type ActivityHash = H256;
 	type StakingVisitor = Staking;
 	type AccountIdConverter = AccountId;
+	type CustomerVisitor = MockCustomerVisitor;
 }
 
+pub struct MockCustomerVisitor;
+impl<T: Config> CustomerVisitor<T> for MockCustomerVisitor {
+	fn get_bucket_owner(_bucket_id: &BucketId) -> Result<T::AccountId, DispatchError> {
+		let temp: AccountId = AccountId::from([0xa; 32]);
+		let account_1 = T::AccountId::decode(&mut &temp.as_slice()[..]).unwrap();
+
+		Ok(account_1)
+	}
+}
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();

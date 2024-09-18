@@ -12,7 +12,10 @@
 use core::str;
 
 use ddc_primitives::{
-	traits::{ClusterManager, ClusterValidator, NodeVisitor, PayoutVisitor, ValidatorVisitor},
+	traits::{
+		ClusterManager, ClusterValidator, CustomerVisitor, NodeVisitor, PayoutVisitor,
+		ValidatorVisitor,
+	},
 	ActivityHash, BatchIndex, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeParams, NodePubKey,
 	NodeUsage, PayoutState, StorageNodeParams,
 };
@@ -117,6 +120,7 @@ pub mod pallet {
 		/// The access to staking functionality.
 		type StakingVisitor: StakingInterface<AccountId = Self::AccountId>;
 		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
+		type CustomerVisitor: CustomerVisitor<Self>;
 	}
 
 	/// The event type.
@@ -160,7 +164,6 @@ pub mod pallet {
 		NotEnoughBucketsForConsensus {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			customer_id: String,
 			bucket_id: BucketId,
 			validator: T::AccountId,
 		},
@@ -304,7 +307,6 @@ pub mod pallet {
 		NotEnoughNodeAggregatesForConsensus {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			customer_id: String,
 			bucket_id: BucketId,
 			node_id: String,
 			validator: T::AccountId,
@@ -330,7 +332,6 @@ pub mod pallet {
 		NotEnoughBucketsForConsensus {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			customer_id: String,
 			bucket_id: BucketId,
 		},
 		/// No activity in consensus.
@@ -443,7 +444,6 @@ pub mod pallet {
 		NotEnoughNodeAggregatesForConsensus {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			customer_id: String,
 			bucket_id: BucketId,
 			node_id: String,
 		},
@@ -593,18 +593,10 @@ pub mod pallet {
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
 	pub(crate) struct CustomerActivity {
-		/// Customer id.
-		pub(crate) customer_id: String,
 		/// Bucket id
 		pub(crate) bucket_id: BucketId,
-		/// Total amount of stored bytes.
-		pub(crate) stored_bytes: i64,
-		/// Total amount of transferred bytes.
-		pub(crate) transferred_bytes: u64,
-		/// Total number of puts.
-		pub(crate) number_of_puts: u64,
-		/// Total number of gets.
-		pub(crate) number_of_gets: u64,
+		/// SubAggregates.
+		pub(crate) subaggregates: Vec<BucketSubAggregate>,
 	}
 
 	/// Sub Aggregates of a bucket.
@@ -628,18 +620,7 @@ pub mod pallet {
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub(crate) struct BucketAggregate {
-		/// SubAggregates.
-		pub(crate) subaggregates: Vec<BucketSubAggregate>,
-	}
-
-	/// Bucket aggregate by bucket id.
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
 	pub(crate) struct BucketNodeAggregatesActivity {
-		/// Customer id.
-		pub(crate) customer_id: String,
 		/// Bucket id
 		pub(crate) bucket_id: BucketId,
 		/// Node id.
@@ -681,9 +662,7 @@ pub mod pallet {
 	}
 	impl Activity for CustomerActivity {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			let mut data = self.customer_id.as_bytes().to_vec();
-			data.extend_from_slice(&self.bucket_id.encode());
-			T::ActivityHasher::hash(&data).into()
+			T::ActivityHasher::hash(&self.bucket_id.encode()).into()
 		}
 
 		fn hash<T: Config>(&self) -> ActivityHash {
@@ -691,22 +670,15 @@ pub mod pallet {
 		}
 
 		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
-			let customer_id = &self.customer_id;
 			let bucket_id = &self.bucket_id;
 
-			OCWError::NotEnoughBucketsForConsensus {
-				cluster_id,
-				era_id,
-				customer_id: customer_id.clone(),
-				bucket_id: *bucket_id,
-			}
+			OCWError::NotEnoughBucketsForConsensus { cluster_id, era_id, bucket_id: *bucket_id }
 		}
 	}
 
 	impl Activity for BucketNodeAggregatesActivity {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			let mut data = self.customer_id.as_bytes().to_vec();
-			data.extend_from_slice(&self.bucket_id.encode());
+			let mut data = self.bucket_id.encode();
 			data.extend_from_slice(&self.node_id.encode());
 			data.extend_from_slice(&self.stored_bytes.encode());
 			data.extend_from_slice(&self.transferred_bytes.encode());
@@ -721,13 +693,11 @@ pub mod pallet {
 
 		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
 			let node_id = &self.node_id;
-			let customer_id = &self.customer_id;
 			let bucket_id = &self.bucket_id;
 
 			OCWError::NotEnoughNodeAggregatesForConsensus {
 				cluster_id,
 				era_id,
-				customer_id: customer_id.clone(),
 				bucket_id: *bucket_id,
 				node_id: node_id.clone(),
 			}
@@ -1385,22 +1355,8 @@ pub mod pallet {
 				Self::fetch_customers_usage_for_era(cluster_id, era_activity.id, dac_nodes)
 					.map_err(|err| vec![err])?;
 
-			let customers_activity_in_consensus = Self::get_consensus_for_activities(
-				cluster_id,
-				era_activity.id,
-				&customers_usage,
-				min_nodes,
-				Percent::from_percent(T::MAJORITY),
-			)?;
-
 			let (bucket_node_aggregates_in_consensus, _bucket_node_aggregates_not_in_consensus) =
-				Self::fetch_sub_trees(
-					cluster_id,
-					era_activity.id,
-					customers_activity_in_consensus,
-					dac_nodes,
-					min_nodes,
-				)?;
+				Self::fetch_sub_trees(cluster_id, era_activity.id, customers_usage, min_nodes)?;
 
 			let customer_activity_hashes: Vec<ActivityHash> = bucket_node_aggregates_in_consensus
 				.clone()
@@ -1531,7 +1487,6 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			customer_activities: Vec<CustomerActivity>,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 			min_nodes: u16,
 		) -> Result<
 			(Vec<BucketNodeAggregatesActivity>, Vec<BucketNodeAggregatesActivity>),
@@ -1545,17 +1500,20 @@ pub mod pallet {
 				cluster_id,
 				era_id
 			);
-
 			for customer_activity in customer_activities.clone() {
-				let aggregates = Self::fetch_bucket_nodes_aggregate_activity_for_era(
-					cluster_id,
-					era_id,
-					&customer_activity,
-					dac_nodes,
-				)
-				.map_err(|err| vec![err])?;
-				log::info!("🏠🚀 Fetched Bucket node-aggregates for cluster_id: {:?} for era_id: {:?} for bucket_id {:?}::: Bucket Sub-Aggregates are {:?}", cluster_id, era_id, customer_activity.bucket_id, aggregates);
-				bucket_node_aggregates_activities.extend(aggregates);
+				for bucket_sub_aggregate in customer_activity.subaggregates.clone() {
+					let bucket_node_aggregates_activity = BucketNodeAggregatesActivity {
+						bucket_id: customer_activity.bucket_id,
+						node_id: bucket_sub_aggregate.node_id,
+						stored_bytes: bucket_sub_aggregate.stored_bytes,
+						transferred_bytes: bucket_sub_aggregate.transferred_bytes,
+						number_of_puts: bucket_sub_aggregate.number_of_puts,
+						number_of_gets: bucket_sub_aggregate.number_of_gets,
+					};
+
+					bucket_node_aggregates_activities.push(bucket_node_aggregates_activity);
+				}
+				log::info!("🏠🚀 Fetched Bucket node-aggregates for cluster_id: {:?} for era_id: {:?} for bucket_id {:?}::: Bucket Sub-Aggregates are {:?}", cluster_id, era_id, customer_activity.bucket_id, customer_activity.subaggregates);
 			}
 
 			Self::get_consensus_for_bucket_node_aggregates(
@@ -1657,20 +1615,22 @@ pub mod pallet {
 					PayoutState::ChargingCustomers
 				{
 					if let Some((
-						customers_activity_in_consensus,
+						bucket_nodes_activity_in_consensus,
 						_,
 						customers_activity_batch_roots,
 						_,
 						_,
 						_,
-					)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
-						cluster_id, era_id,
-					) {
+					)) = Self::fetch_validation_activities::<
+						BucketNodeAggregatesActivity,
+						NodeActivity,
+					>(cluster_id, era_id)
+					{
 						Self::fetch_charging_activities(
 							cluster_id,
 							batch_size,
 							era_id,
-							customers_activity_in_consensus,
+							bucket_nodes_activity_in_consensus,
 							customers_activity_batch_roots,
 						)
 					} else {
@@ -1685,20 +1645,22 @@ pub mod pallet {
 						)?;
 
 						if let Some((
-							customers_activity_in_consensus,
+							bucket_nodes_activity_in_consensus,
 							_,
 							customers_activity_batch_roots,
 							_,
 							_,
 							_,
-						)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
-							cluster_id, era_id,
-						) {
+						)) = Self::fetch_validation_activities::<
+							BucketNodeAggregatesActivity,
+							NodeActivity,
+						>(cluster_id, era_id)
+						{
 							Self::fetch_charging_activities(
 								cluster_id,
 								batch_size,
 								era_id,
-								customers_activity_in_consensus,
+								bucket_nodes_activity_in_consensus,
 								customers_activity_batch_roots,
 							)
 						} else {
@@ -1717,7 +1679,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			batch_size: usize,
 			era_id: DdcEra,
-			customers_activity_in_consensus: Vec<CustomerActivity>,
+			bucket_nodes_activity_in_consensus: Vec<BucketNodeAggregatesActivity>,
 			customers_activity_batch_roots: Vec<ActivityHash>,
 		) -> Result<Option<(DdcEra, CustomerBatch<T>)>, Vec<OCWError>> {
 			let batch_index = T::PayoutVisitor::get_next_customer_batch_for_payment(
@@ -1731,7 +1693,7 @@ pub mod pallet {
 				let i: usize = index.into();
 				// todo! store batched activity to avoid splitting it again each time
 				let customers_activity_batched =
-					Self::split_to_batches(&customers_activity_in_consensus, batch_size);
+					Self::split_to_batches(&bucket_nodes_activity_in_consensus, batch_size);
 
 				let batch_root = customers_activity_batch_roots[i];
 				let store = MemStore::default();
@@ -1773,11 +1735,9 @@ pub mod pallet {
 						payers: customers_activity_batched[i]
 							.iter()
 							.map(|activity| {
-								let binding = activity.clone();
-								let customer_id = binding.customer_id.as_str();
-								let key = customer_id.trim_start_matches("0x");
-								let h_key = hex::decode(key).unwrap();
-								let account_id = T::AccountId::decode(&mut &h_key[..]).unwrap(); // todo! Remove Unwrap
+								let account_id =
+									T::CustomerVisitor::get_bucket_owner(&activity.bucket_id)
+										.unwrap();
 								let customer_usage = CustomerUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
@@ -2128,7 +2088,7 @@ pub mod pallet {
 			// todo! (3) add tests
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			customers_activity_in_consensus: &[A],
+			bucket_nodes_activity_in_consensus: &[A],
 			customers_activity_root: ActivityHash,
 			customers_activity_batch_roots: &[ActivityHash],
 			nodes_activity_in_consensus: &[B],
@@ -2137,7 +2097,7 @@ pub mod pallet {
 		) {
 			let key = Self::derive_key(cluster_id, era_id);
 			let encoded_tuple = (
-				customers_activity_in_consensus,
+				bucket_nodes_activity_in_consensus,
 				customers_activity_root,
 				customers_activity_batch_roots,
 				nodes_activity_in_consensus,
@@ -2207,14 +2167,14 @@ pub mod pallet {
 			// Attempt to decode tuple from bytes
 			match Decode::decode(&mut &encoded_tuple[..]) {
 				Ok((
-					customers_activity_in_consensus,
+					bucket_nodes_activity_in_consensus,
 					customers_activity_root,
 					customers_activity_batch_roots,
 					nodes_activity_in_consensus,
 					nodes_activity_root,
 					nodes_activity_batch_roots,
 				)) => Some((
-					customers_activity_in_consensus,
+					bucket_nodes_activity_in_consensus,
 					customers_activity_root,
 					customers_activity_batch_roots,
 					nodes_activity_in_consensus,
@@ -2761,89 +2721,6 @@ pub mod pallet {
 			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
 		}
 
-		/// Fetch bucket aggregates.
-		///
-		/// Parameters:
-		/// - `cluster_id`: cluster id of a cluster
-		/// - `bucket_id`: Bucket Id
-		/// - `era_id`: era id
-		/// - `node_params`: DAC node parameters
-		pub(crate) fn fetch_bucket_aggregates(
-			_cluster_id: &ClusterId,
-			era_id: DdcEra,
-			bucket_id: &BucketId,
-			node_params: &StorageNodeParams,
-		) -> Result<BucketAggregate, http::Error> {
-			let scheme = "http";
-			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let url = format!(
-				"{}://{}:{}/activity/buckets/{}?eraId={}",
-				scheme, host, node_params.http_port, bucket_id, era_id
-			);
-
-			let request = http::Request::get(&url);
-			let timeout = sp_io::offchain::timestamp()
-				.add(rt_offchain::Duration::from_millis(RESPONSE_TIMEOUT));
-			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
-
-			let response =
-				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != SUCCESS_CODE {
-				return Err(http::Error::Unknown);
-			}
-
-			let body = response.body().collect::<Vec<u8>>();
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
-		}
-
-		/// Fetch bucket node aggregates for an era.
-		///
-		/// Parameters:
-		/// - `cluster_id`: cluster id of a cluster
-		/// - `era_id`: era id
-		/// - `customer_activity`: Customer Activity
-		/// - `node_params`: DAC node parameters
-		fn fetch_bucket_nodes_aggregate_activity_for_era(
-			cluster_id: &ClusterId,
-			era_id: DdcEra,
-			customer_activity: &CustomerActivity,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<BucketNodeAggregatesActivity>, OCWError> {
-			let mut bucket_node_aggregates_activities = Vec::new();
-
-			for (node_pub_key, node_params) in dac_nodes {
-				// todo! probably shouldn't stop when some DAC is not responding as we can still
-				// work with others
-				let aggregates = Self::fetch_bucket_aggregates(
-					cluster_id,
-					era_id,
-					&customer_activity.bucket_id,
-					node_params,
-				)
-				.map_err(|_| OCWError::BucketAggregatesRetrievalError {
-					cluster_id: *cluster_id,
-					era_id,
-					bucket_id: customer_activity.bucket_id,
-					node_pub_key: node_pub_key.clone(),
-				})?;
-
-				for bucket_sub_aggregate in aggregates.subaggregates {
-					let bucket_node_aggregates_activity = BucketNodeAggregatesActivity {
-						customer_id: customer_activity.customer_id.clone(),
-						bucket_id: customer_activity.bucket_id,
-						node_id: bucket_sub_aggregate.node_id,
-						stored_bytes: bucket_sub_aggregate.stored_bytes,
-						transferred_bytes: bucket_sub_aggregate.transferred_bytes,
-						number_of_puts: bucket_sub_aggregate.number_of_puts,
-						number_of_gets: bucket_sub_aggregate.number_of_gets,
-					};
-
-					bucket_node_aggregates_activities.push(bucket_node_aggregates_activity);
-				}
-			}
-
-			Ok(bucket_node_aggregates_activities)
-		}
 		/// Fetch DAC nodes of a cluster.
 		/// Parameters:
 		/// - `cluster_id`: Cluster id of a cluster.
@@ -2925,11 +2802,11 @@ pub mod pallet {
 		/// - `cluster_id`: cluster id of a cluster
 		/// - `era_id`: era id
 		/// - `node_params`: DAC node parameters
-		fn fetch_customers_usage_for_era(
+		pub(crate) fn fetch_customers_usage_for_era(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<(NodePubKey, Vec<CustomerActivity>)>, OCWError> {
+		) -> Result<Vec<CustomerActivity>, OCWError> {
 			let mut customers_usages = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
@@ -2944,7 +2821,7 @@ pub mod pallet {
 						}
 					})?;
 
-				customers_usages.push((node_pub_key.clone(), usage));
+				customers_usages.extend(usage);
 			}
 
 			Ok(customers_usages)
@@ -3121,16 +2998,10 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
-					OCWError::NotEnoughBucketsForConsensus {
-						cluster_id,
-						era_id,
-						customer_id,
-						bucket_id,
-					} => {
+					OCWError::NotEnoughBucketsForConsensus { cluster_id, era_id, bucket_id } => {
 						Self::deposit_event(Event::NotEnoughBucketsForConsensus {
 							cluster_id,
 							era_id,
-							customer_id,
 							bucket_id,
 							validator: caller.clone(),
 						});
@@ -3324,14 +3195,12 @@ pub mod pallet {
 					OCWError::NotEnoughNodeAggregatesForConsensus {
 						cluster_id,
 						era_id,
-						customer_id,
 						bucket_id,
 						node_id,
 					} => {
 						Self::deposit_event(Event::NotEnoughNodeAggregatesForConsensus {
 							cluster_id,
 							era_id,
-							customer_id,
 							bucket_id,
 							node_id,
 							validator: caller.clone(),

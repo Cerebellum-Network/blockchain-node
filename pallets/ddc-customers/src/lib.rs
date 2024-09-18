@@ -17,7 +17,7 @@ use ddc_primitives::{
 	traits::{
 		bucket::{BucketManager, BucketVisitor},
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
-		customer::{CustomerCharger, CustomerDepositor},
+		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
 	},
 	BucketId, BucketVisitorError, ClusterId, CustomerUsage,
 };
@@ -821,6 +821,13 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: extra });
 
 			Ok(())
+		}
+	}
+
+	impl<T: Config> CustomerVisitor<T> for Pallet<T> {
+		fn get_bucket_owner(bucket_id: &BucketId) -> Result<T::AccountId, DispatchError> {
+			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+			Ok(bucket.owner_id)
 		}
 	}
 }
