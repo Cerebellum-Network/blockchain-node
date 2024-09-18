@@ -2003,16 +2003,14 @@ fn test_single_ocw_pallet_integration() {
 
 		let sub_aggregates_request1 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/90235?eraId=476814", host1, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host1, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 90235,
+		"subaggregates": []
+	}
+]"#
 					.to_vec(),
 			),
 			sent: true,
@@ -2021,16 +2019,14 @@ fn test_single_ocw_pallet_integration() {
 
 		let sub_aggregates_request2 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/90235?eraId=476814", host2, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host2, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 90235,
+		"subaggregates": []
+	}
+]"#
 					.to_vec(),
 			),
 			sent: true,
@@ -2039,16 +2035,14 @@ fn test_single_ocw_pallet_integration() {
 
 		let sub_aggregates_request3 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/90235?eraId=476814", host3, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host3, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 90235,
+		"subaggregates": []
+	}
+]"#
 					.to_vec(),
 			),
 			sent: true,
@@ -2057,16 +2051,14 @@ fn test_single_ocw_pallet_integration() {
 
 		let sub_aggregates_request4 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/90235?eraId=476814", host4, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host4, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 90235,
+		"subaggregates": []
+	}
+]"#
 					.to_vec(),
 			),
 			sent: true,
@@ -2075,16 +2067,14 @@ fn test_single_ocw_pallet_integration() {
 
 		let sub_aggregates_request5 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/90235?eraId=476814", host5, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host5, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 90235,
+		"subaggregates": []
+	}
+]"#
 					.to_vec(),
 			),
 			sent: true,
@@ -2093,16 +2083,14 @@ fn test_single_ocw_pallet_integration() {
 
 		let sub_aggregates_request6 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/90235?eraId=476814", host6, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host6, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 90235,
+		"subaggregates": []
+	}
+]"#
 					.to_vec(),
 			),
 			sent: true,
@@ -2111,16 +2099,14 @@ fn test_single_ocw_pallet_integration() {
 
 		let sub_aggregates_request7 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/90235?eraId=476814", host7, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host7, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 90235,
+		"subaggregates": []
+	}
+]"#
 					.to_vec(),
 			),
 			sent: true,
@@ -2129,16 +2115,14 @@ fn test_single_ocw_pallet_integration() {
 
 		let sub_aggregates_request8 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/90235?eraId=476814", host8, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host8, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 90235,
+		"subaggregates": []
+	}
+]"#
 					.to_vec(),
 			),
 			sent: true,
@@ -2147,16 +2131,14 @@ fn test_single_ocw_pallet_integration() {
 
 		let sub_aggregates_request9 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/90235?eraId=476814", host9, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host9, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 90235,
+		"subaggregates": []
+	}
+]"#
 					.to_vec(),
 			),
 			sent: true,
@@ -2295,30 +2277,29 @@ fn test_bucket_node_aggregates() {
 
 		let pending_request1 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/1?eraId=476817", host1, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host1, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-    {
-      "node_id": "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
-      "stored_bytes": 578,
-      "transferred_bytes": 578,
-      "number_of_puts": 2,
-      "number_of_gets": 0
-    },
-    {
-      "node_id": "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319",
-      "stored_bytes": 0,
-      "transferred_bytes": 505,
-      "number_of_puts": 0,
-      "number_of_gets": 1
-    }
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 1,
+		"subaggregates": [
+			{
+				"node_id": "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
+				"stored_bytes": 578,
+				"transferred_bytes": 578,
+				"number_of_puts": 2,
+				"number_of_gets": 0
+			},
+			{
+				"node_id": "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319",
+				"stored_bytes": 0,
+				"transferred_bytes": 505,
+				"number_of_puts": 0,
+				"number_of_gets": 1
+			}
+		]
+	}
+]"#
 				.to_vec(),
 			),
 			sent: true,
@@ -2327,30 +2308,29 @@ fn test_bucket_node_aggregates() {
 
 		let pending_request2 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/1?eraId=476817", host2, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host2, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-    {
-      "node_id": "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
-      "stored_bytes": 578,
-      "transferred_bytes": 578,
-      "number_of_puts": 2,
-      "number_of_gets": 0
-    },
-    {
-      "node_id": "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319",
-      "stored_bytes": 0,
-      "transferred_bytes": 506,
-      "number_of_puts": 0,
-      "number_of_gets": 1
-    }
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 1,
+		"subaggregates": [
+			{
+				"node_id": "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
+				"stored_bytes": 578,
+				"transferred_bytes": 578,
+				"number_of_puts": 2,
+				"number_of_gets": 0
+			},
+			{
+				"node_id": "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319",
+				"stored_bytes": 0,
+				"transferred_bytes": 506,
+				"number_of_puts": 0,
+				"number_of_gets": 1
+			}
+		]
+	}
+]"#
 				.to_vec(),
 			),
 			sent: true,
@@ -2359,30 +2339,29 @@ fn test_bucket_node_aggregates() {
 
 		let pending_request3 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/1?eraId=476817", host3, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host3, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-    {
-      "node_id": "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
-      "stored_bytes": 578,
-      "transferred_bytes": 578,
-      "number_of_puts": 2,
-      "number_of_gets": 0
-    },
-    {
-      "node_id": "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319",
-      "stored_bytes": 0,
-      "transferred_bytes": 505,
-      "number_of_puts": 0,
-      "number_of_gets": 1
-    }
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 1,
+		"subaggregates": [
+			{
+				"node_id": "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
+				"stored_bytes": 578,
+				"transferred_bytes": 578,
+				"number_of_puts": 2,
+				"number_of_gets": 0
+			},
+			{
+				"node_id": "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319",
+				"stored_bytes": 0,
+				"transferred_bytes": 505,
+				"number_of_puts": 0,
+				"number_of_gets": 1
+			}
+		]
+	}
+]"#
 				.to_vec(),
 			),
 			sent: true,
@@ -2391,16 +2370,14 @@ fn test_bucket_node_aggregates() {
 
 		let pending_request4 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/1?eraId=476817", host4, port),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host4, port),
 			response: Some(
-				br#"{
-  "stored_bytes": 578,
-  "transferred_bytes": 1083,
-  "number_of_puts": 2,
-  "number_of_gets": 1,
-  "subaggregates": [
-  ]
-}"#
+				br#"[
+	{
+		"bucket_id": 1,
+		"subaggregates": []
+	}
+]"#
 				.to_vec(),
 			),
 			sent: true,
