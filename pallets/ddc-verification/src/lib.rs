@@ -3424,6 +3424,44 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		// todo! remove this after devnet testing
+		#[pallet::call_index(13)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		pub fn set_era_validations(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+			let era_validations = <EraValidations<T>>::get(cluster_id, era_id);
+
+			if era_validations.is_none() {
+				let mut era_validation = EraValidation {
+					payers_merkle_root_hash: ActivityHash::default(),
+					payees_merkle_root_hash: ActivityHash::default(),
+					start_era: Default::default(),
+					end_era: Default::default(),
+					validators: Default::default(),
+					status: EraValidationStatus::PayoutSuccess,
+				};
+
+				let signed_validators = era_validation
+					.validators
+					.entry((ActivityHash::default(), ActivityHash::default()))
+					.or_insert_with(Vec::new);
+
+				let validators = <ValidatorSet<T>>::get();
+
+				signed_validators.extend(validators);
+
+				<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
+			}
+
+			Self::deposit_event(Event::<T>::EraValidationReady { cluster_id, era_id });
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> ValidatorVisitor<T> for Pallet<T> {
