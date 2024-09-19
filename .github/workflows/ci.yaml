@@ -57,7 +57,7 @@ jobs:
       - name: Check Try-Runtime
         run: |
           try-runtime --runtime ./target/release/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm \
-          on-runtime-upgrade --disable-idempotency-checks live --uri wss://archive.devnet.cere.network:443
+          on-runtime-upgrade --disable-idempotency-checks live --uri wss://rpc.devnet.cere.network:443
       - name: Run dev chain
         run: |
           timeout --preserve-status 30s ./target/release/cere --dev

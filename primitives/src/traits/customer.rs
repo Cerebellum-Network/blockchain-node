@@ -19,3 +19,7 @@ pub trait CustomerDepositor<T: frame_system::Config> {
 	fn deposit(customer: T::AccountId, amount: u128) -> Result<(), DispatchError>;
 	fn deposit_extra(customer: T::AccountId, amount: u128) -> Result<(), DispatchError>;
 }
+
+pub trait CustomerVisitor<T: frame_system::Config> {
+	fn get_bucket_owner(bucket_id: &BucketId) -> Result<T::AccountId, DispatchError>;
+}
