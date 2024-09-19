@@ -1331,6 +1331,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type ActivityHash = H256;
 	type StakingVisitor = pallet_staking::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
+	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
 }
 
 construct_runtime!(
