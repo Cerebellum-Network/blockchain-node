@@ -596,7 +596,7 @@ pub mod pallet {
 		/// Bucket id
 		pub(crate) bucket_id: BucketId,
 		/// SubAggregates.
-		pub(crate) subaggregates: Vec<BucketSubAggregate>,
+		pub(crate) sub_aggregate: Vec<BucketSubAggregate>,
 	}
 
 	/// Sub Aggregates of a bucket.
@@ -1487,7 +1487,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			customer_activities: Vec<CustomerActivity>,
-			min_nodes: u16,
+			quorum: u16,
 		) -> Result<
 			(Vec<BucketNodeAggregatesActivity>, Vec<BucketNodeAggregatesActivity>),
 			Vec<OCWError>,
@@ -1501,7 +1501,7 @@ pub mod pallet {
 				era_id
 			);
 			for customer_activity in customer_activities.clone() {
-				for bucket_sub_aggregate in customer_activity.subaggregates.clone() {
+				for bucket_sub_aggregate in customer_activity.sub_aggregate.clone() {
 					let bucket_node_aggregates_activity = BucketNodeAggregatesActivity {
 						bucket_id: customer_activity.bucket_id,
 						node_id: bucket_sub_aggregate.node_id,
@@ -1513,14 +1513,14 @@ pub mod pallet {
 
 					bucket_node_aggregates_activities.push(bucket_node_aggregates_activity);
 				}
-				log::info!("🏠🚀 Fetched Bucket node-aggregates for cluster_id: {:?} for era_id: {:?} for bucket_id {:?}::: Bucket Sub-Aggregates are {:?}", cluster_id, era_id, customer_activity.bucket_id, customer_activity.subaggregates);
+				log::info!("🏠🚀 Fetched Bucket node-aggregates for cluster_id: {:?} for era_id: {:?} for bucket_id {:?}::: Bucket Sub-Aggregates are {:?}", cluster_id, era_id, customer_activity.bucket_id, customer_activity.sub_aggregate);
 			}
 
 			Self::get_consensus_for_bucket_node_aggregates(
 				cluster_id,
 				era_id,
 				bucket_node_aggregates_activities,
-				min_nodes,
+				quorum,
 				Percent::from_percent(T::MAJORITY),
 			)
 		}
