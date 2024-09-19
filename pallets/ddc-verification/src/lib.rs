@@ -596,16 +596,17 @@ pub mod pallet {
 		/// Bucket id
 		pub(crate) bucket_id: BucketId,
 		/// SubAggregates.
-		pub(crate) sub_aggregate: Vec<BucketSubAggregate>,
+		pub(crate) sub_aggregates: Vec<BucketSubAggregate>,
 	}
 
 	/// Sub Aggregates of a bucket.
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
+	#[allow(non_snake_case)]
 	pub(crate) struct BucketSubAggregate {
 		/// Node id.
-		pub(crate) node_id: String,
+		pub(crate) NodeID: String,
 		/// Total amount of stored bytes.
 		pub(crate) stored_bytes: i64,
 		/// Total amount of transferred bytes.
@@ -1501,10 +1502,10 @@ pub mod pallet {
 				era_id
 			);
 			for customer_activity in customer_activities.clone() {
-				for bucket_sub_aggregate in customer_activity.sub_aggregate.clone() {
+				for bucket_sub_aggregate in customer_activity.sub_aggregates.clone() {
 					let bucket_node_aggregates_activity = BucketNodeAggregatesActivity {
 						bucket_id: customer_activity.bucket_id,
-						node_id: bucket_sub_aggregate.node_id,
+						node_id: bucket_sub_aggregate.NodeID,
 						stored_bytes: bucket_sub_aggregate.stored_bytes,
 						transferred_bytes: bucket_sub_aggregate.transferred_bytes,
 						number_of_puts: bucket_sub_aggregate.number_of_puts,
@@ -1513,7 +1514,7 @@ pub mod pallet {
 
 					bucket_node_aggregates_activities.push(bucket_node_aggregates_activity);
 				}
-				log::info!("🏠🚀 Fetched Bucket node-aggregates for cluster_id: {:?} for era_id: {:?} for bucket_id {:?}::: Bucket Sub-Aggregates are {:?}", cluster_id, era_id, customer_activity.bucket_id, customer_activity.sub_aggregate);
+				log::info!("🏠🚀 Fetched Bucket node-aggregates for cluster_id: {:?} for era_id: {:?} for bucket_id {:?}::: Bucket Sub-Aggregates are {:?}", cluster_id, era_id, customer_activity.bucket_id, customer_activity.sub_aggregates);
 			}
 
 			Self::get_consensus_for_bucket_node_aggregates(
