@@ -1532,9 +1532,11 @@ pub mod pallet {
 					PayoutState::Initialized
 				{
 					if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
-						Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
-							cluster_id, era_id,
-						) {
+						Self::fetch_validation_activities::<
+							BucketNodeAggregatesActivity,
+							NodeActivity,
+						>(cluster_id, era_id)
+					{
 						Self::fetch_customer_activity(
 							cluster_id,
 							era_id,
@@ -1552,9 +1554,11 @@ pub mod pallet {
 						)?;
 
 						if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
-							Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
-								cluster_id, era_id,
-							) {
+							Self::fetch_validation_activities::<
+								BucketNodeAggregatesActivity,
+								NodeActivity,
+							>(cluster_id, era_id)
+						{
 							Self::fetch_customer_activity(
 								cluster_id,
 								era_id,
@@ -1784,9 +1788,11 @@ pub mod pallet {
 						nodes_activity_in_consensus,
 						_,
 						nodes_activity_batch_roots,
-					)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
-						cluster_id, era_id,
-					) {
+					)) = Self::fetch_validation_activities::<
+						BucketNodeAggregatesActivity,
+						NodeActivity,
+					>(cluster_id, era_id)
+					{
 						Self::fetch_reward_activities(
 							cluster_id,
 							era_id,
@@ -1812,9 +1818,11 @@ pub mod pallet {
 							nodes_activity_in_consensus,
 							_,
 							nodes_activity_batch_roots,
-						)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
-							cluster_id, era_id,
-						) {
+						)) = Self::fetch_validation_activities::<
+							BucketNodeAggregatesActivity,
+							NodeActivity,
+						>(cluster_id, era_id)
+						{
 							Self::fetch_reward_activities(
 								cluster_id,
 								era_id,
@@ -1887,9 +1895,11 @@ pub mod pallet {
 						nodes_activity_in_consensus,
 						_,
 						nodes_activity_batch_roots,
-					)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
-						cluster_id, era_id,
-					) {
+					)) = Self::fetch_validation_activities::<
+						BucketNodeAggregatesActivity,
+						NodeActivity,
+					>(cluster_id, era_id)
+					{
 						Self::fetch_reward_provider_batch(
 							cluster_id,
 							batch_size,
@@ -1915,9 +1925,11 @@ pub mod pallet {
 							nodes_activity_in_consensus,
 							_,
 							nodes_activity_batch_roots,
-						)) = Self::fetch_validation_activities::<CustomerActivity, NodeActivity>(
-							cluster_id, era_id,
-						) {
+						)) = Self::fetch_validation_activities::<
+							BucketNodeAggregatesActivity,
+							NodeActivity,
+						>(cluster_id, era_id)
+						{
 							Self::fetch_reward_provider_batch(
 								cluster_id,
 								batch_size,
@@ -2907,7 +2919,7 @@ pub mod pallet {
 			let threshold = percent * <ValidatorSet<T>>::get().len();
 
 			let mut should_deposit_ready_event = false;
-			if threshold < signed_validators.len() {
+			if threshold <= signed_validators.len() {
 				// Update payers_merkle_root_hash and payees_merkle_root_hash as ones passed the
 				// threshold
 				era_validation.payers_merkle_root_hash = payers_merkle_root_hash;
