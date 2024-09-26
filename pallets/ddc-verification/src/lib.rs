@@ -683,7 +683,7 @@ pub mod pallet {
 	pub(crate) struct Proof {
 		pub merkle_tree_node_id: u64,
 		pub usage: Usage,
-		pub path: Vec<String>,
+		pub path: Vec<String>, //todo! add base64 deserialization
 		pub leafs: Vec<Leaf>,
 	}
 

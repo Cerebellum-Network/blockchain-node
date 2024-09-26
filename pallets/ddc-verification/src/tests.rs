@@ -2433,6 +2433,7 @@ fn test_challenge_sub_aggregates_not_in_consensus() {
 
 		let port = 8080;
 
+		//todo! put them in resource file
 		let pending_request1 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=0,1,2,3", host1, port),
