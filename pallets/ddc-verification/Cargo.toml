@@ -10,6 +10,8 @@ repository.workspace = true
 
 [dependencies]
 array-bytes = { workspace = true }
+base64 = { workspace = true }
+blake2 = { workspace = true }
 # 3rd-party dependencies
 codec = { workspace = true }
 # Cere dependencies
@@ -46,6 +48,8 @@ sp-keystore = { workspace = true }
 [features]
 default = ["std"]
 std = [
+  "base64/std",
+  "blake2/std",
   "rand/std",
   "hex/std",
   "polkadot-ckb-merkle-mountain-range/std",

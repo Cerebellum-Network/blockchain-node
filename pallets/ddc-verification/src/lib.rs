@@ -715,27 +715,9 @@ pub mod pallet {
 	pub(crate) struct Record {
 		pub id: String,
 		pub upstream: Upstream,
+		pub downstream: Vec<Downstream>,
 		pub timestamp: String,
 		pub signature: Signature,
-		pub authToken: AuthToken,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct AuthToken {
-		pub signature: Signature,
-		pub payload: Payload,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	#[allow(non_snake_case)]
-	pub(crate) struct Payload {
-		pub canDelegate: bool,
-		pub operations: Vec<String>,
-		pub expiresAt: String,
 	}
 
 	#[derive(
@@ -743,50 +725,35 @@ pub mod pallet {
 	)]
 	pub(crate) struct Upstream {
 		pub request: Request,
-		pub response: Response,
 	}
 
+	#[derive(
+		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
+	)]
+	pub(crate) struct Downstream {
+		pub request: Request,
+	}
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
 	#[allow(non_snake_case)]
 	pub(crate) struct Request {
-		pub parentRequest: ParentRequest,
 		pub requestId: String,
+		pub requestType: String,
 		pub contentType: String,
-		pub pieceCid: String,
-		pub size: String,
-		pub timestamp: String,
-		pub signature: Signature,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	#[allow(non_snake_case)]
-	pub(crate) struct ParentRequest {
-		pub requestId: String,
 		pub bucketId: String,
 		pub pieceCid: String,
+		pub offset: String,
 		pub size: String,
 		pub timestamp: String,
 		pub signature: Signature,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	#[allow(non_snake_case)]
-	pub(crate) struct Response {
-		pub status: String,
-		pub peerID: String,
 	}
 
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
 	pub(crate) struct Signature {
-		pub algorithm: Option<String>,
+		pub algorithm: String,
 		pub signer: String,
 		pub value: String,
 	}
@@ -1714,15 +1681,17 @@ pub mod pallet {
 						let paths = proof.path.iter().rev();
 
 						let mut node_upper_root: ActivityHash = leaf_record_root;
-
 						for path in paths {
+
+							let bytes = base64::prelude::BASE64_STANDARD.decode(path).unwrap();
+
+							let path_hash: ActivityHash =
+								ActivityHash::from(sp_core::H256::from_slice(&bytes));
+
 							let node_root = Self::create_merkle_root(
 								cluster_id,
 								era_id,
-								&[
-									node_upper_root,
-									ActivityHash::from(sp_core::H256::from_slice(path.as_bytes())),
-								],
+								&[node_upper_root, path_hash],
 							)
 							.map_err(|err| vec![err])?;
 
@@ -1760,7 +1729,7 @@ pub mod pallet {
 			// 	.into()
 
 			if int_list.len() >= number_of_identifiers {
-				int_list[0..number_of_identifiers].to_vec()
+				int_list[..number_of_identifiers].to_vec()
 			} else {
 				vec![]
 			}
@@ -2976,10 +2945,13 @@ pub mod pallet {
 			let scheme = "http";
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 
-			let result = merkle_node_identifiers.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(",");
+			let result = merkle_node_identifiers
+				.iter()
+				.map(|x| format!("{}", x.clone()))
+				.collect::<Vec<_>>()
+				.join(",");
 
-			let url =
-				format!(
+			let url = format!(
 				"{}://{}:{}/activity/buckets/{}/challenge?eraId={}&nodeId={}&merkleTreeNodeId={}",
 				scheme, host, node_params.http_port, bucket_id, era_id, node_id, result
 			);
