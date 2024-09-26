@@ -11,6 +11,7 @@
 
 use core::str;
 
+use base64ct::{Base64, Encoding};
 use ddc_primitives::{
 	traits::{
 		ClusterManager, ClusterValidator, CustomerVisitor, NodeVisitor, PayoutVisitor,
@@ -68,6 +69,7 @@ pub mod pallet {
 		frame_support::traits::StorageVersion::new(0);
 
 	const SUCCESS_CODE: u16 = 200;
+	const BUF_SIZE: usize = 128;
 	const RESPONSE_TIMEOUT: u64 = 20000;
 
 	#[pallet::pallet]
@@ -1682,11 +1684,10 @@ pub mod pallet {
 
 						let mut node_upper_root: ActivityHash = leaf_record_root;
 						for path in paths {
-
-							let bytes = base64::prelude::BASE64_STANDARD.decode(path).unwrap();
-
+							let mut dec_buf = [0u8; BUF_SIZE];
+							let bytes = Base64::decode(path, &mut dec_buf).unwrap();
 							let path_hash: ActivityHash =
-								ActivityHash::from(sp_core::H256::from_slice(&bytes));
+								ActivityHash::from(sp_core::H256::from_slice(bytes));
 
 							let node_root = Self::create_merkle_root(
 								cluster_id,
