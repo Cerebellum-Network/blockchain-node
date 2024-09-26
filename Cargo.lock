@@ -5406,6 +5406,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "polkadot-ckb-merkle-mountain-range",
+ "rand 0.8.5",
  "scale-info",
  "serde",
  "serde_json",

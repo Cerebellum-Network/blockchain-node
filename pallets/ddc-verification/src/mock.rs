@@ -233,6 +233,7 @@ impl crate::Config for Test {
 	type StakingVisitor = Staking;
 	type AccountIdConverter = AccountId;
 	type CustomerVisitor = MockCustomerVisitor;
+	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 4;
 }
 
 pub struct MockCustomerVisitor;

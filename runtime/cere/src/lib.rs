@@ -143,7 +143,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 54126,
+	spec_version: 54127,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 19,
@@ -1323,6 +1323,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type StakingVisitor = pallet_staking::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
 	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
+	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
 }
 
 construct_runtime!(
