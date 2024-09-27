@@ -835,7 +835,11 @@ pub mod pallet {
 		}
 
 		fn hash<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.encode()).into()
+			let mut data = self.record.id.encode();
+			data.extend_from_slice(&self.record.upstream.request.requestType.encode());
+			data.extend_from_slice(&self.stored_bytes.encode());
+			data.extend_from_slice(&self.transferred_bytes.encode());
+			T::ActivityHasher::hash(&data).into()
 		}
 
 		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
@@ -1673,16 +1677,16 @@ pub mod pallet {
 						log::info!("🚀 Fetched leaf record hashes node id: {:?} bucket_id:{:?}  leaf_record_hashes: {:?}",
 						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), leaf_record_hashes_string);
 
-						let leaf_record_root =
+						let leaf_node_root =
 							Self::create_merkle_root(cluster_id, era_id, &leaf_record_hashes)
 								.map_err(|err| vec![err])?;
 
 						log::info!("🚀 Fetched leaf record root node id: {:?} bucket_id:{:?}  leaf_record_root_hash: {:?}",
-						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), hex::encode(leaf_record_root));
+						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), hex::encode(leaf_node_root));
 
 						let paths = proof.path.iter().rev();
 
-						let mut node_upper_root: ActivityHash = leaf_record_root;
+						let mut merkle_root: ActivityHash = leaf_node_root;
 						for path in paths {
 							let mut dec_buf = [0u8; BUF_SIZE];
 							let bytes = Base64::decode(path, &mut dec_buf).unwrap(); // todo! remove unwrap
@@ -1692,14 +1696,14 @@ pub mod pallet {
 							let node_root = Self::create_merkle_root(
 								cluster_id,
 								era_id,
-								&[node_upper_root, path_hash],
+								&[merkle_root, path_hash],
 							)
 							.map_err(|err| vec![err])?;
 
 							log::info!("🚀 Fetched leaf node root node id: {:?} bucket_id:{:?} for path:{:?} leaf_node_hash: {:?}",
 						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), path, hex::encode(node_root));
 
-							node_upper_root = node_root;
+							merkle_root = node_root;
 						}
 
 						log::info!("🚀 Challenge passed node id: {:?} bucket_id:{:?} for merkle tree identifier:{:?}",
