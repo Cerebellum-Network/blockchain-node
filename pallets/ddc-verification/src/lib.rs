@@ -1685,7 +1685,7 @@ pub mod pallet {
 						let mut node_upper_root: ActivityHash = leaf_record_root;
 						for path in paths {
 							let mut dec_buf = [0u8; BUF_SIZE];
-							let bytes = Base64::decode(path, &mut dec_buf).unwrap();
+							let bytes = Base64::decode(path, &mut dec_buf).unwrap();// todo! remove unwrap
 							let path_hash: ActivityHash =
 								ActivityHash::from(sp_core::H256::from_slice(bytes));
 
