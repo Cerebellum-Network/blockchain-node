@@ -674,7 +674,7 @@ pub mod pallet {
 	)]
 	pub(crate) struct ChallengeAggregateResponse {
 		/// proofs
-		pub proofs: Vec<Proof>,
+		pub proofs: Vec<Proof>, //todo! add optional fields
 	}
 
 	#[derive(
@@ -708,6 +708,7 @@ pub mod pallet {
 		pub record: Record,
 		pub transferred_bytes: u64,
 		pub stored_bytes: i64,
+		// todo! add links if there is no record
 	}
 
 	#[derive(
