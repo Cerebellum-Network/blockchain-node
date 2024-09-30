@@ -32,9 +32,9 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, Nothing,
-		OnUnbalanced, WithdrawReasons,
+		fungible::HoldConsideration, ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf,
+		EitherOfDiverse, EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter,
+		KeyOwnerProofSystem, LinearStoragePrice, Nothing, OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -80,7 +80,7 @@ use sp_runtime::{
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	traits::{
-		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, ConvertInto,
+		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, Convert, ConvertInto,
 		Identity as IdentityConvert, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
@@ -137,7 +137,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 54005,
+	spec_version: 54006,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 18,
@@ -354,6 +354,7 @@ parameter_types! {
 	pub const PreimageMaxSize: u32 = 4096 * 1024;
 	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
 	pub const PreimageByteDeposit: Balance = deposit(0, 1);
+	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
 }
 
 impl pallet_preimage::Config for Runtime {
@@ -361,8 +362,12 @@ impl pallet_preimage::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
-	type BaseDeposit = PreimageBaseDeposit;
-	type ByteDeposit = PreimageByteDeposit;
+	type Consideration = HoldConsideration<
+		AccountId,
+		Balances,
+		PreimageHoldReason,
+		LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
+	>;
 }
 
 parameter_types! {
@@ -708,6 +713,16 @@ impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
 	}
 }
 
+/// Returning a fixed value to respect the initial logic.
+/// This could depend on the length of the solution.
+/// TODO: Validate.
+pub struct FixedSignedDepositBase;
+impl Convert<usize, u128> for FixedSignedDepositBase {
+	fn convert(_: usize) -> u128 {
+		DOLLARS
+	}
+}
+
 impl pallet_election_provider_multi_phase::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
@@ -723,7 +738,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
 	type MinerConfig = Self;
 	type SignedMaxSubmissions = ConstU32<10>;
 	type SignedRewardBase = SignedRewardBase;
-	type SignedDepositBase = SignedDepositBase;
+	type SignedDepositBase = FixedSignedDepositBase;
 	type SignedDepositByte = SignedDepositByte;
 	type SignedMaxRefunds = ConstU32<3>;
 	type SignedDepositWeight = ();

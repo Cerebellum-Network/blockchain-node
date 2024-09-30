@@ -3,7 +3,8 @@ use std::sync::Arc;
 use node_primitives::Nonce;
 pub use node_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Signature};
 use sc_client_api::{
-	AuxStore, Backend as BackendT, BlockchainEvents, KeysIter, PairsIter, UsageProvider,
+	AuxStore, Backend as BackendT, BlockchainEvents, KeysIter, MerkleValue, PairsIter,
+	UsageProvider,
 };
 pub use sc_executor::NativeElseWasmExecutor;
 use sp_api::{CallApiAt, NumberFor, ProvideRuntimeApi};
@@ -370,6 +371,35 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 			client,
 			{
 				client.child_storage_hash(hash, child_info, key)
+			}
+		}
+	}
+
+	fn closest_merkle_value(
+		&self,
+		hash: <Block as BlockT>::Hash,
+		key: &StorageKey,
+	) -> sp_blockchain::Result<Option<MerkleValue<<Block as BlockT>::Hash>>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.closest_merkle_value(hash, key)
+			}
+		}
+	}
+
+	fn child_closest_merkle_value(
+		&self,
+		hash: <Block as BlockT>::Hash,
+		child_info: &ChildInfo,
+		key: &StorageKey,
+	) -> sp_blockchain::Result<Option<MerkleValue<<Block as BlockT>::Hash>>> {
+		with_client! {
+			self,
+			client,
+			{
+				client.child_closest_merkle_value(hash, child_info, key)
 			}
 		}
 	}
