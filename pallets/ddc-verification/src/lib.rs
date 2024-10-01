@@ -1742,7 +1742,7 @@ pub mod pallet {
 			{
 				let valid_activities =
 					bucket_aggregates_passed_challenge_activities.iter().cloned().max_by_key(
-						|activity| activity.transferred_bytes as i64 / activity.stored_bytes,
+						|activity| activity.transferred_bytes as i64 + activity.stored_bytes,
 					);
 
 				if let Some(activity) = valid_activities {
