@@ -105,9 +105,9 @@ use cere_runtime_common::{
 };
 use ddc_primitives::traits::GetDdcOrigin;
 use impls::Author;
+use pallet_identity::legacy::IdentityInfo;
 use sp_runtime::generic::Era;
 use sp_std::marker::PhantomData;
-use pallet_identity::legacy::IdentityInfo;
 // Governance configurations.
 pub mod governance;
 use governance::{
@@ -909,7 +909,6 @@ impl pallet_contracts::Config for Runtime {
 	type Environment = ();
 	type Migrations = ();
 	type Xcm = ();
-
 }
 
 impl pallet_sudo::Config for Runtime {
