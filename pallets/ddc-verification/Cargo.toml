@@ -10,6 +10,7 @@ repository.workspace = true
 
 [dependencies]
 array-bytes = { workspace = true }
+base64ct = { workspace = true }
 # 3rd-party dependencies
 codec = { workspace = true }
 # Cere dependencies
@@ -23,6 +24,7 @@ hex = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 polkadot-ckb-merkle-mountain-range = { workspace = true }
+rand = { workspace = true, features = ["small_rng", "alloc"], default-features = false }
 scale-info = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -45,6 +47,7 @@ sp-keystore = { workspace = true }
 [features]
 default = ["std"]
 std = [
+  "rand/std",
   "hex/std",
   "polkadot-ckb-merkle-mountain-range/std",
   "codec/std",

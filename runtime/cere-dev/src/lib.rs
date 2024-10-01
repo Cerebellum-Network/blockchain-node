@@ -1328,6 +1328,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type StakingVisitor = pallet_staking::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
 	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
+	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
 }
 
 construct_runtime!(

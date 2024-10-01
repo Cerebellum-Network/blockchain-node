@@ -30,6 +30,7 @@ resolver = "2"
 
 [workspace.dependencies]
 # 3rd-party dependencies
+base64ct = { version = "1.6.0" }
 blake2 = { version = "0.10.6", default-features = false }
 byte-unit = { version = "4.0.19", default-features = false, features = ["u128"] }
 chrono = { version = "0.4.31", default-features = false }
