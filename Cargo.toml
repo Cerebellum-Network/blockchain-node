@@ -33,7 +33,7 @@ blake2 = { version = "0.10.6", default-features = false }
 byte-unit = { version = "4.0.19", default-features = false, features = ["u128"] }
 chrono = { version = "0.4.31", default-features = false }
 clap = { version = "4.2.5", features = ["derive"] }
-codec = { package = "parity-scale-codec", version = "3.6.4", default-features = false, features = ["derive", "max-encoded-len",] }
+codec = { package = "parity-scale-codec", version = "3.6.4", default-features = false, features = ["derive", "max-encoded-len"] }
 futures = { version = "0.3.28" }
 hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
 hex-literal = { version = "^0.4.1", default-features = false }
@@ -59,9 +59,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", tag =
 frame-benchmarking-cli = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.4.0", default-features = false }
 frame-election-provider-support = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.4.0", default-features = false }
 frame-executive = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.4.0", default-features = false }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false, features = [
-	"tuples-96",
-] }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false, features = ["tuples-96"] }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
 frame-system-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.4.0", default-features = false }
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
@@ -98,9 +96,7 @@ pallet-preimage = { git = "https://github.com/paritytech/polkadot-sdk.git", tag 
 pallet-proxy = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
 pallet-recovery = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
 pallet-scheduler = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
-pallet-session = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false, features = [
-	"historical",
-] }
+pallet-session = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false, features = ["historical"] }
 pallet-session-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
 pallet-staking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
 pallet-staking-reward-curve = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
@@ -153,9 +149,7 @@ sp-consensus-babe-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git"
 sp-consensus-epochs = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
 sp-consensus-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
 sp-consensus-grandpa-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false, features = [
-	"serde",
-] }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false, features = ["serde"] }
 sp-inherents = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
 sp-keystore = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.4.0", default-features = false }
