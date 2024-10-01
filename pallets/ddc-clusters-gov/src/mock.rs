@@ -132,6 +132,7 @@ impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type WeightInfo = ();
 	type FreezeIdentifier = ();
+	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
 	type MaxHolds = ();
 	type RuntimeHoldReason = RuntimeHoldReason;
@@ -247,6 +248,7 @@ impl pallet_contracts::Config for Test {
 	type Debug = ();
 	type Environment = ();
 	type Migrations = ();
+	type Xcm = ();
 }
 
 impl pallet_insecure_randomness_collective_flip::Config for Test {}
