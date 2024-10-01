@@ -46,6 +46,7 @@ use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 pub mod weights;
 use itertools::Itertools;
+use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use sp_staking::StakingInterface;
 
 use crate::weights::WeightInfo;
@@ -548,6 +549,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_stash_for_ddc_validator)]
 	pub type ValidatorToStashKey<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
+
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub enum EraValidationStatus {
 		ValidatingData,
@@ -1498,7 +1500,7 @@ pub mod pallet {
 
 			if !bucket_node_aggregates_not_in_consensus.is_empty() {
 				bucket_aggregates_passed_challenges =
-					Self::challenge_sub_aggregates_not_in_consensus(
+					Self::challenge_and_find_valid_sub_aggregates_not_in_consensus(
 						cluster_id,
 						era_activity.id,
 						dac_nodes,
@@ -1631,13 +1633,15 @@ pub mod pallet {
 			)))
 		}
 
-		pub(crate) fn challenge_sub_aggregates_not_in_consensus(
+		pub(crate) fn challenge_and_find_valid_sub_aggregates_not_in_consensus(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 			bucket_node_aggregates_not_in_consensus: Vec<BucketNodeAggregatesActivity>,
 		) -> Result<Vec<BucketNodeAggregatesActivity>, Vec<OCWError>> {
 			let mut bucket_aggregates_passed_challenges: Vec<BucketNodeAggregatesActivity> = vec![];
+			let mut bucket_aggregates_not_passed_challenges: Vec<BucketNodeAggregatesActivity> =
+				vec![];
 			let number_of_identifiers = T::MAX_MERKLE_NODE_IDENTIFIER;
 
 			log::info!(
@@ -1667,55 +1671,144 @@ pub mod pallet {
 				log::info!("🚀 Fetched challenge response node id: {:?} bucket_id:{:?}  challenge_response: {:?}",
 						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), challenge_responses);
 
-				for challenge_response in challenge_responses {
-					for proof in challenge_response.proofs {
-						let leaf_record_hashes: Vec<ActivityHash> =
-							proof.leafs.into_iter().map(|p| p.hash::<T>()).collect();
+				let resulting_hash_from_leafs_and_paths =
+					Self::find_resulting_hash_from_leafs_and_paths(
+						challenge_responses,
+						cluster_id,
+						era_id,
+						bucket_id,
+						bucket_node_aggregate_activity.clone().node_id,
+					)?;
 
-						let leaf_record_hashes_string: Vec<String> =
-							leaf_record_hashes.clone().into_iter().map(hex::encode).collect();
+				let root_challenge_responses = Self::fetch_challenge_responses(
+					cluster_id,
+					bucket_node_aggregate_activity.clone().node_id,
+					era_id,
+					bucket_id,
+					vec![1],
+					dac_nodes,
+				)
+				.map_err(|err| vec![err])?;
 
-						log::info!("🚀 Fetched leaf record hashes node id: {:?} bucket_id:{:?}  leaf_record_hashes: {:?}",
-						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), leaf_record_hashes_string);
+				log::info!("🚀 Fetched Root challenge response node id: {:?} bucket_id:{:?}  challenge_response: {:?}",
+						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), root_challenge_responses);
 
-						let leaf_node_root =
-							Self::create_merkle_root(cluster_id, era_id, &leaf_record_hashes)
-								.map_err(|err| vec![err])?;
+				let merkle_root_hash = Self::find_resulting_hash_from_leafs_and_paths(
+					root_challenge_responses,
+					cluster_id,
+					era_id,
+					bucket_id,
+					bucket_node_aggregate_activity.clone().node_id,
+				)?;
 
-						log::info!("🚀 Fetched leaf record root node id: {:?} bucket_id:{:?}  leaf_record_root_hash: {:?}",
-						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), hex::encode(leaf_node_root));
+				if resulting_hash_from_leafs_and_paths == merkle_root_hash {
+					log::info!(
+						"🚀👍 The  node id: {:?} with bucket_id:{:?} has passed the challenge. The activity detail is {:?}",
+						bucket_node_aggregate_activity.clone().node_id,
+						bucket_id,
+						bucket_node_aggregate_activity
+					);
 
-						let paths = proof.path.iter().rev();
+					bucket_aggregates_passed_challenges.push(bucket_node_aggregate_activity);
+				} else {
+					log::info!(
+						"🚀👎 The  node id: {:?} with bucket_id:{:?} has not passed the challenge. The activity detail is {:?}",
+						bucket_node_aggregate_activity.clone().node_id,
+						bucket_id,
+						bucket_node_aggregate_activity
+					);
 
-						let mut merkle_root: ActivityHash = leaf_node_root;
-						for path in paths {
-							let mut dec_buf = [0u8; BUF_SIZE];
-							let bytes = Base64::decode(path, &mut dec_buf).unwrap(); // todo! remove unwrap
-							let path_hash: ActivityHash =
-								ActivityHash::from(sp_core::H256::from_slice(bytes));
-
-							let node_root = Self::create_merkle_root(
-								cluster_id,
-								era_id,
-								&[merkle_root, path_hash],
-							)
-							.map_err(|err| vec![err])?;
-
-							log::info!("🚀 Fetched leaf node root node id: {:?} bucket_id:{:?} for path:{:?} leaf_node_hash: {:?}",
-						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), path, hex::encode(node_root));
-
-							merkle_root = node_root;
-						}
-
-						log::info!("🚀 Challenge passed node id: {:?} bucket_id:{:?} for merkle tree identifier:{:?}",
-						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), proof.merkle_tree_node_id);
-					}
+					bucket_aggregates_not_passed_challenges.push(bucket_node_aggregate_activity);
 				}
-
-				bucket_aggregates_passed_challenges.push(bucket_node_aggregate_activity);
 			}
 
-			Ok(bucket_aggregates_passed_challenges)
+			let mut data_grouped = Vec::new();
+			for (key, chunk) in
+				&bucket_aggregates_passed_challenges.into_iter().chunk_by(|elt| elt.bucket_id)
+			{
+				data_grouped.push((key, chunk.collect()));
+			}
+
+			Ok(Self::fetch_valid_aggregates_passed_challenges(data_grouped))
+		}
+
+		pub(crate) fn fetch_valid_aggregates_passed_challenges(
+			bucket_aggregates_passed_challenges: Vec<(BucketId, Vec<BucketNodeAggregatesActivity>)>,
+		) -> Vec<BucketNodeAggregatesActivity> {
+			let mut valid_aggregates_passed_challenges: Vec<BucketNodeAggregatesActivity> = vec![];
+
+			for (bucket_id, bucket_aggregates_passed_challenge_activities) in
+				bucket_aggregates_passed_challenges
+			{
+				let valid_activities = bucket_aggregates_passed_challenge_activities
+					.iter()
+					.cloned()
+					.max_by_key(|activity| activity.number_of_gets + activity.number_of_puts);
+
+				if let Some(activity) = valid_activities {
+					log::info!(
+						"🚀⛳️ The activity bucket_id:{:?} with maximum usage, which has passed the challenge. The activity detail is {:?}",
+						bucket_id,
+						activity
+					);
+					valid_aggregates_passed_challenges.push(activity);
+				}
+			}
+			valid_aggregates_passed_challenges
+		}
+
+		pub(crate) fn find_resulting_hash_from_leafs_and_paths(
+			challenge_responses: Vec<ChallengeAggregateResponse>,
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			bucket_id: BucketId,
+			node_id: String,
+		) -> Result<ActivityHash, Vec<OCWError>> {
+			let mut resulting_hash_from_leafs_and_paths = ActivityHash::default();
+
+			for challenge_response in challenge_responses {
+				for proof in challenge_response.proofs {
+					let leaf_record_hashes: Vec<ActivityHash> =
+						proof.leafs.into_iter().map(|p| p.hash::<T>()).collect();
+
+					let leaf_record_hashes_string: Vec<String> =
+						leaf_record_hashes.clone().into_iter().map(hex::encode).collect();
+
+					log::info!("🚀 Fetched leaf record hashes node id: {:?} bucket_id:{:?}  leaf_record_hashes: {:?}",
+						node_id, bucket_id.clone(), leaf_record_hashes_string);
+
+					let leaf_node_root =
+						Self::create_merkle_root(cluster_id, era_id, &leaf_record_hashes)
+							.map_err(|err| vec![err])?;
+
+					log::info!("🚀 Fetched leaf record root node id: {:?} bucket_id:{:?}  leaf_record_root_hash: {:?}",
+						node_id, bucket_id.clone(), hex::encode(leaf_node_root));
+
+					let paths = proof.path.iter().rev();
+
+					resulting_hash_from_leafs_and_paths = leaf_node_root;
+					for path in paths {
+						let mut dec_buf = [0u8; BUF_SIZE];
+						let bytes = Base64::decode(path, &mut dec_buf).unwrap(); // todo! remove unwrap
+						let path_hash: ActivityHash =
+							ActivityHash::from(sp_core::H256::from_slice(bytes));
+
+						let node_root = Self::create_merkle_root(
+							cluster_id,
+							era_id,
+							&[resulting_hash_from_leafs_and_paths, path_hash],
+						)
+						.map_err(|err| vec![err])?;
+
+						log::info!("🚀 Fetched leaf node root node id: {:?} bucket_id:{:?} for path:{:?} leaf_node_hash: {:?}",
+						node_id, bucket_id, path, hex::encode(node_root));
+
+						resulting_hash_from_leafs_and_paths = node_root;
+					}
+				}
+			}
+
+			Ok(resulting_hash_from_leafs_and_paths)
 		}
 		pub(crate) fn find_random_merkle_node_ids(
 			number_of_identifiers: usize,
@@ -1726,19 +1819,16 @@ pub mod pallet {
 			let total_levels = total_activity.ilog2() + 1;
 
 			let int_list: Vec<u64> = (0..total_levels as u64).collect();
-			// todo! re-work on this logic to find random identifiers
-			// let mut rng = rand::thread_rng();
-			// int_list
-			// 	.choose_multiple(&mut rng, number_of_identifiers)
-			// 	.cloned()
-			// 	.collect::<Vec<u64>>()
-			// 	.into()
 
-			if int_list.len() >= number_of_identifiers {
-				int_list[..number_of_identifiers].to_vec()
-			} else {
-				vec![]
-			}
+			let nonce = Self::store_and_fetch_nonce(bucket_node_aggregates_activity.node_id);
+
+			let mut small_rng = SmallRng::seed_from_u64(nonce);
+			let ids: Vec<u64> = int_list
+				.choose_multiple(&mut small_rng, number_of_identifiers)
+				.cloned()
+				.collect::<Vec<u64>>();
+
+			ids
 		}
 		pub(crate) fn fetch_sub_trees(
 			cluster_id: &ClusterId,
@@ -2458,6 +2548,25 @@ pub mod pallet {
 			}
 		}
 
+		pub(crate) fn store_and_fetch_nonce(node_id: String) -> u64 {
+			let key = format!("offchain::activities::nonce::{:?}", node_id).into_bytes();
+			let encoded_nonce = sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key)
+				.unwrap_or_else(|| 0.encode());
+
+			let nonce_data = match Decode::decode(&mut &encoded_nonce[..]) {
+				Ok(nonce) => nonce,
+				Err(err) => {
+					// Print error message with details of the decoding error
+					log::error!("🦀Decoding error while fetching nonce: {:?}", err);
+					0
+				},
+			};
+
+			let new_nonce = nonce_data + 1;
+
+			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &new_nonce.encode());
+			nonce_data
+		}
 		pub(crate) fn store_provider_id<A: Encode>(
 			// todo! (3) add tests
 			node_id: String,

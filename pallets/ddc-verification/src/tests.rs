@@ -1892,72 +1892,125 @@ fn test_single_ocw_pallet_integration() {
 		let pending_request1 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/eras", host1, port),
-			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
+total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
+total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
+processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
+1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
+28}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
 		let pending_request2 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/eras", host2, port),
-			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
+total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
+total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
+processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
+1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
+28}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
 		let pending_request3 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/eras", host3, port),
-			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
+total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
+total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
+processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
+1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
+28}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
 		let pending_request4 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/eras", host4, port),
-			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
+total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
+total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
+processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
+1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
+28}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
 		let pending_request5 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/eras", host5, port),
-			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
+total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
+total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
+processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
+1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
+28}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
 		let pending_request6 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/eras", host6, port),
-			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
+total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
+total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
+processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
+1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
+28}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
 		let pending_request7 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/eras", host7, port),
-			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
+total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
+total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
+processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
+1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
+28}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
 		let pending_request8 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/eras", host8, port),
-			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
+total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
+total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
+processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
+1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
+28}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
 		let pending_request9 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/eras", host9, port),
-			response: Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":28}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"id":476814,"start":0,"end":1716533999999,"processing_time_ms":0,"total_records":0,"
+total_buckets":0},{"id":476815,"start":1716534000000,"end":1716537599999,"processing_time_ms":2,"
+total_records":54,"total_buckets":2},{"id":476816,"start":1716537600000,"end":1716541199999,"
+processing_time_ms":10,"total_records":803,"total_buckets":29},{"id":476817,"start":
+1716541200000,"end":1716544799999,"processing_time_ms":11,"total_records":986,"total_buckets":
+28}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
-
 
 		let node_pending_request1 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host1, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(
+				br#"[{"node_id":
+"0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
+"0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
+675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
+"0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
+"0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
+"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -1965,7 +2018,16 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request2 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host2, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(
+				br#"[{"node_id":
+"0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
+"0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
+675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
+"0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
+"0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
+"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -1973,7 +2035,16 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request3 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host3, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(
+				br#"[{"node_id":
+"0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
+"0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
+675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
+"0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
+"0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
+"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -1981,7 +2052,16 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request4 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host4, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(
+				br#"[{"node_id":
+"0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
+"0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
+675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
+"0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
+"0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
+"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -1989,7 +2069,16 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request5 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host5, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(
+				br#"[{"node_id":
+"0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
+"0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
+675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
+"0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
+"0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
+"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -1997,7 +2086,16 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request6 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host6, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(
+				br#"[{"node_id":
+"0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
+"0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
+675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
+"0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
+"0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
+"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -2005,7 +2103,16 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request7 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host7, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(
+				br#"[{"node_id":
+"0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
+"0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
+675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
+"0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
+"0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
+"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -2013,7 +2120,16 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request8 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host8, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(
+				br#"[{"node_id":
+"0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
+"0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
+675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
+"0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
+"0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
+"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -2021,7 +2137,16 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request9 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host9, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(
+				br#"[{"node_id":
+"0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id":
+"0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes":
+675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id":
+"0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id":
+"0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0,
+"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -2029,7 +2154,12 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request1 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host1, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(
+				br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID":
+"0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
+0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -2037,7 +2167,12 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request2 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host2, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(
+				br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID":
+"0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
+0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -2045,7 +2180,12 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request3 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host3, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(
+				br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID":
+"0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
+0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -2053,7 +2193,12 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request4 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host4, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(
+				br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID":
+"0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
+0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -2061,7 +2206,12 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request5 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host5, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(
+				br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID":
+"0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
+0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -2069,7 +2219,12 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request6 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host6, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(
+				br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID":
+"0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
+0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -2077,7 +2232,12 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request7 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host7, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(
+				br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID":
+"0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
+0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -2085,7 +2245,12 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request8 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host8, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(
+				br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID":
+"0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
+0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
@@ -2093,11 +2258,15 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request9 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host9, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(
+				br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID":
+"0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes":
+0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#
+					.to_vec(),
+			),
 			sent: true,
 			..Default::default()
 		};
-
 
 		offchain_state.expect_request(pending_request1);
 		offchain_state.expect_request(pending_request2);
@@ -2224,35 +2393,53 @@ fn test_bucket_node_aggregates() {
 		let pending_request1 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host1, port),
-			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"transferred_bytes":505,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"
+number_of_gets":1,"sub_aggregates":[{"NodeID":"
+0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"
+transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes"
+:0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"
+0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"
+transferred_bytes":505,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
 
 		let pending_request2 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host2, port),
-			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"transferred_bytes":506,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"
+number_of_gets":1,"sub_aggregates":[{"NodeID":"
+0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"
+transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes"
+:0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"
+0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"
+transferred_bytes":506,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
 
 		let pending_request3 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host3, port),
-			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"transferred_bytes":505,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"
+number_of_gets":1,"sub_aggregates":[{"NodeID":"
+0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"
+transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes"
+:0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"
+0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"
+transferred_bytes":505,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
 
 		let pending_request4 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host4, port),
-			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[]}]"#.to_vec()),
-			sent: true,
+			response:
+Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"
+number_of_gets":1,"sub_aggregates":[]}]"#.to_vec()), 			sent: true,
 			..Default::default()
 		};
-
 
 		offchain_state.expect_request(pending_request1);
 		offchain_state.expect_request(pending_request2);
@@ -2312,15 +2499,11 @@ fn test_bucket_node_aggregates() {
 		];
 
 		let customers_usage =
-			DdcVerification::fetch_customers_usage_for_era(&cluster_id, era_id, &dac_nodes).unwrap();
+			DdcVerification::fetch_customers_usage_for_era(&cluster_id, era_id, &dac_nodes)
+				.unwrap();
 
-
-		let result = DdcVerification::fetch_sub_trees(
-			&cluster_id,
-			era_id,
-			customers_usage,
-			min_nodes,
-		);
+		let result =
+			DdcVerification::fetch_sub_trees(&cluster_id, era_id, customers_usage, min_nodes);
 
 		assert!(result.is_ok());
 		// Sub_aggregates which are in consensus
@@ -2374,22 +2557,37 @@ fn test_bucket_node_aggregates() {
 
 #[test]
 fn test_find_random_merkle_node_ids() {
-	let bucket_node_aggregates_not_in_consensus: Vec<BucketNodeAggregatesActivity> =
-		vec![BucketNodeAggregatesActivity {
-			bucket_id: 90235,
-			node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
-				.to_string(),
-			stored_bytes: 0,
-			transferred_bytes: 505,
-			number_of_puts: 4,
-			number_of_gets: 5,
-		}];
+	let mut ext = TestExternalities::default();
+	let (offchain, _offchain_state) = TestOffchainExt::new();
+	let (pool, _) = TestTransactionPoolExt::new();
 
-	for bucket_node_aggregate_activity in bucket_node_aggregates_not_in_consensus {
-		let result =
-			DdcVerification::find_random_merkle_node_ids(3, bucket_node_aggregate_activity);
-		assert_eq!(result, vec![0, 1, 2]);
-	}
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	ext.execute_with(|| {
+		let bucket_node_aggregates_not_in_consensus: BucketNodeAggregatesActivity =
+			BucketNodeAggregatesActivity {
+				bucket_id: 90235,
+				node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
+					.to_string(),
+				stored_bytes: 0,
+				transferred_bytes: 505,
+				number_of_puts: 12,
+				number_of_gets: 13,
+			};
+
+		let total_activities = bucket_node_aggregates_not_in_consensus.number_of_gets +
+			bucket_node_aggregates_not_in_consensus.number_of_puts;
+
+		let ids = DdcVerification::find_random_merkle_node_ids(
+			3,
+			bucket_node_aggregates_not_in_consensus.clone(),
+		);
+		for id in ids {
+			assert!(id < total_activities);
+		}
+	});
 }
 
 #[test]
@@ -2436,556 +2634,64 @@ fn test_challenge_sub_aggregates_not_in_consensus() {
 		//todo! put them in resource file
 		let pending_request1 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=0,1,2,3", host1, port),
-			response: Some(br#"{
-  "proofs": [
-    {
-      "merkle_tree_node_id": 3,
-      "usage": {
-        "stored_bytes": 2097152,
-        "transferred_bytes": 1048576,
-        "number_of_puts": 1,
-        "number_of_gets": 1
-      },
-      "path": [
-        "hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="
-      ],
-      "leafs": [
-        {
-          "record": {
-            "id": "17Z3vSjjRm6mWN3Swpw3Cw==",
-            "upstream": {
-              "request": {
-                "requestId": "e9920157-6c6a-485e-9f5a-1685ea6d4ef5",
-                "requestType": "REQUEST_TYPE_GET",
-                "contentType": "CONTENT_TYPE_PIECE",
-                "bucketId": "1",
-                "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                "offset": "0",
-                "size": "0",
-                "timestamp": "1727346880632",
-                "signature": {
-                  "algorithm": "ED_25519",
-                  "signer": "iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=",
-                  "value": "KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="
-                }
-              }
-            },
-            "downstream": [
-              {
-                "request": {
-                  "requestId": "a5bcaa37-97a4-45d2-beb9-c11cc955fb78",
-                  "requestType": "REQUEST_TYPE_GET",
-                  "contentType": "CONTENT_TYPE_MERKLE_TREE",
-                  "bucketId": "0",
-                  "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                  "offset": "0",
-                  "size": "0",
-                  "timestamp": "1727346880633",
-                  "signature": {
-                    "algorithm": "ED_25519",
-                    "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-                    "value": "ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="
-                  }
-                }
-              },
-              {
-                "request": {
-                  "requestId": "8af9ba14-4c49-438c-957d-d1a108a58b85",
-                  "requestType": "REQUEST_TYPE_GET",
-                  "contentType": "CONTENT_TYPE_SEGMENT",
-                  "bucketId": "0",
-                  "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                  "offset": "0",
-                  "size": "524288",
-                  "timestamp": "1727346880633",
-                  "signature": {
-                    "algorithm": "ED_25519",
-                    "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-                    "value": "CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="
-                  }
-                }
-              },
-              {
-                "request": {
-                  "requestId": "b3dc8833-d5aa-4e33-9afa-54584da29cda",
-                  "requestType": "REQUEST_TYPE_GET",
-                  "contentType": "CONTENT_TYPE_SEGMENT",
-                  "bucketId": "0",
-                  "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                  "offset": "0",
-                  "size": "524288",
-                  "timestamp": "1727346880633",
-                  "signature": {
-                    "algorithm": "ED_25519",
-                    "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-                    "value": "5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="
-                  }
-                }
-              }
-            ],
-            "timestamp": "1727346880633",
-            "signature": {
-              "algorithm": "ED_25519",
-              "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-              "value": "8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="
-            }
-          },
-          "transferred_bytes": 1048576,
-          "stored_bytes": 0
-        },
-        {
-          "record": {
-            "id": "8Rg6VlRrSE65NsCY02OnlA==",
-            "upstream": {
-              "request": {
-                "requestId": "aacf30c4-b2e9-4f37-826d-0016c280f39b",
-                "requestType": "REQUEST_TYPE_PUT",
-                "contentType": "CONTENT_TYPE_METADATA",
-                "bucketId": "0",
-                "pieceCid": "AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=",
-                "offset": "0",
-                "size": "385",
-                "timestamp": "1727346880673",
-                "signature": {
-                  "algorithm": "ED_25519",
-                  "signer": "xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=",
-                  "value": "yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="
-                }
-              }
-            },
-            "downstream": [],
-            "timestamp": "1727346880673",
-            "signature": {
-              "algorithm": "ED_25519",
-              "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-              "value": "zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="
-            }
-          },
-          "transferred_bytes": 1048576,
-          "stored_bytes": 1048576
-        }
-      ]
-    }
-  ]
-}"#.to_vec()),
+			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=0,2,1,3", host1, port),
+			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
 
 		let pending_request2 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=0,1,2,3", host2, port),
-			response: Some(br#"{
-  "proofs": [
-    {
-      "merkle_tree_node_id": 3,
-      "usage": {
-        "stored_bytes": 2097152,
-        "transferred_bytes": 1048576,
-        "number_of_puts": 1,
-        "number_of_gets": 1
-      },
-      "path": [
-        "hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="
-      ],
-      "leafs": [
-        {
-          "record": {
-            "id": "17Z3vSjjRm6mWN3Swpw3Cw==",
-            "upstream": {
-              "request": {
-                "requestId": "e9920157-6c6a-485e-9f5a-1685ea6d4ef5",
-                "requestType": "REQUEST_TYPE_GET",
-                "contentType": "CONTENT_TYPE_PIECE",
-                "bucketId": "1",
-                "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                "offset": "0",
-                "size": "0",
-                "timestamp": "1727346880632",
-                "signature": {
-                  "algorithm": "ED_25519",
-                  "signer": "iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=",
-                  "value": "KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="
-                }
-              }
-            },
-            "downstream": [
-              {
-                "request": {
-                  "requestId": "a5bcaa37-97a4-45d2-beb9-c11cc955fb78",
-                  "requestType": "REQUEST_TYPE_GET",
-                  "contentType": "CONTENT_TYPE_MERKLE_TREE",
-                  "bucketId": "0",
-                  "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                  "offset": "0",
-                  "size": "0",
-                  "timestamp": "1727346880633",
-                  "signature": {
-                    "algorithm": "ED_25519",
-                    "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-                    "value": "ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="
-                  }
-                }
-              },
-              {
-                "request": {
-                  "requestId": "8af9ba14-4c49-438c-957d-d1a108a58b85",
-                  "requestType": "REQUEST_TYPE_GET",
-                  "contentType": "CONTENT_TYPE_SEGMENT",
-                  "bucketId": "0",
-                  "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                  "offset": "0",
-                  "size": "524288",
-                  "timestamp": "1727346880633",
-                  "signature": {
-                    "algorithm": "ED_25519",
-                    "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-                    "value": "CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="
-                  }
-                }
-              },
-              {
-                "request": {
-                  "requestId": "b3dc8833-d5aa-4e33-9afa-54584da29cda",
-                  "requestType": "REQUEST_TYPE_GET",
-                  "contentType": "CONTENT_TYPE_SEGMENT",
-                  "bucketId": "0",
-                  "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                  "offset": "0",
-                  "size": "524288",
-                  "timestamp": "1727346880633",
-                  "signature": {
-                    "algorithm": "ED_25519",
-                    "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-                    "value": "5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="
-                  }
-                }
-              }
-            ],
-            "timestamp": "1727346880633",
-            "signature": {
-              "algorithm": "ED_25519",
-              "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-              "value": "8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="
-            }
-          },
-          "transferred_bytes": 1048576,
-          "stored_bytes": 0
-        },
-        {
-          "record": {
-            "id": "8Rg6VlRrSE65NsCY02OnlA==",
-            "upstream": {
-              "request": {
-                "requestId": "aacf30c4-b2e9-4f37-826d-0016c280f39b",
-                "requestType": "REQUEST_TYPE_PUT",
-                "contentType": "CONTENT_TYPE_METADATA",
-                "bucketId": "0",
-                "pieceCid": "AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=",
-                "offset": "0",
-                "size": "385",
-                "timestamp": "1727346880673",
-                "signature": {
-                  "algorithm": "ED_25519",
-                  "signer": "xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=",
-                  "value": "yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="
-                }
-              }
-            },
-            "downstream": [],
-            "timestamp": "1727346880673",
-            "signature": {
-              "algorithm": "ED_25519",
-              "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-              "value": "zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="
-            }
-          },
-          "transferred_bytes": 1048576,
-          "stored_bytes": 1048576
-        }
-      ]
-    }
-  ]
-}"#.to_vec()),
+			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=0,2,1,3", host2, port),
+			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
 
 		let pending_request3 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=0,1,2,3", host3, port),
-			response: Some(br#"{
-  "proofs": [
-    {
-      "merkle_tree_node_id": 3,
-      "usage": {
-        "stored_bytes": 2097152,
-        "transferred_bytes": 1048576,
-        "number_of_puts": 1,
-        "number_of_gets": 1
-      },
-      "path": [
-        "hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="
-      ],
-      "leafs": [
-        {
-          "record": {
-            "id": "17Z3vSjjRm6mWN3Swpw3Cw==",
-            "upstream": {
-              "request": {
-                "requestId": "e9920157-6c6a-485e-9f5a-1685ea6d4ef5",
-                "requestType": "REQUEST_TYPE_GET",
-                "contentType": "CONTENT_TYPE_PIECE",
-                "bucketId": "1",
-                "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                "offset": "0",
-                "size": "0",
-                "timestamp": "1727346880632",
-                "signature": {
-                  "algorithm": "ED_25519",
-                  "signer": "iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=",
-                  "value": "KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="
-                }
-              }
-            },
-            "downstream": [
-              {
-                "request": {
-                  "requestId": "a5bcaa37-97a4-45d2-beb9-c11cc955fb78",
-                  "requestType": "REQUEST_TYPE_GET",
-                  "contentType": "CONTENT_TYPE_MERKLE_TREE",
-                  "bucketId": "0",
-                  "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                  "offset": "0",
-                  "size": "0",
-                  "timestamp": "1727346880633",
-                  "signature": {
-                    "algorithm": "ED_25519",
-                    "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-                    "value": "ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="
-                  }
-                }
-              },
-              {
-                "request": {
-                  "requestId": "8af9ba14-4c49-438c-957d-d1a108a58b85",
-                  "requestType": "REQUEST_TYPE_GET",
-                  "contentType": "CONTENT_TYPE_SEGMENT",
-                  "bucketId": "0",
-                  "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                  "offset": "0",
-                  "size": "524288",
-                  "timestamp": "1727346880633",
-                  "signature": {
-                    "algorithm": "ED_25519",
-                    "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-                    "value": "CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="
-                  }
-                }
-              },
-              {
-                "request": {
-                  "requestId": "b3dc8833-d5aa-4e33-9afa-54584da29cda",
-                  "requestType": "REQUEST_TYPE_GET",
-                  "contentType": "CONTENT_TYPE_SEGMENT",
-                  "bucketId": "0",
-                  "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                  "offset": "0",
-                  "size": "524288",
-                  "timestamp": "1727346880633",
-                  "signature": {
-                    "algorithm": "ED_25519",
-                    "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-                    "value": "5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="
-                  }
-                }
-              }
-            ],
-            "timestamp": "1727346880633",
-            "signature": {
-              "algorithm": "ED_25519",
-              "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-              "value": "8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="
-            }
-          },
-          "transferred_bytes": 1048576,
-          "stored_bytes": 0
-        },
-        {
-          "record": {
-            "id": "8Rg6VlRrSE65NsCY02OnlA==",
-            "upstream": {
-              "request": {
-                "requestId": "aacf30c4-b2e9-4f37-826d-0016c280f39b",
-                "requestType": "REQUEST_TYPE_PUT",
-                "contentType": "CONTENT_TYPE_METADATA",
-                "bucketId": "0",
-                "pieceCid": "AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=",
-                "offset": "0",
-                "size": "385",
-                "timestamp": "1727346880673",
-                "signature": {
-                  "algorithm": "ED_25519",
-                  "signer": "xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=",
-                  "value": "yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="
-                }
-              }
-            },
-            "downstream": [],
-            "timestamp": "1727346880673",
-            "signature": {
-              "algorithm": "ED_25519",
-              "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-              "value": "zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="
-            }
-          },
-          "transferred_bytes": 1048576,
-          "stored_bytes": 1048576
-        }
-      ]
-    }
-  ]
-}"#.to_vec()),
+			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=0,2,1,3", host3, port),
+			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
 
 		let pending_request4 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=0,1,2,3", host4, port),
-			response: Some(br#"{
-  "proofs": [
-    {
-      "merkle_tree_node_id": 3,
-      "usage": {
-        "stored_bytes": 2097152,
-        "transferred_bytes": 1048576,
-        "number_of_puts": 1,
-        "number_of_gets": 1
-      },
-      "path": [
-        "hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="
-      ],
-      "leafs": [
-        {
-          "record": {
-            "id": "17Z3vSjjRm6mWN3Swpw3Cw==",
-            "upstream": {
-              "request": {
-                "requestId": "e9920157-6c6a-485e-9f5a-1685ea6d4ef5",
-                "requestType": "REQUEST_TYPE_GET",
-                "contentType": "CONTENT_TYPE_PIECE",
-                "bucketId": "1",
-                "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                "offset": "0",
-                "size": "0",
-                "timestamp": "1727346880632",
-                "signature": {
-                  "algorithm": "ED_25519",
-                  "signer": "iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=",
-                  "value": "KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="
-                }
-              }
-            },
-            "downstream": [
-              {
-                "request": {
-                  "requestId": "a5bcaa37-97a4-45d2-beb9-c11cc955fb78",
-                  "requestType": "REQUEST_TYPE_GET",
-                  "contentType": "CONTENT_TYPE_MERKLE_TREE",
-                  "bucketId": "0",
-                  "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                  "offset": "0",
-                  "size": "0",
-                  "timestamp": "1727346880633",
-                  "signature": {
-                    "algorithm": "ED_25519",
-                    "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-                    "value": "ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="
-                  }
-                }
-              },
-              {
-                "request": {
-                  "requestId": "8af9ba14-4c49-438c-957d-d1a108a58b85",
-                  "requestType": "REQUEST_TYPE_GET",
-                  "contentType": "CONTENT_TYPE_SEGMENT",
-                  "bucketId": "0",
-                  "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                  "offset": "0",
-                  "size": "524288",
-                  "timestamp": "1727346880633",
-                  "signature": {
-                    "algorithm": "ED_25519",
-                    "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-                    "value": "CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="
-                  }
-                }
-              },
-              {
-                "request": {
-                  "requestId": "b3dc8833-d5aa-4e33-9afa-54584da29cda",
-                  "requestType": "REQUEST_TYPE_GET",
-                  "contentType": "CONTENT_TYPE_SEGMENT",
-                  "bucketId": "0",
-                  "pieceCid": "AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk",
-                  "offset": "0",
-                  "size": "524288",
-                  "timestamp": "1727346880633",
-                  "signature": {
-                    "algorithm": "ED_25519",
-                    "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-                    "value": "5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="
-                  }
-                }
-              }
-            ],
-            "timestamp": "1727346880633",
-            "signature": {
-              "algorithm": "ED_25519",
-              "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-              "value": "8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="
-            }
-          },
-          "transferred_bytes": 1048576,
-          "stored_bytes": 0
-        },
-        {
-          "record": {
-            "id": "8Rg6VlRrSE65NsCY02OnlA==",
-            "upstream": {
-              "request": {
-                "requestId": "aacf30c4-b2e9-4f37-826d-0016c280f39b",
-                "requestType": "REQUEST_TYPE_PUT",
-                "contentType": "CONTENT_TYPE_METADATA",
-                "bucketId": "0",
-                "pieceCid": "AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=",
-                "offset": "0",
-                "size": "385",
-                "timestamp": "1727346880673",
-                "signature": {
-                  "algorithm": "ED_25519",
-                  "signer": "xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=",
-                  "value": "yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="
-                }
-              }
-            },
-            "downstream": [],
-            "timestamp": "1727346880673",
-            "signature": {
-              "algorithm": "ED_25519",
-              "signer": "CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=",
-              "value": "zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="
-            }
-          },
-          "transferred_bytes": 1048576,
-          "stored_bytes": 1048576
-        }
-      ]
-    }
-  ]
-}"#.to_vec()),
+			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=0,2,1,3", host4, port),
+			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let pending_request5 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=1", host1, port),
+			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let pending_request6 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=1", host2, port),
+			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let pending_request7 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=1", host3, port),
+			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let pending_request8 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=1", host4, port),
+			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2994,6 +2700,10 @@ fn test_challenge_sub_aggregates_not_in_consensus() {
 		offchain_state.expect_request(pending_request2);
 		offchain_state.expect_request(pending_request3);
 		offchain_state.expect_request(pending_request4);
+		offchain_state.expect_request(pending_request5);
+		offchain_state.expect_request(pending_request6);
+		offchain_state.expect_request(pending_request7);
+		offchain_state.expect_request(pending_request8);
 		drop(offchain_state);
 
 		let cluster_id = ClusterId::from([1; 20]);
@@ -3058,7 +2768,7 @@ fn test_challenge_sub_aggregates_not_in_consensus() {
 			}];
 
 		let result =
-			DdcVerification::challenge_sub_aggregates_not_in_consensus(&cluster_id, era_id, &dac_nodes, bucket_node_aggregates_not_in_consensus);
+			DdcVerification::challenge_and_find_valid_sub_aggregates_not_in_consensus(&cluster_id, era_id, &dac_nodes, bucket_node_aggregates_not_in_consensus);
 
 		assert!(result.is_ok());
 
