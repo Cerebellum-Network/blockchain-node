@@ -5391,6 +5391,7 @@ name = "pallet-ddc-verification"
 version = "5.4.1"
 dependencies = [
  "array-bytes",
+ "base64ct",
  "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -5406,6 +5407,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "polkadot-ckb-merkle-mountain-range",
+ "rand 0.8.5",
  "scale-info",
  "serde",
  "serde_json",
