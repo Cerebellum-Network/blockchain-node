@@ -1740,10 +1740,10 @@ pub mod pallet {
 			for (bucket_id, bucket_aggregates_passed_challenge_activities) in
 				bucket_aggregates_passed_challenges
 			{
-				let valid_activities = bucket_aggregates_passed_challenge_activities
-					.iter()
-					.cloned()
-					.max_by_key(|activity| activity.number_of_gets + activity.number_of_puts);
+				let valid_activities =
+					bucket_aggregates_passed_challenge_activities.iter().cloned().max_by_key(
+						|activity| activity.transferred_bytes as i64 / activity.stored_bytes,
+					);
 
 				if let Some(activity) = valid_activities {
 					log::info!(
