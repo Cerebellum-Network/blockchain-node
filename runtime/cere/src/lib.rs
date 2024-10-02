@@ -597,7 +597,6 @@ parameter_types! {
 
 	// signed config
 	pub const SignedRewardBase: Balance = DOLLARS;
-	pub const SignedDepositBase: Balance = DOLLARS;
 	pub const SignedDepositByte: Balance = CENTS;
 
 	pub BetterUnsignedThreshold: Perbill = Perbill::from_rational(1u32, 10_000);
