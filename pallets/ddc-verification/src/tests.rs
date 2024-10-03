@@ -2316,10 +2316,9 @@ fn test_bucket_node_aggregates() {
 		let result =
 			DdcVerification::fetch_sub_trees(&cluster_id, era_id, customers_usage, min_nodes);
 
-		assert!(result.is_ok());
 		// Sub_aggregates which are in consensus
 		assert_eq!(
-			result.clone().unwrap().0,
+			result.clone().0,
 			[BucketNodeAggregatesActivity {
 				bucket_id: 90235,
 				node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318"
@@ -2332,7 +2331,7 @@ fn test_bucket_node_aggregates() {
 		);
 		// Sub_aggregates which are not in consensus
 		assert_eq!(
-			result.unwrap().1,
+			result.1,
 			[
 				BucketNodeAggregatesActivity {
 					bucket_id: 90235,

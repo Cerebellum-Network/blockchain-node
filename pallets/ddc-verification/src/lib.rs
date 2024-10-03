@@ -322,13 +322,6 @@ pub mod pallet {
 			node_id: String,
 			validator: T::AccountId,
 		},
-		BucketAggregateActivityNotInConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			id: ActivityHash,
-			node_ids: Vec<String>,
-			validator: T::AccountId,
-		},
 		ChallengeResponseRetrievalError {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
@@ -363,13 +356,6 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			id: ActivityHash,
-		},
-		/// No Bucket Aggregate activity in consensus.
-		BucketAggregateActivityNotInConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			id: ActivityHash,
-			node_ids: Vec<String>,
 		},
 		/// Node Usage Retrieval Error.
 		NodeUsageRetrievalError {
@@ -1494,7 +1480,7 @@ pub mod pallet {
 					.map_err(|err| vec![err])?;
 
 			let (bucket_node_aggregates_in_consensus, bucket_node_aggregates_not_in_consensus) =
-				Self::fetch_sub_trees(cluster_id, era_activity.id, customers_usage, min_nodes)?;
+				Self::fetch_sub_trees(cluster_id, era_activity.id, customers_usage, min_nodes);
 
 			let mut bucket_aggregates_passed_challenges: Vec<BucketNodeAggregatesActivity> = vec![];
 
@@ -1526,7 +1512,7 @@ pub mod pallet {
 			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				cluster_id,
 				era_activity.id,
-				Self::split_to_batches(&bucket_node_aggregates_in_consensus, batch_size),
+				Self::split_to_batches(&total_bucket_aggregates, batch_size),
 			)
 			.map_err(|err| vec![err])?;
 
@@ -1616,7 +1602,7 @@ pub mod pallet {
 			Self::store_validation_activities(
 				cluster_id,
 				era_activity.id,
-				&bucket_node_aggregates_in_consensus,
+				&total_bucket_aggregates,
 				customers_activity_root,
 				&customers_activity_batch_roots,
 				&nodes_activity_in_consensus,
@@ -1835,10 +1821,7 @@ pub mod pallet {
 			era_id: DdcEra,
 			customer_activities: Vec<CustomerActivity>,
 			quorum: u16,
-		) -> Result<
-			(Vec<BucketNodeAggregatesActivity>, Vec<BucketNodeAggregatesActivity>),
-			Vec<OCWError>,
-		> {
+		) -> (Vec<BucketNodeAggregatesActivity>, Vec<BucketNodeAggregatesActivity>) {
 			let mut bucket_node_aggregates_activities: Vec<BucketNodeAggregatesActivity> =
 				Vec::new();
 
@@ -2947,10 +2930,7 @@ pub mod pallet {
 			activities: Vec<BucketNodeAggregatesActivity>,
 			min_nodes: u16,
 			threshold: Percent,
-		) -> Result<
-			(Vec<BucketNodeAggregatesActivity>, Vec<BucketNodeAggregatesActivity>),
-			Vec<OCWError>,
-		> {
+		) -> (Vec<BucketNodeAggregatesActivity>, Vec<BucketNodeAggregatesActivity>) {
 			let mut bucket_node_aggregates: BTreeMap<
 				ActivityHash,
 				Vec<BucketNodeAggregatesActivity>,
@@ -2966,11 +2946,10 @@ pub mod pallet {
 
 			let mut consensus_activities = Vec::new();
 			let mut not_consensus_activities = Vec::new();
-			let mut errors = Vec::new();
 			let min_threshold = threshold * min_nodes;
 
 			// Check if each customer/bucket appears in at least `min_nodes` nodes
-			for (id, activities) in bucket_node_aggregates {
+			for (_id, activities) in bucket_node_aggregates {
 				if activities.len() < min_nodes.into() {
 					not_consensus_activities.extend(activities);
 				} else if let Some(activity) =
@@ -2978,25 +2957,14 @@ pub mod pallet {
 				{
 					consensus_activities.push(activity);
 				} else {
-					let node_ids =
-						activities.into_iter().map(|a| a.node_id).collect::<Vec<String>>();
-					errors.push(OCWError::BucketAggregateActivityNotInConsensus {
-						cluster_id: (*cluster_id),
-						era_id,
-						id,
-						node_ids,
-					});
+					not_consensus_activities.extend(activities);
 				}
 			}
 
 			// todo! Reduce log size and put small message
 			log::info!("🏠👍 Sub-Trees, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, consensus_activities);
 			log::info!("🏠👎 Sub-Trees, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, not_consensus_activities);
-			if errors.is_empty() {
-				Ok((consensus_activities, not_consensus_activities))
-			} else {
-				Err(errors)
-			}
+			(consensus_activities, not_consensus_activities)
 		}
 
 		/// Fetch cluster to validate.
@@ -3656,20 +3624,6 @@ pub mod pallet {
 							era_id,
 							bucket_id,
 							node_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::BucketAggregateActivityNotInConsensus {
-						cluster_id,
-						era_id,
-						id,
-						node_ids,
-					} => {
-						Self::deposit_event(Event::BucketAggregateActivityNotInConsensus {
-							cluster_id,
-							era_id,
-							id,
-							node_ids,
 							validator: caller.clone(),
 						});
 					},
