@@ -48,13 +48,8 @@ jobs:
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install try-runtime
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly-2024-09-25
-          override: true
-          target: wasm32-unknown-unknown
         run: |
-          cargo +nightly-2024-09-25 install --git https://github.com/paritytech/try-runtime-cli
+          cargo  install --git https://github.com/paritytech/try-runtime-cli
       - name: Check Build
         run: |
           cargo  build --release --features try-runtime
