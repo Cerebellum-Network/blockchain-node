@@ -375,6 +375,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		}
 	}
 
+	/// Given a block's `Hash` and a key, return the closest merkle value.
 	fn closest_merkle_value(
 		&self,
 		hash: <Block as BlockT>::Hash,
@@ -389,6 +390,7 @@ impl sc_client_api::StorageProvider<Block, crate::FullBackend> for Client {
 		}
 	}
 
+	/// Given a block's `Hash`, a key and a child storage key, return the closest merkle value.
 	fn child_closest_merkle_value(
 		&self,
 		hash: <Block as BlockT>::Hash,
