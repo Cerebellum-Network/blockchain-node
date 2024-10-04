@@ -42,17 +42,22 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-09-25
+          toolchain: 1.77.0
           override: true
           target: wasm32-unknown-unknown
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install try-runtime
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly-2024-09-25
+          override: true
+          target: wasm32-unknown-unknown
         run: |
-          cargo install --git https://github.com/paritytech/try-runtime-cli
+          cargo +nightly-2024-09-25 install --git https://github.com/paritytech/try-runtime-cli
       - name: Check Build
         run: |
-          cargo build --release --features try-runtime
+          cargo  build --release --features try-runtime
       - name: Check Try-Runtime
         run: |
           try-runtime --runtime ./target/release/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm \
