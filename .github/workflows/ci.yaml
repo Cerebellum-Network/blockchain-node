@@ -50,7 +50,7 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Install try-runtime
-        run: cargo install --git https://github.com/paritytech/try-runtime-cli --locked
+        run: cargo +nightly-2024-09-25 install --git https://github.com/paritytech/try-runtime-cli
       - name: Check Build
         run: |
           cargo build --release --features try-runtime
