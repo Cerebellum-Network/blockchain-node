@@ -718,7 +718,6 @@ impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
 
 /// Returning a fixed value to respect the initial logic.
 /// This could depend on the length of the solution.
-/// TODO: Validate.
 pub struct FixedSignedDepositBase;
 impl Convert<usize, u128> for FixedSignedDepositBase {
 	fn convert(_: usize) -> u128 {
@@ -1022,7 +1021,6 @@ impl pallet_grandpa::Config for Runtime {
 
 parameter_types! {
 	pub const BasicDeposit: Balance = 10 * DOLLARS;       // 258 bytes on-chain
-	//TODO: Validate
 	pub const ByteDeposit: Balance = deposit(0, 1);
 	pub const FieldDeposit: Balance = 250 * CENTS;        // 66 bytes on-chain
 	pub const SubAccountDeposit: Balance = 2 * DOLLARS;   // 53 bytes on-chain

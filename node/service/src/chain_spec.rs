@@ -160,7 +160,6 @@ pub fn cere_dev_genesis(
 	const STASH: Balance = ENDOWMENT / 1000;
 
 	cere_dev::RuntimeGenesisConfig {
-		//TODO: check
 		system: cere_dev::SystemConfig::default(),
 		balances: cere_dev::BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
@@ -269,9 +268,6 @@ pub fn cere_dev_development_config() -> Result<CereDevChainSpec, String> {
 		Default::default(),
 		wasm_binary,
 	))
-
-	//TODO: Migrate to builder
-	// Ok(CereDevChainSpec::builder(wasm_binary, Extensions::default()).build())
 }
 
 #[cfg(feature = "cere-dev-native")]
@@ -311,9 +307,6 @@ pub fn cere_dev_local_testnet_config() -> Result<CereDevChainSpec, String> {
 		Default::default(),
 		wasm_binary,
 	))
-
-	//TODO: Migrate to builder
-	// Ok(CereDevChainSpec::builder(wasm_binary, Extensions::default()).build())
 }
 
 pub fn cere_mainnet_config() -> Result<CereChainSpec, String> {
