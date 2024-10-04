@@ -717,7 +717,6 @@ impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
 
 /// Returning a fixed value to respect the initial logic.
 /// This could depend on the lenght of the solution.
-/// TODO: Validate.
 pub struct FixedSignedDepositBase;
 impl Convert<usize, u128> for FixedSignedDepositBase {
 	fn convert(_: usize) -> u128 {
