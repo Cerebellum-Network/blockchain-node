@@ -28,6 +28,7 @@ use frame_system::{
 	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
 	pallet_prelude::*,
 };
+use hex::FromHex;
 pub use pallet::*;
 use polkadot_ckb_merkle_mountain_range::{
 	util::{MemMMR, MemStore},
@@ -43,7 +44,6 @@ use sp_runtime::{
 	Percent,
 };
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
-
 pub mod weights;
 use itertools::Itertools;
 use rand::{prelude::*, rngs::SmallRng, SeedableRng};
@@ -58,7 +58,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::{BucketId, MergeActivityHash, KEY_TYPE};
+	use ddc_primitives::{BucketId, MergeActivityHash, StorageNodePubKey, KEY_TYPE};
 	use frame_support::PalletId;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::SaturatedConversion;
@@ -744,6 +744,8 @@ pub mod pallet {
 		fn hash<T: Config>(&self) -> ActivityHash;
 
 		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError;
+
+		fn node_leaf_hash<T: Config>(&self) -> ActivityHash;
 	}
 
 	impl Activity for NodeActivity {
@@ -760,6 +762,10 @@ pub mod pallet {
 
 			OCWError::NotEnoughNodesForConsensus { cluster_id, era_id, node_id: node_id.clone() }
 		}
+
+		fn node_leaf_hash<T: Config>(&self) -> ActivityHash {
+			ActivityHash::default()
+		}
 	}
 	impl Activity for CustomerActivity {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
@@ -774,6 +780,10 @@ pub mod pallet {
 			let bucket_id = &self.bucket_id;
 
 			OCWError::NotEnoughBucketsForConsensus { cluster_id, era_id, bucket_id: *bucket_id }
+		}
+
+		fn node_leaf_hash<T: crate::pallet::Config>(&self) -> ActivityHash {
+			ActivityHash::default()
 		}
 	}
 
@@ -803,6 +813,10 @@ pub mod pallet {
 				node_id: node_id.clone(),
 			}
 		}
+
+		fn node_leaf_hash<T: crate::pallet::Config>(&self) -> ActivityHash {
+			ActivityHash::default()
+		}
 	}
 
 	impl Activity for Leaf {
@@ -826,6 +840,15 @@ pub mod pallet {
 				era_id,
 				record_id: record_id.clone(),
 			}
+		}
+
+		fn node_leaf_hash<T: Config>(&self) -> ActivityHash {
+			let mut data = self.record.upstream.request.bucketId.encode();
+			data.extend_from_slice(&self.record.encode());
+			data.extend_from_slice(&self.record.upstream.request.requestType.encode());
+			data.extend_from_slice(&self.stored_bytes.encode());
+			data.extend_from_slice(&self.transferred_bytes.encode());
+			T::ActivityHasher::hash(&data).into()
 		}
 	}
 
@@ -1476,7 +1499,6 @@ pub mod pallet {
 					Self::challenge_and_find_valid_bucket_sub_aggregates_not_in_consensus(
 						cluster_id,
 						era_activity.id,
-						dac_nodes,
 						bucket_node_aggregates_not_in_consensus,
 					)?;
 			}
@@ -1545,10 +1567,9 @@ pub mod pallet {
 
 			if !node_aggregates_passed_challenges.is_empty() {
 				node_aggregates_passed_challenges =
-					Self::challenge_and_find_valid_node_sub_aggregates_not_in_consensus(
+					Self::challenge_and_find_valid_node_aggregates_not_in_consensus(
 						cluster_id,
 						era_activity.id,
-						dac_nodes,
 						nodes_activity_not_in_consensus,
 					)?;
 			}
@@ -1625,7 +1646,6 @@ pub mod pallet {
 		pub(crate) fn challenge_and_find_valid_bucket_sub_aggregates_not_in_consensus(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 			bucket_node_aggregates_not_in_consensus: Vec<BucketNodeAggregatesActivity>,
 		) -> Result<Vec<BucketNodeAggregatesActivity>, Vec<OCWError>> {
 			let mut bucket_aggregates_passed_challenges: Vec<BucketNodeAggregatesActivity> = vec![];
@@ -1648,23 +1668,29 @@ pub mod pallet {
 
 				log::info!("🚀 Merkle Node Identifiers for bucket_node_aggregate_activity: node id: {:?} bucket_id:{:?}  identifiers: {:?}",
 						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), merkle_node_ids);
+				let pub_key = NodePubKey::StoragePubKey(Self::get_node_pub_key(
+					bucket_node_aggregate_activity.clone().node_id,
+				));
+				let NodeParams::StorageParams(storage_params) =
+					T::NodeVisitor::get_node_params(&pub_key)
+						.map_err(|_err| vec![OCWError::FailedToFetchNodeProvider])?;
 
-				let challenge_responses = Self::fetch_challenge_responses(
+				let challenge_response = Self::fetch_challenge_responses(
 					cluster_id,
 					bucket_node_aggregate_activity.clone().node_id,
 					era_id,
 					Some(bucket_id),
 					merkle_node_ids,
-					dac_nodes,
+					(pub_key.clone(), storage_params.clone()),
 				)
 				.map_err(|err| vec![err])?;
 
 				log::info!("🚀 Fetched challenge response node id: {:?} bucket_id:{:?}  challenge_response: {:?}",
-						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), challenge_responses);
+						bucket_node_aggregate_activity.clone().node_id, bucket_id.clone(), challenge_response);
 
 				let resulting_hash_from_leafs_and_paths =
 					Self::find_resulting_hash_from_leafs_and_paths(
-						challenge_responses,
+						challenge_response,
 						cluster_id,
 						era_id,
 						Some(bucket_id),
@@ -1677,7 +1703,7 @@ pub mod pallet {
 					era_id,
 					Some(bucket_id),
 					vec![1],
-					dac_nodes,
+					(pub_key, storage_params),
 				)
 				.map_err(|err| vec![err])?;
 
@@ -1723,10 +1749,15 @@ pub mod pallet {
 			Ok(Self::fetch_valid_bucket_aggregates_passed_challenges(data_grouped))
 		}
 
-		pub(crate) fn challenge_and_find_valid_node_sub_aggregates_not_in_consensus(
+		fn get_node_pub_key(hex_string: String) -> StorageNodePubKey {
+			let stripped_hex = &hex_string[2..];
+			let bytes = <[u8; 32]>::from_hex(stripped_hex).unwrap();
+
+			StorageNodePubKey::from(bytes)
+		}
+		pub(crate) fn challenge_and_find_valid_node_aggregates_not_in_consensus(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 			node_aggregates_not_in_consensus: Vec<NodeActivity>,
 		) -> Result<Vec<NodeActivity>, Vec<OCWError>> {
 			let mut node_aggregates_passed_challenges: Vec<NodeActivity> = vec![];
@@ -1747,13 +1778,20 @@ pub mod pallet {
 				log::info!("🚀 Merkle Node Identifiers for node_aggregate_activity: node id: {:?}  identifiers: {:?}",
 						node_aggregate_activity.clone().node_id, merkle_node_ids);
 
+				let pub_key = NodePubKey::StoragePubKey(Self::get_node_pub_key(
+					node_aggregate_activity.clone().node_id,
+				));
+				let NodeParams::StorageParams(storage_params) =
+					T::NodeVisitor::get_node_params(&pub_key)
+						.map_err(|_err| vec![OCWError::FailedToFetchNodeProvider])?;
+
 				let challenge_responses = Self::fetch_challenge_responses(
 					cluster_id,
 					node_aggregate_activity.clone().node_id,
 					era_id,
 					None,
 					merkle_node_ids,
-					dac_nodes,
+					(pub_key.clone(), storage_params.clone()),
 				)
 				.map_err(|err| vec![err])?;
 
@@ -1778,7 +1816,7 @@ pub mod pallet {
 					era_id,
 					None,
 					vec![1],
-					dac_nodes,
+					(pub_key, storage_params),
 				)
 				.map_err(|err| vec![err])?;
 
@@ -1877,7 +1915,7 @@ pub mod pallet {
 		}
 
 		pub(crate) fn find_resulting_hash_from_leafs_and_paths(
-			challenge_responses: Vec<ChallengeAggregateResponse>,
+			challenge_response: ChallengeAggregateResponse,
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			bucket_id: Option<BucketId>,
@@ -1891,51 +1929,52 @@ pub mod pallet {
 				log::info!("🚀find_resulting_hash_from_leafs_and_paths for node_id:{:?}", node_id);
 			}
 
-			for challenge_response in challenge_responses {
-				for proof in challenge_response.proofs {
-					let leaf_record_hashes: Vec<ActivityHash> =
-						proof.leafs.into_iter().map(|p| p.hash::<T>()).collect();
+			for proof in challenge_response.proofs {
+				let leaf_record_hashes: Vec<ActivityHash> = if bucket_id.is_some() {
+					proof.leafs.into_iter().map(|p| p.hash::<T>()).collect()
+				} else {
+					proof.leafs.into_iter().map(|p| p.node_leaf_hash::<T>()).collect()
+				};
 
-					let leaf_record_hashes_string: Vec<String> =
-						leaf_record_hashes.clone().into_iter().map(hex::encode).collect();
+				let leaf_record_hashes_string: Vec<String> =
+					leaf_record_hashes.clone().into_iter().map(hex::encode).collect();
 
-					log::info!(
-						"🚀 Fetched leaf record hashes node id: {:?}  leaf_record_hashes: {:?}",
-						node_id,
-						leaf_record_hashes_string
-					);
+				log::info!(
+					"🚀 Fetched leaf record hashes node id: {:?}  leaf_record_hashes: {:?}",
+					node_id,
+					leaf_record_hashes_string
+				);
 
-					let leaf_node_root =
-						Self::create_merkle_root(cluster_id, era_id, &leaf_record_hashes)
-							.map_err(|err| vec![err])?;
-
-					log::info!(
-						"🚀 Fetched leaf record root node id: {:?}   leaf_record_root_hash: {:?}",
-						node_id,
-						hex::encode(leaf_node_root)
-					);
-
-					let paths = proof.path.iter().rev();
-
-					resulting_hash_from_leafs_and_paths = leaf_node_root;
-					for path in paths {
-						let mut dec_buf = [0u8; BUF_SIZE];
-						let bytes = Base64::decode(path, &mut dec_buf).unwrap(); // todo! remove unwrap
-						let path_hash: ActivityHash =
-							ActivityHash::from(sp_core::H256::from_slice(bytes));
-
-						let node_root = Self::create_merkle_root(
-							cluster_id,
-							era_id,
-							&[resulting_hash_from_leafs_and_paths, path_hash],
-						)
+				let leaf_node_root =
+					Self::create_merkle_root(cluster_id, era_id, &leaf_record_hashes)
 						.map_err(|err| vec![err])?;
 
-						log::info!("🚀 Fetched leaf node root node id: {:?}  for path:{:?} leaf_node_hash: {:?}",
+				log::info!(
+					"🚀 Fetched leaf record root node id: {:?}   leaf_record_root_hash: {:?}",
+					node_id,
+					hex::encode(leaf_node_root)
+				);
+
+				let paths = proof.path.iter().rev();
+
+				resulting_hash_from_leafs_and_paths = leaf_node_root;
+				for path in paths {
+					let mut dec_buf = [0u8; BUF_SIZE];
+					let bytes = Base64::decode(path, &mut dec_buf).unwrap(); // todo! remove unwrap
+					let path_hash: ActivityHash =
+						ActivityHash::from(sp_core::H256::from_slice(bytes));
+
+					let node_root = Self::create_merkle_root(
+						cluster_id,
+						era_id,
+						&[resulting_hash_from_leafs_and_paths, path_hash],
+					)
+					.map_err(|err| vec![err])?;
+
+					log::info!("🚀 Fetched leaf node root node id: {:?}  for path:{:?} leaf_node_hash: {:?}",
 						node_id, path, hex::encode(node_root));
 
-						resulting_hash_from_leafs_and_paths = node_root;
-					}
+					resulting_hash_from_leafs_and_paths = node_root;
 				}
 			}
 
@@ -3115,32 +3154,24 @@ pub mod pallet {
 			era_id: DdcEra,
 			bucket_id: Option<BucketId>,
 			merkle_node_identifiers: Vec<u64>,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<ChallengeAggregateResponse>, OCWError> {
-			let mut challenge_responses = Vec::new();
+			(node_pub_key, node_params): (NodePubKey, StorageNodeParams),
+		) -> Result<ChallengeAggregateResponse, OCWError> {
+			let response = Self::fetch_challenge_response(
+				node_id.clone(),
+				era_id,
+				bucket_id,
+				merkle_node_identifiers.clone(),
+				&node_params,
+			)
+			.map_err(|_| OCWError::ChallengeResponseRetrievalError {
+				cluster_id: *cluster_id,
+				era_id,
+				node_id: node_id.clone(),
+				bucket_id,
+				node_pub_key,
+			})?;
 
-			for (node_pub_key, node_params) in dac_nodes {
-				// todo! probably shouldn't stop when some DAC is not responding as we can still
-				// work with others
-				let response = Self::fetch_challenge_response(
-					node_id.clone(),
-					era_id,
-					bucket_id,
-					merkle_node_identifiers.clone(),
-					node_params,
-				)
-				.map_err(|_| OCWError::ChallengeResponseRetrievalError {
-					cluster_id: *cluster_id,
-					era_id,
-					node_id: node_id.clone(),
-					bucket_id,
-					node_pub_key: node_pub_key.clone(),
-				})?;
-
-				challenge_responses.push(response);
-			}
-
-			Ok(challenge_responses)
+			Ok(response)
 		}
 		/// Fetch challenge response.
 		///
