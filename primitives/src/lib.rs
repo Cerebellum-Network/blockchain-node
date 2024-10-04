@@ -109,34 +109,14 @@ pub struct ClusterBondingParams<BlockNumber> {
 }
 
 #[derive(
-	Debug,
-	Serialize,
-	Deserialize,
-	Clone,
-	Ord,
-	PartialOrd,
-	PartialEq,
-	Eq,
-	Encode,
-	Decode,
-	TypeInfo,
+	Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Encode, Decode, TypeInfo,
 )]
 pub struct NodeData {
 	pub node_pub_key: NodePubKey,
 	pub node_params: StorageNodeParams,
 }
 #[derive(
-	Debug,
-	Serialize,
-	Deserialize,
-	Clone,
-	Ord,
-	PartialOrd,
-	PartialEq,
-	Eq,
-	Encode,
-	Decode,
-	TypeInfo,
+	Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Encode, Decode, TypeInfo,
 )]
 pub enum NodePubKey {
 	StoragePubKey(StorageNodePubKey),

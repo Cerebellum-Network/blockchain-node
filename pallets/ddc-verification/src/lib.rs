@@ -788,7 +788,9 @@ pub mod pallet {
 	}
 	impl Activity for CustomerActivity {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.bucket_id.encode()).into()
+			let mut data = self.bucket_id.encode();
+			data.extend_from_slice(&self.sub_aggregates.encode());
+			T::ActivityHasher::hash(&data).into()
 		}
 
 		fn hash<T: Config>(&self) -> ActivityHash {
@@ -818,7 +820,13 @@ pub mod pallet {
 		}
 
 		fn hash<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.encode()).into()
+			let mut data = self.bucket_id.encode();
+			data.extend_from_slice(&self.node_id.encode());
+			data.extend_from_slice(&self.stored_bytes.encode());
+			data.extend_from_slice(&self.transferred_bytes.encode());
+			data.extend_from_slice(&self.number_of_puts.encode());
+			data.extend_from_slice(&self.number_of_gets.encode());
+			T::ActivityHasher::hash(&data).into()
 		}
 
 		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
@@ -849,7 +857,12 @@ pub mod pallet {
 		}
 
 		fn hash<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.encode()).into()
+			let mut data = self.node_id.encode();
+			data.extend_from_slice(&self.stored_bytes.encode());
+			data.extend_from_slice(&self.transferred_bytes.encode());
+			data.extend_from_slice(&self.number_of_puts.encode());
+			data.extend_from_slice(&self.number_of_gets.encode());
+			T::ActivityHasher::hash(&data).into()
 		}
 
 		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
@@ -3049,19 +3062,20 @@ pub mod pallet {
 		///   - `Some(A)`: An activity that has met or exceeded the threshold.
 		///   - `None`: No activity met the threshold.
 		pub(crate) fn reach_consensus<A: Activity>(
-			activities: &[A],
+			activities: Vec<A>,
 			threshold: usize,
 		) -> Option<A> {
-			let mut count_map: BTreeMap<A, usize> = BTreeMap::new();
+			let mut count_map: BTreeMap<ActivityHash, Vec<A>> = BTreeMap::new();
 
 			for activity in activities {
-				*count_map.entry(activity.clone()).or_default() += 1;
+				count_map.entry(activity.get_consensus_id::<T>()).or_default().push(activity);
 			}
 
 			count_map
 				.into_iter()
-				.find(|&(_, count)| count >= threshold)
-				.map(|(activity, _)| activity)
+				.find(|(_, count)| count.len() >= threshold)
+				.map(|(_, same_activities)| same_activities.clone().first().cloned())
+				.unwrap_or_else(|| None)
 		}
 
 		/// Computes the consensus for a set of activities across multiple nodes within a given
@@ -3101,6 +3115,7 @@ pub mod pallet {
 				cluster_id,
 				era_id
 			);
+
 			for (node_data, node_activities) in node_activities_with_node_key.clone() {
 				for node_activity in node_activities.clone() {
 					let node_aggregates_activity = NodeAggregateActivity {
@@ -3138,9 +3153,9 @@ pub mod pallet {
 				if activities.len() < min_nodes.into() {
 					not_consensus_activities.extend(activities);
 				} else if let Some(activity) =
-					Self::reach_consensus(&activities, min_threshold.into())
+					Self::reach_consensus(activities.clone(), min_threshold.into())
 				{
-					consensus_activities.push(activity);
+					consensus_activities.push(activity.clone());
 				} else {
 					not_consensus_activities.extend(activities);
 				}
@@ -3181,9 +3196,9 @@ pub mod pallet {
 				if activities.len() < min_nodes.into() {
 					not_consensus_activities.extend(activities);
 				} else if let Some(activity) =
-					Self::reach_consensus(&activities, min_threshold.into())
+					Self::reach_consensus(activities.clone(), min_threshold.into())
 				{
-					consensus_activities.push(activity);
+					consensus_activities.push(activity.clone());
 				} else {
 					not_consensus_activities.extend(activities);
 				}
