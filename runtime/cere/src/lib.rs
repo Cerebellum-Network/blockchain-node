@@ -1387,7 +1387,6 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
-
 const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX;
 
 /// Runtime migrations
