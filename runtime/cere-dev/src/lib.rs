@@ -146,7 +146,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 58000,
+	spec_version: 59000,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 18,
@@ -442,7 +442,6 @@ parameter_types! {
 	// This number may need to be adjusted in the future if this assumption no longer holds true.
 	pub const MaxLocks: u32 = 50;
 	pub const MaxReserves: u32 = 50;
-	pub const MaxHolds: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -459,7 +458,6 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type MaxFreezes = ConstU32<1>;
 	type RuntimeHoldReason = RuntimeHoldReason;
-	type MaxHolds = MaxHolds;
 }
 
 parameter_types! {
@@ -549,7 +547,7 @@ parameter_types! {
 	pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
 	pub OffchainRepeat: BlockNumber = 5;
 	pub const MaxNominations: u32 = <NposSolution16 as frame_election_provider_support::NposSolution>::LIMIT as u32;
-	pub const MaxControllersInDeprecationBatch: u32 = 751; //TODO: Validate
+	pub const MaxControllersInDeprecationBatch: u32 = 751;
 }
 
 pub struct StakingBenchmarkingConfig;
@@ -1386,7 +1384,6 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
-// TODO: Validate this.
 const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX;
 
 /// Runtime migrations
