@@ -50,7 +50,7 @@ use frame_support::{
 pub use frame_system::Call as SystemCall;
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot,EnsureSigned,
+	EnsureRoot, EnsureSigned,
 };
 pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce};
