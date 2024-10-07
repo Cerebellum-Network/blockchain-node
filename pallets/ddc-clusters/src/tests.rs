@@ -251,17 +251,6 @@ fn add_join_and_delete_node_works() {
 			NodeParams::StorageParams(storage_node_params.clone()),
 		));
 
-		// Node doesn't exist
-		assert_noop!(
-			DdcClusters::add_node(
-				RuntimeOrigin::signed(cluster_manager_id.clone()),
-				cluster_id,
-				NodePubKey::StoragePubKey(node_pub_key.clone()),
-				ClusterNodeKind::Genesis
-			),
-			Error::<Test>::NodeAuthContractCallFailed
-		);
-
 		// Not node provider
 		assert_noop!(
 			DdcClusters::join_cluster(

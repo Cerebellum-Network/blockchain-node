@@ -312,22 +312,8 @@ pub mod pallet {
 			ensure!(!has_chilling_attempt, Error::<T>::NodeChillingIsProhibited);
 
 			// Node with this node with this public key exists.
-			let node = T::NodeRepository::get(node_pub_key.clone())
+			T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
-
-			// Cluster extension smart contract allows joining.
-			if let Some(address) = cluster.props.node_provider_auth_contract.clone() {
-				let auth_contract = NodeProviderAuthContract::<T>::new(address, caller_id);
-
-				let is_authorized = auth_contract
-					.is_authorized(
-						node.get_provider_id().to_owned(),
-						node.get_pub_key(),
-						node.get_type(),
-					)
-					.map_err(Into::<Error<T>>::into)?;
-				ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
-			};
 
 			Self::do_add_node(cluster, node_pub_key, node_kind)
 		}
