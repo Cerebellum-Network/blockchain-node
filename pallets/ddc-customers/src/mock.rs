@@ -7,7 +7,7 @@ use ddc_primitives::{
 	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
 };
 use frame_support::{
-	construct_runtime, parameter_types, derive_impl,
+	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
 	weights::constants::RocksDbWeight,
 };

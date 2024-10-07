@@ -13,7 +13,7 @@ use ddc_primitives::{
 	StorageNodeParams, DOLLARS,
 };
 use frame_support::{
-	parameter_types,derive_impl,
+	derive_impl, parameter_types,
 	traits::{
 		ConstBool, ConstU32, ConstU64, EnsureOriginWithArg, EqualPrivilegeOnly, Everything, Nothing,
 	},
@@ -22,7 +22,7 @@ use frame_support::{
 };
 use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
-	EnsureRoot,EnsureSigned,
+	EnsureRoot, EnsureSigned,
 };
 use lazy_static::lazy_static;
 use pallet_ddc_clusters::cluster::Cluster;
