@@ -31,6 +31,7 @@ sc-cli = { workspace = true, default-features = true, optional = true }
 sc-executor = { workspace = true, default-features = true }
 sc-service = { workspace = true, default-features = true, optional = true }
 sp-io = { workspace = true, default-features = true }
+sp-runtime = { workspace = true, default-features = true }
 try-runtime-cli = { workspace = true, default-features = true, optional = true }
 
 # Local
@@ -47,6 +48,7 @@ cli = [
   "sc-cli",
   "sc-service",
   "frame-benchmarking-cli",
+	"sp-runtime/std",
   "try-runtime-cli",
   "cere-client",
 ]
@@ -54,3 +56,4 @@ runtime-benchmarks = ["cere-service/runtime-benchmarks"]
 try-runtime = ["cere-service/try-runtime", "try-runtime-cli/try-runtime"]
 cere-native = ["cere-service/cere-native"]
 cere-dev-native = ["cere-service/cere-dev-native"]
+
