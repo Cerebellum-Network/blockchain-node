@@ -979,9 +979,9 @@ pub mod pallet {
 			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 			let mut errors: Vec<OCWError> = Vec::new();
 
-			let processed_dac_data = Self::process_dac_data(&cluster_id, None, batch_size.into());
+			let dac_era_result = Self::process_dac_era(&cluster_id, None, batch_size.into());
 
-			match processed_dac_data {
+			match dac_era_result {
 				Ok(Some((
 					era_activity,
 					payers_merkle_root_hash,
@@ -1493,7 +1493,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		#[allow(clippy::type_complexity)]
-		pub(crate) fn process_dac_data(
+		pub(crate) fn process_dac_era(
 			cluster_id: &ClusterId,
 			era_id_to_process: Option<EraActivity>,
 			batch_size: usize,
@@ -2107,7 +2107,7 @@ pub mod pallet {
 					} else {
 						let era_activity = EraActivity { id: era_id, start, end };
 
-						let _ = Self::process_dac_data(cluster_id, Some(era_activity), batch_size)?;
+						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
 							Self::fetch_validation_activities::<BucketActivityPerNode, NodeActivity>(
@@ -2177,7 +2177,7 @@ pub mod pallet {
 					} else {
 						let era_activity = EraActivity { id: era_id, start, end };
 
-						let _ = Self::process_dac_data(cluster_id, Some(era_activity), batch_size)?;
+						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((
 							bucket_nodes_activity_in_consensus,
@@ -2341,7 +2341,7 @@ pub mod pallet {
 					} else {
 						let era_activity = EraActivity { id: era_id, start, end };
 
-						let _ = Self::process_dac_data(cluster_id, Some(era_activity), batch_size)?;
+						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((
 							_,
@@ -2436,7 +2436,7 @@ pub mod pallet {
 					} else {
 						let era_activity = EraActivity { id: era_id, start, end };
 
-						let _ = Self::process_dac_data(cluster_id, Some(era_activity), batch_size)?;
+						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((
 							_,
