@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use frame_support::{ord_parameter_types, parameter_types, traits::Everything, weights::Weight};
+use frame_support::{ord_parameter_types, parameter_types, derive_impl, traits::Everything, weights::Weight};
 use frame_system::{self as system};
 pub use pallet_balances as balances;
 use pallet_chainbridge as bridge;
@@ -20,6 +20,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
+#[derive_impl(frame_system::config_preludes::ParaChainDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
