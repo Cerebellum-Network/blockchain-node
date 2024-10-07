@@ -2478,7 +2478,7 @@ fn test_find_random_merkle_node_ids() {
 		let total_activities = bucket_node_aggregates_not_in_consensus.number_of_gets +
 			bucket_node_aggregates_not_in_consensus.number_of_puts;
 
-		let ids = DdcVerification::find_random_merkle_node_ids(
+		let ids = DdcVerification::_find_random_merkle_node_ids(
 			3,
 			total_activities,
 			bucket_node_aggregates_not_in_consensus.node_id,
@@ -2582,7 +2582,7 @@ fn test_challenge_sub_aggregates_not_in_consensus() {
 			}];
 
 		let result =
-			DdcVerification::challenge_and_find_valid_bucket_sub_aggregates_not_in_consensus(&cluster_id, era_id, bucket_node_aggregates_not_in_consensus);
+			DdcVerification::_challenge_and_find_valid_bucket_sub_aggregates_not_in_consensus(&cluster_id, era_id, bucket_node_aggregates_not_in_consensus);
 
 		assert!(result.is_ok());
 
