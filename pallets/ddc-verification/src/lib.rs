@@ -290,6 +290,12 @@ pub mod pallet {
 		ValidatorKeySet {
 			validator: T::AccountId,
 		},
+		FailedToFetchClusterNodes {
+			validator: T::AccountId,
+		},
+		FailedToFetchDacNodes {
+			validator: T::AccountId,
+		},
 		FailedToFetchNodeTotalUsage {
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
@@ -444,6 +450,8 @@ pub mod pallet {
 		},
 		FailedToFetchCurrentValidator,
 		FailedToFetchNodeProvider,
+		FailedToFetchClusterNodes,
+		FailedToFetchDacNodes,
 		FailedToFetchNodeTotalUsage {
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
@@ -962,28 +970,16 @@ pub mod pallet {
 
 			log::info!("👋 Hello from pallet-ddc-verification.");
 
-			// todo! fetch clusters from ddc-clusters and loop the whole process for each cluster
+			// todo: fetch clusters from ddc-clusters and loop the whole process for each cluster
 			let cluster_id = unwrap_or_log_error!(
 				Self::get_cluster_to_validate(),
 				"🏭❌ Error retrieving cluster to validate"
 			);
 
-			let dac_nodes = unwrap_or_log_error!(
-				Self::get_dac_nodes(&cluster_id),
-				"🏭❌ Error retrieving dac nodes to validate"
-			);
-
-			let redundancy_factor = T::DAC_REDUNDANCY_FACTOR;
 			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 			let mut errors: Vec<OCWError> = Vec::new();
 
-			let processed_dac_data = Self::process_dac_data(
-				&cluster_id,
-				None,
-				&dac_nodes,
-				redundancy_factor,
-				batch_size.into(),
-			);
+			let processed_dac_data = Self::process_dac_data(&cluster_id, None, batch_size.into());
 
 			match processed_dac_data {
 				Ok(Some((
@@ -1095,12 +1091,7 @@ pub mod pallet {
 			}
 
 			// todo! factor out as macro as this is repetitive
-			match Self::prepare_begin_charging_customers(
-				&cluster_id,
-				&dac_nodes,
-				redundancy_factor,
-				batch_size.into(),
-			) {
+			match Self::prepare_begin_charging_customers(&cluster_id, batch_size.into()) {
 				Ok(Some((era_id, max_batch_index))) => {
 					log::info!(
 						"🏭🎁 prepare_begin_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
@@ -1149,12 +1140,7 @@ pub mod pallet {
 			}
 
 			// todo! factor out as macro as this is repetitive
-			match Self::prepare_send_charging_customers_batch(
-				&cluster_id,
-				batch_size.into(),
-				&dac_nodes,
-				redundancy_factor,
-			) {
+			match Self::prepare_send_charging_customers_batch(&cluster_id, batch_size.into()) {
 				Ok(Some((era_id, batch_payout))) => {
 					let payers_log: Vec<(String, BucketId, CustomerUsage)> = batch_payout
 						.payers
@@ -1274,12 +1260,7 @@ pub mod pallet {
 			}
 
 			// todo! factor out as macro as this is repetitive
-			match Self::prepare_begin_rewarding_providers(
-				&cluster_id,
-				&dac_nodes,
-				redundancy_factor,
-				batch_size.into(),
-			) {
+			match Self::prepare_begin_rewarding_providers(&cluster_id, batch_size.into()) {
 				Ok(Some((era_id, max_batch_index, total_node_usage))) => {
 					log::info!(
 						"🏭📝prepare_begin_rewarding_providers processed successfully for cluster_id: {:?}, era_id: {:?}",
@@ -1334,12 +1315,7 @@ pub mod pallet {
 			}
 
 			// todo! factor out as macro as this is repetitive
-			match Self::prepare_send_rewarding_providers_batch(
-				&cluster_id,
-				batch_size.into(),
-				&dac_nodes,
-				redundancy_factor,
-			) {
+			match Self::prepare_send_rewarding_providers_batch(&cluster_id, batch_size.into()) {
 				Ok(Some((era_id, batch_payout))) => {
 					log::info!(
 						"🎁 prepare_send_rewarding_providers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
@@ -1520,14 +1496,17 @@ pub mod pallet {
 		pub(crate) fn process_dac_data(
 			cluster_id: &ClusterId,
 			era_id_to_process: Option<EraActivity>,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-			redundancy_factor: u16,
 			batch_size: usize,
 		) -> Result<
 			Option<(EraActivity, ActivityHash, ActivityHash, Vec<ActivityHash>, Vec<ActivityHash>)>,
 			Vec<OCWError>,
 		> {
 			log::info!("🚀 Processing dac data for cluster_id: {:?}", cluster_id);
+
+			let dac_nodes = Self::get_dac_nodes(cluster_id).map_err(|_| {
+				log::error!("🏭❌ Error retrieving dac nodes to validate cluster {:?}", cluster_id);
+				vec![OCWError::FailedToFetchDacNodes]
+			})?;
 
 			let era_activity = if let Some(era_activity) = era_id_to_process {
 				EraActivity {
@@ -1536,18 +1515,23 @@ pub mod pallet {
 					end: era_activity.end,
 				}
 			} else {
-				match Self::get_era_for_validation(cluster_id, dac_nodes) {
+				match Self::get_era_for_validation(cluster_id, &dac_nodes) {
 					Ok(Some(era_activity)) => era_activity,
 					Ok(None) => return Ok(None),
 					Err(err) => return Err(vec![err]),
 				}
 			};
 
+			// todo: move to cluster protocol parameters
+			let dac_redundancy_factor = T::DAC_REDUNDANCY_FACTOR;
+			let aggregators_quorum = T::AggregatorsQuorum::get();
+
 			let nodes_aggregates_by_aggregator =
-				Self::fetch_nodes_usage_for_era(cluster_id, era_activity.id, dac_nodes)
+				Self::fetch_nodes_aggregates_for_era(cluster_id, era_activity.id, &dac_nodes)
 					.map_err(|err| vec![err])?;
+
 			let buckets_aggregates_by_aggregator =
-				Self::fetch_customers_usage_for_era(cluster_id, era_activity.id, dac_nodes)
+				Self::fetch_buckets_aggregates_for_era(cluster_id, era_activity.id, &dac_nodes)
 					.map_err(|err| vec![err])?;
 
 			let (
@@ -1557,7 +1541,8 @@ pub mod pallet {
 				cluster_id,
 				era_activity.id,
 				buckets_aggregates_by_aggregator,
-				redundancy_factor,
+				dac_redundancy_factor,
+				aggregators_quorum,
 			);
 
 			// let mut bucket_per_node_activities_passed_challenges: Vec<BucketActivityPerNode> =
@@ -1628,8 +1613,8 @@ pub mod pallet {
 					cluster_id,
 					era_activity.id,
 					nodes_aggregates_by_aggregator,
-					redundancy_factor,
-					T::AggregatorsQuorum::get(),
+					dac_redundancy_factor,
+					aggregators_quorum,
 				);
 
 			// let mut nodes_activities_passed_challenges: Vec<NodeActivity> = vec![];
@@ -2054,7 +2039,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			buckets_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<BucketAggregate>)>,
-			redundancy_factor: u16,
+			dac_redundancy_factor: u16,
+			quorum: Percent,
 		) -> (Vec<BucketActivityPerNode>, Vec<BucketActivityPerNode>) {
 			let mut bucket_per_node_activities: Vec<BucketActivityPerNode> = Vec::new();
 
@@ -2087,8 +2073,8 @@ pub mod pallet {
 				cluster_id,
 				era_id,
 				bucket_per_node_activities,
-				redundancy_factor,
-				Percent::from_percent(T::MAJORITY),
+				dac_redundancy_factor,
+				quorum,
 			)
 		}
 		#[allow(dead_code)]
@@ -2101,8 +2087,6 @@ pub mod pallet {
 
 		pub(crate) fn prepare_begin_charging_customers(
 			cluster_id: &ClusterId,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-			redundancy_factor: u16,
 			batch_size: usize,
 		) -> Result<Option<(DdcEra, BatchIndex)>, Vec<OCWError>> {
 			if let Some((era_id, start, end)) =
@@ -2123,13 +2107,7 @@ pub mod pallet {
 					} else {
 						let era_activity = EraActivity { id: era_id, start, end };
 
-						let _ = Self::process_dac_data(
-							cluster_id,
-							Some(era_activity),
-							dac_nodes,
-							redundancy_factor,
-							batch_size,
-						)?;
+						let _ = Self::process_dac_data(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
 							Self::fetch_validation_activities::<BucketActivityPerNode, NodeActivity>(
@@ -2172,8 +2150,6 @@ pub mod pallet {
 		pub(crate) fn prepare_send_charging_customers_batch(
 			cluster_id: &ClusterId,
 			batch_size: usize,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-			redundancy_factor: u16,
 		) -> Result<Option<(DdcEra, CustomerBatch<T>)>, Vec<OCWError>> {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
@@ -2201,13 +2177,7 @@ pub mod pallet {
 					} else {
 						let era_activity = EraActivity { id: era_id, start, end };
 
-						let _ = Self::process_dac_data(
-							cluster_id,
-							Some(era_activity),
-							dac_nodes,
-							redundancy_factor,
-							batch_size,
-						)?;
+						let _ = Self::process_dac_data(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((
 							bucket_nodes_activity_in_consensus,
@@ -2336,14 +2306,12 @@ pub mod pallet {
 
 		pub(crate) fn prepare_begin_rewarding_providers(
 			cluster_id: &ClusterId,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-			redundancy_factor: u16,
 			batch_size: usize,
 		) -> Result<Option<(DdcEra, BatchIndex, NodeUsage)>, Vec<OCWError>> {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				let nodes_total_usages = Self::get_nodes_total_usage(cluster_id, dac_nodes)?;
+				let nodes_total_usages = Self::get_nodes_total_usage(cluster_id)?;
 
 				let nodes_total_usage: i64 = nodes_total_usages
 					.iter()
@@ -2373,13 +2341,7 @@ pub mod pallet {
 					} else {
 						let era_activity = EraActivity { id: era_id, start, end };
 
-						let _ = Self::process_dac_data(
-							cluster_id,
-							Some(era_activity),
-							dac_nodes,
-							redundancy_factor,
-							batch_size,
-						)?;
+						let _ = Self::process_dac_data(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((
 							_,
@@ -2447,8 +2409,6 @@ pub mod pallet {
 		pub(crate) fn prepare_send_rewarding_providers_batch(
 			cluster_id: &ClusterId,
 			batch_size: usize,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-			redundancy_factor: u16,
 		) -> Result<Option<(DdcEra, ProviderBatch<T>)>, Vec<OCWError>> {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
@@ -2476,13 +2436,7 @@ pub mod pallet {
 					} else {
 						let era_activity = EraActivity { id: era_id, start, end };
 
-						let _ = Self::process_dac_data(
-							cluster_id,
-							Some(era_activity),
-							dac_nodes,
-							redundancy_factor,
-							batch_size,
-						)?;
+						let _ = Self::process_dac_data(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((
 							_,
@@ -2675,12 +2629,19 @@ pub mod pallet {
 
 		pub(crate) fn get_nodes_total_usage(
 			cluster_id: &ClusterId,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Vec<Option<NodeUsage>>, Vec<OCWError>> {
 			let mut results: Vec<Option<NodeUsage>> = Vec::new();
 			let mut errors: Vec<OCWError> = Vec::new();
 
-			for (node_pub_key, _params) in dac_nodes.iter() {
+			let nodes = match T::ClusterManager::get_nodes(cluster_id) {
+				Ok(nodes_pub_keys) => nodes_pub_keys,
+				Err(_) => {
+					errors.push(OCWError::FailedToFetchClusterNodes);
+					return Err(errors);
+				},
+			};
+
+			for node_pub_key in nodes.iter() {
 				match T::NodeVisitor::get_total_usage(node_pub_key) {
 					Ok(usage) => results.push(usage),
 					Err(_err) => {
@@ -3084,8 +3045,8 @@ pub mod pallet {
 		/// - `era_id: DdcEra`: The era ID within the cluster.
 		/// - `activities: &[(NodePubKey, Vec<A>)]`: A list of tuples, where each tuple contains a
 		///   node's public key and a vector of activities reported by that node.
-		/// - `redundancy_factor: u16`: The number of aggregators that should report an activity for
-		///   a node or a bucket
+		/// - `dac_redundancy_factor: u16`: The number of aggregators that should report an activity
+		///   for a node or a bucket
 		/// - `threshold: Percent`: The threshold percentage that determines if an activity is in
 		///   consensus.
 		///
@@ -3098,7 +3059,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			nodes_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<NodeAggregate>)>,
-			redundancy_factor: u16,
+			dac_redundancy_factor: u16,
 			quorum: Percent,
 		) -> (Vec<NodeActivity>, Vec<NodeActivity>) {
 			let mut nodes_activities: Vec<NodeActivity> = Vec::new();
@@ -3139,11 +3100,11 @@ pub mod pallet {
 
 			let mut consensus_activities = Vec::new();
 			let mut not_consensus_activities = Vec::new();
-			let threshold = quorum * redundancy_factor;
+			let threshold = quorum * dac_redundancy_factor;
 
-			// Check if each customer/bucket appears in at least `redundancy_factor` nodes
+			// Check if each customer/bucket appears in at least `dac_redundancy_factor` nodes
 			for (_id, node_activities) in consistent_node_activities {
-				if node_activities.len() < redundancy_factor.into() {
+				if node_activities.len() < dac_redundancy_factor.into() {
 					not_consensus_activities.extend(node_activities);
 				} else if let Some(activity) =
 					Self::reach_consensus(node_activities.clone(), threshold.into())
@@ -3164,7 +3125,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			bucket_per_node_activities: Vec<BucketActivityPerNode>,
-			redundancy_factor: u16,
+			dac_redundancy_factor: u16,
 			quorum: Percent,
 		) -> (Vec<BucketActivityPerNode>, Vec<BucketActivityPerNode>) {
 			let mut consistent_bucket_activities: BTreeMap<
@@ -3182,11 +3143,11 @@ pub mod pallet {
 
 			let mut consensus_activities = Vec::new();
 			let mut not_consensus_activities = Vec::new();
-			let threshold = quorum * redundancy_factor;
+			let threshold = quorum * dac_redundancy_factor;
 
 			// Check if each customer/bucket appears in at least `redundant_aggregators_count` nodes
 			for (_id, bucket_per_node_activities) in consistent_bucket_activities {
-				if bucket_per_node_activities.len() < redundancy_factor.into() {
+				if bucket_per_node_activities.len() < dac_redundancy_factor.into() {
 					not_consensus_activities.extend(bucket_per_node_activities);
 				} else if let Some(activity) =
 					Self::reach_consensus(bucket_per_node_activities.clone(), threshold.into())
@@ -3423,7 +3384,7 @@ pub mod pallet {
 		/// - `cluster_id`: cluster id of a cluster
 		/// - `era_id`: era id
 		/// - `node_params`: DAC node parameters
-		fn fetch_nodes_usage_for_era(
+		fn fetch_nodes_aggregates_for_era(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
@@ -3464,7 +3425,7 @@ pub mod pallet {
 		/// - `cluster_id`: cluster id of a cluster
 		/// - `era_id`: era id
 		/// - `node_params`: DAC node parameters
-		pub(crate) fn fetch_customers_usage_for_era(
+		pub(crate) fn fetch_buckets_aggregates_for_era(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
@@ -3883,6 +3844,16 @@ pub mod pallet {
 							cluster_id,
 							era_id,
 							record_id,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::FailedToFetchClusterNodes => {
+						Self::deposit_event(Event::FailedToFetchClusterNodes {
+							validator: caller.clone(),
+						});
+					},
+					OCWError::FailedToFetchDacNodes => {
+						Self::deposit_event(Event::FailedToFetchDacNodes {
 							validator: caller.clone(),
 						});
 					},

@@ -415,7 +415,7 @@ fn test_reach_consensus_exact_threshold() {
 fn test_get_consensus_customers_activity_success() {
 	let cluster_id = ClusterId::from([1; 20]);
 	let era_id = 1;
-	let min_nodes = 3;
+	let redundancy_factor = 3;
 	let threshold = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
@@ -472,7 +472,7 @@ fn test_get_consensus_customers_activity_success() {
 		&cluster_id,
 		era_id,
 		customers_activity,
-		min_nodes,
+		redundancy_factor,
 		threshold,
 	);
 
@@ -484,7 +484,7 @@ fn test_get_consensus_customers_activity_success() {
 fn test_get_consensus_customers_activity_success2() {
 	let cluster_id = ClusterId::from([1; 20]);
 	let era_id = 1;
-	let min_nodes = 3;
+	let redundancy_factor = 3;
 	let threshold = Percent::from_percent(67);
 
 	let host = "example1.com";
@@ -578,7 +578,7 @@ fn test_get_consensus_customers_activity_success2() {
 		&cluster_id,
 		era_id,
 		customers_activity,
-		min_nodes,
+		redundancy_factor,
 		threshold,
 	);
 
@@ -593,7 +593,7 @@ fn test_get_consensus_customers_activity_success2() {
 fn test_get_consensus_nodes_activity_success() {
 	let cluster_id = ClusterId::from([1; 20]);
 	let era_id = 1;
-	let min_nodes = 3;
+	let redundancy_factor = 3;
 	let threshold = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
@@ -648,7 +648,7 @@ fn test_get_consensus_nodes_activity_success() {
 		&cluster_id,
 		era_id,
 		customers_activity,
-		min_nodes,
+		redundancy_factor,
 		threshold,
 	);
 
@@ -659,7 +659,7 @@ fn test_get_consensus_nodes_activity_success() {
 fn test_get_consensus_customers_activity_empty() {
 	let cluster_id = ClusterId::from([1; 20]);
 	let era_id = 1;
-	let min_nodes = 3;
+	let redundancy_factor = 3;
 	let threshold = Percent::from_percent(67);
 
 	let customers_activity = Vec::<BucketActivityPerNode>::new();
@@ -668,7 +668,7 @@ fn test_get_consensus_customers_activity_empty() {
 		&cluster_id,
 		era_id,
 		customers_activity,
-		min_nodes,
+		redundancy_factor,
 		threshold,
 	);
 
@@ -679,7 +679,7 @@ fn test_get_consensus_customers_activity_empty() {
 fn test_get_consensus_customers_activity_not_enough_nodes() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
-	let min_nodes = 3;
+	let redundancy_factor = 3;
 	let threshold = Percent::from_percent(67);
 
 	let host = "example1.com";
@@ -724,7 +724,7 @@ fn test_get_consensus_customers_activity_not_enough_nodes() {
 		&cluster_id1,
 		era_id1,
 		customers_activity,
-		min_nodes,
+		redundancy_factor,
 		threshold,
 	);
 
@@ -735,7 +735,7 @@ fn test_get_consensus_customers_activity_not_enough_nodes() {
 fn test_get_consensus_nodes_activity_not_enough_nodes() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
-	let min_nodes = 3;
+	let redundancy_factor = 3;
 	let threshold = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
@@ -779,7 +779,7 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 		&cluster_id1,
 		era_id1,
 		nodes_activity,
-		min_nodes,
+		redundancy_factor,
 		threshold,
 	);
 
@@ -790,7 +790,7 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 fn test_get_consensus_customers_activity_not_in_consensus() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
-	let min_nodes = 3;
+	let redundancy_factor = 3;
 	let threshold = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
@@ -846,7 +846,7 @@ fn test_get_consensus_customers_activity_not_in_consensus() {
 		&cluster_id1,
 		era_id1,
 		customers_activity,
-		min_nodes,
+		redundancy_factor,
 		threshold,
 	);
 
@@ -857,7 +857,7 @@ fn test_get_consensus_customers_activity_not_in_consensus() {
 fn test_get_consensus_customers_activity_not_in_consensus_2() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
-	let min_nodes = 3;
+	let redundancy_factor = 3;
 	let threshold = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
@@ -949,7 +949,7 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 		&cluster_id1,
 		era_id1,
 		customers_activity,
-		min_nodes,
+		redundancy_factor,
 		threshold,
 	);
 
@@ -960,7 +960,7 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 fn test_get_consensus_customers_activity_diff_errors() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
-	let min_nodes = 3;
+	let redundancy_factor = 3;
 	let threshold = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
@@ -1040,7 +1040,7 @@ fn test_get_consensus_customers_activity_diff_errors() {
 		&cluster_id1,
 		era_id1,
 		customers_activity,
-		min_nodes,
+		redundancy_factor,
 		threshold,
 	);
 
@@ -1052,7 +1052,7 @@ fn test_get_consensus_customers_activity_diff_errors() {
 fn test_get_consensus_nodes_activity_not_in_consensus() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
-	let min_nodes = 3;
+	let redundancy_factor = 3;
 	let threshold = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
@@ -1106,7 +1106,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 		&cluster_id1,
 		era_id1,
 		nodes_activity,
-		min_nodes,
+		redundancy_factor,
 		threshold,
 	);
 
@@ -1226,7 +1226,7 @@ fn test_split_to_batches_non_exact_batches() {
 fn test_get_consensus_nodes_activity_not_in_consensus2() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
-	let min_nodes = 3;
+	let redundancy_factor = 3;
 	let threshold = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
@@ -1328,7 +1328,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 		&cluster_id1,
 		era_id1,
 		nodes_activity,
-		min_nodes,
+		redundancy_factor,
 		threshold,
 	);
 
@@ -1339,7 +1339,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 fn test_get_consensus_nodes_activity_diff_errors() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
-	let min_nodes = 3;
+	let redundancy_factor = 3;
 	let threshold = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
@@ -1428,7 +1428,7 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 		&cluster_id1,
 		era_id1,
 		nodes_activity,
-		min_nodes,
+		redundancy_factor,
 		threshold,
 	);
 
@@ -2315,7 +2315,8 @@ fn test_bucket_node_aggregates() {
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let era_id = 476817;
-		let min_nodes = 3;
+		let redundancy_factor = 3;
+		let aggregators_quorum = Percent::from_percent(67);
 
 		let node_params1 = StorageNodeParams {
 			ssl: false,
@@ -2365,11 +2366,11 @@ fn test_bucket_node_aggregates() {
 		];
 
 		let bucket_aggregates_by_aggregator =
-			DdcVerification::fetch_customers_usage_for_era(&cluster_id, era_id, &dac_nodes)
+			DdcVerification::fetch_buckets_aggregates_for_era(&cluster_id, era_id, &dac_nodes)
 				.unwrap();
 
 		let result =
-			DdcVerification::classify_buckets_sub_aggregates_by_consistency(&cluster_id, era_id, bucket_aggregates_by_aggregator, min_nodes);
+			DdcVerification::classify_buckets_sub_aggregates_by_consistency(&cluster_id, era_id, bucket_aggregates_by_aggregator, redundancy_factor, aggregators_quorum);
 
 
 		// Sub_aggregates which are in consensus
