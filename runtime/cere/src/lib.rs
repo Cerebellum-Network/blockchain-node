@@ -546,7 +546,7 @@ parameter_types! {
 	pub HistoryDepth: u32 = 84;
 	// 16
 	pub const MaxNominations: u32 = <NposSolution16 as frame_election_provider_support::NposSolution>::LIMIT as u32;
-	pub const MaxControllersInDeprecationBatch: u32 = 751; //TODO: Validate
+	pub const MaxControllersInDeprecationBatch: u32 = 751;
 }
 
 pub struct StakingBenchmarkingConfig;
@@ -1045,7 +1045,7 @@ impl pallet_identity::Config for Runtime {
 	type RegistrarOrigin = EitherOf<EnsureRoot<Self::AccountId>, GeneralAdmin>;
 	type OffchainSignature = Signature;
 	type SigningPublicKey = <Signature as Verify>::Signer;
-	type UsernameAuthorityOrigin = EnsureRoot<Self::AccountId>; //TODO: Validate
+	type UsernameAuthorityOrigin = EnsureRoot<Self::AccountId>;
 	type PendingUsernameExpiration = ConstU32<{ 7 * DAYS }>;
 	type MaxSuffixLength = ConstU32<7>;
 	type MaxUsernameLength = ConstU32<32>;
@@ -1389,7 +1389,6 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
-// TODO: Validate this.
 const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX;
 
 /// Runtime migrations

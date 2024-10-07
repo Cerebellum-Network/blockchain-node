@@ -549,7 +549,7 @@ parameter_types! {
 	pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
 	pub OffchainRepeat: BlockNumber = 5;
 	pub const MaxNominations: u32 = <NposSolution16 as frame_election_provider_support::NposSolution>::LIMIT as u32;
-	pub const MaxControllersInDeprecationBatch: u32 = 751; //TODO: Validate
+	pub const MaxControllersInDeprecationBatch: u32 = 751;
 }
 
 pub struct StakingBenchmarkingConfig;
@@ -1386,7 +1386,6 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
-// TODO: Validate this.
 const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX;
 
 /// Runtime migrations
