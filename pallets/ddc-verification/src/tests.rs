@@ -1,6 +1,6 @@
 use ddc_primitives::{
-	ClusterId, MergeActivityHash, NodeData, StorageNodeMode, StorageNodeParams, StorageNodePubKey,
-	KEY_TYPE,
+	AggregatorInfo, ClusterId, MergeActivityHash, StorageNodeMode, StorageNodeParams,
+	StorageNodePubKey, KEY_TYPE,
 };
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{
@@ -14,7 +14,7 @@ use sp_io::TestExternalities;
 use sp_keystore::{testing::MemoryKeystore, Keystore, KeystoreExt};
 use sp_runtime::AccountId32;
 
-use crate::{mock::*, Error, NodeActivity, *};
+use crate::{mock::*, Error, NodeAggregate, *};
 
 #[allow(dead_code)]
 fn register_validators(validators: Vec<AccountId32>) {
@@ -41,36 +41,36 @@ fn get_validators() -> Vec<AccountId32> {
 	vec![validator1, validator2, validator3, validator4, validator5]
 }
 
-fn get_node_activities() -> Vec<NodeActivity> {
-	let node1 = NodeActivity {
+fn get_node_activities() -> Vec<NodeAggregate> {
+	let node1 = NodeAggregate {
 		node_id: "0".to_string(),
 		stored_bytes: -100,
 		transferred_bytes: 50,
 		number_of_puts: 10,
 		number_of_gets: 20,
 	};
-	let node2 = NodeActivity {
+	let node2 = NodeAggregate {
 		node_id: "1".to_string(),
 		stored_bytes: -101,
 		transferred_bytes: 51,
 		number_of_puts: 11,
 		number_of_gets: 21,
 	};
-	let node3 = NodeActivity {
+	let node3 = NodeAggregate {
 		node_id: "2".to_string(),
 		stored_bytes: 102,
 		transferred_bytes: 52,
 		number_of_puts: 12,
 		number_of_gets: 22,
 	};
-	let node4 = NodeActivity {
+	let node4 = NodeAggregate {
 		node_id: "3".to_string(),
 		stored_bytes: 103,
 		transferred_bytes: 53,
 		number_of_puts: 13,
 		number_of_gets: 23,
 	};
-	let node5 = NodeActivity {
+	let node5 = NodeAggregate {
 		node_id: "4".to_string(),
 		stored_bytes: 104,
 		transferred_bytes: 54,
@@ -79,187 +79,187 @@ fn get_node_activities() -> Vec<NodeActivity> {
 	};
 	vec![node1, node2, node3, node4, node5]
 }
-//
-// #[test]
-// fn fetch_node_usage_works() {
-// 	let mut ext = TestExternalities::default();
-// 	let (offchain, offchain_state) = TestOffchainExt::new();
-// 	let (pool, _) = TestTransactionPoolExt::new();
-//
-// 	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
-// 	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
-// 	ext.register_extension(TransactionPoolExt::new(pool));
-//
-// 	ext.execute_with(|| {
-// 		let mut offchain_state = offchain_state.write();
-// 		offchain_state.timestamp = Timestamp::from_unix_millis(0);
-// 		let host = "example.com";
-// 		let port = 80;
-// 		let era_id = 1;
-//
-// 		// Create a sample NodeActivity instance
-// 		let node_activity1 = NodeActivity {
-// 			node_id: "1".to_string(),
-// 			stored_bytes: 100,
-// 			transferred_bytes: 50,
-// 			number_of_puts: 10,
-// 			number_of_gets: 20,
-// 		};
-// 		let node_activity2 = NodeActivity {
-// 			node_id: "2".to_string(),
-// 			stored_bytes: 110,
-// 			transferred_bytes: 510,
-// 			number_of_puts: 110,
-// 			number_of_gets: 210,
-// 		};
-// 		let nodes_activity_json =
-// 			serde_json::to_string(&vec![node_activity1.clone(), node_activity2.clone()]).unwrap();
-//
-// 		// Mock HTTP request and response
-// 		let pending_request = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/nodes?eraId={}", host, port, era_id),
-// 			response: Some(nodes_activity_json.as_bytes().to_vec()),
-// 			sent: true,
-// 			..Default::default()
-// 		};
-// 		offchain_state.expect_request(pending_request);
-// 		drop(offchain_state);
-//
-// 		let era_id = 1;
-// 		let cluster_id = ClusterId::from([1; 20]);
-// 		let node_params = StorageNodeParams {
-// 			ssl: false,
-// 			host: host.as_bytes().to_vec(),
-// 			http_port: port,
-// 			mode: StorageNodeMode::DAC,
-// 			p2p_port: 5555,
-// 			grpc_port: 4444,
-// 			domain: b"example2.com".to_vec(),
-// 		};
-//
-// 		let result = Pallet::<Test>::fetch_node_usage(&cluster_id, era_id, &node_params);
-// 		assert!(result.is_ok());
-// 		let activities = result.unwrap();
-// 		assert_eq!(activities[0].number_of_gets, node_activity1.number_of_gets);
-// 		assert_eq!(activities[0].number_of_puts, node_activity1.number_of_puts);
-// 		assert_eq!(activities[0].transferred_bytes, node_activity1.transferred_bytes);
-// 		assert_eq!(activities[0].stored_bytes, node_activity1.stored_bytes);
-//
-// 		assert_eq!(activities[1].number_of_gets, node_activity2.number_of_gets);
-// 		assert_eq!(activities[1].number_of_puts, node_activity2.number_of_puts);
-// 		assert_eq!(activities[1].transferred_bytes, node_activity2.transferred_bytes);
-// 		assert_eq!(activities[1].stored_bytes, node_activity2.stored_bytes);
-// 	});
-// }
-//
-// #[test]
-// fn fetch_customers_usage_works() {
-// 	let mut ext = TestExternalities::default();
-// 	let (offchain, offchain_state) = TestOffchainExt::new();
-// 	let (pool, _) = TestTransactionPoolExt::new();
-//
-// 	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
-// 	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
-// 	ext.register_extension(TransactionPoolExt::new(pool));
-//
-// 	ext.execute_with(|| {
-// 		let mut offchain_state = offchain_state.write();
-// 		offchain_state.timestamp = Timestamp::from_unix_millis(0);
-// 		let host = "example.com";
-// 		let port = 80;
-// 		let era_id = 1;
-//
-// 		// Create a sample NodeActivity instance
-// 		let customer_activity1 = CustomerActivity {
-// 			bucket_id: 111,
-// 			sub_aggregates: vec![BucketSubAggregate {
-// 				NodeID: "1".to_string(),
-// 				stored_bytes: 100,
-// 				transferred_bytes: 50,
-// 				number_of_puts: 10,
-// 				number_of_gets: 20,
-// 			}],
-// 		};
-// 		let customer_activity2 = CustomerActivity {
-// 			bucket_id: 222,
-// 			sub_aggregates: vec![BucketSubAggregate {
-// 				NodeID: "1".to_string(),
-// 				stored_bytes: 1000,
-// 				transferred_bytes: 500,
-// 				number_of_puts: 100,
-// 				number_of_gets: 200,
-// 			}],
-// 		};
-// 		let customers_activity_json =
-// 			serde_json::to_string(&vec![customer_activity1.clone(), customer_activity2.clone()])
-// 				.unwrap();
-//
-// 		// Mock HTTP request and response
-// 		let pending_request = PendingRequest {
-// 			method: "GET".to_string(),
-// 			uri: format!("http://{}:{}/activity/buckets?eraId={}", host, port, era_id),
-// 			response: Some(customers_activity_json.as_bytes().to_vec()),
-// 			sent: true,
-// 			..Default::default()
-// 		};
-// 		offchain_state.expect_request(pending_request);
-// 		drop(offchain_state);
-//
-// 		let era_id = 1;
-// 		let cluster_id = ClusterId::from([1; 20]);
-// 		let node_params = StorageNodeParams {
-// 			ssl: false,
-// 			host: host.as_bytes().to_vec(),
-// 			http_port: port,
-// 			mode: StorageNodeMode::DAC,
-// 			p2p_port: 5555,
-// 			grpc_port: 4444,
-// 			domain: b"example2.com".to_vec(),
-// 		};
-//
-// 		let result = Pallet::<Test>::fetch_customers_usage(&cluster_id, era_id, &node_params);
-// 		assert!(result.is_ok());
-// 		let activities = result.unwrap();
-// 		assert_eq!(
-// 			activities[0].sub_aggregates[0].number_of_gets,
-// 			customer_activity1.sub_aggregates[0].number_of_gets
-// 		);
-// 		assert_eq!(
-// 			activities[0].sub_aggregates[0].number_of_puts,
-// 			customer_activity1.sub_aggregates[0].number_of_puts
-// 		);
-// 		assert_eq!(
-// 			activities[0].sub_aggregates[0].transferred_bytes,
-// 			customer_activity1.sub_aggregates[0].transferred_bytes
-// 		);
-// 		assert_eq!(
-// 			activities[0].sub_aggregates[0].stored_bytes,
-// 			customer_activity1.sub_aggregates[0].stored_bytes
-// 		);
-//
-// 		assert_eq!(
-// 			activities[1].sub_aggregates[0].number_of_gets,
-// 			customer_activity2.sub_aggregates[0].number_of_gets
-// 		);
-// 		assert_eq!(
-// 			activities[1].sub_aggregates[0].number_of_puts,
-// 			customer_activity2.sub_aggregates[0].number_of_puts
-// 		);
-// 		assert_eq!(
-// 			activities[1].sub_aggregates[0].transferred_bytes,
-// 			customer_activity2.sub_aggregates[0].transferred_bytes
-// 		);
-// 		assert_eq!(
-// 			activities[1].sub_aggregates[0].stored_bytes,
-// 			customer_activity2.sub_aggregates[0].stored_bytes
-// 		);
-// 	});
-// }
+
+#[test]
+fn fetch_node_usage_works() {
+	let mut ext = TestExternalities::default();
+	let (offchain, offchain_state) = TestOffchainExt::new();
+	let (pool, _) = TestTransactionPoolExt::new();
+
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	ext.execute_with(|| {
+		let mut offchain_state = offchain_state.write();
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host = "example.com";
+		let port = 80;
+		let era_id = 1;
+
+		// Create a sample NodeAggregate instance
+		let node_activity1 = NodeAggregate {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		};
+		let node_activity2 = NodeAggregate {
+			node_id: "2".to_string(),
+			stored_bytes: 110,
+			transferred_bytes: 510,
+			number_of_puts: 110,
+			number_of_gets: 210,
+		};
+		let nodes_activity_json =
+			serde_json::to_string(&vec![node_activity1.clone(), node_activity2.clone()]).unwrap();
+
+		// Mock HTTP request and response
+		let pending_request = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId={}", host, port, era_id),
+			response: Some(nodes_activity_json.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		offchain_state.expect_request(pending_request);
+		drop(offchain_state);
+
+		let era_id = 1;
+		let cluster_id = ClusterId::from([1; 20]);
+		let node_params = StorageNodeParams {
+			ssl: false,
+			host: host.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		};
+
+		let result = Pallet::<Test>::fetch_node_usage(&cluster_id, era_id, &node_params);
+		assert!(result.is_ok());
+		let activities = result.unwrap();
+		assert_eq!(activities[0].number_of_gets, node_activity1.number_of_gets);
+		assert_eq!(activities[0].number_of_puts, node_activity1.number_of_puts);
+		assert_eq!(activities[0].transferred_bytes, node_activity1.transferred_bytes);
+		assert_eq!(activities[0].stored_bytes, node_activity1.stored_bytes);
+
+		assert_eq!(activities[1].number_of_gets, node_activity2.number_of_gets);
+		assert_eq!(activities[1].number_of_puts, node_activity2.number_of_puts);
+		assert_eq!(activities[1].transferred_bytes, node_activity2.transferred_bytes);
+		assert_eq!(activities[1].stored_bytes, node_activity2.stored_bytes);
+	});
+}
+
+#[test]
+fn fetch_customers_usage_works() {
+	let mut ext = TestExternalities::default();
+	let (offchain, offchain_state) = TestOffchainExt::new();
+	let (pool, _) = TestTransactionPoolExt::new();
+
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	ext.execute_with(|| {
+		let mut offchain_state = offchain_state.write();
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host = "example.com";
+		let port = 80;
+		let era_id = 1;
+
+		// Create a sample NodeAggregate instance
+		let customer_activity1 = BucketAggregate {
+			bucket_id: 111,
+			sub_aggregates: vec![BucketSubAggregate {
+				NodeID: "1".to_string(),
+				stored_bytes: 100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
+			}],
+		};
+		let customer_activity2 = BucketAggregate {
+			bucket_id: 222,
+			sub_aggregates: vec![BucketSubAggregate {
+				NodeID: "1".to_string(),
+				stored_bytes: 1000,
+				transferred_bytes: 500,
+				number_of_puts: 100,
+				number_of_gets: 200,
+			}],
+		};
+		let customers_activity_json =
+			serde_json::to_string(&vec![customer_activity1.clone(), customer_activity2.clone()])
+				.unwrap();
+
+		// Mock HTTP request and response
+		let pending_request = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId={}", host, port, era_id),
+			response: Some(customers_activity_json.as_bytes().to_vec()),
+			sent: true,
+			..Default::default()
+		};
+		offchain_state.expect_request(pending_request);
+		drop(offchain_state);
+
+		let era_id = 1;
+		let cluster_id = ClusterId::from([1; 20]);
+		let node_params = StorageNodeParams {
+			ssl: false,
+			host: host.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		};
+
+		let result = Pallet::<Test>::fetch_customers_usage(&cluster_id, era_id, &node_params);
+		assert!(result.is_ok());
+		let activities = result.unwrap();
+		assert_eq!(
+			activities[0].sub_aggregates[0].number_of_gets,
+			customer_activity1.sub_aggregates[0].number_of_gets
+		);
+		assert_eq!(
+			activities[0].sub_aggregates[0].number_of_puts,
+			customer_activity1.sub_aggregates[0].number_of_puts
+		);
+		assert_eq!(
+			activities[0].sub_aggregates[0].transferred_bytes,
+			customer_activity1.sub_aggregates[0].transferred_bytes
+		);
+		assert_eq!(
+			activities[0].sub_aggregates[0].stored_bytes,
+			customer_activity1.sub_aggregates[0].stored_bytes
+		);
+
+		assert_eq!(
+			activities[1].sub_aggregates[0].number_of_gets,
+			customer_activity2.sub_aggregates[0].number_of_gets
+		);
+		assert_eq!(
+			activities[1].sub_aggregates[0].number_of_puts,
+			customer_activity2.sub_aggregates[0].number_of_puts
+		);
+		assert_eq!(
+			activities[1].sub_aggregates[0].transferred_bytes,
+			customer_activity2.sub_aggregates[0].transferred_bytes
+		);
+		assert_eq!(
+			activities[1].sub_aggregates[0].stored_bytes,
+			customer_activity2.sub_aggregates[0].stored_bytes
+		);
+	});
+}
 
 #[test]
 fn test_reach_consensus_empty() {
-	let activities: Vec<CustomerActivity> = Vec::new();
+	let activities: Vec<BucketAggregate> = Vec::new();
 	let result = DdcVerification::reach_consensus(activities, 3);
 	assert!(result.is_none());
 }
@@ -267,7 +267,7 @@ fn test_reach_consensus_empty() {
 #[test]
 fn test_reach_consensus_success() {
 	let activities = vec![
-		CustomerActivity {
+		BucketAggregate {
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregate {
 				NodeID: "1".to_string(),
@@ -277,7 +277,7 @@ fn test_reach_consensus_success() {
 				number_of_gets: 20,
 			}],
 		},
-		CustomerActivity {
+		BucketAggregate {
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregate {
 				NodeID: "1".to_string(),
@@ -287,7 +287,7 @@ fn test_reach_consensus_success() {
 				number_of_gets: 20,
 			}],
 		},
-		CustomerActivity {
+		BucketAggregate {
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregate {
 				NodeID: "1".to_string(),
@@ -306,7 +306,7 @@ fn test_reach_consensus_success() {
 #[test]
 fn test_reach_consensus_failure() {
 	let activities = vec![
-		CustomerActivity {
+		BucketAggregate {
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregate {
 				NodeID: "1".to_string(),
@@ -316,7 +316,7 @@ fn test_reach_consensus_failure() {
 				number_of_gets: 20,
 			}],
 		},
-		CustomerActivity {
+		BucketAggregate {
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregate {
 				NodeID: "1".to_string(),
@@ -326,7 +326,7 @@ fn test_reach_consensus_failure() {
 				number_of_gets: 40,
 			}],
 		},
-		CustomerActivity {
+		BucketAggregate {
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregate {
 				NodeID: "1".to_string(),
@@ -344,7 +344,7 @@ fn test_reach_consensus_failure() {
 #[test]
 fn test_reach_consensus_threshold() {
 	let activities = vec![
-		CustomerActivity {
+		BucketAggregate {
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregate {
 				NodeID: "1".to_string(),
@@ -354,7 +354,7 @@ fn test_reach_consensus_threshold() {
 				number_of_gets: 20,
 			}],
 		},
-		CustomerActivity {
+		BucketAggregate {
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregate {
 				NodeID: "1".to_string(),
@@ -364,7 +364,7 @@ fn test_reach_consensus_threshold() {
 				number_of_gets: 20,
 			}],
 		},
-		CustomerActivity {
+		BucketAggregate {
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregate {
 				NodeID: "1".to_string(),
@@ -386,7 +386,7 @@ fn test_reach_consensus_threshold() {
 #[test]
 fn test_reach_consensus_exact_threshold() {
 	let activities = vec![
-		CustomerActivity {
+		BucketAggregate {
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregate {
 				NodeID: "1".to_string(),
@@ -396,7 +396,7 @@ fn test_reach_consensus_exact_threshold() {
 				number_of_gets: 20,
 			}],
 		},
-		CustomerActivity {
+		BucketAggregate {
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregate {
 				NodeID: "1".to_string(),
@@ -430,45 +430,45 @@ fn test_get_consensus_customers_activity_success() {
 	};
 
 	let customers_activity = vec![
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_node_aggregates(
+	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
 		&cluster_id,
 		era_id,
 		customers_activity,
@@ -500,81 +500,81 @@ fn test_get_consensus_customers_activity_success2() {
 	};
 
 	let customers_activity = vec![
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 2,
 			node_id: "2".to_string(),
 			stored_bytes: 110,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 2,
 			node_id: "2".to_string(),
 			stored_bytes: 110,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 2,
 			node_id: "2".to_string(),
 			stored_bytes: 110,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_node_aggregates(
+	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
 		&cluster_id,
 		era_id,
 		customers_activity,
@@ -613,8 +613,8 @@ fn test_get_consensus_nodes_activity_success() {
 
 	let customers_activity = vec![
 		(
-			NodeData { node_pub_key: node_pubkey_0, node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo { node_pub_key: node_pubkey_0, node_params: node_params.clone() },
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -623,8 +623,8 @@ fn test_get_consensus_nodes_activity_success() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_1, node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo { node_pub_key: node_pubkey_1, node_params: node_params.clone() },
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -633,8 +633,8 @@ fn test_get_consensus_nodes_activity_success() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_2, node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo { node_pub_key: node_pubkey_2, node_params: node_params.clone() },
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -644,7 +644,7 @@ fn test_get_consensus_nodes_activity_success() {
 		),
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_activities(
+	let consensus_activities = DdcVerification::classify_nodes_aggregates_by_consistency(
 		&cluster_id,
 		era_id,
 		customers_activity,
@@ -662,9 +662,9 @@ fn test_get_consensus_customers_activity_empty() {
 	let min_nodes = 3;
 	let threshold = Percent::from_percent(67);
 
-	let customers_activity = Vec::<BucketNodeAggregatesActivity>::new();
+	let customers_activity = Vec::<BucketActivityPerNode>::new();
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_node_aggregates(
+	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
 		&cluster_id,
 		era_id,
 		customers_activity,
@@ -694,33 +694,33 @@ fn test_get_consensus_customers_activity_not_enough_nodes() {
 		domain: b"example2.com".to_vec(),
 	};
 	let customers_activity = vec![
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_node_aggregates(
+	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
 		&cluster_id1,
 		era_id1,
 		customers_activity,
@@ -754,8 +754,8 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 
 	let nodes_activity = vec![
 		(
-			NodeData { node_pub_key: node_pubkey_0, node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo { node_pub_key: node_pubkey_0, node_params: node_params.clone() },
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -764,8 +764,8 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_1, node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo { node_pub_key: node_pubkey_1, node_params: node_params.clone() },
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -775,7 +775,7 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 		),
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_activities(
+	let consensus_activities = DdcVerification::classify_nodes_aggregates_by_consistency(
 		&cluster_id1,
 		era_id1,
 		nodes_activity,
@@ -804,45 +804,45 @@ fn test_get_consensus_customers_activity_not_in_consensus() {
 		domain: b"example2.com".to_vec(),
 	};
 	let customers_activity = vec![
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 200,
 			transferred_bytes: 100,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 300,
 			transferred_bytes: 150,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_node_aggregates(
+	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
 		&cluster_id1,
 		era_id1,
 		customers_activity,
@@ -871,81 +871,81 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 		domain: b"example2.com".to_vec(),
 	};
 	let customers_activity = vec![
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 200,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 300,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 2,
 			node_id: "2".to_string(),
 			stored_bytes: 110,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 2,
 			node_id: "2".to_string(),
 			stored_bytes: 210,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 2,
 			node_id: "2".to_string(),
 			stored_bytes: 310,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_node_aggregates(
+	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
 		&cluster_id1,
 		era_id1,
 		customers_activity,
@@ -974,69 +974,69 @@ fn test_get_consensus_customers_activity_diff_errors() {
 		domain: b"example2.com".to_vec(),
 	};
 	let customers_activity = vec![
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 200,
 			transferred_bytes: 100,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 300,
 			transferred_bytes: 150,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 2,
 			node_id: "2".to_string(),
 			stored_bytes: 110,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
-		BucketNodeAggregatesActivity {
+		BucketActivityPerNode {
 			bucket_id: 2,
 			node_id: "2".to_string(),
 			stored_bytes: 210,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
-			aggregator: NodeData {
+			aggregator: AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 				node_params: node_params.clone(),
 			},
 		},
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_node_aggregates(
+	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
 		&cluster_id1,
 		era_id1,
 		customers_activity,
@@ -1071,8 +1071,8 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 
 	let nodes_activity = vec![
 		(
-			NodeData { node_pub_key: node_pubkey_0, node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo { node_pub_key: node_pubkey_0, node_params: node_params.clone() },
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -1081,8 +1081,8 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_1, node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo { node_pub_key: node_pubkey_1, node_params: node_params.clone() },
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
@@ -1091,8 +1091,8 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_2, node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo { node_pub_key: node_pubkey_2, node_params: node_params.clone() },
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 300,
 				transferred_bytes: 150,
@@ -1102,7 +1102,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 		),
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_activities(
+	let consensus_activities = DdcVerification::classify_nodes_aggregates_by_consistency(
 		&cluster_id1,
 		era_id1,
 		nodes_activity,
@@ -1152,7 +1152,7 @@ fn test_convert_to_batch_merkle_roots_empty() {
 	let result_roots = DdcVerification::convert_to_batch_merkle_roots(
 		&cluster_id,
 		era_id_1,
-		Vec::<Vec<NodeActivity>>::new(),
+		Vec::<Vec<NodeAggregate>>::new(),
 	)
 	.unwrap();
 	let expected_roots: Vec<ActivityHash> = Vec::<ActivityHash>::new();
@@ -1162,9 +1162,9 @@ fn test_convert_to_batch_merkle_roots_empty() {
 
 #[test]
 fn test_split_to_batches_empty_activities() {
-	let activities: Vec<NodeActivity> = vec![];
+	let activities: Vec<NodeAggregate> = vec![];
 	let result = DdcVerification::split_to_batches(&activities, 3);
-	assert_eq!(result, Vec::<Vec<NodeActivity>>::new());
+	assert_eq!(result, Vec::<Vec<NodeAggregate>>::new());
 }
 
 #[test]
@@ -1214,7 +1214,7 @@ fn test_split_to_batches_non_exact_batches() {
 	];
 	sorted_activities.sort();
 	let result = DdcVerification::split_to_batches(&activities, 2);
-	let mut expected: Vec<Vec<NodeActivity>> = Vec::new();
+	let mut expected: Vec<Vec<NodeAggregate>> = Vec::new();
 	expected.push(vec![sorted_activities[0].clone(), sorted_activities[1].clone()]);
 	expected.push(vec![sorted_activities[2].clone(), sorted_activities[3].clone()]);
 	expected.push(vec![sorted_activities[4].clone()]);
@@ -1245,8 +1245,11 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 
 	let nodes_activity = vec![
 		(
-			NodeData { node_pub_key: node_pubkey_0.clone(), node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo {
+				node_pub_key: node_pubkey_0.clone(),
+				node_params: node_params.clone(),
+			},
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -1255,8 +1258,11 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_1.clone(), node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo {
+				node_pub_key: node_pubkey_1.clone(),
+				node_params: node_params.clone(),
+			},
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
@@ -1265,8 +1271,11 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_2.clone(), node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo {
+				node_pub_key: node_pubkey_2.clone(),
+				node_params: node_params.clone(),
+			},
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 300,
 				transferred_bytes: 150,
@@ -1275,8 +1284,11 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_0.clone(), node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo {
+				node_pub_key: node_pubkey_0.clone(),
+				node_params: node_params.clone(),
+			},
+			vec![NodeAggregate {
 				node_id: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -1285,8 +1297,11 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_1.clone(), node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo {
+				node_pub_key: node_pubkey_1.clone(),
+				node_params: node_params.clone(),
+			},
+			vec![NodeAggregate {
 				node_id: "1".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
@@ -1295,8 +1310,11 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_2.clone(), node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo {
+				node_pub_key: node_pubkey_2.clone(),
+				node_params: node_params.clone(),
+			},
+			vec![NodeAggregate {
 				node_id: "1".to_string(),
 				stored_bytes: 300,
 				transferred_bytes: 150,
@@ -1306,7 +1324,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 		),
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_activities(
+	let consensus_activities = DdcVerification::classify_nodes_aggregates_by_consistency(
 		&cluster_id1,
 		era_id1,
 		nodes_activity,
@@ -1340,8 +1358,11 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 
 	let nodes_activity = vec![
 		(
-			NodeData { node_pub_key: node_pubkey_0.clone(), node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo {
+				node_pub_key: node_pubkey_0.clone(),
+				node_params: node_params.clone(),
+			},
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -1350,8 +1371,11 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_1.clone(), node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo {
+				node_pub_key: node_pubkey_1.clone(),
+				node_params: node_params.clone(),
+			},
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
@@ -1360,8 +1384,11 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_2.clone(), node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo {
+				node_pub_key: node_pubkey_2.clone(),
+				node_params: node_params.clone(),
+			},
+			vec![NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: 300,
 				transferred_bytes: 150,
@@ -1370,8 +1397,11 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_0.clone(), node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo {
+				node_pub_key: node_pubkey_0.clone(),
+				node_params: node_params.clone(),
+			},
+			vec![NodeAggregate {
 				node_id: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -1380,8 +1410,11 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 			}],
 		),
 		(
-			NodeData { node_pub_key: node_pubkey_1.clone(), node_params: node_params.clone() },
-			vec![NodeActivity {
+			AggregatorInfo {
+				node_pub_key: node_pubkey_1.clone(),
+				node_params: node_params.clone(),
+			},
+			vec![NodeAggregate {
 				node_id: "1".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 100,
@@ -1391,7 +1424,7 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 		),
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_activities(
+	let consensus_activities = DdcVerification::classify_nodes_aggregates_by_consistency(
 		&cluster_id1,
 		era_id1,
 		nodes_activity,
@@ -2106,10 +2139,76 @@ fn fetch_reward_activities_works() {
 	let era_id = 1;
 	let total_usage: i64 = 56;
 
+	let node_params = StorageNodeParams {
+		ssl: false,
+		host: "178.251.228.236".as_bytes().to_vec(),
+		http_port: 8080,
+		mode: StorageNodeMode::DAC,
+		p2p_port: 5555,
+		grpc_port: 4444,
+		domain: b"example.com".to_vec(),
+	};
+
 	let result = DdcVerification::fetch_reward_activities(
 		&cluster_id,
 		era_id,
-		get_node_activities(),
+		vec![
+			NodeActivity {
+				node_id: "0".to_string(),
+				stored_bytes: -100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
+				aggregator: AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params.clone(),
+				},
+			},
+			NodeActivity {
+				node_id: "1".to_string(),
+				stored_bytes: -101,
+				transferred_bytes: 51,
+				number_of_puts: 11,
+				number_of_gets: 21,
+				aggregator: AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params.clone(),
+				},
+			},
+			NodeActivity {
+				node_id: "2".to_string(),
+				stored_bytes: 102,
+				transferred_bytes: 52,
+				number_of_puts: 12,
+				number_of_gets: 22,
+				aggregator: AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params.clone(),
+				},
+			},
+			NodeActivity {
+				node_id: "3".to_string(),
+				stored_bytes: 103,
+				transferred_bytes: 53,
+				number_of_puts: 13,
+				number_of_gets: 23,
+				aggregator: AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params.clone(),
+				},
+			},
+			NodeActivity {
+				node_id: "4".to_string(),
+				stored_bytes: 104,
+				transferred_bytes: 54,
+				number_of_puts: 14,
+				number_of_gets: 24,
+				aggregator: AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params.clone(),
+				},
+			},
+		],
 		leaves.to_vec(),
 		total_usage,
 	);
@@ -2265,19 +2364,18 @@ fn test_bucket_node_aggregates() {
 			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4),
 		];
 
-		let customers_usage =
+		let bucket_aggregates_by_aggregator =
 			DdcVerification::fetch_customers_usage_for_era(&cluster_id, era_id, &dac_nodes)
 				.unwrap();
 
 		let result =
-			DdcVerification::fetch_sub_trees(&cluster_id, era_id, customers_usage, min_nodes);
-
+			DdcVerification::classify_buckets_sub_aggregates_by_consistency(&cluster_id, era_id, bucket_aggregates_by_aggregator, min_nodes);
 
 
 		// Sub_aggregates which are in consensus
 		assert_eq!(
 			result.clone().0,
-			[BucketNodeAggregatesActivity {
+			[BucketActivityPerNode {
 				bucket_id: 90235,
 				node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318"
 					.to_string(),
@@ -2285,7 +2383,7 @@ fn test_bucket_node_aggregates() {
 				transferred_bytes: 578,
 				number_of_puts: 2,
 				number_of_gets: 0,
-				aggregator: NodeData {
+				aggregator: AggregatorInfo {
 					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
 					node_params: node_params1.clone(),
 				},
@@ -2295,7 +2393,7 @@ fn test_bucket_node_aggregates() {
 		assert_eq!(
 			result.1,
 			[
-				BucketNodeAggregatesActivity {
+				BucketActivityPerNode {
 					bucket_id: 90235,
 					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
 						.to_string(),
@@ -2303,12 +2401,12 @@ fn test_bucket_node_aggregates() {
 					transferred_bytes: 505,
 					number_of_puts: 0,
 					number_of_gets: 1,
-					aggregator: NodeData {
+					aggregator: AggregatorInfo {
 						node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
 						node_params: node_params1.clone(),
 					},
 				},
-				BucketNodeAggregatesActivity {
+				BucketActivityPerNode {
 					bucket_id: 90235,
 					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
 						.to_string(),
@@ -2316,12 +2414,12 @@ fn test_bucket_node_aggregates() {
 					transferred_bytes: 505,
 					number_of_puts: 0,
 					number_of_gets: 1,
-					aggregator: NodeData {
+					aggregator: AggregatorInfo {
 						node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
 						node_params: node_params3.clone(),
 					},
 				},
-				BucketNodeAggregatesActivity {
+				BucketActivityPerNode {
 					bucket_id: 90235,
 					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
 						.to_string(),
@@ -2329,7 +2427,7 @@ fn test_bucket_node_aggregates() {
 					transferred_bytes: 506,
 					number_of_puts: 0,
 					number_of_gets: 1,
-					aggregator: NodeData {
+					aggregator: AggregatorInfo {
 						node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
 						node_params: node_params2.clone(),
 					},
@@ -2362,8 +2460,8 @@ fn test_find_random_merkle_node_ids() {
 	};
 
 	ext.execute_with(|| {
-		let bucket_node_aggregates_not_in_consensus: BucketNodeAggregatesActivity =
-			BucketNodeAggregatesActivity {
+		let bucket_node_aggregates_not_in_consensus: BucketActivityPerNode =
+			BucketActivityPerNode {
 				bucket_id: 90235,
 				node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
 					.to_string(),
@@ -2371,7 +2469,7 @@ fn test_find_random_merkle_node_ids() {
 				transferred_bytes: 505,
 				number_of_puts: 12,
 				number_of_gets: 13,
-				aggregator: NodeData {
+				aggregator: AggregatorInfo {
 					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 					node_params: node_params1.clone(),
 				},
@@ -2468,8 +2566,8 @@ fn test_challenge_sub_aggregates_not_in_consensus() {
 			grpc_port: 4444,
 			domain: b"example2.com".to_vec(),
 		};
-		let bucket_node_aggregates_not_in_consensus: Vec<BucketNodeAggregatesActivity> =
-			vec![BucketNodeAggregatesActivity {
+		let bucket_node_aggregates_not_in_consensus: Vec<BucketActivityPerNode> =
+			vec![BucketActivityPerNode {
 				bucket_id: 123229,
 				node_id: "0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72"
 					.to_string(),
@@ -2477,7 +2575,7 @@ fn test_challenge_sub_aggregates_not_in_consensus() {
 				transferred_bytes: 25143977,
 				number_of_puts: 0,
 				number_of_gets: 10,
-				aggregator: NodeData {
+				aggregator: AggregatorInfo {
 					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
 					node_params: node_params1.clone(),
 				},
