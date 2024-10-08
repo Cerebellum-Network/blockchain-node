@@ -13,7 +13,7 @@ use futures::prelude::*;
 use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_babe::SlotProportion;
 pub use sc_executor::NativeExecutionDispatch;
-use sc_network::{Event, NetworkEventStream};
+use sc_network::{service::traits::NetworkService, Event, NetworkBackend, NetworkEventStream};
 use sc_service::{
 	error::Error as ServiceError, Configuration, KeystoreContainer, RpcHandlers, TaskManager,
 };
@@ -275,13 +275,13 @@ where
 	})
 }
 
-pub fn build_full(
+pub fn build_full<N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
 ) -> Result<NewFull<Client>, ServiceError> {
 	#[cfg(feature = "cere-dev-native")]
 	if config.chain_spec.is_cere_dev() {
-		return new_full::<cere_dev_runtime::RuntimeApi, CereDevExecutorDispatch>(
+		return new_full::<cere_dev_runtime::RuntimeApi, CereDevExecutorDispatch, N>(
 			config,
 			disable_hardware_benchmarks,
 			|_, _| (),
@@ -291,7 +291,7 @@ pub fn build_full(
 
 	#[cfg(feature = "cere-native")]
 	{
-		new_full::<cere_runtime::RuntimeApi, CereExecutorDispatch>(
+		new_full::<cere_runtime::RuntimeApi, CereExecutorDispatch, N>(
 			config,
 			disable_hardware_benchmarks,
 			|_, _| (),
@@ -306,7 +306,7 @@ pub fn build_full(
 pub struct NewFull<C> {
 	pub task_manager: TaskManager,
 	pub client: C,
-	pub network: Arc<sc_network::NetworkService<Block, <Block as BlockT>::Hash>>,
+	pub network: Arc<dyn NetworkService>,
 	pub rpc_handlers: RpcHandlers,
 	pub backend: Arc<FullBackend>,
 }
@@ -324,7 +324,7 @@ impl<C> NewFull<C> {
 	}
 }
 
-pub fn new_full<RuntimeApi, ExecutorDispatch>(
+pub fn new_full<RuntimeApi, ExecutorDispatch, N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
 	with_startup_data: impl FnOnce(
@@ -371,14 +371,24 @@ where
 	let shared_voter_state = rpc_setup;
 	let auth_disc_publish_non_global_ips = config.network.allow_non_globals_in_dht;
 
-	let mut net_config = sc_network::config::FullNetworkConfiguration::new(&config.network);
+	let mut net_config = sc_network::config::FullNetworkConfiguration::<
+		Block,
+		<Block as sp_runtime::traits::Block>::Hash,
+		N,
+	>::new(&config.network);
+	let metrics = N::register_notification_metrics(config.prometheus_registry());
+	let peer_store_handle = net_config.peer_store_handle();
 
 	let grandpa_protocol_name = sc_consensus_grandpa::protocol_standard_name(
 		&client.block_hash(0).ok().flatten().expect("Genesis block exists; qed"),
 		&config.chain_spec,
 	);
 	let (grandpa_protocol_config, grandpa_notification_service) =
-		sc_consensus_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone());
+		sc_consensus_grandpa::grandpa_peers_set_config::<_, N>(
+			grandpa_protocol_name.clone(),
+			metrics.clone(),
+			peer_store_handle,
+		);
 	net_config.add_notification_protocol(grandpa_protocol_config);
 
 	let warp_sync = Arc::new(sc_consensus_grandpa::warp_proof::NetworkProvider::new(
@@ -398,6 +408,7 @@ where
 			block_announce_validator_builder: None,
 			warp_sync_params: Some(WarpSyncParams::WithProvider(warp_sync)),
 			block_relay: None,
+			metrics,
 		})?;
 
 	if config.offchain_worker.enabled {
@@ -412,7 +423,7 @@ where
 				transaction_pool: Some(OffchainTransactionPoolFactory::new(
 					transaction_pool.clone(),
 				)),
-				network_provider: network.clone(),
+				network_provider: Arc::new(network.clone()),
 				enable_http_requests: true,
 				custom_extensions: |_| vec![],
 			})
@@ -534,7 +545,7 @@ where
 					..Default::default()
 				},
 				client.clone(),
-				network.clone(),
+				Arc::new(network.clone()),
 				Box::pin(dht_event_stream),
 				authority_discovery_role,
 				prometheus_registry.clone(),
@@ -660,9 +671,9 @@ pub trait IdentifyVariant {
 
 impl IdentifyVariant for Box<dyn sc_service::ChainSpec> {
 	fn is_cere(&self) -> bool {
-		self.id().starts_with("cere_mainnet") ||
-			self.id().starts_with("cere_qanet") ||
-			self.id().starts_with("cere_testnet")
+		self.id().starts_with("cere_mainnet")
+			|| self.id().starts_with("cere_qanet")
+			|| self.id().starts_with("cere_testnet")
 	}
 	fn is_cere_dev(&self) -> bool {
 		// Works for "cere-devnet" and "dev" arms in the load_spec(...) call.

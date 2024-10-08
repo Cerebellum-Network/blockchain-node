@@ -1012,6 +1012,7 @@ dependencies = [
  "frame-benchmarking-cli",
  "sc-cli",
  "sc-executor",
+ "sc-network",
  "sc-service",
  "sp-io",
  "sp-runtime",
