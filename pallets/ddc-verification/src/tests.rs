@@ -574,11 +574,11 @@ fn test_get_consensus_customers_activity_success() {
 		},
 	];
 
-	let consensus_activities =
-		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
+	let groups =
+		DdcVerification::group_by_consistency(customers_activity, redundancy_factor, quorum);
 
-	assert_eq!(consensus_activities.0.len(), 1);
-	assert_eq!(consensus_activities.0[0].stored_bytes, 100);
+	assert_eq!(groups.in_consensus.len(), 1);
+	assert_eq!(groups.in_consensus[0].stored_bytes, 100);
 }
 
 #[test]
@@ -673,14 +673,14 @@ fn test_get_consensus_customers_activity_success2() {
 		},
 	];
 
-	let consensus_activities =
-		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
+	let groups =
+		DdcVerification::group_by_consistency(customers_activity, redundancy_factor, quorum);
 
-	assert_eq!(consensus_activities.0.len(), 2);
-	assert_eq!(consensus_activities.0[1].stored_bytes, 110);
-	assert_eq!(consensus_activities.0[1].bucket_id, 2);
-	assert_eq!(consensus_activities.0[0].stored_bytes, 100);
-	assert_eq!(consensus_activities.0[0].bucket_id, 1);
+	assert_eq!(groups.in_consensus.len(), 2);
+	assert_eq!(groups.in_consensus[1].stored_bytes, 110);
+	assert_eq!(groups.in_consensus[1].bucket_id, 2);
+	assert_eq!(groups.in_consensus[0].stored_bytes, 100);
+	assert_eq!(groups.in_consensus[0].bucket_id, 1);
 }
 
 #[test]
@@ -738,7 +738,7 @@ fn test_get_consensus_nodes_activity_success() {
 		),
 	];
 
-	let consensus_activities = DdcVerification::classify_nodes_aggregates_by_consistency(
+	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
 		&cluster_id,
 		era_id,
 		customers_activity,
@@ -746,8 +746,8 @@ fn test_get_consensus_nodes_activity_success() {
 		quorum,
 	);
 
-	assert_eq!(consensus_activities.0.len(), 1);
-	assert_eq!(consensus_activities.0[0].stored_bytes, 100);
+	assert_eq!(groups.in_consensus.len(), 1);
+	assert_eq!(groups.in_consensus[0].stored_bytes, 100);
 }
 #[test]
 fn test_get_consensus_customers_activity_empty() {
@@ -756,10 +756,10 @@ fn test_get_consensus_customers_activity_empty() {
 
 	let customers_activity = Vec::<BucketSubAggregate>::new();
 
-	let consensus_activities =
-		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
+	let groups =
+		DdcVerification::group_by_consistency(customers_activity, redundancy_factor, quorum);
 
-	assert_eq!(consensus_activities.0.len(), 0);
+	assert_eq!(groups.in_consensus.len(), 0);
 }
 
 #[test]
@@ -805,10 +805,10 @@ fn test_get_consensus_customers_activity_not_enough_nodes() {
 		},
 	];
 
-	let consensus_activities =
-		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
+	let groups =
+		DdcVerification::group_by_consistency(customers_activity, redundancy_factor, quorum);
 
-	assert_eq!(consensus_activities.1.len(), 2);
+	assert_eq!(groups.others.len(), 2);
 }
 
 #[test]
@@ -855,7 +855,7 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 		),
 	];
 
-	let consensus_activities = DdcVerification::classify_nodes_aggregates_by_consistency(
+	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
 		&cluster_id1,
 		era_id1,
 		nodes_activity,
@@ -863,7 +863,7 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 		quorum,
 	);
 
-	assert_eq!(consensus_activities.1.len(), 2);
+	assert_eq!(groups.others.len(), 2);
 }
 
 #[test]
@@ -920,10 +920,10 @@ fn test_get_consensus_customers_activity_not_in_consensus() {
 		},
 	];
 
-	let consensus_activities =
-		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
+	let groups =
+		DdcVerification::group_by_consistency(customers_activity, redundancy_factor, quorum);
 
-	assert_eq!(consensus_activities.1.len(), 3);
+	assert_eq!(groups.others.len(), 3);
 }
 
 #[test]
@@ -1016,10 +1016,10 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 		},
 	];
 
-	let consensus_activities =
-		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
+	let groups =
+		DdcVerification::group_by_consistency(customers_activity, redundancy_factor, quorum);
 
-	assert_eq!(consensus_activities.1.len(), 6);
+	assert_eq!(groups.others.len(), 6);
 }
 
 #[test]
@@ -1100,11 +1100,11 @@ fn test_get_consensus_customers_activity_diff_errors() {
 		},
 	];
 
-	let consensus_activities =
-		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
+	let groups =
+		DdcVerification::group_by_consistency(customers_activity, redundancy_factor, quorum);
 
-	assert_eq!(consensus_activities.1.len(), 5);
-	assert_eq!(consensus_activities.1[0].stored_bytes, 100);
+	assert_eq!(groups.others.len(), 5);
+	assert_eq!(groups.others[0].stored_bytes, 100);
 }
 
 #[test]
@@ -1161,7 +1161,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 		),
 	];
 
-	let consensus_activities = DdcVerification::classify_nodes_aggregates_by_consistency(
+	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
 		&cluster_id1,
 		era_id1,
 		nodes_activity,
@@ -1169,7 +1169,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 		quorum,
 	);
 
-	assert_eq!(consensus_activities.1.len(), 3);
+	assert_eq!(groups.others.len(), 3);
 }
 
 #[test]
@@ -1383,7 +1383,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 		),
 	];
 
-	let consensus_activities = DdcVerification::classify_nodes_aggregates_by_consistency(
+	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
 		&cluster_id1,
 		era_id1,
 		nodes_activity,
@@ -1391,7 +1391,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 		quorum,
 	);
 
-	assert_eq!(consensus_activities.1.len(), 6);
+	assert_eq!(groups.others.len(), 6);
 }
 
 #[test]
@@ -1483,7 +1483,7 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 		),
 	];
 
-	let consensus_activities = DdcVerification::classify_nodes_aggregates_by_consistency(
+	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
 		&cluster_id1,
 		era_id1,
 		nodes_activity,
@@ -1491,7 +1491,7 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 		quorum,
 	);
 
-	assert_eq!(consensus_activities.1.len(), 5);
+	assert_eq!(groups.others.len(), 5);
 }
 
 #[test]
@@ -2428,13 +2428,13 @@ fn test_bucket_node_aggregates() {
 			DdcVerification::fetch_buckets_aggregates_for_era(&cluster_id, era_id, &dac_nodes)
 				.unwrap();
 
-		let result =
-			DdcVerification::classify_buckets_sub_aggregates_by_consistency(&cluster_id, era_id, bucket_aggregates_by_aggregator, redundancy_factor, aggregators_quorum);
+		let groups =
+			DdcVerification::group_buckets_sub_aggregates_by_consistency(&cluster_id, era_id, bucket_aggregates_by_aggregator, redundancy_factor, aggregators_quorum);
 
 
 		// Sub_aggregates which are in consensus
 		assert_eq!(
-			result.clone().0,
+			groups.in_consensus,
 			[BucketSubAggregate {
 				bucket_id: 90235,
 				node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318"
@@ -2451,7 +2451,7 @@ fn test_bucket_node_aggregates() {
 		);
 		// Sub_aggregates which are not in consensus
 		assert_eq!(
-			result.1,
+			groups.others,
 			[
 				BucketSubAggregate {
 					bucket_id: 90235,

@@ -768,6 +768,14 @@ pub mod pallet {
 		pub value: String,
 	}
 
+	#[derive(Debug, Clone)]
+	pub(crate) struct ConsistencyGroups<T: Activity> {
+		pub in_consensus: Vec<T>,
+		pub in_quorum: Vec<T>,
+		pub in_excess: Vec<T>,
+		pub others: Vec<T>,
+	}
+
 	// Define a common trait
 	pub trait Activity:
 		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
@@ -1494,14 +1502,13 @@ pub mod pallet {
 				Self::fetch_buckets_aggregates_for_era(cluster_id, era_activity.id, &dac_nodes)
 					.map_err(|err| vec![err])?;
 
-			let (buckets_sub_aggregates_in_consensus, _buckets_sub_aggregates_not_in_consensus) =
-				Self::classify_buckets_sub_aggregates_by_consistency(
-					cluster_id,
-					era_activity.id,
-					buckets_aggregates_by_aggregator,
-					dac_redundancy_factor,
-					aggregators_quorum,
-				);
+			let buckets_sub_aggregates_groups = Self::group_buckets_sub_aggregates_by_consistency(
+				cluster_id,
+				era_activity.id,
+				buckets_aggregates_by_aggregator,
+				dac_redundancy_factor,
+				aggregators_quorum,
+			);
 
 			// let mut buckets_sub_aggregates_passed_challenges: Vec<BucketSubAggregate> =
 			// 	vec![];
@@ -1515,7 +1522,7 @@ pub mod pallet {
 			// 		)?;
 			// }
 
-			let total_buckets_usage = buckets_sub_aggregates_in_consensus.clone();
+			let total_buckets_usage = buckets_sub_aggregates_groups.in_consensus.clone();
 			// total_buckets_usage.extend(buckets_sub_aggregates_passed_challenges);
 
 			let customer_activity_hashes: Vec<ActivityHash> =
@@ -1566,14 +1573,13 @@ pub mod pallet {
 					customer_batch_roots_string,
 			);
 
-			let (nodes_activities_in_consensus, _nodes_activities_not_in_consensus) =
-				Self::classify_nodes_aggregates_by_consistency(
-					cluster_id,
-					era_activity.id,
-					nodes_aggregates_by_aggregator,
-					dac_redundancy_factor,
-					aggregators_quorum,
-				);
+			let nodes_aggregates_groups = Self::group_nodes_aggregates_by_consistency(
+				cluster_id,
+				era_activity.id,
+				nodes_aggregates_by_aggregator,
+				dac_redundancy_factor,
+				aggregators_quorum,
+			);
 
 			// let mut nodes_activities_passed_challenges: Vec<NodeAggregate> = vec![];
 			// if !nodes_activities_passed_challenges.is_empty() {
@@ -1585,7 +1591,7 @@ pub mod pallet {
 			// 		)?;
 			// }
 
-			let total_nodes_usage = nodes_activities_in_consensus.clone();
+			let total_nodes_usage = nodes_aggregates_groups.in_consensus.clone();
 			// total_nodes_usage.extend(nodes_activities_passed_challenges);
 
 			let node_activity_hashes: Vec<ActivityHash> =
@@ -2018,13 +2024,13 @@ pub mod pallet {
 		///   - `Ok(Vec<A>)`: A vector of activities that have reached consensus.
 		///   - `Err(Vec<OCWError>)`: A vector of errors indicating why consensus was not reached
 		///     for some activities.
-		pub(crate) fn classify_buckets_sub_aggregates_by_consistency(
+		pub(crate) fn group_buckets_sub_aggregates_by_consistency(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			buckets_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<BucketAggregateResponse>)>,
 			redundancy_factor: u16,
 			quorum: Percent,
-		) -> (Vec<BucketSubAggregate>, Vec<BucketSubAggregate>) {
+		) -> ConsistencyGroups<BucketSubAggregate> {
 			let mut buckets_sub_aggregates: Vec<BucketSubAggregate> = Vec::new();
 
 			log::info!(
@@ -2054,13 +2060,13 @@ pub mod pallet {
 				}
 			}
 
-			let (aggregates_in_consensus, aggregates_not_in_consensus) =
-				Self::classify_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
+			let buckets_sub_aggregates_groups =
+				Self::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
 
-			log::info!("🏠👍 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, aggregates_in_consensus);
-			log::info!("🏠👎 Bucket Sub-Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, aggregates_not_in_consensus);
+			log::info!("🏠👍 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.in_consensus);
+			log::info!("🏠👎 Bucket Sub-Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.others);
 
-			(aggregates_in_consensus, aggregates_not_in_consensus)
+			buckets_sub_aggregates_groups
 		}
 
 		#[allow(dead_code)]
@@ -3042,13 +3048,13 @@ pub mod pallet {
 		///   - `Ok(Vec<A>)`: A vector of activities that have reached consensus.
 		///   - `Err(Vec<OCWError>)`: A vector of errors indicating why consensus was not reached
 		///     for some activities.
-		pub(crate) fn classify_nodes_aggregates_by_consistency(
+		pub(crate) fn group_nodes_aggregates_by_consistency(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			nodes_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<NodeAggregateResponse>)>,
 			redundancy_factor: u16,
 			quorum: Percent,
-		) -> (Vec<NodeAggregate>, Vec<NodeAggregate>) {
+		) -> ConsistencyGroups<NodeAggregate> {
 			let mut nodes_aggregates: Vec<NodeAggregate> = Vec::new();
 
 			log::info!(
@@ -3073,20 +3079,20 @@ pub mod pallet {
 				log::info!("🏠🚀 Fetched Node-aggregates for cluster_id: {:?} for era_id: {:?} :::Node Aggregates are {:?}", cluster_id, era_id, nodes_aggregates);
 			}
 
-			let (aggregates_in_consensus, aggregates_not_in_consensus) =
-				Self::classify_by_consistency(nodes_aggregates, redundancy_factor, quorum);
+			let nodes_aggregates_groups =
+				Self::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
 
-			log::info!("🏠👍 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, aggregates_in_consensus);
-			log::info!("🏠👎 Node Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, aggregates_not_in_consensus);
+			log::info!("🏠👍 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.in_consensus);
+			log::info!("🏠👎 Node Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.others);
 
-			(aggregates_in_consensus, aggregates_not_in_consensus)
+			nodes_aggregates_groups
 		}
 
-		pub(crate) fn classify_by_consistency<A>(
+		pub(crate) fn group_by_consistency<A>(
 			aggregates: Vec<A>,
 			redundancy_factor: u16,
 			quorum: Percent,
-		) -> (Vec<A>, Vec<A>)
+		) -> ConsistencyGroups<A>
 		where
 			A: Activity + Clone,
 		{
@@ -3117,7 +3123,12 @@ pub mod pallet {
 				}
 			}
 
-			(aggregates_in_consensus, aggregates_not_in_consensus)
+			ConsistencyGroups {
+				in_consensus: aggregates_in_consensus,
+				in_quorum: vec![],
+				in_excess: vec![],
+				others: aggregates_not_in_consensus,
+			}
 		}
 
 		/// Fetch cluster to validate.
