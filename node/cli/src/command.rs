@@ -159,9 +159,10 @@ pub fn run() -> sc_cli::Result<()> {
 					unwrap_client!(client, cmd.run(client.clone()))
 				}),
 				#[cfg(not(feature = "runtime-benchmarks"))]
-				BenchmarkCmd::Storage(_) =>
+				BenchmarkCmd::Storage(_) => {
 					Err("Storage benchmarking can be enabled with `--features runtime-benchmarks`."
-						.into()),
+						.into())
+				},
 				#[cfg(feature = "runtime-benchmarks")]
 				BenchmarkCmd::Storage(cmd) => runner.sync_run(|config| {
 					let (client, backend, _, _) = cere_service::new_chain_ops(&config)?;
@@ -177,20 +178,11 @@ pub fn run() -> sc_cli::Result<()> {
 					print!("BenchmarkCmd::Extrinsic is not supported");
 					unimplemented!()
 				},
-				BenchmarkCmd::Machine(cmd) =>
-					runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())),
+				BenchmarkCmd::Machine(cmd) => {
+					runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()))
+				},
 			}
 		},
-		#[cfg(feature = "try-runtime")]
-		Some(Subcommand::TryRuntime) => Err("The `try-runtime` subcommand has been migrated to a \
-			standalone CLI (https://github.com/paritytech/try-runtime-cli). It is no longer \
-			being maintained here and will be removed entirely some time after January 2024. \
-			Please remove this subcommand from your runtime and use the standalone CLI."
-			.into()),
-		#[cfg(not(feature = "try-runtime"))]
-		Some(Subcommand::TryRuntime) => Err("TryRuntime wasn't enabled when building the node. \
-				You can enable it with `--features try-runtime`."
-			.into()),
 		Some(Subcommand::ChainInfo(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| cmd.run::<cere_service::Block>(&config))
