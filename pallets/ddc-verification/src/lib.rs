@@ -589,11 +589,11 @@ pub mod pallet {
 		pub(crate) batch_proof: MMRProof,
 	}
 
-	/// Node activity of a node.
+	/// Node aggregate response from aggregator.
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub(crate) struct NodeAggregate {
+	pub(crate) struct NodeAggregateResponse {
 		/// Node id.
 		pub(crate) node_id: String,
 		/// Total amount of stored bytes.
@@ -606,23 +606,23 @@ pub mod pallet {
 		pub(crate) number_of_gets: u64,
 	}
 
-	/// Customer Activity of a bucket.
+	/// Bucket aggregate response from aggregator.
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub(crate) struct BucketAggregate {
+	pub(crate) struct BucketAggregateResponse {
 		/// Bucket id
 		pub(crate) bucket_id: BucketId,
 		/// SubAggregates.
-		pub(crate) sub_aggregates: Vec<BucketSubAggregate>,
+		pub(crate) sub_aggregates: Vec<BucketSubAggregateResponse>,
 	}
 
-	/// Sub Aggregates of a bucket.
+	/// Sub aggregates of a bucket.
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
 	#[allow(non_snake_case)]
-	pub(crate) struct BucketSubAggregate {
+	pub(crate) struct BucketSubAggregateResponse {
 		/// Node id.
 		pub(crate) NodeID: String,
 		/// Total amount of stored bytes.
@@ -639,7 +639,7 @@ pub mod pallet {
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub(crate) struct BucketActivityPerNode {
+	pub(crate) struct BucketSubAggregate {
 		/// Bucket id
 		pub(crate) bucket_id: BucketId,
 		/// Node id.
@@ -659,7 +659,7 @@ pub mod pallet {
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub(crate) struct NodeActivity {
+	pub(crate) struct NodeAggregate {
 		/// Node id.
 		pub(crate) node_id: String,
 		/// Total amount of stored bytes.
@@ -779,48 +779,7 @@ pub mod pallet {
 		fn node_leaf_hash<T: Config>(&self) -> ActivityHash;
 	}
 
-	impl Activity for NodeAggregate {
-		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(self.node_id.as_bytes()).into()
-		}
-
-		fn hash<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.encode()).into()
-		}
-
-		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
-			let node_id = &self.node_id;
-
-			OCWError::NotEnoughNodesForConsensus { cluster_id, era_id, node_id: node_id.clone() }
-		}
-
-		fn node_leaf_hash<T: Config>(&self) -> ActivityHash {
-			ActivityHash::default()
-		}
-	}
-	impl Activity for BucketAggregate {
-		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			let mut data = self.bucket_id.encode();
-			data.extend_from_slice(&self.sub_aggregates.encode());
-			T::ActivityHasher::hash(&data).into()
-		}
-
-		fn hash<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.encode()).into()
-		}
-
-		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
-			let bucket_id = &self.bucket_id;
-
-			OCWError::NotEnoughBucketsForConsensus { cluster_id, era_id, bucket_id: *bucket_id }
-		}
-
-		fn node_leaf_hash<T: crate::pallet::Config>(&self) -> ActivityHash {
-			ActivityHash::default()
-		}
-	}
-
-	impl Activity for BucketActivityPerNode {
+	impl Activity for BucketSubAggregate {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
 			let mut data = self.bucket_id.encode();
 			data.extend_from_slice(&self.node_id.encode());
@@ -858,7 +817,7 @@ pub mod pallet {
 		}
 	}
 
-	impl Activity for NodeActivity {
+	impl Activity for NodeAggregate {
 		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
 			let mut data = self.node_id.encode();
 			data.extend_from_slice(&self.stored_bytes.encode());
@@ -1534,31 +1493,29 @@ pub mod pallet {
 				Self::fetch_buckets_aggregates_for_era(cluster_id, era_activity.id, &dac_nodes)
 					.map_err(|err| vec![err])?;
 
-			let (
-				bucket_per_node_activities_in_consensus,
-				_bucket_per_node_activities_not_in_consensus,
-			) = Self::classify_buckets_sub_aggregates_by_consistency(
-				cluster_id,
-				era_activity.id,
-				buckets_aggregates_by_aggregator,
-				dac_redundancy_factor,
-				aggregators_quorum,
-			);
+			let (buckets_sub_aggregates_in_consensus, _buckets_sub_aggregates_not_in_consensus) =
+				Self::classify_buckets_sub_aggregates_by_consistency(
+					cluster_id,
+					era_activity.id,
+					buckets_aggregates_by_aggregator,
+					dac_redundancy_factor,
+					aggregators_quorum,
+				);
 
-			// let mut bucket_per_node_activities_passed_challenges: Vec<BucketActivityPerNode> =
+			// let mut buckets_sub_aggregates_passed_challenges: Vec<BucketSubAggregate> =
 			// 	vec![];
 
-			// if !bucket_per_node_activities_not_in_consensus.is_empty() {
-			// 	bucket_per_node_activities_passed_challenges =
+			// if !buckets_sub_aggregates_not_in_consensus.is_empty() {
+			// 	buckets_sub_aggregates_passed_challenges =
 			// 		Self::challenge_and_find_valid_bucket_sub_aggregates_not_in_consensus(
 			// 			cluster_id,
 			// 			era_activity.id,
-			// 			bucket_per_node_activities_not_in_consensus,
+			// 			buckets_sub_aggregates_not_in_consensus,
 			// 		)?;
 			// }
 
-			let total_buckets_usage = bucket_per_node_activities_in_consensus.clone();
-			// total_buckets_usage.extend(bucket_per_node_activities_passed_challenges);
+			let total_buckets_usage = buckets_sub_aggregates_in_consensus.clone();
+			// total_buckets_usage.extend(buckets_sub_aggregates_passed_challenges);
 
 			let customer_activity_hashes: Vec<ActivityHash> =
 				total_buckets_usage.clone().into_iter().map(|c| c.hash::<T>()).collect();
@@ -1617,7 +1574,7 @@ pub mod pallet {
 					aggregators_quorum,
 				);
 
-			// let mut nodes_activities_passed_challenges: Vec<NodeActivity> = vec![];
+			// let mut nodes_activities_passed_challenges: Vec<NodeAggregate> = vec![];
 			// if !nodes_activities_passed_challenges.is_empty() {
 			// 	nodes_activities_passed_challenges =
 			// 		Self::challenge_and_find_valid_node_aggregates_not_in_consensus(
@@ -1699,10 +1656,10 @@ pub mod pallet {
 		pub(crate) fn _challenge_and_find_valid_bucket_sub_aggregates_not_in_consensus(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			bucket_node_aggregates_not_in_consensus: Vec<BucketActivityPerNode>,
-		) -> Result<Vec<BucketActivityPerNode>, Vec<OCWError>> {
-			let mut bucket_aggregates_passed_challenges: Vec<BucketActivityPerNode> = vec![];
-			let mut bucket_aggregates_not_passed_challenges: Vec<BucketActivityPerNode> = vec![];
+			bucket_node_aggregates_not_in_consensus: Vec<BucketSubAggregate>,
+		) -> Result<Vec<BucketSubAggregate>, Vec<OCWError>> {
+			let mut bucket_aggregates_passed_challenges: Vec<BucketSubAggregate> = vec![];
+			let mut bucket_aggregates_not_passed_challenges: Vec<BucketSubAggregate> = vec![];
 			let number_of_identifiers = T::MAX_MERKLE_NODE_IDENTIFIER;
 
 			log::info!(
@@ -1800,10 +1757,10 @@ pub mod pallet {
 		pub(crate) fn _challenge_and_find_valid_node_aggregates_not_in_consensus(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			node_aggregates_not_in_consensus: Vec<NodeActivity>,
-		) -> Result<Vec<NodeActivity>, Vec<OCWError>> {
-			let mut node_aggregates_passed_challenges: Vec<NodeActivity> = vec![];
-			let mut node_aggregates_not_passed_challenges: Vec<NodeActivity> = vec![];
+			node_aggregates_not_in_consensus: Vec<NodeAggregate>,
+		) -> Result<Vec<NodeAggregate>, Vec<OCWError>> {
+			let mut node_aggregates_passed_challenges: Vec<NodeAggregate> = vec![];
+			let mut node_aggregates_not_passed_challenges: Vec<NodeAggregate> = vec![];
 			let number_of_identifiers = T::MAX_MERKLE_NODE_IDENTIFIER;
 
 			log::info!(
@@ -1901,9 +1858,9 @@ pub mod pallet {
 		}
 
 		pub(crate) fn _fetch_valid_bucket_aggregates_passed_challenges(
-			bucket_aggregates_passed_challenges: Vec<(BucketId, Vec<BucketActivityPerNode>)>,
-		) -> Vec<BucketActivityPerNode> {
-			let mut valid_aggregates_passed_challenges: Vec<BucketActivityPerNode> = vec![];
+			bucket_aggregates_passed_challenges: Vec<(BucketId, Vec<BucketSubAggregate>)>,
+		) -> Vec<BucketSubAggregate> {
+			let mut valid_aggregates_passed_challenges: Vec<BucketSubAggregate> = vec![];
 
 			for (bucket_id, bucket_aggregates_passed_challenge_activities) in
 				bucket_aggregates_passed_challenges
@@ -1926,9 +1883,9 @@ pub mod pallet {
 		}
 
 		pub(crate) fn _fetch_valid_node_aggregates_passed_challenges(
-			node_aggregates_passed_challenges: Vec<(String, Vec<NodeActivity>)>,
-		) -> Vec<NodeActivity> {
-			let mut valid_aggregates_passed_challenges: Vec<NodeActivity> = vec![];
+			node_aggregates_passed_challenges: Vec<(String, Vec<NodeAggregate>)>,
+		) -> Vec<NodeAggregate> {
+			let mut valid_aggregates_passed_challenges: Vec<NodeAggregate> = vec![];
 
 			for (node_id, node_aggregates_passed_challenge_activities) in
 				node_aggregates_passed_challenges
@@ -2038,45 +1995,48 @@ pub mod pallet {
 		pub(crate) fn classify_buckets_sub_aggregates_by_consistency(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			buckets_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<BucketAggregate>)>,
-			dac_redundancy_factor: u16,
+			buckets_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<BucketAggregateResponse>)>,
+			redundancy_factor: u16,
 			quorum: Percent,
-		) -> (Vec<BucketActivityPerNode>, Vec<BucketActivityPerNode>) {
-			let mut bucket_per_node_activities: Vec<BucketActivityPerNode> = Vec::new();
+		) -> (Vec<BucketSubAggregate>, Vec<BucketSubAggregate>) {
+			let mut buckets_sub_aggregates: Vec<BucketSubAggregate> = Vec::new();
 
 			log::info!(
 				"🏠⏳ Starting fetching bucket node aggregates for cluster_id: {:?} for era_id: {:?}",
 				cluster_id,
 				era_id
 			);
-			for (aggregator_info, buckets_aggregates) in buckets_aggregates_by_aggregator.clone() {
-				for bucket_aggregate in buckets_aggregates {
-					for bucket_sub_aggregate in bucket_aggregate.sub_aggregates.clone() {
-						let bucket_per_node_activity = BucketActivityPerNode {
-							bucket_id: bucket_aggregate.bucket_id,
-							node_id: bucket_sub_aggregate.NodeID,
-							stored_bytes: bucket_sub_aggregate.stored_bytes,
-							transferred_bytes: bucket_sub_aggregate.transferred_bytes,
-							number_of_puts: bucket_sub_aggregate.number_of_puts,
-							number_of_gets: bucket_sub_aggregate.number_of_gets,
+			for (aggregator_info, buckets_aggregates_resp) in
+				buckets_aggregates_by_aggregator.clone()
+			{
+				for bucket_aggregate_resp in buckets_aggregates_resp {
+					for bucket_sub_aggregate_resp in bucket_aggregate_resp.sub_aggregates.clone() {
+						let bucket_sub_aggregate = BucketSubAggregate {
+							bucket_id: bucket_aggregate_resp.bucket_id,
+							node_id: bucket_sub_aggregate_resp.NodeID,
+							stored_bytes: bucket_sub_aggregate_resp.stored_bytes,
+							transferred_bytes: bucket_sub_aggregate_resp.transferred_bytes,
+							number_of_puts: bucket_sub_aggregate_resp.number_of_puts,
+							number_of_gets: bucket_sub_aggregate_resp.number_of_gets,
 							aggregator: aggregator_info.clone(),
 						};
 
-						bucket_per_node_activities.push(bucket_per_node_activity);
+						buckets_sub_aggregates.push(bucket_sub_aggregate);
 					}
 
-					log::info!("🏠🚀 Fetched Bucket sub-aggregates for cluster_id: {:?} for era_id: {:?} for bucket_id {:?}::: Bucket Sub-Aggregates are {:?}", cluster_id, era_id, bucket_aggregate.bucket_id, bucket_aggregate.sub_aggregates);
+					log::info!("🏠🚀 Fetched Bucket sub-aggregates for cluster_id: {:?} for era_id: {:?} for bucket_id {:?}::: Bucket Sub-Aggregates are {:?}", cluster_id, era_id, bucket_aggregate_resp.bucket_id, bucket_aggregate_resp.sub_aggregates);
 				}
 			}
 
 			Self::get_consensus_for_bucket_sub_aggregates(
 				cluster_id,
 				era_id,
-				bucket_per_node_activities,
-				dac_redundancy_factor,
+				buckets_sub_aggregates,
+				redundancy_factor,
 				quorum,
 			)
 		}
+
 		#[allow(dead_code)]
 		pub(crate) fn prepare_begin_billing_report(
 			cluster_id: &ClusterId,
@@ -2096,7 +2056,7 @@ pub mod pallet {
 					PayoutState::Initialized
 				{
 					if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
-						Self::fetch_validation_activities::<BucketActivityPerNode, NodeActivity>(
+						Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 							cluster_id, era_id,
 						) {
 						Self::fetch_customer_activity(
@@ -2110,7 +2070,7 @@ pub mod pallet {
 						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
-							Self::fetch_validation_activities::<BucketActivityPerNode, NodeActivity>(
+							Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 								cluster_id, era_id,
 							) {
 							Self::fetch_customer_activity(
@@ -2164,7 +2124,7 @@ pub mod pallet {
 						_,
 						_,
 						_,
-					)) = Self::fetch_validation_activities::<BucketActivityPerNode, NodeActivity>(
+					)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 						cluster_id, era_id,
 					) {
 						Self::fetch_charging_activities(
@@ -2186,7 +2146,7 @@ pub mod pallet {
 							_,
 							_,
 							_,
-						)) = Self::fetch_validation_activities::<BucketActivityPerNode, NodeActivity>(
+						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 							cluster_id, era_id,
 						) {
 							Self::fetch_charging_activities(
@@ -2212,7 +2172,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			batch_size: usize,
 			era_id: DdcEra,
-			bucket_nodes_activity_in_consensus: Vec<BucketActivityPerNode>,
+			bucket_nodes_activity_in_consensus: Vec<BucketSubAggregate>,
 			customers_activity_batch_roots: Vec<ActivityHash>,
 		) -> Result<Option<(DdcEra, CustomerBatch<T>)>, Vec<OCWError>> {
 			let batch_index = T::PayoutVisitor::get_next_customer_batch_for_payment(
@@ -2328,7 +2288,7 @@ pub mod pallet {
 						nodes_activity_in_consensus,
 						_,
 						nodes_activity_batch_roots,
-					)) = Self::fetch_validation_activities::<BucketActivityPerNode, NodeActivity>(
+					)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 						cluster_id, era_id,
 					) {
 						Self::fetch_reward_activities(
@@ -2350,7 +2310,7 @@ pub mod pallet {
 							nodes_activity_in_consensus,
 							_,
 							nodes_activity_batch_roots,
-						)) = Self::fetch_validation_activities::<BucketActivityPerNode, NodeActivity>(
+						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 							cluster_id, era_id,
 						) {
 							Self::fetch_reward_activities(
@@ -2375,7 +2335,7 @@ pub mod pallet {
 		pub(crate) fn fetch_reward_activities(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			nodes_activity_in_consensus: Vec<NodeActivity>,
+			nodes_activity_in_consensus: Vec<NodeAggregate>,
 			nodes_activity_batch_roots: Vec<ActivityHash>,
 			current_nodes_total_usage: i64,
 		) -> Result<Option<(DdcEra, BatchIndex, NodeUsage)>, Vec<OCWError>> {
@@ -2423,7 +2383,7 @@ pub mod pallet {
 						nodes_activity_in_consensus,
 						_,
 						nodes_activity_batch_roots,
-					)) = Self::fetch_validation_activities::<BucketActivityPerNode, NodeActivity>(
+					)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 						cluster_id, era_id,
 					) {
 						Self::fetch_reward_provider_batch(
@@ -2445,7 +2405,7 @@ pub mod pallet {
 							nodes_activity_in_consensus,
 							_,
 							nodes_activity_batch_roots,
-						)) = Self::fetch_validation_activities::<BucketActivityPerNode, NodeActivity>(
+						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 							cluster_id, era_id,
 						) {
 							Self::fetch_reward_provider_batch(
@@ -2471,7 +2431,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			batch_size: usize,
 			era_id: DdcEra,
-			nodes_activity_in_consensus: Vec<NodeActivity>,
+			nodes_activity_in_consensus: Vec<NodeAggregate>,
 			nodes_activity_batch_roots: Vec<ActivityHash>,
 		) -> Result<Option<(DdcEra, ProviderBatch<T>)>, Vec<OCWError>> {
 			let batch_index = T::PayoutVisitor::get_next_provider_batch_for_payment(
@@ -3058,11 +3018,11 @@ pub mod pallet {
 		pub(crate) fn classify_nodes_aggregates_by_consistency(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			nodes_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<NodeAggregate>)>,
-			dac_redundancy_factor: u16,
+			nodes_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<NodeAggregateResponse>)>,
+			redundancy_factor: u16,
 			quorum: Percent,
-		) -> (Vec<NodeActivity>, Vec<NodeActivity>) {
-			let mut nodes_activities: Vec<NodeActivity> = Vec::new();
+		) -> (Vec<NodeAggregate>, Vec<NodeAggregate>) {
+			let mut nodes_aggregates: Vec<NodeAggregate> = Vec::new();
 
 			log::info!(
 				"🏠⏳ Starting fetching node aggregates for cluster_id: {:?} for era_id: {:?}",
@@ -3070,98 +3030,97 @@ pub mod pallet {
 				era_id
 			);
 
-			for (aggregator_info, nodes_aggregates) in nodes_aggregates_by_aggregator.clone() {
-				for node_aggregate in nodes_aggregates.clone() {
-					let node_activity = NodeActivity {
-						node_id: node_aggregate.node_id,
-						stored_bytes: node_aggregate.stored_bytes,
-						transferred_bytes: node_aggregate.transferred_bytes,
-						number_of_puts: node_aggregate.number_of_puts,
-						number_of_gets: node_aggregate.number_of_gets,
+			for (aggregator_info, nodes_aggregates_resp) in nodes_aggregates_by_aggregator.clone() {
+				for node_aggregate_resp in nodes_aggregates_resp.clone() {
+					let node_aggregate = NodeAggregate {
+						node_id: node_aggregate_resp.node_id,
+						stored_bytes: node_aggregate_resp.stored_bytes,
+						transferred_bytes: node_aggregate_resp.transferred_bytes,
+						number_of_puts: node_aggregate_resp.number_of_puts,
+						number_of_gets: node_aggregate_resp.number_of_gets,
 						aggregator: aggregator_info.clone(),
 					};
-
-					nodes_activities.push(node_activity);
+					nodes_aggregates.push(node_aggregate);
 				}
 
-				log::info!("🏠🚀 Fetched Node-aggregates for cluster_id: {:?} for era_id: {:?} :::Node Aggregates are {:?}", cluster_id, era_id,  nodes_activities);
+				log::info!("🏠🚀 Fetched Node-aggregates for cluster_id: {:?} for era_id: {:?} :::Node Aggregates are {:?}", cluster_id, era_id, nodes_aggregates);
 			}
 
-			let mut consistent_node_activities: BTreeMap<ActivityHash, Vec<NodeActivity>> =
+			let mut consistent_node_aggregates: BTreeMap<ActivityHash, Vec<NodeAggregate>> =
 				BTreeMap::new();
 
 			// Flatten and collect all customer activities
-			for activity in nodes_activities.iter() {
-				consistent_node_activities
-					.entry(activity.get_consensus_id::<T>())
+			for nodes_aggregate in nodes_aggregates.iter() {
+				consistent_node_aggregates
+					.entry(nodes_aggregate.get_consensus_id::<T>())
 					.or_default()
-					.push(activity.clone());
+					.push(nodes_aggregate.clone());
 			}
 
-			let mut consensus_activities = Vec::new();
-			let mut not_consensus_activities = Vec::new();
-			let threshold = quorum * dac_redundancy_factor;
+			let mut aggregates_in_consensus = Vec::new();
+			let mut aggregates_not_in_consensus = Vec::new();
+			let threshold = quorum * redundancy_factor;
 
 			// Check if each customer/bucket appears in at least `dac_redundancy_factor` nodes
-			for (_id, node_activities) in consistent_node_activities {
-				if node_activities.len() < dac_redundancy_factor.into() {
-					not_consensus_activities.extend(node_activities);
-				} else if let Some(activity) =
-					Self::reach_consensus(node_activities.clone(), threshold.into())
+			for (_id, node_aggregates) in consistent_node_aggregates {
+				if node_aggregates.len() < redundancy_factor.into() {
+					aggregates_not_in_consensus.extend(node_aggregates);
+				} else if let Some(node_aggregate) =
+					Self::reach_consensus(node_aggregates.clone(), threshold.into())
 				{
-					consensus_activities.push(activity.clone());
+					aggregates_in_consensus.push(node_aggregate.clone());
 				} else {
-					not_consensus_activities.extend(node_activities);
+					aggregates_not_in_consensus.extend(node_aggregates);
 				}
 			}
 
-			log::info!("🏠👍 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, consensus_activities);
-			log::info!("🏠👎 Node Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, not_consensus_activities);
+			log::info!("🏠👍 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, aggregates_in_consensus);
+			log::info!("🏠👎 Node Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, aggregates_not_in_consensus);
 
-			(consensus_activities, not_consensus_activities)
+			(aggregates_in_consensus, aggregates_not_in_consensus)
 		}
 
 		pub(crate) fn get_consensus_for_bucket_sub_aggregates(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			bucket_per_node_activities: Vec<BucketActivityPerNode>,
-			dac_redundancy_factor: u16,
+			buckets_sub_aggregates: Vec<BucketSubAggregate>,
+			redundancy_factor: u16,
 			quorum: Percent,
-		) -> (Vec<BucketActivityPerNode>, Vec<BucketActivityPerNode>) {
-			let mut consistent_bucket_activities: BTreeMap<
+		) -> (Vec<BucketSubAggregate>, Vec<BucketSubAggregate>) {
+			let mut consistent_buckets_sub_aggregates: BTreeMap<
 				ActivityHash,
-				Vec<BucketActivityPerNode>,
+				Vec<BucketSubAggregate>,
 			> = BTreeMap::new();
 
 			// Flatten and collect all customer activities
-			for bucket_per_node_activity in bucket_per_node_activities.iter() {
-				consistent_bucket_activities
-					.entry(bucket_per_node_activity.get_consensus_id::<T>())
+			for bucket_sub_aggregates in buckets_sub_aggregates.iter() {
+				consistent_buckets_sub_aggregates
+					.entry(bucket_sub_aggregates.get_consensus_id::<T>())
 					.or_default()
-					.push(bucket_per_node_activity.clone());
+					.push(bucket_sub_aggregates.clone());
 			}
 
-			let mut consensus_activities = Vec::new();
-			let mut not_consensus_activities = Vec::new();
-			let threshold = quorum * dac_redundancy_factor;
+			let mut sub_aggregates_in_consensus = Vec::new();
+			let mut sub_aggregates_not_in_consensus = Vec::new();
+			let threshold = quorum * redundancy_factor;
 
 			// Check if each customer/bucket appears in at least `redundant_aggregators_count` nodes
-			for (_id, bucket_per_node_activities) in consistent_bucket_activities {
-				if bucket_per_node_activities.len() < dac_redundancy_factor.into() {
-					not_consensus_activities.extend(bucket_per_node_activities);
-				} else if let Some(activity) =
-					Self::reach_consensus(bucket_per_node_activities.clone(), threshold.into())
+			for (_id, bucket_sub_aggregates) in consistent_buckets_sub_aggregates {
+				if bucket_sub_aggregates.len() < redundancy_factor.into() {
+					sub_aggregates_not_in_consensus.extend(bucket_sub_aggregates);
+				} else if let Some(bucket_sub_aggregate) =
+					Self::reach_consensus(bucket_sub_aggregates.clone(), threshold.into())
 				{
-					consensus_activities.push(activity.clone());
+					sub_aggregates_in_consensus.push(bucket_sub_aggregate.clone());
 				} else {
-					not_consensus_activities.extend(bucket_per_node_activities);
+					sub_aggregates_not_in_consensus.extend(bucket_sub_aggregates);
 				}
 			}
 
 			// todo! Reduce log size and put small message
-			log::info!("🏠👍 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, consensus_activities);
-			log::info!("🏠👎 Bucket Sub-Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, not_consensus_activities);
-			(consensus_activities, not_consensus_activities)
+			log::info!("🏠👍 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, sub_aggregates_in_consensus);
+			log::info!("🏠👎 Bucket Sub-Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, sub_aggregates_not_in_consensus);
+			(sub_aggregates_in_consensus, sub_aggregates_not_in_consensus)
 		}
 
 		/// Fetch cluster to validate.
@@ -3283,7 +3242,7 @@ pub mod pallet {
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
 			node_params: &StorageNodeParams,
-		) -> Result<Vec<BucketAggregate>, http::Error> {
+		) -> Result<Vec<BucketAggregateResponse>, http::Error> {
 			let scheme = "http";
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 			let url = format!(
@@ -3316,7 +3275,7 @@ pub mod pallet {
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
 			node_params: &StorageNodeParams,
-		) -> Result<Vec<NodeAggregate>, http::Error> {
+		) -> Result<Vec<NodeAggregateResponse>, http::Error> {
 			let scheme = "http";
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 			let url = format!(
@@ -3388,7 +3347,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<(AggregatorInfo, Vec<NodeAggregate>)>, OCWError> {
+		) -> Result<Vec<(AggregatorInfo, Vec<NodeAggregateResponse>)>, OCWError> {
 			let mut nodes_aggregates = Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
@@ -3402,6 +3361,7 @@ pub mod pallet {
 							node_pub_key: node_pub_key.clone(),
 						}
 					})?;
+
 				for aggregate in aggregates.clone() {
 					let provider_id = Self::get_node_provider_id(node_pub_key).unwrap();
 					Self::store_provider_id(aggregate.node_id, provider_id); // todo! this is not good - needs to be
@@ -3429,8 +3389,9 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<(AggregatorInfo, Vec<BucketAggregate>)>, OCWError> {
-			let mut bucket_aggregates: Vec<(AggregatorInfo, Vec<BucketAggregate>)> = Vec::new();
+		) -> Result<Vec<(AggregatorInfo, Vec<BucketAggregateResponse>)>, OCWError> {
+			let mut bucket_aggregates: Vec<(AggregatorInfo, Vec<BucketAggregateResponse>)> =
+				Vec::new();
 
 			for (node_pub_key, node_params) in dac_nodes {
 				// todo! probably shouldn't stop when some DAC is not responding as we can still
