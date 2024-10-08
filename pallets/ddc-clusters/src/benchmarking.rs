@@ -66,6 +66,19 @@ benchmarks! {
 		assert!(ClustersNodes::<T>::contains_key(cluster_id, node_pub_key));
 	}
 
+	join_cluster {
+		let bytes = [0u8; 32];
+		let node_pub_key = NodePubKey::StoragePubKey(AccountId32::from(bytes));
+		let cluster_id = ClusterId::from([1; 20]);
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
+		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
+		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
+	}: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key.clone())
+	verify {
+		assert!(ClustersNodes::<T>::contains_key(cluster_id, node_pub_key));
+	}
+
 	remove_node {
 		let bytes = [0u8; 32];
 		let node_pub_key = NodePubKey::StoragePubKey(AccountId32::from(bytes));

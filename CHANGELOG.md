@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [C,D] `pallet-ddc-verification`: Introduction of the Verification pallet to ensure the secure posting and retrieval of verification keys to and from the blockchain.
+- [C,D] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
 
 ## [5.4.0]
 
