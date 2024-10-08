@@ -46,7 +46,7 @@ where
 		Weight::zero()
 	}
 
-	fn step(&mut self, meter: &mut WeightMeter) -> IsFinished {
+	fn step(&mut self, _meter: &mut WeightMeter) -> IsFinished {
 		IsFinished::Yes
 	}
 }

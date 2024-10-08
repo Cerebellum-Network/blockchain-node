@@ -144,6 +144,7 @@ pub fn run() -> sc_cli::Result<()> {
 					#[cfg(feature = "cere-dev-native")]
 					if chain_spec.is_cere_dev() {
 						return runner.sync_run(|config| {
+							#[allow(deprecated)]
 							cmd.run::<sp_runtime::traits::HashingFor<cere_service::cere_dev_runtime::Block>, ()>(config)
 						});
 					}
