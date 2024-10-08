@@ -521,10 +521,8 @@ fn test_reach_consensus_exact_threshold() {
 
 #[test]
 fn test_get_consensus_customers_activity_success() {
-	let cluster_id = ClusterId::from([1; 20]);
-	let era_id = 1;
 	let redundancy_factor = 3;
-	let threshold = Percent::from_percent(67);
+	let quorum = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
 	let node_params = StorageNodeParams {
@@ -576,13 +574,8 @@ fn test_get_consensus_customers_activity_success() {
 		},
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
-		&cluster_id,
-		era_id,
-		customers_activity,
-		redundancy_factor,
-		threshold,
-	);
+	let consensus_activities =
+		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
 
 	assert_eq!(consensus_activities.0.len(), 1);
 	assert_eq!(consensus_activities.0[0].stored_bytes, 100);
@@ -590,10 +583,8 @@ fn test_get_consensus_customers_activity_success() {
 
 #[test]
 fn test_get_consensus_customers_activity_success2() {
-	let cluster_id = ClusterId::from([1; 20]);
-	let era_id = 1;
 	let redundancy_factor = 3;
-	let threshold = Percent::from_percent(67);
+	let quorum = Percent::from_percent(67);
 
 	let host = "example1.com";
 	let port = 80;
@@ -682,13 +673,8 @@ fn test_get_consensus_customers_activity_success2() {
 		},
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
-		&cluster_id,
-		era_id,
-		customers_activity,
-		redundancy_factor,
-		threshold,
-	);
+	let consensus_activities =
+		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
 
 	assert_eq!(consensus_activities.0.len(), 2);
 	assert_eq!(consensus_activities.0[1].stored_bytes, 110);
@@ -702,7 +688,7 @@ fn test_get_consensus_nodes_activity_success() {
 	let cluster_id = ClusterId::from([1; 20]);
 	let era_id = 1;
 	let redundancy_factor = 3;
-	let threshold = Percent::from_percent(67);
+	let quorum = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
 	let node_params = StorageNodeParams {
@@ -757,7 +743,7 @@ fn test_get_consensus_nodes_activity_success() {
 		era_id,
 		customers_activity,
 		redundancy_factor,
-		threshold,
+		quorum,
 	);
 
 	assert_eq!(consensus_activities.0.len(), 1);
@@ -765,30 +751,21 @@ fn test_get_consensus_nodes_activity_success() {
 }
 #[test]
 fn test_get_consensus_customers_activity_empty() {
-	let cluster_id = ClusterId::from([1; 20]);
-	let era_id = 1;
 	let redundancy_factor = 3;
-	let threshold = Percent::from_percent(67);
+	let quorum = Percent::from_percent(67);
 
 	let customers_activity = Vec::<BucketSubAggregate>::new();
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
-		&cluster_id,
-		era_id,
-		customers_activity,
-		redundancy_factor,
-		threshold,
-	);
+	let consensus_activities =
+		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
 
 	assert_eq!(consensus_activities.0.len(), 0);
 }
 
 #[test]
 fn test_get_consensus_customers_activity_not_enough_nodes() {
-	let cluster_id1 = ClusterId::from([1; 20]);
-	let era_id1 = 1;
 	let redundancy_factor = 3;
-	let threshold = Percent::from_percent(67);
+	let quorum = Percent::from_percent(67);
 
 	let host = "example1.com";
 	let port = 80;
@@ -828,13 +805,8 @@ fn test_get_consensus_customers_activity_not_enough_nodes() {
 		},
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
-		&cluster_id1,
-		era_id1,
-		customers_activity,
-		redundancy_factor,
-		threshold,
-	);
+	let consensus_activities =
+		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
 
 	assert_eq!(consensus_activities.1.len(), 2);
 }
@@ -844,7 +816,7 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
 	let redundancy_factor = 3;
-	let threshold = Percent::from_percent(67);
+	let quorum = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
 	let node_params = StorageNodeParams {
@@ -888,7 +860,7 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 		era_id1,
 		nodes_activity,
 		redundancy_factor,
-		threshold,
+		quorum,
 	);
 
 	assert_eq!(consensus_activities.1.len(), 2);
@@ -896,10 +868,8 @@ fn test_get_consensus_nodes_activity_not_enough_nodes() {
 
 #[test]
 fn test_get_consensus_customers_activity_not_in_consensus() {
-	let cluster_id1 = ClusterId::from([1; 20]);
-	let era_id1 = 1;
 	let redundancy_factor = 3;
-	let threshold = Percent::from_percent(67);
+	let quorum = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
 	let node_params = StorageNodeParams {
@@ -950,23 +920,16 @@ fn test_get_consensus_customers_activity_not_in_consensus() {
 		},
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
-		&cluster_id1,
-		era_id1,
-		customers_activity,
-		redundancy_factor,
-		threshold,
-	);
+	let consensus_activities =
+		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
 
 	assert_eq!(consensus_activities.1.len(), 3);
 }
 
 #[test]
 fn test_get_consensus_customers_activity_not_in_consensus_2() {
-	let cluster_id1 = ClusterId::from([1; 20]);
-	let era_id1 = 1;
 	let redundancy_factor = 3;
-	let threshold = Percent::from_percent(67);
+	let quorum = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
 	let node_params = StorageNodeParams {
@@ -1053,23 +1016,16 @@ fn test_get_consensus_customers_activity_not_in_consensus_2() {
 		},
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
-		&cluster_id1,
-		era_id1,
-		customers_activity,
-		redundancy_factor,
-		threshold,
-	);
+	let consensus_activities =
+		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
 
 	assert_eq!(consensus_activities.1.len(), 6);
 }
 
 #[test]
 fn test_get_consensus_customers_activity_diff_errors() {
-	let cluster_id1 = ClusterId::from([1; 20]);
-	let era_id1 = 1;
 	let redundancy_factor = 3;
-	let threshold = Percent::from_percent(67);
+	let quorum = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
 	let node_params = StorageNodeParams {
@@ -1144,13 +1100,8 @@ fn test_get_consensus_customers_activity_diff_errors() {
 		},
 	];
 
-	let consensus_activities = DdcVerification::get_consensus_for_bucket_sub_aggregates(
-		&cluster_id1,
-		era_id1,
-		customers_activity,
-		redundancy_factor,
-		threshold,
-	);
+	let consensus_activities =
+		DdcVerification::classify_by_consistency(customers_activity, redundancy_factor, quorum);
 
 	assert_eq!(consensus_activities.1.len(), 5);
 	assert_eq!(consensus_activities.1[0].stored_bytes, 100);
@@ -1161,7 +1112,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
 	let redundancy_factor = 3;
-	let threshold = Percent::from_percent(67);
+	let quorum = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
 	let node_params = StorageNodeParams {
@@ -1215,7 +1166,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus() {
 		era_id1,
 		nodes_activity,
 		redundancy_factor,
-		threshold,
+		quorum,
 	);
 
 	assert_eq!(consensus_activities.1.len(), 3);
@@ -1335,7 +1286,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
 	let redundancy_factor = 3;
-	let threshold = Percent::from_percent(67);
+	let quorum = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
 	let node_params = StorageNodeParams {
@@ -1437,7 +1388,7 @@ fn test_get_consensus_nodes_activity_not_in_consensus2() {
 		era_id1,
 		nodes_activity,
 		redundancy_factor,
-		threshold,
+		quorum,
 	);
 
 	assert_eq!(consensus_activities.1.len(), 6);
@@ -1448,7 +1399,7 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 	let cluster_id1 = ClusterId::from([1; 20]);
 	let era_id1 = 1;
 	let redundancy_factor = 3;
-	let threshold = Percent::from_percent(67);
+	let quorum = Percent::from_percent(67);
 	let host = "example1.com";
 	let port = 80;
 	let node_params = StorageNodeParams {
@@ -1537,7 +1488,7 @@ fn test_get_consensus_nodes_activity_diff_errors() {
 		era_id1,
 		nodes_activity,
 		redundancy_factor,
-		threshold,
+		quorum,
 	);
 
 	assert_eq!(consensus_activities.1.len(), 5);

@@ -47,6 +47,7 @@ pub mod weights;
 use itertools::Itertools;
 use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use sp_staking::StakingInterface;
+use sp_std::fmt::Debug;
 
 use crate::weights::WeightInfo;
 
@@ -1992,6 +1993,31 @@ pub mod pallet {
 
 			ids
 		}
+
+		/// Computes the consensus for a set of partial activities across multiple buckets within a
+		/// given cluster and era.
+		///
+		/// This function collects activities from various buckets, groups them by their consensus
+		/// ID, and then determines if a consensus is reached for each group based on the minimum
+		/// number of nodes and a given threshold. If the consensus is reached, the activity is
+		/// included in the result. Otherwise, appropriate errors are returned.
+		///
+		/// # Input Parameters
+		/// - `cluster_id: &ClusterId`: The ID of the cluster for which consensus is being computed.
+		/// - `era_id: DdcEra`: The era ID within the cluster.
+		/// - `buckets_aggregates_by_aggregator: &[(NodePubKey, Vec<A>)]`: A list of tuples, where
+		///   each tuple contains a node's public key and a vector of activities reported for that
+		///   bucket.
+		/// - `redundancy_factor: u16`: The number of aggregators that should report total activity
+		///   for a node or a bucket
+		/// - `quorum: Percent`: The threshold percentage that determines if an activity is in
+		///   consensus.
+		///
+		/// # Output
+		/// - `Result<Vec<A>, Vec<OCWError>>`:
+		///   - `Ok(Vec<A>)`: A vector of activities that have reached consensus.
+		///   - `Err(Vec<OCWError>)`: A vector of errors indicating why consensus was not reached
+		///     for some activities.
 		pub(crate) fn classify_buckets_sub_aggregates_by_consistency(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
@@ -2028,13 +2054,13 @@ pub mod pallet {
 				}
 			}
 
-			Self::get_consensus_for_bucket_sub_aggregates(
-				cluster_id,
-				era_id,
-				buckets_sub_aggregates,
-				redundancy_factor,
-				quorum,
-			)
+			let (aggregates_in_consensus, aggregates_not_in_consensus) =
+				Self::classify_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
+
+			log::info!("🏠👍 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, aggregates_in_consensus);
+			log::info!("🏠👎 Bucket Sub-Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, aggregates_not_in_consensus);
+
+			(aggregates_in_consensus, aggregates_not_in_consensus)
 		}
 
 		#[allow(dead_code)]
@@ -3003,11 +3029,12 @@ pub mod pallet {
 		/// # Input Parameters
 		/// - `cluster_id: &ClusterId`: The ID of the cluster for which consensus is being computed.
 		/// - `era_id: DdcEra`: The era ID within the cluster.
-		/// - `activities: &[(NodePubKey, Vec<A>)]`: A list of tuples, where each tuple contains a
-		///   node's public key and a vector of activities reported by that node.
-		/// - `dac_redundancy_factor: u16`: The number of aggregators that should report an activity
+		/// - `nodes_aggregates_by_aggregator: &[(NodePubKey, Vec<A>)]`: A list of tuples, where
+		///   each tuple contains a node's public key and a vector of activities reported by that
+		///   node.
+		/// - `redundancy_factor: u16`: The number of aggregators that should report total activity
 		///   for a node or a bucket
-		/// - `threshold: Percent`: The threshold percentage that determines if an activity is in
+		/// - `quorum: Percent`: The threshold percentage that determines if an activity is in
 		///   consensus.
 		///
 		/// # Output
@@ -3046,33 +3073,8 @@ pub mod pallet {
 				log::info!("🏠🚀 Fetched Node-aggregates for cluster_id: {:?} for era_id: {:?} :::Node Aggregates are {:?}", cluster_id, era_id, nodes_aggregates);
 			}
 
-			let mut consistent_node_aggregates: BTreeMap<ActivityHash, Vec<NodeAggregate>> =
-				BTreeMap::new();
-
-			// Flatten and collect all customer activities
-			for nodes_aggregate in nodes_aggregates.iter() {
-				consistent_node_aggregates
-					.entry(nodes_aggregate.get_consensus_id::<T>())
-					.or_default()
-					.push(nodes_aggregate.clone());
-			}
-
-			let mut aggregates_in_consensus = Vec::new();
-			let mut aggregates_not_in_consensus = Vec::new();
-			let threshold = quorum * redundancy_factor;
-
-			// Check if each customer/bucket appears in at least `dac_redundancy_factor` nodes
-			for (_id, node_aggregates) in consistent_node_aggregates {
-				if node_aggregates.len() < redundancy_factor.into() {
-					aggregates_not_in_consensus.extend(node_aggregates);
-				} else if let Some(node_aggregate) =
-					Self::reach_consensus(node_aggregates.clone(), threshold.into())
-				{
-					aggregates_in_consensus.push(node_aggregate.clone());
-				} else {
-					aggregates_not_in_consensus.extend(node_aggregates);
-				}
-			}
+			let (aggregates_in_consensus, aggregates_not_in_consensus) =
+				Self::classify_by_consistency(nodes_aggregates, redundancy_factor, quorum);
 
 			log::info!("🏠👍 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, aggregates_in_consensus);
 			log::info!("🏠👎 Node Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, aggregates_not_in_consensus);
@@ -3080,47 +3082,42 @@ pub mod pallet {
 			(aggregates_in_consensus, aggregates_not_in_consensus)
 		}
 
-		pub(crate) fn get_consensus_for_bucket_sub_aggregates(
-			cluster_id: &ClusterId,
-			era_id: DdcEra,
-			buckets_sub_aggregates: Vec<BucketSubAggregate>,
+		pub(crate) fn classify_by_consistency<A>(
+			aggregates: Vec<A>,
 			redundancy_factor: u16,
 			quorum: Percent,
-		) -> (Vec<BucketSubAggregate>, Vec<BucketSubAggregate>) {
-			let mut consistent_buckets_sub_aggregates: BTreeMap<
-				ActivityHash,
-				Vec<BucketSubAggregate>,
-			> = BTreeMap::new();
+		) -> (Vec<A>, Vec<A>)
+		where
+			A: Activity + Clone,
+		{
+			let mut consistent_aggregates: BTreeMap<ActivityHash, Vec<A>> = BTreeMap::new();
 
-			// Flatten and collect all customer activities
-			for bucket_sub_aggregates in buckets_sub_aggregates.iter() {
-				consistent_buckets_sub_aggregates
-					.entry(bucket_sub_aggregates.get_consensus_id::<T>())
+			for aggregate in aggregates.iter() {
+				consistent_aggregates
+					.entry(aggregate.get_consensus_id::<T>())
 					.or_default()
-					.push(bucket_sub_aggregates.clone());
+					.push(aggregate.clone());
 			}
 
-			let mut sub_aggregates_in_consensus = Vec::new();
-			let mut sub_aggregates_not_in_consensus = Vec::new();
-			let threshold = quorum * redundancy_factor;
+			let mut aggregates_in_consensus = Vec::new();
+			let mut aggregates_not_in_consensus = Vec::new();
 
-			// Check if each customer/bucket appears in at least `redundant_aggregators_count` nodes
-			for (_id, bucket_sub_aggregates) in consistent_buckets_sub_aggregates {
-				if bucket_sub_aggregates.len() < redundancy_factor.into() {
-					sub_aggregates_not_in_consensus.extend(bucket_sub_aggregates);
-				} else if let Some(bucket_sub_aggregate) =
-					Self::reach_consensus(bucket_sub_aggregates.clone(), threshold.into())
+			let max_aggregates_count = redundancy_factor;
+			let quorum_threshold = quorum * max_aggregates_count;
+
+			for (_id, group) in consistent_aggregates {
+				if group.len() < max_aggregates_count.into() {
+					aggregates_not_in_consensus.extend(group);
+				} else if let Some(aggregate) =
+					Self::reach_consensus(group.clone(), quorum_threshold.into())
 				{
-					sub_aggregates_in_consensus.push(bucket_sub_aggregate.clone());
+					aggregates_in_consensus.push(aggregate.clone());
 				} else {
-					sub_aggregates_not_in_consensus.extend(bucket_sub_aggregates);
+					aggregates_not_in_consensus.extend(group);
 				}
 			}
 
-			// todo! Reduce log size and put small message
-			log::info!("🏠👍 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, sub_aggregates_in_consensus);
-			log::info!("🏠👎 Bucket Sub-Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, sub_aggregates_not_in_consensus);
-			(sub_aggregates_in_consensus, sub_aggregates_not_in_consensus)
+			(aggregates_in_consensus, aggregates_not_in_consensus)
 		}
 
 		/// Fetch cluster to validate.
@@ -3130,7 +3127,6 @@ pub mod pallet {
 		}
 
 		/// Fetch Challenge node aggregate or bucket sub-aggregate.
-
 		pub(crate) fn _fetch_challenge_responses(
 			cluster_id: &ClusterId,
 			node_id: String,
