@@ -119,6 +119,7 @@ pub mod pallet {
 		AttemptToRemoveNonExistentNode,
 		AttemptToRemoveNotAssignedNode,
 		OnlyClusterManager,
+		OnlyNodeProvider,
 		NodeIsNotAuthorized,
 		NodeHasNoActivatedStake,
 		NodeStakeIsInvalid,
@@ -311,22 +312,8 @@ pub mod pallet {
 			ensure!(!has_chilling_attempt, Error::<T>::NodeChillingIsProhibited);
 
 			// Node with this node with this public key exists.
-			let node = T::NodeRepository::get(node_pub_key.clone())
+			T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
-
-			// Cluster extension smart contract allows joining.
-			if let Some(address) = cluster.props.node_provider_auth_contract.clone() {
-				let auth_contract = NodeProviderAuthContract::<T>::new(address, caller_id);
-
-				let is_authorized = auth_contract
-					.is_authorized(
-						node.get_provider_id().to_owned(),
-						node.get_pub_key(),
-						node.get_type(),
-					)
-					.map_err(Into::<Error<T>>::into)?;
-				ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
-			};
 
 			Self::do_add_node(cluster, node_pub_key, node_kind)
 		}
@@ -393,6 +380,55 @@ pub mod pallet {
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
 			Self::do_validate_node(cluster_id, node_pub_key, succeeded)
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_cluster())]
+		pub fn join_cluster(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			node_pub_key: NodePubKey,
+		) -> DispatchResult {
+			let caller_id = ensure_signed(origin)?;
+
+			// Cluster with a given id exists and has an auth smart contract.
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			let node_provider_auth_contract_address = cluster
+				.props
+				.node_provider_auth_contract
+				.clone()
+				.ok_or(Error::<T>::NodeIsNotAuthorized)?;
+
+			// Node with this public key exists and belongs to the caller.
+			let node = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+			ensure!(*node.get_provider_id() == caller_id, Error::<T>::OnlyNodeProvider);
+
+			// Sufficient funds are locked at the DDC Staking module.
+			let has_activated_stake =
+				T::StakingVisitor::has_activated_stake(&node_pub_key, &cluster_id)
+					.map_err(Into::<Error<T>>::into)?;
+			ensure!(has_activated_stake, Error::<T>::NodeHasNoActivatedStake);
+
+			// Candidate is not planning to pause operations any time soon.
+			let has_chilling_attempt = T::StakingVisitor::has_chilling_attempt(&node_pub_key)
+				.map_err(Into::<Error<T>>::into)?;
+			ensure!(!has_chilling_attempt, Error::<T>::NodeChillingIsProhibited);
+
+			// Cluster auth smart contract allows joining.
+			let auth_contract =
+				NodeProviderAuthContract::<T>::new(node_provider_auth_contract_address, caller_id);
+			let is_authorized = auth_contract
+				.is_authorized(
+					node.get_provider_id().to_owned(),
+					node.get_pub_key(),
+					node.get_type(),
+				)
+				.map_err(Into::<Error<T>>::into)?;
+			ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
+
+			Self::do_join_cluster(cluster, node_pub_key)
 		}
 	}
 
@@ -533,6 +569,44 @@ pub mod pallet {
 				.checked_add(1)
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
+			ClustersNodesStats::<T>::insert(cluster.cluster_id, current_stats);
+
+			Ok(())
+		}
+
+		fn do_join_cluster(
+			cluster: Cluster<T::AccountId>,
+			node_pub_key: NodePubKey,
+		) -> DispatchResult {
+			ensure!(cluster.can_manage_nodes(), Error::<T>::UnexpectedClusterStatus);
+
+			let mut node: pallet_ddc_nodes::Node<T> = T::NodeRepository::get(node_pub_key.clone())
+				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+			ensure!(node.get_cluster_id().is_none(), Error::<T>::AttemptToAddAlreadyAssignedNode);
+
+			node.set_cluster_id(Some(cluster.cluster_id));
+			T::NodeRepository::update(node).map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
+
+			ClustersNodes::<T>::insert(
+				cluster.cluster_id,
+				node_pub_key.clone(),
+				ClusterNodeState {
+					kind: ClusterNodeKind::External,
+					status: ClusterNodeStatus::ValidationSucceeded,
+					added_at: frame_system::Pallet::<T>::block_number(),
+				},
+			);
+			Self::deposit_event(Event::<T>::ClusterNodeAdded {
+				cluster_id: cluster.cluster_id,
+				node_pub_key,
+			});
+
+			let mut current_stats = ClustersNodesStats::<T>::try_get(cluster.cluster_id)
+				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			current_stats.validation_succeeded = current_stats
+				.validation_succeeded
+				.checked_add(1)
+				.ok_or(Error::<T>::ArithmeticOverflow)?;
 			ClustersNodesStats::<T>::insert(cluster.cluster_id, current_stats);
 
 			Ok(())
