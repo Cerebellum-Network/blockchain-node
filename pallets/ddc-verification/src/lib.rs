@@ -161,27 +161,6 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		},
-		/// Not enough nodes for consensus.
-		NotEnoughNodesForConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			node_id: String,
-			validator: T::AccountId,
-		},
-		/// Not enough buckets for consensus.
-		NotEnoughBucketsForConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			bucket_id: BucketId,
-			validator: T::AccountId,
-		},
-		/// Not enough records for consensus.
-		NotEnoughRecordsForConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			record_id: String,
-			validator: T::AccountId,
-		},
 		/// Node Usage Retrieval Error.
 		NodeUsageRetrievalError {
 			cluster_id: ClusterId,
@@ -318,13 +297,6 @@ pub mod pallet {
 			node_pub_key: NodePubKey,
 			validator: T::AccountId,
 		},
-		NotEnoughNodeAggregatesForConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			bucket_id: BucketId,
-			node_id: String,
-			validator: T::AccountId,
-		},
 		ChallengeResponseRetrievalError {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
@@ -333,27 +305,12 @@ pub mod pallet {
 			node_pub_key: NodePubKey,
 			validator: T::AccountId,
 		},
+		EmptyConsistentGroup,
 	}
 
 	/// Consensus Errors
 	#[derive(Debug, Encode, Decode, Clone, TypeInfo, PartialEq)]
 	pub enum OCWError {
-		/// Not enough nodes for consensus.
-		NotEnoughNodesForConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			node_id: String,
-		},
-		NotEnoughBucketsForConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			bucket_id: BucketId,
-		},
-		NotEnoughRecordsForConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			record_id: String,
-		},
 		/// Node Usage Retrieval Error.
 		NodeUsageRetrievalError {
 			cluster_id: ClusterId,
@@ -457,13 +414,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			node_pub_key: NodePubKey,
 		},
-		/// Not enough subaggregates for consensus.
-		NotEnoughNodeAggregatesForConsensus {
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			bucket_id: BucketId,
-			node_id: String,
-		},
+		EmptyConsistentGroup,
 	}
 
 	#[pallet::error]
@@ -768,37 +719,38 @@ pub mod pallet {
 		pub value: String,
 	}
 
-	#[derive(Debug, Clone)]
-	pub(crate) struct ConsistencyGroups<T: Activity> {
-		pub in_consensus: Vec<T>,
-		pub in_quorum: Vec<T>,
-		pub in_excess: Vec<T>,
-		pub others: Vec<T>,
+	#[derive(Debug, Clone, PartialEq)]
+	pub(crate) struct ConsistentGroup<A: Aggregate>(pub ActivityHash, pub Vec<A>);
+	impl<A: Aggregate> ConsistentGroup<A> {
+		pub fn hash(&self) -> ActivityHash {
+			self.0
+		}
+
+		pub fn get(&self, idx: usize) -> Option<&A> {
+			self.1.get(idx)
+		}
+
+		pub fn len(&self) -> usize {
+			self.1.len()
+		}
 	}
 
-	// Define a common trait
-	pub trait Activity:
+	#[derive(Debug, Clone, PartialEq)]
+	pub(crate) struct ConsistentGroups<A: Aggregate> {
+		pub in_consensus: Vec<ConsistentGroup<A>>,
+		pub in_quorum: Vec<ConsistentGroup<A>>,
+		pub in_excess: Vec<ConsistentGroup<A>>,
+		pub in_others: Vec<ConsistentGroup<A>>,
+	}
+
+	pub trait Aggregate:
 		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
 	{
-		fn get_consensus_id<T: Config>(&self) -> ActivityHash;
 		fn hash<T: Config>(&self) -> ActivityHash;
-
-		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError;
-
-		fn node_leaf_hash<T: Config>(&self) -> ActivityHash;
+		fn get_aggregator(&self) -> AggregatorInfo;
 	}
 
-	impl Activity for BucketSubAggregate {
-		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			let mut data = self.bucket_id.encode();
-			data.extend_from_slice(&self.node_id.encode());
-			data.extend_from_slice(&self.stored_bytes.encode());
-			data.extend_from_slice(&self.transferred_bytes.encode());
-			data.extend_from_slice(&self.number_of_puts.encode());
-			data.extend_from_slice(&self.number_of_gets.encode());
-			T::ActivityHasher::hash(&data).into()
-		}
-
+	impl Aggregate for BucketSubAggregate {
 		fn hash<T: Config>(&self) -> ActivityHash {
 			let mut data = self.bucket_id.encode();
 			data.extend_from_slice(&self.node_id.encode());
@@ -809,33 +761,12 @@ pub mod pallet {
 			T::ActivityHasher::hash(&data).into()
 		}
 
-		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
-			let node_id = &self.node_id;
-			let bucket_id = &self.bucket_id;
-
-			OCWError::NotEnoughNodeAggregatesForConsensus {
-				cluster_id,
-				era_id,
-				bucket_id: *bucket_id,
-				node_id: node_id.clone(),
-			}
-		}
-
-		fn node_leaf_hash<T: crate::pallet::Config>(&self) -> ActivityHash {
-			ActivityHash::default()
+		fn get_aggregator(&self) -> AggregatorInfo {
+			self.aggregator.clone()
 		}
 	}
 
-	impl Activity for NodeAggregate {
-		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			let mut data = self.node_id.encode();
-			data.extend_from_slice(&self.stored_bytes.encode());
-			data.extend_from_slice(&self.transferred_bytes.encode());
-			data.extend_from_slice(&self.number_of_puts.encode());
-			data.extend_from_slice(&self.number_of_gets.encode());
-			T::ActivityHasher::hash(&data).into()
-		}
-
+	impl Aggregate for NodeAggregate {
 		fn hash<T: Config>(&self) -> ActivityHash {
 			let mut data = self.node_id.encode();
 			data.extend_from_slice(&self.stored_bytes.encode());
@@ -845,41 +776,34 @@ pub mod pallet {
 			T::ActivityHasher::hash(&data).into()
 		}
 
-		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
-			let node_id = &self.node_id;
-
-			OCWError::NotEnoughNodesForConsensus { cluster_id, era_id, node_id: node_id.clone() }
-		}
-
-		fn node_leaf_hash<T: crate::pallet::Config>(&self) -> ActivityHash {
-			ActivityHash::default()
+		fn get_aggregator(&self) -> AggregatorInfo {
+			self.aggregator.clone()
 		}
 	}
+	pub trait NodeAggregateLeaf:
+		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
+	{
+		fn leaf_hash<T: Config>(&self) -> ActivityHash;
+	}
 
-	impl Activity for Leaf {
-		fn get_consensus_id<T: Config>(&self) -> ActivityHash {
-			T::ActivityHasher::hash(&self.record.id.encode()).into()
-		}
+	pub trait BucketSubAggregateLeaf:
+		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
+	{
+		fn leaf_hash<T: Config>(&self) -> ActivityHash;
+	}
 
-		fn hash<T: Config>(&self) -> ActivityHash {
+	impl NodeAggregateLeaf for Leaf {
+		fn leaf_hash<T: Config>(&self) -> ActivityHash {
 			let mut data = self.record.id.encode();
 			data.extend_from_slice(&self.record.upstream.request.requestType.encode());
 			data.extend_from_slice(&self.stored_bytes.encode());
 			data.extend_from_slice(&self.transferred_bytes.encode());
 			T::ActivityHasher::hash(&data).into()
 		}
+	}
 
-		fn get_consensus_error(&self, cluster_id: ClusterId, era_id: DdcEra) -> OCWError {
-			let record_id = &self.record.id;
-
-			OCWError::NotEnoughRecordsForConsensus {
-				cluster_id,
-				era_id,
-				record_id: record_id.clone(),
-			}
-		}
-
-		fn node_leaf_hash<T: Config>(&self) -> ActivityHash {
+	impl BucketSubAggregateLeaf for Leaf {
+		fn leaf_hash<T: Config>(&self) -> ActivityHash {
 			let mut data = self.record.upstream.request.bucketId.encode();
 			data.extend_from_slice(&self.record.encode());
 			data.extend_from_slice(&self.record.upstream.request.requestType.encode());
@@ -1522,7 +1446,13 @@ pub mod pallet {
 			// 		)?;
 			// }
 
-			let total_buckets_usage = buckets_sub_aggregates_groups.in_consensus.clone();
+			// let total_buckets_usage = buckets_sub_aggregates_groups.in_consensus.clone();
+			let total_buckets_usage: Vec<BucketSubAggregate> = buckets_sub_aggregates_groups
+				.in_consensus
+				.clone()
+				.into_iter()
+				.map(|g| g.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned())
+				.collect::<Result<Vec<_>, _>>()?;
 			// total_buckets_usage.extend(buckets_sub_aggregates_passed_challenges);
 
 			let customer_activity_hashes: Vec<ActivityHash> =
@@ -1591,7 +1521,13 @@ pub mod pallet {
 			// 		)?;
 			// }
 
-			let total_nodes_usage = nodes_aggregates_groups.in_consensus.clone();
+			// let total_nodes_usage = nodes_aggregates_groups.in_consensus.clone();
+			let total_nodes_usage: Vec<NodeAggregate> = nodes_aggregates_groups
+				.in_consensus
+				.clone()
+				.into_iter()
+				.map(|g| g.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned())
+				.collect::<Result<Vec<_>, _>>()?;
 			// total_nodes_usage.extend(nodes_activities_passed_challenges);
 
 			let node_activity_hashes: Vec<ActivityHash> =
@@ -1931,9 +1867,13 @@ pub mod pallet {
 
 			for proof in challenge_response.proofs {
 				let leaf_record_hashes: Vec<ActivityHash> = if bucket_id.is_some() {
-					proof.leafs.into_iter().map(|p| p.hash::<T>()).collect()
+					proof.leafs.into_iter().map(|p| NodeAggregateLeaf::leaf_hash::<T>(&p)).collect()
 				} else {
-					proof.leafs.into_iter().map(|p| p.node_leaf_hash::<T>()).collect()
+					proof
+						.leafs
+						.into_iter()
+						.map(|p| BucketSubAggregateLeaf::leaf_hash::<T>(&p))
+						.collect()
 				};
 
 				let leaf_record_hashes_string: Vec<String> =
@@ -2030,7 +1970,7 @@ pub mod pallet {
 			buckets_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<BucketAggregateResponse>)>,
 			redundancy_factor: u16,
 			quorum: Percent,
-		) -> ConsistencyGroups<BucketSubAggregate> {
+		) -> ConsistentGroups<BucketSubAggregate> {
 			let mut buckets_sub_aggregates: Vec<BucketSubAggregate> = Vec::new();
 
 			log::info!(
@@ -2064,7 +2004,7 @@ pub mod pallet {
 				Self::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
 
 			log::info!("🏠👍 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.in_consensus);
-			log::info!("🏠👎 Bucket Sub-Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.others);
+			log::info!("🏠👎 Bucket Sub-Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.in_others);
 
 			buckets_sub_aggregates_groups
 		}
@@ -2766,7 +2706,7 @@ pub mod pallet {
 		///
 		/// # Output
 		/// - `Vec<ActivityHash>`: A vector of Merkle roots, one for each batch of activities.
-		pub(crate) fn convert_to_batch_merkle_roots<A: Activity>(
+		pub(crate) fn convert_to_batch_merkle_roots<A: Aggregate>(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			activities: Vec<Vec<A>>,
@@ -2794,7 +2734,7 @@ pub mod pallet {
 		///
 		/// # Output
 		/// - `Vec<Vec<A>>`: A vector of vectors, where each inner vector is a batch of activities.
-		pub(crate) fn split_to_batches<A: Activity>(
+		pub(crate) fn split_to_batches<A: Aggregate>(
 			activities: &[A],
 			batch_size: usize,
 		) -> Vec<Vec<A>> {
@@ -3007,14 +2947,14 @@ pub mod pallet {
 		/// - `Option<A>`:
 		///   - `Some(A)`: An activity that has met or exceeded the threshold.
 		///   - `None`: No activity met the threshold.
-		pub(crate) fn reach_consensus<A: Activity>(
+		pub(crate) fn _reach_consensus<A: Aggregate>(
 			activities: Vec<A>,
 			threshold: usize,
 		) -> Option<A> {
 			let mut count_map: BTreeMap<ActivityHash, Vec<A>> = BTreeMap::new();
 
 			for activity in activities {
-				count_map.entry(activity.get_consensus_id::<T>()).or_default().push(activity);
+				count_map.entry(activity.hash::<T>()).or_default().push(activity);
 			}
 
 			count_map
@@ -3054,7 +2994,7 @@ pub mod pallet {
 			nodes_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<NodeAggregateResponse>)>,
 			redundancy_factor: u16,
 			quorum: Percent,
-		) -> ConsistencyGroups<NodeAggregate> {
+		) -> ConsistentGroups<NodeAggregate> {
 			let mut nodes_aggregates: Vec<NodeAggregate> = Vec::new();
 
 			log::info!(
@@ -3083,7 +3023,7 @@ pub mod pallet {
 				Self::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
 
 			log::info!("🏠👍 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.in_consensus);
-			log::info!("🏠👎 Node Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.others);
+			log::info!("🏠👎 Node Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.in_others);
 
 			nodes_aggregates_groups
 		}
@@ -3092,43 +3032,40 @@ pub mod pallet {
 			aggregates: Vec<A>,
 			redundancy_factor: u16,
 			quorum: Percent,
-		) -> ConsistencyGroups<A>
+		) -> ConsistentGroups<A>
 		where
-			A: Activity + Clone,
+			A: Aggregate + Clone,
 		{
 			let mut consistent_aggregates: BTreeMap<ActivityHash, Vec<A>> = BTreeMap::new();
 
 			for aggregate in aggregates.iter() {
 				consistent_aggregates
-					.entry(aggregate.get_consensus_id::<T>())
+					.entry(aggregate.hash::<T>())
 					.or_default()
 					.push(aggregate.clone());
 			}
 
-			let mut aggregates_in_consensus = Vec::new();
-			let mut aggregates_not_in_consensus = Vec::new();
+			let mut in_consensus = Vec::new();
+			let mut in_excess = Vec::new();
+			let mut in_quorum = Vec::new();
+			let mut in_others = Vec::new();
 
 			let max_aggregates_count = redundancy_factor;
 			let quorum_threshold = quorum * max_aggregates_count;
 
-			for (_id, group) in consistent_aggregates {
-				if group.len() < max_aggregates_count.into() {
-					aggregates_not_in_consensus.extend(group);
-				} else if let Some(aggregate) =
-					Self::reach_consensus(group.clone(), quorum_threshold.into())
-				{
-					aggregates_in_consensus.push(aggregate.clone());
+			for (hash, group) in consistent_aggregates {
+				if group.len() == usize::from(max_aggregates_count) {
+					in_consensus.push(ConsistentGroup(hash, group));
+				} else if group.len() > max_aggregates_count.into() {
+					in_excess.push(ConsistentGroup(hash, group));
+				} else if group.len() >= quorum_threshold.into() {
+					in_quorum.push(ConsistentGroup(hash, group));
 				} else {
-					aggregates_not_in_consensus.extend(group);
+					in_others.push(ConsistentGroup(hash, group));
 				}
 			}
 
-			ConsistencyGroups {
-				in_consensus: aggregates_in_consensus,
-				in_quorum: vec![],
-				in_excess: vec![],
-				others: aggregates_not_in_consensus,
-			}
+			ConsistentGroups { in_consensus, in_quorum, in_excess, in_others }
 		}
 
 		/// Fetch cluster to validate.
@@ -3579,22 +3516,6 @@ pub mod pallet {
 
 			for error in errors {
 				match error {
-					OCWError::NotEnoughNodesForConsensus { cluster_id, era_id, node_id } => {
-						Self::deposit_event(Event::NotEnoughNodesForConsensus {
-							cluster_id,
-							era_id,
-							node_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::NotEnoughBucketsForConsensus { cluster_id, era_id, bucket_id } => {
-						Self::deposit_event(Event::NotEnoughBucketsForConsensus {
-							cluster_id,
-							era_id,
-							bucket_id,
-							validator: caller.clone(),
-						});
-					},
 					OCWError::NodeUsageRetrievalError { cluster_id, era_id, node_pub_key } => {
 						Self::deposit_event(Event::NodeUsageRetrievalError {
 							cluster_id,
@@ -3777,20 +3698,6 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
-					OCWError::NotEnoughNodeAggregatesForConsensus {
-						cluster_id,
-						era_id,
-						bucket_id,
-						node_id,
-					} => {
-						Self::deposit_event(Event::NotEnoughNodeAggregatesForConsensus {
-							cluster_id,
-							era_id,
-							bucket_id,
-							node_id,
-							validator: caller.clone(),
-						});
-					},
 					OCWError::ChallengeResponseRetrievalError {
 						cluster_id,
 						era_id,
@@ -3807,14 +3714,6 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
-					OCWError::NotEnoughRecordsForConsensus { cluster_id, era_id, record_id } => {
-						Self::deposit_event(Event::NotEnoughRecordsForConsensus {
-							cluster_id,
-							era_id,
-							record_id,
-							validator: caller.clone(),
-						});
-					},
 					OCWError::FailedToFetchClusterNodes => {
 						Self::deposit_event(Event::FailedToFetchClusterNodes {
 							validator: caller.clone(),
@@ -3824,6 +3723,9 @@ pub mod pallet {
 						Self::deposit_event(Event::FailedToFetchDacNodes {
 							validator: caller.clone(),
 						});
+					},
+					OCWError::EmptyConsistentGroup => {
+						Self::deposit_event(Event::EmptyConsistentGroup);
 					},
 				}
 			}
