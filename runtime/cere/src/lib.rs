@@ -29,6 +29,7 @@ use frame_election_provider_support::{
 use frame_support::{
 	construct_runtime, derive_impl,
 	dispatch::DispatchClass,
+	genesis_builder_helper::{build_config, create_default_config},
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
@@ -38,7 +39,6 @@ use frame_support::{
 		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem,
 		LinearStoragePrice, Nothing, OnUnbalanced, WithdrawReasons,
 	},
-	genesis_builder_helper::{build_config, create_default_config},
 	weights::{
 		constants::{
 			BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND,

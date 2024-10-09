@@ -199,31 +199,31 @@ pub fn cere_dev_genesis(
 			"canceledPayout": CANCEL_PAYOUT,
 			"stakers": stakers.clone(),
 			"minNominatorBond": MIN_NOMINATOR_BOND,
-          	"minValidatorBond": MIN_VALIDATOR_BOND,
-          	"maxValidatorCount": null,
-          	"maxNominatorCount": null,
+			  "minValidatorBond": MIN_VALIDATOR_BOND,
+			  "maxValidatorCount": null,
+			  "maxNominatorCount": null,
 		},
 		"ddcStaking": cere_dev::DdcStakingConfig {
 			storages: vec![],
-          	clusters: vec![]
+			  clusters: vec![]
 		},
 		 "ddcCustomers": {
-          "feederAccount": null,
-          "buckets": []
-        },
+		  "feederAccount": null,
+		  "buckets": []
+		},
 		"ddcNodes": {
-          "storageNodes": []
-        },
+		  "storageNodes": []
+		},
 		"ddcClusters": {
-          "clusters": [],
-          "clustersProtocolParams": [],
-          "clustersNodes": []
-        },
+		  "clusters": [],
+		  "clustersProtocolParams": [],
+		  "clustersNodes": []
+		},
 		"ddcPayouts": {
-          "feederAccount": null,
-          "authorisedCaller": null,
-          "debtorCustomers": []
-        },
+		  "feederAccount": null,
+		  "authorisedCaller": null,
+		  "debtorCustomers": []
+		},
 		"sudo": { "key": Some(root_key) },
 		"babe": {
 			"authorities": [],
