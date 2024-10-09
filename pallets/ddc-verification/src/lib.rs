@@ -2044,8 +2044,9 @@ pub mod pallet {
 			let buckets_sub_aggregates_groups =
 				Self::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
 
-			log::info!("🏠👍 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.in_consensus);
-			log::info!("🏠👎 Bucket Sub-Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.in_others);
+			log::info!("🏠🌕 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.in_consensus);
+			log::info!("🏠🌗 Bucket Sub-Aggregates, which are in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.in_quorum);
+			log::info!("🏠🌘 Bucket Sub-Aggregates, which are neither in consensus nor in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.in_others);
 
 			buckets_sub_aggregates_groups
 		}
@@ -2972,39 +2973,6 @@ pub mod pallet {
 			Ok(all_node_eras.iter().cloned().min_by_key(|n| n.id))
 		}
 
-		/// Determines if a consensus is reached for a set of activities based on a specified
-		/// threshold.
-		///
-		/// This function counts the occurrences of each activity in the provided list and checks if
-		/// any activity's count meets or exceeds the given threshold. If such an activity is found,
-		/// it is returned.
-		///
-		/// # Input Parameters
-		/// - `activities: &[A]`: A slice of activities to be analyzed for consensus.
-		/// - `threshold: usize`: The minimum number of occurrences required for an activity to be
-		///   considered in consensus.
-		///
-		/// # Output
-		/// - `Option<A>`:
-		///   - `Some(A)`: An activity that has met or exceeded the threshold.
-		///   - `None`: No activity met the threshold.
-		pub(crate) fn _reach_consensus<A: Aggregate>(
-			activities: Vec<A>,
-			threshold: usize,
-		) -> Option<A> {
-			let mut count_map: BTreeMap<ActivityHash, Vec<A>> = BTreeMap::new();
-
-			for activity in activities {
-				count_map.entry(activity.hash::<T>()).or_default().push(activity);
-			}
-
-			count_map
-				.into_iter()
-				.find(|(_, count)| count.len() >= threshold)
-				.map(|(_, same_activities)| same_activities.clone().first().cloned())
-				.unwrap_or_else(|| None)
-		}
-
 		/// Computes the consensus for a set of activities across multiple nodes within a given
 		/// cluster and era.
 		///
@@ -3063,8 +3031,9 @@ pub mod pallet {
 			let nodes_aggregates_groups =
 				Self::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
 
-			log::info!("🏠👍 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.in_consensus);
-			log::info!("🏠👎 Node Aggregates, which are not in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.in_others);
+			log::info!("🏠🌕 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.in_consensus);
+			log::info!("🏠🌗 Node Aggregates, which are in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.in_quorum);
+			log::info!("🏠🌘 Node Aggregates, which are neither in consensus nor in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.in_others);
 
 			nodes_aggregates_groups
 		}
