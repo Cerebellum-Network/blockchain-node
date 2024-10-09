@@ -16,6 +16,10 @@ RUN apt-get -qq update && \
       unzip \
       wget
 
+COPY ./healthcheck.sh /usr/bin/
+HEALTHCHECK --interval=300s --timeout=75s --start-period=30s --retries=3 \
+    CMD ["/usr/bin/healthcheck.sh"]
+
 # Configure sccache
 ENV SCCACHE_VERSION=0.5.4
 RUN wget -q https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl.tar.gz \
