@@ -739,7 +739,6 @@ pub mod pallet {
 	pub(crate) struct ConsistentGroups<A: Aggregate> {
 		pub in_consensus: Vec<ConsistentGroup<A>>,
 		pub in_quorum: Vec<ConsistentGroup<A>>,
-		pub in_excess: Vec<ConsistentGroup<A>>,
 		pub in_others: Vec<ConsistentGroup<A>>,
 	}
 
@@ -3046,7 +3045,6 @@ pub mod pallet {
 			}
 
 			let mut in_consensus = Vec::new();
-			let mut in_excess = Vec::new();
 			let mut in_quorum = Vec::new();
 			let mut in_others = Vec::new();
 
@@ -3056,8 +3054,6 @@ pub mod pallet {
 			for (hash, group) in consistent_aggregates {
 				if group.len() == usize::from(max_aggregates_count) {
 					in_consensus.push(ConsistentGroup(hash, group));
-				} else if group.len() > max_aggregates_count.into() {
-					in_excess.push(ConsistentGroup(hash, group));
 				} else if group.len() >= quorum_threshold.into() {
 					in_quorum.push(ConsistentGroup(hash, group));
 				} else {
@@ -3065,7 +3061,7 @@ pub mod pallet {
 				}
 			}
 
-			ConsistentGroups { in_consensus, in_quorum, in_excess, in_others }
+			ConsistentGroups { in_consensus, in_quorum, in_others }
 		}
 
 		/// Fetch cluster to validate.
