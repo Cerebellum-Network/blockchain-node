@@ -58,6 +58,7 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
+
 	use ddc_primitives::{AggregatorInfo, BucketId, MergeActivityHash, KEY_TYPE};
 	use frame_support::PalletId;
 	use sp_core::crypto::AccountId32;
@@ -733,6 +734,10 @@ pub mod pallet {
 		pub fn len(&self) -> usize {
 			self.1.len()
 		}
+
+		pub fn items(&self) -> &Vec<A> {
+			&self.1
+		}
 	}
 
 	#[derive(Debug, Clone, PartialEq)]
@@ -743,7 +748,7 @@ pub mod pallet {
 	}
 
 	pub trait Aggregate:
-		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
+		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Debug
 	{
 		fn hash<T: Config>(&self) -> ActivityHash;
 		fn get_aggregator(&self) -> AggregatorInfo;
@@ -1435,18 +1440,6 @@ pub mod pallet {
 
 			let total_buckets_usage = Self::get_total_usage(buckets_sub_aggregates_groups)?;
 
-			// let mut buckets_sub_aggregates_passed_challenges: Vec<BucketSubAggregate> =
-			// 	vec![];
-			// if !buckets_sub_aggregates_not_in_consensus.is_empty() {
-			// 	buckets_sub_aggregates_passed_challenges =
-			// 		Self::challenge_and_find_valid_bucket_sub_aggregates_not_in_consensus(
-			// 			cluster_id,
-			// 			era_activity.id,
-			// 			buckets_sub_aggregates_not_in_consensus,
-			// 		)?;
-			// }
-			// total_buckets_usage.extend(buckets_sub_aggregates_passed_challenges);
-
 			let customer_activity_hashes: Vec<ActivityHash> =
 				total_buckets_usage.clone().into_iter().map(|c| c.hash::<T>()).collect();
 
@@ -1502,17 +1495,6 @@ pub mod pallet {
 				dac_redundancy_factor,
 				aggregators_quorum,
 			);
-
-			// let mut nodes_activities_passed_challenges: Vec<NodeAggregate> = vec![];
-			// if !nodes_activities_passed_challenges.is_empty() {
-			// 	nodes_activities_passed_challenges =
-			// 		Self::challenge_and_find_valid_node_aggregates_not_in_consensus(
-			// 			cluster_id,
-			// 			era_activity.id,
-			// 			nodes_activities_not_in_consensus,
-			// 		)?;
-			// }
-			// total_nodes_usage.extend(nodes_activities_passed_challenges);
 
 			let total_nodes_usage = Self::get_total_usage(nodes_aggregates_groups)?;
 
@@ -1603,7 +1585,56 @@ pub mod pallet {
 				.collect::<Result<Vec<_>, _>>()?;
 			total_usage.extend(in_quorum_usage);
 
+			let verified_usage = Self::challenge_others(consistent_groups.in_others)?;
+			if verified_usage.len() > 0 {
+				total_usage.extend(verified_usage);
+			}
+
 			Ok(total_usage)
+		}
+
+		pub(crate) fn challenge_others<A: Aggregate>(
+			others: Vec<ConsistentGroup<A>>,
+		) -> Result<Vec<A>, Vec<OCWError>> {
+			let redundancy_factor = T::DAC_REDUNDANCY_FACTOR;
+			let mut verified_usage: Vec<A> = vec![];
+
+			for group in others {
+				if group.len() > redundancy_factor.into() {
+					log::info!(
+						"⚠️ Number of consistent aggregates exceeds the redundancy factor {:?}",
+						group.hash()
+					);
+
+					let excessive_aggregate =
+						group.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned()?;
+
+					log::info!(
+						"🔎‍ Challenging excessive aggregate {:?}",
+						excessive_aggregate.hash::<T>()
+					);
+
+					// todo: run a challenge dedicated to the excessive number of aggregates.
+					// we assume it won't happen at the moment, so we just take the aggregate to
+					// payouts stage
+					verified_usage.push(excessive_aggregate);
+				} else {
+					let defective_aggregate =
+						group.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned()?;
+
+					log::info!(
+						"🔎‍ Challenging defective aggregate {:?}",
+						defective_aggregate.hash::<T>()
+					);
+
+					// todo: run a challenge dedicated to defective aggregate.
+					// we assume all aggregates are valid at the moment, so we just take the
+					// aggregate to payouts stage
+					verified_usage.push(defective_aggregate);
+				}
+			}
+
+			Ok(verified_usage)
 		}
 
 		pub(crate) fn _challenge_and_find_valid_bucket_sub_aggregates_not_in_consensus(
