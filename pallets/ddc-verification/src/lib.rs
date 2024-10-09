@@ -1433,9 +1433,10 @@ pub mod pallet {
 				aggregators_quorum,
 			);
 
+			let total_buckets_usage = Self::get_total_usage(buckets_sub_aggregates_groups)?;
+
 			// let mut buckets_sub_aggregates_passed_challenges: Vec<BucketSubAggregate> =
 			// 	vec![];
-
 			// if !buckets_sub_aggregates_not_in_consensus.is_empty() {
 			// 	buckets_sub_aggregates_passed_challenges =
 			// 		Self::challenge_and_find_valid_bucket_sub_aggregates_not_in_consensus(
@@ -1444,26 +1445,6 @@ pub mod pallet {
 			// 			buckets_sub_aggregates_not_in_consensus,
 			// 		)?;
 			// }
-
-			// let total_buckets_usage = buckets_sub_aggregates_groups.in_consensus.clone();
-			let mut total_buckets_usage: Vec<BucketSubAggregate> = vec![];
-
-			let buckets_sub_aggregates_in_consensus = buckets_sub_aggregates_groups
-				.in_consensus
-				.clone()
-				.into_iter()
-				.map(|g| g.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned())
-				.collect::<Result<Vec<_>, _>>()?;
-			total_buckets_usage.extend(buckets_sub_aggregates_in_consensus);
-
-			let buckets_sub_aggregates_in_quorum = buckets_sub_aggregates_groups
-				.in_quorum
-				.clone()
-				.into_iter()
-				.map(|g| g.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned())
-				.collect::<Result<Vec<_>, _>>()?;
-			total_buckets_usage.extend(buckets_sub_aggregates_in_quorum);
-
 			// total_buckets_usage.extend(buckets_sub_aggregates_passed_challenges);
 
 			let customer_activity_hashes: Vec<ActivityHash> =
@@ -1531,27 +1512,9 @@ pub mod pallet {
 			// 			nodes_activities_not_in_consensus,
 			// 		)?;
 			// }
-
-			// let total_nodes_usage = nodes_aggregates_groups.in_consensus.clone();
-			let mut total_nodes_usage: Vec<NodeAggregate> = vec![];
-
-			let node_aggregates_in_consensus = nodes_aggregates_groups
-				.in_consensus
-				.clone()
-				.into_iter()
-				.map(|g| g.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned())
-				.collect::<Result<Vec<_>, _>>()?;
-			total_nodes_usage.extend(node_aggregates_in_consensus);
-
-			let node_aggregates_in_quorum = nodes_aggregates_groups
-				.in_consensus
-				.clone()
-				.into_iter()
-				.map(|g| g.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned())
-				.collect::<Result<Vec<_>, _>>()?;
-			total_nodes_usage.extend(node_aggregates_in_quorum);
-
 			// total_nodes_usage.extend(nodes_activities_passed_challenges);
+
+			let total_nodes_usage = Self::get_total_usage(nodes_aggregates_groups)?;
 
 			let node_activity_hashes: Vec<ActivityHash> =
 				total_nodes_usage.clone().into_iter().map(|c| c.hash::<T>()).collect();
@@ -1617,6 +1580,30 @@ pub mod pallet {
 				customers_activity_batch_roots,
 				nodes_activity_batch_roots,
 			)))
+		}
+
+		pub(crate) fn get_total_usage<A: Aggregate>(
+			consistent_groups: ConsistentGroups<A>,
+		) -> Result<Vec<A>, Vec<OCWError>> {
+			let mut total_usage: Vec<A> = vec![];
+
+			let in_consensus_usage = consistent_groups
+				.in_consensus
+				.clone()
+				.into_iter()
+				.map(|g| g.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned())
+				.collect::<Result<Vec<_>, _>>()?;
+			total_usage.extend(in_consensus_usage);
+
+			let in_quorum_usage = consistent_groups
+				.in_quorum
+				.clone()
+				.into_iter()
+				.map(|g| g.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned())
+				.collect::<Result<Vec<_>, _>>()?;
+			total_usage.extend(in_quorum_usage);
+
+			Ok(total_usage)
 		}
 
 		pub(crate) fn _challenge_and_find_valid_bucket_sub_aggregates_not_in_consensus(
