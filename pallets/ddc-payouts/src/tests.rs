@@ -3474,9 +3474,10 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 
 			let expected_charge = calculate_charge_for_month(cluster_id, user_usage.clone());
 			Balances::transfer(
-				RuntimeOrigin::signed(bank),
-				user_id,
+				&bank,
+				&user_id,
 				(expected_charge * 2).max(Balances::minimum_balance()),
+				ExistenceRequirement::KeepAlive,
 			)
 			.unwrap();
 			total_charge += expected_charge;
@@ -3747,9 +3748,10 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 
 			let expected_charge = calculate_charge_for_month(cluster_id, user_usage.clone());
 			Balances::transfer(
-				RuntimeOrigin::signed(bank),
-				user_id,
+				&bank,
+				&user_id,
 				(expected_charge * 2).max(Balances::minimum_balance()),
+				ExistenceRequirement::KeepAlive,
 			)
 			.unwrap();
 			total_charge += expected_charge;
@@ -4020,9 +4022,10 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 
 			let expected_charge = calculate_charge_for_month(cluster_id, user_usage.clone());
 			Balances::transfer(
-				RuntimeOrigin::signed(bank),
-				user_id,
+				&bank,
+				&user_id,
 				(expected_charge * 2).max(Balances::minimum_balance()),
+				ExistenceRequirement::KeepAlive,
 			)
 			.unwrap();
 			total_charge += expected_charge;
@@ -4252,9 +4255,10 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 
 			let expected_charge = calculate_charge_for_month(cluster_id, user_usage.clone());
 			Balances::transfer(
-				RuntimeOrigin::signed(bank),
-				user_id,
+				&bank,
+				&user_id,
 				(expected_charge * 2).max(Balances::minimum_balance()),
+				ExistenceRequirement::KeepAlive,
 			)
 			.unwrap();
 			total_charge += expected_charge;
