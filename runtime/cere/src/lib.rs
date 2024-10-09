@@ -38,6 +38,7 @@ use frame_support::{
 		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem,
 		LinearStoragePrice, Nothing, OnUnbalanced, WithdrawReasons,
 	},
+	genesis_builder_helper::{build_config, create_default_config},
 	weights::{
 		constants::{
 			BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND,
@@ -141,7 +142,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 61000,
+	spec_version: 61001,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 18,
@@ -1463,6 +1464,16 @@ mod benches {
 }
 
 impl_runtime_apis! {
+	impl sp_genesis_builder::GenesisBuilder<Block> for Runtime {
+		fn create_default_config() -> Vec<u8> {
+			create_default_config::<RuntimeGenesisConfig>()
+		}
+
+		fn build_config(config: Vec<u8>) -> sp_genesis_builder::Result {
+			build_config::<RuntimeGenesisConfig>(config)
+		}
+	}
+
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
 			VERSION

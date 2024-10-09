@@ -90,6 +90,7 @@ sp-std = { workspace = true }
 sp-storage = { workspace = true }
 sp-transaction-pool = { workspace = true }
 sp-version = { workspace = true }
+sp-genesis-builder = { workspace = true, default-features = false }
 
 # cere dependencies
 cere-runtime-common = { workspace = true }
@@ -171,6 +172,7 @@ std = [
   "sp-api/std",
   "sp-offchain/std",
   "sp-runtime/std",
+	"sp-genesis-builder/std",
   "sp-staking/std",
   "sp-storage/std",
   "sp-session/std",
