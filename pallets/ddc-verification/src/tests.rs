@@ -374,7 +374,7 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 	assert_eq!(groups.in_quorum.len(), 0);
 	assert_eq!(groups.in_others.len(), 0);
 
-	let result = DdcVerification::get_total_usage(groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -484,7 +484,7 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 	assert_eq!(groups.in_quorum.len(), 1);
 	assert_eq!(groups.in_others.len(), 1);
 
-	let result = DdcVerification::get_total_usage(groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -595,12 +595,12 @@ fn buckets_sub_aggregates_in_others_merged() {
 	assert_eq!(groups.in_quorum.len(), 0);
 	assert_eq!(groups.in_others.len(), 2);
 
-	let result = DdcVerification::get_total_usage(groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
 
-	let usage1 = usages.get(0).unwrap();
+	let usage1 = usages.first().unwrap();
 	assert_eq!(usage1.stored_bytes, 100);
 	assert_eq!(usage1.transferred_bytes, 50);
 	assert_eq!(usage1.number_of_puts, 10);
@@ -703,7 +703,7 @@ fn nodes_aggregates_in_consensus_merged() {
 	assert_eq!(groups.in_quorum.len(), 0);
 	assert_eq!(groups.in_others.len(), 0);
 
-	let result = DdcVerification::get_total_usage(groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -804,7 +804,7 @@ fn nodes_aggregates_in_quorum_merged() {
 	assert_eq!(groups.in_quorum.len(), 1);
 	assert_eq!(groups.in_others.len(), 1);
 
-	let result = DdcVerification::get_total_usage(groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -906,12 +906,12 @@ fn nodes_aggregates_in_others_merged() {
 	assert_eq!(groups.in_quorum.len(), 0);
 	assert_eq!(groups.in_others.len(), 2);
 
-	let result = DdcVerification::get_total_usage(groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
 
-	let usage1 = usages.get(0).unwrap();
+	let usage1 = usages.first().unwrap();
 	assert_eq!(usage1.stored_bytes, 200);
 	assert_eq!(usage1.transferred_bytes, 50);
 	assert_eq!(usage1.number_of_puts, 10);
@@ -925,7 +925,7 @@ fn nodes_aggregates_in_others_merged() {
 }
 
 #[test]
-fn buckets_sub_aggregates_grouped_by_consensus() {
+fn buckets_sub_aggregates_grouped_by_consistency() {
 	let redundancy_factor = 3;
 	let quorum = Percent::from_percent(67);
 	let host = "example1.com";
@@ -1002,7 +1002,7 @@ fn buckets_sub_aggregates_grouped_by_consensus() {
 }
 
 #[test]
-fn buckets_sub_aggregates_grouped_by_consensus_2() {
+fn buckets_sub_aggregates_grouped_by_consistency_2() {
 	let redundancy_factor = 3;
 	let quorum = Percent::from_percent(67);
 
@@ -1132,7 +1132,7 @@ fn buckets_sub_aggregates_grouped_by_consensus_2() {
 }
 
 #[test]
-fn nodes_aggregates_grouped_by_consensus() {
+fn nodes_aggregates_grouped_by_consistency() {
 	let redundancy_factor = 3;
 	let quorum = Percent::from_percent(67);
 	let host = "example1.com";
@@ -1206,7 +1206,7 @@ fn nodes_aggregates_grouped_by_consensus() {
 }
 
 #[test]
-fn nodes_aggregates_grouped_by_consensus_2() {
+fn nodes_aggregates_grouped_by_consistency_2() {
 	let redundancy_factor = 3;
 	let quorum = Percent::from_percent(67);
 
@@ -2767,7 +2767,7 @@ fn test_find_random_merkle_node_ids() {
 	};
 
 	ext.execute_with(|| {
-		let bucket_node_aggregates_not_in_consensus: BucketSubAggregate = BucketSubAggregate {
+		let deffective_bucket_sub_aggregate = BucketSubAggregate {
 			bucket_id: 90235,
 			node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
 				.to_string(),
@@ -2781,22 +2781,22 @@ fn test_find_random_merkle_node_ids() {
 			},
 		};
 
-		let total_activities = bucket_node_aggregates_not_in_consensus.number_of_gets +
-			bucket_node_aggregates_not_in_consensus.number_of_puts;
+		let number_of_leaves = deffective_bucket_sub_aggregate.get_number_of_leaves();
 
 		let ids = DdcVerification::_find_random_merkle_node_ids(
 			3,
-			total_activities,
-			bucket_node_aggregates_not_in_consensus.node_id,
+			number_of_leaves,
+			deffective_bucket_sub_aggregate.get_key(),
 		);
+
 		for id in ids {
-			assert!(id < total_activities);
+			assert!(id < number_of_leaves);
 		}
 	});
 }
 
 #[test]
-fn test_challenge_sub_aggregates_not_in_consensus() {
+fn challenge_bucket_sub_aggregate_works() {
 	let mut ext = new_test_ext();
 	let (offchain, offchain_state) = TestOffchainExt::new();
 	let (pool, _pool_state) = TestTransactionPoolExt::new();
@@ -2842,18 +2842,16 @@ fn test_challenge_sub_aggregates_not_in_consensus() {
 			..Default::default()
 		};
 
-
-		let pending_request5 = PendingRequest {
+		let pending_request2 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=1", host1, port),
-			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
+			uri: format!("http://{}:{}/activity/buckets/123229/traverse?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=1&levels=1", host1, port),
+			response: Some(br#"[{"merkle_tree_node_id":2,"hash":"hkujtYgWP21CrXdRP1rhRPrYR2ooIYCnP5zwCERTePI=","stored_bytes":20913291,"transferred_bytes":20913291,"number_of_puts":61,"number_of_gets":3},{"merkle_tree_node_id":3,"hash":"ZgWwK2LgWkHpx5JlXZn/Rouq6uE9DhOnRH6EA1+QO6o=","stored_bytes":23778084,"transferred_bytes":23778084,"number_of_puts":46,"number_of_gets":2}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
 
 		offchain_state.expect_request(pending_request1);
-
-		offchain_state.expect_request(pending_request5);
+		offchain_state.expect_request(pending_request2);
 
 		drop(offchain_state);
 
@@ -2872,23 +2870,23 @@ fn test_challenge_sub_aggregates_not_in_consensus() {
 			grpc_port: 4444,
 			domain: b"example2.com".to_vec(),
 		};
-		let bucket_node_aggregates_not_in_consensus: Vec<BucketSubAggregate> =
-			vec![BucketSubAggregate {
-				bucket_id: 123229,
-				node_id: "0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72"
-					.to_string(),
-				stored_bytes: 0,
-				transferred_bytes: 25143977,
-				number_of_puts: 0,
-				number_of_gets: 10,
-				aggregator: AggregatorInfo {
-					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
-					node_params: node_params1.clone(),
-				},
-			}];
+
+		let deffective_bucket_sub_aggregate = BucketSubAggregate {
+			bucket_id: 123229,
+			node_id: "0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72"
+				.to_string(),
+			stored_bytes: 0,
+			transferred_bytes: 25143977,
+			number_of_puts: 0,
+			number_of_gets: 10,
+			aggregator: AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
+				node_params: node_params1.clone(),
+			},
+		};
 
 		let result =
-			DdcVerification::_challenge_and_find_valid_bucket_sub_aggregates_not_in_consensus(&cluster_id, era_id, bucket_node_aggregates_not_in_consensus);
+			DdcVerification::_challenge_aggregate(&cluster_id, era_id, &deffective_bucket_sub_aggregate);
 
 		assert!(result.is_ok());
 
