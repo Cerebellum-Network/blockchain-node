@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use chainbridge as bridge;
-use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
+use frame_support::{ord_parameter_types,  derive_impl, parameter_types, weights::Weight};
 use frame_system::{self as system};
 pub use pallet_balances as balances;
 use sp_core::{hashing::blake2_128, H256};
@@ -21,8 +21,8 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
+#[derive_impl(frame_system::config_preludes::ParaChainDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
-	type BaseCallFilter = ();
 	type Origin = Origin;
 	type Call = Call;
 	type Nonce = u64;
@@ -34,18 +34,9 @@ impl frame_system::Config for Test {
 	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type MaximumBlockWeight = MaximumBlockWeight;
-	type DbWeight = ();
-	type BlockExecutionWeight = ();
-	type ExtrinsicBaseWeight = ();
-	type MaximumExtrinsicWeight = ();
 	type MaximumBlockLength = MaximumBlockLength;
 	type AvailableBlockRatio = AvailableBlockRatio;
-	type Version = ();
-	type ModuleToIndex = ();
 	type AccountData = balances::AccountData<u64>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
 }
 
 parameter_types! {
