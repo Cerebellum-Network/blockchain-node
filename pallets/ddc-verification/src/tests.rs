@@ -189,7 +189,11 @@ fn fetch_bucket_aggregates_works() {
 		let era_id = 1;
 
 		// Create a sample NodeAggregateResponse instance
-		let customer_activity1 = BucketAggregateResponse {
+		let bucket_aggregate1 = BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 111,
 			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
@@ -199,7 +203,11 @@ fn fetch_bucket_aggregates_works() {
 				number_of_gets: 20,
 			}],
 		};
-		let customer_activity2 = BucketAggregateResponse {
+		let bucket_aggregate2 = BucketAggregateResponse {
+			stored_bytes: 1000,
+			transferred_bytes: 500,
+			number_of_puts: 100,
+			number_of_gets: 200,
 			bucket_id: 222,
 			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
@@ -210,7 +218,7 @@ fn fetch_bucket_aggregates_works() {
 			}],
 		};
 		let customers_activity_json =
-			serde_json::to_string(&vec![customer_activity1.clone(), customer_activity2.clone()])
+			serde_json::to_string(&vec![bucket_aggregate1.clone(), bucket_aggregate2.clone()])
 				.unwrap();
 
 		// Mock HTTP request and response
@@ -241,36 +249,36 @@ fn fetch_bucket_aggregates_works() {
 		let activities = result.unwrap();
 		assert_eq!(
 			activities[0].sub_aggregates[0].number_of_gets,
-			customer_activity1.sub_aggregates[0].number_of_gets
+			bucket_aggregate1.sub_aggregates[0].number_of_gets
 		);
 		assert_eq!(
 			activities[0].sub_aggregates[0].number_of_puts,
-			customer_activity1.sub_aggregates[0].number_of_puts
+			bucket_aggregate1.sub_aggregates[0].number_of_puts
 		);
 		assert_eq!(
 			activities[0].sub_aggregates[0].transferred_bytes,
-			customer_activity1.sub_aggregates[0].transferred_bytes
+			bucket_aggregate1.sub_aggregates[0].transferred_bytes
 		);
 		assert_eq!(
 			activities[0].sub_aggregates[0].stored_bytes,
-			customer_activity1.sub_aggregates[0].stored_bytes
+			bucket_aggregate1.sub_aggregates[0].stored_bytes
 		);
 
 		assert_eq!(
 			activities[1].sub_aggregates[0].number_of_gets,
-			customer_activity2.sub_aggregates[0].number_of_gets
+			bucket_aggregate2.sub_aggregates[0].number_of_gets
 		);
 		assert_eq!(
 			activities[1].sub_aggregates[0].number_of_puts,
-			customer_activity2.sub_aggregates[0].number_of_puts
+			bucket_aggregate2.sub_aggregates[0].number_of_puts
 		);
 		assert_eq!(
 			activities[1].sub_aggregates[0].transferred_bytes,
-			customer_activity2.sub_aggregates[0].transferred_bytes
+			bucket_aggregate2.sub_aggregates[0].transferred_bytes
 		);
 		assert_eq!(
 			activities[1].sub_aggregates[0].stored_bytes,
-			customer_activity2.sub_aggregates[0].stored_bytes
+			bucket_aggregate2.sub_aggregates[0].stored_bytes
 		);
 	});
 }
@@ -324,6 +332,10 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 	let resp1 = (
 		aggregator1,
 		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
@@ -338,6 +350,10 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 	let resp2 = (
 		aggregator2,
 		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
@@ -352,6 +368,10 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 	let resp3 = (
 		aggregator3,
 		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
@@ -434,6 +454,10 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 	let resp1 = (
 		aggregator1,
 		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
@@ -448,6 +472,10 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 	let resp2 = (
 		aggregator2,
 		vec![BucketAggregateResponse {
+			stored_bytes: 200,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
@@ -462,6 +490,10 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 	let resp3 = (
 		aggregator3,
 		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
@@ -544,6 +576,10 @@ fn buckets_sub_aggregates_in_others_merged() {
 	let resp1 = (
 		aggregator1,
 		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
@@ -558,6 +594,10 @@ fn buckets_sub_aggregates_in_others_merged() {
 	let resp2 = (
 		aggregator2,
 		vec![BucketAggregateResponse {
+			stored_bytes: 200,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
@@ -572,6 +612,10 @@ fn buckets_sub_aggregates_in_others_merged() {
 	let resp3 = (
 		aggregator3,
 		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
 			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
@@ -2528,7 +2572,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request1 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host1, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"bucket_id": 90235,"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2536,7 +2580,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request2 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host2, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2544,7 +2588,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request3 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host3, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2552,7 +2596,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request4 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host4, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2560,7 +2604,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request5 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host5, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2568,7 +2612,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request6 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host6, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2576,7 +2620,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request7 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host7, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2584,7 +2628,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request8 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host8, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"bucket_id": 90235,"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2592,7 +2636,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request9 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host9, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"bucket_id": 90235,"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
