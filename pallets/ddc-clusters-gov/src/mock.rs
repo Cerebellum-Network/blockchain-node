@@ -15,7 +15,8 @@ use ddc_primitives::{
 use frame_support::{
 	derive_impl, parameter_types,
 	traits::{
-		ConstBool, ConstU32, ConstU64, EnsureOriginWithArg, EqualPrivilegeOnly, Everything, Nothing,
+		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, EnsureOriginWithArg,
+		EqualPrivilegeOnly, Everything, LinearStoragePrice, Nothing,
 	},
 	weights::constants::RocksDbWeight,
 	PalletId,
@@ -58,7 +59,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>},
+		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>, HoldReason},
 		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
 		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
 		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
@@ -135,6 +136,7 @@ parameter_types! {
 	pub const PreimageMaxSize: u32 = 4096 * 1024;
 	pub const PreimageBaseDeposit: Balance = 0;
 	pub const PreimageByteDeposit: Balance = 0;
+	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
 }
 
 impl pallet_preimage::Config for Test {
@@ -142,7 +144,12 @@ impl pallet_preimage::Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
-	type Consideration = ();
+	type Consideration = HoldConsideration<
+		AccountId,
+		Balances,
+		PreimageHoldReason,
+		LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
+	>;
 }
 
 parameter_types! {
