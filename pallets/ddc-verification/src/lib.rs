@@ -578,7 +578,15 @@ pub mod pallet {
 	pub(crate) struct BucketAggregateResponse {
 		/// Bucket id
 		pub(crate) bucket_id: BucketId,
-		/// SubAggregates.
+		/// Total amount of stored bytes.
+		pub(crate) stored_bytes: i64,
+		/// Total amount of transferred bytes.
+		pub(crate) transferred_bytes: u64,
+		/// Total number of puts.
+		pub(crate) number_of_puts: u64,
+		/// Total number of gets.
+		pub(crate) number_of_gets: u64,
+		/// Bucket sub aggregates.
 		pub(crate) sub_aggregates: Vec<BucketSubAggregateResponse>,
 	}
 
@@ -1930,7 +1938,7 @@ pub mod pallet {
 			let mut buckets_sub_aggregates: Vec<BucketSubAggregate> = Vec::new();
 
 			log::info!(
-				"🏠⏳ Starting fetching bucket node aggregates for cluster_id: {:?} for era_id: {:?}",
+				"🏠⏳ Starting fetching bucket sub-aggregates for cluster_id: {:?} for era_id: {:?}",
 				cluster_id,
 				era_id
 			);
