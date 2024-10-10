@@ -15,8 +15,8 @@ use ddc_primitives::{
 use frame_support::{
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, EnsureOriginWithArg, EqualPrivilegeOnly,
-		Everything, Nothing,LinearStoragePrice,
+		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, EnsureOriginWithArg,
+		EqualPrivilegeOnly, Everything, LinearStoragePrice, Nothing,
 	},
 	weights::constants::RocksDbWeight,
 	PalletId,
