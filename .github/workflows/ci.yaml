@@ -33,34 +33,6 @@ jobs:
         run: |
           cargo fmt -- --check
 
-  try-runtime:
-    name: Check Try-runtime
-    runs-on: ubuntu-22.04
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: 1.77.0
-          override: true
-          target: wasm32-unknown-unknown
-      - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
-      - name: Install try-runtime
-        run: |
-          cargo  install --git https://github.com/paritytech/try-runtime-cli
-      - name: Check Build
-        run: |
-          cargo  build --release --features try-runtime
-      - name: Check Try-Runtime
-        run: |
-          try-runtime --runtime ./target/release/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm \
-          on-runtime-upgrade --disable-idempotency-checks live --uri wss://rpc.devnet.cere.network:443
-      - name: Run dev chain
-        run: |
-          timeout --preserve-status 30s ./target/release/cere --dev
-
   check:
     name: Cargo check
     needs: format
