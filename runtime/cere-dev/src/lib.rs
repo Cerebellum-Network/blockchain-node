@@ -904,7 +904,7 @@ impl pallet_contracts::Config for Runtime {
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	type Debug = ();
 	type Environment = ();
-	type Migrations = ();
+	type Migrations = (pallet_contracts::migration::v16::Migration<Runtime>,);
 	type ApiVersion = ();
 	type Xcm = ();
 }
@@ -1397,6 +1397,8 @@ type Migrations = (
 	pallet_nomination_pools::migration::versioned::V7ToV8<Runtime>,
 	pallet_staking::migrations::v14::MigrateToV14<Runtime>,
 	pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
+	pallet_staking::migrations::v15::MigrateV14ToV15<Runtime>,
+	pallet_contracts::Migration<Runtime>,
 	pallet_identity::migration::versioned::V0ToV1<Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
 );
 
