@@ -377,9 +377,9 @@ where
 		&client.block_hash(0).ok().flatten().expect("Genesis block exists; qed"),
 		&config.chain_spec,
 	);
-	net_config.add_notification_protocol(sc_consensus_grandpa::grandpa_peers_set_config(
-		grandpa_protocol_name.clone(),
-	));
+	let (grandpa_protocol_config, grandpa_notification_service) =
+		sc_consensus_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone());
+	net_config.add_notification_protocol(grandpa_protocol_config);
 
 	let warp_sync = Arc::new(sc_consensus_grandpa::warp_proof::NetworkProvider::new(
 		backend.clone(),
@@ -576,6 +576,7 @@ where
 			sync: Arc::new(sync_service),
 			network: network.clone(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
+			notification_service: grandpa_notification_service,
 			voting_rule: sc_consensus_grandpa::VotingRulesBuilder::default().build(),
 			prometheus_registry,
 			shared_voter_state,
@@ -606,7 +607,7 @@ impl ExecuteWithClient for RevertConsensus {
 	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
 	where
 		Backend: sc_client_api::Backend<Block>,
-		Backend::State: sp_api::StateBackend<BlakeTwo256>,
+		Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
 		Api: RuntimeApiCollection,
 		Client: AbstractClient<Block, Backend, Api = Api> + 'static,
 	{
