@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - dev
-      - staging
+      - new-staging
       - master
       - 'release/**'
       - 'hotfix/**'
