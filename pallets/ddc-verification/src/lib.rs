@@ -3189,7 +3189,7 @@ pub mod pallet {
 		/// - `cluster_id`: cluster id of a cluster
 		/// - `era_id`: era id
 		/// - `node_params`: DAC node parameters
-		pub(crate) fn fetch_customers_usage(
+		pub(crate) fn fetch_bucket_aggregates(
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
 			node_params: &StorageNodeParams,
@@ -3222,7 +3222,7 @@ pub mod pallet {
 		/// - `cluster_id`: cluster id of a cluster
 		/// - `era_id`: era id
 		/// - `node_params`: DAC node parameters
-		pub(crate) fn fetch_node_usage(
+		pub(crate) fn fetch_node_aggregates(
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
 			node_params: &StorageNodeParams,
@@ -3294,7 +3294,7 @@ pub mod pallet {
 		/// - `cluster_id`: cluster id of a cluster
 		/// - `era_id`: era id
 		/// - `node_params`: DAC node parameters
-		fn fetch_nodes_aggregates_for_era(
+		pub(crate) fn fetch_nodes_aggregates_for_era(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
@@ -3304,13 +3304,11 @@ pub mod pallet {
 			for (node_pub_key, node_params) in dac_nodes {
 				// todo! probably shouldn't stop when some DAC is not responding as we can still
 				// work with others
-				let aggregates =
-					Self::fetch_node_usage(cluster_id, era_id, node_params).map_err(|_| {
-						OCWError::NodeUsageRetrievalError {
-							cluster_id: *cluster_id,
-							era_id,
-							node_pub_key: node_pub_key.clone(),
-						}
+				let aggregates = Self::fetch_node_aggregates(cluster_id, era_id, node_params)
+					.map_err(|_| OCWError::NodeUsageRetrievalError {
+						cluster_id: *cluster_id,
+						era_id,
+						node_pub_key: node_pub_key.clone(),
 					})?;
 
 				for aggregate in aggregates.clone() {
@@ -3347,7 +3345,7 @@ pub mod pallet {
 			for (node_pub_key, node_params) in dac_nodes {
 				// todo! probably shouldn't stop when some DAC is not responding as we can still
 				// work with others
-				let aggregates = Self::fetch_customers_usage(cluster_id, era_id, node_params)
+				let aggregates = Self::fetch_bucket_aggregates(cluster_id, era_id, node_params)
 					.map_err(|_| OCWError::BucketAggregatesRetrievalError {
 						cluster_id: *cluster_id,
 						era_id,
