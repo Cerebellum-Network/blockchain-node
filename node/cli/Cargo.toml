@@ -29,8 +29,8 @@ url = { workspace = true }
 frame-benchmarking-cli = { workspace = true, default-features = true, optional = true }
 sc-cli = { workspace = true, default-features = true, optional = true }
 sc-executor = { workspace = true, default-features = true }
-sc-service = { workspace = true, default-features = true, optional = true }
 sc-network = { workspace = true }
+sc-service = { workspace = true, default-features = true, optional = true }
 sp-io = { workspace = true, default-features = true }
 sp-runtime = { workspace = true, default-features = true }
 
