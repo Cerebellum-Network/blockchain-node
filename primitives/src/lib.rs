@@ -108,7 +108,17 @@ pub struct ClusterBondingParams<BlockNumber> {
 	pub storage_unbonding_delay: BlockNumber,
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+#[derive(
+	Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Encode, Decode, TypeInfo,
+)]
+pub struct AggregatorInfo {
+	pub node_pub_key: NodePubKey,
+	pub node_params: StorageNodeParams,
+}
+
+#[derive(
+	Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Encode, Decode, TypeInfo,
+)]
 pub enum NodePubKey {
 	StoragePubKey(StorageNodePubKey),
 }
@@ -136,7 +146,20 @@ impl TryFrom<u8> for NodeType {
 	}
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+#[derive(
+	Debug,
+	Serialize,
+	Deserialize,
+	Clone,
+	Hash,
+	Ord,
+	PartialOrd,
+	PartialEq,
+	Eq,
+	Encode,
+	Decode,
+	TypeInfo,
+)]
 pub enum StorageNodeMode {
 	/// DDC Storage node operates with enabled caching in RAM and stores data in Hard Drive
 	Full = 1,
@@ -148,8 +171,20 @@ pub enum StorageNodeMode {
 	DAC = 4,
 }
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(
+	Debug,
+	Serialize,
+	Deserialize,
+	Clone,
+	Hash,
+	Ord,
+	PartialOrd,
+	PartialEq,
+	Eq,
+	Encode,
+	Decode,
+	TypeInfo,
+)]
 pub struct StorageNodeParams {
 	pub mode: StorageNodeMode,
 	pub host: Vec<u8>,

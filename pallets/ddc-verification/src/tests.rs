@@ -1,5 +1,6 @@
 use ddc_primitives::{
-	ClusterId, MergeActivityHash, StorageNodeMode, StorageNodeParams, StorageNodePubKey, KEY_TYPE,
+	AggregatorInfo, ClusterId, MergeActivityHash, StorageNodeMode, StorageNodeParams,
+	StorageNodePubKey, KEY_TYPE,
 };
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{
@@ -13,7 +14,7 @@ use sp_io::TestExternalities;
 use sp_keystore::{testing::MemoryKeystore, Keystore, KeystoreExt};
 use sp_runtime::AccountId32;
 
-use crate::{mock::*, Error, NodeActivity, OCWError, *};
+use crate::{mock::*, Error, NodeAggregateResponse, *};
 
 #[allow(dead_code)]
 fn register_validators(validators: Vec<AccountId32>) {
@@ -40,47 +41,65 @@ fn get_validators() -> Vec<AccountId32> {
 	vec![validator1, validator2, validator3, validator4, validator5]
 }
 
-fn get_node_activities() -> Vec<NodeActivity> {
-	let node1 = NodeActivity {
+fn get_node_activities() -> Vec<NodeAggregate> {
+	let aggregator = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.236".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example.com".to_vec(),
+		},
+	};
+
+	let node1 = NodeAggregate {
 		node_id: "0".to_string(),
 		stored_bytes: -100,
 		transferred_bytes: 50,
 		number_of_puts: 10,
 		number_of_gets: 20,
+		aggregator: aggregator.clone(),
 	};
-	let node2 = NodeActivity {
+	let node2 = NodeAggregate {
 		node_id: "1".to_string(),
 		stored_bytes: -101,
 		transferred_bytes: 51,
 		number_of_puts: 11,
 		number_of_gets: 21,
+		aggregator: aggregator.clone(),
 	};
-	let node3 = NodeActivity {
+	let node3 = NodeAggregate {
 		node_id: "2".to_string(),
 		stored_bytes: 102,
 		transferred_bytes: 52,
 		number_of_puts: 12,
 		number_of_gets: 22,
+		aggregator: aggregator.clone(),
 	};
-	let node4 = NodeActivity {
+	let node4 = NodeAggregate {
 		node_id: "3".to_string(),
 		stored_bytes: 103,
 		transferred_bytes: 53,
 		number_of_puts: 13,
 		number_of_gets: 23,
+		aggregator: aggregator.clone(),
 	};
-	let node5 = NodeActivity {
+	let node5 = NodeAggregate {
 		node_id: "4".to_string(),
 		stored_bytes: 104,
 		transferred_bytes: 54,
 		number_of_puts: 14,
 		number_of_gets: 24,
+		aggregator: aggregator.clone(),
 	};
 	vec![node1, node2, node3, node4, node5]
 }
 
 #[test]
-fn fetch_node_usage_works() {
+fn fetch_node_aggregates_works() {
 	let mut ext = TestExternalities::default();
 	let (offchain, offchain_state) = TestOffchainExt::new();
 	let (pool, _) = TestTransactionPoolExt::new();
@@ -96,15 +115,15 @@ fn fetch_node_usage_works() {
 		let port = 80;
 		let era_id = 1;
 
-		// Create a sample NodeActivity instance
-		let node_activity1 = NodeActivity {
+		// Create a sample NodeAggregateResponse instance
+		let node_activity1 = NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 		};
-		let node_activity2 = NodeActivity {
+		let node_activity2 = NodeAggregateResponse {
 			node_id: "2".to_string(),
 			stored_bytes: 110,
 			transferred_bytes: 510,
@@ -137,7 +156,7 @@ fn fetch_node_usage_works() {
 			domain: b"example2.com".to_vec(),
 		};
 
-		let result = Pallet::<Test>::fetch_node_usage(&cluster_id, era_id, &node_params);
+		let result = Pallet::<Test>::fetch_node_aggregates(&cluster_id, era_id, &node_params);
 		assert!(result.is_ok());
 		let activities = result.unwrap();
 		assert_eq!(activities[0].number_of_gets, node_activity1.number_of_gets);
@@ -153,7 +172,7 @@ fn fetch_node_usage_works() {
 }
 
 #[test]
-fn fetch_customers_usage_works() {
+fn fetch_bucket_aggregates_works() {
 	let mut ext = TestExternalities::default();
 	let (offchain, offchain_state) = TestOffchainExt::new();
 	let (pool, _) = TestTransactionPoolExt::new();
@@ -169,10 +188,14 @@ fn fetch_customers_usage_works() {
 		let port = 80;
 		let era_id = 1;
 
-		// Create a sample NodeActivity instance
-		let customer_activity1 = CustomerActivity {
+		// Create a sample NodeAggregateResponse instance
+		let bucket_aggregate1 = BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 111,
-			sub_aggregates: vec![BucketSubAggregate {
+			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -180,9 +203,13 @@ fn fetch_customers_usage_works() {
 				number_of_gets: 20,
 			}],
 		};
-		let customer_activity2 = CustomerActivity {
+		let bucket_aggregate2 = BucketAggregateResponse {
+			stored_bytes: 1000,
+			transferred_bytes: 500,
+			number_of_puts: 100,
+			number_of_gets: 200,
 			bucket_id: 222,
-			sub_aggregates: vec![BucketSubAggregate {
+			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 1000,
 				transferred_bytes: 500,
@@ -191,7 +218,7 @@ fn fetch_customers_usage_works() {
 			}],
 		};
 		let customers_activity_json =
-			serde_json::to_string(&vec![customer_activity1.clone(), customer_activity2.clone()])
+			serde_json::to_string(&vec![bucket_aggregate1.clone(), bucket_aggregate2.clone()])
 				.unwrap();
 
 		// Mock HTTP request and response
@@ -217,930 +244,1640 @@ fn fetch_customers_usage_works() {
 			domain: b"example2.com".to_vec(),
 		};
 
-		let result = Pallet::<Test>::fetch_customers_usage(&cluster_id, era_id, &node_params);
+		let result = Pallet::<Test>::fetch_bucket_aggregates(&cluster_id, era_id, &node_params);
 		assert!(result.is_ok());
 		let activities = result.unwrap();
 		assert_eq!(
 			activities[0].sub_aggregates[0].number_of_gets,
-			customer_activity1.sub_aggregates[0].number_of_gets
+			bucket_aggregate1.sub_aggregates[0].number_of_gets
 		);
 		assert_eq!(
 			activities[0].sub_aggregates[0].number_of_puts,
-			customer_activity1.sub_aggregates[0].number_of_puts
+			bucket_aggregate1.sub_aggregates[0].number_of_puts
 		);
 		assert_eq!(
 			activities[0].sub_aggregates[0].transferred_bytes,
-			customer_activity1.sub_aggregates[0].transferred_bytes
+			bucket_aggregate1.sub_aggregates[0].transferred_bytes
 		);
 		assert_eq!(
 			activities[0].sub_aggregates[0].stored_bytes,
-			customer_activity1.sub_aggregates[0].stored_bytes
+			bucket_aggregate1.sub_aggregates[0].stored_bytes
 		);
 
 		assert_eq!(
 			activities[1].sub_aggregates[0].number_of_gets,
-			customer_activity2.sub_aggregates[0].number_of_gets
+			bucket_aggregate2.sub_aggregates[0].number_of_gets
 		);
 		assert_eq!(
 			activities[1].sub_aggregates[0].number_of_puts,
-			customer_activity2.sub_aggregates[0].number_of_puts
+			bucket_aggregate2.sub_aggregates[0].number_of_puts
 		);
 		assert_eq!(
 			activities[1].sub_aggregates[0].transferred_bytes,
-			customer_activity2.sub_aggregates[0].transferred_bytes
+			bucket_aggregate2.sub_aggregates[0].transferred_bytes
 		);
 		assert_eq!(
 			activities[1].sub_aggregates[0].stored_bytes,
-			customer_activity2.sub_aggregates[0].stored_bytes
+			bucket_aggregate2.sub_aggregates[0].stored_bytes
 		);
 	});
 }
 
 #[test]
-fn test_reach_consensus_empty() {
-	let activities: Vec<CustomerActivity> = Vec::new();
-	let result = DdcVerification::reach_consensus(&activities, 3);
-	assert!(result.is_none());
+fn buckets_sub_aggregates_in_consensus_merged() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(67);
+	let cluster_id = ClusterId::from([1; 20]);
+	let era_id = 476817;
+
+	let aggregator1 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.236".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example1.com".to_vec(),
+		},
+	};
+
+	let aggregator2 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "95.217.8.119".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		},
+	};
+
+	let aggregator3 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.42".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		},
+	};
+
+	let resp1 = (
+		aggregator1,
+		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			bucket_id: 1,
+			sub_aggregates: vec![BucketSubAggregateResponse {
+				NodeID: "1".to_string(),
+				stored_bytes: 100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
+			}],
+		}],
+	);
+
+	let resp2 = (
+		aggregator2,
+		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			bucket_id: 1,
+			sub_aggregates: vec![BucketSubAggregateResponse {
+				NodeID: "1".to_string(),
+				stored_bytes: 100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
+			}],
+		}],
+	);
+
+	let resp3 = (
+		aggregator3,
+		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			bucket_id: 1,
+			sub_aggregates: vec![BucketSubAggregateResponse {
+				NodeID: "1".to_string(),
+				stored_bytes: 100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
+			}],
+		}],
+	);
+
+	let groups = DdcVerification::group_buckets_sub_aggregates_by_consistency(
+		&cluster_id,
+		era_id,
+		vec![resp1, resp2, resp3],
+		redundancy_factor,
+		quorum,
+	);
+	assert_eq!(groups.in_consensus.len(), 1);
+	assert_eq!(groups.in_quorum.len(), 0);
+	assert_eq!(groups.in_others.len(), 0);
+
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+
+	assert!(result.is_ok());
+	let usages = result.unwrap();
+	let usage = usages.first().unwrap();
+	assert_eq!(usage.stored_bytes, 100);
+	assert_eq!(usage.transferred_bytes, 50);
+	assert_eq!(usage.number_of_puts, 10);
+	assert_eq!(usage.number_of_gets, 20);
 }
 
 #[test]
-fn test_reach_consensus_success() {
-	let activities = vec![
-		CustomerActivity {
-			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregate {
-				NodeID: "1".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		},
-		CustomerActivity {
-			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregate {
-				NodeID: "1".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		},
-		CustomerActivity {
-			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregate {
-				NodeID: "1".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		},
-	];
-	let result = DdcVerification::reach_consensus(&activities, 3);
-	assert!(result.is_some());
-	assert_eq!(result.unwrap().sub_aggregates[0].stored_bytes, 100);
-}
+fn buckets_sub_aggregates_in_quorum_merged() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(67);
+	let cluster_id = ClusterId::from([1; 20]);
+	let era_id = 476817;
 
-#[test]
-fn test_reach_consensus_failure() {
-	let activities = vec![
-		CustomerActivity {
+	let aggregator1 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.236".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example1.com".to_vec(),
+		},
+	};
+
+	let aggregator2 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "95.217.8.119".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		},
+	};
+
+	let aggregator3 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.42".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		},
+	};
+
+	let resp1 = (
+		aggregator1,
+		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregate {
+			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
 				number_of_gets: 20,
 			}],
-		},
-		CustomerActivity {
+		}],
+	);
+
+	let resp2 = (
+		aggregator2,
+		vec![BucketAggregateResponse {
+			stored_bytes: 200,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregate {
+			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 200,
-				transferred_bytes: 100,
-				number_of_puts: 20,
-				number_of_gets: 40,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
 			}],
-		},
-		CustomerActivity {
+		}],
+	);
+
+	let resp3 = (
+		aggregator3,
+		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregate {
+			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
-				stored_bytes: 300,
-				transferred_bytes: 150,
-				number_of_puts: 30,
-				number_of_gets: 60,
+				stored_bytes: 100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
 			}],
-		},
-	];
-	let result = DdcVerification::reach_consensus(&activities, 3);
-	assert!(result.is_none());
+		}],
+	);
+
+	let groups = DdcVerification::group_buckets_sub_aggregates_by_consistency(
+		&cluster_id,
+		era_id,
+		vec![resp1, resp2, resp3],
+		redundancy_factor,
+		quorum,
+	);
+	assert_eq!(groups.in_consensus.len(), 0);
+	assert_eq!(groups.in_quorum.len(), 1);
+	assert_eq!(groups.in_others.len(), 1);
+
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+
+	assert!(result.is_ok());
+	let usages = result.unwrap();
+	let usage = usages.first().unwrap();
+	assert_eq!(usage.stored_bytes, 100);
+	assert_eq!(usage.transferred_bytes, 50);
+	assert_eq!(usage.number_of_puts, 10);
+	assert_eq!(usage.number_of_gets, 20);
 }
 
 #[test]
-fn test_reach_consensus_threshold() {
-	let activities = vec![
-		CustomerActivity {
+fn buckets_sub_aggregates_in_others_merged() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(100);
+	let cluster_id = ClusterId::from([1; 20]);
+	let era_id = 476817;
+
+	let aggregator1 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.236".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example1.com".to_vec(),
+		},
+	};
+
+	let aggregator2 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "95.217.8.119".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		},
+	};
+
+	let aggregator3 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.42".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		},
+	};
+
+	let resp1 = (
+		aggregator1,
+		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregate {
+			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
 				number_of_gets: 20,
 			}],
-		},
-		CustomerActivity {
+		}],
+	);
+
+	let resp2 = (
+		aggregator2,
+		vec![BucketAggregateResponse {
+			stored_bytes: 200,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregate {
-				NodeID: "1".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		},
-		CustomerActivity {
-			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregate {
+			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 200,
-				transferred_bytes: 100,
-				number_of_puts: 20,
-				number_of_gets: 40,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
 			}],
-		},
-	];
+		}],
+	);
 
-	let mut result = DdcVerification::reach_consensus(&activities, 2);
-	assert!(result.is_some());
-	assert_eq!(result.unwrap().sub_aggregates[0].stored_bytes, 100);
-	result = DdcVerification::reach_consensus(&activities, 3);
-	assert!(result.is_none());
-}
-
-#[test]
-fn test_reach_consensus_exact_threshold() {
-	let activities = vec![
-		CustomerActivity {
+	let resp3 = (
+		aggregator3,
+		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregate {
+			sub_aggregates: vec![BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
 				number_of_puts: 10,
 				number_of_gets: 20,
 			}],
+		}],
+	);
+
+	let groups = DdcVerification::group_buckets_sub_aggregates_by_consistency(
+		&cluster_id,
+		era_id,
+		vec![resp1, resp2, resp3],
+		redundancy_factor,
+		quorum,
+	);
+
+	assert_eq!(groups.in_consensus.len(), 0);
+	assert_eq!(groups.in_quorum.len(), 0);
+	assert_eq!(groups.in_others.len(), 2);
+
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+
+	assert!(result.is_ok());
+	let usages = result.unwrap();
+
+	let usage1 = usages.first().unwrap();
+	assert_eq!(usage1.stored_bytes, 100);
+	assert_eq!(usage1.transferred_bytes, 50);
+	assert_eq!(usage1.number_of_puts, 10);
+	assert_eq!(usage1.number_of_gets, 20);
+
+	let usage2 = usages.get(1).unwrap();
+	assert_eq!(usage2.stored_bytes, 200);
+	assert_eq!(usage2.transferred_bytes, 50);
+	assert_eq!(usage2.number_of_puts, 10);
+	assert_eq!(usage2.number_of_gets, 20);
+}
+
+#[test]
+fn nodes_aggregates_in_consensus_merged() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(67);
+	let cluster_id = ClusterId::from([1; 20]);
+	let era_id = 476817;
+
+	let aggregator1 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.236".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example1.com".to_vec(),
 		},
-		CustomerActivity {
+	};
+
+	let aggregator2 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "95.217.8.119".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		},
+	};
+
+	let aggregator3 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.42".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		},
+	};
+
+	let resp1 = (
+		aggregator1,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let resp2 = (
+		aggregator2,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let resp3 = (
+		aggregator3,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
+		&cluster_id,
+		era_id,
+		vec![resp1, resp2, resp3],
+		redundancy_factor,
+		quorum,
+	);
+	assert_eq!(groups.in_consensus.len(), 1);
+	assert_eq!(groups.in_quorum.len(), 0);
+	assert_eq!(groups.in_others.len(), 0);
+
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+
+	assert!(result.is_ok());
+	let usages = result.unwrap();
+	let usage = usages.first().unwrap();
+	assert_eq!(usage.stored_bytes, 100);
+	assert_eq!(usage.transferred_bytes, 50);
+	assert_eq!(usage.number_of_puts, 10);
+	assert_eq!(usage.number_of_gets, 20);
+}
+
+#[test]
+fn nodes_aggregates_in_quorum_merged() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(67);
+	let cluster_id = ClusterId::from([1; 20]);
+	let era_id = 476817;
+
+	let aggregator1 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.236".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example1.com".to_vec(),
+		},
+	};
+
+	let aggregator2 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "95.217.8.119".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		},
+	};
+
+	let aggregator3 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.42".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		},
+	};
+
+	let resp1 = (
+		aggregator1,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let resp2 = (
+		aggregator2,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 200,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let resp3 = (
+		aggregator3,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
+		&cluster_id,
+		era_id,
+		vec![resp1, resp2, resp3],
+		redundancy_factor,
+		quorum,
+	);
+	assert_eq!(groups.in_consensus.len(), 0);
+	assert_eq!(groups.in_quorum.len(), 1);
+	assert_eq!(groups.in_others.len(), 1);
+
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+
+	assert!(result.is_ok());
+	let usages = result.unwrap();
+	let usage = usages.first().unwrap();
+	assert_eq!(usage.stored_bytes, 100);
+	assert_eq!(usage.transferred_bytes, 50);
+	assert_eq!(usage.number_of_puts, 10);
+	assert_eq!(usage.number_of_gets, 20);
+}
+
+#[test]
+fn nodes_aggregates_in_others_merged() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(100);
+	let cluster_id = ClusterId::from([1; 20]);
+	let era_id = 476817;
+
+	let aggregator1 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.236".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example1.com".to_vec(),
+		},
+	};
+
+	let aggregator2 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "95.217.8.119".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		},
+	};
+
+	let aggregator3 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.42".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		},
+	};
+
+	let resp1 = (
+		aggregator1,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let resp2 = (
+		aggregator2,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 200,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let resp3 = (
+		aggregator3,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
+		&cluster_id,
+		era_id,
+		vec![resp1, resp2, resp3],
+		redundancy_factor,
+		quorum,
+	);
+
+	assert_eq!(groups.in_consensus.len(), 0);
+	assert_eq!(groups.in_quorum.len(), 0);
+	assert_eq!(groups.in_others.len(), 2);
+
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+
+	assert!(result.is_ok());
+	let usages = result.unwrap();
+
+	let usage1 = usages.first().unwrap();
+	assert_eq!(usage1.stored_bytes, 200);
+	assert_eq!(usage1.transferred_bytes, 50);
+	assert_eq!(usage1.number_of_puts, 10);
+	assert_eq!(usage1.number_of_gets, 20);
+
+	let usage2 = usages.get(1).unwrap();
+	assert_eq!(usage2.stored_bytes, 100);
+	assert_eq!(usage2.transferred_bytes, 50);
+	assert_eq!(usage2.number_of_puts, 10);
+	assert_eq!(usage2.number_of_gets, 20);
+}
+
+#[test]
+fn buckets_sub_aggregates_grouped_by_consistency() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(67);
+	let host = "example1.com";
+	let port = 80;
+	let node_params = StorageNodeParams {
+		ssl: false,
+		host: host.as_bytes().to_vec(),
+		http_port: port,
+		mode: StorageNodeMode::DAC,
+		p2p_port: 5555,
+		grpc_port: 4444,
+		domain: b"example2.com".to_vec(),
+	};
+	let aggregator = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
+		node_params: node_params.clone(),
+	};
+
+	let buckets_sub_aggregates = vec![
+		BucketSubAggregate {
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregate {
-				NodeID: "1".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		BucketSubAggregate {
+			bucket_id: 1,
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		BucketSubAggregate {
+			bucket_id: 1,
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
 		},
 	];
-	let result = DdcVerification::reach_consensus(&activities, 3);
-	assert!(result.is_none());
+
+	let groups =
+		DdcVerification::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
+
+	assert_eq!(groups.in_consensus.len(), 1);
+	assert_eq!(groups.in_quorum.len(), 0);
+	assert_eq!(groups.in_others.len(), 0);
+
+	let agg1 = groups.in_consensus[0].get(0).unwrap();
+	let agg2 = groups.in_consensus[0].get(1).unwrap();
+	let agg3 = groups.in_consensus[0].get(2).unwrap();
+
+	assert_eq!(agg1.stored_bytes, 100);
+	assert_eq!(agg1.transferred_bytes, 50);
+	assert_eq!(agg1.number_of_puts, 10);
+	assert_eq!(agg1.number_of_gets, 20);
+
+	assert_eq!(agg2.stored_bytes, 100);
+	assert_eq!(agg2.transferred_bytes, 50);
+	assert_eq!(agg2.number_of_puts, 10);
+	assert_eq!(agg2.number_of_gets, 20);
+
+	assert_eq!(agg3.stored_bytes, 100);
+	assert_eq!(agg3.transferred_bytes, 50);
+	assert_eq!(agg3.number_of_puts, 10);
+	assert_eq!(agg3.number_of_gets, 20);
 }
 
 #[test]
-fn test_get_consensus_customers_activity_success() {
-	let cluster_id = ClusterId::from([1; 20]);
-	let era_id = 1;
-	let min_nodes = 3;
-	let threshold = Percent::from_percent(67);
+fn buckets_sub_aggregates_grouped_by_consistency_2() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(67);
 
-	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
-	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
-	let node_pubkey_2 = NodePubKey::StoragePubKey(AccountId32::new([2; 32]));
+	let host = "example1.com";
+	let port = 80;
+	let node_params = StorageNodeParams {
+		ssl: false,
+		host: host.as_bytes().to_vec(),
+		http_port: port,
+		mode: StorageNodeMode::DAC,
+		p2p_port: 5555,
+		grpc_port: 4444,
+		domain: b"example2.com".to_vec(),
+	};
+	let aggregator = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
+		node_params: node_params.clone(),
+	};
 
-	let customers_activity = vec![
-		(
-			node_pubkey_0,
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 100,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_1,
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 100,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_2,
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 100,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-	];
-
-	let result = DdcVerification::get_consensus_for_activities(
-		&cluster_id,
-		era_id,
-		&customers_activity,
-		min_nodes,
-		threshold,
-	);
-	assert!(result.is_ok());
-	let consensus_activities = result.unwrap();
-	assert_eq!(consensus_activities.len(), 1);
-	assert_eq!(consensus_activities[0].sub_aggregates[0].stored_bytes, 100);
-}
-
-#[test]
-fn test_get_consensus_customers_activity_success2() {
-	let cluster_id = ClusterId::from([1; 20]);
-	let era_id = 1;
-	let min_nodes = 3;
-	let threshold = Percent::from_percent(67);
-
-	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
-	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
-	let node_pubkey_2 = NodePubKey::StoragePubKey(AccountId32::new([2; 32]));
-
-	let customers_activity = vec![
-		(
-			node_pubkey_0.clone(),
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 100,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_1.clone(),
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 100,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_2.clone(),
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 110,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_0,
-			vec![CustomerActivity {
-				bucket_id: 2,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 110,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_1,
-			vec![CustomerActivity {
-				bucket_id: 2,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 110,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_2,
-			vec![CustomerActivity {
-				bucket_id: 2,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 110,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-	];
-
-	let result = DdcVerification::get_consensus_for_activities(
-		&cluster_id,
-		era_id,
-		&customers_activity,
-		min_nodes,
-		threshold,
-	);
-	assert!(result.is_ok());
-	let consensus_activities = result.unwrap();
-	assert_eq!(consensus_activities.len(), 2);
-	assert_eq!(consensus_activities[1].sub_aggregates[0].stored_bytes, 110);
-	assert_eq!(consensus_activities[1].bucket_id, 2);
-	assert_eq!(consensus_activities[0].sub_aggregates[0].stored_bytes, 100);
-	assert_eq!(consensus_activities[0].bucket_id, 1);
-}
-
-#[test]
-fn test_get_consensus_nodes_activity_success() {
-	let cluster_id = ClusterId::from([1; 20]);
-	let era_id = 1;
-	let min_nodes = 3;
-	let threshold = Percent::from_percent(67);
-
-	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
-	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
-	let node_pubkey_2 = NodePubKey::StoragePubKey(AccountId32::new([2; 32]));
-
-	let customers_activity = vec![
-		(
-			node_pubkey_0,
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		),
-		(
-			node_pubkey_1,
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		),
-		(
-			node_pubkey_2,
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		),
-	];
-
-	let result = DdcVerification::get_consensus_for_activities(
-		&cluster_id,
-		era_id,
-		&customers_activity,
-		min_nodes,
-		threshold,
-	);
-	assert!(result.is_ok());
-	let consensus_activities = result.unwrap();
-	assert_eq!(consensus_activities.len(), 1);
-	assert_eq!(consensus_activities[0].stored_bytes, 100);
-}
-#[test]
-fn test_get_consensus_customers_activity_empty() {
-	let cluster_id = ClusterId::from([1; 20]);
-	let era_id = 1;
-	let min_nodes = 3;
-	let threshold = Percent::from_percent(67);
-
-	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
-	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
-	let node_pubkey_2 = NodePubKey::StoragePubKey(AccountId32::new([2; 32]));
-
-	let customers_activity = vec![
-		(node_pubkey_0.clone(), Vec::<CustomerActivity>::new()),
-		(node_pubkey_1.clone(), Vec::<CustomerActivity>::new()),
-		(node_pubkey_2.clone(), Vec::<CustomerActivity>::new()),
-	];
-
-	let result = DdcVerification::get_consensus_for_activities(
-		&cluster_id,
-		era_id,
-		&customers_activity,
-		min_nodes,
-		threshold,
-	);
-	assert!(result.is_ok());
-	let consensus_activities = result.unwrap();
-	assert_eq!(consensus_activities.len(), 0);
-}
-
-#[test]
-fn test_get_consensus_customers_activity_not_enough_nodes() {
-	let cluster_id1 = ClusterId::from([1; 20]);
-	let era_id1 = 1;
-	let min_nodes = 3;
-	let threshold = Percent::from_percent(67);
-	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
-	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
-
-	let customers_activity = vec![
-		(
-			node_pubkey_0,
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 100,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_1,
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 100,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-	];
-
-	let result = DdcVerification::get_consensus_for_activities(
-		&cluster_id1,
-		era_id1,
-		&customers_activity,
-		min_nodes,
-		threshold,
-	);
-	assert!(result.is_err());
-	let errors = result.err().unwrap();
-	assert_eq!(errors.len(), 2);
-	match &errors[0] {
-		OCWError::NotEnoughBucketsForConsensus { cluster_id, era_id, bucket_id } => {
-			assert_eq!(*bucket_id, 1);
-			assert_eq!(*cluster_id, cluster_id1);
-			assert_eq!(*era_id, era_id1);
+	let buckets_sub_aggregates = vec![
+		BucketSubAggregate {
+			bucket_id: 1,
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
 		},
-		_ => panic!("Expected NotEnoughNodes error"),
-	}
+		BucketSubAggregate {
+			bucket_id: 1,
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		BucketSubAggregate {
+			bucket_id: 1,
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		BucketSubAggregate {
+			bucket_id: 2,
+			node_id: "2".to_string(),
+			stored_bytes: 110,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		BucketSubAggregate {
+			bucket_id: 2,
+			node_id: "2".to_string(),
+			stored_bytes: 110,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		BucketSubAggregate {
+			bucket_id: 2,
+			node_id: "2".to_string(),
+			stored_bytes: 110,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+	];
+
+	let groups =
+		DdcVerification::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
+
+	assert_eq!(groups.in_consensus.len(), 2);
+	assert_eq!(groups.in_quorum.len(), 0);
+	assert_eq!(groups.in_others.len(), 0);
+
+	let g1_agg1 = groups.in_consensus[0].get(0).unwrap();
+	let g1_agg2 = groups.in_consensus[0].get(1).unwrap();
+	let g1_agg3 = groups.in_consensus[0].get(2).unwrap();
+
+	assert_eq!(g1_agg1.bucket_id, 1);
+	assert_eq!(g1_agg1.stored_bytes, 100);
+	assert_eq!(g1_agg1.transferred_bytes, 50);
+	assert_eq!(g1_agg1.number_of_puts, 10);
+	assert_eq!(g1_agg1.number_of_gets, 20);
+
+	assert_eq!(g1_agg2.bucket_id, 1);
+	assert_eq!(g1_agg2.stored_bytes, 100);
+	assert_eq!(g1_agg2.transferred_bytes, 50);
+	assert_eq!(g1_agg2.number_of_puts, 10);
+	assert_eq!(g1_agg2.number_of_gets, 20);
+
+	assert_eq!(g1_agg3.bucket_id, 1);
+	assert_eq!(g1_agg3.stored_bytes, 100);
+	assert_eq!(g1_agg3.transferred_bytes, 50);
+	assert_eq!(g1_agg3.number_of_puts, 10);
+	assert_eq!(g1_agg3.number_of_gets, 20);
+
+	let g2_agg1 = groups.in_consensus[1].get(0).unwrap();
+	let g2_agg2 = groups.in_consensus[1].get(1).unwrap();
+	let g2_agg3 = groups.in_consensus[1].get(2).unwrap();
+
+	assert_eq!(g2_agg1.bucket_id, 2);
+	assert_eq!(g2_agg1.stored_bytes, 110);
+	assert_eq!(g2_agg1.transferred_bytes, 50);
+	assert_eq!(g2_agg1.number_of_puts, 10);
+	assert_eq!(g2_agg1.number_of_gets, 20);
+
+	assert_eq!(g2_agg2.bucket_id, 2);
+	assert_eq!(g2_agg2.stored_bytes, 110);
+	assert_eq!(g2_agg2.transferred_bytes, 50);
+	assert_eq!(g2_agg2.number_of_puts, 10);
+	assert_eq!(g2_agg2.number_of_gets, 20);
+
+	assert_eq!(g2_agg3.bucket_id, 2);
+	assert_eq!(g2_agg3.stored_bytes, 110);
+	assert_eq!(g2_agg3.transferred_bytes, 50);
+	assert_eq!(g2_agg3.number_of_puts, 10);
+	assert_eq!(g2_agg3.number_of_gets, 20);
 }
 
 #[test]
-fn test_get_consensus_nodes_activity_not_enough_nodes() {
-	let cluster_id1 = ClusterId::from([1; 20]);
-	let era_id1 = 1;
-	let min_nodes = 3;
-	let threshold = Percent::from_percent(67);
-	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
-	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
+fn nodes_aggregates_grouped_by_consistency() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(67);
+	let host = "example1.com";
+	let port = 80;
+	let node_params = StorageNodeParams {
+		ssl: false,
+		host: host.as_bytes().to_vec(),
+		http_port: port,
+		mode: StorageNodeMode::DAC,
+		p2p_port: 5555,
+		grpc_port: 4444,
+		domain: b"example2.com".to_vec(),
+	};
 
-	let nodes_activity = vec![
-		(
-			node_pubkey_0,
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		),
-		(
-			node_pubkey_1,
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		),
+	let aggregator = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
+		node_params: node_params.clone(),
+	};
+
+	let nodes_aggregates = vec![
+		NodeAggregate {
+			node_id: "0".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		NodeAggregate {
+			node_id: "0".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		NodeAggregate {
+			node_id: "0".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
 	];
 
-	let result = DdcVerification::get_consensus_for_activities(
-		&cluster_id1,
-		era_id1,
-		&nodes_activity,
-		min_nodes,
-		threshold,
-	);
-	assert!(result.is_err());
-	let errors = result.err().unwrap();
-	assert_eq!(errors.len(), 2);
-	match &errors[0] {
-		OCWError::NotEnoughNodesForConsensus { cluster_id, era_id, node_id } => {
-			assert_eq!(*node_id, "0".to_string());
-			assert_eq!(*cluster_id, cluster_id1);
-			assert_eq!(*era_id, era_id1);
-		},
-		_ => panic!("Expected NotEnoughNodes error"),
-	}
+	let groups = DdcVerification::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
+
+	assert_eq!(groups.in_consensus.len(), 1);
+	assert_eq!(groups.in_quorum.len(), 0);
+	assert_eq!(groups.in_others.len(), 0);
+
+	let agg1 = groups.in_consensus[0].get(0).unwrap();
+	let agg2 = groups.in_consensus[0].get(1).unwrap();
+	let agg3 = groups.in_consensus[0].get(2).unwrap();
+
+	assert_eq!(agg1.stored_bytes, 100);
+	assert_eq!(agg1.transferred_bytes, 50);
+	assert_eq!(agg1.number_of_puts, 10);
+	assert_eq!(agg1.number_of_gets, 20);
+
+	assert_eq!(agg2.stored_bytes, 100);
+	assert_eq!(agg2.transferred_bytes, 50);
+	assert_eq!(agg2.number_of_puts, 10);
+	assert_eq!(agg2.number_of_gets, 20);
+
+	assert_eq!(agg3.stored_bytes, 100);
+	assert_eq!(agg3.transferred_bytes, 50);
+	assert_eq!(agg3.number_of_puts, 10);
+	assert_eq!(agg3.number_of_gets, 20);
 }
 
 #[test]
-fn test_get_consensus_customers_activity_not_in_consensus() {
-	let cluster_id1 = ClusterId::from([1; 20]);
-	let era_id1 = 1;
-	let min_nodes = 3;
-	let threshold = Percent::from_percent(67);
+fn nodes_aggregates_grouped_by_consistency_2() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(67);
 
-	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
-	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
-	let node_pubkey_2 = NodePubKey::StoragePubKey(AccountId32::new([2; 32]));
+	let host = "example1.com";
+	let port = 80;
+	let node_params = StorageNodeParams {
+		ssl: false,
+		host: host.as_bytes().to_vec(),
+		http_port: port,
+		mode: StorageNodeMode::DAC,
+		p2p_port: 5555,
+		grpc_port: 4444,
+		domain: b"example2.com".to_vec(),
+	};
+	let aggregator = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
+		node_params: node_params.clone(),
+	};
 
-	let customers_activity = vec![
-		(
-			node_pubkey_0,
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 100,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_1,
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 200,
-					transferred_bytes: 100,
-					number_of_puts: 20,
-					number_of_gets: 40,
-				}],
-			}],
-		),
-		(
-			node_pubkey_2,
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 300,
-					transferred_bytes: 150,
-					number_of_puts: 30,
-					number_of_gets: 60,
-				}],
-			}],
-		),
+	let nodes_aggregates = vec![
+		NodeAggregate {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		NodeAggregate {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		NodeAggregate {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		NodeAggregate {
+			node_id: "2".to_string(),
+			stored_bytes: 110,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		NodeAggregate {
+			node_id: "2".to_string(),
+			stored_bytes: 110,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
+		NodeAggregate {
+			node_id: "2".to_string(),
+			stored_bytes: 110,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			aggregator: aggregator.clone(),
+		},
 	];
 
-	let result = DdcVerification::get_consensus_for_activities(
-		&cluster_id1,
-		era_id1,
-		&customers_activity,
-		min_nodes,
-		threshold,
-	);
-	assert!(result.is_err());
-	let errors = result.err().unwrap();
-	assert_eq!(errors.len(), 1);
-	match &errors[0] {
-		OCWError::ActivityNotInConsensus { cluster_id, era_id, id } => {
-			assert_eq!(*id, customers_activity[0].1[0].get_consensus_id::<mock::Test>());
-			assert_eq!(*cluster_id, cluster_id1);
-			assert_eq!(*era_id, era_id1);
-		},
-		_ => panic!("Expected CustomerActivityNotInConsensus error"),
-	}
+	let groups = DdcVerification::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
+
+	assert_eq!(groups.in_consensus.len(), 2);
+	assert_eq!(groups.in_quorum.len(), 0);
+	assert_eq!(groups.in_others.len(), 0);
+
+	let g1_agg1 = groups.in_consensus[0].get(0).unwrap();
+	let g1_agg2 = groups.in_consensus[0].get(1).unwrap();
+	let g1_agg3 = groups.in_consensus[0].get(2).unwrap();
+
+	assert_eq!(g1_agg1.node_id, "2".to_string());
+	assert_eq!(g1_agg1.stored_bytes, 110);
+	assert_eq!(g1_agg1.transferred_bytes, 50);
+	assert_eq!(g1_agg1.number_of_puts, 10);
+	assert_eq!(g1_agg1.number_of_gets, 20);
+
+	assert_eq!(g1_agg2.node_id, "2".to_string());
+	assert_eq!(g1_agg2.stored_bytes, 110);
+	assert_eq!(g1_agg2.transferred_bytes, 50);
+	assert_eq!(g1_agg2.number_of_puts, 10);
+	assert_eq!(g1_agg2.number_of_gets, 20);
+
+	assert_eq!(g1_agg3.node_id, "2".to_string());
+	assert_eq!(g1_agg3.stored_bytes, 110);
+	assert_eq!(g1_agg3.transferred_bytes, 50);
+	assert_eq!(g1_agg3.number_of_puts, 10);
+	assert_eq!(g1_agg3.number_of_gets, 20);
+
+	let g2_agg1 = groups.in_consensus[1].get(0).unwrap();
+	let g2_agg2 = groups.in_consensus[1].get(1).unwrap();
+	let g2_agg3 = groups.in_consensus[1].get(2).unwrap();
+
+	assert_eq!(g2_agg1.node_id, "1".to_string());
+	assert_eq!(g2_agg1.stored_bytes, 100);
+	assert_eq!(g2_agg1.transferred_bytes, 50);
+	assert_eq!(g2_agg1.number_of_puts, 10);
+	assert_eq!(g2_agg1.number_of_gets, 20);
+
+	assert_eq!(g2_agg2.node_id, "1".to_string());
+	assert_eq!(g2_agg2.stored_bytes, 100);
+	assert_eq!(g2_agg2.transferred_bytes, 50);
+	assert_eq!(g2_agg2.number_of_puts, 10);
+	assert_eq!(g2_agg2.number_of_gets, 20);
+
+	assert_eq!(g2_agg3.node_id, "1".to_string());
+	assert_eq!(g2_agg3.stored_bytes, 100);
+	assert_eq!(g2_agg3.transferred_bytes, 50);
+	assert_eq!(g2_agg3.number_of_puts, 10);
+	assert_eq!(g2_agg3.number_of_gets, 20);
 }
 
 #[test]
-fn test_get_consensus_customers_activity_not_in_consensus_2() {
-	let cluster_id1 = ClusterId::from([1; 20]);
-	let era_id1 = 1;
-	let min_nodes = 3;
-	let threshold = Percent::from_percent(67);
+fn empty_bucket_sub_aggregates() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(67);
 
-	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
-	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
-	let node_pubkey_2 = NodePubKey::StoragePubKey(AccountId32::new([2; 32]));
+	let empty = Vec::<BucketSubAggregate>::new();
+	let groups = DdcVerification::group_by_consistency(empty, redundancy_factor, quorum);
 
-	let customers_activity = vec![
-		(
-			node_pubkey_0.clone(),
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 100,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_1.clone(),
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 200,
-					transferred_bytes: 100,
-					number_of_puts: 20,
-					number_of_gets: 40,
-				}],
-			}],
-		),
-		(
-			node_pubkey_2.clone(),
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 300,
-					transferred_bytes: 150,
-					number_of_puts: 30,
-					number_of_gets: 60,
-				}],
-			}],
-		),
-		(
-			node_pubkey_0,
-			vec![CustomerActivity {
-				bucket_id: 2,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 100,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_1,
-			vec![CustomerActivity {
-				bucket_id: 2,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 200,
-					transferred_bytes: 100,
-					number_of_puts: 20,
-					number_of_gets: 40,
-				}],
-			}],
-		),
-		(
-			node_pubkey_2,
-			vec![CustomerActivity {
-				bucket_id: 2,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 300,
-					transferred_bytes: 150,
-					number_of_puts: 30,
-					number_of_gets: 60,
-				}],
-			}],
-		),
-	];
-
-	let result = DdcVerification::get_consensus_for_activities(
-		&cluster_id1,
-		era_id1,
-		&customers_activity,
-		min_nodes,
-		threshold,
-	);
-	assert!(result.is_err());
-	let errors = result.err().unwrap();
-	assert_eq!(errors.len(), 2);
-	match &errors[1] {
-		OCWError::ActivityNotInConsensus { cluster_id, era_id, id } => {
-			assert_eq!(*id, customers_activity[3].1[0].get_consensus_id::<mock::Test>());
-			assert_eq!(*cluster_id, cluster_id1);
-			assert_eq!(*era_id, era_id1);
-		},
-		_ => panic!("Expected CustomerActivityNotInConsensus error"),
-	}
-	match &errors[0] {
-		OCWError::ActivityNotInConsensus { cluster_id, era_id, id } => {
-			assert_eq!(*id, customers_activity[0].1[0].get_consensus_id::<mock::Test>());
-			assert_eq!(*cluster_id, cluster_id1);
-			assert_eq!(*era_id, era_id1);
-		},
-		_ => panic!("Expected CustomerActivityNotInConsensus error"),
-	}
+	assert_eq!(groups.in_consensus.len(), 0);
+	assert_eq!(groups.in_quorum.len(), 0);
+	assert_eq!(groups.in_others.len(), 0);
 }
 
 #[test]
-fn test_get_consensus_customers_activity_diff_errors() {
-	let cluster_id1 = ClusterId::from([1; 20]);
-	let era_id1 = 1;
-	let min_nodes = 3;
-	let threshold = Percent::from_percent(67);
+fn bucket_sub_aggregates_are_fetched_and_grouped() {
+	let mut ext = new_test_ext();
+	let (offchain, offchain_state) = TestOffchainExt::new();
+	let (pool, _pool_state) = TestTransactionPoolExt::new();
 
-	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
-	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
-	let node_pubkey_2 = NodePubKey::StoragePubKey(AccountId32::new([2; 32]));
+	let (pair, _seed) = sp_core::sr25519::Pair::from_phrase(
+		"spider sell nice animal border success square soda stem charge caution echo",
+		None,
+	)
+	.unwrap();
+	let keystore = MemoryKeystore::new();
+	keystore
+		.insert(
+			KEY_TYPE,
+			"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
+			pair.public().as_ref(),
+		)
+		.unwrap();
 
-	let customers_activity = vec![
-		(
-			node_pubkey_0.clone(),
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 100,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_1.clone(),
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 200,
-					transferred_bytes: 100,
-					number_of_puts: 20,
-					number_of_gets: 40,
-				}],
-			}],
-		),
-		(
-			node_pubkey_2.clone(),
-			vec![CustomerActivity {
-				bucket_id: 1,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 300,
-					transferred_bytes: 150,
-					number_of_puts: 30,
-					number_of_gets: 60,
-				}],
-			}],
-		),
-		(
-			node_pubkey_0,
-			vec![CustomerActivity {
-				bucket_id: 2,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 100,
-					transferred_bytes: 50,
-					number_of_puts: 10,
-					number_of_gets: 20,
-				}],
-			}],
-		),
-		(
-			node_pubkey_1,
-			vec![CustomerActivity {
-				bucket_id: 2,
-				sub_aggregates: vec![BucketSubAggregate {
-					NodeID: "1".to_string(),
-					stored_bytes: 200,
-					transferred_bytes: 100,
-					number_of_puts: 20,
-					number_of_gets: 40,
-				}],
-			}],
-		),
-	];
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(offchain));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(KeystoreExt::new(keystore));
 
-	let result = DdcVerification::get_consensus_for_activities(
-		&cluster_id1,
-		era_id1,
-		&customers_activity,
-		min_nodes,
-		threshold,
-	);
-	assert!(result.is_err());
-	let errors = result.err().unwrap();
-	assert_eq!(errors.len(), 3);
-	match &errors[0] {
-		OCWError::ActivityNotInConsensus { cluster_id, era_id, id } => {
-			assert_eq!(*id, customers_activity[0].1[0].get_consensus_id::<mock::Test>());
-			assert_eq!(*cluster_id, cluster_id1);
-			assert_eq!(*era_id, era_id1);
-		},
-		_ => panic!("Expected CustomerActivityNotInConsensus error"),
-	}
-	match &errors[1] {
-		OCWError::NotEnoughBucketsForConsensus { cluster_id, era_id, bucket_id } => {
-			assert_eq!(*bucket_id, 2);
-			assert_eq!(*cluster_id, cluster_id1);
-			assert_eq!(*era_id, era_id1);
-		},
-		_ => panic!("Expected CustomerActivityNotInConsensus error"),
-	}
+	ext.execute_with(|| {
+		let mut offchain_state = offchain_state.write();
+		let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
+		offchain_state.persistent_storage.set(
+			b"",
+			&key,
+			b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
+		);
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host1 = "178.251.228.236";
+		let host2 = "95.217.8.119";
+		let host3 = "178.251.228.42";
+		let host4 = "37.27.30.47";
+		let host5 = "178.251.228.49";
+
+		let port = 8080;
+
+		let pending_request1 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host1, port),
+			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"transferred_bytes":505,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let pending_request2 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host2, port),
+			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"transferred_bytes":506,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let pending_request3 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host3, port),
+			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"transferred_bytes":505,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let pending_request4 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host4, port),
+			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[]}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let pending_request5 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host5, port),
+			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa320","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		offchain_state.expect_request(pending_request1);
+		offchain_state.expect_request(pending_request2);
+		offchain_state.expect_request(pending_request3);
+		offchain_state.expect_request(pending_request4);
+		offchain_state.expect_request(pending_request5);
+
+		drop(offchain_state);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let era_id = 476817;
+		let redundancy_factor = 3;
+		let aggregators_quorum = Percent::from_percent(67);
+
+		let node_params1 = StorageNodeParams {
+			ssl: false,
+			host: host1.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		};
+
+		let node_params2 = StorageNodeParams {
+			ssl: false,
+			host: host2.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		};
+
+		let node_params3 = StorageNodeParams {
+			ssl: false,
+			host: host3.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example4.com".to_vec(),
+		};
+
+		let node_params4 = StorageNodeParams {
+			ssl: false,
+			host: host4.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example5.com".to_vec(),
+		};
+
+		let node_params5 = StorageNodeParams {
+			ssl: false,
+			host: host5.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example6.com".to_vec(),
+		};
+
+		let dac_nodes: Vec<(NodePubKey, StorageNodeParams)> = vec![
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32])), node_params1.clone()),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32])), node_params2.clone()),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])), node_params3.clone()),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4.clone()),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32])), node_params5.clone()),
+		];
+
+		let bucket_aggregates_by_aggregator =
+			DdcVerification::fetch_buckets_aggregates_for_era(&cluster_id, era_id, &dac_nodes)
+				.unwrap();
+
+		let groups =
+			DdcVerification::group_buckets_sub_aggregates_by_consistency(&cluster_id, era_id, bucket_aggregates_by_aggregator, redundancy_factor, aggregators_quorum);
+
+
+		// Sub aggregates which are in consensus
+		let bucket_sub_aggregate_in_consensus = BucketSubAggregate {
+			bucket_id: 90235,
+			node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318"
+				.to_string(),
+			stored_bytes: 578,
+			transferred_bytes: 578,
+			number_of_puts: 2,
+			number_of_gets: 0,
+			aggregator: AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+				node_params: node_params1.clone(),
+			},
+		};
+
+		assert_eq!(
+			groups.in_consensus,
+			vec![
+				ConsistentGroup(bucket_sub_aggregate_in_consensus.hash::<Test>(), vec![
+					bucket_sub_aggregate_in_consensus.clone(),
+					BucketSubAggregate {
+						aggregator: AggregatorInfo {
+							node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+							node_params: node_params2.clone(),
+						},
+						..bucket_sub_aggregate_in_consensus.clone()
+					},
+					BucketSubAggregate {
+						aggregator: AggregatorInfo {
+							node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+							node_params: node_params3.clone(),
+						},
+						..bucket_sub_aggregate_in_consensus.clone()
+					},
+				])
+			]
+		);
+
+		// Sub aggregates which are in quorum
+		let bucket_sub_aggregate_in_quorum = BucketSubAggregate {
+			bucket_id: 90235,
+			node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
+				.to_string(),
+			stored_bytes: 0,
+			transferred_bytes: 505,
+			number_of_puts: 0,
+			number_of_gets: 1,
+			aggregator: AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+				node_params: node_params1.clone(),
+			},
+		};
+
+		assert_eq!(
+			groups.in_quorum,
+			vec![
+				ConsistentGroup(bucket_sub_aggregate_in_quorum.hash::<Test>(), vec![bucket_sub_aggregate_in_quorum.clone(), BucketSubAggregate {aggregator: AggregatorInfo {
+							node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+							node_params: node_params3.clone(),
+						},
+						..bucket_sub_aggregate_in_quorum.clone()
+					},
+				]),
+			]
+		);
+
+		// Others sub aggregates
+		let bucket_sub_aggregate1_in_others = BucketSubAggregate {
+			bucket_id: 90235,
+			node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
+				.to_string(),
+			stored_bytes: 0,
+			transferred_bytes: 506,
+			number_of_puts: 0,
+			number_of_gets: 1,
+			aggregator: AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+				node_params: node_params2.clone(),
+			},
+		};
+
+		let bucket_sub_aggregate2_in_others = BucketSubAggregate {
+			bucket_id: 90235,
+			node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa320"
+				.to_string(),
+			stored_bytes: 578,
+			transferred_bytes: 578,
+			number_of_puts: 2,
+			number_of_gets: 0,
+			aggregator: AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([5; 32])),
+				node_params: node_params5.clone(),
+			},
+		};
+
+		assert_eq!(
+			groups.in_others,
+			vec![
+				ConsistentGroup(bucket_sub_aggregate2_in_others.hash::<Test>(), vec![bucket_sub_aggregate2_in_others]),
+				ConsistentGroup(bucket_sub_aggregate1_in_others.hash::<Test>(), vec![bucket_sub_aggregate1_in_others]),
+			]
+		);
+	});
 }
 
 #[test]
-fn test_get_consensus_nodes_activity_not_in_consensus() {
-	let cluster_id1 = ClusterId::from([1; 20]);
-	let era_id1 = 1;
-	let min_nodes = 3;
-	let threshold = Percent::from_percent(67);
+fn node_aggregates_are_fetched_and_grouped() {
+	let mut ext = new_test_ext();
+	let (offchain, offchain_state) = TestOffchainExt::new();
+	let (pool, _pool_state) = TestTransactionPoolExt::new();
 
-	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
-	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
-	let node_pubkey_2 = NodePubKey::StoragePubKey(AccountId32::new([2; 32]));
+	let (pair, _seed) = sp_core::sr25519::Pair::from_phrase(
+		"spider sell nice animal border success square soda stem charge caution echo",
+		None,
+	)
+	.unwrap();
+	let keystore = MemoryKeystore::new();
+	keystore
+		.insert(
+			KEY_TYPE,
+			"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
+			pair.public().as_ref(),
+		)
+		.unwrap();
 
-	let nodes_activity = vec![
-		(
-			node_pubkey_0,
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		),
-		(
-			node_pubkey_1,
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 200,
-				transferred_bytes: 100,
-				number_of_puts: 20,
-				number_of_gets: 40,
-			}],
-		),
-		(
-			node_pubkey_2,
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 300,
-				transferred_bytes: 150,
-				number_of_puts: 30,
-				number_of_gets: 60,
-			}],
-		),
-	];
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(offchain));
+	ext.register_extension(TransactionPoolExt::new(pool));
+	ext.register_extension(KeystoreExt::new(keystore));
 
-	let result = DdcVerification::get_consensus_for_activities(
-		&cluster_id1,
-		era_id1,
-		&nodes_activity,
-		min_nodes,
-		threshold,
-	);
-	assert!(result.is_err());
-	let errors = result.err().unwrap();
-	assert_eq!(errors.len(), 1);
-	match &errors[0] {
-		OCWError::ActivityNotInConsensus { cluster_id, era_id, id } => {
-			assert_eq!(*id, nodes_activity[0].1[0].get_consensus_id::<mock::Test>());
-			assert_eq!(*cluster_id, cluster_id1);
-			assert_eq!(*era_id, era_id1);
-		},
-		_ => panic!("Expected CustomerActivityNotInConsensus error"),
-	}
+	ext.execute_with(|| {
+		let mut offchain_state = offchain_state.write();
+		let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
+		offchain_state.persistent_storage.set(
+			b"",
+			&key,
+			b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
+		);
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host1 = "178.251.228.236";
+		let host2 = "95.217.8.119";
+		let host3 = "178.251.228.42";
+		let host4 = "37.27.30.47";
+		let host5 = "178.251.228.49";
+
+		let port = 8080;
+
+		let pending_request1 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476817", host1, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let pending_request2 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476817", host2, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 48,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let pending_request3 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476817", host3, port),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let pending_request4 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476817", host4, port),
+			response: Some(br#"[{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		let pending_request5 = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476817", host5, port),
+			response: Some(br#"[{"node_id": "0xfc28d5f5bb10212077a8654f62c4f8f0b5ab985fc322a51f5a3c75943b29194b","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97}]"#.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		offchain_state.expect_request(pending_request1);
+		offchain_state.expect_request(pending_request2);
+		offchain_state.expect_request(pending_request3);
+		offchain_state.expect_request(pending_request4);
+		offchain_state.expect_request(pending_request5);
+
+		drop(offchain_state);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let era_id = 476817;
+		let redundancy_factor = 3;
+		let aggregators_quorum = Percent::from_percent(67);
+
+		let node_params1 = StorageNodeParams {
+			ssl: false,
+			host: host1.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		};
+
+		let node_params2 = StorageNodeParams {
+			ssl: false,
+			host: host2.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		};
+
+		let node_params3 = StorageNodeParams {
+			ssl: false,
+			host: host3.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example4.com".to_vec(),
+		};
+
+		let node_params4 = StorageNodeParams {
+			ssl: false,
+			host: host4.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example5.com".to_vec(),
+		};
+
+		let node_params5 = StorageNodeParams {
+			ssl: false,
+			host: host5.as_bytes().to_vec(),
+			http_port: port,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example6.com".to_vec(),
+		};
+
+		let dac_nodes: Vec<(NodePubKey, StorageNodeParams)> = vec![
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32])), node_params1.clone()),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32])), node_params2.clone()),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])), node_params3.clone()),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4.clone()),
+			(NodePubKey::StoragePubKey(StorageNodePubKey::new([5; 32])), node_params5.clone()),
+		];
+
+		let aggregates_by_aggregator =
+			DdcVerification::fetch_nodes_aggregates_for_era(&cluster_id, era_id, &dac_nodes)
+				.unwrap();
+
+		let groups =
+			DdcVerification::group_nodes_aggregates_by_consistency(&cluster_id, era_id, aggregates_by_aggregator, redundancy_factor, aggregators_quorum);
+		// Node aggregates which are in consensus
+		let node_aggregate_in_consensus = NodeAggregate {
+			node_id: "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e"
+				.to_string(),
+			stored_bytes: 675613289,
+			transferred_bytes: 1097091579,
+			number_of_puts: 889,
+			number_of_gets: 97,
+			aggregator: AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+				node_params: node_params1.clone(),
+			},
+		};
+
+		assert_eq!(
+			groups.in_consensus,
+			vec![ConsistentGroup(node_aggregate_in_consensus.hash::<Test>(), vec![node_aggregate_in_consensus.clone(), NodeAggregate { aggregator: AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])), node_params: node_params2.clone(), }, ..node_aggregate_in_consensus.clone() }, NodeAggregate { aggregator: AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])), node_params: node_params3.clone(), }, ..node_aggregate_in_consensus.clone() } ])]
+		);
+
+		// Node aggregates which are in quorum
+		let node_aggregate_in_quorum = NodeAggregate {
+			node_id: "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a"
+				.to_string(),
+			stored_bytes: 0,
+			transferred_bytes: 38,
+			number_of_puts: 0,
+			number_of_gets: 1,
+			aggregator: AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+				node_params: node_params1.clone(),
+			},
+		};
+
+		assert_eq!(
+			groups.in_quorum, vec![ConsistentGroup(node_aggregate_in_quorum.hash::<Test>(), vec![node_aggregate_in_quorum.clone(), NodeAggregate {aggregator: AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([4; 32])), node_params: node_params4.clone(), }, ..node_aggregate_in_quorum.clone() }])]
+		);
+
+		// Others nodes aggregates
+		let node_aggregate1_in_others = NodeAggregate {
+			node_id: "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a"
+				.to_string(),
+			stored_bytes: 0,
+			transferred_bytes: 48,
+			number_of_puts: 0,
+			number_of_gets: 1,
+			aggregator: AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+				node_params: node_params2.clone(),
+			},
+		};
+
+		let node_aggregate2_in_others = NodeAggregate {
+			node_id: "0xfc28d5f5bb10212077a8654f62c4f8f0b5ab985fc322a51f5a3c75943b29194b"
+				.to_string(),
+			stored_bytes: 675613289,
+			transferred_bytes: 1097091579,
+			number_of_puts: 889,
+			number_of_gets: 97,
+			aggregator: AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([5; 32])),
+				node_params: node_params5.clone(),
+			},
+		};
+
+		assert_eq!(
+			groups.in_others, vec![ConsistentGroup(node_aggregate2_in_others.hash::<Test>(), vec![node_aggregate2_in_others]), ConsistentGroup(node_aggregate1_in_others.hash::<Test>(), vec![node_aggregate1_in_others])]
+		);
+	});
 }
 
 #[test]
@@ -1182,7 +1919,7 @@ fn test_convert_to_batch_merkle_roots_empty() {
 	let result_roots = DdcVerification::convert_to_batch_merkle_roots(
 		&cluster_id,
 		era_id_1,
-		Vec::<Vec<NodeActivity>>::new(),
+		Vec::<Vec<NodeAggregate>>::new(),
 	)
 	.unwrap();
 	let expected_roots: Vec<ActivityHash> = Vec::<ActivityHash>::new();
@@ -1192,9 +1929,9 @@ fn test_convert_to_batch_merkle_roots_empty() {
 
 #[test]
 fn test_split_to_batches_empty_activities() {
-	let activities: Vec<NodeActivity> = vec![];
+	let activities: Vec<NodeAggregate> = vec![];
 	let result = DdcVerification::split_to_batches(&activities, 3);
-	assert_eq!(result, Vec::<Vec<NodeActivity>>::new());
+	assert_eq!(result, Vec::<Vec<NodeAggregate>>::new());
 }
 
 #[test]
@@ -1244,206 +1981,12 @@ fn test_split_to_batches_non_exact_batches() {
 	];
 	sorted_activities.sort();
 	let result = DdcVerification::split_to_batches(&activities, 2);
-	let mut expected: Vec<Vec<NodeActivity>> = Vec::new();
+	let mut expected: Vec<Vec<NodeAggregate>> = Vec::new();
 	expected.push(vec![sorted_activities[0].clone(), sorted_activities[1].clone()]);
 	expected.push(vec![sorted_activities[2].clone(), sorted_activities[3].clone()]);
 	expected.push(vec![sorted_activities[4].clone()]);
 
 	assert_eq!(result, expected);
-}
-
-#[test]
-fn test_get_consensus_nodes_activity_not_in_consensus2() {
-	let cluster_id1 = ClusterId::from([1; 20]);
-	let era_id1 = 1;
-	let min_nodes = 3;
-	let threshold = Percent::from_percent(67);
-
-	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
-	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
-	let node_pubkey_2 = NodePubKey::StoragePubKey(AccountId32::new([2; 32]));
-
-	let nodes_activity = vec![
-		(
-			node_pubkey_0.clone(),
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		),
-		(
-			node_pubkey_1.clone(),
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 200,
-				transferred_bytes: 100,
-				number_of_puts: 20,
-				number_of_gets: 40,
-			}],
-		),
-		(
-			node_pubkey_2.clone(),
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 300,
-				transferred_bytes: 150,
-				number_of_puts: 30,
-				number_of_gets: 60,
-			}],
-		),
-		(
-			node_pubkey_0,
-			vec![NodeActivity {
-				node_id: "1".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		),
-		(
-			node_pubkey_1,
-			vec![NodeActivity {
-				node_id: "1".to_string(),
-				stored_bytes: 200,
-				transferred_bytes: 100,
-				number_of_puts: 20,
-				number_of_gets: 40,
-			}],
-		),
-		(
-			node_pubkey_2,
-			vec![NodeActivity {
-				node_id: "1".to_string(),
-				stored_bytes: 300,
-				transferred_bytes: 150,
-				number_of_puts: 30,
-				number_of_gets: 60,
-			}],
-		),
-	];
-
-	let result = DdcVerification::get_consensus_for_activities(
-		&cluster_id1,
-		era_id1,
-		&nodes_activity,
-		min_nodes,
-		threshold,
-	);
-	assert!(result.is_err());
-	let errors = result.err().unwrap();
-	assert_eq!(errors.len(), 2);
-	match &errors[0] {
-		OCWError::ActivityNotInConsensus { cluster_id, era_id, id } => {
-			assert_eq!(*id, nodes_activity[0].1[0].get_consensus_id::<mock::Test>());
-			assert_eq!(*cluster_id, cluster_id1);
-			assert_eq!(*era_id, era_id1);
-		},
-		_ => panic!("Expected CustomerActivityNotInConsensus error"),
-	}
-	match &errors[1] {
-		OCWError::ActivityNotInConsensus { cluster_id, era_id, id } => {
-			assert_eq!(*id, nodes_activity[3].1[0].get_consensus_id::<mock::Test>());
-			assert_eq!(*cluster_id, cluster_id1);
-			assert_eq!(*era_id, era_id1);
-		},
-		_ => panic!("Expected CustomerActivityNotInConsensus error"),
-	}
-}
-
-#[test]
-fn test_get_consensus_nodes_activity_diff_errors() {
-	let cluster_id1 = ClusterId::from([1; 20]);
-	let era_id1 = 1;
-	let min_nodes = 3;
-	let threshold = Percent::from_percent(67);
-
-	let node_pubkey_0 = NodePubKey::StoragePubKey(AccountId32::new([0; 32]));
-	let node_pubkey_1 = NodePubKey::StoragePubKey(AccountId32::new([1; 32]));
-	let node_pubkey_2 = NodePubKey::StoragePubKey(AccountId32::new([2; 32]));
-
-	let nodes_activity = vec![
-		(
-			node_pubkey_0.clone(),
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		),
-		(
-			node_pubkey_1.clone(),
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 200,
-				transferred_bytes: 100,
-				number_of_puts: 20,
-				number_of_gets: 40,
-			}],
-		),
-		(
-			node_pubkey_2.clone(),
-			vec![NodeActivity {
-				node_id: "0".to_string(),
-				stored_bytes: 300,
-				transferred_bytes: 150,
-				number_of_puts: 30,
-				number_of_gets: 60,
-			}],
-		),
-		(
-			node_pubkey_0,
-			vec![NodeActivity {
-				node_id: "1".to_string(),
-				stored_bytes: 100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-			}],
-		),
-		(
-			node_pubkey_1,
-			vec![NodeActivity {
-				node_id: "1".to_string(),
-				stored_bytes: 200,
-				transferred_bytes: 100,
-				number_of_puts: 20,
-				number_of_gets: 40,
-			}],
-		),
-	];
-
-	let result = DdcVerification::get_consensus_for_activities(
-		&cluster_id1,
-		era_id1,
-		&nodes_activity,
-		min_nodes,
-		threshold,
-	);
-	assert!(result.is_err());
-	let errors = result.err().unwrap();
-	assert_eq!(errors.len(), 3);
-	match &errors[0] {
-		OCWError::ActivityNotInConsensus { cluster_id, era_id, id } => {
-			assert_eq!(*id, nodes_activity[0].1[0].get_consensus_id::<mock::Test>());
-			assert_eq!(*cluster_id, cluster_id1);
-			assert_eq!(*era_id, era_id1);
-		},
-		_ => panic!("Expected CustomerActivityNotInConsensus error"),
-	}
-	match &errors[1] {
-		OCWError::NotEnoughNodesForConsensus { cluster_id, era_id, node_id } => {
-			assert_eq!(*node_id, "1".to_string());
-			assert_eq!(*cluster_id, cluster_id1);
-			assert_eq!(*era_id, era_id1);
-		},
-		_ => panic!("Expected CustomerActivityNotInConsensus error"),
-	}
 }
 
 #[test]
@@ -1957,7 +2500,7 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request1 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host1, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -1965,7 +2508,7 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request2 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host2, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -1973,7 +2516,7 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request3 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host3, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -1981,7 +2524,7 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request4 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host4, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -1989,7 +2532,7 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request5 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host5, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -1997,7 +2540,7 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request6 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host6, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2005,7 +2548,7 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request7 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host7, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2013,7 +2556,7 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request8 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host8, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2021,7 +2564,7 @@ fn test_single_ocw_pallet_integration() {
 		let node_pending_request9 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/nodes?eraId=476814", host9, port),
-			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","provider_id": "0xf6a3e4c537ccee3dbac555ef6df371b7e48594f1fd4f05135914c42b03e63b61","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","provider_id": "0x8d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a9ef98ad9c3626ba725e7","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
+			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2029,7 +2572,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request1 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host1, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"bucket_id": 90235,"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2037,7 +2580,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request2 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host2, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2045,7 +2588,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request3 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host3, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2053,7 +2596,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request4 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host4, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2061,7 +2604,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request5 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host5, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2069,7 +2612,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request6 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host6, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2077,7 +2620,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request7 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host7, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2085,7 +2628,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request8 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host8, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"bucket_id": 90235,"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2093,7 +2636,7 @@ fn test_single_ocw_pallet_integration() {
 		let bucket_pending_request9 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets?eraId=476814", host9, port),
-			response: Some(br#"[{"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
+			response: Some(br#"[{"bucket_id": 90235,"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
@@ -2150,10 +2693,76 @@ fn fetch_reward_activities_works() {
 	let era_id = 1;
 	let total_usage: i64 = 56;
 
+	let node_params = StorageNodeParams {
+		ssl: false,
+		host: "178.251.228.236".as_bytes().to_vec(),
+		http_port: 8080,
+		mode: StorageNodeMode::DAC,
+		p2p_port: 5555,
+		grpc_port: 4444,
+		domain: b"example.com".to_vec(),
+	};
+
 	let result = DdcVerification::fetch_reward_activities(
 		&cluster_id,
 		era_id,
-		get_node_activities(),
+		vec![
+			NodeAggregate {
+				node_id: "0".to_string(),
+				stored_bytes: -100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
+				aggregator: AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params.clone(),
+				},
+			},
+			NodeAggregate {
+				node_id: "1".to_string(),
+				stored_bytes: -101,
+				transferred_bytes: 51,
+				number_of_puts: 11,
+				number_of_gets: 21,
+				aggregator: AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params.clone(),
+				},
+			},
+			NodeAggregate {
+				node_id: "2".to_string(),
+				stored_bytes: 102,
+				transferred_bytes: 52,
+				number_of_puts: 12,
+				number_of_gets: 22,
+				aggregator: AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params.clone(),
+				},
+			},
+			NodeAggregate {
+				node_id: "3".to_string(),
+				stored_bytes: 103,
+				transferred_bytes: 53,
+				number_of_puts: 13,
+				number_of_gets: 23,
+				aggregator: AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params.clone(),
+				},
+			},
+			NodeAggregate {
+				node_id: "4".to_string(),
+				stored_bytes: 104,
+				transferred_bytes: 54,
+				number_of_puts: 14,
+				number_of_gets: 24,
+				aggregator: AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params.clone(),
+				},
+			},
+		],
 		leaves.to_vec(),
 		total_usage,
 	);
@@ -2180,193 +2789,6 @@ fn fetch_reward_activities_works() {
 }
 
 #[test]
-fn test_bucket_node_aggregates() {
-	let mut ext = new_test_ext();
-	let (offchain, offchain_state) = TestOffchainExt::new();
-	let (pool, _pool_state) = TestTransactionPoolExt::new();
-
-	let (pair, _seed) = sp_core::sr25519::Pair::from_phrase(
-		"spider sell nice animal border success square soda stem charge caution echo",
-		None,
-	)
-	.unwrap();
-	let keystore = MemoryKeystore::new();
-	keystore
-		.insert(
-			KEY_TYPE,
-			"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
-			pair.public().as_ref(),
-		)
-		.unwrap();
-
-	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
-	ext.register_extension(OffchainDbExt::new(offchain));
-	ext.register_extension(TransactionPoolExt::new(pool));
-	ext.register_extension(KeystoreExt::new(keystore));
-
-	ext.execute_with(|| {
-		let mut offchain_state = offchain_state.write();
-		let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
-		offchain_state.persistent_storage.set(
-			b"",
-			&key,
-			b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
-		);
-		offchain_state.timestamp = Timestamp::from_unix_millis(0);
-		let host1 = "178.251.228.236";
-		let host2 = "95.217.8.119";
-		let host3 = "178.251.228.42";
-		let host4 = "37.27.30.47";
-
-		let port = 8080;
-
-		let pending_request1 = PendingRequest {
-			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host1, port),
-			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"transferred_bytes":505,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()),
-			sent: true,
-			..Default::default()
-		};
-
-		let pending_request2 = PendingRequest {
-			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host2, port),
-			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"transferred_bytes":506,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()),
-			sent: true,
-			..Default::default()
-		};
-
-		let pending_request3 = PendingRequest {
-			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host3, port),
-			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"transferred_bytes":505,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()),
-			sent: true,
-			..Default::default()
-		};
-
-		let pending_request4 = PendingRequest {
-			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=476817", host4, port),
-			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[]}]"#.to_vec()),
-			sent: true,
-			..Default::default()
-		};
-
-		offchain_state.expect_request(pending_request1);
-		offchain_state.expect_request(pending_request2);
-		offchain_state.expect_request(pending_request3);
-		offchain_state.expect_request(pending_request4);
-		drop(offchain_state);
-
-		let cluster_id = ClusterId::from([1; 20]);
-		let era_id = 476817;
-		let min_nodes = 3;
-
-		let node_params1 = StorageNodeParams {
-			ssl: false,
-			host: host1.as_bytes().to_vec(),
-			http_port: port,
-			mode: StorageNodeMode::DAC,
-			p2p_port: 5555,
-			grpc_port: 4444,
-			domain: b"example2.com".to_vec(),
-		};
-
-		let node_params2 = StorageNodeParams {
-			ssl: false,
-			host: host2.as_bytes().to_vec(),
-			http_port: port,
-			mode: StorageNodeMode::DAC,
-			p2p_port: 5555,
-			grpc_port: 4444,
-			domain: b"example3.com".to_vec(),
-		};
-
-		let node_params3 = StorageNodeParams {
-			ssl: false,
-			host: host3.as_bytes().to_vec(),
-			http_port: port,
-			mode: StorageNodeMode::DAC,
-			p2p_port: 5555,
-			grpc_port: 4444,
-			domain: b"example4.com".to_vec(),
-		};
-
-		let node_params4 = StorageNodeParams {
-			ssl: false,
-			host: host4.as_bytes().to_vec(),
-			http_port: port,
-			mode: StorageNodeMode::DAC,
-			p2p_port: 5555,
-			grpc_port: 4444,
-			domain: b"example5.com".to_vec(),
-		};
-
-		let dac_nodes: Vec<(NodePubKey, StorageNodeParams)> = vec![
-			(NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32])), node_params1),
-			(NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32])), node_params2),
-			(NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])), node_params3),
-			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4),
-		];
-
-		let customers_usage =
-			DdcVerification::fetch_customers_usage_for_era(&cluster_id, era_id, &dac_nodes)
-				.unwrap();
-
-		let result =
-			DdcVerification::fetch_sub_trees(&cluster_id, era_id, customers_usage, min_nodes);
-
-		assert!(result.is_ok());
-		// Sub_aggregates which are in consensus
-		assert_eq!(
-			result.clone().unwrap().0,
-			[BucketNodeAggregatesActivity {
-				bucket_id: 90235,
-				node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318"
-					.to_string(),
-				stored_bytes: 578,
-				transferred_bytes: 578,
-				number_of_puts: 2,
-				number_of_gets: 0
-			}]
-		);
-		// Sub_aggregates which are not in consensus
-		assert_eq!(
-			result.unwrap().1,
-			[
-				BucketNodeAggregatesActivity {
-					bucket_id: 90235,
-					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
-						.to_string(),
-					stored_bytes: 0,
-					transferred_bytes: 505,
-					number_of_puts: 0,
-					number_of_gets: 1
-				},
-				BucketNodeAggregatesActivity {
-					bucket_id: 90235,
-					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
-						.to_string(),
-					stored_bytes: 0,
-					transferred_bytes: 505,
-					number_of_puts: 0,
-					number_of_gets: 1
-				},
-				BucketNodeAggregatesActivity {
-					bucket_id: 90235,
-					node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
-						.to_string(),
-					stored_bytes: 0,
-					transferred_bytes: 506,
-					number_of_puts: 0,
-					number_of_gets: 1
-				}
-			]
-		);
-	});
-}
-
-#[test]
 fn test_find_random_merkle_node_ids() {
 	let mut ext = TestExternalities::default();
 	let (offchain, _offchain_state) = TestOffchainExt::new();
@@ -2375,34 +2797,50 @@ fn test_find_random_merkle_node_ids() {
 	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
 	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
 	ext.register_extension(TransactionPoolExt::new(pool));
+	let host1 = "178.251.228.236";
+
+	let port = 8080;
+	let node_params1 = StorageNodeParams {
+		ssl: false,
+		host: host1.as_bytes().to_vec(),
+		http_port: port,
+		mode: StorageNodeMode::DAC,
+		p2p_port: 5555,
+		grpc_port: 4444,
+		domain: b"example2.com".to_vec(),
+	};
 
 	ext.execute_with(|| {
-		let bucket_node_aggregates_not_in_consensus: BucketNodeAggregatesActivity =
-			BucketNodeAggregatesActivity {
-				bucket_id: 90235,
-				node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
-					.to_string(),
-				stored_bytes: 0,
-				transferred_bytes: 505,
-				number_of_puts: 12,
-				number_of_gets: 13,
-			};
+		let deffective_bucket_sub_aggregate = BucketSubAggregate {
+			bucket_id: 90235,
+			node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
+				.to_string(),
+			stored_bytes: 0,
+			transferred_bytes: 505,
+			number_of_puts: 12,
+			number_of_gets: 13,
+			aggregator: AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
+				node_params: node_params1.clone(),
+			},
+		};
 
-		let total_activities = bucket_node_aggregates_not_in_consensus.number_of_gets +
-			bucket_node_aggregates_not_in_consensus.number_of_puts;
+		let number_of_leaves = deffective_bucket_sub_aggregate.get_number_of_leaves();
 
-		let ids = DdcVerification::find_random_merkle_node_ids(
+		let ids = DdcVerification::_find_random_merkle_node_ids(
 			3,
-			bucket_node_aggregates_not_in_consensus.clone(),
+			number_of_leaves,
+			deffective_bucket_sub_aggregate.get_key(),
 		);
+
 		for id in ids {
-			assert!(id < total_activities);
+			assert!(id < number_of_leaves);
 		}
 	});
 }
 
 #[test]
-fn test_challenge_sub_aggregates_not_in_consensus() {
+fn challenge_bucket_sub_aggregate_works() {
 	let mut ext = new_test_ext();
 	let (offchain, offchain_state) = TestOffchainExt::new();
 	let (pool, _pool_state) = TestTransactionPoolExt::new();
@@ -2435,10 +2873,7 @@ fn test_challenge_sub_aggregates_not_in_consensus() {
 			b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
 		);
 		offchain_state.timestamp = Timestamp::from_unix_millis(0);
-		let host1 = "178.251.228.236";
-		let host2 = "95.217.8.119";
-		let host3 = "178.251.228.42";
-		let host4 = "37.27.30.47";
+		let host1 = "178.251.228.165";
 
 		let port = 8080;
 
@@ -2453,73 +2888,23 @@ fn test_challenge_sub_aggregates_not_in_consensus() {
 
 		let pending_request2 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=0,2,1,3", host2, port),
-			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
-			sent: true,
-			..Default::default()
-		};
-
-		let pending_request3 = PendingRequest {
-			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=0,2,1,3", host3, port),
-			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
-			sent: true,
-			..Default::default()
-		};
-
-		let pending_request4 = PendingRequest {
-			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=0,2,1,3", host4, port),
-			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
-			sent: true,
-			..Default::default()
-		};
-
-		let pending_request5 = PendingRequest {
-			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=1", host1, port),
-			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
-			sent: true,
-			..Default::default()
-		};
-
-		let pending_request6 = PendingRequest {
-			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=1", host2, port),
-			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
-			sent: true,
-			..Default::default()
-		};
-
-		let pending_request7 = PendingRequest {
-			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=1", host3, port),
-			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
-			sent: true,
-			..Default::default()
-		};
-
-		let pending_request8 = PendingRequest {
-			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets/123229/challenge?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=1", host4, port),
-			response: Some(br#"{"proofs":[{"merkle_tree_node_id":3,"usage":{"stored_bytes":2097152,"transferred_bytes":1048576,"number_of_puts":1,"number_of_gets":1},"path":["hFnZfjnS5bAzgm5tHcWTxuJa5waDcaiU7OhBRofylhQ="],"leafs":[{"record":{"id":"17Z3vSjjRm6mWN3Swpw3Cw==","upstream":{"request":{"requestId":"e9920157-6c6a-485e-9f5a-1685ea6d4ef5","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_PIECE","bucketId":"1","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880632","signature":{"algorithm":"ED_25519","signer":"iNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4=","value":"KPDnQH5KZZQ2hksJ8F/w3GHwWloAm1QKoLt+SuUNYt3HxsGrh3r3q77COiu0jrwQ7mEsp/FFJp4pDp2Y1j2sDA=="}}},"downstream":[{"request":{"requestId":"a5bcaa37-97a4-45d2-beb9-c11cc955fb78","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_MERKLE_TREE","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"0","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"ulpjaksvopDDRRfYnrccUg5spkoRpfZlDARbjgfL4Y/X4HZNUp2cL5qQMHUosREB6PSMXr9rQvXYGA9kmrUBDg=="}}},{"request":{"requestId":"8af9ba14-4c49-438c-957d-d1a108a58b85","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"CLdw3HaQWVWdDHeog2SZjiEA4NZN6PD8vyw58JuQI7gMDpDXLFslMOcI7p/uNEyeDfNoKTAgNZpWbNR4vSZ/AA=="}}},{"request":{"requestId":"b3dc8833-d5aa-4e33-9afa-54584da29cda","requestType":"REQUEST_TYPE_GET","contentType":"CONTENT_TYPE_SEGMENT","bucketId":"0","pieceCid":"AQIeIKLbs3OibO5qbLJ/PLCo1m02oFHWCl4s7S59GWgxDUbk","offset":"0","size":"524288","timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"5XTnDU/85DqWWpMy1kGRVK6ZHe/EYDeg2p07UbFnIr6xLX7n50k9MslwuF8jMl2/QoBrPnndHdCd5ssqV90kDg=="}}}],"timestamp":"1727346880633","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"8WWGHaL3n8+bkuYQhTua3l+i3W//XXhlnzCpQ7VJ/BmfXQPFGEjIZsXw0kKr4+VXh/kWAncF3VrvW9nEi6G2CQ=="}},"transferred_bytes":1048576,"stored_bytes":0},{"record":{"id":"8Rg6VlRrSE65NsCY02OnlA==","upstream":{"request":{"requestId":"aacf30c4-b2e9-4f37-826d-0016c280f39b","requestType":"REQUEST_TYPE_PUT","contentType":"CONTENT_TYPE_METADATA","bucketId":"0","pieceCid":"AAAAAAAAAAEBAh4gaLfPG3AA1QwNFQc3VvJYsMAINAN6mMkvo5vk5HP8g/0=","offset":"0","size":"385","timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=","value":"yPZt7Fyfp1aiJL+hYOg5rRtPPTNDMZwgReX2RX4bWbP8+ivreh1cNvSwnM5ln0EFqxTn53iVQpZeMWXUSiJeCw=="}}},"downstream":[],"timestamp":"1727346880673","signature":{"algorithm":"ED_25519","signer":"CsfLnFNZTp9TjZlQxrzyjwwMe4OF3uouviQGK8ZA574=","value":"zX0aGW/FuhddMAtGvN4Gjf6P1JaFGasrwf5yCrQPFv4qUB1GyACynb1s1+Mv0zpMAGOtIOcwaemoPu4fnOByBA=="}},"transferred_bytes":1048576,"stored_bytes":1048576}]}]}"#.to_vec()),
+			uri: format!("http://{}:{}/activity/buckets/123229/traverse?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=1&levels=1", host1, port),
+			response: Some(br#"[{"merkle_tree_node_id":2,"hash":"hkujtYgWP21CrXdRP1rhRPrYR2ooIYCnP5zwCERTePI=","stored_bytes":20913291,"transferred_bytes":20913291,"number_of_puts":61,"number_of_gets":3},{"merkle_tree_node_id":3,"hash":"ZgWwK2LgWkHpx5JlXZn/Rouq6uE9DhOnRH6EA1+QO6o=","stored_bytes":23778084,"transferred_bytes":23778084,"number_of_puts":46,"number_of_gets":2}]"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
 
 		offchain_state.expect_request(pending_request1);
 		offchain_state.expect_request(pending_request2);
-		offchain_state.expect_request(pending_request3);
-		offchain_state.expect_request(pending_request4);
-		offchain_state.expect_request(pending_request5);
-		offchain_state.expect_request(pending_request6);
-		offchain_state.expect_request(pending_request7);
-		offchain_state.expect_request(pending_request8);
+
 		drop(offchain_state);
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let era_id = 5757773;
+		let host1 = "178.251.228.165";
 
+
+		let port = 8080;
 		let node_params1 = StorageNodeParams {
 			ssl: false,
 			host: host1.as_bytes().to_vec(),
@@ -2530,56 +2915,22 @@ fn test_challenge_sub_aggregates_not_in_consensus() {
 			domain: b"example2.com".to_vec(),
 		};
 
-		let node_params2 = StorageNodeParams {
-			ssl: false,
-			host: host2.as_bytes().to_vec(),
-			http_port: port,
-			mode: StorageNodeMode::DAC,
-			p2p_port: 5555,
-			grpc_port: 4444,
-			domain: b"example3.com".to_vec(),
+		let deffective_bucket_sub_aggregate = BucketSubAggregate {
+			bucket_id: 123229,
+			node_id: "0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72"
+				.to_string(),
+			stored_bytes: 0,
+			transferred_bytes: 25143977,
+			number_of_puts: 0,
+			number_of_gets: 10,
+			aggregator: AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([0; 32])),
+				node_params: node_params1.clone(),
+			},
 		};
-
-		let node_params3 = StorageNodeParams {
-			ssl: false,
-			host: host3.as_bytes().to_vec(),
-			http_port: port,
-			mode: StorageNodeMode::DAC,
-			p2p_port: 5555,
-			grpc_port: 4444,
-			domain: b"example4.com".to_vec(),
-		};
-
-		let node_params4 = StorageNodeParams {
-			ssl: false,
-			host: host4.as_bytes().to_vec(),
-			http_port: port,
-			mode: StorageNodeMode::DAC,
-			p2p_port: 5555,
-			grpc_port: 4444,
-			domain: b"example5.com".to_vec(),
-		};
-
-		let dac_nodes: Vec<(NodePubKey, StorageNodeParams)> = vec![
-			(NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32])), node_params1),
-			(NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32])), node_params2),
-			(NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])), node_params3),
-			(NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4),
-		];
-
-		let bucket_node_aggregates_not_in_consensus: Vec<BucketNodeAggregatesActivity> =
-			vec![BucketNodeAggregatesActivity {
-				bucket_id: 123229,
-				node_id: "0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72"
-					.to_string(),
-				stored_bytes: 0,
-				transferred_bytes: 25143977,
-				number_of_puts: 0,
-				number_of_gets: 10,
-			}];
 
 		let result =
-			DdcVerification::challenge_and_find_valid_sub_aggregates_not_in_consensus(&cluster_id, era_id, &dac_nodes, bucket_node_aggregates_not_in_consensus);
+			DdcVerification::_challenge_aggregate(&cluster_id, era_id, &deffective_bucket_sub_aggregate);
 
 		assert!(result.is_ok());
 

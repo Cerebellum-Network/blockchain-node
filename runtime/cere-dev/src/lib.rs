@@ -149,7 +149,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 54128,
+	spec_version: 54129,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 19,
@@ -1294,6 +1294,7 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
+	pub const MajorityOfAggregators: Percent = Percent::from_percent(67);
 }
 impl pallet_ddc_verification::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -1308,7 +1309,8 @@ impl pallet_ddc_verification::Config for Runtime {
 	type ActivityHasher = BlakeTwo256;
 	const MAJORITY: u8 = 67;
 	const BLOCK_TO_START: u16 = 30; // every 100 blocks
-	const MIN_DAC_NODES_FOR_CONSENSUS: u16 = 3;
+	const DAC_REDUNDANCY_FACTOR: u16 = 3;
+	type AggregatorsQuorum = MajorityOfAggregators;
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
