@@ -78,10 +78,10 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-10-14
+          toolchain: 1.77.0
           override: true
           target: wasm32-unknown-unknown
-          components: clippy rust-src
+          components: rust-src
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Check with Clippy
