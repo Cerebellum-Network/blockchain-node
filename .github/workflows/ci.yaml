@@ -47,6 +47,7 @@ jobs:
           toolchain: 1.77.0
           override: true
           target: wasm32-unknown-unknown
+          components: rust-src
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Install try-runtime
@@ -80,7 +81,7 @@ jobs:
           toolchain: 1.77.0
           override: true
           target: wasm32-unknown-unknown
-          components: clippy
+          components: clippy rust-src
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Check with Clippy
@@ -103,6 +104,7 @@ jobs:
           toolchain: 1.77.0
           override: true
           target: wasm32-unknown-unknown
+          components: rust-src
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Run cargo-tarpaulin
