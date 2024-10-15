@@ -172,7 +172,7 @@ std = [
   "sp-api/std",
   "sp-offchain/std",
   "sp-runtime/std",
-	"sp-genesis-builder/std",
+  "sp-genesis-builder/std",
   "sp-staking/std",
   "sp-storage/std",
   "sp-session/std",
