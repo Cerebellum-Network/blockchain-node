@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [6.6.0]
+
+### Changed
+
+- [C] `pallet-ddc-verification`: Verification Pallet and validator OCW for DAC verification.
+- [C] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
+
 ## [5.5.0]
 
 ### Changed
@@ -20,8 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [C,D] `pallet-ddc-verification`: Introduction of the Verification pallet to ensure the secure posting and retrieval of verification keys to and from the blockchain.
-- [C,D] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
+- [D] `pallet-ddc-verification`: Introduction of the Verification pallet to ensure the secure posting and retrieval of verification keys to and from the blockchain.
+- [D] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
 
 ## [5.4.0]
 

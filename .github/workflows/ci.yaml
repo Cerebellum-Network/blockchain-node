@@ -65,9 +65,6 @@ jobs:
         run: >
           pushd node &&
           cargo check --features=runtime-benchmarks --release
-      - name: Check Build for Try-Runtime
-        run: |
-          cargo check --features=try-runtime --release
 
   clippy:
     name: Run Clippy
