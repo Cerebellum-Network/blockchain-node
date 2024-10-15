@@ -1,7 +1,5 @@
 #[cfg(feature = "cere-dev-native")]
 use cere_dev_runtime as cere_dev;
-#[cfg(feature = "cere-native")]
-use cere_runtime as cere;
 #[cfg(feature = "cere-dev-native")]
 use cere_runtime_common::constants::currency::DOLLARS as TEST_UNITS;
 use jsonrpsee::core::__reexports::serde_json;

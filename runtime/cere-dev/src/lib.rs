@@ -838,7 +838,7 @@ impl pallet_bounties::Config for Runtime {
 	type MaximumReasonLength = MaximumReasonLength;
 	type WeightInfo = pallet_bounties::weights::SubstrateWeight<Runtime>;
 	type ChildBountyManager = ChildBounties;
-	type OnSlash = (); //TODO: Validate if Treasury is wanted here
+	type OnSlash = ();
 }
 
 parameter_types! {
