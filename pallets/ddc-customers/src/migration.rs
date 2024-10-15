@@ -109,7 +109,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 			"the bucket count before and after the migration should be the same"
 		);
 
-		let current_version = Pallet::<T>::current_storage_version();
+		let current_version = Pallet::<T>::in_code_storage_version();
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
 		frame_support::ensure!(current_version == 1, "must_upgrade");

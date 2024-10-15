@@ -190,7 +190,7 @@ pub fn cere_dev_genesis(
 		sudo: cere_dev::SudoConfig { key: Some(root_key) },
 		babe: cere_dev::BabeConfig {
 			authorities: Default::default(),
-			epoch_config: Some(cere_dev::BABE_GENESIS_EPOCH_CONFIG),
+			epoch_config: cere_dev::BABE_GENESIS_EPOCH_CONFIG,
 			..Default::default()
 		},
 		im_online: cere_dev::ImOnlineConfig { keys: vec![] },

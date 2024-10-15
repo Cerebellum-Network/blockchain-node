@@ -13,7 +13,7 @@ use ddc_primitives::{
 	StorageNodeParams, DOLLARS,
 };
 use frame_support::{
-	parameter_types,
+	derive_impl, parameter_types,
 	traits::{
 		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, EnsureOriginWithArg,
 		EqualPrivilegeOnly, Everything, LinearStoragePrice, Nothing,
@@ -23,7 +23,7 @@ use frame_support::{
 };
 use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
-	EnsureRoot,
+	EnsureRoot, EnsureSigned,
 };
 use lazy_static::lazy_static;
 use pallet_ddc_clusters::cluster::Cluster;
@@ -85,10 +85,9 @@ impl Convert<Weight, BalanceOf<Self>> for Test {
 	}
 }
 
+#[derive_impl(frame_system::config_preludes::ParaChainDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
-	type BlockWeights = ();
-	type BlockLength = ();
 	type DbWeight = RocksDbWeight;
 	type RuntimeOrigin = RuntimeOrigin;
 	type Nonce = u64;
@@ -101,14 +100,8 @@ impl frame_system::Config for Test {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
-	type Version = ();
 	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
 	type MaxConsumers = ConstU32<16>;
 }
 
@@ -252,6 +245,8 @@ impl pallet_contracts::Config for Test {
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type MaxDelegateDependencies = MaxDelegateDependencies;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type UploadOrigin = EnsureSigned<AccountId>;
+	type InstantiateOrigin = EnsureSigned<AccountId>;
 	type Debug = ();
 	type Environment = ();
 	type Migrations = ();
