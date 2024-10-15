@@ -33,11 +33,11 @@ pub struct Extensions {
 }
 
 // Dummy chain spec, in case when we don't have the native runtime.
-pub type DummyChainSpec = sc_service::GenericChainSpec<(), Extensions>;
+pub type DummyChainSpec = sc_service::GenericChainSpec<Extensions>;
 
 /// The `ChainSpec` parameterized for the cere runtime.
 #[cfg(feature = "cere-native")]
-pub type CereChainSpec = sc_service::GenericChainSpec<cere::RuntimeGenesisConfig, Extensions>;
+pub type CereChainSpec = sc_service::GenericChainSpec<Extensions>;
 
 /// The `ChainSpec` parameterized for the cere runtime.
 // Dummy chain spec, but that is fine when we don't have the native runtime.
@@ -47,7 +47,7 @@ pub type CereChainSpec = DummyChainSpec;
 /// The `ChainSpec` parameterized for the cere-dev runtime.
 #[cfg(feature = "cere-dev-native")]
 pub type CereDevChainSpec =
-	sc_service::GenericChainSpec<cere_dev::RuntimeGenesisConfig, Extensions>;
+	sc_service::GenericChainSpec<Extensions>;
 
 /// The `ChainSpec` parameterized for the cere-dev runtime.
 // Dummy chain spec, but that is fine when we don't have the native runtime.
