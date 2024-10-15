@@ -101,6 +101,7 @@ impl contracts::Config for Test {
 	type Debug = ();
 	type Environment = ();
 	type Migrations = ();
+	type Xcm = ();
 }
 
 use frame_system::offchain::{
@@ -178,6 +179,7 @@ impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type WeightInfo = ();
 	type FreezeIdentifier = ();
+	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
 	type MaxHolds = ConstU32<1>;
 	type RuntimeHoldReason = RuntimeHoldReason;
