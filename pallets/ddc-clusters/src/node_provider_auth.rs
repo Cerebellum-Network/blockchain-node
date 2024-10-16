@@ -106,7 +106,7 @@ where
 			Default::default(),
 			EXTENSION_CALL_GAS_LIMIT,
 			None,
-			pallet_contracts_primitives::Code::Existing(code_hash),
+			pallet_contracts::Code::Existing(code_hash),
 			contract_args,
 			vec![],
 			pallet_contracts::DebugInfo::Skip,
