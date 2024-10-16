@@ -32,12 +32,13 @@ use ddc_primitives::{
 		node::{NodeCreator, NodeVisitor},
 		staking::StakingVisitor,
 	},
-	ClusterId, NodeParams, NodePubKey, StorageNodePubKey,
+	ClusterId, NodeParams, NodePubKey, NodeUsage, StorageNodeParams, StorageNodePubKey,
 };
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_std::prelude::*;
+pub mod migrations;
 mod node;
 mod storage_node;
 
@@ -48,11 +49,12 @@ pub use crate::{
 
 #[frame_support::pallet]
 pub mod pallet {
+	use self::node::NodeProps;
 	use super::*;
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+		frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -237,6 +239,33 @@ pub mod pallet {
 		fn get_node_provider_id(node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
 			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
 			Ok(node.get_provider_id().clone())
+		}
+
+		fn get_node_params(node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
+			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
+			let node_props = node.get_props().clone();
+
+			match node_pub_key {
+				NodePubKey::StoragePubKey(_) => match node_props {
+					NodeProps::StorageProps(node_props) =>
+						Ok(ddc_primitives::NodeParams::StorageParams(StorageNodeParams {
+							mode: node_props.mode,
+							host: node_props.host.into(),
+							domain: node_props.domain.into(),
+							ssl: node_props.ssl,
+							http_port: node_props.http_port,
+							grpc_port: node_props.grpc_port,
+							p2p_port: node_props.p2p_port,
+						})),
+				},
+			}
+		}
+
+		fn get_total_usage(node_pub_key: &NodePubKey) -> Result<Option<NodeUsage>, DispatchError> {
+			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
+			let total_usage = node.get_total_usage().clone();
+
+			Ok(total_usage)
 		}
 	}
 
