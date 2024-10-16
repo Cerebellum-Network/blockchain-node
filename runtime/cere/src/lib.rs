@@ -1445,9 +1445,9 @@ pub mod migrations {
 
 	/// Unreleased migrations. Add new ones here:
 	pub type Unreleased = (
-		pallet_ddc_customers::migration::MigrateToV2<Runtime>,
+		pallet_ddc_customers::migration::v2::MigrateToV2<Runtime>,
 		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
-		pallet_ddc_nodes::migrations::MigrateToV1<Runtime>,
+		pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>,
 		UpgradeSessionKeys,
 	);
 }
