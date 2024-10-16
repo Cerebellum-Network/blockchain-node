@@ -14,7 +14,7 @@ use ddc_primitives::{
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
-	construct_runtime, parameter_types,derive_impl,
+	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstU32, ConstU64, Everything, ExistenceRequirement, Randomness},
 	weights::constants::RocksDbWeight,
 	PalletId,
