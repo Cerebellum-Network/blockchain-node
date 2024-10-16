@@ -9,6 +9,7 @@ compile_error!("at least one runtime feature must be enabled");
 pub use cere_dev_runtime;
 #[cfg(feature = "cere-native")]
 pub use cere_runtime;
+use frame_benchmarking_cli::SUBSTRATE_REFERENCE_HARDWARE;
 use futures::prelude::*;
 use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_babe::SlotProportion;
@@ -16,6 +17,7 @@ pub use sc_executor::NativeExecutionDispatch;
 use sc_network::{service::traits::NetworkService, Event, NetworkBackend, NetworkEventStream};
 use sc_service::{
 	error::Error as ServiceError, Configuration, KeystoreContainer, RpcHandlers, TaskManager,
+	WarpSyncConfig,
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
@@ -90,15 +92,16 @@ where
 		.transpose()?;
 
 	let heap_pages = config
+		.executor
 		.default_heap_pages
 		.map_or(DEFAULT_HEAP_ALLOC_STRATEGY, |h| HeapAllocStrategy::Static { extra_pages: h as _ });
 
 	let wasm = WasmExecutor::builder()
-		.with_execution_method(config.wasm_method)
+		.with_execution_method(config.executor.wasm_method)
 		.with_onchain_heap_alloc_strategy(heap_pages)
 		.with_offchain_heap_alloc_strategy(heap_pages)
-		.with_max_runtime_instances(config.max_runtime_instances)
-		.with_runtime_cache_size(config.runtime_cache_size)
+		.with_max_runtime_instances(config.executor.max_runtime_instances)
+		.with_runtime_cache_size(config.executor.runtime_cache_size)
 		.build();
 	#[allow(deprecated)]
 	let executor = NativeElseWasmExecutor::<ExecutorDispatch>::new_with_wasm_executor(wasm);
@@ -136,7 +139,6 @@ fn new_partial<RuntimeApi, ExecutorDispatch>(
 		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, ExecutorDispatch>>,
 		(
 			impl Fn(
-				cere_rpc::DenyUnsafe,
 				sc_rpc::SubscriptionTaskExecutor,
 			) -> Result<jsonrpsee::RpcModule<()>, sc_service::Error>,
 			(
@@ -203,10 +205,10 @@ where
 				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
 				let slot =
-				sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-					*timestamp,
-					slot_duration,
-				);
+					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+						*timestamp,
+						slot_duration,
+					);
 
 				Ok((slot, timestamp))
 			},
@@ -238,13 +240,12 @@ where
 		let chain_spec = config.chain_spec.cloned_box();
 
 		let rpc_backend = backend.clone();
-		let rpc_extensions_builder = move |deny_unsafe, subscription_executor| {
+		let rpc_extensions_builder = move |subscription_executor| {
 			let deps = cere_rpc::FullDeps {
 				client: client.clone(),
 				pool: pool.clone(),
 				select_chain: select_chain.clone(),
 				chain_spec: chain_spec.cloned_box(),
-				deny_unsafe,
 				babe: cere_rpc::BabeDeps {
 					babe_worker_handle: babe_worker_handle.clone(),
 					keystore: keystore.clone(),
@@ -345,12 +346,10 @@ where
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
 	ExecutorDispatch: NativeExecutionDispatch + 'static,
 {
-	use sc_service::WarpSyncParams;
-
 	let hwbench = if !disable_hardware_benchmarks {
 		config.database.path().map(|database_path| {
 			let _ = std::fs::create_dir_all(database_path);
-			sc_sysinfo::gather_hwbench(Some(database_path))
+			sc_sysinfo::gather_hwbench(Some(database_path), &SUBSTRATE_REFERENCE_HARDWARE)
 		})
 	} else {
 		None
@@ -372,11 +371,12 @@ where
 	let shared_voter_state = rpc_setup;
 	let auth_disc_publish_non_global_ips = config.network.allow_non_globals_in_dht;
 
-	let mut net_config = sc_network::config::FullNetworkConfiguration::<
-		Block,
-		<Block as sp_runtime::traits::Block>::Hash,
-		N,
-	>::new(&config.network);
+	let mut net_config =
+		sc_network::config::FullNetworkConfiguration::<
+			Block,
+			<Block as sp_runtime::traits::Block>::Hash,
+			N,
+		>::new(&config.network, config.prometheus_config.as_ref().map(|cfg| cfg.registry.clone()));
 	let metrics = N::register_notification_metrics(config.prometheus_registry());
 	let peer_store_handle = net_config.peer_store_handle();
 
@@ -407,7 +407,7 @@ where
 			spawn_handle: task_manager.spawn_handle(),
 			import_queue,
 			block_announce_validator_builder: None,
-			warp_sync_params: Some(WarpSyncParams::WithProvider(warp_sync)),
+			warp_sync_config: Some(WarpSyncConfig::WithProvider(warp_sync)),
 			block_relay: None,
 			metrics,
 		})?;

@@ -18,6 +18,7 @@ serde = { workspace = true, default-features = true }
 # Substrate dependencies
 node-primitives = { workspace = true }
 pallet-im-online = { workspace = true }
+frame-benchmarking-cli = { workspace = true }
 sc-authority-discovery = { workspace = true }
 sc-basic-authorship = { workspace = true }
 sc-chain-spec = { workspace = true }
