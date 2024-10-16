@@ -7,7 +7,7 @@ use ddc_primitives::{
 	NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
 };
 use frame_support::{
-	construct_runtime,derive_impl,
+	construct_runtime, derive_impl,
 	traits::{ConstBool, ConstU32, ConstU64, Everything, Nothing},
 	weights::constants::RocksDbWeight,
 };

@@ -13,7 +13,7 @@ use ddc_primitives::{
 	StorageNodeParams, DOLLARS,
 };
 use frame_support::{
-	parameter_types,derive_impl,
+	derive_impl, parameter_types,
 	traits::{
 		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, EnsureOriginWithArg,
 		EqualPrivilegeOnly, Everything, LinearStoragePrice, Nothing,
