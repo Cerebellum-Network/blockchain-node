@@ -9,14 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
-## [5.4.1]
+
+## [5.5.0]
 
 ### Changed
 
+- [C,D] Update Substrate from `v1.1` to `v1.2`.
 - [C,D] `pallet-ddc-verification`: Introduction of the Verification pallet to ensure the secure posting and retrieval of verification keys to and from the blockchain.
 - [C,D] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
 
-## [5.4.0]
+
+## [5.4.1]
 
 ### Changed
 
@@ -24,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C,D] `pallet-ddc-clusters-gov`: Introduction of the Cluster Governance pallet for managing clusters protocol parameters.
 - [C,D] `WhitelistOrigin` is set to the Technical Committee Collective Body
 - [C,D] The _Support Curve_ in OpenGov Tracks is made more strict
+
 
 ## [5.3.0]
 

@@ -35,9 +35,9 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, Nothing,
-		OnUnbalanced, WithdrawReasons,
+		fungible::HoldConsideration, ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf,
+		EitherOfDiverse, EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter,
+		KeyOwnerProofSystem, LinearStoragePrice, Nothing, OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -86,7 +86,7 @@ use sp_runtime::{
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	traits::{
-		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, ConvertInto,
+		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, Convert, ConvertInto,
 		Identity as IdentityConvert, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
@@ -143,7 +143,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 54129,
+	spec_version: 55000,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 19,
@@ -360,6 +360,7 @@ parameter_types! {
 	pub const PreimageMaxSize: u32 = 4096 * 1024;
 	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
 	pub const PreimageByteDeposit: Balance = deposit(0, 1);
+	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
 }
 
 impl pallet_preimage::Config for Runtime {
@@ -367,8 +368,12 @@ impl pallet_preimage::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
-	type BaseDeposit = PreimageBaseDeposit;
-	type ByteDeposit = PreimageByteDeposit;
+	type Consideration = HoldConsideration<
+		AccountId,
+		Balances,
+		PreimageHoldReason,
+		LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
+	>;
 }
 
 parameter_types! {
@@ -625,7 +630,6 @@ parameter_types! {
 
 	// signed config
 	pub const SignedRewardBase: Balance = DOLLARS;
-	pub const SignedDepositBase: Balance = DOLLARS;
 	pub const SignedDepositByte: Balance = CENTS;
 
 	pub BetterUnsignedThreshold: Perbill = Perbill::from_rational(1u32, 10_000);
@@ -741,6 +745,15 @@ impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
 	}
 }
 
+/// Returning a fixed value to respect the initial logic.
+/// This could depend on the length of the solution.
+pub struct FixedSignedDepositBase;
+impl Convert<usize, u128> for FixedSignedDepositBase {
+	fn convert(_: usize) -> u128 {
+		DOLLARS
+	}
+}
+
 impl pallet_election_provider_multi_phase::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
@@ -756,7 +769,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
 	type MinerConfig = Self;
 	type SignedMaxSubmissions = ConstU32<10>;
 	type SignedRewardBase = SignedRewardBase;
-	type SignedDepositBase = SignedDepositBase;
+	type SignedDepositBase = FixedSignedDepositBase;
 	type SignedDepositByte = SignedDepositByte;
 	type SignedMaxRefunds = ConstU32<3>;
 	type SignedDepositWeight = ();
@@ -1212,8 +1225,8 @@ impl pallet_ddc_payouts::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ClusterBondingAmount: Balance = DOLLARS;
-	pub const ClusterUnboningDelay: BlockNumber = MINUTES;
+	pub const ClusterBondingAmount: Balance = 100 * GRAND;
+	pub const ClusterUnboningDelay: BlockNumber = 28 * DAYS;
 }
 
 impl pallet_ddc_staking::Config for Runtime {
@@ -1420,14 +1433,7 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
 /// Runtime migrations
-type Migrations = (
-	pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
-	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
-	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
-	pallet_ddc_customers::migration::MigrateToV2<Runtime>,
-	migrations::Unreleased,
-	pallet_ddc_nodes::migrations::MigrateToV1<Runtime>,
-);
+type Migrations = ();
 
 pub mod migrations {
 	use super::*;

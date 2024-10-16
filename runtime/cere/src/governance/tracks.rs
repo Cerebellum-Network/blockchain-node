@@ -179,11 +179,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 14
 		pallet_referenda::TrackInfo {
 			name: "cluster_protocol_activator",
 			max_deciding: 50,
-			decision_deposit: 5 * GRAND, // todo: define value for Mainnet/Testnet/Qanet
-			prepare_period: 2 * HOURS,   // todo: define value for Mainnet/Testnet/Qanet
+			decision_deposit: 10 * GRAND,
+			prepare_period: 30 * MINUTES,
 			decision_period: 28 * DAYS,
-			confirm_period: 3 * HOURS,
-			min_enactment_period: 10 * MINUTES, // todo: define value for Mainnet/Testnet/Qanet
+			confirm_period: 10 * MINUTES,
+			min_enactment_period: 10 * MINUTES,
 			min_approval: APP_CLUSTER_PROTOCOL_ACTIVATOR,
 			min_support: SUP_CLUSTER_PROTOCOL_ACTIVATOR,
 		},
@@ -193,11 +193,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 14
 		pallet_referenda::TrackInfo {
 			name: "cluster_protocol_updater",
 			max_deciding: 50,
-			decision_deposit: 5 * GRAND, // todo: define value for Mainnet/Testnet/Qanet
-			prepare_period: 2 * HOURS,   // todo: define value for Mainnet/Testnet/Qanet
+			decision_deposit: 10 * GRAND,
+			prepare_period: 30 * MINUTES,
 			decision_period: 28 * DAYS,
-			confirm_period: 3 * HOURS,
-			min_enactment_period: 10 * MINUTES, // todo: define value for Mainnet/Testnet/Qanet
+			confirm_period: 10 * MINUTES,
+			min_enactment_period: 10 * MINUTES,
 			min_approval: APP_CLUSTER_PROTOCOL_UPDATER,
 			min_support: SUP_CLUSTER_PROTOCOL_UPDATER,
 		},
