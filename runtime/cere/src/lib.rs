@@ -898,6 +898,7 @@ impl pallet_contracts::Config for Runtime {
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+	type MaxTransientStorageSize = ConstU32<{ 1 * 1024 * 1024 }>;
 	type MaxDelegateDependencies = MaxDelegateDependencies;
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
