@@ -1293,7 +1293,7 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 }
 
 construct_runtime!(
-	pub struct Runtime
+	pub enum Runtime
 	{
 		System: frame_system,
 		Utility: pallet_utility,

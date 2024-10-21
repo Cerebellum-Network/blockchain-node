@@ -55,7 +55,7 @@ type UncheckedExtrinsic = MockUncheckedExtrinsic<Test>;
 type Block = MockBlock<Test>;
 
 frame_support::construct_runtime!(
-	pub struct Test
+	pub enum Test
 	{
 		System: frame_system::{Pallet, Call, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
