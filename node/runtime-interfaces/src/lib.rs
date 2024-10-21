@@ -191,8 +191,9 @@ pub trait Sandbox {
 	) -> u32 {
 		let lock = SANDBOX.lock();
 		let mut sandbox = lock.borrow_mut();
+		let data = self.read_memory(buf_ptr, buf_len).unwrap();
 		sandbox
-			.memory_get(memory_idx, offset, buf_ptr, buf_len)
+			.memory_get(memory_idx, offset, &data, buf_len)
 			.expect("Failed to get memory with sandbox")
 	}
 
@@ -206,8 +207,11 @@ pub trait Sandbox {
 	) -> u32 {
 		let lock = SANDBOX.lock();
 		let mut sandbox = lock.borrow_mut();
+
+		let data = self.read_memory(val_ptr, val_len).unwrap();
+
 		sandbox
-			.memory_set(memory_idx, offset, val_ptr, val_len)
+			.memory_set(memory_idx, offset, &data)
 			.expect("Failed to set memory with sandbox")
 	}
 

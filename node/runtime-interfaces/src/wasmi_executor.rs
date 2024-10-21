@@ -191,26 +191,22 @@ impl FunctionExecutor {
 		&mut self,
 		memory_id: MemoryId,
 		offset: WordSize,
-		buf_ptr: Pointer<u8>,
+		data: &[u8],
 		buf_len: WordSize,
 	) -> WResult<u32> {
-		log::info!(target: LOG_TARGET, "memory_get START: memory_id={:?}, offset={:?}, buf_ptr={:?}, buf_len={:?}", memory_id, offset, buf_ptr, buf_len);
-
 		let sandboxed_memory =
 			self.sandbox_store.borrow().memory(memory_id).map_err(|e| e.to_string())?;
 
 		let len = buf_len as usize;
 
-		let buffer = match sandboxed_memory.read(Pointer::new(offset as u32), len) {
-			Err(_) => return Ok(ERR_OUT_OF_BOUNDS),
-			Ok(buffer) => buffer,
-		};
+		// let buffer = match sandboxed_memory.read(Pointer::new(offset as u32), data.len()) {
+		// 	Err(_) => return Ok(ERR_OUT_OF_BOUNDS),
+		// 	Ok(buffer) => buffer,
+		// };
 
-		if self.memory.set(buf_ptr.into(), &buffer).is_err() {
+		if sandboxed_memory.read(Pointer::new(offset as u32), len).is_err() {
 			return Ok(ERR_OUT_OF_BOUNDS)
 		}
-
-		log::info!(target: LOG_TARGET, "memory_get END: memory_id={:?}, offset={:?}, buf_ptr={:?}, buf_len={:?}", memory_id, offset, buf_ptr, buf_len);
 
 		Ok(ERR_OK)
 	}
@@ -219,30 +215,50 @@ impl FunctionExecutor {
 		&mut self,
 		memory_id: MemoryId,
 		offset: WordSize,
-		val_ptr: Pointer<u8>,
-		val_len: WordSize,
+		data: &[u8],
 	) -> WResult<u32> {
-		log::info!(target: LOG_TARGET, "memory_set START: memory_id={:?}, offset={:?}, val_ptr={:?}, val_len={:?}", memory_id, offset, val_ptr, val_len);
-
 		let sandboxed_memory =
 			self.sandbox_store.borrow().memory(memory_id).map_err(|e| e.to_string())?;
 
-		let len = val_len as usize;
+		// let len: usize = val_len as usize;
 
-		#[allow(deprecated)]
-		let buffer = match self.memory.get(val_ptr.into(), len) {
-			Err(_) => return Ok(ERR_OUT_OF_BOUNDS),
-			Ok(buffer) => buffer,
-		};
-
-		if sandboxed_memory.write_from(Pointer::new(offset as u32), &buffer).is_err() {
+		if sandboxed_memory.write_from(Pointer::new(offset as u32), &data).is_err() {
 			return Ok(ERR_OUT_OF_BOUNDS)
 		}
 
-		log::info!(target: LOG_TARGET, "memory_set END: memory_id={:?}, offset={:?}, val_ptr={:?}, val_len={:?}", memory_id, offset, val_ptr, val_len);
-
 		Ok(ERR_OK)
 	}
+
+	// pub fn memory_set(
+	// 	&mut self,
+	// 	memory_id: MemoryId,
+	// 	offset: WordSize,
+	// 	val_ptr: Pointer<u8>,
+	// 	val_len: WordSize,
+	// ) -> WResult<u32> {
+	// 	log::info!(target: LOG_TARGET, "memory_set START: memory_id={:?}, offset={:?}, val_ptr={:?},
+	// val_len={:?}", memory_id, offset, val_ptr, val_len);
+
+	// 	let sandboxed_memory =
+	// 		self.sandbox_store.borrow().memory(memory_id).map_err(|e| e.to_string())?;
+
+	// 	let len = val_len as usize;
+
+	// 	#[allow(deprecated)]
+	// 	let buffer = match self.memory.get(val_ptr.into(), len) {
+	// 		Err(_) => return Ok(ERR_OUT_OF_BOUNDS),
+	// 		Ok(buffer) => buffer,
+	// 	};
+
+	// 	if sandboxed_memory.write_from(Pointer::new(offset as u32), &buffer).is_err() {
+	// 		return Ok(ERR_OUT_OF_BOUNDS)
+	// 	}
+
+	// 	log::info!(target: LOG_TARGET, "memory_set END: memory_id={:?}, offset={:?}, val_ptr={:?},
+	// val_len={:?}", memory_id, offset, val_ptr, val_len);
+
+	// 	Ok(ERR_OK)
+	// }
 
 	pub fn memory_teardown(&mut self, memory_id: MemoryId) -> WResult<()> {
 		log::info!(target: LOG_TARGET, "memory_teardown START: memory_id={:?}", memory_id);
