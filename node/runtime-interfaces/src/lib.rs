@@ -2,7 +2,6 @@ use sp_runtime_interface::runtime_interface;
 use sp_wasm_interface::{Pointer, Result as SandboxResult, Value, WordSize};
 
 pub type MemoryId = u32;
-
 /// Something that provides access to the sandbox.
 #[runtime_interface]
 pub trait Sandbox {
@@ -67,5 +66,16 @@ pub trait Sandbox {
 	/// Returns `Some(_)` when the requested global variable could be found.
 	fn get_global_val(&self, instance_idx: u32, name: &str) -> SandboxResult<Option<Value>> {
 		return Ok(Some(Value::I32(0)));
+	}
+
+	/// Instantiate a guest module and return it's index in the store.
+	fn instantiate(
+		&mut self,
+		wasm: &[u8],
+		guest_env: &[u8],
+		state: u32,
+		sandbox_context: &[u8],
+	) -> SandboxResult<()> {
+		return Ok(());
 	}
 }
