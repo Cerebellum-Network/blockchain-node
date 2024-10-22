@@ -20,9 +20,7 @@ use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::TestXt,
-	traits::{
-		Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
-	},
+	traits::{Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, DispatchResult, MultiSignature, Perbill, Perquintill,
 };
 

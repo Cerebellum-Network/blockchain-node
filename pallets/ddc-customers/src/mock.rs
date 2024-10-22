@@ -15,8 +15,7 @@ use frame_system::mocking::MockBlock;
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
-	traits::{IdentityLookup},
-	BuildStorage, DispatchError, DispatchResult, Perquintill,
+	traits::IdentityLookup, BuildStorage, DispatchError, DispatchResult, Perquintill,
 };
 
 use crate::{self as pallet_ddc_customers, *};

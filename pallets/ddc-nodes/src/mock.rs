@@ -11,10 +11,7 @@ use frame_support::{
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_core::H256;
 use sp_io::TestExternalities;
-use sp_runtime::{
-	traits::{IdentityLookup},
-	BuildStorage,
-};
+use sp_runtime::{traits::IdentityLookup, BuildStorage};
 
 use crate::{self as pallet_ddc_nodes, *};
 
