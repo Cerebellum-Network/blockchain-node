@@ -25,6 +25,7 @@ impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
+	type RuntimeTask = RuntimeTask;
 	type Nonce = u64;
 	type Block = Block;
 	type Hash = H256;

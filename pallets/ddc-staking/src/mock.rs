@@ -72,6 +72,7 @@ impl frame_system::Config for Test {
 	type Nonce = u64;
 	type Block = Block;
 	type RuntimeCall = RuntimeCall;
+	type RuntimeTask = RuntimeTask;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
