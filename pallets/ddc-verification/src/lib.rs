@@ -1620,30 +1620,42 @@ pub mod pallet {
 			era_id: DdcEra,
 			consistency_groups: ConsistencyGroups<A>,
 		) -> Result<Vec<A>, Vec<OCWError>> {
-			let mut total_usage: Vec<A> = vec![];
+			let mut total_usage = vec![];
+			let mut total_usage_keys = vec![];
 
-			// todo: run a light challenge for unanimous consensus
+			// todo: implement 'challenge_consensus' fn and run a light challenge for unanimous
+			// consensus
 			let in_consensus_usage = consistency_groups
 				.consensus
 				.clone()
 				.into_iter()
 				.map(|ca| ca.aggregate.clone())
 				.collect::<Vec<_>>();
-			total_usage.extend(in_consensus_usage);
+			total_usage.extend(in_consensus_usage.clone());
+			total_usage_keys
+				.extend(in_consensus_usage.into_iter().map(|a| a.get_key()).collect::<Vec<_>>());
 
-			// todo: run a light challenge for quorum, i.e. for majority
+			// todo: implement 'challenge_quorum' fn and run a light challenge for the quorum, i.e.
+			// for majority
 			let in_quorum_usage = consistency_groups
 				.quorum
 				.clone()
 				.into_iter()
 				.map(|ca| ca.aggregate.clone())
 				.collect::<Vec<_>>();
-			total_usage.extend(in_quorum_usage);
+			total_usage.extend(in_quorum_usage.clone());
+			total_usage_keys
+				.extend(in_quorum_usage.into_iter().map(|a| a.get_key()).collect::<Vec<_>>());
 
-			let verified_usage = Self::challenge_others(cluster_id, era_id, consistency_groups)?;
+			let verified_usage = Self::challenge_others(
+				cluster_id,
+				era_id,
+				consistency_groups,
+				&mut total_usage_keys,
+			)?;
 
 			if !verified_usage.is_empty() {
-				total_usage.extend(verified_usage);
+				total_usage.extend(verified_usage.clone());
 			}
 
 			Ok(total_usage)
@@ -1653,30 +1665,15 @@ pub mod pallet {
 			_cluster_id: &ClusterId,
 			_era_id: DdcEra,
 			consistency_groups: ConsistencyGroups<A>,
+			accepted_keys: &mut Vec<AggregateKey>,
 		) -> Result<Vec<A>, Vec<OCWError>> {
 			let redundancy_factor = T::DAC_REDUNDANCY_FACTOR;
 			let mut verified_usage: Vec<A> = vec![];
 
-			let in_consensus_keys = consistency_groups
-				.consensus
-				.clone()
-				.into_iter()
-				.map(|ac| ac.aggregate.get_key())
-				.collect::<Vec<_>>();
-
-			let in_quorum_keys = consistency_groups
-				.quorum
-				.clone()
-				.into_iter()
-				.map(|ac| ac.aggregate.get_key())
-				.collect::<Vec<_>>();
-
 			for consolidated_aggregate in consistency_groups.others {
 				let aggregate_key = consolidated_aggregate.aggregate.get_key();
 
-				if in_consensus_keys.contains(&aggregate_key) ||
-					in_quorum_keys.contains(&aggregate_key)
-				{
+				if accepted_keys.contains(&aggregate_key) {
 					log::warn!(
 						"⚠️ The aggregate {:?} is inconsistent between aggregators.",
 						aggregate_key
@@ -1705,6 +1702,7 @@ pub mod pallet {
 					// we assume it won't happen at the moment, so we just take the aggregate to
 					// payouts stage
 					verified_usage.push(excessive_aggregate);
+					accepted_keys.push(aggregate_key);
 				} else {
 					let defective_aggregate = consolidated_aggregate.aggregate.clone();
 
@@ -1722,6 +1720,7 @@ pub mod pallet {
 						// we assume all aggregates are valid at the moment, so we just take the
 						// aggregate to payouts stage
 						verified_usage.push(defective_aggregate);
+						accepted_keys.push(aggregate_key);
 					}
 				}
 			}

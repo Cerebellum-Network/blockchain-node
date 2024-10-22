@@ -398,6 +398,8 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
+	assert_eq!(usages.len(), 1); // 1 consolidated aggregate per 1 aggregation key
+
 	let usage = usages.first().unwrap();
 	assert_eq!(usage.stored_bytes, 100);
 	assert_eq!(usage.transferred_bytes, 50);
@@ -520,6 +522,8 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
+	assert_eq!(usages.len(), 1); // 1 consolidated aggregate per 1 aggregation key
+
 	let usage = usages.first().unwrap();
 	assert_eq!(usage.stored_bytes, 100);
 	assert_eq!(usage.transferred_bytes, 50);
@@ -643,18 +647,13 @@ fn buckets_sub_aggregates_in_others_merged() {
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
+	assert_eq!(usages.len(), 1); // 1 consolidated aggregate per 1 aggregation key
 
-	let usage1 = usages.first().unwrap();
-	assert_eq!(usage1.stored_bytes, 100);
-	assert_eq!(usage1.transferred_bytes, 50);
-	assert_eq!(usage1.number_of_puts, 10);
-	assert_eq!(usage1.number_of_gets, 20);
-
-	let usage2 = usages.get(1).unwrap();
-	assert_eq!(usage2.stored_bytes, 200);
-	assert_eq!(usage2.transferred_bytes, 50);
-	assert_eq!(usage2.number_of_puts, 10);
-	assert_eq!(usage2.number_of_gets, 20);
+	let usage = usages.first().unwrap();
+	assert_eq!(usage.stored_bytes, 100);
+	assert_eq!(usage.transferred_bytes, 50);
+	assert_eq!(usage.number_of_puts, 10);
+	assert_eq!(usage.number_of_gets, 20);
 }
 
 #[test]
@@ -751,6 +750,8 @@ fn nodes_aggregates_in_consensus_merged() {
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
+	assert_eq!(usages.len(), 1); // 1 consolidated aggregate per 1 aggregation key
+
 	let usage = usages.first().unwrap();
 	assert_eq!(usage.stored_bytes, 100);
 	assert_eq!(usage.transferred_bytes, 50);
@@ -852,6 +853,8 @@ fn nodes_aggregates_in_quorum_merged() {
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
+	assert_eq!(usages.len(), 1); // 1 consolidated aggregate per 1 aggregation key
+
 	let usage = usages.first().unwrap();
 	assert_eq!(usage.stored_bytes, 100);
 	assert_eq!(usage.transferred_bytes, 50);
@@ -954,18 +957,13 @@ fn nodes_aggregates_in_others_merged() {
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
+	assert_eq!(usages.len(), 1); // 1 consolidated aggregate per 1 aggregation key
 
-	let usage1 = usages.first().unwrap();
-	assert_eq!(usage1.stored_bytes, 200);
-	assert_eq!(usage1.transferred_bytes, 50);
-	assert_eq!(usage1.number_of_puts, 10);
-	assert_eq!(usage1.number_of_gets, 20);
-
-	let usage2 = usages.get(1).unwrap();
-	assert_eq!(usage2.stored_bytes, 100);
-	assert_eq!(usage2.transferred_bytes, 50);
-	assert_eq!(usage2.number_of_puts, 10);
-	assert_eq!(usage2.number_of_gets, 20);
+	let usage = usages.first().unwrap();
+	assert_eq!(usage.stored_bytes, 200);
+	assert_eq!(usage.transferred_bytes, 50);
+	assert_eq!(usage.number_of_puts, 10);
+	assert_eq!(usage.number_of_gets, 20);
 }
 
 #[test]
