@@ -1289,7 +1289,7 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 }
 
 construct_runtime!(
-	pub struct Runtime
+	pub enum Runtime
 	{
 		System: frame_system,
 		Utility: pallet_utility,
@@ -1406,12 +1406,8 @@ type EventRecord = frame_system::EventRecord<
 >;
 
 #[cfg(feature = "runtime-benchmarks")]
-#[macro_use]
-extern crate frame_benchmarking;
-
-#[cfg(feature = "runtime-benchmarks")]
 mod benches {
-	define_benchmarks!(
+	frame_benchmarking::define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[pallet_babe, Babe]
 		[pallet_bags_list, VoterList]
