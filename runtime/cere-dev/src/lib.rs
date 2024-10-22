@@ -1402,7 +1402,7 @@ type EventRecord = frame_system::EventRecord<
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
-	   	frame_benchmarking::define_benchmarks!(
+	frame_benchmarking::define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[pallet_babe, Babe]
 		[pallet_bags_list, VoterList]
