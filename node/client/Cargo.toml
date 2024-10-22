@@ -40,6 +40,7 @@ sp-transaction-pool = { workspace = true, default-features = true }
 # Local
 cere-dev-runtime = { workspace = true, optional = true }
 cere-runtime = { workspace = true, optional = true }
+cere-runtime-interfaces = { workspace = true }
 
 [features]
 default = ["cere"]

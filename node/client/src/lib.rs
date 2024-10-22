@@ -30,7 +30,10 @@ pub struct CereExecutorDispatch;
 
 #[cfg(feature = "cere")]
 impl sc_executor::NativeExecutionDispatch for CereExecutorDispatch {
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+	type ExtendHostFunctions = (
+		frame_benchmarking::benchmarking::HostFunctions,
+		cere_runtime_interfaces::sandbox::HostFunctions,
+	);
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		cere_runtime::api::dispatch(method, data)
@@ -47,7 +50,10 @@ pub struct CereDevExecutorDispatch;
 
 #[cfg(feature = "cere-dev")]
 impl sc_executor::NativeExecutionDispatch for CereDevExecutorDispatch {
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+	type ExtendHostFunctions = (
+		frame_benchmarking::benchmarking::HostFunctions,
+		cere_runtime_interfaces::sandbox::HostFunctions,
+	);
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		cere_dev_runtime::api::dispatch(method, data)

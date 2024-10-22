@@ -926,6 +926,7 @@ version = "5.5.0"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
+ "cere-runtime-interfaces",
  "frame-benchmarking",
  "frame-system",
  "frame-system-rpc-runtime-api",
@@ -1190,6 +1191,17 @@ dependencies = [
  "sp-runtime",
  "sp-staking",
  "sp-std",
+]
+
+[[package]]
+name = "cere-runtime-interfaces"
+version = "5.5.0"
+dependencies = [
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-runtime-interface",
+ "sp-runtime-interface-proc-macro",
+ "sp-wasm-interface",
 ]
 
 [[package]]

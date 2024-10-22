@@ -17,3 +17,5 @@
 .direnv
 
 .idea
+
+/mainnet.json
