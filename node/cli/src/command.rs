@@ -144,6 +144,7 @@ pub fn run() -> sc_cli::Result<()> {
 					#[cfg(feature = "cere-dev-native")]
 					if chain_spec.is_cere_dev() {
 						return runner.sync_run(|config| {
+							#[allow(deprecated)]
 							cmd.run::<sp_runtime::traits::HashingFor<cere_service::cere_dev_runtime::Block>, ()>(config)
 						});
 					}
@@ -181,16 +182,6 @@ pub fn run() -> sc_cli::Result<()> {
 					runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())),
 			}
 		},
-		#[cfg(feature = "try-runtime")]
-		Some(Subcommand::TryRuntime) => Err("The `try-runtime` subcommand has been migrated to a \
-			standalone CLI (https://github.com/paritytech/try-runtime-cli). It is no longer \
-			being maintained here and will be removed entirely some time after January 2024. \
-			Please remove this subcommand from your runtime and use the standalone CLI."
-			.into()),
-		#[cfg(not(feature = "try-runtime"))]
-		Some(Subcommand::TryRuntime) => Err("TryRuntime wasn't enabled when building the node. \
-				You can enable it with `--features try-runtime`."
-			.into()),
 		Some(Subcommand::ChainInfo(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| cmd.run::<cere_service::Block>(&config))
@@ -198,9 +189,12 @@ pub fn run() -> sc_cli::Result<()> {
 		None => {
 			let runner = cli.create_runner(&cli.run.base)?;
 			runner.run_node_until_exit(|config| async move {
-				cere_service::build_full(config, cli.run.no_hardware_benchmarks)
-					.map(|full| full.task_manager)
-					.map_err(Error::Service)
+				cere_service::build_full::<sc_network::Litep2pNetworkBackend>(
+					config,
+					cli.run.no_hardware_benchmarks,
+				)
+				.map(|full| full.task_manager)
+				.map_err(Error::Service)
 			})
 		},
 	}
