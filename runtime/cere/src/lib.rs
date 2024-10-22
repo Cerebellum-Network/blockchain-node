@@ -35,8 +35,8 @@ use frame_support::{
 		fungible::HoldConsideration,
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem,
-		LinearStoragePrice, Nothing, OnUnbalanced, WithdrawReasons,
+		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
+		Nothing, OnUnbalanced, WithdrawReasons,
 	},
 	weights::{
 		constants::{
