@@ -390,9 +390,9 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 		redundancy_factor,
 		quorum,
 	);
-	assert_eq!(groups.in_consensus.len(), 1);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 1);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
@@ -512,9 +512,9 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 		redundancy_factor,
 		quorum,
 	);
-	assert_eq!(groups.in_consensus.len(), 0);
-	assert_eq!(groups.in_quorum.len(), 1);
-	assert_eq!(groups.in_others.len(), 1);
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 1);
+	assert_eq!(groups.others.len(), 1);
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
@@ -635,9 +635,9 @@ fn buckets_sub_aggregates_in_others_merged() {
 		quorum,
 	);
 
-	assert_eq!(groups.in_consensus.len(), 0);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 2);
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 2);
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
@@ -743,9 +743,9 @@ fn nodes_aggregates_in_consensus_merged() {
 		redundancy_factor,
 		quorum,
 	);
-	assert_eq!(groups.in_consensus.len(), 1);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 1);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
@@ -844,9 +844,9 @@ fn nodes_aggregates_in_quorum_merged() {
 		redundancy_factor,
 		quorum,
 	);
-	assert_eq!(groups.in_consensus.len(), 0);
-	assert_eq!(groups.in_quorum.len(), 1);
-	assert_eq!(groups.in_others.len(), 1);
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 1);
+	assert_eq!(groups.others.len(), 1);
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
@@ -946,9 +946,9 @@ fn nodes_aggregates_in_others_merged() {
 		quorum,
 	);
 
-	assert_eq!(groups.in_consensus.len(), 0);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 2);
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 2);
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
@@ -1021,17 +1021,17 @@ fn buckets_sub_aggregates_grouped_by_consistency() {
 	let groups =
 		DdcVerification::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
 
-	assert_eq!(groups.in_consensus.len(), 1);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 1);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 
-	let consolidated_aggregate = groups.in_consensus[0].aggregate.clone();
+	let consolidated_aggregate = groups.consensus[0].aggregate.clone();
 	assert_eq!(consolidated_aggregate.stored_bytes, 100);
 	assert_eq!(consolidated_aggregate.transferred_bytes, 50);
 	assert_eq!(consolidated_aggregate.number_of_puts, 10);
 	assert_eq!(consolidated_aggregate.number_of_gets, 20);
-	assert_eq!(groups.in_consensus[0].count, 3);
-	assert_eq!(groups.in_consensus[0].aggregators.len(), 3);
+	assert_eq!(groups.consensus[0].count, 3);
+	assert_eq!(groups.consensus[0].aggregators.len(), 3);
 }
 
 #[test]
@@ -1115,27 +1115,27 @@ fn buckets_sub_aggregates_grouped_by_consistency_2() {
 	let groups =
 		DdcVerification::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
 
-	assert_eq!(groups.in_consensus.len(), 2);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 2);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 
-	let consolidated_aggregate_in_consensus_1 = groups.in_consensus[0].aggregate.clone();
+	let consolidated_aggregate_in_consensus_1 = groups.consensus[0].aggregate.clone();
 	assert_eq!(consolidated_aggregate_in_consensus_1.bucket_id, 1);
 	assert_eq!(consolidated_aggregate_in_consensus_1.stored_bytes, 100);
 	assert_eq!(consolidated_aggregate_in_consensus_1.transferred_bytes, 50);
 	assert_eq!(consolidated_aggregate_in_consensus_1.number_of_puts, 10);
 	assert_eq!(consolidated_aggregate_in_consensus_1.number_of_gets, 20);
-	assert_eq!(groups.in_consensus[0].count, 3);
-	assert_eq!(groups.in_consensus[0].aggregators.len(), 3);
+	assert_eq!(groups.consensus[0].count, 3);
+	assert_eq!(groups.consensus[0].aggregators.len(), 3);
 
-	let consolidated_aggregate_in_consensus_2 = groups.in_consensus[1].aggregate.clone();
+	let consolidated_aggregate_in_consensus_2 = groups.consensus[1].aggregate.clone();
 	assert_eq!(consolidated_aggregate_in_consensus_2.bucket_id, 2);
 	assert_eq!(consolidated_aggregate_in_consensus_2.stored_bytes, 110);
 	assert_eq!(consolidated_aggregate_in_consensus_2.transferred_bytes, 50);
 	assert_eq!(consolidated_aggregate_in_consensus_2.number_of_puts, 10);
 	assert_eq!(consolidated_aggregate_in_consensus_2.number_of_gets, 20);
-	assert_eq!(groups.in_consensus[1].count, 3);
-	assert_eq!(groups.in_consensus[1].aggregators.len(), 3);
+	assert_eq!(groups.consensus[1].count, 3);
+	assert_eq!(groups.consensus[1].aggregators.len(), 3);
 }
 
 #[test]
@@ -1188,17 +1188,17 @@ fn nodes_aggregates_grouped_by_consistency() {
 
 	let groups = DdcVerification::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
 
-	assert_eq!(groups.in_consensus.len(), 1);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 1);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 
-	let consolidated_aggregate_in_consensus = groups.in_consensus[0].aggregate.clone();
+	let consolidated_aggregate_in_consensus = groups.consensus[0].aggregate.clone();
 	assert_eq!(consolidated_aggregate_in_consensus.stored_bytes, 100);
 	assert_eq!(consolidated_aggregate_in_consensus.transferred_bytes, 50);
 	assert_eq!(consolidated_aggregate_in_consensus.number_of_puts, 10);
 	assert_eq!(consolidated_aggregate_in_consensus.number_of_gets, 20);
-	assert_eq!(groups.in_consensus[0].count, 3);
-	assert_eq!(groups.in_consensus[0].aggregators.len(), 3);
+	assert_eq!(groups.consensus[0].count, 3);
+	assert_eq!(groups.consensus[0].aggregators.len(), 3);
 }
 
 #[test]
@@ -1275,28 +1275,28 @@ fn nodes_aggregates_grouped_by_consistency_2() {
 
 	let groups = DdcVerification::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
 
-	assert_eq!(groups.in_consensus.len(), 2);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 2);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 
-	let consolidated_aggregate_1 = groups.in_consensus[0].aggregate.clone();
+	let consolidated_aggregate_1 = groups.consensus[0].aggregate.clone();
 	assert_eq!(consolidated_aggregate_1.node_id, "2".to_string());
 	assert_eq!(consolidated_aggregate_1.stored_bytes, 110);
 	assert_eq!(consolidated_aggregate_1.transferred_bytes, 50);
 	assert_eq!(consolidated_aggregate_1.number_of_puts, 10);
 	assert_eq!(consolidated_aggregate_1.number_of_gets, 20);
-	assert_eq!(groups.in_consensus[0].count, 3);
-	assert_eq!(groups.in_consensus[0].aggregators.len(), 3);
+	assert_eq!(groups.consensus[0].count, 3);
+	assert_eq!(groups.consensus[0].aggregators.len(), 3);
 
-	let consolidated_aggregate_2 = groups.in_consensus[1].aggregate.clone();
+	let consolidated_aggregate_2 = groups.consensus[1].aggregate.clone();
 
 	assert_eq!(consolidated_aggregate_2.node_id, "1".to_string());
 	assert_eq!(consolidated_aggregate_2.stored_bytes, 100);
 	assert_eq!(consolidated_aggregate_2.transferred_bytes, 50);
 	assert_eq!(consolidated_aggregate_2.number_of_puts, 10);
 	assert_eq!(consolidated_aggregate_2.number_of_gets, 20);
-	assert_eq!(groups.in_consensus[1].count, 3);
-	assert_eq!(groups.in_consensus[1].aggregators.len(), 3);
+	assert_eq!(groups.consensus[1].count, 3);
+	assert_eq!(groups.consensus[1].aggregators.len(), 3);
 }
 
 #[test]
@@ -1307,9 +1307,9 @@ fn empty_bucket_sub_aggregates() {
 	let empty = Vec::<BucketSubAggregate>::new();
 	let groups = DdcVerification::group_by_consistency(empty, redundancy_factor, quorum);
 
-	assert_eq!(groups.in_consensus.len(), 0);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 }
 
 #[test]
@@ -1489,7 +1489,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_consensus,
+			groups.consensus,
 			vec![
 				ConsolidatedAggregate::new(bucket_sub_aggregate_in_consensus, 3, vec![AggregatorInfo {
 					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
@@ -1520,7 +1520,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_quorum,
+			groups.quorum,
 			vec![
 				ConsolidatedAggregate::new(bucket_sub_aggregate_in_quorum, 2, vec![AggregatorInfo {
 					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
@@ -1562,7 +1562,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_others,
+			groups.others,
 			vec![
 				ConsolidatedAggregate::new(bucket_sub_aggregate2_in_others, 1, vec![AggregatorInfo {
 					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([5; 32])),
@@ -1751,7 +1751,7 @@ fn node_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_consensus,
+			groups.consensus,
 			vec![ConsolidatedAggregate::new(node_aggregate_in_consensus.clone(), 3, vec![
 				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])), node_params: node_params1.clone() },
 				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])), node_params: node_params2.clone() },
@@ -1773,7 +1773,7 @@ fn node_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_quorum, vec![ConsolidatedAggregate::new(node_aggregate_in_quorum.clone(), 2, vec![
+			groups.quorum, vec![ConsolidatedAggregate::new(node_aggregate_in_quorum.clone(), 2, vec![
 				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])), node_params: node_params1.clone() },
 				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([4; 32])), node_params: node_params4.clone() }
 			])]
@@ -1807,7 +1807,7 @@ fn node_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_others, vec![
+			groups.others, vec![
 				ConsolidatedAggregate::new(node_aggregate2_in_others.clone(), 1, vec![AggregatorInfo {
 				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([5; 32])),
 				node_params: node_params5.clone(),

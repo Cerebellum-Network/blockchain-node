@@ -767,9 +767,9 @@ pub mod pallet {
 
 	#[derive(Debug, Clone, PartialEq)]
 	pub(crate) struct ConsistencyGroups<A: Aggregate> {
-		pub(crate) in_consensus: Vec<ConsolidatedAggregate<A>>,
-		pub(crate) in_quorum: Vec<ConsolidatedAggregate<A>>,
-		pub(crate) in_others: Vec<ConsolidatedAggregate<A>>,
+		pub(crate) consensus: Vec<ConsolidatedAggregate<A>>,
+		pub(crate) quorum: Vec<ConsolidatedAggregate<A>>,
+		pub(crate) others: Vec<ConsolidatedAggregate<A>>,
 	}
 
 	#[derive(Debug, Clone, Encode, Decode, TypeInfo, PartialEq)]
@@ -1624,24 +1624,23 @@ pub mod pallet {
 
 			// todo: run a light challenge for unanimous consensus
 			let in_consensus_usage = consistency_groups
-				.in_consensus
+				.consensus
 				.clone()
 				.into_iter()
-				.map(|a| a.aggregate.clone())
+				.map(|ca| ca.aggregate.clone())
 				.collect::<Vec<_>>();
 			total_usage.extend(in_consensus_usage);
 
 			// todo: run a light challenge for quorum, i.e. for majority
 			let in_quorum_usage = consistency_groups
-				.in_quorum
+				.quorum
 				.clone()
 				.into_iter()
-				.map(|a| a.aggregate.clone())
+				.map(|ca| ca.aggregate.clone())
 				.collect::<Vec<_>>();
 			total_usage.extend(in_quorum_usage);
 
-			let verified_usage =
-				Self::challenge_others(cluster_id, era_id, consistency_groups.in_others)?;
+			let verified_usage = Self::challenge_others(cluster_id, era_id, consistency_groups)?;
 
 			if !verified_usage.is_empty() {
 				total_usage.extend(verified_usage);
@@ -1653,22 +1652,52 @@ pub mod pallet {
 		pub(crate) fn challenge_others<A: Aggregate>(
 			_cluster_id: &ClusterId,
 			_era_id: DdcEra,
-			others: Vec<ConsolidatedAggregate<A>>,
+			consistency_groups: ConsistencyGroups<A>,
 		) -> Result<Vec<A>, Vec<OCWError>> {
 			let redundancy_factor = T::DAC_REDUNDANCY_FACTOR;
 			let mut verified_usage: Vec<A> = vec![];
 
-			for group in others {
-				if group.count > redundancy_factor {
-					let excessive_aggregate = group.aggregate.clone();
+			let in_consensus_keys = consistency_groups
+				.consensus
+				.clone()
+				.into_iter()
+				.map(|ac| ac.aggregate.get_key())
+				.collect::<Vec<_>>();
 
-					log::info!(
-						"⚠️ Number of consistent aggregates exceeds the redundancy factor {:?}",
-						excessive_aggregate.hash::<T>()
+			let in_quorum_keys = consistency_groups
+				.quorum
+				.clone()
+				.into_iter()
+				.map(|ac| ac.aggregate.get_key())
+				.collect::<Vec<_>>();
+
+			for consolidated_aggregate in consistency_groups.others {
+				let aggregate_key = consolidated_aggregate.aggregate.get_key();
+
+				if in_consensus_keys.contains(&aggregate_key) ||
+					in_quorum_keys.contains(&aggregate_key)
+				{
+					log::warn!(
+						"⚠️ The aggregate {:?} is inconsistent between aggregators.",
+						aggregate_key
+					);
+
+					// This prevents the double spending in case of inconsistencies between
+					// aggregators for the same aggregation key
+					continue;
+				}
+
+				if consolidated_aggregate.count > redundancy_factor {
+					let excessive_aggregate = consolidated_aggregate.aggregate.clone();
+
+					log::warn!(
+						"⚠️ Number of consistent aggregates with key {:?} exceeds the redundancy factor", 
+						aggregate_key
 					);
 
 					log::info!(
-						"🔎‍ Challenging excessive aggregate {:?}",
+						"🔎‍ Challenging excessive aggregate with key {:?} and hash {:?}",
+						aggregate_key,
 						excessive_aggregate.hash::<T>()
 					);
 
@@ -1677,10 +1706,11 @@ pub mod pallet {
 					// payouts stage
 					verified_usage.push(excessive_aggregate);
 				} else {
-					let defective_aggregate = group.aggregate.clone();
+					let defective_aggregate = consolidated_aggregate.aggregate.clone();
 
 					log::info!(
-						"🔎‍ Challenging defective aggregate {:?}",
+						"🔎‍ Challenging defective aggregate with key {:?} and hash {:?}",
+						aggregate_key,
 						defective_aggregate.hash::<T>()
 					);
 
@@ -1958,9 +1988,9 @@ pub mod pallet {
 			let buckets_sub_aggregates_groups =
 				Self::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
 
-			log::info!("🏠🌕 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.in_consensus);
-			log::info!("🏠🌗 Bucket Sub-Aggregates, which are in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.in_quorum);
-			log::info!("🏠🌘 Bucket Sub-Aggregates, which are neither in consensus nor in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.in_others);
+			log::info!("🏠🌕 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.consensus);
+			log::info!("🏠🌗 Bucket Sub-Aggregates, which are in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.quorum);
+			log::info!("🏠🌘 Bucket Sub-Aggregates, which are neither in consensus nor in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.others);
 
 			buckets_sub_aggregates_groups
 		}
@@ -2945,9 +2975,9 @@ pub mod pallet {
 			let nodes_aggregates_groups =
 				Self::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
 
-			log::info!("🏠🌕 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.in_consensus);
-			log::info!("🏠🌗 Node Aggregates, which are in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.in_quorum);
-			log::info!("🏠🌘 Node Aggregates, which are neither in consensus nor in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.in_others);
+			log::info!("🏠🌕 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.consensus);
+			log::info!("🏠🌗 Node Aggregates, which are in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.quorum);
+			log::info!("🏠🌘 Node Aggregates, which are neither in consensus nor in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.others);
 
 			nodes_aggregates_groups
 		}
@@ -2969,9 +2999,9 @@ pub mod pallet {
 					.push(aggregate.clone());
 			}
 
-			let mut in_consensus = Vec::new();
-			let mut in_quorum = Vec::new();
-			let mut in_others = Vec::new();
+			let mut consensus_group = Vec::new();
+			let mut quorum_group = Vec::new();
+			let mut others_group = Vec::new();
 
 			let max_aggregates_count = redundancy_factor;
 			let quorum_threshold = quorum * max_aggregates_count;
@@ -2989,15 +3019,19 @@ pub mod pallet {
 				);
 
 				if aggregates_count == max_aggregates_count {
-					in_consensus.push(consolidated_aggregate);
+					consensus_group.push(consolidated_aggregate);
 				} else if aggregates_count >= quorum_threshold {
-					in_quorum.push(consolidated_aggregate);
+					quorum_group.push(consolidated_aggregate);
 				} else {
-					in_others.push(consolidated_aggregate);
+					others_group.push(consolidated_aggregate);
 				}
 			}
 
-			ConsistencyGroups { in_consensus, in_quorum, in_others }
+			ConsistencyGroups {
+				consensus: consensus_group,
+				quorum: quorum_group,
+				others: others_group,
+			}
 		}
 
 		/// Fetch cluster to validate.
