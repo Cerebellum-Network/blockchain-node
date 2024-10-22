@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use chainbridge as bridge;
-use frame_support::{ord_parameter_types,  derive_impl, parameter_types, weights::Weight};
+use frame_support::{ord_parameter_types, derive_impl, parameter_types, weights::Weight};
 use frame_system::{self as system};
 pub use pallet_balances as balances;
 use sp_core::{hashing::blake2_128, H256};
@@ -21,7 +21,7 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
 
-#[derive_impl(frame_system::config_preludes::ParaChainDefaultConfig as frame_system::DefaultConfig)]
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
 	type Origin = Origin;
 	type Call = Call;
