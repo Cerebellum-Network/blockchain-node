@@ -93,7 +93,7 @@ pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
 pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
 
 frame_support::construct_runtime!(
-	pub struct Test
+	pub enum Test
 	{
 		System: system::{Pallet, Call, Event<T>},
 		Balances: balances::{Pallet, Call, Storage, Config<T>, Event<T>},

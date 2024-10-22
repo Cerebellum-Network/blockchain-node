@@ -597,8 +597,6 @@ parameter_types! {
 	pub const SignedRewardBase: Balance = DOLLARS;
 	pub const SignedDepositByte: Balance = CENTS;
 
-	pub BetterUnsignedThreshold: Perbill = Perbill::from_rational(1u32, 10_000);
-
 	// miner configs
 	pub const MultiPhaseUnsignedPriority: TransactionPriority = StakingUnsignedPriority::get() - 1u64;
 	pub MinerMaxWeight: Weight = RuntimeBlockWeights::get()
@@ -1291,7 +1289,7 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 }
 
 construct_runtime!(
-	pub struct Runtime
+	pub enum Runtime
 	{
 		System: frame_system,
 		Utility: pallet_utility,
@@ -1410,12 +1408,8 @@ type EventRecord = frame_system::EventRecord<
 >;
 
 #[cfg(feature = "runtime-benchmarks")]
-#[macro_use]
-extern crate frame_benchmarking;
-
-#[cfg(feature = "runtime-benchmarks")]
 mod benches {
-	define_benchmarks!(
+	frame_benchmarking::define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[pallet_babe, Babe]
 		[pallet_bags_list, VoterList]
