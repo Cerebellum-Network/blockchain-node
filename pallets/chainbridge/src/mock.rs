@@ -84,7 +84,7 @@ impl crate::pallet::Config for Test {
 type Block = frame_system::mocking::MockBlock<Test>;
 
 frame_support::construct_runtime!(
-	pub struct Test
+	pub enum Test
 	{
 		System: system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Balances: balances::{Pallet, Call, Storage, Config<T>, Event<T>},
