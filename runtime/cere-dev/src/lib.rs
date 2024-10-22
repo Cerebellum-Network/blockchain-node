@@ -601,8 +601,6 @@ parameter_types! {
 	pub const SignedRewardBase: Balance = DOLLARS;
 	pub const SignedDepositByte: Balance = CENTS;
 
-	pub BetterUnsignedThreshold: Perbill = Perbill::from_rational(1u32, 10_000);
-
 	// miner configs
 	pub const MultiPhaseUnsignedPriority: TransactionPriority = StakingUnsignedPriority::get() - 1u64;
 	pub MinerMaxWeight: Weight = RuntimeBlockWeights::get()
