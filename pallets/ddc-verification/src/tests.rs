@@ -1025,24 +1025,13 @@ fn buckets_sub_aggregates_grouped_by_consistency() {
 	assert_eq!(groups.in_quorum.len(), 0);
 	assert_eq!(groups.in_others.len(), 0);
 
-	let agg1 = groups.in_consensus[0].get(0).unwrap();
-	let agg2 = groups.in_consensus[0].get(1).unwrap();
-	let agg3 = groups.in_consensus[0].get(2).unwrap();
-
-	assert_eq!(agg1.stored_bytes, 100);
-	assert_eq!(agg1.transferred_bytes, 50);
-	assert_eq!(agg1.number_of_puts, 10);
-	assert_eq!(agg1.number_of_gets, 20);
-
-	assert_eq!(agg2.stored_bytes, 100);
-	assert_eq!(agg2.transferred_bytes, 50);
-	assert_eq!(agg2.number_of_puts, 10);
-	assert_eq!(agg2.number_of_gets, 20);
-
-	assert_eq!(agg3.stored_bytes, 100);
-	assert_eq!(agg3.transferred_bytes, 50);
-	assert_eq!(agg3.number_of_puts, 10);
-	assert_eq!(agg3.number_of_gets, 20);
+	let consolidated_aggregate = groups.in_consensus[0].aggregate.clone();
+	assert_eq!(consolidated_aggregate.stored_bytes, 100);
+	assert_eq!(consolidated_aggregate.transferred_bytes, 50);
+	assert_eq!(consolidated_aggregate.number_of_puts, 10);
+	assert_eq!(consolidated_aggregate.number_of_gets, 20);
+	assert_eq!(groups.in_consensus[0].count, 3);
+	assert_eq!(groups.in_consensus[0].aggregators.len(), 3);
 }
 
 #[test]
@@ -1130,49 +1119,23 @@ fn buckets_sub_aggregates_grouped_by_consistency_2() {
 	assert_eq!(groups.in_quorum.len(), 0);
 	assert_eq!(groups.in_others.len(), 0);
 
-	let g1_agg1 = groups.in_consensus[0].get(0).unwrap();
-	let g1_agg2 = groups.in_consensus[0].get(1).unwrap();
-	let g1_agg3 = groups.in_consensus[0].get(2).unwrap();
+	let consolidated_aggregate_in_consensus_1 = groups.in_consensus[0].aggregate.clone();
+	assert_eq!(consolidated_aggregate_in_consensus_1.bucket_id, 1);
+	assert_eq!(consolidated_aggregate_in_consensus_1.stored_bytes, 100);
+	assert_eq!(consolidated_aggregate_in_consensus_1.transferred_bytes, 50);
+	assert_eq!(consolidated_aggregate_in_consensus_1.number_of_puts, 10);
+	assert_eq!(consolidated_aggregate_in_consensus_1.number_of_gets, 20);
+	assert_eq!(groups.in_consensus[0].count, 3);
+	assert_eq!(groups.in_consensus[0].aggregators.len(), 3);
 
-	assert_eq!(g1_agg1.bucket_id, 1);
-	assert_eq!(g1_agg1.stored_bytes, 100);
-	assert_eq!(g1_agg1.transferred_bytes, 50);
-	assert_eq!(g1_agg1.number_of_puts, 10);
-	assert_eq!(g1_agg1.number_of_gets, 20);
-
-	assert_eq!(g1_agg2.bucket_id, 1);
-	assert_eq!(g1_agg2.stored_bytes, 100);
-	assert_eq!(g1_agg2.transferred_bytes, 50);
-	assert_eq!(g1_agg2.number_of_puts, 10);
-	assert_eq!(g1_agg2.number_of_gets, 20);
-
-	assert_eq!(g1_agg3.bucket_id, 1);
-	assert_eq!(g1_agg3.stored_bytes, 100);
-	assert_eq!(g1_agg3.transferred_bytes, 50);
-	assert_eq!(g1_agg3.number_of_puts, 10);
-	assert_eq!(g1_agg3.number_of_gets, 20);
-
-	let g2_agg1 = groups.in_consensus[1].get(0).unwrap();
-	let g2_agg2 = groups.in_consensus[1].get(1).unwrap();
-	let g2_agg3 = groups.in_consensus[1].get(2).unwrap();
-
-	assert_eq!(g2_agg1.bucket_id, 2);
-	assert_eq!(g2_agg1.stored_bytes, 110);
-	assert_eq!(g2_agg1.transferred_bytes, 50);
-	assert_eq!(g2_agg1.number_of_puts, 10);
-	assert_eq!(g2_agg1.number_of_gets, 20);
-
-	assert_eq!(g2_agg2.bucket_id, 2);
-	assert_eq!(g2_agg2.stored_bytes, 110);
-	assert_eq!(g2_agg2.transferred_bytes, 50);
-	assert_eq!(g2_agg2.number_of_puts, 10);
-	assert_eq!(g2_agg2.number_of_gets, 20);
-
-	assert_eq!(g2_agg3.bucket_id, 2);
-	assert_eq!(g2_agg3.stored_bytes, 110);
-	assert_eq!(g2_agg3.transferred_bytes, 50);
-	assert_eq!(g2_agg3.number_of_puts, 10);
-	assert_eq!(g2_agg3.number_of_gets, 20);
+	let consolidated_aggregate_in_consensus_2 = groups.in_consensus[1].aggregate.clone();
+	assert_eq!(consolidated_aggregate_in_consensus_2.bucket_id, 2);
+	assert_eq!(consolidated_aggregate_in_consensus_2.stored_bytes, 110);
+	assert_eq!(consolidated_aggregate_in_consensus_2.transferred_bytes, 50);
+	assert_eq!(consolidated_aggregate_in_consensus_2.number_of_puts, 10);
+	assert_eq!(consolidated_aggregate_in_consensus_2.number_of_gets, 20);
+	assert_eq!(groups.in_consensus[1].count, 3);
+	assert_eq!(groups.in_consensus[1].aggregators.len(), 3);
 }
 
 #[test]
@@ -1229,24 +1192,13 @@ fn nodes_aggregates_grouped_by_consistency() {
 	assert_eq!(groups.in_quorum.len(), 0);
 	assert_eq!(groups.in_others.len(), 0);
 
-	let agg1 = groups.in_consensus[0].get(0).unwrap();
-	let agg2 = groups.in_consensus[0].get(1).unwrap();
-	let agg3 = groups.in_consensus[0].get(2).unwrap();
-
-	assert_eq!(agg1.stored_bytes, 100);
-	assert_eq!(agg1.transferred_bytes, 50);
-	assert_eq!(agg1.number_of_puts, 10);
-	assert_eq!(agg1.number_of_gets, 20);
-
-	assert_eq!(agg2.stored_bytes, 100);
-	assert_eq!(agg2.transferred_bytes, 50);
-	assert_eq!(agg2.number_of_puts, 10);
-	assert_eq!(agg2.number_of_gets, 20);
-
-	assert_eq!(agg3.stored_bytes, 100);
-	assert_eq!(agg3.transferred_bytes, 50);
-	assert_eq!(agg3.number_of_puts, 10);
-	assert_eq!(agg3.number_of_gets, 20);
+	let consolidated_aggregate_in_consensus = groups.in_consensus[0].aggregate.clone();
+	assert_eq!(consolidated_aggregate_in_consensus.stored_bytes, 100);
+	assert_eq!(consolidated_aggregate_in_consensus.transferred_bytes, 50);
+	assert_eq!(consolidated_aggregate_in_consensus.number_of_puts, 10);
+	assert_eq!(consolidated_aggregate_in_consensus.number_of_gets, 20);
+	assert_eq!(groups.in_consensus[0].count, 3);
+	assert_eq!(groups.in_consensus[0].aggregators.len(), 3);
 }
 
 #[test]
@@ -1327,49 +1279,24 @@ fn nodes_aggregates_grouped_by_consistency_2() {
 	assert_eq!(groups.in_quorum.len(), 0);
 	assert_eq!(groups.in_others.len(), 0);
 
-	let g1_agg1 = groups.in_consensus[0].get(0).unwrap();
-	let g1_agg2 = groups.in_consensus[0].get(1).unwrap();
-	let g1_agg3 = groups.in_consensus[0].get(2).unwrap();
+	let consolidated_aggregate_1 = groups.in_consensus[0].aggregate.clone();
+	assert_eq!(consolidated_aggregate_1.node_id, "2".to_string());
+	assert_eq!(consolidated_aggregate_1.stored_bytes, 110);
+	assert_eq!(consolidated_aggregate_1.transferred_bytes, 50);
+	assert_eq!(consolidated_aggregate_1.number_of_puts, 10);
+	assert_eq!(consolidated_aggregate_1.number_of_gets, 20);
+	assert_eq!(groups.in_consensus[0].count, 3);
+	assert_eq!(groups.in_consensus[0].aggregators.len(), 3);
 
-	assert_eq!(g1_agg1.node_id, "2".to_string());
-	assert_eq!(g1_agg1.stored_bytes, 110);
-	assert_eq!(g1_agg1.transferred_bytes, 50);
-	assert_eq!(g1_agg1.number_of_puts, 10);
-	assert_eq!(g1_agg1.number_of_gets, 20);
+	let consolidated_aggregate_2 = groups.in_consensus[1].aggregate.clone();
 
-	assert_eq!(g1_agg2.node_id, "2".to_string());
-	assert_eq!(g1_agg2.stored_bytes, 110);
-	assert_eq!(g1_agg2.transferred_bytes, 50);
-	assert_eq!(g1_agg2.number_of_puts, 10);
-	assert_eq!(g1_agg2.number_of_gets, 20);
-
-	assert_eq!(g1_agg3.node_id, "2".to_string());
-	assert_eq!(g1_agg3.stored_bytes, 110);
-	assert_eq!(g1_agg3.transferred_bytes, 50);
-	assert_eq!(g1_agg3.number_of_puts, 10);
-	assert_eq!(g1_agg3.number_of_gets, 20);
-
-	let g2_agg1 = groups.in_consensus[1].get(0).unwrap();
-	let g2_agg2 = groups.in_consensus[1].get(1).unwrap();
-	let g2_agg3 = groups.in_consensus[1].get(2).unwrap();
-
-	assert_eq!(g2_agg1.node_id, "1".to_string());
-	assert_eq!(g2_agg1.stored_bytes, 100);
-	assert_eq!(g2_agg1.transferred_bytes, 50);
-	assert_eq!(g2_agg1.number_of_puts, 10);
-	assert_eq!(g2_agg1.number_of_gets, 20);
-
-	assert_eq!(g2_agg2.node_id, "1".to_string());
-	assert_eq!(g2_agg2.stored_bytes, 100);
-	assert_eq!(g2_agg2.transferred_bytes, 50);
-	assert_eq!(g2_agg2.number_of_puts, 10);
-	assert_eq!(g2_agg2.number_of_gets, 20);
-
-	assert_eq!(g2_agg3.node_id, "1".to_string());
-	assert_eq!(g2_agg3.stored_bytes, 100);
-	assert_eq!(g2_agg3.transferred_bytes, 50);
-	assert_eq!(g2_agg3.number_of_puts, 10);
-	assert_eq!(g2_agg3.number_of_gets, 20);
+	assert_eq!(consolidated_aggregate_2.node_id, "1".to_string());
+	assert_eq!(consolidated_aggregate_2.stored_bytes, 100);
+	assert_eq!(consolidated_aggregate_2.transferred_bytes, 50);
+	assert_eq!(consolidated_aggregate_2.number_of_puts, 10);
+	assert_eq!(consolidated_aggregate_2.number_of_gets, 20);
+	assert_eq!(groups.in_consensus[1].count, 3);
+	assert_eq!(groups.in_consensus[1].aggregators.len(), 3);
 }
 
 #[test]
@@ -1564,23 +1491,16 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 		assert_eq!(
 			groups.in_consensus,
 			vec![
-				ConsistentGroup(bucket_sub_aggregate_in_consensus.hash::<Test>(), vec![
-					bucket_sub_aggregate_in_consensus.clone(),
-					BucketSubAggregate {
-						aggregator: AggregatorInfo {
-							node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
-							node_params: node_params2.clone(),
-						},
-						..bucket_sub_aggregate_in_consensus.clone()
-					},
-					BucketSubAggregate {
-						aggregator: AggregatorInfo {
-							node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
-							node_params: node_params3.clone(),
-						},
-						..bucket_sub_aggregate_in_consensus.clone()
-					},
-				])
+				ConsolidatedAggregate::new(bucket_sub_aggregate_in_consensus, 3, vec![AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params1.clone(),
+				}, AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+					node_params: node_params2.clone(),
+				}, AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+					node_params: node_params3.clone(),
+				}])
 			]
 		);
 
@@ -1602,13 +1522,13 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 		assert_eq!(
 			groups.in_quorum,
 			vec![
-				ConsistentGroup(bucket_sub_aggregate_in_quorum.hash::<Test>(), vec![bucket_sub_aggregate_in_quorum.clone(), BucketSubAggregate {aggregator: AggregatorInfo {
-							node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
-							node_params: node_params3.clone(),
-						},
-						..bucket_sub_aggregate_in_quorum.clone()
-					},
-				]),
+				ConsolidatedAggregate::new(bucket_sub_aggregate_in_quorum, 2, vec![AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params1.clone(),
+                }, AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+					node_params: node_params3.clone(),
+				}])
 			]
 		);
 
@@ -1644,8 +1564,14 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 		assert_eq!(
 			groups.in_others,
 			vec![
-				ConsistentGroup(bucket_sub_aggregate2_in_others.hash::<Test>(), vec![bucket_sub_aggregate2_in_others]),
-				ConsistentGroup(bucket_sub_aggregate1_in_others.hash::<Test>(), vec![bucket_sub_aggregate1_in_others]),
+				ConsolidatedAggregate::new(bucket_sub_aggregate2_in_others, 1, vec![AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([5; 32])),
+					node_params: node_params5.clone(),
+				}]),
+				ConsolidatedAggregate::new(bucket_sub_aggregate1_in_others, 1, vec![AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+					node_params: node_params2.clone(),
+				}]),
 			]
 		);
 	});
@@ -1826,7 +1752,10 @@ fn node_aggregates_are_fetched_and_grouped() {
 
 		assert_eq!(
 			groups.in_consensus,
-			vec![ConsistentGroup(node_aggregate_in_consensus.hash::<Test>(), vec![node_aggregate_in_consensus.clone(), NodeAggregate { aggregator: AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])), node_params: node_params2.clone(), }, ..node_aggregate_in_consensus.clone() }, NodeAggregate { aggregator: AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])), node_params: node_params3.clone(), }, ..node_aggregate_in_consensus.clone() } ])]
+			vec![ConsolidatedAggregate::new(node_aggregate_in_consensus.clone(), 3, vec![
+				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])), node_params: node_params1.clone() },
+				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])), node_params: node_params2.clone() },
+				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])), node_params: node_params3.clone() }])]
 		);
 
 		// Node aggregates which are in quorum
@@ -1844,7 +1773,10 @@ fn node_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_quorum, vec![ConsistentGroup(node_aggregate_in_quorum.hash::<Test>(), vec![node_aggregate_in_quorum.clone(), NodeAggregate {aggregator: AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([4; 32])), node_params: node_params4.clone(), }, ..node_aggregate_in_quorum.clone() }])]
+			groups.in_quorum, vec![ConsolidatedAggregate::new(node_aggregate_in_quorum.clone(), 2, vec![
+				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])), node_params: node_params1.clone() },
+				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([4; 32])), node_params: node_params4.clone() }
+			])]
 		);
 
 		// Others nodes aggregates
@@ -1875,7 +1807,14 @@ fn node_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_others, vec![ConsistentGroup(node_aggregate2_in_others.hash::<Test>(), vec![node_aggregate2_in_others]), ConsistentGroup(node_aggregate1_in_others.hash::<Test>(), vec![node_aggregate1_in_others])]
+			groups.in_others, vec![
+				ConsolidatedAggregate::new(node_aggregate2_in_others.clone(), 1, vec![AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([5; 32])),
+				node_params: node_params5.clone(),
+			}]), ConsolidatedAggregate::new(node_aggregate1_in_others.clone(), 1, vec![AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+				node_params: node_params2.clone(),
+			}])]
 		);
 	});
 }

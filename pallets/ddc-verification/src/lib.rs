@@ -753,30 +753,23 @@ pub mod pallet {
 	}
 
 	#[derive(Debug, Clone, PartialEq)]
-	pub(crate) struct ConsistentGroup<A: Aggregate>(pub ActivityHash, pub Vec<A>);
-	impl<A: Aggregate> ConsistentGroup<A> {
-		pub fn hash(&self) -> ActivityHash {
-			self.0
-		}
+	pub(crate) struct ConsolidatedAggregate<A: Aggregate> {
+		pub(crate) aggregate: A,
+		pub(crate) count: u16,
+		pub(crate) aggregators: Vec<AggregatorInfo>,
+	}
 
-		pub fn get(&self, idx: usize) -> Option<&A> {
-			self.1.get(idx)
-		}
-
-		pub fn len(&self) -> usize {
-			self.1.len()
-		}
-
-		pub fn _items(&self) -> &Vec<A> {
-			&self.1
+	impl<A: Aggregate> ConsolidatedAggregate<A> {
+		pub(crate) fn new(aggregate: A, count: u16, aggregators: Vec<AggregatorInfo>) -> Self {
+			ConsolidatedAggregate { aggregate, count, aggregators }
 		}
 	}
 
 	#[derive(Debug, Clone, PartialEq)]
-	pub(crate) struct ConsistentGroups<A: Aggregate> {
-		pub in_consensus: Vec<ConsistentGroup<A>>,
-		pub in_quorum: Vec<ConsistentGroup<A>>,
-		pub in_others: Vec<ConsistentGroup<A>>,
+	pub(crate) struct ConsistencyGroups<A: Aggregate> {
+		pub(crate) in_consensus: Vec<ConsolidatedAggregate<A>>,
+		pub(crate) in_quorum: Vec<ConsolidatedAggregate<A>>,
+		pub(crate) in_others: Vec<ConsolidatedAggregate<A>>,
 	}
 
 	#[derive(Debug, Clone, Encode, Decode, TypeInfo, PartialEq)]
@@ -1625,30 +1618,30 @@ pub mod pallet {
 		pub(crate) fn get_total_usage<A: Aggregate>(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			consistent_groups: ConsistentGroups<A>,
+			consistency_groups: ConsistencyGroups<A>,
 		) -> Result<Vec<A>, Vec<OCWError>> {
 			let mut total_usage: Vec<A> = vec![];
 
 			// todo: run a light challenge for unanimous consensus
-			let in_consensus_usage = consistent_groups
+			let in_consensus_usage = consistency_groups
 				.in_consensus
 				.clone()
 				.into_iter()
-				.map(|g| g.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned())
-				.collect::<Result<Vec<_>, _>>()?;
+				.map(|a| a.aggregate.clone())
+				.collect::<Vec<_>>();
 			total_usage.extend(in_consensus_usage);
 
 			// todo: run a light challenge for quorum, i.e. for majority
-			let in_quorum_usage = consistent_groups
+			let in_quorum_usage = consistency_groups
 				.in_quorum
 				.clone()
 				.into_iter()
-				.map(|g| g.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned())
-				.collect::<Result<Vec<_>, _>>()?;
+				.map(|a| a.aggregate.clone())
+				.collect::<Vec<_>>();
 			total_usage.extend(in_quorum_usage);
 
 			let verified_usage =
-				Self::challenge_others(cluster_id, era_id, consistent_groups.in_others)?;
+				Self::challenge_others(cluster_id, era_id, consistency_groups.in_others)?;
 
 			if !verified_usage.is_empty() {
 				total_usage.extend(verified_usage);
@@ -1660,20 +1653,19 @@ pub mod pallet {
 		pub(crate) fn challenge_others<A: Aggregate>(
 			_cluster_id: &ClusterId,
 			_era_id: DdcEra,
-			others: Vec<ConsistentGroup<A>>,
+			others: Vec<ConsolidatedAggregate<A>>,
 		) -> Result<Vec<A>, Vec<OCWError>> {
 			let redundancy_factor = T::DAC_REDUNDANCY_FACTOR;
 			let mut verified_usage: Vec<A> = vec![];
 
 			for group in others {
-				if group.len() > redundancy_factor.into() {
+				if group.count > redundancy_factor {
+					let excessive_aggregate = group.aggregate.clone();
+
 					log::info!(
 						"⚠️ Number of consistent aggregates exceeds the redundancy factor {:?}",
-						group.hash()
+						excessive_aggregate.hash::<T>()
 					);
-
-					let excessive_aggregate =
-						group.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned()?;
 
 					log::info!(
 						"🔎‍ Challenging excessive aggregate {:?}",
@@ -1685,8 +1677,7 @@ pub mod pallet {
 					// payouts stage
 					verified_usage.push(excessive_aggregate);
 				} else {
-					let defective_aggregate =
-						group.get(0).ok_or(vec![OCWError::EmptyConsistentGroup]).cloned()?;
+					let defective_aggregate = group.aggregate.clone();
 
 					log::info!(
 						"🔎‍ Challenging defective aggregate {:?}",
@@ -1934,7 +1925,7 @@ pub mod pallet {
 			buckets_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<BucketAggregateResponse>)>,
 			redundancy_factor: u16,
 			quorum: Percent,
-		) -> ConsistentGroups<BucketSubAggregate> {
+		) -> ConsistencyGroups<BucketSubAggregate> {
 			let mut buckets_sub_aggregates: Vec<BucketSubAggregate> = Vec::new();
 
 			log::info!(
@@ -2926,7 +2917,7 @@ pub mod pallet {
 			nodes_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<NodeAggregateResponse>)>,
 			redundancy_factor: u16,
 			quorum: Percent,
-		) -> ConsistentGroups<NodeAggregate> {
+		) -> ConsistencyGroups<NodeAggregate> {
 			let mut nodes_aggregates: Vec<NodeAggregate> = Vec::new();
 
 			log::info!(
@@ -2965,7 +2956,7 @@ pub mod pallet {
 			aggregates: Vec<A>,
 			redundancy_factor: u16,
 			quorum: Percent,
-		) -> ConsistentGroups<A>
+		) -> ConsistencyGroups<A>
 		where
 			A: Aggregate + Clone,
 		{
@@ -2985,17 +2976,28 @@ pub mod pallet {
 			let max_aggregates_count = redundancy_factor;
 			let quorum_threshold = quorum * max_aggregates_count;
 
-			for (hash, group) in consistent_aggregates {
-				if group.len() == usize::from(max_aggregates_count) {
-					in_consensus.push(ConsistentGroup(hash, group));
-				} else if group.len() >= quorum_threshold.into() {
-					in_quorum.push(ConsistentGroup(hash, group));
+			for (_hash, group) in consistent_aggregates {
+				let aggregate = group.first().unwrap();
+				let aggregates_count = u16::try_from(group.len()).unwrap_or(u16::MAX);
+				let aggregators: Vec<AggregatorInfo> =
+					group.clone().into_iter().map(|a| a.get_aggregator()).collect();
+
+				let consolidated_aggregate = ConsolidatedAggregate::<A>::new(
+					aggregate.clone(),
+					aggregates_count,
+					aggregators,
+				);
+
+				if aggregates_count == max_aggregates_count {
+					in_consensus.push(consolidated_aggregate);
+				} else if aggregates_count >= quorum_threshold {
+					in_quorum.push(consolidated_aggregate);
 				} else {
-					in_others.push(ConsistentGroup(hash, group));
+					in_others.push(consolidated_aggregate);
 				}
 			}
 
-			ConsistentGroups { in_consensus, in_quorum, in_others }
+			ConsistencyGroups { in_consensus, in_quorum, in_others }
 		}
 
 		/// Fetch cluster to validate.
