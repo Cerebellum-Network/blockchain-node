@@ -28,7 +28,7 @@ pub(crate) type Balance = u128;
 type Block = MockBlock<Test>;
 
 construct_runtime!(
-	pub struct Test
+	pub enum Test
 	{
 		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
