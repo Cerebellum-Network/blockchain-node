@@ -11,7 +11,10 @@ use frame_support::{
 	traits::{ConstBool, ConstU32, ConstU64, Everything, Nothing},
 	weights::constants::RocksDbWeight,
 };
-use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
+use frame_system::{
+	mocking::{MockBlock, MockUncheckedExtrinsic},
+	EnsureSigned,
+};
 use pallet_ddc_clusters::cluster::Cluster;
 use pallet_ddc_nodes::StorageNode;
 use sp_core::H256;
@@ -147,6 +150,8 @@ impl pallet_contracts::Config for Test {
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type MaxDelegateDependencies = MaxDelegateDependencies;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type UploadOrigin = EnsureSigned<AccountId>;
+	type InstantiateOrigin = EnsureSigned<AccountId>;
 	type Debug = ();
 	type Environment = ();
 	type Migrations = ();

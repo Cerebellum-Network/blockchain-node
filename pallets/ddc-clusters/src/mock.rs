@@ -11,7 +11,10 @@ use frame_support::{
 	traits::{ConstBool, ConstU32, ConstU64, Everything, Nothing},
 	weights::constants::RocksDbWeight,
 };
-use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
+use frame_system::{
+	mocking::{MockBlock, MockUncheckedExtrinsic},
+	EnsureSigned,
+};
 use pallet_contracts as contracts;
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -98,6 +101,8 @@ impl contracts::Config for Test {
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type MaxDelegateDependencies = MaxDelegateDependencies;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type UploadOrigin = EnsureSigned<AccountId>;
+	type InstantiateOrigin = EnsureSigned<AccountId>;
 	type Debug = ();
 	type Environment = ();
 	type Migrations = ();
@@ -161,6 +166,11 @@ impl frame_system::Config for Test {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type MaxConsumers = ConstU32<16>;
 	type Lookup = IdentityLookup<Self::AccountId>;
+	type SingleBlockMigrations = ();
+	type MultiBlockMigrator = ();
+	type PreInherents = ();
+	type PostInherents = ();
+	type PostTransactions = ();
 }
 
 impl pallet_balances::Config for Test {
