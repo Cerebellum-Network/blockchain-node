@@ -12,7 +12,7 @@ use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{IdentityLookup},
 	BuildStorage,
 };
 
