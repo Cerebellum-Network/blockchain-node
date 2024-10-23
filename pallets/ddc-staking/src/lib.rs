@@ -220,7 +220,6 @@ pub mod pallet {
 
 	/// Map of all clusters staking ledgers.
 	#[pallet::storage]
-	#[pallet::getter(fn cluster_ledger)]
 	pub type ClusterLedger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>, T>>;
 

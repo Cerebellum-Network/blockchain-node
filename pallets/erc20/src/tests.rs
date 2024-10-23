@@ -84,7 +84,7 @@ fn transfer_erc721() {
 		// Create a token
 		assert_ok!(Erc721::mint(Origin::root(), RELAYER_A, token_id, metadata.clone()));
 		assert_eq!(
-			Erc721::tokens(token_id).unwrap(),
+			Tokens::<Test>::get(token_id).unwrap(),
 			Erc721Token { id: token_id, metadata: metadata.clone() }
 		);
 
@@ -107,7 +107,7 @@ fn transfer_erc721() {
 		));
 
 		// Ensure token no longer exists
-		assert_eq!(Erc721::tokens(token_id), None);
+		assert_eq!(Tokens::<Test>::get(token_id), None);
 
 		// Transfer should fail as token doesn't exist
 		assert_noop!(
@@ -198,7 +198,7 @@ fn mint_erc721() {
 		let bridge_id: u64 = Bridge::account_id();
 
 		// Token doesn't yet exist
-		assert_eq!(Erc721::tokens(token_id), None);
+		assert_eq!(Tokens::<Test>::get(token_id), None);
 		// Mint
 		assert_ok!(Example::mint_erc721(
 			Origin::signed(bridge_id),
@@ -208,7 +208,7 @@ fn mint_erc721() {
 		));
 		// Ensure token exists
 		assert_eq!(
-			Erc721::tokens(token_id).unwrap(),
+			Tokens::<Test>::get(token_id).unwrap(),
 			Erc721Token { id: token_id, metadata: metadata.clone() }
 		);
 		// Cannot mint same token

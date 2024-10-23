@@ -12,6 +12,7 @@ use frame_system::{ensure_signed, pallet_prelude::*};
 pub use pallet::*;
 use pallet_chainbridge as bridge;
 use pallet_erc721 as erc721;
+use pallet_erc721::Tokens;
 use sp_arithmetic::traits::SaturatedConversion;
 use sp_core::U256;
 use sp_std::prelude::*;
@@ -121,7 +122,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let source = ensure_signed(origin)?;
 			ensure!(<bridge::Pallet<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
-			match <erc721::Pallet<T>>::tokens(token_id) {
+			match Tokens::<T>::get(token_id) {
 				Some(token) => {
 					<erc721::Pallet<T>>::burn_token(source, token_id)?;
 					let resource_id = T::Erc721Id::get();
