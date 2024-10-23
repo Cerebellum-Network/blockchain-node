@@ -111,7 +111,7 @@ pub fn new_test_ext_initialized(
 	t.execute_with(|| {
 		// Set and check threshold
 		assert_ok!(Bridge::set_threshold(RuntimeOrigin::root(), TEST_THRESHOLD));
-		assert_eq!(Bridge::relayer_threshold(), TEST_THRESHOLD);
+		assert_eq!(RelayerThreshold::<Test>::get(), TEST_THRESHOLD);
 		// Add relayers
 		assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_A));
 		assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_B));
