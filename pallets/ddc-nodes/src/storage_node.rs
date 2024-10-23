@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
 use ddc_primitives::{
-	ClusterId, NodeParams, NodePubKey, NodeType, StorageNodeMode, StorageNodePubKey,
+	ClusterId, NodeParams, NodePubKey, NodeType, NodeUsage, StorageNodeMode, StorageNodePubKey,
 };
 use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
@@ -21,6 +21,7 @@ pub struct StorageNode<T: frame_system::Config> {
 	pub provider_id: T::AccountId,
 	pub cluster_id: Option<ClusterId>,
 	pub props: StorageNodeProps,
+	pub total_usage: Option<NodeUsage>,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
@@ -61,6 +62,7 @@ impl<T: frame_system::Config> StorageNode<T> {
 						grpc_port: node_params.grpc_port,
 						p2p_port: node_params.p2p_port,
 					},
+					total_usage: None,
 				}),
 			},
 		}
@@ -105,6 +107,9 @@ impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 	}
 	fn get_cluster_id(&self) -> &Option<ClusterId> {
 		&self.cluster_id
+	}
+	fn get_total_usage(&self) -> &Option<NodeUsage> {
+		&self.total_usage
 	}
 	fn set_cluster_id(&mut self, cluster_id: Option<ClusterId>) {
 		self.cluster_id = cluster_id;

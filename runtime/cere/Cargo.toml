@@ -99,6 +99,7 @@ pallet-ddc-customers = { workspace = true }
 pallet-ddc-nodes = { workspace = true }
 pallet-ddc-payouts = { workspace = true }
 pallet-ddc-staking = { workspace = true }
+pallet-ddc-verification = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
 pallet-origins = { workspace = true }
@@ -182,6 +183,7 @@ std = [
   "pallet-ddc-nodes/std",
   "pallet-ddc-payouts/std",
   "pallet-ddc-staking/std",
+  "pallet-ddc-verification/std",
   "cere-runtime-common/std",
   "sp-arithmetic/std",
   "pallet-conviction-voting/std",
@@ -241,6 +243,7 @@ runtime-benchmarks = [
   "pallet-preimage/runtime-benchmarks",
   "pallet-ddc-clusters-gov/runtime-benchmarks",
   "pallet-origins/runtime-benchmarks",
+  "pallet-ddc-verification/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-executive/try-runtime",
@@ -295,4 +298,5 @@ try-runtime = [
   "pallet-preimage/try-runtime",
   "pallet-origins/try-runtime",
   "pallet-ddc-clusters-gov/try-runtime",
+  "pallet-ddc-verification/try-runtime",
 ]

@@ -10,19 +10,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
-## [5.7.0]
+## [6.2.0]
+
+### Changed
 
 - [C,D] Update Substrate from `v1.4` to `v1.5`.
 
-## [5.6.0]
+## [6.1.0]
+
+### Changed
 
 - [C,D] Update Substrate from `v1.2` to `v1.4`.
 
+## [6.0.0]
+
+### Changed
+
+- [C] `pallet-ddc-verification`: Verification Pallet and validator OCW for DAC verification.
+- [C] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
+
 ## [5.5.0]
+
+### Changed
 
 - [C,D] Update Substrate from `v1.1` to `v1.2`.
 
+## [5.4.1]
+
+### Changed
+
+- [D] `pallet-ddc-verification`: Introduction of the Verification pallet to ensure the secure posting and retrieval of verification keys to and from the blockchain.
+- [D] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
+
 ## [5.4.0]
+
+### Changed
 
 - [C,D] Introduce new events to the DDC Payouts Pallet
 - [C,D] `pallet-ddc-clusters-gov`: Introduction of the Cluster Governance pallet for managing clusters protocol parameters.
@@ -35,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C,D] The _Support Curve_ in OpenGov Tracks is made more strict
 
 ## [5.3.0]
+
+### Changed
 
 - [C,D] Updated Substrate to polkadot-v1.1.0
 - [C,D] Introduction of the OpenGov
@@ -51,6 +75,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C,D] Fix inflation parameters for the staking reward curve
 
 ## [5.2.0]
+
+- DAC ddc node mode
 
 ### Added
 
