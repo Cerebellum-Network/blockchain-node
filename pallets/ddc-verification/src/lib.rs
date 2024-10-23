@@ -752,10 +752,15 @@ pub mod pallet {
 		number_of_gets: u64,
 	}
 
-	#[derive(Debug, Clone, PartialEq)]
+	/// The `ConsolidatedAggregate` struct represents a merging result of multiple aggregates
+	/// that have reached consensus on the usage criteria. This result should be taken into
+	/// consideration when choosing the intensity of the challenge.
 	pub(crate) struct ConsolidatedAggregate<A: Aggregate> {
+		/// The representative aggregate after consolidation
 		pub(crate) aggregate: A,
+		/// Number of aggregates that were consistent
 		pub(crate) count: u16,
+		/// Aggregators that provided consistent aggregates
 		pub(crate) aggregators: Vec<AggregatorInfo>,
 	}
 
@@ -778,12 +783,18 @@ pub mod pallet {
 		BucketSubAggregateKey(BucketId, String),
 	}
 
+	/// The 'Aggregate' trait defines a set of members common to activity aggregates, which reflect
+	/// the usage of a node or bucket within an Era..
 	pub(crate) trait Aggregate:
 		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Debug
 	{
+		/// Hash of the aggregate that is defined by it 'usage' values
 		fn hash<T: Config>(&self) -> ActivityHash;
+		/// Aggregation key of this aggregate, i.e. bucket composite key or node key
 		fn get_key(&self) -> AggregateKey;
+		/// Number of activity records this aggregated by this aggregate
 		fn get_number_of_leaves(&self) -> u64;
+		/// Aggregator provided this aggregate
 		fn get_aggregator(&self) -> AggregatorInfo;
 	}
 
