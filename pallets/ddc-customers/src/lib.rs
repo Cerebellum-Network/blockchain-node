@@ -15,10 +15,11 @@ mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
-		cluster::{ClusterCreator, ClusterVisitor},
-		customer::{CustomerCharger, CustomerDepositor},
+		bucket::{BucketManager, BucketVisitor},
+		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
+		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
 	},
-	BucketId, ClusterId,
+	BucketId, BucketVisitorError, ClusterId, CustomerUsage,
 };
 use frame_support::{
 	parameter_types,
@@ -66,6 +67,7 @@ pub struct Bucket<T: Config> {
 	cluster_id: ClusterId,
 	is_public: bool,
 	is_removed: bool,
+	total_customers_usage: Option<CustomerUsage>,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -135,7 +137,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(1);
+		frame_support::traits::StorageVersion::new(2);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -152,7 +154,7 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type UnlockingDelay: Get<BlockNumberFor<Self>>;
-		type ClusterVisitor: ClusterVisitor<Self>;
+		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
 	}
@@ -194,9 +196,27 @@ pub mod pallet {
 		/// The account has been charged for the usage
 		Charged { owner_id: T::AccountId, charged: BalanceOf<T>, expected_to_charge: BalanceOf<T> },
 		/// Bucket with specific id created
-		BucketCreated { bucket_id: BucketId },
+		BucketCreated { cluster_id: ClusterId, bucket_id: BucketId },
 		/// Bucket with specific id updated
-		BucketUpdated { bucket_id: BucketId },
+		BucketUpdated { cluster_id: ClusterId, bucket_id: BucketId },
+		/// Bucket nodes usage with specific id updated
+		BucketTotalNodesUsageUpdated {
+			cluster_id: ClusterId,
+			bucket_id: BucketId,
+			transferred_bytes: u64,
+			stored_bytes: i64,
+			number_of_puts: u64,
+			number_of_gets: u64,
+		},
+		/// Bucket customers usage with specific id updated
+		BucketTotalCustomersUsageUpdated {
+			cluster_id: ClusterId,
+			bucket_id: BucketId,
+			transferred_bytes: u64,
+			stored_bytes: i64,
+			number_of_puts: u64,
+			number_of_gets: u64,
+		},
 		/// Bucket with specific id marked as removed
 		BucketRemoved { bucket_id: BucketId },
 	}
@@ -305,8 +325,10 @@ pub mod pallet {
 			let cur_bucket_id =
 				Self::buckets_count().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
 
-			<T as pallet::Config>::ClusterVisitor::ensure_cluster(&cluster_id)
-				.map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+			ensure!(
+				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
 
 			let bucket = Bucket {
 				bucket_id: cur_bucket_id,
@@ -314,12 +336,13 @@ pub mod pallet {
 				cluster_id,
 				is_public: bucket_params.is_public,
 				is_removed: false,
+				total_customers_usage: None,
 			};
 
 			<BucketsCount<T>>::set(cur_bucket_id);
 			<Buckets<T>>::insert(cur_bucket_id, bucket);
 
-			Self::deposit_event(Event::<T>::BucketCreated { bucket_id: cur_bucket_id });
+			Self::deposit_event(Event::<T>::BucketCreated { cluster_id, bucket_id: cur_bucket_id });
 
 			Ok(())
 		}
@@ -509,8 +532,9 @@ pub mod pallet {
 			ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
 
 			bucket.is_public = bucket_params.is_public;
+			let cluster_id = bucket.cluster_id;
 			<Buckets<T>>::insert(bucket_id, bucket);
-			Self::deposit_event(Event::<T>::BucketUpdated { bucket_id });
+			Self::deposit_event(Event::<T>::BucketUpdated { cluster_id, bucket_id });
 
 			Ok(())
 		}
@@ -521,6 +545,7 @@ pub mod pallet {
 		#[pallet::call_index(6)]
 		#[pallet::weight(T::WeightInfo::remove_bucket())]
 		pub fn remove_bucket(origin: OriginFor<T>, bucket_id: BucketId) -> DispatchResult {
+			// todo! can we set total_usage to None and save bytes
 			let owner = ensure_signed(origin)?;
 
 			<Buckets<T>>::try_mutate(bucket_id, |maybe_bucket| -> DispatchResult {
@@ -622,10 +647,68 @@ pub mod pallet {
 		}
 	}
 
+	impl<T: Config> BucketVisitor<T> for Pallet<T> {
+		fn get_total_customer_usage(
+			cluster_id: &ClusterId,
+			bucket_id: BucketId,
+			content_owner: &T::AccountId,
+		) -> Result<Option<CustomerUsage>, BucketVisitorError> {
+			let bucket = Self::buckets(bucket_id).ok_or(BucketVisitorError::NoBucketWithId)?;
+			ensure!(bucket.owner_id == *content_owner, BucketVisitorError::NotBucketOwner);
+			ensure!(bucket.cluster_id == *cluster_id, BucketVisitorError::IncorrectClusterId);
+
+			Ok(bucket.total_customers_usage)
+		}
+	}
+
+	impl<T: Config> BucketManager<T> for Pallet<T> {
+		fn inc_total_customer_usage(
+			cluster_id: &ClusterId,
+			bucket_id: BucketId,
+			content_owner: T::AccountId,
+			customer_usage: &CustomerUsage,
+		) -> DispatchResult {
+			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+			ensure!(bucket.owner_id == content_owner, Error::<T>::NotBucketOwner);
+
+			// Update or initialize total_customers_usage
+			match &mut bucket.total_customers_usage {
+				Some(total_customers_usage) => {
+					total_customers_usage.transferred_bytes += customer_usage.transferred_bytes;
+					total_customers_usage.stored_bytes += customer_usage.stored_bytes;
+					total_customers_usage.number_of_puts += customer_usage.number_of_puts;
+					total_customers_usage.number_of_gets += customer_usage.number_of_gets;
+				},
+				None => {
+					bucket.total_customers_usage = Some(CustomerUsage {
+						transferred_bytes: customer_usage.transferred_bytes,
+						stored_bytes: customer_usage.stored_bytes,
+						number_of_puts: customer_usage.number_of_puts,
+						number_of_gets: customer_usage.number_of_gets,
+					});
+				},
+			}
+
+			Self::deposit_event(Event::<T>::BucketTotalCustomersUsageUpdated {
+				cluster_id: *cluster_id,
+				bucket_id,
+				transferred_bytes: customer_usage.transferred_bytes,
+				stored_bytes: customer_usage.stored_bytes,
+				number_of_puts: customer_usage.number_of_puts,
+				number_of_gets: customer_usage.number_of_gets,
+			});
+
+			Ok(())
+		}
+	}
+
 	impl<T: Config> CustomerCharger<T> for Pallet<T> {
 		fn charge_content_owner(
+			cluster_id: &ClusterId,
+			bucket_id: BucketId,
 			content_owner: T::AccountId,
 			billing_vault: T::AccountId,
+			customer_usage: &CustomerUsage,
 			amount: u128,
 		) -> Result<u128, DispatchError> {
 			let actually_charged: BalanceOf<T>;
@@ -659,6 +742,13 @@ pub mod pallet {
 
 				actually_charged.checked_add(&charged).ok_or(Error::<T>::ArithmeticUnderflow)?;
 			}
+
+			Self::inc_total_customer_usage(
+				cluster_id,
+				bucket_id,
+				content_owner.clone(),
+				customer_usage,
+			)?;
 
 			<T as pallet::Config>::Currency::transfer(
 				&Self::account_id(),
@@ -731,6 +821,13 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: extra });
 
 			Ok(())
+		}
+	}
+
+	impl<T: Config> CustomerVisitor<T> for Pallet<T> {
+		fn get_bucket_owner(bucket_id: &BucketId) -> Result<T::AccountId, DispatchError> {
+			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+			Ok(bucket.owner_id)
 		}
 	}
 }

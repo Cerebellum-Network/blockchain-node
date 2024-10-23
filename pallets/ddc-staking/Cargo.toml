@@ -11,12 +11,14 @@ repository.workspace = true
 [dependencies]
 # 3rd-party dependencies
 codec = { workspace = true }
+hex-literal = { workspace = true }
 scale-info = { workspace = true }
 
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
+log = { workspace = true }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
@@ -27,6 +29,10 @@ ddc-primitives = { workspace = true }
 [dev-dependencies]
 lazy_static = { workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
+pallet-contracts = { workspace = true }
+pallet-ddc-clusters = { workspace = true, default-features = true }
+pallet-ddc-nodes = { workspace = true, default-features = true }
+pallet-insecure-randomness-collective-flip = { workspace = true, default-features = true }
 pallet-timestamp = { workspace = true, default-features = true }
 parking_lot = { workspace = true, default-features = true }
 sp-core = { workspace = true, default-features = true }

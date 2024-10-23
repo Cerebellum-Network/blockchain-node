@@ -1,12 +1,13 @@
 //! Custom origins for governance interventions.
 
-pub use pallet_custom_origins::*;
+#![cfg_attr(not(feature = "std"), no_std)]
+
+pub use pallet::*;
 
 #[frame_support::pallet]
-pub mod pallet_custom_origins {
+pub mod pallet {
+	use cere_runtime_common::constants::currency::{Balance, DOLLARS, GRAND};
 	use frame_support::pallet_prelude::*;
-
-	use crate::{Balance, DOLLARS, GRAND};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {}
@@ -22,8 +23,6 @@ pub mod pallet_custom_origins {
 		/// Origin for spending up to $10,000,000 DOT from the treasury as well as generally
 		/// administering it.
 		Treasurer,
-		/// Origin for managing the composition of the fellowship.
-		FellowshipAdmin,
 		/// Origin for managing the registrar.
 		GeneralAdmin,
 		/// Origin able to cancel referenda.
@@ -42,6 +41,10 @@ pub mod pallet_custom_origins {
 		BigSpender,
 		/// Origin able to dispatch a whitelisted call.
 		WhitelistedCaller,
+		/// Origin for activating clusters protocols.
+		ClusterProtocolActivator,
+		/// Origin for updating clusters protocols.
+		ClusterProtocolUpdater,
 	}
 
 	macro_rules! decl_unit_ensures {
@@ -77,11 +80,12 @@ pub mod pallet_custom_origins {
 	decl_unit_ensures!(
 		StakingAdmin,
 		Treasurer,
-		FellowshipAdmin,
 		GeneralAdmin,
 		ReferendumCanceller,
 		ReferendumKiller,
 		WhitelistedCaller,
+		ClusterProtocolActivator,
+		ClusterProtocolUpdater,
 	);
 
 	macro_rules! decl_ensure {

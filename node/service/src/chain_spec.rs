@@ -4,6 +4,7 @@ use cere_dev_runtime as cere_dev;
 use cere_runtime as cere;
 #[cfg(feature = "cere-dev-native")]
 use cere_runtime_common::constants::currency::DOLLARS as TEST_UNITS;
+use ddc_primitives::sr25519::AuthorityId as DdcVerificationId;
 use jsonrpsee::core::__reexports::serde_json;
 pub use node_primitives::{AccountId, Balance, Block, Signature};
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
@@ -74,7 +75,8 @@ where
 // Helper function to generate stash, controller and session key from seed
 pub fn authority_keys_from_seed(
 	seed: &str,
-) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId) {
+) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId, DdcVerificationId)
+{
 	(
 		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
 		get_account_id_from_seed::<sr25519::Public>(seed),
@@ -82,6 +84,7 @@ pub fn authority_keys_from_seed(
 		get_from_seed::<BabeId>(seed),
 		get_from_seed::<ImOnlineId>(seed),
 		get_from_seed::<AuthorityDiscoveryId>(seed),
+		get_from_seed::<DdcVerificationId>(seed),
 	)
 }
 
@@ -91,14 +94,14 @@ fn cere_dev_session_keys(
 	babe: BabeId,
 	im_online: ImOnlineId,
 	authority_discovery: AuthorityDiscoveryId,
+	ddc_verification: DdcVerificationId,
 ) -> cere_dev::SessionKeys {
-	cere_dev::SessionKeys { grandpa, babe, im_online, authority_discovery }
+	cere_dev::SessionKeys { grandpa, babe, im_online, authority_discovery, ddc_verification }
 }
 
 /// Helper function to create Cere Dev `RuntimeGenesisConfig` for testing
 #[cfg(feature = "cere-dev-native")]
 pub fn cere_dev_genesis(
-	wasm_binary: &[u8],
 	initial_authorities: Vec<(
 		AccountId,
 		AccountId,
@@ -106,6 +109,7 @@ pub fn cere_dev_genesis(
 		BabeId,
 		ImOnlineId,
 		AuthorityDiscoveryId,
+		DdcVerificationId,
 	)>,
 	initial_nominators: Vec<AccountId>,
 	root_key: AccountId,
@@ -161,11 +165,7 @@ pub fn cere_dev_genesis(
 	const STASH: Balance = ENDOWMENT / 1000;
 
 	cere_dev::RuntimeGenesisConfig {
-		system: cere_dev::SystemConfig {
-			// Add Wasm runtime to storage.
-			code: wasm_binary.to_vec(),
-			..Default::default()
-		},
+		system: cere_dev::SystemConfig::default(),
 		balances: cere_dev::BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
 			balances: endowed_accounts.iter().cloned().map(|x| (x, ENDOWMENT)).collect(),
@@ -178,7 +178,13 @@ pub fn cere_dev_genesis(
 					(
 						x.0.clone(),
 						x.0.clone(),
-						cere_dev_session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone()),
+						cere_dev_session_keys(
+							x.2.clone(),
+							x.3.clone(),
+							x.4.clone(),
+							x.5.clone(),
+							x.6.clone(),
+						),
 					)
 				})
 				.collect::<Vec<_>>(),
@@ -212,6 +218,14 @@ pub fn cere_dev_genesis(
 		ddc_clusters: Default::default(),
 		ddc_nodes: Default::default(),
 		ddc_payouts: Default::default(),
+		tech_comm: cere_dev::TechCommConfig {
+			members: endowed_accounts
+				.iter()
+				.take((endowed_accounts.len() + 1) / 2)
+				.cloned()
+				.collect(),
+			phantom: Default::default(),
+		},
 	}
 }
 
@@ -229,9 +243,8 @@ pub fn cere_dev_native_chain_spec_properties() -> serde_json::map::Map<String, s
 
 /// Helper function to create Cere `RuntimeGenesisConfig` for testing
 #[cfg(feature = "cere-dev-native")]
-fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::RuntimeGenesisConfig {
+fn cere_dev_config_genesis() -> cere_dev::RuntimeGenesisConfig {
 	cere_dev_genesis(
-		wasm_binary,
 		// Initial authorities
 		vec![authority_keys_from_seed("Alice")],
 		// Initial nominators
@@ -252,26 +265,31 @@ fn cere_dev_config_genesis(wasm_binary: &[u8]) -> cere_dev::RuntimeGenesisConfig
 pub fn cere_dev_development_config() -> Result<CereDevChainSpec, String> {
 	let wasm_binary = cere_dev::WASM_BINARY.ok_or("Cere Dev development wasm not available")?;
 
+	#[allow(deprecated)]
 	Ok(CereDevChainSpec::from_genesis(
 		"Development",
 		"cere_dev",
 		ChainType::Development,
-		move || cere_dev_config_genesis(wasm_binary),
+		cere_dev_config_genesis,
 		vec![],
 		None,
 		Some(DEFAULT_PROTOCOL_ID),
 		None,
 		Some(cere_dev_native_chain_spec_properties()),
 		Default::default(),
+		wasm_binary,
 	))
 }
 
 #[cfg(feature = "cere-dev-native")]
-fn cere_dev_local_testnet_genesis(wasm_binary: &[u8]) -> cere_dev::RuntimeGenesisConfig {
+fn cere_dev_local_testnet_genesis() -> cere_dev::RuntimeGenesisConfig {
 	cere_dev_genesis(
-		wasm_binary,
 		// Initial authorities
-		vec![authority_keys_from_seed("Alice"), authority_keys_from_seed("Bob")],
+		vec![
+			authority_keys_from_seed("Alice"),
+			authority_keys_from_seed("Bob"),
+			authority_keys_from_seed("Charlie"),
+		],
 		// Initial nominators
 		vec![],
 		// Sudo account
@@ -290,17 +308,19 @@ fn cere_dev_local_testnet_genesis(wasm_binary: &[u8]) -> cere_dev::RuntimeGenesi
 pub fn cere_dev_local_testnet_config() -> Result<CereDevChainSpec, String> {
 	let wasm_binary = cere_dev::WASM_BINARY.ok_or("Cere Dev development wasm not available")?;
 
+	#[allow(deprecated)]
 	Ok(CereDevChainSpec::from_genesis(
 		"Local Testnet",
 		"cere_dev_local_testnet",
 		ChainType::Local,
-		move || cere_dev_local_testnet_genesis(wasm_binary),
+		cere_dev_local_testnet_genesis,
 		vec![],
 		None,
 		Some(DEFAULT_PROTOCOL_ID),
 		None,
 		None,
 		Default::default(),
+		wasm_binary,
 	))
 }
 

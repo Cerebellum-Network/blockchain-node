@@ -1,51 +1,13 @@
 //! Track configurations for governance.
 
+use cere_runtime_common::constants::tracks::*;
+
 use super::*;
+use crate::{Balance, BlockNumber};
 
-const fn percent(x: i32) -> sp_arithmetic::FixedI64 {
-	sp_arithmetic::FixedI64::from_rational(x as u128, 100)
-}
-use pallet_referenda::Curve;
-const APP_ROOT: Curve = Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
-const SUP_ROOT: Curve = Curve::make_linear(28, 28, percent(0), percent(50));
-const APP_STAKING_ADMIN: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
-const SUP_STAKING_ADMIN: Curve =
-	Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
-const APP_TREASURER: Curve = Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
-const SUP_TREASURER: Curve = Curve::make_linear(28, 28, percent(0), percent(50));
-const APP_FELLOWSHIP_ADMIN: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
-const SUP_FELLOWSHIP_ADMIN: Curve =
-	Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
-const APP_GENERAL_ADMIN: Curve =
-	Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
-const SUP_GENERAL_ADMIN: Curve =
-	Curve::make_reciprocal(7, 28, percent(10), percent(0), percent(50));
-const APP_REFERENDUM_CANCELLER: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
-const SUP_REFERENDUM_CANCELLER: Curve =
-	Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
-const APP_REFERENDUM_KILLER: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
-const SUP_REFERENDUM_KILLER: Curve =
-	Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
-const APP_SMALL_TIPPER: Curve = Curve::make_linear(10, 28, percent(50), percent(100));
-const SUP_SMALL_TIPPER: Curve = Curve::make_reciprocal(1, 28, percent(4), percent(0), percent(50));
-const APP_BIG_TIPPER: Curve = Curve::make_linear(10, 28, percent(50), percent(100));
-const SUP_BIG_TIPPER: Curve = Curve::make_reciprocal(8, 28, percent(1), percent(0), percent(50));
-const APP_SMALL_SPENDER: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
-const SUP_SMALL_SPENDER: Curve =
-	Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
-const APP_MEDIUM_SPENDER: Curve = Curve::make_linear(23, 28, percent(50), percent(100));
-const SUP_MEDIUM_SPENDER: Curve =
-	Curve::make_reciprocal(16, 28, percent(1), percent(0), percent(50));
-const APP_BIG_SPENDER: Curve = Curve::make_linear(28, 28, percent(50), percent(100));
-const SUP_BIG_SPENDER: Curve = Curve::make_reciprocal(20, 28, percent(1), percent(0), percent(50));
-const APP_WHITELISTED_CALLER: Curve =
-	Curve::make_reciprocal(16, 28 * 24, percent(96), percent(50), percent(100));
-const SUP_WHITELISTED_CALLER: Curve =
-	Curve::make_reciprocal(1, 28, percent(20), percent(5), percent(50));
-
-const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13] = [
+const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 14] = [
 	(
-		0,
+		ROOT_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "root",
 			max_deciding: 1,
@@ -59,7 +21,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13
 		},
 	),
 	(
-		1,
+		WHITELISTED_CALLER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "whitelisted_caller",
 			max_deciding: 100,
@@ -73,11 +35,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13
 		},
 	),
 	(
-		10,
+		STAKING_ADMIN_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "staking_admin",
 			max_deciding: 10,
-			decision_deposit: 5 * GRAND,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 2 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 3 * HOURS,
@@ -87,11 +49,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13
 		},
 	),
 	(
-		11,
+		TREASURER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "treasurer",
 			max_deciding: 10,
-			decision_deposit: GRAND,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 2 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 3 * HOURS,
@@ -101,25 +63,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13
 		},
 	),
 	(
-		13,
-		pallet_referenda::TrackInfo {
-			name: "fellowship_admin",
-			max_deciding: 10,
-			decision_deposit: 5 * GRAND,
-			prepare_period: 2 * HOURS,
-			decision_period: 28 * DAYS,
-			confirm_period: 3 * HOURS,
-			min_enactment_period: 10 * MINUTES,
-			min_approval: APP_FELLOWSHIP_ADMIN,
-			min_support: SUP_FELLOWSHIP_ADMIN,
-		},
-	),
-	(
-		14,
+		GENERAL_ADMIN_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "general_admin",
 			max_deciding: 10,
-			decision_deposit: 5 * GRAND,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 2 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 3 * HOURS,
@@ -129,7 +77,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13
 		},
 	),
 	(
-		20,
+		REFERENDUM_CANCELER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "referendum_canceller",
 			max_deciding: 1_000,
@@ -143,7 +91,7 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13
 		},
 	),
 	(
-		21,
+		REFERENDUM_KILLER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "referendum_killer",
 			max_deciding: 1_000,
@@ -157,11 +105,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13
 		},
 	),
 	(
-		30,
+		SMALL_TIPPER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "small_tipper",
 			max_deciding: 200,
-			decision_deposit: DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: MINUTES,
 			decision_period: 7 * DAYS,
 			confirm_period: 10 * MINUTES,
@@ -171,11 +119,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13
 		},
 	),
 	(
-		31,
+		BIG_TIPPER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "big_tipper",
 			max_deciding: 100,
-			decision_deposit: 10 * DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 10 * MINUTES,
 			decision_period: 7 * DAYS,
 			confirm_period: HOURS,
@@ -185,11 +133,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13
 		},
 	),
 	(
-		32,
+		SMALL_SPENDER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "small_spender",
 			max_deciding: 50,
-			decision_deposit: 100 * DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 4 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 12 * HOURS,
@@ -199,11 +147,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13
 		},
 	),
 	(
-		33,
+		MEDIUM_SPENDER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "medium_spender",
 			max_deciding: 50,
-			decision_deposit: 200 * DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 4 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 24 * HOURS,
@@ -213,17 +161,45 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 13
 		},
 	),
 	(
-		34,
+		BIG_SPENDER_TRACK_ID,
 		pallet_referenda::TrackInfo {
 			name: "big_spender",
 			max_deciding: 50,
-			decision_deposit: 400 * DOLLARS,
+			decision_deposit: 10 * GRAND,
 			prepare_period: 4 * HOURS,
 			decision_period: 28 * DAYS,
 			confirm_period: 48 * HOURS,
 			min_enactment_period: 24 * HOURS,
 			min_approval: APP_BIG_SPENDER,
 			min_support: SUP_BIG_SPENDER,
+		},
+	),
+	(
+		CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID,
+		pallet_referenda::TrackInfo {
+			name: "cluster_protocol_activator",
+			max_deciding: 50,
+			decision_deposit: DOLLARS,
+			prepare_period: 0,
+			decision_period: 2 * MINUTES,
+			confirm_period: MINUTES,
+			min_enactment_period: 0,
+			min_approval: APP_CLUSTER_PROTOCOL_ACTIVATOR,
+			min_support: SUP_CLUSTER_PROTOCOL_ACTIVATOR,
+		},
+	),
+	(
+		CLUSTER_PROTOCOL_UPDATER_TRACK_ID,
+		pallet_referenda::TrackInfo {
+			name: "cluster_protocol_updater",
+			max_deciding: 50,
+			decision_deposit: DOLLARS,
+			prepare_period: 0,
+			decision_period: 2 * MINUTES,
+			confirm_period: MINUTES,
+			min_enactment_period: 0,
+			min_approval: APP_CLUSTER_PROTOCOL_UPDATER,
+			min_support: SUP_CLUSTER_PROTOCOL_UPDATER,
 		},
 	),
 ];
@@ -238,30 +214,37 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
 		if let Ok(system_origin) = frame_system::RawOrigin::try_from(id.clone()) {
 			match system_origin {
-				frame_system::RawOrigin::Root => Ok(0),
+				frame_system::RawOrigin::Root => Ok(ROOT_TRACK_ID),
 				_ => Err(()),
 			}
-		} else if let Ok(custom_origin) = origins::Origin::try_from(id.clone()) {
+		} else if let Ok(custom_origin) = pallet_origins::pallet::Origin::try_from(id.clone()) {
 			match custom_origin {
-				origins::Origin::WhitelistedCaller => Ok(1),
+				pallet_origins::pallet::Origin::WhitelistedCaller =>
+					Ok(WHITELISTED_CALLER_TRACK_ID),
 				// General admin
-				origins::Origin::StakingAdmin => Ok(10),
-				origins::Origin::Treasurer => Ok(11),
-				origins::Origin::FellowshipAdmin => Ok(13),
-				origins::Origin::GeneralAdmin => Ok(14),
+				pallet_origins::pallet::Origin::StakingAdmin => Ok(STAKING_ADMIN_TRACK_ID),
+				pallet_origins::pallet::Origin::Treasurer => Ok(TREASURER_TRACK_ID),
+				pallet_origins::pallet::Origin::GeneralAdmin => Ok(GENERAL_ADMIN_TRACK_ID),
 				// Referendum admins
-				origins::Origin::ReferendumCanceller => Ok(20),
-				origins::Origin::ReferendumKiller => Ok(21),
+				pallet_origins::pallet::Origin::ReferendumCanceller =>
+					Ok(REFERENDUM_CANCELER_TRACK_ID),
+				pallet_origins::pallet::Origin::ReferendumKiller => Ok(REFERENDUM_KILLER_TRACK_ID),
 				// Limited treasury spenders
-				origins::Origin::SmallTipper => Ok(30),
-				origins::Origin::BigTipper => Ok(31),
-				origins::Origin::SmallSpender => Ok(32),
-				origins::Origin::MediumSpender => Ok(33),
-				origins::Origin::BigSpender => Ok(34),
+				pallet_origins::pallet::Origin::SmallTipper => Ok(SMALL_TIPPER_TRACK_ID),
+				pallet_origins::pallet::Origin::BigTipper => Ok(BIG_TIPPER_TRACK_ID),
+				pallet_origins::pallet::Origin::SmallSpender => Ok(SMALL_SPENDER_TRACK_ID),
+				pallet_origins::pallet::Origin::MediumSpender => Ok(MEDIUM_SPENDER_TRACK_ID),
+				pallet_origins::pallet::Origin::BigSpender => Ok(BIG_SPENDER_TRACK_ID),
+				// DDC admins
+				pallet_origins::pallet::Origin::ClusterProtocolActivator =>
+					Ok(CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID),
+				pallet_origins::pallet::Origin::ClusterProtocolUpdater =>
+					Ok(CLUSTER_PROTOCOL_UPDATER_TRACK_ID),
 			}
 		} else {
 			Err(())
 		}
 	}
 }
+
 pallet_referenda::impl_tracksinfo_get!(TracksInfo, Balance, BlockNumber);

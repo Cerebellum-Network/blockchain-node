@@ -1,6 +1,6 @@
 //! DdcPayouts pallet benchmarking.
 
-use ddc_primitives::{ClusterGovParams, ClusterId, ClusterParams};
+use ddc_primitives::{traits::ValidatorVisitor, ClusterId, ClusterParams, ClusterProtocolParams};
 pub use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_system::RawOrigin;
 use sp_runtime::Perquintill;
@@ -14,6 +14,7 @@ const CERE: u128 = 10000000000;
 fn create_dac_account<T: Config>() -> T::AccountId {
 	let dac_account = create_account::<T>("dac_account", 0, 0);
 	authorize_account::<T>(dac_account.clone());
+	T::ValidatorVisitor::setup_validators(vec![dac_account.clone()]);
 	dac_account
 }
 
@@ -45,14 +46,14 @@ fn create_cluster<T: Config>(
 	cluster_manager_id: T::AccountId,
 	cluster_reserve_id: T::AccountId,
 	cluster_params: ClusterParams<T::AccountId>,
-	cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>>,
+	cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
 ) {
-	T::ClusterCreator::create_new_cluster(
+	T::ClusterCreator::create_cluster(
 		cluster_id,
 		cluster_manager_id,
 		cluster_reserve_id,
 		cluster_params,
-		cluster_gov_params,
+		cluster_protocol_params,
 	)
 	.expect("Cluster is not created");
 }
@@ -66,30 +67,31 @@ fn create_default_cluster<T: Config>(cluster_id: ClusterId) {
 		erasure_coding_total: 6,
 		replication_total: 3,
 	};
-	let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
-		treasury_share: Perquintill::from_percent(5),
-		validators_share: Perquintill::from_percent(10),
-		cluster_reserve_share: Perquintill::from_percent(15),
-		unit_per_mb_stored: CERE,
-		unit_per_mb_streamed: CERE,
-		unit_per_put_request: CERE,
-		unit_per_get_request: CERE,
-		..Default::default()
-	};
+	let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
+		ClusterProtocolParams {
+			treasury_share: Perquintill::from_percent(5),
+			validators_share: Perquintill::from_percent(10),
+			cluster_reserve_share: Perquintill::from_percent(15),
+			unit_per_mb_stored: CERE,
+			unit_per_mb_streamed: CERE,
+			unit_per_put_request: CERE,
+			unit_per_get_request: CERE,
+			..Default::default()
+		};
 
 	create_cluster::<T>(
 		cluster_id,
 		cluster_manager,
 		cluster_reserve,
 		cluster_params,
-		cluster_gov_params,
+		cluster_protocol_params,
 	);
 }
 
 struct BillingReportParams {
 	cluster_id: ClusterId,
 	era: DdcEra,
-	state: State,
+	state: PayoutState,
 	total_customer_charge: CustomerCharge,
 	total_distributed_reward: u128,
 	total_node_usage: NodeUsage,
@@ -147,13 +149,13 @@ benchmarks! {
 	verify {
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();
-		assert_eq!(billing_report.state, State::Initialized);
+		assert_eq!(billing_report.state, PayoutState::Initialized);
 	}
 
 	begin_charging_customers {
 		let cluster_id = ClusterId::from([1; 20]);
 		let era : DdcEra = 1;
-		let state = State::Initialized;
+		let state = PayoutState::Initialized;
 		let total_customer_charge = CustomerCharge::default();
 		let total_distributed_reward : u128= 0;
 		let total_node_usage = NodeUsage::default();
@@ -185,7 +187,7 @@ benchmarks! {
 	verify {
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();
-		assert_eq!(billing_report.state, State::ChargingCustomers);
+		assert_eq!(billing_report.state, PayoutState::ChargingCustomers);
 		assert_eq!(billing_report.charging_max_batch_index, max_batch_index);
 	}
 
@@ -194,7 +196,7 @@ benchmarks! {
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let era : DdcEra = 1;
-		let state = State::ChargingCustomers;
+		let state = PayoutState::ChargingCustomers;
 		let total_customer_charge = CustomerCharge::default();
 		let total_distributed_reward : u128 = 0;
 		let total_node_usage = NodeUsage::default();
@@ -221,7 +223,7 @@ benchmarks! {
 		});
 
 		let batch_index: BatchIndex = 0;
-		let payers: Vec<(T::AccountId, CustomerUsage)> = (0..b).map(|i| {
+		let payers: Vec<(T::AccountId, BucketId, CustomerUsage)> = (0..b).map(|i| {
 			let customer = create_account::<T>("customer", i, i);
 
 			if b % 2 == 0 {
@@ -238,22 +240,23 @@ benchmarks! {
 				number_of_gets: 10, // 10 gets
 				number_of_puts: 5, // 5 puts
 			};
+			let bucket_id: BucketId = 1;
 
-			(customer, customer_usage)
+			(customer, bucket_id, customer_usage)
 		}).collect();
 
-	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payers)
+	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payers, MMRProof::default())
 	verify {
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();
-		assert_eq!(billing_report.state, State::ChargingCustomers);
+		assert_eq!(billing_report.state, PayoutState::ChargingCustomers);
 		assert!(billing_report.charging_processed_batches.contains(&batch_index));
 	}
 
 	end_charging_customers {
 		let cluster_id = ClusterId::from([1; 20]);
 		let era : DdcEra = 1;
-		let state = State::ChargingCustomers;
+		let state = PayoutState::ChargingCustomers;
 		let total_customer_charge = CustomerCharge {
 			transfer: 200 * CERE, // price for 200 mb
 			storage: 100 * CERE, // price for 100 mb
@@ -292,14 +295,14 @@ benchmarks! {
 	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era)
 	verify {
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();
-		assert_eq!(billing_report.state, State::CustomersChargedWithFees);
+		assert_eq!(billing_report.state, PayoutState::CustomersChargedWithFees);
 		assert!(billing_report.charging_processed_batches.contains(&charging_max_batch_index));
 	}
 
 	begin_rewarding_providers {
 		let cluster_id = ClusterId::from([1; 20]);
 		let era : DdcEra = 1;
-		let state = State::CustomersChargedWithFees;
+		let state = PayoutState::CustomersChargedWithFees;
 		let total_customer_charge = CustomerCharge {
 			transfer: 200 * CERE, // price for 200 mb
 			storage: 100 * CERE, // price for 100 mb
@@ -342,7 +345,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, max_batch_index, total_node_usage)
 	verify {
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();
-		assert_eq!(billing_report.state, State::RewardingProviders);
+		assert_eq!(billing_report.state, PayoutState::RewardingProviders);
 		assert_eq!(billing_report.rewarding_max_batch_index, max_batch_index);
 	}
 
@@ -351,7 +354,7 @@ benchmarks! {
 
 		let cluster_id = ClusterId::from([1; 20]);
 		let era : DdcEra = 1;
-		let state = State::RewardingProviders;
+		let state = PayoutState::RewardingProviders;
 		let total_customer_charge = CustomerCharge {
 			transfer: (200 * CERE).saturating_mul(b.into()), // price for 200 mb per customer
 			storage: (100 * CERE).saturating_mul(b.into()), // price for 100 mb per customer
@@ -361,7 +364,7 @@ benchmarks! {
 		let total_distributed_reward : u128 = 0;
 		let total_node_usage = NodeUsage {
 			transferred_bytes: 200000000u64.saturating_mul(b.into()), // 200 mb per provider
-			stored_bytes: 100000000u64.saturating_mul(b.into()), // 100 mb per provider
+			stored_bytes: 100000000i64.saturating_mul(b.into()), // 100 mb per provider
 			number_of_gets: 10u64.saturating_mul(b.into()), // 10 gets per provider
 			number_of_puts: 10u64.saturating_mul(b.into()), // 5 puts per provider
 		};
@@ -405,18 +408,18 @@ benchmarks! {
 			(provider, node_usage)
 		}).collect();
 
-	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payees)
+	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payees, MMRProof::default())
 	verify {
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();
-		assert_eq!(billing_report.state, State::RewardingProviders);
+		assert_eq!(billing_report.state, PayoutState::RewardingProviders);
 		assert!(billing_report.rewarding_processed_batches.contains(&batch_index));
 	}
 
 	end_rewarding_providers {
 		let cluster_id = ClusterId::from([1; 20]);
 		let era : DdcEra = 1;
-		let state = State::RewardingProviders;
+		let state = PayoutState::RewardingProviders;
 		let total_customer_charge = CustomerCharge {
 			transfer: 200 * CERE, // price for 200 mb
 			storage: 100 * CERE, // price for 100 mb
@@ -458,13 +461,13 @@ benchmarks! {
 	verify {
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();
-		assert_eq!(billing_report.state, State::ProvidersRewarded);
+		assert_eq!(billing_report.state, PayoutState::ProvidersRewarded);
 	}
 
 	end_billing_report {
 		let cluster_id = ClusterId::from([1; 20]);
 		let era : DdcEra = 1;
-		let state = State::ProvidersRewarded;
+		let state = PayoutState::ProvidersRewarded;
 		let total_customer_charge = CustomerCharge {
 			transfer: 200 * CERE, // price for 200 mb
 			storage: 100 * CERE, // price for 100 mb
@@ -506,7 +509,7 @@ benchmarks! {
 	verify {
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();
-		assert_eq!(billing_report.state, State::Finalized);
+		assert_eq!(billing_report.state, PayoutState::Finalized);
 	}
 
 }

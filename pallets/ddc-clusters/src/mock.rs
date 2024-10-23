@@ -20,7 +20,7 @@ use sp_runtime::{
 	traits::{
 		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
 	},
-	BuildStorage, MultiSignature, Perbill, Perquintill,
+	BuildStorage, DispatchResult, MultiSignature, Perbill, Perquintill,
 };
 
 use crate::{self as pallet_ddc_clusters, *};
@@ -101,6 +101,7 @@ impl contracts::Config for Test {
 	type Debug = ();
 	type Environment = ();
 	type Migrations = ();
+	type Xcm = ();
 }
 
 use frame_system::offchain::{
@@ -178,6 +179,7 @@ impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type WeightInfo = ();
 	type FreezeIdentifier = ();
+	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
 	type MaxHolds = ConstU32<1>;
 	type RuntimeHoldReason = RuntimeHoldReason;
@@ -226,6 +228,9 @@ impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
 	fn has_chilling_attempt(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
 		Ok(false)
 	}
+	fn stash_by_ctrl(_controller: &T::AccountId) -> Result<T::AccountId, StakingVisitorError> {
+		todo!()
+	}
 }
 
 impl<T: Config> StakerCreator<T, BalanceOf<T>> for TestStaker {
@@ -235,7 +240,15 @@ impl<T: Config> StakerCreator<T, BalanceOf<T>> for TestStaker {
 		_node: NodePubKey,
 		_value: BalanceOf<T>,
 		_cluster_id: ClusterId,
-	) -> sp_runtime::DispatchResult {
+	) -> DispatchResult {
+		Ok(())
+	}
+
+	fn bond_cluster(
+		_cluster_stash: T::AccountId,
+		_cluster_controller: T::AccountId,
+		_cluster_id: ClusterId,
+	) -> DispatchResult {
 		Ok(())
 	}
 }
@@ -258,7 +271,7 @@ impl ExtBuilder {
 		}
 		.assimilate_storage(&mut t);
 
-		let cluster_gov_params = ClusterGovParams {
+		let cluster_protocol_params = ClusterProtocolParams {
 			treasury_share: Perquintill::from_float(0.05),
 			validators_share: Perquintill::from_float(0.01),
 			cluster_reserve_share: Perquintill::from_float(0.02),
@@ -273,10 +286,7 @@ impl ExtBuilder {
 
 		let node_pub_key = NodePubKey::StoragePubKey(AccountId::from([0; 32]));
 
-		// For testing purposes only
-		pallet_ddc_clusters::GenesisConfig::<Test>::default().build();
-
-		if let Ok(cluster) = Cluster::new(
+		let cluster = Cluster::new(
 			ClusterId::from([0; 20]),
 			AccountId::from([0; 32]),
 			AccountId::from([0; 32]),
@@ -286,14 +296,21 @@ impl ExtBuilder {
 				erasure_coding_total: 6,
 				replication_total: 3,
 			},
-		) {
-			let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
-				clusters: vec![cluster],
-				clusters_gov_params: vec![(ClusterId::from([0; 20]), cluster_gov_params)],
-				clusters_nodes: vec![(ClusterId::from([0; 20]), vec![node_pub_key])],
-			}
-			.assimilate_storage(&mut t);
+		);
+
+		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
+			clusters: vec![cluster],
+			clusters_protocol_params: vec![(ClusterId::from([0; 20]), cluster_protocol_params)],
+			clusters_nodes: vec![(
+				ClusterId::from([0; 20]),
+				vec![(
+					node_pub_key,
+					ClusterNodeKind::Genesis,
+					ClusterNodeStatus::ValidationSucceeded,
+				)],
+			)],
 		}
+		.assimilate_storage(&mut t);
 
 		TestExternalities::new(t)
 	}

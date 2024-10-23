@@ -2,37 +2,31 @@
 
 #![allow(dead_code)]
 
-use std::cell::RefCell;
-
 use ddc_primitives::{
-	traits::{
-		cluster::{ClusterManager, ClusterManagerError, ClusterVisitor, ClusterVisitorError},
-		node::{NodeVisitor, NodeVisitorError},
-	},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	NodeParams, NodePubKey, StorageNodePubKey,
+	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
+	NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime,
-	dispatch::DispatchResult,
-	traits::{ConstU32, ConstU64, Everything},
+	traits::{ConstBool, ConstU32, ConstU64, Everything, Nothing},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
-use lazy_static::lazy_static;
-use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
+use pallet_ddc_clusters::cluster::Cluster;
+use pallet_ddc_nodes::StorageNode;
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage, Perquintill,
+	traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify},
+	BuildStorage, MultiSignature, Perbill, Perquintill,
 };
-use sp_std::collections::btree_map::BTreeMap;
 
 use crate::{self as pallet_ddc_staking, *};
 
+pub type Signature = MultiSignature;
+
 /// The AccountId alias in this test module.
-pub(crate) type AccountId = u64;
+pub(crate) type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 pub(crate) type AccountIndex = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
@@ -46,13 +40,29 @@ construct_runtime!(
 		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
+		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 		DdcStaking: pallet_ddc_staking::{Pallet, Call, Config<T>, Storage, Event<T>},
+		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
+		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Config<T>, Event<T>},
 	}
 );
 
 parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
+	pub static ClusterBondingAmount: Balance = 50;
+	pub static ClusterUnboningDelay: BlockNumber = 2;
 }
+
+impl Convert<Weight, BalanceOf<Self>> for Test {
+	fn convert(w: Weight) -> BalanceOf<Self> {
+		w.ref_time().into()
+	}
+}
+
+type BalanceOf<T> = <<T as crate::pallet::Config>::Currency as Currency<
+	<T as frame_system::Config>::AccountId,
+>>::Balance;
 
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
@@ -91,9 +101,10 @@ impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type WeightInfo = ();
 	type FreezeIdentifier = ();
+	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
-	type MaxHolds = ();
-	type RuntimeHoldReason = ();
+	type MaxHolds = ConstU32<1>;
+	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -103,285 +114,377 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const DepositPerItem: Balance = 0;
+	pub const DepositPerByte: Balance = 0;
+	pub const SignedClaimHandicap: BlockNumber = 2;
+	pub const TombstoneDeposit: Balance = 16;
+	pub const StorageSizeOffset: u32 = 8;
+	pub const RentByteFee: Balance = 4;
+	pub const RentDepositOffset: Balance = 10_000;
+	pub const SurchargeReward: Balance = 150;
+	pub const MaxDepth: u32 = 100;
+	pub const MaxValueSize: u32 = 16_384;
+	pub Schedule: pallet_contracts::Schedule<Test> = Default::default();
+	pub static DefaultDepositLimit: Balance = 10_000_000;
+	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
+	pub const MaxDelegateDependencies: u32 = 32;
+}
+
+impl pallet_contracts::Config for Test {
+	type Time = Timestamp;
+	type Randomness = Randomness;
+	type Currency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type CallStack = [pallet_contracts::Frame<Self>; 5];
+	type WeightPrice = Self; //pallet_transaction_payment::Module<Self>;
+	type WeightInfo = ();
+	type ChainExtension = ();
+	type Schedule = Schedule;
+	type RuntimeCall = RuntimeCall;
+	type CallFilter = Nothing;
+	type DepositPerByte = DepositPerByte;
+	type DepositPerItem = DepositPerItem;
+	type DefaultDepositLimit = DefaultDepositLimit;
+	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
+	type MaxStorageKeyLen = ConstU32<128>;
+	type UnsafeUnstableInterface = ConstBool<false>;
+	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+	type MaxDelegateDependencies = MaxDelegateDependencies;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type Debug = ();
+	type Environment = ();
+	type Migrations = ();
+	type Xcm = ();
+}
+
+impl pallet_insecure_randomness_collective_flip::Config for Test {}
+
+impl pallet_ddc_nodes::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type StakingVisitor = pallet_ddc_staking::Pallet<Test>;
+	type WeightInfo = ();
+}
+
+impl pallet_ddc_clusters::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type NodeRepository = pallet_ddc_nodes::Pallet<Test>;
+	type StakingVisitor = pallet_ddc_staking::Pallet<Test>;
+	type StakerCreator = pallet_ddc_staking::Pallet<Test>;
+	type Currency = Balances;
+	type WeightInfo = ();
+	type MinErasureCodingRequiredLimit = ConstU32<0>;
+	type MinErasureCodingTotalLimit = ConstU32<0>;
+	type MinReplicationTotalLimit = ConstU32<0>;
+}
+
 impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-	type ClusterVisitor = TestClusterVisitor;
-	type ClusterManager = TestClusterManager;
-	type NodeVisitor = MockNodeVisitor;
-	type NodeCreator = TestNodeCreator;
-	type ClusterCreator = TestClusterCreator;
+	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
+	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
+	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
+	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
+	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
+	type ClusterBondingAmount = ClusterBondingAmount;
+	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
-pub struct TestNodeCreator;
-pub struct TestClusterCreator;
-pub struct TestClusterVisitor;
 
-impl<T: Config> NodeCreator<T> for TestNodeCreator {
-	fn create_node(
-		_node_pub_key: NodePubKey,
-		_provider_id: T::AccountId,
-		_node_params: NodeParams,
-	) -> DispatchResult {
-		Ok(())
+// (stash, controller, cluster)
+#[allow(clippy::type_complexity)]
+pub(crate) type BuiltClusterBond = (AccountId, AccountId, ClusterId);
+// (stash, controller, node, stake, cluster)
+#[allow(clippy::type_complexity)]
+pub(crate) type BuiltNodeBond = (AccountId, AccountId, NodePubKey, Balance, ClusterId);
+
+#[allow(clippy::type_complexity)]
+pub(crate) type BuiltCluster = (Cluster<AccountId>, ClusterProtocolParams<Balance, BlockNumber>);
+
+#[allow(clippy::type_complexity)]
+pub(crate) type BuiltNode = (NodePubKey, StorageNode<Test>, Option<ClusterAssignment>);
+
+pub(crate) struct ClusterAssignment {
+	pub(crate) cluster_id: [u8; 20],
+	pub(crate) status: ClusterNodeStatus,
+	pub(crate) kind: ClusterNodeKind,
+}
+
+pub const NODE_KEY_1: [u8; 32] = [12; 32];
+pub const NODE_STASH_1: [u8; 32] = [11; 32];
+pub const NODE_CONTROLLER_1: [u8; 32] = [10; 32];
+
+pub const NODE_KEY_2: [u8; 32] = [22; 32];
+pub const NODE_STASH_2: [u8; 32] = [21; 32];
+pub const NODE_CONTROLLER_2: [u8; 32] = [20; 32];
+
+pub const NODE_KEY_3: [u8; 32] = [32; 32];
+pub const NODE_STASH_3: [u8; 32] = [31; 32];
+pub const NODE_CONTROLLER_3: [u8; 32] = [30; 32];
+
+pub const NODE_KEY_4: [u8; 32] = [42; 32];
+pub const NODE_STASH_4: [u8; 32] = [41; 32];
+pub const NODE_CONTROLLER_4: [u8; 32] = [40; 32];
+
+pub const CLUSTER_ID: [u8; 20] = [1; 20];
+pub const CLUSTER_STASH: [u8; 32] = [102; 32];
+pub const CLUSTER_CONTROLLER: [u8; 32] = [101; 32];
+
+pub const USER_KEY_1: [u8; 32] = [1; 32];
+pub const USER_KEY_2: [u8; 32] = [2; 32];
+pub const USER_KEY_3: [u8; 32] = [3; 32];
+pub const USER_KEY_4: [u8; 32] = [4; 32];
+
+pub const NODE_KEY_5: [u8; 32] = [52; 32];
+pub const NODE_KEY_6: [u8; 32] = [62; 32];
+
+pub const ENDOWMENT: u128 = 100;
+
+pub(crate) fn build_default_setup(
+) -> (Vec<BuiltCluster>, Vec<BuiltNode>, Vec<BuiltClusterBond>, Vec<BuiltNodeBond>) {
+	(
+		vec![build_cluster(
+			CLUSTER_ID,
+			CLUSTER_STASH,
+			CLUSTER_CONTROLLER,
+			ClusterParams::default(),
+			ClusterProtocolParams {
+				treasury_share: Perquintill::from_percent(1),
+				validators_share: Perquintill::from_percent(10),
+				cluster_reserve_share: Perquintill::from_percent(2),
+				storage_bond_size: 10,
+				storage_chill_delay: 10u32.into(),
+				storage_unbonding_delay: 10u32.into(),
+				unit_per_mb_stored: 2,
+				unit_per_mb_streamed: 3,
+				unit_per_put_request: 4,
+				unit_per_get_request: 5,
+			},
+			ClusterStatus::Activated,
+		)],
+		vec![
+			build_node(
+				NODE_KEY_1,
+				NODE_CONTROLLER_1,
+				StorageNodeParams::default(),
+				Some(ClusterAssignment {
+					cluster_id: CLUSTER_ID,
+					status: ClusterNodeStatus::ValidationSucceeded,
+					kind: ClusterNodeKind::Genesis,
+				}),
+			),
+			build_node(
+				NODE_KEY_2,
+				NODE_CONTROLLER_2,
+				StorageNodeParams::default(),
+				Some(ClusterAssignment {
+					cluster_id: CLUSTER_ID,
+					status: ClusterNodeStatus::ValidationSucceeded,
+					kind: ClusterNodeKind::Genesis,
+				}),
+			),
+			build_node(
+				NODE_KEY_3,
+				NODE_CONTROLLER_3,
+				StorageNodeParams::default(),
+				Some(ClusterAssignment {
+					cluster_id: CLUSTER_ID,
+					status: ClusterNodeStatus::ValidationSucceeded,
+					kind: ClusterNodeKind::Genesis,
+				}),
+			),
+			build_node(
+				NODE_KEY_4,
+				NODE_CONTROLLER_4,
+				StorageNodeParams::default(),
+				Some(ClusterAssignment {
+					cluster_id: CLUSTER_ID,
+					status: ClusterNodeStatus::ValidationSucceeded,
+					kind: ClusterNodeKind::Genesis,
+				}),
+			),
+		],
+		vec![build_cluster_bond(CLUSTER_STASH, CLUSTER_CONTROLLER, CLUSTER_ID)],
+		vec![
+			build_node_bond(NODE_STASH_1, NODE_CONTROLLER_1, NODE_KEY_1, ENDOWMENT, CLUSTER_ID),
+			build_node_bond(NODE_STASH_2, NODE_CONTROLLER_2, NODE_KEY_2, ENDOWMENT, CLUSTER_ID),
+			build_node_bond(NODE_STASH_3, NODE_CONTROLLER_3, NODE_KEY_3, ENDOWMENT, CLUSTER_ID),
+			build_node_bond(NODE_STASH_4, NODE_CONTROLLER_4, NODE_KEY_4, ENDOWMENT, CLUSTER_ID),
+		],
+	)
+}
+
+pub(crate) fn build_cluster(
+	cluster_id: [u8; 20],
+	manager_id: [u8; 32],
+	reserve_id: [u8; 32],
+	params: ClusterParams<AccountId>,
+	protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
+	status: ClusterStatus,
+) -> BuiltCluster {
+	let mut cluster = Cluster::new(
+		ClusterId::from(cluster_id),
+		AccountId::from(manager_id),
+		AccountId::from(reserve_id),
+		params,
+	);
+	cluster.status = status;
+	(cluster, protocol_params)
+}
+
+pub fn build_node(
+	pub_key: [u8; 32],
+	provider_id: [u8; 32],
+	params: StorageNodeParams,
+	assignment: Option<ClusterAssignment>,
+) -> BuiltNode {
+	let key = NodePubKey::StoragePubKey(AccountId::from(pub_key));
+	let mut node = StorageNode::new(
+		key.clone(),
+		AccountId::from(provider_id),
+		NodeParams::StorageParams(params),
+	)
+	.unwrap();
+
+	let cluster_id_opt = if let Some(ClusterAssignment { cluster_id, .. }) = assignment {
+		Some(ClusterId::from(cluster_id))
+	} else {
+		None
+	};
+	node.cluster_id = cluster_id_opt;
+
+	(key, node, assignment)
+}
+
+pub(crate) fn build_cluster_bond(
+	stash: [u8; 32],
+	controller: [u8; 32],
+	cluster_id: [u8; 20],
+) -> BuiltClusterBond {
+	(AccountId::from(stash), AccountId::from(controller), ClusterId::from(cluster_id))
+}
+
+pub(crate) fn build_node_bond(
+	stash: [u8; 32],
+	controller: [u8; 32],
+	node_key: [u8; 32],
+	bond: Balance,
+	cluster_id: [u8; 20],
+) -> BuiltNodeBond {
+	(
+		AccountId::from(stash),
+		AccountId::from(controller),
+		NodePubKey::StoragePubKey(StorageNodePubKey::from(node_key)),
+		bond,
+		ClusterId::from(cluster_id),
+	)
+}
+
+fn insert_unique_balance(
+	account_vec: &mut Vec<(AccountId, Balance)>,
+	account_id: AccountId,
+	balance: Balance,
+) {
+	if !account_vec.iter().any(|(id, _)| *id == account_id) {
+		account_vec.push((account_id, balance));
 	}
 }
 
-impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
-	fn create_new_cluster(
-		_cluster_id: ClusterId,
-		_cluster_manager_id: T::AccountId,
-		_cluster_reserve_id: T::AccountId,
-		_cluster_params: ClusterParams<T::AccountId>,
-		_cluster_gov_params: ClusterGovParams<Balance, BlockNumberFor<T>>,
-	) -> DispatchResult {
-		Ok(())
-	}
-}
-
-impl<T: Config> ClusterVisitor<T> for TestClusterVisitor {
-	fn ensure_cluster(_cluster_id: &ClusterId) -> Result<(), ClusterVisitorError> {
-		Ok(())
-	}
-	fn get_bond_size(
-		_cluster_id: &ClusterId,
-		_node_type: NodeType,
-	) -> Result<u128, ClusterVisitorError> {
-		Ok(10)
-	}
-	fn get_chill_delay(
-		_cluster_id: &ClusterId,
-		_node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, ClusterVisitorError> {
-		Ok(BlockNumberFor::<T>::from(10u32))
-	}
-	fn get_unbonding_delay(
-		_cluster_id: &ClusterId,
-		_node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, ClusterVisitorError> {
-		Ok(BlockNumberFor::<T>::from(10u32))
-	}
-
-	fn get_pricing_params(
-		_cluster_id: &ClusterId,
-	) -> Result<ClusterPricingParams, ClusterVisitorError> {
-		Ok(ClusterPricingParams {
-			unit_per_mb_stored: 2,
-			unit_per_mb_streamed: 3,
-			unit_per_put_request: 4,
-			unit_per_get_request: 5,
-		})
-	}
-
-	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, ClusterVisitorError> {
-		Ok(ClusterFeesParams {
-			treasury_share: Perquintill::from_percent(1),
-			validators_share: Perquintill::from_percent(10),
-			cluster_reserve_share: Perquintill::from_percent(2),
-		})
-	}
-
-	fn get_reserve_account_id(
-		_cluster_id: &ClusterId,
-	) -> Result<T::AccountId, ClusterVisitorError> {
-		Err(ClusterVisitorError::ClusterDoesNotExist)
-	}
-
-	fn get_bonding_params(
-		cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, ClusterVisitorError> {
-		Ok(ClusterBondingParams {
-			storage_bond_size: <TestClusterVisitor as ClusterVisitor<T>>::get_bond_size(
-				cluster_id,
-				NodeType::Storage,
-			)
-			.unwrap_or_default(),
-			storage_chill_delay: <TestClusterVisitor as ClusterVisitor<T>>::get_chill_delay(
-				cluster_id,
-				NodeType::Storage,
-			)
-			.unwrap_or_default(),
-			storage_unbonding_delay:
-				<TestClusterVisitor as ClusterVisitor<T>>::get_unbonding_delay(
-					cluster_id,
-					NodeType::Storage,
-				)
-				.unwrap_or_default(),
-		})
-	}
-}
-
-pub struct TestClusterManager;
-impl<T: Config> ClusterManager<T> for TestClusterManager {
-	fn contains_node(_cluster_id: &ClusterId, _node_pub_key: &NodePubKey) -> bool {
-		true
-	}
-
-	fn add_node(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-	) -> Result<(), ClusterManagerError> {
-		Ok(())
-	}
-
-	fn remove_node(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-	) -> Result<(), ClusterManagerError> {
-		Ok(())
-	}
-}
-
-lazy_static! {
-	// We have to use the ReentrantMutex as every test's thread that needs to perform some configuration on the mock acquires the lock at least 2 times:
-	// the first time when the mock configuration happens, and
-	// the second time when the pallet calls the MockNodeVisitor during execution
-	static ref MOCK_NODE: ReentrantMutex<RefCell<MockNode>> =
-		ReentrantMutex::new(RefCell::new(MockNode::default()));
-}
-
-pub struct MockNode {
-	pub cluster_id: Option<ClusterId>,
-	pub exists: bool,
-}
-
-impl Default for MockNode {
-	fn default() -> Self {
-		Self { cluster_id: None, exists: true }
-	}
-}
-
-pub struct MockNodeVisitor;
-
-impl MockNodeVisitor {
-	// Every test's thread must hold the lock till the end of its test
-	pub fn set_and_hold_lock(mock: MockNode) -> ReentrantMutexGuard<'static, RefCell<MockNode>> {
-		let lock = MOCK_NODE.lock();
-		*lock.borrow_mut() = mock;
-		lock
-	}
-
-	// Every test's thread must release the lock that it previously acquired in the end of its
-	// test
-	pub fn reset_and_release_lock(lock: ReentrantMutexGuard<'static, RefCell<MockNode>>) {
-		*lock.borrow_mut() = MockNode::default();
-	}
-}
-
-impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
-	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, NodeVisitorError> {
-		let lock = MOCK_NODE.lock();
-		let mock_ref = lock.borrow();
-		Ok(mock_ref.cluster_id)
-	}
-	fn exists(_node_pub_key: &NodePubKey) -> bool {
-		let lock = MOCK_NODE.lock();
-		let mock_ref = lock.borrow();
-		mock_ref.exists
-	}
-}
-
-pub struct ExtBuilder {
-	has_storages: bool,
-	stakes: BTreeMap<AccountId, Balance>,
-	storages: Vec<(AccountId, AccountId, Balance, ClusterId)>,
-}
-
-impl Default for ExtBuilder {
-	fn default() -> Self {
-		Self { has_storages: true, stakes: Default::default(), storages: Default::default() }
-	}
-}
+pub struct ExtBuilder;
 
 impl ExtBuilder {
-	pub fn has_storages(mut self, has: bool) -> Self {
-		self.has_storages = has;
-		self
-	}
-	pub fn set_stake(mut self, who: AccountId, stake: Balance) -> Self {
-		self.stakes.insert(who, stake);
-		self
-	}
-	pub fn add_storage(
-		mut self,
-		stash: AccountId,
-		controller: AccountId,
-		stake: Balance,
-		cluster: ClusterId,
-	) -> Self {
-		self.storages.push((stash, controller, stake, cluster));
-		self
-	}
-	pub fn build(self) -> TestExternalities {
+	pub fn build(
+		self,
+		clusts: Vec<BuiltCluster>,
+		nodes: Vec<BuiltNode>,
+		clusters_bonds: Vec<BuiltClusterBond>,
+		nodes_bondes: Vec<BuiltNodeBond>,
+	) -> TestExternalities {
 		sp_tracing::try_init_simple();
-
 		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
-		let _ = pallet_balances::GenesisConfig::<Test> {
-			balances: vec![
-				(1, 100),
-				(2, 100),
-				(3, 100),
-				(4, 100),
-				// storage controllers
-				(10, 100),
-				(20, 100),
-				(30, 100),
-				(40, 100),
-				// storage stashes
-				(11, 100),
-				(21, 100),
-				(31, 100),
-				(41, 100),
-			],
+		let mut balances: Vec<(AccountId, Balance)> = vec![
+			(AccountId::from(USER_KEY_1), ENDOWMENT),
+			(AccountId::from(USER_KEY_2), ENDOWMENT),
+			(AccountId::from(USER_KEY_3), ENDOWMENT),
+			(AccountId::from(USER_KEY_4), ENDOWMENT),
+		];
+
+		let mut storage_nodes = Vec::new();
+		let mut clusters_storage_nodes = Vec::new();
+		for (pub_key, node, cluster_assignment) in nodes.iter() {
+			storage_nodes.push(node.clone());
+			if let Some(ClusterAssignment { cluster_id, kind, status }) = cluster_assignment {
+				clusters_storage_nodes.push((
+					ClusterId::from(cluster_id),
+					vec![(pub_key.clone(), kind.clone(), status.clone())],
+				));
+			}
 		}
-		.assimilate_storage(&mut storage);
-		let mut storages = vec![];
-		if self.has_storages {
-			storages = vec![
-				// (stash, controller, node, stake, cluster)
-				(
-					11,
-					10,
-					NodePubKey::StoragePubKey(StorageNodePubKey::new([12; 32])),
-					100,
-					ClusterId::from([1; 20]),
-				),
-				(
-					21,
-					20,
-					NodePubKey::StoragePubKey(StorageNodePubKey::new([22; 32])),
-					100,
-					ClusterId::from([1; 20]),
-				),
-				(
-					31,
-					30,
-					NodePubKey::StoragePubKey(StorageNodePubKey::new([32; 32])),
-					100,
-					ClusterId::from([1; 20]),
-				),
-				(
-					41,
-					40,
-					NodePubKey::StoragePubKey(StorageNodePubKey::new([42; 32])),
-					100,
-					ClusterId::from([1; 20]),
-				),
-			];
+
+		let mut clusters = Vec::new();
+		let mut clusters_protocol_params = Vec::new();
+		for (cluster, cluster_protocol_params) in clusts.iter() {
+			clusters.push(cluster.clone());
+			clusters_protocol_params.push((cluster.cluster_id, cluster_protocol_params.clone()));
+		}
+
+		for cluster in clusters.iter() {
+			insert_unique_balance(&mut balances, cluster.manager_id.clone(), ENDOWMENT);
+			insert_unique_balance(&mut balances, cluster.reserve_id.clone(), ENDOWMENT);
+		}
+
+		for (stash, controller, _) in clusters_bonds.iter() {
+			insert_unique_balance(&mut balances, stash.clone(), ENDOWMENT);
+			insert_unique_balance(&mut balances, controller.clone(), ENDOWMENT);
+		}
+
+		for (_, node, _) in nodes.iter() {
+			insert_unique_balance(&mut balances, node.provider_id.clone(), ENDOWMENT);
+		}
+
+		for (stash, controller, _, _, _) in nodes_bondes.iter() {
+			insert_unique_balance(&mut balances, stash.clone(), ENDOWMENT);
+			insert_unique_balance(&mut balances, controller.clone(), ENDOWMENT);
 		}
 
 		let _ =
-			pallet_ddc_staking::GenesisConfig::<Test> { storages }.assimilate_storage(&mut storage);
+			pallet_balances::GenesisConfig::<Test> { balances }.assimilate_storage(&mut storage);
+
+		let _ = pallet_ddc_nodes::GenesisConfig::<Test> { storage_nodes }
+			.assimilate_storage(&mut storage);
+
+		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
+			clusters,
+			clusters_protocol_params,
+			clusters_nodes: clusters_storage_nodes,
+		}
+		.assimilate_storage(&mut storage);
+
+		let _ = pallet_ddc_staking::GenesisConfig::<Test> {
+			storages: nodes_bondes,
+			clusters: clusters_bonds,
+		}
+		.assimilate_storage(&mut storage);
 
 		TestExternalities::new(storage)
 	}
-	pub fn build_and_execute(self, test: impl FnOnce()) {
+
+	pub fn build_and_execute(
+		self,
+		clusters: Vec<BuiltCluster>,
+		clusters_nodes: Vec<BuiltNode>,
+		clusters_bonds: Vec<BuiltClusterBond>,
+		nodes_bondes: Vec<BuiltNodeBond>,
+		test: impl FnOnce(),
+	) {
 		sp_tracing::try_init_simple();
-		let mut ext = self.build();
+		let mut ext = self.build(clusters, clusters_nodes, clusters_bonds, nodes_bondes);
 		ext.execute_with(test);
 		ext.execute_with(post_condition);
 	}
@@ -398,7 +501,7 @@ fn check_ledgers() {
 
 fn assert_ledger_consistent(controller: AccountId) {
 	// ensures ledger.total == ledger.active + sum(ledger.unlocking).
-	let ledger = DdcStaking::ledger(controller).expect("Not a controller.");
+	let ledger = DdcStaking::ledger(controller.clone()).expect("Not a controller.");
 	let real_total: Balance = ledger.unlocking.iter().fold(ledger.active, |a, c| a + c.value);
 	assert_eq!(real_total, ledger.total);
 	assert!(

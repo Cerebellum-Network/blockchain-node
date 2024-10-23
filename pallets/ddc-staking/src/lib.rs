@@ -23,16 +23,20 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+const LOG_TARGET: &str = "runtime::ddc-staking";
+
+pub mod migrations;
+
 pub mod weights;
 use core::fmt::Debug;
 
 use codec::{Decode, Encode, HasCompact};
 use ddc_primitives::traits::{
-	cluster::{ClusterCreator, ClusterVisitor, ClusterVisitorError},
+	cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 	node::{NodeCreator, NodeVisitor},
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
-pub use ddc_primitives::{ClusterId, NodePubKey, NodeType};
+pub use ddc_primitives::{ClusterId, ClusterNodesCount, NodePubKey, NodeType};
 use frame_support::{
 	assert_ok,
 	pallet_prelude::*,
@@ -50,7 +54,8 @@ use sp_std::prelude::*;
 
 use crate::weights::WeightInfo;
 
-const DDC_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC maintainer's stake
+const DDC_CLUSTER_STAKING_ID: LockIdentifier = *b"clrstake"; // DDC clusters stake
+const DDC_NODE_STAKING_ID: LockIdentifier = *b"ddcstake"; // DDC clusters maintainer's stake
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
@@ -146,13 +151,13 @@ impl<
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::traits::{cluster::ClusterManager, node::NodeVisitorError};
+	use ddc_primitives::traits::cluster::ClusterManager;
 
 	use super::*;
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+		frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -168,7 +173,7 @@ pub mod pallet {
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
-		type ClusterVisitor: ClusterVisitor<Self>;
+		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
 
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 
@@ -177,6 +182,10 @@ pub mod pallet {
 		type NodeVisitor: NodeVisitor<Self>;
 
 		type NodeCreator: NodeCreator<Self>;
+
+		type ClusterBondingAmount: Get<BalanceOf<Self>>;
+
+		type ClusterUnboningDelay: Get<BlockNumberFor<Self>>;
 	}
 
 	/// Map from all locked "stash" accounts to the controller account.
@@ -211,15 +220,28 @@ pub mod pallet {
 	#[pallet::getter(fn leaving_storages)]
 	pub type LeavingStorages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
+	/// Map from all clusters locked "stash" accounts to the controller account.
+	#[pallet::storage]
+	#[pallet::getter(fn cluster_bonded)]
+	pub type ClusterBonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
+
+	/// Map of all clusters staking ledgers.
+	#[pallet::storage]
+	#[pallet::getter(fn cluster_ledger)]
+	pub type ClusterLedger<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>, T>>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		#[allow(clippy::type_complexity)]
 		pub storages: Vec<(T::AccountId, T::AccountId, NodePubKey, BalanceOf<T>, ClusterId)>,
+		#[allow(clippy::type_complexity)]
+		pub clusters: Vec<(T::AccountId, T::AccountId, ClusterId)>,
 	}
 
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			GenesisConfig { storages: Default::default() }
+			GenesisConfig { storages: Default::default(), clusters: Default::default() }
 		}
 	}
 
@@ -242,6 +264,39 @@ pub mod pallet {
 					T::RuntimeOrigin::from(Some(controller.clone()).into()),
 					cluster,
 				));
+			}
+
+			for &(ref cluster_stash, ref cluster_controller, _cluster) in &self.clusters {
+				let amount = T::ClusterBondingAmount::get();
+
+				assert!(
+					!<ClusterBonded<T>>::contains_key(cluster_stash),
+					"Cluster is already bonded"
+				);
+
+				assert!(
+					!<ClusterLedger<T>>::contains_key(cluster_controller),
+					"Cluster ledger is already exists"
+				);
+
+				assert!(
+					T::Currency::free_balance(cluster_stash) >= amount,
+					"Cluster Stash do not have enough balance to participate in storage network."
+				);
+
+				assert_ok!(frame_system::Pallet::<T>::inc_consumers(cluster_stash));
+
+				<ClusterBonded<T>>::insert(cluster_stash, cluster_controller);
+
+				let ledger = StakingLedger {
+					stash: cluster_stash.clone(),
+					total: amount,
+					active: amount,
+					chilling: Default::default(),
+					unlocking: Default::default(),
+				};
+
+				Pallet::<T>::update_cluster_ledger(cluster_controller, &ledger);
 			}
 		}
 	}
@@ -320,6 +375,7 @@ pub mod pallet {
 		/// Action is prohibited for a node provider stash account that is in the process of
 		/// leaving a cluster
 		NodeIsLeaving,
+		UnbondingProhibited,
 	}
 
 	#[pallet::call]
@@ -436,8 +492,8 @@ pub mod pallet {
 
 				let min_active_bond = if let Some(cluster_id) = Self::storages(&ledger.stash) {
 					let bond_size =
-						T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::Storage)
-							.map_err(Into::<Error<T>>::into)?;
+						T::ClusterProtocol::get_bond_size(&cluster_id, NodeType::Storage)
+							.map_err(|_| Error::<T>::NoClusterGovParams)?;
 					bond_size.saturated_into::<BalanceOf<T>>()
 				} else {
 					// If node is not assigned to a cluster or node is chilling, allow to unbond
@@ -454,11 +510,11 @@ pub mod pallet {
 
 				let unbonding_delay = if T::NodeVisitor::exists(&node_pub_key) {
 					let node_cluster_id = T::NodeVisitor::get_cluster_id(&node_pub_key)
-						.map_err(Into::<Error<T>>::into)?;
+						.map_err(|_| Error::<T>::NoCluster)?;
 
 					if let Some(cluster_id) = node_cluster_id {
-						let bonding_params = T::ClusterVisitor::get_bonding_params(&cluster_id)
-							.map_err(Into::<Error<T>>::into)?;
+						let bonding_params = T::ClusterProtocol::get_bonding_params(&cluster_id)
+							.map_err(|_| Error::<T>::NoClusterGovParams)?;
 
 						let min_bond_size = match node_pub_key {
 							NodePubKey::StoragePubKey(_) => bonding_params.storage_bond_size,
@@ -536,7 +592,7 @@ pub mod pallet {
 				// left. We can now safely remove all staking-related information.
 				Self::kill_stash(&stash)?;
 				// Remove the lock.
-				T::Currency::remove_lock(DDC_STAKING_ID, &stash);
+				T::Currency::remove_lock(DDC_NODE_STAKING_ID, &stash);
 			} else {
 				// This was the consequence of a partial unbond. just update the ledger and move on.
 				Self::update_ledger(&controller, &ledger);
@@ -578,12 +634,15 @@ pub mod pallet {
 		pub fn store(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
 
-			T::ClusterVisitor::ensure_cluster(&cluster_id).map_err(Into::<Error<T>>::into)?;
+			ensure!(
+				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				Error::<T>::NoCluster
+			);
 
 			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
 			// Retrieve the respective bond size from Cluster Visitor
-			let bond_size = T::ClusterVisitor::get_bond_size(&cluster_id, NodeType::Storage)
-				.map_err(Into::<Error<T>>::into)?;
+			let bond_size = T::ClusterProtocol::get_bond_size(&cluster_id, NodeType::Storage)
+				.map_err(|_| Error::<T>::NoClusterGovParams)?;
 			ensure!(
 				ledger.active >= bond_size.saturated_into::<BalanceOf<T>>(),
 				Error::<T>::InsufficientBond
@@ -641,8 +700,8 @@ pub mod pallet {
 
 			// Extract delay from the cluster settings.
 			let (cluster, delay) = if let Some(cluster) = Self::storages(&ledger.stash) {
-				let chill_delay = T::ClusterVisitor::get_chill_delay(&cluster, NodeType::Storage)
-					.map_err(Into::<Error<T>>::into)?;
+				let chill_delay = T::ClusterProtocol::get_chill_delay(&cluster, NodeType::Storage)
+					.map_err(|_| Error::<T>::NoClusterGovParams)?;
 				(cluster, chill_delay)
 			} else {
 				return Ok(()); // node is already chilling or leaving the cluster
@@ -751,7 +810,8 @@ pub mod pallet {
 
 			let cluster_id = <Storages<T>>::get(&stash).ok_or(Error::<T>::NodeHasNoStake)?;
 
-			let is_cluster_node = T::ClusterManager::contains_node(&cluster_id, &node_pub_key);
+			let is_cluster_node =
+				T::ClusterManager::contains_node(&cluster_id, &node_pub_key, None);
 			ensure!(!is_cluster_node, Error::<T>::FastChillProhibited);
 
 			// block number + 1 => no overflow
@@ -761,10 +821,140 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::call_index(8)]
+		#[pallet::weight(T::WeightInfo::bond_cluster())]
+		pub fn bond_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
+			let cluster_stash = ensure_signed(origin)?;
+			let (controller, stash) =
+				<T::ClusterProtocol as ClusterQuery<T>>::get_manager_and_reserve_id(&cluster_id)?;
+
+			ensure!(stash == cluster_stash, Error::<T>::NotStash);
+
+			if <ClusterBonded<T>>::contains_key(&stash) {
+				Err(Error::<T>::AlreadyBonded)?
+			}
+
+			if <ClusterLedger<T>>::contains_key(&controller) {
+				Err(Error::<T>::AlreadyPaired)?
+			}
+
+			let amount = T::ClusterBondingAmount::get();
+
+			// Reject a bond which is considered to be _dust_.
+			if amount < T::Currency::minimum_balance() {
+				Err(Error::<T>::InsufficientBond)?
+			}
+
+			T::ClusterProtocol::bond_cluster(&cluster_id)?;
+
+			frame_system::Pallet::<T>::inc_consumers(&stash).map_err(|_| Error::<T>::BadState)?;
+
+			<ClusterBonded<T>>::insert(&stash, &controller);
+
+			let balance = T::Currency::free_balance(&stash);
+			if balance < amount {
+				return Err(Error::<T>::InsufficientBond)?;
+			}
+
+			Self::deposit_event(Event::<T>::Bonded(stash.clone(), amount));
+			let ledger = StakingLedger {
+				stash,
+				total: amount,
+				active: amount,
+				chilling: Default::default(),
+				unlocking: Default::default(),
+			};
+			Self::update_cluster_ledger(&controller, &ledger);
+			Ok(())
+		}
+
+		#[pallet::call_index(9)]
+		#[pallet::weight(T::WeightInfo::unbond_cluster())]
+		pub fn unbond_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
+			let cluster_controller = ensure_signed(origin)?;
+			let controller = T::ClusterManager::get_manager_account_id(&cluster_id)?;
+
+			ensure!(controller == cluster_controller, Error::<T>::NotController);
+
+			let mut ledger = Self::cluster_ledger(&controller).ok_or(Error::<T>::NotController)?;
+			ensure!(
+				ledger.unlocking.len() < MaxUnlockingChunks::get() as usize,
+				Error::<T>::NoMoreChunks,
+			);
+
+			T::ClusterProtocol::start_unbond_cluster(&cluster_id)?;
+
+			// Unbond the full amount
+			let amount = ledger.active;
+			ledger.active =
+				ledger.active.checked_sub(&amount).ok_or(Error::<T>::ArithmeticUnderflow)?;
+
+			let unbonding_delay = T::ClusterUnboningDelay::get();
+
+			// block number + configuration -> no overflow
+			let block = <frame_system::Pallet<T>>::block_number() + unbonding_delay;
+			if let Some(chunk) = ledger.unlocking.last_mut().filter(|chunk| chunk.block == block) {
+				// To keep the chunk count down, we only keep one chunk per block. Since
+				// `unlocking` is a FiFo queue, if a chunk exists for `block` we know that it
+				// will be the last one.
+				chunk.value = chunk.value.defensive_saturating_add(amount)
+			} else {
+				ledger
+					.unlocking
+					.try_push(UnlockChunk { value: amount, block })
+					.map_err(|_| Error::<T>::NoMoreChunks)?;
+			};
+
+			Self::update_cluster_ledger(&controller, &ledger);
+
+			Self::deposit_event(Event::<T>::Unbonded(ledger.stash, amount));
+
+			Ok(())
+		}
+
+		#[pallet::call_index(10)]
+		#[pallet::weight(T::WeightInfo::withdraw_unbonded_cluster())]
+		pub fn withdraw_unbonded_cluster(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+		) -> DispatchResult {
+			let cluster_controller = ensure_signed(origin)?;
+			let controller = T::ClusterManager::get_manager_account_id(&cluster_id)?;
+			ensure!(controller == cluster_controller, Error::<T>::NotController);
+
+			let mut ledger = Self::cluster_ledger(&controller).ok_or(Error::<T>::NotController)?;
+			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
+
+			ledger = ledger.consolidate_unlocked(<frame_system::Pallet<T>>::block_number());
+
+			if ledger.unlocking.is_empty() && ledger.active < T::Currency::minimum_balance() {
+				// This account must have called `unbond_cluster()` with some value that caused the
+				// active portion to fall below existential deposit + will have no more unlocking
+				// chunks left. We can now safely remove all staking-related information.
+				Self::kill_cluster_stash(&stash)?;
+				// Remove the lock.
+				T::Currency::remove_lock(DDC_CLUSTER_STAKING_ID, &stash);
+				T::ClusterProtocol::end_unbond_cluster(&cluster_id)?;
+			} else {
+				// This was the consequence of a partial unbond. just update the ledger and move on.
+				Self::update_cluster_ledger(&controller, &ledger);
+			};
+
+			// `old_total` should never be less than the new total because
+			// `consolidate_unlocked` strictly subtracts balance.
+			if ledger.total < old_total {
+				// Already checked that this won't overflow by entry condition.
+				let value = old_total - ledger.total;
+				Self::deposit_event(Event::<T>::Withdrawn(stash, value));
+			}
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Update the ledger for a controller.
+		/// Update the ledger for a node controller.
 		///
 		/// This will also update the stash lock.
 		fn update_ledger(
@@ -772,12 +962,28 @@ pub mod pallet {
 			ledger: &StakingLedger<T::AccountId, BalanceOf<T>, T>,
 		) {
 			T::Currency::set_lock(
-				DDC_STAKING_ID,
+				DDC_NODE_STAKING_ID,
 				&ledger.stash,
 				ledger.total,
 				WithdrawReasons::all(),
 			);
 			<Ledger<T>>::insert(controller, ledger);
+		}
+
+		/// Update the ledger for a cluster.
+		///
+		/// This will also update the stash lock.
+		fn update_cluster_ledger(
+			controller: &T::AccountId,
+			ledger: &StakingLedger<T::AccountId, BalanceOf<T>, T>,
+		) {
+			T::Currency::set_lock(
+				DDC_CLUSTER_STAKING_ID,
+				&ledger.stash,
+				ledger.total,
+				WithdrawReasons::all(),
+			);
+			<ClusterLedger<T>>::insert(controller, ledger);
 		}
 
 		/// Chill a stash account.
@@ -827,6 +1033,21 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Remove all associated data of a cluster stash account from the staking system.
+		///
+		/// This is called:
+		/// - after a `withdraw_unbonded_cluster()` call that frees all of a stash's bonded balance.
+		fn kill_cluster_stash(stash: &T::AccountId) -> DispatchResult {
+			let controller = <ClusterBonded<T>>::get(stash).ok_or(Error::<T>::NotStash)?;
+
+			<ClusterBonded<T>>::remove(stash);
+			<ClusterLedger<T>>::remove(&controller);
+
+			frame_system::Pallet::<T>::dec_consumers(stash);
+
+			Ok(())
+		}
+
 		/// This function will add a storage network participant to the `Storages` storage map.
 		///
 		/// If the storage network participant already exists, their cluster will be updated.
@@ -861,7 +1082,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			Nodes::<T>::insert(&node, &stash);
 			Providers::<T>::insert(&stash, &node);
-			<Bonded<T>>::insert(&stash, &controller);
+			Bonded::<T>::insert(&stash, &controller);
 			let stash_balance = T::Currency::free_balance(&stash);
 			let value = value.min(stash_balance);
 			Self::deposit_event(Event::<T>::Bonded(stash.clone(), value));
@@ -877,6 +1098,26 @@ pub mod pallet {
 				NodePubKey::StoragePubKey(_node) => Self::do_add_storage(&stash, cluster_id),
 			}
 
+			Ok(())
+		}
+
+		fn bond_cluster(
+			cluster_stash: T::AccountId,
+			cluster_controller: T::AccountId,
+			cluster_id: ClusterId,
+		) -> DispatchResult {
+			ClusterBonded::<T>::insert(&cluster_stash, &cluster_controller);
+			let amount = T::ClusterBondingAmount::get();
+			Self::deposit_event(Event::<T>::Bonded(cluster_stash.clone(), amount));
+			let ledger = StakingLedger {
+				stash: cluster_stash,
+				total: amount,
+				active: amount,
+				chilling: Default::default(),
+				unlocking: Default::default(),
+			};
+			Self::update_cluster_ledger(&cluster_controller, &ledger);
+			T::ClusterProtocol::bond_cluster(&cluster_id)?;
 			Ok(())
 		}
 	}
@@ -913,22 +1154,11 @@ pub mod pallet {
 
 			Ok(is_chilling_attempt)
 		}
-	}
 
-	impl<T> From<ClusterVisitorError> for Error<T> {
-		fn from(error: ClusterVisitorError) -> Self {
-			match error {
-				ClusterVisitorError::ClusterDoesNotExist => Error::<T>::NoCluster,
-				ClusterVisitorError::ClusterGovParamsNotSet => Error::<T>::NoClusterGovParams,
-			}
-		}
-	}
-
-	impl<T> From<NodeVisitorError> for Error<T> {
-		fn from(error: NodeVisitorError) -> Self {
-			match error {
-				NodeVisitorError::NodeDoesNotExist => Error::<T>::NodeIsNotFound,
-			}
+		fn stash_by_ctrl(controller: &T::AccountId) -> Result<T::AccountId, StakingVisitorError> {
+			Self::ledger(controller)
+				.map(|l| l.stash)
+				.ok_or(StakingVisitorError::ControllerDoesNotExist)
 		}
 	}
 }
