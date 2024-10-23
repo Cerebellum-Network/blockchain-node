@@ -390,14 +390,16 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 		redundancy_factor,
 		quorum,
 	);
-	assert_eq!(groups.in_consensus.len(), 1);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 1);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
+	assert_eq!(usages.len(), 1); // 1 consolidated aggregate per 1 aggregation key
+
 	let usage = usages.first().unwrap();
 	assert_eq!(usage.stored_bytes, 100);
 	assert_eq!(usage.transferred_bytes, 50);
@@ -512,14 +514,16 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 		redundancy_factor,
 		quorum,
 	);
-	assert_eq!(groups.in_consensus.len(), 0);
-	assert_eq!(groups.in_quorum.len(), 1);
-	assert_eq!(groups.in_others.len(), 1);
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 1); // 2 consistent aggregates merged into 1 in 'quorum'
+	assert_eq!(groups.others.len(), 1); // 1 inconsistent aggregate goes to 'others'
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
+	assert_eq!(usages.len(), 1); // 1 consolidated aggregate per 1 aggregation key
+
 	let usage = usages.first().unwrap();
 	assert_eq!(usage.stored_bytes, 100);
 	assert_eq!(usage.transferred_bytes, 50);
@@ -635,14 +639,140 @@ fn buckets_sub_aggregates_in_others_merged() {
 		quorum,
 	);
 
-	assert_eq!(groups.in_consensus.len(), 0);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 2);
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 2);
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
+	assert_eq!(usages.len(), 1); // 1 consolidated aggregate per 1 aggregation key
+
+	let usage = usages.first().unwrap();
+	assert_eq!(usage.stored_bytes, 100);
+	assert_eq!(usage.transferred_bytes, 50);
+	assert_eq!(usage.number_of_puts, 10);
+	assert_eq!(usage.number_of_gets, 20);
+}
+
+#[test]
+fn buckets_sub_aggregates_in_others_merged_2() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(100);
+	let cluster_id = ClusterId::from([1; 20]);
+	let era_id = 476817;
+
+	let aggregator1 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.236".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example1.com".to_vec(),
+		},
+	};
+
+	let aggregator2 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "95.217.8.119".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		},
+	};
+
+	let aggregator3 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.42".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		},
+	};
+
+	let resp1 = (
+		aggregator1,
+		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			bucket_id: 1,
+			sub_aggregates: vec![BucketSubAggregateResponse {
+				NodeID: "1".to_string(),
+				stored_bytes: 100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
+			}],
+		}],
+	);
+
+	let resp2 = (
+		aggregator2,
+		vec![BucketAggregateResponse {
+			stored_bytes: 200,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			bucket_id: 2,
+			sub_aggregates: vec![BucketSubAggregateResponse {
+				NodeID: "1".to_string(),
+				stored_bytes: 200,
+				transferred_bytes: 500,
+				number_of_puts: 30,
+				number_of_gets: 40,
+			}],
+		}],
+	);
+
+	let resp3 = (
+		aggregator3,
+		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			bucket_id: 1,
+			sub_aggregates: vec![BucketSubAggregateResponse {
+				NodeID: "1".to_string(),
+				stored_bytes: 100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
+			}],
+		}],
+	);
+
+	let groups = DdcVerification::group_buckets_sub_aggregates_by_consistency(
+		&cluster_id,
+		era_id,
+		vec![resp1, resp2, resp3],
+		redundancy_factor,
+		quorum,
+	);
+
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 2); // 2 inconsistent aggregates
+
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+
+	assert!(result.is_ok());
+	let usages = result.unwrap();
+	assert_eq!(usages.len(), 2);
 
 	let usage1 = usages.first().unwrap();
 	assert_eq!(usage1.stored_bytes, 100);
@@ -652,9 +782,9 @@ fn buckets_sub_aggregates_in_others_merged() {
 
 	let usage2 = usages.get(1).unwrap();
 	assert_eq!(usage2.stored_bytes, 200);
-	assert_eq!(usage2.transferred_bytes, 50);
-	assert_eq!(usage2.number_of_puts, 10);
-	assert_eq!(usage2.number_of_gets, 20);
+	assert_eq!(usage2.transferred_bytes, 500);
+	assert_eq!(usage2.number_of_puts, 30);
+	assert_eq!(usage2.number_of_gets, 40);
 }
 
 #[test]
@@ -743,14 +873,16 @@ fn nodes_aggregates_in_consensus_merged() {
 		redundancy_factor,
 		quorum,
 	);
-	assert_eq!(groups.in_consensus.len(), 1);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 1);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
+	assert_eq!(usages.len(), 1); // 1 consolidated aggregate per 1 aggregation key
+
 	let usage = usages.first().unwrap();
 	assert_eq!(usage.stored_bytes, 100);
 	assert_eq!(usage.transferred_bytes, 50);
@@ -844,14 +976,16 @@ fn nodes_aggregates_in_quorum_merged() {
 		redundancy_factor,
 		quorum,
 	);
-	assert_eq!(groups.in_consensus.len(), 0);
-	assert_eq!(groups.in_quorum.len(), 1);
-	assert_eq!(groups.in_others.len(), 1);
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 1); // 2 consistent aggregates merged into 1 in 'quorum'
+	assert_eq!(groups.others.len(), 1); // 1 inconsistent aggregate goes to 'others'
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
+	assert_eq!(usages.len(), 1); // 1 consolidated aggregate per 1 aggregation key
+
 	let usage = usages.first().unwrap();
 	assert_eq!(usage.stored_bytes, 100);
 	assert_eq!(usage.transferred_bytes, 50);
@@ -946,26 +1080,131 @@ fn nodes_aggregates_in_others_merged() {
 		quorum,
 	);
 
-	assert_eq!(groups.in_consensus.len(), 0);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 2);
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 2);
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
+	assert_eq!(usages.len(), 1); // 1 consolidated aggregate per 1 aggregation key
 
-	let usage1 = usages.first().unwrap();
+	let usage = usages.first().unwrap();
+	assert_eq!(usage.stored_bytes, 200);
+	assert_eq!(usage.transferred_bytes, 50);
+	assert_eq!(usage.number_of_puts, 10);
+	assert_eq!(usage.number_of_gets, 20);
+}
+
+#[test]
+fn nodes_aggregates_in_others_merged_2() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(100);
+	let cluster_id = ClusterId::from([1; 20]);
+	let era_id = 476817;
+
+	let aggregator1 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.236".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example1.com".to_vec(),
+		},
+	};
+
+	let aggregator2 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "95.217.8.119".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		},
+	};
+
+	let aggregator3 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.42".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		},
+	};
+
+	let resp1 = (
+		aggregator1,
+		vec![NodeAggregateResponse {
+			node_id: "2".to_string(),
+			stored_bytes: 1000,
+			transferred_bytes: 500,
+			number_of_puts: 15,
+			number_of_gets: 30,
+		}],
+	);
+
+	let resp2 = (
+		aggregator2,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 200,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let resp3 = (
+		aggregator3,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
+		&cluster_id,
+		era_id,
+		vec![resp1, resp2, resp3],
+		redundancy_factor,
+		quorum,
+	);
+
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 3); // 3 inconsistent aggregates
+
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+
+	assert!(result.is_ok());
+	let usages = result.unwrap();
+	assert_eq!(usages.len(), 2);
+
+	let usage1 = usages.get(1).unwrap();
 	assert_eq!(usage1.stored_bytes, 200);
 	assert_eq!(usage1.transferred_bytes, 50);
 	assert_eq!(usage1.number_of_puts, 10);
 	assert_eq!(usage1.number_of_gets, 20);
 
-	let usage2 = usages.get(1).unwrap();
-	assert_eq!(usage2.stored_bytes, 100);
-	assert_eq!(usage2.transferred_bytes, 50);
-	assert_eq!(usage2.number_of_puts, 10);
-	assert_eq!(usage2.number_of_gets, 20);
+	let usage2 = usages.first().unwrap();
+	assert_eq!(usage2.stored_bytes, 1000);
+	assert_eq!(usage2.transferred_bytes, 500);
+	assert_eq!(usage2.number_of_puts, 15);
+	assert_eq!(usage2.number_of_gets, 30);
 }
 
 #[test]
@@ -1021,28 +1260,17 @@ fn buckets_sub_aggregates_grouped_by_consistency() {
 	let groups =
 		DdcVerification::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
 
-	assert_eq!(groups.in_consensus.len(), 1);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 1);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 
-	let agg1 = groups.in_consensus[0].get(0).unwrap();
-	let agg2 = groups.in_consensus[0].get(1).unwrap();
-	let agg3 = groups.in_consensus[0].get(2).unwrap();
-
-	assert_eq!(agg1.stored_bytes, 100);
-	assert_eq!(agg1.transferred_bytes, 50);
-	assert_eq!(agg1.number_of_puts, 10);
-	assert_eq!(agg1.number_of_gets, 20);
-
-	assert_eq!(agg2.stored_bytes, 100);
-	assert_eq!(agg2.transferred_bytes, 50);
-	assert_eq!(agg2.number_of_puts, 10);
-	assert_eq!(agg2.number_of_gets, 20);
-
-	assert_eq!(agg3.stored_bytes, 100);
-	assert_eq!(agg3.transferred_bytes, 50);
-	assert_eq!(agg3.number_of_puts, 10);
-	assert_eq!(agg3.number_of_gets, 20);
+	let consolidated_aggregate = groups.consensus[0].aggregate.clone();
+	assert_eq!(consolidated_aggregate.stored_bytes, 100);
+	assert_eq!(consolidated_aggregate.transferred_bytes, 50);
+	assert_eq!(consolidated_aggregate.number_of_puts, 10);
+	assert_eq!(consolidated_aggregate.number_of_gets, 20);
+	assert_eq!(groups.consensus[0].count, 3);
+	assert_eq!(groups.consensus[0].aggregators.len(), 3);
 }
 
 #[test]
@@ -1126,53 +1354,27 @@ fn buckets_sub_aggregates_grouped_by_consistency_2() {
 	let groups =
 		DdcVerification::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
 
-	assert_eq!(groups.in_consensus.len(), 2);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 2);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 
-	let g1_agg1 = groups.in_consensus[0].get(0).unwrap();
-	let g1_agg2 = groups.in_consensus[0].get(1).unwrap();
-	let g1_agg3 = groups.in_consensus[0].get(2).unwrap();
+	let consolidated_aggregate_in_consensus_1 = groups.consensus[0].aggregate.clone();
+	assert_eq!(consolidated_aggregate_in_consensus_1.bucket_id, 1);
+	assert_eq!(consolidated_aggregate_in_consensus_1.stored_bytes, 100);
+	assert_eq!(consolidated_aggregate_in_consensus_1.transferred_bytes, 50);
+	assert_eq!(consolidated_aggregate_in_consensus_1.number_of_puts, 10);
+	assert_eq!(consolidated_aggregate_in_consensus_1.number_of_gets, 20);
+	assert_eq!(groups.consensus[0].count, 3);
+	assert_eq!(groups.consensus[0].aggregators.len(), 3);
 
-	assert_eq!(g1_agg1.bucket_id, 1);
-	assert_eq!(g1_agg1.stored_bytes, 100);
-	assert_eq!(g1_agg1.transferred_bytes, 50);
-	assert_eq!(g1_agg1.number_of_puts, 10);
-	assert_eq!(g1_agg1.number_of_gets, 20);
-
-	assert_eq!(g1_agg2.bucket_id, 1);
-	assert_eq!(g1_agg2.stored_bytes, 100);
-	assert_eq!(g1_agg2.transferred_bytes, 50);
-	assert_eq!(g1_agg2.number_of_puts, 10);
-	assert_eq!(g1_agg2.number_of_gets, 20);
-
-	assert_eq!(g1_agg3.bucket_id, 1);
-	assert_eq!(g1_agg3.stored_bytes, 100);
-	assert_eq!(g1_agg3.transferred_bytes, 50);
-	assert_eq!(g1_agg3.number_of_puts, 10);
-	assert_eq!(g1_agg3.number_of_gets, 20);
-
-	let g2_agg1 = groups.in_consensus[1].get(0).unwrap();
-	let g2_agg2 = groups.in_consensus[1].get(1).unwrap();
-	let g2_agg3 = groups.in_consensus[1].get(2).unwrap();
-
-	assert_eq!(g2_agg1.bucket_id, 2);
-	assert_eq!(g2_agg1.stored_bytes, 110);
-	assert_eq!(g2_agg1.transferred_bytes, 50);
-	assert_eq!(g2_agg1.number_of_puts, 10);
-	assert_eq!(g2_agg1.number_of_gets, 20);
-
-	assert_eq!(g2_agg2.bucket_id, 2);
-	assert_eq!(g2_agg2.stored_bytes, 110);
-	assert_eq!(g2_agg2.transferred_bytes, 50);
-	assert_eq!(g2_agg2.number_of_puts, 10);
-	assert_eq!(g2_agg2.number_of_gets, 20);
-
-	assert_eq!(g2_agg3.bucket_id, 2);
-	assert_eq!(g2_agg3.stored_bytes, 110);
-	assert_eq!(g2_agg3.transferred_bytes, 50);
-	assert_eq!(g2_agg3.number_of_puts, 10);
-	assert_eq!(g2_agg3.number_of_gets, 20);
+	let consolidated_aggregate_in_consensus_2 = groups.consensus[1].aggregate.clone();
+	assert_eq!(consolidated_aggregate_in_consensus_2.bucket_id, 2);
+	assert_eq!(consolidated_aggregate_in_consensus_2.stored_bytes, 110);
+	assert_eq!(consolidated_aggregate_in_consensus_2.transferred_bytes, 50);
+	assert_eq!(consolidated_aggregate_in_consensus_2.number_of_puts, 10);
+	assert_eq!(consolidated_aggregate_in_consensus_2.number_of_gets, 20);
+	assert_eq!(groups.consensus[1].count, 3);
+	assert_eq!(groups.consensus[1].aggregators.len(), 3);
 }
 
 #[test]
@@ -1225,28 +1427,17 @@ fn nodes_aggregates_grouped_by_consistency() {
 
 	let groups = DdcVerification::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
 
-	assert_eq!(groups.in_consensus.len(), 1);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 1);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 
-	let agg1 = groups.in_consensus[0].get(0).unwrap();
-	let agg2 = groups.in_consensus[0].get(1).unwrap();
-	let agg3 = groups.in_consensus[0].get(2).unwrap();
-
-	assert_eq!(agg1.stored_bytes, 100);
-	assert_eq!(agg1.transferred_bytes, 50);
-	assert_eq!(agg1.number_of_puts, 10);
-	assert_eq!(agg1.number_of_gets, 20);
-
-	assert_eq!(agg2.stored_bytes, 100);
-	assert_eq!(agg2.transferred_bytes, 50);
-	assert_eq!(agg2.number_of_puts, 10);
-	assert_eq!(agg2.number_of_gets, 20);
-
-	assert_eq!(agg3.stored_bytes, 100);
-	assert_eq!(agg3.transferred_bytes, 50);
-	assert_eq!(agg3.number_of_puts, 10);
-	assert_eq!(agg3.number_of_gets, 20);
+	let consolidated_aggregate_in_consensus = groups.consensus[0].aggregate.clone();
+	assert_eq!(consolidated_aggregate_in_consensus.stored_bytes, 100);
+	assert_eq!(consolidated_aggregate_in_consensus.transferred_bytes, 50);
+	assert_eq!(consolidated_aggregate_in_consensus.number_of_puts, 10);
+	assert_eq!(consolidated_aggregate_in_consensus.number_of_gets, 20);
+	assert_eq!(groups.consensus[0].count, 3);
+	assert_eq!(groups.consensus[0].aggregators.len(), 3);
 }
 
 #[test]
@@ -1323,53 +1514,28 @@ fn nodes_aggregates_grouped_by_consistency_2() {
 
 	let groups = DdcVerification::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
 
-	assert_eq!(groups.in_consensus.len(), 2);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 2);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 
-	let g1_agg1 = groups.in_consensus[0].get(0).unwrap();
-	let g1_agg2 = groups.in_consensus[0].get(1).unwrap();
-	let g1_agg3 = groups.in_consensus[0].get(2).unwrap();
+	let consolidated_aggregate_1 = groups.consensus[0].aggregate.clone();
+	assert_eq!(consolidated_aggregate_1.node_id, "2".to_string());
+	assert_eq!(consolidated_aggregate_1.stored_bytes, 110);
+	assert_eq!(consolidated_aggregate_1.transferred_bytes, 50);
+	assert_eq!(consolidated_aggregate_1.number_of_puts, 10);
+	assert_eq!(consolidated_aggregate_1.number_of_gets, 20);
+	assert_eq!(groups.consensus[0].count, 3);
+	assert_eq!(groups.consensus[0].aggregators.len(), 3);
 
-	assert_eq!(g1_agg1.node_id, "2".to_string());
-	assert_eq!(g1_agg1.stored_bytes, 110);
-	assert_eq!(g1_agg1.transferred_bytes, 50);
-	assert_eq!(g1_agg1.number_of_puts, 10);
-	assert_eq!(g1_agg1.number_of_gets, 20);
+	let consolidated_aggregate_2 = groups.consensus[1].aggregate.clone();
 
-	assert_eq!(g1_agg2.node_id, "2".to_string());
-	assert_eq!(g1_agg2.stored_bytes, 110);
-	assert_eq!(g1_agg2.transferred_bytes, 50);
-	assert_eq!(g1_agg2.number_of_puts, 10);
-	assert_eq!(g1_agg2.number_of_gets, 20);
-
-	assert_eq!(g1_agg3.node_id, "2".to_string());
-	assert_eq!(g1_agg3.stored_bytes, 110);
-	assert_eq!(g1_agg3.transferred_bytes, 50);
-	assert_eq!(g1_agg3.number_of_puts, 10);
-	assert_eq!(g1_agg3.number_of_gets, 20);
-
-	let g2_agg1 = groups.in_consensus[1].get(0).unwrap();
-	let g2_agg2 = groups.in_consensus[1].get(1).unwrap();
-	let g2_agg3 = groups.in_consensus[1].get(2).unwrap();
-
-	assert_eq!(g2_agg1.node_id, "1".to_string());
-	assert_eq!(g2_agg1.stored_bytes, 100);
-	assert_eq!(g2_agg1.transferred_bytes, 50);
-	assert_eq!(g2_agg1.number_of_puts, 10);
-	assert_eq!(g2_agg1.number_of_gets, 20);
-
-	assert_eq!(g2_agg2.node_id, "1".to_string());
-	assert_eq!(g2_agg2.stored_bytes, 100);
-	assert_eq!(g2_agg2.transferred_bytes, 50);
-	assert_eq!(g2_agg2.number_of_puts, 10);
-	assert_eq!(g2_agg2.number_of_gets, 20);
-
-	assert_eq!(g2_agg3.node_id, "1".to_string());
-	assert_eq!(g2_agg3.stored_bytes, 100);
-	assert_eq!(g2_agg3.transferred_bytes, 50);
-	assert_eq!(g2_agg3.number_of_puts, 10);
-	assert_eq!(g2_agg3.number_of_gets, 20);
+	assert_eq!(consolidated_aggregate_2.node_id, "1".to_string());
+	assert_eq!(consolidated_aggregate_2.stored_bytes, 100);
+	assert_eq!(consolidated_aggregate_2.transferred_bytes, 50);
+	assert_eq!(consolidated_aggregate_2.number_of_puts, 10);
+	assert_eq!(consolidated_aggregate_2.number_of_gets, 20);
+	assert_eq!(groups.consensus[1].count, 3);
+	assert_eq!(groups.consensus[1].aggregators.len(), 3);
 }
 
 #[test]
@@ -1380,9 +1546,9 @@ fn empty_bucket_sub_aggregates() {
 	let empty = Vec::<BucketSubAggregate>::new();
 	let groups = DdcVerification::group_by_consistency(empty, redundancy_factor, quorum);
 
-	assert_eq!(groups.in_consensus.len(), 0);
-	assert_eq!(groups.in_quorum.len(), 0);
-	assert_eq!(groups.in_others.len(), 0);
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 0);
 }
 
 #[test]
@@ -1562,25 +1728,18 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_consensus,
+			groups.consensus,
 			vec![
-				ConsistentGroup(bucket_sub_aggregate_in_consensus.hash::<Test>(), vec![
-					bucket_sub_aggregate_in_consensus.clone(),
-					BucketSubAggregate {
-						aggregator: AggregatorInfo {
-							node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
-							node_params: node_params2.clone(),
-						},
-						..bucket_sub_aggregate_in_consensus.clone()
-					},
-					BucketSubAggregate {
-						aggregator: AggregatorInfo {
-							node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
-							node_params: node_params3.clone(),
-						},
-						..bucket_sub_aggregate_in_consensus.clone()
-					},
-				])
+				ConsolidatedAggregate::new(bucket_sub_aggregate_in_consensus, 3, vec![AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params1.clone(),
+				}, AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+					node_params: node_params2.clone(),
+				}, AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+					node_params: node_params3.clone(),
+				}])
 			]
 		);
 
@@ -1600,15 +1759,15 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_quorum,
+			groups.quorum,
 			vec![
-				ConsistentGroup(bucket_sub_aggregate_in_quorum.hash::<Test>(), vec![bucket_sub_aggregate_in_quorum.clone(), BucketSubAggregate {aggregator: AggregatorInfo {
-							node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
-							node_params: node_params3.clone(),
-						},
-						..bucket_sub_aggregate_in_quorum.clone()
-					},
-				]),
+				ConsolidatedAggregate::new(bucket_sub_aggregate_in_quorum, 2, vec![AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+					node_params: node_params1.clone(),
+                }, AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+					node_params: node_params3.clone(),
+				}])
 			]
 		);
 
@@ -1642,10 +1801,16 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_others,
+			groups.others,
 			vec![
-				ConsistentGroup(bucket_sub_aggregate2_in_others.hash::<Test>(), vec![bucket_sub_aggregate2_in_others]),
-				ConsistentGroup(bucket_sub_aggregate1_in_others.hash::<Test>(), vec![bucket_sub_aggregate1_in_others]),
+				ConsolidatedAggregate::new(bucket_sub_aggregate2_in_others, 1, vec![AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([5; 32])),
+					node_params: node_params5.clone(),
+				}]),
+				ConsolidatedAggregate::new(bucket_sub_aggregate1_in_others, 1, vec![AggregatorInfo {
+					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+					node_params: node_params2.clone(),
+				}]),
 			]
 		);
 	});
@@ -1825,8 +1990,11 @@ fn node_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_consensus,
-			vec![ConsistentGroup(node_aggregate_in_consensus.hash::<Test>(), vec![node_aggregate_in_consensus.clone(), NodeAggregate { aggregator: AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])), node_params: node_params2.clone(), }, ..node_aggregate_in_consensus.clone() }, NodeAggregate { aggregator: AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])), node_params: node_params3.clone(), }, ..node_aggregate_in_consensus.clone() } ])]
+			groups.consensus,
+			vec![ConsolidatedAggregate::new(node_aggregate_in_consensus.clone(), 3, vec![
+				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])), node_params: node_params1.clone() },
+				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])), node_params: node_params2.clone() },
+				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])), node_params: node_params3.clone() }])]
 		);
 
 		// Node aggregates which are in quorum
@@ -1844,7 +2012,10 @@ fn node_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_quorum, vec![ConsistentGroup(node_aggregate_in_quorum.hash::<Test>(), vec![node_aggregate_in_quorum.clone(), NodeAggregate {aggregator: AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([4; 32])), node_params: node_params4.clone(), }, ..node_aggregate_in_quorum.clone() }])]
+			groups.quorum, vec![ConsolidatedAggregate::new(node_aggregate_in_quorum.clone(), 2, vec![
+				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])), node_params: node_params1.clone() },
+				AggregatorInfo { node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([4; 32])), node_params: node_params4.clone() }
+			])]
 		);
 
 		// Others nodes aggregates
@@ -1875,7 +2046,14 @@ fn node_aggregates_are_fetched_and_grouped() {
 		};
 
 		assert_eq!(
-			groups.in_others, vec![ConsistentGroup(node_aggregate2_in_others.hash::<Test>(), vec![node_aggregate2_in_others]), ConsistentGroup(node_aggregate1_in_others.hash::<Test>(), vec![node_aggregate1_in_others])]
+			groups.others, vec![
+				ConsolidatedAggregate::new(node_aggregate2_in_others.clone(), 1, vec![AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([5; 32])),
+				node_params: node_params5.clone(),
+			}]), ConsolidatedAggregate::new(node_aggregate1_in_others.clone(), 1, vec![AggregatorInfo {
+				node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+				node_params: node_params2.clone(),
+			}])]
 		);
 	});
 }
