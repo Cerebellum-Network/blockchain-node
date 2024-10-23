@@ -1,5 +1,5 @@
 [workspace.package]
-version = "5.6.0"
+version = "6.1.0"
 authors = ["Cerebellum-Network"]
 edition = "2021"
 homepage = "https://cere.network/"
@@ -21,6 +21,7 @@ members = [
   "pallets/erc721",
   "pallets/ddc-clusters-gov",
   "pallets/origins",
+  "pallets/ddc-verification",
   "primitives",
   "runtime/cere",
   "runtime/cere-dev",
@@ -29,6 +30,7 @@ resolver = "2"
 
 [workspace.dependencies]
 # 3rd-party dependencies
+base64ct = { version = "1.6.0" }
 blake2 = { version = "0.10.6", default-features = false }
 byte-unit = { version = "4.0.19", default-features = false, features = ["u128"] }
 chrono = { version = "0.4.31", default-features = false }
@@ -189,6 +191,7 @@ pallet-ddc-customers = { path = "pallets/ddc-customers", default-features = fals
 pallet-ddc-nodes = { path = "pallets/ddc-nodes", default-features = false }
 pallet-ddc-payouts = { path = "pallets/ddc-payouts", default-features = false }
 pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
+pallet-ddc-verification = { path = "pallets/ddc-verification", default-features = false }
 pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
 pallet-origins = { path = "pallets/origins", default-features = false }

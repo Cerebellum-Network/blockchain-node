@@ -30,8 +30,8 @@ fn fast_forward_to<T: Config>(n: BlockNumberFor<T>) {
 	}
 }
 
-fn assert_has_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
-	frame_system::Pallet::<T>::assert_has_event(generic_event.into());
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 
 benchmarks! {
@@ -181,7 +181,7 @@ benchmarks! {
 		assert!(ClusterBonded::<T>::contains_key(&cluster_reserve_id));
 		assert!(ClusterLedger::<T>::contains_key(&cluster_manager_id));
 		let amount = T::ClusterBondingAmount::get();
-		assert_has_event::<T>(Event::Bonded(cluster_reserve_id, amount).into());
+		assert_last_event::<T>(Event::Bonded(cluster_reserve_id, amount).into());
 	}
 
 	unbond_cluster {
@@ -209,7 +209,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(cluster_manager_id.clone()), cluster_id)
 	verify {
 		let amount = T::ClusterBondingAmount::get();
-		assert_has_event::<T>(Event::Unbonded(cluster_reserve_id, amount).into());
+		assert_last_event::<T>(Event::Unbonded(cluster_reserve_id, amount).into());
 	}
 
 	withdraw_unbonded_cluster {
@@ -243,6 +243,6 @@ benchmarks! {
 		assert!(!ClusterBonded::<T>::contains_key(&cluster_reserve_id));
 		assert!(!ClusterLedger::<T>::contains_key(&cluster_manager_id));
 		let amount = T::ClusterBondingAmount::get();
-		assert_has_event::<T>(Event::Withdrawn(cluster_reserve_id, amount).into());
+		assert_last_event::<T>(Event::Withdrawn(cluster_reserve_id, amount).into());
 	}
 }

@@ -1,10 +1,11 @@
 use frame_system::{pallet_prelude::BlockNumberFor, Config};
 use sp_runtime::{DispatchError, DispatchResult};
+use sp_std::prelude::*;
 
 use crate::{
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, DdcEra, NodePubKey, NodeType,
 };
 
 pub trait ClusterQuery<T: Config> {
@@ -71,6 +72,8 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 		validation_status: Option<ClusterNodeStatus>,
 	) -> bool;
 
+	fn get_nodes(cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError>;
+
 	fn add_node(
 		cluster_id: &ClusterId,
 		node_pub_key: &NodePubKey,
@@ -91,4 +94,23 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 		node_pub_key: &NodePubKey,
 		succeeded: bool,
 	) -> Result<(), DispatchError>;
+}
+pub trait ClusterValidator<T: Config> {
+	/// Updates the `last_validated_era_id` for the given cluster and emits an event indicating the
+	/// update.
+	///
+	/// # Parameters
+	///
+	/// - `cluster_id`: A reference to the unique identifier of the cluster that needs its last
+	///   validated era updated.
+	/// - `era_id`: The new era identifier to be set as the last validated era for the cluster.
+	///
+	/// # Returns
+	///
+	/// Returns `Ok(())` if the operation was successful, otherwise returns a `DispatchError`.
+	///
+	/// # Events
+	///
+	/// Emits `ClusterEraValidated` event if the operation is successful.
+	fn set_last_validated_era(cluster_id: &ClusterId, era_id: DdcEra) -> Result<(), DispatchError>;
 }

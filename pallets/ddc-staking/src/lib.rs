@@ -1154,5 +1154,11 @@ pub mod pallet {
 
 			Ok(is_chilling_attempt)
 		}
+
+		fn stash_by_ctrl(controller: &T::AccountId) -> Result<T::AccountId, StakingVisitorError> {
+			Self::ledger(controller)
+				.map(|l| l.stash)
+				.ok_or(StakingVisitorError::ControllerDoesNotExist)
+		}
 	}
 }

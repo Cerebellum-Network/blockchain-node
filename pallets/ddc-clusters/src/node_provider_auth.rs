@@ -63,7 +63,7 @@ where
 		.result
 		.map_err(|_| NodeProviderAuthContractError::ContractCallFailed)?
 		.data
-		.first()
+		.get(1)
 		.is_some_and(|x| *x == 1);
 
 		Ok(is_authorized)

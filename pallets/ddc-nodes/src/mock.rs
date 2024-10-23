@@ -12,17 +12,18 @@ use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage,
+	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
+	BuildStorage, MultiSignature,
 };
 
 use crate::{self as pallet_ddc_nodes, *};
 
 /// The AccountId alias in this test module.
-pub(crate) type AccountId = u64;
+pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 pub(crate) type AccountIndex = u64;
 pub(crate) type BlockNumber = u64;
 pub(crate) type Balance = u128;
+pub type Signature = MultiSignature;
 
 type UncheckedExtrinsic = MockUncheckedExtrinsic<Test>;
 type Block = MockBlock<Test>;
@@ -111,6 +112,10 @@ impl<T: Config> StakingVisitor<T> for TestStakingVisitor {
 	fn has_chilling_attempt(_node_pub_key: &NodePubKey) -> Result<bool, StakingVisitorError> {
 		Ok(false)
 	}
+
+	fn stash_by_ctrl(_controller: &T::AccountId) -> Result<T::AccountId, StakingVisitorError> {
+		todo!()
+	}
 }
 
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
@@ -122,9 +127,12 @@ impl ExtBuilder {
 		sp_tracing::try_init_simple();
 
 		let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
-
-		let _ = pallet_balances::GenesisConfig::<Test> { balances: vec![(1, 100), (2, 100)] }
-			.assimilate_storage(&mut t);
+		let account_id1 = AccountId::from([1; 32]);
+		let account_id2 = AccountId::from([2; 32]);
+		let _ = pallet_balances::GenesisConfig::<Test> {
+			balances: vec![(account_id1, 100), (account_id2, 100)],
+		}
+		.assimilate_storage(&mut t);
 
 		TestExternalities::new(t)
 	}
