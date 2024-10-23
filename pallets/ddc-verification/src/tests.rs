@@ -515,8 +515,8 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 		quorum,
 	);
 	assert_eq!(groups.consensus.len(), 0);
-	assert_eq!(groups.quorum.len(), 1);
-	assert_eq!(groups.others.len(), 1);
+	assert_eq!(groups.quorum.len(), 1); // 2 consistent aggregates merged into 1 in 'quorum'
+	assert_eq!(groups.others.len(), 1); // 1 inconsistent aggregate goes to 'others'
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
@@ -654,6 +654,137 @@ fn buckets_sub_aggregates_in_others_merged() {
 	assert_eq!(usage.transferred_bytes, 50);
 	assert_eq!(usage.number_of_puts, 10);
 	assert_eq!(usage.number_of_gets, 20);
+}
+
+#[test]
+fn buckets_sub_aggregates_in_others_merged_2() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(100);
+	let cluster_id = ClusterId::from([1; 20]);
+	let era_id = 476817;
+
+	let aggregator1 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.236".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example1.com".to_vec(),
+		},
+	};
+
+	let aggregator2 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "95.217.8.119".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		},
+	};
+
+	let aggregator3 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.42".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		},
+	};
+
+	let resp1 = (
+		aggregator1,
+		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			bucket_id: 1,
+			sub_aggregates: vec![BucketSubAggregateResponse {
+				NodeID: "1".to_string(),
+				stored_bytes: 100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
+			}],
+		}],
+	);
+
+	let resp2 = (
+		aggregator2,
+		vec![BucketAggregateResponse {
+			stored_bytes: 200,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			bucket_id: 2,
+			sub_aggregates: vec![BucketSubAggregateResponse {
+				NodeID: "1".to_string(),
+				stored_bytes: 200,
+				transferred_bytes: 500,
+				number_of_puts: 30,
+				number_of_gets: 40,
+			}],
+		}],
+	);
+
+	let resp3 = (
+		aggregator3,
+		vec![BucketAggregateResponse {
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+			bucket_id: 1,
+			sub_aggregates: vec![BucketSubAggregateResponse {
+				NodeID: "1".to_string(),
+				stored_bytes: 100,
+				transferred_bytes: 50,
+				number_of_puts: 10,
+				number_of_gets: 20,
+			}],
+		}],
+	);
+
+	let groups = DdcVerification::group_buckets_sub_aggregates_by_consistency(
+		&cluster_id,
+		era_id,
+		vec![resp1, resp2, resp3],
+		redundancy_factor,
+		quorum,
+	);
+
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 2); // 2 inconsistent aggregates
+
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+
+	assert!(result.is_ok());
+	let usages = result.unwrap();
+	assert_eq!(usages.len(), 2);
+
+	let usage1 = usages.first().unwrap();
+	assert_eq!(usage1.stored_bytes, 100);
+	assert_eq!(usage1.transferred_bytes, 50);
+	assert_eq!(usage1.number_of_puts, 10);
+	assert_eq!(usage1.number_of_gets, 20);
+
+	let usage2 = usages.get(1).unwrap();
+	assert_eq!(usage2.stored_bytes, 200);
+	assert_eq!(usage2.transferred_bytes, 500);
+	assert_eq!(usage2.number_of_puts, 30);
+	assert_eq!(usage2.number_of_gets, 40);
 }
 
 #[test]
@@ -846,8 +977,8 @@ fn nodes_aggregates_in_quorum_merged() {
 		quorum,
 	);
 	assert_eq!(groups.consensus.len(), 0);
-	assert_eq!(groups.quorum.len(), 1);
-	assert_eq!(groups.others.len(), 1);
+	assert_eq!(groups.quorum.len(), 1); // 2 consistent aggregates merged into 1 in 'quorum'
+	assert_eq!(groups.others.len(), 1); // 1 inconsistent aggregate goes to 'others'
 
 	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
 
@@ -964,6 +1095,116 @@ fn nodes_aggregates_in_others_merged() {
 	assert_eq!(usage.transferred_bytes, 50);
 	assert_eq!(usage.number_of_puts, 10);
 	assert_eq!(usage.number_of_gets, 20);
+}
+
+#[test]
+fn nodes_aggregates_in_others_merged_2() {
+	let redundancy_factor = 3;
+	let quorum = Percent::from_percent(100);
+	let cluster_id = ClusterId::from([1; 20]);
+	let era_id = 476817;
+
+	let aggregator1 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.236".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example1.com".to_vec(),
+		},
+	};
+
+	let aggregator2 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([2; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "95.217.8.119".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example2.com".to_vec(),
+		},
+	};
+
+	let aggregator3 = AggregatorInfo {
+		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([3; 32])),
+		node_params: StorageNodeParams {
+			ssl: false,
+			host: "178.251.228.42".as_bytes().to_vec(),
+			http_port: 8080,
+			mode: StorageNodeMode::DAC,
+			p2p_port: 5555,
+			grpc_port: 4444,
+			domain: b"example3.com".to_vec(),
+		},
+	};
+
+	let resp1 = (
+		aggregator1,
+		vec![NodeAggregateResponse {
+			node_id: "2".to_string(),
+			stored_bytes: 1000,
+			transferred_bytes: 500,
+			number_of_puts: 15,
+			number_of_gets: 30,
+		}],
+	);
+
+	let resp2 = (
+		aggregator2,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 200,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let resp3 = (
+		aggregator3,
+		vec![NodeAggregateResponse {
+			node_id: "1".to_string(),
+			stored_bytes: 100,
+			transferred_bytes: 50,
+			number_of_puts: 10,
+			number_of_gets: 20,
+		}],
+	);
+
+	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
+		&cluster_id,
+		era_id,
+		vec![resp1, resp2, resp3],
+		redundancy_factor,
+		quorum,
+	);
+
+	assert_eq!(groups.consensus.len(), 0);
+	assert_eq!(groups.quorum.len(), 0);
+	assert_eq!(groups.others.len(), 3); // 3 inconsistent aggregates
+
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+
+	assert!(result.is_ok());
+	let usages = result.unwrap();
+	assert_eq!(usages.len(), 2);
+
+	let usage1 = usages.get(1).unwrap();
+	assert_eq!(usage1.stored_bytes, 200);
+	assert_eq!(usage1.transferred_bytes, 50);
+	assert_eq!(usage1.number_of_puts, 10);
+	assert_eq!(usage1.number_of_gets, 20);
+
+	let usage2 = usages.first().unwrap();
+	assert_eq!(usage2.stored_bytes, 1000);
+	assert_eq!(usage2.transferred_bytes, 500);
+	assert_eq!(usage2.number_of_puts, 15);
+	assert_eq!(usage2.number_of_gets, 30);
 }
 
 #[test]

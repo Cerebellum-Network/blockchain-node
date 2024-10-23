@@ -755,6 +755,7 @@ pub mod pallet {
 	/// The `ConsolidatedAggregate` struct represents a merging result of multiple aggregates
 	/// that have reached consensus on the usage criteria. This result should be taken into
 	/// consideration when choosing the intensity of the challenge.
+	#[derive(Debug, Clone, PartialEq)]
 	pub(crate) struct ConsolidatedAggregate<A: Aggregate> {
 		/// The representative aggregate after consolidation
 		pub(crate) aggregate: A,
