@@ -494,7 +494,7 @@ fn check_ledgers() {
 
 fn assert_ledger_consistent(controller: AccountId) {
 	// ensures ledger.total == ledger.active + sum(ledger.unlocking).
-	let ledger = DdcStaking::ledger(controller.clone()).expect("Not a controller.");
+	let ledger = Ledger::<Test>::get(controller.clone()).expect("Not a controller.");
 	let real_total: Balance = ledger.unlocking.iter().fold(ledger.active, |a, c| a + c.value);
 	assert_eq!(real_total, ledger.total);
 	assert!(
