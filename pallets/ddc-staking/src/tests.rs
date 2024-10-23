@@ -8,7 +8,7 @@ use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
 use pallet_balances::Error as BalancesError;
 use pallet_ddc_clusters::{
 	cluster::{Cluster, ClusterProps},
-	Error as ClustersError,
+	Error as ClustersError,Clusters
 };
 
 use super::{mock::*, *};
@@ -760,7 +760,7 @@ fn bond_cluster_works() {
 		System::assert_has_event(Event::Bonded(AccountId::from(CLUSTER_STASH), 50).into());
 
 		assert_eq!(
-			DdcClusters::clusters(ClusterId::from(CLUSTER_ID)),
+			Clusters::<Test>::get(ClusterId::from(CLUSTER_ID)),
 			Some(Cluster {
 				cluster_id: ClusterId::from(CLUSTER_ID),
 				manager_id: AccountId::from(CLUSTER_CONTROLLER),
@@ -909,7 +909,7 @@ fn unbond_bonded_cluster_works() {
 		System::assert_has_event(Event::Unbonded(AccountId::from(USER_KEY_1), 50).into());
 
 		assert_eq!(
-			DdcClusters::clusters(ClusterId::from(BONDED_CLUSTER_ID)),
+			Clusters::<Test>::get(ClusterId::from(BONDED_CLUSTER_ID)),
 			Some(Cluster {
 				cluster_id: ClusterId::from(BONDED_CLUSTER_ID),
 				manager_id: AccountId::from(USER_KEY_1),
@@ -988,7 +988,7 @@ fn unbond_activated_cluster_works() {
 		System::assert_has_event(Event::Unbonded(AccountId::from(USER_KEY_1), 50).into());
 
 		assert_eq!(
-			DdcClusters::clusters(ClusterId::from(ACTIVATED_CLUSTER_ID)),
+			Clusters::<Test>::get(ClusterId::from(ACTIVATED_CLUSTER_ID)),
 			Some(Cluster {
 				cluster_id: ClusterId::from(ACTIVATED_CLUSTER_ID),
 				manager_id: AccountId::from(USER_KEY_1),
@@ -1082,7 +1082,7 @@ fn withdraw_unbonded_cluster_works() {
 		assert_eq!(DdcStaking::cluster_bonded(AccountId::from(USER_KEY_1)), None);
 
 		assert_eq!(
-			DdcClusters::clusters(ClusterId::from(BONDED_CLUSTER_ID)),
+			Clusters::<Test>::get(ClusterId::from(BONDED_CLUSTER_ID)),
 			Some(Cluster {
 				cluster_id: ClusterId::from(BONDED_CLUSTER_ID),
 				manager_id: AccountId::from(USER_KEY_1),
@@ -1168,7 +1168,7 @@ fn withdraw_activated_cluster_works() {
 		assert_eq!(DdcStaking::cluster_bonded(AccountId::from(USER_KEY_1)), None);
 
 		assert_eq!(
-			DdcClusters::clusters(ClusterId::from(ACTIVATED_CLUSTER_ID)),
+			Clusters::<Test>::get(ClusterId::from(ACTIVATED_CLUSTER_ID)),
 			Some(Cluster {
 				cluster_id: ClusterId::from(ACTIVATED_CLUSTER_ID),
 				manager_id: AccountId::from(USER_KEY_1),
