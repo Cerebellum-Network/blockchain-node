@@ -531,7 +531,8 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			approve: bool,
 		) -> Result<bool, DispatchError> {
-			let mut voting = ClusterProposalVoting::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
+			let mut voting =
+				ClusterProposalVoting::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
 
 			let position_yes = voting.ayes.iter().position(|a| a == &voter_id);
 			let position_no = voting.nays.iter().position(|a| a == &voter_id);
@@ -576,7 +577,8 @@ pub mod pallet {
 
 		/// Close a vote that is either approved, disapproved or whose voting period has ended.
 		fn do_close(cluster_id: ClusterId, caller_id: T::AccountId) -> DispatchResultWithPostInfo {
-			let voting = ClusterProposalVoting::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
+			let voting =
+				ClusterProposalVoting::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
 
 			let mut no_votes = voting.nays.len() as MemberCount;
 			let mut yes_votes = voting.ayes.len() as MemberCount;

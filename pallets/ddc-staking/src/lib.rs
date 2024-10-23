@@ -869,7 +869,8 @@ pub mod pallet {
 
 			ensure!(controller == cluster_controller, Error::<T>::NotController);
 
-			let mut ledger = ClusterLedger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
+			let mut ledger =
+				ClusterLedger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
 			ensure!(
 				ledger.unlocking.len() < MaxUnlockingChunks::get() as usize,
 				Error::<T>::NoMoreChunks,
@@ -915,7 +916,8 @@ pub mod pallet {
 			let controller = T::ClusterManager::get_manager_account_id(&cluster_id)?;
 			ensure!(controller == cluster_controller, Error::<T>::NotController);
 
-			let mut ledger = ClusterLedger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
+			let mut ledger =
+				ClusterLedger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
 
 			ledger = ledger.consolidate_unlocked(<frame_system::Pallet<T>>::block_number());

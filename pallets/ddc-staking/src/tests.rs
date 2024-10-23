@@ -8,7 +8,7 @@ use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
 use pallet_balances::Error as BalancesError;
 use pallet_ddc_clusters::{
 	cluster::{Cluster, ClusterProps},
-	Error as ClustersError,Clusters
+	Clusters, Error as ClustersError,
 };
 
 use super::{mock::*, *};

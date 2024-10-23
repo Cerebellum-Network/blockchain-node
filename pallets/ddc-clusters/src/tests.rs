@@ -56,8 +56,7 @@ fn create_cluster_works() {
 		assert_eq!(created_cluster.reserve_id, cluster_reserve_id);
 		assert_eq!(created_cluster.props.node_provider_auth_contract, Some(auth_contract.clone()));
 
-		let created_cluster_protocol_params =
-			ClustersGovParams::<Test>::get(cluster_id).unwrap();
+		let created_cluster_protocol_params = ClustersGovParams::<Test>::get(cluster_id).unwrap();
 		assert_eq!(
 			created_cluster_protocol_params.treasury_share,
 			cluster_protocol_params.treasury_share
