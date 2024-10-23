@@ -1452,7 +1452,8 @@ type Migrations = (
 	pallet_nomination_pools::migration::versioned_migrations::V6ToV7<Runtime>,
 	pallet_staking::migrations::v14::MigrateToV14<Runtime>,
 	pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
-	migrations::Unreleased,
+	// This should be carefully enabled in the server, if not enabled
+	// migrations::Unreleased,
 );
 
 pub mod migrations {
