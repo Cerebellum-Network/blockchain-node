@@ -144,6 +144,7 @@ parameter_types! {
 	pub const PreimageBaseDeposit: Balance = 0;
 	pub const PreimageByteDeposit: Balance = 0;
 	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
+
 }
 
 impl pallet_preimage::Config for Test {

@@ -410,23 +410,23 @@ pub mod v2 {
 
 			let post_clusters_count = Clusters::<T>::iter().count() as u32;
 			assert_eq!(
-				pre_clusters_count, post_clusters_count,
-				"the clusters count before (pre: {}) and after (post: {}) the migration should be the same",
-				pre_clusters_count, post_clusters_count
-			);
+                pre_clusters_count, post_clusters_count,
+                "the clusters count before (pre: {}) and after (post: {}) the migration should be the same",
+                pre_clusters_count, post_clusters_count
+            );
 			let post_clusters_nodes_count = ClustersNodes::<T>::iter().count() as u32;
 			assert_eq!(
-				pre_clusters_nodes_count, post_clusters_nodes_count,
-				"the clusters nodes count before (pre: {}) and after (post: {})  the migration should be the same", 
-				pre_clusters_nodes_count, post_clusters_nodes_count
-			);
+                pre_clusters_nodes_count, post_clusters_nodes_count,
+                "the clusters nodes count before (pre: {}) and after (post: {})  the migration should be the same",
+                pre_clusters_nodes_count, post_clusters_nodes_count
+            );
 
 			let post_clusters_nodes_stats_count = ClustersNodesStats::<T>::iter().count() as u32;
 			assert_eq!(
-				post_clusters_nodes_stats_count, post_clusters_count,
-				"the clusters statistics ({}) should be equal to clusters count ({}) after the migration", 
-				post_clusters_nodes_stats_count, post_clusters_count
-			);
+                post_clusters_nodes_stats_count, post_clusters_count,
+                "the clusters statistics ({}) should be equal to clusters count ({}) after the migration",
+                post_clusters_nodes_stats_count, post_clusters_count
+            );
 
 			let current_version = Pallet::<T>::current_storage_version();
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
