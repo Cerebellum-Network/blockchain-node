@@ -48,4 +48,3 @@ jobs:
           push: true
           build-args: |
             "ECR_REGISTRY=${{ steps.login-ecr-org.outputs.registry }}-berlin"
-
