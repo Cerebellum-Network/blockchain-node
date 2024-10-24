@@ -47,4 +47,3 @@ default = ["cere"]
 cere = ["cere-runtime"]
 cere-dev = ["cere-dev-runtime"]
 runtime-benchmarks = []
-
