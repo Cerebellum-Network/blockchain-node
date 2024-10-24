@@ -56,6 +56,8 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migrations;
+
 #[frame_support::pallet]
 pub mod pallet {
 
@@ -68,7 +70,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+		frame_support::traits::StorageVersion::new(1);
 
 	const SUCCESS_CODE: u16 = 200;
 	const _BUF_SIZE: usize = 128;
@@ -481,11 +483,6 @@ pub mod pallet {
 		DdcEra,
 		EraValidation<T>,
 	>;
-
-	/// Cluster id storage
-	#[pallet::storage]
-	#[pallet::getter(fn cluster_to_validate)]
-	pub type ClusterToValidate<T: Config> = StorageValue<_, ClusterId>;
 
 	/// List of validators.
 	#[pallet::storage]
@@ -4003,20 +4000,8 @@ pub mod pallet {
 			T::ClusterValidator::set_last_validated_era(&cluster_id, era_id)
 		}
 
-		#[pallet::call_index(11)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn set_cluster_to_validate(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-		) -> DispatchResult {
-			ensure_root(origin)?;
-			ClusterToValidate::<T>::put(cluster_id);
-
-			Ok(())
-		}
-
 		// todo! Need to remove this
-		#[pallet::call_index(12)]
+		#[pallet::call_index(11)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
 			let validator = ensure_signed(origin)?;
@@ -4029,7 +4014,7 @@ pub mod pallet {
 		}
 
 		// todo! remove this after devnet testing
-		#[pallet::call_index(13)]
+		#[pallet::call_index(12)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_era_validations(
 			origin: OriginFor<T>,
