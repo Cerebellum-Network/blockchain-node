@@ -24,6 +24,7 @@ hex = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 polkadot-ckb-merkle-mountain-range = { workspace = true }
+prost = { version = "0.13", default-features = false, features = ["prost-derive"] }
 rand = { workspace = true, features = ["small_rng", "alloc"], default-features = false }
 scale-info = { workspace = true }
 serde = { workspace = true }
@@ -43,6 +44,9 @@ pallet-staking-reward-curve = { workspace = true }
 pallet-timestamp = { workspace = true }
 sp-core = { workspace = true, default-features = true }
 sp-keystore = { workspace = true }
+
+[build-dependencies]
+prost-build = "0.13.3"
 
 [features]
 default = ["std"]
