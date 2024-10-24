@@ -28,7 +28,7 @@ use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
 use frame_support::{
-	construct_runtime, derive_impl,
+	derive_impl,
 	dispatch::DispatchClass,
 	genesis_builder_helper::{build_state, get_preset},
 	pallet_prelude::Get,
@@ -1285,61 +1285,164 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 	}
 }
 
-construct_runtime!(
-	pub enum Runtime
-	{
-		System: frame_system,
-		Utility: pallet_utility,
-		Babe: pallet_babe,
-		Timestamp: pallet_timestamp,
-		// Authorship must be before session in order to note author in the correct session and era
-		// for im-online and staking.
-		Authorship: pallet_authorship,
-		Indices: pallet_indices,
-		Balances: pallet_balances,
-		TransactionPayment: pallet_transaction_payment,
-		ElectionProviderMultiPhase: pallet_election_provider_multi_phase,
-		Staking: pallet_staking,
-		Session: pallet_session,
-		Grandpa: pallet_grandpa,
-		Treasury: pallet_treasury,
-		Contracts: pallet_contracts,
-		Sudo: pallet_sudo,
-		ImOnline: pallet_im_online,
-		AuthorityDiscovery: pallet_authority_discovery,
-		Offences: pallet_offences,
-		Historical: pallet_session_historical::{Pallet},
-		RandomnessCollectiveFlip: pallet_insecure_randomness_collective_flip,
-		Identity: pallet_identity,
-		Recovery: pallet_recovery,
-		Vesting: pallet_vesting,
-		Preimage: pallet_preimage,
-		Scheduler: pallet_scheduler,
-		Proxy: pallet_proxy,
-		Multisig: pallet_multisig,
-		Bounties: pallet_bounties,
-		VoterList: pallet_bags_list::<Instance1>,
-		ChildBounties: pallet_child_bounties,
-		NominationPools: pallet_nomination_pools,
-		FastUnstake: pallet_fast_unstake,
-		ChainBridge: pallet_chainbridge::{Pallet, Call, Storage, Event<T>},
-		Erc721: pallet_erc721::{Pallet, Call, Storage, Event<T>},
-		Erc20: pallet_erc20::{Pallet, Call, Storage, Event<T>},
-		DdcStaking: pallet_ddc_staking,
-		DdcCustomers: pallet_ddc_customers,
-		DdcNodes: pallet_ddc_nodes,
-		DdcClusters: pallet_ddc_clusters,
-		DdcPayouts: pallet_ddc_payouts,
-		// Start OpenGov.
-		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
-		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
-		Origins: pallet_origins::{Origin},
-		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
-		// End OpenGov.
-		TechComm: pallet_collective::<Instance3>,
-		DdcClustersGov: pallet_ddc_clusters_gov,
-	}
-);
+#[frame_support::runtime]
+mod runtime {
+	#[runtime::runtime]
+	#[runtime::derive(
+	RuntimeCall,
+	RuntimeEvent,
+	RuntimeError,
+	RuntimeOrigin,
+	RuntimeFreezeReason,
+	RuntimeHoldReason,
+	RuntimeSlashReason,
+	RuntimeLockId,
+	RuntimeTask
+	)]
+	pub struct Runtime;
+
+	#[runtime::pallet_index(0)]
+	pub type System = frame_system::Pallet<Runtime>;
+
+	#[runtime::pallet_index(1)]
+	pub type Utility = pallet_utility::Pallet<Runtime>;
+
+	#[runtime::pallet_index(2)]
+	pub type Babe = pallet_babe::Pallet<Runtime>;
+
+	#[runtime::pallet_index(3)]
+	pub type Timestamp = pallet_timestamp::Pallet<Runtime>;
+
+	// Authorship must be before session in order to note author in the correct session and era
+	// for im-online and staking.
+	#[runtime::pallet_index(4)]
+	pub type Authorship = pallet_authorship::Pallet<Runtime>;
+
+	#[runtime::pallet_index(5)]
+	pub type Indices = pallet_indices::Pallet<Runtime>;
+
+	#[runtime::pallet_index(6)]
+	pub type Balances = pallet_balances::Pallet<Runtime>;
+
+	#[runtime::pallet_index(7)]
+	pub type TransactionPayment = pallet_transaction_payment::Pallet<Runtime>;
+
+	#[runtime::pallet_index(8)]
+	pub type ElectionProviderMultiPhase = pallet_election_provider_multi_phase::Pallet<Runtime>;
+
+	#[runtime::pallet_index(9)]
+	pub type Staking = pallet_staking::Pallet<Runtime>;
+
+	#[runtime::pallet_index(10)]
+	pub type Session = pallet_session::Pallet<Runtime>;
+
+	#[runtime::pallet_index(11)]
+	pub type Grandpa = pallet_grandpa::Pallet<Runtime>;
+
+	#[runtime::pallet_index(12)]
+	pub type Treasury = pallet_treasury::Pallet<Runtime>;
+
+	#[runtime::pallet_index(13)]
+	pub type Contracts = pallet_contracts::Pallet<Runtime>;
+
+	#[runtime::pallet_index(14)]
+	pub type Sudo = pallet_sudo::Pallet<Runtime>;
+
+	#[runtime::pallet_index(15)]
+	pub type ImOnline = pallet_im_online::Pallet<Runtime>;
+
+	#[runtime::pallet_index(16)]
+	pub type AuthorityDiscovery = pallet_authority_discovery::Pallet<Runtime>;
+
+	#[runtime::pallet_index(17)]
+	pub type Offences = pallet_offences::Pallet<Runtime>;
+
+	#[runtime::pallet_index(18)]
+	pub type Historical = pallet_session_historical::Pallet<Runtime>;
+
+	#[runtime::pallet_index(19)]
+	pub type RandomnessCollectiveFlip = pallet_insecure_randomness_collective_flip::Pallet<Runtime>;
+
+	#[runtime::pallet_index(20)]
+	pub type Identity = pallet_identity::Pallet<Runtime>;
+
+	#[runtime::pallet_index(21)]
+	pub type Recovery = pallet_recovery::Pallet<Runtime>;
+
+	#[runtime::pallet_index(22)]
+	pub type Vesting = pallet_vesting::Pallet<Runtime>;
+
+	#[runtime::pallet_index(23)]
+	pub type Preimage = pallet_preimage::Pallet<Runtime>;
+
+	#[runtime::pallet_index(24)]
+	pub type Scheduler = pallet_scheduler::Pallet<Runtime>;
+
+	#[runtime::pallet_index(25)]
+	pub type Proxy = pallet_proxy::Pallet<Runtime>;
+
+	#[runtime::pallet_index(26)]
+	pub type Multisig = pallet_multisig::Pallet<Runtime>;
+
+	#[runtime::pallet_index(27)]
+	pub type Bounties = pallet_bounties::Pallet<Runtime>;
+
+	#[runtime::pallet_index(28)]
+	pub type VoterList = pallet_bags_list::Pallet<Runtime, Instance1>;
+
+	#[runtime::pallet_index(29)]
+	pub type ChildBounties = pallet_child_bounties::Pallet<Runtime>;
+
+	#[runtime::pallet_index(30)]
+	pub type NominationPools = pallet_nomination_pools::Pallet<Runtime>;
+
+	#[runtime::pallet_index(31)]
+	pub type FastUnstake = pallet_fast_unstake::Pallet<Runtime>;
+
+	#[runtime::pallet_index(32)]
+	pub type ChainBridge = pallet_chainbridge::Pallet<Runtime>;
+
+	#[runtime::pallet_index(33)]
+	pub type Erc721 = pallet_erc721::Pallet<Runtime>;
+
+	#[runtime::pallet_index(34)]
+	pub type Erc20 = pallet_erc20::Pallet<Runtime>;
+
+	#[runtime::pallet_index(35)]
+	pub type DdcStaking = pallet_ddc_staking::Pallet<Runtime>;
+
+	#[runtime::pallet_index(36)]
+	pub type DdcCustomers = pallet_ddc_customers::Pallet<Runtime>;
+
+	#[runtime::pallet_index(37)]
+	pub type DdcNodes = pallet_ddc_nodes::Pallet<Runtime>;
+
+	#[runtime::pallet_index(38)]
+	pub type DdcClusters = pallet_ddc_clusters::Pallet<Runtime>;
+
+	#[runtime::pallet_index(39)]
+	pub type DdcPayouts = pallet_ddc_payouts::Pallet<Runtime>;
+
+	// Start OpenGov.
+	#[runtime::pallet_index(40)]
+	pub type ConvictionVoting = pallet_conviction_voting::Pallet<Runtime>;
+
+	#[runtime::pallet_index(41)]
+	pub type Referenda = pallet_referenda::Pallet<Runtime>;
+
+	#[runtime::pallet_index(42)]
+	pub type Origins = pallet_origins::Pallet<Runtime>;
+
+	#[runtime::pallet_index(43)]
+	pub type Whitelist = pallet_whitelist::Pallet<Runtime>;
+
+	// End OpenGov.
+	#[runtime::pallet_index(44)]
+	pub type TechComm = pallet_collective::Pallet<Runtime, Instance3>;
+
+	#[runtime::pallet_index(45)]
+	pub type DdcClustersGov = pallet_ddc_clusters_gov::Pallet<Runtime>;
+}
 
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
