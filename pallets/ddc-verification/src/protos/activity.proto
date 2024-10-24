@@ -1,0 +1,154 @@
+// Acquired from Cerebellum-Network/ddc-storage-node at 4a3d710.
+// https://github.com/Cerebellum-Network/ddc-storage-node/tree/4a3d710.
+syntax = "proto3";
+
+package activity;
+
+message ChallengeResponse {
+  repeated Proof proofs = 1;
+
+  message Proof {
+    uint32 merkleTreeNodeId = 1;
+    Aggregate usage = 2;
+    repeated bytes path = 3;
+
+    repeated Leaf leaves = 4;
+
+    message Leaf {
+      // Repeated oneof is not supported.
+      // See also: https://github.com/protocolbuffers/protobuf/issues/2592.
+      oneof leafVariant {
+        Record record = 1;
+        RecordLink link = 2;
+      }
+    }
+
+    message Record {
+      ActivityRecord record = 1;
+      int64 stored = 2;
+      uint64 delivered = 3;
+    }
+
+    message RecordLink {
+      Link link = 1;
+      int64 stored = 2;
+      uint64 delivered = 3;
+
+      message Link {
+        bytes nodeId = 1;
+        uint64 bucketId = 2;
+        bytes recordId = 3;
+      }
+    }
+  }
+}
+
+message Aggregate {
+  int64 stored = 1; // can be negative in case amount of deleted data is more than newly stored
+  uint64 delivered = 2;
+  uint64 puts = 3;
+  uint64 gets = 4;
+}
+
+message ActivityRecord {
+	bytes id = 1;
+	ActivityFulfillment upstream = 2;
+	repeated ActivityFulfillment downstream = 3;
+	uint64 timestamp = 4;
+	Signature signature = 5;
+	optional AuthToken authToken = 6; // set to authorize record in case if owner delegated access to bucket
+}
+
+message ActivityRequest {
+	optional ActivityRequest parentRequest = 1;
+	string requestId = 2;
+
+	enum RequestType {
+		REQUEST_TYPE_PUT = 0;
+		REQUEST_TYPE_GET = 1;
+		REQUEST_TYPE_DELETE = 2;
+	}
+
+	enum ContentType {
+		CONTENT_TYPE_PIECE = 0;
+		CONTENT_TYPE_SEGMENT = 1;
+		CONTENT_TYPE_MERKLE_TREE = 2;
+		CONTENT_TYPE_METADATA = 3;
+	}
+
+	RequestType requestType = 3;
+	ContentType contentType = 4;
+	uint64 bucketId = 5; // set only when content type is PIECE
+	bytes pieceCid = 6;
+
+	uint64 offset = 7; // offset of data requested (set only when RecordType = GET)
+	uint64 size = 8; // size of content stored or delivered
+
+	uint64 timestamp = 9;
+	Signature signature = 10;
+}
+
+// we will get this on the server side streaming
+
+message ActivityAcknowledgment {
+	string requestId = 1;
+	uint64 bytesStoredOrDelivered = 2;
+	uint64 timestamp = 3;
+	Signature signature = 4;
+}
+
+message ActivityResponse {
+	Status status = 1;
+	uint32 time = 2; // response time measured by client (start before the request sent and end after the response received)
+	bytes peerID = 3;
+
+	enum Status {
+		UNKNOWN = 0;
+		OK = 1;
+		NOT_FOUND = 2; // server doesn't have requested resource (e.g. node could miss piece metadata)
+		INTERNAL = 3; // error in a server response
+		UNAVAILABLE = 4; // no response from server
+		ABORTED = 5; // request aborted by a client (e.g. storage node asked for piece metadata a node, but after some time had to initialise parallel request to other node and one of the requests can be aborted once metadata received)
+	}
+}
+
+message ActivityFulfillment {
+	ActivityRequest request = 1;
+	optional ActivityAcknowledgment ack = 2;
+	optional ActivityResponse response = 3;
+}
+
+message AuthToken {
+  Signature signature = 1; // signature signer is an issuer. issuer of first token should have an access on pallet level and subsequent tokens can skip 'issuer' and take 'subject' from previous token to verify signature
+  Payload payload = 2;
+}
+
+message Payload {
+  optional AuthToken prev = 1; // prev token in trust chain (based on known use cases max depth can be limited to 3 or increase to 5 to support more potential use cases)
+  optional bytes subject = 2; // whom. every except last token should be non empty. next token should be signed by this subject
+  optional bool canDelegate = 3; // subject can be prohibited to delegate access to anyone else (next token should be last)
+
+  optional uint64 bucketId = 4; // mentioned only once in trust chain (or even not mentioned at all if bucket owner decided to share access to all his buckets)
+  repeated Operation operations = 5; // each next token in trust chain should have less or equal privileges (e.g. token restricted to 'get' operation can't have 'put' in next token)
+  optional int64 expiresAt = 6; // each next token should expires earlier or at the same time as previous one (e.g. token can't have lower expiresAt than in next token)
+  optional bytes pieceCid = 7; // mentioned only once in trust chain (in DAG API nested pieces can be accessed by path)
+}
+
+enum Operation {
+  UNKNOWN = 0;
+  PUT = 1;
+  GET = 2;
+  DELETE = 3;
+}
+
+message Signature {
+  Algorithm algorithm = 1;
+  bytes signer = 2;
+  bytes value = 3;
+
+  enum Algorithm {
+    ED_25519 = 0;
+    SR_25519 = 1;
+  }
+}
+
