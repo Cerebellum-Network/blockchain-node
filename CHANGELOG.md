@@ -6,28 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Legend
+
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
+- 
+## [6.1.0]
 
+### Changed
+
+- [C,D] Update Substrate from `v1.2` to `v1.4`.
+
+## [6.0.0]
+
+### Changed
+
+- [C] `pallet-ddc-verification`: Verification Pallet and validator OCW for DAC verification.
+- [C] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
 
 ## [5.5.0]
 
 ### Changed
 
 - [C,D] Update Substrate from `v1.1` to `v1.2`.
-- [C,D] `pallet-ddc-verification`: Introduction of the Verification pallet to ensure the secure posting and retrieval of verification keys to and from the blockchain.
-- [C,D] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
-
 
 ## [5.4.1]
 
 ### Changed
 
+- [D] `pallet-ddc-verification`: Introduction of the Verification pallet to ensure the secure posting and retrieval of verification keys to and from the blockchain.
+- [D] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
+
+## [5.4.0]
+
+### Changed
+
 - [C,D] Introduce new events to the DDC Payouts Pallet
 - [C,D] `pallet-ddc-clusters-gov`: Introduction of the Cluster Governance pallet for managing clusters protocol parameters.
+
+## [5.3.1]
+
+### Changed
+
 - [C,D] `WhitelistOrigin` is set to the Technical Committee Collective Body
 - [C,D] The _Support Curve_ in OpenGov Tracks is made more strict
-
 
 ## [5.3.0]
 
@@ -115,6 +136,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - [C,D] Updated Substrate to polkadot-v0.9.42
+- Added ChargeError event to payout pallet
 - Introduce a burn rate of 0.058% daily to bring inflation down.
 - More explicit events in `pallet-ddc-payouts` about batch index
 
@@ -122,9 +144,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [C,D] Updated Substrate to polkadot-v0.9.38
-- Changes in `pallet-ddc-payouts::begin_billing_report` crate to accept start and end of the era.
+- [C,D] Updated Substrate to polkadot-v0.9.40
 - More explicit events in `pallet-ddc-payouts` and `pallet-ddc-customers`
+- Introduce a burn rate of 0.058% daily to bring inflation down.
+- More explicit events in `pallet-ddc-payouts` about batch index
 
 ## [4.8.7]
 
@@ -132,18 +155,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [C,D] Updated Substrate to polkadot-v0.9.38
 - [C] Added pallet-preimage to support democracy functionality.
+- Changes in `pallet-ddc-payouts::begin_billing_report` crate to accept start and end of the era.
+- More explicit events in `pallet-ddc-payouts` and `pallet-ddc-customers`
 
 ## [4.8.6]
 
 ### Changed
 
 - [C,D] Updated Substrate to polkadot-v0.9.37
+- More explicit events in `pallet-ddc-payouts` and `pallet-ddc-customers`
+- More explicit events in `pallet-ddc-payouts` about batch index
 
 ## [4.8.5]
 
 ### Changed
 
 - [C,D] Updated Substrate to polkadot-v0.9.36
+- [C] Added pallet-preimage to support democracy functionality.
 
 ## [4.8.4]
 
