@@ -6,8 +6,7 @@ use sc_client_api::{
 	AuxStore, Backend as BackendT, BlockchainEvents, KeysIter, MerkleValue, PairsIter,
 	UsageProvider,
 };
-#[allow(deprecated)]
-pub use sc_executor::NativeElseWasmExecutor;
+use sc_executor::WasmExecutor;
 use sp_api::{CallApiAt, ProvideRuntimeApi};
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_consensus::BlockStatus;
@@ -19,72 +18,45 @@ use sp_runtime::{
 use sp_storage::{ChildInfo, StorageData, StorageKey};
 
 pub type FullBackend = sc_service::TFullBackend<Block>;
-#[allow(deprecated)]
-pub type FullClient<RuntimeApi, ExecutorDispatch> =
-	sc_service::TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<ExecutorDispatch>>;
+
+#[cfg(not(feature = "runtime-benchmarks"))]
+pub type HostFunctions = sp_io::SubstrateHostFunctions;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub type HostFunctions =
+(sp_io::SubstrateHostFunctions, frame_benchmarking::benchmarking::HostFunctions);
+
+pub type ChainExecutor = WasmExecutor<HostFunctions>;
+pub type FullClient<RuntimeApi> = sc_service::TFullClient<Block, RuntimeApi, ChainExecutor>;
 
 #[cfg(not(any(feature = "cere", feature = "cere-dev",)))]
 compile_error!("at least one runtime feature must be enabled");
 
-/// The native executor instance for Cere.
-#[cfg(feature = "cere")]
-pub struct CereExecutorDispatch;
-
-#[cfg(feature = "cere")]
-impl sc_executor::NativeExecutionDispatch for CereExecutorDispatch {
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-
-	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		cere_runtime::api::dispatch(method, data)
-	}
-
-	fn native_version() -> sc_executor::NativeVersion {
-		cere_runtime::native_version()
-	}
-}
-
-/// The native executor instance for Cere Dev.
-#[cfg(feature = "cere-dev")]
-pub struct CereDevExecutorDispatch;
-
-#[cfg(feature = "cere-dev")]
-impl sc_executor::NativeExecutionDispatch for CereDevExecutorDispatch {
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-
-	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		cere_dev_runtime::api::dispatch(method, data)
-	}
-
-	fn native_version() -> sc_executor::NativeVersion {
-		cere_dev_runtime::native_version()
-	}
-}
-
 pub trait AbstractClient<Block, Backend>:
-	BlockchainEvents<Block>
-	+ Sized
-	+ Send
-	+ Sync
-	+ ProvideRuntimeApi<Block>
-	+ HeaderBackend<Block>
-	+ CallApiAt<Block, StateBackend = Backend::State>
-	+ AuxStore
-	+ UsageProvider<Block>
-	+ HeaderMetadata<Block, Error = sp_blockchain::Error>
-where
-	Block: BlockT,
-	Backend: BackendT<Block>,
-	Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
-	Self::Api: RuntimeApiCollection,
+BlockchainEvents<Block>
++ Sized
++ Send
++ Sync
++ ProvideRuntimeApi<Block>
++ HeaderBackend<Block>
++ CallApiAt<Block, StateBackend = Backend::State>
++ AuxStore
++ UsageProvider<Block>
++ HeaderMetadata<Block, Error = sp_blockchain::Error>
+	where
+		Block: BlockT,
+		Backend: BackendT<Block>,
+		Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+		Self::Api: RuntimeApiCollection,
 {
 }
 
 impl<Block, Backend, Client> AbstractClient<Block, Backend> for Client
-where
-	Block: BlockT,
-	Backend: BackendT<Block>,
-	Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
-	Client: BlockchainEvents<Block>
+	where
+		Block: BlockT,
+		Backend: BackendT<Block>,
+		Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+		Client: BlockchainEvents<Block>
 		+ ProvideRuntimeApi<Block>
 		+ HeaderBackend<Block>
 		+ AuxStore
@@ -94,7 +66,7 @@ where
 		+ Sync
 		+ CallApiAt<Block, StateBackend = Backend::State>
 		+ HeaderMetadata<Block, Error = sp_blockchain::Error>,
-	Client::Api: RuntimeApiCollection,
+		Client::Api: RuntimeApiCollection,
 {
 }
 
@@ -102,9 +74,9 @@ where
 #[derive(Clone)]
 pub enum Client {
 	#[cfg(feature = "cere")]
-	Cere(Arc<FullClient<cere_runtime::RuntimeApi, CereExecutorDispatch>>),
+	Cere(Arc<FullClient<cere_runtime::RuntimeApi>>),
 	#[cfg(feature = "cere-dev")]
-	CereDev(Arc<FullClient<cere_dev_runtime::RuntimeApi, CereDevExecutorDispatch>>),
+	CereDev(Arc<FullClient<cere_dev_runtime::RuntimeApi>>),
 }
 
 macro_rules! with_client {
@@ -130,11 +102,11 @@ pub trait ExecuteWithClient {
 
 	/// Execute whatever should be executed with the given client instance.
 	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
-	where
-		Backend: sc_client_api::Backend<Block>,
-		Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
-		Api: crate::RuntimeApiCollection,
-		Client: AbstractClient<Block, Backend, Api = Api> + 'static;
+		where
+			Backend: sc_client_api::Backend<Block>,
+			Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+			Api: crate::RuntimeApiCollection,
+			Client: AbstractClient<Block, Backend, Api = Api> + 'static;
 }
 
 pub trait ClientHandle {
@@ -505,7 +477,22 @@ macro_rules! signed_payload {
 }
 
 pub trait RuntimeApiCollection:
-	sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
++ sp_api::ApiExt<Block>
++ sp_consensus_babe::BabeApi<Block>
++ sp_consensus_grandpa::GrandpaApi<Block>
++ sp_block_builder::BlockBuilder<Block>
++ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
++ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
++ sp_api::Metadata<Block>
++ sp_offchain::OffchainWorkerApi<Block>
++ sp_session::SessionKeys<Block>
++ sp_authority_discovery::AuthorityDiscoveryApi<Block>
+{
+}
+
+impl<Api> RuntimeApiCollection for Api where
+	Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 	+ sp_api::ApiExt<Block>
 	+ sp_consensus_babe::BabeApi<Block>
 	+ sp_consensus_grandpa::GrandpaApi<Block>
@@ -516,21 +503,6 @@ pub trait RuntimeApiCollection:
 	+ sp_offchain::OffchainWorkerApi<Block>
 	+ sp_session::SessionKeys<Block>
 	+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
-{
-}
-
-impl<Api> RuntimeApiCollection for Api where
-	Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::ApiExt<Block>
-		+ sp_consensus_babe::BabeApi<Block>
-		+ sp_consensus_grandpa::GrandpaApi<Block>
-		+ sp_block_builder::BlockBuilder<Block>
-		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
-		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
-		+ sp_api::Metadata<Block>
-		+ sp_offchain::OffchainWorkerApi<Block>
-		+ sp_session::SessionKeys<Block>
-		+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
 {
 }
 

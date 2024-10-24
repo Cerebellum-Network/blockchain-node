@@ -145,7 +145,7 @@ pub fn run() -> sc_cli::Result<()> {
 					if chain_spec.is_cere_dev() {
 						return runner.sync_run(|config| {
 							#[allow(deprecated)]
-							cmd.run::<sp_runtime::traits::HashingFor<cere_service::cere_dev_runtime::Block>, ()>(config)
+							cmd.run_with_spec::<sp_runtime::traits::HashingFor<cere_service::cere_dev_runtime::Block>, ()>(Some(config.chain_spec))
 						});
 					}
 
