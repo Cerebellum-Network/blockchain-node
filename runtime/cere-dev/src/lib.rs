@@ -461,6 +461,8 @@ parameter_types! {
 	pub MaximumMultiplier: Multiplier = Bounded::max_value();
 }
 
+// Can't use `FungibleAdapter` here until Treasury pallet migrates to fungibles
+// <https://github.com/paritytech/polkadot-sdk/issues/226>
 impl pallet_transaction_payment::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[allow(deprecated)]
@@ -1289,15 +1291,15 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 mod runtime {
 	#[runtime::runtime]
 	#[runtime::derive(
-	RuntimeCall,
-	RuntimeEvent,
-	RuntimeError,
-	RuntimeOrigin,
-	RuntimeFreezeReason,
-	RuntimeHoldReason,
-	RuntimeSlashReason,
-	RuntimeLockId,
-	RuntimeTask
+		RuntimeCall,
+		RuntimeEvent,
+		RuntimeError,
+		RuntimeOrigin,
+		RuntimeFreezeReason,
+		RuntimeHoldReason,
+		RuntimeSlashReason,
+		RuntimeLockId,
+		RuntimeTask
 	)]
 	pub struct Runtime;
 

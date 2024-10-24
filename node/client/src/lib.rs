@@ -24,7 +24,7 @@ pub type HostFunctions = sp_io::SubstrateHostFunctions;
 
 #[cfg(feature = "runtime-benchmarks")]
 pub type HostFunctions =
-(sp_io::SubstrateHostFunctions, frame_benchmarking::benchmarking::HostFunctions);
+	(sp_io::SubstrateHostFunctions, frame_benchmarking::benchmarking::HostFunctions);
 
 pub type ChainExecutor = WasmExecutor<HostFunctions>;
 pub type FullClient<RuntimeApi> = sc_service::TFullClient<Block, RuntimeApi, ChainExecutor>;
@@ -33,30 +33,30 @@ pub type FullClient<RuntimeApi> = sc_service::TFullClient<Block, RuntimeApi, Cha
 compile_error!("at least one runtime feature must be enabled");
 
 pub trait AbstractClient<Block, Backend>:
-BlockchainEvents<Block>
-+ Sized
-+ Send
-+ Sync
-+ ProvideRuntimeApi<Block>
-+ HeaderBackend<Block>
-+ CallApiAt<Block, StateBackend = Backend::State>
-+ AuxStore
-+ UsageProvider<Block>
-+ HeaderMetadata<Block, Error = sp_blockchain::Error>
-	where
-		Block: BlockT,
-		Backend: BackendT<Block>,
-		Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
-		Self::Api: RuntimeApiCollection,
+	BlockchainEvents<Block>
+	+ Sized
+	+ Send
+	+ Sync
+	+ ProvideRuntimeApi<Block>
+	+ HeaderBackend<Block>
+	+ CallApiAt<Block, StateBackend = Backend::State>
+	+ AuxStore
+	+ UsageProvider<Block>
+	+ HeaderMetadata<Block, Error = sp_blockchain::Error>
+where
+	Block: BlockT,
+	Backend: BackendT<Block>,
+	Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+	Self::Api: RuntimeApiCollection,
 {
 }
 
 impl<Block, Backend, Client> AbstractClient<Block, Backend> for Client
-	where
-		Block: BlockT,
-		Backend: BackendT<Block>,
-		Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
-		Client: BlockchainEvents<Block>
+where
+	Block: BlockT,
+	Backend: BackendT<Block>,
+	Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+	Client: BlockchainEvents<Block>
 		+ ProvideRuntimeApi<Block>
 		+ HeaderBackend<Block>
 		+ AuxStore
@@ -66,7 +66,7 @@ impl<Block, Backend, Client> AbstractClient<Block, Backend> for Client
 		+ Sync
 		+ CallApiAt<Block, StateBackend = Backend::State>
 		+ HeaderMetadata<Block, Error = sp_blockchain::Error>,
-		Client::Api: RuntimeApiCollection,
+	Client::Api: RuntimeApiCollection,
 {
 }
 
@@ -102,11 +102,11 @@ pub trait ExecuteWithClient {
 
 	/// Execute whatever should be executed with the given client instance.
 	fn execute_with_client<Client, Api, Backend>(self, client: Arc<Client>) -> Self::Output
-		where
-			Backend: sc_client_api::Backend<Block>,
-			Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
-			Api: crate::RuntimeApiCollection,
-			Client: AbstractClient<Block, Backend, Api = Api> + 'static;
+	where
+		Backend: sc_client_api::Backend<Block>,
+		Backend::State: sc_client_api::backend::StateBackend<BlakeTwo256>,
+		Api: crate::RuntimeApiCollection,
+		Client: AbstractClient<Block, Backend, Api = Api> + 'static;
 }
 
 pub trait ClientHandle {
@@ -477,22 +477,7 @@ macro_rules! signed_payload {
 }
 
 pub trait RuntimeApiCollection:
-sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-+ sp_api::ApiExt<Block>
-+ sp_consensus_babe::BabeApi<Block>
-+ sp_consensus_grandpa::GrandpaApi<Block>
-+ sp_block_builder::BlockBuilder<Block>
-+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
-+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
-+ sp_api::Metadata<Block>
-+ sp_offchain::OffchainWorkerApi<Block>
-+ sp_session::SessionKeys<Block>
-+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
-{
-}
-
-impl<Api> RuntimeApiCollection for Api where
-	Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+	sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 	+ sp_api::ApiExt<Block>
 	+ sp_consensus_babe::BabeApi<Block>
 	+ sp_consensus_grandpa::GrandpaApi<Block>
@@ -503,6 +488,21 @@ impl<Api> RuntimeApiCollection for Api where
 	+ sp_offchain::OffchainWorkerApi<Block>
 	+ sp_session::SessionKeys<Block>
 	+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
+{
+}
+
+impl<Api> RuntimeApiCollection for Api where
+	Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+		+ sp_api::ApiExt<Block>
+		+ sp_consensus_babe::BabeApi<Block>
+		+ sp_consensus_grandpa::GrandpaApi<Block>
+		+ sp_block_builder::BlockBuilder<Block>
+		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
+		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
+		+ sp_api::Metadata<Block>
+		+ sp_offchain::OffchainWorkerApi<Block>
+		+ sp_session::SessionKeys<Block>
+		+ sp_authority_discovery::AuthorityDiscoveryApi<Block>
 {
 }
 
