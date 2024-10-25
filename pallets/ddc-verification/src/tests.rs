@@ -3103,12 +3103,17 @@ fn aggregator_client_challenge_bucket_sub_aggregate_works() {
         let merkle_tree_node_id = "2,6";
         let node_id = "0x0ac7cb9c53594e9f538d9950c6bcf28f0c0c7b8385deea2ebe24062bc640e7be";
 
-        let expected_response = proto::ChallengeResponse{
+        let expected_response = proto::ChallengeResponse {
             proofs: vec![
-                proto::challenge_response::Proof{
-                    merkle_tree_node_id: 3,
+                proto::challenge_response::Proof {
+                    merkle_tree_node_id: 2,
+                    usage: Some(proto::Aggregate{stored: 4, delivered: 3, puts: 2, gets: 1}),
                     ..Default::default()
-                }
+                }, proto::challenge_response::Proof {
+                    merkle_tree_node_id: 6,
+                    usage: Some(proto::Aggregate{stored: 8, delivered: 7, puts: 6, gets: 5}),
+                    ..Default::default()
+                },
             ],
         };
         let mut expected_response_serialized = Vec::new();
@@ -3149,12 +3154,17 @@ fn aggregator_client_challenge_node_aggregate_works() {
         let merkle_tree_node_id = "2,6";
         let node_id = "0x0ac7cb9c53594e9f538d9950c6bcf28f0c0c7b8385deea2ebe24062bc640e7be";
 
-        let expected_response = proto::ChallengeResponse{
+        let expected_response = proto::ChallengeResponse {
             proofs: vec![
-                proto::challenge_response::Proof{
-                    merkle_tree_node_id: 3,
+                proto::challenge_response::Proof {
+                    merkle_tree_node_id: 2,
+                    usage: Some(proto::Aggregate{stored: 4, delivered: 3, puts: 2, gets: 1}),
                     ..Default::default()
-                }
+                }, proto::challenge_response::Proof {
+                    merkle_tree_node_id: 6,
+                    usage: Some(proto::Aggregate{stored: 8, delivered: 7, puts: 6, gets: 5}),
+                    ..Default::default()
+                },
             ],
         };
         let mut expected_response_serialized = Vec::new();
