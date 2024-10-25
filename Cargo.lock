@@ -1851,6 +1851,7 @@ dependencies = [
  "blake2",
  "frame-support",
  "frame-system",
+ "hex",
  "parity-scale-codec",
  "polkadot-ckb-merkle-mountain-range",
  "scale-info",

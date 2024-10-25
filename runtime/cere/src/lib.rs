@@ -1444,7 +1444,8 @@ pub mod migrations {
 	}
 
 	/// Unreleased migrations. Add new ones here:
-	pub type Unreleased = (UpgradeSessionKeys,);
+	pub type Unreleased =
+		(UpgradeSessionKeys, pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>);
 }
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
