@@ -61,7 +61,7 @@ pub mod migrations;
 mod aggregator_client;
 
 pub mod proto {
-    include!(concat!(env!("OUT_DIR"),"/activity.rs"));
+	include!(concat!(env!("OUT_DIR"), "/activity.rs"));
 }
 
 #[frame_support::pallet]
