@@ -1296,7 +1296,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type ActivityHasher = BlakeTwo256;
 	const MAJORITY: u8 = 67;
-	const BLOCK_TO_START: u16 = 30; // every 100 blocks
+	const BLOCK_TO_START: u16 = 30; // every 30 blocks
 	const DAC_REDUNDANCY_FACTOR: u16 = 3;
 	type AggregatorsQuorum = MajorityOfAggregators;
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;

@@ -917,7 +917,7 @@ pub mod pallet {
 
 			let signer = Signer::<T, T::OffchainIdentifierId>::any_account();
 			if !signer.can_sign() {
-				log::error!("🚨No OCW is available.");
+				log::error!("🚨 No OCW is available.");
 				return;
 			}
 
@@ -948,6 +948,8 @@ pub mod pallet {
 				T::ClusterManager::get_clusters(ClusterStatus::Activated),
 				"🏭❌ Error retrieving clusters to validate"
 			);
+
+			log::info!("🎡 {:?} of 'Activated' clusters found", clusters_ids.len());
 
 			for cluster_id in clusters_ids {
 				let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
@@ -1010,7 +1012,7 @@ pub mod pallet {
 						}
 					},
 					Ok(None) => {
-						log::info!("🏭ℹ️ No eras for DAC process for cluster_id: {:?}", cluster_id);
+						log::info!("🏭ℹ️  No eras for DAC process for cluster_id: {:?}", cluster_id);
 					},
 					Err(process_errors) => {
 						errors.extend(process_errors);
@@ -2928,15 +2930,17 @@ pub mod pallet {
 				Self::get_last_validated_era(cluster_id, this_validator)?
 					.unwrap_or_else(DdcEra::default);
 
-			log::info!(
-				"🚀 last_validated_era_by_this_validator for cluster_id: {:?}",
-				last_validated_era_by_this_validator
-			);
-
 			let last_validated_era_for_cluster =
 				T::ClusterValidator::get_last_validated_era(cluster_id).map_err(|_| {
 					OCWError::EraRetrievalError { cluster_id: *cluster_id, node_pub_key: None }
 				})?;
+
+			log::info!(
+				"ℹ️  The last era validated by this specific validator for cluster_id: {:?} is {:?}. The last overall validated era for the cluster is {:?}",
+				cluster_id,
+				last_validated_era_by_this_validator,
+				last_validated_era_for_cluster
+			);
 
 			// we want to fetch processed eras from all available validators
 			let available_processed_eras =
@@ -2965,13 +2969,16 @@ pub mod pallet {
 			for (era_key, candidates) in
 				&processed_eras_to_validate.into_iter().chunk_by(|elt| elt.clone())
 			{
-				if candidates.count() >= threshold {
+				let count = candidates.count();
+				if count >= threshold {
 					processed_eras_with_quorum.push(era_key);
 				} else {
 					log::warn!(
-						"⚠️ Era {:?} in cluster_id: {:?} has been reported with unmet quorum",
+						"⚠️ Era {:?} in cluster_id: {:?} has been reported with unmet quorum. Desired: {:?} Actual: {:?}",
 						era_key,
-						cluster_id
+						cluster_id,
+						threshold,
+						count
 					);
 				}
 			}
@@ -3330,13 +3337,10 @@ pub mod pallet {
 				if let Ok(NodeParams::StorageParams(storage_params)) =
 					T::NodeVisitor::get_node_params(&node_pub_key)
 				{
-					let NodePubKey::StoragePubKey(key) = node_pub_key.clone();
-					let node_pub_key_ref: &[u8; 32] = key.as_ref();
-					let node_pub_key_string = hex::encode(node_pub_key_ref);
 					log::info!(
-						"🏭📝Get DAC Node for cluster_id: {:?} and node_pub_key: {:?}",
+						"🏭📝 Obtained DAC Node for cluster_id: {:?} and with key: {:?}",
 						cluster_id,
-						node_pub_key_string
+						node_pub_key.get_hex()
 					);
 
 					// Add to the results if the mode matches
@@ -3365,12 +3369,14 @@ pub mod pallet {
 		) -> Result<Vec<(AggregatorInfo, Vec<NodeAggregateResponse>)>, OCWError> {
 			let mut nodes_aggregates = Vec::new();
 
-			for (node_pub_key, node_params) in dac_nodes {
+			for (node_key, node_params) in dac_nodes {
 				let aggregates_res = Self::fetch_node_aggregates(cluster_id, era_id, node_params);
 				if aggregates_res.is_err() {
 					log::warn!(
-						"Aggregator with key {:?} is unavailable while fetching nodes aggregates",
-						node_pub_key
+						"Aggregator from cluster {:?} is unavailable while fetching nodes aggregates. Key: {:?} Host: {:?}",
+						cluster_id,
+						node_key.get_hex(),
+						String::from_utf8(node_params.host.clone())
 					);
 					// skip unavailable aggregators and continue with available ones
 					continue;
@@ -3381,13 +3387,13 @@ pub mod pallet {
 				// todo: this is tech debt that needs to be refactored, the mapping logic needs to
 				// be moved to payouts pallet
 				for aggregate in aggregates.clone() {
-					let provider_id = Self::get_node_provider_id(node_pub_key).unwrap();
+					let provider_id = Self::get_node_provider_id(node_key).unwrap();
 					Self::store_provider_id(aggregate.node_id, provider_id);
 				}
 
 				nodes_aggregates.push((
 					AggregatorInfo {
-						node_pub_key: node_pub_key.clone(),
+						node_pub_key: node_key.clone(),
 						node_params: node_params.clone(),
 					},
 					aggregates,
@@ -3411,12 +3417,14 @@ pub mod pallet {
 			let mut bucket_aggregates: Vec<(AggregatorInfo, Vec<BucketAggregateResponse>)> =
 				Vec::new();
 
-			for (node_pub_key, node_params) in dac_nodes {
+			for (node_key, node_params) in dac_nodes {
 				let aggregates_res = Self::fetch_bucket_aggregates(cluster_id, era_id, node_params);
 				if aggregates_res.is_err() {
 					log::warn!(
-						"Aggregator with key {:?} is unavailable while fetching buckets aggregates",
-						node_pub_key
+						"Aggregator from cluster {:?} is unavailable while fetching nodes aggregates. Key: {:?} Host: {:?}",
+						cluster_id,
+						node_key.get_hex(),
+						String::from_utf8(node_params.host.clone())
 					);
 					// skip unavailable aggregators and continue with available ones
 					continue;
@@ -3427,7 +3435,7 @@ pub mod pallet {
 
 				bucket_aggregates.push((
 					AggregatorInfo {
-						node_pub_key: node_pub_key.clone(),
+						node_pub_key: node_key.clone(),
 						node_params: node_params.clone(),
 					},
 					aggregates,
@@ -3443,17 +3451,19 @@ pub mod pallet {
 		/// - `cluster_id`: Cluster id
 		/// - `node_params`: DAC node parameters
 		fn fetch_processed_era_for_nodes(
-			_cluster_id: &ClusterId,
+			cluster_id: &ClusterId,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Vec<Vec<EraActivity>>, OCWError> {
 			let mut processed_eras_by_nodes: Vec<Vec<EraActivity>> = Vec::new();
 
-			for (node_pub_key, node_params) in dac_nodes {
+			for (node_key, node_params) in dac_nodes {
 				let processed_eras_by_node = Self::fetch_processed_eras(node_params);
 				if processed_eras_by_node.is_err() {
 					log::warn!(
-						"Aggregator with key {:?} is unavailable while fetching eras",
-						node_pub_key
+						"Aggregator from cluster {:?} is unavailable while fetching nodes aggregates. Key: {:?} Host: {:?}",
+						cluster_id,
+						node_key.get_hex(),
+						String::from_utf8(node_params.host.clone())
 					);
 					// skip unavailable aggregators and continue with available ones
 					continue;
