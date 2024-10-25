@@ -45,6 +45,14 @@ pub mod v1 {
 				);
 			}
 
+			// Update storage version.
+			StorageVersion::new(1).put::<Pallet<T>>();
+			log::info!(
+				target: LOG_TARGET,
+				"Storage migrated to version {:?}",
+				current_version
+			);
+
 			T::DbWeight::get().reads_writes(1, res.unique.into())
 		} else {
 			log::info!(target: LOG_TARGET, " >>> Unused migration!");

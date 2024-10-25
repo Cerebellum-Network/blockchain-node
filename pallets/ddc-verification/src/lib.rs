@@ -2921,7 +2921,8 @@ pub mod pallet {
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Option<EraActivity>, OCWError> {
 			let this_validator_data = Self::fetch_current_validator()?;
-			let this_validator = T::AccountId::decode(&mut &this_validator_data[..]).unwrap();
+			let this_validator = T::AccountId::decode(&mut &this_validator_data[..])
+				.map_err(|_| OCWError::FailedToFetchCurrentValidator)?;
 
 			let last_validated_era_by_this_validator =
 				Self::get_last_validated_era(cluster_id, this_validator)?
@@ -2942,7 +2943,7 @@ pub mod pallet {
 				Self::fetch_processed_era_for_nodes(cluster_id, dac_nodes)?;
 
 			// we want to let the current validator to validate available processed/completed eras
-			// that are greater from the last validated era in the cluster
+			// that are greater than the last validated era in the cluster
 			let processed_eras_to_validate: Vec<EraActivity> = available_processed_eras
 				.iter()
 				.flat_map(|eras| {
@@ -3375,7 +3376,7 @@ pub mod pallet {
 					continue;
 				}
 
-				let aggregates = aggregates_res.unwrap();
+				let aggregates = aggregates_res.expect("Nodes Aggregates Response to be available");
 
 				// todo: this is tech debt that needs to be refactored, the mapping logic needs to
 				// be moved to payouts pallet
@@ -3421,7 +3422,8 @@ pub mod pallet {
 					continue;
 				}
 
-				let aggregates = aggregates_res.unwrap();
+				let aggregates =
+					aggregates_res.expect("Buckets Aggregates Response to be available");
 
 				bucket_aggregates.push((
 					AggregatorInfo {
@@ -3456,7 +3458,7 @@ pub mod pallet {
 					// skip unavailable aggregators and continue with available ones
 					continue;
 				} else {
-					let eras = processed_eras_by_node.unwrap();
+					let eras = processed_eras_by_node.expect("Era Response to be available");
 					if !eras.is_empty() {
 						processed_eras_by_nodes
 							.push(eras.into_iter().map(|e| e.into()).collect::<Vec<_>>());
