@@ -3421,7 +3421,7 @@ pub mod pallet {
 				let aggregates_res = Self::fetch_bucket_aggregates(cluster_id, era_id, node_params);
 				if aggregates_res.is_err() {
 					log::warn!(
-						"Aggregator from cluster {:?} is unavailable while fetching nodes aggregates. Key: {:?} Host: {:?}",
+						"Aggregator from cluster {:?} is unavailable while fetching buckets aggregates. Key: {:?} Host: {:?}",
 						cluster_id,
 						node_key.get_hex(),
 						String::from_utf8(node_params.host.clone())
@@ -3460,7 +3460,7 @@ pub mod pallet {
 				let processed_eras_by_node = Self::fetch_processed_eras(node_params);
 				if processed_eras_by_node.is_err() {
 					log::warn!(
-						"Aggregator from cluster {:?} is unavailable while fetching nodes aggregates. Key: {:?} Host: {:?}",
+						"Aggregator from cluster {:?} is unavailable while fetching processed eras. Key: {:?} Host: {:?}",
 						cluster_id,
 						node_key.get_hex(),
 						String::from_utf8(node_params.host.clone())
