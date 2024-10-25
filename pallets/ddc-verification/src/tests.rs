@@ -1,3 +1,5 @@
+use prost::Message;
+
 use ddc_primitives::{
 	AggregatorInfo, ClusterId, MergeActivityHash, StorageNodeMode, StorageNodeParams,
 	StorageNodePubKey, KEY_TYPE,
@@ -12,7 +14,7 @@ use sp_core::{
 };
 use sp_io::TestExternalities;
 use sp_keystore::{testing::MemoryKeystore, Keystore, KeystoreExt};
-use sp_runtime::AccountId32;
+use sp_runtime::{offchain::Duration, AccountId32};
 
 use crate::{mock::*, Error, NodeAggregateResponse, *};
 
@@ -3079,4 +3081,99 @@ fn challenge_bucket_sub_aggregate_works() {
 		assert!(result.is_ok());
 
 	});
+}
+
+use crate::aggregator_client::AggregatorClient;
+
+#[test]
+fn aggregator_client_challenge_bucket_sub_aggregate_works() {
+    let mut ext = TestExternalities::default();
+    let (offchain, offchain_state) = TestOffchainExt::new();
+
+    ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+    ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
+
+    ext.execute_with(|| {
+        let mut offchain_state = offchain_state.write();
+        offchain_state.timestamp = Timestamp::from_unix_millis(0);
+
+        let base_url = "http://example.com";
+        let bucket_id = 1;
+        let era_id = 1;
+        let merkle_tree_node_id = "2,6";
+        let node_id = "0x0ac7cb9c53594e9f538d9950c6bcf28f0c0c7b8385deea2ebe24062bc640e7be";
+
+        let expected_response = proto::ChallengeResponse{
+            proofs: vec![
+                proto::challenge_response::Proof{
+                    merkle_tree_node_id: 3,
+                    ..Default::default()
+                }
+            ],
+        };
+        let mut expected_response_serialized = Vec::new();
+        let _ = expected_response.encode(&mut expected_response_serialized).unwrap();
+
+        let expected = PendingRequest {
+            method: "GET".into(),
+            headers: vec![("Accept".into(), "application/protobuf".into())],
+            uri: format!("{}/activity/buckets/{}/challenge?eraId={}&merkleTreeNodeId={}&nodeId={}", base_url, bucket_id, era_id, merkle_tree_node_id, node_id),
+            response: Some(expected_response_serialized),
+            sent: true,
+            ..Default::default()
+        };
+        offchain_state.expect_request(expected);
+        drop(offchain_state);
+
+        let client = AggregatorClient::new(base_url, Duration::from_millis(1_000));
+
+        let result = client.challenge_bucket_sub_aggregate(era_id, bucket_id, node_id, vec![2, 6]);
+        assert_eq!(result, Ok(expected_response));
+    })
+}
+
+#[test]
+fn aggregator_client_challenge_node_aggregate_works() {
+    let mut ext = TestExternalities::default();
+    let (offchain, offchain_state) = TestOffchainExt::new();
+
+    ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+    ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
+
+    ext.execute_with(|| {
+        let mut offchain_state = offchain_state.write();
+        offchain_state.timestamp = Timestamp::from_unix_millis(0);
+
+        let base_url = "http://example.com";
+        let era_id = 1;
+        let merkle_tree_node_id = "2,6";
+        let node_id = "0x0ac7cb9c53594e9f538d9950c6bcf28f0c0c7b8385deea2ebe24062bc640e7be";
+
+        let expected_response = proto::ChallengeResponse{
+            proofs: vec![
+                proto::challenge_response::Proof{
+                    merkle_tree_node_id: 3,
+                    ..Default::default()
+                }
+            ],
+        };
+        let mut expected_response_serialized = Vec::new();
+        let _ = expected_response.encode(&mut expected_response_serialized).unwrap();
+
+        let expected = PendingRequest {
+            method: "GET".into(),
+            headers: vec![("Accept".into(), "application/protobuf".into())],
+            uri: format!("{}/activity/nodes/{}/challenge?eraId={}&merkleTreeNodeId={}", base_url, node_id, era_id, merkle_tree_node_id),
+            response: Some(expected_response_serialized),
+            sent: true,
+            ..Default::default()
+        };
+        offchain_state.expect_request(expected);
+        drop(offchain_state);
+
+        let client = AggregatorClient::new(base_url, Duration::from_millis(1_000));
+
+        let result = client.challenge_node_aggregate(era_id, node_id, vec![2, 6]);
+        assert_eq!(result, Ok(expected_response));
+    })
 }
