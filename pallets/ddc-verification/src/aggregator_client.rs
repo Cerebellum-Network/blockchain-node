@@ -1,7 +1,5 @@
 use prost::Message;
 
-use sp_std::prelude::Vec;
-use sp_runtime::AccountId32;
 use sp_runtime::offchain::{http, Duration};
 use sp_io::offchain::timestamp;
 
