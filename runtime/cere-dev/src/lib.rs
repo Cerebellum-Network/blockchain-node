@@ -535,12 +535,12 @@ parameter_types! {
 	pub const BondingDuration: sp_staking::EraIndex = 3;
 	pub const SlashDeferDuration: sp_staking::EraIndex = 2;
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
-	pub const MaxExposurePageSize: u32 = 64;
+	pub const MaxExposurePageSize: u32 = 512;
 	pub const MaxNominatorRewardedPerValidator: u32 = 256;
 	pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
 	pub OffchainRepeat: BlockNumber = 5;
 	pub const MaxNominations: u32 = <NposSolution16 as frame_election_provider_support::NposSolution>::LIMIT as u32;
-	pub const MaxControllersInDeprecationBatch: u32 = 751;
+	pub const MaxControllersInDeprecationBatch: u32 = 5900;
 }
 
 pub struct StakingBenchmarkingConfig;
@@ -1030,7 +1030,7 @@ impl pallet_identity::Config for Runtime {
 	type RegistrarOrigin = EitherOf<EnsureRoot<Self::AccountId>, GeneralAdmin>;
 	type OffchainSignature = Signature;
 	type SigningPublicKey = <Signature as Verify>::Signer;
-	type UsernameAuthorityOrigin = EnsureRoot<Self::AccountId>;
+	type UsernameAuthorityOrigin = EitherOf<EnsureRoot<Self::AccountId>, GeneralAdmin>;
 	type PendingUsernameExpiration = ConstU32<{ 7 * DAYS }>;
 	type MaxSuffixLength = ConstU32<7>;
 	type MaxUsernameLength = ConstU32<32>;
