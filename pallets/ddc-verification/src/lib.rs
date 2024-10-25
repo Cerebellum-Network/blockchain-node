@@ -58,6 +58,12 @@ mod tests;
 
 pub mod migrations;
 
+mod aggregator_client;
+
+pub mod proto {
+    include!(concat!(env!("OUT_DIR"),"/activity.rs"));
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 
@@ -1727,7 +1733,7 @@ pub mod pallet {
 					let excessive_aggregate = consolidated_aggregate.aggregate.clone();
 
 					log::warn!(
-						"⚠️ Number of consistent aggregates with key {:?} exceeds the redundancy factor", 
+						"⚠️ Number of consistent aggregates with key {:?} exceeds the redundancy factor",
 						aggregate_key
 					);
 
