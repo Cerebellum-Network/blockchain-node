@@ -22,14 +22,13 @@ impl<'a> AggregatorClient<'a> {
 		node_id: &str,
 		merkle_tree_node_id: Vec<u32>,
 	) -> Result<proto::ChallengeResponse, http::Error> {
-		let merkle_tree_nodes_ids = merkle_tree_node_id
-			.iter()
-			.map(|x| format!("{}", x.clone()))
-			.collect::<Vec<_>>()
-			.join(",");
 		let url = format!(
 			"{}/activity/buckets/{}/challenge?eraId={}&merkleTreeNodeId={}&nodeId={}",
-			self.base_url, bucket_id, era_id, merkle_tree_nodes_ids, node_id,
+			self.base_url,
+			bucket_id,
+			era_id,
+			Self::merkle_tree_node_id_param(merkle_tree_node_id.as_slice()),
+			node_id,
 		);
 		let response = self.get_proto(&url)?;
 		let body = response.body().collect::<Vec<u8>>();
@@ -45,14 +44,12 @@ impl<'a> AggregatorClient<'a> {
 		node_id: &str,
 		merkle_tree_node_id: Vec<u32>,
 	) -> Result<proto::ChallengeResponse, http::Error> {
-		let merkle_tree_nodes_ids = merkle_tree_node_id
-			.iter()
-			.map(|x| format!("{}", x.clone()))
-			.collect::<Vec<_>>()
-			.join(",");
 		let url = format!(
 			"{}/activity/nodes/{}/challenge?eraId={}&merkleTreeNodeId={}",
-			self.base_url, node_id, era_id, merkle_tree_nodes_ids,
+			self.base_url,
+			node_id,
+			era_id,
+			Self::merkle_tree_node_id_param(merkle_tree_node_id.as_slice()),
 		);
 		let response = self.get_proto(&url)?;
 		let body = response.body().collect::<Vec<u8>>();
@@ -60,6 +57,14 @@ impl<'a> AggregatorClient<'a> {
 			proto::ChallengeResponse::decode(body.as_slice()).map_err(|_| http::Error::Unknown)?;
 
 		Ok(proto_response)
+	}
+
+	fn merkle_tree_node_id_param(merkle_tree_node_id: &[u32]) -> String {
+		merkle_tree_node_id
+			.iter()
+			.map(|x| format!("{}", x.clone()))
+			.collect::<Vec<_>>()
+			.join(",")
 	}
 
 	fn get_proto(&self, url: &str) -> Result<http::Response, http::Error> {
