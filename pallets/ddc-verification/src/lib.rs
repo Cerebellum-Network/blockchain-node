@@ -1727,7 +1727,7 @@ pub mod pallet {
 					let excessive_aggregate = consolidated_aggregate.aggregate.clone();
 
 					log::warn!(
-						"⚠️ Number of consistent aggregates with key {:?} exceeds the redundancy factor", 
+						"⚠️ Number of consistent aggregates with key {:?} exceeds the redundancy factor",
 						aggregate_key
 					);
 
@@ -3150,15 +3150,15 @@ pub mod pallet {
 				.join(",");
 
 			let url = match aggregate_key {
-				AggregateKey::NodeAggregateKey(node_id) => format!(
-					"{}://{}:{}/activity/nodes/{}/challenge?eraId={}&merkleTreeNodeId={}",
-					scheme, host, node_params.http_port, node_id, era_id, ids
-				),
-				AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => format!(
-					"{}://{}:{}/activity/buckets/{}/challenge?eraId={}&nodeId={}&merkleTreeNodeId={}",
-					scheme, host, node_params.http_port, bucket_id, era_id, node_id, ids
-				),
-			};
+                AggregateKey::NodeAggregateKey(node_id) => format!(
+                    "{}://{}:{}/activity/nodes/{}/challenge?eraId={}&merkleTreeNodeId={}",
+                    scheme, host, node_params.http_port, node_id, era_id, ids
+                ),
+                AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => format!(
+                    "{}://{}:{}/activity/buckets/{}/challenge?eraId={}&nodeId={}&merkleTreeNodeId={}",
+                    scheme, host, node_params.http_port, bucket_id, era_id, node_id, ids
+                ),
+            };
 
 			let request = http::Request::get(&url);
 			let timeout = sp_io::offchain::timestamp()
@@ -3200,15 +3200,15 @@ pub mod pallet {
 				.join(",");
 
 			let url = match aggregate_key {
-				AggregateKey::NodeAggregateKey(node_id) => format!(
-					"{}://{}:{}/activity/nodes/{}/traverse?eraId={}&merkleTreeNodeId={}&levels={}",
-					scheme, host, node_params.http_port, node_id, era_id, ids, levels
-				),
-				AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => format!(
-					"{}://{}:{}/activity/buckets/{}/traverse?eraId={}&nodeId={}&merkleTreeNodeId={}&levels={}",
-					scheme, host, node_params.http_port, bucket_id, era_id, node_id, ids, levels
-				),
-			};
+                AggregateKey::NodeAggregateKey(node_id) => format!(
+                    "{}://{}:{}/activity/nodes/{}/traverse?eraId={}&merkleTreeNodeId={}&levels={}",
+                    scheme, host, node_params.http_port, node_id, era_id, ids, levels
+                ),
+                AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => format!(
+                    "{}://{}:{}/activity/buckets/{}/traverse?eraId={}&nodeId={}&merkleTreeNodeId={}&levels={}",
+                    scheme, host, node_params.http_port, bucket_id, era_id, node_id, ids, levels
+                ),
+            };
 
 			let request = http::Request::get(&url);
 			let timeout = sp_io::offchain::timestamp()
