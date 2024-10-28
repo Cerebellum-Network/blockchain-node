@@ -4,7 +4,10 @@ use blake2::{Blake2s256, Digest};
 use codec::{Decode, Encode};
 use frame_support::parameter_types;
 use polkadot_ckb_merkle_mountain_range::Merge;
-use scale_info::{prelude::vec::Vec, TypeInfo};
+use scale_info::{
+	prelude::{string::String, vec::Vec},
+	TypeInfo,
+};
 use serde::{Deserialize, Serialize};
 use sp_core::{crypto::KeyTypeId, hash::H160};
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
@@ -121,6 +124,14 @@ pub struct AggregatorInfo {
 )]
 pub enum NodePubKey {
 	StoragePubKey(StorageNodePubKey),
+}
+
+impl NodePubKey {
+	pub fn get_hex(&self) -> String {
+		match self {
+			NodePubKey::StoragePubKey(pub_key_ref) => hex::encode(pub_key_ref),
+		}
+	}
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]

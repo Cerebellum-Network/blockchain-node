@@ -906,6 +906,13 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		fn get_last_validated_era(cluster_id: &ClusterId) -> Result<DdcEra, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+
+			Ok(cluster.last_validated_era_id)
+		}
 	}
 
 	impl<T: Config> ClusterManager<T> for Pallet<T> {
@@ -979,6 +986,16 @@ pub mod pallet {
 			succeeded: bool,
 		) -> Result<(), DispatchError> {
 			Self::do_validate_node(*cluster_id, node_pub_key.clone(), succeeded)
+		}
+
+		fn get_clusters(status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError> {
+			let mut clusters_ids = Vec::new();
+			for (cluster_id, cluster) in <Clusters<T>>::iter() {
+				if cluster.status == status {
+					clusters_ids.push(cluster_id);
+				}
+			}
+			Ok(clusters_ids)
 		}
 	}
 

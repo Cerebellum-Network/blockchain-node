@@ -280,6 +280,10 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 	) -> Result<(), DispatchError> {
 		unimplemented!()
 	}
+
+	fn get_clusters(_status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError> {
+		unimplemented!()
+	}
 }
 
 pub struct TestClusterCreator;

@@ -333,6 +333,10 @@ impl<T: Config> ClusterValidator<T> for TestClusterValidator {
 	) -> Result<(), DispatchError> {
 		unimplemented!()
 	}
+
+	fn get_last_validated_era(_cluster_id: &ClusterId) -> Result<DdcEra, DispatchError> {
+		Ok(Default::default())
+	}
 }
 
 pub struct MockPayoutVisitor;
@@ -687,6 +691,10 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		_succeeded: bool,
 	) -> Result<(), DispatchError> {
 		unimplemented!()
+	}
+
+	fn get_clusters(_status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError> {
+		Ok(vec![ClusterId::from([12; 20])])
 	}
 }
 
