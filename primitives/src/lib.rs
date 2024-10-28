@@ -326,15 +326,15 @@ pub enum PayoutState {
 	Finalized = 7,
 }
 
-pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
+pub const DAC_VERIFICATION_KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
 
 pub mod sr25519 {
 	mod app_sr25519 {
 		use scale_info::prelude::string::String;
 		use sp_application_crypto::{app_crypto, sr25519};
 
-		use crate::KEY_TYPE;
-		app_crypto!(sr25519, KEY_TYPE);
+		use crate::DAC_VERIFICATION_KEY_TYPE;
+		app_crypto!(sr25519, DAC_VERIFICATION_KEY_TYPE);
 	}
 
 	sp_application_crypto::with_pair! {
@@ -353,8 +353,8 @@ pub mod crypto {
 		MultiSignature, MultiSigner,
 	};
 
-	use super::KEY_TYPE;
-	app_crypto!(sr25519, KEY_TYPE);
+	use super::DAC_VERIFICATION_KEY_TYPE;
+	app_crypto!(sr25519, DAC_VERIFICATION_KEY_TYPE);
 	pub struct OffchainIdentifierId;
 	impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for OffchainIdentifierId {
 		type RuntimeAppPublic = Public;

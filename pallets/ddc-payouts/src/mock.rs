@@ -170,6 +170,7 @@ impl<T: Config> ValidatorVisitor<T> for MockValidatorVisitor
 where
 	<T as frame_system::Config>::AccountId: From<AccountId>,
 {
+	#[cfg(feature = "runtime-benchmarks")]
 	fn setup_validators(_validators: Vec<T::AccountId>) {
 		unimplemented!()
 	}

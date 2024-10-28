@@ -46,6 +46,8 @@ use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 pub mod weights;
 use itertools::Itertools;
 use rand::{prelude::*, rngs::SmallRng, SeedableRng};
+use sp_core::crypto::UncheckedFrom;
+pub use sp_io::crypto::sr25519_public_keys;
 use sp_staking::StakingInterface;
 use sp_std::fmt::Debug;
 
@@ -61,7 +63,7 @@ pub mod migrations;
 #[frame_support::pallet]
 pub mod pallet {
 
-	use ddc_primitives::{AggregatorInfo, BucketId, MergeActivityHash, KEY_TYPE};
+	use ddc_primitives::{AggregatorInfo, BucketId, MergeActivityHash, DAC_VERIFICATION_KEY_TYPE};
 	use frame_support::PalletId;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::SaturatedConversion;
@@ -264,7 +266,7 @@ pub mod pallet {
 			era_id: DdcEra,
 			validator: T::AccountId,
 		},
-		FailedToFetchCurrentValidator {
+		FailedToRetrieveVerificationKey {
 			validator: T::AccountId,
 		},
 		FailedToFetchNodeProvider {
@@ -421,7 +423,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		},
-		FailedToFetchCurrentValidator,
+		FailedToRetrieveVerificationKey,
 		FailedToFetchNodeProvider,
 		FailedToFetchClusterNodes,
 		FailedToFetchDacNodes,
@@ -911,6 +913,10 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn offchain_worker(block_number: BlockNumberFor<T>) {
+			if block_number.saturated_into::<u32>() % T::BLOCK_TO_START as u32 != 0 {
+				return;
+			}
+
 			if !sp_io::offchain::is_validator() {
 				return;
 			}
@@ -921,34 +927,16 @@ pub mod pallet {
 				return;
 			}
 
-			// todo! Need to uncomment this code
-			// if Self::fetch_current_validator().is_err() {
-			// 	let _ = signer.send_signed_transaction(|account| {
-			// 		Self::store_current_validator(account.id.encode());
-			//
-			// 		Call::set_current_validator {}
-			// 	});
-			// }
-			// todo! need to remove below code
-			if (block_number.saturated_into::<u32>() % 70) == 0 {
-				let _ = signer.send_signed_transaction(|account| {
-					Self::store_current_validator(account.id.encode());
-					log::info!("🏭📋‍ Setting current validator...  {:?}", account.id);
-					Call::set_current_validator {}
-				});
-			}
-
-			if (block_number.saturated_into::<u32>() % T::BLOCK_TO_START as u32) != 0 {
-				return;
-			}
-
-			log::info!("👋 Hello from pallet-ddc-verification.");
+			let session_verification_key = unwrap_or_log_error!(
+				Self::map_validator_verification_key(),
+				"❌ Error retrieving validator verification key"
+			);
+			Self::store_validator_verification_key(session_verification_key);
 
 			let clusters_ids = unwrap_or_log_error!(
 				T::ClusterManager::get_clusters(ClusterStatus::Activated),
-				"🏭❌ Error retrieving clusters to validate"
+				"❌ Error retrieving clusters to validate"
 			);
-
 			log::info!("🎡 {:?} of 'Activated' clusters found", clusters_ids.len());
 
 			for cluster_id in clusters_ids {
@@ -2540,17 +2528,50 @@ pub mod pallet {
 			format!("offchain::activities::{:?}::{:?}", cluster_id, era_id).into_bytes()
 		}
 
-		pub(crate) fn store_current_validator(validator: Vec<u8>) {
-			let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
+		pub(crate) fn map_validator_verification_key() -> Result<T::AccountId, OCWError> {
+			let verification_keys = sr25519_public_keys(DAC_VERIFICATION_KEY_TYPE)
+				.into_iter()
+				.map(|pub_key| {
+					let key: [u8; 32] = pub_key.into();
+					T::AccountId::decode(&mut &key[..]).expect("Verification key to be decoded")
+				})
+				.collect::<Vec<_>>();
+
+			let session_verification_keys = verification_keys
+				.into_iter()
+				.filter(|account_id| <ValidatorSet<T>>::get().contains(account_id))
+				.collect::<Vec<_>>();
+
+			if session_verification_keys.len() != 1 {
+				log::error!(
+					"🚨 Unexpected number of session verification keys is found. Expected: 1, Actual: {:?}",
+					session_verification_keys.len()
+				);
+				return Err(OCWError::FailedToRetrieveVerificationKey);
+			}
+
+			session_verification_keys
+				.into_iter()
+				.next() // first
+				.ok_or(OCWError::FailedToRetrieveVerificationKey)
+		}
+
+		pub(crate) fn store_validator_verification_key(verification_key: T::AccountId) {
+			let validator: Vec<u8> = verification_key.encode();
+			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
 			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &validator);
 		}
 
-		pub(crate) fn fetch_current_validator() -> Result<Vec<u8>, OCWError> {
-			let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
+		pub(crate) fn fetch_validator_verification_key() -> Result<T::AccountId, OCWError> {
+			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
 
 			match sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key) {
-				Some(data) => Ok(data),
-				None => Err(OCWError::FailedToFetchCurrentValidator),
+				Some(data) => {
+					let verification_key = T::AccountId::decode(&mut &data[..])
+						.map_err(|_| OCWError::FailedToRetrieveVerificationKey)?;
+					Ok(verification_key)
+				},
+				None => Err(OCWError::FailedToRetrieveVerificationKey),
 			}
 		}
 
@@ -2922,9 +2943,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Option<EraActivity>, OCWError> {
-			let this_validator_data = Self::fetch_current_validator()?;
-			let this_validator = T::AccountId::decode(&mut &this_validator_data[..])
-				.map_err(|_| OCWError::FailedToFetchCurrentValidator)?;
+			let this_validator = Self::fetch_validator_verification_key()?;
 
 			let last_validated_era_by_this_validator =
 				Self::get_last_validated_era(cluster_id, this_validator)?
@@ -3760,8 +3779,8 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
-					OCWError::FailedToFetchCurrentValidator => {
-						Self::deposit_event(Event::FailedToFetchCurrentValidator {
+					OCWError::FailedToRetrieveVerificationKey => {
+						Self::deposit_event(Event::FailedToRetrieveVerificationKey {
 							validator: caller.clone(),
 						});
 					},
@@ -4012,21 +4031,8 @@ pub mod pallet {
 			T::ClusterValidator::set_last_validated_era(&cluster_id, era_id)
 		}
 
-		// todo! Need to remove this
-		#[pallet::call_index(11)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn set_current_validator(origin: OriginFor<T>) -> DispatchResult {
-			let validator = ensure_signed(origin)?;
-
-			if !<ValidatorSet<T>>::get().contains(&validator) {
-				ValidatorSet::<T>::append(validator);
-			}
-
-			Ok(())
-		}
-
 		// todo! remove this after devnet testing
-		#[pallet::call_index(12)]
+		#[pallet::call_index(11)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
 		pub fn set_era_validations(
 			origin: OriginFor<T>,
@@ -4065,9 +4071,11 @@ pub mod pallet {
 	}
 
 	impl<T: Config> ValidatorVisitor<T> for Pallet<T> {
+		#[cfg(feature = "runtime-benchmarks")]
 		fn setup_validators(validators: Vec<T::AccountId>) {
 			ValidatorSet::<T>::put(validators);
 		}
+
 		fn is_ocw_validator(caller: T::AccountId) -> bool {
 			if ValidatorToStashKey::<T>::contains_key(caller.clone()) {
 				<ValidatorSet<T>>::get().contains(&caller)
@@ -4150,5 +4158,28 @@ pub mod pallet {
 		}
 
 		fn on_disabled(_i: u32) {}
+	}
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub validators: Vec<T::AccountId>,
+	}
+
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig { validators: Default::default() }
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T>
+	where
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	{
+		fn build(&self) {
+			for validator in &self.validators {
+				<ValidatorSet<T>>::append(validator);
+			}
+		}
 	}
 }
