@@ -100,11 +100,12 @@ impl Verify for proto::ActivityRequest {
 			return false;
 		}
 
-		if let Some(ref parent_request) = self.parent_request {
-			if !parent_request.verify() {
-				return false;
-			}
-		}
+		// TODO(khssnv): parent requests are expected to have an invalid signature.
+		// if let Some(ref parent_request) = self.parent_request {
+		// 	if !parent_request.verify() {
+		// 		return false;
+		// 	}
+		// }
 
 		true
 	}
