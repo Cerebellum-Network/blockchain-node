@@ -150,7 +150,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_version: 61001,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 22,
+	transaction_version: 21,
 	state_version: 0,
 };
 
