@@ -48,6 +48,7 @@ use itertools::Itertools;
 use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use sp_core::crypto::UncheckedFrom;
 pub use sp_io::crypto::sr25519_public_keys;
+use sp_runtime::traits::IdentifyAccount;
 use sp_staking::StakingInterface;
 use sp_std::fmt::Debug;
 
@@ -266,7 +267,10 @@ pub mod pallet {
 			era_id: DdcEra,
 			validator: T::AccountId,
 		},
-		FailedToRetrieveVerificationKey {
+		FailedToCollectVerificationKey {
+			validator: T::AccountId,
+		},
+		FailedToFetchVerificationKey {
 			validator: T::AccountId,
 		},
 		FailedToFetchNodeProvider {
@@ -423,7 +427,8 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 		},
-		FailedToRetrieveVerificationKey,
+		FailedToCollectVerificationKey,
+		FailedToFetchVerificationKey,
 		FailedToFetchNodeProvider,
 		FailedToFetchClusterNodes,
 		FailedToFetchDacNodes,
@@ -921,17 +926,20 @@ pub mod pallet {
 				return;
 			}
 
-			let signer = Signer::<T, T::OffchainIdentifierId>::any_account();
+			let verification_key = unwrap_or_log_error!(
+				Self::collect_verification_pub_key(),
+				"❌ Error collecting validator verification key"
+			);
+
+			let signer = Signer::<T, T::OffchainIdentifierId>::any_account()
+				.with_filter(vec![verification_key.clone()]);
+
 			if !signer.can_sign() {
-				log::error!("🚨 No OCW is available.");
+				log::error!("🚨 OCW signer is not available");
 				return;
 			}
 
-			let session_verification_key = unwrap_or_log_error!(
-				Self::map_validator_verification_key(),
-				"❌ Error retrieving validator verification key"
-			);
-			Self::store_validator_verification_key(session_verification_key);
+			Self::store_verification_account_id(verification_key.clone().into_account());
 
 			let clusters_ids = unwrap_or_log_error!(
 				T::ClusterManager::get_clusters(ClusterStatus::Activated),
@@ -2528,50 +2536,57 @@ pub mod pallet {
 			format!("offchain::activities::{:?}::{:?}", cluster_id, era_id).into_bytes()
 		}
 
-		pub(crate) fn map_validator_verification_key() -> Result<T::AccountId, OCWError> {
-			let verification_keys = sr25519_public_keys(DAC_VERIFICATION_KEY_TYPE)
-				.into_iter()
-				.map(|pub_key| {
-					let key: [u8; 32] = pub_key.into();
-					T::AccountId::decode(&mut &key[..]).expect("Verification key to be decoded")
-				})
-				.collect::<Vec<_>>();
-
-			let session_verification_keys = verification_keys
-				.into_iter()
-				.filter(|account_id| <ValidatorSet<T>>::get().contains(account_id))
-				.collect::<Vec<_>>();
+		pub(crate) fn collect_verification_pub_key() -> Result<T::Public, OCWError> {
+			let session_verification_keys = <T::OffchainIdentifierId as AppCrypto<
+				T::Public,
+				T::Signature,
+			>>::RuntimeAppPublic::all()
+			.into_iter()
+			.filter_map(|key| {
+				let generic_public = <T::OffchainIdentifierId as AppCrypto<
+					T::Public,
+					T::Signature,
+				>>::GenericPublic::from(key);
+				let public_key: T::Public = generic_public.into();
+				let account_id = public_key.clone().into_account();
+				if <ValidatorSet<T>>::get().contains(&account_id) {
+					Option::Some(public_key)
+				} else {
+					Option::None
+				}
+			})
+			.collect::<Vec<_>>();
 
 			if session_verification_keys.len() != 1 {
 				log::error!(
 					"🚨 Unexpected number of session verification keys is found. Expected: 1, Actual: {:?}",
 					session_verification_keys.len()
 				);
-				return Err(OCWError::FailedToRetrieveVerificationKey);
+				return Err(OCWError::FailedToCollectVerificationKey);
 			}
 
 			session_verification_keys
 				.into_iter()
 				.next() // first
-				.ok_or(OCWError::FailedToRetrieveVerificationKey)
+				.ok_or(OCWError::FailedToCollectVerificationKey)
 		}
 
-		pub(crate) fn store_validator_verification_key(verification_key: T::AccountId) {
-			let validator: Vec<u8> = verification_key.encode();
+		pub(crate) fn store_verification_account_id(account_id: T::AccountId) {
+			let validator: Vec<u8> = account_id.encode();
 			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
 			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &validator);
 		}
 
-		pub(crate) fn fetch_validator_verification_key() -> Result<T::AccountId, OCWError> {
+		pub(crate) fn fetch_verification_account_id() -> Result<T::AccountId, OCWError> {
 			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
 
 			match sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key) {
 				Some(data) => {
-					let verification_key = T::AccountId::decode(&mut &data[..])
-						.map_err(|_| OCWError::FailedToRetrieveVerificationKey)?;
-					Ok(verification_key)
+					let account_id = T::AccountId::decode(&mut &data[..])
+						.map_err(|_| OCWError::FailedToFetchVerificationKey)?;
+					Ok(account_id)
 				},
-				None => Err(OCWError::FailedToRetrieveVerificationKey),
+				None => Err(OCWError::FailedToFetchVerificationKey),
 			}
 		}
 
@@ -2943,7 +2958,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<Option<EraActivity>, OCWError> {
-			let this_validator = Self::fetch_validator_verification_key()?;
+			let this_validator = Self::fetch_verification_account_id()?;
 
 			let last_validated_era_by_this_validator =
 				Self::get_last_validated_era(cluster_id, this_validator)?
@@ -3779,8 +3794,13 @@ pub mod pallet {
 							validator: caller.clone(),
 						});
 					},
-					OCWError::FailedToRetrieveVerificationKey => {
-						Self::deposit_event(Event::FailedToRetrieveVerificationKey {
+					OCWError::FailedToCollectVerificationKey => {
+						Self::deposit_event(Event::FailedToCollectVerificationKey {
+							validator: caller.clone(),
+						});
+					},
+					OCWError::FailedToFetchVerificationKey => {
+						Self::deposit_event(Event::FailedToFetchVerificationKey {
 							validator: caller.clone(),
 						});
 					},
