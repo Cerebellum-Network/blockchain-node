@@ -143,3 +143,52 @@ fn verify_signature(mut signed: impl Clone + Message + Signed) -> bool {
 
 	ed25519_verify(&sig, payload.as_slice(), &pub_key)
 }
+
+#[cfg(test)]
+mod tests {
+	use sp_core::Pair;
+
+	use super::*;
+
+	#[test]
+	fn verify_signature_works() {
+		#[derive(Clone, PartialEq, ::prost::Message)]
+		pub struct SignedProtoMsg {
+			#[prost(string, tag = "1")]
+			pub foo: ::prost::alloc::string::String,
+			#[prost(message, optional, tag = "2")]
+			pub signature: ::core::option::Option<proto::Signature>,
+		}
+		impl_signed!(for SignedProtoMsg);
+
+		let none_signature_msg =
+			SignedProtoMsg { foo: "none_signature_msg".to_string(), signature: None };
+		assert!(!verify_signature(none_signature_msg));
+
+		let mut invalid_signature_msg =
+			SignedProtoMsg { foo: "invalid_signature_msg".to_string(), signature: None };
+		let invalid_signature_msg_signer = sp_core::ed25519::Pair::generate().0;
+		let invalid_signature_msg_signature =
+			invalid_signature_msg_signer.sign(invalid_signature_msg.encode_to_vec().as_slice());
+		let mut invalid_signature_msg_signature_vec = invalid_signature_msg_signature.0.to_vec();
+		invalid_signature_msg_signature_vec[0] = invalid_signature_msg_signature_vec[0] + 1;
+		invalid_signature_msg.signature = Some(proto::Signature {
+			algorithm: proto::signature::Algorithm::Ed25519 as i32,
+			value: invalid_signature_msg_signature_vec,
+			signer: invalid_signature_msg_signer.public().0.to_vec(),
+		});
+		assert!(!verify_signature(invalid_signature_msg));
+
+		let mut valid_signature_msg =
+			SignedProtoMsg { foo: "valid_signature_msg".to_string(), signature: None };
+		let valid_signature_msg_signer = sp_core::ed25519::Pair::generate().0;
+		let valid_signature_msg_signature =
+			valid_signature_msg_signer.sign(valid_signature_msg.encode_to_vec().as_slice());
+		valid_signature_msg.signature = Some(proto::Signature {
+			algorithm: proto::signature::Algorithm::Ed25519 as i32,
+			value: valid_signature_msg_signature.0.to_vec(),
+			signer: valid_signature_msg_signer.public().0.to_vec(),
+		});
+		assert!(verify_signature(valid_signature_msg));
+	}
+}
