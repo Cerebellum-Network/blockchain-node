@@ -430,6 +430,23 @@ pub mod pallet {
 
 			Self::do_join_cluster(cluster, node_pub_key)
 		}
+
+		#[pallet::call_index(6)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::validate_node())]
+		pub fn set_last_validated_era(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era: DdcEra,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			let mut cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+
+			cluster.last_validated_era_id = era;
+			Clusters::<T>::insert(cluster_id, cluster);
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
