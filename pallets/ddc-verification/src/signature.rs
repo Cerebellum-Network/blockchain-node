@@ -101,7 +101,6 @@ impl Verify for proto::ChallengeResponse {
 	}
 }
 
-
 trait Signed {
 	fn get_signature(&self) -> Option<&proto::Signature>;
 	fn reset_signature(&mut self);
@@ -124,21 +123,20 @@ macro_rules! impl_signed {
 
 impl_signed!(for proto::ActivityAcknowledgment, proto::ActivityRecord, proto::ActivityRequest);
 
-fn verify_signature(signed: impl Clone + Message + Signed) -> bool {
+fn verify_signature(mut signed: impl Clone + Message + Signed) -> bool {
 	let signature = match signed.get_signature() {
 		Some(s) => s.clone(),
 		None => return false,
 	};
-	let sig = match Signature::try_from(signature.clone().value.as_slice()) {
+	let sig = match Signature::try_from(signature.value.as_slice()) {
 		Ok(s) => s,
 		Err(_) => return false,
 	};
 
-	let mut msg = signed.clone();
-	msg.reset_signature();
-	let payload = msg.encode_to_vec();
+	signed.reset_signature();
+	let payload = signed.encode_to_vec();
 
-	let pub_key = match Public::try_from(signature.clone().signer.as_slice()) {
+	let pub_key = match Public::try_from(signature.signer.as_slice()) {
 		Ok(p) => p,
 		Err(_) => return false,
 	};
