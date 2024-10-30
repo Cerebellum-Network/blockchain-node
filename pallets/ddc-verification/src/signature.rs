@@ -191,4 +191,13 @@ mod tests {
 		});
 		assert!(verify_signature(valid_signature_msg));
 	}
+
+	#[test]
+	fn verify_challenge_response_works() {
+		let challenge_response_serialized =
+			include_bytes!("./test_data/challenge_response.pb").as_slice();
+		let challenge_response = proto::ChallengeResponse::decode(challenge_response_serialized)
+			.expect("protobuf fixture decoding failed, fix the test data");
+		assert!(challenge_response.verify());
+	}
 }
