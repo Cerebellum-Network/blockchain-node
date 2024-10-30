@@ -10,53 +10,13 @@ pub trait Verify {
 
 impl Verify for proto::ActivityAcknowledgment {
 	fn verify(&self) -> bool {
-		let signature = match &self.signature {
-			Some(s) => s.clone(),
-			None => return false,
-		};
-		let sig = match Signature::try_from(signature.clone().value.as_slice()) {
-			Ok(s) => s,
-			Err(_) => return false,
-		};
-
-		let mut msg = self.clone();
-		msg.signature = None;
-		let payload = msg.encode_to_vec();
-
-		let pub_key = match Public::try_from(signature.clone().signer.as_slice()) {
-			Ok(p) => p,
-			Err(_) => return false,
-		};
-
-		if !ed25519_verify(&sig, payload.as_slice(), &pub_key) {
-			return false;
-		}
-
-		true
+		verify_signature(self.clone())
 	}
 }
 
 impl Verify for proto::ActivityRecord {
 	fn verify(&self) -> bool {
-		let signature = match &self.signature {
-			Some(s) => s.clone(),
-			None => return false,
-		};
-		let sig = match Signature::try_from(signature.clone().value.as_slice()) {
-			Ok(s) => s,
-			Err(_) => return false,
-		};
-
-		let mut msg = self.clone();
-		msg.signature = None;
-		let payload = msg.encode_to_vec();
-
-		let pub_key = match Public::try_from(signature.clone().signer.as_slice()) {
-			Ok(p) => p,
-			Err(_) => return false,
-		};
-
-		if !ed25519_verify(&sig, payload.as_slice(), &pub_key) {
+		if !verify_signature(self.clone()) {
 			return false;
 		}
 
@@ -78,25 +38,7 @@ impl Verify for proto::ActivityRecord {
 
 impl Verify for proto::ActivityRequest {
 	fn verify(&self) -> bool {
-		let signature = match &self.signature {
-			Some(s) => s.clone(),
-			None => return false,
-		};
-		let sig = match Signature::try_from(signature.clone().value.as_slice()) {
-			Ok(s) => s,
-			Err(_) => return false,
-		};
-
-		let mut msg = self.clone();
-		msg.signature = None;
-		let payload = msg.encode_to_vec();
-
-		let pub_key = match Public::try_from(signature.clone().signer.as_slice()) {
-			Ok(p) => p,
-			Err(_) => return false,
-		};
-
-		if !ed25519_verify(&sig, payload.as_slice(), &pub_key) {
+		if !verify_signature(self.clone()) {
 			return false;
 		}
 
@@ -157,4 +99,49 @@ impl Verify for proto::ChallengeResponse {
 
 		true
 	}
+}
+
+
+trait Signed {
+	fn get_signature(&self) -> Option<&proto::Signature>;
+	fn reset_signature(&mut self);
+}
+
+/// Implements Signed trait for given types.
+macro_rules! impl_signed {
+	(for $($t:ty),+) => {
+		$(impl Signed for $t {
+			fn get_signature(&self) -> Option<&proto::Signature> {
+				return self.signature.as_ref()
+			}
+
+			fn reset_signature(&mut self) {
+				self.signature = None;
+			}
+		})*
+	}
+}
+
+impl_signed!(for proto::ActivityAcknowledgment, proto::ActivityRecord, proto::ActivityRequest);
+
+fn verify_signature(signed: impl Clone + Message + Signed) -> bool {
+	let signature = match signed.get_signature() {
+		Some(s) => s.clone(),
+		None => return false,
+	};
+	let sig = match Signature::try_from(signature.clone().value.as_slice()) {
+		Ok(s) => s,
+		Err(_) => return false,
+	};
+
+	let mut msg = signed.clone();
+	msg.reset_signature();
+	let payload = msg.encode_to_vec();
+
+	let pub_key = match Public::try_from(signature.clone().signer.as_slice()) {
+		Ok(p) => p,
+		Err(_) => return false,
+	};
+
+	ed25519_verify(&sig, payload.as_slice(), &pub_key)
 }
