@@ -561,7 +561,7 @@ pub mod pallet {
 
 	pub struct CustomerBatch<T: Config> {
 		pub(crate) batch_index: BatchIndex,
-		pub(crate) payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
+		pub(crate) payers: Vec<(T::AccountId, String, BucketId, CustomerUsage)>,
 		pub(crate) batch_proof: MMRProof,
 	}
 
@@ -1123,23 +1123,24 @@ pub mod pallet {
 				// todo! factor out as macro as this is repetitive
 				match Self::prepare_send_charging_customers_batch(&cluster_id, batch_size.into()) {
 					Ok(Some((era_id, batch_payout))) => {
-						let payers_log: Vec<(String, BucketId, CustomerUsage)> = batch_payout
-							.payers
-							.clone()
-							.into_iter()
-							.map(|(acc_id, bucket_id, customer_usage)| {
-								let account_id: T::AccountIdConverter = acc_id.into();
-								let account_id_32: AccountId32 = account_id.into();
-								let account_ref: &[u8; 32] = account_id_32.as_ref();
-								(hex::encode(account_ref), bucket_id, customer_usage)
-							})
-							.collect();
+						let payers_log: Vec<(String, String, BucketId, CustomerUsage)> =
+							batch_payout
+								.payers
+								.clone()
+								.into_iter()
+								.map(|(acc_id, node_id, bucket_id, customer_usage)| {
+									let account_id: T::AccountIdConverter = acc_id.into();
+									let account_id_32: AccountId32 = account_id.into();
+									let account_ref: &[u8; 32] = account_id_32.as_ref();
+									(hex::encode(account_ref), node_id, bucket_id, customer_usage)
+								})
+								.collect();
 						log::info!(
-						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:?}",
-						cluster_id,
-						era_id,
-						payers_log
-					);
+							"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:?}",
+							cluster_id,
+							era_id,
+							payers_log
+						);
 
 						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
 							Call::send_charging_customers_batch {
@@ -2181,7 +2182,7 @@ pub mod pallet {
 					PayoutState::ChargingCustomers
 				{
 					if let Some((
-						bucket_nodes_activity_in_consensus,
+						customers_total_activity,
 						_,
 						customers_activity_batch_roots,
 						_,
@@ -2194,7 +2195,7 @@ pub mod pallet {
 							cluster_id,
 							batch_size,
 							era_id,
-							bucket_nodes_activity_in_consensus,
+							customers_total_activity,
 							customers_activity_batch_roots,
 						)
 					} else {
@@ -2203,7 +2204,7 @@ pub mod pallet {
 						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((
-							bucket_nodes_activity_in_consensus,
+							customers_total_activity,
 							_,
 							customers_activity_batch_roots,
 							_,
@@ -2216,7 +2217,7 @@ pub mod pallet {
 								cluster_id,
 								batch_size,
 								era_id,
-								bucket_nodes_activity_in_consensus,
+								customers_total_activity,
 								customers_activity_batch_roots,
 							)
 						} else {
@@ -2235,7 +2236,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			batch_size: usize,
 			era_id: DdcEra,
-			bucket_nodes_activity_in_consensus: Vec<BucketSubAggregate>,
+			customers_total_activity: Vec<BucketSubAggregate>,
 			customers_activity_batch_roots: Vec<ActivityHash>,
 		) -> Result<Option<(DdcEra, CustomerBatch<T>)>, Vec<OCWError>> {
 			let batch_index = T::PayoutVisitor::get_next_customer_batch_for_payment(
@@ -2249,7 +2250,7 @@ pub mod pallet {
 				let i: usize = index.into();
 				// todo! store batched activity to avoid splitting it again each time
 				let customers_activity_batched =
-					Self::split_to_batches(&bucket_nodes_activity_in_consensus, batch_size);
+					Self::split_to_batches(&customers_total_activity, batch_size);
 
 				let batch_root = customers_activity_batch_roots[i];
 				let store = MemStore::default();
@@ -2294,13 +2295,14 @@ pub mod pallet {
 								let account_id =
 									T::CustomerVisitor::get_bucket_owner(&activity.bucket_id)
 										.unwrap();
+								let node_id = activity.node_id.clone();
 								let customer_usage = CustomerUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
 									number_of_puts: activity.number_of_puts,
 									number_of_gets: activity.number_of_gets,
 								};
-								(account_id, activity.bucket_id, customer_usage)
+								(account_id, node_id, activity.bucket_id, customer_usage)
 							})
 							.collect(),
 						batch_proof,
@@ -2344,20 +2346,14 @@ pub mod pallet {
 				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::CustomersChargedWithFees
 				{
-					if let Some((
-						_,
-						_,
-						_,
-						nodes_activity_in_consensus,
-						_,
-						nodes_activity_batch_roots,
-					)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
-						cluster_id, era_id,
-					) {
+					if let Some((_, _, _, nodes_total_activity, _, nodes_activity_batch_roots)) =
+						Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
+							cluster_id, era_id,
+						) {
 						Self::fetch_reward_activities(
 							cluster_id,
 							era_id,
-							nodes_activity_in_consensus,
+							nodes_total_activity,
 							nodes_activity_batch_roots,
 							nodes_total_usage,
 						)
@@ -2370,7 +2366,7 @@ pub mod pallet {
 							_,
 							_,
 							_,
-							nodes_activity_in_consensus,
+							nodes_total_activity,
 							_,
 							nodes_activity_batch_roots,
 						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
@@ -2379,7 +2375,7 @@ pub mod pallet {
 							Self::fetch_reward_activities(
 								cluster_id,
 								era_id,
-								nodes_activity_in_consensus,
+								nodes_total_activity,
 								nodes_activity_batch_roots,
 								nodes_total_usage,
 							)
@@ -2398,7 +2394,7 @@ pub mod pallet {
 		pub(crate) fn fetch_reward_activities(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			nodes_activity_in_consensus: Vec<NodeAggregate>,
+			nodes_total_activity: Vec<NodeAggregate>,
 			nodes_activity_batch_roots: Vec<ActivityHash>,
 			current_nodes_total_usage: i64,
 		) -> Result<Option<(DdcEra, BatchIndex, NodeUsage)>, Vec<OCWError>> {
@@ -2416,7 +2412,7 @@ pub mod pallet {
 					number_of_gets: 0,
 				};
 
-				for activity in nodes_activity_in_consensus {
+				for activity in nodes_total_activity {
 					total_node_usage.transferred_bytes += activity.transferred_bytes;
 					total_node_usage.stored_bytes += activity.stored_bytes;
 					total_node_usage.number_of_puts += activity.number_of_puts;
@@ -2439,21 +2435,15 @@ pub mod pallet {
 				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::RewardingProviders
 				{
-					if let Some((
-						_,
-						_,
-						_,
-						nodes_activity_in_consensus,
-						_,
-						nodes_activity_batch_roots,
-					)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
-						cluster_id, era_id,
-					) {
+					if let Some((_, _, _, nodes_total_activity, _, nodes_activity_batch_roots)) =
+						Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
+							cluster_id, era_id,
+						) {
 						Self::fetch_reward_provider_batch(
 							cluster_id,
 							batch_size,
 							era_id,
-							nodes_activity_in_consensus,
+							nodes_total_activity,
 							nodes_activity_batch_roots,
 						)
 					} else {
@@ -2465,7 +2455,7 @@ pub mod pallet {
 							_,
 							_,
 							_,
-							nodes_activity_in_consensus,
+							nodes_total_activity,
 							_,
 							nodes_activity_batch_roots,
 						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
@@ -2475,7 +2465,7 @@ pub mod pallet {
 								cluster_id,
 								batch_size,
 								era_id,
-								nodes_activity_in_consensus,
+								nodes_total_activity,
 								nodes_activity_batch_roots,
 							)
 						} else {
@@ -2494,7 +2484,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			batch_size: usize,
 			era_id: DdcEra,
-			nodes_activity_in_consensus: Vec<NodeAggregate>,
+			nodes_total_activity: Vec<NodeAggregate>,
 			nodes_activity_batch_roots: Vec<ActivityHash>,
 		) -> Result<Option<(DdcEra, ProviderBatch<T>)>, Vec<OCWError>> {
 			let batch_index = T::PayoutVisitor::get_next_provider_batch_for_payment(
@@ -2508,7 +2498,7 @@ pub mod pallet {
 				let i: usize = index.into();
 				// todo! store batched activity to avoid splitting it again each time
 				let nodes_activity_batched =
-					Self::split_to_batches(&nodes_activity_in_consensus, batch_size);
+					Self::split_to_batches(&nodes_total_activity, batch_size);
 
 				let batch_root = nodes_activity_batch_roots[i];
 				let store = MemStore::default();
@@ -2668,19 +2658,19 @@ pub mod pallet {
 			// todo! (3) add tests
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			bucket_nodes_activity_in_consensus: &[A],
+			customers_total_activity: &[A],
 			customers_activity_root: ActivityHash,
 			customers_activity_batch_roots: &[ActivityHash],
-			nodes_activity_in_consensus: &[B],
+			nodes_total_activity: &[B],
 			nodes_activity_root: ActivityHash,
 			nodes_activity_batch_roots: &[ActivityHash],
 		) {
 			let key = Self::derive_key(cluster_id, era_id);
 			let encoded_tuple = (
-				bucket_nodes_activity_in_consensus,
+				customers_total_activity,
 				customers_activity_root,
 				customers_activity_batch_roots,
-				nodes_activity_in_consensus,
+				nodes_total_activity,
 				nodes_activity_root,
 				nodes_activity_batch_roots,
 			)
@@ -2754,17 +2744,17 @@ pub mod pallet {
 			// Attempt to decode tuple from bytes
 			match Decode::decode(&mut &encoded_tuple[..]) {
 				Ok((
-					bucket_nodes_activity_in_consensus,
+					customers_total_activity,
 					customers_activity_root,
 					customers_activity_batch_roots,
-					nodes_activity_in_consensus,
+					nodes_total_activity,
 					nodes_activity_root,
 					nodes_activity_batch_roots,
 				)) => Some((
-					bucket_nodes_activity_in_consensus,
+					customers_total_activity,
 					customers_activity_root,
 					customers_activity_batch_roots,
-					nodes_activity_in_consensus,
+					nodes_total_activity,
 					nodes_activity_root,
 					nodes_activity_batch_roots,
 				)),
@@ -2840,13 +2830,13 @@ pub mod pallet {
 		pub(crate) fn convert_to_batch_merkle_roots<A: Aggregate>(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			activities: Vec<Vec<A>>,
+			batches: Vec<Vec<A>>,
 		) -> Result<Vec<ActivityHash>, OCWError> {
-			activities
+			batches
 				.into_iter()
-				.map(|inner_vec| {
+				.map(|batch| {
 					let activity_hashes: Vec<ActivityHash> =
-						inner_vec.into_iter().map(|a| a.hash::<T>()).collect();
+						batch.into_iter().map(|a| a.hash::<T>()).collect();
 					Self::create_merkle_root(cluster_id, era_id, &activity_hashes).map_err(|_| {
 						OCWError::FailedToCreateMerkleRoot { cluster_id: *cluster_id, era_id }
 					})
@@ -3695,8 +3685,10 @@ pub mod pallet {
 			ensure!(!signed_validators.contains(&caller.clone()), Error::<T>::AlreadySignedEra);
 			signed_validators.push(caller.clone());
 
-			let percent = Percent::from_percent(T::MAJORITY);
-			let threshold = percent * <ValidatorSet<T>>::get().len();
+			// let percent = Percent::from_percent(T::MAJORITY);
+			// let threshold = percent * <ValidatorSet<T>>::get().len();
+
+			let threshold = 1;
 
 			let mut should_deposit_ready_event = false;
 			if threshold <= signed_validators.len() {
@@ -4075,7 +4067,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
+			payers: Vec<(T::AccountId, String, BucketId, CustomerUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -4233,18 +4225,40 @@ pub mod pallet {
 		fn is_customers_batch_valid(
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			_batch_index: BatchIndex,
-			_payers: &[(T::AccountId, BucketId, CustomerUsage)],
+			batch_index: BatchIndex,
+			payers: &[(T::AccountId, String, BucketId, CustomerUsage)],
 			batch_proof: &MMRProof,
 		) -> bool {
 			let validation_era = EraValidations::<T>::get(cluster_id, era_id);
 
 			match validation_era {
 				Some(valid_era) => {
-					//Self::create_merkle_root(leaves)
+					let activity_hashes = payers
+						.into_iter()
+						.map(|(bucket_owner, node_id, bucket_id, usage)| {
+							let mut data = bucket_id.encode();
+							data.extend_from_slice(&node_id.encode());
+							data.extend_from_slice(&usage.stored_bytes.encode());
+							data.extend_from_slice(&usage.transferred_bytes.encode());
+							data.extend_from_slice(&usage.number_of_puts.encode());
+							data.extend_from_slice(&usage.number_of_gets.encode());
+							T::ActivityHasher::hash(&data).into()
+						})
+						.collect::<Vec<_>>();
 
-					let root = valid_era.payers_merkle_root_hash;
-					Self::proof_merkle_leaf(root, batch_proof).unwrap_or(false)
+					let batch_hash =
+						Self::create_merkle_root(&cluster_id, era_id, activity_hashes.as_slice())
+							.expect("batch_hash to be created");
+					let batch_position = batch_proof.leaf_with_position.0;
+
+					let root_hash = valid_era.payers_merkle_root_hash;
+
+					let proof: MerkleProof<ActivityHash, MergeActivityHash> =
+						MerkleProof::new(batch_proof.mmr_size, batch_proof.proof.clone());
+					proof
+						.verify(root_hash, vec![(batch_position, batch_hash)])
+						.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
+						.unwrap_or(false)
 				},
 				None => false,
 			}

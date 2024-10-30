@@ -1,4 +1,5 @@
 use frame_system::Config;
+use scale_info::prelude::string::String;
 #[cfg(feature = "runtime-benchmarks")]
 use sp_std::prelude::*;
 
@@ -12,7 +13,7 @@ pub trait ValidatorVisitor<T: Config> {
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
-		payers: &[(T::AccountId, BucketId, CustomerUsage)],
+		payers: &[(T::AccountId, String, BucketId, CustomerUsage)],
 		batch_proof: &MMRProof,
 	) -> bool;
 	fn is_providers_batch_valid(

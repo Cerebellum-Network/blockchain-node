@@ -1,10 +1,10 @@
+use scale_info::prelude::string::String;
 use sp_runtime::DispatchResult;
 
 use crate::{
 	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeUsage, PayoutError,
 	PayoutState,
 };
-
 pub trait PayoutProcessor<T: frame_system::Config> {}
 
 pub trait PayoutVisitor<T: frame_system::Config> {
@@ -31,7 +31,7 @@ pub trait PayoutVisitor<T: frame_system::Config> {
 		cluster_id: ClusterId,
 		era_id: DdcEra,
 		batch_index: BatchIndex,
-		payers: &[(T::AccountId, BucketId, CustomerUsage)],
+		payers: &[(T::AccountId, String, BucketId, CustomerUsage)],
 		batch_proof: MMRProof,
 	) -> DispatchResult;
 
