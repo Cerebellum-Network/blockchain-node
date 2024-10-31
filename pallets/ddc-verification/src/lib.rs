@@ -38,7 +38,7 @@ use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
 use sp_runtime::{
 	offchain as rt_offchain,
-	offchain::{http, StorageKind},
+	offchain::{http, Duration, StorageKind},
 	traits::Hash,
 	Percent,
 };
@@ -1763,6 +1763,8 @@ pub mod pallet {
 					// todo: run an intensive challenge for deviating aggregate
 					// let is_passed = Self::_challenge_aggregate(_cluster_id, _era_id,
 					// &defective_aggregate)?;
+					// let is_passed = Self::_challenge_aggregate_proto(_cluster_id, _era_id,
+					// &defective_aggregate)?;
 					if is_passed {
 						// we assume all aggregates are valid at the moment, so we just take the
 						// aggregate to payouts stage
@@ -1879,6 +1881,58 @@ pub mod pallet {
 			} else {
 				Ok(false)
 			}
+		}
+
+		pub(crate) fn _challenge_aggregate_proto<A: Aggregate>(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			aggregate: &A,
+		) -> Result<bool, Vec<OCWError>> {
+			let number_of_identifiers = T::MAX_MERKLE_NODE_IDENTIFIER;
+
+			log::info!(
+				"🚀 Challenge process starts when bucket sub aggregates are not in consensus!"
+			);
+
+			let aggregate_key = aggregate.get_key();
+			let merkle_node_ids = Self::_find_random_merkle_node_ids(
+				number_of_identifiers.into(),
+				aggregate.get_number_of_leaves(),
+				aggregate_key.clone(),
+			);
+
+			log::info!(
+				"🚀 Merkle Node Identifiers for aggregate key: {:?} identifiers: {:?}",
+				aggregate_key,
+				merkle_node_ids
+			);
+
+			let aggregator = aggregate.get_aggregator();
+
+			let challenge_response = Self::_fetch_challenge_responses_proto(
+				cluster_id,
+				era_id,
+				aggregate_key.clone(),
+				merkle_node_ids.iter().map(|id| *id as u32).collect(),
+				aggregator.clone(),
+			)
+			.map_err(|err| vec![err])?;
+
+			log::info!(
+				"🚀 Fetched challenge response for aggregate key: {:?}, challenge_response: {:?}",
+				aggregate_key,
+				challenge_response
+			);
+
+			let are_signatures_valid = signature::Verify::verify(&challenge_response);
+
+			if are_signatures_valid {
+				log::info!("👍 Valid challenge signatures for aggregate key: {:?}", aggregate_key,);
+			} else {
+				log::info!("👎 Invalid challenge signatures at aggregate key: {:?}", aggregate_key,);
+			}
+
+			return Ok(are_signatures_valid);
 		}
 
 		pub(crate) fn _get_hash_from_merkle_path(
@@ -3135,6 +3189,30 @@ pub mod pallet {
 			Ok(response)
 		}
 
+		/// Challenge node aggregate or bucket sub-aggregate.
+		pub(crate) fn _fetch_challenge_responses_proto(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			aggregate_key: AggregateKey,
+			merkle_tree_node_id: Vec<u32>,
+			aggregator: AggregatorInfo,
+		) -> Result<proto::ChallengeResponse, OCWError> {
+			let response = Self::_fetch_challenge_response_proto(
+				era_id,
+				aggregate_key.clone(),
+				merkle_tree_node_id.clone(),
+				&aggregator.node_params,
+			)
+			.map_err(|_| OCWError::ChallengeResponseRetrievalError {
+				cluster_id: *cluster_id,
+				era_id,
+				aggregate_key,
+				aggregator: aggregator.node_pub_key,
+			})?;
+
+			Ok(response)
+		}
+
 		/// Fetch challenge response.
 		///
 		/// Parameters:
@@ -3181,6 +3259,35 @@ pub mod pallet {
 
 			let body = response.body().collect::<Vec<u8>>();
 			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+		}
+
+		/// Fetch protobuf challenge response.
+		pub(crate) fn _fetch_challenge_response_proto(
+			era_id: DdcEra,
+			aggregate_key: AggregateKey,
+			merkle_tree_node_id: Vec<u32>,
+			node_params: &StorageNodeParams,
+		) -> Result<proto::ChallengeResponse, http::Error> {
+			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
+			let base_url = format!("http://{}:{}", host, node_params.http_port);
+			let client = aggregator_client::AggregatorClient::new(
+				&base_url,
+				Duration::from_millis(RESPONSE_TIMEOUT),
+			);
+
+			let challenge_response = match aggregate_key {
+				AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => client
+					.challenge_bucket_sub_aggregate(
+						era_id,
+						bucket_id,
+						&node_id,
+						merkle_tree_node_id,
+					),
+				AggregateKey::NodeAggregateKey(node_id) =>
+					client.challenge_node_aggregate(era_id, &node_id, merkle_tree_node_id),
+			};
+
+			challenge_response
 		}
 
 		/// Fetch traverse response.
