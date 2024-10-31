@@ -60,6 +60,45 @@ impl<'a> AggregatorClient<'a> {
 		Ok(proto_response)
 	}
 
+	pub fn traverse_bucket_sub_aggregate(
+		&self,
+		era_id: DdcEra,
+		bucket_id: BucketId,
+		node_id: &str,
+		merkle_tree_node_id: u32,
+		levels: u16,
+	) -> Result<pallet::MerkleTreeNodeResponse, http::Error> {
+		let url = format!(
+			"{}/activity/buckets/{}/traverse?eraId={}&nodeId={}&merkleTreeNodeId={}&levels={}",
+			self.base_url, bucket_id, era_id, node_id, merkle_tree_node_id, levels,
+		);
+
+		let response = self.get(&url, Accept::Any)?;
+		let body = response.body().collect::<Vec<u8>>();
+		let json_response = serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+		Ok(json_response)
+	}
+
+	pub fn traverse_node_aggregate(
+		&self,
+		era_id: DdcEra,
+		node_id: &str,
+		merkle_tree_node_id: u32,
+		levels: u16,
+	) -> Result<pallet::MerkleTreeNodeResponse, http::Error> {
+		let url = format!(
+			"{}/activity/nodes/{}/traverse?eraId={}&merkleTreeNodeId={}&levels={}",
+			self.base_url, node_id, era_id, merkle_tree_node_id, levels,
+		);
+
+		let response = self.get(&url, Accept::Any)?;
+		let body = response.body().collect::<Vec<u8>>();
+		let json_response = serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+		Ok(json_response)
+	}
+
 	fn merkle_tree_node_id_param(merkle_tree_node_id: &[u32]) -> String {
 		merkle_tree_node_id
 			.iter()
