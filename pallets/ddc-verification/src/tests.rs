@@ -3034,7 +3034,7 @@ fn challenge_bucket_sub_aggregate_works() {
 		let pending_request2 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/buckets/123229/traverse?eraId=5757773&nodeId=0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72&merkleTreeNodeId=1&levels=1", host1, port),
-			response: Some(br#"[{"merkle_tree_node_id":2,"hash":"hkujtYgWP21CrXdRP1rhRPrYR2ooIYCnP5zwCERTePI=","stored_bytes":20913291,"transferred_bytes":20913291,"number_of_puts":61,"number_of_gets":3},{"merkle_tree_node_id":3,"hash":"ZgWwK2LgWkHpx5JlXZn/Rouq6uE9DhOnRH6EA1+QO6o=","stored_bytes":23778084,"transferred_bytes":23778084,"number_of_puts":46,"number_of_gets":2}]"#.to_vec()),
+			response: Some(br#"{"merkle_tree_node_id":2,"hash":"hkujtYgWP21CrXdRP1rhRPrYR2ooIYCnP5zwCERTePI=","stored_bytes":20913291,"transferred_bytes":20913291,"number_of_puts":61,"number_of_gets":3}"#.to_vec()),
 			sent: true,
 			..Default::default()
 		};
