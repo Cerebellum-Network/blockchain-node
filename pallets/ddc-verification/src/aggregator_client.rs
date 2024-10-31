@@ -31,7 +31,7 @@ impl<'a> AggregatorClient<'a> {
 			Self::merkle_tree_node_id_param(merkle_tree_node_id.as_slice()),
 			node_id,
 		);
-		let response = self.get_proto(&url)?;
+		let response = self.get(&url, Accept::Protobuf)?;
 		let body = response.body().collect::<Vec<u8>>();
 		let proto_response =
 			proto::ChallengeResponse::decode(body.as_slice()).map_err(|_| http::Error::Unknown)?;
@@ -52,7 +52,7 @@ impl<'a> AggregatorClient<'a> {
 			era_id,
 			Self::merkle_tree_node_id_param(merkle_tree_node_id.as_slice()),
 		);
-		let response = self.get_proto(&url)?;
+		let response = self.get(&url, Accept::Protobuf)?;
 		let body = response.body().collect::<Vec<u8>>();
 		let proto_response =
 			proto::ChallengeResponse::decode(body.as_slice()).map_err(|_| http::Error::Unknown)?;
@@ -68,19 +68,20 @@ impl<'a> AggregatorClient<'a> {
 			.join(",")
 	}
 
-	fn get_proto(&self, url: &str) -> Result<http::Response, http::Error> {
+	fn get(&self, url: &str, accept: Accept) -> Result<http::Response, http::Error> {
 		let mut maybe_response = None;
 
 		let deadline = timestamp().add(self.timeout);
 		let mut error = None;
 
 		for _ in 0..self.retries {
-			let maybe_pending = http::Request::get(url)
-				.add_header("Accept", "application/protobuf")
-				.deadline(deadline)
-				.send();
+			let mut request = http::Request::get(url).deadline(deadline);
+			request = match accept {
+				Accept::Any => request,
+				Accept::Protobuf => request.add_header("Accept", "application/protobuf"),
+			};
 
-			let pending = match maybe_pending {
+			let pending = match request.send() {
 				Ok(p) => p,
 				Err(_) => {
 					error = Some(http::Error::IoError);
@@ -116,4 +117,9 @@ impl<'a> AggregatorClient<'a> {
 
 		Ok(response)
 	}
+}
+
+enum Accept {
+	Any,
+	Protobuf,
 }
