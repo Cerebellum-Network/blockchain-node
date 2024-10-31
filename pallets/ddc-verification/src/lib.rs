@@ -3346,23 +3346,15 @@ pub mod pallet {
 		pub(crate) fn fetch_processed_eras(
 			node_params: &StorageNodeParams,
 		) -> Result<Vec<AggregationEraResponse>, http::Error> {
-			let scheme = "http";
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let url = format!("{}://{}:{}/activity/eras", scheme, host, node_params.http_port);
-			let request = http::Request::get(&url);
-			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_TIMEOUT));
-			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
+			let base_url = format!("http://{}:{}", host, node_params.http_port);
+			let client = aggregator_client::AggregatorClient::new(
+				&base_url,
+				Duration::from_millis(RESPONSE_TIMEOUT),
+				3,
+			);
 
-			let response =
-				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != SUCCESS_CODE {
-				return Err(http::Error::Unknown);
-			}
-
-			let body = response.body().collect::<Vec<u8>>();
-			let res: Vec<AggregationEraResponse> =
-				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+			let res = client.eras()?;
 
 			let processed_status = String::from("PROCESSED");
 			Ok(res.into_iter().filter(|e| e.status == processed_status).collect::<Vec<_>>())
