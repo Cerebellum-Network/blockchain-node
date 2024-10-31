@@ -48,12 +48,12 @@ impl<'a> AggregatorClient<'a> {
 		merkle_tree_node_id: Vec<u32>,
 	) -> Result<proto::ChallengeResponse, http::Error> {
 		let url = format!(
-			"{}/activity/buckets/{}/challenge?eraId={}&merkleTreeNodeId={}&nodeId={}",
+			"{}/activity/buckets/{}/challenge?eraId={}&nodeId={}&merkleTreeNodeId={}",
 			self.base_url,
 			bucket_id,
 			era_id,
-			Self::merkle_tree_node_id_param(merkle_tree_node_id.as_slice()),
 			node_id,
+			Self::merkle_tree_node_id_param(merkle_tree_node_id.as_slice()),
 		);
 		let response = self.get(&url, Accept::Protobuf)?;
 		let body = response.body().collect::<Vec<u8>>();

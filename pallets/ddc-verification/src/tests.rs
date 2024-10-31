@@ -3123,8 +3123,8 @@ fn aggregator_client_challenge_bucket_sub_aggregate_works() {
 			method: "GET".into(),
 			headers: vec![("Accept".into(), "application/protobuf".into())],
 			uri: format!(
-				"{}/activity/buckets/{}/challenge?eraId={}&merkleTreeNodeId={}&nodeId={}",
-				base_url, bucket_id, era_id, merkle_tree_node_id, node_id
+				"{}/activity/buckets/{}/challenge?eraId={}&nodeId={}&merkleTreeNodeId={}",
+				base_url, bucket_id, era_id, node_id, merkle_tree_node_id
 			),
 			response: Some(expected_response_serialized),
 			sent: true,
