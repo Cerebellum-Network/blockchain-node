@@ -16,6 +16,30 @@ impl<'a> AggregatorClient<'a> {
 		Self { base_url, timeout, retries }
 	}
 
+	pub fn buckets_aggregates(
+		&self,
+		era_id: DdcEra,
+	) -> Result<Vec<pallet::BucketAggregateResponse>, http::Error> {
+		let url = format!("{}/activity/buckets?eraId={}", self.base_url, era_id);
+		let response = self.get(&url, Accept::Any)?;
+		let body = response.body().collect::<Vec<u8>>();
+		let json_response = serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+		Ok(json_response)
+	}
+
+	pub fn nodes_aggregates(
+		&self,
+		era_id: DdcEra,
+	) -> Result<Vec<pallet::NodeAggregateResponse>, http::Error> {
+		let url = format!("{}/activity/nodes?eraId={}", self.base_url, era_id);
+		let response = self.get(&url, Accept::Any)?;
+		let body = response.body().collect::<Vec<u8>>();
+		let json_response = serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+		Ok(json_response)
+	}
+
 	pub fn challenge_bucket_sub_aggregate(
 		&self,
 		era_id: DdcEra,
