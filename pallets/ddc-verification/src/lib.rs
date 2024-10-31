@@ -3370,26 +3370,15 @@ pub mod pallet {
 			era_id: DdcEra,
 			node_params: &StorageNodeParams,
 		) -> Result<Vec<BucketAggregateResponse>, http::Error> {
-			let scheme = "http";
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let url = format!(
-				"{}://{}:{}/activity/buckets?eraId={}",
-				scheme, host, node_params.http_port, era_id
+			let base_url = format!("http://{}:{}", host, node_params.http_port);
+			let client = aggregator_client::AggregatorClient::new(
+				&base_url,
+				Duration::from_millis(RESPONSE_TIMEOUT),
+				3,
 			);
 
-			let request = http::Request::get(&url);
-			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_TIMEOUT));
-			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
-
-			let response =
-				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != SUCCESS_CODE {
-				return Err(http::Error::Unknown);
-			}
-
-			let body = response.body().collect::<Vec<u8>>();
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+			client.buckets_aggregates(era_id)
 		}
 
 		/// Fetch node usage.
@@ -3403,26 +3392,15 @@ pub mod pallet {
 			era_id: DdcEra,
 			node_params: &StorageNodeParams,
 		) -> Result<Vec<NodeAggregateResponse>, http::Error> {
-			let scheme = "http";
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let url = format!(
-				"{}://{}:{}/activity/nodes?eraId={}",
-				scheme, host, node_params.http_port, era_id
+			let base_url = format!("http://{}:{}", host, node_params.http_port);
+			let client = aggregator_client::AggregatorClient::new(
+				&base_url,
+				Duration::from_millis(RESPONSE_TIMEOUT),
+				3,
 			);
 
-			let request = http::Request::get(&url);
-			let timeout = sp_io::offchain::timestamp()
-				.add(rt_offchain::Duration::from_millis(RESPONSE_TIMEOUT));
-			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
-
-			let response =
-				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != SUCCESS_CODE {
-				return Err(http::Error::Unknown);
-			}
-
-			let body = response.body().collect::<Vec<u8>>();
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+			client.nodes_aggregates(era_id)
 		}
 
 		/// Fetch DAC nodes of a cluster.
