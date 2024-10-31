@@ -3354,10 +3354,9 @@ pub mod pallet {
 				3,
 			);
 
-			let res = client.eras()?;
+			let response = client.eras()?;
 
-			let processed_status = String::from("PROCESSED");
-			Ok(res.into_iter().filter(|e| e.status == processed_status).collect::<Vec<_>>())
+			Ok(response.into_iter().filter(|e| e.status == "PROCESSED").collect::<Vec<_>>())
 		}
 		/// Fetch customer usage.
 		///
