@@ -8,11 +8,12 @@ use super::*;
 pub struct AggregatorClient<'a> {
 	pub base_url: &'a str,
 	timeout: Duration,
+	retries: u32,
 }
 
 impl<'a> AggregatorClient<'a> {
-	pub fn new(base_url: &'a str, timeout: Duration) -> Self {
-		Self { base_url, timeout }
+	pub fn new(base_url: &'a str, timeout: Duration, retries: u32) -> Self {
+		Self { base_url, timeout, retries }
 	}
 
 	pub fn challenge_bucket_sub_aggregate(
@@ -68,14 +69,46 @@ impl<'a> AggregatorClient<'a> {
 	}
 
 	fn get_proto(&self, url: &str) -> Result<http::Response, http::Error> {
+		let mut maybe_response = None;
+
 		let deadline = timestamp().add(self.timeout);
-		let response = http::Request::get(url)
-			.add_header("Accept", "application/protobuf")
-			.deadline(deadline)
-			.send()
-			.map_err(|_| http::Error::IoError)?
-			.try_wait(deadline)
-			.map_err(|_| http::Error::DeadlineReached)??;
+		let mut error = None;
+
+		for _ in 0..self.retries {
+			let maybe_pending = http::Request::get(url)
+				.add_header("Accept", "application/protobuf")
+				.deadline(deadline)
+				.send();
+
+			let pending = match maybe_pending {
+				Ok(p) => p,
+				Err(_) => {
+					error = Some(http::Error::IoError);
+					continue;
+				},
+			};
+
+			match pending.try_wait(deadline) {
+				Ok(Ok(r)) => {
+					maybe_response = Some(r);
+					error = None;
+					break;
+				},
+				Ok(Err(_)) | Err(_) => {
+					error = Some(http::Error::DeadlineReached);
+					continue;
+				},
+			}
+		}
+
+		if let Some(e) = error {
+			return Err(e);
+		}
+
+		let response = match maybe_response {
+			Some(r) => r,
+			None => return Err(http::Error::Unknown),
+		};
 
 		if response.code != 200 {
 			return Err(http::Error::Unknown);

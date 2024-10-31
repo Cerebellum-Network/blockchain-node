@@ -3133,7 +3133,7 @@ fn aggregator_client_challenge_bucket_sub_aggregate_works() {
 		offchain_state.expect_request(expected);
 		drop(offchain_state);
 
-		let client = AggregatorClient::new(base_url, Duration::from_millis(1_000));
+		let client = AggregatorClient::new(base_url, Duration::from_millis(1_000), 1);
 
 		let result = client.challenge_bucket_sub_aggregate(era_id, bucket_id, node_id, vec![2, 6]);
 		assert_eq!(result, Ok(expected_response));
@@ -3188,7 +3188,7 @@ fn aggregator_client_challenge_node_aggregate_works() {
 		offchain_state.expect_request(expected);
 		drop(offchain_state);
 
-		let client = AggregatorClient::new(base_url, Duration::from_millis(1_000));
+		let client = AggregatorClient::new(base_url, Duration::from_millis(1_000), 1);
 
 		let result = client.challenge_node_aggregate(era_id, node_id, vec![2, 6]);
 		assert_eq!(result, Ok(expected_response));

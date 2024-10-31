@@ -3273,6 +3273,7 @@ pub mod pallet {
 			let client = aggregator_client::AggregatorClient::new(
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
+				3,
 			);
 
 			let challenge_response = match aggregate_key {
