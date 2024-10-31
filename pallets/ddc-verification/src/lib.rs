@@ -1534,8 +1534,12 @@ pub mod pallet {
 				aggregators_quorum,
 			);
 
-			let total_buckets_usage =
-				Self::get_total_usage(cluster_id, era_activity.id, buckets_sub_aggregates_groups)?;
+			let total_buckets_usage = Self::get_total_usage(
+				cluster_id,
+				era_activity.id,
+				buckets_sub_aggregates_groups,
+				true,
+			)?;
 
 			let customer_activity_hashes: Vec<ActivityHash> =
 				total_buckets_usage.clone().into_iter().map(|c| c.hash::<T>()).collect();
@@ -1594,7 +1598,7 @@ pub mod pallet {
 			);
 
 			let total_nodes_usage =
-				Self::get_total_usage(cluster_id, era_activity.id, nodes_aggregates_groups)?;
+				Self::get_total_usage(cluster_id, era_activity.id, nodes_aggregates_groups, true)?;
 
 			let node_activity_hashes: Vec<ActivityHash> =
 				total_nodes_usage.clone().into_iter().map(|c| c.hash::<T>()).collect();
@@ -1666,6 +1670,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			consistency_groups: ConsistencyGroups<A>,
+			should_challenge: bool,
 		) -> Result<Vec<A>, Vec<OCWError>> {
 			let mut total_usage = vec![];
 			let mut total_usage_keys = vec![];
@@ -1699,6 +1704,7 @@ pub mod pallet {
 				era_id,
 				consistency_groups,
 				&mut total_usage_keys,
+				should_challenge,
 			)?;
 
 			if !verified_usage.is_empty() {
@@ -1713,6 +1719,7 @@ pub mod pallet {
 			_era_id: DdcEra,
 			consistency_groups: ConsistencyGroups<A>,
 			accepted_keys: &mut Vec<AggregateKey>,
+			should_challenge: bool,
 		) -> Result<Vec<A>, Vec<OCWError>> {
 			let redundancy_factor = T::DAC_REDUNDANCY_FACTOR;
 			let mut verified_usage: Vec<A> = vec![];
@@ -1759,12 +1766,17 @@ pub mod pallet {
 						defective_aggregate.hash::<T>()
 					);
 
-					let is_passed = true;
+					let mut is_passed = true;
 					// todo: run an intensive challenge for deviating aggregate
 					// let is_passed = Self::_challenge_aggregate(_cluster_id, _era_id,
 					// &defective_aggregate)?;
-					// let is_passed = Self::_challenge_aggregate_proto(_cluster_id, _era_id,
-					// &defective_aggregate)?;
+					if should_challenge {
+						is_passed = Self::_challenge_aggregate_proto(
+							_cluster_id,
+							_era_id,
+							&defective_aggregate,
+						)?;
+					}
 					if is_passed {
 						// we assume all aggregates are valid at the moment, so we just take the
 						// aggregate to payouts stage
