@@ -395,7 +395,7 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 	assert_eq!(groups.quorum.len(), 0);
 	assert_eq!(groups.others.len(), 0);
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -519,7 +519,7 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 	assert_eq!(groups.quorum.len(), 1); // 2 consistent aggregates merged into 1 in 'quorum'
 	assert_eq!(groups.others.len(), 1); // 1 inconsistent aggregate goes to 'others'
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -644,7 +644,7 @@ fn buckets_sub_aggregates_in_others_merged() {
 	assert_eq!(groups.quorum.len(), 0);
 	assert_eq!(groups.others.len(), 2);
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -769,7 +769,7 @@ fn buckets_sub_aggregates_in_others_merged_2() {
 	assert_eq!(groups.quorum.len(), 0);
 	assert_eq!(groups.others.len(), 2); // 2 inconsistent aggregates
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -878,7 +878,7 @@ fn nodes_aggregates_in_consensus_merged() {
 	assert_eq!(groups.quorum.len(), 0);
 	assert_eq!(groups.others.len(), 0);
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -981,7 +981,7 @@ fn nodes_aggregates_in_quorum_merged() {
 	assert_eq!(groups.quorum.len(), 1); // 2 consistent aggregates merged into 1 in 'quorum'
 	assert_eq!(groups.others.len(), 1); // 1 inconsistent aggregate goes to 'others'
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -1085,7 +1085,7 @@ fn nodes_aggregates_in_others_merged() {
 	assert_eq!(groups.quorum.len(), 0);
 	assert_eq!(groups.others.len(), 2);
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -1189,7 +1189,7 @@ fn nodes_aggregates_in_others_merged_2() {
 	assert_eq!(groups.quorum.len(), 0);
 	assert_eq!(groups.others.len(), 3); // 3 inconsistent aggregates
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups);
+	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
