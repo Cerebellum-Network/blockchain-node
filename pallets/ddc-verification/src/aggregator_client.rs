@@ -60,6 +60,15 @@ impl<'a> AggregatorClient<'a> {
 		Ok(proto_response)
 	}
 
+	pub fn eras(&self) -> Result<Vec<pallet::AggregationEraResponse>, http::Error> {
+		let url = format!("{}/activity/eras", self.base_url);
+		let response = self.get(&url, Accept::Any)?;
+		let body = response.body().collect::<Vec<u8>>();
+		let json_response = serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+		Ok(json_response)
+	}
+
 	pub fn traverse_bucket_sub_aggregate(
 		&self,
 		era_id: DdcEra,
