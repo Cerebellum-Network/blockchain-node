@@ -685,7 +685,7 @@ pub mod pallet {
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
 	pub(crate) struct Proof {
-		pub merkle_tree_node_id: u64,
+		pub merkle_tree_node_id: u32,
 		pub usage: Usage,
 		pub path: Vec<String>, //todo! add base64 deserialization
 		pub leafs: Vec<Leaf>,
@@ -769,7 +769,7 @@ pub mod pallet {
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
 	pub(crate) struct MerkleTreeNodeResponse {
-		merkle_tree_node_id: u64,
+		merkle_tree_node_id: u32,
 		hash: String,
 		stored_bytes: i64,
 		transferred_bytes: u64,
@@ -1843,10 +1843,10 @@ pub mod pallet {
 				calculated_merkle_root
 			);
 
-			let traverse_response = Self::_fetch_traverse_response(
+			let root_merkle_node = Self::_fetch_traverse_response(
 				era_id,
 				aggregate_key.clone(),
-				vec![1],
+				1,
 				1,
 				&aggregator.node_params,
 			)
@@ -1859,40 +1859,36 @@ pub mod pallet {
 				}]
 			})?;
 
-			if let Some(root_merkle_node) = traverse_response.first() {
-				let mut merkle_root_buf = [0u8; _BUF_SIZE];
-				let bytes =
-					Base64::decode(root_merkle_node.hash.clone(), &mut merkle_root_buf).unwrap(); // todo! remove unwrap
-				let traversed_merkle_root = ActivityHash::from(sp_core::H256::from_slice(bytes));
+			let mut merkle_root_buf = [0u8; _BUF_SIZE];
+			let bytes =
+				Base64::decode(root_merkle_node.hash.clone(), &mut merkle_root_buf).unwrap(); // todo! remove unwrap
+			let traversed_merkle_root = ActivityHash::from(sp_core::H256::from_slice(bytes));
 
+			log::info!(
+				"🚀 Fetched merkle root for aggregate key: {:?} traversed_merkle_root: {:?}",
+				aggregate_key,
+				traversed_merkle_root
+			);
+
+			let is_matched = if calculated_merkle_root == traversed_merkle_root {
 				log::info!(
-					"🚀 Fetched merkle root for aggregate key: {:?} traversed_merkle_root: {:?}",
+					"🚀👍 The aggregate with hash {:?} and key {:?} has passed the challenge.",
+					aggregate.hash::<T>(),
 					aggregate_key,
-					traversed_merkle_root
 				);
 
-				let is_matched = if calculated_merkle_root == traversed_merkle_root {
-					log::info!(
-						"🚀👍 The aggregate with hash {:?} and key {:?} has passed the challenge.",
-						aggregate.hash::<T>(),
-						aggregate_key,
-					);
-
-					true
-				} else {
-					log::info!(
-						"🚀👎 The aggregate with hash {:?} and key {:?} has not passed the challenge.",
-						aggregate.hash::<T>(),
-						aggregate_key,
-					);
-
-					false
-				};
-
-				Ok(is_matched)
+				true
 			} else {
-				Ok(false)
-			}
+				log::info!(
+					"🚀👎 The aggregate with hash {:?} and key {:?} has not passed the challenge.",
+					aggregate.hash::<T>(),
+					aggregate_key,
+				);
+
+				false
+			};
+
+			Ok(is_matched)
 		}
 
 		pub(crate) fn _challenge_aggregate_proto<A: Aggregate>(
@@ -3314,43 +3310,32 @@ pub mod pallet {
 		pub(crate) fn _fetch_traverse_response(
 			era_id: DdcEra,
 			aggregate_key: AggregateKey,
-			merkle_node_identifiers: Vec<u64>,
+			merkle_tree_node_id: u32,
 			levels: u16,
 			node_params: &StorageNodeParams,
-		) -> Result<Vec<MerkleTreeNodeResponse>, http::Error> {
-			let scheme = "http";
+		) -> Result<MerkleTreeNodeResponse, http::Error> {
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
+			let base_url = format!("http://{}:{}", host, node_params.http_port);
+			let client = aggregator_client::AggregatorClient::new(
+				&base_url,
+				Duration::from_millis(RESPONSE_TIMEOUT),
+				3,
+			);
 
-			let ids = merkle_node_identifiers
-				.iter()
-				.map(|x| format!("{}", x.clone()))
-				.collect::<Vec<_>>()
-				.join(",");
+			let response = match aggregate_key {
+				AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => client
+					.traverse_bucket_sub_aggregate(
+						era_id,
+						bucket_id,
+						&node_id,
+						merkle_tree_node_id,
+						levels,
+					),
+				AggregateKey::NodeAggregateKey(node_id) =>
+					client.traverse_node_aggregate(era_id, &node_id, merkle_tree_node_id, levels),
+			}?;
 
-			let url = match aggregate_key {
-				AggregateKey::NodeAggregateKey(node_id) => format!(
-					"{}://{}:{}/activity/nodes/{}/traverse?eraId={}&merkleTreeNodeId={}&levels={}",
-					scheme, host, node_params.http_port, node_id, era_id, ids, levels
-				),
-				AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => format!(
-					"{}://{}:{}/activity/buckets/{}/traverse?eraId={}&nodeId={}&merkleTreeNodeId={}&levels={}",
-					scheme, host, node_params.http_port, bucket_id, era_id, node_id, ids, levels
-				),
-			};
-
-			let request = http::Request::get(&url);
-			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_TIMEOUT));
-			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
-
-			let response =
-				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != SUCCESS_CODE {
-				return Err(http::Error::Unknown);
-			}
-
-			let body = response.body().collect::<Vec<u8>>();
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+			Ok(response)
 		}
 
 		/// Fetch processed era.
