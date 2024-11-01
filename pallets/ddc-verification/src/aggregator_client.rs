@@ -19,8 +19,16 @@ impl<'a> AggregatorClient<'a> {
 	pub fn buckets_aggregates(
 		&self,
 		era_id: DdcEra,
+		limit: Option<u32>,
+		prev_token: Option<BucketId>,
 	) -> Result<Vec<pallet::BucketAggregateResponse>, http::Error> {
-		let url = format!("{}/activity/buckets?eraId={}", self.base_url, era_id);
+		let mut url = format!("{}/activity/buckets?eraId={}", self.base_url, era_id);
+		if let Some(limit) = limit {
+			url = format!("{}&limit={}", url, limit);
+		}
+		if let Some(prev_token) = prev_token {
+			url = format!("{}&prevToken={}", url, prev_token);
+		}
 		let response = self.get(&url, Accept::Any)?;
 		let body = response.body().collect::<Vec<u8>>();
 		let json_response = serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
@@ -31,8 +39,16 @@ impl<'a> AggregatorClient<'a> {
 	pub fn nodes_aggregates(
 		&self,
 		era_id: DdcEra,
+		limit: Option<u32>,
+		prev_token: Option<String>, // node_id hex string
 	) -> Result<Vec<pallet::NodeAggregateResponse>, http::Error> {
-		let url = format!("{}/activity/nodes?eraId={}", self.base_url, era_id);
+		let mut url = format!("{}/activity/nodes?eraId={}", self.base_url, era_id);
+		if let Some(limit) = limit {
+			url = format!("{}&limit={}", url, limit);
+		}
+		if let Some(prev_token) = prev_token {
+			url = format!("{}&prevToken={}", url, prev_token);
+		}
 		let response = self.get(&url, Accept::Any)?;
 		let body = response.body().collect::<Vec<u8>>();
 		let json_response = serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;

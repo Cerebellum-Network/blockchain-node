@@ -3377,7 +3377,7 @@ pub mod pallet {
 				3,
 			);
 
-			client.buckets_aggregates(era_id)
+			client.buckets_aggregates(era_id, None, None)
 		}
 
 		/// Fetch node usage.
@@ -3399,7 +3399,7 @@ pub mod pallet {
 				3,
 			);
 
-			client.nodes_aggregates(era_id)
+			client.nodes_aggregates(era_id, None, None)
 		}
 
 		/// Fetch DAC nodes of a cluster.
