@@ -2924,7 +2924,7 @@ pub mod pallet {
 		/// Parameters:
 		/// - `root`: merkle root
 		/// - `leaf`: Leaf of the tree
-		pub(crate) fn proof_merkle_leaf(
+		pub(crate) fn _proof_merkle_leaf(
 			root: ActivityHash,
 			batch_proof: &MMRProof,
 		) -> Result<bool, Error<T>> {
@@ -3686,10 +3686,8 @@ pub mod pallet {
 			ensure!(!signed_validators.contains(&caller.clone()), Error::<T>::AlreadySignedEra);
 			signed_validators.push(caller.clone());
 
-			// let percent = Percent::from_percent(T::MAJORITY);
-			// let threshold = percent * <ValidatorSet<T>>::get().len();
-
-			let threshold = 1;
+			let percent = Percent::from_percent(T::MAJORITY);
+			let threshold = percent * <ValidatorSet<T>>::get().len();
 
 			let mut should_deposit_ready_event = false;
 			if threshold <= signed_validators.len() {
@@ -4235,8 +4233,8 @@ pub mod pallet {
 			match validation_era {
 				Some(valid_era) => {
 					let activity_hashes = payers
-						.into_iter()
-						.map(|(bucket_owner, node_id, bucket_id, usage)| {
+						.iter()
+						.map(|(_bucket_owner, node_id, bucket_id, usage)| {
 							let mut data = bucket_id.encode();
 							data.extend_from_slice(&node_id.encode());
 							data.extend_from_slice(&usage.stored_bytes.encode());
@@ -4278,8 +4276,8 @@ pub mod pallet {
 			match validation_era {
 				Some(valid_era) => {
 					let activity_hashes = payees
-						.into_iter()
-						.map(|(node_provider, node_id, usage)| {
+						.iter()
+						.map(|(_node_provider, node_id, usage)| {
 							let mut data = node_id.encode();
 							data.extend_from_slice(&usage.stored_bytes.encode());
 							data.extend_from_slice(&usage.transferred_bytes.encode());
