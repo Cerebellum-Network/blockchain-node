@@ -749,8 +749,9 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payees: Vec<(T::AccountId, NodeUsage)>, /* todo! we need to pass NodePubKey inside
-			                                         * NodeUsage and more provider_id */
+			payees: Vec<(T::AccountId, String, NodeUsage)>, /* todo! we need to pass NodePubKey
+			                                                 * inside
+			                                                 * NodeUsage and more provider_id */
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
@@ -790,7 +791,7 @@ pub mod pallet {
 
 			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
-			for (node_provider_id, delta_node_usage) in payees {
+			for (node_provider_id, node_id, delta_node_usage) in payees {
 				// todo! deduce node_provider_id from delta_node_usage.node_id
 				// todo! get T::NodeVisitor::get_total_usage(delta_node_usage.node_id).stored_bytes
 				let mut total_node_stored_bytes: i64 = 0;
@@ -1277,7 +1278,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payees: &[(T::AccountId, NodeUsage)],
+			payees: &[(T::AccountId, String, NodeUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			log::info!(

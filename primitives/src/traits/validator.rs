@@ -20,7 +20,7 @@ pub trait ValidatorVisitor<T: Config> {
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
-		payees: &[(T::AccountId, NodeUsage)],
+		payees: &[(T::AccountId, String, NodeUsage)],
 		batch_proof: &MMRProof,
 	) -> bool;
 }
