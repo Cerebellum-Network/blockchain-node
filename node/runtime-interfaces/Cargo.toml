@@ -1,0 +1,22 @@
+[package]
+name = "cere-runtime-interfaces"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+[dependencies]
+codec = { workspace = true }
+sp-runtime = { workspace = true }
+sp-runtime-interface = { workspace = true }
+sp-runtime-interface-proc-macro = { workspace = true }
+sp-wasm-interface = { workspace = true }
+[features]
+default = [ "std" ]
+std = [
+	"sp-runtime/std",
+	"sp-runtime-interface/std",
+	"sp-wasm-interface/std",
+]
