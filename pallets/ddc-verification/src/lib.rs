@@ -3246,15 +3246,15 @@ pub mod pallet {
 				.join(",");
 
 			let url = match aggregate_key {
-				AggregateKey::NodeAggregateKey(node_id) => format!(
-					"{}://{}:{}/activity/nodes/{}/challenge?eraId={}&merkleTreeNodeId={}",
-					scheme, host, node_params.http_port, node_id, era_id, ids
-				),
-				AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => format!(
-					"{}://{}:{}/activity/buckets/{}/challenge?eraId={}&nodeId={}&merkleTreeNodeId={}",
-					scheme, host, node_params.http_port, bucket_id, era_id, node_id, ids
-				),
-			};
+                AggregateKey::NodeAggregateKey(node_id) => format!(
+                    "{}://{}:{}/activity/nodes/{}/challenge?eraId={}&merkleTreeNodeId={}",
+                    scheme, host, node_params.http_port, node_id, era_id, ids
+                ),
+                AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => format!(
+                    "{}://{}:{}/activity/buckets/{}/challenge?eraId={}&nodeId={}&merkleTreeNodeId={}",
+                    scheme, host, node_params.http_port, bucket_id, era_id, node_id, ids
+                ),
+            };
 
 			let request = http::Request::get(&url);
 			let timeout = sp_io::offchain::timestamp()
