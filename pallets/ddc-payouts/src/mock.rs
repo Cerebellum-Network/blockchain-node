@@ -197,7 +197,7 @@ where
 		_cluster_id: ClusterId,
 		_era: DdcEra,
 		_batch_index: BatchIndex,
-		_payees: &[(T::AccountId, NodeUsage)],
+		_payees: &[(T::AccountId, String, NodeUsage)],
 		_batch_proof: &MMRProof,
 	) -> bool {
 		true

@@ -30,6 +30,7 @@ use frame_system::{
 };
 pub use pallet::*;
 use polkadot_ckb_merkle_mountain_range::{
+	helper::leaf_index_to_pos,
 	util::{MemMMR, MemStore},
 	MerkleProof, MMR,
 };
@@ -567,7 +568,7 @@ pub mod pallet {
 
 	pub struct ProviderBatch<T: Config> {
 		pub(crate) batch_index: BatchIndex,
-		pub(crate) payees: Vec<(T::AccountId, NodeUsage)>,
+		pub(crate) payees: Vec<(T::AccountId, String, NodeUsage)>,
 		pub(crate) batch_proof: MMRProof,
 	}
 
@@ -2544,14 +2545,14 @@ pub mod pallet {
 							.iter()
 							.map(|activity| {
 								let node_id = activity.clone().node_id;
-								let provider_id = Self::fetch_provider_id(node_id).unwrap(); // todo! remove unwrap
+								let provider_id = Self::fetch_provider_id(node_id.clone()).unwrap(); // todo! remove unwrap
 								let node_usage = NodeUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
 									number_of_puts: activity.number_of_puts,
 									number_of_gets: activity.number_of_gets,
 								};
-								(provider_id, node_usage)
+								(provider_id, node_id, node_usage)
 							})
 							.collect(),
 						batch_proof,
@@ -4121,7 +4122,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payees: Vec<(T::AccountId, NodeUsage)>,
+			payees: Vec<(T::AccountId, String, NodeUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -4249,7 +4250,7 @@ pub mod pallet {
 					let batch_hash =
 						Self::create_merkle_root(&cluster_id, era_id, activity_hashes.as_slice())
 							.expect("batch_hash to be created");
-					let batch_position = batch_proof.leaf_with_position.0;
+					let batch_position = leaf_index_to_pos(batch_index.into()); // batch_proof.leaf_with_position.0;
 
 					let root_hash = valid_era.payers_merkle_root_hash;
 
@@ -4268,16 +4269,38 @@ pub mod pallet {
 		fn is_providers_batch_valid(
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			_batch_index: BatchIndex,
-			_payees: &[(T::AccountId, NodeUsage)],
+			batch_index: BatchIndex,
+			payees: &[(T::AccountId, String, NodeUsage)],
 			batch_proof: &MMRProof,
 		) -> bool {
 			let validation_era = EraValidations::<T>::get(cluster_id, era_id);
 
 			match validation_era {
 				Some(valid_era) => {
-					let root = valid_era.payees_merkle_root_hash;
-					Self::proof_merkle_leaf(root, batch_proof).unwrap_or(false)
+					let activity_hashes = payees
+						.into_iter()
+						.map(|(node_provider, node_id, usage)| {
+							let mut data = node_id.encode();
+							data.extend_from_slice(&usage.stored_bytes.encode());
+							data.extend_from_slice(&usage.transferred_bytes.encode());
+							data.extend_from_slice(&usage.number_of_puts.encode());
+							data.extend_from_slice(&usage.number_of_gets.encode());
+							T::ActivityHasher::hash(&data).into()
+						})
+						.collect::<Vec<_>>();
+
+					let batch_hash =
+						Self::create_merkle_root(&cluster_id, era_id, activity_hashes.as_slice())
+							.expect("batch_hash to be created");
+					let batch_position = leaf_index_to_pos(batch_index.into()); // batch_proof.leaf_with_position.0;
+
+					let root_hash = valid_era.payees_merkle_root_hash;
+					let proof: MerkleProof<ActivityHash, MergeActivityHash> =
+						MerkleProof::new(batch_proof.mmr_size, batch_proof.proof.clone());
+					proof
+						.verify(root_hash, vec![(batch_position, batch_hash)])
+						.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
+						.unwrap_or(false)
 				},
 				None => false,
 			}
