@@ -83,6 +83,8 @@ pub mod pallet {
 	const SUCCESS_CODE: u16 = 200;
 	const _BUF_SIZE: usize = 128;
 	const RESPONSE_TIMEOUT: u64 = 20000;
+	const BUCKETS_AGGREGATES_FETCH_BATCH_SIZE: usize = 100;
+	const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -3377,7 +3379,27 @@ pub mod pallet {
 				3,
 			);
 
-			client.buckets_aggregates(era_id, None, None)
+			let mut buckets_aggregates = Vec::new();
+			let mut prev_token = None;
+
+			loop {
+				let response = client.buckets_aggregates(
+					era_id,
+					Some(BUCKETS_AGGREGATES_FETCH_BATCH_SIZE as u32),
+					prev_token,
+				)?;
+
+				let response_len = response.len();
+				prev_token = response.last().map(|a| a.bucket_id.clone());
+
+				buckets_aggregates.extend(response);
+
+				if response_len < BUCKETS_AGGREGATES_FETCH_BATCH_SIZE {
+					break;
+				}
+			}
+
+			Ok(buckets_aggregates)
 		}
 
 		/// Fetch node usage.
@@ -3399,7 +3421,27 @@ pub mod pallet {
 				3,
 			);
 
-			client.nodes_aggregates(era_id, None, None)
+			let mut nodes_aggregates = Vec::new();
+			let mut prev_token = None;
+
+			loop {
+				let response = client.nodes_aggregates(
+					era_id,
+					Some(NODES_AGGREGATES_FETCH_BATCH_SIZE as u32),
+					prev_token,
+				)?;
+
+				let response_len = response.len();
+				prev_token = response.last().map(|a| a.node_id.clone());
+
+				nodes_aggregates.extend(response);
+
+				if response_len < NODES_AGGREGATES_FETCH_BATCH_SIZE {
+					break;
+				}
+			}
+
+			Ok(nodes_aggregates)
 		}
 
 		/// Fetch DAC nodes of a cluster.
