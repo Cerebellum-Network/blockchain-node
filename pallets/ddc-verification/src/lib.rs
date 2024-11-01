@@ -83,8 +83,8 @@ pub mod pallet {
 	const SUCCESS_CODE: u16 = 200;
 	const _BUF_SIZE: usize = 128;
 	const RESPONSE_TIMEOUT: u64 = 20000;
-	const BUCKETS_AGGREGATES_FETCH_BATCH_SIZE: usize = 100;
-	const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
+	pub const BUCKETS_AGGREGATES_FETCH_BATCH_SIZE: usize = 100;
+	pub const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
