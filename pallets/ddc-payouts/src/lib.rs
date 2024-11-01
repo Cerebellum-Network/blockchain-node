@@ -472,7 +472,7 @@ pub mod pallet {
 			);
 
 			let mut updated_billing_report = billing_report;
-			for (customer_id, node_id, bucket_id, customer_usage) in payers {
+			for (customer_id, _node_id, bucket_id, customer_usage) in payers {
 				log::info!("🏭send_charging_customers_batch get_customer_charge customer_id: {:?} -  bucket_id: {:?} - era:{:?} - cluster-id:{:?}", Self::get_account_id_string(customer_id.clone()), bucket_id, era, cluster_id);
 				let mut customer_charge = get_customer_charge::<T>(
 					&cluster_id,
@@ -791,7 +791,7 @@ pub mod pallet {
 
 			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
-			for (node_provider_id, node_id, delta_node_usage) in payees {
+			for (node_provider_id, _node_id, delta_node_usage) in payees {
 				// todo! deduce node_provider_id from delta_node_usage.node_id
 				// todo! get T::NodeVisitor::get_total_usage(delta_node_usage.node_id).stored_bytes
 				let mut total_node_stored_bytes: i64 = 0;

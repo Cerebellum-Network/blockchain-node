@@ -2506,7 +2506,7 @@ fn proof_merkle_leaf_works() {
 
 		assert_eq!(leaf_position.len(), 1);
 		assert_eq!(position.len(), 1);
-		assert!(DdcVerification::proof_merkle_leaf(
+		assert!(DdcVerification::_proof_merkle_leaf(
 			root,
 			&MMRProof {
 				mmr_size: mmr.mmr_size(),
@@ -2517,7 +2517,7 @@ fn proof_merkle_leaf_works() {
 		.unwrap());
 
 		assert_noop!(
-			DdcVerification::proof_merkle_leaf(
+			DdcVerification::_proof_merkle_leaf(
 				root,
 				&MMRProof {
 					mmr_size: 0,

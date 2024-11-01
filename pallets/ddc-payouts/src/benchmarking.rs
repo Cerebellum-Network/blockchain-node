@@ -223,7 +223,7 @@ benchmarks! {
 		});
 
 		let batch_index: BatchIndex = 0;
-		let payers: Vec<(T::AccountId, BucketId, CustomerUsage)> = (0..b).map(|i| {
+		let payers: Vec<(T::AccountId, String, BucketId, CustomerUsage)> = (0..b).map(|i| {
 			let customer = create_account::<T>("customer", i, i);
 
 			if b % 2 == 0 {
@@ -241,8 +241,9 @@ benchmarks! {
 				number_of_puts: 5, // 5 puts
 			};
 			let bucket_id: BucketId = 1;
+			let node_id: String = String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
 
-			(customer, bucket_id, customer_usage)
+			(customer, node_id, bucket_id, customer_usage)
 		}).collect();
 
 	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payers, MMRProof::default())
@@ -396,7 +397,7 @@ benchmarks! {
 		whitelist_account!(dac_account);
 
 		let batch_index: BatchIndex = 0;
-		let payees: Vec<(T::AccountId, NodeUsage)> = (0..b).map(|i| {
+		let payees: Vec<(T::AccountId, String, NodeUsage)> = (0..b).map(|i| {
 			let provider = create_account::<T>("provider", i, i);
 			endow_account::<T>(&provider, T::Currency::minimum_balance().saturated_into());
 			let node_usage = NodeUsage {
@@ -405,7 +406,8 @@ benchmarks! {
 				number_of_gets: 10, // 10 gets
 				number_of_puts: 5, // 5 puts
 			};
-			(provider, node_usage)
+			let node_id: String = String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+			(provider, node_id, node_usage)
 		}).collect();
 
 	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payees, MMRProof::default())
