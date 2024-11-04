@@ -2210,11 +2210,7 @@ pub mod pallet {
 					.proof_items()
 					.to_vec();
 
-				let batch_proof = MMRProof {
-					mmr_size: mmr.mmr_size(),
-					proof,
-					leaf_with_position: leaf_position[0],
-				};
+				let batch_proof = MMRProof { mmr_size: mmr.mmr_size(), proof };
 				Ok(Some((
 					era_id,
 					CustomerBatch {
@@ -2461,11 +2457,7 @@ pub mod pallet {
 
 				// todo! attend [i] through get(i).ok_or()
 				// todo! attend accountid conversion
-				let batch_proof = MMRProof {
-					mmr_size: mmr.mmr_size(),
-					proof,
-					leaf_with_position: leaf_position[0],
-				};
+				let batch_proof = MMRProof { mmr_size: mmr.mmr_size(), proof };
 				Ok(Some((
 					era_id,
 					ProviderBatch {
@@ -2851,16 +2843,21 @@ pub mod pallet {
 		/// Verify whether leaf is part of tree
 		///
 		/// Parameters:
-		/// - `root`: merkle root
-		/// - `leaf`: Leaf of the tree
-		pub(crate) fn _proof_merkle_leaf(
-			root: ActivityHash,
+		/// - `root_hash`: merkle root hash
+		/// - `batch_hash`: hash of the batch
+		/// - `batch_index`: index of the batch
+		/// - `batch_proof`: MMR proofs
+		pub(crate) fn proof_merkle_leaf(
+			root_hash: ActivityHash,
+			batch_hash: ActivityHash,
+			batch_index: BatchIndex,
 			batch_proof: &MMRProof,
 		) -> Result<bool, Error<T>> {
+			let batch_position = leaf_index_to_pos(batch_index.into());
 			let proof: MerkleProof<ActivityHash, MergeActivityHash> =
 				MerkleProof::new(batch_proof.mmr_size, batch_proof.proof.clone());
 			proof
-				.verify(root, vec![batch_proof.leaf_with_position])
+				.verify(root_hash, vec![(batch_position, batch_hash)])
 				.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
 		}
 
@@ -4108,6 +4105,8 @@ pub mod pallet {
 
 			match validation_era {
 				Some(valid_era) => {
+					let root_hash = valid_era.payers_merkle_root_hash;
+
 					let activity_hashes = payers
 						.iter()
 						.map(|(_bucket_owner, node_id, bucket_id, usage)| {
@@ -4124,15 +4123,8 @@ pub mod pallet {
 					let batch_hash =
 						Self::create_merkle_root(&cluster_id, era_id, activity_hashes.as_slice())
 							.expect("batch_hash to be created");
-					let batch_position = leaf_index_to_pos(batch_index.into()); // batch_proof.leaf_with_position.0;
 
-					let root_hash = valid_era.payers_merkle_root_hash;
-
-					let proof: MerkleProof<ActivityHash, MergeActivityHash> =
-						MerkleProof::new(batch_proof.mmr_size, batch_proof.proof.clone());
-					proof
-						.verify(root_hash, vec![(batch_position, batch_hash)])
-						.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
+					Self::proof_merkle_leaf(root_hash, batch_hash, batch_index, batch_proof)
 						.unwrap_or(false)
 				},
 				None => false,
@@ -4151,6 +4143,8 @@ pub mod pallet {
 
 			match validation_era {
 				Some(valid_era) => {
+					let root_hash = valid_era.payees_merkle_root_hash;
+
 					let activity_hashes = payees
 						.iter()
 						.map(|(_node_provider, node_id, usage)| {
@@ -4166,14 +4160,8 @@ pub mod pallet {
 					let batch_hash =
 						Self::create_merkle_root(&cluster_id, era_id, activity_hashes.as_slice())
 							.expect("batch_hash to be created");
-					let batch_position = leaf_index_to_pos(batch_index.into()); // batch_proof.leaf_with_position.0;
 
-					let root_hash = valid_era.payees_merkle_root_hash;
-					let proof: MerkleProof<ActivityHash, MergeActivityHash> =
-						MerkleProof::new(batch_proof.mmr_size, batch_proof.proof.clone());
-					proof
-						.verify(root_hash, vec![(batch_position, batch_hash)])
-						.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
+					Self::proof_merkle_leaf(root_hash, batch_hash, batch_index, batch_proof)
 						.unwrap_or(false)
 				},
 				None => false,
