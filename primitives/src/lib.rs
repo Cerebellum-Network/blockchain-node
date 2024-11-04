@@ -291,7 +291,6 @@ pub struct NodeUsage {
 pub struct MMRProof {
 	pub mmr_size: u64,
 	pub proof: Vec<ActivityHash>,
-	pub leaf_with_position: (u64, ActivityHash),
 }
 
 #[derive(Debug, PartialEq)]

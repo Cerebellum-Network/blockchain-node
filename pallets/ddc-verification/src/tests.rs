@@ -2516,27 +2516,34 @@ fn proof_merkle_leaf_works() {
 			.map(|&(ref l, p)| (p, *l))
 			.collect();
 		let position: Vec<u64> = leaf_position.clone().into_iter().map(|(p, _)| p).collect();
-		let root = mmr.get_root().unwrap();
+		let root_hash = mmr.get_root().unwrap();
 
 		assert_eq!(leaf_position.len(), 1);
 		assert_eq!(position.len(), 1);
-		assert!(DdcVerification::_proof_merkle_leaf(
-			root,
+
+		let leave_index = 2;
+		let leaf_hash = c;
+		assert!(DdcVerification::proof_merkle_leaf(
+			root_hash,
+			leaf_hash,
+			leave_index,
 			&MMRProof {
 				mmr_size: mmr.mmr_size(),
 				proof: mmr.gen_proof(position.clone()).unwrap().proof_items().to_vec(),
-				leaf_with_position: leaf_position[0]
 			}
 		)
 		.unwrap());
 
+		let leave_index = 5;
+		let leaf_hash = f;
 		assert_noop!(
-			DdcVerification::_proof_merkle_leaf(
-				root,
+			DdcVerification::proof_merkle_leaf(
+				root_hash,
+				leaf_hash,
+				leave_index,
 				&MMRProof {
-					mmr_size: 0,
+					mmr_size: mmr.mmr_size(),
 					proof: mmr.gen_proof(position).unwrap().proof_items().to_vec(),
-					leaf_with_position: (6, f)
 				}
 			),
 			Error::<Test>::FailToVerifyMerkleProof
