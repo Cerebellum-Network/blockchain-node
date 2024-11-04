@@ -3,6 +3,8 @@ use sp_wasm_interface::{Pointer, Result as SandboxResult, Value, WordSize};
 pub type MemoryId = u32;
 use std::{cell::RefCell, rc::Rc, str, sync::Arc};
 mod sandbox_util;
+mod env;
+mod util;
 use crate::sandbox_util::Store;
 use sp_wasm_interface::Function;
 

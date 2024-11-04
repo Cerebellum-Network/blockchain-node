@@ -27,13 +27,14 @@ mod wasmi_backend;
 use std::{collections::HashMap, rc::Rc};
 
 use codec::Decode;
-use sp_sandbox::env as sandbox_env;
+use crate::env as sandbox_env;
 use sp_wasm_interface::{FunctionContext, Pointer, WordSize};
 
 use crate::{
-	error::{self, Result},
 	util,
 };
+use sc_executor::error::{Error, Result};
+
 
 #[cfg(feature = "wasmer-sandbox")]
 use self::wasmer_backend::{
@@ -198,7 +199,7 @@ impl SandboxInstance {
 		args: &[sp_wasm_interface::Value],
 		state: u32,
 		sandbox_context: &mut dyn SandboxContext,
-	) -> std::result::Result<Option<sp_wasm_interface::Value>, error::Error> {
+	) -> std::result::Result<Option<sp_wasm_interface::Value>, Error> {
 		match &self.backend_instance {
 			BackendInstance::Wasmi(wasmi_instance) =>
 				wasmi_invoke(self, wasmi_instance, export_name, args, state, sandbox_context),

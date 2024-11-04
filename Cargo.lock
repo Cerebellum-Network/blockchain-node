@@ -1148,9 +1148,13 @@ name = "cere-runtime-interfaces"
 version = "6.6.1"
 dependencies = [
  "parity-scale-codec",
+ "sc-allocator",
+ "sc-executor",
+ "sp-core",
  "sp-runtime",
  "sp-runtime-interface",
  "sp-runtime-interface-proc-macro",
+ "sp-std",
  "sp-wasm-interface",
 ]
 
