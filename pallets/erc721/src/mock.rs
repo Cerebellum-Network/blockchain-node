@@ -28,7 +28,6 @@ impl frame_system::Config for Test {
 	type BlockHashCount = BlockHashCount;
 	type DbWeight = ();
 	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = balances::AccountData<u64>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
