@@ -70,7 +70,6 @@ type BalanceOf<T> = <<T as crate::pallet::Config>::Currency as Currency<
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
 	type DbWeight = RocksDbWeight;
-	type RuntimeOrigin = RuntimeOrigin;
 	type Nonce = u64;
 	type Block = Block;
 	type Hash = H256;
