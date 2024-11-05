@@ -3587,9 +3587,13 @@ pub mod pallet {
 				era_validation.end_era = era_activity.end;
 
 				if payers_merkle_root_hash == ActivityHash::default() &&
-					payees_merkle_root_hash == payers_merkle_root_hash
+					payees_merkle_root_hash == ActivityHash::default()
 				{
-					era_validation.status = EraValidationStatus::PayoutSuccess;
+					// this condition is satisfied when there is no activity within era, i.e. when a
+					// validator posts empty roots
+					era_validation.status = EraValidationStatus::PayoutSkipped;
+					let _ =
+						T::ClusterValidator::set_last_validated_era(&cluster_id, era_activity.id)?;
 				} else {
 					era_validation.status = EraValidationStatus::ReadyForPayout;
 				}
@@ -4082,6 +4086,7 @@ pub mod pallet {
 				signed_validators.extend(validators);
 
 				<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
+				let _ = T::ClusterValidator::set_last_validated_era(&cluster_id, era_id)?;
 			}
 
 			Self::deposit_event(Event::<T>::EraValidationReady { cluster_id, era_id });
