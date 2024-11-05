@@ -38,7 +38,8 @@ use ddc_primitives::{
 		payout::PayoutVisitor,
 	},
 	BatchIndex, BucketId, BucketVisitorError, ClusterId, CustomerUsage, DdcEra, MMRProof,
-	NodeUsage, PayoutError, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
+	NodePubKey, NodeUsage, PayoutError, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
+	MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -749,9 +750,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payees: Vec<(T::AccountId, String, NodeUsage)>, /* todo! we need to pass NodePubKey
-			                                                 * inside
-			                                                 * NodeUsage and more provider_id */
+			payees: Vec<(NodePubKey, NodeUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
@@ -791,9 +790,9 @@ pub mod pallet {
 
 			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
-			for (node_provider_id, _node_id, delta_node_usage) in payees {
-				// todo! deduce node_provider_id from delta_node_usage.node_id
+			for (node_key, delta_node_usage) in payees {
 				// todo! get T::NodeVisitor::get_total_usage(delta_node_usage.node_id).stored_bytes
+				let node_provider_id = T::NodeVisitor::get_node_provider_id(&node_key)?;
 				let mut total_node_stored_bytes: i64 = 0;
 
 				total_node_stored_bytes = total_node_stored_bytes
@@ -1278,7 +1277,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payees: &[(T::AccountId, String, NodeUsage)],
+			payees: &[(NodePubKey, NodeUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			log::info!(

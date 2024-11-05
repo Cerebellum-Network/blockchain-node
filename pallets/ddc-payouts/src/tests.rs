@@ -4,7 +4,7 @@ use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use ddc_primitives::ClusterId;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin, traits::Randomness};
 use sp_core::H256;
-use sp_runtime::Perquintill;
+use sp_runtime::{AccountId32, Perquintill};
 
 use super::{mock::*, *};
 
@@ -3157,10 +3157,13 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		let dac_account = AccountId::from([2; 32]);
 		let user1 = AccountId::from([3; 32]);
 		let user2 = AccountId::from([4; 32]);
-		let node1 = AccountId::from([33; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+			format!("0x{}", "302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 1;
 		let batch_index = 0;
@@ -3170,7 +3173,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		let payers1 = vec![(user1, node_id.clone(), bucket_id1, CustomerUsage::default())];
 		let payers2 = vec![(user2, node_id.clone(), bucket_id2, CustomerUsage::default())];
 
-		let payees = vec![(node1, node_id, NodeUsage::default())];
+		let payees = vec![(node_key, NodeUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -3324,9 +3327,6 @@ fn send_rewarding_providers_batch_works() {
 
 		let dac_account = AccountId::from([123; 32]);
 		let user1 = AccountId::from([1; 32]);
-		let node1 = AccountId::from([10; 32]);
-		let node2 = AccountId::from([11; 32]);
-		let node3 = AccountId::from([12; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
@@ -3384,10 +3384,12 @@ fn send_rewarding_providers_batch_works() {
 
 		let payers = vec![(user1, node_id.clone(), bucket_id1, usage1)];
 		let payees1 = vec![
-			(node1.clone(), node_id.clone(), node_usage1.clone()),
-			(node2.clone(), node_id.clone(), node_usage2.clone()),
+			(NodePubKey::StoragePubKey(NODE1_PUB_KEY_32.clone()), node_usage1.clone()),
+			(NodePubKey::StoragePubKey(NODE2_PUB_KEY_32.clone()), node_usage2.clone()),
 		];
-		let payees2 = vec![(node3.clone(), node_id, node_usage3.clone())];
+		let payees2 =
+			vec![(NodePubKey::StoragePubKey(NODE3_PUB_KEY_32.clone()), node_usage3.clone())];
+
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -3492,7 +3494,7 @@ fn send_rewarding_providers_batch_works() {
 		);
 		let mut gets_charge = ratio1_gets * report_after.total_customer_charge.gets;
 
-		let balance_node1 = Balances::free_balance(node1.clone());
+		let balance_node1 = Balances::free_balance(NODE_PROVIDER1_KEY_32.clone());
 		assert_eq!(balance_node1, transfer_charge + storage_charge + puts_charge + gets_charge);
 		let mut report_reward = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 
@@ -3500,7 +3502,7 @@ fn send_rewarding_providers_batch_works() {
 			Event::Rewarded {
 				cluster_id,
 				era,
-				node_provider_id: node1,
+				node_provider_id: NODE_PROVIDER1_KEY_32.clone(),
 				batch_index: batch_node_index,
 				rewarded: balance_node1,
 				expected_to_reward: balance_node1,
@@ -3532,7 +3534,7 @@ fn send_rewarding_providers_batch_works() {
 		);
 		gets_charge = ratio2_gets * report_after.total_customer_charge.gets;
 
-		let balance_node2 = Balances::free_balance(node2.clone());
+		let balance_node2 = Balances::free_balance(NODE_PROVIDER2_KEY_32.clone());
 		assert_eq!(balance_node2, transfer_charge + storage_charge + puts_charge + gets_charge);
 		assert_eq!(report_reward.total_distributed_reward, balance_node1 + balance_node2);
 
@@ -3540,7 +3542,7 @@ fn send_rewarding_providers_batch_works() {
 			Event::Rewarded {
 				cluster_id,
 				era,
-				node_provider_id: node2,
+				node_provider_id: NODE_PROVIDER2_KEY_32,
 				batch_index: batch_node_index,
 				rewarded: balance_node2,
 				expected_to_reward: balance_node2,
@@ -3583,14 +3585,14 @@ fn send_rewarding_providers_batch_works() {
 		gets_charge = ratio3_gets * report_after.total_customer_charge.gets;
 
 		report_reward = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		let balance_node3 = Balances::free_balance(node3.clone());
+		let balance_node3 = Balances::free_balance(NODE_PROVIDER3_KEY_32.clone());
 		assert_eq!(balance_node3, transfer_charge + storage_charge + puts_charge + gets_charge);
 
 		System::assert_has_event(
 			Event::Rewarded {
 				cluster_id,
 				era,
-				node_provider_id: node3,
+				node_provider_id: NODE_PROVIDER3_KEY_32.clone(),
 				batch_index: batch_node_index + 1,
 				rewarded: balance_node3,
 				expected_to_reward: balance_node3,
@@ -3630,6 +3632,32 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		let cluster_id = ONE_CLUSTER_ID;
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let nodes_keys = [
+			NODE1_PUB_KEY_32,
+			NODE2_PUB_KEY_32,
+			NODE3_PUB_KEY_32,
+			NODE4_PUB_KEY_32,
+			NODE5_PUB_KEY_32,
+			NODE6_PUB_KEY_32,
+			NODE7_PUB_KEY_32,
+			NODE8_PUB_KEY_32,
+			NODE9_PUB_KEY_32,
+			NODE10_PUB_KEY_32,
+		];
+		let storage_nodes: Vec<NodePubKey> =
+			nodes_keys.iter().map(|key| NodePubKey::StoragePubKey(key.clone())).collect();
+		let providers_accounts = [
+			NODE_PROVIDER1_KEY_32,
+			NODE_PROVIDER2_KEY_32,
+			NODE_PROVIDER3_KEY_32,
+			NODE_PROVIDER4_KEY_32,
+			NODE_PROVIDER5_KEY_32,
+			NODE_PROVIDER6_KEY_32,
+			NODE_PROVIDER7_KEY_32,
+			NODE_PROVIDER8_KEY_32,
+			NODE_PROVIDER9_KEY_32,
+			NODE_PROVIDER10_KEY_32,
+		];
 		let era = 100;
 		let user_batch_size = 10;
 		let node_batch_size = 10;
@@ -3673,8 +3701,8 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			number_of_gets: usage1.number_of_gets * 2,
 		};
 
-		let mut payees: Vec<Vec<(AccountId, String, NodeUsage)>> = Vec::new();
-		let mut node_batch: Vec<(AccountId, String, NodeUsage)> = Vec::new();
+		let mut payees: Vec<Vec<(NodePubKey, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(NodePubKey, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
 		for i in 10..10 + num_nodes {
 			let node_usage = match i % 3 {
@@ -3688,7 +3716,8 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
 			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
 
-			node_batch.push((AccountId::from([i; 32]), node_id.clone(), node_usage));
+			let node_key = storage_nodes[i - num_nodes].clone();
+			node_batch.push((node_key.clone(), node_usage));
 			if node_batch.len() == node_batch_size {
 				payees.push(node_batch.clone());
 				node_batch.clear();
@@ -3848,7 +3877,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			));
 
 			let mut batch_charge = 0;
-			for (node1, _node_id, node_usage1) in batch.iter() {
+			for (i, (_node_key, node_usage1)) in batch.iter().enumerate() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
 					total_nodes_usage.transferred_bytes,
@@ -3873,7 +3902,9 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 				);
 				let gets_charge = ratio1_gets * report_after.total_customer_charge.gets;
 
-				let balance_node1 = Balances::free_balance(node1);
+				let balance_node1 = Balances::free_balance(
+					providers_accounts.get(i).expect("Node provider to be found"),
+				);
 				assert!(
 					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1 <
 						MAX_DUST.into()
@@ -3908,6 +3939,32 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		let cluster_id = ONE_CLUSTER_ID;
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let nodes_keys = [
+			NODE1_PUB_KEY_32,
+			NODE2_PUB_KEY_32,
+			NODE3_PUB_KEY_32,
+			NODE4_PUB_KEY_32,
+			NODE5_PUB_KEY_32,
+			NODE6_PUB_KEY_32,
+			NODE7_PUB_KEY_32,
+			NODE8_PUB_KEY_32,
+			NODE9_PUB_KEY_32,
+			NODE10_PUB_KEY_32,
+		];
+		let storage_nodes: Vec<NodePubKey> =
+			nodes_keys.iter().map(|key| NodePubKey::StoragePubKey(key.clone())).collect();
+		let providers_accounts = [
+			NODE_PROVIDER1_KEY_32,
+			NODE_PROVIDER2_KEY_32,
+			NODE_PROVIDER3_KEY_32,
+			NODE_PROVIDER4_KEY_32,
+			NODE_PROVIDER5_KEY_32,
+			NODE_PROVIDER6_KEY_32,
+			NODE_PROVIDER7_KEY_32,
+			NODE_PROVIDER8_KEY_32,
+			NODE_PROVIDER9_KEY_32,
+			NODE_PROVIDER10_KEY_32,
+		];
 		let era = 100;
 		let user_batch_size = 10;
 		let node_batch_size = 10;
@@ -3946,10 +4003,10 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			number_of_gets: usage1.number_of_gets * 2,
 		};
 
-		let mut payees: Vec<Vec<(AccountId, String, NodeUsage)>> = Vec::new();
-		let mut node_batch: Vec<(AccountId, String, NodeUsage)> = Vec::new();
+		let mut payees: Vec<Vec<(NodePubKey, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(NodePubKey, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
-		for i in 10u8..10 + num_nodes {
+		for i in 10..10 + num_nodes {
 			let ratio = match i % 5 {
 				0 => Perquintill::from_float(1_000_000.0),
 				1 => Perquintill::from_float(10_000_000.0),
@@ -3974,7 +4031,8 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
 			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
 
-			node_batch.push((AccountId::from([i; 32]), node_id.clone(), node_usage));
+			let node_key = storage_nodes[i - num_nodes].clone();
+			node_batch.push((node_key.clone(), node_usage));
 			if node_batch.len() == node_batch_size {
 				payees.push(node_batch.clone());
 				node_batch.clear();
@@ -4135,7 +4193,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			));
 
 			let mut batch_charge = 0;
-			for (node1, _node_id, node_usage1) in batch.iter() {
+			for (i, (_node_key, node_usage1)) in batch.iter().enumerate() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
 					total_nodes_usage.transferred_bytes,
@@ -4160,7 +4218,9 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 				);
 				let gets_charge = ratio1_gets * report_after.total_customer_charge.gets;
 
-				let balance_node1 = Balances::free_balance(node1);
+				let balance_node1 = Balances::free_balance(
+					providers_accounts.get(i).expect("Node provider to be found"),
+				);
 				assert!(
 					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1 <
 						MAX_DUST.into()
@@ -4195,6 +4255,32 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		let cluster_id = ONE_CLUSTER_ID;
 		let node_id: String =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let nodes_keys = [
+			NODE1_PUB_KEY_32,
+			NODE2_PUB_KEY_32,
+			NODE3_PUB_KEY_32,
+			NODE4_PUB_KEY_32,
+			NODE5_PUB_KEY_32,
+			NODE6_PUB_KEY_32,
+			NODE7_PUB_KEY_32,
+			NODE8_PUB_KEY_32,
+			NODE9_PUB_KEY_32,
+			NODE10_PUB_KEY_32,
+		];
+		let storage_nodes: Vec<NodePubKey> =
+			nodes_keys.iter().map(|key| NodePubKey::StoragePubKey(key.clone())).collect();
+		let providers_accounts = [
+			NODE_PROVIDER1_KEY_32,
+			NODE_PROVIDER2_KEY_32,
+			NODE_PROVIDER3_KEY_32,
+			NODE_PROVIDER4_KEY_32,
+			NODE_PROVIDER5_KEY_32,
+			NODE_PROVIDER6_KEY_32,
+			NODE_PROVIDER7_KEY_32,
+			NODE_PROVIDER8_KEY_32,
+			NODE_PROVIDER9_KEY_32,
+			NODE_PROVIDER10_KEY_32,
+		];
 		let era = 100;
 		let bucketid1: BucketId = 1;
 		let user_batch_size = 10;
@@ -4232,10 +4318,10 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			number_of_gets: usage1.number_of_gets * 2,
 		};
 
-		let mut payees: Vec<Vec<(AccountId, String, NodeUsage)>> = Vec::new();
-		let mut node_batch: Vec<(AccountId, String, NodeUsage)> = Vec::new();
+		let mut payees: Vec<Vec<(NodePubKey, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(NodePubKey, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
-		for i in 10u8..10 + num_nodes {
+		for i in 10..10 + num_nodes {
 			let ratio = match i % 5 {
 				0 => Perquintill::from_float(1_000_000.0),
 				1 => Perquintill::from_float(0.5),
@@ -4260,7 +4346,8 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
 			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
 
-			node_batch.push((AccountId::from([i; 32]), node_id.clone(), node_usage));
+			let node_key = storage_nodes[i - num_nodes].clone();
+			node_batch.push((node_key.clone(), node_usage));
 			if node_batch.len() == node_batch_size {
 				payees.push(node_batch.clone());
 				node_batch.clear();
@@ -4420,7 +4507,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			));
 
 			let mut batch_charge = 0;
-			for (node1, _node_id, node_usage1) in batch.iter() {
+			for (i, (_node_key, node_usage1)) in batch.iter().enumerate() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
 					total_nodes_usage.transferred_bytes,
@@ -4445,7 +4532,9 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 				);
 				let gets_charge = ratio1_gets * report_after.total_customer_charge.gets;
 
-				let balance_node1 = Balances::free_balance(node1);
+				let balance_node1 = Balances::free_balance(
+					providers_accounts.get(i).expect("Node provider to be found"),
+				);
 				assert!(
 					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1 <
 						MAX_DUST.into()
@@ -4490,16 +4579,42 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		let cluster_id = CERE_CLUSTER_ID;
 		let node_id: String =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let nodes_keys = [
+			NODE1_PUB_KEY_32,
+			NODE2_PUB_KEY_32,
+			NODE3_PUB_KEY_32,
+			NODE4_PUB_KEY_32,
+			NODE5_PUB_KEY_32,
+			NODE6_PUB_KEY_32,
+			NODE7_PUB_KEY_32,
+			NODE8_PUB_KEY_32,
+			NODE9_PUB_KEY_32,
+			NODE10_PUB_KEY_32,
+		];
+		let storage_nodes: Vec<NodePubKey> =
+			nodes_keys.iter().map(|key| NodePubKey::StoragePubKey(key.clone())).collect();
+		let providers_accounts = [
+			NODE_PROVIDER1_KEY_32,
+			NODE_PROVIDER2_KEY_32,
+			NODE_PROVIDER3_KEY_32,
+			NODE_PROVIDER4_KEY_32,
+			NODE_PROVIDER5_KEY_32,
+			NODE_PROVIDER6_KEY_32,
+			NODE_PROVIDER7_KEY_32,
+			NODE_PROVIDER8_KEY_32,
+			NODE_PROVIDER9_KEY_32,
+			NODE_PROVIDER10_KEY_32,
+		];
 		let era = 100;
 		let user_batch_size = 10;
 		let node_batch_size = 10;
 		let mut batch_user_index = 0;
 		let mut batch_node_index = 0;
 		let bucket_id1: BucketId = 1;
-		let mut payees: Vec<Vec<(AccountId, String, NodeUsage)>> = Vec::new();
-		let mut node_batch: Vec<(AccountId, String, NodeUsage)> = Vec::new();
+		let mut payees: Vec<Vec<(NodePubKey, NodeUsage)>> = Vec::new();
+		let mut node_batch: Vec<(NodePubKey, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
-		for i in 10u8..10 + num_nodes {
+		for i in 10..10 + num_nodes {
 			let node_usage = NodeUsage {
 				transferred_bytes: generate_random_u64(&mock_randomness, min, max),
 				stored_bytes: (generate_random_u64(&mock_randomness, min, max)) as i64,
@@ -4512,7 +4627,8 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			total_nodes_usage.number_of_puts += node_usage.number_of_puts;
 			total_nodes_usage.number_of_gets += node_usage.number_of_gets;
 
-			node_batch.push((AccountId::from([i; 32]), node_id.clone(), node_usage));
+			let node_key = storage_nodes[i - num_nodes].clone();
+			node_batch.push((node_key.clone(), node_usage));
 			if node_batch.len() == node_batch_size {
 				payees.push(node_batch.clone());
 				node_batch.clear();
@@ -4664,7 +4780,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			));
 
 			let mut batch_charge = 0;
-			for (node1, _node_id, node_usage1) in batch.iter() {
+			for (i, (_node_key, node_usage1)) in batch.iter().enumerate() {
 				let ratio1_transfer = Perquintill::from_rational(
 					node_usage1.transferred_bytes,
 					total_nodes_usage.transferred_bytes,
@@ -4689,7 +4805,9 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 				);
 				let gets_charge = ratio1_gets * report_after.total_customer_charge.gets;
 
-				let balance_node1 = Balances::free_balance(node1);
+				let balance_node1 = Balances::free_balance(
+					providers_accounts.get(i).expect("Node provider to be found"),
+				);
 				assert!(
 					(transfer_charge + storage_charge + puts_charge + gets_charge) - balance_node1 <
 						MAX_DUST.into()
@@ -4713,10 +4831,13 @@ fn end_rewarding_providers_fails_uninitialised() {
 		let dac_account = AccountId::from([2; 32]);
 		let user1 = AccountId::from([3; 32]);
 		let user2 = AccountId::from([4; 32]);
-		let node1 = AccountId::from([33; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_id: String =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 1;
 		let batch_index = 0;
@@ -4724,7 +4845,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 		let bucket_id2: BucketId = 2;
 		let payers1 = vec![(user1, node_id.clone(), bucket_id1, CustomerUsage::default())];
 		let payers2 = vec![(user2, node_id.clone(), bucket_id2, CustomerUsage::default())];
-		let payees = vec![(node1, node_id, NodeUsage::default())];
+		let payees = vec![(node_key, NodeUsage::default())];
 		let total_node_usage = NodeUsage::default();
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
@@ -4892,10 +5013,13 @@ fn end_rewarding_providers_works() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let dac_account = AccountId::from([2; 32]);
 		let user1 = AccountId::from([1; 32]);
-		let node1 = AccountId::from([33; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
@@ -4916,7 +5040,7 @@ fn end_rewarding_providers_works() {
 		};
 		let total_node_usage = node_usage1.clone();
 		let payers = vec![(user1, node_id.clone(), bucket_id1, usage1)];
-		let payees = vec![(node1, node_id, node_usage1)];
+		let payees = vec![(node_key, node_usage1)];
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 
@@ -4996,10 +5120,13 @@ fn end_billing_report_fails_uninitialised() {
 		let dac_account = AccountId::from([2; 32]);
 		let user1 = AccountId::from([3; 32]);
 		let user2 = AccountId::from([4; 32]);
-		let node1 = AccountId::from([33; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 1;
 		let batch_index = 0;
@@ -5007,7 +5134,7 @@ fn end_billing_report_fails_uninitialised() {
 		let bucket_id2: BucketId = 2;
 		let payers1 = vec![(user1, node_id.clone(), bucket_id1, CustomerUsage::default())];
 		let payers2 = vec![(user2, node_id.clone(), bucket_id2, CustomerUsage::default())];
-		let payees = vec![(node1, node_id, NodeUsage::default())];
+		let payees = vec![(node_key, NodeUsage::default())];
 		let total_node_usage = NodeUsage::default();
 
 		assert_noop!(
@@ -5179,7 +5306,6 @@ fn end_billing_report_works() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let dac_account = AccountId::from([2; 32]);
 		let user1 = AccountId::from([3; 32]);
-		let node1 = AccountId::from([33; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
@@ -5189,7 +5315,7 @@ fn end_billing_report_works() {
 		let total_node_usage = NodeUsage::default();
 		let bucket_id1 = 1;
 		let payers = vec![(user1, node_id.clone(), bucket_id1, CustomerUsage::default())];
-		let payees = vec![(node1, node_id, NodeUsage::default())];
+		let payees = vec![(NodePubKey::StoragePubKey(NODE1_PUB_KEY_32), NodeUsage::default())];
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 

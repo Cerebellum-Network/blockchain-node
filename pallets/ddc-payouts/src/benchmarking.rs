@@ -1,9 +1,11 @@
 //! DdcPayouts pallet benchmarking.
 
-use ddc_primitives::{traits::ValidatorVisitor, ClusterId, ClusterParams, ClusterProtocolParams};
+use ddc_primitives::{
+	traits::ValidatorVisitor, ClusterId, ClusterParams, ClusterProtocolParams, NodePubKey,
+};
 pub use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_system::RawOrigin;
-use sp_runtime::Perquintill;
+use sp_runtime::{AccountId32, Perquintill};
 use sp_std::prelude::*;
 
 use super::*;
@@ -397,7 +399,7 @@ benchmarks! {
 		whitelist_account!(dac_account);
 
 		let batch_index: BatchIndex = 0;
-		let payees: Vec<(T::AccountId, String, NodeUsage)> = (0..b).map(|i| {
+		let payees: Vec<(NodePubKey, NodeUsage)> = (0..b).map(|i| {
 			let provider = create_account::<T>("provider", i, i);
 			endow_account::<T>(&provider, T::Currency::minimum_balance().saturated_into());
 			let node_usage = NodeUsage {
@@ -406,8 +408,11 @@ benchmarks! {
 				number_of_gets: 10, // 10 gets
 				number_of_puts: 5, // 5 puts
 			};
-			let node_id: String = String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-			(provider, node_id, node_usage)
+			let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+				48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+				235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+			]));
+			(node_key, node_usage)
 		}).collect();
 
 	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payees, MMRProof::default())

@@ -557,9 +557,9 @@ pub mod pallet {
 		pub(crate) batch_proof: MMRProof,
 	}
 
-	pub struct ProviderBatch<T: Config> {
+	pub struct ProviderBatch {
 		pub(crate) batch_index: BatchIndex,
-		pub(crate) payees: Vec<(T::AccountId, String, NodeUsage)>,
+		pub(crate) payees: Vec<(NodePubKey, NodeUsage)>,
 		pub(crate) batch_proof: MMRProof,
 	}
 
@@ -2354,7 +2354,7 @@ pub mod pallet {
 		pub(crate) fn prepare_send_rewarding_providers_batch(
 			cluster_id: &ClusterId,
 			batch_size: usize,
-		) -> Result<Option<(DdcEra, ProviderBatch<T>)>, Vec<OCWError>> {
+		) -> Result<Option<(DdcEra, ProviderBatch)>, Vec<OCWError>> {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
@@ -2412,7 +2412,7 @@ pub mod pallet {
 			era_id: DdcEra,
 			nodes_total_activity: Vec<NodeAggregate>,
 			nodes_activity_batch_roots: Vec<ActivityHash>,
-		) -> Result<Option<(DdcEra, ProviderBatch<T>)>, Vec<OCWError>> {
+		) -> Result<Option<(DdcEra, ProviderBatch)>, Vec<OCWError>> {
 			let batch_index = T::PayoutVisitor::get_next_provider_batch_for_payment(
 				cluster_id, era_id,
 			)
@@ -2465,15 +2465,15 @@ pub mod pallet {
 						payees: nodes_activity_batched[i]
 							.iter()
 							.map(|activity| {
-								let node_id = activity.clone().node_id;
-								let provider_id = Self::fetch_provider_id(node_id.clone()).unwrap(); // todo! remove unwrap
+								let node_key = Self::node_key_from_hex(activity.node_id.clone())
+									.expect("Node Public Key to be decoded");
 								let node_usage = NodeUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
 									number_of_puts: activity.number_of_puts,
 									number_of_gets: activity.number_of_gets,
 								};
-								(provider_id, node_id, node_usage)
+								(node_key, node_usage)
 							})
 							.collect(),
 						batch_proof,
@@ -2707,36 +2707,7 @@ pub mod pallet {
 			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &new_nonce.encode());
 			nonce_data
 		}
-		pub(crate) fn store_provider_id<A: Encode>(
-			// todo! (3) add tests
-			node_id: String,
-			provider_id: A,
-		) {
-			let key = format!("offchain::activities::provider_id::{:?}", node_id).into_bytes();
-			let encoded_tuple = provider_id.encode();
 
-			// Store the serialized data in local offchain storage
-			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
-		}
-
-		pub(crate) fn fetch_provider_id<A: Decode>(node_id: String) -> Option<A> {
-			let key = format!("offchain::activities::provider_id::{:?}", node_id).into_bytes();
-			// Retrieve encoded tuple from local storage
-			let encoded_tuple =
-				match sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key) {
-					Some(data) => data,
-					None => return None,
-				};
-
-			match Decode::decode(&mut &encoded_tuple[..]) {
-				Ok(provider_id) => Some(provider_id),
-				Err(err) => {
-					// Print error message with details of the decoding error
-					log::error!("🦀Decoding error while fetching provider id: {:?}", err);
-					None
-				},
-			}
-		}
 		/// Converts a vector of activity batches into their corresponding Merkle roots.
 		///
 		/// This function takes a vector of activity batches, where each batch is a vector of
@@ -3374,11 +3345,6 @@ pub mod pallet {
 			Ok(dac_nodes)
 		}
 
-		fn get_node_provider_id(node_pub_key: &NodePubKey) -> Result<T::AccountId, OCWError> {
-			T::NodeVisitor::get_node_provider_id(node_pub_key)
-				.map_err(|_| OCWError::FailedToFetchNodeProvider)
-		}
-
 		/// Fetch node usage of an era.
 		///
 		/// Parameters:
@@ -3406,13 +3372,6 @@ pub mod pallet {
 				}
 
 				let aggregates = aggregates_res.expect("Nodes Aggregates Response to be available");
-
-				// todo: this is tech debt that needs to be refactored, the mapping logic needs to
-				// be moved to payouts pallet
-				for aggregate in aggregates.clone() {
-					let provider_id = Self::get_node_provider_id(node_key).unwrap();
-					Self::store_provider_id(aggregate.node_id, provider_id);
-				}
 
 				nodes_aggregates.push((
 					AggregatorInfo {
@@ -3500,6 +3459,14 @@ pub mod pallet {
 			}
 
 			Ok(processed_eras_by_nodes)
+		}
+
+		pub fn node_key_from_hex(hex_str: String) -> Result<NodePubKey, hex::FromHexError> {
+			let bytes_vec = hex::decode(hex_str)?;
+			let bytes_arr: [u8; 32] =
+				bytes_vec.try_into().map_err(|_| hex::FromHexError::InvalidStringLength)?;
+			let pub_key = AccountId32::from(bytes_arr);
+			Ok(NodePubKey::StoragePubKey(pub_key))
 		}
 	}
 
@@ -3995,7 +3962,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payees: Vec<(T::AccountId, String, NodeUsage)>,
+			payees: Vec<(NodePubKey, NodeUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -4136,7 +4103,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payees: &[(T::AccountId, String, NodeUsage)],
+			payees: &[(NodePubKey, NodeUsage)],
 			batch_proof: &MMRProof,
 		) -> bool {
 			let validation_era = EraValidations::<T>::get(cluster_id, era_id);
@@ -4147,8 +4114,8 @@ pub mod pallet {
 
 					let activity_hashes = payees
 						.iter()
-						.map(|(_node_provider, node_id, usage)| {
-							let mut data = node_id.encode();
+						.map(|(node_key, usage)| {
+							let mut data = format!("0x{}", node_key.get_hex()).encode();
 							data.extend_from_slice(&usage.stored_bytes.encode());
 							data.extend_from_slice(&usage.transferred_bytes.encode());
 							data.extend_from_slice(&usage.number_of_puts.encode());

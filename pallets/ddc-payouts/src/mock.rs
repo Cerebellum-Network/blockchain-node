@@ -29,7 +29,7 @@ use sp_io::TestExternalities;
 use sp_runtime::TryRuntimeError;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, Identity, IdentityLookup, Verify},
-	BuildStorage, DispatchError, MultiSignature, Perquintill,
+	AccountId32, BuildStorage, DispatchError, MultiSignature, Perquintill,
 };
 use sp_std::prelude::*;
 
@@ -157,8 +157,30 @@ where
 	fn exists(_node_pub_key: &NodePubKey) -> bool {
 		unimplemented!()
 	}
-	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
-		unimplemented!()
+	fn get_node_provider_id(pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
+		match pub_key {
+			NodePubKey::StoragePubKey(key) if key == &NODE1_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER1_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE2_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER2_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE3_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER3_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE4_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER4_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE5_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER5_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE6_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER6_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE7_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER7_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE8_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER8_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE9_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER9_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE10_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER10_KEY_32.clone().into()),
+			_ => Ok(AccountId32::new([0; 32]).clone().into()),
+		}
 	}
 	fn get_node_params(_node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
 		unimplemented!()
@@ -197,7 +219,7 @@ where
 		_cluster_id: ClusterId,
 		_era: DdcEra,
 		_batch_index: BatchIndex,
-		_payees: &[(T::AccountId, String, NodeUsage)],
+		_payees: &[(NodePubKey, NodeUsage)],
 		_batch_proof: &MMRProof,
 	) -> bool {
 		true
@@ -310,6 +332,58 @@ pub const VALIDATOR3_SCORE: u64 = 25;
 pub const PARTIAL_CHARGE: u128 = 10;
 pub const USER2_BALANCE: u128 = 5;
 pub const USER3_BALANCE: u128 = 1000;
+
+pub const NODE1_PUB_KEY_32: AccountId32 = AccountId32::new([
+	48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE2_PUB_KEY_32: AccountId32 = AccountId32::new([
+	49, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE3_PUB_KEY_32: AccountId32 = AccountId32::new([
+	50, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE4_PUB_KEY_32: AccountId32 = AccountId32::new([
+	51, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE5_PUB_KEY_32: AccountId32 = AccountId32::new([
+	52, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE6_PUB_KEY_32: AccountId32 = AccountId32::new([
+	53, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE7_PUB_KEY_32: AccountId32 = AccountId32::new([
+	54, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE8_PUB_KEY_32: AccountId32 = AccountId32::new([
+	55, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE9_PUB_KEY_32: AccountId32 = AccountId32::new([
+	56, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE10_PUB_KEY_32: AccountId32 = AccountId32::new([
+	57, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+
+pub const NODE_PROVIDER1_KEY_32: AccountId32 = AccountId32::new([10; 32]);
+pub const NODE_PROVIDER2_KEY_32: AccountId32 = AccountId32::new([11; 32]);
+pub const NODE_PROVIDER3_KEY_32: AccountId32 = AccountId32::new([12; 32]);
+pub const NODE_PROVIDER4_KEY_32: AccountId32 = AccountId32::new([13; 32]);
+pub const NODE_PROVIDER5_KEY_32: AccountId32 = AccountId32::new([14; 32]);
+pub const NODE_PROVIDER6_KEY_32: AccountId32 = AccountId32::new([15; 32]);
+pub const NODE_PROVIDER7_KEY_32: AccountId32 = AccountId32::new([16; 32]);
+pub const NODE_PROVIDER8_KEY_32: AccountId32 = AccountId32::new([17; 32]);
+pub const NODE_PROVIDER9_KEY_32: AccountId32 = AccountId32::new([18; 32]);
+pub const NODE_PROVIDER10_KEY_32: AccountId32 = AccountId32::new([19; 32]);
 
 pub const NO_FEE_CLUSTER_ID: ClusterId = ClusterId::zero();
 pub const ONE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(4u8);

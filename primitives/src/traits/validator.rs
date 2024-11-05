@@ -3,7 +3,9 @@ use scale_info::prelude::string::String;
 #[cfg(feature = "runtime-benchmarks")]
 use sp_std::prelude::*;
 
-use crate::{BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeUsage};
+use crate::{
+	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodePubKey, NodeUsage,
+};
 
 pub trait ValidatorVisitor<T: Config> {
 	#[cfg(feature = "runtime-benchmarks")]
@@ -20,7 +22,7 @@ pub trait ValidatorVisitor<T: Config> {
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
-		payees: &[(T::AccountId, String, NodeUsage)],
+		payees: &[(NodePubKey, NodeUsage)],
 		batch_proof: &MMRProof,
 	) -> bool;
 }
