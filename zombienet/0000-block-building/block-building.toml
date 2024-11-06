@@ -7,3 +7,8 @@ name = "alice"
 
 [[relaychain.nodes]]
 name = "bob"
+
+[[relaychain.nodes]]
+name = "charlie"
+
+
