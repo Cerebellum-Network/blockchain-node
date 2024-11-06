@@ -2923,16 +2923,16 @@ pub mod pallet {
 				Self::get_last_validated_era(cluster_id, this_validator)?
 					.unwrap_or_else(DdcEra::default);
 
-			let last_validated_era_for_cluster =
+			let last_paid_era_for_cluster =
 				T::ClusterValidator::get_last_validated_era(cluster_id).map_err(|_| {
 					OCWError::EraRetrievalError { cluster_id: *cluster_id, node_pub_key: None }
 				})?;
 
 			log::info!(
-				"ℹ️  The last era validated by this specific validator for cluster_id: {:?} is {:?}. The last overall validated era for the cluster is {:?}",
+				"ℹ️  The last era validated by this specific validator for cluster_id: {:?} is {:?}. The last paid era for the cluster is {:?}",
 				cluster_id,
 				last_validated_era_by_this_validator,
-				last_validated_era_for_cluster
+				last_paid_era_for_cluster
 			);
 
 			// we want to fetch processed eras from all available validators
@@ -2946,9 +2946,8 @@ pub mod pallet {
 				.flat_map(|eras| {
 					eras.iter()
 						.filter(|&ids| {
-							// ids.id > last_validated_era_by_this_validator
-							// &&
-							ids.id > last_validated_era_for_cluster
+							ids.id > last_validated_era_by_this_validator &&
+								ids.id > last_paid_era_for_cluster
 						})
 						.cloned()
 				})
@@ -3543,9 +3542,11 @@ pub mod pallet {
 				era_validation.end_era = era_activity.end;
 
 				if payers_merkle_root_hash == ActivityHash::default() &&
-					payees_merkle_root_hash == payers_merkle_root_hash
+					payees_merkle_root_hash == ActivityHash::default()
 				{
-					era_validation.status = EraValidationStatus::PayoutSuccess;
+					// this condition is satisfied when there is no activity within era, i.e. when a
+					// validator posts empty roots
+					era_validation.status = EraValidationStatus::PayoutSkipped;
 				} else {
 					era_validation.status = EraValidationStatus::ReadyForPayout;
 				}
@@ -4004,6 +4005,8 @@ pub mod pallet {
 			era_validation.status = EraValidationStatus::PayoutSuccess;
 			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
 
+			// todo(yahortsaryk): this should be renamed to `last_paid_era` to eliminate ambiguity,
+			// as the validation step is decoupled from payout step.
 			T::ClusterValidator::set_last_validated_era(&cluster_id, era_id)
 		}
 
