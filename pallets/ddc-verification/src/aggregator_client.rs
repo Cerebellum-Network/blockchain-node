@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use ddc_primitives::{BucketId, DdcEra};
 use prost::Message;
 use sp_io::offchain::timestamp;

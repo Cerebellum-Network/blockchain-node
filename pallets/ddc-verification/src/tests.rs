@@ -3130,7 +3130,7 @@ fn aggregator_client_challenge_bucket_sub_aggregate_works() {
 			],
 		};
 		let mut expected_response_serialized = Vec::new();
-		let _ = expected_response.encode(&mut expected_response_serialized).unwrap();
+		expected_response.encode(&mut expected_response_serialized).unwrap();
 
 		let expected = PendingRequest {
 			method: "GET".into(),
@@ -3185,7 +3185,7 @@ fn aggregator_client_challenge_node_aggregate_works() {
 			],
 		};
 		let mut expected_response_serialized = Vec::new();
-		let _ = expected_response.encode(&mut expected_response_serialized).unwrap();
+		expected_response.encode(&mut expected_response_serialized).unwrap();
 
 		let expected = PendingRequest {
 			method: "GET".into(),

@@ -37,7 +37,6 @@ use scale_info::prelude::{format, string::String};
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
 use sp_runtime::{
-	offchain as rt_offchain,
 	offchain::{http, Duration, StorageKind},
 	traits::Hash,
 	Percent,
@@ -80,7 +79,7 @@ pub mod pallet {
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
 		frame_support::traits::StorageVersion::new(1);
 
-	const SUCCESS_CODE: u16 = 200;
+	const _SUCCESS_CODE: u16 = 200;
 	const _BUF_SIZE: usize = 128;
 	const RESPONSE_TIMEOUT: u64 = 20000;
 	pub const BUCKETS_AGGREGATES_FETCH_BATCH_SIZE: usize = 100;
@@ -1942,7 +1941,7 @@ pub mod pallet {
 				log::info!("👎 Invalid challenge signatures at aggregate key: {:?}", aggregate_key,);
 			}
 
-			return Ok(are_signatures_valid);
+			Ok(are_signatures_valid)
 		}
 
 		pub(crate) fn _get_hash_from_merkle_path(
@@ -3263,7 +3262,7 @@ pub mod pallet {
 
 			let response =
 				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != SUCCESS_CODE {
+			if response.code != _SUCCESS_CODE {
 				return Err(http::Error::Unknown);
 			}
 
@@ -3286,7 +3285,7 @@ pub mod pallet {
 				3,
 			);
 
-			let challenge_response = match aggregate_key {
+			match aggregate_key {
 				AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => client
 					.challenge_bucket_sub_aggregate(
 						era_id,
@@ -3296,9 +3295,7 @@ pub mod pallet {
 					),
 				AggregateKey::NodeAggregateKey(node_id) =>
 					client.challenge_node_aggregate(era_id, &node_id, merkle_tree_node_id),
-			};
-
-			challenge_response
+			}
 		}
 
 		/// Fetch traverse response.
@@ -3390,7 +3387,7 @@ pub mod pallet {
 				)?;
 
 				let response_len = response.len();
-				prev_token = response.last().map(|a| a.bucket_id.clone());
+				prev_token = response.last().map(|a| a.bucket_id);
 
 				buckets_aggregates.extend(response);
 

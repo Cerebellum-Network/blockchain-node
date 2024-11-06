@@ -85,13 +85,11 @@ impl Verify for proto::ChallengeResponse {
 	fn verify(&self) -> bool {
 		for proof in self.proofs.iter() {
 			for leaf in proof.leaves.iter() {
-				if let Some(leaf) = &leaf.leaf_variant {
-					match leaf {
-						proto::challenge_response::proof::leaf::LeafVariant::Record(record) =>
-							if !record.verify() {
-								return false;
-							},
-						_ => {},
+				if let Some(proto::challenge_response::proof::leaf::LeafVariant::Record(record)) =
+					&leaf.leaf_variant
+				{
+					if !record.verify() {
+						return false;
 					}
 				}
 			}
@@ -171,7 +169,7 @@ mod tests {
 		let invalid_signature_msg_signature =
 			invalid_signature_msg_signer.sign(invalid_signature_msg.encode_to_vec().as_slice());
 		let mut invalid_signature_msg_signature_vec = invalid_signature_msg_signature.0.to_vec();
-		invalid_signature_msg_signature_vec[0] = invalid_signature_msg_signature_vec[0] + 1;
+		invalid_signature_msg_signature_vec[0] += 1;
 		invalid_signature_msg.signature = Some(proto::Signature {
 			algorithm: proto::signature::Algorithm::Ed25519 as i32,
 			value: invalid_signature_msg_signature_vec,
