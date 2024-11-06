@@ -10,5 +10,3 @@ name = "bob"
 
 [[relaychain.nodes]]
 name = "charlie"
-
-
