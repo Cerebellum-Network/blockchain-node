@@ -1448,7 +1448,6 @@ type Migrations = (
 	pallet_nomination_pools::migration::versioned_migrations::V6ToV7<Runtime>,
 	pallet_staking::migrations::v14::MigrateToV14<Runtime>,
 	pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
-	pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.

@@ -13,7 +13,6 @@ blake2 = { workspace = true }
 codec = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-hex = { workspace = true }
 polkadot-ckb-merkle-mountain-range = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
@@ -25,7 +24,6 @@ sp-std = { workspace = true }
 [features]
 default = ["std"]
 std = [
-  "hex/std",
   "blake2/std",
   "polkadot-ckb-merkle-mountain-range/std",
   "codec/std",

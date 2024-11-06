@@ -94,8 +94,6 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 		node_pub_key: &NodePubKey,
 		succeeded: bool,
 	) -> Result<(), DispatchError>;
-
-	fn get_clusters(status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError>;
 }
 pub trait ClusterValidator<T: Config> {
 	/// Updates the `last_validated_era_id` for the given cluster and emits an event indicating the
@@ -115,17 +113,4 @@ pub trait ClusterValidator<T: Config> {
 	///
 	/// Emits `ClusterEraValidated` event if the operation is successful.
 	fn set_last_validated_era(cluster_id: &ClusterId, era_id: DdcEra) -> Result<(), DispatchError>;
-
-	/// Retrieves the `last_validated_era_id` for the given cluster
-	/// update.
-	///
-	/// # Parameters
-	///
-	/// - `cluster_id`: A reference to the unique identifier of the cluster the
-	///   `last_validated_era_id` is being retrieved for
-	///
-	/// # Returns
-	///
-	/// Returns `Ok(DdcEra)` identifier of the last validated era in cluster
-	fn get_last_validated_era(cluster_id: &ClusterId) -> Result<DdcEra, DispatchError>;
 }
