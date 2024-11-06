@@ -353,7 +353,7 @@ pub mod crypto {
 
 	// implemented for mock runtime in test
 	impl frame_system::offchain::AppCrypto<<Sr25519Signature as Verify>::Signer, Sr25519Signature>
-	for OffchainIdentifierId
+		for OffchainIdentifierId
 	{
 		type RuntimeAppPublic = Public;
 		type GenericSignature = sp_core::sr25519::Signature;

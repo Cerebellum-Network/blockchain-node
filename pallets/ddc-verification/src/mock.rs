@@ -161,16 +161,16 @@ impl OneSessionHandler<AccountId> for OtherSessionHandler {
 	type Key = UintAuthorityId;
 
 	fn on_genesis_session<'a, I: 'a>(_: I)
-		where
-			I: Iterator<Item = (&'a AccountId, Self::Key)>,
-			AccountId: 'a,
+	where
+		I: Iterator<Item = (&'a AccountId, Self::Key)>,
+		AccountId: 'a,
 	{
 	}
 
 	fn on_new_session<'a, I: 'a>(_: bool, _: I, _: I)
-		where
-			I: Iterator<Item = (&'a AccountId, Self::Key)>,
-			AccountId: 'a,
+	where
+		I: Iterator<Item = (&'a AccountId, Self::Key)>,
+		AccountId: 'a,
 	{
 	}
 
@@ -696,16 +696,16 @@ impl frame_system::offchain::SigningTypes for Test {
 }
 
 impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Test
-	where
-		RuntimeCall: From<LocalCall>,
+where
+	RuntimeCall: From<LocalCall>,
 {
 	type OverarchingCall = RuntimeCall;
 	type Extrinsic = Extrinsic;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Test
-	where
-		RuntimeCall: From<LocalCall>,
+where
+	RuntimeCall: From<LocalCall>,
 {
 	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
 		call: RuntimeCall,

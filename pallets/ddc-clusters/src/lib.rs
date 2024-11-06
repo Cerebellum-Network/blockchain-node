@@ -60,7 +60,7 @@ mod node_provider_auth;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
-<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -143,7 +143,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn clusters)]
 	pub type Clusters<T: Config> =
-	StorageMap<_, Blake2_128Concat, ClusterId, Cluster<T::AccountId>>;
+		StorageMap<_, Blake2_128Concat, ClusterId, Cluster<T::AccountId>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_protocol_params)]
@@ -169,14 +169,14 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn clusters_nodes_stats)]
 	pub type ClustersNodesStats<T: Config> =
-	StorageMap<_, Twox64Concat, ClusterId, ClusterNodesStats>;
+		StorageMap<_, Twox64Concat, ClusterId, ClusterNodesStats>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub clusters: Vec<Cluster<T::AccountId>>,
 		#[allow(clippy::type_complexity)]
 		pub clusters_protocol_params:
-		Vec<(ClusterId, ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>)>,
+			Vec<(ClusterId, ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>)>,
 		#[allow(clippy::type_complexity)]
 		pub clusters_nodes: Vec<(ClusterId, Vec<(NodePubKey, ClusterNodeKind, ClusterNodeStatus)>)>,
 	}
@@ -193,8 +193,8 @@ pub mod pallet {
 
 	#[pallet::genesis_build]
 	impl<T: Config> BuildGenesisConfig for GenesisConfig<T>
-		where
-			T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	where
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
 		fn build(&self) {
 			for cluster in &self.clusters {
@@ -264,8 +264,8 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T>
-		where
-			T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	where
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_cluster())]
@@ -785,8 +785,8 @@ pub mod pallet {
 	}
 
 	impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for Pallet<T>
-		where
-			T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	where
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
 		fn get_bond_size(
 			cluster_id: &ClusterId,
@@ -983,8 +983,8 @@ pub mod pallet {
 	}
 
 	impl<T: Config> ClusterCreator<T, BalanceOf<T>> for Pallet<T>
-		where
-			T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	where
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
 		fn create_cluster(
 			cluster_id: ClusterId,

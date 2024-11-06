@@ -97,21 +97,21 @@ pub mod pallet {
 		type NodeVisitor: NodeVisitor<Self>;
 		/// The output of the `ActivityHasher` function.
 		type ActivityHash: Member
-		+ Parameter
-		+ MaybeSerializeDeserialize
-		+ Ord
-		+ Into<ActivityHash>
-		+ From<ActivityHash>;
+			+ Parameter
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ Into<ActivityHash>
+			+ From<ActivityHash>;
 		/// The hashing system (algorithm)
 		type ActivityHasher: Hash<Output = Self::ActivityHash>;
 		/// The identifier type for an authority.
 		type AuthorityId: Member
-		+ Parameter
-		+ RuntimeAppPublic
-		+ Ord
-		+ MaybeSerializeDeserialize
-		+ Into<sp_core::sr25519::Public>
-		+ From<sp_core::sr25519::Public>;
+			+ Parameter
+			+ RuntimeAppPublic
+			+ Ord
+			+ MaybeSerializeDeserialize
+			+ Into<sp_core::sr25519::Public>
+			+ From<sp_core::sr25519::Public>;
 		/// The identifier type for an offchain worker.
 		type OffchainIdentifierId: AppCrypto<Self::Public, Self::Signature>;
 		/// The majority of validators.
@@ -786,7 +786,7 @@ pub mod pallet {
 	}
 
 	pub(crate) trait Aggregate:
-	Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Debug
+		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Debug
 	{
 		fn hash<T: Config>(&self) -> ActivityHash;
 		fn get_key(&self) -> AggregateKey;
@@ -841,13 +841,13 @@ pub mod pallet {
 		}
 	}
 	pub trait NodeAggregateLeaf:
-	Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
+		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
 	{
 		fn leaf_hash<T: Config>(&self) -> ActivityHash;
 	}
 
 	pub trait BucketSubAggregateLeaf:
-	Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
+		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
 	{
 		fn leaf_hash<T: Config>(&self) -> ActivityHash;
 	}
@@ -935,12 +935,12 @@ pub mod pallet {
 
 			match dac_era_result {
 				Ok(Some((
-							era_activity,
-							payers_merkle_root_hash,
-							payees_merkle_root_hash,
-							payers_batch_merkle_root_hashes,
-							payees_batch_merkle_root_hashes,
-						))) => {
+					era_activity,
+					payers_merkle_root_hash,
+					payees_merkle_root_hash,
+					payers_batch_merkle_root_hashes,
+					payees_batch_merkle_root_hashes,
+				))) => {
 					log::info!(
 						"🏭🚀 Processing era_id: {:?} for cluster_id: {:?}",
 						era_activity.clone(),
@@ -1514,7 +1514,7 @@ pub mod pallet {
 				era_activity.id,
 				Self::split_to_batches(&total_buckets_usage, batch_size),
 			)
-				.map_err(|err| vec![err])?;
+			.map_err(|err| vec![err])?;
 
 			let customer_batch_roots_string: Vec<String> =
 				customers_activity_batch_roots.clone().into_iter().map(hex::encode).collect();
@@ -1535,7 +1535,7 @@ pub mod pallet {
 				era_activity.id,
 				&customers_activity_batch_roots,
 			)
-				.map_err(|err| vec![err])?;
+			.map_err(|err| vec![err])?;
 
 			log::info!(
 				"🧗‍  Customer Activity batches tree for ClusterId: {:?} EraId: {:?}  is: batch with root {:?} for activities {:?}",
@@ -1574,7 +1574,7 @@ pub mod pallet {
 				era_activity.id,
 				Self::split_to_batches(&total_nodes_usage, batch_size),
 			)
-				.map_err(|err| vec![err])?;
+			.map_err(|err| vec![err])?;
 
 			let nodes_activity_batch_roots_string: Vec<String> =
 				nodes_activity_batch_roots.clone().into_iter().map(hex::encode).collect();
@@ -1741,7 +1741,7 @@ pub mod pallet {
 				merkle_node_ids,
 				aggregator.clone(),
 			)
-				.map_err(|err| vec![err])?;
+			.map_err(|err| vec![err])?;
 
 			log::info!(
 				"🚀 Fetched challenge response for aggregate key: {:?}, challenge_response: {:?}",
@@ -1769,14 +1769,14 @@ pub mod pallet {
 				1,
 				&aggregator.node_params,
 			)
-				.map_err(|_| {
-					vec![OCWError::TraverseResponseRetrievalError {
-						cluster_id: *cluster_id,
-						era_id,
-						aggregate_key: aggregate_key.clone(),
-						aggregator: aggregator.node_pub_key,
-					}]
-				})?;
+			.map_err(|_| {
+				vec![OCWError::TraverseResponseRetrievalError {
+					cluster_id: *cluster_id,
+					era_id,
+					aggregate_key: aggregate_key.clone(),
+					aggregator: aggregator.node_pub_key,
+				}]
+			})?;
 
 			if let Some(root_merkle_node) = traverse_response.first() {
 				let mut merkle_root_buf = [0u8; _BUF_SIZE];
@@ -1943,7 +1943,7 @@ pub mod pallet {
 				era_id
 			);
 			for (aggregator_info, buckets_aggregates_resp) in
-			buckets_aggregates_by_aggregator.clone()
+				buckets_aggregates_by_aggregator.clone()
 			{
 				for bucket_aggregate_resp in buckets_aggregates_resp {
 					for bucket_sub_aggregate_resp in bucket_aggregate_resp.sub_aggregates.clone() {
@@ -2055,13 +2055,13 @@ pub mod pallet {
 					PayoutState::ChargingCustomers
 				{
 					if let Some((
-									bucket_nodes_activity_in_consensus,
-									_,
-									customers_activity_batch_roots,
-									_,
-									_,
-									_,
-								)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
+						bucket_nodes_activity_in_consensus,
+						_,
+						customers_activity_batch_roots,
+						_,
+						_,
+						_,
+					)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 						cluster_id, era_id,
 					) {
 						Self::fetch_charging_activities(
@@ -2077,13 +2077,13 @@ pub mod pallet {
 						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((
-										bucket_nodes_activity_in_consensus,
-										_,
-										customers_activity_batch_roots,
-										_,
-										_,
-										_,
-									)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
+							bucket_nodes_activity_in_consensus,
+							_,
+							customers_activity_batch_roots,
+							_,
+							_,
+							_,
+						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 							cluster_id, era_id,
 						) {
 							Self::fetch_charging_activities(
@@ -2115,9 +2115,9 @@ pub mod pallet {
 			let batch_index = T::PayoutVisitor::get_next_customer_batch_for_payment(
 				cluster_id, era_id,
 			)
-				.map_err(|_| {
-					vec![OCWError::BillingReportDoesNotExist { cluster_id: *cluster_id, era_id }]
-				})?;
+			.map_err(|_| {
+				vec![OCWError::BillingReportDoesNotExist { cluster_id: *cluster_id, era_id }]
+			})?;
 
 			if let Some(index) = batch_index {
 				let i: usize = index.into();
@@ -2219,13 +2219,13 @@ pub mod pallet {
 					PayoutState::CustomersChargedWithFees
 				{
 					if let Some((
-									_,
-									_,
-									_,
-									nodes_activity_in_consensus,
-									_,
-									nodes_activity_batch_roots,
-								)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
+						_,
+						_,
+						_,
+						nodes_activity_in_consensus,
+						_,
+						nodes_activity_batch_roots,
+					)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 						cluster_id, era_id,
 					) {
 						Self::fetch_reward_activities(
@@ -2241,13 +2241,13 @@ pub mod pallet {
 						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((
-										_,
-										_,
-										_,
-										nodes_activity_in_consensus,
-										_,
-										nodes_activity_batch_roots,
-									)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
+							_,
+							_,
+							_,
+							nodes_activity_in_consensus,
+							_,
+							nodes_activity_batch_roots,
+						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 							cluster_id, era_id,
 						) {
 							Self::fetch_reward_activities(
@@ -2314,13 +2314,13 @@ pub mod pallet {
 					PayoutState::RewardingProviders
 				{
 					if let Some((
-									_,
-									_,
-									_,
-									nodes_activity_in_consensus,
-									_,
-									nodes_activity_batch_roots,
-								)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
+						_,
+						_,
+						_,
+						nodes_activity_in_consensus,
+						_,
+						nodes_activity_batch_roots,
+					)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 						cluster_id, era_id,
 					) {
 						Self::fetch_reward_provider_batch(
@@ -2336,13 +2336,13 @@ pub mod pallet {
 						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((
-										_,
-										_,
-										_,
-										nodes_activity_in_consensus,
-										_,
-										nodes_activity_batch_roots,
-									)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
+							_,
+							_,
+							_,
+							nodes_activity_in_consensus,
+							_,
+							nodes_activity_batch_roots,
+						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
 							cluster_id, era_id,
 						) {
 							Self::fetch_reward_provider_batch(
@@ -2374,9 +2374,9 @@ pub mod pallet {
 			let batch_index = T::PayoutVisitor::get_next_provider_batch_for_payment(
 				cluster_id, era_id,
 			)
-				.map_err(|_| {
-					vec![OCWError::BillingReportDoesNotExist { cluster_id: *cluster_id, era_id }]
-				})?;
+			.map_err(|_| {
+				vec![OCWError::BillingReportDoesNotExist { cluster_id: *cluster_id, era_id }]
+			})?;
 
 			if let Some(index) = batch_index {
 				let i: usize = index.into();
@@ -2496,8 +2496,8 @@ pub mod pallet {
 		}
 
 		#[allow(clippy::too_many_arguments)] // todo! (2) refactor into 2 different methods (for customers and nodes) + use type info for
-		// derive_key
-		// todo! introduce new struct for input and remove clippy::type_complexity
+									 // derive_key
+									 // todo! introduce new struct for input and remove clippy::type_complexity
 		pub(crate) fn store_validation_activities<A: Encode, B: Encode>(
 			// todo! (3) add tests
 			cluster_id: &ClusterId,
@@ -2588,13 +2588,13 @@ pub mod pallet {
 			// Attempt to decode tuple from bytes
 			match Decode::decode(&mut &encoded_tuple[..]) {
 				Ok((
-					   bucket_nodes_activity_in_consensus,
-					   customers_activity_root,
-					   customers_activity_batch_roots,
-					   nodes_activity_in_consensus,
-					   nodes_activity_root,
-					   nodes_activity_batch_roots,
-				   )) => Some((
+					bucket_nodes_activity_in_consensus,
+					customers_activity_root,
+					customers_activity_batch_roots,
+					nodes_activity_in_consensus,
+					nodes_activity_root,
+					nodes_activity_batch_roots,
+				)) => Some((
 					bucket_nodes_activity_in_consensus,
 					customers_activity_root,
 					customers_activity_batch_roots,
@@ -2882,7 +2882,7 @@ pub mod pallet {
 
 			let mut grouped_data: Vec<(u32, EraActivity)> = Vec::new();
 			for (key, chunk) in
-			&ids_greater_than_last_validated_era.into_iter().chunk_by(|elt| elt.clone())
+				&ids_greater_than_last_validated_era.into_iter().chunk_by(|elt| elt.clone())
 			{
 				grouped_data.push((chunk.count() as u32, key));
 			}
@@ -2966,8 +2966,8 @@ pub mod pallet {
 			redundancy_factor: u16,
 			quorum: Percent,
 		) -> ConsistentGroups<A>
-			where
-				A: Aggregate + Clone,
+		where
+			A: Aggregate + Clone,
 		{
 			let mut consistent_aggregates: BTreeMap<ActivityHash, Vec<A>> = BTreeMap::new();
 
@@ -3018,12 +3018,12 @@ pub mod pallet {
 				merkle_node_identifiers.clone(),
 				&aggregator.node_params,
 			)
-				.map_err(|_| OCWError::ChallengeResponseRetrievalError {
-					cluster_id: *cluster_id,
-					era_id,
-					aggregate_key,
-					aggregator: aggregator.node_pub_key,
-				})?;
+			.map_err(|_| OCWError::ChallengeResponseRetrievalError {
+				cluster_id: *cluster_id,
+				era_id,
+				aggregate_key,
+				aggregator: aggregator.node_pub_key,
+			})?;
 
 			Ok(response)
 		}
@@ -3285,7 +3285,7 @@ pub mod pallet {
 				for aggregate in aggregates.clone() {
 					let provider_id = Self::get_node_provider_id(node_pub_key).unwrap();
 					Self::store_provider_id(aggregate.node_id, provider_id); // todo! this is not good - needs to be
-					// moved payout pallet
+					                                     // moved payout pallet
 				}
 
 				let aggregator_info = AggregatorInfo {
@@ -3790,7 +3790,7 @@ pub mod pallet {
 
 		#[pallet::call_index(5)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		// todo! remove clippy::too_many_arguments
+																			   // todo! remove clippy::too_many_arguments
 		pub fn send_charging_customers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -4020,8 +4020,8 @@ pub mod pallet {
 		type Key = T::AuthorityId;
 
 		fn on_genesis_session<'a, I: 'a>(validators: I)
-			where
-				I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
+		where
+			I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
 		{
 			log::info!("🙌Adding Validator from genesis session.");
 			let validators = validators
@@ -4029,12 +4029,12 @@ pub mod pallet {
 				.collect::<Vec<_>>();
 
 			ValidatorSet::<T>::put(validators); // only active validators in session - this is NOT all the
-			// validators
+			                        // validators
 		}
 
 		fn on_new_session<'a, I: 'a>(_changed: bool, validators: I, _queued_authorities: I)
-			where
-				I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
+		where
+			I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
 		{
 			log::info!("🙌Adding Validator from new session.");
 			let validators = validators

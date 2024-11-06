@@ -1395,7 +1395,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 		"spider sell nice animal border success square soda stem charge caution echo",
 		None,
 	)
-		.unwrap();
+	.unwrap();
 	let keystore = MemoryKeystore::new();
 	keystore
 		.insert(
@@ -1661,7 +1661,7 @@ fn node_aggregates_are_fetched_and_grouped() {
 		"spider sell nice animal border success square soda stem charge caution echo",
 		None,
 	)
-		.unwrap();
+	.unwrap();
 	let keystore = MemoryKeystore::new();
 	keystore
 		.insert(
@@ -1893,20 +1893,20 @@ fn test_convert_to_batch_merkle_roots() {
 		era_id_1,
 		vec![activities_batch_1.clone(), activities_batch_2.clone()],
 	)
-		.unwrap();
+	.unwrap();
 	let expected_roots: Vec<ActivityHash> = vec![
 		DdcVerification::create_merkle_root(
 			&cluster_id,
 			era_id_1,
 			&activities_batch_1.iter().map(|a| a.hash::<mock::Test>()).collect::<Vec<_>>(),
 		)
-			.unwrap(),
+		.unwrap(),
 		DdcVerification::create_merkle_root(
 			&cluster_id,
 			era_id_1,
 			&activities_batch_2.iter().map(|a| a.hash::<mock::Test>()).collect::<Vec<_>>(),
 		)
-			.unwrap(),
+		.unwrap(),
 	];
 
 	assert_eq!(result_roots, expected_roots);
@@ -1921,7 +1921,7 @@ fn test_convert_to_batch_merkle_roots_empty() {
 		era_id_1,
 		Vec::<Vec<NodeAggregate>>::new(),
 	)
-		.unwrap();
+	.unwrap();
 	let expected_roots: Vec<ActivityHash> = Vec::<ActivityHash>::new();
 
 	assert_eq!(result_roots, expected_roots);
@@ -2014,7 +2014,7 @@ fn fetch_processed_era_works() {
 			era_activity2.clone(),
 			era_activity3,
 		])
-			.unwrap();
+		.unwrap();
 
 		// Mock HTTP request and response
 		let pending_request = PendingRequest {
@@ -2080,25 +2080,25 @@ fn get_era_for_validation_works() {
 			era_activity3.clone(), //18
 			era_activity4.clone(), //19
 		])
-			.unwrap();
+		.unwrap();
 		let era_activity_json2 = serde_json::to_string(&vec![
 			era_activity1.clone(), //16
 			era_activity2.clone(), //17
 			era_activity3.clone(), //18
 		])
-			.unwrap();
+		.unwrap();
 		let era_activity_json3 = serde_json::to_string(&vec![
 			era_activity1.clone(), //16
 			era_activity2.clone(), //17
 			era_activity3.clone(), //18
 		])
-			.unwrap();
+		.unwrap();
 		let era_activity_json4 = serde_json::to_string(&vec![
 			era_activity1.clone(), //16
 			era_activity2.clone(), //17
 			era_activity3.clone(), //18
 		])
-			.unwrap();
+		.unwrap();
 		let pending_request1 = PendingRequest {
 			method: "GET".to_string(),
 			uri: format!("http://{}:{}/activity/eras", host1, port),
@@ -2371,7 +2371,7 @@ fn proof_merkle_leaf_works() {
 				leaf_with_position: leaf_position[0]
 			}
 		)
-			.unwrap());
+		.unwrap());
 
 		assert_noop!(
 			DdcVerification::proof_merkle_leaf(
@@ -2397,7 +2397,7 @@ fn test_single_ocw_pallet_integration() {
 		"spider sell nice animal border success square soda stem charge caution echo",
 		None,
 	)
-		.unwrap();
+	.unwrap();
 	let keystore = MemoryKeystore::new();
 	keystore
 		.insert(
@@ -2849,7 +2849,7 @@ fn challenge_bucket_sub_aggregate_works() {
 		"spider sell nice animal border success square soda stem charge caution echo",
 		None,
 	)
-		.unwrap();
+	.unwrap();
 	let keystore = MemoryKeystore::new();
 	keystore
 		.insert(
