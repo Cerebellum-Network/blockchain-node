@@ -1452,8 +1452,7 @@ type Migrations = (
 	pallet_nomination_pools::migration::versioned_migrations::V6ToV7<Runtime>,
 	pallet_staking::migrations::v14::MigrateToV14<Runtime>,
 	pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
-	// This should be carefully enabled in the server, if not enabled
-	// migrations::Unreleased,
+	migrations::Unreleased,
 );
 
 pub mod migrations {
@@ -1469,7 +1468,12 @@ pub mod migrations {
 	}
 
 	/// Unreleased migrations. Add new ones here:
-	pub type Unreleased = UpgradeSessionKeys;
+	pub type Unreleased = (
+		pallet_ddc_customers::migration::v2::MigrateToV2<Runtime>,
+		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
+		pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>,
+		//UpgradeSessionKeys,
+	);
 }
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
