@@ -153,10 +153,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 61000,
+	spec_version: 61001,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 20,
+	transaction_version: 21,
 	state_version: 0,
 };
 
@@ -1448,7 +1448,6 @@ type Migrations = (
 	pallet_nomination_pools::migration::versioned_migrations::V6ToV7<Runtime>,
 	pallet_staking::migrations::v14::MigrateToV14<Runtime>,
 	pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
-	pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.
