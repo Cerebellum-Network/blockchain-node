@@ -648,6 +648,11 @@ pub mod pallet {
 	}
 
 	impl<T: Config> BucketVisitor<T> for Pallet<T> {
+		fn get_bucket_owner_id(bucket_id: BucketId) -> Result<T::AccountId, DispatchError> {
+			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::BucketDoesNotExist)?;
+			Ok(bucket.owner_id)
+		}
+
 		fn get_total_customer_usage(
 			cluster_id: &ClusterId,
 			bucket_id: BucketId,
