@@ -11,9 +11,8 @@ use ddc_primitives::{
 		pallet::PalletVisitor,
 		ClusterQuery, ValidatorVisitor,
 	},
-	BucketVisitorError, ClusterBondingParams, ClusterFeesParams, ClusterParams,
-	ClusterPricingParams, ClusterProtocolParams, ClusterStatus, NodeParams, NodePubKey, NodeType,
-	DOLLARS,
+	ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
+	ClusterProtocolParams, ClusterStatus, NodeParams, NodePubKey, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -29,7 +28,7 @@ use sp_io::TestExternalities;
 use sp_runtime::TryRuntimeError;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, Identity, IdentityLookup, Verify},
-	BuildStorage, DispatchError, MultiSignature, Perquintill,
+	AccountId32, BuildStorage, DispatchError, MultiSignature, Perquintill,
 };
 use sp_std::prelude::*;
 
@@ -157,8 +156,31 @@ where
 	fn exists(_node_pub_key: &NodePubKey) -> bool {
 		unimplemented!()
 	}
-	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
-		unimplemented!()
+	fn get_node_provider_id(pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
+		match pub_key {
+			NodePubKey::StoragePubKey(key) if key == &NODE1_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER1_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE2_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER2_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE3_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER3_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE4_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER4_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE5_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER5_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE6_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER6_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE7_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER7_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE8_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER8_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE9_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER9_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE10_PUB_KEY_32 =>
+				Ok(NODE_PROVIDER10_KEY_32.clone().into()),
+
+			_ => Err(DispatchError::Other("Unexpected node pub_key")),
+		}
 	}
 	fn get_node_params(_node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
 		unimplemented!()
@@ -175,29 +197,24 @@ where
 		unimplemented!()
 	}
 	fn is_ocw_validator(caller: T::AccountId) -> bool {
-		let account_id: [u8; 32] = [123; 32];
-		let dac: [u8; 32] = DAC_ACCOUNT_ID;
-		let validators = [
-			T::AccountId::decode(&mut &dac[..]).unwrap(),
-			T::AccountId::decode(&mut &account_id[..]).unwrap(),
-		];
-		validators.contains(&caller)
+		caller == VALIDATOR_OCW_KEY_32.into()
 	}
 	fn is_customers_batch_valid(
 		_cluster_id: ClusterId,
 		_era: DdcEra,
 		_batch_index: BatchIndex,
-		_payers: &[(T::AccountId, BucketId, CustomerUsage)],
+		_max_batch_index: BatchIndex,
+		_payers: &[(NodePubKey, BucketId, CustomerUsage)],
 		_batch_proof: &MMRProof,
 	) -> bool {
 		true
 	}
-
 	fn is_providers_batch_valid(
 		_cluster_id: ClusterId,
 		_era: DdcEra,
 		_batch_index: BatchIndex,
-		_payees: &[(T::AccountId, NodeUsage)],
+		_max_batch_index: BatchIndex,
+		_payees: &[(NodePubKey, NodeUsage)],
 		_batch_proof: &MMRProof,
 	) -> bool {
 		true
@@ -205,18 +222,49 @@ where
 }
 
 pub struct TestBucketVisitor;
-impl<T: Config> BucketVisitor<T> for TestBucketVisitor {
+impl<T: Config> BucketVisitor<T> for TestBucketVisitor
+where
+	<T as frame_system::Config>::AccountId: From<AccountId>,
+{
+	fn get_bucket_owner_id(bucket_id: BucketId) -> Result<T::AccountId, DispatchError> {
+		match bucket_id {
+			BUCKET_ID1 => Ok(CUSTOMER1_KEY_32.clone().into()),
+			BUCKET_ID2 => Ok(CUSTOMER2_KEY_32.clone().into()),
+			BUCKET_ID3 => Ok(CUSTOMER3_KEY_32.clone().into()),
+			BUCKET_ID4 => Ok(CUSTOMER4_KEY_32.clone().into()),
+			BUCKET_ID5 => Ok(CUSTOMER5_KEY_32.clone().into()),
+			BUCKET_ID6 => Ok(CUSTOMER6_KEY_32.clone().into()),
+			BUCKET_ID7 => Ok(CUSTOMER7_KEY_32.clone().into()),
+
+			BUCKET_ID100 => Ok(CUSTOMER100_KEY_32.clone().into()),
+			BUCKET_ID101 => Ok(CUSTOMER101_KEY_32.clone().into()),
+			BUCKET_ID102 => Ok(CUSTOMER102_KEY_32.clone().into()),
+			BUCKET_ID103 => Ok(CUSTOMER103_KEY_32.clone().into()),
+			BUCKET_ID104 => Ok(CUSTOMER104_KEY_32.clone().into()),
+			BUCKET_ID105 => Ok(CUSTOMER105_KEY_32.clone().into()),
+			BUCKET_ID106 => Ok(CUSTOMER106_KEY_32.clone().into()),
+			BUCKET_ID107 => Ok(CUSTOMER107_KEY_32.clone().into()),
+			BUCKET_ID108 => Ok(CUSTOMER108_KEY_32.clone().into()),
+			BUCKET_ID109 => Ok(CUSTOMER109_KEY_32.clone().into()),
+
+			_ => Err(DispatchError::Other("Unexpected bucket_id")),
+		}
+	}
+
 	fn get_total_customer_usage(
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
 		_content_owner: &T::AccountId,
-	) -> Result<Option<CustomerUsage>, BucketVisitorError> {
+	) -> Result<Option<CustomerUsage>, DispatchError> {
 		Ok(None)
 	}
 }
 
 pub struct TestCustomerCharger;
-impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
+impl<T: Config> CustomerCharger<T> for TestCustomerCharger
+where
+	<T as frame_system::Config>::AccountId: From<AccountId>,
+{
 	fn charge_content_owner(
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
@@ -226,16 +274,11 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		amount: u128,
 	) -> Result<u128, DispatchError> {
 		let mut amount_to_charge = amount;
-		let mut temp: [u8; 32] = ACCOUNT_ID_1;
-		let account_1 = T::AccountId::decode(&mut &temp[..]).unwrap();
-		temp = ACCOUNT_ID_2;
-		let account_2 = T::AccountId::decode(&mut &temp[..]).unwrap();
-		temp = ACCOUNT_ID_3;
-		let account_3 = T::AccountId::decode(&mut &temp[..]).unwrap();
-		temp = ACCOUNT_ID_4;
-		let account_4 = T::AccountId::decode(&mut &temp[..]).unwrap();
-		temp = ACCOUNT_ID_5;
-		let account_5 = T::AccountId::decode(&mut &temp[..]).unwrap();
+		let account_1: T::AccountId = CUSTOMER1_KEY_32.into();
+		let account_2: T::AccountId = CUSTOMER2_KEY_32.into();
+		let account_3: T::AccountId = CUSTOMER3_KEY_32.into();
+		let account_4: T::AccountId = CUSTOMER4_KEY_32.into();
+		let account_5: T::AccountId = CUSTOMER5_KEY_32.into();
 
 		if content_owner == account_1 ||
 			content_owner == account_3 ||
@@ -251,8 +294,8 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 		}
 
 		if content_owner == account_2 {
-			assert!(USER2_BALANCE < amount);
-			amount_to_charge = USER2_BALANCE; // for user 2
+			assert!(CUSTOMER2_BALANCE < amount);
+			amount_to_charge = CUSTOMER2_BALANCE; // for user 2
 		}
 
 		let charge = amount_to_charge.saturated_into::<BalanceOf<T>>();
@@ -266,13 +309,6 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger {
 	}
 }
 
-pub const ACCOUNT_ID_1: [u8; 32] = [1; 32];
-pub const ACCOUNT_ID_2: [u8; 32] = [2; 32];
-pub const ACCOUNT_ID_3: [u8; 32] = [3; 32];
-pub const ACCOUNT_ID_4: [u8; 32] = [4; 32];
-pub const ACCOUNT_ID_5: [u8; 32] = [5; 32];
-pub const ACCOUNT_ID_6: [u8; 32] = [6; 32];
-pub const ACCOUNT_ID_7: [u8; 32] = [7; 32];
 pub struct TestClusterCreator;
 impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
 	fn create_cluster(
@@ -296,20 +332,117 @@ impl<T: Config> CustomerDepositor<T> for TestCustomerDepositor {
 	}
 }
 
-pub const DAC_ACCOUNT_ID: [u8; 32] = [2; 32];
 pub const RESERVE_ACCOUNT_ID: [u8; 32] = [9; 32];
 pub const TREASURY_ACCOUNT_ID: [u8; 32] = [8; 32];
 pub const VALIDATOR1_ACCOUNT_ID: [u8; 32] = [111; 32];
 pub const VALIDATOR2_ACCOUNT_ID: [u8; 32] = [222; 32];
 pub const VALIDATOR3_ACCOUNT_ID: [u8; 32] = [250; 32];
+pub const VALIDATOR_OCW_KEY_32: AccountId32 = AccountId32::new([123; 32]);
 
 pub const VALIDATOR1_SCORE: u64 = 30;
 pub const VALIDATOR2_SCORE: u64 = 45;
 pub const VALIDATOR3_SCORE: u64 = 25;
 
 pub const PARTIAL_CHARGE: u128 = 10;
-pub const USER2_BALANCE: u128 = 5;
-pub const USER3_BALANCE: u128 = 1000;
+// < PARTIAL_CHARGE
+pub const CUSTOMER2_BALANCE: u128 = 5;
+// > PARTIAL_CHARGE
+pub const CUSTOMER3_BALANCE: u128 = 1000;
+
+pub const NODE1_PUB_KEY_32: AccountId32 = AccountId32::new([
+	48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE2_PUB_KEY_32: AccountId32 = AccountId32::new([
+	49, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE3_PUB_KEY_32: AccountId32 = AccountId32::new([
+	50, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE4_PUB_KEY_32: AccountId32 = AccountId32::new([
+	51, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE5_PUB_KEY_32: AccountId32 = AccountId32::new([
+	52, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE6_PUB_KEY_32: AccountId32 = AccountId32::new([
+	53, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE7_PUB_KEY_32: AccountId32 = AccountId32::new([
+	54, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE8_PUB_KEY_32: AccountId32 = AccountId32::new([
+	55, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE9_PUB_KEY_32: AccountId32 = AccountId32::new([
+	56, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+pub const NODE10_PUB_KEY_32: AccountId32 = AccountId32::new([
+	57, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
+	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+]);
+
+pub const NODE_PROVIDER1_KEY_32: AccountId32 = AccountId32::new([10; 32]);
+pub const NODE_PROVIDER2_KEY_32: AccountId32 = AccountId32::new([11; 32]);
+pub const NODE_PROVIDER3_KEY_32: AccountId32 = AccountId32::new([12; 32]);
+pub const NODE_PROVIDER4_KEY_32: AccountId32 = AccountId32::new([13; 32]);
+pub const NODE_PROVIDER5_KEY_32: AccountId32 = AccountId32::new([14; 32]);
+pub const NODE_PROVIDER6_KEY_32: AccountId32 = AccountId32::new([15; 32]);
+pub const NODE_PROVIDER7_KEY_32: AccountId32 = AccountId32::new([16; 32]);
+pub const NODE_PROVIDER8_KEY_32: AccountId32 = AccountId32::new([17; 32]);
+pub const NODE_PROVIDER9_KEY_32: AccountId32 = AccountId32::new([18; 32]);
+pub const NODE_PROVIDER10_KEY_32: AccountId32 = AccountId32::new([19; 32]);
+
+pub const BUCKET_ID1: BucketId = 1;
+pub const BUCKET_ID2: BucketId = 2;
+pub const BUCKET_ID3: BucketId = 3;
+pub const BUCKET_ID4: BucketId = 4;
+pub const BUCKET_ID5: BucketId = 5;
+pub const BUCKET_ID6: BucketId = 6;
+pub const BUCKET_ID7: BucketId = 7;
+pub const BUCKET_ID8: BucketId = 8;
+pub const BUCKET_ID9: BucketId = 9;
+pub const BUCKET_ID10: BucketId = 10;
+
+pub const BUCKET_ID100: BucketId = 100;
+pub const BUCKET_ID101: BucketId = 101;
+pub const BUCKET_ID102: BucketId = 102;
+pub const BUCKET_ID103: BucketId = 103;
+pub const BUCKET_ID104: BucketId = 104;
+pub const BUCKET_ID105: BucketId = 105;
+pub const BUCKET_ID106: BucketId = 106;
+pub const BUCKET_ID107: BucketId = 107;
+pub const BUCKET_ID108: BucketId = 108;
+pub const BUCKET_ID109: BucketId = 109;
+
+pub const CUSTOMER1_KEY_32: AccountId32 = AccountId32::new([1; 32]);
+pub const CUSTOMER2_KEY_32: AccountId32 = AccountId32::new([2; 32]);
+pub const CUSTOMER3_KEY_32: AccountId32 = AccountId32::new([3; 32]);
+pub const CUSTOMER4_KEY_32: AccountId32 = AccountId32::new([4; 32]);
+pub const CUSTOMER5_KEY_32: AccountId32 = AccountId32::new([5; 32]);
+pub const CUSTOMER6_KEY_32: AccountId32 = AccountId32::new([6; 32]);
+pub const CUSTOMER7_KEY_32: AccountId32 = AccountId32::new([7; 32]);
+
+pub const CUSTOMER100_KEY_32: AccountId32 = AccountId32::new([100; 32]);
+pub const CUSTOMER101_KEY_32: AccountId32 = AccountId32::new([101; 32]);
+pub const CUSTOMER102_KEY_32: AccountId32 = AccountId32::new([102; 32]);
+pub const CUSTOMER103_KEY_32: AccountId32 = AccountId32::new([103; 32]);
+pub const CUSTOMER104_KEY_32: AccountId32 = AccountId32::new([104; 32]);
+pub const CUSTOMER105_KEY_32: AccountId32 = AccountId32::new([105; 32]);
+pub const CUSTOMER106_KEY_32: AccountId32 = AccountId32::new([106; 32]);
+pub const CUSTOMER107_KEY_32: AccountId32 = AccountId32::new([107; 32]);
+pub const CUSTOMER108_KEY_32: AccountId32 = AccountId32::new([108; 32]);
+pub const CUSTOMER109_KEY_32: AccountId32 = AccountId32::new([109; 32]);
+
+pub const BANK_KEY_32: AccountId32 = AccountId32::new([200; 32]);
 
 pub const NO_FEE_CLUSTER_ID: ClusterId = ClusterId::zero();
 pub const ONE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(4u8);
@@ -593,13 +726,14 @@ impl ExtBuilder {
 
 		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
-				([1; 32].into(), 10000000000000000000000000000),
-				([2; 32].into(), USER2_BALANCE), // < PARTIAL_CHARGE
-				([3; 32].into(), USER3_BALANCE), // > PARTIAL_CHARGE
-				([4; 32].into(), 1000000000000000000000000),
-				([5; 32].into(), 1000000000000000000000000),
-				([6; 32].into(), 1000000000000000000000000),
-				([7; 32].into(), 1000000000000000000000000),
+				(CUSTOMER1_KEY_32, 10000000000000000000000000000),
+				(CUSTOMER2_KEY_32, CUSTOMER2_BALANCE),
+				(CUSTOMER3_KEY_32, CUSTOMER3_BALANCE),
+				(CUSTOMER4_KEY_32, 1000000000000000000000000),
+				(CUSTOMER5_KEY_32, 1000000000000000000000000),
+				(CUSTOMER6_KEY_32, 1000000000000000000000000),
+				(CUSTOMER7_KEY_32, 1000000000000000000000000),
+				(BANK_KEY_32, 10000000000000000000000000000),
 			],
 		}
 		.assimilate_storage(&mut storage);

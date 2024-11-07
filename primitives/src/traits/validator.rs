@@ -1,8 +1,10 @@
 use frame_system::Config;
 #[cfg(feature = "runtime-benchmarks")]
-use sp_std::prelude::*;
+use scale_info::prelude::vec::Vec;
 
-use crate::{BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeUsage};
+use crate::{
+	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodePubKey, NodeUsage,
+};
 
 pub trait ValidatorVisitor<T: Config> {
 	#[cfg(feature = "runtime-benchmarks")]
@@ -12,14 +14,16 @@ pub trait ValidatorVisitor<T: Config> {
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
-		payers: &[(T::AccountId, BucketId, CustomerUsage)],
+		max_batch_index: BatchIndex,
+		payers: &[(NodePubKey, BucketId, CustomerUsage)],
 		batch_proof: &MMRProof,
 	) -> bool;
 	fn is_providers_batch_valid(
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
-		payees: &[(T::AccountId, NodeUsage)],
+		max_batch_index: BatchIndex,
+		payees: &[(NodePubKey, NodeUsage)],
 		batch_proof: &MMRProof,
 	) -> bool;
 }

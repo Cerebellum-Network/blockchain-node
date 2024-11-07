@@ -1,6 +1,6 @@
-use sp_runtime::DispatchResult;
+use sp_runtime::{DispatchError, DispatchResult};
 
-use crate::{BucketId, BucketVisitorError, ClusterId, CustomerUsage};
+use crate::{BucketId, ClusterId, CustomerUsage};
 
 pub trait BucketManager<T: frame_system::Config> {
 	fn inc_total_customer_usage(
@@ -12,9 +12,11 @@ pub trait BucketManager<T: frame_system::Config> {
 }
 
 pub trait BucketVisitor<T: frame_system::Config> {
+	fn get_bucket_owner_id(bucket_id: BucketId) -> Result<T::AccountId, DispatchError>;
+
 	fn get_total_customer_usage(
 		cluster_id: &ClusterId,
 		bucket_id: BucketId,
 		content_owner: &T::AccountId,
-	) -> Result<Option<CustomerUsage>, BucketVisitorError>;
+	) -> Result<Option<CustomerUsage>, DispatchError>;
 }

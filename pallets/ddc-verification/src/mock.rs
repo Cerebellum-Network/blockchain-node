@@ -17,6 +17,7 @@ use frame_support::{
 };
 use frame_system::mocking::MockBlock;
 use pallet_staking::BalanceOf;
+use scale_info::prelude::string::String;
 use sp_core::{ByteArray, H256};
 use sp_runtime::{
 	curve::PiecewiseLinear,
@@ -405,7 +406,7 @@ impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
 		_cluster_id: ClusterId,
 		_era_id: DdcEra,
 		_batch_index: BatchIndex,
-		_payers: &[(T::AccountId, BucketId, CustomerUsage)],
+		_payers: &[(NodePubKey, BucketId, CustomerUsage)],
 		_batch_proof: MMRProof,
 	) -> DispatchResult {
 		Ok(())
@@ -434,7 +435,7 @@ impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
 		_cluster_id: ClusterId,
 		_era_id: DdcEra,
 		_batch_index: BatchIndex,
-		_payees: &[(T::AccountId, NodeUsage)],
+		_payees: &[(NodePubKey, NodeUsage)],
 		_batch_proof: MMRProof,
 	) -> DispatchResult {
 		Ok(())

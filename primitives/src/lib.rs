@@ -289,22 +289,13 @@ pub struct NodeUsage {
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
 pub struct MMRProof {
-	pub mmr_size: u64,
 	pub proof: Vec<ActivityHash>,
-	pub leaf_with_position: (u64, ActivityHash),
 }
 
 #[derive(Debug, PartialEq)]
 pub enum NodeRepositoryError {
 	StorageNodeAlreadyExists,
 	StorageNodeDoesNotExist,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum BucketVisitorError {
-	NoBucketWithId,
-	NotBucketOwner,
-	IncorrectClusterId,
 }
 
 #[derive(Debug, PartialEq)]
@@ -330,7 +321,6 @@ pub const DAC_VERIFICATION_KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
 
 pub mod sr25519 {
 	mod app_sr25519 {
-		use scale_info::prelude::string::String;
 		use sp_application_crypto::{app_crypto, sr25519};
 
 		use crate::DAC_VERIFICATION_KEY_TYPE;
@@ -345,7 +335,6 @@ pub mod sr25519 {
 }
 
 pub mod crypto {
-	use scale_info::prelude::string::String;
 	use sp_core::sr25519::Signature as Sr25519Signature;
 	use sp_runtime::{
 		app_crypto::{app_crypto, sr25519},

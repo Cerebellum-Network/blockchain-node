@@ -37,8 +37,8 @@ use ddc_primitives::{
 		pallet::PalletVisitor as PalletVisitorType,
 		payout::PayoutVisitor,
 	},
-	BatchIndex, BucketId, BucketVisitorError, ClusterId, CustomerUsage, DdcEra, MMRProof,
-	NodeUsage, PayoutError, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
+	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodePubKey, NodeUsage,
+	PayoutError, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -431,7 +431,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
+			payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
@@ -465,6 +465,7 @@ pub mod pallet {
 					cluster_id,
 					era,
 					batch_index,
+					billing_report.charging_max_batch_index,
 					&payers,
 					&batch_proof
 				),
@@ -472,8 +473,9 @@ pub mod pallet {
 			);
 
 			let mut updated_billing_report = billing_report;
-			for (customer_id, bucket_id, customer_usage) in payers {
-				log::info!("🏭send_charging_customers_batch get_customer_charge customer_id: {:?} -  bucket_id: {:?} - era:{:?} - cluster-id:{:?}", Self::get_account_id_string(customer_id.clone()), bucket_id, era, cluster_id);
+			for (_node_key, bucket_id, customer_usage) in payers {
+				let customer_id = T::BucketVisitor::get_bucket_owner_id(bucket_id)?;
+
 				let mut customer_charge = get_customer_charge::<T>(
 					&cluster_id,
 					&customer_usage,
@@ -749,8 +751,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payees: Vec<(T::AccountId, NodeUsage)>, /* todo! we need to pass NodePubKey inside
-			                                         * NodeUsage and more provider_id */
+			payees: Vec<(NodePubKey, NodeUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
@@ -782,6 +783,7 @@ pub mod pallet {
 					cluster_id,
 					era,
 					batch_index,
+					billing_report.rewarding_max_batch_index,
 					&payees,
 					&batch_proof
 				),
@@ -790,9 +792,9 @@ pub mod pallet {
 
 			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
-			for (node_provider_id, delta_node_usage) in payees {
-				// todo! deduce node_provider_id from delta_node_usage.node_id
+			for (node_key, delta_node_usage) in payees {
 				// todo! get T::NodeVisitor::get_total_usage(delta_node_usage.node_id).stored_bytes
+				let node_provider_id = T::NodeVisitor::get_node_provider_id(&node_key)?;
 				let mut total_node_stored_bytes: i64 = 0;
 
 				total_node_stored_bytes = total_node_stored_bytes
@@ -1084,7 +1086,7 @@ pub mod pallet {
 		customer_id: &T::AccountId,
 		start_era: i64,
 		end_era: i64,
-	) -> Result<CustomerCharge, Error<T>> {
+	) -> Result<CustomerCharge, DispatchError> {
 		let mut total = CustomerCharge::default();
 
 		let pricing = T::ClusterProtocol::get_pricing_params(cluster_id)
@@ -1104,8 +1106,7 @@ pub mod pallet {
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
 		let mut total_stored_bytes: i64 =
-			T::BucketVisitor::get_total_customer_usage(cluster_id, bucket_id, customer_id)
-				.map_err(Into::<Error<T>>::into)?
+			T::BucketVisitor::get_total_customer_usage(cluster_id, bucket_id, customer_id)?
 				.map_or(0, |customer_usage| customer_usage.stored_bytes);
 
 		total_stored_bytes = total_stored_bytes
@@ -1130,16 +1131,6 @@ pub mod pallet {
 			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
 		Ok(total)
-	}
-
-	impl<T> From<BucketVisitorError> for Error<T> {
-		fn from(error: BucketVisitorError) -> Self {
-			match error {
-				BucketVisitorError::NoBucketWithId => Error::<T>::NoBucketWithId,
-				BucketVisitorError::NotBucketOwner => Error::<T>::NotBucketOwner,
-				BucketVisitorError::IncorrectClusterId => Error::<T>::IncorrectClusterId,
-			}
-		}
 	}
 
 	#[pallet::genesis_config]
@@ -1220,7 +1211,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payers: &[(T::AccountId, BucketId, CustomerUsage)],
+			payers: &[(NodePubKey, BucketId, CustomerUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			log::info!(
@@ -1277,7 +1268,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payees: &[(T::AccountId, NodeUsage)],
+			payees: &[(NodePubKey, NodeUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			log::info!(

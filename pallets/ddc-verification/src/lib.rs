@@ -30,6 +30,7 @@ use frame_system::{
 };
 pub use pallet::*;
 use polkadot_ckb_merkle_mountain_range::{
+	helper::{leaf_index_to_mmr_size, leaf_index_to_pos},
 	util::{MemMMR, MemStore},
 	MerkleProof, MMR,
 };
@@ -559,15 +560,15 @@ pub mod pallet {
 		}
 	}
 
-	pub struct CustomerBatch<T: Config> {
+	pub struct CustomerBatch {
 		pub(crate) batch_index: BatchIndex,
-		pub(crate) payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
+		pub(crate) payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
 		pub(crate) batch_proof: MMRProof,
 	}
 
-	pub struct ProviderBatch<T: Config> {
+	pub struct ProviderBatch {
 		pub(crate) batch_index: BatchIndex,
-		pub(crate) payees: Vec<(T::AccountId, NodeUsage)>,
+		pub(crate) payees: Vec<(NodePubKey, NodeUsage)>,
 		pub(crate) batch_proof: MMRProof,
 	}
 
@@ -1123,23 +1124,11 @@ pub mod pallet {
 				// todo! factor out as macro as this is repetitive
 				match Self::prepare_send_charging_customers_batch(&cluster_id, batch_size.into()) {
 					Ok(Some((era_id, batch_payout))) => {
-						let payers_log: Vec<(String, BucketId, CustomerUsage)> = batch_payout
-							.payers
-							.clone()
-							.into_iter()
-							.map(|(acc_id, bucket_id, customer_usage)| {
-								let account_id: T::AccountIdConverter = acc_id.into();
-								let account_id_32: AccountId32 = account_id.into();
-								let account_ref: &[u8; 32] = account_id_32.as_ref();
-								(hex::encode(account_ref), bucket_id, customer_usage)
-							})
-							.collect();
 						log::info!(
-						"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:?}",
-						cluster_id,
-						era_id,
-						payers_log
-					);
+							"🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
+							cluster_id,
+							era_id
+						);
 
 						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
 							Call::send_charging_customers_batch {
@@ -1307,7 +1296,7 @@ pub mod pallet {
 						"🎁 prepare_send_rewarding_providers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
 						cluster_id,
 						era_id
-					);
+						);
 
 						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
 							Call::send_rewarding_providers_batch {
@@ -2173,7 +2162,7 @@ pub mod pallet {
 		pub(crate) fn prepare_send_charging_customers_batch(
 			cluster_id: &ClusterId,
 			batch_size: usize,
-		) -> Result<Option<(DdcEra, CustomerBatch<T>)>, Vec<OCWError>> {
+		) -> Result<Option<(DdcEra, CustomerBatch)>, Vec<OCWError>> {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
@@ -2181,7 +2170,7 @@ pub mod pallet {
 					PayoutState::ChargingCustomers
 				{
 					if let Some((
-						bucket_nodes_activity_in_consensus,
+						customers_total_activity,
 						_,
 						customers_activity_batch_roots,
 						_,
@@ -2194,7 +2183,7 @@ pub mod pallet {
 							cluster_id,
 							batch_size,
 							era_id,
-							bucket_nodes_activity_in_consensus,
+							customers_total_activity,
 							customers_activity_batch_roots,
 						)
 					} else {
@@ -2203,7 +2192,7 @@ pub mod pallet {
 						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((
-							bucket_nodes_activity_in_consensus,
+							customers_total_activity,
 							_,
 							customers_activity_batch_roots,
 							_,
@@ -2216,7 +2205,7 @@ pub mod pallet {
 								cluster_id,
 								batch_size,
 								era_id,
-								bucket_nodes_activity_in_consensus,
+								customers_total_activity,
 								customers_activity_batch_roots,
 							)
 						} else {
@@ -2235,9 +2224,9 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			batch_size: usize,
 			era_id: DdcEra,
-			bucket_nodes_activity_in_consensus: Vec<BucketSubAggregate>,
+			customers_total_activity: Vec<BucketSubAggregate>,
 			customers_activity_batch_roots: Vec<ActivityHash>,
-		) -> Result<Option<(DdcEra, CustomerBatch<T>)>, Vec<OCWError>> {
+		) -> Result<Option<(DdcEra, CustomerBatch)>, Vec<OCWError>> {
 			let batch_index = T::PayoutVisitor::get_next_customer_batch_for_payment(
 				cluster_id, era_id,
 			)
@@ -2249,7 +2238,7 @@ pub mod pallet {
 				let i: usize = index.into();
 				// todo! store batched activity to avoid splitting it again each time
 				let customers_activity_batched =
-					Self::split_to_batches(&bucket_nodes_activity_in_consensus, batch_size);
+					Self::split_to_batches(&customers_total_activity, batch_size);
 
 				let batch_root = customers_activity_batch_roots[i];
 				let store = MemStore::default();
@@ -2279,11 +2268,7 @@ pub mod pallet {
 					.proof_items()
 					.to_vec();
 
-				let batch_proof = MMRProof {
-					mmr_size: mmr.mmr_size(),
-					proof,
-					leaf_with_position: leaf_position[0],
-				};
+				let batch_proof = MMRProof { proof };
 				Ok(Some((
 					era_id,
 					CustomerBatch {
@@ -2291,16 +2276,16 @@ pub mod pallet {
 						payers: customers_activity_batched[i]
 							.iter()
 							.map(|activity| {
-								let account_id =
-									T::CustomerVisitor::get_bucket_owner(&activity.bucket_id)
-										.unwrap();
+								let node_key = Self::node_key_from_hex(activity.node_id.clone())
+									.expect("Node Public Key to be decoded");
+								let bucket_id = activity.bucket_id;
 								let customer_usage = CustomerUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
 									number_of_puts: activity.number_of_puts,
 									number_of_gets: activity.number_of_gets,
 								};
-								(account_id, activity.bucket_id, customer_usage)
+								(node_key, bucket_id, customer_usage)
 							})
 							.collect(),
 						batch_proof,
@@ -2344,20 +2329,14 @@ pub mod pallet {
 				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::CustomersChargedWithFees
 				{
-					if let Some((
-						_,
-						_,
-						_,
-						nodes_activity_in_consensus,
-						_,
-						nodes_activity_batch_roots,
-					)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
-						cluster_id, era_id,
-					) {
+					if let Some((_, _, _, nodes_total_activity, _, nodes_activity_batch_roots)) =
+						Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
+							cluster_id, era_id,
+						) {
 						Self::fetch_reward_activities(
 							cluster_id,
 							era_id,
-							nodes_activity_in_consensus,
+							nodes_total_activity,
 							nodes_activity_batch_roots,
 							nodes_total_usage,
 						)
@@ -2370,7 +2349,7 @@ pub mod pallet {
 							_,
 							_,
 							_,
-							nodes_activity_in_consensus,
+							nodes_total_activity,
 							_,
 							nodes_activity_batch_roots,
 						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
@@ -2379,7 +2358,7 @@ pub mod pallet {
 							Self::fetch_reward_activities(
 								cluster_id,
 								era_id,
-								nodes_activity_in_consensus,
+								nodes_total_activity,
 								nodes_activity_batch_roots,
 								nodes_total_usage,
 							)
@@ -2398,7 +2377,7 @@ pub mod pallet {
 		pub(crate) fn fetch_reward_activities(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			nodes_activity_in_consensus: Vec<NodeAggregate>,
+			nodes_total_activity: Vec<NodeAggregate>,
 			nodes_activity_batch_roots: Vec<ActivityHash>,
 			current_nodes_total_usage: i64,
 		) -> Result<Option<(DdcEra, BatchIndex, NodeUsage)>, Vec<OCWError>> {
@@ -2416,7 +2395,7 @@ pub mod pallet {
 					number_of_gets: 0,
 				};
 
-				for activity in nodes_activity_in_consensus {
+				for activity in nodes_total_activity {
 					total_node_usage.transferred_bytes += activity.transferred_bytes;
 					total_node_usage.stored_bytes += activity.stored_bytes;
 					total_node_usage.number_of_puts += activity.number_of_puts;
@@ -2432,28 +2411,22 @@ pub mod pallet {
 		pub(crate) fn prepare_send_rewarding_providers_batch(
 			cluster_id: &ClusterId,
 			batch_size: usize,
-		) -> Result<Option<(DdcEra, ProviderBatch<T>)>, Vec<OCWError>> {
+		) -> Result<Option<(DdcEra, ProviderBatch)>, Vec<OCWError>> {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
 				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::RewardingProviders
 				{
-					if let Some((
-						_,
-						_,
-						_,
-						nodes_activity_in_consensus,
-						_,
-						nodes_activity_batch_roots,
-					)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
-						cluster_id, era_id,
-					) {
+					if let Some((_, _, _, nodes_total_activity, _, nodes_activity_batch_roots)) =
+						Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
+							cluster_id, era_id,
+						) {
 						Self::fetch_reward_provider_batch(
 							cluster_id,
 							batch_size,
 							era_id,
-							nodes_activity_in_consensus,
+							nodes_total_activity,
 							nodes_activity_batch_roots,
 						)
 					} else {
@@ -2465,7 +2438,7 @@ pub mod pallet {
 							_,
 							_,
 							_,
-							nodes_activity_in_consensus,
+							nodes_total_activity,
 							_,
 							nodes_activity_batch_roots,
 						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
@@ -2475,7 +2448,7 @@ pub mod pallet {
 								cluster_id,
 								batch_size,
 								era_id,
-								nodes_activity_in_consensus,
+								nodes_total_activity,
 								nodes_activity_batch_roots,
 							)
 						} else {
@@ -2494,9 +2467,9 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			batch_size: usize,
 			era_id: DdcEra,
-			nodes_activity_in_consensus: Vec<NodeAggregate>,
+			nodes_total_activity: Vec<NodeAggregate>,
 			nodes_activity_batch_roots: Vec<ActivityHash>,
-		) -> Result<Option<(DdcEra, ProviderBatch<T>)>, Vec<OCWError>> {
+		) -> Result<Option<(DdcEra, ProviderBatch)>, Vec<OCWError>> {
 			let batch_index = T::PayoutVisitor::get_next_provider_batch_for_payment(
 				cluster_id, era_id,
 			)
@@ -2508,7 +2481,7 @@ pub mod pallet {
 				let i: usize = index.into();
 				// todo! store batched activity to avoid splitting it again each time
 				let nodes_activity_batched =
-					Self::split_to_batches(&nodes_activity_in_consensus, batch_size);
+					Self::split_to_batches(&nodes_total_activity, batch_size);
 
 				let batch_root = nodes_activity_batch_roots[i];
 				let store = MemStore::default();
@@ -2539,13 +2512,7 @@ pub mod pallet {
 					.proof_items()
 					.to_vec();
 
-				// todo! attend [i] through get(i).ok_or()
-				// todo! attend accountid conversion
-				let batch_proof = MMRProof {
-					mmr_size: mmr.mmr_size(),
-					proof,
-					leaf_with_position: leaf_position[0],
-				};
+				let batch_proof = MMRProof { proof };
 				Ok(Some((
 					era_id,
 					ProviderBatch {
@@ -2553,15 +2520,15 @@ pub mod pallet {
 						payees: nodes_activity_batched[i]
 							.iter()
 							.map(|activity| {
-								let node_id = activity.clone().node_id;
-								let provider_id = Self::fetch_provider_id(node_id).unwrap(); // todo! remove unwrap
+								let node_key = Self::node_key_from_hex(activity.node_id.clone())
+									.expect("Node Public Key to be decoded");
 								let node_usage = NodeUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
 									number_of_puts: activity.number_of_puts,
 									number_of_gets: activity.number_of_gets,
 								};
-								(provider_id, node_usage)
+								(node_key, node_usage)
 							})
 							.collect(),
 						batch_proof,
@@ -2668,19 +2635,19 @@ pub mod pallet {
 			// todo! (3) add tests
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			bucket_nodes_activity_in_consensus: &[A],
+			customers_total_activity: &[A],
 			customers_activity_root: ActivityHash,
 			customers_activity_batch_roots: &[ActivityHash],
-			nodes_activity_in_consensus: &[B],
+			nodes_total_activity: &[B],
 			nodes_activity_root: ActivityHash,
 			nodes_activity_batch_roots: &[ActivityHash],
 		) {
 			let key = Self::derive_key(cluster_id, era_id);
 			let encoded_tuple = (
-				bucket_nodes_activity_in_consensus,
+				customers_total_activity,
 				customers_activity_root,
 				customers_activity_batch_roots,
-				nodes_activity_in_consensus,
+				nodes_total_activity,
 				nodes_activity_root,
 				nodes_activity_batch_roots,
 			)
@@ -2754,17 +2721,17 @@ pub mod pallet {
 			// Attempt to decode tuple from bytes
 			match Decode::decode(&mut &encoded_tuple[..]) {
 				Ok((
-					bucket_nodes_activity_in_consensus,
+					customers_total_activity,
 					customers_activity_root,
 					customers_activity_batch_roots,
-					nodes_activity_in_consensus,
+					nodes_total_activity,
 					nodes_activity_root,
 					nodes_activity_batch_roots,
 				)) => Some((
-					bucket_nodes_activity_in_consensus,
+					customers_total_activity,
 					customers_activity_root,
 					customers_activity_batch_roots,
-					nodes_activity_in_consensus,
+					nodes_total_activity,
 					nodes_activity_root,
 					nodes_activity_batch_roots,
 				)),
@@ -2795,36 +2762,7 @@ pub mod pallet {
 			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &new_nonce.encode());
 			nonce_data
 		}
-		pub(crate) fn store_provider_id<A: Encode>(
-			// todo! (3) add tests
-			node_id: String,
-			provider_id: A,
-		) {
-			let key = format!("offchain::activities::provider_id::{:?}", node_id).into_bytes();
-			let encoded_tuple = provider_id.encode();
 
-			// Store the serialized data in local offchain storage
-			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
-		}
-
-		pub(crate) fn fetch_provider_id<A: Decode>(node_id: String) -> Option<A> {
-			let key = format!("offchain::activities::provider_id::{:?}", node_id).into_bytes();
-			// Retrieve encoded tuple from local storage
-			let encoded_tuple =
-				match sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key) {
-					Some(data) => data,
-					None => return None,
-				};
-
-			match Decode::decode(&mut &encoded_tuple[..]) {
-				Ok(provider_id) => Some(provider_id),
-				Err(err) => {
-					// Print error message with details of the decoding error
-					log::error!("🦀Decoding error while fetching provider id: {:?}", err);
-					None
-				},
-			}
-		}
 		/// Converts a vector of activity batches into their corresponding Merkle roots.
 		///
 		/// This function takes a vector of activity batches, where each batch is a vector of
@@ -2840,13 +2778,13 @@ pub mod pallet {
 		pub(crate) fn convert_to_batch_merkle_roots<A: Aggregate>(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			activities: Vec<Vec<A>>,
+			batches: Vec<Vec<A>>,
 		) -> Result<Vec<ActivityHash>, OCWError> {
-			activities
+			batches
 				.into_iter()
-				.map(|inner_vec| {
+				.map(|batch| {
 					let activity_hashes: Vec<ActivityHash> =
-						inner_vec.into_iter().map(|a| a.hash::<T>()).collect();
+						batch.into_iter().map(|a| a.hash::<T>()).collect();
 					Self::create_merkle_root(cluster_id, era_id, &activity_hashes).map_err(|_| {
 						OCWError::FailedToCreateMerkleRoot { cluster_id: *cluster_id, era_id }
 					})
@@ -2931,16 +2869,23 @@ pub mod pallet {
 		/// Verify whether leaf is part of tree
 		///
 		/// Parameters:
-		/// - `root`: merkle root
-		/// - `leaf`: Leaf of the tree
+		/// - `root_hash`: merkle root hash
+		/// - `batch_hash`: hash of the batch
+		/// - `batch_index`: index of the batch
+		/// - `batch_proof`: MMR proofs
 		pub(crate) fn proof_merkle_leaf(
-			root: ActivityHash,
+			root_hash: ActivityHash,
+			batch_hash: ActivityHash,
+			batch_index: BatchIndex,
+			max_batch_index: BatchIndex,
 			batch_proof: &MMRProof,
 		) -> Result<bool, Error<T>> {
+			let batch_position = leaf_index_to_pos(batch_index.into());
+			let mmr_size = leaf_index_to_mmr_size(max_batch_index.into());
 			let proof: MerkleProof<ActivityHash, MergeActivityHash> =
-				MerkleProof::new(batch_proof.mmr_size, batch_proof.proof.clone());
+				MerkleProof::new(mmr_size, batch_proof.proof.clone());
 			proof
-				.verify(root, vec![batch_proof.leaf_with_position])
+				.verify(root_hash, vec![(batch_position, batch_hash)])
 				.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
 		}
 
@@ -3506,11 +3451,6 @@ pub mod pallet {
 			Ok(dac_nodes)
 		}
 
-		fn get_node_provider_id(node_pub_key: &NodePubKey) -> Result<T::AccountId, OCWError> {
-			T::NodeVisitor::get_node_provider_id(node_pub_key)
-				.map_err(|_| OCWError::FailedToFetchNodeProvider)
-		}
-
 		/// Fetch node usage of an era.
 		///
 		/// Parameters:
@@ -3538,13 +3478,6 @@ pub mod pallet {
 				}
 
 				let aggregates = aggregates_res.expect("Nodes Aggregates Response to be available");
-
-				// todo: this is tech debt that needs to be refactored, the mapping logic needs to
-				// be moved to payouts pallet
-				for aggregate in aggregates.clone() {
-					let provider_id = Self::get_node_provider_id(node_key).unwrap();
-					Self::store_provider_id(aggregate.node_id, provider_id);
-				}
 
 				nodes_aggregates.push((
 					AggregatorInfo {
@@ -3632,6 +3565,20 @@ pub mod pallet {
 			}
 
 			Ok(processed_eras_by_nodes)
+		}
+
+		pub fn node_key_from_hex(hex_str: String) -> Result<NodePubKey, hex::FromHexError> {
+			let bytes_vec = if hex_str.len() == 66 {
+				// cut `0x` prefix
+				hex::decode(&hex_str[2..])?
+			} else {
+				hex::decode(hex_str)?
+			};
+
+			let bytes_arr: [u8; 32] =
+				bytes_vec.try_into().map_err(|_| hex::FromHexError::InvalidStringLength)?;
+			let pub_key = AccountId32::from(bytes_arr);
+			Ok(NodePubKey::StoragePubKey(pub_key))
 		}
 	}
 
@@ -4075,7 +4022,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
+			payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -4129,7 +4076,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payees: Vec<(T::AccountId, NodeUsage)>,
+			payees: Vec<(NodePubKey, NodeUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -4229,41 +4176,89 @@ pub mod pallet {
 			}
 		}
 
-		// todo! use batch_index and payers as part of the validation
 		fn is_customers_batch_valid(
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			_batch_index: BatchIndex,
-			_payers: &[(T::AccountId, BucketId, CustomerUsage)],
+			batch_index: BatchIndex,
+			max_batch_index: BatchIndex,
+			payers: &[(NodePubKey, BucketId, CustomerUsage)],
 			batch_proof: &MMRProof,
 		) -> bool {
 			let validation_era = EraValidations::<T>::get(cluster_id, era_id);
 
 			match validation_era {
 				Some(valid_era) => {
-					//Self::create_merkle_root(leaves)
+					let root_hash = valid_era.payers_merkle_root_hash;
 
-					let root = valid_era.payers_merkle_root_hash;
-					Self::proof_merkle_leaf(root, batch_proof).unwrap_or(false)
+					let activity_hashes = payers
+						.iter()
+						.map(|(node_key, bucket_id, usage)| {
+							let mut data = bucket_id.encode();
+							let node_id = format!("0x{}", node_key.get_hex());
+							data.extend_from_slice(&node_id.encode());
+							data.extend_from_slice(&usage.stored_bytes.encode());
+							data.extend_from_slice(&usage.transferred_bytes.encode());
+							data.extend_from_slice(&usage.number_of_puts.encode());
+							data.extend_from_slice(&usage.number_of_gets.encode());
+							T::ActivityHasher::hash(&data).into()
+						})
+						.collect::<Vec<_>>();
+
+					let batch_hash =
+						Self::create_merkle_root(&cluster_id, era_id, activity_hashes.as_slice())
+							.expect("batch_hash to be created");
+
+					Self::proof_merkle_leaf(
+						root_hash,
+						batch_hash,
+						batch_index,
+						max_batch_index,
+						batch_proof,
+					)
+					.unwrap_or(false)
 				},
 				None => false,
 			}
 		}
 
-		// todo! use batch_index and payees as part of the validation
 		fn is_providers_batch_valid(
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			_batch_index: BatchIndex,
-			_payees: &[(T::AccountId, NodeUsage)],
+			batch_index: BatchIndex,
+			max_batch_index: BatchIndex,
+			payees: &[(NodePubKey, NodeUsage)],
 			batch_proof: &MMRProof,
 		) -> bool {
 			let validation_era = EraValidations::<T>::get(cluster_id, era_id);
 
 			match validation_era {
 				Some(valid_era) => {
-					let root = valid_era.payees_merkle_root_hash;
-					Self::proof_merkle_leaf(root, batch_proof).unwrap_or(false)
+					let root_hash = valid_era.payees_merkle_root_hash;
+
+					let activity_hashes = payees
+						.iter()
+						.map(|(node_key, usage)| {
+							let mut data = format!("0x{}", node_key.get_hex()).encode();
+							data.extend_from_slice(&usage.stored_bytes.encode());
+							data.extend_from_slice(&usage.transferred_bytes.encode());
+							data.extend_from_slice(&usage.number_of_puts.encode());
+							data.extend_from_slice(&usage.number_of_gets.encode());
+							T::ActivityHasher::hash(&data).into()
+						})
+						.collect::<Vec<_>>();
+
+					let batch_hash =
+						Self::create_merkle_root(&cluster_id, era_id, activity_hashes.as_slice())
+							.expect("batch_hash to be created");
+
+					Self::proof_merkle_leaf(
+						root_hash,
+						batch_hash,
+						batch_index,
+						max_batch_index,
+						batch_proof,
+					)
+					.unwrap_or(false)
 				},
 				None => false,
 			}

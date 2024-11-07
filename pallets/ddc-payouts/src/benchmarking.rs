@@ -1,9 +1,11 @@
 //! DdcPayouts pallet benchmarking.
 
-use ddc_primitives::{traits::ValidatorVisitor, ClusterId, ClusterParams, ClusterProtocolParams};
+use ddc_primitives::{
+	traits::ValidatorVisitor, ClusterId, ClusterParams, ClusterProtocolParams, NodePubKey,
+};
 pub use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_system::RawOrigin;
-use sp_runtime::Perquintill;
+use sp_runtime::{AccountId32, Perquintill};
 use sp_std::prelude::*;
 
 use super::*;
@@ -223,7 +225,7 @@ benchmarks! {
 		});
 
 		let batch_index: BatchIndex = 0;
-		let payers: Vec<(T::AccountId, BucketId, CustomerUsage)> = (0..b).map(|i| {
+		let payers: Vec<(NodePubKey, BucketId, CustomerUsage)> = (0..b).map(|i| {
 			let customer = create_account::<T>("customer", i, i);
 
 			if b % 2 == 0 {
@@ -241,8 +243,12 @@ benchmarks! {
 				number_of_puts: 5, // 5 puts
 			};
 			let bucket_id: BucketId = 1;
+			let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+				48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+				235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+			]));
 
-			(customer, bucket_id, customer_usage)
+			(node_key, bucket_id, customer_usage)
 		}).collect();
 
 	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payers, MMRProof::default())
@@ -396,7 +402,7 @@ benchmarks! {
 		whitelist_account!(dac_account);
 
 		let batch_index: BatchIndex = 0;
-		let payees: Vec<(T::AccountId, NodeUsage)> = (0..b).map(|i| {
+		let payees: Vec<(NodePubKey, NodeUsage)> = (0..b).map(|i| {
 			let provider = create_account::<T>("provider", i, i);
 			endow_account::<T>(&provider, T::Currency::minimum_balance().saturated_into());
 			let node_usage = NodeUsage {
@@ -405,7 +411,11 @@ benchmarks! {
 				number_of_gets: 10, // 10 gets
 				number_of_puts: 5, // 5 puts
 			};
-			(provider, node_usage)
+			let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+				48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+				235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+			]));
+			(node_key, node_usage)
 		}).collect();
 
 	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payees, MMRProof::default())
