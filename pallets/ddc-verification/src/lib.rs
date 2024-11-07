@@ -37,8 +37,7 @@ use scale_info::prelude::{format, string::String};
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
 use sp_runtime::{
-	offchain as rt_offchain,
-	offchain::{http, StorageKind},
+	offchain::{http, Duration, StorageKind},
 	traits::Hash,
 	Percent,
 };
@@ -61,6 +60,14 @@ mod tests;
 
 pub mod migrations;
 
+mod aggregator_client;
+
+pub mod proto {
+	include!(concat!(env!("OUT_DIR"), "/activity.rs"));
+}
+
+mod signature;
+
 #[frame_support::pallet]
 pub mod pallet {
 
@@ -75,9 +82,11 @@ pub mod pallet {
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
 		frame_support::traits::StorageVersion::new(1);
 
-	const SUCCESS_CODE: u16 = 200;
+	const _SUCCESS_CODE: u16 = 200;
 	const _BUF_SIZE: usize = 128;
 	const RESPONSE_TIMEOUT: u64 = 20000;
+	pub const BUCKETS_AGGREGATES_FETCH_BATCH_SIZE: usize = 100;
+	pub const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -684,7 +693,7 @@ pub mod pallet {
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
 	pub(crate) struct Proof {
-		pub merkle_tree_node_id: u64,
+		pub merkle_tree_node_id: u32,
 		pub usage: Usage,
 		pub path: Vec<String>, //todo! add base64 deserialization
 		pub leafs: Vec<Leaf>,
@@ -768,7 +777,7 @@ pub mod pallet {
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
 	pub(crate) struct MerkleTreeNodeResponse {
-		merkle_tree_node_id: u64,
+		merkle_tree_node_id: u32,
 		hash: String,
 		stored_bytes: i64,
 		transferred_bytes: u64,
@@ -1522,8 +1531,12 @@ pub mod pallet {
 				aggregators_quorum,
 			);
 
-			let total_buckets_usage =
-				Self::get_total_usage(cluster_id, era_activity.id, buckets_sub_aggregates_groups)?;
+			let total_buckets_usage = Self::get_total_usage(
+				cluster_id,
+				era_activity.id,
+				buckets_sub_aggregates_groups,
+				true,
+			)?;
 
 			let customer_activity_hashes: Vec<ActivityHash> =
 				total_buckets_usage.clone().into_iter().map(|c| c.hash::<T>()).collect();
@@ -1582,7 +1595,7 @@ pub mod pallet {
 			);
 
 			let total_nodes_usage =
-				Self::get_total_usage(cluster_id, era_activity.id, nodes_aggregates_groups)?;
+				Self::get_total_usage(cluster_id, era_activity.id, nodes_aggregates_groups, true)?;
 
 			let node_activity_hashes: Vec<ActivityHash> =
 				total_nodes_usage.clone().into_iter().map(|c| c.hash::<T>()).collect();
@@ -1654,6 +1667,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			consistency_groups: ConsistencyGroups<A>,
+			should_challenge: bool,
 		) -> Result<Vec<A>, Vec<OCWError>> {
 			let mut total_usage = vec![];
 			let mut total_usage_keys = vec![];
@@ -1687,6 +1701,7 @@ pub mod pallet {
 				era_id,
 				consistency_groups,
 				&mut total_usage_keys,
+				should_challenge,
 			)?;
 
 			if !verified_usage.is_empty() {
@@ -1701,6 +1716,7 @@ pub mod pallet {
 			_era_id: DdcEra,
 			consistency_groups: ConsistencyGroups<A>,
 			accepted_keys: &mut Vec<AggregateKey>,
+			should_challenge: bool,
 		) -> Result<Vec<A>, Vec<OCWError>> {
 			let redundancy_factor = T::DAC_REDUNDANCY_FACTOR;
 			let mut verified_usage: Vec<A> = vec![];
@@ -1747,10 +1763,17 @@ pub mod pallet {
 						defective_aggregate.hash::<T>()
 					);
 
-					let is_passed = true;
+					let mut is_passed = true;
 					// todo: run an intensive challenge for deviating aggregate
 					// let is_passed = Self::_challenge_aggregate(_cluster_id, _era_id,
 					// &defective_aggregate)?;
+					if should_challenge {
+						is_passed = Self::challenge_aggregate_proto(
+							_cluster_id,
+							_era_id,
+							&defective_aggregate,
+						)?;
+					}
 					if is_passed {
 						// we assume all aggregates are valid at the moment, so we just take the
 						// aggregate to payouts stage
@@ -1775,7 +1798,7 @@ pub mod pallet {
 			);
 
 			let aggregate_key = aggregate.get_key();
-			let merkle_node_ids = Self::_find_random_merkle_node_ids(
+			let merkle_node_ids = Self::find_random_merkle_node_ids(
 				number_of_identifiers.into(),
 				aggregate.get_number_of_leaves(),
 				aggregate_key.clone(),
@@ -1817,10 +1840,10 @@ pub mod pallet {
 				calculated_merkle_root
 			);
 
-			let traverse_response = Self::_fetch_traverse_response(
+			let root_merkle_node = Self::_fetch_traverse_response(
 				era_id,
 				aggregate_key.clone(),
-				vec![1],
+				1,
 				1,
 				&aggregator.node_params,
 			)
@@ -1833,40 +1856,88 @@ pub mod pallet {
 				}]
 			})?;
 
-			if let Some(root_merkle_node) = traverse_response.first() {
-				let mut merkle_root_buf = [0u8; _BUF_SIZE];
-				let bytes =
-					Base64::decode(root_merkle_node.hash.clone(), &mut merkle_root_buf).unwrap(); // todo! remove unwrap
-				let traversed_merkle_root = ActivityHash::from(sp_core::H256::from_slice(bytes));
+			let mut merkle_root_buf = [0u8; _BUF_SIZE];
+			let bytes =
+				Base64::decode(root_merkle_node.hash.clone(), &mut merkle_root_buf).unwrap(); // todo! remove unwrap
+			let traversed_merkle_root = ActivityHash::from(sp_core::H256::from_slice(bytes));
 
+			log::info!(
+				"🚀 Fetched merkle root for aggregate key: {:?} traversed_merkle_root: {:?}",
+				aggregate_key,
+				traversed_merkle_root
+			);
+
+			let is_matched = if calculated_merkle_root == traversed_merkle_root {
 				log::info!(
-					"🚀 Fetched merkle root for aggregate key: {:?} traversed_merkle_root: {:?}",
+					"🚀👍 The aggregate with hash {:?} and key {:?} has passed the challenge.",
+					aggregate.hash::<T>(),
 					aggregate_key,
-					traversed_merkle_root
 				);
 
-				let is_matched = if calculated_merkle_root == traversed_merkle_root {
-					log::info!(
-						"🚀👍 The aggregate with hash {:?} and key {:?} has passed the challenge.",
-						aggregate.hash::<T>(),
-						aggregate_key,
-					);
-
-					true
-				} else {
-					log::info!(
-						"🚀👎 The aggregate with hash {:?} and key {:?} has not passed the challenge.",
-						aggregate.hash::<T>(),
-						aggregate_key,
-					);
-
-					false
-				};
-
-				Ok(is_matched)
+				true
 			} else {
-				Ok(false)
+				log::info!(
+					"🚀👎 The aggregate with hash {:?} and key {:?} has not passed the challenge.",
+					aggregate.hash::<T>(),
+					aggregate_key,
+				);
+
+				false
+			};
+
+			Ok(is_matched)
+		}
+
+		pub(crate) fn challenge_aggregate_proto<A: Aggregate>(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			aggregate: &A,
+		) -> Result<bool, Vec<OCWError>> {
+			let number_of_identifiers = T::MAX_MERKLE_NODE_IDENTIFIER;
+
+			log::info!(
+				"🚀 Challenge process starts when bucket sub aggregates are not in consensus!"
+			);
+
+			let aggregate_key = aggregate.get_key();
+			let merkle_node_ids = Self::find_random_merkle_node_ids(
+				number_of_identifiers.into(),
+				aggregate.get_number_of_leaves(),
+				aggregate_key.clone(),
+			);
+
+			log::info!(
+				"🚀 Merkle Node Identifiers for aggregate key: {:?} identifiers: {:?}",
+				aggregate_key,
+				merkle_node_ids
+			);
+
+			let aggregator = aggregate.get_aggregator();
+
+			let challenge_response = Self::_fetch_challenge_responses_proto(
+				cluster_id,
+				era_id,
+				aggregate_key.clone(),
+				merkle_node_ids.iter().map(|id| *id as u32).collect(),
+				aggregator.clone(),
+			)
+			.map_err(|err| vec![err])?;
+
+			log::info!(
+				"🚀 Fetched challenge response for aggregate key: {:?}, challenge_response: {:?}",
+				aggregate_key,
+				challenge_response
+			);
+
+			let are_signatures_valid = signature::Verify::verify(&challenge_response);
+
+			if are_signatures_valid {
+				log::info!("👍 Valid challenge signatures for aggregate key: {:?}", aggregate_key,);
+			} else {
+				log::info!("👎 Invalid challenge signatures at aggregate key: {:?}", aggregate_key,);
 			}
+
+			Ok(are_signatures_valid)
 		}
 
 		pub(crate) fn _get_hash_from_merkle_path(
@@ -1935,7 +2006,7 @@ pub mod pallet {
 			Ok(resulting_hash)
 		}
 
-		pub(crate) fn _find_random_merkle_node_ids(
+		pub(crate) fn find_random_merkle_node_ids(
 			number_of_identifiers: usize,
 			number_of_leaves: u64,
 			aggregate_key: AggregateKey,
@@ -3161,6 +3232,30 @@ pub mod pallet {
 			Ok(response)
 		}
 
+		/// Challenge node aggregate or bucket sub-aggregate.
+		pub(crate) fn _fetch_challenge_responses_proto(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			aggregate_key: AggregateKey,
+			merkle_tree_node_id: Vec<u32>,
+			aggregator: AggregatorInfo,
+		) -> Result<proto::ChallengeResponse, OCWError> {
+			let response = Self::_fetch_challenge_response_proto(
+				era_id,
+				aggregate_key.clone(),
+				merkle_tree_node_id.clone(),
+				&aggregator.node_params,
+			)
+			.map_err(|_| OCWError::ChallengeResponseRetrievalError {
+				cluster_id: *cluster_id,
+				era_id,
+				aggregate_key,
+				aggregator: aggregator.node_pub_key,
+			})?;
+
+			Ok(response)
+		}
+
 		/// Fetch challenge response.
 		///
 		/// Parameters:
@@ -3201,12 +3296,40 @@ pub mod pallet {
 
 			let response =
 				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != SUCCESS_CODE {
+			if response.code != _SUCCESS_CODE {
 				return Err(http::Error::Unknown);
 			}
 
 			let body = response.body().collect::<Vec<u8>>();
 			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+		}
+
+		/// Fetch protobuf challenge response.
+		pub(crate) fn _fetch_challenge_response_proto(
+			era_id: DdcEra,
+			aggregate_key: AggregateKey,
+			merkle_tree_node_id: Vec<u32>,
+			node_params: &StorageNodeParams,
+		) -> Result<proto::ChallengeResponse, http::Error> {
+			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
+			let base_url = format!("http://{}:{}", host, node_params.http_port);
+			let client = aggregator_client::AggregatorClient::new(
+				&base_url,
+				Duration::from_millis(RESPONSE_TIMEOUT),
+				3,
+			);
+
+			match aggregate_key {
+				AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => client
+					.challenge_bucket_sub_aggregate(
+						era_id,
+						bucket_id,
+						&node_id,
+						merkle_tree_node_id,
+					),
+				AggregateKey::NodeAggregateKey(node_id) =>
+					client.challenge_node_aggregate(era_id, &node_id, merkle_tree_node_id),
+			}
 		}
 
 		/// Fetch traverse response.
@@ -3220,43 +3343,32 @@ pub mod pallet {
 		pub(crate) fn _fetch_traverse_response(
 			era_id: DdcEra,
 			aggregate_key: AggregateKey,
-			merkle_node_identifiers: Vec<u64>,
+			merkle_tree_node_id: u32,
 			levels: u16,
 			node_params: &StorageNodeParams,
-		) -> Result<Vec<MerkleTreeNodeResponse>, http::Error> {
-			let scheme = "http";
+		) -> Result<MerkleTreeNodeResponse, http::Error> {
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
+			let base_url = format!("http://{}:{}", host, node_params.http_port);
+			let client = aggregator_client::AggregatorClient::new(
+				&base_url,
+				Duration::from_millis(RESPONSE_TIMEOUT),
+				3,
+			);
 
-			let ids = merkle_node_identifiers
-				.iter()
-				.map(|x| format!("{}", x.clone()))
-				.collect::<Vec<_>>()
-				.join(",");
+			let response = match aggregate_key {
+				AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => client
+					.traverse_bucket_sub_aggregate(
+						era_id,
+						bucket_id,
+						&node_id,
+						merkle_tree_node_id,
+						levels,
+					),
+				AggregateKey::NodeAggregateKey(node_id) =>
+					client.traverse_node_aggregate(era_id, &node_id, merkle_tree_node_id, levels),
+			}?;
 
-			let url = match aggregate_key {
-                AggregateKey::NodeAggregateKey(node_id) => format!(
-                    "{}://{}:{}/activity/nodes/{}/traverse?eraId={}&merkleTreeNodeId={}&levels={}",
-                    scheme, host, node_params.http_port, node_id, era_id, ids, levels
-                ),
-                AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => format!(
-                    "{}://{}:{}/activity/buckets/{}/traverse?eraId={}&nodeId={}&merkleTreeNodeId={}&levels={}",
-                    scheme, host, node_params.http_port, bucket_id, era_id, node_id, ids, levels
-                ),
-            };
-
-			let request = http::Request::get(&url);
-			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_TIMEOUT));
-			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
-
-			let response =
-				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != SUCCESS_CODE {
-				return Err(http::Error::Unknown);
-			}
-
-			let body = response.body().collect::<Vec<u8>>();
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+			Ok(response)
 		}
 
 		/// Fetch processed era.
@@ -3267,26 +3379,17 @@ pub mod pallet {
 		pub(crate) fn fetch_processed_eras(
 			node_params: &StorageNodeParams,
 		) -> Result<Vec<AggregationEraResponse>, http::Error> {
-			let scheme = "http";
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let url = format!("{}://{}:{}/activity/eras", scheme, host, node_params.http_port);
-			let request = http::Request::get(&url);
-			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_TIMEOUT));
-			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
+			let base_url = format!("http://{}:{}", host, node_params.http_port);
+			let client = aggregator_client::AggregatorClient::new(
+				&base_url,
+				Duration::from_millis(RESPONSE_TIMEOUT),
+				3,
+			);
 
-			let response =
-				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != SUCCESS_CODE {
-				return Err(http::Error::Unknown);
-			}
+			let response = client.eras()?;
 
-			let body = response.body().collect::<Vec<u8>>();
-			let res: Vec<AggregationEraResponse> =
-				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
-
-			let processed_status = String::from("PROCESSED");
-			Ok(res.into_iter().filter(|e| e.status == processed_status).collect::<Vec<_>>())
+			Ok(response.into_iter().filter(|e| e.status == "PROCESSED").collect::<Vec<_>>())
 		}
 		/// Fetch customer usage.
 		///
@@ -3299,26 +3402,35 @@ pub mod pallet {
 			era_id: DdcEra,
 			node_params: &StorageNodeParams,
 		) -> Result<Vec<BucketAggregateResponse>, http::Error> {
-			let scheme = "http";
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let url = format!(
-				"{}://{}:{}/activity/buckets?eraId={}",
-				scheme, host, node_params.http_port, era_id
+			let base_url = format!("http://{}:{}", host, node_params.http_port);
+			let client = aggregator_client::AggregatorClient::new(
+				&base_url,
+				Duration::from_millis(RESPONSE_TIMEOUT),
+				3,
 			);
 
-			let request = http::Request::get(&url);
-			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_TIMEOUT));
-			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
+			let mut buckets_aggregates = Vec::new();
+			let mut prev_token = None;
 
-			let response =
-				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != SUCCESS_CODE {
-				return Err(http::Error::Unknown);
+			loop {
+				let response = client.buckets_aggregates(
+					era_id,
+					Some(BUCKETS_AGGREGATES_FETCH_BATCH_SIZE as u32),
+					prev_token,
+				)?;
+
+				let response_len = response.len();
+				prev_token = response.last().map(|a| a.bucket_id);
+
+				buckets_aggregates.extend(response);
+
+				if response_len < BUCKETS_AGGREGATES_FETCH_BATCH_SIZE {
+					break;
+				}
 			}
 
-			let body = response.body().collect::<Vec<u8>>();
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+			Ok(buckets_aggregates)
 		}
 
 		/// Fetch node usage.
@@ -3332,26 +3444,35 @@ pub mod pallet {
 			era_id: DdcEra,
 			node_params: &StorageNodeParams,
 		) -> Result<Vec<NodeAggregateResponse>, http::Error> {
-			let scheme = "http";
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let url = format!(
-				"{}://{}:{}/activity/nodes?eraId={}",
-				scheme, host, node_params.http_port, era_id
+			let base_url = format!("http://{}:{}", host, node_params.http_port);
+			let client = aggregator_client::AggregatorClient::new(
+				&base_url,
+				Duration::from_millis(RESPONSE_TIMEOUT),
+				3,
 			);
 
-			let request = http::Request::get(&url);
-			let timeout = sp_io::offchain::timestamp()
-				.add(rt_offchain::Duration::from_millis(RESPONSE_TIMEOUT));
-			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
+			let mut nodes_aggregates = Vec::new();
+			let mut prev_token = None;
 
-			let response =
-				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != SUCCESS_CODE {
-				return Err(http::Error::Unknown);
+			loop {
+				let response = client.nodes_aggregates(
+					era_id,
+					Some(NODES_AGGREGATES_FETCH_BATCH_SIZE as u32),
+					prev_token,
+				)?;
+
+				let response_len = response.len();
+				prev_token = response.last().map(|a| a.node_id.clone());
+
+				nodes_aggregates.extend(response);
+
+				if response_len < NODES_AGGREGATES_FETCH_BATCH_SIZE {
+					break;
+				}
 			}
 
-			let body = response.body().collect::<Vec<u8>>();
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
+			Ok(nodes_aggregates)
 		}
 
 		/// Fetch DAC nodes of a cluster.
