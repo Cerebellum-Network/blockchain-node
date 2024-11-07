@@ -3568,7 +3568,13 @@ pub mod pallet {
 		}
 
 		pub fn node_key_from_hex(hex_str: String) -> Result<NodePubKey, hex::FromHexError> {
-			let bytes_vec = hex::decode(hex_str)?;
+			let bytes_vec = if hex_str.len() == 66 {
+				// cut `0x` prefix
+				hex::decode(&hex_str[2..])?
+			} else {
+				hex::decode(hex_str)?
+			};
+
 			let bytes_arr: [u8; 32] =
 				bytes_vec.try_into().map_err(|_| hex::FromHexError::InvalidStringLength)?;
 			let pub_key = AccountId32::from(bytes_arr);
