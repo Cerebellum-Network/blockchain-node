@@ -11,11 +11,9 @@ use super::{mock::*, *};
 #[test]
 fn begin_billing_report_fails_for_unauthorised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = AccountId::from([1; 32]);
 		let cluster_id = ClusterId::from([1; 20]);
 		let era = 100;
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
@@ -23,7 +21,7 @@ fn begin_billing_report_fails_for_unauthorised() {
 
 		assert_noop!(
 			DdcPayouts::begin_billing_report(
-				RuntimeOrigin::signed(AccountId::from([3; 32])),
+				RuntimeOrigin::signed(CUSTOMER3_KEY_32),
 				cluster_id,
 				era,
 				start_era,
@@ -34,7 +32,7 @@ fn begin_billing_report_fails_for_unauthorised() {
 
 		assert_noop!(
 			DdcPayouts::begin_billing_report(
-				RuntimeOrigin::signed(root_account),
+				RuntimeOrigin::signed(AccountId::from([0; 32])),
 				cluster_id,
 				era,
 				start_era,
@@ -78,14 +76,13 @@ fn begin_billing_report_works() {
 #[test]
 fn begin_charging_customers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let fake_ocw_account = AccountId::from([124; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
 
 		assert_noop!(
 			DdcPayouts::begin_charging_customers(
-				RuntimeOrigin::signed(fake_ocw_account),
+				RuntimeOrigin::signed(AccountId::from([124; 32])),
 				cluster_id,
 				era,
 				max_batch_index,
@@ -155,7 +152,6 @@ fn begin_charging_customers_works() {
 #[test]
 fn send_charging_customers_batch_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = AccountId::from([1; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
@@ -172,7 +168,6 @@ fn send_charging_customers_batch_fails_uninitialised() {
 		let payers1 = vec![(node_key.clone(), bucket_id3, customer_usage)];
 		let payers2 = vec![(node_key.clone(), bucket_id4, CustomerUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
@@ -180,7 +175,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(root_account),
+				RuntimeOrigin::signed(AccountId::from([0; 32])),
 				cluster_id,
 				era,
 				batch_index,
@@ -2462,7 +2457,6 @@ fn send_charging_customers_batch_works_zero_fees() {
 #[test]
 fn end_charging_customers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = AccountId::from([100; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
@@ -2479,7 +2473,7 @@ fn end_charging_customers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_charging_customers(
-				RuntimeOrigin::signed(root_account),
+				RuntimeOrigin::signed(AccountId::from([0; 32])),
 				cluster_id,
 				era,
 			),
@@ -2863,7 +2857,6 @@ fn end_charging_customers_works_zero_fees() {
 #[test]
 fn begin_rewarding_providers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = AccountId::from([1; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
@@ -2881,7 +2874,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::signed(root_account),
+				RuntimeOrigin::signed(AccountId::from([0; 32])),
 				cluster_id,
 				era,
 				max_batch_index,
@@ -3062,7 +3055,6 @@ fn begin_rewarding_providers_works() {
 #[test]
 fn send_rewarding_providers_batch_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = AccountId::from([1; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
@@ -3083,7 +3075,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(root_account),
+				RuntimeOrigin::signed(AccountId::from([0; 32])),
 				cluster_id,
 				era,
 				batch_index,
@@ -4727,7 +4719,6 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 #[test]
 fn end_rewarding_providers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let root_account = AccountId::from([1; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
@@ -4740,7 +4731,6 @@ fn end_rewarding_providers_fails_uninitialised() {
 		let payees = vec![(node_key, NodeUsage::default())];
 		let total_node_usage = NodeUsage::default();
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
@@ -4748,7 +4738,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(root_account),
+				RuntimeOrigin::signed(AccountId::from([0; 32])),
 				cluster_id,
 				era,
 			),
@@ -4991,12 +4981,10 @@ fn end_rewarding_providers_works() {
 fn end_billing_report_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
-		let root_account = AccountId::from([1; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
@@ -5011,7 +4999,11 @@ fn end_billing_report_fails_uninitialised() {
 		let total_node_usage = NodeUsage::default();
 
 		assert_noop!(
-			DdcPayouts::end_billing_report(RuntimeOrigin::signed(root_account), cluster_id, era,),
+			DdcPayouts::end_billing_report(
+				RuntimeOrigin::signed(AccountId::from([0; 32])),
+				cluster_id,
+				era,
+			),
 			Error::<Test>::Unauthorised
 		);
 
