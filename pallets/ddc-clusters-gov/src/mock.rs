@@ -18,7 +18,6 @@ use frame_support::{
 		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, EnsureOriginWithArg,
 		EqualPrivilegeOnly, LinearStoragePrice, Nothing,
 	},
-	weights::constants::RocksDbWeight,
 	PalletId,
 };
 use frame_system::{
@@ -30,7 +29,6 @@ use pallet_ddc_clusters::cluster::Cluster;
 use pallet_ddc_nodes::StorageNode;
 use pallet_referenda::Curve;
 use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
-use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
@@ -87,10 +85,7 @@ impl Convert<Weight, BalanceOf<Self>> for Test {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type DbWeight = RocksDbWeight;
-	type Nonce = u64;
 	type Block = Block;
-	type Hash = H256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type BlockHashCount = ConstU64<250>;
