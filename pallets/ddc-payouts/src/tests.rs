@@ -9,36 +9,9 @@ use sp_runtime::Perquintill;
 use super::{mock::*, *};
 
 #[test]
-fn set_authorised_caller_works() {
-	ExtBuilder.build_and_execute(|| {
-		System::set_block_number(1);
-
-		let root_account = AccountId::from([1; 32]);
-		let dac_account = AccountId::from([2; 32]);
-
-		assert_noop!(
-			DdcPayouts::set_authorised_caller(
-				RuntimeOrigin::signed(root_account),
-				dac_account.clone()
-			),
-			BadOrigin
-		);
-
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
-
-		System::assert_last_event(
-			Event::AuthorisedCaller { authorised_caller: dac_account.clone() }.into(),
-		);
-
-		assert_eq!(DdcPayouts::authorised_caller().unwrap(), dac_account);
-	})
-}
-
-#[test]
 fn begin_billing_report_fails_for_unauthorised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = AccountId::from([1; 32]);
-		let dac_account = AccountId::from([2; 32]);
 		let cluster_id = ClusterId::from([1; 20]);
 		let era = 100;
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
@@ -47,8 +20,6 @@ fn begin_billing_report_fails_for_unauthorised() {
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
-
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account));
 
 		assert_noop!(
 			DdcPayouts::begin_billing_report(
@@ -88,8 +59,6 @@ fn begin_billing_report_works() {
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
-
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account),
@@ -136,8 +105,6 @@ fn begin_charging_customers_fails_uninitialised() {
 			BadOrigin
 		);
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), DAC_ACCOUNT_ID.into()));
-
 		assert_noop!(
 			DdcPayouts::begin_charging_customers(
 				RuntimeOrigin::signed(DAC_ACCOUNT_ID.into()),
@@ -165,8 +132,6 @@ fn begin_charging_customers_works() {
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
-
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
@@ -241,8 +206,6 @@ fn send_charging_customers_batch_fails_uninitialised() {
 			),
 			BadOrigin
 		);
-
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 
 		assert_noop!(
 			DdcPayouts::send_charging_customers_batch(
@@ -466,7 +429,6 @@ fn send_charging_customers_batch_works() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -481,7 +443,7 @@ fn send_charging_customers_batch_works() {
 			era,
 			max_batch_index,
 		));
-		assert_eq!(System::events().len(), 3);
+		assert_eq!(System::events().len(), 2);
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
@@ -549,7 +511,7 @@ fn send_charging_customers_batch_works() {
 			.into(),
 		);
 
-		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 4 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
@@ -706,7 +668,6 @@ fn end_charging_customers_works_small_usage_1_hour() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 1.0 * 3600.0) as i64; // 1 hour
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -721,7 +682,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 			era,
 			max_batch_index,
 		));
-		assert_eq!(System::events().len(), 3);
+		assert_eq!(System::events().len(), 2);
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
@@ -929,7 +890,6 @@ fn send_charging_customers_batch_works_for_day() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -944,7 +904,7 @@ fn send_charging_customers_batch_works_for_day() {
 			era,
 			max_batch_index,
 		));
-		assert_eq!(System::events().len(), 3);
+		assert_eq!(System::events().len(), 2);
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
@@ -1012,7 +972,7 @@ fn send_charging_customers_batch_works_for_day() {
 			.into(),
 		);
 
-		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 4 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
@@ -1191,7 +1151,6 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -1206,7 +1165,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 			era,
 			max_batch_index,
 		));
-		assert_eq!(System::events().len(), 3);
+		assert_eq!(System::events().len(), 2);
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
@@ -1274,7 +1233,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 			.into(),
 		);
 
-		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 4 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
@@ -1452,7 +1411,6 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -1467,7 +1425,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 			era,
 			max_batch_index,
 		));
-		assert_eq!(System::events().len(), 3);
+		assert_eq!(System::events().len(), 2);
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
@@ -1535,7 +1493,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 			.into(),
 		);
 
-		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 4 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
@@ -1714,7 +1672,6 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -1729,7 +1686,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 			era,
 			max_batch_index,
 		));
-		assert_eq!(System::events().len(), 3);
+		assert_eq!(System::events().len(), 2);
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
@@ -1797,7 +1754,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 			.into(),
 		);
 
-		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 4 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
@@ -1976,7 +1933,6 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -1991,7 +1947,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 			era,
 			max_batch_index,
 		));
-		assert_eq!(System::events().len(), 3);
+		assert_eq!(System::events().len(), 2);
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
@@ -2059,7 +2015,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 			.into(),
 		);
 
-		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 4 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
@@ -2237,7 +2193,6 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -2252,7 +2207,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 			era,
 			max_batch_index,
 		));
-		assert_eq!(System::events().len(), 3);
+		assert_eq!(System::events().len(), 2);
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
@@ -2320,7 +2275,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 			.into(),
 		);
 
-		assert_eq!(System::events().len(), 5 + 3 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 4 + 3 + 1); // 1 for Currency::transfer
 
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
@@ -2464,7 +2419,6 @@ fn send_charging_customers_batch_works_zero_fees() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -2479,7 +2433,7 @@ fn send_charging_customers_batch_works_zero_fees() {
 			era,
 			max_batch_index,
 		));
-		assert_eq!(System::events().len(), 3);
+		assert_eq!(System::events().len(), 2);
 
 		// batch 1
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
@@ -2550,8 +2504,6 @@ fn end_charging_customers_fails_uninitialised() {
 			DdcPayouts::end_charging_customers(RuntimeOrigin::root(), cluster_id, era,),
 			BadOrigin
 		);
-
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 
 		assert_noop!(
 			DdcPayouts::end_charging_customers(
@@ -2638,8 +2590,6 @@ fn end_charging_customers_works() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
-
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -2680,7 +2630,7 @@ fn end_charging_customers_works() {
 
 		let mut balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance - Balances::minimum_balance(), charge);
-		assert_eq!(System::events().len(), 4 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 3 + 1); // 1 for Currency::transfer
 
 		assert_ok!(DdcPayouts::end_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -2707,7 +2657,7 @@ fn end_charging_customers_works() {
 		);
 
 		let transfers = 3 + 3 + 3 * 3; // for Currency::transfer
-		assert_eq!(System::events().len(), 8 + 1 + 3 + transfers);
+		assert_eq!(System::events().len(), 7 + 1 + 3 + transfers);
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report_after.state, PayoutState::CustomersChargedWithFees);
@@ -2822,8 +2772,6 @@ fn end_charging_customers_works_zero_fees() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
-
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -2864,7 +2812,7 @@ fn end_charging_customers_works_zero_fees() {
 
 		let mut balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance - Balances::minimum_balance(), charge);
-		assert_eq!(System::events().len(), 4 + 1); // 1 for Currency::transfer
+		assert_eq!(System::events().len(), 3 + 1); // 1 for Currency::transfer
 
 		assert_ok!(DdcPayouts::end_charging_customers(
 			RuntimeOrigin::signed(dac_account),
@@ -2873,7 +2821,7 @@ fn end_charging_customers_works_zero_fees() {
 		));
 
 		System::assert_has_event(Event::ChargingFinished { cluster_id, era }.into());
-		assert_eq!(System::events().len(), 5 + 1);
+		assert_eq!(System::events().len(), 4 + 1);
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report_after.state, PayoutState::CustomersChargedWithFees);
@@ -2965,8 +2913,6 @@ fn begin_rewarding_providers_fails_uninitialised() {
 			),
 			BadOrigin
 		);
-
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 
 		assert_noop!(
 			DdcPayouts::begin_rewarding_providers(
@@ -3079,8 +3025,6 @@ fn begin_rewarding_providers_works() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
-
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -3175,8 +3119,6 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 			),
 			BadOrigin
 		);
-
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 
 		assert_noop!(
 			DdcPayouts::send_rewarding_providers_batch(
@@ -3364,8 +3306,6 @@ fn send_rewarding_providers_batch_works() {
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
-
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
@@ -3740,7 +3680,6 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			payers.push(user_batch.clone());
 		}
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -4061,7 +4000,6 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			payers.push(user_batch.clone());
 		}
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -4377,7 +4315,6 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			payers.push(user_batch.clone());
 		}
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -4657,7 +4594,6 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			payers.push(user_batch.clone());
 		}
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -4845,8 +4781,6 @@ fn end_rewarding_providers_fails_uninitialised() {
 			BadOrigin
 		);
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
-
 		assert_noop!(
 			DdcPayouts::end_rewarding_providers(
 				RuntimeOrigin::signed(dac_account.clone()),
@@ -5012,8 +4946,6 @@ fn end_rewarding_providers_works() {
 		let payers = vec![(node_key.clone(), bucket_id1, usage1)];
 		let payees = vec![(node_key, node_usage1)];
 
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
-
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -5110,8 +5042,6 @@ fn end_billing_report_fails_uninitialised() {
 			DdcPayouts::end_billing_report(RuntimeOrigin::root(), cluster_id, era,),
 			BadOrigin
 		);
-
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 
 		assert_noop!(
 			DdcPayouts::end_billing_report(
@@ -5277,8 +5207,6 @@ fn end_billing_report_works() {
 		let bucket_id3 = BUCKET_ID3;
 		let payers = vec![(node_key.clone(), bucket_id3, CustomerUsage::default())];
 		let payees = vec![(node_key.clone(), NodeUsage::default())];
-
-		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 
 		assert_ok!(DdcPayouts::begin_billing_report(
 			RuntimeOrigin::signed(dac_account.clone()),
