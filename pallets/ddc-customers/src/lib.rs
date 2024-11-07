@@ -19,7 +19,7 @@ use ddc_primitives::{
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
 	},
-	BucketId, BucketVisitorError, ClusterId, CustomerUsage,
+	BucketId, ClusterId, CustomerUsage,
 };
 use frame_support::{
 	parameter_types,
@@ -251,6 +251,8 @@ pub mod pallet {
 		TransferFailed,
 		/// Bucket is already removed
 		AlreadyRemoved,
+		/// Bucket belongs to another cluster
+		ClusterMismatch,
 	}
 
 	#[pallet::genesis_config]
@@ -657,10 +659,10 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			bucket_id: BucketId,
 			content_owner: &T::AccountId,
-		) -> Result<Option<CustomerUsage>, BucketVisitorError> {
-			let bucket = Self::buckets(bucket_id).ok_or(BucketVisitorError::NoBucketWithId)?;
-			ensure!(bucket.owner_id == *content_owner, BucketVisitorError::NotBucketOwner);
-			ensure!(bucket.cluster_id == *cluster_id, BucketVisitorError::IncorrectClusterId);
+		) -> Result<Option<CustomerUsage>, DispatchError> {
+			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+			ensure!(bucket.owner_id == *content_owner, Error::<T>::NotBucketOwner);
+			ensure!(bucket.cluster_id == *cluster_id, Error::<T>::ClusterMismatch);
 
 			Ok(bucket.total_customers_usage)
 		}

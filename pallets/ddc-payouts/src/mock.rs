@@ -11,9 +11,8 @@ use ddc_primitives::{
 		pallet::PalletVisitor,
 		ClusterQuery, ValidatorVisitor,
 	},
-	BucketVisitorError, ClusterBondingParams, ClusterFeesParams, ClusterParams,
-	ClusterPricingParams, ClusterProtocolParams, ClusterStatus, NodeParams, NodePubKey, NodeType,
-	DOLLARS,
+	ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
+	ClusterProtocolParams, ClusterStatus, NodeParams, NodePubKey, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -254,7 +253,7 @@ where
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
 		_content_owner: &T::AccountId,
-	) -> Result<Option<CustomerUsage>, BucketVisitorError> {
+	) -> Result<Option<CustomerUsage>, DispatchError> {
 		Ok(None)
 	}
 }
