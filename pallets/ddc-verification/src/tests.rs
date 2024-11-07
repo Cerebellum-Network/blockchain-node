@@ -1,6 +1,6 @@
 use ddc_primitives::{
 	AggregatorInfo, ClusterId, MergeActivityHash, StorageNodeMode, StorageNodeParams,
-	StorageNodePubKey, KEY_TYPE,
+	StorageNodePubKey, DAC_VERIFICATION_KEY_TYPE,
 };
 use frame_support::{assert_noop, assert_ok};
 use prost::Message;
@@ -1578,7 +1578,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 	let keystore = MemoryKeystore::new();
 	keystore
 		.insert(
-			KEY_TYPE,
+			DAC_VERIFICATION_KEY_TYPE,
 			"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
 			pair.public().as_ref(),
 		)
@@ -1590,20 +1590,19 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 	ext.register_extension(KeystoreExt::new(keystore));
 
 	ext.execute_with(|| {
-        let mut offchain_state = offchain_state.write();
-        let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
-        offchain_state.persistent_storage.set(
-            b"",
-            &key,
-            b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
-        );
-        offchain_state.timestamp = Timestamp::from_unix_millis(0);
-        let host1 = "178.251.228.236";
-        let host2 = "95.217.8.119";
-        let host3 = "178.251.228.42";
-        let host4 = "37.27.30.47";
-        let host5 = "178.251.228.49";
-
+		let mut offchain_state = offchain_state.write();
+		let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
+		offchain_state.persistent_storage.set(
+			b"",
+			&key,
+			b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
+		);
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host1 = "178.251.228.236";
+		let host2 = "95.217.8.119";
+		let host3 = "178.251.228.42";
+		let host4 = "37.27.30.47";
+		let host5 = "178.251.228.49";
         let port = 8080;
 
 		let pending_request1 = PendingRequest {
@@ -1844,7 +1843,7 @@ fn node_aggregates_are_fetched_and_grouped() {
 	let keystore = MemoryKeystore::new();
 	keystore
 		.insert(
-			KEY_TYPE,
+			DAC_VERIFICATION_KEY_TYPE,
 			"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
 			pair.public().as_ref(),
 		)
@@ -1856,20 +1855,19 @@ fn node_aggregates_are_fetched_and_grouped() {
 	ext.register_extension(KeystoreExt::new(keystore));
 
 	ext.execute_with(|| {
-        let mut offchain_state = offchain_state.write();
-        let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
-        offchain_state.persistent_storage.set(
-            b"",
-            &key,
-            b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
-        );
-        offchain_state.timestamp = Timestamp::from_unix_millis(0);
-        let host1 = "178.251.228.236";
-        let host2 = "95.217.8.119";
-        let host3 = "178.251.228.42";
-        let host4 = "37.27.30.47";
-        let host5 = "178.251.228.49";
-
+		let mut offchain_state = offchain_state.write();
+		let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
+		offchain_state.persistent_storage.set(
+			b"",
+			&key,
+			b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
+		);
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host1 = "178.251.228.236";
+		let host2 = "95.217.8.119";
+		let host3 = "178.251.228.42";
+		let host4 = "37.27.30.47";
+		let host5 = "178.251.228.49";
         let port = 8080;
 
 		let pending_request1 = PendingRequest {
@@ -2243,8 +2241,7 @@ fn get_era_for_validation_works() {
 	ext.register_extension(TransactionPoolExt::new(pool));
 
 	ext.execute_with(|| {
-        let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
-
+		let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
         let mut offchain_state = offchain_state.write();
         offchain_state.persistent_storage.set(
             b"",
@@ -2553,17 +2550,13 @@ fn test_single_ocw_pallet_integration() {
 	let (offchain, offchain_state) = TestOffchainExt::new();
 	let (pool, _pool_state) = TestTransactionPoolExt::new();
 
-	let (pair, _seed) = sp_core::sr25519::Pair::from_phrase(
-		"spider sell nice animal border success square soda stem charge caution echo",
-		None,
-	)
-	.unwrap();
 	let keystore = MemoryKeystore::new();
 	keystore
 		.insert(
-			KEY_TYPE,
-			"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
-			pair.public().as_ref(),
+			DAC_VERIFICATION_KEY_TYPE,
+			&format!("0x{}", VALIDATOR_VERIFICATION_PRIV_KEY_HEX),
+			&hex::decode(VALIDATOR_VERIFICATION_PUB_KEY_HEX)
+				.expect("Test verification pub key to be extracted"),
 		)
 		.unwrap();
 
@@ -2573,24 +2566,24 @@ fn test_single_ocw_pallet_integration() {
 	ext.register_extension(KeystoreExt::new(keystore));
 
 	ext.execute_with(|| {
-        let mut offchain_state = offchain_state.write();
-        let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
-        offchain_state.persistent_storage.set(
-            b"",
-            &key,
-            b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
-        );
-        offchain_state.timestamp = Timestamp::from_unix_millis(0);
-        let host1 = "178.251.228.236";
-        let host2 = "95.217.8.119";
-        let host3 = "178.251.228.42";
-        let host4 = "37.27.30.47";
-        let host5 = "178.251.228.49";
-        let host6 = "159.69.207.65";
-        let host7 = "178.251.228.165";
-        let host8 = "49.13.211.157";
-        let host9 = "178.251.228.44";
-        let port = 8080;
+		let mut offchain_state = offchain_state.write();
+		let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
+		offchain_state.persistent_storage.set(
+			b"",
+			&key,
+			b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
+		);
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host1 = "178.251.228.236";
+		let host2 = "95.217.8.119";
+		let host3 = "178.251.228.42";
+		let host4 = "37.27.30.47";
+		let host5 = "178.251.228.49";
+		let host6 = "159.69.207.65";
+		let host7 = "178.251.228.165";
+		let host8 = "49.13.211.157";
+		let host9 = "178.251.228.44";
+		let port = 8080;
 
         let pending_request1 = PendingRequest {
             method: "GET".to_string(),
@@ -3011,7 +3004,7 @@ fn challenge_bucket_sub_aggregate_works() {
 	let keystore = MemoryKeystore::new();
 	keystore
 		.insert(
-			KEY_TYPE,
+			DAC_VERIFICATION_KEY_TYPE,
 			"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318",
 			pair.public().as_ref(),
 		)
@@ -3023,16 +3016,15 @@ fn challenge_bucket_sub_aggregate_works() {
 	ext.register_extension(KeystoreExt::new(keystore));
 
 	ext.execute_with(|| {
-        let mut offchain_state = offchain_state.write();
-        let key = format!("offchain::validator::{:?}", KEY_TYPE).into_bytes();
-        offchain_state.persistent_storage.set(
-            b"",
-            &key,
-            b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
-        );
-        offchain_state.timestamp = Timestamp::from_unix_millis(0);
-        let host1 = "178.251.228.165";
-
+		let mut offchain_state = offchain_state.write();
+		let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
+		offchain_state.persistent_storage.set(
+			b"",
+			&key,
+			b"9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a".as_ref(),
+		);
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+		let host1 = "178.251.228.165";
         let port = 8080;
 
         //todo! put them in resource file

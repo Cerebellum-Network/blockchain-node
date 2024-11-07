@@ -248,6 +248,12 @@ impl<T: Config> CustomerVisitor<T> for MockCustomerVisitor {
 		Ok(account_1)
 	}
 }
+
+pub(crate) const VALIDATOR_VERIFICATION_PUB_KEY_HEX: &str =
+	"4e7b7f176f8778a2dbef829f50466170634e747ab5c5e64cb131c9c5a01d975f";
+pub(crate) const VALIDATOR_VERIFICATION_PRIV_KEY_HEX: &str =
+	"b6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318";
+
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
@@ -321,6 +327,14 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let _ =
 		pallet_staking::GenesisConfig::<Test> { stakers: stakers.clone(), ..Default::default() }
 			.assimilate_storage(&mut storage);
+
+	let arr = hex::decode(VALIDATOR_VERIFICATION_PUB_KEY_HEX)
+		.expect("Test verification pub key to be extracted");
+
+	let verification_key = AccountId::decode(&mut &arr[..]).unwrap();
+
+	let _ = pallet_ddc_verification::GenesisConfig::<Test> { validators: vec![verification_key] }
+		.assimilate_storage(&mut storage);
 
 	sp_io::TestExternalities::new(storage)
 }
