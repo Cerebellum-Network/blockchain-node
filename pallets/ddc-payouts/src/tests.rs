@@ -50,18 +50,16 @@ fn begin_billing_report_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([2; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 			start_era,
@@ -80,14 +78,14 @@ fn begin_billing_report_works() {
 #[test]
 fn begin_charging_customers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
-		let dac_account = AccountId::from([3; 32]);
+		let fake_ocw_account = AccountId::from([124; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
 
 		assert_noop!(
 			DdcPayouts::begin_charging_customers(
-				RuntimeOrigin::signed(dac_account),
+				RuntimeOrigin::signed(fake_ocw_account),
 				cluster_id,
 				era,
 				max_batch_index,
@@ -107,7 +105,7 @@ fn begin_charging_customers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::begin_charging_customers(
-				RuntimeOrigin::signed(DAC_ACCOUNT_ID.into()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.into()),
 				cluster_id,
 				era,
 				max_batch_index,
@@ -122,19 +120,17 @@ fn begin_charging_customers_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([2; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -142,7 +138,7 @@ fn begin_charging_customers_works() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -160,7 +156,6 @@ fn begin_charging_customers_works() {
 fn send_charging_customers_batch_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = AccountId::from([1; 32]);
-		let dac_account = AccountId::from([2; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
@@ -209,7 +204,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_index,
@@ -220,7 +215,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -229,7 +224,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_index,
@@ -240,7 +235,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -248,7 +243,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 
 		let payers1 = vec![(node_key, bucket_id4, CustomerUsage::default())];
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -258,7 +253,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_index,
@@ -270,7 +265,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(dac_account),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 				cluster_id,
 				era,
 				batch_index,
@@ -373,7 +368,6 @@ fn send_charging_customers_batch_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([123; 32]);
 		let user1: AccountId = CUSTOMER1_KEY_32;
 		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
 		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
@@ -430,7 +424,7 @@ fn send_charging_customers_batch_works() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -438,7 +432,7 @@ fn send_charging_customers_batch_works() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -447,7 +441,7 @@ fn send_charging_customers_batch_works() {
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -517,7 +511,7 @@ fn send_charging_customers_batch_works() {
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -566,7 +560,7 @@ fn send_charging_customers_batch_works() {
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 			batch_index,
@@ -634,7 +628,6 @@ fn end_charging_customers_works_small_usage_1_hour() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([123; 32]);
 		let user6: AccountId = CUSTOMER6_KEY_32;
 		let user7 = CUSTOMER7_KEY_32;
 		let cluster_id = HIGH_FEES_CLUSTER_ID;
@@ -669,7 +662,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 		let end_era: i64 = start_era + (1.0 * 1.0 * 3600.0) as i64; // 1 hour
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -677,7 +670,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -686,7 +679,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -751,7 +744,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 		assert_eq!(balance, 0);
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 		));
@@ -834,7 +827,6 @@ fn send_charging_customers_batch_works_for_day() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([123; 32]);
 		let user1: AccountId = CUSTOMER1_KEY_32;
 		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
 		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
@@ -891,7 +883,7 @@ fn send_charging_customers_batch_works_for_day() {
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -899,7 +891,7 @@ fn send_charging_customers_batch_works_for_day() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -908,7 +900,7 @@ fn send_charging_customers_batch_works_for_day() {
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -978,7 +970,7 @@ fn send_charging_customers_batch_works_for_day() {
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -1027,7 +1019,7 @@ fn send_charging_customers_batch_works_for_day() {
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 			batch_index,
@@ -1095,7 +1087,6 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([123; 32]);
 		let user1: AccountId = CUSTOMER1_KEY_32;
 		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
 		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
@@ -1152,7 +1143,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -1160,7 +1151,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -1169,7 +1160,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -1239,7 +1230,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -1288,7 +1279,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 			batch_index,
@@ -1356,7 +1347,6 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([123; 32]);
 		let user1: AccountId = CUSTOMER1_KEY_32;
 		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
 		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
@@ -1412,7 +1402,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -1420,7 +1410,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -1429,7 +1419,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -1499,7 +1489,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -1548,7 +1538,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 			batch_index,
@@ -1616,7 +1606,6 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([123; 32]);
 		let user1: AccountId = CUSTOMER1_KEY_32;
 		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
 		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
@@ -1673,7 +1662,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -1681,7 +1670,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -1690,7 +1679,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -1760,7 +1749,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -1809,7 +1798,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 			batch_index,
@@ -1877,7 +1866,6 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([123; 32]);
 		let user1: AccountId = CUSTOMER1_KEY_32;
 		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
 		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
@@ -1934,7 +1922,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -1942,7 +1930,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -1951,7 +1939,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -2021,7 +2009,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -2070,7 +2058,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 			batch_index,
@@ -2138,7 +2126,6 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([123; 32]);
 		let user1: AccountId = CUSTOMER1_KEY_32;
 		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
 		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
@@ -2194,7 +2181,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -2202,7 +2189,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -2211,7 +2198,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 
 		// batch 1
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -2281,7 +2268,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -2330,7 +2317,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 			batch_index,
@@ -2397,7 +2384,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 fn send_charging_customers_batch_works_zero_fees() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
-		let dac_account = AccountId::from([123; 32]);
+
 		let cluster_id = ONE_CLUSTER_ID;
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
@@ -2420,7 +2407,7 @@ fn send_charging_customers_batch_works_zero_fees() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -2428,7 +2415,7 @@ fn send_charging_customers_batch_works_zero_fees() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -2440,7 +2427,7 @@ fn send_charging_customers_batch_works_zero_fees() {
 		let before_total_customer_charge = report.total_customer_charge;
 		let balance_before = Balances::free_balance(DdcPayouts::account_id());
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 			batch_index,
@@ -2476,7 +2463,6 @@ fn send_charging_customers_batch_works_zero_fees() {
 fn end_charging_customers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = AccountId::from([100; 32]);
-		let dac_account = AccountId::from([123; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
@@ -2507,7 +2493,7 @@ fn end_charging_customers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_charging_customers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -2515,7 +2501,7 @@ fn end_charging_customers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -2524,7 +2510,7 @@ fn end_charging_customers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_charging_customers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -2532,7 +2518,7 @@ fn end_charging_customers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -2540,7 +2526,7 @@ fn end_charging_customers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_charging_customers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -2548,7 +2534,7 @@ fn end_charging_customers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -2557,7 +2543,11 @@ fn end_charging_customers_fails_uninitialised() {
 		));
 
 		assert_noop!(
-			DdcPayouts::end_charging_customers(RuntimeOrigin::signed(dac_account), cluster_id, era,),
+			DdcPayouts::end_charging_customers(
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+				cluster_id,
+				era,
+			),
 			Error::<Test>::BatchesMissed
 		);
 	})
@@ -2568,7 +2558,6 @@ fn end_charging_customers_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([123; 32]);
 		let user1 = CUSTOMER1_KEY_32;
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
@@ -2591,7 +2580,7 @@ fn end_charging_customers_works() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -2599,14 +2588,14 @@ fn end_charging_customers_works() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -2633,7 +2622,7 @@ fn end_charging_customers_works() {
 		assert_eq!(System::events().len(), 3 + 1); // 1 for Currency::transfer
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 		));
@@ -2750,7 +2739,6 @@ fn end_charging_customers_works_zero_fees() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([123; 32]);
 		let user1: AccountId = CUSTOMER1_KEY_32;
 		let cluster_id = ClusterId::zero();
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
@@ -2773,7 +2761,7 @@ fn end_charging_customers_works_zero_fees() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -2781,14 +2769,14 @@ fn end_charging_customers_works_zero_fees() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -2815,7 +2803,7 @@ fn end_charging_customers_works_zero_fees() {
 		assert_eq!(System::events().len(), 3 + 1); // 1 for Currency::transfer
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 		));
@@ -2876,7 +2864,6 @@ fn end_charging_customers_works_zero_fees() {
 fn begin_rewarding_providers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = AccountId::from([1; 32]);
-		let dac_account = AccountId::from([2; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
@@ -2916,7 +2903,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				max_batch_index,
@@ -2926,7 +2913,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -2935,7 +2922,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				max_batch_index,
@@ -2945,7 +2932,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -2953,7 +2940,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				max_batch_index,
@@ -2963,7 +2950,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -2973,7 +2960,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				max_batch_index,
@@ -2983,7 +2970,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index + 1,
@@ -2993,7 +2980,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::signed(dac_account),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 				cluster_id,
 				era,
 				max_batch_index,
@@ -3009,7 +2996,6 @@ fn begin_rewarding_providers_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let dac_account = AccountId::from([123; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 0;
@@ -3026,7 +3012,7 @@ fn begin_rewarding_providers_works() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -3037,14 +3023,14 @@ fn begin_rewarding_providers_works() {
 		assert_eq!(report.state, PayoutState::Initialized);
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -3053,13 +3039,13 @@ fn begin_rewarding_providers_works() {
 		));
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
 
 		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -3077,7 +3063,6 @@ fn begin_rewarding_providers_works() {
 fn send_rewarding_providers_batch_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = AccountId::from([1; 32]);
-		let dac_account = AccountId::from([2; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
@@ -3122,7 +3107,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_index,
@@ -3133,7 +3118,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -3142,7 +3127,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_index,
@@ -3153,7 +3138,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -3161,7 +3146,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_index,
@@ -3172,7 +3157,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -3182,7 +3167,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_index,
@@ -3193,7 +3178,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index + 1,
@@ -3203,7 +3188,7 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_index,
@@ -3214,14 +3199,14 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
 
 		assert_noop!(
 			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(dac_account),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 				cluster_id,
 				era,
 				batch_index,
@@ -3237,7 +3222,6 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 fn send_rewarding_providers_batch_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
-		let dac_account = AccountId::from([123; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
@@ -3308,7 +3292,7 @@ fn send_rewarding_providers_batch_works() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -3316,14 +3300,14 @@ fn send_rewarding_providers_batch_works() {
 		));
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -3333,7 +3317,7 @@ fn send_rewarding_providers_batch_works() {
 
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
@@ -3362,7 +3346,7 @@ fn send_rewarding_providers_batch_works() {
 		);
 
 		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_node_batch_index,
@@ -3370,7 +3354,7 @@ fn send_rewarding_providers_batch_works() {
 		));
 
 		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_node_index,
@@ -3460,7 +3444,7 @@ fn send_rewarding_providers_batch_works() {
 
 		// batch 2
 		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_node_index + 1,
@@ -3521,7 +3505,7 @@ fn send_rewarding_providers_batch_works() {
 		assert!(expected_amount_to_reward - report_reward.total_distributed_reward <= 20000);
 
 		assert_ok!(DdcPayouts::end_rewarding_providers(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 		));
@@ -3535,7 +3519,6 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 
 		let num_nodes = 10;
 		let num_users = 5;
-		let dac_account = AccountId::from([123; 32]);
 		let bank = AccountId::from([1; 32]);
 		let cluster_id = ONE_CLUSTER_ID;
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
@@ -3681,14 +3664,14 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		}
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
 			end_era,
 		));
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			(payers.len() - 1) as u16,
@@ -3696,7 +3679,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 
 		for batch in payers.iter() {
 			assert_ok!(DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_user_index,
@@ -3731,7 +3714,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		assert_eq!(balance1 - Balances::minimum_balance(), total_charge);
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
@@ -3767,7 +3750,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		);
 
 		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			(payees.len() - 1) as u16,
@@ -3777,7 +3760,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		for batch in payees.iter() {
 			let before_batch = Balances::free_balance(DdcPayouts::account_id());
 			assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_node_index,
@@ -3842,7 +3825,6 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let num_nodes = 10;
 		let num_users = 5;
-		let dac_account = AccountId::from([123; 32]);
 		let bank = AccountId::from([1; 32]);
 		let cluster_id = ONE_CLUSTER_ID;
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
@@ -4001,14 +3983,14 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		}
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
 			end_era,
 		));
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			(payers.len() - 1) as u16,
@@ -4016,7 +3998,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 
 		for batch in payers.iter() {
 			assert_ok!(DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_user_index,
@@ -4051,7 +4033,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		assert_eq!(balance1 - Balances::minimum_balance(), total_charge);
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
@@ -4087,7 +4069,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		);
 
 		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			(payees.len() - 1) as u16,
@@ -4097,7 +4079,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		for batch in payees.iter() {
 			let before_batch = Balances::free_balance(DdcPayouts::account_id());
 			assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_node_index,
@@ -4162,7 +4144,6 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let num_nodes = 10;
 		let num_users = 5;
-		let dac_account = AccountId::from([123; 32]);
 		let bank = AccountId::from([1; 32]);
 		let cluster_id = ONE_CLUSTER_ID;
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
@@ -4316,14 +4297,14 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		}
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
 			end_era,
 		));
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			(payers.len() - 1) as u16,
@@ -4331,7 +4312,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 
 		for batch in payers.iter() {
 			assert_ok!(DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_user_index,
@@ -4366,7 +4347,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		assert_eq!(balance1 - Balances::minimum_balance(), total_charge);
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
@@ -4402,7 +4383,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		);
 
 		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			(payees.len() - 1) as u16,
@@ -4412,7 +4393,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		for batch in payees.iter() {
 			let before_batch = Balances::free_balance(DdcPayouts::account_id());
 			assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_node_index,
@@ -4487,7 +4468,6 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		let max: u64 = 1024 * 1024;
 		let num_nodes = 10;
 		let num_users = 10;
-		let dac_account = AccountId::from([123; 32]);
 		let bank = AccountId::from([1; 32]);
 		let cluster_id = CERE_CLUSTER_ID;
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
@@ -4595,14 +4575,14 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		}
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
 			end_era,
 		));
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			(payers.len() - 1) as u16,
@@ -4610,7 +4590,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 
 		for batch in payers.iter() {
 			assert_ok!(DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_user_index,
@@ -4645,7 +4625,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		assert_eq!(balance1 - Balances::minimum_balance(), total_charge);
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
@@ -4681,7 +4661,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		);
 
 		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			(payees.len() - 1) as u16,
@@ -4691,7 +4671,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		for batch in payees.iter() {
 			let before_batch = Balances::free_balance(DdcPayouts::account_id());
 			assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 				batch_node_index,
@@ -4748,7 +4728,6 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 fn end_rewarding_providers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = AccountId::from([1; 32]);
-		let dac_account = AccountId::from([2; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
@@ -4783,7 +4762,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -4791,7 +4770,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -4800,7 +4779,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -4808,7 +4787,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -4816,7 +4795,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -4824,7 +4803,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -4834,7 +4813,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -4842,7 +4821,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index + 1,
@@ -4852,7 +4831,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -4860,14 +4839,14 @@ fn end_rewarding_providers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
 
 		assert_noop!(
 			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -4875,7 +4854,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -4884,7 +4863,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -4892,7 +4871,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -4902,7 +4881,7 @@ fn end_rewarding_providers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(dac_account),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 				cluster_id,
 				era,
 			),
@@ -4921,7 +4900,6 @@ fn end_rewarding_providers_works() {
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
-		let dac_account = AccountId::from([2; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
@@ -4947,7 +4925,7 @@ fn end_rewarding_providers_works() {
 		let payees = vec![(node_key, node_usage1)];
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -4958,14 +4936,14 @@ fn end_rewarding_providers_works() {
 		assert_eq!(report.state, PayoutState::Initialized);
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -4974,13 +4952,13 @@ fn end_rewarding_providers_works() {
 		));
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
 
 		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -4988,7 +4966,7 @@ fn end_rewarding_providers_works() {
 		));
 
 		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -4997,7 +4975,7 @@ fn end_rewarding_providers_works() {
 		));
 
 		assert_ok!(DdcPayouts::end_rewarding_providers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
@@ -5019,7 +4997,6 @@ fn end_billing_report_fails_uninitialised() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let root_account = AccountId::from([1; 32]);
-		let dac_account = AccountId::from([2; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
@@ -5045,7 +5022,7 @@ fn end_billing_report_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -5053,7 +5030,7 @@ fn end_billing_report_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -5062,7 +5039,7 @@ fn end_billing_report_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -5070,7 +5047,7 @@ fn end_billing_report_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -5078,7 +5055,7 @@ fn end_billing_report_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -5086,7 +5063,7 @@ fn end_billing_report_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -5096,7 +5073,7 @@ fn end_billing_report_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -5104,7 +5081,7 @@ fn end_billing_report_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index + 1,
@@ -5114,7 +5091,7 @@ fn end_billing_report_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -5122,14 +5099,14 @@ fn end_billing_report_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
 
 		assert_noop!(
 			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -5137,7 +5114,7 @@ fn end_billing_report_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -5146,7 +5123,7 @@ fn end_billing_report_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -5154,7 +5131,7 @@ fn end_billing_report_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -5164,7 +5141,7 @@ fn end_billing_report_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(dac_account.clone()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 				cluster_id,
 				era,
 			),
@@ -5172,7 +5149,7 @@ fn end_billing_report_fails_uninitialised() {
 		);
 
 		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index + 1,
@@ -5181,7 +5158,11 @@ fn end_billing_report_fails_uninitialised() {
 		));
 
 		assert_noop!(
-			DdcPayouts::end_billing_report(RuntimeOrigin::signed(dac_account), cluster_id, era,),
+			DdcPayouts::end_billing_report(
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+				cluster_id,
+				era,
+			),
 			Error::<Test>::NotExpectedState
 		);
 	})
@@ -5197,7 +5178,6 @@ fn end_billing_report_works() {
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
-		let dac_account = AccountId::from([2; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
@@ -5209,7 +5189,7 @@ fn end_billing_report_works() {
 		let payees = vec![(node_key.clone(), NodeUsage::default())];
 
 		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			start_era,
@@ -5220,14 +5200,14 @@ fn end_billing_report_works() {
 		assert_eq!(report.state, PayoutState::Initialized);
 
 		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -5236,13 +5216,13 @@ fn end_billing_report_works() {
 		));
 
 		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
 
 		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			max_batch_index,
@@ -5250,7 +5230,7 @@ fn end_billing_report_works() {
 		));
 
 		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 			batch_index,
@@ -5259,13 +5239,13 @@ fn end_billing_report_works() {
 		));
 
 		assert_ok!(DdcPayouts::end_rewarding_providers(
-			RuntimeOrigin::signed(dac_account.clone()),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
 			cluster_id,
 			era,
 		));
 
 		assert_ok!(DdcPayouts::end_billing_report(
-			RuntimeOrigin::signed(dac_account),
+			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 			cluster_id,
 			era,
 		));

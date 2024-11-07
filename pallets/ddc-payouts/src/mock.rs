@@ -198,13 +198,7 @@ where
 		unimplemented!()
 	}
 	fn is_ocw_validator(caller: T::AccountId) -> bool {
-		let account_id: [u8; 32] = [123; 32];
-		let dac: [u8; 32] = DAC_ACCOUNT_ID;
-		let validators = [
-			T::AccountId::decode(&mut &dac[..]).unwrap(),
-			T::AccountId::decode(&mut &account_id[..]).unwrap(),
-		];
-		validators.contains(&caller)
+		caller == VALIDATOR_OCW_KEY_32.into()
 	}
 	fn is_customers_batch_valid(
 		_cluster_id: ClusterId,
@@ -337,12 +331,12 @@ impl<T: Config> CustomerDepositor<T> for TestCustomerDepositor {
 	}
 }
 
-pub const DAC_ACCOUNT_ID: [u8; 32] = [2; 32];
 pub const RESERVE_ACCOUNT_ID: [u8; 32] = [9; 32];
 pub const TREASURY_ACCOUNT_ID: [u8; 32] = [8; 32];
 pub const VALIDATOR1_ACCOUNT_ID: [u8; 32] = [111; 32];
 pub const VALIDATOR2_ACCOUNT_ID: [u8; 32] = [222; 32];
 pub const VALIDATOR3_ACCOUNT_ID: [u8; 32] = [250; 32];
+pub const VALIDATOR_OCW_KEY_32: AccountId32 = AccountId32::new([123; 32]);
 
 pub const VALIDATOR1_SCORE: u64 = 30;
 pub const VALIDATOR2_SCORE: u64 = 45;
