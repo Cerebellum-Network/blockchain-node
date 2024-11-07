@@ -3,10 +3,7 @@ use frame_support::{
 };
 use frame_system::{self as system};
 pub use pallet_balances as balances;
-use sp_runtime::{
-	traits::{AccountIdConversion},
-	BuildStorage, Perbill,
-};
+use sp_runtime::{traits::AccountIdConversion, BuildStorage, Perbill};
 
 use crate::{self as bridge, *};
 
