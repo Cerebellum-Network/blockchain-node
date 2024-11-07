@@ -32,8 +32,8 @@ resolver = "2"
 blake2 = { version = "0.10.6", default-features = false }
 byte-unit = { version = "4.0.19", default-features = false, features = ["u128"] }
 chrono = { version = "0.4.31", default-features = false }
-clap = { version = "4.2.5", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = ["derive", "max-encoded-len"] }
+clap = { version = "4.5.1", features = ["derive"] }
 futures = { version = "0.3.30" }
 hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
 hex-literal = { version = "^0.4.1", default-features = false }
