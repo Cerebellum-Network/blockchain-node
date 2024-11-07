@@ -2521,30 +2521,28 @@ fn proof_merkle_leaf_works() {
 		assert_eq!(leaf_position.len(), 1);
 		assert_eq!(position.len(), 1);
 
-		let leave_index = 2;
+		let max_leaf_index = 4;
+
+		let leaf_index = 2;
 		let leaf_hash = c;
 		assert!(DdcVerification::proof_merkle_leaf(
 			root_hash,
 			leaf_hash,
-			leave_index,
-			&MMRProof {
-				mmr_size: mmr.mmr_size(),
-				proof: mmr.gen_proof(position.clone()).unwrap().proof_items().to_vec(),
-			}
+			leaf_index,
+			max_leaf_index,
+			&MMRProof { proof: mmr.gen_proof(position.clone()).unwrap().proof_items().to_vec() }
 		)
 		.unwrap());
 
-		let leave_index = 5;
+		let leaf_index = 5;
 		let leaf_hash = f;
 		assert_noop!(
 			DdcVerification::proof_merkle_leaf(
 				root_hash,
 				leaf_hash,
-				leave_index,
-				&MMRProof {
-					mmr_size: mmr.mmr_size(),
-					proof: mmr.gen_proof(position).unwrap().proof_items().to_vec(),
-				}
+				leaf_index,
+				max_leaf_index,
+				&MMRProof { proof: mmr.gen_proof(position).unwrap().proof_items().to_vec() }
 			),
 			Error::<Test>::FailToVerifyMerkleProof
 		);

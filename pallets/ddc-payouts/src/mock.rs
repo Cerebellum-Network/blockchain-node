@@ -203,6 +203,7 @@ where
 		_cluster_id: ClusterId,
 		_era: DdcEra,
 		_batch_index: BatchIndex,
+		_max_batch_index: BatchIndex,
 		_payers: &[(NodePubKey, BucketId, CustomerUsage)],
 		_batch_proof: &MMRProof,
 	) -> bool {
@@ -212,6 +213,7 @@ where
 		_cluster_id: ClusterId,
 		_era: DdcEra,
 		_batch_index: BatchIndex,
+		_max_batch_index: BatchIndex,
 		_payees: &[(NodePubKey, NodeUsage)],
 		_batch_proof: &MMRProof,
 	) -> bool {

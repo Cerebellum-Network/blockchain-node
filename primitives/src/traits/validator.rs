@@ -14,6 +14,7 @@ pub trait ValidatorVisitor<T: Config> {
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
+		max_batch_index: BatchIndex,
 		payers: &[(NodePubKey, BucketId, CustomerUsage)],
 		batch_proof: &MMRProof,
 	) -> bool;
@@ -21,6 +22,7 @@ pub trait ValidatorVisitor<T: Config> {
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
+		max_batch_index: BatchIndex,
 		payees: &[(NodePubKey, NodeUsage)],
 		batch_proof: &MMRProof,
 	) -> bool;

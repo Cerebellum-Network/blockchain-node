@@ -289,7 +289,6 @@ pub struct NodeUsage {
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
 pub struct MMRProof {
-	pub mmr_size: u64,
 	pub proof: Vec<ActivityHash>,
 }
 

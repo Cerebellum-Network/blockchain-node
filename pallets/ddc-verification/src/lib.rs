@@ -30,7 +30,7 @@ use frame_system::{
 };
 pub use pallet::*;
 use polkadot_ckb_merkle_mountain_range::{
-	helper::leaf_index_to_pos,
+	helper::{leaf_index_to_mmr_size, leaf_index_to_pos},
 	util::{MemMMR, MemStore},
 	MerkleProof, MMR,
 };
@@ -2268,7 +2268,7 @@ pub mod pallet {
 					.proof_items()
 					.to_vec();
 
-				let batch_proof = MMRProof { mmr_size: mmr.mmr_size(), proof };
+				let batch_proof = MMRProof { proof };
 				Ok(Some((
 					era_id,
 					CustomerBatch {
@@ -2512,9 +2512,7 @@ pub mod pallet {
 					.proof_items()
 					.to_vec();
 
-				// todo! attend [i] through get(i).ok_or()
-				// todo! attend accountid conversion
-				let batch_proof = MMRProof { mmr_size: mmr.mmr_size(), proof };
+				let batch_proof = MMRProof { proof };
 				Ok(Some((
 					era_id,
 					ProviderBatch {
@@ -2879,11 +2877,13 @@ pub mod pallet {
 			root_hash: ActivityHash,
 			batch_hash: ActivityHash,
 			batch_index: BatchIndex,
+			max_batch_index: BatchIndex,
 			batch_proof: &MMRProof,
 		) -> Result<bool, Error<T>> {
 			let batch_position = leaf_index_to_pos(batch_index.into());
+			let mmr_size = leaf_index_to_mmr_size(max_batch_index.into());
 			let proof: MerkleProof<ActivityHash, MergeActivityHash> =
-				MerkleProof::new(batch_proof.mmr_size, batch_proof.proof.clone());
+				MerkleProof::new(mmr_size, batch_proof.proof.clone());
 			proof
 				.verify(root_hash, vec![(batch_position, batch_hash)])
 				.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
@@ -4170,11 +4170,11 @@ pub mod pallet {
 			}
 		}
 
-		// todo! use batch_index and payers as part of the validation
 		fn is_customers_batch_valid(
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
+			max_batch_index: BatchIndex,
 			payers: &[(NodePubKey, BucketId, CustomerUsage)],
 			batch_proof: &MMRProof,
 		) -> bool {
@@ -4202,18 +4202,24 @@ pub mod pallet {
 						Self::create_merkle_root(&cluster_id, era_id, activity_hashes.as_slice())
 							.expect("batch_hash to be created");
 
-					Self::proof_merkle_leaf(root_hash, batch_hash, batch_index, batch_proof)
-						.unwrap_or(false)
+					Self::proof_merkle_leaf(
+						root_hash,
+						batch_hash,
+						batch_index,
+						max_batch_index,
+						batch_proof,
+					)
+					.unwrap_or(false)
 				},
 				None => false,
 			}
 		}
 
-		// todo! use batch_index and payees as part of the validation
 		fn is_providers_batch_valid(
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
+			max_batch_index: BatchIndex,
 			payees: &[(NodePubKey, NodeUsage)],
 			batch_proof: &MMRProof,
 		) -> bool {
@@ -4239,8 +4245,14 @@ pub mod pallet {
 						Self::create_merkle_root(&cluster_id, era_id, activity_hashes.as_slice())
 							.expect("batch_hash to be created");
 
-					Self::proof_merkle_leaf(root_hash, batch_hash, batch_index, batch_proof)
-						.unwrap_or(false)
+					Self::proof_merkle_leaf(
+						root_hash,
+						batch_hash,
+						batch_index,
+						max_batch_index,
+						batch_proof,
+					)
+					.unwrap_or(false)
 				},
 				None => false,
 			}

@@ -465,6 +465,7 @@ pub mod pallet {
 					cluster_id,
 					era,
 					batch_index,
+					billing_report.charging_max_batch_index,
 					&payers,
 					&batch_proof
 				),
@@ -782,6 +783,7 @@ pub mod pallet {
 					cluster_id,
 					era,
 					batch_index,
+					billing_report.rewarding_max_batch_index,
 					&payees,
 					&batch_proof
 				),
