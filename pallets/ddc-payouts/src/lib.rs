@@ -432,7 +432,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payers: Vec<(T::AccountId, String, BucketId, CustomerUsage)>,
+			payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
@@ -473,8 +473,9 @@ pub mod pallet {
 			);
 
 			let mut updated_billing_report = billing_report;
-			for (customer_id, _node_id, bucket_id, customer_usage) in payers {
-				log::info!("🏭send_charging_customers_batch get_customer_charge customer_id: {:?} -  bucket_id: {:?} - era:{:?} - cluster-id:{:?}", Self::get_account_id_string(customer_id.clone()), bucket_id, era, cluster_id);
+			for (_node_key, bucket_id, customer_usage) in payers {
+				let customer_id = T::BucketVisitor::get_bucket_owner_id(bucket_id)?;
+
 				let mut customer_charge = get_customer_charge::<T>(
 					&cluster_id,
 					&customer_usage,
@@ -1220,7 +1221,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payers: &[(T::AccountId, String, BucketId, CustomerUsage)],
+			payers: &[(NodePubKey, BucketId, CustomerUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			log::info!(

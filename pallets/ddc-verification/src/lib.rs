@@ -551,9 +551,9 @@ pub mod pallet {
 		}
 	}
 
-	pub struct CustomerBatch<T: Config> {
+	pub struct CustomerBatch {
 		pub(crate) batch_index: BatchIndex,
-		pub(crate) payers: Vec<(T::AccountId, String, BucketId, CustomerUsage)>,
+		pub(crate) payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
 		pub(crate) batch_proof: MMRProof,
 	}
 
@@ -1115,23 +1115,10 @@ pub mod pallet {
 				// todo! factor out as macro as this is repetitive
 				match Self::prepare_send_charging_customers_batch(&cluster_id, batch_size.into()) {
 					Ok(Some((era_id, batch_payout))) => {
-						let payers_log: Vec<(String, String, BucketId, CustomerUsage)> =
-							batch_payout
-								.payers
-								.clone()
-								.into_iter()
-								.map(|(acc_id, node_id, bucket_id, customer_usage)| {
-									let account_id: T::AccountIdConverter = acc_id.into();
-									let account_id_32: AccountId32 = account_id.into();
-									let account_ref: &[u8; 32] = account_id_32.as_ref();
-									(hex::encode(account_ref), node_id, bucket_id, customer_usage)
-								})
-								.collect();
 						log::info!(
-							"🏭🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?} , batch_payout: {:?}",
+							"🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
 							cluster_id,
-							era_id,
-							payers_log
+							era_id
 						);
 
 						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
@@ -1300,7 +1287,7 @@ pub mod pallet {
 						"🎁 prepare_send_rewarding_providers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
 						cluster_id,
 						era_id
-					);
+						);
 
 						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
 							Call::send_rewarding_providers_batch {
@@ -2104,7 +2091,7 @@ pub mod pallet {
 		pub(crate) fn prepare_send_charging_customers_batch(
 			cluster_id: &ClusterId,
 			batch_size: usize,
-		) -> Result<Option<(DdcEra, CustomerBatch<T>)>, Vec<OCWError>> {
+		) -> Result<Option<(DdcEra, CustomerBatch)>, Vec<OCWError>> {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
@@ -2168,7 +2155,7 @@ pub mod pallet {
 			era_id: DdcEra,
 			customers_total_activity: Vec<BucketSubAggregate>,
 			customers_activity_batch_roots: Vec<ActivityHash>,
-		) -> Result<Option<(DdcEra, CustomerBatch<T>)>, Vec<OCWError>> {
+		) -> Result<Option<(DdcEra, CustomerBatch)>, Vec<OCWError>> {
 			let batch_index = T::PayoutVisitor::get_next_customer_batch_for_payment(
 				cluster_id, era_id,
 			)
@@ -2218,17 +2205,16 @@ pub mod pallet {
 						payers: customers_activity_batched[i]
 							.iter()
 							.map(|activity| {
-								let account_id =
-									T::CustomerVisitor::get_bucket_owner(&activity.bucket_id)
-										.unwrap();
-								let node_id = activity.node_id.clone();
+								let node_key = Self::node_key_from_hex(activity.node_id.clone())
+									.expect("Node Public Key to be decoded");
+								let bucket_id = activity.bucket_id;
 								let customer_usage = CustomerUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
 									number_of_puts: activity.number_of_puts,
 									number_of_gets: activity.number_of_gets,
 								};
-								(account_id, node_id, activity.bucket_id, customer_usage)
+								(node_key, bucket_id, customer_usage)
 							})
 							.collect(),
 						batch_proof,
@@ -3909,7 +3895,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payers: Vec<(T::AccountId, String, BucketId, CustomerUsage)>,
+			payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -4068,7 +4054,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payers: &[(T::AccountId, String, BucketId, CustomerUsage)],
+			payers: &[(NodePubKey, BucketId, CustomerUsage)],
 			batch_proof: &MMRProof,
 		) -> bool {
 			let validation_era = EraValidations::<T>::get(cluster_id, era_id);
@@ -4079,8 +4065,9 @@ pub mod pallet {
 
 					let activity_hashes = payers
 						.iter()
-						.map(|(_bucket_owner, node_id, bucket_id, usage)| {
+						.map(|(node_key, bucket_id, usage)| {
 							let mut data = bucket_id.encode();
+							let node_id = format!("0x{}", node_key.get_hex());
 							data.extend_from_slice(&node_id.encode());
 							data.extend_from_slice(&usage.stored_bytes.encode());
 							data.extend_from_slice(&usage.transferred_bytes.encode());

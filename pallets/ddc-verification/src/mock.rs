@@ -406,7 +406,7 @@ impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
 		_cluster_id: ClusterId,
 		_era_id: DdcEra,
 		_batch_index: BatchIndex,
-		_payers: &[(T::AccountId, String, BucketId, CustomerUsage)],
+		_payers: &[(NodePubKey, BucketId, CustomerUsage)],
 		_batch_proof: MMRProof,
 	) -> DispatchResult {
 		Ok(())

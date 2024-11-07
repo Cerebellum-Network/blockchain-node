@@ -196,24 +196,21 @@ fn send_charging_customers_batch_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = AccountId::from([1; 32]);
 		let dac_account = AccountId::from([2; 32]);
-		let user1 = AccountId::from([3; 32]);
-		let user2 = AccountId::from([4; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
 		let batch_index = 1;
-		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
+		let bucket_id3: BucketId = BUCKET_ID3;
+		let bucket_id4: BucketId = BUCKET_ID4;
 		let customer_usage = CustomerUsage {
 			transferred_bytes: 100,
 			stored_bytes: -800,
 			number_of_gets: 100,
 			number_of_puts: 200,
 		};
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let payers1 = vec![(user1, node_id.clone(), bucket_id1, customer_usage)];
-		let payers2 = vec![(user2.clone(), node_id.clone(), bucket_id2, CustomerUsage::default())];
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
+		let payers1 = vec![(node_key.clone(), bucket_id3, customer_usage)];
+		let payers2 = vec![(node_key.clone(), bucket_id4, CustomerUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -286,7 +283,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 			max_batch_index,
 		));
 
-		let payers1 = vec![(user2, node_id, bucket_id2, CustomerUsage::default())];
+		let payers1 = vec![(node_key, bucket_id4, CustomerUsage::default())];
 		assert_ok!(DdcPayouts::send_charging_customers_batch(
 			RuntimeOrigin::signed(dac_account.clone()),
 			cluster_id,
@@ -419,8 +416,7 @@ fn send_charging_customers_batch_works() {
 		let user3_debtor = AccountId::from([3; 32]);
 		let user4 = AccountId::from([4; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
@@ -458,11 +454,11 @@ fn send_charging_customers_batch_works() {
 			number_of_gets: 242334563456423,
 		};
 		let payers1 = vec![
-			(user2_debtor.clone(), node_id.clone(), bucket_id2, usage2.clone()),
-			(user4.clone(), node_id.clone(), bucket_id4, usage4.clone()),
+			(node_key.clone(), bucket_id2, usage2.clone()),
+			(node_key.clone(), bucket_id4, usage4.clone()),
 		];
-		let payers2 = vec![(user1.clone(), node_id.clone(), bucket_id1, usage1.clone())];
-		let payers3 = vec![(user3_debtor.clone(), node_id, bucket_id3, usage3.clone())];
+		let payers2 = vec![(node_key.clone(), bucket_id1, usage1.clone())];
+		let payers3 = vec![(node_key.clone(), bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -681,6 +677,10 @@ fn end_charging_customers_works_small_usage_1_hour() {
 		let cluster_id = HIGH_FEES_CLUSTER_ID;
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
@@ -701,8 +701,8 @@ fn end_charging_customers_works_small_usage_1_hour() {
 		};
 
 		let payers1 = vec![
-			(user6.clone(), node_id.clone(), bucket_id6, usage6.clone()),
-			(user7.clone(), node_id.clone(), bucket_id7, usage7.clone()),
+			(node_key.clone(), bucket_id6, usage6.clone()),
+			(node_key.clone(), bucket_id7, usage7.clone()),
 		];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -890,7 +890,6 @@ fn send_charging_customers_batch_works_for_day() {
 		let bucket_id2: BucketId = 2;
 		let bucket_id3: BucketId = 3;
 		let bucket_id4: BucketId = 4;
-
 		let usage1 = CustomerUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
@@ -921,13 +920,18 @@ fn send_charging_customers_batch_works_for_day() {
 		};
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
+
 		let payers1 = vec![
-			(user2_debtor.clone(), node_id.clone(), bucket_id2, usage2.clone()),
-			(user4.clone(), node_id.clone(), bucket_id4, usage4.clone()),
+			(node_key.clone(), bucket_id2, usage2.clone()),
+			(node_key.clone(), bucket_id4, usage4.clone()),
 		];
 
-		let payers2 = vec![(user1.clone(), node_id.clone(), bucket_id1, usage1.clone())];
-		let payers3 = vec![(user3_debtor.clone(), node_id.clone(), bucket_id3, usage3.clone())];
+		let payers2 = vec![(node_key.clone(), bucket_id1, usage1.clone())];
+		let payers3 = vec![(node_key.clone(), bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -1148,6 +1152,11 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		let cluster_id = STORAGE_ZERO_CLUSTER_ID;
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
+
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
@@ -1185,12 +1194,12 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 			number_of_gets: 242334563456423,
 		};
 		let payers1 = vec![
-			(user2_debtor.clone(), node_id.clone(), bucket_id2, usage2.clone()),
-			(user4.clone(), node_id.clone(), bucket_id4, usage4.clone()),
+			(node_key.clone(), bucket_id2, usage2.clone()),
+			(node_key.clone(), bucket_id4, usage4.clone()),
 		];
 
-		let payers2 = vec![(user1.clone(), node_id.clone(), bucket_id1, usage1.clone())];
-		let payers3 = vec![(user3_debtor.clone(), node_id.clone(), bucket_id3, usage3.clone())];
+		let payers2 = vec![(node_key.clone(), bucket_id1, usage1.clone())];
+		let payers3 = vec![(node_key.clone(), bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -1411,6 +1420,10 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		let cluster_id = STREAM_ZERO_CLUSTER_ID;
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
@@ -1448,11 +1461,11 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 			number_of_gets: 242334563456423,
 		};
 		let payers1 = vec![
-			(user2_debtor.clone(), node_id.clone(), bucket_id2, usage2.clone()),
-			(user4.clone(), node_id.clone(), bucket_id4, usage4.clone()),
+			(node_key.clone(), bucket_id2, usage2.clone()),
+			(node_key.clone(), bucket_id4, usage4.clone()),
 		];
-		let payers2 = vec![(user1.clone(), node_id.clone(), bucket_id1, usage1.clone())];
-		let payers3 = vec![(user3_debtor.clone(), node_id, bucket_id3, usage3.clone())];
+		let payers2 = vec![(node_key.clone(), bucket_id1, usage1.clone())];
+		let payers3 = vec![(node_key.clone(), bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -1673,6 +1686,10 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		let cluster_id = GET_ZERO_CLUSTER_ID;
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
@@ -1711,11 +1728,11 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		};
 
 		let payers1 = vec![
-			(user2_debtor.clone(), node_id.clone(), bucket_id2, usage2.clone()),
-			(user4.clone(), node_id.clone(), bucket_id4, usage4.clone()),
+			(node_key.clone(), bucket_id2, usage2.clone()),
+			(node_key.clone(), bucket_id4, usage4.clone()),
 		];
-		let payers2 = vec![(user1.clone(), node_id.clone(), bucket_id1, usage1.clone())];
-		let payers3 = vec![(user3_debtor.clone(), node_id, bucket_id3, usage3.clone())];
+		let payers2 = vec![(node_key.clone(), bucket_id1, usage1.clone())];
+		let payers3 = vec![(node_key.clone(), bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -1936,6 +1953,10 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		let cluster_id = PUT_ZERO_CLUSTER_ID;
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
@@ -1974,11 +1995,11 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		};
 
 		let payers1 = vec![
-			(user2_debtor.clone(), node_id.clone(), bucket_id2, usage2.clone()),
-			(user4.clone(), node_id.clone(), bucket_id4, usage4.clone()),
+			(node_key.clone(), bucket_id2, usage2.clone()),
+			(node_key.clone(), bucket_id4, usage4.clone()),
 		];
-		let payers2 = vec![(user1.clone(), node_id.clone(), bucket_id1, usage1.clone())];
-		let payers3 = vec![(user3_debtor.clone(), node_id, bucket_id3, usage3.clone())];
+		let payers2 = vec![(node_key.clone(), bucket_id1, usage1.clone())];
+		let payers3 = vec![(node_key.clone(), bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -2199,6 +2220,10 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		let cluster_id = STORAGE_STREAM_ZERO_CLUSTER_ID;
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
@@ -2236,11 +2261,11 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 			number_of_gets: 242334563456423,
 		};
 		let payers1 = vec![
-			(user2_debtor.clone(), node_id.clone(), bucket_id2, usage2.clone()),
-			(user4.clone(), node_id.clone(), bucket_id4, usage4.clone()),
+			(node_key.clone(), bucket_id2, usage2.clone()),
+			(node_key.clone(), bucket_id4, usage4.clone()),
 		];
-		let payers2 = vec![(user1.clone(), node_id.clone(), bucket_id1, usage1.clone())];
-		let payers3 = vec![(user3_debtor.clone(), node_id, bucket_id3, usage3.clone())];
+		let payers2 = vec![(node_key.clone(), bucket_id1, usage1.clone())];
+		let payers3 = vec![(node_key.clone(), bucket_id3, usage3.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -2458,6 +2483,10 @@ fn send_charging_customers_batch_works_zero_fees() {
 		let cluster_id = ONE_CLUSTER_ID;
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
@@ -2470,7 +2499,7 @@ fn send_charging_customers_batch_works_zero_fees() {
 			number_of_gets: 1,
 		};
 
-		let payers5 = vec![(user5, node_id.clone(), bucket_id5, usage5.clone())];
+		let payers5 = vec![(node_key.clone(), bucket_id5, usage5.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -2540,12 +2569,16 @@ fn end_charging_customers_fails_uninitialised() {
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 2;
 		let batch_index = 1;
 		let bucket_id1: BucketId = 1;
 
-		let payers = vec![(user1, node_id.clone(), bucket_id1, CustomerUsage::default())];
+		let payers = vec![(node_key.clone(), bucket_id1, CustomerUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -2636,6 +2669,10 @@ fn end_charging_customers_works() {
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
@@ -2646,7 +2683,7 @@ fn end_charging_customers_works() {
 			number_of_puts: 4456456345234523,
 			number_of_gets: 523423,
 		};
-		let payers = vec![(user1.clone(), node_id.clone(), bucket_id1, usage1.clone())];
+		let payers = vec![(node_key.clone(), bucket_id1, usage1.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -2821,6 +2858,10 @@ fn end_charging_customers_works_zero_fees() {
 		let cluster_id = ClusterId::zero();
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
@@ -2831,7 +2872,7 @@ fn end_charging_customers_works_zero_fees() {
 			number_of_puts: 1,
 			number_of_gets: 1,
 		};
-		let payers = vec![(user1.clone(), node_id.clone(), bucket_id1, usage1.clone())];
+		let payers = vec![(node_key.clone(), bucket_id1, usage1.clone())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -2954,7 +2995,11 @@ fn begin_rewarding_providers_fails_uninitialised() {
 		let bucket_id1: BucketId = 1;
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let payers = vec![(user1, node_id.clone(), bucket_id1, CustomerUsage::default())];
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
+		let payers = vec![(node_key.clone(), bucket_id1, CustomerUsage::default())];
 		let node_usage = NodeUsage::default();
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
@@ -3091,8 +3136,12 @@ fn begin_rewarding_providers_works() {
 		let bucket_id1: BucketId = 1;
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let total_node_usage = NodeUsage::default();
-		let payers = vec![(user1, node_id.clone(), bucket_id1, CustomerUsage::default())];
+		let payers = vec![(node_key.clone(), bucket_id1, CustomerUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -3155,23 +3204,15 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = AccountId::from([1; 32]);
 		let dac_account = AccountId::from([2; 32]);
-		let user1 = AccountId::from([3; 32]);
-		let user2 = AccountId::from([4; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
-		let node_id =
-			format!("0x{}", "302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 1;
 		let batch_index = 0;
-		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
-
-		let payers1 = vec![(user1, node_id.clone(), bucket_id1, CustomerUsage::default())];
-		let payers2 = vec![(user2, node_id.clone(), bucket_id2, CustomerUsage::default())];
+		let bucket_id3: BucketId = BUCKET_ID3;
+		let bucket_id4: BucketId = BUCKET_ID4;
+		let payers1 = vec![(node_key.clone(), bucket_id3, CustomerUsage::default())];
+		let payers2 = vec![(node_key.clone(), bucket_id4, CustomerUsage::default())];
 
 		let payees = vec![(node_key, NodeUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
@@ -3330,6 +3371,10 @@ fn send_rewarding_providers_batch_works() {
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_id =
 			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
+			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
+			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
+		]));
 		let era = 100;
 		let max_batch_index = 0;
 		let max_node_batch_index = 1;
@@ -3382,7 +3427,7 @@ fn send_rewarding_providers_batch_works() {
 				node_usage3.number_of_gets,
 		};
 
-		let payers = vec![(user1, node_id.clone(), bucket_id1, usage1)];
+		let payers = vec![(node_key.clone(), bucket_id1, usage1)];
 		let payees1 = vec![
 			(NodePubKey::StoragePubKey(NODE1_PUB_KEY_32.clone()), node_usage1.clone()),
 			(NodePubKey::StoragePubKey(NODE2_PUB_KEY_32.clone()), node_usage2.clone()),
@@ -3630,8 +3675,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		let dac_account = AccountId::from([123; 32]);
 		let bank = AccountId::from([1; 32]);
 		let cluster_id = ONE_CLUSTER_ID;
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let nodes_keys = [
 			NODE1_PUB_KEY_32,
 			NODE2_PUB_KEY_32,
@@ -3658,10 +3702,16 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			NODE_PROVIDER9_KEY_32,
 			NODE_PROVIDER10_KEY_32,
 		];
+		let customers_accounts = [
+			CUSTOMER100_KEY_32,
+			CUSTOMER101_KEY_32,
+			CUSTOMER102_KEY_32,
+			CUSTOMER103_KEY_32,
+			CUSTOMER104_KEY_32,
+		];
 		let era = 100;
 		let user_batch_size = 10;
 		let node_batch_size = 10;
-		let bucketid1: BucketId = 1;
 		let mut batch_user_index = 0;
 		let mut batch_node_index = 0;
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
@@ -3728,9 +3778,9 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		}
 
 		let mut total_charge = 0u128;
-		let mut payers: Vec<Vec<(AccountId, String, BucketId, CustomerUsage)>> = Vec::new();
-		let mut user_batch: Vec<(AccountId, String, BucketId, CustomerUsage)> = Vec::new();
-		for user_id in 100u8..100 + num_users {
+		let mut payers: Vec<Vec<(NodePubKey, BucketId, CustomerUsage)>> = Vec::new();
+		let mut user_batch: Vec<(NodePubKey, BucketId, CustomerUsage)> = Vec::new();
+		for user_id in 100..100 + num_users {
 			let ratio = match user_id % 5 {
 				0 => Perquintill::one(),
 				1 => Perquintill::from_float(0.5),
@@ -3756,12 +3806,8 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			.unwrap();
 			total_charge += expected_charge;
 
-			user_batch.push((
-				AccountId::from([user_id; 32]),
-				node_id.clone(),
-				bucketid1,
-				user_usage,
-			));
+			let bucket_id = user_id.into();
+			user_batch.push((node_key.clone(), bucket_id, user_usage));
 			if user_batch.len() == user_batch_size {
 				payers.push(user_batch.clone());
 				user_batch.clear();
@@ -3796,14 +3842,15 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 				MMRProof::default(),
 			));
 
-			for (customer_id, _node_id, _bucket_id, usage) in batch.iter() {
+			for (i, (_node_key, bucket_id, usage)) in batch.iter().enumerate() {
 				let charge = calculate_charge_for_month(cluster_id, usage.clone());
 
+				let customer_id = customers_accounts[i].clone();
 				System::assert_has_event(
 					Event::Charged {
 						cluster_id,
 						era,
-						bucket_id: bucketid1,
+						bucket_id: bucket_id.clone(),
 						customer_id: customer_id.clone(),
 						batch_index: batch_user_index,
 						amount: charge,
@@ -3927,7 +3974,6 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		System::set_block_number(1);
 
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
@@ -3937,8 +3983,8 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		let dac_account = AccountId::from([123; 32]);
 		let bank = AccountId::from([1; 32]);
 		let cluster_id = ONE_CLUSTER_ID;
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
+
 		let nodes_keys = [
 			NODE1_PUB_KEY_32,
 			NODE2_PUB_KEY_32,
@@ -3951,8 +3997,10 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			NODE9_PUB_KEY_32,
 			NODE10_PUB_KEY_32,
 		];
+
 		let storage_nodes: Vec<NodePubKey> =
 			nodes_keys.iter().map(|key| NodePubKey::StoragePubKey(key.clone())).collect();
+
 		let providers_accounts = [
 			NODE_PROVIDER1_KEY_32,
 			NODE_PROVIDER2_KEY_32,
@@ -3965,13 +4013,20 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			NODE_PROVIDER9_KEY_32,
 			NODE_PROVIDER10_KEY_32,
 		];
+
+		let customers_accounts = [
+			CUSTOMER100_KEY_32,
+			CUSTOMER101_KEY_32,
+			CUSTOMER102_KEY_32,
+			CUSTOMER103_KEY_32,
+			CUSTOMER104_KEY_32,
+		];
+
 		let era = 100;
 		let user_batch_size = 10;
 		let node_batch_size = 10;
-		let bucketid1: BucketId = 1;
 		let mut batch_user_index = 0;
 		let mut batch_node_index = 0;
-		let bucket_id: BucketId = 1;
 		let usage1 = CustomerUsage {
 			transferred_bytes: 1024,
 			stored_bytes: 1024,
@@ -4043,10 +4098,10 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		}
 
 		let mut total_charge = 0u128;
-		let mut payers: Vec<Vec<(AccountId, String, BucketId, CustomerUsage)>> = Vec::new();
-		let mut user_batch: Vec<(AccountId, String, BucketId, CustomerUsage)> = Vec::new();
+		let mut payers: Vec<Vec<(NodePubKey, BucketId, CustomerUsage)>> = Vec::new();
+		let mut user_batch: Vec<(NodePubKey, BucketId, CustomerUsage)> = Vec::new();
 
-		for user_id in 100u8..100 + num_users {
+		for user_id in 100..100 + num_users {
 			let ratio = match user_id % 5 {
 				0 => Perquintill::from_float(1_000_000.0),
 				1 => Perquintill::from_float(10_000_000.0),
@@ -4072,12 +4127,8 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			.unwrap();
 			total_charge += expected_charge;
 
-			user_batch.push((
-				AccountId::from([user_id; 32]),
-				node_id.clone(),
-				bucket_id,
-				user_usage,
-			));
+			let bucket_id = user_id.into();
+			user_batch.push((node_key.clone(), bucket_id, user_usage));
 			if user_batch.len() == user_batch_size {
 				payers.push(user_batch.clone());
 				user_batch.clear();
@@ -4112,14 +4163,15 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 				MMRProof::default(),
 			));
 
-			for (customer_id, _node_id, _bucket_id, usage) in batch.iter() {
+			for (i, (_node_key, bucket_id, usage)) in batch.iter().enumerate() {
 				let charge = calculate_charge_for_month(cluster_id, usage.clone());
 
+				let customer_id = customers_accounts[i].clone();
 				System::assert_has_event(
 					Event::Charged {
 						cluster_id,
 						era,
-						bucket_id: bucketid1,
+						bucket_id: bucket_id.clone(),
 						customer_id: customer_id.clone(),
 						batch_index: batch_user_index,
 						amount: charge,
@@ -4243,7 +4295,6 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		System::set_block_number(1);
 
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
@@ -4253,8 +4304,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		let dac_account = AccountId::from([123; 32]);
 		let bank = AccountId::from([1; 32]);
 		let cluster_id = ONE_CLUSTER_ID;
-		let node_id: String =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let nodes_keys = [
 			NODE1_PUB_KEY_32,
 			NODE2_PUB_KEY_32,
@@ -4281,8 +4331,15 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			NODE_PROVIDER9_KEY_32,
 			NODE_PROVIDER10_KEY_32,
 		];
+		let customers_accounts = [
+			CUSTOMER100_KEY_32,
+			CUSTOMER101_KEY_32,
+			CUSTOMER102_KEY_32,
+			CUSTOMER103_KEY_32,
+			CUSTOMER104_KEY_32,
+		];
+
 		let era = 100;
-		let bucketid1: BucketId = 1;
 		let user_batch_size = 10;
 		let node_batch_size = 10;
 		let mut batch_user_index = 0;
@@ -4358,8 +4415,8 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		}
 
 		let mut total_charge = 0u128;
-		let mut payers: Vec<Vec<(AccountId, String, BucketId, CustomerUsage)>> = Vec::new();
-		let mut user_batch: Vec<(AccountId, String, BucketId, CustomerUsage)> = Vec::new();
+		let mut payers: Vec<Vec<(NodePubKey, BucketId, CustomerUsage)>> = Vec::new();
+		let mut user_batch: Vec<(NodePubKey, BucketId, CustomerUsage)> = Vec::new();
 		for user_id in 100u8..100 + num_users {
 			let ratio = match user_id % 5 {
 				0 => Perquintill::from_float(1_000_000.0),
@@ -4386,12 +4443,8 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			.unwrap();
 			total_charge += expected_charge;
 
-			user_batch.push((
-				AccountId::from([user_id; 32]),
-				node_id.clone(),
-				bucketid1,
-				user_usage,
-			));
+			let bucket_id = user_id.into();
+			user_batch.push((node_key.clone(), bucket_id, user_usage));
 			if user_batch.len() == user_batch_size {
 				payers.push(user_batch.clone());
 				user_batch.clear();
@@ -4426,15 +4479,16 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 				MMRProof::default(),
 			));
 
-			for (customer_id, _node_id, _bucket_id, usage) in batch.iter() {
+			for (i, (_node_key, bucket_id, usage)) in batch.iter().enumerate() {
 				let charge = calculate_charge_for_month(cluster_id, usage.clone());
 
+				let customer_id = customers_accounts[i].clone();
 				System::assert_has_event(
 					Event::Charged {
 						cluster_id,
 						era,
 						customer_id: customer_id.clone(),
-						bucket_id: bucketid1,
+						bucket_id: bucket_id.clone(),
 						batch_index: batch_user_index,
 						amount: charge,
 					}
@@ -4564,7 +4618,6 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		System::set_block_number(1);
 
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
@@ -4577,8 +4630,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		let dac_account = AccountId::from([123; 32]);
 		let bank = AccountId::from([1; 32]);
 		let cluster_id = CERE_CLUSTER_ID;
-		let node_id: String =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let nodes_keys = [
 			NODE1_PUB_KEY_32,
 			NODE2_PUB_KEY_32,
@@ -4605,12 +4657,24 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			NODE_PROVIDER9_KEY_32,
 			NODE_PROVIDER10_KEY_32,
 		];
+		let customers_accounts = [
+			CUSTOMER100_KEY_32,
+			CUSTOMER101_KEY_32,
+			CUSTOMER102_KEY_32,
+			CUSTOMER103_KEY_32,
+			CUSTOMER104_KEY_32,
+			CUSTOMER105_KEY_32,
+			CUSTOMER106_KEY_32,
+			CUSTOMER107_KEY_32,
+			CUSTOMER108_KEY_32,
+			CUSTOMER109_KEY_32,
+		];
+
 		let era = 100;
 		let user_batch_size = 10;
 		let node_batch_size = 10;
 		let mut batch_user_index = 0;
 		let mut batch_node_index = 0;
-		let bucket_id1: BucketId = 1;
 		let mut payees: Vec<Vec<(NodePubKey, NodeUsage)>> = Vec::new();
 		let mut node_batch: Vec<(NodePubKey, NodeUsage)> = Vec::new();
 		let mut total_nodes_usage = NodeUsage::default();
@@ -4639,9 +4703,9 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		}
 
 		let mut total_charge = 0u128;
-		let mut payers: Vec<Vec<(AccountId, String, BucketId, CustomerUsage)>> = Vec::new();
-		let mut user_batch: Vec<(AccountId, String, BucketId, CustomerUsage)> = Vec::new();
-		for user_id in 100u8..100 + num_users {
+		let mut payers: Vec<Vec<(NodePubKey, BucketId, CustomerUsage)>> = Vec::new();
+		let mut user_batch: Vec<(NodePubKey, BucketId, CustomerUsage)> = Vec::new();
+		for user_id in 100..100 + num_users {
 			let user_usage = CustomerUsage {
 				transferred_bytes: generate_random_u64(&mock_randomness, min, max),
 				stored_bytes: (generate_random_u64(&mock_randomness, min, max)) as i64,
@@ -4659,12 +4723,8 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			.unwrap();
 			total_charge += expected_charge;
 
-			user_batch.push((
-				AccountId::from([user_id; 32]),
-				node_id.clone(),
-				bucket_id1,
-				user_usage,
-			));
+			let bucket_id = user_id.into();
+			user_batch.push((node_key.clone(), bucket_id, user_usage));
 			if user_batch.len() == user_batch_size {
 				payers.push(user_batch.clone());
 				user_batch.clear();
@@ -4699,14 +4759,15 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 				MMRProof::default(),
 			));
 
-			for (customer_id, _node_id, _bucket_id, usage) in batch.iter() {
+			for (i, (_node_key, bucket_id, usage)) in batch.iter().enumerate() {
 				let charge = calculate_charge_for_month(cluster_id, usage.clone());
+				let customer_id = customers_accounts[i].clone();
 
 				System::assert_has_event(
 					Event::Charged {
 						cluster_id,
 						era,
-						bucket_id: bucket_id1,
+						bucket_id: bucket_id.clone(),
 						customer_id: customer_id.clone(),
 						batch_index: batch_user_index,
 						amount: charge,
@@ -4829,22 +4890,15 @@ fn end_rewarding_providers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = AccountId::from([1; 32]);
 		let dac_account = AccountId::from([2; 32]);
-		let user1 = AccountId::from([3; 32]);
-		let user2 = AccountId::from([4; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
-		let node_id: String =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 1;
 		let batch_index = 0;
-		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
-		let payers1 = vec![(user1, node_id.clone(), bucket_id1, CustomerUsage::default())];
-		let payers2 = vec![(user2, node_id.clone(), bucket_id2, CustomerUsage::default())];
+		let bucket_id3: BucketId = BUCKET_ID3;
+		let bucket_id4: BucketId = BUCKET_ID4;
+		let payers1 = vec![(node_key.clone(), bucket_id3, CustomerUsage::default())];
+		let payers2 = vec![(node_key.clone(), bucket_id4, CustomerUsage::default())];
 		let payees = vec![(node_key, NodeUsage::default())];
 		let total_node_usage = NodeUsage::default();
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
@@ -5039,7 +5093,7 @@ fn end_rewarding_providers_works() {
 			number_of_gets: usage1.number_of_gets * 2 / 3,
 		};
 		let total_node_usage = node_usage1.clone();
-		let payers = vec![(user1, node_id.clone(), bucket_id1, usage1)];
+		let payers = vec![(node_key.clone(), bucket_id1, usage1)];
 		let payees = vec![(node_key, node_usage1)];
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
@@ -5118,22 +5172,16 @@ fn end_billing_report_fails_uninitialised() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let root_account = AccountId::from([1; 32]);
 		let dac_account = AccountId::from([2; 32]);
-		let user1 = AccountId::from([3; 32]);
-		let user2 = AccountId::from([4; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 1;
 		let batch_index = 0;
-		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
-		let payers1 = vec![(user1, node_id.clone(), bucket_id1, CustomerUsage::default())];
-		let payers2 = vec![(user2, node_id.clone(), bucket_id2, CustomerUsage::default())];
+		let bucket_id3: BucketId = BUCKET_ID3;
+		let bucket_id4: BucketId = BUCKET_ID4;
+
+		let payers1 = vec![(node_key.clone(), bucket_id3, CustomerUsage::default())];
+		let payers2 = vec![(node_key.clone(), bucket_id4, CustomerUsage::default())];
 		let payees = vec![(node_key, NodeUsage::default())];
 		let total_node_usage = NodeUsage::default();
 
@@ -5305,17 +5353,15 @@ fn end_billing_report_works() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let dac_account = AccountId::from([2; 32]);
-		let user1 = AccountId::from([3; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
 		let total_node_usage = NodeUsage::default();
-		let bucket_id1 = 1;
-		let payers = vec![(user1, node_id.clone(), bucket_id1, CustomerUsage::default())];
-		let payees = vec![(NodePubKey::StoragePubKey(NODE1_PUB_KEY_32), NodeUsage::default())];
+		let bucket_id3 = BUCKET_ID3;
+		let payers = vec![(node_key.clone(), bucket_id3, CustomerUsage::default())];
+		let payees = vec![(node_key.clone(), NodeUsage::default())];
 
 		assert_ok!(DdcPayouts::set_authorised_caller(RuntimeOrigin::root(), dac_account.clone()));
 
