@@ -441,6 +441,8 @@ pub const CUSTOMER107_KEY_32: AccountId32 = AccountId32::new([107; 32]);
 pub const CUSTOMER108_KEY_32: AccountId32 = AccountId32::new([108; 32]);
 pub const CUSTOMER109_KEY_32: AccountId32 = AccountId32::new([109; 32]);
 
+pub const BANK_KEY_32: AccountId32 = AccountId32::new([200; 32]);
+
 pub const NO_FEE_CLUSTER_ID: ClusterId = ClusterId::zero();
 pub const ONE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(4u8);
 pub const CERE_CLUSTER_ID: ClusterId = ClusterId::repeat_byte(10u8);
@@ -730,6 +732,7 @@ impl ExtBuilder {
 				(CUSTOMER5_KEY_32, 1000000000000000000000000),
 				(CUSTOMER6_KEY_32, 1000000000000000000000000),
 				(CUSTOMER7_KEY_32, 1000000000000000000000000),
+				(BANK_KEY_32, 10000000000000000000000000000),
 			],
 		}
 		.assimilate_storage(&mut storage);

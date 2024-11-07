@@ -3519,7 +3519,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 
 		let num_nodes = 10;
 		let num_users = 5;
-		let bank = AccountId::from([1; 32]);
+		let bank: AccountId = BANK_KEY_32;
 		let cluster_id = ONE_CLUSTER_ID;
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let nodes_keys = [
@@ -3825,7 +3825,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let num_nodes = 10;
 		let num_users = 5;
-		let bank = AccountId::from([1; 32]);
+		let bank: AccountId = BANK_KEY_32;
 		let cluster_id = ONE_CLUSTER_ID;
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 
@@ -4144,7 +4144,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let num_nodes = 10;
 		let num_users = 5;
-		let bank = AccountId::from([1; 32]);
+		let bank: AccountId = BANK_KEY_32;
 		let cluster_id = ONE_CLUSTER_ID;
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let nodes_keys = [
@@ -4468,7 +4468,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		let max: u64 = 1024 * 1024;
 		let num_nodes = 10;
 		let num_users = 10;
-		let bank = AccountId::from([1; 32]);
+		let bank: AccountId = BANK_KEY_32;
 		let cluster_id = CERE_CLUSTER_ID;
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let nodes_keys = [
