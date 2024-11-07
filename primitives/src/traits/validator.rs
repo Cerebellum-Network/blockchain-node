@@ -1,4 +1,6 @@
 use frame_system::Config;
+#[cfg(feature = "runtime-benchmarks")]
+use scale_info::prelude::vec::Vec;
 
 use crate::{
 	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodePubKey, NodeUsage,

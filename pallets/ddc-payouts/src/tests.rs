@@ -102,7 +102,7 @@ fn begin_charging_customers_fails_uninitialised() {
 
 		assert_noop!(
 			DdcPayouts::begin_charging_customers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.into()),
+				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
 				cluster_id,
 				era,
 				max_batch_index,
