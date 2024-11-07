@@ -1768,7 +1768,7 @@ pub mod pallet {
 					// let is_passed = Self::_challenge_aggregate(_cluster_id, _era_id,
 					// &defective_aggregate)?;
 					if should_challenge {
-						is_passed = Self::_challenge_aggregate_proto(
+						is_passed = Self::challenge_aggregate_proto(
 							_cluster_id,
 							_era_id,
 							&defective_aggregate,
@@ -1798,7 +1798,7 @@ pub mod pallet {
 			);
 
 			let aggregate_key = aggregate.get_key();
-			let merkle_node_ids = Self::_find_random_merkle_node_ids(
+			let merkle_node_ids = Self::find_random_merkle_node_ids(
 				number_of_identifiers.into(),
 				aggregate.get_number_of_leaves(),
 				aggregate_key.clone(),
@@ -1888,7 +1888,7 @@ pub mod pallet {
 			Ok(is_matched)
 		}
 
-		pub(crate) fn _challenge_aggregate_proto<A: Aggregate>(
+		pub(crate) fn challenge_aggregate_proto<A: Aggregate>(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			aggregate: &A,
@@ -1900,7 +1900,7 @@ pub mod pallet {
 			);
 
 			let aggregate_key = aggregate.get_key();
-			let merkle_node_ids = Self::_find_random_merkle_node_ids(
+			let merkle_node_ids = Self::find_random_merkle_node_ids(
 				number_of_identifiers.into(),
 				aggregate.get_number_of_leaves(),
 				aggregate_key.clone(),
@@ -2006,7 +2006,7 @@ pub mod pallet {
 			Ok(resulting_hash)
 		}
 
-		pub(crate) fn _find_random_merkle_node_ids(
+		pub(crate) fn find_random_merkle_node_ids(
 			number_of_identifiers: usize,
 			number_of_leaves: u64,
 			aggregate_key: AggregateKey,

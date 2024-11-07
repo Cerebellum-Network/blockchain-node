@@ -2978,7 +2978,7 @@ fn test_find_random_merkle_node_ids() {
 
 		let number_of_leaves = deffective_bucket_sub_aggregate.get_number_of_leaves();
 
-		let ids = DdcVerification::_find_random_merkle_node_ids(
+		let ids = DdcVerification::find_random_merkle_node_ids(
 			3,
 			number_of_leaves,
 			deffective_bucket_sub_aggregate.get_key(),
