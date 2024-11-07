@@ -299,8 +299,8 @@ where
 		}
 
 		if content_owner == account_2 {
-			assert!(USER2_BALANCE < amount);
-			amount_to_charge = USER2_BALANCE; // for user 2
+			assert!(CUSTOMER2_BALANCE < amount);
+			amount_to_charge = CUSTOMER2_BALANCE; // for user 2
 		}
 
 		let charge = amount_to_charge.saturated_into::<BalanceOf<T>>();
@@ -349,8 +349,10 @@ pub const VALIDATOR2_SCORE: u64 = 45;
 pub const VALIDATOR3_SCORE: u64 = 25;
 
 pub const PARTIAL_CHARGE: u128 = 10;
-pub const USER2_BALANCE: u128 = 5;
-pub const USER3_BALANCE: u128 = 1000;
+// < PARTIAL_CHARGE
+pub const CUSTOMER2_BALANCE: u128 = 5;
+// > PARTIAL_CHARGE
+pub const CUSTOMER3_BALANCE: u128 = 1000;
 
 pub const NODE1_PUB_KEY_32: AccountId32 = AccountId32::new([
 	48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
@@ -728,8 +730,8 @@ impl ExtBuilder {
 		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
 				(CUSTOMER1_KEY_32, 10000000000000000000000000000),
-				(CUSTOMER2_KEY_32, USER2_BALANCE), // < PARTIAL_CHARGE
-				(CUSTOMER3_KEY_32, USER3_BALANCE), // > PARTIAL_CHARGE
+				(CUSTOMER2_KEY_32, CUSTOMER2_BALANCE),
+				(CUSTOMER3_KEY_32, CUSTOMER3_BALANCE),
 				(CUSTOMER4_KEY_32, 1000000000000000000000000),
 				(CUSTOMER5_KEY_32, 1000000000000000000000000),
 				(CUSTOMER6_KEY_32, 1000000000000000000000000),

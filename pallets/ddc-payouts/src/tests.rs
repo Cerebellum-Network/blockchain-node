@@ -4,7 +4,7 @@ use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use ddc_primitives::ClusterId;
 use frame_support::{assert_noop, assert_ok, error::BadOrigin, traits::Randomness};
 use sp_core::H256;
-use sp_runtime::{AccountId32, Perquintill};
+use sp_runtime::Perquintill;
 
 use super::{mock::*, *};
 
@@ -411,19 +411,20 @@ fn send_charging_customers_batch_works() {
 		System::set_block_number(1);
 
 		let dac_account = AccountId::from([123; 32]);
-		let user1 = AccountId::from([1; 32]);
-		let user2_debtor = AccountId::from([2; 32]);
-		let user3_debtor = AccountId::from([3; 32]);
-		let user4 = AccountId::from([4; 32]);
+		let user1: AccountId = CUSTOMER1_KEY_32;
+		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
+		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
+		let user4: AccountId = CUSTOMER4_KEY_32;
 		let cluster_id = ClusterId::from([12; 20]);
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
-		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
-		let bucket_id3: BucketId = 3;
-		let bucket_id4: BucketId = 4;
+
+		let bucket_id1: BucketId = BUCKET_ID1;
+		let bucket_id2: BucketId = BUCKET_ID2;
+		let bucket_id3: BucketId = BUCKET_ID3;
+		let bucket_id4: BucketId = BUCKET_ID4;
 
 		let usage1 = CustomerUsage {
 			// should pass without debt
@@ -495,10 +496,10 @@ fn send_charging_customers_batch_works() {
 		let usage4_charge = calculate_charge_for_month(cluster_id, usage4.clone());
 		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_month(cluster_id, usage2.clone());
-		let mut debt = expected_charge2 - USER2_BALANCE;
+		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
 
-		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let ratio = Perquintill::from_rational(CUSTOMER2_BALANCE, expected_charge2);
 		let mut charge2 = calculate_charge_parts_for_month(cluster_id, usage2);
 		charge2.storage = ratio * charge2.storage;
 		charge2.transfer = ratio * charge2.transfer;
@@ -519,7 +520,7 @@ fn send_charging_customers_batch_works() {
 				customer_id: user2_debtor.clone(),
 				bucket_id: bucket_id2,
 				batch_index,
-				charged: USER2_BALANCE,
+				charged: CUSTOMER2_BALANCE,
 				expected_to_charge: expected_charge2,
 			}
 			.into(),
@@ -672,20 +673,15 @@ fn end_charging_customers_works_small_usage_1_hour() {
 		System::set_block_number(1);
 
 		let dac_account = AccountId::from([123; 32]);
-		let user6 = AccountId::from([6; 32]);
-		let user7 = AccountId::from([7; 32]);
+		let user6: AccountId = CUSTOMER6_KEY_32;
+		let user7 = CUSTOMER7_KEY_32;
 		let cluster_id = HIGH_FEES_CLUSTER_ID;
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
-		let bucket_id6: BucketId = 6;
-		let bucket_id7: BucketId = 7;
+		let bucket_id6: BucketId = BUCKET_ID6;
+		let bucket_id7: BucketId = BUCKET_ID7;
 
 		let usage6 = CustomerUsage {
 			transferred_bytes: 0,
@@ -878,18 +874,20 @@ fn send_charging_customers_batch_works_for_day() {
 		System::set_block_number(1);
 
 		let dac_account = AccountId::from([123; 32]);
-		let user1 = AccountId::from([1; 32]);
-		let user2_debtor = AccountId::from([2; 32]);
-		let user3_debtor = AccountId::from([3; 32]);
-		let user4 = AccountId::from([4; 32]);
+		let user1: AccountId = CUSTOMER1_KEY_32;
+		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
+		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
+		let user4: AccountId = CUSTOMER4_KEY_32;
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
-		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
-		let bucket_id3: BucketId = 3;
-		let bucket_id4: BucketId = 4;
+		let bucket_id1: BucketId = BUCKET_ID1;
+		let bucket_id2: BucketId = BUCKET_ID2;
+		let bucket_id3: BucketId = BUCKET_ID3;
+		let bucket_id4: BucketId = BUCKET_ID4;
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
+
 		let usage1 = CustomerUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
@@ -918,13 +916,6 @@ fn send_charging_customers_batch_works_for_day() {
 			number_of_puts: 3456345,
 			number_of_gets: 242334563456423,
 		};
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
-
 		let payers1 = vec![
 			(node_key.clone(), bucket_id2, usage2.clone()),
 			(node_key.clone(), bucket_id4, usage4.clone()),
@@ -968,10 +959,10 @@ fn send_charging_customers_batch_works_for_day() {
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
 		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
-		let mut debt = expected_charge2 - USER2_BALANCE;
+		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
 
-		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let ratio = Perquintill::from_rational(CUSTOMER2_BALANCE, expected_charge2);
 		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
 		charge2.storage = ratio * charge2.storage;
 		charge2.transfer = ratio * charge2.transfer;
@@ -992,7 +983,7 @@ fn send_charging_customers_batch_works_for_day() {
 				customer_id: user2_debtor.clone(),
 				bucket_id: bucket_id2,
 				batch_index,
-				charged: USER2_BALANCE,
+				charged: CUSTOMER2_BALANCE,
 				expected_to_charge: expected_charge2,
 			}
 			.into(),
@@ -1145,25 +1136,19 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		System::set_block_number(1);
 
 		let dac_account = AccountId::from([123; 32]);
-		let user1 = AccountId::from([1; 32]);
-		let user2_debtor = AccountId::from([2; 32]);
-		let user3_debtor = AccountId::from([3; 32]);
-		let user4 = AccountId::from([4; 32]);
+		let user1: AccountId = CUSTOMER1_KEY_32;
+		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
+		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
+		let user4: AccountId = CUSTOMER4_KEY_32;
 		let cluster_id = STORAGE_ZERO_CLUSTER_ID;
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
-
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
-		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
-		let bucket_id3: BucketId = 3;
-		let bucket_id4: BucketId = 4;
+		let bucket_id1: BucketId = BUCKET_ID1;
+		let bucket_id2: BucketId = BUCKET_ID2;
+		let bucket_id3: BucketId = BUCKET_ID3;
+		let bucket_id4: BucketId = BUCKET_ID4;
 
 		let usage1 = CustomerUsage {
 			// should pass without debt
@@ -1236,10 +1221,10 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
 		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
-		let mut debt = expected_charge2 - USER2_BALANCE;
+		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
 
-		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let ratio = Perquintill::from_rational(CUSTOMER2_BALANCE, expected_charge2);
 		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
 		charge2.storage = ratio * charge2.storage;
 		charge2.transfer = ratio * charge2.transfer;
@@ -1260,7 +1245,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 				customer_id: user2_debtor.clone(),
 				bucket_id: bucket_id2,
 				batch_index,
-				charged: USER2_BALANCE,
+				charged: CUSTOMER2_BALANCE,
 				expected_to_charge: expected_charge2,
 			}
 			.into(),
@@ -1413,24 +1398,19 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		System::set_block_number(1);
 
 		let dac_account = AccountId::from([123; 32]);
-		let user1 = AccountId::from([1; 32]);
-		let user2_debtor = AccountId::from([2; 32]);
-		let user3_debtor = AccountId::from([3; 32]);
-		let user4 = AccountId::from([4; 32]);
+		let user1: AccountId = CUSTOMER1_KEY_32;
+		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
+		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
+		let user4: AccountId = CUSTOMER4_KEY_32;
 		let cluster_id = STREAM_ZERO_CLUSTER_ID;
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
-		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
-		let bucket_id3: BucketId = 3;
-		let bucket_id4: BucketId = 4;
+		let bucket_id1: BucketId = BUCKET_ID1;
+		let bucket_id2: BucketId = BUCKET_ID2;
+		let bucket_id3: BucketId = BUCKET_ID3;
+		let bucket_id4: BucketId = BUCKET_ID4;
 
 		let usage1 = CustomerUsage {
 			// should pass without debt
@@ -1502,10 +1482,10 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
 		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
-		let mut debt = expected_charge2 - USER2_BALANCE;
+		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
 
-		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let ratio = Perquintill::from_rational(CUSTOMER2_BALANCE, expected_charge2);
 		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
 		charge2.storage = ratio * charge2.storage;
 		charge2.transfer = ratio * charge2.transfer;
@@ -1526,7 +1506,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 				customer_id: user2_debtor.clone(),
 				bucket_id: bucket_id2,
 				batch_index,
-				charged: USER2_BALANCE,
+				charged: CUSTOMER2_BALANCE,
 				expected_to_charge: expected_charge2,
 			}
 			.into(),
@@ -1679,24 +1659,19 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		System::set_block_number(1);
 
 		let dac_account = AccountId::from([123; 32]);
-		let user1 = AccountId::from([1; 32]);
-		let user2_debtor = AccountId::from([2; 32]);
-		let user3_debtor = AccountId::from([3; 32]);
-		let user4 = AccountId::from([4; 32]);
+		let user1: AccountId = CUSTOMER1_KEY_32;
+		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
+		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
+		let user4: AccountId = CUSTOMER4_KEY_32;
 		let cluster_id = GET_ZERO_CLUSTER_ID;
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
-		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
-		let bucket_id3: BucketId = 3;
-		let bucket_id4: BucketId = 4;
+		let bucket_id1: BucketId = BUCKET_ID1;
+		let bucket_id2: BucketId = BUCKET_ID2;
+		let bucket_id3: BucketId = BUCKET_ID3;
+		let bucket_id4: BucketId = BUCKET_ID4;
 
 		let usage1 = CustomerUsage {
 			// should pass without debt
@@ -1769,10 +1744,10 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
 		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
-		let mut debt = expected_charge2 - USER2_BALANCE;
+		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
 
-		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let ratio = Perquintill::from_rational(CUSTOMER2_BALANCE, expected_charge2);
 		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
 		charge2.storage = ratio * charge2.storage;
 		charge2.transfer = ratio * charge2.transfer;
@@ -1793,7 +1768,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 				customer_id: user2_debtor.clone(),
 				bucket_id: bucket_id2,
 				batch_index,
-				charged: USER2_BALANCE,
+				charged: CUSTOMER2_BALANCE,
 				expected_to_charge: expected_charge2,
 			}
 			.into(),
@@ -1946,24 +1921,19 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		System::set_block_number(1);
 
 		let dac_account = AccountId::from([123; 32]);
-		let user1 = AccountId::from([1; 32]);
-		let user2_debtor = AccountId::from([2; 32]);
-		let user3_debtor = AccountId::from([3; 32]);
-		let user4 = AccountId::from([4; 32]);
+		let user1: AccountId = CUSTOMER1_KEY_32;
+		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
+		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
+		let user4: AccountId = CUSTOMER4_KEY_32;
 		let cluster_id = PUT_ZERO_CLUSTER_ID;
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
-		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
-		let bucket_id3: BucketId = 3;
-		let bucket_id4: BucketId = 4;
+		let bucket_id1: BucketId = BUCKET_ID1;
+		let bucket_id2: BucketId = BUCKET_ID2;
+		let bucket_id3: BucketId = BUCKET_ID3;
+		let bucket_id4: BucketId = BUCKET_ID4;
 
 		let usage1 = CustomerUsage {
 			// should pass without debt
@@ -2036,10 +2006,10 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
 		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
-		let mut debt = expected_charge2 - USER2_BALANCE;
+		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
 
-		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let ratio = Perquintill::from_rational(CUSTOMER2_BALANCE, expected_charge2);
 		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
 		charge2.storage = ratio * charge2.storage;
 		charge2.transfer = ratio * charge2.transfer;
@@ -2060,7 +2030,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 				customer_id: user2_debtor.clone(),
 				bucket_id: bucket_id2,
 				batch_index,
-				charged: USER2_BALANCE,
+				charged: CUSTOMER2_BALANCE,
 				expected_to_charge: expected_charge2,
 			}
 			.into(),
@@ -2213,24 +2183,19 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		System::set_block_number(1);
 
 		let dac_account = AccountId::from([123; 32]);
-		let user1 = AccountId::from([1; 32]);
-		let user2_debtor = AccountId::from([2; 32]);
-		let user3_debtor = AccountId::from([3; 32]);
-		let user4 = AccountId::from([4; 32]);
+		let user1: AccountId = CUSTOMER1_KEY_32;
+		let user2_debtor: AccountId = CUSTOMER2_KEY_32;
+		let user3_debtor: AccountId = CUSTOMER3_KEY_32;
+		let user4: AccountId = CUSTOMER4_KEY_32;
 		let cluster_id = STORAGE_STREAM_ZERO_CLUSTER_ID;
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 3;
 		let mut batch_index = 0;
-		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
-		let bucket_id3: BucketId = 3;
-		let bucket_id4: BucketId = 4;
+		let bucket_id1: BucketId = BUCKET_ID1;
+		let bucket_id2: BucketId = BUCKET_ID2;
+		let bucket_id3: BucketId = BUCKET_ID3;
+		let bucket_id4: BucketId = BUCKET_ID4;
 
 		let usage1 = CustomerUsage {
 			// should pass without debt
@@ -2302,10 +2267,10 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
 		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
-		let mut debt = expected_charge2 - USER2_BALANCE;
+		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
 
-		let ratio = Perquintill::from_rational(USER2_BALANCE, expected_charge2);
+		let ratio = Perquintill::from_rational(CUSTOMER2_BALANCE, expected_charge2);
 		let mut charge2 = calculate_charge_parts_for_day(cluster_id, usage2);
 		charge2.storage = ratio * charge2.storage;
 		charge2.transfer = ratio * charge2.transfer;
@@ -2326,7 +2291,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 				customer_id: user2_debtor.clone(),
 				bucket_id: bucket_id2,
 				batch_index,
-				charged: USER2_BALANCE,
+				charged: CUSTOMER2_BALANCE,
 				expected_to_charge: expected_charge2,
 			}
 			.into(),
@@ -2477,20 +2442,13 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 fn send_charging_customers_batch_works_zero_fees() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
-
 		let dac_account = AccountId::from([123; 32]);
-		let user5 = AccountId::from([5; 32]);
 		let cluster_id = ONE_CLUSTER_ID;
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
-		let bucket_id5: BucketId = 5;
+		let bucket_id5: BucketId = BUCKET_ID5;
 		let usage5 = CustomerUsage {
 			// should pass without debt
 			transferred_bytes: 1024,
@@ -2565,18 +2523,12 @@ fn end_charging_customers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = AccountId::from([100; 32]);
 		let dac_account = AccountId::from([123; 32]);
-		let user1 = AccountId::from([1; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 2;
 		let batch_index = 1;
-		let bucket_id1: BucketId = 1;
+		let bucket_id1: BucketId = BUCKET_ID1;
 
 		let payers = vec![(node_key.clone(), bucket_id1, CustomerUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
@@ -2665,18 +2617,13 @@ fn end_charging_customers_works() {
 		System::set_block_number(1);
 
 		let dac_account = AccountId::from([123; 32]);
-		let user1 = AccountId::from([1; 32]);
+		let user1 = CUSTOMER1_KEY_32;
 		let cluster_id = ClusterId::from([12; 20]);
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
-		let bucket_id1: BucketId = 1;
+		let bucket_id1: BucketId = BUCKET_ID1;
 		let usage1 = CustomerUsage {
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
@@ -2854,18 +2801,13 @@ fn end_charging_customers_works_zero_fees() {
 		System::set_block_number(1);
 
 		let dac_account = AccountId::from([123; 32]);
-		let user1 = AccountId::from([1; 32]);
+		let user1: AccountId = CUSTOMER1_KEY_32;
 		let cluster_id = ClusterId::zero();
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
-		let bucket_id1: BucketId = 1;
+		let bucket_id1: BucketId = BUCKET_ID1;
 		let usage1 = CustomerUsage {
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
@@ -2987,18 +2929,12 @@ fn begin_rewarding_providers_fails_uninitialised() {
 	ExtBuilder.build_and_execute(|| {
 		let root_account = AccountId::from([1; 32]);
 		let dac_account = AccountId::from([2; 32]);
-		let user1 = AccountId::from([3; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 2;
 		let batch_index = 1;
-		let bucket_id1: BucketId = 1;
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let bucket_id1: BucketId = BUCKET_ID1;
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let payers = vec![(node_key.clone(), bucket_id1, CustomerUsage::default())];
 		let node_usage = NodeUsage::default();
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
@@ -3128,18 +3064,12 @@ fn begin_rewarding_providers_works() {
 		System::set_block_number(1);
 
 		let dac_account = AccountId::from([123; 32]);
-		let user1 = AccountId::from([1; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
-		let bucket_id1: BucketId = 1;
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let bucket_id1: BucketId = BUCKET_ID1;
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let total_node_usage = NodeUsage::default();
 		let payers = vec![(node_key.clone(), bucket_id1, CustomerUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
@@ -3365,16 +3295,9 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 fn send_rewarding_providers_batch_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
-
 		let dac_account = AccountId::from([123; 32]);
-		let user1 = AccountId::from([1; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 0;
 		let max_node_batch_index = 1;
@@ -3850,7 +3773,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 					Event::Charged {
 						cluster_id,
 						era,
-						bucket_id: bucket_id.clone(),
+						bucket_id: *bucket_id,
 						customer_id: customer_id.clone(),
 						batch_index: batch_user_index,
 						amount: charge,
@@ -4171,7 +4094,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 					Event::Charged {
 						cluster_id,
 						era,
-						bucket_id: bucket_id.clone(),
+						bucket_id: *bucket_id,
 						customer_id: customer_id.clone(),
 						batch_index: batch_user_index,
 						amount: charge,
@@ -4488,7 +4411,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 						cluster_id,
 						era,
 						customer_id: customer_id.clone(),
-						bucket_id: bucket_id.clone(),
+						bucket_id: *bucket_id,
 						batch_index: batch_user_index,
 						amount: charge,
 					}
@@ -4767,7 +4690,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 					Event::Charged {
 						cluster_id,
 						era,
-						bucket_id: bucket_id.clone(),
+						bucket_id: *bucket_id,
 						customer_id: customer_id.clone(),
 						batch_index: batch_user_index,
 						amount: charge,
@@ -5060,20 +4983,13 @@ fn end_rewarding_providers_works() {
 		System::set_block_number(1);
 
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 		let dac_account = AccountId::from([2; 32]);
-		let user1 = AccountId::from([1; 32]);
 		let cluster_id = ClusterId::from([12; 20]);
-		let node_id =
-			String::from("0x302f937df3a0ec4c658e8122439e748d227442ebd493cef521a1e14943844395");
-		let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-			48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-			235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-		]));
+		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let era = 100;
 		let max_batch_index = 0;
 		let batch_index = 0;
@@ -5347,7 +5263,6 @@ fn end_billing_report_works() {
 		System::set_block_number(1);
 
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
