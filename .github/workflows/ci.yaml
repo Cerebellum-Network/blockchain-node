@@ -17,7 +17,7 @@ permissions:
 jobs:
   format:
     name: Check Lints
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
@@ -36,7 +36,7 @@ jobs:
   check:
     name: Cargo check
     needs: format
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
       - name: Install linux dependencies
@@ -57,7 +57,7 @@ jobs:
       - name: Check Try-Runtime
         run: |
           try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-          on-runtime-upgrade --disable-idempotency-checks live --uri wss://archive.mainnet.cere.network:443
+          on-runtime-upgrade --disable-idempotency-checks live --uri wss://archive.qanet.cere.network:443
       - name: Run dev chain
         run: |
           timeout --preserve-status 30s ./target/release/cere --dev
@@ -69,7 +69,7 @@ jobs:
   clippy:
     name: Run Clippy
     needs: format
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
       - name: Install linux dependencies
@@ -96,7 +96,7 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
