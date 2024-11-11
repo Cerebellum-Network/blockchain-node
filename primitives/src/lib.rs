@@ -323,7 +323,8 @@ pub mod sr25519 {
 	mod app_sr25519 {
 		use sp_application_crypto::{app_crypto, sr25519};
 
-		use crate::DAC_VERIFICATION_KEY_TYPE;
+		use crate::{String, DAC_VERIFICATION_KEY_TYPE};
+
 		app_crypto!(sr25519, DAC_VERIFICATION_KEY_TYPE);
 	}
 
@@ -342,7 +343,8 @@ pub mod crypto {
 		MultiSignature, MultiSigner,
 	};
 
-	use super::DAC_VERIFICATION_KEY_TYPE;
+	use crate::{String, DAC_VERIFICATION_KEY_TYPE};
+
 	app_crypto!(sr25519, DAC_VERIFICATION_KEY_TYPE);
 	pub struct OffchainIdentifierId;
 	impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for OffchainIdentifierId {
