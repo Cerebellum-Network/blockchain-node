@@ -15,7 +15,7 @@ use sp_io::TestExternalities;
 use sp_keystore::{testing::MemoryKeystore, Keystore, KeystoreExt};
 use sp_runtime::{offchain::Duration, AccountId32};
 
-use crate::{mock::*, Error, NodeAggregateResponse, *};
+use crate::{mock::*, Error, *};
 
 #[allow(dead_code)]
 fn register_validators(validators: Vec<AccountId32>) {
@@ -42,7 +42,7 @@ fn get_validators() -> Vec<AccountId32> {
 	vec![validator1, validator2, validator3, validator4, validator5]
 }
 
-fn get_node_activities() -> Vec<NodeAggregate> {
+fn get_node_activities() -> Vec<aggregator_client::json::NodeAggregate> {
 	let aggregator = AggregatorInfo {
 		node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
 		node_params: StorageNodeParams {
@@ -56,7 +56,7 @@ fn get_node_activities() -> Vec<NodeAggregate> {
 		},
 	};
 
-	let node1 = NodeAggregate {
+	let node1 = aggregator_client::json::NodeAggregate {
 		node_id: "0".to_string(),
 		stored_bytes: -100,
 		transferred_bytes: 50,
@@ -64,7 +64,7 @@ fn get_node_activities() -> Vec<NodeAggregate> {
 		number_of_gets: 20,
 		aggregator: aggregator.clone(),
 	};
-	let node2 = NodeAggregate {
+	let node2 = aggregator_client::json::NodeAggregate {
 		node_id: "1".to_string(),
 		stored_bytes: -101,
 		transferred_bytes: 51,
@@ -72,7 +72,7 @@ fn get_node_activities() -> Vec<NodeAggregate> {
 		number_of_gets: 21,
 		aggregator: aggregator.clone(),
 	};
-	let node3 = NodeAggregate {
+	let node3 = aggregator_client::json::NodeAggregate {
 		node_id: "2".to_string(),
 		stored_bytes: 102,
 		transferred_bytes: 52,
@@ -80,7 +80,7 @@ fn get_node_activities() -> Vec<NodeAggregate> {
 		number_of_gets: 22,
 		aggregator: aggregator.clone(),
 	};
-	let node4 = NodeAggregate {
+	let node4 = aggregator_client::json::NodeAggregate {
 		node_id: "3".to_string(),
 		stored_bytes: 103,
 		transferred_bytes: 53,
@@ -88,7 +88,7 @@ fn get_node_activities() -> Vec<NodeAggregate> {
 		number_of_gets: 23,
 		aggregator: aggregator.clone(),
 	};
-	let node5 = NodeAggregate {
+	let node5 = aggregator_client::json::NodeAggregate {
 		node_id: "4".to_string(),
 		stored_bytes: 104,
 		transferred_bytes: 54,
@@ -116,15 +116,15 @@ fn fetch_node_aggregates_works() {
 		let port = 80;
 		let era_id = 1;
 
-		// Create a sample NodeAggregateResponse instance
-		let node_activity1 = NodeAggregateResponse {
+		// Create a sample aggregator_client::json::NodeAggregateResponse instance
+		let node_activity1 = aggregator_client::json::NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 		};
-		let node_activity2 = NodeAggregateResponse {
+		let node_activity2 = aggregator_client::json::NodeAggregateResponse {
 			node_id: "2".to_string(),
 			stored_bytes: 110,
 			transferred_bytes: 510,
@@ -195,14 +195,14 @@ fn fetch_bucket_aggregates_works() {
 		let port = 80;
 		let era_id = 1;
 
-		// Create a sample NodeAggregateResponse instance
-		let bucket_aggregate1 = BucketAggregateResponse {
+		// Create a sample aggregator_client::json::NodeAggregateResponse instance
+		let bucket_aggregate1 = aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 111,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -210,13 +210,13 @@ fn fetch_bucket_aggregates_works() {
 				number_of_gets: 20,
 			}],
 		};
-		let bucket_aggregate2 = BucketAggregateResponse {
+		let bucket_aggregate2 = aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 1000,
 			transferred_bytes: 500,
 			number_of_puts: 100,
 			number_of_gets: 200,
 			bucket_id: 222,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 1000,
 				transferred_bytes: 500,
@@ -344,13 +344,13 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 
 	let resp1 = (
 		aggregator1,
-		vec![BucketAggregateResponse {
+		vec![aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -362,13 +362,13 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 
 	let resp2 = (
 		aggregator2,
-		vec![BucketAggregateResponse {
+		vec![aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -380,13 +380,13 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 
 	let resp3 = (
 		aggregator3,
-		vec![BucketAggregateResponse {
+		vec![aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -468,13 +468,13 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 
 	let resp1 = (
 		aggregator1,
-		vec![BucketAggregateResponse {
+		vec![aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -486,13 +486,13 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 
 	let resp2 = (
 		aggregator2,
-		vec![BucketAggregateResponse {
+		vec![aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 200,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 50,
@@ -504,13 +504,13 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 
 	let resp3 = (
 		aggregator3,
-		vec![BucketAggregateResponse {
+		vec![aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -592,13 +592,13 @@ fn buckets_sub_aggregates_in_others_merged() {
 
 	let resp1 = (
 		aggregator1,
-		vec![BucketAggregateResponse {
+		vec![aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -610,13 +610,13 @@ fn buckets_sub_aggregates_in_others_merged() {
 
 	let resp2 = (
 		aggregator2,
-		vec![BucketAggregateResponse {
+		vec![aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 200,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 50,
@@ -628,13 +628,13 @@ fn buckets_sub_aggregates_in_others_merged() {
 
 	let resp3 = (
 		aggregator3,
-		vec![BucketAggregateResponse {
+		vec![aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -717,13 +717,13 @@ fn buckets_sub_aggregates_in_others_merged_2() {
 
 	let resp1 = (
 		aggregator1,
-		vec![BucketAggregateResponse {
+		vec![aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -735,13 +735,13 @@ fn buckets_sub_aggregates_in_others_merged_2() {
 
 	let resp2 = (
 		aggregator2,
-		vec![BucketAggregateResponse {
+		vec![aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 200,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 2,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 200,
 				transferred_bytes: 500,
@@ -753,13 +753,13 @@ fn buckets_sub_aggregates_in_others_merged_2() {
 
 	let resp3 = (
 		aggregator3,
-		vec![BucketAggregateResponse {
+		vec![aggregator_client::json::BucketAggregateResponse {
 			stored_bytes: 100,
 			transferred_bytes: 50,
 			number_of_puts: 10,
 			number_of_gets: 20,
 			bucket_id: 1,
-			sub_aggregates: vec![BucketSubAggregateResponse {
+			sub_aggregates: vec![aggregator_client::json::BucketSubAggregateResponse {
 				NodeID: "1".to_string(),
 				stored_bytes: 100,
 				transferred_bytes: 50,
@@ -848,7 +848,7 @@ fn nodes_aggregates_in_consensus_merged() {
 
 	let resp1 = (
 		aggregator1,
-		vec![NodeAggregateResponse {
+		vec![aggregator_client::json::NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -859,7 +859,7 @@ fn nodes_aggregates_in_consensus_merged() {
 
 	let resp2 = (
 		aggregator2,
-		vec![NodeAggregateResponse {
+		vec![aggregator_client::json::NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -870,7 +870,7 @@ fn nodes_aggregates_in_consensus_merged() {
 
 	let resp3 = (
 		aggregator3,
-		vec![NodeAggregateResponse {
+		vec![aggregator_client::json::NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -951,7 +951,7 @@ fn nodes_aggregates_in_quorum_merged() {
 
 	let resp1 = (
 		aggregator1,
-		vec![NodeAggregateResponse {
+		vec![aggregator_client::json::NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -962,7 +962,7 @@ fn nodes_aggregates_in_quorum_merged() {
 
 	let resp2 = (
 		aggregator2,
-		vec![NodeAggregateResponse {
+		vec![aggregator_client::json::NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 200,
 			transferred_bytes: 50,
@@ -973,7 +973,7 @@ fn nodes_aggregates_in_quorum_merged() {
 
 	let resp3 = (
 		aggregator3,
-		vec![NodeAggregateResponse {
+		vec![aggregator_client::json::NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -1054,7 +1054,7 @@ fn nodes_aggregates_in_others_merged() {
 
 	let resp1 = (
 		aggregator1,
-		vec![NodeAggregateResponse {
+		vec![aggregator_client::json::NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -1065,7 +1065,7 @@ fn nodes_aggregates_in_others_merged() {
 
 	let resp2 = (
 		aggregator2,
-		vec![NodeAggregateResponse {
+		vec![aggregator_client::json::NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 200,
 			transferred_bytes: 50,
@@ -1076,7 +1076,7 @@ fn nodes_aggregates_in_others_merged() {
 
 	let resp3 = (
 		aggregator3,
-		vec![NodeAggregateResponse {
+		vec![aggregator_client::json::NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -1158,7 +1158,7 @@ fn nodes_aggregates_in_others_merged_2() {
 
 	let resp1 = (
 		aggregator1,
-		vec![NodeAggregateResponse {
+		vec![aggregator_client::json::NodeAggregateResponse {
 			node_id: "2".to_string(),
 			stored_bytes: 1000,
 			transferred_bytes: 500,
@@ -1169,7 +1169,7 @@ fn nodes_aggregates_in_others_merged_2() {
 
 	let resp2 = (
 		aggregator2,
-		vec![NodeAggregateResponse {
+		vec![aggregator_client::json::NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 200,
 			transferred_bytes: 50,
@@ -1180,7 +1180,7 @@ fn nodes_aggregates_in_others_merged_2() {
 
 	let resp3 = (
 		aggregator3,
-		vec![NodeAggregateResponse {
+		vec![aggregator_client::json::NodeAggregateResponse {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -1241,7 +1241,7 @@ fn buckets_sub_aggregates_grouped_by_consistency() {
 	};
 
 	let buckets_sub_aggregates = vec![
-		BucketSubAggregate {
+		aggregator_client::json::BucketSubAggregate {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
@@ -1250,7 +1250,7 @@ fn buckets_sub_aggregates_grouped_by_consistency() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		BucketSubAggregate {
+		aggregator_client::json::BucketSubAggregate {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
@@ -1259,7 +1259,7 @@ fn buckets_sub_aggregates_grouped_by_consistency() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		BucketSubAggregate {
+		aggregator_client::json::BucketSubAggregate {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
@@ -1308,7 +1308,7 @@ fn buckets_sub_aggregates_grouped_by_consistency_2() {
 	};
 
 	let buckets_sub_aggregates = vec![
-		BucketSubAggregate {
+		aggregator_client::json::BucketSubAggregate {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
@@ -1317,7 +1317,7 @@ fn buckets_sub_aggregates_grouped_by_consistency_2() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		BucketSubAggregate {
+		aggregator_client::json::BucketSubAggregate {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
@@ -1326,7 +1326,7 @@ fn buckets_sub_aggregates_grouped_by_consistency_2() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		BucketSubAggregate {
+		aggregator_client::json::BucketSubAggregate {
 			bucket_id: 1,
 			node_id: "1".to_string(),
 			stored_bytes: 100,
@@ -1335,7 +1335,7 @@ fn buckets_sub_aggregates_grouped_by_consistency_2() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		BucketSubAggregate {
+		aggregator_client::json::BucketSubAggregate {
 			bucket_id: 2,
 			node_id: "2".to_string(),
 			stored_bytes: 110,
@@ -1344,7 +1344,7 @@ fn buckets_sub_aggregates_grouped_by_consistency_2() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		BucketSubAggregate {
+		aggregator_client::json::BucketSubAggregate {
 			bucket_id: 2,
 			node_id: "2".to_string(),
 			stored_bytes: 110,
@@ -1353,7 +1353,7 @@ fn buckets_sub_aggregates_grouped_by_consistency_2() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		BucketSubAggregate {
+		aggregator_client::json::BucketSubAggregate {
 			bucket_id: 2,
 			node_id: "2".to_string(),
 			stored_bytes: 110,
@@ -1412,7 +1412,7 @@ fn nodes_aggregates_grouped_by_consistency() {
 	};
 
 	let nodes_aggregates = vec![
-		NodeAggregate {
+		aggregator_client::json::NodeAggregate {
 			node_id: "0".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -1420,7 +1420,7 @@ fn nodes_aggregates_grouped_by_consistency() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		NodeAggregate {
+		aggregator_client::json::NodeAggregate {
 			node_id: "0".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -1428,7 +1428,7 @@ fn nodes_aggregates_grouped_by_consistency() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		NodeAggregate {
+		aggregator_client::json::NodeAggregate {
 			node_id: "0".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -1475,7 +1475,7 @@ fn nodes_aggregates_grouped_by_consistency_2() {
 	};
 
 	let nodes_aggregates = vec![
-		NodeAggregate {
+		aggregator_client::json::NodeAggregate {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -1483,7 +1483,7 @@ fn nodes_aggregates_grouped_by_consistency_2() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		NodeAggregate {
+		aggregator_client::json::NodeAggregate {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -1491,7 +1491,7 @@ fn nodes_aggregates_grouped_by_consistency_2() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		NodeAggregate {
+		aggregator_client::json::NodeAggregate {
 			node_id: "1".to_string(),
 			stored_bytes: 100,
 			transferred_bytes: 50,
@@ -1499,7 +1499,7 @@ fn nodes_aggregates_grouped_by_consistency_2() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		NodeAggregate {
+		aggregator_client::json::NodeAggregate {
 			node_id: "2".to_string(),
 			stored_bytes: 110,
 			transferred_bytes: 50,
@@ -1507,7 +1507,7 @@ fn nodes_aggregates_grouped_by_consistency_2() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		NodeAggregate {
+		aggregator_client::json::NodeAggregate {
 			node_id: "2".to_string(),
 			stored_bytes: 110,
 			transferred_bytes: 50,
@@ -1515,7 +1515,7 @@ fn nodes_aggregates_grouped_by_consistency_2() {
 			number_of_gets: 20,
 			aggregator: aggregator.clone(),
 		},
-		NodeAggregate {
+		aggregator_client::json::NodeAggregate {
 			node_id: "2".to_string(),
 			stored_bytes: 110,
 			transferred_bytes: 50,
@@ -1556,7 +1556,7 @@ fn empty_bucket_sub_aggregates() {
 	let redundancy_factor = 3;
 	let quorum = Percent::from_percent(67);
 
-	let empty = Vec::<BucketSubAggregate>::new();
+	let empty = Vec::<aggregator_client::json::BucketSubAggregate>::new();
 	let groups = DdcVerification::group_by_consistency(empty, redundancy_factor, quorum);
 
 	assert_eq!(groups.consensus.len(), 0);
@@ -1726,7 +1726,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 
 
         // Sub aggregates which are in consensus
-        let bucket_sub_aggregate_in_consensus = BucketSubAggregate {
+        let bucket_sub_aggregate_in_consensus = aggregator_client::json::BucketSubAggregate {
             bucket_id: 90235,
             node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318"
                 .to_string(),
@@ -1757,7 +1757,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
         );
 
         // Sub aggregates which are in quorum
-        let bucket_sub_aggregate_in_quorum = BucketSubAggregate {
+        let bucket_sub_aggregate_in_quorum = aggregator_client::json::BucketSubAggregate {
             bucket_id: 90235,
             node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
                 .to_string(),
@@ -1785,7 +1785,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
         );
 
         // Others sub aggregates
-        let bucket_sub_aggregate1_in_others = BucketSubAggregate {
+        let bucket_sub_aggregate1_in_others = aggregator_client::json::BucketSubAggregate {
             bucket_id: 90235,
             node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
                 .to_string(),
@@ -1799,7 +1799,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
             },
         };
 
-        let bucket_sub_aggregate2_in_others = BucketSubAggregate {
+        let bucket_sub_aggregate2_in_others = aggregator_client::json::BucketSubAggregate {
             bucket_id: 90235,
             node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa320"
                 .to_string(),
@@ -1988,7 +1988,7 @@ fn node_aggregates_are_fetched_and_grouped() {
         let groups =
             DdcVerification::group_nodes_aggregates_by_consistency(&cluster_id, era_id, aggregates_by_aggregator, redundancy_factor, aggregators_quorum);
         // Node aggregates which are in consensus
-        let node_aggregate_in_consensus = NodeAggregate {
+        let node_aggregate_in_consensus = aggregator_client::json::NodeAggregate {
             node_id: "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e"
                 .to_string(),
             stored_bytes: 675613289,
@@ -2010,7 +2010,7 @@ fn node_aggregates_are_fetched_and_grouped() {
         );
 
         // Node aggregates which are in quorum
-        let node_aggregate_in_quorum = NodeAggregate {
+        let node_aggregate_in_quorum = aggregator_client::json::NodeAggregate {
             node_id: "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a"
                 .to_string(),
             stored_bytes: 0,
@@ -2031,7 +2031,7 @@ fn node_aggregates_are_fetched_and_grouped() {
         );
 
         // Others nodes aggregates
-        let node_aggregate1_in_others = NodeAggregate {
+        let node_aggregate1_in_others = aggregator_client::json::NodeAggregate {
             node_id: "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a"
                 .to_string(),
             stored_bytes: 0,
@@ -2044,7 +2044,7 @@ fn node_aggregates_are_fetched_and_grouped() {
             },
         };
 
-        let node_aggregate2_in_others = NodeAggregate {
+        let node_aggregate2_in_others = aggregator_client::json::NodeAggregate {
             node_id: "0xfc28d5f5bb10212077a8654f62c4f8f0b5ab985fc322a51f5a3c75943b29194b"
                 .to_string(),
             stored_bytes: 675613289,
@@ -2109,7 +2109,7 @@ fn test_convert_to_batch_merkle_roots_empty() {
 	let result_roots = DdcVerification::convert_to_batch_merkle_roots(
 		&cluster_id,
 		era_id_1,
-		Vec::<Vec<NodeAggregate>>::new(),
+		Vec::<Vec<aggregator_client::json::NodeAggregate>>::new(),
 	)
 	.unwrap();
 	let expected_roots: Vec<ActivityHash> = Vec::<ActivityHash>::new();
@@ -2119,9 +2119,9 @@ fn test_convert_to_batch_merkle_roots_empty() {
 
 #[test]
 fn test_split_to_batches_empty_activities() {
-	let activities: Vec<NodeAggregate> = vec![];
+	let activities: Vec<aggregator_client::json::NodeAggregate> = vec![];
 	let result = DdcVerification::split_to_batches(&activities, 3);
-	assert_eq!(result, Vec::<Vec<NodeAggregate>>::new());
+	assert_eq!(result, Vec::<Vec<aggregator_client::json::NodeAggregate>>::new());
 }
 
 #[test]
@@ -2171,7 +2171,7 @@ fn test_split_to_batches_non_exact_batches() {
 	];
 	sorted_activities.sort();
 	let result = DdcVerification::split_to_batches(&activities, 2);
-	let mut expected: Vec<Vec<NodeAggregate>> = Vec::new();
+	let mut expected: Vec<Vec<aggregator_client::json::NodeAggregate>> = Vec::new();
 	expected.push(vec![sorted_activities[0].clone(), sorted_activities[1].clone()]);
 	expected.push(vec![sorted_activities[2].clone(), sorted_activities[3].clone()]);
 	expected.push(vec![sorted_activities[4].clone()]);
@@ -2863,7 +2863,7 @@ fn fetch_reward_activities_works() {
 		&cluster_id,
 		era_id,
 		vec![
-			NodeAggregate {
+			aggregator_client::json::NodeAggregate {
 				node_id: "0".to_string(),
 				stored_bytes: -100,
 				transferred_bytes: 50,
@@ -2874,7 +2874,7 @@ fn fetch_reward_activities_works() {
 					node_params: node_params.clone(),
 				},
 			},
-			NodeAggregate {
+			aggregator_client::json::NodeAggregate {
 				node_id: "1".to_string(),
 				stored_bytes: -101,
 				transferred_bytes: 51,
@@ -2885,7 +2885,7 @@ fn fetch_reward_activities_works() {
 					node_params: node_params.clone(),
 				},
 			},
-			NodeAggregate {
+			aggregator_client::json::NodeAggregate {
 				node_id: "2".to_string(),
 				stored_bytes: 102,
 				transferred_bytes: 52,
@@ -2896,7 +2896,7 @@ fn fetch_reward_activities_works() {
 					node_params: node_params.clone(),
 				},
 			},
-			NodeAggregate {
+			aggregator_client::json::NodeAggregate {
 				node_id: "3".to_string(),
 				stored_bytes: 103,
 				transferred_bytes: 53,
@@ -2907,7 +2907,7 @@ fn fetch_reward_activities_works() {
 					node_params: node_params.clone(),
 				},
 			},
-			NodeAggregate {
+			aggregator_client::json::NodeAggregate {
 				node_id: "4".to_string(),
 				stored_bytes: 104,
 				transferred_bytes: 54,
@@ -2967,7 +2967,7 @@ fn test_find_random_merkle_node_ids() {
 	};
 
 	ext.execute_with(|| {
-		let deffective_bucket_sub_aggregate = BucketSubAggregate {
+		let deffective_bucket_sub_aggregate = aggregator_client::json::BucketSubAggregate {
 			bucket_id: 90235,
 			node_id: "0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319"
 				.to_string(),
@@ -3070,7 +3070,7 @@ fn challenge_bucket_sub_aggregate_works() {
             domain: b"example2.com".to_vec(),
         };
 
-        let deffective_bucket_sub_aggregate = BucketSubAggregate {
+        let deffective_bucket_sub_aggregate = aggregator_client::json::BucketSubAggregate {
             bucket_id: 123229,
             node_id: "0x1f50f1455f60f5774564233d321a116ca45ae3188b2200999445706d04839d72"
                 .to_string(),

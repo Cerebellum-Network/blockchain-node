@@ -554,8 +554,8 @@ pub mod pallet {
 		pub end: i64,
 	}
 
-	impl From<AggregationEraResponse> for EraActivity {
-		fn from(era: AggregationEraResponse) -> Self {
+	impl From<aggregator_client::json::AggregationEraResponse> for EraActivity {
+		fn from(era: aggregator_client::json::AggregationEraResponse) -> Self {
 			Self { id: era.id, start: era.start, end: era.end }
 		}
 	}
@@ -570,220 +570,6 @@ pub mod pallet {
 		pub(crate) batch_index: BatchIndex,
 		pub(crate) payees: Vec<(NodePubKey, NodeUsage)>,
 		pub(crate) batch_proof: MMRProof,
-	}
-
-	/// Node aggregate response from aggregator.
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct NodeAggregateResponse {
-		/// Node id.
-		pub(crate) node_id: String,
-		/// Total amount of stored bytes.
-		pub(crate) stored_bytes: i64,
-		/// Total amount of transferred bytes.
-		pub(crate) transferred_bytes: u64,
-		/// Total number of puts.
-		pub(crate) number_of_puts: u64,
-		/// Total number of gets.
-		pub(crate) number_of_gets: u64,
-	}
-
-	/// DDC aggregation era
-	#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Encode, Decode)]
-	pub(crate) struct AggregationEraResponse {
-		pub(crate) id: DdcEra,
-		pub(crate) status: String,
-		pub(crate) start: i64,
-		pub(crate) end: i64,
-		pub(crate) processing_time: i64,
-		pub(crate) nodes_total: u32,
-		pub(crate) nodes_processed: u32,
-		pub(crate) records_processed: u32,
-		pub(crate) records_applied: u32,
-		pub(crate) records_discarded: u32,
-		pub(crate) attempt: u32,
-	}
-
-	/// Bucket aggregate response from aggregator.
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct BucketAggregateResponse {
-		/// Bucket id
-		pub(crate) bucket_id: BucketId,
-		/// Total amount of stored bytes.
-		pub(crate) stored_bytes: i64,
-		/// Total amount of transferred bytes.
-		pub(crate) transferred_bytes: u64,
-		/// Total number of puts.
-		pub(crate) number_of_puts: u64,
-		/// Total number of gets.
-		pub(crate) number_of_gets: u64,
-		/// Bucket sub aggregates.
-		pub(crate) sub_aggregates: Vec<BucketSubAggregateResponse>,
-	}
-
-	/// Sub aggregates of a bucket.
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	#[allow(non_snake_case)]
-	pub(crate) struct BucketSubAggregateResponse {
-		/// Node id.
-		pub(crate) NodeID: String,
-		/// Total amount of stored bytes.
-		pub(crate) stored_bytes: i64,
-		/// Total amount of transferred bytes.
-		pub(crate) transferred_bytes: u64,
-		/// Total number of puts.
-		pub(crate) number_of_puts: u64,
-		/// Total number of gets.
-		pub(crate) number_of_gets: u64,
-	}
-
-	/// Bucket activity per a DDC node.
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct BucketSubAggregate {
-		/// Bucket id
-		pub(crate) bucket_id: BucketId,
-		/// Node id.
-		pub(crate) node_id: String,
-		/// Total amount of stored bytes.
-		pub(crate) stored_bytes: i64,
-		/// Total amount of transferred bytes.
-		pub(crate) transferred_bytes: u64,
-		/// Total number of puts.
-		pub(crate) number_of_puts: u64,
-		/// Total number of gets.
-		pub(crate) number_of_gets: u64,
-		/// Aggregator data.
-		pub(crate) aggregator: AggregatorInfo,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct NodeAggregate {
-		/// Node id.
-		pub(crate) node_id: String,
-		/// Total amount of stored bytes.
-		pub(crate) stored_bytes: i64,
-		/// Total amount of transferred bytes.
-		pub(crate) transferred_bytes: u64,
-		/// Total number of puts.
-		pub(crate) number_of_puts: u64,
-		/// Total number of gets.
-		pub(crate) number_of_gets: u64,
-		/// Node data.
-		pub(crate) aggregator: AggregatorInfo,
-	}
-
-	/// Challenge Response
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct ChallengeAggregateResponse {
-		/// proofs
-		pub proofs: Vec<Proof>, //todo! add optional fields
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct Proof {
-		pub merkle_tree_node_id: u32,
-		pub usage: Usage,
-		pub path: Vec<String>, //todo! add base64 deserialization
-		pub leafs: Vec<Leaf>,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct Usage {
-		/// Total amount of stored bytes.
-		pub stored_bytes: i64,
-		/// Total amount of transferred bytes.
-		pub transferred_bytes: u64,
-		/// Total number of puts.
-		pub number_of_puts: u64,
-		/// Total number of gets.
-		pub number_of_gets: u64,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct Leaf {
-		pub record: Record,
-		pub transferred_bytes: u64,
-		pub stored_bytes: i64,
-		// todo! add links if there is no record
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	#[allow(non_snake_case)]
-	pub(crate) struct Record {
-		pub id: String,
-		pub upstream: Upstream,
-		pub downstream: Vec<Downstream>,
-		pub timestamp: String,
-		pub signature: Signature,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct Upstream {
-		pub request: Request,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct Downstream {
-		pub request: Request,
-	}
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	#[allow(non_snake_case)]
-	pub(crate) struct Request {
-		pub requestId: String,
-		pub requestType: String,
-		pub contentType: String,
-		pub bucketId: String,
-		pub pieceCid: String,
-		pub offset: String,
-		pub size: String,
-		pub timestamp: String,
-		pub signature: Signature,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct Signature {
-		pub algorithm: String,
-		pub signer: String,
-		pub value: String,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub(crate) struct MerkleTreeNodeResponse {
-		merkle_tree_node_id: u32,
-		hash: String,
-		stored_bytes: i64,
-		transferred_bytes: u64,
-		number_of_puts: u64,
-		number_of_gets: u64,
 	}
 
 	/// The `ConsolidatedAggregate` struct represents a merging result of multiple aggregates
@@ -833,7 +619,7 @@ pub mod pallet {
 		fn get_aggregator(&self) -> AggregatorInfo;
 	}
 
-	impl Aggregate for BucketSubAggregate {
+	impl Aggregate for aggregator_client::json::BucketSubAggregate {
 		fn hash<T: Config>(&self) -> ActivityHash {
 			let mut data = self.bucket_id.encode();
 			data.extend_from_slice(&self.node_id.encode());
@@ -857,7 +643,7 @@ pub mod pallet {
 		}
 	}
 
-	impl Aggregate for NodeAggregate {
+	impl Aggregate for aggregator_client::json::NodeAggregate {
 		fn hash<T: Config>(&self) -> ActivityHash {
 			let mut data = self.node_id.encode();
 			data.extend_from_slice(&self.stored_bytes.encode());
@@ -891,7 +677,7 @@ pub mod pallet {
 		fn leaf_hash<T: Config>(&self) -> ActivityHash;
 	}
 
-	impl NodeAggregateLeaf for Leaf {
+	impl NodeAggregateLeaf for aggregator_client::json::Leaf {
 		fn leaf_hash<T: Config>(&self) -> ActivityHash {
 			let mut data = self.record.id.encode();
 			data.extend_from_slice(&self.record.upstream.request.requestType.encode());
@@ -901,7 +687,7 @@ pub mod pallet {
 		}
 	}
 
-	impl BucketSubAggregateLeaf for Leaf {
+	impl BucketSubAggregateLeaf for aggregator_client::json::Leaf {
 		fn leaf_hash<T: Config>(&self) -> ActivityHash {
 			let mut data = self.record.upstream.request.bucketId.encode();
 			data.extend_from_slice(&self.record.encode());
@@ -1930,7 +1716,7 @@ pub mod pallet {
 		}
 
 		pub(crate) fn _get_hash_from_merkle_path(
-			challenge_response: ChallengeAggregateResponse,
+			challenge_response: aggregator_client::json::ChallengeAggregateResponse,
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			aggregate_key: AggregateKey,
@@ -2046,11 +1832,15 @@ pub mod pallet {
 		pub(crate) fn group_buckets_sub_aggregates_by_consistency(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			buckets_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<BucketAggregateResponse>)>,
+			buckets_aggregates_by_aggregator: Vec<(
+				AggregatorInfo,
+				Vec<aggregator_client::json::BucketAggregateResponse>,
+			)>,
 			redundancy_factor: u16,
 			quorum: Percent,
-		) -> ConsistencyGroups<BucketSubAggregate> {
-			let mut buckets_sub_aggregates: Vec<BucketSubAggregate> = Vec::new();
+		) -> ConsistencyGroups<aggregator_client::json::BucketSubAggregate> {
+			let mut buckets_sub_aggregates: Vec<aggregator_client::json::BucketSubAggregate> =
+				Vec::new();
 
 			log::info!(
 				"🏠⏳ Starting fetching bucket sub-aggregates for cluster_id: {:?} for era_id: {:?}",
@@ -2062,7 +1852,7 @@ pub mod pallet {
 			{
 				for bucket_aggregate_resp in buckets_aggregates_resp {
 					for bucket_sub_aggregate_resp in bucket_aggregate_resp.sub_aggregates.clone() {
-						let bucket_sub_aggregate = BucketSubAggregate {
+						let bucket_sub_aggregate = aggregator_client::json::BucketSubAggregate {
 							bucket_id: bucket_aggregate_resp.bucket_id,
 							node_id: bucket_sub_aggregate_resp.NodeID,
 							stored_bytes: bucket_sub_aggregate_resp.stored_bytes,
@@ -2108,9 +1898,11 @@ pub mod pallet {
 					PayoutState::Initialized
 				{
 					if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
-						Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
-							cluster_id, era_id,
-						) {
+						Self::fetch_validation_activities::<
+							aggregator_client::json::BucketSubAggregate,
+							aggregator_client::json::NodeAggregate,
+						>(cluster_id, era_id)
+					{
 						Self::fetch_customer_activity(
 							cluster_id,
 							era_id,
@@ -2122,9 +1914,11 @@ pub mod pallet {
 						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
 
 						if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
-							Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
-								cluster_id, era_id,
-							) {
+							Self::fetch_validation_activities::<
+								aggregator_client::json::BucketSubAggregate,
+								aggregator_client::json::NodeAggregate,
+							>(cluster_id, era_id)
+						{
 							Self::fetch_customer_activity(
 								cluster_id,
 								era_id,
@@ -2176,9 +1970,11 @@ pub mod pallet {
 						_,
 						_,
 						_,
-					)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
-						cluster_id, era_id,
-					) {
+					)) = Self::fetch_validation_activities::<
+						aggregator_client::json::BucketSubAggregate,
+						aggregator_client::json::NodeAggregate,
+					>(cluster_id, era_id)
+					{
 						Self::fetch_charging_activities(
 							cluster_id,
 							batch_size,
@@ -2198,9 +1994,11 @@ pub mod pallet {
 							_,
 							_,
 							_,
-						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
-							cluster_id, era_id,
-						) {
+						)) = Self::fetch_validation_activities::<
+							aggregator_client::json::BucketSubAggregate,
+							aggregator_client::json::NodeAggregate,
+						>(cluster_id, era_id)
+						{
 							Self::fetch_charging_activities(
 								cluster_id,
 								batch_size,
@@ -2224,7 +2022,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			batch_size: usize,
 			era_id: DdcEra,
-			customers_total_activity: Vec<BucketSubAggregate>,
+			customers_total_activity: Vec<aggregator_client::json::BucketSubAggregate>,
 			customers_activity_batch_roots: Vec<ActivityHash>,
 		) -> Result<Option<(DdcEra, CustomerBatch)>, Vec<OCWError>> {
 			let batch_index = T::PayoutVisitor::get_next_customer_batch_for_payment(
@@ -2330,9 +2128,11 @@ pub mod pallet {
 					PayoutState::CustomersChargedWithFees
 				{
 					if let Some((_, _, _, nodes_total_activity, _, nodes_activity_batch_roots)) =
-						Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
-							cluster_id, era_id,
-						) {
+						Self::fetch_validation_activities::<
+							aggregator_client::json::BucketSubAggregate,
+							aggregator_client::json::NodeAggregate,
+						>(cluster_id, era_id)
+					{
 						Self::fetch_reward_activities(
 							cluster_id,
 							era_id,
@@ -2352,9 +2152,11 @@ pub mod pallet {
 							nodes_total_activity,
 							_,
 							nodes_activity_batch_roots,
-						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
-							cluster_id, era_id,
-						) {
+						)) = Self::fetch_validation_activities::<
+							aggregator_client::json::BucketSubAggregate,
+							aggregator_client::json::NodeAggregate,
+						>(cluster_id, era_id)
+						{
 							Self::fetch_reward_activities(
 								cluster_id,
 								era_id,
@@ -2377,7 +2179,7 @@ pub mod pallet {
 		pub(crate) fn fetch_reward_activities(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			nodes_total_activity: Vec<NodeAggregate>,
+			nodes_total_activity: Vec<aggregator_client::json::NodeAggregate>,
 			nodes_activity_batch_roots: Vec<ActivityHash>,
 			current_nodes_total_usage: i64,
 		) -> Result<Option<(DdcEra, BatchIndex, NodeUsage)>, Vec<OCWError>> {
@@ -2419,9 +2221,11 @@ pub mod pallet {
 					PayoutState::RewardingProviders
 				{
 					if let Some((_, _, _, nodes_total_activity, _, nodes_activity_batch_roots)) =
-						Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
-							cluster_id, era_id,
-						) {
+						Self::fetch_validation_activities::<
+							aggregator_client::json::BucketSubAggregate,
+							aggregator_client::json::NodeAggregate,
+						>(cluster_id, era_id)
+					{
 						Self::fetch_reward_provider_batch(
 							cluster_id,
 							batch_size,
@@ -2441,9 +2245,11 @@ pub mod pallet {
 							nodes_total_activity,
 							_,
 							nodes_activity_batch_roots,
-						)) = Self::fetch_validation_activities::<BucketSubAggregate, NodeAggregate>(
-							cluster_id, era_id,
-						) {
+						)) = Self::fetch_validation_activities::<
+							aggregator_client::json::BucketSubAggregate,
+							aggregator_client::json::NodeAggregate,
+						>(cluster_id, era_id)
+						{
 							Self::fetch_reward_provider_batch(
 								cluster_id,
 								batch_size,
@@ -2467,7 +2273,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			batch_size: usize,
 			era_id: DdcEra,
-			nodes_total_activity: Vec<NodeAggregate>,
+			nodes_total_activity: Vec<aggregator_client::json::NodeAggregate>,
 			nodes_activity_batch_roots: Vec<ActivityHash>,
 		) -> Result<Option<(DdcEra, ProviderBatch)>, Vec<OCWError>> {
 			let batch_index = T::PayoutVisitor::get_next_provider_batch_for_payment(
@@ -3063,11 +2869,14 @@ pub mod pallet {
 		pub(crate) fn group_nodes_aggregates_by_consistency(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			nodes_aggregates_by_aggregator: Vec<(AggregatorInfo, Vec<NodeAggregateResponse>)>,
+			nodes_aggregates_by_aggregator: Vec<(
+				AggregatorInfo,
+				Vec<aggregator_client::json::NodeAggregateResponse>,
+			)>,
 			redundancy_factor: u16,
 			quorum: Percent,
-		) -> ConsistencyGroups<NodeAggregate> {
-			let mut nodes_aggregates: Vec<NodeAggregate> = Vec::new();
+		) -> ConsistencyGroups<aggregator_client::json::NodeAggregate> {
+			let mut nodes_aggregates: Vec<aggregator_client::json::NodeAggregate> = Vec::new();
 
 			log::info!(
 				"🏠⏳ Starting fetching node aggregates for cluster_id: {:?} for era_id: {:?}",
@@ -3077,7 +2886,7 @@ pub mod pallet {
 
 			for (aggregator_info, nodes_aggregates_resp) in nodes_aggregates_by_aggregator.clone() {
 				for node_aggregate_resp in nodes_aggregates_resp.clone() {
-					let node_aggregate = NodeAggregate {
+					let node_aggregate = aggregator_client::json::NodeAggregate {
 						node_id: node_aggregate_resp.node_id,
 						stored_bytes: node_aggregate_resp.stored_bytes,
 						transferred_bytes: node_aggregate_resp.transferred_bytes,
@@ -3160,7 +2969,7 @@ pub mod pallet {
 			aggregate_key: AggregateKey,
 			merkle_node_identifiers: Vec<u64>,
 			aggregator: AggregatorInfo,
-		) -> Result<ChallengeAggregateResponse, OCWError> {
+		) -> Result<aggregator_client::json::ChallengeAggregateResponse, OCWError> {
 			let response = Self::_fetch_challenge_response(
 				era_id,
 				aggregate_key.clone(),
@@ -3213,7 +3022,7 @@ pub mod pallet {
 			aggregate_key: AggregateKey,
 			merkle_node_identifiers: Vec<u64>,
 			node_params: &StorageNodeParams,
-		) -> Result<ChallengeAggregateResponse, http::Error> {
+		) -> Result<aggregator_client::json::ChallengeAggregateResponse, http::Error> {
 			let scheme = "http";
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 
@@ -3291,7 +3100,7 @@ pub mod pallet {
 			merkle_tree_node_id: u32,
 			levels: u16,
 			node_params: &StorageNodeParams,
-		) -> Result<MerkleTreeNodeResponse, http::Error> {
+		) -> Result<aggregator_client::json::MerkleTreeNodeResponse, http::Error> {
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 			let base_url = format!("http://{}:{}", host, node_params.http_port);
 			let client = aggregator_client::AggregatorClient::new(
@@ -3323,7 +3132,7 @@ pub mod pallet {
 		#[allow(dead_code)]
 		pub(crate) fn fetch_processed_eras(
 			node_params: &StorageNodeParams,
-		) -> Result<Vec<AggregationEraResponse>, http::Error> {
+		) -> Result<Vec<aggregator_client::json::AggregationEraResponse>, http::Error> {
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 			let base_url = format!("http://{}:{}", host, node_params.http_port);
 			let client = aggregator_client::AggregatorClient::new(
@@ -3346,7 +3155,7 @@ pub mod pallet {
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
 			node_params: &StorageNodeParams,
-		) -> Result<Vec<BucketAggregateResponse>, http::Error> {
+		) -> Result<Vec<aggregator_client::json::BucketAggregateResponse>, http::Error> {
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 			let base_url = format!("http://{}:{}", host, node_params.http_port);
 			let client = aggregator_client::AggregatorClient::new(
@@ -3388,7 +3197,7 @@ pub mod pallet {
 			_cluster_id: &ClusterId,
 			era_id: DdcEra,
 			node_params: &StorageNodeParams,
-		) -> Result<Vec<NodeAggregateResponse>, http::Error> {
+		) -> Result<Vec<aggregator_client::json::NodeAggregateResponse>, http::Error> {
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 			let base_url = format!("http://{}:{}", host, node_params.http_port);
 			let client = aggregator_client::AggregatorClient::new(
@@ -3461,7 +3270,10 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<(AggregatorInfo, Vec<NodeAggregateResponse>)>, OCWError> {
+		) -> Result<
+			Vec<(AggregatorInfo, Vec<aggregator_client::json::NodeAggregateResponse>)>,
+			OCWError,
+		> {
 			let mut nodes_aggregates = Vec::new();
 
 			for (node_key, node_params) in dac_nodes {
@@ -3501,9 +3313,14 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<(AggregatorInfo, Vec<BucketAggregateResponse>)>, OCWError> {
-			let mut bucket_aggregates: Vec<(AggregatorInfo, Vec<BucketAggregateResponse>)> =
-				Vec::new();
+		) -> Result<
+			Vec<(AggregatorInfo, Vec<aggregator_client::json::BucketAggregateResponse>)>,
+			OCWError,
+		> {
+			let mut bucket_aggregates: Vec<(
+				AggregatorInfo,
+				Vec<aggregator_client::json::BucketAggregateResponse>,
+			)> = Vec::new();
 
 			for (node_key, node_params) in dac_nodes {
 				let aggregates_res = Self::fetch_bucket_aggregates(cluster_id, era_id, node_params);
