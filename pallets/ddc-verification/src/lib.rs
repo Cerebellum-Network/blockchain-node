@@ -88,6 +88,8 @@ pub mod pallet {
 	const RESPONSE_TIMEOUT: u64 = 20000;
 	pub const BUCKETS_AGGREGATES_FETCH_BATCH_SIZE: usize = 100;
 	pub const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
+	pub const VALIDATION_ACTIVITIES_KEY: &[u8] = b"offchain::activities::keys";
+	pub const VALIDATION_ACTIVITIES_KEYS_DELIMITER: u8 = b',';
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -1252,6 +1254,8 @@ pub mod pallet {
 					}
 				}
 			}
+
+			Self::clear_validation_activities();
 		}
 	}
 
@@ -2461,6 +2465,31 @@ pub mod pallet {
 
 			// Store the serialized data in local offchain storage
 			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
+
+			let maybe_existing_activities_keys = sp_io::offchain::local_storage_get(
+				StorageKind::PERSISTENT,
+				VALIDATION_ACTIVITIES_KEY,
+			);
+
+			let existing_activities_keys = match maybe_existing_activities_keys {
+				Some(v) => v,
+				None => Vec::new(),
+			};
+
+			let new_activity_keys = match existing_activities_keys.len() {
+				0 => key,
+				_ => itertools::concat(vec![
+					existing_activities_keys,
+					vec![VALIDATION_ACTIVITIES_KEYS_DELIMITER],
+					key,
+				]),
+			};
+
+			sp_io::offchain::local_storage_set(
+				StorageKind::PERSISTENT,
+				VALIDATION_ACTIVITIES_KEY,
+				&new_activity_keys,
+			);
 		}
 
 		pub(crate) fn get_nodes_total_usage(
@@ -2547,6 +2576,34 @@ pub mod pallet {
 					None
 				},
 			}
+		}
+
+		#[allow(clippy::type_complexity)]
+		pub(crate) fn clear_validation_activities() {
+			log::debug!("Clearing validation_activities");
+
+			let maybe_validation_activities_keys = sp_io::offchain::local_storage_get(
+				StorageKind::PERSISTENT,
+				VALIDATION_ACTIVITIES_KEY,
+			);
+
+			let validation_activities_keys = match maybe_validation_activities_keys {
+				Some(activities_keys) => activities_keys,
+				None => return,
+			};
+
+			let validation_activities_keys_separated = validation_activities_keys
+				.split(|&x| x == VALIDATION_ACTIVITIES_KEYS_DELIMITER)
+				.collect::<Vec<_>>();
+
+			for key in validation_activities_keys_separated {
+				sp_io::offchain::local_storage_clear(StorageKind::PERSISTENT, key);
+			}
+
+			sp_io::offchain::local_storage_clear(
+				StorageKind::PERSISTENT,
+				VALIDATION_ACTIVITIES_KEY,
+			);
 		}
 
 		pub(crate) fn _store_and_fetch_nonce(node_id: String) -> u64 {
