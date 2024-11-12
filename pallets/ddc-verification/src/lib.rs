@@ -2578,7 +2578,6 @@ pub mod pallet {
 			}
 		}
 
-		#[allow(clippy::type_complexity)]
 		pub(crate) fn clear_validation_activities() {
 			log::debug!("Clearing validation_activities");
 
