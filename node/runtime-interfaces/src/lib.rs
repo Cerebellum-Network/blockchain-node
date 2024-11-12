@@ -5,8 +5,11 @@ use std::{cell::RefCell, rc::Rc, str, sync::Arc};
 mod sandbox_util;
 mod env;
 mod util;
+mod wasmi_backend;
 use crate::sandbox_util::Store;
 use sp_wasm_interface::Function;
+use wasmi::TableRef;
+use wasmi::MemoryRef;
 
 /// Something that provides access to the sandbox.
 #[runtime_interface]

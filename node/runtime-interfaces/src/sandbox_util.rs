@@ -22,7 +22,6 @@
 
 #[cfg(feature = "wasmer-sandbox")]
 mod wasmer_backend;
-mod wasmi_backend;
 
 use std::{collections::HashMap, rc::Rc};
 
@@ -31,7 +30,7 @@ use crate::env as sandbox_env;
 use sp_wasm_interface::{FunctionContext, Pointer, WordSize};
 
 use crate::{
-	util,
+	util,wasmi_backend,
 };
 use sc_executor::error::{Error, Result};
 
@@ -64,10 +63,10 @@ impl From<SupervisorFuncIndex> for usize {
 ///
 /// This index is supposed to be used as index for `Externals`.
 #[derive(Copy, Clone, Debug, PartialEq)]
-struct GuestFuncIndex(usize);
+pub struct GuestFuncIndex(pub usize);
 
 /// This struct holds a mapping from guest index space to supervisor.
-struct GuestToSupervisorFunctionMapping {
+pub struct GuestToSupervisorFunctionMapping {
 	/// Position of elements in this vector are interpreted
 	/// as indices of guest functions and are mapped to
 	/// corresponding supervisor function indices.
@@ -89,13 +88,13 @@ impl GuestToSupervisorFunctionMapping {
 	}
 
 	/// Find supervisor function index by its corresponding guest function index
-	fn func_by_guest_index(&self, guest_func_idx: GuestFuncIndex) -> Option<SupervisorFuncIndex> {
+	pub fn func_by_guest_index(&self, guest_func_idx: GuestFuncIndex) -> Option<SupervisorFuncIndex> {
 		self.funcs.get(guest_func_idx.0).cloned()
 	}
 }
 
 /// Holds sandbox function and memory imports and performs name resolution
-struct Imports {
+pub struct Imports {
 	/// Maps qualified function name to its guest function index
 	func_map: HashMap<(Vec<u8>, Vec<u8>), GuestFuncIndex>,
 
@@ -104,13 +103,13 @@ struct Imports {
 }
 
 impl Imports {
-	fn func_by_name(&self, module_name: &str, func_name: &str) -> Option<GuestFuncIndex> {
+	pub fn func_by_name(&self, module_name: &str, func_name: &str) -> Option<GuestFuncIndex> {
 		self.func_map
 			.get(&(module_name.as_bytes().to_owned(), func_name.as_bytes().to_owned()))
 			.cloned()
 	}
 
-	fn memory_by_name(&self, module_name: &str, memory_name: &str) -> Option<Memory> {
+	pub fn memory_by_name(&self, module_name: &str, memory_name: &str) -> Option<Memory> {
 		self.memories_map
 			.get(&(module_name.as_bytes().to_owned(), memory_name.as_bytes().to_owned()))
 			.cloned()
@@ -150,14 +149,14 @@ pub trait SandboxContext {
 /// [`Externals`]: ../wasmi/trait.Externals.html
 pub struct GuestExternals<'a> {
 	/// Instance of sandboxed module to be dispatched
-	sandbox_instance: &'a SandboxInstance,
+	pub sandbox_instance: &'a SandboxInstance,
 
 	/// External state passed to guest environment, see the `instantiate` function
-	state: u32,
+	pub state: u32,
 }
 
 /// Module instance in terms of selected backend
-enum BackendInstance {
+pub enum BackendInstance {
 	/// Wasmi module instance
 	Wasmi(wasmi::ModuleRef),
 
@@ -181,8 +180,8 @@ enum BackendInstance {
 ///
 /// [`invoke`]: #method.invoke
 pub struct SandboxInstance {
-	backend_instance: BackendInstance,
-	guest_to_supervisor_mapping: GuestToSupervisorFunctionMapping,
+	pub backend_instance: BackendInstance,
+	pub guest_to_supervisor_mapping: GuestToSupervisorFunctionMapping,
 }
 
 impl SandboxInstance {
@@ -278,10 +277,10 @@ fn decode_environment_definition(
 /// An environment in which the guest module is instantiated.
 pub struct GuestEnvironment {
 	/// Function and memory imports of the guest module
-	imports: Imports,
+	pub imports: Imports,
 
 	/// Supervisor functinons mapped to guest index space
-	guest_to_supervisor_mapping: GuestToSupervisorFunctionMapping,
+	pub guest_to_supervisor_mapping: GuestToSupervisorFunctionMapping,
 }
 
 impl GuestEnvironment {
