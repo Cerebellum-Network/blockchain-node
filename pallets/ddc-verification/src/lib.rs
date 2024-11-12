@@ -47,7 +47,10 @@ pub mod weights;
 use itertools::Itertools;
 use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use sp_core::crypto::UncheckedFrom;
-pub use sp_io::crypto::sr25519_public_keys;
+pub use sp_io::{
+	crypto::sr25519_public_keys,
+	offchain::{local_storage_clear, local_storage_get, local_storage_set},
+};
 use sp_runtime::traits::IdentifyAccount;
 use sp_staking::StakingInterface;
 use sp_std::fmt::Debug;
@@ -2422,13 +2425,13 @@ pub mod pallet {
 		pub(crate) fn store_verification_account_id(account_id: T::AccountId) {
 			let validator: Vec<u8> = account_id.encode();
 			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
-			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &validator);
+			local_storage_set(StorageKind::PERSISTENT, &key, &validator);
 		}
 
 		pub(crate) fn fetch_verification_account_id() -> Result<T::AccountId, OCWError> {
 			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
 
-			match sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key) {
+			match local_storage_get(StorageKind::PERSISTENT, &key) {
 				Some(data) => {
 					let account_id = T::AccountId::decode(&mut &data[..])
 						.map_err(|_| OCWError::FailedToFetchVerificationKey)?;
@@ -2464,12 +2467,10 @@ pub mod pallet {
 				.encode();
 
 			// Store the serialized data in local offchain storage
-			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
+			local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
 
-			let maybe_existing_activities_keys = sp_io::offchain::local_storage_get(
-				StorageKind::PERSISTENT,
-				VALIDATION_ACTIVITIES_KEY,
-			);
+			let maybe_existing_activities_keys =
+				local_storage_get(StorageKind::PERSISTENT, VALIDATION_ACTIVITIES_KEY);
 
 			let existing_activities_keys = match maybe_existing_activities_keys {
 				Some(v) => v,
@@ -2485,7 +2486,7 @@ pub mod pallet {
 				]),
 			};
 
-			sp_io::offchain::local_storage_set(
+			local_storage_set(
 				StorageKind::PERSISTENT,
 				VALIDATION_ACTIVITIES_KEY,
 				&new_activity_keys,
@@ -2547,11 +2548,10 @@ pub mod pallet {
 			let key = Self::derive_key(cluster_id, era_id);
 
 			// Retrieve encoded tuple from local storage
-			let encoded_tuple =
-				match sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key) {
-					Some(data) => data,
-					None => return None,
-				};
+			let encoded_tuple = match local_storage_get(StorageKind::PERSISTENT, &key) {
+				Some(data) => data,
+				None => return None,
+			};
 
 			// Attempt to decode tuple from bytes
 			match Decode::decode(&mut &encoded_tuple[..]) {
@@ -2582,10 +2582,8 @@ pub mod pallet {
 		pub(crate) fn clear_validation_activities() {
 			log::debug!("Clearing validation_activities");
 
-			let maybe_validation_activities_keys = sp_io::offchain::local_storage_get(
-				StorageKind::PERSISTENT,
-				VALIDATION_ACTIVITIES_KEY,
-			);
+			let maybe_validation_activities_keys =
+				local_storage_get(StorageKind::PERSISTENT, VALIDATION_ACTIVITIES_KEY);
 
 			let validation_activities_keys = match maybe_validation_activities_keys {
 				Some(activities_keys) => activities_keys,
@@ -2597,19 +2595,16 @@ pub mod pallet {
 				.collect::<Vec<_>>();
 
 			for key in validation_activities_keys_separated {
-				sp_io::offchain::local_storage_clear(StorageKind::PERSISTENT, key);
+				local_storage_clear(StorageKind::PERSISTENT, key);
 			}
 
-			sp_io::offchain::local_storage_clear(
-				StorageKind::PERSISTENT,
-				VALIDATION_ACTIVITIES_KEY,
-			);
+			local_storage_clear(StorageKind::PERSISTENT, VALIDATION_ACTIVITIES_KEY);
 		}
 
 		pub(crate) fn _store_and_fetch_nonce(node_id: String) -> u64 {
 			let key = format!("offchain::activities::nonce::{:?}", node_id).into_bytes();
-			let encoded_nonce = sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key)
-				.unwrap_or_else(|| 0.encode());
+			let encoded_nonce =
+				local_storage_get(StorageKind::PERSISTENT, &key).unwrap_or_else(|| 0.encode());
 
 			let nonce_data = match Decode::decode(&mut &encoded_nonce[..]) {
 				Ok(nonce) => nonce,
@@ -2622,7 +2617,7 @@ pub mod pallet {
 
 			let new_nonce = nonce_data + 1;
 
-			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &new_nonce.encode());
+			local_storage_set(StorageKind::PERSISTENT, &key, &new_nonce.encode());
 			nonce_data
 		}
 
