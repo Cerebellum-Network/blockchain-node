@@ -1148,6 +1148,7 @@ name = "cere-runtime-interfaces"
 version = "6.6.1"
 dependencies = [
  "environmental",
+ "log",
  "parity-scale-codec",
  "sc-allocator",
  "sc-executor",
@@ -1157,6 +1158,7 @@ dependencies = [
  "sp-runtime-interface-proc-macro",
  "sp-std",
  "sp-wasm-interface",
+ "thiserror",
  "wasmi 0.13.2",
 ]
 

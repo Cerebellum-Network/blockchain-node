@@ -19,6 +19,9 @@ sc-allocator = { workspace = true }
 sc-executor = { workspace = true }
 wasmi = "0.13"
 environmental = "1.1.3"
+log = {workspace = true}
+thiserror = { version = "1.0.48" }
+
 
 [features]
 default = [ "std" ]
