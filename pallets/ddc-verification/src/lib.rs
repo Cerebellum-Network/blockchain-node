@@ -42,7 +42,7 @@ use sp_runtime::{
 	traits::Hash,
 	Percent,
 };
-use sp_std::{collections::btree_map::BTreeMap, prelude::*};
+use sp_std::{collections::btree_map::BTreeMap, prelude::*, str::from_utf8};
 pub mod weights;
 use itertools::Itertools;
 use rand::{prelude::*, rngs::SmallRng, SeedableRng};
@@ -2491,6 +2491,10 @@ pub mod pallet {
 				VALIDATION_ACTIVITIES_KEY,
 				&new_activity_keys,
 			);
+			log::debug!(
+				"Activity keys extended, now {:?}",
+				from_utf8(&new_activity_keys).unwrap_or("parsing failed"),
+			);
 		}
 
 		pub(crate) fn get_nodes_total_usage(
@@ -2595,9 +2599,17 @@ pub mod pallet {
 
 			for key in validation_activities_keys_separated {
 				local_storage_clear(StorageKind::PERSISTENT, key);
+				log::debug!(
+					"Clearing validation_activities, key {:?}",
+					from_utf8(key).unwrap_or("parsing failed")
+				);
 			}
 
 			local_storage_clear(StorageKind::PERSISTENT, VALIDATION_ACTIVITIES_KEY);
+			log::debug!(
+				"Clearing validation_activities, key {:?}",
+				from_utf8(VALIDATION_ACTIVITIES_KEY).unwrap_or("parsing failed")
+			);
 		}
 
 		pub(crate) fn _store_and_fetch_nonce(node_id: String) -> u64 {
