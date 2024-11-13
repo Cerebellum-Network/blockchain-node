@@ -234,7 +234,7 @@ impl crate::Config for Test {
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
-	type StakingVisitor = Staking;
+	type ValidatorStaking = Staking;
 	type AccountIdConverter = AccountId;
 	type CustomerVisitor = MockCustomerVisitor;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 4;

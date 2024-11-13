@@ -1346,10 +1346,12 @@ impl pallet_ddc_verification::Config for Runtime {
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
-	type StakingVisitor = pallet_staking::Pallet<Runtime>;
+	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
 	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Currency = Balances;
 }
 
 construct_runtime!(
@@ -1528,6 +1530,7 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
+		[pallet_ddc_verification, DdcVerification]
 	);
 }
 
