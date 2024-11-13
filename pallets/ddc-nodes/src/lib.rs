@@ -119,10 +119,7 @@ pub mod pallet {
 			node_params: NodeParams,
 		) -> DispatchResult {
 			let caller_id = ensure_signed(origin)?;
-			let node = Node::<T>::new(node_pub_key.clone(), caller_id, node_params)
-				.map_err(Into::<Error<T>>::into)?;
-			Self::create(node).map_err(Into::<Error<T>>::into)?;
-			Self::deposit_event(Event::<T>::NodeCreated { node_pub_key });
+			Self::do_create_node(node_pub_key, caller_id, node_params)?;
 			Ok(())
 		}
 
@@ -153,6 +150,20 @@ pub mod pallet {
 			node.set_params(node_params).map_err(Into::<Error<T>>::into)?;
 			Self::update(node).map_err(Into::<Error<T>>::into)?;
 			Self::deposit_event(Event::<T>::NodeParamsChanged { node_pub_key });
+			Ok(())
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		fn do_create_node(
+			node_pub_key: NodePubKey,
+			provider_id: T::AccountId,
+			node_params: NodeParams,
+		) -> DispatchResult {
+			let node = Node::<T>::new(node_pub_key.clone(), provider_id, node_params)
+				.map_err(Into::<Error<T>>::into)?;
+			Self::create(node).map_err(Into::<Error<T>>::into)?;
+			Self::deposit_event(Event::<T>::NodeCreated { node_pub_key });
 			Ok(())
 		}
 	}
@@ -271,9 +282,7 @@ pub mod pallet {
 			provider_id: T::AccountId,
 			node_params: NodeParams,
 		) -> DispatchResult {
-			let node = Node::<T>::new(node_pub_key, provider_id, node_params)
-				.map_err(Into::<Error<T>>::into)?;
-			Self::create(node).map_err(Into::<Error<T>>::into)?;
+			Self::do_create_node(node_pub_key, provider_id, node_params)?;
 			Ok(())
 		}
 	}

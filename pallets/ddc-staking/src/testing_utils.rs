@@ -1,10 +1,12 @@
 //! Testing utils for ddc-staking.
 
+#[cfg(feature = "runtime-benchmarks")]
 use ddc_primitives::{
 	ClusterId, ClusterParams, ClusterProtocolParams, NodeParams, StorageNodeMode,
 	StorageNodeParams, StorageNodePubKey,
 };
 use frame_benchmarking::account;
+#[cfg(feature = "runtime-benchmarks")]
 use frame_support::traits::Currency;
 use frame_system::RawOrigin;
 use sp_runtime::{traits::StaticLookup, Perquintill};
@@ -47,6 +49,7 @@ pub fn create_funded_user_with_balance<T: Config>(
 }
 
 /// Create a stash and controller pair.
+#[cfg(feature = "runtime-benchmarks")]
 pub fn create_stash_controller_node<T: Config>(
 	n: u32,
 	balance_factor: u32,
@@ -81,6 +84,7 @@ pub fn create_stash_controller_node<T: Config>(
 }
 
 /// Create a stash and controller pair with fixed balance.
+#[cfg(feature = "runtime-benchmarks")]
 pub fn create_stash_controller_node_with_balance<T: Config>(
 	n: u32,
 	balance_factor: u128,
