@@ -4,16 +4,18 @@
 
 use ddc_primitives::{
 	traits::{
-		bucket::BucketVisitor,
+		bucket::BucketManager,
 		cluster::{ClusterCreator, ClusterProtocol},
 		customer::{CustomerCharger, CustomerDepositor},
-		node::NodeVisitor,
+		node::NodeManager,
 		pallet::PalletVisitor,
 		ClusterQuery, ValidatorVisitor,
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
 	ClusterProtocolParams, ClusterStatus, NodeParams, NodePubKey, NodeType, DOLLARS,
 };
+#[cfg(feature = "try-runtime")]
+use ddc_primitives::{BucketParams, EraValidation};
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
 	construct_runtime, parameter_types,
@@ -128,34 +130,36 @@ impl crate::pallet::Config for Test {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = TestCustomerCharger;
-	type BucketVisitor = TestBucketVisitor;
+	type BucketManager = TestBucketManager;
 	type CustomerDepositor = TestCustomerDepositor;
 	type ClusterProtocol = TestClusterProtocol;
 	type TreasuryVisitor = TestTreasuryVisitor;
 	type NominatorsAndValidatorsList = TestValidatorVisitor<Self>;
 	type ClusterCreator = TestClusterCreator;
-
 	type VoteScoreToU64 = Identity;
 	type WeightInfo = ();
 	type ValidatorVisitor = MockValidatorVisitor;
-	type NodeVisitor = MockNodeVisitor;
+	type NodeManager = MockNodeManager;
 	type AccountIdConverter = AccountId;
 }
 
-pub struct MockNodeVisitor;
-impl<T: Config> NodeVisitor<T> for MockNodeVisitor
+pub struct MockNodeManager;
+impl<T: Config> NodeManager<T> for MockNodeManager
 where
 	<T as frame_system::Config>::AccountId: From<AccountId>,
 {
 	fn get_total_usage(_node_pub_key: &NodePubKey) -> Result<Option<NodeUsage>, DispatchError> {
 		unimplemented!()
 	}
+
 	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
 		unimplemented!()
 	}
+
 	fn exists(_node_pub_key: &NodePubKey) -> bool {
 		unimplemented!()
 	}
+
 	fn get_node_provider_id(pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
 		match pub_key {
 			NodePubKey::StoragePubKey(key) if key == &NODE1_PUB_KEY_32 =>
@@ -182,7 +186,17 @@ where
 			_ => Err(DispatchError::Other("Unexpected node pub_key")),
 		}
 	}
+
 	fn get_node_params(_node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
+		unimplemented!()
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn create_node(
+		_node_pub_key: NodePubKey,
+		_provider_id: T::AccountId,
+		_node_params: NodeParams,
+	) -> DispatchResult {
 		unimplemented!()
 	}
 }
@@ -193,7 +207,15 @@ where
 	<T as frame_system::Config>::AccountId: From<AccountId>,
 {
 	#[cfg(feature = "runtime-benchmarks")]
-	fn setup_validators(_validators: Vec<T::AccountId>) {
+	fn setup_validators(_validators_with_keys: Vec<(T::AccountId, T::AccountId)>) {
+		unimplemented!()
+	}
+	#[cfg(feature = "runtime-benchmarks")]
+	fn setup_validation_era(
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+		_era_validation: EraValidation<T>,
+	) {
 		unimplemented!()
 	}
 	fn is_ocw_validator(caller: T::AccountId) -> bool {
@@ -221,8 +243,8 @@ where
 	}
 }
 
-pub struct TestBucketVisitor;
-impl<T: Config> BucketVisitor<T> for TestBucketVisitor
+pub struct TestBucketManager;
+impl<T: Config> BucketManager<T> for TestBucketManager
 where
 	<T as frame_system::Config>::AccountId: From<AccountId>,
 {
@@ -251,12 +273,31 @@ where
 		}
 	}
 
-	fn get_total_customer_usage(
+	fn get_total_bucket_usage(
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
 		_content_owner: &T::AccountId,
 	) -> Result<Option<CustomerUsage>, DispatchError> {
 		Ok(None)
+	}
+
+	fn inc_total_bucket_usage(
+		_cluster_id: &ClusterId,
+		_bucket_id: BucketId,
+		_content_owner: T::AccountId,
+		_customer_usage: &CustomerUsage,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn create_bucket(
+		_cluster_id: &ClusterId,
+		_bucket_id: BucketId,
+		_owner_id: T::AccountId,
+		_bucket_params: BucketParams,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
 	}
 }
 

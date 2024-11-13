@@ -28,10 +28,7 @@ pub mod benchmarking;
 pub mod testing_utils;
 
 use ddc_primitives::{
-	traits::{
-		node::{NodeCreator, NodeVisitor},
-		staking::StakingVisitor,
-	},
+	traits::{node::NodeManager, staking::StakingVisitor},
 	ClusterId, NodeParams, NodePubKey, NodeUsage, StorageNodeParams, StorageNodePubKey,
 };
 use frame_support::pallet_prelude::*;
@@ -226,7 +223,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> NodeVisitor<T> for Pallet<T> {
+	impl<T: Config> NodeManager<T> for Pallet<T> {
 		fn get_cluster_id(node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
 			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
 			Ok(*node.get_cluster_id())
@@ -267,9 +264,8 @@ pub mod pallet {
 
 			Ok(total_usage)
 		}
-	}
 
-	impl<T: Config> NodeCreator<T> for Pallet<T> {
+		#[cfg(feature = "runtime-benchmarks")]
 		fn create_node(
 			node_pub_key: NodePubKey,
 			provider_id: T::AccountId,

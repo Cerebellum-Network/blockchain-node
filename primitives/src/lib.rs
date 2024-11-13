@@ -3,9 +3,10 @@
 use blake2::{Blake2s256, Digest};
 use codec::{Decode, Encode};
 use frame_support::parameter_types;
+use frame_system::Config;
 use polkadot_ckb_merkle_mountain_range::Merge;
 use scale_info::{
-	prelude::{string::String, vec::Vec},
+	prelude::{collections::BTreeMap, string::String, vec::Vec},
 	TypeInfo,
 };
 use serde::{Deserialize, Serialize};
@@ -317,6 +318,11 @@ pub enum PayoutState {
 	Finalized = 7,
 }
 
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct BucketParams {
+	pub is_public: bool,
+}
+
 pub const DAC_VERIFICATION_KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
 
 pub mod sr25519 {
@@ -361,4 +367,25 @@ pub mod crypto {
 		type GenericSignature = sp_core::sr25519::Signature;
 		type GenericPublic = sp_core::sr25519::Public;
 	}
+}
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub enum EraValidationStatus {
+	ValidatingData,
+	ReadyForPayout,
+	PayoutInProgress,
+	PayoutFailed,
+	PayoutSuccess,
+	PayoutSkipped,
+}
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[scale_info(skip_type_params(T))]
+pub struct EraValidation<T: Config> {
+	pub validators: BTreeMap<(ActivityHash, ActivityHash), Vec<T::AccountId>>,
+	pub start_era: i64,
+	pub end_era: i64,
+	pub payers_merkle_root_hash: ActivityHash,
+	pub payees_merkle_root_hash: ActivityHash,
+	pub status: EraValidationStatus,
 }

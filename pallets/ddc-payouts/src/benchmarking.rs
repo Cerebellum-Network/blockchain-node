@@ -1,10 +1,17 @@
 //! DdcPayouts pallet benchmarking.
 
 use ddc_primitives::{
-	traits::ValidatorVisitor, ClusterId, ClusterParams, ClusterProtocolParams, NodePubKey,
+	traits::ValidatorVisitor, ActivityHash, BucketParams, ClusterId, ClusterParams,
+	ClusterProtocolParams, EraValidation, EraValidationStatus, MergeActivityHash, NodeParams,
+	NodePubKey, StorageNodeMode, StorageNodeParams,
 };
 pub use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_system::RawOrigin;
+use polkadot_ckb_merkle_mountain_range::{
+	util::{MemMMR, MemStore},
+	MMR,
+};
+use scale_info::prelude::{collections::BTreeMap, format};
 use sp_runtime::{AccountId32, Perquintill};
 use sp_std::prelude::*;
 
@@ -12,20 +19,16 @@ use super::*;
 use crate::Pallet as DdcPayouts;
 
 const CERE: u128 = 10000000000;
+const AVG_SECONDS_MONTH: i64 = 2630016; // 30.44 * 24.0 * 3600.0;
 
 fn create_dac_account<T: Config>() -> T::AccountId {
 	let dac_account = create_account::<T>("dac_account", 0, 0);
-	authorize_account::<T>(dac_account.clone());
-	T::ValidatorVisitor::setup_validators(vec![dac_account.clone()]);
+	T::ValidatorVisitor::setup_validators(vec![(dac_account.clone(), dac_account.clone())]);
 	dac_account
 }
 
 fn create_account<T: Config>(name: &'static str, idx: u32, seed: u32) -> T::AccountId {
 	account::<T::AccountId>(name, idx, seed)
-}
-
-fn authorize_account<T: Config>(account: T::AccountId) {
-	AuthorisedCaller::<T>::put(account);
 }
 
 fn endow_account<T: Config>(account: &T::AccountId, amount: u128) {
@@ -106,7 +109,7 @@ struct BillingReportParams {
 fn create_billing_report<T: Config>(params: BillingReportParams) {
 	let vault = DdcPayouts::<T>::sub_account_id(params.cluster_id, params.era);
 	let start_era: i64 = 1_000_000_000;
-	let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
+	let end_era: i64 = start_era + AVG_SECONDS_MONTH;
 
 	let billing_report = BillingReport::<T> {
 		vault,
@@ -123,6 +126,14 @@ fn create_billing_report<T: Config>(params: BillingReportParams) {
 	};
 
 	ActiveBillingReports::<T>::insert(params.cluster_id, params.era, billing_report);
+}
+
+fn set_validation_era<T: Config>(
+	cluster_id: ClusterId,
+	era_id: DdcEra,
+	era_validation: EraValidation<T>,
+) {
+	T::ValidatorVisitor::setup_validation_era(cluster_id, era_id, era_validation);
 }
 
 benchmarks! {
@@ -225,7 +236,8 @@ benchmarks! {
 		});
 
 		let batch_index: BatchIndex = 0;
-		let payers: Vec<(NodePubKey, BucketId, CustomerUsage)> = (0..b).map(|i| {
+		let mut payers_batch: Vec<(NodePubKey, BucketId, CustomerUsage)> = vec![];
+		for i in 0..b {
 			let customer = create_account::<T>("customer", i, i);
 
 			if b % 2 == 0 {
@@ -242,16 +254,73 @@ benchmarks! {
 				number_of_gets: 10, // 10 gets
 				number_of_puts: 5, // 5 puts
 			};
-			let bucket_id: BucketId = 1;
+			let bucket_id: BucketId = (i + 1).into();
 			let node_key = NodePubKey::StoragePubKey(AccountId32::from([
 				48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
 				235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
 			]));
 
-			(node_key, bucket_id, customer_usage)
-		}).collect();
+			T::BucketManager::create_bucket(
+				&cluster_id,
+				bucket_id,
+				customer,
+				BucketParams { is_public: true }
+			).expect("Bucket to be created");
 
-	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payers, MMRProof::default())
+			payers_batch.push((node_key, bucket_id, customer_usage));
+		}
+
+		let activity_hashes = payers_batch.clone().into_iter().map(|(node_key, bucket_id, usage)| {
+			let mut data = bucket_id.encode();
+			let node_id = format!("0x{}", node_key.get_hex());
+			data.extend_from_slice(&node_id.encode());
+			data.extend_from_slice(&usage.stored_bytes.encode());
+			data.extend_from_slice(&usage.transferred_bytes.encode());
+			data.extend_from_slice(&usage.number_of_puts.encode());
+			data.extend_from_slice(&usage.number_of_gets.encode());
+			sp_io::hashing::blake2_256(&data)
+		}).collect::<Vec<_>>();
+
+		let store1 = MemStore::default();
+		let mut mmr1: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> = MemMMR::<ActivityHash, MergeActivityHash>::new(0, &store1);
+		for activity_hash in activity_hashes {
+			let _pos: u64 = mmr1.push(activity_hash).unwrap();
+		}
+
+		let batch_root = mmr1.get_root().unwrap();
+
+		let store2 = MemStore::default();
+		let mut mmr2: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> = MemMMR::<ActivityHash, MergeActivityHash>::new(0, &store2);
+		let pos = mmr2.push(batch_root).unwrap();
+		let payers_merkle_root_hash = mmr2.get_root().unwrap();
+
+		let proof = mmr2
+			.gen_proof(vec![pos])
+			.unwrap()
+			.proof_items()
+			.to_vec();
+
+		let payees_merkle_root_hash = ActivityHash::default();
+
+		let mut validators = BTreeMap::new();
+		validators.insert(
+			(payers_merkle_root_hash, payees_merkle_root_hash),
+			vec![dac_account.clone()],
+		);
+		let start_era: i64 = 1_000_000_000;
+		let end_era: i64 = start_era + AVG_SECONDS_MONTH;
+		let era_validation = EraValidation::<T> {
+			validators,
+			start_era,
+			end_era,
+			payers_merkle_root_hash,
+			payees_merkle_root_hash,
+			status: EraValidationStatus::PayoutInProgress,
+		};
+
+		set_validation_era::<T>(cluster_id, era, era_validation);
+
+	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payers_batch, MMRProof { proof })
 	verify {
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();
@@ -402,23 +471,89 @@ benchmarks! {
 		whitelist_account!(dac_account);
 
 		let batch_index: BatchIndex = 0;
-		let payees: Vec<(NodePubKey, NodeUsage)> = (0..b).map(|i| {
+		let mut payees_batch: Vec<(NodePubKey, NodeUsage)> = vec![];
+
+		for i in 0..b {
 			let provider = create_account::<T>("provider", i, i);
+
 			endow_account::<T>(&provider, T::Currency::minimum_balance().saturated_into());
-			let node_usage = NodeUsage {
+
+			let usage = NodeUsage {
 				transferred_bytes: 200000000, // 200 mb
 				stored_bytes: 100000000, // 100 mb
 				number_of_gets: 10, // 10 gets
 				number_of_puts: 5, // 5 puts
 			};
-			let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-				48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66,
-				235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-			]));
-			(node_key, node_usage)
-		}).collect();
 
-	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payees, MMRProof::default())
+			let key = sp_io::hashing::blake2_256(&i.encode());
+			let node_key = NodePubKey::StoragePubKey(AccountId32::from(key));
+
+			T::NodeManager::create_node(
+				node_key.clone(),
+				provider,
+				NodeParams::StorageParams(StorageNodeParams {
+					mode: StorageNodeMode::Storage,
+					host: vec![1u8; 255],
+					domain: vec![2u8; 255],
+					ssl: true,
+					http_port: 35000u16,
+					grpc_port: 25000u16,
+					p2p_port: 15000u16,
+				}),
+			).expect("Node to be created");
+
+			payees_batch.push((node_key, usage));
+		}
+
+		let activity_hashes = payees_batch.clone().into_iter().map(|(node_key, usage)| {
+			let mut data = format!("0x{}", node_key.get_hex()).encode();
+			data.extend_from_slice(&usage.stored_bytes.encode());
+			data.extend_from_slice(&usage.transferred_bytes.encode());
+			data.extend_from_slice(&usage.number_of_puts.encode());
+			data.extend_from_slice(&usage.number_of_gets.encode());
+			sp_io::hashing::blake2_256(&data)
+		}).collect::<Vec<_>>();
+
+		let store1 = MemStore::default();
+		let mut mmr1: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> = MemMMR::<ActivityHash, MergeActivityHash>::new(0, &store1);
+		for activity_hash in activity_hashes {
+			let _pos: u64 = mmr1.push(activity_hash).unwrap();
+		}
+
+		let batch_root = mmr1.get_root().unwrap();
+
+		let store2 = MemStore::default();
+		let mut mmr2: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> = MemMMR::<ActivityHash, MergeActivityHash>::new(0, &store2);
+		let pos = mmr2.push(batch_root).unwrap();
+		let payees_merkle_root_hash = mmr2.get_root().unwrap();
+
+		let payers_merkle_root_hash = ActivityHash::default();
+
+		let proof = mmr2
+			.gen_proof(vec![pos])
+			.unwrap()
+			.proof_items()
+			.to_vec();
+
+		let mut validators = BTreeMap::new();
+		validators.insert(
+			(payers_merkle_root_hash, payees_merkle_root_hash),
+			vec![dac_account.clone()],
+		);
+		let start_era: i64 = 1_000_000_000;
+		let end_era: i64 = start_era + AVG_SECONDS_MONTH;
+		let era_validation = EraValidation::<T> {
+			validators,
+			start_era,
+			end_era,
+			payers_merkle_root_hash,
+			payees_merkle_root_hash,
+			status: EraValidationStatus::PayoutInProgress,
+		};
+
+		set_validation_era::<T>(cluster_id, era, era_validation);
+
+	}: _(RawOrigin::Signed(dac_account.clone()), cluster_id, era, batch_index, payees_batch, MMRProof { proof })
 	verify {
 		assert!(ActiveBillingReports::<T>::contains_key(cluster_id, era));
 		let billing_report = ActiveBillingReports::<T>::get(cluster_id, era).unwrap();

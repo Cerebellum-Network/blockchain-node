@@ -14,11 +14,12 @@ use core::str;
 use base64ct::{Base64, Encoding};
 use ddc_primitives::{
 	traits::{
-		ClusterManager, ClusterValidator, CustomerVisitor, NodeVisitor, PayoutVisitor,
+		ClusterManager, ClusterValidator, CustomerVisitor, NodeManager, PayoutVisitor,
 		ValidatorVisitor,
 	},
-	ActivityHash, BatchIndex, ClusterId, ClusterStatus, CustomerUsage, DdcEra, MMRProof,
-	NodeParams, NodePubKey, NodeUsage, PayoutState, StorageNodeParams,
+	ActivityHash, BatchIndex, ClusterId, ClusterStatus, CustomerUsage, DdcEra, EraValidation,
+	EraValidationStatus, MMRProof, NodeParams, NodePubKey, NodeUsage, PayoutState,
+	StorageNodeParams,
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -109,7 +110,7 @@ pub mod pallet {
 		type ClusterManager: ClusterManager<Self>;
 		type PayoutVisitor: PayoutVisitor<Self>;
 		/// DDC nodes read-only registry.
-		type NodeVisitor: NodeVisitor<Self>;
+		type NodeManager: NodeManager<Self>;
 		/// The output of the `ActivityHasher` function.
 		type ActivityHash: Member
 			+ Parameter
@@ -510,27 +511,6 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_stash_for_ddc_validator)]
 	pub type ValidatorToStashKey<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub enum EraValidationStatus {
-		ValidatingData,
-		ReadyForPayout,
-		PayoutInProgress,
-		PayoutFailed,
-		PayoutSuccess,
-		PayoutSkipped,
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	#[scale_info(skip_type_params(T))]
-	pub struct EraValidation<T: Config> {
-		pub validators: BTreeMap<(ActivityHash, ActivityHash), Vec<T::AccountId>>, /* todo! change to signatures (T::AccountId, Signature) */
-		pub start_era: i64,
-		pub end_era: i64,
-		pub payers_merkle_root_hash: ActivityHash,
-		pub payees_merkle_root_hash: ActivityHash,
-		pub status: EraValidationStatus,
-	}
 
 	/// Era activity of a node.
 	#[derive(
@@ -2478,7 +2458,7 @@ pub mod pallet {
 			};
 
 			for node_pub_key in nodes.iter() {
-				match T::NodeVisitor::get_total_usage(node_pub_key) {
+				match T::NodeManager::get_total_usage(node_pub_key) {
 					Ok(usage) => results.push(usage),
 					Err(_err) => {
 						errors.push(OCWError::FailedToFetchNodeTotalUsage {
@@ -3244,7 +3224,7 @@ pub mod pallet {
 			for node_pub_key in nodes {
 				// Get the node parameters
 				if let Ok(NodeParams::StorageParams(storage_params)) =
-					T::NodeVisitor::get_node_params(&node_pub_key)
+					T::NodeManager::get_node_params(&node_pub_key)
 				{
 					log::info!(
 						"🏭📝 Obtained DAC Node for cluster_id: {:?} and with key: {:?}",
@@ -3413,7 +3393,7 @@ pub mod pallet {
 		///
 		/// Emits `BillingReportCreated` event when successful.
 		#[pallet::call_index(0)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports() + T::DbWeight::get().reads_writes(2, 5))] // todo! implement weights
 		pub fn set_prepare_era_for_payout(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3981,8 +3961,23 @@ pub mod pallet {
 
 	impl<T: Config> ValidatorVisitor<T> for Pallet<T> {
 		#[cfg(feature = "runtime-benchmarks")]
-		fn setup_validators(validators: Vec<T::AccountId>) {
+		fn setup_validators(validators_with_keys: Vec<(T::AccountId, T::AccountId)>) {
+			let mut validators = vec![];
+			for (validator, verification_key) in validators_with_keys {
+				ValidatorToStashKey::<T>::insert(&verification_key, &validator);
+				validators.push(validator);
+			}
+
 			ValidatorSet::<T>::put(validators);
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn setup_validation_era(
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			era_validation: EraValidation<T>,
+		) {
+			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
 		}
 
 		fn is_ocw_validator(caller: T::AccountId) -> bool {

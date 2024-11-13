@@ -28,12 +28,12 @@ mod tests;
 
 use ddc_primitives::{
 	traits::{
-		bucket::BucketVisitor as BucketVisitorType,
+		bucket::BucketManager,
 		cluster::{ClusterCreator as ClusterCreatorType, ClusterProtocol as ClusterProtocolType},
 		customer::{
 			CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
 		},
-		node::NodeVisitor as NodeVisitorType,
+		node::NodeManager,
 		pallet::PalletVisitor as PalletVisitorType,
 		payout::PayoutVisitor,
 	},
@@ -119,8 +119,8 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type CustomerCharger: CustomerChargerType<Self>;
-		type BucketVisitor: BucketVisitorType<Self>;
-		type NodeVisitor: NodeVisitorType<Self>;
+		type BucketManager: BucketManager<Self>;
+		type NodeManager: NodeManager<Self>;
 		type CustomerDepositor: CustomerDepositorType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
 		type ClusterProtocol: ClusterProtocolType<Self, BalanceOf<Self>>;
@@ -467,14 +467,14 @@ pub mod pallet {
 					batch_index,
 					billing_report.charging_max_batch_index,
 					&payers,
-					&batch_proof
+					&batch_proof,
 				),
 				Error::<T>::BatchValidationFailed
 			);
 
 			let mut updated_billing_report = billing_report;
 			for (_node_key, bucket_id, customer_usage) in payers {
-				let customer_id = T::BucketVisitor::get_bucket_owner_id(bucket_id)?;
+				let customer_id = T::BucketManager::get_bucket_owner_id(bucket_id)?;
 
 				let mut customer_charge = get_customer_charge::<T>(
 					&cluster_id,
@@ -794,7 +794,7 @@ pub mod pallet {
 			let mut updated_billing_report = billing_report.clone();
 			for (node_key, delta_node_usage) in payees {
 				// todo! get T::NodeVisitor::get_total_usage(delta_node_usage.node_id).stored_bytes
-				let node_provider_id = T::NodeVisitor::get_node_provider_id(&node_key)?;
+				let node_provider_id = T::NodeManager::get_node_provider_id(&node_key)?;
 				let mut total_node_stored_bytes: i64 = 0;
 
 				total_node_stored_bytes = total_node_stored_bytes
@@ -1106,7 +1106,7 @@ pub mod pallet {
 			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
 
 		let mut total_stored_bytes: i64 =
-			T::BucketVisitor::get_total_customer_usage(cluster_id, bucket_id, customer_id)?
+			T::BucketManager::get_total_bucket_usage(cluster_id, bucket_id, customer_id)?
 				.map_or(0, |customer_usage| customer_usage.stored_bytes);
 
 		total_stored_bytes = total_stored_bytes

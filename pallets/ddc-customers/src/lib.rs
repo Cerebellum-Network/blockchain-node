@@ -15,11 +15,11 @@ mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
-		bucket::{BucketManager, BucketVisitor},
+		bucket::BucketManager,
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
 	},
-	BucketId, ClusterId, CustomerUsage,
+	BucketId, BucketParams, ClusterId, CustomerUsage,
 };
 use frame_support::{
 	parameter_types,
@@ -68,11 +68,6 @@ pub struct Bucket<T: Config> {
 	is_public: bool,
 	is_removed: bool,
 	total_customers_usage: Option<CustomerUsage>,
-}
-
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct BucketParams {
-	is_public: bool,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -324,27 +319,10 @@ pub mod pallet {
 			bucket_params: BucketParams,
 		) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
-			let cur_bucket_id =
+			let bucket_id =
 				Self::buckets_count().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
 
-			ensure!(
-				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
-				Error::<T>::ClusterDoesNotExist
-			);
-
-			let bucket = Bucket {
-				bucket_id: cur_bucket_id,
-				owner_id: bucket_owner,
-				cluster_id,
-				is_public: bucket_params.is_public,
-				is_removed: false,
-				total_customers_usage: None,
-			};
-
-			<BucketsCount<T>>::set(cur_bucket_id);
-			<Buckets<T>>::insert(cur_bucket_id, bucket);
-
-			Self::deposit_event(Event::<T>::BucketCreated { cluster_id, bucket_id: cur_bucket_id });
+			Self::do_create_bucket(cluster_id, bucket_id, bucket_owner, bucket_params)?;
 
 			Ok(())
 		}
@@ -647,15 +625,43 @@ pub mod pallet {
 
 			Ok((ledger, unlocking_balance))
 		}
+
+		fn do_create_bucket(
+			cluster_id: ClusterId,
+			bucket_id: BucketId,
+			owner_id: T::AccountId,
+			bucket_params: BucketParams,
+		) -> DispatchResult {
+			ensure!(
+				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
+
+			let bucket = Bucket {
+				bucket_id,
+				owner_id,
+				cluster_id,
+				is_public: bucket_params.is_public,
+				is_removed: false,
+				total_customers_usage: None,
+			};
+
+			<BucketsCount<T>>::set(bucket_id);
+			<Buckets<T>>::insert(bucket_id, bucket);
+
+			Self::deposit_event(Event::<T>::BucketCreated { cluster_id, bucket_id });
+
+			Ok(())
+		}
 	}
 
-	impl<T: Config> BucketVisitor<T> for Pallet<T> {
+	impl<T: Config> BucketManager<T> for Pallet<T> {
 		fn get_bucket_owner_id(bucket_id: BucketId) -> Result<T::AccountId, DispatchError> {
 			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::BucketDoesNotExist)?;
 			Ok(bucket.owner_id)
 		}
 
-		fn get_total_customer_usage(
+		fn get_total_bucket_usage(
 			cluster_id: &ClusterId,
 			bucket_id: BucketId,
 			content_owner: &T::AccountId,
@@ -666,10 +672,8 @@ pub mod pallet {
 
 			Ok(bucket.total_customers_usage)
 		}
-	}
 
-	impl<T: Config> BucketManager<T> for Pallet<T> {
-		fn inc_total_customer_usage(
+		fn inc_total_bucket_usage(
 			cluster_id: &ClusterId,
 			bucket_id: BucketId,
 			content_owner: T::AccountId,
@@ -705,6 +709,17 @@ pub mod pallet {
 				number_of_gets: customer_usage.number_of_gets,
 			});
 
+			Ok(())
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn create_bucket(
+			cluster_id: &ClusterId,
+			bucket_id: BucketId,
+			owner_id: T::AccountId,
+			bucket_params: BucketParams,
+		) -> Result<(), DispatchError> {
+			Self::do_create_bucket(*cluster_id, bucket_id, owner_id, bucket_params)?;
 			Ok(())
 		}
 	}
@@ -750,7 +765,7 @@ pub mod pallet {
 				actually_charged.checked_add(&charged).ok_or(Error::<T>::ArithmeticUnderflow)?;
 			}
 
-			Self::inc_total_customer_usage(
+			Self::inc_total_bucket_usage(
 				cluster_id,
 				bucket_id,
 				content_owner.clone(),

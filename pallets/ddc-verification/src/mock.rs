@@ -222,7 +222,7 @@ impl crate::Config for Test {
 	type WeightInfo = ();
 	type ClusterManager = TestClusterManager;
 	type ClusterValidator = TestClusterValidator;
-	type NodeVisitor = MockNodeVisitor;
+	type NodeManager = MockNodeManager;
 	type PayoutVisitor = MockPayoutVisitor;
 	type AuthorityId = sr25519::AuthorityId;
 	type OffchainIdentifierId = crypto::OffchainIdentifierId;
@@ -458,8 +458,8 @@ impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
 	}
 }
 
-pub struct MockNodeVisitor;
-impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
+pub struct MockNodeManager;
+impl<T: Config> NodeManager<T> for MockNodeManager {
 	fn get_total_usage(_node_pub_key: &NodePubKey) -> Result<Option<NodeUsage>, DispatchError> {
 		Ok(None) // todo! add more complex mock
 	}
@@ -602,6 +602,7 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
 		unimplemented!()
 	}
+
 	fn exists(_node_pub_key: &NodePubKey) -> bool {
 		unimplemented!()
 	}
@@ -611,6 +612,15 @@ impl<T: Config> NodeVisitor<T> for MockNodeVisitor {
 		let account_1 = T::AccountId::decode(&mut &temp.as_slice()[..]).unwrap();
 
 		Ok(account_1)
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn create_node(
+		_node_pub_key: NodePubKey,
+		_provider_id: T::AccountId,
+		_node_params: NodeParams,
+	) -> DispatchResult {
+		unimplemented!()
 	}
 }
 

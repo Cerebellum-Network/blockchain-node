@@ -57,7 +57,7 @@ pub fn create_stash_controller_node<T: Config>(
 		T::Lookup::unlookup(controller.clone());
 	let node = NodePubKey::StoragePubKey(StorageNodePubKey::new([0; 32]));
 
-	T::NodeCreator::create_node(
+	T::NodeManager::create_node(
 		node.clone(),
 		stash.clone(),
 		NodeParams::StorageParams(StorageNodeParams {
@@ -94,7 +94,7 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 	let node_pub = node_pub_key.clone();
 	match node_pub_key {
 		NodePubKey::StoragePubKey(node_pub_key) => {
-			T::NodeCreator::create_node(
+			T::NodeManager::create_node(
 				ddc_primitives::NodePubKey::StoragePubKey(node_pub_key),
 				stash.clone(),
 				NodeParams::StorageParams(StorageNodeParams {

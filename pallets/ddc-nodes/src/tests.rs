@@ -132,7 +132,7 @@ fn create_storage_node_with_node_creator() {
 		let account_id1 = AccountId::from([1; 32]);
 
 		// Node created
-		assert_ok!(<DdcNodes as NodeCreator<Test>>::create_node(
+		assert_ok!(<DdcNodes as NodeManager<Test>>::create_node(
 			NodePubKey::StoragePubKey(node_pub_key.clone()),
 			account_id1,
 			NodeParams::StorageParams(storage_node_params)

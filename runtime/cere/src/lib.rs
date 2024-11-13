@@ -1225,7 +1225,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
-	type BucketVisitor = DdcCustomers;
+	type BucketManager = DdcCustomers;
 	type CustomerDepositor = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
@@ -1234,7 +1234,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type VoteScoreToU64 = IdentityConvert;
 	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
 }
 
@@ -1250,8 +1250,7 @@ impl pallet_ddc_staking::Config for Runtime {
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
-	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
 	type ClusterBondingAmount = ClusterBondingAmount;
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
@@ -1299,13 +1298,11 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
 	type SeatsConsensus = pallet_ddc_clusters_gov::Unanimous;
 	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
 	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
-	#[cfg(feature = "runtime-benchmarks")]
-	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 }
@@ -1337,7 +1334,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
 	type PayoutVisitor = pallet_ddc_payouts::Pallet<Runtime>;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
