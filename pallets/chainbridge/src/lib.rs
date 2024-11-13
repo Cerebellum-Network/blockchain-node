@@ -157,23 +157,19 @@ pub mod pallet {
 
 	/// All whitelisted chains and their respective transaction counts
 	#[pallet::storage]
-	#[pallet::getter(fn chains)]
 	pub type ChainNonces<T: Config> = StorageMap<_, Blake2_256, ChainId, DepositNonce>;
 
 	/// Tracks current relayer set
 	#[pallet::storage]
-	#[pallet::getter(fn relayers)]
 	pub type Relayers<T: Config> = StorageMap<_, Blake2_256, T::AccountId, bool>;
 
 	/// Utilized by the bridge software to map resource IDs to actual methods
 	#[pallet::storage]
-	#[pallet::getter(fn resources)]
 	pub type Resources<T: Config> = StorageMap<_, Blake2_256, ResourceId, Vec<u8>>;
 
 	/// All known proposals.
 	/// The key is the hash of the call and the deposit ID, to ensure it's unique
 	#[pallet::storage]
-	#[pallet::getter(fn votes)]
 	pub type Votes<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_256,
@@ -190,7 +186,6 @@ pub mod pallet {
 
 	/// Number of votes required for a proposal to execute
 	#[pallet::storage]
-	#[pallet::getter(fn relayer_threshold)]
 	pub type RelayerThreshold<T: Config> =
 		StorageValue<Value = u32, QueryKind = ValueQuery, OnEmpty = DefaultRelayerThreshold<T>>;
 
@@ -201,7 +196,6 @@ pub mod pallet {
 
 	/// Number of relayers in set
 	#[pallet::storage]
-	#[pallet::getter(fn relayer_count)]
 	pub type RelayerCount<T: Config> =
 		StorageValue<Value = u32, QueryKind = ValueQuery, OnEmpty = DefaultRelayerCount<T>>;
 
@@ -435,7 +429,7 @@ pub mod pallet {
 
 		/// Checks if who is a relayer
 		pub fn is_relayer(who: &T::AccountId) -> bool {
-			Self::relayers(who).unwrap_or(false)
+			Relayers::<T>::get(who).unwrap_or(false)
 		}
 
 		/// Provides an AccountId for the pallet.
@@ -446,18 +440,18 @@ pub mod pallet {
 
 		/// Asserts if a resource is registered
 		pub fn resource_exists(id: ResourceId) -> bool {
-			Self::resources(id).is_some()
+			Resources::<T>::get(id).is_some()
 		}
 
 		/// Checks if a chain exists as a whitelisted destination
 		pub fn chain_whitelisted(id: ChainId) -> bool {
-			Self::chains(id).is_some()
+			ChainNonces::<T>::get(id).is_some()
 		}
 
 		/// Increments the deposit nonce for the specified chain ID
 		fn bump_nonce(id: ChainId) -> DepositNonce {
-			let nonce = Self::chains(id).unwrap_or_default() + 1;
-			<ChainNonces<T>>::insert(id, nonce);
+			let nonce = ChainNonces::<T>::get(id).unwrap_or_default() + 1;
+			ChainNonces::<T>::insert(id, nonce);
 			nonce
 		}
 
