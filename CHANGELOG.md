@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [6.6.1]
+- [C,D] Remove the Deprecated traits.
+
 ## [6.6.0]
 - [C,D] Update Substrate from `stable2407` to `stable2409`.
 
