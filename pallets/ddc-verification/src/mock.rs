@@ -223,7 +223,7 @@ impl crate::Config for Test {
 	type ClusterManager = TestClusterManager;
 	type ClusterValidator = TestClusterValidator;
 	type NodeManager = MockNodeManager;
-	type PayoutVisitor = MockPayoutVisitor;
+	type PayoutProcessor = MockPayoutProcessor;
 	type AuthorityId = sr25519::AuthorityId;
 	type OffchainIdentifierId = crypto::OffchainIdentifierId;
 	type ActivityHasher = sp_runtime::traits::BlakeTwo256;
@@ -355,8 +355,66 @@ impl<T: Config> ClusterValidator<T> for TestClusterValidator {
 	}
 }
 
-pub struct MockPayoutVisitor;
-impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
+pub struct MockPayoutProcessor;
+impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
+	fn begin_billing_report(
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+		_start_era: i64,
+		_end_era: i64,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn begin_charging_customers(
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+		_max_batch_index: BatchIndex,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn send_charging_customers_batch(
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+		_batch_index: BatchIndex,
+		_payers: &[(NodePubKey, BucketId, CustomerUsage)],
+		_batch_proof: MMRProof,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn end_charging_customers(_cluster_id: ClusterId, _era_id: DdcEra) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn begin_rewarding_providers(
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+		_max_batch_index: BatchIndex,
+		_total_node_usage: NodeUsage,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn send_rewarding_providers_batch(
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+		_batch_index: BatchIndex,
+		_payees: &[(NodePubKey, NodeUsage)],
+		_batch_proof: MMRProof,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn end_rewarding_providers(_cluster_id: ClusterId, _era_id: DdcEra) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn end_billing_report(_cluster_id: ClusterId, _era_id: DdcEra) -> DispatchResult {
+		unimplemented!()
+	}
+
 	fn get_next_customer_batch_for_payment(
 		_cluster_id: &ClusterId,
 		_era_id: DdcEra,
@@ -381,81 +439,6 @@ impl<T: Config> PayoutVisitor<T> for MockPayoutVisitor {
 
 	fn get_billing_report_status(_cluster_id: &ClusterId, _era_id: DdcEra) -> PayoutState {
 		PayoutState::NotInitialized
-	}
-
-	fn begin_billing_report(
-		_origin: T::AccountId,
-		_cluster_id: ClusterId,
-		_era_id: DdcEra,
-		_start_era: i64,
-		_end_era: i64,
-	) -> DispatchResult {
-		Ok(())
-	}
-
-	fn begin_charging_customers(
-		_origin: T::AccountId,
-		_cluster_id: ClusterId,
-		_era_id: DdcEra,
-		_max_batch_index: BatchIndex,
-	) -> DispatchResult {
-		Ok(())
-	}
-
-	fn send_charging_customers_batch(
-		_origin: T::AccountId,
-		_cluster_id: ClusterId,
-		_era_id: DdcEra,
-		_batch_index: BatchIndex,
-		_payers: &[(NodePubKey, BucketId, CustomerUsage)],
-		_batch_proof: MMRProof,
-	) -> DispatchResult {
-		Ok(())
-	}
-
-	fn end_charging_customers(
-		_origin: T::AccountId,
-		_cluster_id: ClusterId,
-		_era_id: DdcEra,
-	) -> DispatchResult {
-		Ok(())
-	}
-
-	fn begin_rewarding_providers(
-		_origin: T::AccountId,
-		_cluster_id: ClusterId,
-		_era_id: DdcEra,
-		_max_batch_index: BatchIndex,
-		_total_node_usage: NodeUsage,
-	) -> DispatchResult {
-		Ok(())
-	}
-
-	fn send_rewarding_providers_batch(
-		_origin: T::AccountId,
-		_cluster_id: ClusterId,
-		_era_id: DdcEra,
-		_batch_index: BatchIndex,
-		_payees: &[(NodePubKey, NodeUsage)],
-		_batch_proof: MMRProof,
-	) -> DispatchResult {
-		Ok(())
-	}
-
-	fn end_rewarding_providers(
-		_origin: T::AccountId,
-		_cluster_id: ClusterId,
-		_era_id: DdcEra,
-	) -> DispatchResult {
-		Ok(())
-	}
-
-	fn end_billing_report(
-		_origin: T::AccountId,
-		_cluster_id: ClusterId,
-		_era_id: DdcEra,
-	) -> DispatchResult {
-		Ok(())
 	}
 }
 

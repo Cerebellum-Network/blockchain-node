@@ -37,7 +37,7 @@ use ddc_primitives::{
 		},
 		node::NodeManager,
 		pallet::PalletVisitor as PalletVisitorType,
-		payout::PayoutVisitor,
+		payout::PayoutProcessor,
 	},
 	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodePubKey, NodeUsage,
 	PayoutError, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
@@ -336,615 +336,7 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
-		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::begin_billing_report())]
-		pub fn begin_billing_report(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era: DdcEra,
-			start_era: i64,
-			end_era: i64,
-		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
-			ensure!(
-				ActiveBillingReports::<T>::try_get(cluster_id, era).is_err(),
-				Error::<T>::NotExpectedState
-			);
-
-			ensure!(end_era > start_era, Error::<T>::BadRequest);
-
-			let billing_report = BillingReport::<T> {
-				vault: Self::account_id(),
-				state: PayoutState::Initialized,
-				start_era,
-				end_era,
-				..Default::default()
-			};
-			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
-
-			Self::deposit_event(Event::<T>::BillingReportInitialized { cluster_id, era });
-
-			Ok(())
-		}
-
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// PayoutProcessor trait
-		#[pallet::call_index(2)]
-		#[pallet::weight(T::WeightInfo::begin_charging_customers())]
-		pub fn begin_charging_customers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era: DdcEra,
-			max_batch_index: BatchIndex,
-		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised); //
-																				  // todo! need to refactor this
-
-			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
-
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
-				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
-
-			ensure!(billing_report.state == PayoutState::Initialized, Error::<T>::NotExpectedState);
-
-			billing_report.charging_max_batch_index = max_batch_index;
-			billing_report.state = PayoutState::ChargingCustomers;
-			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
-
-			Self::deposit_event(Event::<T>::ChargingStarted { cluster_id, era });
-
-			Ok(())
-		}
-
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// + pass values by reference PayoutProcessor trait
-		#[pallet::call_index(3)]
-		#[pallet::weight(T::WeightInfo::send_charging_customers_batch(payers.len().saturated_into()))]
-		pub fn send_charging_customers_batch(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era: DdcEra,
-			batch_index: BatchIndex,
-			payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
-			batch_proof: MMRProof,
-		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
-			ensure!(
-				!payers.is_empty() && payers.len() <= MaxBatchSize::get() as usize,
-				Error::<T>::BatchSizeIsOutOfBounds
-			);
-
-			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
-				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
-
-			ensure!(
-				billing_report.state == PayoutState::ChargingCustomers,
-				Error::<T>::NotExpectedState
-			);
-
-			ensure!(
-				billing_report.charging_max_batch_index >= batch_index,
-				Error::<T>::BatchIndexIsOutOfRange
-			);
-
-			ensure!(
-				!billing_report.charging_processed_batches.contains(&batch_index),
-				Error::<T>::BatchIndexAlreadyProcessed
-			);
-
-			ensure!(
-				T::ValidatorVisitor::is_customers_batch_valid(
-					cluster_id,
-					era,
-					batch_index,
-					billing_report.charging_max_batch_index,
-					&payers,
-					&batch_proof,
-				),
-				Error::<T>::BatchValidationFailed
-			);
-
-			let mut updated_billing_report = billing_report;
-			for (_node_key, bucket_id, customer_usage) in payers {
-				let customer_id = T::BucketManager::get_bucket_owner_id(bucket_id)?;
-
-				let mut customer_charge = get_customer_charge::<T>(
-					&cluster_id,
-					&customer_usage,
-					bucket_id,
-					&customer_id,
-					updated_billing_report.start_era,
-					updated_billing_report.end_era,
-				)?;
-				let total_customer_charge = (|| -> Option<u128> {
-					customer_charge
-						.transfer
-						.checked_add(customer_charge.storage)?
-						.checked_add(customer_charge.puts)?
-						.checked_add(customer_charge.gets)
-				})()
-				.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-				let amount_actually_charged = match T::CustomerCharger::charge_content_owner(
-					&cluster_id,
-					bucket_id,
-					customer_id.clone(),
-					updated_billing_report.vault.clone(),
-					&customer_usage,
-					total_customer_charge,
-				) {
-					Ok(actually_charged) => actually_charged,
-					Err(e) => {
-						Self::deposit_event(Event::<T>::ChargeError {
-							cluster_id,
-							era,
-							batch_index,
-							customer_id: customer_id.clone(),
-							amount: total_customer_charge,
-							error: e,
-						});
-						0
-					},
-				};
-
-				if amount_actually_charged < total_customer_charge {
-					// debt
-					let mut customer_debt =
-						DebtorCustomers::<T>::try_get(cluster_id, customer_id.clone())
-							.unwrap_or_else(|_| Zero::zero());
-
-					let debt = total_customer_charge
-						.checked_sub(amount_actually_charged)
-						.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-					customer_debt =
-						customer_debt.checked_add(debt).ok_or(Error::<T>::ArithmeticOverflow)?;
-
-					DebtorCustomers::<T>::insert(cluster_id, customer_id.clone(), customer_debt);
-
-					Self::deposit_event(Event::<T>::Indebted {
-						cluster_id,
-						era,
-						batch_index,
-						customer_id: customer_id.clone(),
-						bucket_id,
-						amount: debt,
-					});
-
-					Self::deposit_event(Event::<T>::ChargeFailed {
-						cluster_id,
-						era,
-						batch_index,
-						customer_id,
-						bucket_id,
-						charged: amount_actually_charged,
-						expected_to_charge: total_customer_charge,
-					});
-
-					// something was charged and should be added
-					// calculate ratio
-					let ratio =
-						Perquintill::from_rational(amount_actually_charged, total_customer_charge);
-
-					customer_charge.storage = ratio * customer_charge.storage;
-					customer_charge.transfer = ratio * customer_charge.transfer;
-					customer_charge.gets = ratio * customer_charge.gets;
-					customer_charge.puts = ratio * customer_charge.puts;
-				} else {
-					Self::deposit_event(Event::<T>::Charged {
-						cluster_id,
-						era,
-						batch_index,
-						customer_id,
-						bucket_id,
-						amount: total_customer_charge,
-					});
-				}
-
-				updated_billing_report.total_customer_charge.storage = updated_billing_report
-					.total_customer_charge
-					.storage
-					.checked_add(customer_charge.storage)
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-				updated_billing_report.total_customer_charge.transfer = updated_billing_report
-					.total_customer_charge
-					.transfer
-					.checked_add(customer_charge.transfer)
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-				updated_billing_report.total_customer_charge.puts = updated_billing_report
-					.total_customer_charge
-					.puts
-					.checked_add(customer_charge.puts)
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-				updated_billing_report.total_customer_charge.gets = updated_billing_report
-					.total_customer_charge
-					.gets
-					.checked_add(customer_charge.gets)
-					.ok_or(Error::<T>::ArithmeticOverflow)?;
-			}
-
-			updated_billing_report
-				.charging_processed_batches
-				.try_insert(batch_index)
-				.map_err(|_| Error::<T>::BoundedVecOverflow)?;
-
-			ActiveBillingReports::<T>::insert(cluster_id, era, updated_billing_report);
-
-			Ok(())
-		}
-
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// PayoutProcessor trait
-		#[pallet::call_index(4)]
-		#[pallet::weight(T::WeightInfo::end_charging_customers())]
-		pub fn end_charging_customers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era: DdcEra,
-		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
-				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
-
-			ensure!(
-				billing_report.state == PayoutState::ChargingCustomers,
-				Error::<T>::NotExpectedState
-			);
-			Self::validate_batches(
-				&billing_report.charging_processed_batches,
-				&billing_report.charging_max_batch_index,
-			)?;
-
-			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
-
-			// deduct fees
-			let fees = T::ClusterProtocol::get_fees_params(&cluster_id)
-				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
-
-			let total_customer_charge = (|| -> Option<u128> {
-				billing_report
-					.total_customer_charge
-					.transfer
-					.checked_add(billing_report.total_customer_charge.storage)?
-					.checked_add(billing_report.total_customer_charge.puts)?
-					.checked_add(billing_report.total_customer_charge.gets)
-			})()
-			.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-			let treasury_fee = fees.treasury_share * total_customer_charge;
-			let validators_fee = fees.validators_share * total_customer_charge;
-			let cluster_reserve_fee = fees.cluster_reserve_share * total_customer_charge;
-
-			if treasury_fee > 0 {
-				charge_treasury_fees::<T>(
-					treasury_fee,
-					&billing_report.vault,
-					&T::TreasuryVisitor::get_account_id(),
-				)?;
-
-				Self::deposit_event(Event::<T>::TreasuryFeesCollected {
-					cluster_id,
-					era,
-					amount: treasury_fee,
-				});
-			}
-
-			if cluster_reserve_fee > 0 {
-				charge_cluster_reserve_fees::<T>(
-					cluster_reserve_fee,
-					&billing_report.vault,
-					&T::ClusterProtocol::get_reserve_account_id(&cluster_id)
-						.map_err(|_| Error::<T>::NotExpectedClusterState)?,
-				)?;
-				Self::deposit_event(Event::<T>::ClusterReserveFeesCollected {
-					cluster_id,
-					era,
-					amount: cluster_reserve_fee,
-				});
-			}
-
-			if validators_fee > 0 {
-				charge_validator_fees::<T>(validators_fee, &billing_report.vault, cluster_id, era)?;
-				Self::deposit_event(Event::<T>::ValidatorFeesCollected {
-					cluster_id,
-					era,
-					amount: validators_fee,
-				});
-			}
-
-			// 1 - (X + Y + Z) > 0, 0 < X + Y + Z < 1
-			let total_left_from_one =
-				(fees.treasury_share + fees.validators_share + fees.cluster_reserve_share)
-					.left_from_one();
-
-			if !total_left_from_one.is_zero() {
-				// X * Z < X, 0 < Z < 1
-				billing_report.total_customer_charge.transfer =
-					total_left_from_one * billing_report.total_customer_charge.transfer;
-				billing_report.total_customer_charge.storage =
-					total_left_from_one * billing_report.total_customer_charge.storage;
-				billing_report.total_customer_charge.puts =
-					total_left_from_one * billing_report.total_customer_charge.puts;
-				billing_report.total_customer_charge.gets =
-					total_left_from_one * billing_report.total_customer_charge.gets;
-			}
-
-			billing_report.state = PayoutState::CustomersChargedWithFees;
-			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
-
-			Ok(())
-		}
-
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// PayoutProcessor trait
-		#[pallet::call_index(5)]
-		#[pallet::weight(T::WeightInfo::begin_rewarding_providers())]
-		pub fn begin_rewarding_providers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era: DdcEra,
-			max_batch_index: BatchIndex,
-			total_node_usage: NodeUsage,
-		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
-			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
-
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
-				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
-
-			ensure!(
-				billing_report.state == PayoutState::CustomersChargedWithFees,
-				Error::<T>::NotExpectedState
-			);
-
-			billing_report.total_node_usage = total_node_usage;
-			billing_report.rewarding_max_batch_index = max_batch_index;
-			billing_report.state = PayoutState::RewardingProviders;
-			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
-
-			Self::deposit_event(Event::<T>::RewardingStarted { cluster_id, era });
-
-			Ok(())
-		}
-
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// + pass values by reference PayoutProcessor trait
-		#[pallet::call_index(6)]
-		#[pallet::weight(T::WeightInfo::send_rewarding_providers_batch(payees.len().saturated_into()))]
-		pub fn send_rewarding_providers_batch(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era: DdcEra,
-			batch_index: BatchIndex,
-			payees: Vec<(NodePubKey, NodeUsage)>,
-			batch_proof: MMRProof,
-		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
-			ensure!(
-				!payees.is_empty() && payees.len() <= MaxBatchSize::get() as usize,
-				Error::<T>::BatchSizeIsOutOfBounds
-			);
-
-			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
-				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
-
-			ensure!(
-				billing_report.state == PayoutState::RewardingProviders,
-				Error::<T>::NotExpectedState
-			);
-			ensure!(
-				billing_report.rewarding_max_batch_index >= batch_index,
-				Error::<T>::BatchIndexIsOutOfRange
-			);
-			ensure!(
-				!billing_report.rewarding_processed_batches.contains(&batch_index),
-				Error::<T>::BatchIndexAlreadyProcessed
-			);
-
-			ensure!(
-				T::ValidatorVisitor::is_providers_batch_valid(
-					cluster_id,
-					era,
-					batch_index,
-					billing_report.rewarding_max_batch_index,
-					&payees,
-					&batch_proof
-				),
-				Error::<T>::BatchValidationFailed
-			);
-
-			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
-			let mut updated_billing_report = billing_report.clone();
-			for (node_key, delta_node_usage) in payees {
-				// todo! get T::NodeVisitor::get_total_usage(delta_node_usage.node_id).stored_bytes
-				let node_provider_id = T::NodeManager::get_node_provider_id(&node_key)?;
-				let mut total_node_stored_bytes: i64 = 0;
-
-				total_node_stored_bytes = total_node_stored_bytes
-					.checked_add(delta_node_usage.stored_bytes)
-					.ok_or(Error::<T>::ArithmeticOverflow)?
-					.max(0);
-
-				let node_usage = NodeUsage {
-					stored_bytes: total_node_stored_bytes,
-					transferred_bytes: delta_node_usage.transferred_bytes,
-					number_of_puts: delta_node_usage.number_of_puts,
-					number_of_gets: delta_node_usage.number_of_gets,
-				};
-
-				let node_reward = get_node_reward(
-					&node_usage,
-					&billing_report.total_node_usage,
-					&billing_report.total_customer_charge,
-				)
-				.ok_or(Error::<T>::ArithmeticOverflow)?;
-				let amount_to_reward = (|| -> Option<u128> {
-					node_reward
-						.transfer
-						.checked_add(node_reward.storage)?
-						.checked_add(node_reward.puts)?
-						.checked_add(node_reward.gets)
-				})()
-				.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-				let mut reward_ = amount_to_reward;
-				let mut reward: BalanceOf<T> = amount_to_reward.saturated_into::<BalanceOf<T>>();
-				if amount_to_reward > 0 {
-					let vault_balance = <T as pallet::Config>::Currency::free_balance(
-						&updated_billing_report.vault,
-					) - <T as pallet::Config>::Currency::minimum_balance();
-
-					// 10000000000001 > 10000000000000 but is still ok
-					if reward > vault_balance {
-						if reward - vault_balance > max_dust {
-							Self::deposit_event(Event::<T>::NotDistributedReward {
-								cluster_id,
-								era,
-								batch_index,
-								node_provider_id: node_provider_id.clone(),
-								expected_reward: amount_to_reward,
-								distributed_reward: vault_balance,
-							});
-						}
-
-						reward = vault_balance;
-					}
-
-					<T as pallet::Config>::Currency::transfer(
-						&updated_billing_report.vault,
-						&node_provider_id,
-						reward,
-						ExistenceRequirement::AllowDeath,
-					)?;
-
-					// todo! update total usage of node with NodeManager
-
-					reward_ = reward.saturated_into::<u128>();
-
-					updated_billing_report.total_distributed_reward = updated_billing_report
-						.total_distributed_reward
-						.checked_add(reward_)
-						.ok_or(Error::<T>::ArithmeticOverflow)?;
-				}
-
-				Self::deposit_event(Event::<T>::Rewarded {
-					cluster_id,
-					era,
-					batch_index,
-					node_provider_id,
-					rewarded: reward_,
-					expected_to_reward: amount_to_reward,
-				});
-			}
-
-			updated_billing_report
-				.rewarding_processed_batches
-				.try_insert(batch_index)
-				.map_err(|_| Error::<T>::BoundedVecOverflow)?;
-
-			ActiveBillingReports::<T>::insert(cluster_id, era, updated_billing_report);
-
-			Ok(())
-		}
-
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// PayoutProcessor trait
-		#[pallet::call_index(7)]
-		#[pallet::weight(T::WeightInfo::end_rewarding_providers())]
-		pub fn end_rewarding_providers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era: DdcEra,
-		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
-				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
-
-			ensure!(
-				billing_report.state == PayoutState::RewardingProviders,
-				Error::<T>::NotExpectedState
-			);
-
-			Self::validate_batches(
-				&billing_report.rewarding_processed_batches,
-				&billing_report.rewarding_max_batch_index,
-			)?;
-
-			let expected_amount_to_reward = (|| -> Option<u128> {
-				billing_report
-					.total_customer_charge
-					.transfer
-					.checked_add(billing_report.total_customer_charge.storage)?
-					.checked_add(billing_report.total_customer_charge.puts)?
-					.checked_add(billing_report.total_customer_charge.gets)
-			})()
-			.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-			if expected_amount_to_reward - billing_report.total_distributed_reward > MaxDust::get()
-			{
-				Self::deposit_event(Event::<T>::NotDistributedOverallReward {
-					cluster_id,
-					era,
-					expected_reward: expected_amount_to_reward,
-					total_distributed_reward: billing_report.total_distributed_reward,
-				});
-			}
-
-			billing_report.state = PayoutState::ProvidersRewarded;
-			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
-
-			Self::deposit_event(Event::<T>::RewardingFinished { cluster_id, era });
-
-			Ok(())
-		}
-
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// PayoutProcessor trait
-		#[pallet::call_index(8)]
-		#[pallet::weight(T::WeightInfo::end_billing_report())]
-		pub fn end_billing_report(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era: DdcEra,
-		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
-			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
-				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
-
-			ensure!(
-				billing_report.state == PayoutState::ProvidersRewarded,
-				Error::<T>::NotExpectedState
-			);
-
-			billing_report.charging_processed_batches.clear();
-			billing_report.rewarding_processed_batches.clear();
-			billing_report.state = PayoutState::Finalized;
-
-			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
-			Self::deposit_event(Event::<T>::BillingReportFinalized { cluster_id, era });
-
-			Ok(())
-		}
-	}
+	impl<T: Config> Pallet<T> {}
 
 	fn charge_treasury_fees<T: Config>(
 		treasury_fee: u128,
@@ -1153,156 +545,596 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> PayoutVisitor<T> for Pallet<T> {
+	impl<T: Config> Pallet<T> {
+		pub fn account_id() -> T::AccountId {
+			T::PalletId::get().into_account_truncating()
+		}
+
+		pub fn get_account_id_string(caller: T::AccountId) -> String {
+			let account_id: T::AccountIdConverter = caller.into();
+			let account_id_32: AccountId32 = account_id.into();
+			let account_ref: &[u8; 32] = account_id_32.as_ref();
+			hex::encode(account_ref)
+		}
+		pub fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
+			let mut bytes = Vec::new();
+			bytes.extend_from_slice(&cluster_id[..]);
+			bytes.extend_from_slice(&era.encode());
+			let hash = blake2_128(&bytes);
+
+			// "modl" + "payouts_" + hash is 28 bytes, the T::AccountId is 32 bytes, so we should be
+			// safe from the truncation and possible collisions caused by it. The rest 4 bytes will
+			// be fulfilled with trailing zeros.
+			T::PalletId::get().into_sub_account_truncating(hash)
+		}
+
+		pub(crate) fn validate_batches(
+			batches: &BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
+			max_batch_index: &BatchIndex,
+		) -> DispatchResult {
+			// Check if the Vec contains all integers between 1 and rewarding_max_batch_index
+			ensure!(!batches.is_empty(), Error::<T>::BatchesMissed);
+
+			ensure!((*max_batch_index + 1) as usize == batches.len(), Error::<T>::BatchesMissed);
+
+			for index in 0..*max_batch_index + 1 {
+				ensure!(batches.contains(&index), Error::<T>::BatchesMissed);
+			}
+
+			Ok(())
+		}
+	}
+
+	impl<T: Config> PayoutProcessor<T> for Pallet<T> {
 		fn begin_billing_report(
-			origin: T::AccountId,
 			cluster_id: ClusterId,
-			era_id: DdcEra,
+			era: DdcEra,
 			start_era: i64,
 			end_era: i64,
 		) -> DispatchResult {
-			log::info!(
-				"🏭begin_billing_report called by: {:?}",
-				Self::get_account_id_string(origin.clone())
+			ensure!(
+				ActiveBillingReports::<T>::try_get(cluster_id, era).is_err(),
+				Error::<T>::NotExpectedState
 			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::begin_billing_report(origin, cluster_id, era_id, start_era, end_era)
+
+			ensure!(end_era > start_era, Error::<T>::BadRequest);
+
+			let billing_report = BillingReport::<T> {
+				vault: Self::account_id(),
+				state: PayoutState::Initialized,
+				start_era,
+				end_era,
+				..Default::default()
+			};
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
+
+			Self::deposit_event(Event::<T>::BillingReportInitialized { cluster_id, era });
+
+			Ok(())
 		}
 
 		fn begin_charging_customers(
-			origin: T::AccountId,
 			cluster_id: ClusterId,
-			era_id: DdcEra,
+			era: DdcEra,
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
-			log::info!(
-				"🏭begin_charging_customers called by: {:?}",
-				Self::get_account_id_string(origin.clone())
-			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::begin_charging_customers(origin, cluster_id, era_id, max_batch_index)
+			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
+
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
+				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
+
+			ensure!(billing_report.state == PayoutState::Initialized, Error::<T>::NotExpectedState);
+
+			billing_report.charging_max_batch_index = max_batch_index;
+			billing_report.state = PayoutState::ChargingCustomers;
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
+
+			Self::deposit_event(Event::<T>::ChargingStarted { cluster_id, era });
+
+			Ok(())
 		}
 
 		fn send_charging_customers_batch(
-			origin: T::AccountId,
 			cluster_id: ClusterId,
-			era_id: DdcEra,
+			era: DdcEra,
 			batch_index: BatchIndex,
 			payers: &[(NodePubKey, BucketId, CustomerUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
-			log::info!(
-				"🏭send_charging_customers_batch called by: {:?}",
-				Self::get_account_id_string(origin.clone())
+			ensure!(
+				!payers.is_empty() && payers.len() <= MaxBatchSize::get() as usize,
+				Error::<T>::BatchSizeIsOutOfBounds
 			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::send_charging_customers_batch(
-				origin,
-				cluster_id,
-				era_id,
-				batch_index,
-				(*payers).to_vec(),
-				batch_proof,
-			)
+
+			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
+				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
+
+			ensure!(
+				billing_report.state == PayoutState::ChargingCustomers,
+				Error::<T>::NotExpectedState
+			);
+
+			ensure!(
+				billing_report.charging_max_batch_index >= batch_index,
+				Error::<T>::BatchIndexIsOutOfRange
+			);
+
+			ensure!(
+				!billing_report.charging_processed_batches.contains(&batch_index),
+				Error::<T>::BatchIndexAlreadyProcessed
+			);
+
+			ensure!(
+				T::ValidatorVisitor::is_customers_batch_valid(
+					cluster_id,
+					era,
+					batch_index,
+					billing_report.charging_max_batch_index,
+					&payers,
+					&batch_proof,
+				),
+				Error::<T>::BatchValidationFailed
+			);
+
+			let mut updated_billing_report = billing_report;
+			for (_node_key, bucket_ref, customer_usage) in payers {
+				let bucket_id = *bucket_ref;
+				let customer_id = T::BucketManager::get_bucket_owner_id(bucket_id)?;
+
+				let mut customer_charge = get_customer_charge::<T>(
+					&cluster_id,
+					&customer_usage,
+					bucket_id,
+					&customer_id,
+					updated_billing_report.start_era,
+					updated_billing_report.end_era,
+				)?;
+				let total_customer_charge = (|| -> Option<u128> {
+					customer_charge
+						.transfer
+						.checked_add(customer_charge.storage)?
+						.checked_add(customer_charge.puts)?
+						.checked_add(customer_charge.gets)
+				})()
+				.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				let amount_actually_charged = match T::CustomerCharger::charge_content_owner(
+					&cluster_id,
+					bucket_id,
+					customer_id.clone(),
+					updated_billing_report.vault.clone(),
+					&customer_usage,
+					total_customer_charge,
+				) {
+					Ok(actually_charged) => actually_charged,
+					Err(e) => {
+						Self::deposit_event(Event::<T>::ChargeError {
+							cluster_id,
+							era,
+							batch_index,
+							customer_id: customer_id.clone(),
+							amount: total_customer_charge,
+							error: e,
+						});
+						0
+					},
+				};
+
+				if amount_actually_charged < total_customer_charge {
+					// debt
+					let mut customer_debt =
+						DebtorCustomers::<T>::try_get(cluster_id, customer_id.clone())
+							.unwrap_or_else(|_| Zero::zero());
+
+					let debt = total_customer_charge
+						.checked_sub(amount_actually_charged)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+					customer_debt =
+						customer_debt.checked_add(debt).ok_or(Error::<T>::ArithmeticOverflow)?;
+
+					DebtorCustomers::<T>::insert(cluster_id, customer_id.clone(), customer_debt);
+
+					Self::deposit_event(Event::<T>::Indebted {
+						cluster_id,
+						era,
+						batch_index,
+						customer_id: customer_id.clone(),
+						bucket_id,
+						amount: debt,
+					});
+
+					Self::deposit_event(Event::<T>::ChargeFailed {
+						cluster_id,
+						era,
+						batch_index,
+						customer_id,
+						bucket_id,
+						charged: amount_actually_charged,
+						expected_to_charge: total_customer_charge,
+					});
+
+					// something was charged and should be added
+					// calculate ratio
+					let ratio =
+						Perquintill::from_rational(amount_actually_charged, total_customer_charge);
+
+					customer_charge.storage = ratio * customer_charge.storage;
+					customer_charge.transfer = ratio * customer_charge.transfer;
+					customer_charge.gets = ratio * customer_charge.gets;
+					customer_charge.puts = ratio * customer_charge.puts;
+				} else {
+					Self::deposit_event(Event::<T>::Charged {
+						cluster_id,
+						era,
+						batch_index,
+						customer_id,
+						bucket_id,
+						amount: total_customer_charge,
+					});
+				}
+
+				updated_billing_report.total_customer_charge.storage = updated_billing_report
+					.total_customer_charge
+					.storage
+					.checked_add(customer_charge.storage)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				updated_billing_report.total_customer_charge.transfer = updated_billing_report
+					.total_customer_charge
+					.transfer
+					.checked_add(customer_charge.transfer)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				updated_billing_report.total_customer_charge.puts = updated_billing_report
+					.total_customer_charge
+					.puts
+					.checked_add(customer_charge.puts)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				updated_billing_report.total_customer_charge.gets = updated_billing_report
+					.total_customer_charge
+					.gets
+					.checked_add(customer_charge.gets)
+					.ok_or(Error::<T>::ArithmeticOverflow)?;
+			}
+
+			updated_billing_report
+				.charging_processed_batches
+				.try_insert(batch_index)
+				.map_err(|_| Error::<T>::BoundedVecOverflow)?;
+
+			ActiveBillingReports::<T>::insert(cluster_id, era, updated_billing_report);
+
+			Ok(())
 		}
 
-		fn end_charging_customers(
-			origin: T::AccountId,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-		) -> DispatchResult {
-			log::info!(
-				"🏭end_charging_customers called by: {:?}",
-				Self::get_account_id_string(origin.clone())
+		fn end_charging_customers(cluster_id: ClusterId, era: DdcEra) -> DispatchResult {
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
+				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
+
+			ensure!(
+				billing_report.state == PayoutState::ChargingCustomers,
+				Error::<T>::NotExpectedState
 			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::end_charging_customers(origin, cluster_id, era_id)
+			Self::validate_batches(
+				&billing_report.charging_processed_batches,
+				&billing_report.charging_max_batch_index,
+			)?;
+
+			Self::deposit_event(Event::<T>::ChargingFinished { cluster_id, era });
+
+			// deduct fees
+			let fees = T::ClusterProtocol::get_fees_params(&cluster_id)
+				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
+
+			let total_customer_charge = (|| -> Option<u128> {
+				billing_report
+					.total_customer_charge
+					.transfer
+					.checked_add(billing_report.total_customer_charge.storage)?
+					.checked_add(billing_report.total_customer_charge.puts)?
+					.checked_add(billing_report.total_customer_charge.gets)
+			})()
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+			let treasury_fee = fees.treasury_share * total_customer_charge;
+			let validators_fee = fees.validators_share * total_customer_charge;
+			let cluster_reserve_fee = fees.cluster_reserve_share * total_customer_charge;
+
+			if treasury_fee > 0 {
+				charge_treasury_fees::<T>(
+					treasury_fee,
+					&billing_report.vault,
+					&T::TreasuryVisitor::get_account_id(),
+				)?;
+
+				Self::deposit_event(Event::<T>::TreasuryFeesCollected {
+					cluster_id,
+					era,
+					amount: treasury_fee,
+				});
+			}
+
+			if cluster_reserve_fee > 0 {
+				charge_cluster_reserve_fees::<T>(
+					cluster_reserve_fee,
+					&billing_report.vault,
+					&T::ClusterProtocol::get_reserve_account_id(&cluster_id)
+						.map_err(|_| Error::<T>::NotExpectedClusterState)?,
+				)?;
+				Self::deposit_event(Event::<T>::ClusterReserveFeesCollected {
+					cluster_id,
+					era,
+					amount: cluster_reserve_fee,
+				});
+			}
+
+			if validators_fee > 0 {
+				charge_validator_fees::<T>(validators_fee, &billing_report.vault, cluster_id, era)?;
+				Self::deposit_event(Event::<T>::ValidatorFeesCollected {
+					cluster_id,
+					era,
+					amount: validators_fee,
+				});
+			}
+
+			// 1 - (X + Y + Z) > 0, 0 < X + Y + Z < 1
+			let total_left_from_one =
+				(fees.treasury_share + fees.validators_share + fees.cluster_reserve_share)
+					.left_from_one();
+
+			if !total_left_from_one.is_zero() {
+				// X * Z < X, 0 < Z < 1
+				billing_report.total_customer_charge.transfer =
+					total_left_from_one * billing_report.total_customer_charge.transfer;
+				billing_report.total_customer_charge.storage =
+					total_left_from_one * billing_report.total_customer_charge.storage;
+				billing_report.total_customer_charge.puts =
+					total_left_from_one * billing_report.total_customer_charge.puts;
+				billing_report.total_customer_charge.gets =
+					total_left_from_one * billing_report.total_customer_charge.gets;
+			}
+
+			billing_report.state = PayoutState::CustomersChargedWithFees;
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
+
+			Ok(())
 		}
 
 		fn begin_rewarding_providers(
-			origin: T::AccountId,
 			cluster_id: ClusterId,
-			era_id: DdcEra,
+			era: DdcEra,
 			max_batch_index: BatchIndex,
 			total_node_usage: NodeUsage,
 		) -> DispatchResult {
-			log::info!(
-				"🏭begin_rewarding_providers called by: {:?}",
-				Self::get_account_id_string(origin.clone())
+			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
+
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
+				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
+
+			ensure!(
+				billing_report.state == PayoutState::CustomersChargedWithFees,
+				Error::<T>::NotExpectedState
 			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::begin_rewarding_providers(
-				origin,
-				cluster_id,
-				era_id,
-				max_batch_index,
-				total_node_usage,
-			)
+
+			billing_report.total_node_usage = total_node_usage;
+			billing_report.rewarding_max_batch_index = max_batch_index;
+			billing_report.state = PayoutState::RewardingProviders;
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
+
+			Self::deposit_event(Event::<T>::RewardingStarted { cluster_id, era });
+
+			Ok(())
 		}
 
 		fn send_rewarding_providers_batch(
-			origin: T::AccountId,
 			cluster_id: ClusterId,
-			era_id: DdcEra,
+			era: DdcEra,
 			batch_index: BatchIndex,
 			payees: &[(NodePubKey, NodeUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
-			log::info!(
-				"🏭send_rewarding_providers_batch called by: {:?}",
-				Self::get_account_id_string(origin.clone())
+			ensure!(
+				!payees.is_empty() && payees.len() <= MaxBatchSize::get() as usize,
+				Error::<T>::BatchSizeIsOutOfBounds
 			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::send_rewarding_providers_batch(
-				origin,
-				cluster_id,
-				era_id,
-				batch_index,
-				(*payees).to_vec(),
-				batch_proof,
-			)
+
+			let billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
+				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
+
+			ensure!(
+				billing_report.state == PayoutState::RewardingProviders,
+				Error::<T>::NotExpectedState
+			);
+			ensure!(
+				billing_report.rewarding_max_batch_index >= batch_index,
+				Error::<T>::BatchIndexIsOutOfRange
+			);
+			ensure!(
+				!billing_report.rewarding_processed_batches.contains(&batch_index),
+				Error::<T>::BatchIndexAlreadyProcessed
+			);
+
+			ensure!(
+				T::ValidatorVisitor::is_providers_batch_valid(
+					cluster_id,
+					era,
+					batch_index,
+					billing_report.rewarding_max_batch_index,
+					&payees,
+					&batch_proof
+				),
+				Error::<T>::BatchValidationFailed
+			);
+
+			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
+			let mut updated_billing_report = billing_report.clone();
+			for (node_key, delta_node_usage) in payees {
+				// todo! get T::NodeVisitor::get_total_usage(delta_node_usage.node_id).stored_bytes
+				let node_provider_id = T::NodeManager::get_node_provider_id(&node_key)?;
+				let mut total_node_stored_bytes: i64 = 0;
+
+				total_node_stored_bytes = total_node_stored_bytes
+					.checked_add(delta_node_usage.stored_bytes)
+					.ok_or(Error::<T>::ArithmeticOverflow)?
+					.max(0);
+
+				let node_usage = NodeUsage {
+					stored_bytes: total_node_stored_bytes,
+					transferred_bytes: delta_node_usage.transferred_bytes,
+					number_of_puts: delta_node_usage.number_of_puts,
+					number_of_gets: delta_node_usage.number_of_gets,
+				};
+
+				let node_reward = get_node_reward(
+					&node_usage,
+					&billing_report.total_node_usage,
+					&billing_report.total_customer_charge,
+				)
+				.ok_or(Error::<T>::ArithmeticOverflow)?;
+				let amount_to_reward = (|| -> Option<u128> {
+					node_reward
+						.transfer
+						.checked_add(node_reward.storage)?
+						.checked_add(node_reward.puts)?
+						.checked_add(node_reward.gets)
+				})()
+				.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				let mut reward_ = amount_to_reward;
+				let mut reward: BalanceOf<T> = amount_to_reward.saturated_into::<BalanceOf<T>>();
+				if amount_to_reward > 0 {
+					let vault_balance = <T as pallet::Config>::Currency::free_balance(
+						&updated_billing_report.vault,
+					) - <T as pallet::Config>::Currency::minimum_balance();
+
+					// 10000000000001 > 10000000000000 but is still ok
+					if reward > vault_balance {
+						if reward - vault_balance > max_dust {
+							Self::deposit_event(Event::<T>::NotDistributedReward {
+								cluster_id,
+								era,
+								batch_index,
+								node_provider_id: node_provider_id.clone(),
+								expected_reward: amount_to_reward,
+								distributed_reward: vault_balance,
+							});
+						}
+
+						reward = vault_balance;
+					}
+
+					<T as pallet::Config>::Currency::transfer(
+						&updated_billing_report.vault,
+						&node_provider_id,
+						reward,
+						ExistenceRequirement::AllowDeath,
+					)?;
+
+					// todo! update total usage of node with NodeManager
+
+					reward_ = reward.saturated_into::<u128>();
+
+					updated_billing_report.total_distributed_reward = updated_billing_report
+						.total_distributed_reward
+						.checked_add(reward_)
+						.ok_or(Error::<T>::ArithmeticOverflow)?;
+				}
+
+				Self::deposit_event(Event::<T>::Rewarded {
+					cluster_id,
+					era,
+					batch_index,
+					node_provider_id,
+					rewarded: reward_,
+					expected_to_reward: amount_to_reward,
+				});
+			}
+
+			updated_billing_report
+				.rewarding_processed_batches
+				.try_insert(batch_index)
+				.map_err(|_| Error::<T>::BoundedVecOverflow)?;
+
+			ActiveBillingReports::<T>::insert(cluster_id, era, updated_billing_report);
+
+			Ok(())
 		}
 
-		fn end_rewarding_providers(
-			origin: T::AccountId,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-		) -> DispatchResult {
-			log::info!(
-				"🏭end_rewarding_providers called by: {:?}",
-				Self::get_account_id_string(origin.clone())
+		fn end_rewarding_providers(cluster_id: ClusterId, era: DdcEra) -> DispatchResult {
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
+				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
+
+			ensure!(
+				billing_report.state == PayoutState::RewardingProviders,
+				Error::<T>::NotExpectedState
 			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::end_rewarding_providers(origin, cluster_id, era_id)
+
+			Self::validate_batches(
+				&billing_report.rewarding_processed_batches,
+				&billing_report.rewarding_max_batch_index,
+			)?;
+
+			let expected_amount_to_reward = (|| -> Option<u128> {
+				billing_report
+					.total_customer_charge
+					.transfer
+					.checked_add(billing_report.total_customer_charge.storage)?
+					.checked_add(billing_report.total_customer_charge.puts)?
+					.checked_add(billing_report.total_customer_charge.gets)
+			})()
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+			if expected_amount_to_reward - billing_report.total_distributed_reward > MaxDust::get()
+			{
+				Self::deposit_event(Event::<T>::NotDistributedOverallReward {
+					cluster_id,
+					era,
+					expected_reward: expected_amount_to_reward,
+					total_distributed_reward: billing_report.total_distributed_reward,
+				});
+			}
+
+			billing_report.state = PayoutState::ProvidersRewarded;
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
+
+			Self::deposit_event(Event::<T>::RewardingFinished { cluster_id, era });
+
+			Ok(())
 		}
 
-		fn end_billing_report(
-			origin: T::AccountId,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-		) -> DispatchResult {
-			log::info!(
-				"🏭end_billing_report called by: {:?}",
-				Self::get_account_id_string(origin.clone())
+		fn end_billing_report(cluster_id: ClusterId, era: DdcEra) -> DispatchResult {
+			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
+				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
+
+			ensure!(
+				billing_report.state == PayoutState::ProvidersRewarded,
+				Error::<T>::NotExpectedState
 			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::end_billing_report(origin, cluster_id, era_id)
+
+			billing_report.charging_processed_batches.clear();
+			billing_report.rewarding_processed_batches.clear();
+			billing_report.state = PayoutState::Finalized;
+
+			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
+			Self::deposit_event(Event::<T>::BillingReportFinalized { cluster_id, era });
+
+			Ok(())
 		}
 
 		fn get_billing_report_status(cluster_id: &ClusterId, era: DdcEra) -> PayoutState {
 			let billing_report = ActiveBillingReports::<T>::get(cluster_id, era);
-
 			match billing_report {
 				Some(report) => report.state,
-				None => PayoutState::NotInitialized, // Return NotInitialized if entry doesn't exist
+				None => PayoutState::NotInitialized,
 			}
 		}
 
 		fn all_customer_batches_processed(cluster_id: &ClusterId, era_id: DdcEra) -> bool {
 			let billing_report = match ActiveBillingReports::<T>::try_get(cluster_id, era_id) {
 				Ok(report) => report,
-				Err(_) => return false, /* Return false if there's any error (e.g.,
-				                         * BillingReportDoesNotExist) */
+				Err(_) => return false,
 			};
 
 			Self::validate_batches(
@@ -1315,8 +1147,7 @@ pub mod pallet {
 		fn all_provider_batches_processed(cluster_id: &ClusterId, era_id: DdcEra) -> bool {
 			let billing_report = match ActiveBillingReports::<T>::try_get(cluster_id, era_id) {
 				Ok(report) => report,
-				Err(_) => return false, /* Return false if there's any error (e.g.,
-				                         * BillingReportDoesNotExist) */
+				Err(_) => return false,
 			};
 
 			Self::validate_batches(
@@ -1356,46 +1187,6 @@ pub mod pallet {
 			}
 
 			Ok(None)
-		}
-	}
-
-	impl<T: Config> Pallet<T> {
-		pub fn account_id() -> T::AccountId {
-			T::PalletId::get().into_account_truncating()
-		}
-
-		pub fn get_account_id_string(caller: T::AccountId) -> String {
-			let account_id: T::AccountIdConverter = caller.into();
-			let account_id_32: AccountId32 = account_id.into();
-			let account_ref: &[u8; 32] = account_id_32.as_ref();
-			hex::encode(account_ref)
-		}
-		pub fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
-			let mut bytes = Vec::new();
-			bytes.extend_from_slice(&cluster_id[..]);
-			bytes.extend_from_slice(&era.encode());
-			let hash = blake2_128(&bytes);
-
-			// "modl" + "payouts_" + hash is 28 bytes, the T::AccountId is 32 bytes, so we should be
-			// safe from the truncation and possible collisions caused by it. The rest 4 bytes will
-			// be fulfilled with trailing zeros.
-			T::PalletId::get().into_sub_account_truncating(hash)
-		}
-
-		pub(crate) fn validate_batches(
-			batches: &BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
-			max_batch_index: &BatchIndex,
-		) -> DispatchResult {
-			// Check if the Vec contains all integers between 1 and rewarding_max_batch_index
-			ensure!(!batches.is_empty(), Error::<T>::BatchesMissed);
-
-			ensure!((*max_batch_index + 1) as usize == batches.len(), Error::<T>::BatchesMissed);
-
-			for index in 0..*max_batch_index + 1 {
-				ensure!(batches.contains(&index), Error::<T>::BatchesMissed);
-			}
-
-			Ok(())
 		}
 	}
 }

@@ -14,7 +14,7 @@ use core::str;
 use base64ct::{Base64, Encoding};
 use ddc_primitives::{
 	traits::{
-		ClusterManager, ClusterValidator, CustomerVisitor, NodeManager, PayoutVisitor,
+		ClusterManager, ClusterValidator, CustomerVisitor, NodeManager, PayoutProcessor,
 		ValidatorVisitor,
 	},
 	ActivityHash, BatchIndex, ClusterId, ClusterStatus, CustomerUsage, DdcEra, EraValidation,
@@ -115,7 +115,7 @@ pub mod pallet {
 		/// DDC clusters nodes manager.
 		type ClusterValidator: ClusterValidator<Self>;
 		type ClusterManager: ClusterManager<Self>;
-		type PayoutVisitor: PayoutVisitor<Self>;
+		type PayoutProcessor: PayoutProcessor<Self>;
 		/// DDC nodes read-only registry.
 		type NodeManager: NodeManager<Self>;
 		/// The output of the `ActivityHasher` function.
@@ -1885,7 +1885,7 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::Initialized
 				{
 					if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
@@ -1951,7 +1951,7 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::ChargingCustomers
 				{
 					if let Some((
@@ -2016,12 +2016,14 @@ pub mod pallet {
 			customers_total_activity: Vec<aggregator_client::json::BucketSubAggregate>,
 			customers_activity_batch_roots: Vec<ActivityHash>,
 		) -> Result<Option<(DdcEra, CustomerBatch)>, Vec<OCWError>> {
-			let batch_index = T::PayoutVisitor::get_next_customer_batch_for_payment(
-				cluster_id, era_id,
-			)
-			.map_err(|_| {
-				vec![OCWError::BillingReportDoesNotExist { cluster_id: *cluster_id, era_id }]
-			})?;
+			let batch_index =
+				T::PayoutProcessor::get_next_customer_batch_for_payment(cluster_id, era_id)
+					.map_err(|_| {
+						vec![OCWError::BillingReportDoesNotExist {
+							cluster_id: *cluster_id,
+							era_id,
+						}]
+					})?;
 
 			if let Some(index) = batch_index {
 				let i: usize = index.into();
@@ -2091,9 +2093,9 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::ChargingCustomers &&
-					T::PayoutVisitor::all_customer_batches_processed(cluster_id, era_id)
+					T::PayoutProcessor::all_customer_batches_processed(cluster_id, era_id)
 				{
 					return Ok(Some(era_id));
 				}
@@ -2115,7 +2117,7 @@ pub mod pallet {
 					.filter_map(|usage| usage.as_ref().map(|u| u.stored_bytes))
 					.sum();
 
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::CustomersChargedWithFees
 				{
 					if let Some((_, _, _, nodes_total_activity, _, nodes_activity_batch_roots)) =
@@ -2208,7 +2210,7 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::RewardingProviders
 				{
 					if let Some((_, _, _, nodes_total_activity, _, nodes_activity_batch_roots)) =
@@ -2267,12 +2269,14 @@ pub mod pallet {
 			nodes_total_activity: Vec<aggregator_client::json::NodeAggregate>,
 			nodes_activity_batch_roots: Vec<ActivityHash>,
 		) -> Result<Option<(DdcEra, ProviderBatch)>, Vec<OCWError>> {
-			let batch_index = T::PayoutVisitor::get_next_provider_batch_for_payment(
-				cluster_id, era_id,
-			)
-			.map_err(|_| {
-				vec![OCWError::BillingReportDoesNotExist { cluster_id: *cluster_id, era_id }]
-			})?;
+			let batch_index =
+				T::PayoutProcessor::get_next_provider_batch_for_payment(cluster_id, era_id)
+					.map_err(|_| {
+						vec![OCWError::BillingReportDoesNotExist {
+							cluster_id: *cluster_id,
+							era_id,
+						}]
+					})?;
 
 			if let Some(index) = batch_index {
 				let i: usize = index.into();
@@ -2342,9 +2346,9 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::RewardingProviders &&
-					T::PayoutVisitor::all_provider_batches_processed(cluster_id, era_id)
+					T::PayoutProcessor::all_provider_batches_processed(cluster_id, era_id)
 				{
 					return Ok(Some(era_id));
 				}
@@ -2358,7 +2362,7 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::ProvidersRewarded
 				{
 					return Ok(Some(era_id));
@@ -3794,7 +3798,7 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
 
-			T::PayoutVisitor::begin_billing_report(sender, cluster_id, era_id, start_era, end_era)?;
+			T::PayoutProcessor::begin_billing_report(cluster_id, era_id, start_era, end_era)?;
 
 			EraValidations::<T>::try_mutate(
 				cluster_id,
@@ -3819,7 +3823,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::begin_charging_customers(sender, cluster_id, era_id, max_batch_index)
+			T::PayoutProcessor::begin_charging_customers(cluster_id, era_id, max_batch_index)
 		}
 
 		#[pallet::call_index(5)]
@@ -3835,8 +3839,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::send_charging_customers_batch(
-				sender,
+			T::PayoutProcessor::send_charging_customers_batch(
 				cluster_id,
 				era_id,
 				batch_index,
@@ -3854,7 +3857,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::end_charging_customers(sender, cluster_id, era_id)
+			T::PayoutProcessor::end_charging_customers(cluster_id, era_id)
 		}
 
 		#[pallet::call_index(7)]
@@ -3868,8 +3871,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::begin_rewarding_providers(
-				sender,
+			T::PayoutProcessor::begin_rewarding_providers(
 				cluster_id,
 				era_id,
 				max_batch_index,
@@ -3889,8 +3891,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::send_rewarding_providers_batch(
-				sender,
+			T::PayoutProcessor::send_rewarding_providers_batch(
 				cluster_id,
 				era_id,
 				batch_index,
@@ -3908,7 +3909,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::end_rewarding_providers(sender, cluster_id, era_id)
+			T::PayoutProcessor::end_rewarding_providers(cluster_id, era_id)
 		}
 
 		#[pallet::call_index(10)]
@@ -3920,7 +3921,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::end_billing_report(sender, cluster_id, era_id)?;
+			T::PayoutProcessor::end_billing_report(cluster_id, era_id)?;
 
 			let mut era_validation = <EraValidations<T>>::get(cluster_id, era_id).unwrap(); // should exist
 			era_validation.status = EraValidationStatus::PayoutSuccess;

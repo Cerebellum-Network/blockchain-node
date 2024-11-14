@@ -2,46 +2,11 @@
 
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use ddc_primitives::ClusterId;
-use frame_support::{assert_noop, assert_ok, error::BadOrigin, traits::Randomness};
+use frame_support::{assert_noop, assert_ok, traits::Randomness};
 use sp_core::H256;
 use sp_runtime::Perquintill;
 
 use super::{mock::*, *};
-
-#[test]
-fn begin_billing_report_fails_for_unauthorised() {
-	ExtBuilder.build_and_execute(|| {
-		let cluster_id = ClusterId::from([1; 20]);
-		let era = 100;
-		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
-		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
-		let start_era: i64 =
-			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
-		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
-
-		assert_noop!(
-			DdcPayouts::begin_billing_report(
-				RuntimeOrigin::signed(CUSTOMER3_KEY_32),
-				cluster_id,
-				era,
-				start_era,
-				end_era,
-			),
-			Error::<Test>::Unauthorised
-		);
-
-		assert_noop!(
-			DdcPayouts::begin_billing_report(
-				RuntimeOrigin::signed(AccountId::from([0; 32])),
-				cluster_id,
-				era,
-				start_era,
-				end_era,
-			),
-			Error::<Test>::Unauthorised
-		);
-	})
-}
 
 #[test]
 fn begin_billing_report_works() {
@@ -56,12 +21,8 @@ fn begin_billing_report_works() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
 		System::assert_last_event(Event::BillingReportInitialized { cluster_id, era }.into());
@@ -81,28 +42,7 @@ fn begin_charging_customers_fails_uninitialised() {
 		let max_batch_index = 2;
 
 		assert_noop!(
-			DdcPayouts::begin_charging_customers(
-				RuntimeOrigin::signed(AccountId::from([124; 32])),
-				cluster_id,
-				era,
-				max_batch_index,
-			),
-			Error::<Test>::Unauthorised
-		);
-
-		assert_noop!(
-			DdcPayouts::begin_charging_customers(
-				RuntimeOrigin::root(),
-				cluster_id,
-				era,
-				max_batch_index,
-			),
-			BadOrigin
-		);
-
-		assert_noop!(
-			DdcPayouts::begin_charging_customers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+			<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 				cluster_id,
 				era,
 				max_batch_index,
@@ -126,16 +66,11 @@ fn begin_charging_customers_works() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -174,97 +109,63 @@ fn send_charging_customers_batch_fails_uninitialised() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_noop!(
-			DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(AccountId::from([0; 32])),
+			<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 				cluster_id,
 				era,
 				batch_index,
-				payers1.clone(),
-				MMRProof::default(),
-			),
-			Error::<Test>::Unauthorised
-		);
-
-		assert_noop!(
-			DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::root(),
-				cluster_id,
-				era,
-				batch_index,
-				payers1.clone(),
-				MMRProof::default(),
-			),
-			BadOrigin
-		);
-
-		assert_noop!(
-			DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-				batch_index,
-				payers1.clone(),
+				&payers1.clone(),
 				MMRProof::default(),
 			),
 			Error::<Test>::BillingReportDoesNotExist
 		);
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
 		assert_noop!(
-			DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 				cluster_id,
 				era,
 				batch_index,
-				payers1.clone(),
+				&payers1.clone(),
 				MMRProof::default(),
 			),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
 		let payers1 = vec![(node_key, bucket_id4, CustomerUsage::default())];
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers1.clone(),
+			&payers1.clone(),
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 				cluster_id,
 				era,
 				batch_index,
-				payers1,
+				&payers1,
 				MMRProof::default(),
 			),
 			Error::<Test>::BatchIndexAlreadyProcessed
 		);
 
 		assert_noop!(
-			DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+			<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 				cluster_id,
 				era,
 				batch_index,
-				payers2,
+				&payers2,
 				MMRProof::default(),
 			),
 			Error::<Test>::BatchIndexAlreadyProcessed
@@ -418,16 +319,11 @@ fn send_charging_customers_batch_works() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -435,12 +331,11 @@ fn send_charging_customers_batch_works() {
 		assert_eq!(System::events().len(), 2);
 
 		// batch 1
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers1,
+			&payers1,
 			MMRProof::default(),
 		));
 
@@ -505,12 +400,11 @@ fn send_charging_customers_batch_works() {
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers2,
+			&payers2,
 			MMRProof::default(),
 		));
 
@@ -554,12 +448,11 @@ fn send_charging_customers_batch_works() {
 		// batch 3
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers3,
+			&payers3,
 			MMRProof::default(),
 		));
 
@@ -656,16 +549,11 @@ fn end_charging_customers_works_small_usage_1_hour() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 1.0 * 3600.0) as i64; // 1 hour
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -673,12 +561,11 @@ fn end_charging_customers_works_small_usage_1_hour() {
 		assert_eq!(System::events().len(), 2);
 
 		// batch 1
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers1,
+			&payers1,
 			MMRProof::default(),
 		));
 
@@ -738,11 +625,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 		balance = Balances::free_balance(AccountId::from(VALIDATOR3_ACCOUNT_ID));
 		assert_eq!(balance, 0);
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
 		System::assert_has_event(Event::ChargingFinished { cluster_id, era }.into());
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
@@ -877,16 +760,11 @@ fn send_charging_customers_batch_works_for_day() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -894,12 +772,11 @@ fn send_charging_customers_batch_works_for_day() {
 		assert_eq!(System::events().len(), 2);
 
 		// batch 1
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers1,
+			&payers1,
 			MMRProof::default(),
 		));
 
@@ -964,12 +841,11 @@ fn send_charging_customers_batch_works_for_day() {
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers2,
+			&payers2,
 			MMRProof::default(),
 		));
 
@@ -1013,12 +889,11 @@ fn send_charging_customers_batch_works_for_day() {
 		// batch 3
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers3,
+			&payers3,
 			MMRProof::default(),
 		));
 
@@ -1137,16 +1012,11 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -1154,12 +1024,11 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		assert_eq!(System::events().len(), 2);
 
 		// batch 1
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers1,
+			&payers1,
 			MMRProof::default(),
 		));
 
@@ -1224,12 +1093,11 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers2,
+			&payers2,
 			MMRProof::default(),
 		));
 
@@ -1273,12 +1141,11 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		// batch 3
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers3,
+			&payers3,
 			MMRProof::default(),
 		));
 
@@ -1396,16 +1263,11 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -1413,12 +1275,11 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		assert_eq!(System::events().len(), 2);
 
 		// batch 1
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers1,
+			&payers1,
 			MMRProof::default(),
 		));
 
@@ -1483,12 +1344,11 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers2,
+			&payers2,
 			MMRProof::default(),
 		));
 
@@ -1532,12 +1392,11 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		// batch 3
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers3,
+			&payers3,
 			MMRProof::default(),
 		));
 
@@ -1656,16 +1515,11 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -1673,12 +1527,11 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		assert_eq!(System::events().len(), 2);
 
 		// batch 1
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers1,
+			&payers1,
 			MMRProof::default(),
 		));
 
@@ -1743,12 +1596,11 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers2,
+			&payers2,
 			MMRProof::default(),
 		));
 
@@ -1792,12 +1644,11 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		// batch 3
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers3,
+			&payers3,
 			MMRProof::default(),
 		));
 
@@ -1916,16 +1767,11 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -1933,12 +1779,11 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		assert_eq!(System::events().len(), 2);
 
 		// batch 1
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers1,
+			&payers1,
 			MMRProof::default(),
 		));
 
@@ -2003,12 +1848,11 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers2,
+			&payers2,
 			MMRProof::default(),
 		));
 
@@ -2052,12 +1896,11 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		// batch 3
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers3,
+			&payers3,
 			MMRProof::default(),
 		));
 
@@ -2175,16 +2018,11 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (1.0 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -2192,12 +2030,11 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		assert_eq!(System::events().len(), 2);
 
 		// batch 1
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers1,
+			&payers1,
 			MMRProof::default(),
 		));
 
@@ -2262,12 +2099,11 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		// batch 2
 		let mut before_total_customer_charge = report.total_customer_charge;
 		batch_index += 1;
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers2,
+			&payers2,
 			MMRProof::default(),
 		));
 
@@ -2311,12 +2147,11 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		// batch 3
 		batch_index += 1;
 		before_total_customer_charge = report.total_customer_charge.clone();
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers3,
+			&payers3,
 			MMRProof::default(),
 		));
 
@@ -2401,16 +2236,11 @@ fn send_charging_customers_batch_works_zero_fees() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -2421,12 +2251,11 @@ fn send_charging_customers_batch_works_zero_fees() {
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let before_total_customer_charge = report.total_customer_charge;
 		let balance_before = Balances::free_balance(DdcPayouts::account_id());
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers5,
+			&payers5,
 			MMRProof::default(),
 		));
 
@@ -2472,76 +2301,40 @@ fn end_charging_customers_fails_uninitialised() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_noop!(
-			DdcPayouts::end_charging_customers(
-				RuntimeOrigin::signed(AccountId::from([0; 32])),
-				cluster_id,
-				era,
-			),
-			Error::<Test>::Unauthorised
-		);
-
-		assert_noop!(
-			DdcPayouts::end_charging_customers(RuntimeOrigin::root(), cluster_id, era,),
-			BadOrigin
-		);
-
-		assert_noop!(
-			DdcPayouts::end_charging_customers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,),
 			Error::<Test>::BillingReportDoesNotExist
 		);
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
 		assert_noop!(
-			DdcPayouts::end_charging_customers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
 		assert_noop!(
-			DdcPayouts::end_charging_customers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,),
 			Error::<Test>::BatchesMissed
 		);
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers,
+			&payers,
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::end_charging_customers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,),
 			Error::<Test>::BatchesMissed
 		);
 	})
@@ -2573,27 +2366,21 @@ fn end_charging_customers_works() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers,
+			&payers,
 			MMRProof::default(),
 		));
 
@@ -2615,11 +2402,7 @@ fn end_charging_customers_works() {
 		assert_eq!(balance - Balances::minimum_balance(), charge);
 		assert_eq!(System::events().len(), 3 + 1); // 1 for Currency::transfer
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
 		System::assert_has_event(Event::ChargingFinished { cluster_id, era }.into());
 
@@ -2754,27 +2537,21 @@ fn end_charging_customers_works_zero_fees() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers,
+			&payers,
 			MMRProof::default(),
 		));
 
@@ -2796,11 +2573,7 @@ fn end_charging_customers_works_zero_fees() {
 		assert_eq!(balance - Balances::minimum_balance(), charge);
 		assert_eq!(System::events().len(), 3 + 1); // 1 for Currency::transfer
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
 		System::assert_has_event(Event::ChargingFinished { cluster_id, era }.into());
 		assert_eq!(System::events().len(), 4 + 1);
@@ -2873,30 +2646,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_noop!(
-			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::signed(AccountId::from([0; 32])),
-				cluster_id,
-				era,
-				max_batch_index,
-				node_usage.clone(),
-			),
-			Error::<Test>::Unauthorised
-		);
-
-		assert_noop!(
-			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::root(),
-				cluster_id,
-				era,
-				max_batch_index,
-				node_usage.clone(),
-			),
-			BadOrigin
-		);
-
-		assert_noop!(
-			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 				cluster_id,
 				era,
 				max_batch_index,
@@ -2905,17 +2655,12 @@ fn begin_rewarding_providers_fails_uninitialised() {
 			Error::<Test>::BillingReportDoesNotExist
 		);
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
 		assert_noop!(
-			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 				cluster_id,
 				era,
 				max_batch_index,
@@ -2924,16 +2669,14 @@ fn begin_rewarding_providers_fails_uninitialised() {
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
 		assert_noop!(
-			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 				cluster_id,
 				era,
 				max_batch_index,
@@ -2942,18 +2685,16 @@ fn begin_rewarding_providers_fails_uninitialised() {
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers.clone(),
+			&payers,
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 				cluster_id,
 				era,
 				max_batch_index,
@@ -2962,18 +2703,16 @@ fn begin_rewarding_providers_fails_uninitialised() {
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index + 1,
-			payers,
+			&payers,
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::begin_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+			<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 				cluster_id,
 				era,
 				max_batch_index,
@@ -3004,41 +2743,30 @@ fn begin_rewarding_providers_works() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report.state, PayoutState::Initialized);
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers,
+			&payers,
 			MMRProof::default(),
 		));
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
-		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -3074,135 +2802,94 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_noop!(
-			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(AccountId::from([0; 32])),
+			<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 				cluster_id,
 				era,
 				batch_index,
-				payees.clone(),
-				MMRProof::default(),
-			),
-			Error::<Test>::Unauthorised
-		);
-
-		assert_noop!(
-			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::root(),
-				cluster_id,
-				era,
-				batch_index,
-				payees.clone(),
-				MMRProof::default(),
-			),
-			BadOrigin
-		);
-
-		assert_noop!(
-			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-				batch_index,
-				payees.clone(),
+				&payees,
 				MMRProof::default(),
 			),
 			Error::<Test>::BillingReportDoesNotExist
 		);
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
 		assert_noop!(
-			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 				cluster_id,
 				era,
 				batch_index,
-				payees.clone(),
+				&payees,
 				MMRProof::default(),
 			),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
 		assert_noop!(
-			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 				cluster_id,
 				era,
 				batch_index,
-				payees.clone(),
+				&payees,
 				MMRProof::default(),
 			),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers1,
+			&payers1,
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 				cluster_id,
 				era,
 				batch_index,
-				payees.clone(),
+				&payees,
 				MMRProof::default(),
 			),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index + 1,
-			payers2,
+			&payers2,
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 				cluster_id,
 				era,
 				batch_index,
-				payees.clone(),
+				&payees,
 				MMRProof::default(),
 			),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
 		assert_noop!(
-			DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
+			<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 				cluster_id,
 				era,
 				batch_index,
-				payees,
+				&payees,
 				MMRProof::default(),
 			),
 			Error::<Test>::NotExpectedState
@@ -3283,36 +2970,26 @@ fn send_rewarding_providers_batch_works() {
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers,
+			&payers,
 			MMRProof::default(),
 		));
 
 		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
@@ -3337,20 +3014,18 @@ fn send_rewarding_providers_batch_works() {
 			total_left_from_one * report_before.total_customer_charge.gets
 		);
 
-		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 			cluster_id,
 			era,
 			max_node_batch_index,
 			total_nodes_usage.clone(),
 		));
 
-		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 			cluster_id,
 			era,
 			batch_node_index,
-			payees1,
+			&payees1,
 			MMRProof::default(),
 		));
 
@@ -3435,12 +3110,11 @@ fn send_rewarding_providers_batch_works() {
 		);
 
 		// batch 2
-		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 			cluster_id,
 			era,
 			batch_node_index + 1,
-			payees2,
+			&payees2,
 			MMRProof::default(),
 		));
 
@@ -3496,11 +3170,9 @@ fn send_rewarding_providers_batch_works() {
 
 		assert!(expected_amount_to_reward - report_reward.total_distributed_reward <= 20000);
 
-		assert_ok!(DdcPayouts::end_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
-			cluster_id,
-			era,
-		));
+		assert_ok!(
+			<DdcPayouts as PayoutProcessor<Test>>::end_rewarding_providers(cluster_id, era,)
+		);
 	})
 }
 
@@ -3655,27 +3327,21 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			payers.push(user_batch.clone());
 		}
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			(payers.len() - 1) as u16,
 		));
 
 		for batch in payers.iter() {
-			assert_ok!(DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 				cluster_id,
 				era,
 				batch_user_index,
-				batch.to_vec(),
+				&batch.to_vec(),
 				MMRProof::default(),
 			));
 
@@ -3705,11 +3371,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		assert_eq!(report_before.vault, DdcPayouts::account_id());
 		assert_eq!(balance1 - Balances::minimum_balance(), total_charge);
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
@@ -3741,8 +3403,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			total_left_from_one * report_before.total_customer_charge.gets
 		);
 
-		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 			cluster_id,
 			era,
 			(payees.len() - 1) as u16,
@@ -3751,12 +3412,11 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 
 		for batch in payees.iter() {
 			let before_batch = Balances::free_balance(DdcPayouts::account_id());
-			assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 				cluster_id,
 				era,
 				batch_node_index,
-				batch.to_vec(),
+				&batch.to_vec(),
 				MMRProof::default(),
 			));
 
@@ -3974,27 +3634,21 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			payers.push(user_batch.clone());
 		}
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			(payers.len() - 1) as u16,
 		));
 
 		for batch in payers.iter() {
-			assert_ok!(DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 				cluster_id,
 				era,
 				batch_user_index,
-				batch.to_vec(),
+				&batch.to_vec(),
 				MMRProof::default(),
 			));
 
@@ -4024,11 +3678,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		assert_eq!(report_before.vault, DdcPayouts::account_id());
 		assert_eq!(balance1 - Balances::minimum_balance(), total_charge);
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
@@ -4060,8 +3710,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			total_left_from_one * report_before.total_customer_charge.gets
 		);
 
-		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 			cluster_id,
 			era,
 			(payees.len() - 1) as u16,
@@ -4070,12 +3719,11 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 
 		for batch in payees.iter() {
 			let before_batch = Balances::free_balance(DdcPayouts::account_id());
-			assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 				cluster_id,
 				era,
 				batch_node_index,
-				batch.to_vec(),
+				&batch.to_vec(),
 				MMRProof::default(),
 			));
 
@@ -4288,27 +3936,21 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			payers.push(user_batch.clone());
 		}
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			(payers.len() - 1) as u16,
 		));
 
 		for batch in payers.iter() {
-			assert_ok!(DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 				cluster_id,
 				era,
 				batch_user_index,
-				batch.to_vec(),
+				&batch.to_vec(),
 				MMRProof::default(),
 			));
 
@@ -4338,11 +3980,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		assert_eq!(report_before.vault, DdcPayouts::account_id());
 		assert_eq!(balance1 - Balances::minimum_balance(), total_charge);
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
@@ -4374,8 +4012,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			total_left_from_one * report_before.total_customer_charge.gets
 		);
 
-		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 			cluster_id,
 			era,
 			(payees.len() - 1) as u16,
@@ -4384,12 +4021,11 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 
 		for batch in payees.iter() {
 			let before_batch = Balances::free_balance(DdcPayouts::account_id());
-			assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 				cluster_id,
 				era,
 				batch_node_index,
-				batch.to_vec(),
+				&batch.to_vec(),
 				MMRProof::default(),
 			));
 
@@ -4566,27 +4202,21 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			payers.push(user_batch.clone());
 		}
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			(payers.len() - 1) as u16,
 		));
 
 		for batch in payers.iter() {
-			assert_ok!(DdcPayouts::send_charging_customers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 				cluster_id,
 				era,
 				batch_user_index,
-				batch.to_vec(),
+				&batch.to_vec(),
 				MMRProof::default(),
 			));
 
@@ -4616,11 +4246,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		assert_eq!(report_before.vault, DdcPayouts::account_id());
 		assert_eq!(balance1 - Balances::minimum_balance(), total_charge);
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
 		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
@@ -4652,8 +4278,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			total_left_from_one * report_before.total_customer_charge.gets
 		);
 
-		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 			cluster_id,
 			era,
 			(payees.len() - 1) as u16,
@@ -4662,12 +4287,11 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 
 		for batch in payees.iter() {
 			let before_batch = Balances::free_balance(DdcPayouts::account_id());
-			assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+			assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 				cluster_id,
 				era,
 				batch_node_index,
-				batch.to_vec(),
+				&batch.to_vec(),
 				MMRProof::default(),
 			));
 
@@ -4737,114 +4361,64 @@ fn end_rewarding_providers_fails_uninitialised() {
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
 
 		assert_noop!(
-			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(AccountId::from([0; 32])),
-				cluster_id,
-				era,
-			),
-			Error::<Test>::Unauthorised
-		);
-
-		assert_noop!(
-			DdcPayouts::end_rewarding_providers(RuntimeOrigin::root(), cluster_id, era,),
-			BadOrigin
-		);
-
-		assert_noop!(
-			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_rewarding_providers(cluster_id, era,),
 			Error::<Test>::BillingReportDoesNotExist
 		);
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
 		assert_noop!(
-			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_rewarding_providers(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
 		assert_noop!(
-			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_rewarding_providers(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers1,
+			&payers1,
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_rewarding_providers(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index + 1,
-			payers2,
+			&payers2,
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_rewarding_providers(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
 		assert_noop!(
-			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_rewarding_providers(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -4852,29 +4426,20 @@ fn end_rewarding_providers_fails_uninitialised() {
 		));
 
 		assert_noop!(
-			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_rewarding_providers(cluster_id, era,),
 			Error::<Test>::BatchesMissed
 		);
 
-		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payees,
+			&payees,
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::end_rewarding_providers(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_rewarding_providers(cluster_id, era,),
 			Error::<Test>::BatchesMissed
 		);
 	})
@@ -4914,61 +4479,47 @@ fn end_rewarding_providers_works() {
 		let payers = vec![(node_key.clone(), bucket_id1, usage1)];
 		let payees = vec![(node_key, node_usage1)];
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
 		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report.state, PayoutState::Initialized);
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers,
+			&payers,
 			MMRProof::default(),
 		));
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
-		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 			cluster_id,
 			era,
 			max_batch_index,
 			total_node_usage,
 		));
 
-		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payees,
+			&payees,
 			MMRProof::default(),
 		));
 
-		assert_ok!(DdcPayouts::end_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(
+			<DdcPayouts as PayoutProcessor<Test>>::end_rewarding_providers(cluster_id, era,)
+		);
 
 		System::assert_last_event(Event::RewardingFinished { cluster_id, era }.into());
 
@@ -4999,114 +4550,64 @@ fn end_billing_report_fails_uninitialised() {
 		let total_node_usage = NodeUsage::default();
 
 		assert_noop!(
-			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(AccountId::from([0; 32])),
-				cluster_id,
-				era,
-			),
-			Error::<Test>::Unauthorised
-		);
-
-		assert_noop!(
-			DdcPayouts::end_billing_report(RuntimeOrigin::root(), cluster_id, era,),
-			BadOrigin
-		);
-
-		assert_noop!(
-			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_billing_report(cluster_id, era,),
 			Error::<Test>::BillingReportDoesNotExist
 		);
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
 		assert_noop!(
-			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_billing_report(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
 		assert_noop!(
-			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_billing_report(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers1,
+			&payers1,
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_billing_report(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index + 1,
-			payers2,
+			&payers2,
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_billing_report(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
 		assert_noop!(
-			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_billing_report(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 			cluster_id,
 			era,
 			max_batch_index,
@@ -5114,47 +4615,33 @@ fn end_billing_report_fails_uninitialised() {
 		));
 
 		assert_noop!(
-			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_billing_report(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payees.clone(),
+			&payees,
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_billing_report(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 
-		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 			cluster_id,
 			era,
 			batch_index + 1,
-			payees,
+			&payees,
 			MMRProof::default(),
 		));
 
 		assert_noop!(
-			DdcPayouts::end_billing_report(
-				RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
-				cluster_id,
-				era,
-			),
+			<DdcPayouts as PayoutProcessor<Test>>::end_billing_report(cluster_id, era,),
 			Error::<Test>::NotExpectedState
 		);
 	})
@@ -5180,67 +4667,49 @@ fn end_billing_report_works() {
 		let payers = vec![(node_key.clone(), bucket_id3, CustomerUsage::default())];
 		let payees = vec![(node_key.clone(), NodeUsage::default())];
 
-		assert_ok!(DdcPayouts::begin_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-			start_era,
-			end_era,
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(
+			cluster_id, era, start_era, end_era,
 		));
 
 		let report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert_eq!(report.state, PayoutState::Initialized);
 
-		assert_ok!(DdcPayouts::begin_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
 			cluster_id,
 			era,
 			max_batch_index,
 		));
 
-		assert_ok!(DdcPayouts::send_charging_customers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payers,
+			&payers,
 			MMRProof::default(),
 		));
 
-		assert_ok!(DdcPayouts::end_charging_customers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
-		assert_ok!(DdcPayouts::begin_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_rewarding_providers(
 			cluster_id,
 			era,
 			max_batch_index,
 			total_node_usage,
 		));
 
-		assert_ok!(DdcPayouts::send_rewarding_providers_batch(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_rewarding_providers_batch(
 			cluster_id,
 			era,
 			batch_index,
-			payees,
+			&payees,
 			MMRProof::default(),
 		));
 
-		assert_ok!(DdcPayouts::end_rewarding_providers(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32.clone()),
-			cluster_id,
-			era,
-		));
+		assert_ok!(
+			<DdcPayouts as PayoutProcessor<Test>>::end_rewarding_providers(cluster_id, era,)
+		);
 
-		assert_ok!(DdcPayouts::end_billing_report(
-			RuntimeOrigin::signed(VALIDATOR_OCW_KEY_32),
-			cluster_id,
-			era,
-		));
+		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_billing_report(cluster_id, era,));
 
 		System::assert_last_event(Event::BillingReportFinalized { cluster_id, era }.into());
 

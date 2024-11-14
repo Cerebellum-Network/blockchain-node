@@ -1315,7 +1315,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
 	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
-	type PayoutVisitor = pallet_ddc_payouts::Pallet<Runtime>;
+	type PayoutProcessor = pallet_ddc_payouts::Pallet<Runtime>;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type ActivityHasher = BlakeTwo256;
