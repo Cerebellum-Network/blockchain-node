@@ -45,8 +45,7 @@ use sp_runtime::{
 };
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 pub mod weights;
-#[cfg(feature = "runtime-benchmarks")]
-use frame_support::traits::{Currency, LockableCurrency};
+use frame_support::traits::Currency;
 use itertools::Itertools;
 use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use sp_core::crypto::UncheckedFrom;
@@ -75,7 +74,6 @@ pub mod proto {
 
 mod signature;
 
-#[cfg(feature = "runtime-benchmarks")]
 pub(crate) type BalanceOf<T> =
 	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
@@ -152,11 +150,13 @@ pub mod pallet {
 		const MAX_PAYOUT_BATCH_SIZE: u16;
 		const MAX_MERKLE_NODE_IDENTIFIER: u16;
 		/// The access to staking functionality.
-		type ValidatorStaking: StakingInterface<AccountId = Self::AccountId>;
+		type ValidatorStaking: StakingInterface<
+			AccountId = Self::AccountId,
+			Balance = BalanceOf<Self>,
+		>;
 		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
 		type CustomerVisitor: CustomerVisitor<Self>;
-		#[cfg(feature = "runtime-benchmarks")]
-		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
+		type Currency: Currency<Self::AccountId>;
 	}
 
 	/// The event type.

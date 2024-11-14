@@ -238,6 +238,7 @@ impl crate::Config for Test {
 	type AccountIdConverter = AccountId;
 	type CustomerVisitor = MockCustomerVisitor;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 4;
+	type Currency = Balances;
 }
 
 pub struct MockCustomerVisitor;

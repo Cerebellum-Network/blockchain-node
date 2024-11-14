@@ -34,7 +34,7 @@ mod benchmarks {
 
 	fn endow_account<T: Config>(account: &T::AccountId, amount: u128) {
 		let balance = amount.saturated_into::<BalanceOf<T>>();
-		let _ = T::Currency::make_free_balance_be(account, amount.saturated_into());
+		let _ = T::Currency::make_free_balance_be(account, balance);
 	}
 
 	#[benchmark]
@@ -72,11 +72,12 @@ mod benchmarks {
 	#[benchmark]
 	fn set_validator_key() {
 		let validator = create_account::<T>("new_validator_account", 0, 0);
-		endow_account::<T>(&validator, 10000000000000000000000);
+		endow_account::<T>(&validator, 10000000000000000);
 
-		let bond = T::ValidatorStaking::minimum_validator_bond();
-		let stash =
-			T::ValidatorStaking::bond(&validator, bond, &validator).expect("Bond to be created");
+		let min_bond = T::ValidatorStaking::minimum_validator_bond();
+		let bond = min_bond.saturating_add(T::Currency::minimum_balance());
+
+		T::ValidatorStaking::bond(&validator, bond, &validator).expect("Bond to be created");
 
 		ValidatorSet::<T>::put(vec![validator.clone()]);
 
@@ -85,6 +86,23 @@ mod benchmarks {
 
 		assert!(<ValidatorToStashKey<T>>::contains_key(validator.clone()));
 		assert_has_event::<T>(Event::ValidatorKeySet { validator }.into());
+	}
+
+	#[benchmark]
+	fn emit_consensus_errors(b: Linear<1, 5>) {
+		let validator = create_validator_account::<T>();
+		let mut errros = vec![];
+
+		for _i in 0..b {
+			errros.push(OCWError::SendChargingCustomersBatchTransactionError {
+				cluster_id: ClusterId::from([1; 20]),
+				era_id: 1,
+				batch_index: 0,
+			});
+		}
+
+		#[extrinsic_call]
+		emit_consensus_errors(RawOrigin::Signed(validator.clone()), errros);
 	}
 
 	impl_benchmark_test_suite!(DdcVerification, crate::mock::new_test_ext(), crate::mock::Test);

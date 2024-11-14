@@ -8,11 +8,16 @@ use ddc_primitives::{
 use frame_benchmarking::account;
 #[cfg(feature = "runtime-benchmarks")]
 use frame_support::traits::Currency;
+#[cfg(feature = "runtime-benchmarks")]
 use frame_system::RawOrigin;
+#[cfg(feature = "runtime-benchmarks")]
 use sp_runtime::{traits::StaticLookup, Perquintill};
+#[cfg(feature = "runtime-benchmarks")]
 use sp_std::prelude::*;
 
-use crate::{Pallet as DdcStaking, *};
+#[cfg(feature = "runtime-benchmarks")]
+use crate::Pallet as DdcStaking;
+use crate::*;
 
 const SEED: u32 = 0;
 
