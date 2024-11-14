@@ -1,5 +1,6 @@
 use frame_support::{
-	assert_ok, ord_parameter_types, parameter_types, traits::Everything, weights::Weight,
+	assert_ok, derive_impl, ord_parameter_types, parameter_types, traits::Everything,
+	weights::Weight,
 };
 use frame_system::{self as system};
 pub use pallet_balances as balances;
@@ -18,11 +19,9 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::one();
 	pub const MaxLocks: u32 = 50;
 }
-
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
-	type BlockWeights = ();
-	type BlockLength = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
 	type Nonce = u64;
@@ -33,17 +32,10 @@ impl frame_system::Config for Test {
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
 	// type ModuleToIndex = ();
 	type PalletInfo = PalletInfo;
 	// type MaxLocks = MaxLocks;
 	type AccountData = pallet_balances::AccountData<u64>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
