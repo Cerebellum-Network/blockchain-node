@@ -138,14 +138,6 @@ fn set_validation_era<T: Config>(
 
 benchmarks! {
 
-	set_authorised_caller {
-		 let dac_account = create_account::<T>("dac_account", 0, 0);
-
-	}: _(RawOrigin::Root, dac_account.clone())
-	verify {
-		assert_eq!(AuthorisedCaller::<T>::get(), Some(dac_account));
-	}
-
 	begin_billing_report {
 
 		let cluster_id = ClusterId::from([1; 20]);

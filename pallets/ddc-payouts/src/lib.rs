@@ -26,6 +26,8 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migrations;
+
 use ddc_primitives::{
 	traits::{
 		bucket::BucketManager,
@@ -105,7 +107,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+		frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -227,9 +229,6 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 		},
-		AuthorisedCaller {
-			authorised_caller: T::AccountId,
-		},
 		ChargeError {
 			cluster_id: ClusterId,
 			era: DdcEra,
@@ -275,10 +274,6 @@ pub mod pallet {
 		DdcEra,
 		BillingReport<T>,
 	>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn authorised_caller)]
-	pub type AuthorisedCaller<T: Config> = StorageValue<_, T::AccountId>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn debtor_customers)]
@@ -342,23 +337,6 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// PayoutProcessor trait
-		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::set_authorised_caller())]
-		pub fn set_authorised_caller(
-			origin: OriginFor<T>,
-			authorised_caller: T::AccountId,
-		) -> DispatchResult {
-			ensure_root(origin)?; // requires Governance approval
-
-			AuthorisedCaller::<T>::put(authorised_caller.clone());
-
-			Self::deposit_event(Event::<T>::AuthorisedCaller { authorised_caller });
-
-			Ok(())
-		}
-
 		#[pallet::call_index(1)]
 		#[pallet::weight(T::WeightInfo::begin_billing_report())]
 		pub fn begin_billing_report(
@@ -1169,7 +1147,6 @@ pub mod pallet {
 				}
 			}
 
-			AuthorisedCaller::<T>::set(self.authorised_caller.clone());
 			for (cluster_id, customer_id, debt) in &self.debtor_customers {
 				DebtorCustomers::<T>::insert(cluster_id, customer_id, debt);
 			}

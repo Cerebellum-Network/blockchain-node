@@ -28,7 +28,6 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_ddc_payouts.
 pub trait WeightInfo {
-	fn set_authorised_caller() -> Weight;
 	fn begin_billing_report() -> Weight;
 	fn begin_charging_customers() -> Weight;
 	fn send_charging_customers_batch(b: u32, ) -> Weight;
@@ -42,14 +41,6 @@ pub trait WeightInfo {
 /// Weights for pallet_ddc_payouts using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:0 w:1)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn set_authorised_caller() -> Weight {
-		Weight::from_parts(12_694_000_u64, 0)
-			.saturating_add(T::DbWeight::get().writes(1_u64))
-	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn begin_billing_report() -> Weight {
@@ -57,8 +48,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn begin_charging_customers() -> Weight {
@@ -66,8 +55,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	// Storage: `DdcClusters::ClustersGovParams` (r:1 w:0)
@@ -88,8 +75,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(5_u64))
 			.saturating_add(T::DbWeight::get().writes((2_u64).saturating_mul(b as u64)))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	// Storage: `DdcClusters::ClustersGovParams` (r:1 w:0)
@@ -111,8 +96,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(12_u64))
 			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn begin_rewarding_providers() -> Weight {
@@ -120,8 +103,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	// Storage: `System::Account` (r:1000 w:1000)
@@ -136,8 +117,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(b as u64)))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn end_rewarding_providers() -> Weight {
@@ -145,8 +124,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn end_billing_report() -> Weight {
@@ -158,14 +135,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:0 w:1)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	fn set_authorised_caller() -> Weight {
-		Weight::from_parts(12_694_000_u64, 0)
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
-	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn begin_billing_report() -> Weight {
@@ -173,8 +142,6 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn begin_charging_customers() -> Weight {
@@ -182,8 +149,6 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	// Storage: `DdcClusters::ClustersGovParams` (r:1 w:0)
@@ -204,8 +169,6 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(5_u64))
 			.saturating_add(RocksDbWeight::get().writes((2_u64).saturating_mul(b as u64)))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	// Storage: `DdcClusters::ClustersGovParams` (r:1 w:0)
@@ -227,8 +190,6 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(12_u64))
 			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn begin_rewarding_providers() -> Weight {
@@ -236,8 +197,6 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	// Storage: `System::Account` (r:1000 w:1000)
@@ -252,8 +211,6 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(b as u64)))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn end_rewarding_providers() -> Weight {
@@ -261,8 +218,6 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	// Storage: `DdcPayouts::AuthorisedCaller` (r:1 w:0)
-	// Proof: `DdcPayouts::AuthorisedCaller` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn end_billing_report() -> Weight {

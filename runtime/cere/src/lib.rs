@@ -1467,9 +1467,16 @@ pub mod migrations {
 	}
 
 	/// Unreleased migrations. Add new ones here:
-	pub type Unreleased =
-		(UpgradeSessionKeys, pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>);
+	pub type Unreleased = (
+		pallet_ddc_customers::migration::v2::MigrateToV2<Runtime>,
+		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
+		pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>,
+		UpgradeSessionKeys,
+		pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>,
+		pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,
+	);
 }
+
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Runtime,
