@@ -267,27 +267,27 @@ pub struct ClusterNodesStats {
 	pub validation_failed: ClusterNodesCount,
 }
 
-/// Stores usage of customers
+/// Stores usage of a bucket
 #[derive(
 	PartialEq, Eq, Encode, Decode, Debug, TypeInfo, Default, Clone, Serialize, Deserialize,
 )]
-pub struct CustomerUsage {
+pub struct BucketUsage {
 	pub transferred_bytes: u64,
 	pub stored_bytes: i64,
 	pub number_of_puts: u64,
 	pub number_of_gets: u64,
 }
 
-/// Stores charge in tokens(units) of customer as per CustomerUsage
+/// Stores charge in tokens(units) of customer as per BucketUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct CustomerCharge {
-	pub transfer: u128, // charge in tokens for CustomerUsage::transferred_bytes
-	pub storage: u128,  // charge in tokens for CustomerUsage::stored_bytes
-	pub puts: u128,     // charge in tokens for CustomerUsage::number_of_puts
-	pub gets: u128,     // charge in tokens for CustomerUsage::number_of_gets
+	pub transfer: u128, // charge in tokens for BucketUsage::transferred_bytes
+	pub storage: u128,  // charge in tokens for BucketUsage::stored_bytes
+	pub puts: u128,     // charge in tokens for BucketUsage::number_of_puts
+	pub gets: u128,     // charge in tokens for BucketUsage::number_of_gets
 }
 
-/// Stores usage of node provider
+/// Stores usage of a node
 #[derive(
 	PartialEq, Eq, Encode, Decode, Debug, TypeInfo, Default, Clone, Serialize, Deserialize,
 )]
@@ -300,7 +300,7 @@ pub struct NodeUsage {
 
 /// Stores reward in tokens(units) of node provider as per NodeUsage
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
-pub struct NodeReward {
+pub struct ProviderReward {
 	pub transfer: u128, // reward in tokens for NodeUsage::transferred_bytes
 	pub storage: u128,  // reward in tokens for NodeUsage::stored_bytes
 	pub puts: u128,     // reward in tokens for NodeUsage::number_of_puts

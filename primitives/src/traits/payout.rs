@@ -3,7 +3,7 @@ use sp_runtime::DispatchResult;
 #[cfg(feature = "runtime-benchmarks")]
 use crate::BillingReportParams;
 use crate::{
-	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodePubKey, NodeUsage,
+	BatchIndex, BucketId, BucketUsage, ClusterId, DdcEra, MMRProof, NodePubKey, NodeUsage,
 	PayoutError, PayoutState,
 };
 
@@ -25,7 +25,7 @@ pub trait PayoutProcessor<T: frame_system::Config> {
 		cluster_id: ClusterId,
 		era_id: DdcEra,
 		batch_index: BatchIndex,
-		payers: &[(NodePubKey, BucketId, CustomerUsage)],
+		payers: &[(NodePubKey, BucketId, BucketUsage)],
 		batch_proof: MMRProof,
 	) -> DispatchResult;
 

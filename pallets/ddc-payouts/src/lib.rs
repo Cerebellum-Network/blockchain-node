@@ -29,9 +29,9 @@ use ddc_primitives::{
 		customer::CustomerCharger as CustomerChargerType, node::NodeManager,
 		pallet::PalletVisitor as PalletVisitorType, payout::PayoutProcessor,
 	},
-	BatchIndex, BucketId, ClusterId, CustomerCharge, CustomerUsage, DdcEra, MMRProof, NodePubKey,
-	NodeReward, NodeUsage, PayoutError, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
-	MILLICENTS,
+	BatchIndex, BucketId, BucketUsage, ClusterId, CustomerCharge, DdcEra, MMRProof, NodePubKey,
+	NodeUsage, PayoutError, PayoutState, ProviderReward, MAX_PAYOUT_BATCH_COUNT,
+	MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -392,8 +392,8 @@ pub mod pallet {
 		node_usage: &NodeUsage,
 		total_nodes_usage: &NodeUsage,
 		total_customer_charge: &CustomerCharge,
-	) -> Option<NodeReward> {
-		let mut node_reward = NodeReward::default();
+	) -> Option<ProviderReward> {
+		let mut node_reward = ProviderReward::default();
 
 		let mut ratio = Perquintill::from_rational(
 			node_usage.transferred_bytes as u128,
@@ -422,7 +422,7 @@ pub mod pallet {
 
 	fn get_customer_charge<T: Config>(
 		cluster_id: &ClusterId,
-		usage: &CustomerUsage,
+		usage: &BucketUsage,
 		bucket_id: BucketId,
 		customer_id: &T::AccountId,
 		start_era: i64,
@@ -609,7 +609,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payers: &[(NodePubKey, BucketId, CustomerUsage)],
+			payers: &[(NodePubKey, BucketId, BucketUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			ensure!(

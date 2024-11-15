@@ -207,7 +207,7 @@ where
 		_era: DdcEra,
 		_batch_index: BatchIndex,
 		_max_batch_index: BatchIndex,
-		_payers: &[(NodePubKey, BucketId, CustomerUsage)],
+		_payers: &[(NodePubKey, BucketId, BucketUsage)],
 		_batch_proof: &MMRProof,
 	) -> bool {
 		true
@@ -258,7 +258,7 @@ where
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
 		_content_owner: &T::AccountId,
-	) -> Result<Option<CustomerUsage>, DispatchError> {
+	) -> Result<Option<BucketUsage>, DispatchError> {
 		Ok(None)
 	}
 
@@ -266,7 +266,7 @@ where
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
 		_content_owner: T::AccountId,
-		_customer_usage: &CustomerUsage,
+		_customer_usage: &BucketUsage,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -292,7 +292,7 @@ where
 		_bucket_id: BucketId,
 		content_owner: T::AccountId,
 		billing_vault: T::AccountId,
-		_customer_usage: &CustomerUsage,
+		_customer_usage: &BucketUsage,
 		amount: u128,
 	) -> Result<u128, DispatchError> {
 		let mut amount_to_charge = amount;

@@ -93,7 +93,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 		let batch_index = 1;
 		let bucket_id3: BucketId = BUCKET_ID3;
 		let bucket_id4: BucketId = BUCKET_ID4;
-		let customer_usage = CustomerUsage {
+		let customer_usage = BucketUsage {
 			transferred_bytes: 100,
 			stored_bytes: -800,
 			number_of_gets: 100,
@@ -101,7 +101,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 		};
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let payers1 = vec![(node_key.clone(), bucket_id3, customer_usage)];
-		let payers2 = vec![(node_key.clone(), bucket_id4, CustomerUsage::default())];
+		let payers2 = vec![(node_key.clone(), bucket_id4, BucketUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -140,7 +140,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 			max_batch_index,
 		));
 
-		let payers1 = vec![(node_key, bucket_id4, CustomerUsage::default())];
+		let payers1 = vec![(node_key, bucket_id4, BucketUsage::default())];
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
 			cluster_id,
 			era,
@@ -173,7 +173,7 @@ fn send_charging_customers_batch_fails_uninitialised() {
 	})
 }
 
-fn calculate_charge_parts_for_day(cluster_id: ClusterId, usage: CustomerUsage) -> CustomerCharge {
+fn calculate_charge_parts_for_day(cluster_id: ClusterId, usage: BucketUsage) -> CustomerCharge {
 	let pricing_params = get_pricing(&cluster_id);
 
 	// Calculate the duration of the period in seconds
@@ -199,12 +199,12 @@ fn calculate_charge_parts_for_day(cluster_id: ClusterId, usage: CustomerUsage) -
 	}
 }
 
-fn calculate_charge_for_day(cluster_id: ClusterId, usage: CustomerUsage) -> u128 {
+fn calculate_charge_for_day(cluster_id: ClusterId, usage: BucketUsage) -> u128 {
 	let charge = calculate_charge_parts_for_day(cluster_id, usage);
 	charge.transfer + charge.storage + charge.puts + charge.gets
 }
 
-fn calculate_charge_parts_for_month(cluster_id: ClusterId, usage: CustomerUsage) -> CustomerCharge {
+fn calculate_charge_parts_for_month(cluster_id: ClusterId, usage: BucketUsage) -> CustomerCharge {
 	let pricing_params = get_pricing(&cluster_id);
 
 	let fraction_of_month = Perquintill::one();
@@ -225,7 +225,7 @@ fn calculate_charge_parts_for_month(cluster_id: ClusterId, usage: CustomerUsage)
 	}
 }
 
-fn calculate_charge_parts_for_hour(cluster_id: ClusterId, usage: CustomerUsage) -> CustomerCharge {
+fn calculate_charge_parts_for_hour(cluster_id: ClusterId, usage: BucketUsage) -> CustomerCharge {
 	let pricing_params = get_pricing(&cluster_id);
 
 	let duration_seconds = 1.0 * 1.0 * 3600.0;
@@ -249,12 +249,12 @@ fn calculate_charge_parts_for_hour(cluster_id: ClusterId, usage: CustomerUsage) 
 	}
 }
 
-fn calculate_charge_for_month(cluster_id: ClusterId, usage: CustomerUsage) -> u128 {
+fn calculate_charge_for_month(cluster_id: ClusterId, usage: BucketUsage) -> u128 {
 	let charge = calculate_charge_parts_for_month(cluster_id, usage);
 	charge.transfer + charge.storage + charge.puts + charge.gets
 }
 
-fn calculate_charge_for_hour(cluster_id: ClusterId, usage: CustomerUsage) -> u128 {
+fn calculate_charge_for_hour(cluster_id: ClusterId, usage: BucketUsage) -> u128 {
 	let charge = calculate_charge_parts_for_hour(cluster_id, usage);
 	charge.transfer + charge.storage + charge.puts + charge.gets
 }
@@ -279,28 +279,28 @@ fn send_charging_customers_batch_works() {
 		let bucket_id3: BucketId = BUCKET_ID3;
 		let bucket_id4: BucketId = BUCKET_ID4;
 
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 4456456345234523,
 			number_of_gets: 523423,
 		};
-		let usage2 = CustomerUsage {
+		let usage2 = BucketUsage {
 			// should fail as not enough balance
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage3 = CustomerUsage {
+		let usage3 = BucketUsage {
 			// should pass but with debt (partial charge)
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage4 = CustomerUsage {
+		let usage4 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 467457,
 			stored_bytes: 45674567456,
@@ -526,13 +526,13 @@ fn end_charging_customers_works_small_usage_1_hour() {
 		let bucket_id6: BucketId = BUCKET_ID6;
 		let bucket_id7: BucketId = BUCKET_ID7;
 
-		let usage6 = CustomerUsage {
+		let usage6 = BucketUsage {
 			transferred_bytes: 0,
 			stored_bytes: 474_957,
 			number_of_puts: 0,
 			number_of_gets: 0,
 		};
-		let usage7 = CustomerUsage {
+		let usage7 = BucketUsage {
 			transferred_bytes: 474_957,
 			stored_bytes: 0,
 			number_of_puts: 0,
@@ -719,28 +719,28 @@ fn send_charging_customers_batch_works_for_day() {
 		let bucket_id4: BucketId = BUCKET_ID4;
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 4456456345234523,
 			number_of_gets: 523423,
 		};
-		let usage2 = CustomerUsage {
+		let usage2 = BucketUsage {
 			// should fail as not enough balance
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage3 = CustomerUsage {
+		let usage3 = BucketUsage {
 			// should pass but with debt (partial charge)
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage4 = CustomerUsage {
+		let usage4 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 467457,
 			stored_bytes: 45674567456,
@@ -971,28 +971,28 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		let bucket_id3: BucketId = BUCKET_ID3;
 		let bucket_id4: BucketId = BUCKET_ID4;
 
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 4456456345234523,
 			number_of_gets: 523423,
 		};
-		let usage2 = CustomerUsage {
+		let usage2 = BucketUsage {
 			// should fail as not enough balance
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage3 = CustomerUsage {
+		let usage3 = BucketUsage {
 			// should pass but with debt (partial charge)
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage4 = CustomerUsage {
+		let usage4 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 467457,
 			stored_bytes: 45674567456,
@@ -1223,28 +1223,28 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		let bucket_id3: BucketId = BUCKET_ID3;
 		let bucket_id4: BucketId = BUCKET_ID4;
 
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 4456456345234523,
 			number_of_gets: 523423,
 		};
-		let usage2 = CustomerUsage {
+		let usage2 = BucketUsage {
 			// should fail as not enough balance
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage3 = CustomerUsage {
+		let usage3 = BucketUsage {
 			// should pass but with debt (partial charge)
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage4 = CustomerUsage {
+		let usage4 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 467457,
 			stored_bytes: 45674567456,
@@ -1474,28 +1474,28 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		let bucket_id3: BucketId = BUCKET_ID3;
 		let bucket_id4: BucketId = BUCKET_ID4;
 
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 4456456345234523,
 			number_of_gets: 523423,
 		};
-		let usage2 = CustomerUsage {
+		let usage2 = BucketUsage {
 			// should fail as not enough balance
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage3 = CustomerUsage {
+		let usage3 = BucketUsage {
 			// should pass but with debt (partial charge)
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage4 = CustomerUsage {
+		let usage4 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 467457,
 			stored_bytes: 45674567456,
@@ -1726,28 +1726,28 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		let bucket_id3: BucketId = BUCKET_ID3;
 		let bucket_id4: BucketId = BUCKET_ID4;
 
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 4456456345234523,
 			number_of_gets: 523423,
 		};
-		let usage2 = CustomerUsage {
+		let usage2 = BucketUsage {
 			// should fail as not enough balance
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage3 = CustomerUsage {
+		let usage3 = BucketUsage {
 			// should pass but with debt (partial charge)
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage4 = CustomerUsage {
+		let usage4 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 467457,
 			stored_bytes: 45674567456,
@@ -1978,28 +1978,28 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		let bucket_id3: BucketId = BUCKET_ID3;
 		let bucket_id4: BucketId = BUCKET_ID4;
 
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 4456456345234523,
 			number_of_gets: 523423,
 		};
-		let usage2 = CustomerUsage {
+		let usage2 = BucketUsage {
 			// should fail as not enough balance
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage3 = CustomerUsage {
+		let usage3 = BucketUsage {
 			// should pass but with debt (partial charge)
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,
 			number_of_gets: 4,
 		};
-		let usage4 = CustomerUsage {
+		let usage4 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 467457,
 			stored_bytes: 45674567456,
@@ -2221,7 +2221,7 @@ fn send_charging_customers_batch_works_zero_fees() {
 		let max_batch_index = 0;
 		let batch_index = 0;
 		let bucket_id5: BucketId = BUCKET_ID5;
-		let usage5 = CustomerUsage {
+		let usage5 = BucketUsage {
 			// should pass without debt
 			transferred_bytes: 1024,
 			stored_bytes: 1024,
@@ -2293,7 +2293,7 @@ fn end_charging_customers_fails_uninitialised() {
 		let batch_index = 1;
 		let bucket_id1: BucketId = BUCKET_ID1;
 
-		let payers = vec![(node_key.clone(), bucket_id1, CustomerUsage::default())];
+		let payers = vec![(node_key.clone(), bucket_id1, BucketUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
 		let start_era: i64 =
@@ -2352,7 +2352,7 @@ fn end_charging_customers_works() {
 		let max_batch_index = 0;
 		let batch_index = 0;
 		let bucket_id1: BucketId = BUCKET_ID1;
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 4456456345234523,
@@ -2523,7 +2523,7 @@ fn end_charging_customers_works_zero_fees() {
 		let max_batch_index = 0;
 		let batch_index = 0;
 		let bucket_id1: BucketId = BUCKET_ID1;
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 1,
@@ -2636,7 +2636,7 @@ fn begin_rewarding_providers_fails_uninitialised() {
 		let batch_index = 1;
 		let bucket_id1: BucketId = BUCKET_ID1;
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
-		let payers = vec![(node_key.clone(), bucket_id1, CustomerUsage::default())];
+		let payers = vec![(node_key.clone(), bucket_id1, BucketUsage::default())];
 		let node_usage = NodeUsage::default();
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
@@ -2735,7 +2735,7 @@ fn begin_rewarding_providers_works() {
 		let bucket_id1: BucketId = BUCKET_ID1;
 		let node_key = NodePubKey::StoragePubKey(NODE1_PUB_KEY_32);
 		let total_node_usage = NodeUsage::default();
-		let payers = vec![(node_key.clone(), bucket_id1, CustomerUsage::default())];
+		let payers = vec![(node_key.clone(), bucket_id1, BucketUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
 
 		let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap(); // Midnight
@@ -2790,8 +2790,8 @@ fn send_rewarding_providers_batch_fails_uninitialised() {
 		let batch_index = 0;
 		let bucket_id3: BucketId = BUCKET_ID3;
 		let bucket_id4: BucketId = BUCKET_ID4;
-		let payers1 = vec![(node_key.clone(), bucket_id3, CustomerUsage::default())];
-		let payers2 = vec![(node_key.clone(), bucket_id4, CustomerUsage::default())];
+		let payers1 = vec![(node_key.clone(), bucket_id3, BucketUsage::default())];
+		let payers2 = vec![(node_key.clone(), bucket_id4, BucketUsage::default())];
 
 		let payees = vec![(node_key, NodeUsage::default())];
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
@@ -2909,7 +2909,7 @@ fn send_rewarding_providers_batch_works() {
 		let batch_index = 0;
 		let batch_node_index = 0;
 		let bucket_id1: BucketId = 1;
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 4456456345234523,
@@ -3230,7 +3230,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		let start_era: i64 =
 			DateTime::<Utc>::from_naive_utc_and_offset(start_date.and_time(time), Utc).timestamp();
 		let end_era: i64 = start_era + (30.44 * 24.0 * 3600.0) as i64;
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			transferred_bytes: 1024,
 			stored_bytes: 1024,
 			number_of_puts: 1,
@@ -3288,8 +3288,8 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 		}
 
 		let mut total_charge = 0u128;
-		let mut payers: Vec<Vec<(NodePubKey, BucketId, CustomerUsage)>> = Vec::new();
-		let mut user_batch: Vec<(NodePubKey, BucketId, CustomerUsage)> = Vec::new();
+		let mut payers: Vec<Vec<(NodePubKey, BucketId, BucketUsage)>> = Vec::new();
+		let mut user_batch: Vec<(NodePubKey, BucketId, BucketUsage)> = Vec::new();
 		for user_id in 100..100 + num_users {
 			let ratio = match user_id % 5 {
 				0 => Perquintill::one(),
@@ -3523,7 +3523,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		let node_batch_size = 10;
 		let mut batch_user_index = 0;
 		let mut batch_node_index = 0;
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			transferred_bytes: 1024,
 			stored_bytes: 1024,
 			number_of_puts: 1,
@@ -3594,8 +3594,8 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 		}
 
 		let mut total_charge = 0u128;
-		let mut payers: Vec<Vec<(NodePubKey, BucketId, CustomerUsage)>> = Vec::new();
-		let mut user_batch: Vec<(NodePubKey, BucketId, CustomerUsage)> = Vec::new();
+		let mut payers: Vec<Vec<(NodePubKey, BucketId, BucketUsage)>> = Vec::new();
+		let mut user_batch: Vec<(NodePubKey, BucketId, BucketUsage)> = Vec::new();
 
 		for user_id in 100..100 + num_users {
 			let ratio = match user_id % 5 {
@@ -3826,7 +3826,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		let node_batch_size = 10;
 		let mut batch_user_index = 0;
 		let mut batch_node_index = 0;
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			transferred_bytes: 1024,
 			stored_bytes: 1024,
 			number_of_puts: 1,
@@ -3897,8 +3897,8 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 		}
 
 		let mut total_charge = 0u128;
-		let mut payers: Vec<Vec<(NodePubKey, BucketId, CustomerUsage)>> = Vec::new();
-		let mut user_batch: Vec<(NodePubKey, BucketId, CustomerUsage)> = Vec::new();
+		let mut payers: Vec<Vec<(NodePubKey, BucketId, BucketUsage)>> = Vec::new();
+		let mut user_batch: Vec<(NodePubKey, BucketId, BucketUsage)> = Vec::new();
 		for user_id in 100u8..100 + num_users {
 			let ratio = match user_id % 5 {
 				0 => Perquintill::from_float(1_000_000.0),
@@ -4171,10 +4171,10 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 		}
 
 		let mut total_charge = 0u128;
-		let mut payers: Vec<Vec<(NodePubKey, BucketId, CustomerUsage)>> = Vec::new();
-		let mut user_batch: Vec<(NodePubKey, BucketId, CustomerUsage)> = Vec::new();
+		let mut payers: Vec<Vec<(NodePubKey, BucketId, BucketUsage)>> = Vec::new();
+		let mut user_batch: Vec<(NodePubKey, BucketId, BucketUsage)> = Vec::new();
 		for user_id in 100..100 + num_users {
-			let user_usage = CustomerUsage {
+			let user_usage = BucketUsage {
 				transferred_bytes: generate_random_u64(&mock_randomness, min, max),
 				stored_bytes: (generate_random_u64(&mock_randomness, min, max)) as i64,
 				number_of_puts: generate_random_u64(&mock_randomness, min, max),
@@ -4350,8 +4350,8 @@ fn end_rewarding_providers_fails_uninitialised() {
 		let batch_index = 0;
 		let bucket_id3: BucketId = BUCKET_ID3;
 		let bucket_id4: BucketId = BUCKET_ID4;
-		let payers1 = vec![(node_key.clone(), bucket_id3, CustomerUsage::default())];
-		let payers2 = vec![(node_key.clone(), bucket_id4, CustomerUsage::default())];
+		let payers1 = vec![(node_key.clone(), bucket_id3, BucketUsage::default())];
+		let payers2 = vec![(node_key.clone(), bucket_id4, BucketUsage::default())];
 		let payees = vec![(node_key, NodeUsage::default())];
 		let total_node_usage = NodeUsage::default();
 		let start_date = NaiveDate::from_ymd_opt(2023, 4, 1).unwrap(); // April 1st
@@ -4461,7 +4461,7 @@ fn end_rewarding_providers_works() {
 		let max_batch_index = 0;
 		let batch_index = 0;
 		let bucket_id1: BucketId = 1;
-		let usage1 = CustomerUsage {
+		let usage1 = BucketUsage {
 			transferred_bytes: 23452345,
 			stored_bytes: 3345234523,
 			number_of_puts: 4456456345234523,
@@ -4544,8 +4544,8 @@ fn end_billing_report_fails_uninitialised() {
 		let bucket_id3: BucketId = BUCKET_ID3;
 		let bucket_id4: BucketId = BUCKET_ID4;
 
-		let payers1 = vec![(node_key.clone(), bucket_id3, CustomerUsage::default())];
-		let payers2 = vec![(node_key.clone(), bucket_id4, CustomerUsage::default())];
+		let payers1 = vec![(node_key.clone(), bucket_id3, BucketUsage::default())];
+		let payers2 = vec![(node_key.clone(), bucket_id4, BucketUsage::default())];
 		let payees = vec![(node_key, NodeUsage::default())];
 		let total_node_usage = NodeUsage::default();
 
@@ -4664,7 +4664,7 @@ fn end_billing_report_works() {
 		let batch_index = 0;
 		let total_node_usage = NodeUsage::default();
 		let bucket_id3 = BUCKET_ID3;
-		let payers = vec![(node_key.clone(), bucket_id3, CustomerUsage::default())];
+		let payers = vec![(node_key.clone(), bucket_id3, BucketUsage::default())];
 		let payees = vec![(node_key.clone(), NodeUsage::default())];
 
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_billing_report(

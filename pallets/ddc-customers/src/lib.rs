@@ -19,7 +19,7 @@ use ddc_primitives::{
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
 	},
-	BucketId, BucketParams, ClusterId, CustomerUsage,
+	BucketId, BucketParams, BucketUsage, ClusterId,
 };
 use frame_support::{
 	parameter_types,
@@ -67,7 +67,9 @@ pub struct Bucket<T: Config> {
 	cluster_id: ClusterId,
 	is_public: bool,
 	is_removed: bool,
-	total_customers_usage: Option<CustomerUsage>,
+	// todo(yahortsaryk): `total_customers_usage` should be renamed to `total_usage` to eliminate
+	// ambiguity, as the bucket owner is the only customer of the bucket who pays for its usage.
+	total_customers_usage: Option<BucketUsage>,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -665,7 +667,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			bucket_id: BucketId,
 			content_owner: &T::AccountId,
-		) -> Result<Option<CustomerUsage>, DispatchError> {
+		) -> Result<Option<BucketUsage>, DispatchError> {
 			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 			ensure!(bucket.owner_id == *content_owner, Error::<T>::NotBucketOwner);
 			ensure!(bucket.cluster_id == *cluster_id, Error::<T>::ClusterMismatch);
@@ -677,7 +679,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			bucket_id: BucketId,
 			content_owner: T::AccountId,
-			customer_usage: &CustomerUsage,
+			customer_usage: &BucketUsage,
 		) -> DispatchResult {
 			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 			ensure!(bucket.owner_id == content_owner, Error::<T>::NotBucketOwner);
@@ -691,7 +693,7 @@ pub mod pallet {
 					total_customers_usage.number_of_gets += customer_usage.number_of_gets;
 				},
 				None => {
-					bucket.total_customers_usage = Some(CustomerUsage {
+					bucket.total_customers_usage = Some(BucketUsage {
 						transferred_bytes: customer_usage.transferred_bytes,
 						stored_bytes: customer_usage.stored_bytes,
 						number_of_puts: customer_usage.number_of_puts,
@@ -730,7 +732,7 @@ pub mod pallet {
 			bucket_id: BucketId,
 			content_owner: T::AccountId,
 			billing_vault: T::AccountId,
-			customer_usage: &CustomerUsage,
+			customer_usage: &BucketUsage,
 			amount: u128,
 		) -> Result<u128, DispatchError> {
 			let actually_charged: BalanceOf<T>;

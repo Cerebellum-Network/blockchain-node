@@ -19,7 +19,7 @@ use ddc_primitives::{
 		ClusterManager, ClusterValidator, CustomerVisitor, NodeManager, PayoutProcessor,
 		ValidatorVisitor,
 	},
-	ActivityHash, BatchIndex, ClusterId, ClusterStatus, CustomerUsage, DdcEra, EraValidation,
+	ActivityHash, BatchIndex, BucketUsage, ClusterId, ClusterStatus, DdcEra, EraValidation,
 	EraValidationStatus, MMRProof, NodeParams, NodePubKey, NodeUsage, PayoutState,
 	StorageNodeParams,
 };
@@ -558,7 +558,7 @@ pub mod pallet {
 
 	pub struct CustomerBatch {
 		pub(crate) batch_index: BatchIndex,
-		pub(crate) payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
+		pub(crate) payers: Vec<(NodePubKey, BucketId, BucketUsage)>,
 		pub(crate) batch_proof: MMRProof,
 	}
 
@@ -2074,7 +2074,7 @@ pub mod pallet {
 								let node_key = Self::node_key_from_hex(activity.node_id.clone())
 									.expect("Node Public Key to be decoded");
 								let bucket_id = activity.bucket_id;
-								let customer_usage = CustomerUsage {
+								let customer_usage = BucketUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
 									number_of_puts: activity.number_of_puts,
@@ -3583,7 +3583,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
+			payers: Vec<(NodePubKey, BucketId, BucketUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -3985,7 +3985,7 @@ pub mod pallet {
 			era_id: DdcEra,
 			batch_index: BatchIndex,
 			max_batch_index: BatchIndex,
-			payers: &[(NodePubKey, BucketId, CustomerUsage)],
+			payers: &[(NodePubKey, BucketId, BucketUsage)],
 			batch_proof: &MMRProof,
 		) -> bool {
 			let validation_era = EraValidations::<T>::get(cluster_id, era_id);

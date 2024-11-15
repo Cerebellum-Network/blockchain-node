@@ -328,7 +328,7 @@ mod benchmarks {
 		whitelist_account!(validator);
 
 		let batch_index: BatchIndex = 0;
-		let mut payers_batch: Vec<(NodePubKey, BucketId, CustomerUsage)> = vec![];
+		let mut payers_batch: Vec<(NodePubKey, BucketId, BucketUsage)> = vec![];
 		for i in 0..b {
 			let customer = create_account::<T>("customer", i, i);
 
@@ -340,7 +340,7 @@ mod benchmarks {
 				endow_customer::<T>(&customer, 10 * CERE);
 			}
 
-			let customer_usage = CustomerUsage {
+			let customer_usage = BucketUsage {
 				transferred_bytes: 200000000, // 200 mb
 				stored_bytes: 100000000,      // 100 mb
 				number_of_gets: 10,           // 10 gets

@@ -302,7 +302,7 @@ impl<T: Config> BucketManager<T> for MockBucketManager {
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
 		_content_owner: &T::AccountId,
-	) -> Result<Option<CustomerUsage>, DispatchError> {
+	) -> Result<Option<BucketUsage>, DispatchError> {
 		unimplemented!()
 	}
 
@@ -310,7 +310,7 @@ impl<T: Config> BucketManager<T> for MockBucketManager {
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
 		_content_owner: T::AccountId,
-		_customer_usage: &CustomerUsage,
+		_customer_usage: &BucketUsage,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -450,7 +450,7 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 		_cluster_id: ClusterId,
 		_era_id: DdcEra,
 		_batch_index: BatchIndex,
-		_payers: &[(NodePubKey, BucketId, CustomerUsage)],
+		_payers: &[(NodePubKey, BucketId, BucketUsage)],
 		_batch_proof: MMRProof,
 	) -> DispatchResult {
 		unimplemented!()
