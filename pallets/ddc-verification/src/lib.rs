@@ -12,6 +12,8 @@
 use core::str;
 
 use base64ct::{Base64, Encoding};
+#[cfg(feature = "runtime-benchmarks")]
+use ddc_primitives::traits::{BucketManager, ClusterCreator, CustomerDepositor};
 use ddc_primitives::{
 	traits::{
 		ClusterManager, ClusterValidator, CustomerVisitor, NodeManager, PayoutProcessor,
@@ -23,37 +25,34 @@ use ddc_primitives::{
 };
 use frame_support::{
 	pallet_prelude::*,
-	traits::{Get, OneSessionHandler},
+	traits::{Currency, Get, OneSessionHandler},
 };
 use frame_system::{
 	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
 	pallet_prelude::*,
 };
+use itertools::Itertools;
 pub use pallet::*;
 use polkadot_ckb_merkle_mountain_range::{
 	helper::{leaf_index_to_mmr_size, leaf_index_to_pos},
 	util::{MemMMR, MemStore},
 	MerkleProof, MMR,
 };
+use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use scale_info::prelude::{format, string::String};
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
-use sp_runtime::{
-	offchain::{http, Duration, StorageKind},
-	traits::Hash,
-	Percent,
-};
-use sp_std::{collections::btree_map::BTreeMap, prelude::*};
-pub mod weights;
-use frame_support::traits::Currency;
-use itertools::Itertools;
-use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use sp_core::crypto::UncheckedFrom;
 pub use sp_io::crypto::sr25519_public_keys;
-use sp_runtime::traits::IdentifyAccount;
+use sp_runtime::{
+	offchain::{http, Duration, StorageKind},
+	traits::{Hash, IdentifyAccount},
+	Percent,
+};
 use sp_staking::StakingInterface;
-use sp_std::fmt::Debug;
+use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, prelude::*};
 
+pub mod weights;
 use crate::weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -157,6 +156,12 @@ pub mod pallet {
 		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
 		type CustomerVisitor: CustomerVisitor<Self>;
 		type Currency: Currency<Self::AccountId>;
+		#[cfg(feature = "runtime-benchmarks")]
+		type CustomerDepositor: CustomerDepositor<Self>;
+		#[cfg(feature = "runtime-benchmarks")]
+		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
+		#[cfg(feature = "runtime-benchmarks")]
+		type BucketManager: BucketManager<Self>;
 	}
 
 	/// The event type.
@@ -3408,7 +3413,7 @@ pub mod pallet {
 		///
 		/// Emits `BillingReportCreated` event when successful.
 		#[pallet::call_index(0)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports() + T::DbWeight::get().reads_writes(2, 5))] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_prepare_era_for_payout(payers_batch_merkle_root_hashes.len() as u32 + payees_batch_merkle_root_hashes.len() as u32))]
 		pub fn set_prepare_era_for_payout(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3515,7 +3520,7 @@ pub mod pallet {
 		/// Emits `NotEnoughNodesForConsensus`  OR `ActivityNotInConsensus` event depend of error
 		/// type, when successful.
 		#[pallet::call_index(1)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::emit_consensus_errors(errors.len() as u32))]
 		pub fn emit_consensus_errors(
 			origin: OriginFor<T>,
 			errors: Vec<OCWError>,
@@ -3766,7 +3771,7 @@ pub mod pallet {
 		/// Parameters:
 		/// - `ddc_validator_pub`: validator Key
 		#[pallet::call_index(2)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_validator_key())]
 		pub fn set_validator_key(
 			origin: OriginFor<T>,
 			ddc_validator_pub: T::AccountId,
@@ -3787,7 +3792,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_billing_report())]
 		pub fn begin_billing_report(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3814,7 +3819,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(4)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_charging_customers())]
 		pub fn begin_charging_customers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3827,8 +3832,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(5)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-																			   // todo! remove clippy::too_many_arguments
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::send_charging_customers_batch(payers.len() as u32))]
 		pub fn send_charging_customers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3849,7 +3853,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(6)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_charging_customers())]
 		pub fn end_charging_customers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3861,7 +3865,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(7)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_rewarding_providers())]
 		pub fn begin_rewarding_providers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3880,7 +3884,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(8)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::send_rewarding_providers_batch(payees.len() as u32))]
 		pub fn send_rewarding_providers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3901,7 +3905,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(9)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_rewarding_providers())]
 		pub fn end_rewarding_providers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3913,7 +3917,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(10)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_billing_report())]
 		pub fn end_billing_report(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3934,7 +3938,7 @@ pub mod pallet {
 
 		// todo! remove this after devnet testing
 		#[pallet::call_index(11)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(1_000_000)]
 		pub fn set_era_validations(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3972,26 +3976,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> ValidatorVisitor<T> for Pallet<T> {
-		#[cfg(feature = "runtime-benchmarks")]
-		fn setup_validators(validators_with_keys: Vec<(T::AccountId, T::AccountId)>) {
-			let mut validators = vec![];
-			for (validator, verification_key) in validators_with_keys {
-				ValidatorToStashKey::<T>::insert(&verification_key, &validator);
-				validators.push(validator);
-			}
-
-			ValidatorSet::<T>::put(validators);
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		fn setup_validation_era(
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			era_validation: EraValidation<T>,
-		) {
-			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
-		}
-
 		fn is_ocw_validator(caller: T::AccountId) -> bool {
 			if ValidatorToStashKey::<T>::contains_key(caller.clone()) {
 				<ValidatorSet<T>>::get().contains(&caller)

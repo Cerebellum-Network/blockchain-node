@@ -14,19 +14,18 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-pub mod weights;
-
-use crate::weights::WeightInfo;
-
-#[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
-
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
 pub mod migrations;
+
+#[cfg(feature = "runtime-benchmarks")]
+use ddc_primitives::BillingReportParams;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
 
 use ddc_primitives::{
 	traits::{
@@ -39,8 +38,9 @@ use ddc_primitives::{
 		pallet::PalletVisitor as PalletVisitorType,
 		payout::PayoutProcessor,
 	},
-	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodePubKey, NodeUsage,
-	PayoutError, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
+	BatchIndex, BucketId, ClusterId, CustomerCharge, CustomerUsage, DdcEra, MMRProof, NodePubKey,
+	NodeReward, NodeUsage, PayoutError, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
+	MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -55,14 +55,6 @@ pub use pallet::*;
 use scale_info::prelude::string::String;
 use sp_runtime::{traits::Convert, AccountId32, PerThing, Perquintill};
 use sp_std::prelude::*;
-/// Stores reward in tokens(units) of node provider as per NodeUsage
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
-pub struct NodeReward {
-	pub transfer: u128, // reward in tokens for NodeUsage::transferred_bytes
-	pub storage: u128,  // reward in tokens for NodeUsage::stored_bytes
-	pub puts: u128,     // reward in tokens for NodeUsage::number_of_puts
-	pub gets: u128,     // reward in tokens for NodeUsage::number_of_gets
-}
 
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct BillingReportDebt {
@@ -70,15 +62,6 @@ pub struct BillingReportDebt {
 	pub era: DdcEra,
 	pub batch_index: BatchIndex,
 	pub amount: u128,
-}
-
-/// Stores charge in tokens(units) of customer as per CustomerUsage
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
-pub struct CustomerCharge {
-	pub transfer: u128, // charge in tokens for CustomerUsage::transferred_bytes
-	pub storage: u128,  // charge in tokens for CustomerUsage::stored_bytes
-	pub puts: u128,     // charge in tokens for CustomerUsage::number_of_puts
-	pub gets: u128,     // charge in tokens for CustomerUsage::number_of_gets
 }
 
 /// The balance type of this pallet.
@@ -128,7 +111,6 @@ pub mod pallet {
 		type ClusterProtocol: ClusterProtocolType<Self, BalanceOf<Self>>;
 		type NominatorsAndValidatorsList: SortedListProvider<Self::AccountId>;
 		type ClusterCreator: ClusterCreatorType<Self, BalanceOf<Self>>;
-		type WeightInfo: WeightInfo;
 		type VoteScoreToU64: Convert<VoteScoreOf<Self>, u64>;
 		type ValidatorVisitor: ValidatorVisitor<Self>;
 		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
@@ -336,7 +318,13 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {}
+	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
+		#[pallet::weight(T::DbWeight::get().reads_writes(2, 5))] // todo! implement weights
+		pub fn dummy_call(origin: OriginFor<T>, num: u128) -> DispatchResult {
+			Ok(())
+		}
+	}
 
 	fn charge_treasury_fees<T: Config>(
 		treasury_fee: u128,
@@ -1187,6 +1175,41 @@ pub mod pallet {
 			}
 
 			Ok(None)
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn create_billing_report(vault: T::AccountId, params: BillingReportParams) {
+			let mut charging_processed_batches =
+				BoundedBTreeSet::<BatchIndex, MaxBatchesCount>::new();
+			for batch in params.charging_processed_batches {
+				charging_processed_batches
+					.try_insert(batch)
+					.expect("Charging batch to be inserted");
+			}
+
+			let mut rewarding_processed_batches =
+				BoundedBTreeSet::<BatchIndex, MaxBatchesCount>::new();
+			for batch in params.rewarding_processed_batches {
+				rewarding_processed_batches
+					.try_insert(batch)
+					.expect("Rewarding batch to be inserted");
+			}
+
+			let billing_report = BillingReport::<T> {
+				vault,
+				start_era: params.start_era,
+				end_era: params.end_era,
+				state: params.state,
+				total_customer_charge: params.total_customer_charge,
+				total_distributed_reward: params.total_distributed_reward,
+				total_node_usage: params.total_node_usage,
+				charging_max_batch_index: params.charging_max_batch_index,
+				charging_processed_batches,
+				rewarding_max_batch_index: params.rewarding_max_batch_index,
+				rewarding_processed_batches,
+			};
+
+			ActiveBillingReports::<T>::insert(params.cluster_id, params.era, billing_report);
 		}
 	}
 }

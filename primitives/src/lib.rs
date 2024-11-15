@@ -32,6 +32,7 @@ pub type ClusterNodesCount = u16;
 pub type StorageNodePubKey = AccountId32;
 pub type ActivityHash = [u8; 32];
 pub type BatchIndex = u16;
+pub const AVG_SECONDS_MONTH: i64 = 2630016; // 30.44 * 24.0 * 3600.0;
 
 pub struct MergeActivityHash;
 impl Merge for MergeActivityHash {
@@ -277,6 +278,15 @@ pub struct CustomerUsage {
 	pub number_of_gets: u64,
 }
 
+/// Stores charge in tokens(units) of customer as per CustomerUsage
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
+pub struct CustomerCharge {
+	pub transfer: u128, // charge in tokens for CustomerUsage::transferred_bytes
+	pub storage: u128,  // charge in tokens for CustomerUsage::stored_bytes
+	pub puts: u128,     // charge in tokens for CustomerUsage::number_of_puts
+	pub gets: u128,     // charge in tokens for CustomerUsage::number_of_gets
+}
+
 /// Stores usage of node provider
 #[derive(
 	PartialEq, Eq, Encode, Decode, Debug, TypeInfo, Default, Clone, Serialize, Deserialize,
@@ -286,6 +296,15 @@ pub struct NodeUsage {
 	pub stored_bytes: i64,
 	pub number_of_puts: u64,
 	pub number_of_gets: u64,
+}
+
+/// Stores reward in tokens(units) of node provider as per NodeUsage
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
+pub struct NodeReward {
+	pub transfer: u128, // reward in tokens for NodeUsage::transferred_bytes
+	pub storage: u128,  // reward in tokens for NodeUsage::stored_bytes
+	pub puts: u128,     // reward in tokens for NodeUsage::number_of_puts
+	pub gets: u128,     // reward in tokens for NodeUsage::number_of_gets
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
@@ -388,4 +407,19 @@ pub struct EraValidation<T: Config> {
 	pub payers_merkle_root_hash: ActivityHash,
 	pub payees_merkle_root_hash: ActivityHash,
 	pub status: EraValidationStatus,
+}
+
+pub struct BillingReportParams {
+	pub cluster_id: ClusterId,
+	pub era: DdcEra,
+	pub start_era: i64,
+	pub end_era: i64,
+	pub state: PayoutState,
+	pub total_customer_charge: CustomerCharge,
+	pub total_distributed_reward: u128,
+	pub total_node_usage: NodeUsage,
+	pub charging_max_batch_index: BatchIndex,
+	pub charging_processed_batches: Vec<BatchIndex>,
+	pub rewarding_max_batch_index: BatchIndex,
+	pub rewarding_processed_batches: Vec<BatchIndex>,
 }

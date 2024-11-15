@@ -206,18 +206,6 @@ impl<T: Config> ValidatorVisitor<T> for MockValidatorVisitor
 where
 	<T as frame_system::Config>::AccountId: From<AccountId>,
 {
-	#[cfg(feature = "runtime-benchmarks")]
-	fn setup_validators(_validators_with_keys: Vec<(T::AccountId, T::AccountId)>) {
-		unimplemented!()
-	}
-	#[cfg(feature = "runtime-benchmarks")]
-	fn setup_validation_era(
-		_cluster_id: ClusterId,
-		_era_id: DdcEra,
-		_era_validation: EraValidation<T>,
-	) {
-		unimplemented!()
-	}
 	fn is_ocw_validator(caller: T::AccountId) -> bool {
 		caller == VALIDATOR_OCW_KEY_32.into()
 	}

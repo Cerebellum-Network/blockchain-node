@@ -1231,7 +1231,6 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type TreasuryVisitor = TreasuryWrapper;
 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type ClusterCreator = DdcClusters;
-	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type VoteScoreToU64 = IdentityConvert;
 	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
 	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
@@ -1351,6 +1350,12 @@ impl pallet_ddc_verification::Config for Runtime {
 	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
 	type Currency = Balances;
+	#[cfg(feature = "runtime-benchmarks")]
+	type CustomerDepositor = DdcCustomers;
+	#[cfg(feature = "runtime-benchmarks")]
+	type ClusterCreator = DdcClusters;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BucketManager = DdcCustomers;
 }
 
 construct_runtime!(

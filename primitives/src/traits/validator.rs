@@ -1,22 +1,10 @@
 use frame_system::Config;
-#[cfg(feature = "runtime-benchmarks")]
-use scale_info::prelude::vec::Vec;
 
-#[cfg(feature = "runtime-benchmarks")]
-use crate::EraValidation;
 use crate::{
 	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodePubKey, NodeUsage,
 };
 
 pub trait ValidatorVisitor<T: Config> {
-	#[cfg(feature = "runtime-benchmarks")]
-	fn setup_validators(validators_with_keys: Vec<(T::AccountId, T::AccountId)>);
-	#[cfg(feature = "runtime-benchmarks")]
-	fn setup_validation_era(
-		cluster_id: ClusterId,
-		era_id: DdcEra,
-		era_validation: EraValidation<T>,
-	);
 	fn is_ocw_validator(caller: T::AccountId) -> bool;
 	fn is_customers_batch_valid(
 		cluster_id: ClusterId,
