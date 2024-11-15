@@ -23,20 +23,11 @@ pub mod migrations;
 
 #[cfg(feature = "runtime-benchmarks")]
 use ddc_primitives::BillingReportParams;
-
-#[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
-
 use ddc_primitives::{
 	traits::{
-		bucket::BucketManager,
-		cluster::{ClusterCreator as ClusterCreatorType, ClusterProtocol as ClusterProtocolType},
-		customer::{
-			CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
-		},
-		node::NodeManager,
-		pallet::PalletVisitor as PalletVisitorType,
-		payout::PayoutProcessor,
+		bucket::BucketManager, cluster::ClusterProtocol as ClusterProtocolType,
+		customer::CustomerCharger as CustomerChargerType, node::NodeManager,
+		pallet::PalletVisitor as PalletVisitorType, payout::PayoutProcessor,
 	},
 	BatchIndex, BucketId, ClusterId, CustomerCharge, CustomerUsage, DdcEra, MMRProof, NodePubKey,
 	NodeReward, NodeUsage, PayoutError, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
@@ -106,11 +97,9 @@ pub mod pallet {
 		type CustomerCharger: CustomerChargerType<Self>;
 		type BucketManager: BucketManager<Self>;
 		type NodeManager: NodeManager<Self>;
-		type CustomerDepositor: CustomerDepositorType<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
 		type ClusterProtocol: ClusterProtocolType<Self, BalanceOf<Self>>;
 		type NominatorsAndValidatorsList: SortedListProvider<Self::AccountId>;
-		type ClusterCreator: ClusterCreatorType<Self, BalanceOf<Self>>;
 		type VoteScoreToU64: Convert<VoteScoreOf<Self>, u64>;
 		type ValidatorVisitor: ValidatorVisitor<Self>;
 		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
@@ -318,13 +307,7 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
-		#[pallet::call_index(0)]
-		#[pallet::weight(T::DbWeight::get().reads_writes(2, 5))] // todo! implement weights
-		pub fn dummy_call(origin: OriginFor<T>, num: u128) -> DispatchResult {
-			Ok(())
-		}
-	}
+	impl<T: Config> Pallet<T> {}
 
 	fn charge_treasury_fees<T: Config>(
 		treasury_fee: u128,
@@ -658,7 +641,7 @@ pub mod pallet {
 					era,
 					batch_index,
 					billing_report.charging_max_batch_index,
-					&payers,
+					payers,
 					&batch_proof,
 				),
 				Error::<T>::BatchValidationFailed
@@ -671,7 +654,7 @@ pub mod pallet {
 
 				let mut customer_charge = get_customer_charge::<T>(
 					&cluster_id,
-					&customer_usage,
+					customer_usage,
 					bucket_id,
 					&customer_id,
 					updated_billing_report.start_era,
@@ -691,7 +674,7 @@ pub mod pallet {
 					bucket_id,
 					customer_id.clone(),
 					updated_billing_report.vault.clone(),
-					&customer_usage,
+					customer_usage,
 					total_customer_charge,
 				) {
 					Ok(actually_charged) => actually_charged,
@@ -950,7 +933,7 @@ pub mod pallet {
 					era,
 					batch_index,
 					billing_report.rewarding_max_batch_index,
-					&payees,
+					payees,
 					&batch_proof
 				),
 				Error::<T>::BatchValidationFailed
@@ -960,7 +943,7 @@ pub mod pallet {
 			let mut updated_billing_report = billing_report.clone();
 			for (node_key, delta_node_usage) in payees {
 				// todo! get T::NodeVisitor::get_total_usage(delta_node_usage.node_id).stored_bytes
-				let node_provider_id = T::NodeManager::get_node_provider_id(&node_key)?;
+				let node_provider_id = T::NodeManager::get_node_provider_id(node_key)?;
 				let mut total_node_stored_bytes: i64 = 0;
 
 				total_node_stored_bytes = total_node_stored_bytes

@@ -3510,6 +3510,178 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set validator key.
+		///
+		/// The origin must be a validator.
+		///
+		/// Parameters:
+		/// - `ddc_validator_pub`: validator Key
+		#[pallet::call_index(1)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_validator_key())]
+		pub fn set_validator_key(
+			origin: OriginFor<T>,
+			ddc_validator_pub: T::AccountId,
+		) -> DispatchResult {
+			let controller = ensure_signed(origin)?;
+
+			let stash = T::ValidatorStaking::stash_by_ctrl(&controller)
+				.map_err(|_| Error::<T>::NotController)?;
+
+			ensure!(
+				<ValidatorSet<T>>::get().contains(&ddc_validator_pub),
+				Error::<T>::NotValidatorStash
+			);
+
+			ValidatorToStashKey::<T>::insert(&ddc_validator_pub, &stash);
+			Self::deposit_event(Event::<T>::ValidatorKeySet { validator: ddc_validator_pub });
+			Ok(())
+		}
+
+		#[pallet::call_index(2)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_billing_report())]
+		pub fn begin_billing_report(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			start_era: i64,
+			end_era: i64,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+
+			T::PayoutProcessor::begin_billing_report(cluster_id, era_id, start_era, end_era)?;
+
+			EraValidations::<T>::try_mutate(
+				cluster_id,
+				era_id,
+				|maybe_era_validations| -> DispatchResult {
+					maybe_era_validations.as_mut().ok_or(Error::<T>::NoEraValidation)?.status =
+						EraValidationStatus::PayoutInProgress;
+					Ok(())
+				},
+			)?;
+
+			Ok(())
+		}
+
+		#[pallet::call_index(3)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_charging_customers())]
+		pub fn begin_charging_customers(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			max_batch_index: BatchIndex,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutProcessor::begin_charging_customers(cluster_id, era_id, max_batch_index)
+		}
+
+		#[pallet::call_index(4)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::send_charging_customers_batch(payers.len() as u32))]
+		pub fn send_charging_customers_batch(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			batch_index: BatchIndex,
+			payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
+			batch_proof: MMRProof,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutProcessor::send_charging_customers_batch(
+				cluster_id,
+				era_id,
+				batch_index,
+				&payers,
+				batch_proof,
+			)
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_charging_customers())]
+		pub fn end_charging_customers(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutProcessor::end_charging_customers(cluster_id, era_id)
+		}
+
+		#[pallet::call_index(6)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_rewarding_providers())]
+		pub fn begin_rewarding_providers(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			max_batch_index: BatchIndex,
+			total_node_usage: NodeUsage,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutProcessor::begin_rewarding_providers(
+				cluster_id,
+				era_id,
+				max_batch_index,
+				total_node_usage,
+			)
+		}
+
+		#[pallet::call_index(7)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::send_rewarding_providers_batch(payees.len() as u32))]
+		pub fn send_rewarding_providers_batch(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			batch_index: BatchIndex,
+			payees: Vec<(NodePubKey, NodeUsage)>,
+			batch_proof: MMRProof,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutProcessor::send_rewarding_providers_batch(
+				cluster_id,
+				era_id,
+				batch_index,
+				&payees,
+				batch_proof,
+			)
+		}
+
+		#[pallet::call_index(8)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_rewarding_providers())]
+		pub fn end_rewarding_providers(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutProcessor::end_rewarding_providers(cluster_id, era_id)
+		}
+
+		#[pallet::call_index(9)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_billing_report())]
+		pub fn end_billing_report(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			T::PayoutProcessor::end_billing_report(cluster_id, era_id)?;
+
+			let mut era_validation = <EraValidations<T>>::get(cluster_id, era_id).unwrap(); // should exist
+			era_validation.status = EraValidationStatus::PayoutSuccess;
+			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
+
+			// todo(yahortsaryk): this should be renamed to `last_paid_era` to eliminate ambiguity,
+			// as the validation step is decoupled from payout step.
+			T::ClusterValidator::set_last_validated_era(&cluster_id, era_id)
+		}
+
 		/// Emit consensus errors.
 		///
 		/// The origin must be a validator.
@@ -3519,7 +3691,7 @@ pub mod pallet {
 		///
 		/// Emits `NotEnoughNodesForConsensus`  OR `ActivityNotInConsensus` event depend of error
 		/// type, when successful.
-		#[pallet::call_index(1)]
+		#[pallet::call_index(10)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::emit_consensus_errors(errors.len() as u32))]
 		pub fn emit_consensus_errors(
 			origin: OriginFor<T>,
@@ -3764,181 +3936,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Set validator key.
-		///
-		/// The origin must be a validator.
-		///
-		/// Parameters:
-		/// - `ddc_validator_pub`: validator Key
-		#[pallet::call_index(2)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_validator_key())]
-		pub fn set_validator_key(
-			origin: OriginFor<T>,
-			ddc_validator_pub: T::AccountId,
-		) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
-
-			let stash = T::ValidatorStaking::stash_by_ctrl(&controller)
-				.map_err(|_| Error::<T>::NotController)?;
-
-			ensure!(
-				<ValidatorSet<T>>::get().contains(&ddc_validator_pub),
-				Error::<T>::NotValidatorStash
-			);
-
-			ValidatorToStashKey::<T>::insert(&ddc_validator_pub, &stash);
-			Self::deposit_event(Event::<T>::ValidatorKeySet { validator: ddc_validator_pub });
-			Ok(())
-		}
-
-		#[pallet::call_index(3)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_billing_report())]
-		pub fn begin_billing_report(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			start_era: i64,
-			end_era: i64,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-
-			T::PayoutProcessor::begin_billing_report(cluster_id, era_id, start_era, end_era)?;
-
-			EraValidations::<T>::try_mutate(
-				cluster_id,
-				era_id,
-				|maybe_era_validations| -> DispatchResult {
-					maybe_era_validations.as_mut().ok_or(Error::<T>::NoEraValidation)?.status =
-						EraValidationStatus::PayoutInProgress;
-					Ok(())
-				},
-			)?;
-
-			Ok(())
-		}
-
-		#[pallet::call_index(4)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_charging_customers())]
-		pub fn begin_charging_customers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			max_batch_index: BatchIndex,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutProcessor::begin_charging_customers(cluster_id, era_id, max_batch_index)
-		}
-
-		#[pallet::call_index(5)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::send_charging_customers_batch(payers.len() as u32))]
-		pub fn send_charging_customers_batch(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			batch_index: BatchIndex,
-			payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
-			batch_proof: MMRProof,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutProcessor::send_charging_customers_batch(
-				cluster_id,
-				era_id,
-				batch_index,
-				&payers,
-				batch_proof,
-			)
-		}
-
-		#[pallet::call_index(6)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_charging_customers())]
-		pub fn end_charging_customers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutProcessor::end_charging_customers(cluster_id, era_id)
-		}
-
-		#[pallet::call_index(7)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_rewarding_providers())]
-		pub fn begin_rewarding_providers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			max_batch_index: BatchIndex,
-			total_node_usage: NodeUsage,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutProcessor::begin_rewarding_providers(
-				cluster_id,
-				era_id,
-				max_batch_index,
-				total_node_usage,
-			)
-		}
-
-		#[pallet::call_index(8)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::send_rewarding_providers_batch(payees.len() as u32))]
-		pub fn send_rewarding_providers_batch(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			batch_index: BatchIndex,
-			payees: Vec<(NodePubKey, NodeUsage)>,
-			batch_proof: MMRProof,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutProcessor::send_rewarding_providers_batch(
-				cluster_id,
-				era_id,
-				batch_index,
-				&payees,
-				batch_proof,
-			)
-		}
-
-		#[pallet::call_index(9)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_rewarding_providers())]
-		pub fn end_rewarding_providers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutProcessor::end_rewarding_providers(cluster_id, era_id)
-		}
-
-		#[pallet::call_index(10)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_billing_report())]
-		pub fn end_billing_report(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutProcessor::end_billing_report(cluster_id, era_id)?;
-
-			let mut era_validation = <EraValidations<T>>::get(cluster_id, era_id).unwrap(); // should exist
-			era_validation.status = EraValidationStatus::PayoutSuccess;
-			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
-
-			// todo(yahortsaryk): this should be renamed to `last_paid_era` to eliminate ambiguity,
-			// as the validation step is decoupled from payout step.
-			T::ClusterValidator::set_last_validated_era(&cluster_id, era_id)
-		}
-
-		// todo! remove this after devnet testing
 		#[pallet::call_index(11)]
-		#[pallet::weight(1_000_000)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_era_validations())]
 		pub fn set_era_validations(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,

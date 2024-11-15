@@ -131,6 +131,7 @@ mod benchmarks {
 		<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
 	}
 
+	#[allow(clippy::too_many_arguments)]
 	fn create_billing_report<T: Config>(
 		cluster_id: ClusterId,
 		era_id: DdcEra,
@@ -833,6 +834,17 @@ mod benchmarks {
 
 		#[extrinsic_call]
 		emit_consensus_errors(RawOrigin::Signed(validator.clone()), errros);
+	}
+
+	#[benchmark]
+	fn set_era_validations() {
+		let cluster_id = ClusterId::from([1; 20]);
+		let era_id: DdcEra = 1;
+
+		#[extrinsic_call]
+		set_era_validations(RawOrigin::Root, cluster_id, era_id);
+
+		<EraValidations<T>>::contains_key(cluster_id, era_id);
 	}
 
 	impl_benchmark_test_suite!(DdcVerification, crate::mock::new_test_ext(), crate::mock::Test);

@@ -1,9 +1,15 @@
+#[cfg(feature = "runtime-benchmarks")]
+use ddc_primitives::traits::{BucketManager, ClusterCreator, CustomerDepositor};
 use ddc_primitives::{
 	crypto, sr25519,
 	traits::{ClusterManager, ClusterQuery},
 	BucketId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats,
 	ClusterStatus, PayoutError, PayoutState, StorageNodeMode, StorageNodePubKey,
 	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
+};
+#[cfg(feature = "runtime-benchmarks")]
+use ddc_primitives::{
+	BillingReportParams, BucketParams, ClusterId, ClusterParams, ClusterProtocolParams,
 };
 use frame_election_provider_support::{
 	bounds::{ElectionBounds, ElectionBoundsBuilder},
@@ -239,6 +245,12 @@ impl crate::Config for Test {
 	type CustomerVisitor = MockCustomerVisitor;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 4;
 	type Currency = Balances;
+	#[cfg(feature = "runtime-benchmarks")]
+	type CustomerDepositor = MockCustomerDepositor;
+	#[cfg(feature = "runtime-benchmarks")]
+	type ClusterCreator = MockClusterCreator;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BucketManager = MockBucketManager;
 }
 
 pub struct MockCustomerVisitor;
@@ -248,6 +260,69 @@ impl<T: Config> CustomerVisitor<T> for MockCustomerVisitor {
 		let account_1 = T::AccountId::decode(&mut &temp.as_slice()[..]).unwrap();
 
 		Ok(account_1)
+	}
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockCustomerDepositor;
+#[cfg(feature = "runtime-benchmarks")]
+impl<T: Config> CustomerDepositor<T> for MockCustomerDepositor {
+	fn deposit(_customer: T::AccountId, _amount: u128) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
+	fn deposit_extra(_customer: T::AccountId, _amount: u128) -> Result<(), DispatchError> {
+		unimplemented!()
+	}
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockClusterCreator;
+#[cfg(feature = "runtime-benchmarks")]
+impl<T: Config> ClusterCreator<T, Balance> for MockClusterCreator {
+	fn create_cluster(
+		_cluster_id: ClusterId,
+		_cluster_manager_id: T::AccountId,
+		_cluster_reserve_id: T::AccountId,
+		_cluster_params: ClusterParams<T::AccountId>,
+		_initial_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBucketManager;
+#[cfg(feature = "runtime-benchmarks")]
+impl<T: Config> BucketManager<T> for MockBucketManager {
+	fn get_bucket_owner_id(_bucket_id: BucketId) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_total_bucket_usage(
+		_cluster_id: &ClusterId,
+		_bucket_id: BucketId,
+		_content_owner: &T::AccountId,
+	) -> Result<Option<CustomerUsage>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn inc_total_bucket_usage(
+		_cluster_id: &ClusterId,
+		_bucket_id: BucketId,
+		_content_owner: T::AccountId,
+		_customer_usage: &CustomerUsage,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn create_bucket(
+		_cluster_id: &ClusterId,
+		_bucket_id: BucketId,
+		_owner_id: T::AccountId,
+		_bucket_params: BucketParams,
+	) -> Result<(), DispatchError> {
+		unimplemented!()
 	}
 }
 
@@ -439,6 +514,11 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 
 	fn get_billing_report_status(_cluster_id: &ClusterId, _era_id: DdcEra) -> PayoutState {
 		PayoutState::NotInitialized
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn create_billing_report(_vault: T::AccountId, _params: BillingReportParams) {
+		unimplemented!()
 	}
 }
 

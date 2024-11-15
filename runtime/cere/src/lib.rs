@@ -1226,11 +1226,9 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
 	type BucketManager = DdcCustomers;
-	type CustomerDepositor = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
-	type ClusterCreator = DdcClusters;
 	type VoteScoreToU64 = IdentityConvert;
 	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
 	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
@@ -1515,7 +1513,6 @@ mod benches {
 		[pallet_ddc_clusters, DdcClusters]
 		[pallet_ddc_staking, DdcStaking]
 		[pallet_ddc_nodes, DdcNodes]
-		[pallet_ddc_payouts, DdcPayouts]
 		[pallet_election_provider_multi_phase, ElectionProviderMultiPhase]
 		[pallet_election_provider_support_benchmarking, EPSBench::<Runtime>]
 		[pallet_fast_unstake, FastUnstake]

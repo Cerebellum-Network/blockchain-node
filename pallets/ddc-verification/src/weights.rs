@@ -39,6 +39,7 @@ pub trait WeightInfo {
 	fn end_rewarding_providers() -> Weight;
 	fn end_billing_report() -> Weight;
 	fn emit_consensus_errors(b: u32, ) -> Weight;
+	fn set_era_validations() -> Weight;
 }
 
 /// Weights for pallet_ddc_verification using the Substrate node and recommended hardware.
@@ -214,6 +215,15 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(Weight::from_parts(23_011_156_u64, 0).saturating_mul(b as u64))
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 	}
+	// Storage: `DdcVerification::EraValidations` (r:1 w:1)
+	// Proof: `DdcVerification::EraValidations` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	// Storage: `DdcVerification::ValidatorSet` (r:1 w:0)
+	// Proof: `DdcVerification::ValidatorSet` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	fn set_era_validations() -> Weight {
+		Weight::from_parts(180_000_000_u64, 0)
+			.saturating_add(T::DbWeight::get().reads(2_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
 }
 
 // For backwards compatibility and tests
@@ -387,5 +397,14 @@ impl WeightInfo for () {
 			// Standard Error: 26_465
 			.saturating_add(Weight::from_parts(23_011_156_u64, 0).saturating_mul(b as u64))
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
+	}
+	// Storage: `DdcVerification::EraValidations` (r:1 w:1)
+	// Proof: `DdcVerification::EraValidations` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	// Storage: `DdcVerification::ValidatorSet` (r:1 w:0)
+	// Proof: `DdcVerification::ValidatorSet` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
+	fn set_era_validations() -> Weight {
+		Weight::from_parts(180_000_000_u64, 0)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 }

@@ -2,20 +2,16 @@
 
 #![allow(dead_code)]
 
+#[cfg(feature = "try-runtime")]
+use ddc_primitives::BucketParams;
 use ddc_primitives::{
 	traits::{
-		bucket::BucketManager,
-		cluster::{ClusterCreator, ClusterProtocol},
-		customer::{CustomerCharger, CustomerDepositor},
-		node::NodeManager,
-		pallet::PalletVisitor,
-		ClusterQuery, ValidatorVisitor,
+		bucket::BucketManager, cluster::ClusterProtocol, customer::CustomerCharger,
+		node::NodeManager, pallet::PalletVisitor, ClusterQuery, ValidatorVisitor,
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodeParams, NodePubKey, NodeType, DOLLARS,
+	ClusterBondingParams, ClusterFeesParams, ClusterPricingParams, ClusterProtocolParams,
+	ClusterStatus, NodeParams, NodePubKey, NodeType, DOLLARS,
 };
-#[cfg(feature = "try-runtime")]
-use ddc_primitives::{BucketParams, EraValidation};
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
 	construct_runtime, parameter_types,
@@ -131,13 +127,10 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type CustomerCharger = TestCustomerCharger;
 	type BucketManager = TestBucketManager;
-	type CustomerDepositor = TestCustomerDepositor;
 	type ClusterProtocol = TestClusterProtocol;
 	type TreasuryVisitor = TestTreasuryVisitor;
 	type NominatorsAndValidatorsList = TestValidatorVisitor<Self>;
-	type ClusterCreator = TestClusterCreator;
 	type VoteScoreToU64 = Identity;
-	type WeightInfo = ();
 	type ValidatorVisitor = MockValidatorVisitor;
 	type NodeManager = MockNodeManager;
 	type AccountIdConverter = AccountId;
@@ -335,29 +328,6 @@ where
 			ExistenceRequirement::AllowDeath,
 		)?;
 		Ok(amount_to_charge)
-	}
-}
-
-pub struct TestClusterCreator;
-impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
-	fn create_cluster(
-		_cluster_id: ClusterId,
-		_cluster_manager_id: T::AccountId,
-		_cluster_reserve_id: T::AccountId,
-		_cluster_params: ClusterParams<T::AccountId>,
-		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
-	) -> DispatchResult {
-		Ok(())
-	}
-}
-
-pub struct TestCustomerDepositor;
-impl<T: Config> CustomerDepositor<T> for TestCustomerDepositor {
-	fn deposit(_customer: T::AccountId, _amount: u128) -> Result<(), DispatchError> {
-		Ok(())
-	}
-	fn deposit_extra(_customer: T::AccountId, _amount: u128) -> Result<(), DispatchError> {
-		Ok(())
 	}
 }
 
