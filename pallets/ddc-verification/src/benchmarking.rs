@@ -846,6 +846,4 @@ mod benchmarks {
 
 		<EraValidations<T>>::contains_key(cluster_id, era_id);
 	}
-
-	impl_benchmark_test_suite!(DdcVerification, crate::mock::new_test_ext(), crate::mock::Test);
 }

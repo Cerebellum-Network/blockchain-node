@@ -2,7 +2,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2024-11-15, STEPS: `50`, REPEAT: 20, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! HOSTNAME: `Yahors-MacBook-Pro.local`, CPU: `<UNKNOWN>`
+//! HOSTNAME: `bench`, CPU: `AMD EPYC-Milan Processor`
 //! EXECUTION: , WASM-EXECUTION: Compiled, CHAIN: Some("dev"), DB CACHE: 1024
 
 // Executed Command:
@@ -11,7 +11,6 @@
 // pallet
 // --chain=dev
 // --execution=wasm
-// --wasm-execution=compiled
 // --pallet=pallet_ddc_verification
 // --extrinsic=*
 // --steps=50
@@ -52,8 +51,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcVerification::EraValidations` (r:1 w:1)
 	// Proof: `DdcVerification::EraValidations` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// The range of component `b` is `[1, 5]`.
-	fn set_prepare_era_for_payout(_b: u32, ) -> Weight {
-		Weight::from_parts(257_146_553_u64, 0)
+	fn set_prepare_era_for_payout(b: u32, ) -> Weight {
+		Weight::from_parts(652_257_491_u64, 0)
+			// Standard Error: 315_135
+			.saturating_add(Weight::from_parts(1_045_800_u64, 0).saturating_mul(b as u64))
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -64,7 +65,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcVerification::ValidatorToStashKey` (r:0 w:1)
 	// Proof: `DdcVerification::ValidatorToStashKey` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn set_validator_key() -> Weight {
-		Weight::from_parts(195_000_000_u64, 0)
+		Weight::from_parts(614_541_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -77,7 +78,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcVerification::EraValidations` (r:1 w:1)
 	// Proof: `DdcVerification::EraValidations` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn begin_billing_report() -> Weight {
-		Weight::from_parts(269_000_000_u64, 0)
+		Weight::from_parts(858_688_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(4_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
@@ -88,7 +89,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn begin_charging_customers() -> Weight {
-		Weight::from_parts(223_000_000_u64, 0)
+		Weight::from_parts(692_927_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -112,9 +113,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Proof: `DdcPayouts::DebtorCustomers` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// The range of component `b` is `[1, 1000]`.
 	fn send_charging_customers_batch(b: u32, ) -> Weight {
-		Weight::from_parts(1_192_000_000_u64, 0)
-			// Standard Error: 2_345_530
-			.saturating_add(Weight::from_parts(782_075_355_u64, 0).saturating_mul(b as u64))
+		Weight::from_parts(3_402_331_000_u64, 0)
+			// Standard Error: 6_536_370
+			.saturating_add(Weight::from_parts(1_999_183_585_u64, 0).saturating_mul(b as u64))
 			.saturating_add(T::DbWeight::get().reads(10_u64))
 			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(b as u64)))
 			.saturating_add(T::DbWeight::get().writes(5_u64))
@@ -141,7 +142,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `Staking::Nominators` (r:1 w:0)
 	// Proof: `Staking::Nominators` (`max_values`: None, `max_size`: Some(558), added: 3033, mode: `MaxEncodedLen`)
 	fn end_charging_customers() -> Weight {
-		Weight::from_parts(2_169_000_000_u64, 0)
+		Weight::from_parts(6_076_476_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(13_u64))
 			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
@@ -152,7 +153,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn begin_rewarding_providers() -> Weight {
-		Weight::from_parts(226_000_000_u64, 0)
+		Weight::from_parts(695_822_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -170,9 +171,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	/// The range of component `b` is `[1, 1000]`.
 	fn send_rewarding_providers_batch(b: u32, ) -> Weight {
-		Weight::from_parts(908_000_000_u64, 0)
-			// Standard Error: 334_349
-			.saturating_add(Weight::from_parts(622_558_822_u64, 0).saturating_mul(b as u64))
+		Weight::from_parts(2_651_124_000_u64, 0)
+			// Standard Error: 440_083
+			.saturating_add(Weight::from_parts(1_673_309_967_u64, 0).saturating_mul(b as u64))
 			.saturating_add(T::DbWeight::get().reads(5_u64))
 			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(b as u64)))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
@@ -185,7 +186,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn end_rewarding_providers() -> Weight {
-		Weight::from_parts(232_000_000_u64, 0)
+		Weight::from_parts(703_757_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -200,7 +201,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcClusters::Clusters` (r:1 w:1)
 	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn end_billing_report() -> Weight {
-		Weight::from_parts(434_000_000_u64, 0)
+		Weight::from_parts(1_343_575_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(5_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
@@ -210,9 +211,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Proof: `DdcVerification::ValidatorSet` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// The range of component `b` is `[1, 5]`.
 	fn emit_consensus_errors(b: u32, ) -> Weight {
-		Weight::from_parts(100_407_885_u64, 0)
-			// Standard Error: 26_465
-			.saturating_add(Weight::from_parts(23_011_156_u64, 0).saturating_mul(b as u64))
+		Weight::from_parts(322_196_711_u64, 0)
+			// Standard Error: 285_972
+			.saturating_add(Weight::from_parts(46_385_848_u64, 0).saturating_mul(b as u64))
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 	}
 	// Storage: `DdcVerification::EraValidations` (r:1 w:1)
@@ -220,7 +221,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: `DdcVerification::ValidatorSet` (r:1 w:0)
 	// Proof: `DdcVerification::ValidatorSet` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn set_era_validations() -> Weight {
-		Weight::from_parts(180_000_000_u64, 0)
+		Weight::from_parts(498_523_000_u64, 0)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -235,8 +236,10 @@ impl WeightInfo for () {
 	// Storage: `DdcVerification::EraValidations` (r:1 w:1)
 	// Proof: `DdcVerification::EraValidations` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// The range of component `b` is `[1, 5]`.
-	fn set_prepare_era_for_payout(_b: u32, ) -> Weight {
-		Weight::from_parts(257_146_553_u64, 0)
+	fn set_prepare_era_for_payout(b: u32, ) -> Weight {
+		Weight::from_parts(652_257_491_u64, 0)
+			// Standard Error: 315_135
+			.saturating_add(Weight::from_parts(1_045_800_u64, 0).saturating_mul(b as u64))
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -247,7 +250,7 @@ impl WeightInfo for () {
 	// Storage: `DdcVerification::ValidatorToStashKey` (r:0 w:1)
 	// Proof: `DdcVerification::ValidatorToStashKey` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn set_validator_key() -> Weight {
-		Weight::from_parts(195_000_000_u64, 0)
+		Weight::from_parts(614_541_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -260,7 +263,7 @@ impl WeightInfo for () {
 	// Storage: `DdcVerification::EraValidations` (r:1 w:1)
 	// Proof: `DdcVerification::EraValidations` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn begin_billing_report() -> Weight {
-		Weight::from_parts(269_000_000_u64, 0)
+		Weight::from_parts(858_688_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(4_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
@@ -271,7 +274,7 @@ impl WeightInfo for () {
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn begin_charging_customers() -> Weight {
-		Weight::from_parts(223_000_000_u64, 0)
+		Weight::from_parts(692_927_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -295,9 +298,9 @@ impl WeightInfo for () {
 	// Proof: `DdcPayouts::DebtorCustomers` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// The range of component `b` is `[1, 1000]`.
 	fn send_charging_customers_batch(b: u32, ) -> Weight {
-		Weight::from_parts(1_192_000_000_u64, 0)
-			// Standard Error: 2_345_530
-			.saturating_add(Weight::from_parts(782_075_355_u64, 0).saturating_mul(b as u64))
+		Weight::from_parts(3_402_331_000_u64, 0)
+			// Standard Error: 6_536_370
+			.saturating_add(Weight::from_parts(1_999_183_585_u64, 0).saturating_mul(b as u64))
 			.saturating_add(RocksDbWeight::get().reads(10_u64))
 			.saturating_add(RocksDbWeight::get().reads((3_u64).saturating_mul(b as u64)))
 			.saturating_add(RocksDbWeight::get().writes(5_u64))
@@ -324,7 +327,7 @@ impl WeightInfo for () {
 	// Storage: `Staking::Nominators` (r:1 w:0)
 	// Proof: `Staking::Nominators` (`max_values`: None, `max_size`: Some(558), added: 3033, mode: `MaxEncodedLen`)
 	fn end_charging_customers() -> Weight {
-		Weight::from_parts(2_169_000_000_u64, 0)
+		Weight::from_parts(6_076_476_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(13_u64))
 			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
@@ -335,7 +338,7 @@ impl WeightInfo for () {
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn begin_rewarding_providers() -> Weight {
-		Weight::from_parts(226_000_000_u64, 0)
+		Weight::from_parts(695_822_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -353,9 +356,9 @@ impl WeightInfo for () {
 	// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	/// The range of component `b` is `[1, 1000]`.
 	fn send_rewarding_providers_batch(b: u32, ) -> Weight {
-		Weight::from_parts(908_000_000_u64, 0)
-			// Standard Error: 334_349
-			.saturating_add(Weight::from_parts(622_558_822_u64, 0).saturating_mul(b as u64))
+		Weight::from_parts(2_651_124_000_u64, 0)
+			// Standard Error: 440_083
+			.saturating_add(Weight::from_parts(1_673_309_967_u64, 0).saturating_mul(b as u64))
 			.saturating_add(RocksDbWeight::get().reads(5_u64))
 			.saturating_add(RocksDbWeight::get().reads((2_u64).saturating_mul(b as u64)))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
@@ -368,7 +371,7 @@ impl WeightInfo for () {
 	// Storage: `DdcPayouts::ActiveBillingReports` (r:1 w:1)
 	// Proof: `DdcPayouts::ActiveBillingReports` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn end_rewarding_providers() -> Weight {
-		Weight::from_parts(232_000_000_u64, 0)
+		Weight::from_parts(703_757_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -383,7 +386,7 @@ impl WeightInfo for () {
 	// Storage: `DdcClusters::Clusters` (r:1 w:1)
 	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn end_billing_report() -> Weight {
-		Weight::from_parts(434_000_000_u64, 0)
+		Weight::from_parts(1_343_575_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(5_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
@@ -393,9 +396,9 @@ impl WeightInfo for () {
 	// Proof: `DdcVerification::ValidatorSet` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// The range of component `b` is `[1, 5]`.
 	fn emit_consensus_errors(b: u32, ) -> Weight {
-		Weight::from_parts(100_407_885_u64, 0)
-			// Standard Error: 26_465
-			.saturating_add(Weight::from_parts(23_011_156_u64, 0).saturating_mul(b as u64))
+		Weight::from_parts(322_196_711_u64, 0)
+			// Standard Error: 285_972
+			.saturating_add(Weight::from_parts(46_385_848_u64, 0).saturating_mul(b as u64))
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 	}
 	// Storage: `DdcVerification::EraValidations` (r:1 w:1)
@@ -403,7 +406,7 @@ impl WeightInfo for () {
 	// Storage: `DdcVerification::ValidatorSet` (r:1 w:0)
 	// Proof: `DdcVerification::ValidatorSet` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	fn set_era_validations() -> Weight {
-		Weight::from_parts(180_000_000_u64, 0)
+		Weight::from_parts(498_523_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
