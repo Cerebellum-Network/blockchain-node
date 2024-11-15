@@ -474,7 +474,7 @@ pub mod pallet {
 		/// Bad requests.
 		BadRequest,
 		/// Not a validator.
-		Unauthorised,
+		Unauthorized,
 		/// Already signed era.
 		AlreadySignedEra,
 		NotExpectedState,
@@ -1880,7 +1880,6 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<(DdcEra, i64, i64)>, OCWError> {
 			Ok(Self::get_era_for_payout(cluster_id, EraValidationStatus::ReadyForPayout))
-			// todo! get start and end values based on result
 		}
 
 		pub(crate) fn prepare_begin_charging_customers(
@@ -2737,7 +2736,7 @@ pub mod pallet {
 		///   - `Ok(None)`: The validator did not participate in any era for the given cluster.
 		///   - `Err(OCWError)`: An error occurred while retrieving the data.
 		// todo! add tests for start and end era
-		pub(crate) fn get_last_validated_era(
+		pub(crate) fn get_last_paid_era(
 			cluster_id: &ClusterId,
 			validator: T::AccountId,
 		) -> Result<Option<DdcEra>, OCWError> {
@@ -2783,11 +2782,11 @@ pub mod pallet {
 			let this_validator = Self::fetch_verification_account_id()?;
 
 			let last_validated_era_by_this_validator =
-				Self::get_last_validated_era(cluster_id, this_validator)?
+				Self::get_last_paid_era(cluster_id, this_validator)?
 					.unwrap_or_else(DdcEra::default);
 
 			let last_paid_era_for_cluster =
-				T::ClusterValidator::get_last_validated_era(cluster_id).map_err(|_| {
+				T::ClusterValidator::get_last_paid_era(cluster_id).map_err(|_| {
 					OCWError::EraRetrievalError { cluster_id: *cluster_id, node_pub_key: None }
 				})?;
 
@@ -3425,7 +3424,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 
-			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
+			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorized);
 			let mut era_validation = {
 				let era_validations = <EraValidations<T>>::get(cluster_id, era_activity.id);
 
@@ -3547,7 +3546,7 @@ pub mod pallet {
 			end_era: i64,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 
 			T::PayoutProcessor::begin_billing_report(cluster_id, era_id, start_era, end_era)?;
 
@@ -3573,7 +3572,7 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			T::PayoutProcessor::begin_charging_customers(cluster_id, era_id, max_batch_index)
 		}
 
@@ -3588,7 +3587,7 @@ pub mod pallet {
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			T::PayoutProcessor::send_charging_customers_batch(
 				cluster_id,
 				era_id,
@@ -3606,7 +3605,7 @@ pub mod pallet {
 			era_id: DdcEra,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			T::PayoutProcessor::end_charging_customers(cluster_id, era_id)
 		}
 
@@ -3620,7 +3619,7 @@ pub mod pallet {
 			total_node_usage: NodeUsage,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			T::PayoutProcessor::begin_rewarding_providers(
 				cluster_id,
 				era_id,
@@ -3640,7 +3639,7 @@ pub mod pallet {
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			T::PayoutProcessor::send_rewarding_providers_batch(
 				cluster_id,
 				era_id,
@@ -3658,7 +3657,7 @@ pub mod pallet {
 			era_id: DdcEra,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			T::PayoutProcessor::end_rewarding_providers(cluster_id, era_id)
 		}
 
@@ -3670,16 +3669,14 @@ pub mod pallet {
 			era_id: DdcEra,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			T::PayoutProcessor::end_billing_report(cluster_id, era_id)?;
 
 			let mut era_validation = <EraValidations<T>>::get(cluster_id, era_id).unwrap(); // should exist
 			era_validation.status = EraValidationStatus::PayoutSuccess;
 			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
 
-			// todo(yahortsaryk): this should be renamed to `last_paid_era` to eliminate ambiguity,
-			// as the validation step is decoupled from payout step.
-			T::ClusterValidator::set_last_validated_era(&cluster_id, era_id)
+			T::ClusterValidator::set_last_paid_era(&cluster_id, era_id)
 		}
 
 		/// Emit consensus errors.
@@ -3698,7 +3695,7 @@ pub mod pallet {
 			errors: Vec<OCWError>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
+			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorized);
 
 			for error in errors {
 				match error {

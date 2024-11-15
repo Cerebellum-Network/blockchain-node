@@ -236,8 +236,8 @@ pub mod pallet {
 		BucketDoesNotExist,
 		/// DDC Cluster with provided id doesn't exist
 		ClusterDoesNotExist,
-		// unauthorised operation
-		Unauthorised,
+		// unauthorized operation
+		Unauthorized,
 		// Arithmetic overflow
 		ArithmeticOverflow,
 		// Arithmetic underflow

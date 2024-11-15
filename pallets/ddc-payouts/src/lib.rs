@@ -215,7 +215,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		BillingReportDoesNotExist,
 		NotExpectedState,
-		Unauthorised,
+		Unauthorized,
 		BatchIndexAlreadyProcessed,
 		BatchIndexIsOutOfRange,
 		BatchesMissed,

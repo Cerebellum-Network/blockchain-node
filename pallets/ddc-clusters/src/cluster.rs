@@ -15,6 +15,8 @@ pub struct Cluster<AccountId> {
 	pub reserve_id: AccountId,
 	pub props: ClusterProps<AccountId>,
 	pub status: ClusterStatus,
+	// todo(yahortsaryk): this should be renamed to `last_paid_era` to eliminate ambiguity,
+	// as the validation step is decoupled from payout step.
 	pub last_validated_era_id: DdcEra,
 }
 

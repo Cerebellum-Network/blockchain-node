@@ -113,8 +113,8 @@ pub trait ClusterValidator<T: Config> {
 	///
 	/// # Events
 	///
-	/// Emits `ClusterEraValidated` event if the operation is successful.
-	fn set_last_validated_era(cluster_id: &ClusterId, era_id: DdcEra) -> Result<(), DispatchError>;
+	/// Emits `ClusterEraPaid` event if the operation is successful.
+	fn set_last_paid_era(cluster_id: &ClusterId, era_id: DdcEra) -> Result<(), DispatchError>;
 
 	/// Retrieves the `last_validated_era_id` for the given cluster
 	/// update.
@@ -127,5 +127,5 @@ pub trait ClusterValidator<T: Config> {
 	/// # Returns
 	///
 	/// Returns `Ok(DdcEra)` identifier of the last validated era in cluster
-	fn get_last_validated_era(cluster_id: &ClusterId) -> Result<DdcEra, DispatchError>;
+	fn get_last_paid_era(cluster_id: &ClusterId) -> Result<DdcEra, DispatchError>;
 }
