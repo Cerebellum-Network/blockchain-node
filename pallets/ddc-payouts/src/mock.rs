@@ -4,6 +4,8 @@
 
 #[cfg(feature = "try-runtime")]
 use ddc_primitives::BucketParams;
+#[cfg(feature = "runtime-benchmarks")]
+use ddc_primitives::BucketParams;
 use ddc_primitives::{
 	traits::{
 		bucket::BucketManager, cluster::ClusterProtocol, customer::CustomerCharger,
