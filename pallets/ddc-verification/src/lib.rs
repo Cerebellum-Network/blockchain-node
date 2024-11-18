@@ -92,7 +92,7 @@ pub mod pallet {
 	pub const BUCKETS_AGGREGATES_FETCH_BATCH_SIZE: usize = 100;
 	pub const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
 	pub const VALIDATION_ACTIVITIES_KEY: &[u8] = b"offchain::activities::keys";
-	pub const VALIDATION_ACTIVITIES_KEYS_DELIMITER: u8 = b',';
+	pub const VALIDATION_ACTIVITIES_KEYS_SEP: u8 = b',';
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -2480,7 +2480,7 @@ pub mod pallet {
 			let new_activity_keys = if !existing_activities_keys.is_empty() {
 				itertools::concat(vec![
 					existing_activities_keys,
-					vec![VALIDATION_ACTIVITIES_KEYS_DELIMITER],
+					vec![VALIDATION_ACTIVITIES_KEYS_SEP],
 					key,
 				])
 			} else {
@@ -2595,7 +2595,7 @@ pub mod pallet {
 			};
 
 			let validation_activities_keys_separated = validation_activities_keys
-				.split(|&x| x == VALIDATION_ACTIVITIES_KEYS_DELIMITER)
+				.split(|&x| x == VALIDATION_ACTIVITIES_KEYS_SEP)
 				.collect::<Vec<_>>();
 
 			for key in validation_activities_keys_separated {
