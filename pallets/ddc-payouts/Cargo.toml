@@ -29,7 +29,6 @@ sp-std = { workspace = true }
 
 # Cere dependencies
 ddc-primitives = { workspace = true }
-polkadot-ckb-merkle-mountain-range = { workspace = true }
 
 [dev-dependencies]
 chrono = { workspace = true, default-features = true }
@@ -42,7 +41,6 @@ substrate-test-utils = { workspace = true, default-features = true }
 [features]
 default = ["std"]
 std = [
-  "polkadot-ckb-merkle-mountain-range/std",
   "hex/std",
   "codec/std",
   "ddc-primitives/std",

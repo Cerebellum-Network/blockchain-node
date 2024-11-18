@@ -894,7 +894,7 @@ pub mod pallet {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 
-			cluster.last_validated_era_id = era_id;
+			cluster.last_paid_era = era_id;
 			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterEraPaid { cluster_id: *cluster_id, era_id });
 
@@ -905,7 +905,7 @@ pub mod pallet {
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 
-			Ok(cluster.last_validated_era_id)
+			Ok(cluster.last_paid_era)
 		}
 	}
 

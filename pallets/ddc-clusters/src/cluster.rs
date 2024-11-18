@@ -15,9 +15,7 @@ pub struct Cluster<AccountId> {
 	pub reserve_id: AccountId,
 	pub props: ClusterProps<AccountId>,
 	pub status: ClusterStatus,
-	// todo(yahortsaryk): `last_validated_era_id` should be renamed to `last_paid_era` to eliminate
-	// ambiguity, as the validation step is decoupled from payout step.
-	pub last_validated_era_id: DdcEra,
+	pub last_paid_era: DdcEra,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
@@ -46,7 +44,7 @@ impl<AccountId> Cluster<AccountId> {
 				replication_total: cluster_params.replication_total,
 			},
 			status: ClusterStatus::Unbonded,
-			last_validated_era_id: DdcEra::default(),
+			last_paid_era: DdcEra::default(),
 		}
 	}
 

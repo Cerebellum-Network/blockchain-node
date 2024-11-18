@@ -5727,7 +5727,6 @@ dependencies = [
  "pallet-balances",
  "pallet-ddc-verification",
  "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range",
  "scale-info",
  "sp-core",
  "sp-io",
