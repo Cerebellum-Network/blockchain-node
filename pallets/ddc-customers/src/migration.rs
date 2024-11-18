@@ -162,7 +162,7 @@ pub mod v2 {
 		cluster_id: ClusterId,
 		is_public: bool,
 		is_removed: bool,
-		total_customers_usage: Option<CustomerUsage>, // new field
+		total_customers_usage: Option<BucketUsage>, // new field
 	}
 
 	#[storage_alias]

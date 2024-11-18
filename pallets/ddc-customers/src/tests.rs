@@ -182,7 +182,7 @@ fn charge_content_owner_works() {
 		let bucket_id2: BucketId = 2;
 		let cluster_id = ClusterId::from([1; 20]);
 		let bucket_1_params = BucketParams { is_public: false };
-		let customer_usage = CustomerUsage {
+		let customer_usage = BucketUsage {
 			transferred_bytes: 1,
 			stored_bytes: 2,
 			number_of_puts: 3,

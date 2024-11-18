@@ -41,7 +41,7 @@ benchmarks! {
 		let controller_lookup: <T::Lookup as StaticLookup>::Source
 			= T::Lookup::unlookup(controller.clone());
 		let node = NodePubKey::StoragePubKey(StorageNodePubKey::new([0; 32]));
-		let _ = T::NodeCreator::create_node(
+		let _ = T::NodeManager::create_node(
 			node.clone(),
 			stash.clone(),
 			NodeParams::StorageParams(StorageNodeParams {

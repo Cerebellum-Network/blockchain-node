@@ -772,7 +772,7 @@ fn bond_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Bonded,
-				last_validated_era_id: DdcEra::default()
+				last_paid_era: DdcEra::default()
 			})
 		);
 
@@ -922,7 +922,7 @@ fn unbond_bonded_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Unbonding,
-				last_validated_era_id: DdcEra::default()
+				last_paid_era: DdcEra::default()
 			})
 		);
 
@@ -1002,7 +1002,7 @@ fn unbond_activated_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Unbonding,
-				last_validated_era_id: DdcEra::default()
+				last_paid_era: DdcEra::default()
 			})
 		);
 
@@ -1097,7 +1097,7 @@ fn withdraw_unbonded_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Unbonded,
-				last_validated_era_id: DdcEra::default()
+				last_paid_era: DdcEra::default()
 			})
 		);
 	});
@@ -1184,7 +1184,7 @@ fn withdraw_activated_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Unbonded,
-				last_validated_era_id: DdcEra::default()
+				last_paid_era: DdcEra::default()
 			})
 		);
 	});

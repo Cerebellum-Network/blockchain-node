@@ -12,47 +12,51 @@
 use core::str;
 
 use base64ct::{Base64, Encoding};
+#[cfg(feature = "runtime-benchmarks")]
+use ddc_primitives::traits::{BucketManager, ClusterCreator, CustomerDepositor};
 use ddc_primitives::{
 	traits::{
-		ClusterManager, ClusterValidator, CustomerVisitor, NodeVisitor, PayoutVisitor,
+		ClusterManager, ClusterValidator, CustomerVisitor, NodeManager, PayoutProcessor,
 		ValidatorVisitor,
 	},
-	ActivityHash, BatchIndex, ClusterId, ClusterStatus, CustomerUsage, DdcEra, MMRProof,
-	NodeParams, NodePubKey, NodeUsage, PayoutState, StorageNodeParams,
+	ActivityHash, BatchIndex, BucketUsage, ClusterId, ClusterStatus, DdcEra, EraValidation,
+	EraValidationStatus, MMRProof, NodeParams, NodePubKey, NodeUsage, PayoutState,
+	StorageNodeParams,
 };
 use frame_support::{
 	pallet_prelude::*,
-	traits::{Get, OneSessionHandler},
+	traits::{Currency, Get, OneSessionHandler},
 };
 use frame_system::{
 	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
 	pallet_prelude::*,
 };
+use itertools::Itertools;
 pub use pallet::*;
 use polkadot_ckb_merkle_mountain_range::{
 	helper::{leaf_index_to_mmr_size, leaf_index_to_pos},
 	util::{MemMMR, MemStore},
 	MerkleProof, MMR,
 };
+use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use scale_info::prelude::{format, string::String};
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
-use sp_runtime::{
-	offchain::{http, Duration, StorageKind},
-	traits::Hash,
-	Percent,
-};
-use sp_std::{collections::btree_map::BTreeMap, prelude::*};
-pub mod weights;
-use itertools::Itertools;
-use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use sp_core::crypto::UncheckedFrom;
 pub use sp_io::crypto::sr25519_public_keys;
-use sp_runtime::traits::IdentifyAccount;
+use sp_runtime::{
+	offchain::{http, Duration, StorageKind},
+	traits::{Hash, IdentifyAccount},
+	Percent,
+};
 use sp_staking::StakingInterface;
-use sp_std::fmt::Debug;
+use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, prelude::*};
 
+pub mod weights;
 use crate::weights::WeightInfo;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
 
 #[cfg(test)]
 pub(crate) mod mock;
@@ -68,6 +72,9 @@ pub mod proto {
 }
 
 mod signature;
+
+pub(crate) type BalanceOf<T> =
+	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -107,9 +114,9 @@ pub mod pallet {
 		/// DDC clusters nodes manager.
 		type ClusterValidator: ClusterValidator<Self>;
 		type ClusterManager: ClusterManager<Self>;
-		type PayoutVisitor: PayoutVisitor<Self>;
+		type PayoutProcessor: PayoutProcessor<Self>;
 		/// DDC nodes read-only registry.
-		type NodeVisitor: NodeVisitor<Self>;
+		type NodeManager: NodeManager<Self>;
 		/// The output of the `ActivityHasher` function.
 		type ActivityHash: Member
 			+ Parameter
@@ -142,9 +149,19 @@ pub mod pallet {
 		const MAX_PAYOUT_BATCH_SIZE: u16;
 		const MAX_MERKLE_NODE_IDENTIFIER: u16;
 		/// The access to staking functionality.
-		type StakingVisitor: StakingInterface<AccountId = Self::AccountId>;
+		type ValidatorStaking: StakingInterface<
+			AccountId = Self::AccountId,
+			Balance = BalanceOf<Self>,
+		>;
 		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
 		type CustomerVisitor: CustomerVisitor<Self>;
+		type Currency: Currency<Self::AccountId>;
+		#[cfg(feature = "runtime-benchmarks")]
+		type CustomerDepositor: CustomerDepositor<Self>;
+		#[cfg(feature = "runtime-benchmarks")]
+		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
+		#[cfg(feature = "runtime-benchmarks")]
+		type BucketManager: BucketManager<Self>;
 	}
 
 	/// The event type.
@@ -457,7 +474,7 @@ pub mod pallet {
 		/// Bad requests.
 		BadRequest,
 		/// Not a validator.
-		Unauthorised,
+		Unauthorized,
 		/// Already signed era.
 		AlreadySignedEra,
 		NotExpectedState,
@@ -511,27 +528,6 @@ pub mod pallet {
 	#[pallet::getter(fn get_stash_for_ddc_validator)]
 	pub type ValidatorToStashKey<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	pub enum EraValidationStatus {
-		ValidatingData,
-		ReadyForPayout,
-		PayoutInProgress,
-		PayoutFailed,
-		PayoutSuccess,
-		PayoutSkipped,
-	}
-
-	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-	#[scale_info(skip_type_params(T))]
-	pub struct EraValidation<T: Config> {
-		pub validators: BTreeMap<(ActivityHash, ActivityHash), Vec<T::AccountId>>, /* todo! change to signatures (T::AccountId, Signature) */
-		pub start_era: i64,
-		pub end_era: i64,
-		pub payers_merkle_root_hash: ActivityHash,
-		pub payees_merkle_root_hash: ActivityHash,
-		pub status: EraValidationStatus,
-	}
-
 	/// Era activity of a node.
 	#[derive(
 		Debug,
@@ -562,7 +558,7 @@ pub mod pallet {
 
 	pub struct CustomerBatch {
 		pub(crate) batch_index: BatchIndex,
-		pub(crate) payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
+		pub(crate) payers: Vec<(NodePubKey, BucketId, BucketUsage)>,
 		pub(crate) batch_proof: MMRProof,
 	}
 
@@ -1884,7 +1880,6 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<(DdcEra, i64, i64)>, OCWError> {
 			Ok(Self::get_era_for_payout(cluster_id, EraValidationStatus::ReadyForPayout))
-			// todo! get start and end values based on result
 		}
 
 		pub(crate) fn prepare_begin_charging_customers(
@@ -1894,7 +1889,7 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::Initialized
 				{
 					if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
@@ -1960,7 +1955,7 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::ChargingCustomers
 				{
 					if let Some((
@@ -2025,12 +2020,14 @@ pub mod pallet {
 			customers_total_activity: Vec<aggregator_client::json::BucketSubAggregate>,
 			customers_activity_batch_roots: Vec<ActivityHash>,
 		) -> Result<Option<(DdcEra, CustomerBatch)>, Vec<OCWError>> {
-			let batch_index = T::PayoutVisitor::get_next_customer_batch_for_payment(
-				cluster_id, era_id,
-			)
-			.map_err(|_| {
-				vec![OCWError::BillingReportDoesNotExist { cluster_id: *cluster_id, era_id }]
-			})?;
+			let batch_index =
+				T::PayoutProcessor::get_next_customer_batch_for_payment(cluster_id, era_id)
+					.map_err(|_| {
+						vec![OCWError::BillingReportDoesNotExist {
+							cluster_id: *cluster_id,
+							era_id,
+						}]
+					})?;
 
 			if let Some(index) = batch_index {
 				let i: usize = index.into();
@@ -2077,7 +2074,7 @@ pub mod pallet {
 								let node_key = Self::node_key_from_hex(activity.node_id.clone())
 									.expect("Node Public Key to be decoded");
 								let bucket_id = activity.bucket_id;
-								let customer_usage = CustomerUsage {
+								let customer_usage = BucketUsage {
 									transferred_bytes: activity.transferred_bytes,
 									stored_bytes: activity.stored_bytes,
 									number_of_puts: activity.number_of_puts,
@@ -2100,9 +2097,9 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::ChargingCustomers &&
-					T::PayoutVisitor::all_customer_batches_processed(cluster_id, era_id)
+					T::PayoutProcessor::all_customer_batches_processed(cluster_id, era_id)
 				{
 					return Ok(Some(era_id));
 				}
@@ -2124,7 +2121,7 @@ pub mod pallet {
 					.filter_map(|usage| usage.as_ref().map(|u| u.stored_bytes))
 					.sum();
 
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::CustomersChargedWithFees
 				{
 					if let Some((_, _, _, nodes_total_activity, _, nodes_activity_batch_roots)) =
@@ -2217,7 +2214,7 @@ pub mod pallet {
 			if let Some((era_id, start, end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::RewardingProviders
 				{
 					if let Some((_, _, _, nodes_total_activity, _, nodes_activity_batch_roots)) =
@@ -2276,12 +2273,14 @@ pub mod pallet {
 			nodes_total_activity: Vec<aggregator_client::json::NodeAggregate>,
 			nodes_activity_batch_roots: Vec<ActivityHash>,
 		) -> Result<Option<(DdcEra, ProviderBatch)>, Vec<OCWError>> {
-			let batch_index = T::PayoutVisitor::get_next_provider_batch_for_payment(
-				cluster_id, era_id,
-			)
-			.map_err(|_| {
-				vec![OCWError::BillingReportDoesNotExist { cluster_id: *cluster_id, era_id }]
-			})?;
+			let batch_index =
+				T::PayoutProcessor::get_next_provider_batch_for_payment(cluster_id, era_id)
+					.map_err(|_| {
+						vec![OCWError::BillingReportDoesNotExist {
+							cluster_id: *cluster_id,
+							era_id,
+						}]
+					})?;
 
 			if let Some(index) = batch_index {
 				let i: usize = index.into();
@@ -2351,9 +2350,9 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::RewardingProviders &&
-					T::PayoutVisitor::all_provider_batches_processed(cluster_id, era_id)
+					T::PayoutProcessor::all_provider_batches_processed(cluster_id, era_id)
 				{
 					return Ok(Some(era_id));
 				}
@@ -2367,7 +2366,7 @@ pub mod pallet {
 			if let Some((era_id, _start, _end)) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutVisitor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
 					PayoutState::ProvidersRewarded
 				{
 					return Ok(Some(era_id));
@@ -2478,7 +2477,7 @@ pub mod pallet {
 			};
 
 			for node_pub_key in nodes.iter() {
-				match T::NodeVisitor::get_total_usage(node_pub_key) {
+				match T::NodeManager::get_total_usage(node_pub_key) {
 					Ok(usage) => results.push(usage),
 					Err(_err) => {
 						errors.push(OCWError::FailedToFetchNodeTotalUsage {
@@ -2737,7 +2736,7 @@ pub mod pallet {
 		///   - `Ok(None)`: The validator did not participate in any era for the given cluster.
 		///   - `Err(OCWError)`: An error occurred while retrieving the data.
 		// todo! add tests for start and end era
-		pub(crate) fn get_last_validated_era(
+		pub(crate) fn get_last_paid_era(
 			cluster_id: &ClusterId,
 			validator: T::AccountId,
 		) -> Result<Option<DdcEra>, OCWError> {
@@ -2783,11 +2782,11 @@ pub mod pallet {
 			let this_validator = Self::fetch_verification_account_id()?;
 
 			let last_validated_era_by_this_validator =
-				Self::get_last_validated_era(cluster_id, this_validator)?
+				Self::get_last_paid_era(cluster_id, this_validator)?
 					.unwrap_or_else(DdcEra::default);
 
 			let last_paid_era_for_cluster =
-				T::ClusterValidator::get_last_validated_era(cluster_id).map_err(|_| {
+				T::ClusterValidator::get_last_paid_era(cluster_id).map_err(|_| {
 					OCWError::EraRetrievalError { cluster_id: *cluster_id, node_pub_key: None }
 				})?;
 
@@ -3244,7 +3243,7 @@ pub mod pallet {
 			for node_pub_key in nodes {
 				// Get the node parameters
 				if let Ok(NodeParams::StorageParams(storage_params)) =
-					T::NodeVisitor::get_node_params(&node_pub_key)
+					T::NodeManager::get_node_params(&node_pub_key)
 				{
 					log::info!(
 						"🏭📝 Obtained DAC Node for cluster_id: {:?} and with key: {:?}",
@@ -3413,7 +3412,7 @@ pub mod pallet {
 		///
 		/// Emits `BillingReportCreated` event when successful.
 		#[pallet::call_index(0)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_prepare_era_for_payout(payers_batch_merkle_root_hashes.len() as u32 + payees_batch_merkle_root_hashes.len() as u32))]
 		pub fn set_prepare_era_for_payout(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3425,7 +3424,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 
-			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
+			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorized);
 			let mut era_validation = {
 				let era_validations = <EraValidations<T>>::get(cluster_id, era_activity.id);
 
@@ -3510,6 +3509,176 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set validator key.
+		///
+		/// The origin must be a validator.
+		///
+		/// Parameters:
+		/// - `ddc_validator_pub`: validator Key
+		#[pallet::call_index(1)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_validator_key())]
+		pub fn set_validator_key(
+			origin: OriginFor<T>,
+			ddc_validator_pub: T::AccountId,
+		) -> DispatchResult {
+			let controller = ensure_signed(origin)?;
+
+			let stash = T::ValidatorStaking::stash_by_ctrl(&controller)
+				.map_err(|_| Error::<T>::NotController)?;
+
+			ensure!(
+				<ValidatorSet<T>>::get().contains(&ddc_validator_pub),
+				Error::<T>::NotValidatorStash
+			);
+
+			ValidatorToStashKey::<T>::insert(&ddc_validator_pub, &stash);
+			Self::deposit_event(Event::<T>::ValidatorKeySet { validator: ddc_validator_pub });
+			Ok(())
+		}
+
+		#[pallet::call_index(2)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_billing_report())]
+		pub fn begin_billing_report(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			start_era: i64,
+			end_era: i64,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+
+			T::PayoutProcessor::begin_billing_report(cluster_id, era_id, start_era, end_era)?;
+
+			EraValidations::<T>::try_mutate(
+				cluster_id,
+				era_id,
+				|maybe_era_validations| -> DispatchResult {
+					maybe_era_validations.as_mut().ok_or(Error::<T>::NoEraValidation)?.status =
+						EraValidationStatus::PayoutInProgress;
+					Ok(())
+				},
+			)?;
+
+			Ok(())
+		}
+
+		#[pallet::call_index(3)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_charging_customers())]
+		pub fn begin_charging_customers(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			max_batch_index: BatchIndex,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			T::PayoutProcessor::begin_charging_customers(cluster_id, era_id, max_batch_index)
+		}
+
+		#[pallet::call_index(4)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::send_charging_customers_batch(payers.len() as u32))]
+		pub fn send_charging_customers_batch(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			batch_index: BatchIndex,
+			payers: Vec<(NodePubKey, BucketId, BucketUsage)>,
+			batch_proof: MMRProof,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			T::PayoutProcessor::send_charging_customers_batch(
+				cluster_id,
+				era_id,
+				batch_index,
+				&payers,
+				batch_proof,
+			)
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_charging_customers())]
+		pub fn end_charging_customers(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			T::PayoutProcessor::end_charging_customers(cluster_id, era_id)
+		}
+
+		#[pallet::call_index(6)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_rewarding_providers())]
+		pub fn begin_rewarding_providers(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			max_batch_index: BatchIndex,
+			total_node_usage: NodeUsage,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			T::PayoutProcessor::begin_rewarding_providers(
+				cluster_id,
+				era_id,
+				max_batch_index,
+				total_node_usage,
+			)
+		}
+
+		#[pallet::call_index(7)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::send_rewarding_providers_batch(payees.len() as u32))]
+		pub fn send_rewarding_providers_batch(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			batch_index: BatchIndex,
+			payees: Vec<(NodePubKey, NodeUsage)>,
+			batch_proof: MMRProof,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			T::PayoutProcessor::send_rewarding_providers_batch(
+				cluster_id,
+				era_id,
+				batch_index,
+				&payees,
+				batch_proof,
+			)
+		}
+
+		#[pallet::call_index(8)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_rewarding_providers())]
+		pub fn end_rewarding_providers(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			T::PayoutProcessor::end_rewarding_providers(cluster_id, era_id)
+		}
+
+		#[pallet::call_index(9)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_billing_report())]
+		pub fn end_billing_report(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			T::PayoutProcessor::end_billing_report(cluster_id, era_id)?;
+
+			let mut era_validation = <EraValidations<T>>::get(cluster_id, era_id).unwrap(); // should exist
+			era_validation.status = EraValidationStatus::PayoutSuccess;
+			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
+
+			T::ClusterValidator::set_last_paid_era(&cluster_id, era_id)
+		}
+
 		/// Emit consensus errors.
 		///
 		/// The origin must be a validator.
@@ -3519,14 +3688,14 @@ pub mod pallet {
 		///
 		/// Emits `NotEnoughNodesForConsensus`  OR `ActivityNotInConsensus` event depend of error
 		/// type, when successful.
-		#[pallet::call_index(1)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::call_index(10)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::emit_consensus_errors(errors.len() as u32))]
 		pub fn emit_consensus_errors(
 			origin: OriginFor<T>,
 			errors: Vec<OCWError>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorised);
+			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorized);
 
 			for error in errors {
 				match error {
@@ -3764,185 +3933,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Set validator key.
-		///
-		/// The origin must be a validator.
-		///
-		/// Parameters:
-		/// - `ddc_validator_pub`: validator Key
-		#[pallet::call_index(2)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn set_validator_key(
-			origin: OriginFor<T>,
-			ddc_validator_pub: T::AccountId,
-		) -> DispatchResult {
-			let controller = ensure_signed(origin)?;
-
-			let stash = T::StakingVisitor::stash_by_ctrl(&controller)
-				.map_err(|_| Error::<T>::NotController)?;
-
-			ensure!(
-				<ValidatorSet<T>>::get().contains(&ddc_validator_pub),
-				Error::<T>::NotValidatorStash
-			);
-
-			ValidatorToStashKey::<T>::insert(&ddc_validator_pub, &stash);
-			Self::deposit_event(Event::<T>::ValidatorKeySet { validator: ddc_validator_pub });
-			Ok(())
-		}
-
-		#[pallet::call_index(3)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn begin_billing_report(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			start_era: i64,
-			end_era: i64,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-
-			T::PayoutVisitor::begin_billing_report(sender, cluster_id, era_id, start_era, end_era)?;
-
-			EraValidations::<T>::try_mutate(
-				cluster_id,
-				era_id,
-				|maybe_era_validations| -> DispatchResult {
-					maybe_era_validations.as_mut().ok_or(Error::<T>::NoEraValidation)?.status =
-						EraValidationStatus::PayoutInProgress;
-					Ok(())
-				},
-			)?;
-
-			Ok(())
-		}
-
-		#[pallet::call_index(4)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn begin_charging_customers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			max_batch_index: BatchIndex,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::begin_charging_customers(sender, cluster_id, era_id, max_batch_index)
-		}
-
-		#[pallet::call_index(5)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-																			   // todo! remove clippy::too_many_arguments
-		pub fn send_charging_customers_batch(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			batch_index: BatchIndex,
-			payers: Vec<(NodePubKey, BucketId, CustomerUsage)>,
-			batch_proof: MMRProof,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::send_charging_customers_batch(
-				sender,
-				cluster_id,
-				era_id,
-				batch_index,
-				&payers,
-				batch_proof,
-			)
-		}
-
-		#[pallet::call_index(6)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn end_charging_customers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::end_charging_customers(sender, cluster_id, era_id)
-		}
-
-		#[pallet::call_index(7)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn begin_rewarding_providers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			max_batch_index: BatchIndex,
-			total_node_usage: NodeUsage,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::begin_rewarding_providers(
-				sender,
-				cluster_id,
-				era_id,
-				max_batch_index,
-				total_node_usage,
-			)
-		}
-
-		#[pallet::call_index(8)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn send_rewarding_providers_batch(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			batch_index: BatchIndex,
-			payees: Vec<(NodePubKey, NodeUsage)>,
-			batch_proof: MMRProof,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::send_rewarding_providers_batch(
-				sender,
-				cluster_id,
-				era_id,
-				batch_index,
-				&payees,
-				batch_proof,
-			)
-		}
-
-		#[pallet::call_index(9)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn end_rewarding_providers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::end_rewarding_providers(sender, cluster_id, era_id)
-		}
-
-		#[pallet::call_index(10)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
-		pub fn end_billing_report(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorised);
-			T::PayoutVisitor::end_billing_report(sender, cluster_id, era_id)?;
-
-			let mut era_validation = <EraValidations<T>>::get(cluster_id, era_id).unwrap(); // should exist
-			era_validation.status = EraValidationStatus::PayoutSuccess;
-			<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
-
-			// todo(yahortsaryk): this should be renamed to `last_paid_era` to eliminate ambiguity,
-			// as the validation step is decoupled from payout step.
-			T::ClusterValidator::set_last_validated_era(&cluster_id, era_id)
-		}
-
-		// todo! remove this after devnet testing
 		#[pallet::call_index(11)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_billing_reports())] // todo! implement weights
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_era_validations())]
 		pub fn set_era_validations(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -3980,11 +3972,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> ValidatorVisitor<T> for Pallet<T> {
-		#[cfg(feature = "runtime-benchmarks")]
-		fn setup_validators(validators: Vec<T::AccountId>) {
-			ValidatorSet::<T>::put(validators);
-		}
-
 		fn is_ocw_validator(caller: T::AccountId) -> bool {
 			if ValidatorToStashKey::<T>::contains_key(caller.clone()) {
 				<ValidatorSet<T>>::get().contains(&caller)
@@ -3998,7 +3985,7 @@ pub mod pallet {
 			era_id: DdcEra,
 			batch_index: BatchIndex,
 			max_batch_index: BatchIndex,
-			payers: &[(NodePubKey, BucketId, CustomerUsage)],
+			payers: &[(NodePubKey, BucketId, BucketUsage)],
 			batch_proof: &MMRProof,
 		) -> bool {
 			let validation_era = EraValidations::<T>::get(cluster_id, era_id);

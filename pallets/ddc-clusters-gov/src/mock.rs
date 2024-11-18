@@ -291,8 +291,7 @@ impl pallet_ddc_staking::Config for Test {
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
-	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Test>;
 	type ClusterBondingAmount = ClusterBondingAmount;
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
@@ -322,13 +321,11 @@ impl crate::pallet::Config for Test {
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Test>;
 	type SeatsConsensus = MockedSeatsConsensus;
 	type DefaultVote = MockedDefaultVote; // pallet_ddc_clusters_gov::PrimeDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
 	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
-	#[cfg(feature = "runtime-benchmarks")]
-	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type StakerCreator = pallet_ddc_staking::Pallet<Test>;
 }

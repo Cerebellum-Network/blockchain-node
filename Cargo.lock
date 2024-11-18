@@ -5725,6 +5725,7 @@ dependencies = [
  "hex",
  "log",
  "pallet-balances",
+ "pallet-ddc-verification",
  "parity-scale-codec",
  "scale-info",
  "sp-core",

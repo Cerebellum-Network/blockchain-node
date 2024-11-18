@@ -187,8 +187,7 @@ impl crate::pallet::Config for Test {
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
-	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Test>;
 	type ClusterBondingAmount = ClusterBondingAmount;
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }

@@ -1,16 +1,23 @@
 //! Testing utils for ddc-staking.
 
+#[cfg(feature = "runtime-benchmarks")]
 use ddc_primitives::{
 	ClusterId, ClusterParams, ClusterProtocolParams, NodeParams, StorageNodeMode,
 	StorageNodeParams, StorageNodePubKey,
 };
 use frame_benchmarking::account;
+#[cfg(feature = "runtime-benchmarks")]
 use frame_support::traits::Currency;
+#[cfg(feature = "runtime-benchmarks")]
 use frame_system::RawOrigin;
+#[cfg(feature = "runtime-benchmarks")]
 use sp_runtime::{traits::StaticLookup, Perquintill};
+#[cfg(feature = "runtime-benchmarks")]
 use sp_std::prelude::*;
 
-use crate::{Pallet as DdcStaking, *};
+#[cfg(feature = "runtime-benchmarks")]
+use crate::Pallet as DdcStaking;
+use crate::*;
 
 const SEED: u32 = 0;
 
@@ -47,6 +54,7 @@ pub fn create_funded_user_with_balance<T: Config>(
 }
 
 /// Create a stash and controller pair.
+#[cfg(feature = "runtime-benchmarks")]
 pub fn create_stash_controller_node<T: Config>(
 	n: u32,
 	balance_factor: u32,
@@ -57,7 +65,7 @@ pub fn create_stash_controller_node<T: Config>(
 		T::Lookup::unlookup(controller.clone());
 	let node = NodePubKey::StoragePubKey(StorageNodePubKey::new([0; 32]));
 
-	T::NodeCreator::create_node(
+	T::NodeManager::create_node(
 		node.clone(),
 		stash.clone(),
 		NodeParams::StorageParams(StorageNodeParams {
@@ -81,6 +89,7 @@ pub fn create_stash_controller_node<T: Config>(
 }
 
 /// Create a stash and controller pair with fixed balance.
+#[cfg(feature = "runtime-benchmarks")]
 pub fn create_stash_controller_node_with_balance<T: Config>(
 	n: u32,
 	balance_factor: u128,
@@ -94,7 +103,7 @@ pub fn create_stash_controller_node_with_balance<T: Config>(
 	let node_pub = node_pub_key.clone();
 	match node_pub_key {
 		NodePubKey::StoragePubKey(node_pub_key) => {
-			T::NodeCreator::create_node(
+			T::NodeManager::create_node(
 				ddc_primitives::NodePubKey::StoragePubKey(node_pub_key),
 				stash.clone(),
 				NodeParams::StorageParams(StorageNodeParams {
