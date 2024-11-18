@@ -2477,13 +2477,14 @@ pub mod pallet {
 				None => Vec::new(),
 			};
 
-			let new_activity_keys = match existing_activities_keys.len() {
-				0 => key,
-				_ => itertools::concat(vec![
+			let new_activity_keys = if !existing_activities_keys.is_empty() {
+				itertools::concat(vec![
 					existing_activities_keys,
 					vec![VALIDATION_ACTIVITIES_KEYS_DELIMITER],
 					key,
-				]),
+				])
+			} else {
+				key
 			};
 
 			local_storage_set(
