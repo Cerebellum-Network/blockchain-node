@@ -25,10 +25,10 @@ pub trait Sandbox {
 		buf_ptr: Pointer<u8>,
 		buf_len: u32,
 	) -> u32 {
-		self.sandbox()
-			.memory_get(memory_idx, offset, buf_ptr, buf_len)
-			.expect("Failed to get memory with sandbox")
-		// return 0;
+		// self.sandbox()
+		// 	.memory_get(memory_idx, offset, buf_ptr, buf_len)
+		// 	.expect("Failed to get memory with sandbox")
+		return 0;
 	}
 	/// Set sandbox memory from the given value.
 	fn memory_set(
