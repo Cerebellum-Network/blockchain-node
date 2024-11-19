@@ -43,7 +43,10 @@ use scale_info::prelude::{format, string::String};
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
 use sp_core::crypto::UncheckedFrom;
-pub use sp_io::crypto::sr25519_public_keys;
+pub use sp_io::{
+	crypto::sr25519_public_keys,
+	offchain::{local_storage_get, local_storage_set},
+};
 use sp_runtime::{
 	offchain::{http, Duration, StorageKind},
 	traits::{Hash, IdentifyAccount},
@@ -2417,13 +2420,13 @@ pub mod pallet {
 		pub(crate) fn store_verification_account_id(account_id: T::AccountId) {
 			let validator: Vec<u8> = account_id.encode();
 			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
-			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &validator);
+			local_storage_set(StorageKind::PERSISTENT, &key, &validator);
 		}
 
 		pub(crate) fn fetch_verification_account_id() -> Result<T::AccountId, OCWError> {
 			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
 
-			match sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key) {
+			match local_storage_get(StorageKind::PERSISTENT, &key) {
 				Some(data) => {
 					let account_id = T::AccountId::decode(&mut &data[..])
 						.map_err(|_| OCWError::FailedToFetchVerificationKey)?;
@@ -2459,7 +2462,7 @@ pub mod pallet {
 				.encode();
 
 			// Store the serialized data in local offchain storage
-			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
+			local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
 		}
 
 		pub(crate) fn get_nodes_total_usage(
@@ -2517,11 +2520,10 @@ pub mod pallet {
 			let key = Self::derive_key(cluster_id, era_id);
 
 			// Retrieve encoded tuple from local storage
-			let encoded_tuple =
-				match sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key) {
-					Some(data) => data,
-					None => return None,
-				};
+			let encoded_tuple = match local_storage_get(StorageKind::PERSISTENT, &key) {
+				Some(data) => data,
+				None => return None,
+			};
 
 			// Attempt to decode tuple from bytes
 			match Decode::decode(&mut &encoded_tuple[..]) {
@@ -2550,8 +2552,8 @@ pub mod pallet {
 
 		pub(crate) fn _store_and_fetch_nonce(node_id: String) -> u64 {
 			let key = format!("offchain::activities::nonce::{:?}", node_id).into_bytes();
-			let encoded_nonce = sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &key)
-				.unwrap_or_else(|| 0.encode());
+			let encoded_nonce =
+				local_storage_get(StorageKind::PERSISTENT, &key).unwrap_or_else(|| 0.encode());
 
 			let nonce_data = match Decode::decode(&mut &encoded_nonce[..]) {
 				Ok(nonce) => nonce,
@@ -2564,7 +2566,7 @@ pub mod pallet {
 
 			let new_nonce = nonce_data + 1;
 
-			sp_io::offchain::local_storage_set(StorageKind::PERSISTENT, &key, &new_nonce.encode());
+			local_storage_set(StorageKind::PERSISTENT, &key, &new_nonce.encode());
 			nonce_data
 		}
 
