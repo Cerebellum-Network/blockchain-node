@@ -45,7 +45,9 @@ use sp_application_crypto::RuntimeAppPublic;
 use sp_core::crypto::UncheckedFrom;
 pub use sp_io::{
 	crypto::sr25519_public_keys,
-	offchain::{local_storage_get, local_storage_set},
+	offchain::{
+		local_storage_clear, local_storage_compare_and_set, local_storage_get, local_storage_set,
+	},
 };
 use sp_runtime::{
 	offchain::{http, Duration, StorageKind},
@@ -98,6 +100,8 @@ pub mod pallet {
 	const RESPONSE_TIMEOUT: u64 = 20000;
 	pub const BUCKETS_AGGREGATES_FETCH_BATCH_SIZE: usize = 100;
 	pub const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
+	pub const IS_RUNNING_KEY: &[u8] = b"offchain::validator::is_running";
+	pub const IS_RUNNING_VALUE: &[u8] = &[1];
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -721,6 +725,16 @@ pub mod pallet {
 				return;
 			}
 
+			// Allow only one instance of the offchain worker to run at a time.
+			if !local_storage_compare_and_set(
+				StorageKind::PERSISTENT,
+				IS_RUNNING_KEY,
+				None,
+				IS_RUNNING_VALUE,
+			) {
+				return;
+			}
+
 			let verification_key = unwrap_or_log_error!(
 				Self::collect_verification_pub_key(),
 				"❌ Error collecting validator verification key"
@@ -1251,6 +1265,9 @@ pub mod pallet {
 					}
 				}
 			}
+
+			// Allow the next invocation of the offchain worker hook to run.
+			local_storage_clear(StorageKind::PERSISTENT, IS_RUNNING_KEY);
 		}
 	}
 
