@@ -55,7 +55,7 @@ use sp_runtime::{
 	Percent,
 };
 use sp_staking::StakingInterface;
-use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, prelude::*, str::from_utf8};
+use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, prelude::*};
 
 pub mod weights;
 use crate::weights::WeightInfo;
@@ -100,8 +100,6 @@ pub mod pallet {
 	const RESPONSE_TIMEOUT: u64 = 20000;
 	pub const BUCKETS_AGGREGATES_FETCH_BATCH_SIZE: usize = 100;
 	pub const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
-	pub const VALIDATION_ACTIVITIES_KEY: &[u8] = b"offchain::activities::keys";
-	pub const VALIDATION_ACTIVITIES_KEYS_SEP: u8 = b',';
 	pub const IS_RUNNING_KEY: &[u8] = b"offchain::validator::is_running";
 	pub const IS_RUNNING_VALUE: &[u8] = &[1];
 
@@ -1240,6 +1238,8 @@ pub mod pallet {
 							log::error!("🏭❌No account available to sign the transaction");
 							errors.push(OCWError::NoAvailableSigner);
 						}
+
+						Self::clear_validation_activities(&cluster_id, era_id);
 					},
 					Ok(None) => {
 						log::info!(
@@ -1267,8 +1267,6 @@ pub mod pallet {
 					}
 				}
 			}
-
-			Self::clear_validation_activities();
 
 			// Allow the next invocation of the offchain worker hook to run.
 			local_storage_clear(StorageKind::PERSISTENT, IS_RUNNING_KEY);
@@ -2484,34 +2482,6 @@ pub mod pallet {
 
 			// Store the serialized data in local offchain storage
 			local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
-
-			let maybe_existing_activities_keys =
-				local_storage_get(StorageKind::PERSISTENT, VALIDATION_ACTIVITIES_KEY);
-
-			let existing_activities_keys = match maybe_existing_activities_keys {
-				Some(v) => v,
-				None => Vec::new(),
-			};
-
-			let new_activity_keys = if !existing_activities_keys.is_empty() {
-				itertools::concat(vec![
-					existing_activities_keys,
-					vec![VALIDATION_ACTIVITIES_KEYS_SEP],
-					key,
-				])
-			} else {
-				key
-			};
-
-			local_storage_set(
-				StorageKind::PERSISTENT,
-				VALIDATION_ACTIVITIES_KEY,
-				&new_activity_keys,
-			);
-			log::debug!(
-				"Activity keys extended, now {:?}",
-				from_utf8(&new_activity_keys).unwrap_or("parsing failed"),
-			);
 		}
 
 		pub(crate) fn get_nodes_total_usage(
@@ -2599,34 +2569,16 @@ pub mod pallet {
 			}
 		}
 
-		pub(crate) fn clear_validation_activities() {
-			log::debug!("Clearing validation_activities");
-
-			let maybe_validation_activities_keys =
-				local_storage_get(StorageKind::PERSISTENT, VALIDATION_ACTIVITIES_KEY);
-
-			let validation_activities_keys = match maybe_validation_activities_keys {
-				Some(activities_keys) => activities_keys,
-				None => return,
-			};
-
-			let validation_activities_keys_separated = validation_activities_keys
-				.split(|&x| x == VALIDATION_ACTIVITIES_KEYS_SEP)
-				.collect::<Vec<_>>();
-
-			for key in validation_activities_keys_separated {
-				local_storage_clear(StorageKind::PERSISTENT, key);
-				log::debug!(
-					"Clearing validation_activities, key {:?}",
-					from_utf8(key).unwrap_or("parsing failed")
-				);
-			}
-
-			local_storage_clear(StorageKind::PERSISTENT, VALIDATION_ACTIVITIES_KEY);
+		pub(crate) fn clear_validation_activities(cluster_id: &ClusterId, era_id: DdcEra) {
+			let key = Self::derive_key(cluster_id, era_id);
 			log::debug!(
-				"Clearing validation_activities, key {:?}",
-				from_utf8(VALIDATION_ACTIVITIES_KEY).unwrap_or("parsing failed")
+				"Clearing validation activities for cluster {:?} at era {:?}, key {:?}",
+				cluster_id,
+				era_id,
+				key,
 			);
+
+			local_storage_clear(StorageKind::PERSISTENT, &key);
 		}
 
 		pub(crate) fn _store_and_fetch_nonce(node_id: String) -> u64 {
