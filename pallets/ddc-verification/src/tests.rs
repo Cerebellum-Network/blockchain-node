@@ -2355,10 +2355,11 @@ fn test_get_last_validated_era() {
 	let validators = get_validators();
 
 	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id1, validators[0].clone())
-			.map(|era| {
+		assert_ok!(Pallet::<Test>::get_last_paid_era(&cluster_id1, validators[0].clone()).map(
+			|era| {
 				assert_eq!(era, None);
-			}));
+			}
+		));
 
 		let mut validators_map_1 = BTreeMap::new();
 		validators_map_1.insert(
@@ -2378,16 +2379,18 @@ fn test_get_last_validated_era() {
 		<EraValidations<Test>>::insert(cluster_id1, era_1, validation_1);
 
 		// still no - different accountid
-		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id1, validators[0].clone())
-			.map(|era| {
+		assert_ok!(Pallet::<Test>::get_last_paid_era(&cluster_id1, validators[0].clone()).map(
+			|era| {
 				assert_eq!(era, None);
-			}));
+			}
+		));
 
 		// still no - different cluster id
-		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id2, validators[1].clone())
-			.map(|era| {
+		assert_ok!(Pallet::<Test>::get_last_paid_era(&cluster_id2, validators[1].clone()).map(
+			|era| {
 				assert_eq!(era, None);
-			}));
+			}
+		));
 
 		let mut validators_map_2 = BTreeMap::new();
 		validators_map_2
@@ -2405,15 +2408,17 @@ fn test_get_last_validated_era() {
 		<EraValidations<Test>>::insert(cluster_id1, era_2, validation_2);
 
 		// Now the last validated era should be ERA_2
-		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id1, validators[2].clone())
-			.map(|era| {
+		assert_ok!(Pallet::<Test>::get_last_paid_era(&cluster_id1, validators[2].clone()).map(
+			|era| {
 				assert_eq!(era, Some(era_2));
-			}));
+			}
+		));
 
-		assert_ok!(Pallet::<Test>::get_last_validated_era(&cluster_id1, validators[1].clone())
-			.map(|era| {
+		assert_ok!(Pallet::<Test>::get_last_paid_era(&cluster_id1, validators[1].clone()).map(
+			|era| {
 				assert_eq!(era, Some(era_1));
-			}));
+			}
+		));
 	});
 }
 

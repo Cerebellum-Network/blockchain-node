@@ -215,7 +215,6 @@
       },
       "ddcPayouts": {
         "feederAccount": null,
-        "authorisedCaller": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
         "debtorCustomers": [
           [
             "0x0000000000000000000000000000000000000001",

@@ -1,58 +1,44 @@
 use sp_runtime::DispatchResult;
 
+#[cfg(feature = "runtime-benchmarks")]
+use crate::BillingReportParams;
 use crate::{
-	BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodePubKey, NodeUsage,
+	BatchIndex, BucketId, BucketUsage, ClusterId, DdcEra, MMRProof, NodePubKey, NodeUsage,
 	PayoutError, PayoutState,
 };
-pub trait PayoutProcessor<T: frame_system::Config> {}
 
-pub trait PayoutVisitor<T: frame_system::Config> {
-	// todo! factor out into PayoutProcessor
+pub trait PayoutProcessor<T: frame_system::Config> {
 	fn begin_billing_report(
-		origin: T::AccountId,
 		cluster_id: ClusterId,
 		era_id: DdcEra,
 		start_era: i64,
 		end_era: i64,
 	) -> DispatchResult;
 
-	// todo! factor out into PayoutProcessor
 	fn begin_charging_customers(
-		origin: T::AccountId,
 		cluster_id: ClusterId,
 		era_id: DdcEra,
 		max_batch_index: BatchIndex,
 	) -> DispatchResult;
 
-	// todo! factor out into PayoutProcessor
 	fn send_charging_customers_batch(
-		origin: T::AccountId,
 		cluster_id: ClusterId,
 		era_id: DdcEra,
 		batch_index: BatchIndex,
-		payers: &[(NodePubKey, BucketId, CustomerUsage)],
+		payers: &[(NodePubKey, BucketId, BucketUsage)],
 		batch_proof: MMRProof,
 	) -> DispatchResult;
 
-	// todo! factor out into PayoutProcessor
-	fn end_charging_customers(
-		origin: T::AccountId,
-		cluster_id: ClusterId,
-		era_id: DdcEra,
-	) -> DispatchResult;
+	fn end_charging_customers(cluster_id: ClusterId, era: DdcEra) -> DispatchResult;
 
-	// todo! factor out into PayoutProcessor
 	fn begin_rewarding_providers(
-		origin: T::AccountId,
 		cluster_id: ClusterId,
 		era_id: DdcEra,
 		max_batch_index: BatchIndex,
 		total_node_usage: NodeUsage,
 	) -> DispatchResult;
 
-	// todo! factor out into PayoutProcessor
 	fn send_rewarding_providers_batch(
-		origin: T::AccountId,
 		cluster_id: ClusterId,
 		era_id: DdcEra,
 		batch_index: BatchIndex,
@@ -60,21 +46,11 @@ pub trait PayoutVisitor<T: frame_system::Config> {
 		batch_proof: MMRProof,
 	) -> DispatchResult;
 
-	// todo! factor out into PayoutProcessor
-	fn end_rewarding_providers(
-		origin: T::AccountId,
-		cluster_id: ClusterId,
-		era_id: DdcEra,
-	) -> DispatchResult;
+	fn end_rewarding_providers(cluster_id: ClusterId, era_id: DdcEra) -> DispatchResult;
 
-	// todo! factor out into PayoutProcessor
-	fn end_billing_report(
-		origin: T::AccountId,
-		cluster_id: ClusterId,
-		era_id: DdcEra,
-	) -> DispatchResult;
+	fn end_billing_report(cluster_id: ClusterId, era_id: DdcEra) -> DispatchResult;
 
-	fn get_billing_report_status(cluster_id: &ClusterId, era: DdcEra) -> PayoutState;
+	fn get_billing_report_status(cluster_id: &ClusterId, era_id: DdcEra) -> PayoutState;
 
 	fn all_customer_batches_processed(cluster_id: &ClusterId, era_id: DdcEra) -> bool;
 
@@ -89,4 +65,7 @@ pub trait PayoutVisitor<T: frame_system::Config> {
 		cluster_id: &ClusterId,
 		era_id: DdcEra,
 	) -> Result<Option<BatchIndex>, PayoutError>;
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn create_billing_report(vault: T::AccountId, params: BillingReportParams);
 }

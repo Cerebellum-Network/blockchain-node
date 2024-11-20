@@ -590,7 +590,7 @@ fn set_last_validated_era_works() {
 
 		// Cluster doesn't exist
 		assert_noop!(
-			DdcClusters::set_last_validated_era(&cluster_id, era_id),
+			DdcClusters::set_last_paid_era(&cluster_id, era_id),
 			Error::<Test>::ClusterDoesNotExist
 		);
 
@@ -619,14 +619,14 @@ fn set_last_validated_era_works() {
 			}
 		));
 
-		assert_ok!(DdcClusters::set_last_validated_era(&cluster_id, era_id));
+		assert_ok!(DdcClusters::set_last_paid_era(&cluster_id, era_id));
 
 		let updated_cluster = DdcClusters::clusters(cluster_id).unwrap();
-		assert_eq!(updated_cluster.last_validated_era_id, era_id);
+		assert_eq!(updated_cluster.last_paid_era, era_id);
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 3);
-		System::assert_last_event(Event::ClusterEraValidated { cluster_id, era_id }.into())
+		System::assert_last_event(Event::ClusterEraPaid { cluster_id, era_id }.into())
 	})
 }
 

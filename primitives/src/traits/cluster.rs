@@ -98,14 +98,14 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 	fn get_clusters(status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError>;
 }
 pub trait ClusterValidator<T: Config> {
-	/// Updates the `last_validated_era_id` for the given cluster and emits an event indicating the
+	/// Updates the `last_paid_era` for the given cluster and emits an event indicating the
 	/// update.
 	///
 	/// # Parameters
 	///
-	/// - `cluster_id`: A reference to the unique identifier of the cluster that needs its last
-	///   validated era updated.
-	/// - `era_id`: The new era identifier to be set as the last validated era for the cluster.
+	/// - `cluster_id`: A reference to the unique identifier of the cluster that needs its last paid
+	///   era updated.
+	/// - `era_id`: The new era identifier to be set as the last paid era for the cluster.
 	///
 	/// # Returns
 	///
@@ -113,19 +113,19 @@ pub trait ClusterValidator<T: Config> {
 	///
 	/// # Events
 	///
-	/// Emits `ClusterEraValidated` event if the operation is successful.
-	fn set_last_validated_era(cluster_id: &ClusterId, era_id: DdcEra) -> Result<(), DispatchError>;
+	/// Emits `ClusterEraPaid` event if the operation is successful.
+	fn set_last_paid_era(cluster_id: &ClusterId, era_id: DdcEra) -> Result<(), DispatchError>;
 
-	/// Retrieves the `last_validated_era_id` for the given cluster
+	/// Retrieves the `last_paid_era` for the given cluster
 	/// update.
 	///
 	/// # Parameters
 	///
-	/// - `cluster_id`: A reference to the unique identifier of the cluster the
-	///   `last_validated_era_id` is being retrieved for
+	/// - `cluster_id`: A reference to the unique identifier of the cluster the `last_paid_era` is
+	///   being retrieved for
 	///
 	/// # Returns
 	///
 	/// Returns `Ok(DdcEra)` identifier of the last validated era in cluster
-	fn get_last_validated_era(cluster_id: &ClusterId) -> Result<DdcEra, DispatchError>;
+	fn get_last_paid_era(cluster_id: &ClusterId) -> Result<DdcEra, DispatchError>;
 }
