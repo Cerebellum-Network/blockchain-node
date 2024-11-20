@@ -511,6 +511,8 @@ pub mod pallet {
 		FailToVerifyMerkleProof,
 		/// No Era Validation exist
 		NoEraValidation,
+		/// Given era is already validated and paid.
+		EraAlreadyPaid,
 	}
 
 	/// Era validations
@@ -3994,14 +3996,37 @@ pub mod pallet {
 			Ok(())
 		}
 
-				let validators = <ValidatorSet<T>>::get();
+		/// Continue DAC validation from an era after a given one. It updates `last_paid_era` of a
+		/// given cluster, creates an empty billing report with a finalized state, and sets an empty
+		/// validation result on validators (in case it does not exist yet).
+		#[pallet::call_index(12)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::skip_dac_validation_to_era())]
+		pub fn skip_dac_validation_to_era(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+			ensure!(
+				era_id > T::ClusterValidator::get_last_paid_era(&cluster_id)?,
+				Error::<T>::EraAlreadyPaid
+			);
 
-				signed_validators.extend(validators);
+			Self::do_set_era_validations(&cluster_id, era_id)?;
 
-				<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
-			}
+			let billing_report_params = BillingReportParams {
+				cluster_id,
+				era: era_id,
+				state: PayoutState::Finalized,
+				..Default::default()
+			};
 
-			Self::deposit_event(Event::<T>::EraValidationReady { cluster_id, era_id });
+			T::PayoutProcessor::create_billing_report(
+				T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap(),
+				billing_report_params,
+			);
+
+			T::ClusterValidator::set_last_paid_era(&cluster_id, era_id)?;
 
 			Ok(())
 		}
