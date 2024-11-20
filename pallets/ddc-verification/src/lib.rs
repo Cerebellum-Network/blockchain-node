@@ -1272,6 +1272,33 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		pub(crate) fn do_set_era_validations(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let era_validations = <EraValidations<T>>::get(cluster_id, era_id);
+
+			if era_validations.is_none() {
+				let mut era_validation = EraValidation {
+					status: EraValidationStatus::PayoutSkipped,
+					..Default::default()
+				};
+
+				let signed_validators = era_validation
+					.validators
+					.entry((ActivityHash::default(), ActivityHash::default()))
+					.or_insert_with(Vec::new);
+
+				let validators = <ValidatorSet<T>>::get();
+
+				signed_validators.extend(validators);
+
+				<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
+			}
+
+			Ok(())
+		}
+
 		#[allow(clippy::type_complexity)]
 		pub(crate) fn process_dac_era(
 			cluster_id: &ClusterId,
@@ -3960,22 +3987,12 @@ pub mod pallet {
 			era_id: DdcEra,
 		) -> DispatchResult {
 			ensure_root(origin)?;
-			let era_validations = <EraValidations<T>>::get(cluster_id, era_id);
 
-			if era_validations.is_none() {
-				let mut era_validation = EraValidation {
-					payers_merkle_root_hash: ActivityHash::default(),
-					payees_merkle_root_hash: ActivityHash::default(),
-					start_era: Default::default(),
-					end_era: Default::default(),
-					validators: Default::default(),
-					status: EraValidationStatus::PayoutSkipped,
-				};
+			Self::do_set_era_validations(&cluster_id, era_id)?;
+			Self::deposit_event(Event::<T>::EraValidationReady { cluster_id, era_id });
 
-				let signed_validators = era_validation
-					.validators
-					.entry((ActivityHash::default(), ActivityHash::default()))
-					.or_insert_with(Vec::new);
+			Ok(())
+		}
 
 				let validators = <ValidatorSet<T>>::get();
 
