@@ -1,5 +1,4 @@
 //! DdcStaking pallet benchmarking.
-#![cfg(feature = "runtime-benchmarks")]
 
 use ddc_primitives::{ClusterId, ClusterParams, ClusterProtocolParams};
 use frame_benchmarking::{account, benchmarks, whitelist_account};

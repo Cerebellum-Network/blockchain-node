@@ -50,6 +50,7 @@ impl frame_system::Config for Test {
 	type Nonce = u64;
 	type Block = Block;
 	type RuntimeCall = RuntimeCall;
+	type RuntimeTask = RuntimeTask;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
@@ -206,6 +207,7 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 	}
 }
 
+#[allow(dead_code)]
 pub struct TestClusterManager;
 impl<T: Config> ClusterQuery<T> for TestClusterManager {
 	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
