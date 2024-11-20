@@ -409,6 +409,20 @@ pub struct EraValidation<T: Config> {
 	pub status: EraValidationStatus,
 }
 
+impl<T: Config> Default for EraValidation<T> {
+	fn default() -> Self {
+		EraValidation {
+			validators: Default::default(),
+			start_era: Default::default(),
+			end_era: Default::default(),
+			payers_merkle_root_hash: Default::default(),
+			payees_merkle_root_hash: Default::default(),
+			status: EraValidationStatus::PayoutSkipped,
+		}
+	}
+}
+
+#[derive(Default)]
 pub struct BillingReportParams {
 	pub cluster_id: ClusterId,
 	pub era: DdcEra,
