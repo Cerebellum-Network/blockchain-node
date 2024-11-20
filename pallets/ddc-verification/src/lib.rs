@@ -19,8 +19,8 @@ use ddc_primitives::{
 		ClusterManager, ClusterValidator, CustomerVisitor, NodeManager, PayoutProcessor,
 		ValidatorVisitor,
 	},
-	ActivityHash, BatchIndex, BucketUsage, ClusterId, ClusterStatus, DdcEra, EraValidation,
-	EraValidationStatus, MMRProof, NodeParams, NodePubKey, NodeUsage, PayoutState,
+	ActivityHash, BatchIndex, BillingReportParams, BucketUsage, ClusterId, ClusterStatus, DdcEra,
+	EraValidation, EraValidationStatus, MMRProof, NodeParams, NodePubKey, NodeUsage, PayoutState,
 	StorageNodeParams,
 };
 use frame_support::{
