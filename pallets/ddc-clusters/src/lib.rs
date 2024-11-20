@@ -430,6 +430,18 @@ pub mod pallet {
 
 			Self::do_join_cluster(cluster, node_pub_key)
 		}
+
+		#[pallet::call_index(6)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_last_paid_era())]
+		pub fn set_last_paid_era(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+
+			<Self as ClusterValidator<T>>::set_last_paid_era(&cluster_id, era_id)
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
