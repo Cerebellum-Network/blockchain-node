@@ -789,8 +789,11 @@ pub mod pallet {
 		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Debug
 	{
 		fn hash<T: Config>(&self) -> ActivityHash;
+		#[allow(dead_code)]
 		fn get_key(&self) -> AggregateKey;
+		#[allow(dead_code)]
 		fn get_number_of_leaves(&self) -> u64;
+		#[allow(dead_code)]
 		fn get_aggregator(&self) -> AggregatorInfo;
 	}
 
@@ -4019,6 +4022,7 @@ pub mod pallet {
 	impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 		type Key = T::AuthorityId;
 
+		#[allow(clippy::multiple_bound_locations)]
 		fn on_genesis_session<'a, I: 'a>(validators: I)
 		where
 			I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
@@ -4032,6 +4036,7 @@ pub mod pallet {
 			                        // validators
 		}
 
+		#[allow(clippy::multiple_bound_locations)]
 		fn on_new_session<'a, I: 'a>(_changed: bool, validators: I, _queued_authorities: I)
 		where
 			I: Iterator<Item = (&'a T::AccountId, Self::Key)>,

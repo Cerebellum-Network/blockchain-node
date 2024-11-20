@@ -10,6 +10,7 @@ use frame_election_provider_support::{
 	onchain, SequentialPhragmen,
 };
 use frame_support::{
+	derive_impl,
 	pallet_prelude::ConstU32,
 	parameter_types,
 	traits::{ConstU16, ConstU64},
@@ -48,6 +49,7 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 type Balance = u64;
 type BlockNumber = u64;
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = ();
@@ -55,6 +57,7 @@ impl frame_system::Config for Test {
 	type DbWeight = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
+	type RuntimeTask = RuntimeTask;
 	type Nonce = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
@@ -124,6 +127,7 @@ parameter_types! {
 	pub const BondingDuration: EraIndex = 3;
 	pub static LedgerSlashPerEra: (BalanceOf<Test>, BTreeMap<EraIndex, BalanceOf<Test>>) = (Zero::zero(), BTreeMap::new());
 	pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
+	pub static MaxControllersInDeprecationBatch: u32 = 5900;
 }
 
 impl pallet_staking::Config for Test {
@@ -150,6 +154,7 @@ impl pallet_staking::Config for Test {
 	type NominationsQuota = pallet_staking::FixedNominationsQuota<16>;
 	type MaxUnlockingChunks = ConstU32<32>;
 	type HistoryDepth = ConstU32<84>;
+	type MaxControllersInDeprecationBatch = MaxControllersInDeprecationBatch;
 	type VoterList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type EventListeners = ();
 	type BenchmarkingConfig = pallet_staking::TestBenchmarkingConfig;
@@ -160,6 +165,7 @@ pub struct OtherSessionHandler;
 impl OneSessionHandler<AccountId> for OtherSessionHandler {
 	type Key = UintAuthorityId;
 
+	#[allow(clippy::multiple_bound_locations)]
 	fn on_genesis_session<'a, I: 'a>(_: I)
 	where
 		I: Iterator<Item = (&'a AccountId, Self::Key)>,
@@ -167,6 +173,7 @@ impl OneSessionHandler<AccountId> for OtherSessionHandler {
 	{
 	}
 
+	#[allow(clippy::multiple_bound_locations)]
 	fn on_new_session<'a, I: 'a>(_: bool, _: I, _: I)
 	where
 		I: Iterator<Item = (&'a AccountId, Self::Key)>,

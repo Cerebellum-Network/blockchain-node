@@ -1,5 +1,4 @@
 //! DdcClustersGov pallet benchmarking.
-#![cfg(feature = "runtime-benchmarks")]
 
 use ddc_primitives::{
 	ClusterBondingParams, ClusterId, ClusterNodeKind, ClusterParams, ClusterProtocolParams,
