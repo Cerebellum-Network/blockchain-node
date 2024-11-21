@@ -3981,6 +3981,10 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set PayoutSkipped state of a given era if it is not validated yet. Otherwise does
+		/// nothing.
+		///
+		/// Emits `EraValidationReady`.
 		#[pallet::call_index(11)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_era_validations())]
 		pub fn set_era_validations(
