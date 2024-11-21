@@ -226,6 +226,7 @@ pub fn cere_dev_genesis(
 				.collect(),
 			phantom: Default::default(),
 		},
+		ddc_verification: Default::default(),
 	}
 }
 

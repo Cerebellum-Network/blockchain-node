@@ -2,7 +2,7 @@ pub mod v1 {
 	#[cfg(feature = "try-runtime")]
 	use ddc_primitives::ClusterStatus;
 	use ddc_primitives::{
-		traits::{ClusterProtocol, ClusterQuery, NodeVisitor},
+		traits::{ClusterProtocol, ClusterQuery, NodeManager},
 		ClusterId, NodePubKey,
 	};
 	use frame_support::{
@@ -54,7 +54,7 @@ pub mod v1 {
 
 				let mut served_clusters: BTreeMap<ClusterId, ()> = BTreeMap::new();
 				for node_pub_key in bonded_nodes.iter() {
-					if let Ok(Some(cluster_id)) = T::NodeVisitor::get_cluster_id(node_pub_key) {
+					if let Ok(Some(cluster_id)) = T::NodeManager::get_cluster_id(node_pub_key) {
 						served_clusters.insert(cluster_id, ());
 					}
 					weight.saturating_accrue(T::DbWeight::get().reads(1));

@@ -88,7 +88,7 @@ pub fn create_cluster_with_nodes<T: Config>(
 			p2p_port: 9070_u16,
 		});
 
-		T::NodeCreator::create_node(node_pub_key.clone(), node_provider.clone(), node_params)
+		T::NodeManager::create_node(node_pub_key.clone(), node_provider.clone(), node_params)
 			.expect("Node is not created");
 
 		T::StakerCreator::bond_stake_and_participate(

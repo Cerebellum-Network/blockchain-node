@@ -16,12 +16,12 @@
 
 use codec::{Decode, Encode};
 #[cfg(feature = "runtime-benchmarks")]
-use ddc_primitives::traits::{node::NodeCreator, staking::StakerCreator};
+use ddc_primitives::traits::staking::StakerCreator;
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterManager, ClusterProtocol, ClusterQuery},
 		cluster_gov::{DefaultVote, MemberCount, SeatsConsensus},
-		node::NodeVisitor,
+		node::NodeManager,
 		pallet::GetDdcOrigin,
 	},
 	ClusterId, ClusterNodeStatus, ClusterProtocolParams, ClusterStatus, NodePubKey,
@@ -138,13 +138,11 @@ pub mod pallet {
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type ClusterManager: ClusterManager<Self>;
 		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
-		type NodeVisitor: NodeVisitor<Self>;
+		type NodeManager: NodeManager<Self>;
 		type SeatsConsensus: SeatsConsensus;
 		type DefaultVote: DefaultVote;
 		type MinValidatedNodesCount: Get<u16>;
 		type ReferendumEnactmentDuration: Get<BlockNumberFor<Self>>;
-		#[cfg(feature = "runtime-benchmarks")]
-		type NodeCreator: NodeCreator<Self>;
 		#[cfg(feature = "runtime-benchmarks")]
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 	}
@@ -488,7 +486,7 @@ pub mod pallet {
 					if !is_validated_node {
 						Err(Error::<T>::NotValidatedNode.into())
 					} else {
-						let node_provider = T::NodeVisitor::get_node_provider_id(&node_pub_key)?;
+						let node_provider = T::NodeManager::get_node_provider_id(&node_pub_key)?;
 						if origin == node_provider {
 							Ok(())
 						} else {
@@ -512,7 +510,7 @@ pub mod pallet {
 					if node_state.status != ClusterNodeStatus::ValidationSucceeded {
 						Err(Error::<T>::NotValidatedNode.into())
 					} else {
-						let node_provider = T::NodeVisitor::get_node_provider_id(&node_pub_key)?;
+						let node_provider = T::NodeManager::get_node_provider_id(&node_pub_key)?;
 						if origin == node_provider {
 							let voting = ClusterProposalVoting::<T>::get(cluster_id)
 								.ok_or(Error::<T>::ProposalMissing)?;

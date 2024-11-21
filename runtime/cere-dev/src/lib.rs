@@ -156,7 +156,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_version: 63000,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 20,
+	transaction_version: 23,
 	state_version: 0,
 };
 
@@ -519,22 +519,6 @@ impl_opaque_keys! {
 	}
 }
 
-fn transform_session_keys(v: AccountId, old: OldSessionKeys) -> SessionKeys {
-	SessionKeys {
-		grandpa: old.grandpa,
-		babe: old.babe,
-		im_online: old.im_online,
-		authority_discovery: old.authority_discovery,
-		ddc_verification: {
-			let mut id: ddc_primitives::sr25519::AuthorityId =
-				sp_core::sr25519::Public::from_raw([0u8; 32]).into();
-			let id_raw: &mut [u8] = id.as_mut();
-			id_raw[0..32].copy_from_slice(v.as_ref());
-			id_raw[0..4].copy_from_slice(b"cer!");
-			id
-		},
-	}
-}
 impl pallet_session::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
@@ -1184,8 +1168,7 @@ impl pallet_ddc_staking::Config for Runtime {
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
-	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
 	type ClusterBondingAmount = ClusterBondingAmount;
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
@@ -1239,16 +1222,13 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
-	type BucketVisitor = DdcCustomers;
-	type CustomerDepositor = DdcCustomers;
+	type BucketManager = DdcCustomers;
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
-	type ClusterCreator = DdcClusters;
-	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
 	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
 }
 
@@ -1295,13 +1275,11 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
 	type SeatsConsensus = pallet_ddc_clusters_gov::Unanimous;
 	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
 	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
-	#[cfg(feature = "runtime-benchmarks")]
-	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 }
@@ -1332,22 +1310,29 @@ impl pallet_ddc_verification::Config for Runtime {
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
-	type PayoutVisitor = pallet_ddc_payouts::Pallet<Runtime>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
+	type PayoutProcessor = pallet_ddc_payouts::Pallet<Runtime>;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type ActivityHasher = BlakeTwo256;
 	const MAJORITY: u8 = 67;
-	const BLOCK_TO_START: u16 = 30; // every 100 blocks
+	const BLOCK_TO_START: u16 = 1; // every block
 	const DAC_REDUNDANCY_FACTOR: u16 = 3;
 	type AggregatorsQuorum = MajorityOfAggregators;
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ActivityHash = H256;
-	type StakingVisitor = pallet_staking::Pallet<Runtime>;
+	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
 	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
+	type Currency = Balances;
+	#[cfg(feature = "runtime-benchmarks")]
+	type CustomerDepositor = DdcCustomers;
+	#[cfg(feature = "runtime-benchmarks")]
+	type ClusterCreator = DdcClusters;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BucketManager = DdcCustomers;
 }
 
 construct_runtime!(
@@ -1444,12 +1429,7 @@ const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX;
 
 /// Runtime migrations
 type Migrations = (
-	pallet_nomination_pools::migration::versioned::V5toV6<Runtime>,
-	pallet_nomination_pools::migration::versioned::V6ToV7<Runtime>,
-	pallet_nomination_pools::migration::versioned::V7ToV8<Runtime>,
-	pallet_staking::migrations::v14::MigrateToV14<Runtime>,
-	pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
-	pallet_identity::migration::versioned::V0ToV1<Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
+	pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.
@@ -1461,22 +1441,6 @@ pub type Executive = frame_executive::Executive<
 	AllPalletsWithSystem,
 	Migrations,
 >;
-
-pub mod migrations {
-	use super::*;
-
-	/// When this is removed, should also remove `OldSessionKeys`.
-	pub struct UpgradeSessionKeys;
-	impl frame_support::traits::OnRuntimeUpgrade for UpgradeSessionKeys {
-		fn on_runtime_upgrade() -> Weight {
-			Session::upgrade_keys::<OldSessionKeys, _>(transform_session_keys);
-			Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block
-		}
-	}
-
-	/// Unreleased migrations. Add new ones here:
-	pub type Unreleased = (UpgradeSessionKeys,);
-}
 
 type EventRecord = frame_system::EventRecord<
 	<Runtime as frame_system::Config>::RuntimeEvent,
@@ -1516,7 +1480,6 @@ mod benches {
 		[pallet_ddc_clusters, DdcClusters]
 		[pallet_ddc_staking, DdcStaking]
 		[pallet_ddc_nodes, DdcNodes]
-		[pallet_ddc_payouts, DdcPayouts]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
 		[pallet_treasury, Treasury]
@@ -1527,6 +1490,7 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
+		[pallet_ddc_verification, DdcVerification]
 	);
 }
 
