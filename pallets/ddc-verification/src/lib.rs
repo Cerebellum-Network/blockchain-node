@@ -1274,7 +1274,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn do_set_era_validations(
+		pub(crate) fn do_skip_era_validation(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 		) -> DispatchResult {
@@ -3990,7 +3990,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
-			Self::do_set_era_validations(&cluster_id, era_id)?;
+			Self::do_skip_era_validation(&cluster_id, era_id)?;
 			Self::deposit_event(Event::<T>::EraValidationReady { cluster_id, era_id });
 
 			Ok(())
@@ -4012,7 +4012,7 @@ pub mod pallet {
 				Error::<T>::EraAlreadyPaid
 			);
 
-			Self::do_set_era_validations(&cluster_id, era_id)?;
+			Self::do_skip_era_validation(&cluster_id, era_id)?;
 
 			let billing_report_params = BillingReportParams {
 				cluster_id,
