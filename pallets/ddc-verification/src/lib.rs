@@ -19,8 +19,8 @@ use ddc_primitives::{
 		ClusterManager, ClusterValidator, CustomerVisitor, NodeManager, PayoutProcessor,
 		ValidatorVisitor,
 	},
-	ActivityHash, BatchIndex, BucketUsage, ClusterId, ClusterStatus, DdcEra, EraValidation,
-	EraValidationStatus, MMRProof, NodeParams, NodePubKey, NodeUsage, PayoutState,
+	ActivityHash, BatchIndex, BillingReportParams, BucketUsage, ClusterId, ClusterStatus, DdcEra,
+	EraValidation, EraValidationStatus, MMRProof, NodeParams, NodePubKey, NodeUsage, PayoutState,
 	StorageNodeParams,
 };
 use frame_support::{
@@ -511,6 +511,8 @@ pub mod pallet {
 		FailToVerifyMerkleProof,
 		/// No Era Validation exist
 		NoEraValidation,
+		/// Given era is already validated and paid.
+		EraAlreadyPaid,
 	}
 
 	/// Era validations
@@ -1272,6 +1274,33 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		pub(crate) fn do_skip_era_validation(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			let era_validations = <EraValidations<T>>::get(cluster_id, era_id);
+
+			if era_validations.is_none() {
+				let mut era_validation = EraValidation {
+					status: EraValidationStatus::PayoutSkipped,
+					..Default::default()
+				};
+
+				let signed_validators = era_validation
+					.validators
+					.entry((ActivityHash::default(), ActivityHash::default()))
+					.or_insert_with(Vec::new);
+
+				let validators = <ValidatorSet<T>>::get();
+
+				signed_validators.extend(validators);
+
+				<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
+			}
+
+			Ok(())
+		}
+
 		#[allow(clippy::type_complexity)]
 		pub(crate) fn process_dac_era(
 			cluster_id: &ClusterId,
@@ -3952,6 +3981,10 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Set PayoutSkipped state of a given era if it is not validated yet. Otherwise does
+		/// nothing.
+		///
+		/// Emits `EraValidationReady`.
 		#[pallet::call_index(11)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_era_validations())]
 		pub fn set_era_validations(
@@ -3960,31 +3993,44 @@ pub mod pallet {
 			era_id: DdcEra,
 		) -> DispatchResult {
 			ensure_root(origin)?;
-			let era_validations = <EraValidations<T>>::get(cluster_id, era_id);
 
-			if era_validations.is_none() {
-				let mut era_validation = EraValidation {
-					payers_merkle_root_hash: ActivityHash::default(),
-					payees_merkle_root_hash: ActivityHash::default(),
-					start_era: Default::default(),
-					end_era: Default::default(),
-					validators: Default::default(),
-					status: EraValidationStatus::PayoutSkipped,
-				};
-
-				let signed_validators = era_validation
-					.validators
-					.entry((ActivityHash::default(), ActivityHash::default()))
-					.or_insert_with(Vec::new);
-
-				let validators = <ValidatorSet<T>>::get();
-
-				signed_validators.extend(validators);
-
-				<EraValidations<T>>::insert(cluster_id, era_id, era_validation);
-			}
-
+			Self::do_skip_era_validation(&cluster_id, era_id)?;
 			Self::deposit_event(Event::<T>::EraValidationReady { cluster_id, era_id });
+
+			Ok(())
+		}
+
+		/// Continue DAC validation from an era after a given one. It updates `last_paid_era` of a
+		/// given cluster, creates an empty billing report with a finalized state, and sets an empty
+		/// validation result on validators (in case it does not exist yet).
+		#[pallet::call_index(12)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::skip_dac_validation_to_era())]
+		pub fn skip_dac_validation_to_era(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+			ensure!(
+				era_id > T::ClusterValidator::get_last_paid_era(&cluster_id)?,
+				Error::<T>::EraAlreadyPaid
+			);
+
+			Self::do_skip_era_validation(&cluster_id, era_id)?;
+
+			let billing_report_params = BillingReportParams {
+				cluster_id,
+				era: era_id,
+				state: PayoutState::Finalized,
+				..Default::default()
+			};
+
+			T::PayoutProcessor::create_billing_report(
+				T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap(),
+				billing_report_params,
+			);
+
+			T::ClusterValidator::set_last_paid_era(&cluster_id, era_id)?;
 
 			Ok(())
 		}

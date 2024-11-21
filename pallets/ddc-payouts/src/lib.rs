@@ -21,17 +21,15 @@ mod tests;
 
 pub mod migrations;
 
-#[cfg(feature = "runtime-benchmarks")]
-use ddc_primitives::BillingReportParams;
 use ddc_primitives::{
 	traits::{
 		bucket::BucketManager, cluster::ClusterProtocol as ClusterProtocolType,
 		customer::CustomerCharger as CustomerChargerType, node::NodeManager,
 		pallet::PalletVisitor as PalletVisitorType, payout::PayoutProcessor,
 	},
-	BatchIndex, BucketId, BucketUsage, ClusterId, CustomerCharge, DdcEra, MMRProof, NodePubKey,
-	NodeUsage, PayoutError, PayoutState, ProviderReward, MAX_PAYOUT_BATCH_COUNT,
-	MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
+	BatchIndex, BillingReportParams, BucketId, BucketUsage, ClusterId, CustomerCharge, DdcEra,
+	MMRProof, NodePubKey, NodeUsage, PayoutError, PayoutState, ProviderReward,
+	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -1160,7 +1158,6 @@ pub mod pallet {
 			Ok(None)
 		}
 
-		#[cfg(feature = "runtime-benchmarks")]
 		fn create_billing_report(vault: T::AccountId, params: BillingReportParams) {
 			let mut charging_processed_batches =
 				BoundedBTreeSet::<BatchIndex, MaxBatchesCount>::new();

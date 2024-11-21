@@ -1,10 +1,8 @@
 use sp_runtime::DispatchResult;
 
-#[cfg(feature = "runtime-benchmarks")]
-use crate::BillingReportParams;
 use crate::{
-	BatchIndex, BucketId, BucketUsage, ClusterId, DdcEra, MMRProof, NodePubKey, NodeUsage,
-	PayoutError, PayoutState,
+	BatchIndex, BillingReportParams, BucketId, BucketUsage, ClusterId, DdcEra, MMRProof,
+	NodePubKey, NodeUsage, PayoutError, PayoutState,
 };
 
 pub trait PayoutProcessor<T: frame_system::Config> {
@@ -66,6 +64,5 @@ pub trait PayoutProcessor<T: frame_system::Config> {
 		era_id: DdcEra,
 	) -> Result<Option<BatchIndex>, PayoutError>;
 
-	#[cfg(feature = "runtime-benchmarks")]
 	fn create_billing_report(vault: T::AccountId, params: BillingReportParams);
 }
