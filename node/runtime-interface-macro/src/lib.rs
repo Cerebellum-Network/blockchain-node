@@ -364,6 +364,7 @@ pub use sp_std;
 /// this flag, as tracing doesn't cost you anything by default anyways (it is added as a no-op)
 /// but is super useful for debugging later.
 pub use sp_runtime_interface_proc_macro_local::runtime_interface;
+// pub use cere_runtime_interface::*;
 
 #[doc(hidden)]
 #[cfg(feature = "std")]

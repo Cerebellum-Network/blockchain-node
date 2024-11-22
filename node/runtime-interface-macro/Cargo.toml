@@ -29,6 +29,7 @@ static_assertions = { workspace = true, default-features = true }
 primitive-types = { workspace = true }
 sp-storage.workspace = true
 impl-trait-for-tuples = { workspace = true }
+cere-wasm-interface = { workspace = true }
 #sp-core = { workspace = true }
 #sp-io = { workspace = true }
 #sp-state-machine = { workspace = true, default-features = false }

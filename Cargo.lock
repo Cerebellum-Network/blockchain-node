@@ -1210,6 +1210,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "cere-wasm-interface"
+version = "18.0.0"
+dependencies = [
+ "Inflector",
+ "expander",
+ "parity-scale-codec",
+ "proc-macro-crate 3.2.0",
+ "proc-macro2",
+ "quote",
+ "sp-wasm-interface",
+ "syn 2.0.79",
+]
+
+[[package]]
 name = "cexpr"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9880,6 +9894,7 @@ version = "28.0.0"
 dependencies = [
  "bytes",
  "cere-runtime-interfaces",
+ "cere-wasm-interface",
  "impl-trait-for-tuples",
  "parity-scale-codec",
  "polkavm-derive",

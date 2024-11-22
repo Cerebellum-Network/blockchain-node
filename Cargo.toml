@@ -202,6 +202,7 @@ cere-rpc = { path = "node/rpc" }
 cere-runtime = { path = "runtime/cere" }
 cere-runtime-common = { path = "runtime/common", default-features = false }
 cere-runtime-interfaces = { path = "node/runtime-interfaces" }
+cere-wasm-interface = { path = "node/runtime-interface-macro/cere-wasm-interface" }
 cere-service = { path = "node/service" }
 ddc-primitives = { path = "primitives", default-features = false }
 pallet-chainbridge = { path = "pallets/chainbridge", default-features = false }
