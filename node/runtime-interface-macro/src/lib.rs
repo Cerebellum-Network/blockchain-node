@@ -106,7 +106,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-extern crate self as sp_runtime_interface;
+extern crate self as sp_runtime_interface_macro;
 
 extern crate alloc;
 
