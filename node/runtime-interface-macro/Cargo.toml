@@ -43,6 +43,7 @@ sp-core = { default-features = true, workspace = true }
 sp-io = { default-features = true, workspace = true}
 rustversion = { workspace = true }
 trybuild = { workspace = true }
+cere-runtime-interfaces = { workspace = true }
 
 [features]
 default = ["std"]

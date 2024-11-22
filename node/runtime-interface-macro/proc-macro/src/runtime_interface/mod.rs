@@ -28,6 +28,7 @@ use quote::quote;
 mod bare_function_interface;
 mod host_function_interface;
 mod trait_decl_impl;
+mod wasm_interface;
 
 /// Custom keywords supported by the `runtime_interface` attribute.
 pub mod keywords {
