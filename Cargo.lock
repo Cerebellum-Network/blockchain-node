@@ -1155,7 +1155,7 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "sp-runtime-interface-macro",
- "sp-runtime-interface-proc-macro 18.0.0",
+ "sp-runtime-interface-proc-macro-local",
  "sp-std",
  "sp-wasm-interface",
  "thiserror",
@@ -9866,7 +9866,7 @@ dependencies = [
  "polkavm-derive",
  "primitive-types",
  "sp-externalities",
- "sp-runtime-interface-proc-macro 18.0.0 (git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-stable2409)",
+ "sp-runtime-interface-proc-macro",
  "sp-std",
  "sp-storage",
  "sp-tracing",
@@ -9887,7 +9887,7 @@ dependencies = [
  "sp-core",
  "sp-externalities",
  "sp-io",
- "sp-runtime-interface-proc-macro 18.0.0",
+ "sp-runtime-interface-proc-macro-local",
  "sp-state-machine",
  "sp-std",
  "sp-storage",
@@ -9900,6 +9900,7 @@ dependencies = [
 [[package]]
 name = "sp-runtime-interface-proc-macro"
 version = "18.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-stable2409#87971b3e92721bdf10bf40b410eaae779d494ca0"
 dependencies = [
  "Inflector",
  "expander",
@@ -9910,9 +9911,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "sp-runtime-interface-proc-macro"
+name = "sp-runtime-interface-proc-macro-local"
 version = "18.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-stable2409#87971b3e92721bdf10bf40b410eaae779d494ca0"
 dependencies = [
  "Inflector",
  "expander",

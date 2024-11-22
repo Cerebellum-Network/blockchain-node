@@ -54,7 +54,7 @@ use alloc::vec::Vec;
 ///     param: u32,
 /// }
 /// ```
-pub use sp_runtime_interface_proc_macro::PassByCodec;
+pub use sp_runtime_interface_proc_macro_local::PassByCodec;
 
 /// Derive macro for implementing [`PassBy`] with the [`Inner`] strategy.
 ///
@@ -80,7 +80,7 @@ pub use sp_runtime_interface_proc_macro::PassByCodec;
 ///     data: [u8; 32],
 /// }
 /// ```
-pub use sp_runtime_interface_proc_macro::PassByInner;
+pub use sp_runtime_interface_proc_macro_local::PassByInner;
 
 /// Derive macro for implementing [`PassBy`] with the [`Enum`] strategy.
 ///
@@ -102,7 +102,7 @@ pub use sp_runtime_interface_proc_macro::PassByInner;
 ///     //Why(u32),
 /// }
 /// ```
-pub use sp_runtime_interface_proc_macro::PassByEnum;
+pub use sp_runtime_interface_proc_macro_local::PassByEnum;
 
 /// Something that should be passed between wasm and the host using the given strategy.
 ///

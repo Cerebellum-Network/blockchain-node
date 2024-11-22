@@ -363,7 +363,7 @@ pub use sp_std;
 /// for the case when that would create a circular dependency. You usually _do not_ want to add
 /// this flag, as tracing doesn't cost you anything by default anyways (it is added as a no-op)
 /// but is super useful for debugging later.
-pub use sp_runtime_interface_proc_macro::runtime_interface;
+pub use sp_runtime_interface_proc_macro_local::runtime_interface;
 
 #[doc(hidden)]
 #[cfg(feature = "std")]

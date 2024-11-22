@@ -216,7 +216,7 @@ pallet-erc721 = { path = "pallets/erc721", default-features = false }
 pallet-origins = { path = "pallets/origins", default-features = false }
 sp-runtime-interface-macro = { path = "node/runtime-interface-macro", default-features = false  }
 #sp-runtime-interface-test-wasm = { path = "node/runtime-interface-macro/test-wasm", default-features = false, version = "2.0.0"  }
-sp-runtime-interface-proc-macro = { path = "node/runtime-interface-macro/proc-macro", default-features = false  }
+sp-runtime-interface-proc-macro-local = { path = "node/runtime-interface-macro/proc-macro", default-features = false  }
 #sp-runtime-interface-test-wasm-deprecated = { path = "node/runtime-interface-macro/test-wasm-deprecated" , default-features = false}
 
 [profile.release]
