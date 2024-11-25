@@ -1215,10 +1215,12 @@ pub mod pallet {
 								Ok(_) => {
 									// Extrinsic call succeeded
 									log::info!(
-									"🏭📝Sent end_billing_report successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
+										"🏭📝Sent end_billing_report successfully for cluster_id: {:?}, era_id: {:?}",
+										cluster_id,
+										era_id
+									);
+
+									Self::clear_validation_activities(&cluster_id, era_id);
 								},
 								Err(e) => {
 									log::error!(
@@ -1238,8 +1240,6 @@ pub mod pallet {
 							log::error!("🏭❌No account available to sign the transaction");
 							errors.push(OCWError::NoAvailableSigner);
 						}
-
-						Self::clear_validation_activities(&cluster_id, era_id);
 					},
 					Ok(None) => {
 						log::info!(
