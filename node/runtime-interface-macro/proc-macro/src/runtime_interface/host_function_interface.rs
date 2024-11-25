@@ -348,7 +348,7 @@ fn generate_host_function_implementation(
 		#[cfg(feature = "std")]
 		impl #struct_name {
 			fn call(
-				__function_context__: &mut dyn #crate_::sp_wasm_interface::FunctionContext,
+				__function_context__: &mut dyn #crate_::cere_wasm_interface::FunctionContext,
 				#(#ffi_args_prototype),*
 			) -> std::result::Result<#ffi_return_ty, String> {
 				#(#convert_args_static_ffi_to_host)*
@@ -372,7 +372,7 @@ fn generate_host_function_implementation(
 
 			fn execute(
 				&self,
-				__function_context__: &mut dyn #crate_::sp_wasm_interface::FunctionContext,
+				__function_context__: &mut dyn #crate_::cere_wasm_interface::FunctionContext,
 				args: &mut dyn Iterator<Item = #crate_::sp_wasm_interface::Value>,
 			) -> std::result::Result<Option<#crate_::sp_wasm_interface::Value>, String> {
 				#(#convert_args_dynamic_ffi_to_static_ffi)*

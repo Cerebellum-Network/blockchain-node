@@ -31,7 +31,10 @@ use crate::host::*;
 use crate::wasm::*;
 
 #[cfg(feature = "std")]
-use sp_wasm_interface::{FunctionContext, Pointer, Result};
+use sp_wasm_interface::{Pointer, Result};
+#[cfg(feature = "std")]
+use cere_wasm_interface::{FunctionContext};
+
 
 use core::marker::PhantomData;
 

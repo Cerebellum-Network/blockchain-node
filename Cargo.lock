@@ -1147,6 +1147,7 @@ dependencies = [
 name = "cere-runtime-interfaces"
 version = "6.6.1"
 dependencies = [
+ "cere-wasm-interface",
  "environmental",
  "log",
  "parity-scale-codec",
@@ -9931,6 +9932,7 @@ name = "sp-runtime-interface-proc-macro-local"
 version = "18.0.0"
 dependencies = [
  "Inflector",
+ "cere-wasm-interface",
  "expander",
  "parity-scale-codec",
  "proc-macro-crate 3.2.0",

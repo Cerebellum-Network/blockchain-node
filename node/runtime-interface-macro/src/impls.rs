@@ -30,8 +30,10 @@ use crate::{
 #[cfg(all(not(feature = "std"), not(feature = "disable_target_static_assertions")))]
 use static_assertions::assert_eq_size;
 
-#[cfg(feature = "std")]
-use sp_wasm_interface::{FunctionContext, Result};
+// #[cfg(feature = "std")]
+use sp_wasm_interface::{ Result};
+// #[cfg(feature = "std")]
+use cere_wasm_interface::{FunctionContext};
 
 use codec::{Decode, Encode};
 
@@ -257,7 +259,7 @@ impl IntoPreallocatedFFIValue for [u8] {
 				self_instance.len()
 			))
 		} else {
-			context.write_memory(Pointer::new(ptr), &self_instance)
+			Ok(context.write_memory(Pointer::new(ptr), &self_instance)?)
 		}
 	}
 }
@@ -335,7 +337,7 @@ impl<const N: usize> IntoPreallocatedFFIValue for [u8; N] {
 		context: &mut dyn FunctionContext,
 		allocated: u32,
 	) -> Result<()> {
-		context.write_memory(Pointer::new(allocated), &self_instance)
+		Ok(context.write_memory(Pointer::new(allocated), &self_instance)?)
 	}
 }
 

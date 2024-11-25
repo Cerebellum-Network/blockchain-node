@@ -1,5 +1,6 @@
 use std::{cell::RefCell, rc::Rc, str, sync::Arc, result};
-use sp_wasm_interface::{Function, FunctionContext, Pointer,  Result as WResult, Value, WordSize};
+use sp_wasm_interface::{Function, Pointer,  Result as WResult, Value, WordSize};
+use cere_wasm_interface::FunctionContext;
 use crate::FunctionExecutor;
 use crate::env as sandbox_env;
 use log::{debug, error, trace};

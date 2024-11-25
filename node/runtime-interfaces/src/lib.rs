@@ -13,6 +13,7 @@ use sp_wasm_interface::Function;
 use wasmi::TableRef;
 use wasmi::MemoryRef;
 use crate::freeing_bump::FreeingBumpHeapAllocator;
+use cere_wasm_interface::*;
 
 /// Something that provides access to the sandbox.
 #[runtime_interface(wasm_only)]
