@@ -145,6 +145,8 @@ pub trait FunctionContext {
 	fn allocate_memory(&mut self, size: WordSize) -> Result<Pointer<u8>>;
 	/// Deallocate a given memory instance.
 	fn deallocate_memory(&mut self, ptr: Pointer<u8>) -> Result<()>;
+	/// Provides access to the sandbox.
+	fn sandbox(&mut self) -> &mut dyn Sandbox;
 	/// Registers a panic error message within the executor.
 	///
 	/// This is meant to be used in situations where the runtime
