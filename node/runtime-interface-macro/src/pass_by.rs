@@ -35,7 +35,6 @@ use sp_wasm_interface::{Pointer, Result};
 #[cfg(feature = "std")]
 use cere_wasm_interface::{FunctionContext};
 
-
 use core::marker::PhantomData;
 
 #[cfg(not(feature = "std"))]

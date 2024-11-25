@@ -115,6 +115,9 @@ extern crate alloc;
 pub use sp_wasm_interface;
 
 #[doc(hidden)]
+pub use cere_wasm_interface;
+
+#[doc(hidden)]
 pub use sp_tracing;
 
 #[doc(hidden)]
