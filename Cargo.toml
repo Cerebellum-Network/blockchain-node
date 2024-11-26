@@ -24,18 +24,28 @@ members = [
   "primitives",
   "runtime/cere",
   "runtime/cere-dev",
+	"node/runtime-interfaces",
+	"node/runtime-interface-macro"
+
 ]
 resolver = "2"
 
 [workspace.dependencies]
 # 3rd-party dependencies
+Inflector = { version = "0.11.4" }
+expander = { version = "2.0.0" }
 blake2 = { version = "0.10.6", default-features = false }
+bytes = { version = "1.4.0", default-features = false }
+impl-trait-for-tuples = { version = "0.2.2" }
+primitive-types = { version = "0.12.1", default-features = false }
 byte-unit = { version = "4.0.19", default-features = false, features = ["u128"] }
 chrono = { version = "0.4.31", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = ["derive", "max-encoded-len"] }
 clap = { version = "4.5.1", features = ["derive"] }
 futures = { version = "0.3.30" }
 hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
+anyhow = { version = "1.0.81", default-features = false }
+wasmtime = { version = "8.0.1", default-features = false }
 hex-literal = { version = "^0.4.1", default-features = false }
 jsonrpsee = { version = "0.24.3", default-features = false, features = ["server"] }
 lazy_static = { version = "1.5.0", default-features = false }
@@ -50,7 +60,14 @@ serde_json = { version = "1.0.128", default-features = false }
 static_assertions = { version = "1.1.0" }
 url = { version = "2.5.2" }
 array-bytes = { version = "6.2.2" }
+rustversion = { version = "1.0.17" }
+trybuild = { version = "1.0.89" }
+polkavm-derive = "0.9.1"
 itertools = { version = "0.13.0", default-features = false, features = ["use_alloc"] }
+proc-macro-crate = { version = "3.0.0" }
+proc-macro2 = { version = "1.0.64" }
+quote = { version = "1.0.37" }
+syn = { version = "2.0.65" }
 
 # Substrate Dependencies
 # Please keey format such that:
@@ -124,6 +141,7 @@ sc-consensus-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git",
 sc-consensus-grandpa-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sc-consensus-slots = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sc-executor = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2409", default-features = false }
+sc-allocator = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2409", default-features = false }
 sc-network = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sc-network-common = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sc-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
@@ -151,11 +169,16 @@ sp-consensus-grandpa-rpc = { git = "https://github.com/paritytech/polkadot-sdk.g
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false, features = ["serde"] }
 sp-inherents = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
+sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
+#sp-runtime-interface-test-wasm = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
+sp-externalities = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-keystore = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-offchain = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-rpc-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
+#sp-runtime-interface = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
+#sp-runtime-interface-proc-macro = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-genesis-builder = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-session = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-staking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
@@ -167,6 +190,7 @@ sp-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk.git", 
 sp-transaction-storage-proof = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-trie = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-version = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
+sp-wasm-interface = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2409", default-features = false }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2409", default-features = false }
 substrate-state-trie-migration-rpc = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2409", default-features = false }
@@ -179,6 +203,8 @@ cere-dev-runtime = { path = "runtime/cere-dev" }
 cere-rpc = { path = "node/rpc" }
 cere-runtime = { path = "runtime/cere" }
 cere-runtime-common = { path = "runtime/common", default-features = false }
+cere-runtime-interfaces = { path = "node/runtime-interfaces" }
+cere-wasm-interface = { path = "node/runtime-interface-macro/cere-wasm-interface"}
 cere-service = { path = "node/service" }
 ddc-primitives = { path = "primitives", default-features = false }
 pallet-chainbridge = { path = "pallets/chainbridge", default-features = false }
@@ -191,6 +217,10 @@ pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
 pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
 pallet-origins = { path = "pallets/origins", default-features = false }
+sp-runtime-interface-macro = { path = "node/runtime-interface-macro", default-features = false  }
+#sp-runtime-interface-test-wasm = { path = "node/runtime-interface-macro/test-wasm", default-features = false, version = "2.0.0"  }
+sp-runtime-interface-proc-macro-local = { path = "node/runtime-interface-macro/proc-macro", default-features = false  }
+#sp-runtime-interface-test-wasm-deprecated = { path = "node/runtime-interface-macro/test-wasm-deprecated" , default-features = false}
 
 [profile.release]
 panic = "unwind"

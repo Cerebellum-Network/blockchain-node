@@ -1,0 +1,34 @@
+[package]
+name = "cere-runtime-interfaces"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+[dependencies]
+codec = { workspace = true }
+sp-runtime = { workspace = true }
+sp-runtime-interface-macro = { workspace = true }
+sp-runtime-interface-proc-macro-local = { workspace = true }
+sp-wasm-interface = { workspace = true }
+cere-wasm-interface = { workspace = true }
+sp-std = { workspace = true }
+sp-core = { workspace = true }
+sc-allocator = { workspace = true }
+sc-executor = { workspace = true }
+wasmi = "0.13"
+environmental = "1.1.3"
+log = {workspace = true}
+thiserror = { version = "1.0.48" }
+
+
+[features]
+default = [ "std" ]
+std = [
+	"sp-runtime/std",
+	"sp-runtime-interface-macro/std",
+	"sp-wasm-interface/std",
+	"cere-wasm-interface/std",
+]

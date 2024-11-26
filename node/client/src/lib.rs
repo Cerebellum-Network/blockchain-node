@@ -20,11 +20,11 @@ use sp_storage::{ChildInfo, StorageData, StorageKey};
 pub type FullBackend = sc_service::TFullBackend<Block>;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
-pub type HostFunctions = sp_io::SubstrateHostFunctions;
+pub type HostFunctions = (sp_io::SubstrateHostFunctions,cere_runtime_interfaces::sandbox::HostFunctions);
 
 #[cfg(feature = "runtime-benchmarks")]
 pub type HostFunctions =
-	(sp_io::SubstrateHostFunctions, frame_benchmarking::benchmarking::HostFunctions);
+	(sp_io::SubstrateHostFunctions, frame_benchmarking::benchmarking::HostFunctions,cere_runtime_interfaces::sandbox::HostFunctions);
 
 pub type ChainExecutor = WasmExecutor<HostFunctions>;
 pub type FullClient<RuntimeApi> = sc_service::TFullClient<Block, RuntimeApi, ChainExecutor>;
