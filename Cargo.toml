@@ -54,6 +54,7 @@ url = { version = "2.5.2" }
 array-bytes = { version = "6.2.2" }
 itertools = { version = "0.13.0", default-features = false, features = ["use_alloc"] }
 
+
 # Substrate Dependencies
 # Please keey format such that:
 # dependency-name = { git = "X", tag = "Y", default-features = false }
@@ -178,6 +179,7 @@ substrate-frame-rpc-system = { git = "https://github.com/paritytech/polkadot-sdk
 substrate-state-trie-migration-rpc = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2409", default-features = false }
 substrate-test-utils = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2409", default-features = false }
 substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2409", default-features = false }
+sp-externalities = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2409", default-features = false }
 
 # Cere Dependenies
 cere-client = { path = "node/client" }

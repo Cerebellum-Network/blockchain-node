@@ -160,28 +160,19 @@ pub trait Sandbox {
 	/// Delete a sandbox instance.
 	fn instance_teardown(&mut self, instance_id: u32) -> WResult<()>;
 	/// Create a new sandbox instance.
-	// fn instance_new(
-	// 	&mut self,
-	// 	dispatch_thunk_id: u32,
-	// 	wasm: &[u8],
-	// 	raw_env_def: &[u8],
-	// 	state: u32,
-	// ) -> Result<u32>;
+	fn instance_new(
+		&mut self,
+		dispatch_thunk_id: u32,
+		wasm: &[u8],
+		raw_env_def: &[u8],
+		state: u32,
+	) -> WResult<u32>;
 
 	/// Get the value from a global with the given `name`. The sandbox is determined by the
 	/// given `instance_idx` instance.
 	///
 	/// Returns `Some(_)` when the requested global variable could be found.
 	fn get_global_val(&self, instance_idx: u32, name: &str) -> WResult<Option<Value>>;
-
-	/// Instantiate a new sandbox instance with the given `wasm_code`.
-	fn instantiate(
-		&mut self,
-		dispatch_thunk: u32,
-		wasm_code: &[u8],
-		env_def: &[u8],
-		state_ptr: Pointer<u8>,
-	) -> u32;
 }
 
 impl Sandbox for FunctionExecutor {
@@ -302,48 +293,48 @@ impl Sandbox for FunctionExecutor {
 			.map_err(|e| e.to_string())
 	}
 
-	// fn instance_new(
-	// 	&mut self,
-	// 	dispatch_thunk_id: u32,
-	// 	wasm: &[u8],
-	// 	raw_env_def: &[u8],
-	// 	state: u32,
-	// ) -> WResult<u32> {
-	// 	// Extract a dispatch thunk from instance's table by the specified index.
-	// 	let dispatch_thunk = {
-	// 		let table = self
-	// 			.table
-	// 			.as_ref()
-	// 			.ok_or("Runtime doesn't have a table; sandbox is unavailable")?;
-	// 		table
-	// 			.get(dispatch_thunk_id)
-	// 			.map_err(|_| "dispatch_thunk_idx is out of the table bounds")?
-	// 			.ok_or("dispatch_thunk_idx points on an empty table entry")?
-	// 	};
-	//
-	// 	let guest_env =
-	// 		match sandbox::GuestEnvironment::decode(&*self.sandbox_store.borrow(), raw_env_def) {
-	// 			Ok(guest_env) => guest_env,
-	// 			Err(_) => return Ok(sandbox_env::ERR_MODULE as u32),
-	// 		};
-	//
-	// 	let store = self.sandbox_store.clone();
-	// 	let result = store.borrow_mut().instantiate(
-	// 		wasm,
-	// 		guest_env,
-	// 		state,
-	// 		&mut SandboxContext { executor: self, dispatch_thunk: dispatch_thunk.clone() },
-	// 	);
-	//
-	// 	let instance_idx_or_err_code =
-	// 		match result.map(|i| i.register(&mut store.borrow_mut(), dispatch_thunk)) {
-	// 			Ok(instance_idx) => instance_idx,
-	// 			Err(sandbox::InstantiationError::StartTrapped) => sandbox_env::ERR_EXECUTION,
-	// 			Err(_) => sandbox_env::ERR_MODULE,
-	// 		};
-	//
-	// 	Ok(instance_idx_or_err_code)
-	// }
+	fn instance_new(
+		&mut self,
+		dispatch_thunk_id: u32,
+		wasm: &[u8],
+		raw_env_def: &[u8],
+		state: u32,
+	) -> WResult<u32> {
+		// Extract a dispatch thunk from instance's table by the specified index.
+		let dispatch_thunk = {
+			let table = self
+				.table
+				.as_ref()
+				.ok_or("Runtime doesn't have a table; sandbox is unavailable")?;
+			table
+				.get(dispatch_thunk_id)
+				.map_err(|_| "dispatch_thunk_idx is out of the table bounds")?
+				.ok_or("dispatch_thunk_idx points on an empty table entry")?
+		};
+
+		let guest_env =
+			match sandbox::GuestEnvironment::decode(&*self.sandbox_store.borrow(), raw_env_def) {
+				Ok(guest_env) => guest_env,
+				Err(_) => return Ok(sandbox_env::ERR_MODULE as u32),
+			};
+
+		let store = self.sandbox_store.clone();
+		let result = store.borrow_mut().instantiate(
+			wasm,
+			guest_env,
+			state,
+			&mut SandboxContext { executor: self, dispatch_thunk: dispatch_thunk.clone() },
+		);
+
+		let instance_idx_or_err_code =
+			match result.map(|i| i.register(&mut store.borrow_mut(), dispatch_thunk)) {
+				Ok(instance_idx) => instance_idx,
+				Err(sandbox::InstantiationError::StartTrapped) => sandbox_env::ERR_EXECUTION,
+				Err(_) => sandbox_env::ERR_MODULE,
+			};
+
+		Ok(instance_idx_or_err_code)
+	}
 
 	fn get_global_val(
 		&self,
@@ -355,16 +346,5 @@ impl Sandbox for FunctionExecutor {
 			.instance(instance_idx)
 			.map(|i| i.get_global_val(name))
 			.map_err(|e| e.to_string())
-	}
-
-	/// Instantiate a new sandbox instance with the given `wasm_code`.
-	fn instantiate(
-		&mut self,
-		dispatch_thunk: u32,
-		wasm_code: &[u8],
-		env_def: &[u8],
-		state_ptr: Pointer<u8>,
-	) -> u32 {
-		return 0;
 	}
 }

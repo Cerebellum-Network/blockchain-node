@@ -1153,6 +1153,7 @@ dependencies = [
  "sc-allocator",
  "sc-executor",
  "sp-core",
+ "sp-externalities",
  "sp-runtime",
  "sp-runtime-interface",
  "sp-runtime-interface-proc-macro",
