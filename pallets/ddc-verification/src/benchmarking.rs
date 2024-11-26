@@ -1,18 +1,19 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use ddc_primitives::{
-	ActivityHash, BillingReportParams, BucketId, BucketParams, ClusterId, ClusterParams,
-	ClusterProtocolParams, CustomerCharge, EraValidation, EraValidationStatus, MergeActivityHash,
-	NodeParams, NodePubKey, PayoutState, StorageNodeMode, StorageNodeParams, AVG_SECONDS_MONTH,
-	DOLLARS as CERE, MAX_PAYOUT_BATCH_SIZE,
+	BillingFingerprintParams, BillingReportParams, BucketId, BucketParams, ClusterId,
+	ClusterParams, ClusterProtocolParams, CustomerCharge, DeltaUsageHash, EraValidation,
+	EraValidationStatus, MergeMMRHash, NodeParams, NodePubKey, NodeUsage, PayoutState,
+	StorageNodeMode, StorageNodeParams, AVG_SECONDS_MONTH, DOLLARS as CERE, MAX_PAYOUT_BATCH_SIZE,
 };
 use frame_benchmarking::{account, v2::*, whitelist_account};
 use frame_system::RawOrigin;
+use sp_core::H256;
 use sp_io::hashing::{blake2_128, blake2_256};
 use sp_runtime::{
 	traits::AccountIdConversion, AccountId32, Perquintill, SaturatedConversion, Saturating,
 };
-use sp_std::vec;
+use sp_std::{collections::btree_set::BTreeSet, vec};
 
 use super::*;
 use crate::EraActivity;
@@ -104,8 +105,8 @@ mod benchmarks {
 		cluster_id: ClusterId,
 		era_id: DdcEra,
 		validators: Vec<T::AccountId>,
-		payers_merkle_root_hash: ActivityHash,
-		payees_merkle_root_hash: ActivityHash,
+		payers_merkle_root_hash: DeltaUsageHash,
+		payees_merkle_root_hash: DeltaUsageHash,
 		status: EraValidationStatus,
 	) {
 		let mut validations_map = BTreeMap::new();
@@ -140,11 +141,14 @@ mod benchmarks {
 		state: PayoutState,
 		total_customer_charge: CustomerCharge,
 		total_distributed_reward: u128,
-		total_node_usage: NodeUsage,
+		cluster_usage: NodeUsage,
 		charging_max_batch_index: BatchIndex,
 		charging_processed_batches: Vec<BatchIndex>,
 		rewarding_max_batch_index: BatchIndex,
 		rewarding_processed_batches: Vec<BatchIndex>,
+		payers_merkle_root: H256,
+		payees_merkle_root: H256,
+		validators: Vec<T::AccountId>,
 	) {
 		let hash = blake2_128(&0.encode());
 		let vault = T::PalletId::get().into_sub_account_truncating(hash);
@@ -156,17 +160,32 @@ mod benchmarks {
 
 		endow_account::<T>(&vault, total_customer_charge_amount);
 
+		let mut validators_set = BTreeSet::new();
+		for validator in validators {
+			validators_set.insert(validator);
+		}
+
+		let fingerprint =
+			T::PayoutProcessor::create_billing_fingerprint(BillingFingerprintParams {
+				cluster_id,
+				era: era_id,
+				start_era,
+				end_era,
+				payers_merkle_root,
+				payees_merkle_root,
+				cluster_usage,
+				validators: validators_set,
+			});
+
 		T::PayoutProcessor::create_billing_report(
 			vault.clone(),
 			BillingReportParams {
 				cluster_id,
 				era: era_id,
-				start_era,
-				end_era,
 				state,
+				fingerprint,
 				total_customer_charge,
 				total_distributed_reward,
-				total_node_usage,
 				charging_max_batch_index,
 				charging_processed_batches,
 				rewarding_max_batch_index,
@@ -181,22 +200,22 @@ mod benchmarks {
 		let cluster_id = ClusterId::from([1; 20]);
 		let era = EraActivity { id: 1, start: 1000, end: 2000 };
 
-		let payers_merkle_root_hash = blake2_256(&1.encode());
-		let payees_merkle_root_hash = blake2_256(&2.encode());
+		let payers_merkle_root_hash = H256(blake2_256(&1.encode()));
+		let payees_merkle_root_hash = H256(blake2_256(&2.encode()));
 
 		let mut payers_batch_merkle_root_hashes = vec![];
 		let mut payees_batch_merkle_root_hashes = vec![];
 
 		for i in 0..b {
-			payers_batch_merkle_root_hashes.push(blake2_256(&(i + 10).encode()));
-			payees_batch_merkle_root_hashes.push(blake2_256(&(i + 100).encode()))
+			payers_batch_merkle_root_hashes.push(H256(blake2_256(&(i + 10).encode())));
+			payees_batch_merkle_root_hashes.push(H256(blake2_256(&(i + 100).encode())))
 		}
 
 		#[extrinsic_call]
 		set_prepare_era_for_payout(
 			RawOrigin::Signed(validator),
 			cluster_id,
-			era.clone(),
+			era,
 			payers_merkle_root_hash,
 			payees_merkle_root_hash,
 			payers_batch_merkle_root_hashes,
@@ -227,6 +246,44 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	fn commit_billing_fingerprint() {
+		let cluster_id = ClusterId::from([1; 20]);
+		let era_id: DdcEra = 1;
+		let start_era: i64 = 1_000_000_000;
+		let end_era: i64 = start_era + AVG_SECONDS_MONTH;
+		let payers_merkle_root = H256(blake2_256(&3.encode()));
+		let payees_merkle_root = H256(blake2_256(&4.encode()));
+		let cluster_usage = NodeUsage::default();
+
+		create_default_cluster::<T>(cluster_id);
+		let validator = create_validator_account::<T>();
+		whitelist_account!(validator);
+		setup_validation_era::<T>(
+			cluster_id,
+			era_id,
+			vec![validator.clone()],
+			H256(blake2_256(&1.encode())),
+			H256(blake2_256(&2.encode())),
+			EraValidationStatus::ReadyForPayout,
+		);
+
+		#[extrinsic_call]
+		commit_billing_fingerprint(
+			RawOrigin::Signed(validator),
+			cluster_id,
+			era_id,
+			start_era,
+			end_era,
+			payers_merkle_root,
+			payees_merkle_root,
+			cluster_usage,
+		);
+
+		let status = T::PayoutProcessor::get_billing_report_status(&cluster_id, era_id);
+		assert_eq!(status, PayoutState::NotInitialized);
+	}
+
+	#[benchmark]
 	fn begin_billing_report() {
 		let cluster_id = ClusterId::from([1; 20]);
 		let era_id: DdcEra = 1;
@@ -240,13 +297,28 @@ mod benchmarks {
 			cluster_id,
 			era_id,
 			vec![validator.clone()],
-			blake2_256(&1.encode()),
-			blake2_256(&2.encode()),
+			H256(blake2_256(&1.encode())),
+			H256(blake2_256(&2.encode())),
 			EraValidationStatus::ReadyForPayout,
 		);
 
+		let mut validators = BTreeSet::new();
+		validators.insert(validator.clone());
+
+		let fingerprint =
+			T::PayoutProcessor::create_billing_fingerprint(BillingFingerprintParams {
+				cluster_id,
+				era: era_id,
+				start_era,
+				end_era,
+				payers_merkle_root: H256(blake2_256(&3.encode())),
+				payees_merkle_root: H256(blake2_256(&4.encode())),
+				cluster_usage: NodeUsage::default(),
+				validators,
+			});
+
 		#[extrinsic_call]
-		begin_billing_report(RawOrigin::Signed(validator), cluster_id, era_id, start_era, end_era);
+		begin_billing_report(RawOrigin::Signed(validator), cluster_id, era_id, fingerprint);
 
 		let status = T::PayoutProcessor::get_billing_report_status(&cluster_id, era_id);
 		assert_eq!(status, PayoutState::Initialized);
@@ -261,11 +333,13 @@ mod benchmarks {
 		let state = PayoutState::Initialized;
 		let total_customer_charge = Default::default();
 		let total_distributed_reward: u128 = 0;
-		let total_node_usage = Default::default();
+		let cluster_usage = Default::default();
 		let charging_max_batch_index = 10;
 		let charging_processed_batches = Default::default();
 		let rewarding_max_batch_index = Default::default();
 		let rewarding_processed_batches = Default::default();
+		let payers_merkle_root = H256(blake2_256(&3.encode()));
+		let payees_merkle_root = H256(blake2_256(&4.encode()));
 
 		create_default_cluster::<T>(cluster_id);
 
@@ -276,10 +350,11 @@ mod benchmarks {
 			cluster_id,
 			era_id,
 			vec![validator.clone()],
-			blake2_256(&1.encode()),
-			blake2_256(&2.encode()),
+			H256(blake2_256(&1.encode())),
+			H256(blake2_256(&2.encode())),
 			EraValidationStatus::ReadyForPayout,
 		);
+
 		create_billing_report::<T>(
 			cluster_id,
 			era_id,
@@ -288,11 +363,14 @@ mod benchmarks {
 			state,
 			total_customer_charge,
 			total_distributed_reward,
-			total_node_usage,
+			cluster_usage,
 			charging_max_batch_index,
 			charging_processed_batches,
 			rewarding_max_batch_index,
 			rewarding_processed_batches,
+			payers_merkle_root,
+			payees_merkle_root,
+			vec![validator.clone()],
 		);
 
 		#[extrinsic_call]
@@ -316,7 +394,7 @@ mod benchmarks {
 		let state = PayoutState::ChargingCustomers;
 		let total_customer_charge = Default::default();
 		let total_distributed_reward: u128 = 0;
-		let total_node_usage = Default::default();
+		let cluster_usage = Default::default();
 		let charging_max_batch_index = 0;
 		let charging_processed_batches = Default::default();
 		let rewarding_max_batch_index = Default::default();
@@ -328,7 +406,7 @@ mod benchmarks {
 		whitelist_account!(validator);
 
 		let batch_index: BatchIndex = 0;
-		let mut payers_batch: Vec<(NodePubKey, BucketId, BucketUsage)> = vec![];
+		let mut payers_batch: Vec<(BucketId, BucketUsage)> = vec![];
 		for i in 0..b {
 			let customer = create_account::<T>("customer", i, i);
 
@@ -348,11 +426,6 @@ mod benchmarks {
 			};
 
 			let bucket_id: BucketId = (i + 1).into();
-			let node_key = NodePubKey::StoragePubKey(AccountId32::from([
-				48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116,
-				66, 235, 212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-			]));
-
 			T::BucketManager::create_bucket(
 				&cluster_id,
 				bucket_id,
@@ -361,27 +434,25 @@ mod benchmarks {
 			)
 			.expect("Bucket to be created");
 
-			payers_batch.push((node_key, bucket_id, customer_usage));
+			payers_batch.push((bucket_id, customer_usage));
 		}
 
 		let activity_hashes = payers_batch
 			.clone()
 			.into_iter()
-			.map(|(node_key, bucket_id, usage)| {
+			.map(|(bucket_id, usage)| {
 				let mut data = bucket_id.encode();
-				let node_id = format!("0x{}", node_key.get_hex());
-				data.extend_from_slice(&node_id.encode());
 				data.extend_from_slice(&usage.stored_bytes.encode());
 				data.extend_from_slice(&usage.transferred_bytes.encode());
 				data.extend_from_slice(&usage.number_of_puts.encode());
 				data.extend_from_slice(&usage.number_of_gets.encode());
-				sp_io::hashing::blake2_256(&data)
+				H256(blake2_256(&data))
 			})
 			.collect::<Vec<_>>();
 
 		let store1 = MemStore::default();
-		let mut mmr1: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
-			MemMMR::<ActivityHash, MergeActivityHash>::new(0, &store1);
+		let mut mmr1: MMR<DeltaUsageHash, MergeMMRHash, &MemStore<DeltaUsageHash>> =
+			MemMMR::<DeltaUsageHash, MergeMMRHash>::new(0, &store1);
 		for activity_hash in activity_hashes {
 			let _pos: u64 = mmr1.push(activity_hash).unwrap();
 		}
@@ -389,21 +460,21 @@ mod benchmarks {
 		let batch_root = mmr1.get_root().unwrap();
 
 		let store2 = MemStore::default();
-		let mut mmr2: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
-			MemMMR::<ActivityHash, MergeActivityHash>::new(0, &store2);
+		let mut mmr2: MMR<DeltaUsageHash, MergeMMRHash, &MemStore<DeltaUsageHash>> =
+			MemMMR::<DeltaUsageHash, MergeMMRHash>::new(0, &store2);
 		let pos = mmr2.push(batch_root).unwrap();
 		let payers_merkle_root_hash = mmr2.get_root().unwrap();
 
 		let proof = mmr2.gen_proof(vec![pos]).unwrap().proof_items().to_vec();
 
-		let payees_merkle_root_hash = ActivityHash::default();
+		let payees_merkle_root_hash = DeltaUsageHash::default();
 
 		setup_validation_era::<T>(
 			cluster_id,
 			era_id,
 			vec![validator.clone()],
-			payers_merkle_root_hash,
-			payees_merkle_root_hash,
+			H256(blake2_256(&1.encode())),
+			H256(blake2_256(&2.encode())),
 			EraValidationStatus::PayoutInProgress,
 		);
 
@@ -415,11 +486,14 @@ mod benchmarks {
 			state,
 			total_customer_charge,
 			total_distributed_reward,
-			total_node_usage,
+			cluster_usage,
 			charging_max_batch_index,
 			charging_processed_batches,
 			rewarding_max_batch_index,
 			rewarding_processed_batches,
+			payers_merkle_root_hash,
+			payees_merkle_root_hash,
+			vec![validator.clone()],
 		);
 
 		#[extrinsic_call]
@@ -451,11 +525,13 @@ mod benchmarks {
 			puts: 5 * CERE,       // price for 5 puts
 		};
 		let total_distributed_reward: u128 = 0;
-		let total_node_usage = Default::default();
+		let cluster_usage = Default::default();
 		let charging_max_batch_index = 0;
 		let charging_processed_batches = vec![0];
 		let rewarding_max_batch_index = Default::default();
 		let rewarding_processed_batches = Default::default();
+		let payers_merkle_root = H256(blake2_256(&3.encode()));
+		let payees_merkle_root = H256(blake2_256(&4.encode()));
 
 		create_default_cluster::<T>(cluster_id);
 		let validator = create_validator_account::<T>();
@@ -465,8 +541,8 @@ mod benchmarks {
 			cluster_id,
 			era_id,
 			vec![validator.clone()],
-			blake2_256(&1.encode()),
-			blake2_256(&2.encode()),
+			H256(blake2_256(&1.encode())),
+			H256(blake2_256(&2.encode())),
 			EraValidationStatus::PayoutInProgress,
 		);
 		create_billing_report::<T>(
@@ -477,11 +553,14 @@ mod benchmarks {
 			state,
 			total_customer_charge.clone(),
 			total_distributed_reward,
-			total_node_usage,
+			cluster_usage,
 			charging_max_batch_index,
 			charging_processed_batches,
 			rewarding_max_batch_index,
 			rewarding_processed_batches,
+			payers_merkle_root,
+			payees_merkle_root,
+			vec![validator.clone()],
 		);
 
 		#[extrinsic_call]
@@ -506,11 +585,13 @@ mod benchmarks {
 			puts: 5 * CERE,       // price for 5 puts
 		};
 		let total_distributed_reward: u128 = 0;
-		let total_node_usage = Default::default();
+		let cluster_usage = Default::default();
 		let charging_max_batch_index = 0;
 		let charging_processed_batches = vec![0];
 		let rewarding_max_batch_index = 10;
 		let rewarding_processed_batches = Default::default();
+		let payers_merkle_root = H256(blake2_256(&3.encode()));
+		let payees_merkle_root = H256(blake2_256(&4.encode()));
 
 		create_default_cluster::<T>(cluster_id);
 		let validator = create_validator_account::<T>();
@@ -520,8 +601,8 @@ mod benchmarks {
 			cluster_id,
 			era_id,
 			vec![validator.clone()],
-			blake2_256(&1.encode()),
-			blake2_256(&2.encode()),
+			H256(blake2_256(&1.encode())),
+			H256(blake2_256(&2.encode())),
 			EraValidationStatus::PayoutInProgress,
 		);
 		create_billing_report::<T>(
@@ -532,19 +613,15 @@ mod benchmarks {
 			state,
 			total_customer_charge,
 			total_distributed_reward,
-			total_node_usage,
+			cluster_usage,
 			charging_max_batch_index,
 			charging_processed_batches,
 			rewarding_max_batch_index,
 			rewarding_processed_batches,
+			payers_merkle_root,
+			payees_merkle_root,
+			vec![validator.clone()],
 		);
-
-		let total_node_usage = NodeUsage {
-			transferred_bytes: 200000000, // 200 mb
-			stored_bytes: 100000000,      // 100 mb
-			number_of_gets: 10,           // 10 gets
-			number_of_puts: 5,            // 5 puts
-		};
 
 		#[extrinsic_call]
 		begin_rewarding_providers(
@@ -552,7 +629,6 @@ mod benchmarks {
 			cluster_id,
 			era_id,
 			rewarding_max_batch_index,
-			total_node_usage,
 		);
 
 		let status = T::PayoutProcessor::get_billing_report_status(&cluster_id, era_id);
@@ -573,7 +649,7 @@ mod benchmarks {
 			puts: (5 * CERE).saturating_mul(b.into()),       // price for 5 puts per customer
 		};
 		let total_distributed_reward: u128 = 0;
-		let total_node_usage = NodeUsage {
+		let cluster_usage = NodeUsage {
 			transferred_bytes: 200000000u64.saturating_mul(b.into()), // 200 mb per provider
 			stored_bytes: 100000000i64.saturating_mul(b.into()),      // 100 mb per provider
 			number_of_gets: 10u64.saturating_mul(b.into()),           // 10 gets per provider
@@ -603,7 +679,7 @@ mod benchmarks {
 				number_of_puts: 5,            // 5 puts
 			};
 
-			let key = sp_io::hashing::blake2_256(&i.encode());
+			let key = blake2_256(&i.encode());
 			let node_key = NodePubKey::StoragePubKey(AccountId32::from(key));
 
 			T::NodeManager::create_node(
@@ -628,18 +704,18 @@ mod benchmarks {
 			.clone()
 			.into_iter()
 			.map(|(node_key, usage)| {
-				let mut data = format!("0x{}", node_key.get_hex()).encode();
+				let mut data = node_key.encode();
 				data.extend_from_slice(&usage.stored_bytes.encode());
 				data.extend_from_slice(&usage.transferred_bytes.encode());
 				data.extend_from_slice(&usage.number_of_puts.encode());
 				data.extend_from_slice(&usage.number_of_gets.encode());
-				sp_io::hashing::blake2_256(&data)
+				H256(blake2_256(&data))
 			})
 			.collect::<Vec<_>>();
 
 		let store1 = MemStore::default();
-		let mut mmr1: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
-			MemMMR::<ActivityHash, MergeActivityHash>::new(0, &store1);
+		let mut mmr1: MMR<DeltaUsageHash, MergeMMRHash, &MemStore<DeltaUsageHash>> =
+			MemMMR::<DeltaUsageHash, MergeMMRHash>::new(0, &store1);
 		for activity_hash in activity_hashes {
 			let _pos: u64 = mmr1.push(activity_hash).unwrap();
 		}
@@ -647,12 +723,12 @@ mod benchmarks {
 		let batch_root = mmr1.get_root().unwrap();
 
 		let store2 = MemStore::default();
-		let mut mmr2: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
-			MemMMR::<ActivityHash, MergeActivityHash>::new(0, &store2);
+		let mut mmr2: MMR<DeltaUsageHash, MergeMMRHash, &MemStore<DeltaUsageHash>> =
+			MemMMR::<DeltaUsageHash, MergeMMRHash>::new(0, &store2);
 		let pos = mmr2.push(batch_root).unwrap();
 		let payees_merkle_root_hash = mmr2.get_root().unwrap();
 
-		let payers_merkle_root_hash = ActivityHash::default();
+		let payers_merkle_root_hash = DeltaUsageHash::default();
 
 		let proof = mmr2.gen_proof(vec![pos]).unwrap().proof_items().to_vec();
 
@@ -660,8 +736,8 @@ mod benchmarks {
 			cluster_id,
 			era_id,
 			vec![validator.clone()],
-			payers_merkle_root_hash,
-			payees_merkle_root_hash,
+			H256(blake2_256(&1.encode())),
+			H256(blake2_256(&2.encode())),
 			EraValidationStatus::PayoutInProgress,
 		);
 
@@ -673,11 +749,14 @@ mod benchmarks {
 			state,
 			total_customer_charge,
 			total_distributed_reward,
-			total_node_usage,
+			cluster_usage,
 			charging_max_batch_index,
 			charging_processed_batches,
 			rewarding_max_batch_index,
 			rewarding_processed_batches,
+			payers_merkle_root_hash,
+			payees_merkle_root_hash,
+			vec![validator.clone()],
 		);
 
 		#[extrinsic_call]
@@ -712,7 +791,7 @@ mod benchmarks {
 			total_customer_charge.storage +
 			total_customer_charge.gets +
 			total_customer_charge.puts;
-		let total_node_usage = NodeUsage {
+		let cluster_usage = NodeUsage {
 			transferred_bytes: 200000000, // 200 mb
 			stored_bytes: 100000000,      // 100 mb
 			number_of_gets: 10,           // 10 gets
@@ -722,6 +801,8 @@ mod benchmarks {
 		let charging_processed_batches = vec![0];
 		let rewarding_max_batch_index = 0;
 		let rewarding_processed_batches = vec![0];
+		let payers_merkle_root = H256(blake2_256(&3.encode()));
+		let payees_merkle_root = H256(blake2_256(&4.encode()));
 
 		create_default_cluster::<T>(cluster_id);
 		let validator = create_validator_account::<T>();
@@ -731,8 +812,8 @@ mod benchmarks {
 			cluster_id,
 			era_id,
 			vec![validator.clone()],
-			blake2_256(&1.encode()),
-			blake2_256(&2.encode()),
+			H256(blake2_256(&1.encode())),
+			H256(blake2_256(&2.encode())),
 			EraValidationStatus::PayoutInProgress,
 		);
 		create_billing_report::<T>(
@@ -743,11 +824,14 @@ mod benchmarks {
 			state,
 			total_customer_charge.clone(),
 			total_distributed_reward,
-			total_node_usage,
+			cluster_usage,
 			charging_max_batch_index,
 			charging_processed_batches,
 			rewarding_max_batch_index,
 			rewarding_processed_batches,
+			payers_merkle_root,
+			payees_merkle_root,
+			vec![validator.clone()],
 		);
 
 		#[extrinsic_call]
@@ -774,7 +858,7 @@ mod benchmarks {
 			total_customer_charge.storage +
 			total_customer_charge.gets +
 			total_customer_charge.puts;
-		let total_node_usage = NodeUsage {
+		let cluster_usage = NodeUsage {
 			transferred_bytes: 200000000, // 200 mb
 			stored_bytes: 100000000,      // 100 mb
 			number_of_gets: 10,           // 10 gets
@@ -784,6 +868,8 @@ mod benchmarks {
 		let charging_processed_batches = vec![0];
 		let rewarding_max_batch_index = 0;
 		let rewarding_processed_batches = vec![0];
+		let payers_merkle_root = H256(blake2_256(&3.encode()));
+		let payees_merkle_root = H256(blake2_256(&4.encode()));
 
 		create_default_cluster::<T>(cluster_id);
 		let validator = create_validator_account::<T>();
@@ -793,8 +879,8 @@ mod benchmarks {
 			cluster_id,
 			era_id,
 			vec![validator.clone()],
-			blake2_256(&1.encode()),
-			blake2_256(&2.encode()),
+			H256(blake2_256(&1.encode())),
+			H256(blake2_256(&2.encode())),
 			EraValidationStatus::PayoutInProgress,
 		);
 		create_billing_report::<T>(
@@ -805,11 +891,14 @@ mod benchmarks {
 			state,
 			total_customer_charge.clone(),
 			total_distributed_reward,
-			total_node_usage,
+			cluster_usage,
 			charging_max_batch_index,
 			charging_processed_batches,
 			rewarding_max_batch_index,
 			rewarding_processed_batches,
+			payers_merkle_root,
+			payees_merkle_root,
+			vec![validator.clone()],
 		);
 
 		#[extrinsic_call]

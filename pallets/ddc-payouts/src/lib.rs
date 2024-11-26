@@ -25,10 +25,11 @@ use ddc_primitives::{
 	traits::{
 		bucket::BucketManager, cluster::ClusterProtocol as ClusterProtocolType,
 		customer::CustomerCharger as CustomerChargerType, node::NodeManager,
-		pallet::PalletVisitor as PalletVisitorType, payout::PayoutProcessor,
+		pallet::PalletVisitor as PalletVisitorType, payout::PayoutProcessor, ClusterValidator,
 	},
-	BatchIndex, BillingReportParams, BucketId, BucketUsage, ClusterId, CustomerCharge, DdcEra,
-	MMRProof, NodePubKey, NodeUsage, PayoutError, PayoutState, ProviderReward,
+	BatchIndex, BillingFingerprintParams, BillingReportParams, BucketId, BucketUsage, ClusterId,
+	CustomerCharge, DdcEra, Fingerprint, MMRProof, MergeMMRHash, NodePubKey, NodeUsage,
+	PayableUsageHash, PayoutError, PayoutState, ProviderReward, AVG_SECONDS_MONTH,
 	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
@@ -36,15 +37,23 @@ use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	sp_runtime::SaturatedConversion,
-	traits::{Currency, ExistenceRequirement, LockableCurrency},
+	traits::{Currency, ExistenceRequirement, Get, LockableCurrency},
 	BoundedBTreeSet,
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
+use polkadot_ckb_merkle_mountain_range::{
+	helper::{leaf_index_to_mmr_size, leaf_index_to_pos},
+	util::{MemMMR, MemStore},
+	MerkleProof, MMR,
+};
 use scale_info::prelude::string::String;
-use sp_runtime::{traits::Convert, AccountId32, PerThing, Perquintill};
-use sp_std::prelude::*;
-
+use sp_core::H256;
+use sp_runtime::{
+	traits::{Convert, Hash},
+	AccountId32, PerThing, Percent, Perquintill,
+};
+use sp_std::{collections::btree_set::BTreeSet, prelude::*};
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct BillingReportDebt {
 	pub cluster_id: ClusterId,
@@ -70,7 +79,7 @@ parameter_types! {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use ddc_primitives::traits::ValidatorVisitor;
+	use ddc_primitives::{traits::ValidatorVisitor, ClusterPricingParams};
 	use frame_support::PalletId;
 	use sp_io::hashing::blake2_128;
 	use sp_runtime::traits::{AccountIdConversion, Zero};
@@ -79,7 +88,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(1);
+		frame_support::traits::StorageVersion::new(2);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -101,6 +110,10 @@ pub mod pallet {
 		type VoteScoreToU64: Convert<VoteScoreOf<Self>, u64>;
 		type ValidatorVisitor: ValidatorVisitor<Self>;
 		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
+		type Hasher: Hash<Output = H256>;
+		type ClusterValidator: ClusterValidator<Self>;
+		#[pallet::constant]
+		type ValidatorsQuorum: Get<Percent>;
 	}
 
 	#[pallet::event]
@@ -206,6 +219,15 @@ pub mod pallet {
 			amount: u128,
 			error: DispatchError,
 		},
+		BillingFingerprintCommited {
+			validator_id: T::AccountId,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			start_era: i64,
+			end_era: i64,
+			payers_merkle_root: PayableUsageHash,
+			payees_merkle_root: PayableUsageHash,
+		},
 	}
 
 	#[pallet::error]
@@ -231,6 +253,11 @@ pub mod pallet {
 		IncorrectClusterId,
 		ClusterProtocolParamsNotSet,
 		TotalStoredBytesLessThanZero,
+		BillingFingerprintIsCommitted,
+		BillingFingerprintDoesNotExist,
+		NoQuorumOnBillingFingerprint,
+		FailedToCreateMerkleRoot,
+		FailedToVerifyMerkleProof,
 	}
 
 	#[pallet::storage]
@@ -254,16 +281,16 @@ pub mod pallet {
 	pub type OwingProviders<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
 
+	/// The Billing report is used as a synchronization object during the multi-step payout process
+	/// and contains overall information about the payout for a cluster in an era.
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	#[scale_info(skip_type_params(T))]
 	pub struct BillingReport<T: Config> {
 		pub state: PayoutState,
 		pub vault: T::AccountId,
-		pub start_era: i64,
-		pub end_era: i64,
+		pub fingerprint: Fingerprint,
 		pub total_customer_charge: CustomerCharge,
 		pub total_distributed_reward: u128,
-		pub total_node_usage: NodeUsage,
 		// stage 1
 		pub charging_max_batch_index: BatchIndex,
 		pub charging_processed_batches: BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
@@ -277,11 +304,9 @@ pub mod pallet {
 			Self {
 				state: PayoutState::default(),
 				vault: T::PalletId::get().into_account_truncating(),
-				start_era: Zero::zero(),
-				end_era: Zero::zero(),
+				fingerprint: Default::default(),
 				total_customer_charge: CustomerCharge::default(),
 				total_distributed_reward: Zero::zero(),
-				total_node_usage: NodeUsage::default(),
 				charging_max_batch_index: Zero::zero(),
 				charging_processed_batches: BoundedBTreeSet::default(),
 				rewarding_max_batch_index: Zero::zero(),
@@ -303,6 +328,43 @@ pub mod pallet {
 		ProvidersRewarded = 6,
 		Finalized = 7,
 	}
+
+	/// Billing fingerprint includes payment-sensitive data used to validate the payouts for a
+	/// cluster in an era. The required quorum of validators must agree on the same payout
+	/// fingerprint and commit it to let the payout process begin. The `payers_merkle_root` and
+	/// `payees_merkle_root` hashes are being used to verify batches of customers and providers
+	/// during the payout.
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+	pub struct BillingFingerprint<AccountId> {
+		pub cluster_id: ClusterId,
+		pub era_id: DdcEra,
+		pub start_era: i64,
+		pub end_era: i64,
+		pub payers_merkle_root: PayableUsageHash,
+		pub payees_merkle_root: PayableUsageHash,
+		pub cluster_usage: NodeUsage,
+		pub validators: BTreeSet<AccountId>,
+	}
+
+	impl<AccountId> BillingFingerprint<AccountId> {
+		pub fn selective_hash<T: Config>(&self) -> Fingerprint {
+			let mut data = self.cluster_id.encode();
+			data.extend_from_slice(&self.era_id.encode());
+			data.extend_from_slice(&self.start_era.encode());
+			data.extend_from_slice(&self.end_era.encode());
+			data.extend_from_slice(&self.payers_merkle_root.encode());
+			data.extend_from_slice(&self.payees_merkle_root.encode());
+			data.extend_from_slice(&self.cluster_usage.encode());
+			// we truncate the `validators` field on purpose as it's appendable collection that is
+			// used for reaching the quorum on the billing fingerprint
+			T::Hasher::hash(&data)
+		}
+	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn billing_fingerprints)]
+	pub type BillingFingerprints<T: Config> =
+		StorageMap<_, Blake2_128Concat, Fingerprint, BillingFingerprint<T::AccountId>>;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {}
@@ -386,53 +448,49 @@ pub mod pallet {
 		Ok(())
 	}
 
-	fn get_node_reward(
-		node_usage: &NodeUsage,
-		total_nodes_usage: &NodeUsage,
+	fn get_provider_reward(
+		payable_usage: &NodeUsage,
+		cluster_usage: &NodeUsage,
 		total_customer_charge: &CustomerCharge,
 	) -> Option<ProviderReward> {
-		let mut node_reward = ProviderReward::default();
+		let mut total_reward = ProviderReward::default();
 
 		let mut ratio = Perquintill::from_rational(
-			node_usage.transferred_bytes as u128,
-			total_nodes_usage.transferred_bytes as u128,
+			payable_usage.transferred_bytes as u128,
+			cluster_usage.transferred_bytes as u128,
 		);
 
 		// ratio multiplied by X will be > 0, < X no overflow
-		node_reward.transfer = ratio * total_customer_charge.transfer;
+		total_reward.transfer = ratio * total_customer_charge.transfer;
 
 		ratio = Perquintill::from_rational(
-			node_usage.stored_bytes as u128,
-			total_nodes_usage.stored_bytes as u128,
+			payable_usage.stored_bytes as u128,
+			cluster_usage.stored_bytes as u128,
 		);
-		node_reward.storage = ratio * total_customer_charge.storage;
+		total_reward.storage = ratio * total_customer_charge.storage;
 
 		ratio =
-			Perquintill::from_rational(node_usage.number_of_puts, total_nodes_usage.number_of_puts);
-		node_reward.puts = ratio * total_customer_charge.puts;
+			Perquintill::from_rational(payable_usage.number_of_puts, cluster_usage.number_of_puts);
+		total_reward.puts = ratio * total_customer_charge.puts;
 
 		ratio =
-			Perquintill::from_rational(node_usage.number_of_gets, total_nodes_usage.number_of_gets);
-		node_reward.gets = ratio * total_customer_charge.gets;
+			Perquintill::from_rational(payable_usage.number_of_gets, cluster_usage.number_of_gets);
+		total_reward.gets = ratio * total_customer_charge.gets;
 
-		Some(node_reward)
+		Some(total_reward)
 	}
 
+	#[allow(clippy::field_reassign_with_default)]
 	fn get_customer_charge<T: Config>(
-		cluster_id: &ClusterId,
-		usage: &BucketUsage,
-		bucket_id: BucketId,
-		customer_id: &T::AccountId,
+		pricing: &ClusterPricingParams,
+		payable_usage: &BucketUsage,
 		start_era: i64,
 		end_era: i64,
 	) -> Result<CustomerCharge, DispatchError> {
-		let mut total = CustomerCharge::default();
+		let mut total_charge = CustomerCharge::default();
 
-		let pricing = T::ClusterProtocol::get_pricing_params(cluster_id)
-			.map_err(|_| Error::<T>::NotExpectedClusterState)?;
-
-		total.transfer = (|| -> Option<u128> {
-			(usage.transferred_bytes as u128)
+		total_charge.transfer = (|| -> Option<u128> {
+			(payable_usage.transferred_bytes as u128)
 				.checked_mul(pricing.unit_per_mb_streamed)?
 				.checked_div(byte_unit::MEBIBYTE)
 		})()
@@ -440,36 +498,26 @@ pub mod pallet {
 
 		// Calculate the duration of the period in seconds
 		let duration_seconds = end_era - start_era;
-		let seconds_in_month = 30.44 * 24.0 * 3600.0;
 		let fraction_of_month =
-			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
+			Perquintill::from_rational(duration_seconds as u64, AVG_SECONDS_MONTH as u64);
 
-		let mut total_stored_bytes: i64 =
-			T::BucketManager::get_total_bucket_usage(cluster_id, bucket_id, customer_id)?
-				.map_or(0, |customer_usage| customer_usage.stored_bytes);
-
-		total_stored_bytes = total_stored_bytes
-			.checked_add(usage.stored_bytes)
-			.ok_or(Error::<T>::ArithmeticOverflow)?
-			.max(0);
-
-		total.storage = fraction_of_month *
+		total_charge.storage = fraction_of_month *
 			(|| -> Option<u128> {
-				(total_stored_bytes as u128)
+				(payable_usage.stored_bytes as u128)
 					.checked_mul(pricing.unit_per_mb_stored)?
 					.checked_div(byte_unit::MEBIBYTE)
 			})()
 			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-		total.gets = (usage.number_of_gets as u128)
+		total_charge.gets = (payable_usage.number_of_gets as u128)
 			.checked_mul(pricing.unit_per_get_request)
 			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-		total.puts = (usage.number_of_puts as u128)
+		total_charge.puts = (payable_usage.number_of_puts as u128)
 			.checked_mul(pricing.unit_per_put_request)
 			.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-		Ok(total)
+		Ok(total_charge)
 	}
 
 	#[pallet::genesis_config]
@@ -552,27 +600,203 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		fn is_customers_batch_valid(
+			payers_merkle_root: PayableUsageHash,
+			batch_index: BatchIndex,
+			max_batch_index: BatchIndex,
+			payers: &[(BucketId, BucketUsage)],
+			batch_proof: &MMRProof,
+		) -> Result<bool, DispatchError> {
+			let payers_batch = payers
+				.iter()
+				.map(|(bucket_id, usage)| {
+					let mut data = bucket_id.encode();
+					data.extend_from_slice(&usage.stored_bytes.encode());
+					data.extend_from_slice(&usage.transferred_bytes.encode());
+					data.extend_from_slice(&usage.number_of_puts.encode());
+					data.extend_from_slice(&usage.number_of_gets.encode());
+					T::Hasher::hash(&data)
+				})
+				.collect::<Vec<_>>();
+
+			let batch_hash = Self::create_merkle_root(payers_batch.as_slice())?;
+
+			let is_verified = Self::proof_merkle_leaf(
+				payers_merkle_root,
+				batch_hash,
+				batch_index,
+				max_batch_index,
+				batch_proof,
+			)?;
+
+			Ok(is_verified)
+		}
+
+		fn is_providers_batch_valid(
+			payees_merkle_root: PayableUsageHash,
+			batch_index: BatchIndex,
+			max_batch_index: BatchIndex,
+			payees: &[(NodePubKey, NodeUsage)],
+			batch_proof: &MMRProof,
+		) -> Result<bool, DispatchError> {
+			let payees_batch = payees
+				.iter()
+				.map(|(node_key, usage)| {
+					let mut data = node_key.encode();
+					data.extend_from_slice(&usage.stored_bytes.encode());
+					data.extend_from_slice(&usage.transferred_bytes.encode());
+					data.extend_from_slice(&usage.number_of_puts.encode());
+					data.extend_from_slice(&usage.number_of_gets.encode());
+					T::Hasher::hash(&data)
+				})
+				.collect::<Vec<_>>();
+
+			let batch_hash = Self::create_merkle_root(payees_batch.as_slice())?;
+
+			let is_verified = Self::proof_merkle_leaf(
+				payees_merkle_root,
+				batch_hash,
+				batch_index,
+				max_batch_index,
+				batch_proof,
+			)?;
+
+			Ok(is_verified)
+		}
+
+		pub(crate) fn create_merkle_root(
+			leaves: &[PayableUsageHash],
+		) -> Result<PayableUsageHash, DispatchError> {
+			if leaves.is_empty() {
+				return Ok(PayableUsageHash::default());
+			}
+
+			let store = MemStore::default();
+			let mut mmr: MMR<PayableUsageHash, MergeMMRHash, &MemStore<PayableUsageHash>> =
+				MemMMR::<_, MergeMMRHash>::new(0, &store);
+
+			let mut leaves_with_position: Vec<(u64, PayableUsageHash)> =
+				Vec::with_capacity(leaves.len());
+
+			for &leaf in leaves {
+				match mmr.push(leaf) {
+					Ok(pos) => leaves_with_position.push((pos, leaf)),
+					Err(_) => {
+						return Err(Error::<T>::FailedToCreateMerkleRoot.into());
+					},
+				}
+			}
+
+			Ok(mmr.get_root().map_err(|_| Error::<T>::FailedToCreateMerkleRoot)?)
+		}
+
+		/// Verify whether leaf is part of tree
+		///
+		/// Parameters:
+		/// - `root_hash`: merkle root hash
+		/// - `batch_hash`: hash of the batch
+		/// - `batch_index`: index of the batch
+		/// - `batch_proof`: MMR proofs
+		pub(crate) fn proof_merkle_leaf(
+			root_hash: PayableUsageHash,
+			batch_hash: PayableUsageHash,
+			batch_index: BatchIndex,
+			max_batch_index: BatchIndex,
+			batch_proof: &MMRProof,
+		) -> Result<bool, Error<T>> {
+			let batch_position = leaf_index_to_pos(batch_index.into());
+			let mmr_size = leaf_index_to_mmr_size(max_batch_index.into());
+			let proof: MerkleProof<PayableUsageHash, MergeMMRHash> =
+				MerkleProof::new(mmr_size, batch_proof.proof.clone());
+			proof
+				.verify(root_hash, vec![(batch_position, batch_hash)])
+				.map_err(|_| Error::<T>::FailedToVerifyMerkleProof)
+		}
 	}
 
 	impl<T: Config> PayoutProcessor<T> for Pallet<T> {
+		fn commit_billing_fingerprint(
+			validator: T::AccountId,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			start_era: i64,
+			end_era: i64,
+			payers_merkle_root: PayableUsageHash,
+			payees_merkle_root: PayableUsageHash,
+			cluster_usage: NodeUsage,
+		) -> DispatchResult {
+			ensure!(end_era > start_era, Error::<T>::BadRequest);
+			ensure!(payers_merkle_root != Default::default(), Error::<T>::BadRequest);
+			ensure!(payees_merkle_root != Default::default(), Error::<T>::BadRequest);
+
+			let last_paid_era = T::ClusterValidator::get_last_paid_era(&cluster_id)?;
+			ensure!(era_id > last_paid_era, Error::<T>::BadRequest);
+
+			let inited_billing_fingerprint = BillingFingerprint::<T::AccountId> {
+				cluster_id,
+				era_id,
+				start_era,
+				end_era,
+				payers_merkle_root,
+				payees_merkle_root,
+				cluster_usage,
+				validators: Default::default(),
+			};
+			let fingerprint = inited_billing_fingerprint.selective_hash::<T>();
+
+			let mut billing_fingerprint = if let Some(commited_billing_fingerprint) =
+				BillingFingerprints::<T>::get(fingerprint)
+			{
+				commited_billing_fingerprint
+			} else {
+				inited_billing_fingerprint
+			};
+
+			ensure!(
+				billing_fingerprint.validators.insert(validator.clone()),
+				Error::<T>::BillingFingerprintIsCommitted
+			);
+
+			BillingFingerprints::<T>::insert(fingerprint, billing_fingerprint);
+			Self::deposit_event(Event::<T>::BillingFingerprintCommited {
+				validator_id: validator,
+				cluster_id,
+				era_id,
+				start_era,
+				end_era,
+				payers_merkle_root,
+				payees_merkle_root,
+			});
+
+			Ok(())
+		}
+
 		fn begin_billing_report(
 			cluster_id: ClusterId,
 			era: DdcEra,
-			start_era: i64,
-			end_era: i64,
+			fingerprint: Fingerprint,
 		) -> DispatchResult {
 			ensure!(
 				ActiveBillingReports::<T>::try_get(cluster_id, era).is_err(),
 				Error::<T>::NotExpectedState
 			);
 
-			ensure!(end_era > start_era, Error::<T>::BadRequest);
+			let billing_fingerprint = BillingFingerprints::<T>::try_get(fingerprint)
+				.map_err(|_| Error::<T>::BillingFingerprintDoesNotExist)?;
+
+			ensure!(
+				T::ValidatorVisitor::is_quorum_reached(
+					T::ValidatorsQuorum::get(),
+					billing_fingerprint.validators.len(),
+				),
+				Error::<T>::NoQuorumOnBillingFingerprint
+			);
 
 			let billing_report = BillingReport::<T> {
 				vault: Self::account_id(),
+				fingerprint,
 				state: PayoutState::Initialized,
-				start_era,
-				end_era,
 				..Default::default()
 			};
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
@@ -607,7 +831,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payers: &[(NodePubKey, BucketId, BucketUsage)],
+			payers: &[(BucketId, BucketUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			ensure!(
@@ -633,30 +857,32 @@ pub mod pallet {
 				Error::<T>::BatchIndexAlreadyProcessed
 			);
 
-			ensure!(
-				T::ValidatorVisitor::is_customers_batch_valid(
-					cluster_id,
-					era,
-					batch_index,
-					billing_report.charging_max_batch_index,
-					payers,
-					&batch_proof,
-				),
-				Error::<T>::BatchValidationFailed
-			);
+			let billing_fingerprint = BillingFingerprints::<T>::try_get(billing_report.fingerprint)
+				.map_err(|_| Error::<T>::BillingFingerprintDoesNotExist)?;
+
+			let is_batch_verifed = Self::is_customers_batch_valid(
+				billing_fingerprint.payers_merkle_root,
+				batch_index,
+				billing_report.charging_max_batch_index,
+				payers,
+				&batch_proof,
+			)?;
+
+			ensure!(is_batch_verifed, Error::<T>::BatchValidationFailed);
+
+			let pricing = T::ClusterProtocol::get_pricing_params(&cluster_id)
+				.map_err(|_| Error::<T>::NotExpectedClusterState)?;
 
 			let mut updated_billing_report = billing_report;
-			for (_node_key, bucket_ref, customer_usage) in payers {
+			for (bucket_ref, payable_usage) in payers {
 				let bucket_id = *bucket_ref;
 				let customer_id = T::BucketManager::get_bucket_owner_id(bucket_id)?;
 
 				let mut customer_charge = get_customer_charge::<T>(
-					&cluster_id,
-					customer_usage,
-					bucket_id,
-					&customer_id,
-					updated_billing_report.start_era,
-					updated_billing_report.end_era,
+					&pricing,
+					payable_usage,
+					billing_fingerprint.start_era,
+					billing_fingerprint.end_era,
 				)?;
 				let total_customer_charge = (|| -> Option<u128> {
 					customer_charge
@@ -667,12 +893,9 @@ pub mod pallet {
 				})()
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-				let amount_actually_charged = match T::CustomerCharger::charge_content_owner(
-					&cluster_id,
-					bucket_id,
+				let amount_actually_charged = match T::CustomerCharger::charge_bucket_owner(
 					customer_id.clone(),
 					updated_billing_report.vault.clone(),
-					customer_usage,
 					total_customer_charge,
 				) {
 					Ok(actually_charged) => actually_charged,
@@ -717,7 +940,7 @@ pub mod pallet {
 						cluster_id,
 						era,
 						batch_index,
-						customer_id,
+						customer_id: customer_id.clone(),
 						bucket_id,
 						charged: amount_actually_charged,
 						expected_to_charge: total_customer_charge,
@@ -737,7 +960,7 @@ pub mod pallet {
 						cluster_id,
 						era,
 						batch_index,
-						customer_id,
+						customer_id: customer_id.clone(),
 						bucket_id,
 						amount: total_customer_charge,
 					});
@@ -766,6 +989,13 @@ pub mod pallet {
 					.gets
 					.checked_add(customer_charge.gets)
 					.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+				T::BucketManager::update_total_bucket_usage(
+					&cluster_id,
+					bucket_id,
+					customer_id,
+					payable_usage,
+				)?;
 			}
 
 			updated_billing_report
@@ -875,7 +1105,6 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 			max_batch_index: BatchIndex,
-			total_node_usage: NodeUsage,
 		) -> DispatchResult {
 			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
 
@@ -887,7 +1116,6 @@ pub mod pallet {
 				Error::<T>::NotExpectedState
 			);
 
-			billing_report.total_node_usage = total_node_usage;
 			billing_report.rewarding_max_batch_index = max_batch_index;
 			billing_report.state = PayoutState::RewardingProviders;
 			ActiveBillingReports::<T>::insert(cluster_id, era, billing_report);
@@ -925,55 +1153,45 @@ pub mod pallet {
 				Error::<T>::BatchIndexAlreadyProcessed
 			);
 
-			ensure!(
-				T::ValidatorVisitor::is_providers_batch_valid(
-					cluster_id,
-					era,
-					batch_index,
-					billing_report.rewarding_max_batch_index,
-					payees,
-					&batch_proof
-				),
-				Error::<T>::BatchValidationFailed
-			);
+			let billing_fingerprint = BillingFingerprints::<T>::try_get(billing_report.fingerprint)
+				.map_err(|_| Error::<T>::BillingFingerprintDoesNotExist)?;
+
+			let is_batch_verified = Self::is_providers_batch_valid(
+				billing_fingerprint.payees_merkle_root,
+				batch_index,
+				billing_report.rewarding_max_batch_index,
+				payees,
+				&batch_proof,
+			)?;
+
+			ensure!(is_batch_verified, Error::<T>::BatchValidationFailed);
 
 			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
-			for (node_key, delta_node_usage) in payees {
-				// todo! get T::NodeVisitor::get_total_usage(delta_node_usage.node_id).stored_bytes
-				let node_provider_id = T::NodeManager::get_node_provider_id(node_key)?;
-				let mut total_node_stored_bytes: i64 = 0;
+			for (node_key, payable_usage) in payees {
+				let provider_id = T::NodeManager::get_node_provider_id(node_key)?;
 
-				total_node_stored_bytes = total_node_stored_bytes
-					.checked_add(delta_node_usage.stored_bytes)
-					.ok_or(Error::<T>::ArithmeticOverflow)?
-					.max(0);
-
-				let node_usage = NodeUsage {
-					stored_bytes: total_node_stored_bytes,
-					transferred_bytes: delta_node_usage.transferred_bytes,
-					number_of_puts: delta_node_usage.number_of_puts,
-					number_of_gets: delta_node_usage.number_of_gets,
-				};
-
-				let node_reward = get_node_reward(
-					&node_usage,
-					&billing_report.total_node_usage,
+				let provider_reward = get_provider_reward(
+					payable_usage,
+					&billing_fingerprint.cluster_usage,
 					&billing_report.total_customer_charge,
 				)
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
-				let amount_to_reward = (|| -> Option<u128> {
-					node_reward
+
+				let total_provider_reward = (|| -> Option<u128> {
+					provider_reward
 						.transfer
-						.checked_add(node_reward.storage)?
-						.checked_add(node_reward.puts)?
-						.checked_add(node_reward.gets)
+						.checked_add(provider_reward.storage)?
+						.checked_add(provider_reward.puts)?
+						.checked_add(provider_reward.gets)
 				})()
 				.ok_or(Error::<T>::ArithmeticOverflow)?;
 
-				let mut reward_ = amount_to_reward;
-				let mut reward: BalanceOf<T> = amount_to_reward.saturated_into::<BalanceOf<T>>();
-				if amount_to_reward > 0 {
+				let mut reward_ = total_provider_reward;
+				let mut reward: BalanceOf<T> =
+					total_provider_reward.saturated_into::<BalanceOf<T>>();
+
+				if total_provider_reward > 0 {
 					let vault_balance = <T as pallet::Config>::Currency::free_balance(
 						&updated_billing_report.vault,
 					) - <T as pallet::Config>::Currency::minimum_balance();
@@ -985,8 +1203,8 @@ pub mod pallet {
 								cluster_id,
 								era,
 								batch_index,
-								node_provider_id: node_provider_id.clone(),
-								expected_reward: amount_to_reward,
+								node_provider_id: provider_id.clone(),
+								expected_reward: total_provider_reward,
 								distributed_reward: vault_balance,
 							});
 						}
@@ -996,12 +1214,10 @@ pub mod pallet {
 
 					<T as pallet::Config>::Currency::transfer(
 						&updated_billing_report.vault,
-						&node_provider_id,
+						&provider_id,
 						reward,
 						ExistenceRequirement::AllowDeath,
 					)?;
-
-					// todo! update total usage of node with NodeManager
 
 					reward_ = reward.saturated_into::<u128>();
 
@@ -1015,10 +1231,12 @@ pub mod pallet {
 					cluster_id,
 					era,
 					batch_index,
-					node_provider_id,
+					node_provider_id: provider_id,
 					rewarded: reward_,
-					expected_to_reward: amount_to_reward,
+					expected_to_reward: total_provider_reward,
 				});
+
+				T::NodeManager::update_total_node_usage(node_key, payable_usage)?;
 			}
 
 			updated_billing_report
@@ -1177,12 +1395,10 @@ pub mod pallet {
 
 			let billing_report = BillingReport::<T> {
 				vault,
-				start_era: params.start_era,
-				end_era: params.end_era,
 				state: params.state,
+				fingerprint: params.fingerprint,
 				total_customer_charge: params.total_customer_charge,
 				total_distributed_reward: params.total_distributed_reward,
-				total_node_usage: params.total_node_usage,
 				charging_max_batch_index: params.charging_max_batch_index,
 				charging_processed_batches,
 				rewarding_max_batch_index: params.rewarding_max_batch_index,
@@ -1190,6 +1406,26 @@ pub mod pallet {
 			};
 
 			ActiveBillingReports::<T>::insert(params.cluster_id, params.era, billing_report);
+		}
+
+		fn create_billing_fingerprint(
+			params: BillingFingerprintParams<T::AccountId>,
+		) -> Fingerprint {
+			let billing_fingerprint = BillingFingerprint::<T::AccountId> {
+				cluster_id: params.cluster_id,
+				era_id: params.era,
+				start_era: params.start_era,
+				end_era: params.end_era,
+				payers_merkle_root: params.payers_merkle_root,
+				payees_merkle_root: params.payees_merkle_root,
+				cluster_usage: params.cluster_usage,
+				validators: params.validators,
+			};
+
+			let fingerprint = billing_fingerprint.selective_hash::<T>();
+			BillingFingerprints::<T>::insert(fingerprint, billing_fingerprint);
+
+			fingerprint
 		}
 	}
 }

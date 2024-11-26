@@ -1,5 +1,5 @@
 use ddc_primitives::{
-	AggregatorInfo, ClusterId, MergeActivityHash, StorageNodeMode, StorageNodeParams,
+	AggregatorInfo, ClusterId, DeltaUsageHash, MergeMMRHash, StorageNodeMode, StorageNodeParams,
 	StorageNodePubKey, DAC_VERIFICATION_KEY_TYPE,
 };
 use frame_support::{assert_noop, assert_ok};
@@ -9,7 +9,7 @@ use sp_core::{
 		testing::{PendingRequest, TestOffchainExt, TestTransactionPoolExt},
 		OffchainDbExt, OffchainStorage, OffchainWorkerExt, Timestamp, TransactionPoolExt,
 	},
-	Pair,
+	Pair, H256,
 };
 use sp_io::TestExternalities;
 use sp_keystore::{testing::MemoryKeystore, Keystore, KeystoreExt};
@@ -2084,7 +2084,7 @@ fn test_convert_to_batch_merkle_roots() {
 		vec![activities_batch_1.clone(), activities_batch_2.clone()],
 	)
 	.unwrap();
-	let expected_roots: Vec<ActivityHash> = vec![
+	let expected_roots: Vec<DeltaUsageHash> = vec![
 		DdcVerification::create_merkle_root(
 			&cluster_id,
 			era_id_1,
@@ -2112,7 +2112,7 @@ fn test_convert_to_batch_merkle_roots_empty() {
 		Vec::<Vec<aggregator_client::json::NodeAggregate>>::new(),
 	)
 	.unwrap();
-	let expected_roots: Vec<ActivityHash> = Vec::<ActivityHash>::new();
+	let expected_roots: Vec<DeltaUsageHash> = Vec::<DeltaUsageHash>::new();
 
 	assert_eq!(result_roots, expected_roots);
 }
@@ -2350,8 +2350,8 @@ fn test_get_last_validated_era() {
 	let cluster_id2 = ClusterId::from([13; 20]);
 	let era_1 = 1;
 	let era_2 = 2;
-	let payers_root: ActivityHash = [1; 32];
-	let payees_root: ActivityHash = [2; 32];
+	let payers_root: DeltaUsageHash = H256([1; 32]);
+	let payees_root: DeltaUsageHash = H256([2; 32]);
 	let validators = get_validators();
 
 	new_test_ext().execute_with(|| {
@@ -2453,7 +2453,7 @@ fn test_get_era_for_payout() {
 		EraValidations::<Test>::insert(cluster_id, era_id_2, &era_validation_2);
 
 		let mut result = Pallet::<Test>::get_era_for_payout(&cluster_id, status);
-		assert_eq!(result, Some((era_id_1, 0, 0)));
+		assert_eq!(result, Some(EraActivity { id: era_id_1, start: 0, end: 0 }));
 
 		result =
 			Pallet::<Test>::get_era_for_payout(&cluster_id, EraValidationStatus::PayoutSuccess);
@@ -2464,11 +2464,11 @@ fn test_get_era_for_payout() {
 #[test]
 fn create_merkle_root_works() {
 	new_test_ext().execute_with(|| {
-		let a: ActivityHash = [0; 32];
-		let b: ActivityHash = [1; 32];
-		let c: ActivityHash = [2; 32];
-		let d: ActivityHash = [3; 32];
-		let e: ActivityHash = [4; 32];
+		let a: DeltaUsageHash = H256([0; 32]);
+		let b: DeltaUsageHash = H256([1; 32]);
+		let c: DeltaUsageHash = H256([2; 32]);
+		let d: DeltaUsageHash = H256([3; 32]);
+		let e: DeltaUsageHash = H256([4; 32]);
 		let cluster_id = ClusterId::default();
 		let era_id_1 = 1;
 
@@ -2478,10 +2478,10 @@ fn create_merkle_root_works() {
 
 		assert_eq!(
 			root,
-			[
+			H256([
 				205, 34, 92, 22, 66, 39, 53, 146, 126, 111, 191, 174, 107, 224, 161, 127, 150, 69,
 				255, 15, 237, 252, 116, 39, 186, 26, 40, 154, 180, 110, 185, 7
-			]
+			])
 		);
 	});
 }
@@ -2491,31 +2491,31 @@ fn create_merkle_root_empty() {
 	new_test_ext().execute_with(|| {
 		let cluster_id = ClusterId::default();
 		let era_id_1 = 1;
-		let leaves = Vec::<ActivityHash>::new();
+		let leaves = Vec::<DeltaUsageHash>::new();
 		let root = DdcVerification::create_merkle_root(&cluster_id, era_id_1, &leaves).unwrap();
 
-		assert_eq!(root, ActivityHash::default());
+		assert_eq!(root, DeltaUsageHash::default());
 	});
 }
 
 #[test]
 fn proof_merkle_leaf_works() {
 	new_test_ext().execute_with(|| {
-		let a: ActivityHash = [0; 32];
-		let b: ActivityHash = [1; 32];
-		let c: ActivityHash = [2; 32];
-		let d: ActivityHash = [3; 32];
-		let e: ActivityHash = [4; 32];
-		let f: ActivityHash = [5; 32];
+		let a: DeltaUsageHash = H256([0; 32]);
+		let b: DeltaUsageHash = H256([1; 32]);
+		let c: DeltaUsageHash = H256([2; 32]);
+		let d: DeltaUsageHash = H256([3; 32]);
+		let e: DeltaUsageHash = H256([4; 32]);
+		let f: DeltaUsageHash = H256([5; 32]);
 
 		let leaves = [a, b, c, d, e];
 		let store = MemStore::default();
-		let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
-			MemMMR::<_, MergeActivityHash>::new(0, &store);
-		let leaf_position_map: Vec<(ActivityHash, u64)> =
+		let mut mmr: MMR<DeltaUsageHash, MergeMMRHash, &MemStore<DeltaUsageHash>> =
+			MemMMR::<_, MergeMMRHash>::new(0, &store);
+		let leaf_position_map: Vec<(DeltaUsageHash, u64)> =
 			leaves.iter().map(|a| (*a, mmr.push(*a).unwrap())).collect();
 
-		let leaf_position: Vec<(u64, ActivityHash)> = leaf_position_map
+		let leaf_position: Vec<(u64, DeltaUsageHash)> = leaf_position_map
 			.iter()
 			.filter(|&(l, _)| l == &c)
 			.map(|&(ref l, p)| (p, *l))
@@ -2530,7 +2530,7 @@ fn proof_merkle_leaf_works() {
 
 		let leaf_index = 2;
 		let leaf_hash = c;
-		assert!(DdcVerification::proof_merkle_leaf(
+		assert!(DdcVerification::_proof_merkle_leaf(
 			root_hash,
 			leaf_hash,
 			leaf_index,
@@ -2542,14 +2542,14 @@ fn proof_merkle_leaf_works() {
 		let leaf_index = 5;
 		let leaf_hash = f;
 		assert_noop!(
-			DdcVerification::proof_merkle_leaf(
+			DdcVerification::_proof_merkle_leaf(
 				root_hash,
 				leaf_hash,
 				leaf_index,
 				max_leaf_index,
 				&MMRProof { proof: mmr.gen_proof(position).unwrap().proof_items().to_vec() }
 			),
-			Error::<Test>::FailToVerifyMerkleProof
+			Error::<Test>::FailedToVerifyMerkleProof
 		);
 	});
 }
@@ -2844,109 +2844,18 @@ fn test_single_ocw_pallet_integration() {
 #[test]
 fn fetch_reward_activities_works() {
 	let cluster_id = ClusterId::from([12; 20]);
-	let a: ActivityHash = [0; 32];
-	let b: ActivityHash = [1; 32];
-	let c: ActivityHash = [2; 32];
-	let d: ActivityHash = [3; 32];
-	let e: ActivityHash = [4; 32];
+	let a: DeltaUsageHash = H256([0; 32]);
+	let b: DeltaUsageHash = H256([1; 32]);
+	let c: DeltaUsageHash = H256([2; 32]);
+	let d: DeltaUsageHash = H256([3; 32]);
+	let e: DeltaUsageHash = H256([4; 32]);
 
 	let leaves = [a, b, c, d, e];
 	let era_id = 1;
-	let total_usage: i64 = 56;
 
-	let node_params = StorageNodeParams {
-		ssl: false,
-		host: "178.251.228.236".as_bytes().to_vec(),
-		http_port: 8080,
-		mode: StorageNodeMode::DAC,
-		p2p_port: 5555,
-		grpc_port: 4444,
-		domain: b"example.com".to_vec(),
-	};
+	let result = DdcVerification::fetch_charging_loop_input(&cluster_id, era_id, leaves.to_vec());
 
-	let result = DdcVerification::fetch_reward_activities(
-		&cluster_id,
-		era_id,
-		vec![
-			aggregator_client::json::NodeAggregate {
-				node_id: "0".to_string(),
-				stored_bytes: -100,
-				transferred_bytes: 50,
-				number_of_puts: 10,
-				number_of_gets: 20,
-				aggregator: AggregatorInfo {
-					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
-					node_params: node_params.clone(),
-				},
-			},
-			aggregator_client::json::NodeAggregate {
-				node_id: "1".to_string(),
-				stored_bytes: -101,
-				transferred_bytes: 51,
-				number_of_puts: 11,
-				number_of_gets: 21,
-				aggregator: AggregatorInfo {
-					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
-					node_params: node_params.clone(),
-				},
-			},
-			aggregator_client::json::NodeAggregate {
-				node_id: "2".to_string(),
-				stored_bytes: 102,
-				transferred_bytes: 52,
-				number_of_puts: 12,
-				number_of_gets: 22,
-				aggregator: AggregatorInfo {
-					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
-					node_params: node_params.clone(),
-				},
-			},
-			aggregator_client::json::NodeAggregate {
-				node_id: "3".to_string(),
-				stored_bytes: 103,
-				transferred_bytes: 53,
-				number_of_puts: 13,
-				number_of_gets: 23,
-				aggregator: AggregatorInfo {
-					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
-					node_params: node_params.clone(),
-				},
-			},
-			aggregator_client::json::NodeAggregate {
-				node_id: "4".to_string(),
-				stored_bytes: 104,
-				transferred_bytes: 54,
-				number_of_puts: 14,
-				number_of_gets: 24,
-				aggregator: AggregatorInfo {
-					node_pub_key: NodePubKey::StoragePubKey(AccountId32::new([1; 32])),
-					node_params: node_params.clone(),
-				},
-			},
-		],
-		leaves.to_vec(),
-		total_usage,
-	);
-
-	let usage = get_node_activities().iter().fold(
-		NodeUsage { transferred_bytes: 0, stored_bytes: 0, number_of_puts: 0, number_of_gets: 0 },
-		|mut acc, activity| {
-			acc.transferred_bytes += activity.transferred_bytes;
-			acc.stored_bytes += activity.stored_bytes;
-			acc.number_of_puts += activity.number_of_puts;
-			acc.number_of_gets += activity.number_of_gets;
-			acc
-		},
-	);
-
-	let ex_result = NodeUsage {
-		stored_bytes: total_usage + usage.stored_bytes,
-		number_of_puts: usage.number_of_puts,
-		number_of_gets: usage.number_of_gets,
-		transferred_bytes: usage.transferred_bytes,
-	};
-
-	assert_eq!(result.unwrap(), Some((era_id, (leaves.len() - 1) as u16, ex_result)));
+	assert_eq!(result.unwrap(), Some((era_id, (leaves.len() - 1) as u16)));
 }
 
 #[test]
