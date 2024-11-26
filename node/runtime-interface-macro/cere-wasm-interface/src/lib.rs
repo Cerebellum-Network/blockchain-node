@@ -7,11 +7,11 @@ use core::{iter::Iterator, marker::PhantomData, mem, result};
 use sp_wasm_interface::{Function,  Result as WResult, Pointer};
 
 
-// #[cfg(not(all(feature = "std", feature = "wasmtime")))]
-// #[macro_export]
-// macro_rules! if_wasmtime_is_enabled {
-// 	($($token:tt)*) => {};
-// }
+#[cfg(not(all(feature = "std", feature = "wasmtime")))]
+#[macro_export]
+macro_rules! if_wasmtime_is_enabled {
+	($($token:tt)*) => {};
+}
 
 /// Sandbox memory identifier.
 pub type MemoryId = u32;
@@ -19,8 +19,8 @@ pub type MemoryId = u32;
 /// Result type used by traits in this crate.
 #[cfg(feature = "std")]
 pub type Result<T> = result::Result<T, String>;
-#[cfg(not(feature = "std"))]
-pub type Result<T> = result::Result<T, &'static str>;
+// #[cfg(not(feature = "std"))]
+// pub type Result<T> = result::Result<T, &'static str>;
 
 /// Value types supported by Substrate on the boundary between host/Wasm.
 #[derive(Copy, Clone, PartialEq, Debug, Eq)]

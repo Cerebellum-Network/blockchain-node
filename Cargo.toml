@@ -44,6 +44,8 @@ clap = { version = "4.2.5", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = ["derive", "max-encoded-len"] }
 futures = { version = "0.3.30" }
 hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
+anyhow = { version = "1.0.81", default-features = false }
+wasmtime = { version = "8.0.1", default-features = false }
 hex-literal = { version = "^0.4.1", default-features = false }
 jsonrpsee = { version = "0.24.3", default-features = false, features = ["server"] }
 lazy_static = { version = "1.5.0", default-features = false }
@@ -202,7 +204,7 @@ cere-rpc = { path = "node/rpc" }
 cere-runtime = { path = "runtime/cere" }
 cere-runtime-common = { path = "runtime/common", default-features = false }
 cere-runtime-interfaces = { path = "node/runtime-interfaces" }
-cere-wasm-interface = { path = "node/runtime-interface-macro/cere-wasm-interface" }
+cere-wasm-interface = { path = "node/runtime-interface-macro/cere-wasm-interface"}
 cere-service = { path = "node/service" }
 ddc-primitives = { path = "primitives", default-features = false }
 pallet-chainbridge = { path = "pallets/chainbridge", default-features = false }

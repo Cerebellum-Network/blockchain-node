@@ -1215,13 +1215,16 @@ name = "cere-wasm-interface"
 version = "18.0.0"
 dependencies = [
  "Inflector",
+ "anyhow",
  "expander",
+ "log",
  "parity-scale-codec",
  "proc-macro-crate 3.2.0",
  "proc-macro2",
  "quote",
  "sp-wasm-interface",
  "syn 2.0.79",
+ "wasmtime",
 ]
 
 [[package]]

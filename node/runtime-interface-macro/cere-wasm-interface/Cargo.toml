@@ -27,3 +27,15 @@ quote = { workspace = true }
 expander = { workspace = true }
 syn = { features = ["extra-traits", "fold", "full", "visit"], workspace = true }
 sp-wasm-interface = { workspace = true }
+anyhow = { optional = true, workspace = true }
+log = { optional = true, workspace = true, default-features = true }
+wasmtime = { optional = true, workspace = true }
+
+[features]
+default = ["std"]
+std = [
+	"anyhow?/std",
+	"codec/std",
+	"log/std",
+]
+wasmtime = ["anyhow", "dep:wasmtime"]
