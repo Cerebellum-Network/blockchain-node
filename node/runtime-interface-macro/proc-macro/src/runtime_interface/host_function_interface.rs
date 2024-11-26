@@ -186,16 +186,16 @@ fn generate_host_functions_struct(
 		pub struct HostFunctions;
 
 		#[cfg(feature = "std")]
-		impl #crate_::sp_wasm_interface::HostFunctions for HostFunctions {
-			fn host_functions() -> Vec<&'static dyn #crate_::sp_wasm_interface::Function> {
+		impl #crate_::cere_wasm_interface::HostFunctions for HostFunctions {
+			fn host_functions() -> Vec<&'static dyn #crate_::cere_wasm_interface::Function> {
 				let mut host_functions_list = Vec::new();
 				#(#append_hf_bodies)*
 				host_functions_list
 			}
 
-			#crate_::sp_wasm_interface::if_wasmtime_is_enabled! {
+			#crate_::cere_wasm_interface::if_wasmtime_is_enabled! {
 				fn register_static<T>(registry: &mut T) -> core::result::Result<(), T::Error>
-					where T: #crate_::sp_wasm_interface::HostFunctionRegistry
+					where T: #crate_::cere_wasm_interface::HostFunctionRegistry
 				{
 					#(#register_bodies)*
 					Ok(())
@@ -293,7 +293,7 @@ fn generate_host_function_implementation(
 		);
 		convert_args_dynamic_ffi_to_static_ffi.push(quote! {
 			let #ffi_name = args.next().ok_or_else(|| #arg_count_mismatch_error.to_owned())?;
-			let #ffi_name: #ffi_ty = #crate_::sp_wasm_interface::TryFromValue::try_from_value(#ffi_name)
+			let #ffi_name: #ffi_ty = #crate_::cere_wasm_interface::TryFromValue::try_from_value(#ffi_name)
 				.ok_or_else(|| #convert_arg_error.to_owned())?;
 		});
 	}
@@ -317,7 +317,7 @@ fn generate_host_function_implementation(
 
 	let convert_return_value_static_ffi_to_dynamic_ffi = match &method.sig.output {
 		ReturnType::Type(_, _) => quote! {
-			let __result__ = Ok(Some(#crate_::sp_wasm_interface::IntoValue::into_value(__result__)));
+			let __result__ = Ok(Some(#crate_::cere_wasm_interface::IntoValue::into_value(__result__)));
 		},
 		ReturnType::Default => quote! {
 			let __result__ = Ok(None);
@@ -361,20 +361,20 @@ fn generate_host_function_implementation(
 
 		#(#cfg_attrs)*
 		#[cfg(feature = "std")]
-		impl #crate_::sp_wasm_interface::Function for #struct_name {
+		impl #crate_::cere_wasm_interface::Function for #struct_name {
 			fn name(&self) -> &str {
 				#name
 			}
 
-			fn signature(&self) -> #crate_::sp_wasm_interface::Signature {
+			fn signature(&self) -> #crate_::cere_wasm_interface::Signature {
 				#signature
 			}
 
 			fn execute(
 				&self,
 				__function_context__: &mut dyn #crate_::cere_wasm_interface::FunctionContext,
-				args: &mut dyn Iterator<Item = #crate_::sp_wasm_interface::Value>,
-			) -> std::result::Result<Option<#crate_::sp_wasm_interface::Value>, String> {
+				args: &mut dyn Iterator<Item = #crate_::cere_wasm_interface::Value>,
+			) -> std::result::Result<Option<#crate_::cere_wasm_interface::Value>, String> {
 				#(#convert_args_dynamic_ffi_to_static_ffi)*
 				let __result__ = Self::call(
 					__function_context__,
@@ -389,16 +389,16 @@ fn generate_host_function_implementation(
 	let register_body = quote! {
 		#(#cfg_attrs)*
 		registry.register_static(
-			#crate_::sp_wasm_interface::Function::name(&#struct_name),
-			|mut caller: #crate_::sp_wasm_interface::wasmtime::Caller<T::State>, #(#ffi_args_prototype),*|
-				-> std::result::Result<#ffi_return_ty, #crate_::sp_wasm_interface::anyhow::Error>
+			#crate_::cere_wasm_interface::Function::name(&#struct_name),
+			|mut caller: #crate_::cere_wasm_interface::wasmtime::Caller<T::State>, #(#ffi_args_prototype),*|
+				-> std::result::Result<#ffi_return_ty, #crate_::cere_wasm_interface::anyhow::Error>
 			{
 				T::with_function_context(caller, move |__function_context__| {
 					let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
 						#struct_name::call(
 							__function_context__,
 							#(#ffi_names,)*
-						).map_err(#crate_::sp_wasm_interface::anyhow::Error::msg)
+						).map_err(#crate_::cere_wasm_interface::anyhow::Error::msg)
 					}));
 					match result {
 						Ok(result) => result,
@@ -411,7 +411,7 @@ fn generate_host_function_implementation(
 								} else {
 									"host code panicked while being called by the runtime".to_owned()
 								};
-							return Err(#crate_::sp_wasm_interface::anyhow::Error::msg(message));
+							return Err(#crate_::cere_wasm_interface::anyhow::Error::msg(message));
 						}
 					}
 				})
@@ -421,7 +421,7 @@ fn generate_host_function_implementation(
 
 	let append_hf_body = quote! {
 		#(#cfg_attrs)*
-		host_functions_list.push(&#struct_name as &dyn #crate_::sp_wasm_interface::Function);
+		host_functions_list.push(&#struct_name as &dyn #crate_::cere_wasm_interface::Function);
 	};
 
 	Ok((implementation, register_body, append_hf_body))
@@ -432,18 +432,18 @@ fn generate_wasm_interface_signature_for_host_function(sig: &Signature) -> Resul
 	let crate_ = generate_crate_access();
 	let return_value = match &sig.output {
 		ReturnType::Type(_, ty) => quote! {
-			Some( <<#ty as #crate_::RIType>::FFIType as #crate_::sp_wasm_interface::IntoValue>::VALUE_TYPE )
+			Some( <<#ty as #crate_::RIType>::FFIType as #crate_::cere_wasm_interface::IntoValue>::VALUE_TYPE )
 		},
 		ReturnType::Default => quote!(None),
 	};
 	let arg_types = get_function_argument_types_without_ref(sig).map(|ty| {
 		quote! {
-			<<#ty as #crate_::RIType>::FFIType as #crate_::sp_wasm_interface::IntoValue>::VALUE_TYPE
+			<<#ty as #crate_::RIType>::FFIType as #crate_::cere_wasm_interface::IntoValue>::VALUE_TYPE
 		}
 	});
 
 	Ok(quote! {
-		#crate_::sp_wasm_interface::Signature {
+		#crate_::cere_wasm_interface::Signature {
 			args: std::borrow::Cow::Borrowed(&[ #( #arg_types ),* ][..]),
 			return_value: #return_value,
 		}

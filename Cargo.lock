@@ -1217,6 +1217,7 @@ dependencies = [
  "Inflector",
  "anyhow",
  "expander",
+ "impl-trait-for-tuples",
  "log",
  "parity-scale-codec",
  "proc-macro-crate 3.2.0",

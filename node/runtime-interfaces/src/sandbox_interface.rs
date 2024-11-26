@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc, str, sync::Arc, result};
-use sp_wasm_interface::{Function, Result as WResult, Value, WordSize};
-use cere_wasm_interface::{FunctionContext, Pointer};
+use sp_wasm_interface::{Result as WResult};
+use cere_wasm_interface::{FunctionContext, Pointer, Function, Value, WordSize};
 use crate::FunctionExecutor;
 use crate::env as sandbox_env;
 use log::{debug, error, trace};
@@ -262,7 +262,7 @@ impl Sandbox for FunctionExecutor {
 		trace!(target: "sp-sandbox", "invoke, instance_idx={}", instance_id);
 
 		// Deserialize arguments and convert them into wasmi types.
-		let args = Vec::<sp_wasm_interface::Value>::decode(&mut args)
+		let args = Vec::<cere_wasm_interface::Value>::decode(&mut args)
 			.map_err(|_| "Can't decode serialized arguments for the invocation")?
 			.into_iter()
 			.collect::<Vec<_>>();
@@ -285,7 +285,7 @@ impl Sandbox for FunctionExecutor {
 			Ok(None) => Ok(sandbox_env::ERR_OK),
 			Ok(Some(val)) => {
 				// Serialize return value and write it back into the memory.
-				sp_wasm_interface::ReturnValue::Value(val).using_encoded(|val| {
+				cere_wasm_interface::ReturnValue::Value(val).using_encoded(|val| {
 					if val.len() > return_val_len as usize {
 						return Err("Return value buffer is too small".into())
 					}
@@ -351,7 +351,7 @@ impl Sandbox for FunctionExecutor {
 		&self,
 		instance_idx: u32,
 		name: &str,
-	) -> WResult<Option<sp_wasm_interface::Value>> {
+	) -> WResult<Option<cere_wasm_interface::Value>> {
 		self.sandbox_store
 			.borrow()
 			.instance(instance_idx)

@@ -27,8 +27,7 @@ use std::{collections::HashMap, rc::Rc};
 
 use codec::Decode;
 use crate::env as sandbox_env;
-use sp_wasm_interface::{ WordSize };
-use cere_wasm_interface::{FunctionContext, Pointer};
+use cere_wasm_interface::{FunctionContext, Pointer, WordSize};
 
 use crate::{
 	util,wasmi_backend,
@@ -196,10 +195,10 @@ impl SandboxInstance {
 	pub fn invoke(
 		&self,
 		export_name: &str,
-		args: &[sp_wasm_interface::Value],
+		args: &[cere_wasm_interface::Value],
 		state: u32,
 		sandbox_context: &mut dyn SandboxContext,
-	) -> std::result::Result<Option<sp_wasm_interface::Value>, Error> {
+	) -> std::result::Result<Option<cere_wasm_interface::Value>, Error> {
 		match &self.backend_instance {
 			BackendInstance::Wasmi(wasmi_instance) =>
 				wasmi_invoke(self, wasmi_instance, export_name, args, state, sandbox_context),
@@ -213,7 +212,7 @@ impl SandboxInstance {
 	/// Get the value from a global with the given `name`.
 	///
 	/// Returns `Some(_)` if the global could be found.
-	pub fn get_global_val(&self, name: &str) -> Option<sp_wasm_interface::Value> {
+	pub fn get_global_val(&self, name: &str) -> Option<cere_wasm_interface::Value> {
 		match &self.backend_instance {
 			BackendInstance::Wasmi(wasmi_instance) => wasmi_get_global(wasmi_instance, name),
 

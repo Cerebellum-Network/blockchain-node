@@ -21,7 +21,7 @@
 use std::{fmt, rc::Rc};
 
 use codec::{Decode, Encode};
-use sp_wasm_interface::{ReturnValue, Value, WordSize};
+use cere_wasm_interface::{ReturnValue, Value, WordSize};
 use cere_wasm_interface::{FunctionContext, Pointer};
 use wasmi::{
 	memory_units::Pages, ImportResolver, MemoryInstance, Module, ModuleInstance, RuntimeArgs,

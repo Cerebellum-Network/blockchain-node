@@ -4,7 +4,7 @@
 extern crate alloc;
 use alloc::{borrow::Cow, vec, vec::Vec};
 use core::{iter::Iterator, marker::PhantomData, mem, result};
-use sp_wasm_interface::{Function,  Result as WResult};
+use sp_wasm_interface::{Result as WResult};
 
 
 #[cfg(not(all(feature = "std", feature = "wasmtime")))]
@@ -220,6 +220,61 @@ impl<T: PointerType> TryFromValue for Pointer<T> {
 /// The word size used in wasm. Normally known as `usize` in Rust.
 pub type WordSize = u32;
 
+#[derive(Eq, PartialEq, Debug, Clone)]
+pub struct Signature {
+	/// The arguments of a function.
+	pub args: Cow<'static, [ValueType]>,
+	/// The optional return value of a function.
+	pub return_value: Option<ValueType>,
+}
+
+impl Signature {
+	/// Create a new instance of `Signature`.
+	pub fn new<T: Into<Cow<'static, [ValueType]>>>(
+		args: T,
+		return_value: Option<ValueType>,
+	) -> Self {
+		Self { args: args.into(), return_value }
+	}
+
+	/// Create a new instance of `Signature` with the given `args` and without any return value.
+	pub fn new_with_args<T: Into<Cow<'static, [ValueType]>>>(args: T) -> Self {
+		Self { args: args.into(), return_value: None }
+	}
+}
+
+/// A trait that requires `RefUnwindSafe` when `feature = std`.
+#[cfg(feature = "std")]
+pub trait MaybeRefUnwindSafe: std::panic::RefUnwindSafe {}
+#[cfg(feature = "std")]
+impl<T: std::panic::RefUnwindSafe> MaybeRefUnwindSafe for T {}
+
+/// A trait that requires `RefUnwindSafe` when `feature = std`.
+#[cfg(not(feature = "std"))]
+pub trait MaybeRefUnwindSafe {}
+#[cfg(not(feature = "std"))]
+impl<T> MaybeRefUnwindSafe for T {}
+
+/// Something that provides a function implementation on the host for a wasm function.
+pub trait Function: MaybeRefUnwindSafe + Send + Sync {
+	/// Returns the name of this function.
+	fn name(&self) -> &str;
+	/// Returns the signature of this function.
+	fn signature(&self) -> Signature;
+	/// Execute this function with the given arguments.
+	fn execute(
+		&self,
+		context: &mut dyn FunctionContext,
+		args: &mut dyn Iterator<Item = Value>,
+	) -> Result<Option<Value>>;
+}
+
+impl PartialEq for dyn Function {
+	fn eq(&self, other: &Self) -> bool {
+		other.name() == self.name() && other.signature() == self.signature()
+	}
+}
+
 /// Something that can be converted into a wasm compatible `Value`.
 pub trait IntoValue {
 	/// The type of the value in wasm.
@@ -234,7 +289,6 @@ pub trait TryFromValue: Sized {
 	/// Try to convert the given `Value` into `Self`.
 	fn try_from_value(val: Value) -> Option<Self>;
 }
-
 
 pub trait FunctionContext {
 	/// Read memory from `address` into a vector.
@@ -335,4 +389,243 @@ pub trait Sandbox {
 		env_def: &[u8],
 		state_ptr: Pointer<u8>,
 	) -> u32;
+}
+
+
+if_wasmtime_is_enabled! {
+	/// A trait used to statically register host callbacks with the WASM executor,
+	/// so that they call be called from within the runtime with minimal overhead.
+	///
+	/// This is used internally to interface the wasmtime-based executor with the
+	/// host functions' definitions generated through the runtime interface macro,
+	/// and is not meant to be used directly.
+	pub trait HostFunctionRegistry {
+		type State;
+		type Error;
+		type FunctionContext: FunctionContext;
+
+		/// Wraps the given `caller` in a type which implements `FunctionContext`
+		/// and calls the given `callback`.
+		fn with_function_context<R>(
+			caller: wasmtime::Caller<Self::State>,
+			callback: impl FnOnce(&mut dyn FunctionContext) -> R,
+		) -> R;
+
+		/// Registers a given host function with the WASM executor.
+		///
+		/// The function has to be statically callable, and all of its arguments
+		/// and its return value have to be compatible with WASM FFI.
+		fn register_static<Params, Results>(
+			&mut self,
+			fn_name: &str,
+			func: impl wasmtime::IntoFunc<Self::State, Params, Results> + 'static,
+		) -> core::result::Result<(), Self::Error>;
+	}
+}
+
+/// Something that provides implementations for host functions.
+pub trait HostFunctions: 'static + Send + Sync {
+	/// Returns the host functions `Self` provides.
+	fn host_functions() -> Vec<&'static dyn Function>;
+
+	if_wasmtime_is_enabled! {
+		/// Statically registers the host functions.
+		fn register_static<T>(registry: &mut T) -> core::result::Result<(), T::Error>
+		where
+			T: HostFunctionRegistry;
+	}
+}
+
+#[impl_trait_for_tuples::impl_for_tuples(30)]
+impl HostFunctions for Tuple {
+	fn host_functions() -> Vec<&'static dyn Function> {
+		let mut host_functions = Vec::new();
+
+		for_tuples!( #( host_functions.extend(Tuple::host_functions()); )* );
+
+		host_functions
+	}
+
+	#[cfg(all(feature = "std", feature = "wasmtime"))]
+	fn register_static<T>(registry: &mut T) -> core::result::Result<(), T::Error>
+		where
+			T: HostFunctionRegistry,
+	{
+		for_tuples!(
+			#( Tuple::register_static(registry)?; )*
+		);
+
+		Ok(())
+	}
+}
+
+/// A wrapper which merges two sets of host functions, and allows the second set to override
+/// the host functions from the first set.
+pub struct ExtendedHostFunctions<Base, Overlay> {
+	phantom: PhantomData<(Base, Overlay)>,
+}
+
+impl<Base, Overlay> HostFunctions for ExtendedHostFunctions<Base, Overlay>
+	where
+		Base: HostFunctions,
+		Overlay: HostFunctions,
+{
+	fn host_functions() -> Vec<&'static dyn Function> {
+		let mut base = Base::host_functions();
+		let overlay = Overlay::host_functions();
+		base.retain(|host_fn| {
+			!overlay.iter().any(|ext_host_fn| host_fn.name() == ext_host_fn.name())
+		});
+		base.extend(overlay);
+		base
+	}
+
+	if_wasmtime_is_enabled! {
+		fn register_static<T>(registry: &mut T) -> core::result::Result<(), T::Error>
+		where
+			T: HostFunctionRegistry,
+		{
+			struct Proxy<'a, T> {
+				registry: &'a mut T,
+				seen_overlay: std::collections::HashSet<String>,
+				seen_base: std::collections::HashSet<String>,
+				overlay_registered: bool,
+			}
+
+			impl<'a, T> HostFunctionRegistry for Proxy<'a, T>
+			where
+				T: HostFunctionRegistry,
+			{
+				type State = T::State;
+				type Error = T::Error;
+				type FunctionContext = T::FunctionContext;
+
+				fn with_function_context<R>(
+					caller: wasmtime::Caller<Self::State>,
+					callback: impl FnOnce(&mut dyn FunctionContext) -> R,
+				) -> R {
+					T::with_function_context(caller, callback)
+				}
+
+				fn register_static<Params, Results>(
+					&mut self,
+					fn_name: &str,
+					func: impl wasmtime::IntoFunc<Self::State, Params, Results> + 'static,
+				) -> core::result::Result<(), Self::Error> {
+					if self.overlay_registered {
+						if !self.seen_base.insert(fn_name.to_owned()) {
+							log::warn!(
+								target: "extended_host_functions",
+								"Duplicate base host function: '{}'",
+								fn_name,
+							);
+
+							// TODO: Return an error here?
+							return Ok(())
+						}
+
+						if self.seen_overlay.contains(fn_name) {
+							// Was already registered when we went through the overlay, so just ignore it.
+							log::debug!(
+								target: "extended_host_functions",
+								"Overriding base host function: '{}'",
+								fn_name,
+							);
+
+							return Ok(())
+						}
+					} else if !self.seen_overlay.insert(fn_name.to_owned()) {
+						log::warn!(
+							target: "extended_host_functions",
+							"Duplicate overlay host function: '{}'",
+							fn_name,
+						);
+
+						// TODO: Return an error here?
+						return Ok(())
+					}
+
+					self.registry.register_static(fn_name, func)
+				}
+			}
+
+			let mut proxy = Proxy {
+				registry,
+				seen_overlay: Default::default(),
+				seen_base: Default::default(),
+				overlay_registered: false,
+			};
+
+			// The functions from the `Overlay` can override those from the `Base`,
+			// so `Overlay` is registered first, and then we skip those functions
+			// in `Base` if they were already registered from the `Overlay`.
+			Overlay::register_static(&mut proxy)?;
+			proxy.overlay_registered = true;
+			Base::register_static(&mut proxy)?;
+
+			Ok(())
+		}
+	}
+}
+
+macro_rules! impl_into_and_from_value {
+	(
+		$(
+			$type:ty, $( < $gen:ident >, )? $value_variant:ident,
+		)*
+	) => {
+		$(
+			impl $( <$gen> )? IntoValue for $type {
+				const VALUE_TYPE: ValueType = ValueType::$value_variant;
+				fn into_value(self) -> Value { Value::$value_variant(self as _) }
+			}
+
+			impl $( <$gen> )? TryFromValue for $type {
+				fn try_from_value(val: Value) -> Option<Self> {
+					match val {
+						Value::$value_variant(val) => Some(val as _),
+						_ => None,
+					}
+				}
+			}
+		)*
+	}
+}
+
+impl_into_and_from_value! {
+	u8, I32,
+	u16, I32,
+	u32, I32,
+	u64, I64,
+	i8, I32,
+	i16, I32,
+	i32, I32,
+	i64, I64,
+}
+
+/// Typed value that can be returned from a function.
+///
+/// Basically a `TypedValue` plus `Unit`, for functions which return nothing.
+#[derive(Clone, Copy, PartialEq, codec::Encode, codec::Decode, Debug)]
+pub enum ReturnValue {
+	/// For returning nothing.
+	Unit,
+	/// For returning some concrete value.
+	Value(Value),
+}
+
+impl From<Value> for ReturnValue {
+	fn from(v: Value) -> ReturnValue {
+		ReturnValue::Value(v)
+	}
+}
+
+impl ReturnValue {
+	/// Maximum number of bytes `ReturnValue` might occupy when serialized with `SCALE`.
+	///
+	/// Breakdown:
+	///  1 byte for encoding unit/value variant
+	///  1 byte for encoding value type
+	///  8 bytes for encoding the biggest value types available in wasm: f64, i64.
+	pub const ENCODED_MAX_SIZE: usize = 10;
 }

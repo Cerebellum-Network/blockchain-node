@@ -1,5 +1,5 @@
 use sp_runtime_interface_macro::runtime_interface;
-use sp_wasm_interface::{Result as SandboxResult, Value, WordSize};
+use sp_wasm_interface::{Result as SandboxResult };
 use cere_wasm_interface::Pointer;
 pub type MemoryId = u32;
 use std::{cell::RefCell, rc::Rc, str, sync::Arc};
@@ -10,7 +10,7 @@ mod util;
 mod sandbox_interface;
 mod wasmi_backend;
 use crate::sandbox_util::Store;
-use sp_wasm_interface::Function;
+use cere_wasm_interface::{Function, Value, WordSize};
 use wasmi::TableRef;
 use wasmi::MemoryRef;
 use crate::freeing_bump::FreeingBumpHeapAllocator;
@@ -99,7 +99,7 @@ pub trait Sandbox {
 		&mut self,
 		instance_idx: u32,
 		name: &str,
-	) -> Option<sp_wasm_interface::Value> {
+	) -> Option<cere_wasm_interface::Value> {
 		// self.sandbox()
 		// 	.get_global_val(instance_idx, name)
 		// 	.expect("Failed to get global from sandbox")

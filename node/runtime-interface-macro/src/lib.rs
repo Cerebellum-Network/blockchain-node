@@ -401,8 +401,8 @@ pub use util::{pack_ptr_and_len, unpack_ptr_and_len};
 pub trait RIType {
 	/// The ffi type that is used to represent `Self`.
 	#[cfg(feature = "std")]
-	type FFIType: sp_wasm_interface::IntoValue
-		+ sp_wasm_interface::TryFromValue
+	type FFIType: cere_wasm_interface::IntoValue
+		+ cere_wasm_interface::TryFromValue
 		+ sp_wasm_interface::WasmTy;
 	#[cfg(not(feature = "std"))]
 	type FFIType;

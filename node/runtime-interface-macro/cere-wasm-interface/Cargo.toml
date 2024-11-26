@@ -30,6 +30,7 @@ sp-wasm-interface = { workspace = true }
 anyhow = { optional = true, workspace = true }
 log = { optional = true, workspace = true, default-features = true }
 wasmtime = { optional = true, workspace = true }
+impl-trait-for-tuples = { workspace = true }
 
 [features]
 default = ["std"]

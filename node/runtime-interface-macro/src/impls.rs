@@ -518,12 +518,12 @@ macro_rules! for_u128_i128 {
 for_u128_i128!(u128);
 for_u128_i128!(i128);
 
-impl PassBy for sp_wasm_interface::ValueType {
-	type PassBy = Enum<sp_wasm_interface::ValueType>;
+impl PassBy for cere_wasm_interface::ValueType {
+	type PassBy = Enum<cere_wasm_interface::ValueType>;
 }
 
-impl PassBy for sp_wasm_interface::Value {
-	type PassBy = Codec<sp_wasm_interface::Value>;
+impl PassBy for cere_wasm_interface::Value {
+	type PassBy = Codec<cere_wasm_interface::Value>;
 }
 
 impl PassBy for sp_storage::TrackedStorageKey {
