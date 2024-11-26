@@ -27,8 +27,8 @@ use std::{collections::HashMap, rc::Rc};
 
 use codec::Decode;
 use crate::env as sandbox_env;
-use sp_wasm_interface::{ Pointer, WordSize };
-use cere_wasm_interface::FunctionContext;
+use sp_wasm_interface::{ WordSize };
+use cere_wasm_interface::{FunctionContext, Pointer};
 
 use crate::{
 	util,wasmi_backend,

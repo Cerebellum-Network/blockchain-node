@@ -1,5 +1,6 @@
 use sp_runtime_interface_macro::runtime_interface;
-use sp_wasm_interface::{Pointer, Result as SandboxResult, Value, WordSize};
+use sp_wasm_interface::{Result as SandboxResult, Value, WordSize};
+use cere_wasm_interface::Pointer;
 pub type MemoryId = u32;
 use std::{cell::RefCell, rc::Rc, str, sync::Arc};
 mod sandbox_util;

@@ -4,7 +4,7 @@
 extern crate alloc;
 use alloc::{borrow::Cow, vec, vec::Vec};
 use core::{iter::Iterator, marker::PhantomData, mem, result};
-use sp_wasm_interface::{Function,  Result as WResult, Pointer};
+use sp_wasm_interface::{Function,  Result as WResult};
 
 
 #[cfg(not(all(feature = "std", feature = "wasmtime")))]
@@ -13,14 +13,30 @@ macro_rules! if_wasmtime_is_enabled {
 	($($token:tt)*) => {};
 }
 
+#[cfg(all(feature = "std", feature = "wasmtime"))]
+#[macro_export]
+macro_rules! if_wasmtime_is_enabled {
+    ($($token:tt)*) => {
+        $($token)*
+    }
+}
+
+if_wasmtime_is_enabled! {
+	// Reexport wasmtime so that its types are accessible from the procedural macro.
+	pub use wasmtime;
+
+	// Wasmtime uses anyhow types but doesn't reexport them.
+	pub use anyhow;
+}
+
 /// Sandbox memory identifier.
 pub type MemoryId = u32;
 
 /// Result type used by traits in this crate.
 #[cfg(feature = "std")]
 pub type Result<T> = result::Result<T, String>;
-// #[cfg(not(feature = "std"))]
-// pub type Result<T> = result::Result<T, &'static str>;
+#[cfg(not(feature = "std"))]
+pub type Result<T> = result::Result<T, &'static str>;
 
 /// Value types supported by Substrate on the boundary between host/Wasm.
 #[derive(Copy, Clone, PartialEq, Debug, Eq)]
@@ -109,6 +125,96 @@ mod private {
 
 	impl Sealed for i32 {}
 	impl Sealed for i64 {}
+}
+
+/// Something that can be wrapped in a wasm `Pointer`.
+///
+/// This trait is sealed.
+pub trait PointerType: Sized + private::Sealed {
+	/// The size of the type in wasm.
+	const SIZE: u32 = mem::size_of::<Self>() as u32;
+}
+
+impl PointerType for u8 {}
+impl PointerType for u16 {}
+impl PointerType for u32 {}
+impl PointerType for u64 {}
+
+/// Type to represent a pointer in wasm at the host.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct Pointer<T: PointerType> {
+	ptr: u32,
+	_marker: PhantomData<T>,
+}
+
+impl<T: PointerType> Pointer<T> {
+	/// Create a new instance of `Self`.
+	pub fn new(ptr: u32) -> Self {
+		Self { ptr, _marker: Default::default() }
+	}
+
+	/// Calculate the offset from this pointer.
+	///
+	/// `offset` is in units of `T`. So, `3` means `3 * mem::size_of::<T>()` as offset to the
+	/// pointer.
+	///
+	/// Returns an `Option` to respect that the pointer could probably overflow.
+	pub fn offset(self, offset: u32) -> Option<Self> {
+		offset
+			.checked_mul(T::SIZE)
+			.and_then(|o| self.ptr.checked_add(o))
+			.map(|ptr| Self { ptr, _marker: Default::default() })
+	}
+
+	/// Create a null pointer.
+	pub fn null() -> Self {
+		Self::new(0)
+	}
+
+	/// Cast this pointer of type `T` to a pointer of type `R`.
+	pub fn cast<R: PointerType>(self) -> Pointer<R> {
+		Pointer::new(self.ptr)
+	}
+}
+
+impl<T: PointerType> From<u32> for Pointer<T> {
+	fn from(ptr: u32) -> Self {
+		Pointer::new(ptr)
+	}
+}
+
+impl<T: PointerType> From<Pointer<T>> for u32 {
+	fn from(ptr: Pointer<T>) -> Self {
+		ptr.ptr
+	}
+}
+
+impl<T: PointerType> From<Pointer<T>> for u64 {
+	fn from(ptr: Pointer<T>) -> Self {
+		u64::from(ptr.ptr)
+	}
+}
+
+impl<T: PointerType> From<Pointer<T>> for usize {
+	fn from(ptr: Pointer<T>) -> Self {
+		ptr.ptr as _
+	}
+}
+
+impl<T: PointerType> IntoValue for Pointer<T> {
+	const VALUE_TYPE: ValueType = ValueType::I32;
+	fn into_value(self) -> Value {
+		Value::I32(self.ptr as _)
+	}
+}
+
+impl<T: PointerType> TryFromValue for Pointer<T> {
+	fn try_from_value(val: Value) -> Option<Self> {
+		match val {
+			Value::I32(val) => Some(Self::new(val as _)),
+			_ => None,
+		}
+	}
 }
 
 /// The word size used in wasm. Normally known as `usize` in Rust.

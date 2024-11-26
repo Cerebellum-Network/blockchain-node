@@ -30,4 +30,5 @@ std = [
 	"sp-runtime/std",
 	"sp-runtime-interface-macro/std",
 	"sp-wasm-interface/std",
+	"cere-wasm-interface/std",
 ]

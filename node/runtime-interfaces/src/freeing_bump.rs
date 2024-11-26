@@ -68,7 +68,8 @@
 //!   sizes.
 
 pub use sp_core::MAX_POSSIBLE_ALLOCATION;
-use sp_wasm_interface::{Pointer, WordSize};
+use sp_wasm_interface::{WordSize};
+use cere_wasm_interface::{Pointer};
 use std::{
 	cmp::{max, min},
 	mem,

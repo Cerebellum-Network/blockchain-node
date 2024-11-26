@@ -30,9 +30,9 @@ use crate::{
 #[cfg(all(not(feature = "std"), not(feature = "disable_target_static_assertions")))]
 use static_assertions::assert_eq_size;
 
-// #[cfg(feature = "std")]
+#[cfg(feature = "std")]
 use sp_wasm_interface::{ Result};
-// #[cfg(feature = "std")]
+#[cfg(feature = "std")]
 use cere_wasm_interface::{FunctionContext};
 
 use codec::{Decode, Encode};
@@ -425,7 +425,7 @@ impl IntoFFIValue for str {
 }
 
 #[cfg(feature = "std")]
-impl<T: sp_wasm_interface::PointerType> RIType for Pointer<T> {
+impl<T: cere_wasm_interface::PointerType> RIType for Pointer<T> {
 	type FFIType = u32;
 }
 
@@ -452,7 +452,7 @@ impl<T> FromFFIValue for Pointer<T> {
 }
 
 #[cfg(feature = "std")]
-impl<T: sp_wasm_interface::PointerType> FromFFIValue for Pointer<T> {
+impl<T: cere_wasm_interface::PointerType> FromFFIValue for Pointer<T> {
 	type SelfInstance = Self;
 
 	fn from_ffi_value(_: &mut dyn FunctionContext, arg: u32) -> Result<Self> {
@@ -461,7 +461,7 @@ impl<T: sp_wasm_interface::PointerType> FromFFIValue for Pointer<T> {
 }
 
 #[cfg(feature = "std")]
-impl<T: sp_wasm_interface::PointerType> IntoFFIValue for Pointer<T> {
+impl<T: cere_wasm_interface::PointerType> IntoFFIValue for Pointer<T> {
 	fn into_ffi_value(self, _: &mut dyn FunctionContext) -> Result<u32> {
 		Ok(self.into())
 	}

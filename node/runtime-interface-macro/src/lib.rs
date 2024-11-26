@@ -414,4 +414,4 @@ pub type Pointer<T> = *mut T;
 
 /// A pointer that can be used in a runtime interface function signature.
 #[cfg(feature = "std")]
-pub type Pointer<T> = sp_wasm_interface::Pointer<T>;
+pub type Pointer<T> = cere_wasm_interface::Pointer<T>;
