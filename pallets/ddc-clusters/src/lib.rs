@@ -106,7 +106,7 @@ pub mod pallet {
 		ClusterUnbonding { cluster_id: ClusterId },
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
-		ClusterEraValidated { cluster_id: ClusterId, era_id: DdcEra },
+		ClusterEraPaid { cluster_id: ClusterId, era_id: DdcEra },
 	}
 
 	#[pallet::error]
@@ -890,21 +890,22 @@ pub mod pallet {
 		}
 	}
 	impl<T: Config> ClusterValidator<T> for Pallet<T> {
-		fn set_last_validated_era(
-			cluster_id: &ClusterId,
-			era_id: DdcEra,
-		) -> Result<(), DispatchError> {
+		fn set_last_paid_era(cluster_id: &ClusterId, era_id: DdcEra) -> Result<(), DispatchError> {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 
-			cluster.last_validated_era_id = era_id;
+			cluster.last_paid_era = era_id;
 			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterEraValidated {
-				cluster_id: *cluster_id,
-				era_id,
-			});
+			Self::deposit_event(Event::<T>::ClusterEraPaid { cluster_id: *cluster_id, era_id });
 
 			Ok(())
+		}
+
+		fn get_last_paid_era(cluster_id: &ClusterId) -> Result<DdcEra, DispatchError> {
+			let cluster =
+				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
+
+			Ok(cluster.last_paid_era)
 		}
 	}
 
@@ -979,6 +980,16 @@ pub mod pallet {
 			succeeded: bool,
 		) -> Result<(), DispatchError> {
 			Self::do_validate_node(*cluster_id, node_pub_key.clone(), succeeded)
+		}
+
+		fn get_clusters(status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError> {
+			let mut clusters_ids = Vec::new();
+			for (cluster_id, cluster) in <Clusters<T>>::iter() {
+				if cluster.status == status {
+					clusters_ids.push(cluster_id);
+				}
+			}
+			Ok(clusters_ids)
 		}
 	}
 

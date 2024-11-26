@@ -1,6 +1,6 @@
 //! DdcStaking pallet benchmarking.
 
-use ddc_primitives::{ClusterId, ClusterParams, ClusterProtocolParams};
+use ddc_primitives::{BucketParams, ClusterId, ClusterParams, ClusterProtocolParams};
 use frame_benchmarking::{account, benchmarks, whitelist_account};
 use frame_support::traits::Currency;
 use sp_runtime::Perquintill;

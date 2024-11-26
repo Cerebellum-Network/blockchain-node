@@ -3,8 +3,12 @@
 use blake2::{Blake2s256, Digest};
 use codec::{Decode, Encode};
 use frame_support::parameter_types;
+use frame_system::Config;
 use polkadot_ckb_merkle_mountain_range::Merge;
-use scale_info::{prelude::vec::Vec, TypeInfo};
+use scale_info::{
+	prelude::{collections::BTreeMap, string::String, vec::Vec},
+	TypeInfo,
+};
 use serde::{Deserialize, Serialize};
 use sp_core::{crypto::KeyTypeId, hash::H160};
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
@@ -28,6 +32,7 @@ pub type ClusterNodesCount = u16;
 pub type StorageNodePubKey = AccountId32;
 pub type ActivityHash = [u8; 32];
 pub type BatchIndex = u16;
+pub const AVG_SECONDS_MONTH: i64 = 2630016; // 30.44 * 24.0 * 3600.0;
 
 pub struct MergeActivityHash;
 impl Merge for MergeActivityHash {
@@ -121,6 +126,14 @@ pub struct AggregatorInfo {
 )]
 pub enum NodePubKey {
 	StoragePubKey(StorageNodePubKey),
+}
+
+impl NodePubKey {
+	pub fn get_hex(&self) -> String {
+		match self {
+			NodePubKey::StoragePubKey(pub_key_ref) => hex::encode(pub_key_ref),
+		}
+	}
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
@@ -254,18 +267,27 @@ pub struct ClusterNodesStats {
 	pub validation_failed: ClusterNodesCount,
 }
 
-/// Stores usage of customers
+/// Stores usage of a bucket
 #[derive(
 	PartialEq, Eq, Encode, Decode, Debug, TypeInfo, Default, Clone, Serialize, Deserialize,
 )]
-pub struct CustomerUsage {
+pub struct BucketUsage {
 	pub transferred_bytes: u64,
 	pub stored_bytes: i64,
 	pub number_of_puts: u64,
 	pub number_of_gets: u64,
 }
 
-/// Stores usage of node provider
+/// Stores charge in tokens(units) of customer as per BucketUsage
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
+pub struct CustomerCharge {
+	pub transfer: u128, // charge in tokens for BucketUsage::transferred_bytes
+	pub storage: u128,  // charge in tokens for BucketUsage::stored_bytes
+	pub puts: u128,     // charge in tokens for BucketUsage::number_of_puts
+	pub gets: u128,     // charge in tokens for BucketUsage::number_of_gets
+}
+
+/// Stores usage of a node
 #[derive(
 	PartialEq, Eq, Encode, Decode, Debug, TypeInfo, Default, Clone, Serialize, Deserialize,
 )]
@@ -276,24 +298,24 @@ pub struct NodeUsage {
 	pub number_of_gets: u64,
 }
 
+/// Stores reward in tokens(units) of node provider as per NodeUsage
+#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
+pub struct ProviderReward {
+	pub transfer: u128, // reward in tokens for NodeUsage::transferred_bytes
+	pub storage: u128,  // reward in tokens for NodeUsage::stored_bytes
+	pub puts: u128,     // reward in tokens for NodeUsage::number_of_puts
+	pub gets: u128,     // reward in tokens for NodeUsage::number_of_gets
+}
+
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
 pub struct MMRProof {
-	pub mmr_size: u64,
 	pub proof: Vec<ActivityHash>,
-	pub leaf_with_position: (u64, ActivityHash),
 }
 
 #[derive(Debug, PartialEq)]
 pub enum NodeRepositoryError {
 	StorageNodeAlreadyExists,
 	StorageNodeDoesNotExist,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum BucketVisitorError {
-	NoBucketWithId,
-	NotBucketOwner,
-	IncorrectClusterId,
 }
 
 #[derive(Debug, PartialEq)]
@@ -315,15 +337,20 @@ pub enum PayoutState {
 	Finalized = 7,
 }
 
-pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct BucketParams {
+	pub is_public: bool,
+}
+
+pub const DAC_VERIFICATION_KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
 
 pub mod sr25519 {
 	mod app_sr25519 {
-		use scale_info::prelude::string::String;
 		use sp_application_crypto::{app_crypto, sr25519};
 
-		use crate::KEY_TYPE;
-		app_crypto!(sr25519, KEY_TYPE);
+		use crate::{String, DAC_VERIFICATION_KEY_TYPE};
+
+		app_crypto!(sr25519, DAC_VERIFICATION_KEY_TYPE);
 	}
 
 	sp_application_crypto::with_pair! {
@@ -334,7 +361,6 @@ pub mod sr25519 {
 }
 
 pub mod crypto {
-	use scale_info::prelude::string::String;
 	use sp_core::sr25519::Signature as Sr25519Signature;
 	use sp_runtime::{
 		app_crypto::{app_crypto, sr25519},
@@ -342,8 +368,9 @@ pub mod crypto {
 		MultiSignature, MultiSigner,
 	};
 
-	use super::KEY_TYPE;
-	app_crypto!(sr25519, KEY_TYPE);
+	use crate::{String, DAC_VERIFICATION_KEY_TYPE};
+
+	app_crypto!(sr25519, DAC_VERIFICATION_KEY_TYPE);
 	pub struct OffchainIdentifierId;
 	impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for OffchainIdentifierId {
 		type RuntimeAppPublic = Public;
@@ -359,4 +386,54 @@ pub mod crypto {
 		type GenericSignature = sp_core::sr25519::Signature;
 		type GenericPublic = sp_core::sr25519::Public;
 	}
+}
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+pub enum EraValidationStatus {
+	ValidatingData,
+	ReadyForPayout,
+	PayoutInProgress,
+	PayoutFailed,
+	PayoutSuccess,
+	PayoutSkipped,
+}
+
+#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[scale_info(skip_type_params(T))]
+pub struct EraValidation<T: Config> {
+	pub validators: BTreeMap<(ActivityHash, ActivityHash), Vec<T::AccountId>>,
+	pub start_era: i64,
+	pub end_era: i64,
+	pub payers_merkle_root_hash: ActivityHash,
+	pub payees_merkle_root_hash: ActivityHash,
+	pub status: EraValidationStatus,
+}
+
+impl<T: Config> Default for EraValidation<T> {
+	fn default() -> Self {
+		EraValidation {
+			validators: Default::default(),
+			start_era: Default::default(),
+			end_era: Default::default(),
+			payers_merkle_root_hash: Default::default(),
+			payees_merkle_root_hash: Default::default(),
+			status: EraValidationStatus::PayoutSkipped,
+		}
+	}
+}
+
+#[derive(Default)]
+pub struct BillingReportParams {
+	pub cluster_id: ClusterId,
+	pub era: DdcEra,
+	pub start_era: i64,
+	pub end_era: i64,
+	pub state: PayoutState,
+	pub total_customer_charge: CustomerCharge,
+	pub total_distributed_reward: u128,
+	pub total_node_usage: NodeUsage,
+	pub charging_max_batch_index: BatchIndex,
+	pub charging_processed_batches: Vec<BatchIndex>,
+	pub rewarding_max_batch_index: BatchIndex,
+	pub rewarding_processed_batches: Vec<BatchIndex>,
 }
