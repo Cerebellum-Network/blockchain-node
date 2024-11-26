@@ -39,6 +39,7 @@ pub trait WeightInfo {
 	fn end_billing_report() -> Weight;
 	fn emit_consensus_errors(b: u32, ) -> Weight;
 	fn set_era_validations() -> Weight;
+	fn skip_dac_validation_to_era() -> Weight;
 }
 
 /// Weights for pallet_ddc_verification using the Substrate node and recommended hardware.
@@ -225,6 +226,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+
+	fn skip_dac_validation_to_era() -> Weight {
+		Weight::from_parts(0_u64, 0)
+			.saturating_add(T::DbWeight::get().reads(2_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
+	}
 }
 
 // For backwards compatibility and tests
@@ -409,5 +416,11 @@ impl WeightInfo for () {
 		Weight::from_parts(498_523_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+
+	fn skip_dac_validation_to_era() -> Weight {
+		Weight::from_parts(0_u64, 0)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 }

@@ -513,7 +513,6 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 		PayoutState::NotInitialized
 	}
 
-	#[cfg(feature = "runtime-benchmarks")]
 	fn create_billing_report(_vault: T::AccountId, _params: BillingReportParams) {
 		unimplemented!()
 	}
