@@ -1,23 +1,25 @@
 use frame_system::Config;
-use sp_std::prelude::*;
 
-use crate::{BatchIndex, BucketId, ClusterId, CustomerUsage, DdcEra, MMRProof, NodeUsage};
+use crate::{
+	BatchIndex, BucketId, BucketUsage, ClusterId, DdcEra, MMRProof, NodePubKey, NodeUsage,
+};
 
 pub trait ValidatorVisitor<T: Config> {
-	fn setup_validators(validators: Vec<T::AccountId>);
 	fn is_ocw_validator(caller: T::AccountId) -> bool;
 	fn is_customers_batch_valid(
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
-		payers: &[(T::AccountId, BucketId, CustomerUsage)],
+		max_batch_index: BatchIndex,
+		payers: &[(NodePubKey, BucketId, BucketUsage)],
 		batch_proof: &MMRProof,
 	) -> bool;
 	fn is_providers_batch_valid(
 		cluster_id: ClusterId,
 		era: DdcEra,
 		batch_index: BatchIndex,
-		payees: &[(T::AccountId, NodeUsage)],
+		max_batch_index: BatchIndex,
+		payees: &[(NodePubKey, NodeUsage)],
 		batch_proof: &MMRProof,
 	) -> bool;
 }

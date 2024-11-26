@@ -14,31 +14,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 
-pub mod weights;
-
-use crate::weights::WeightInfo;
-
-#[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
-
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod migrations;
+
 use ddc_primitives::{
 	traits::{
-		bucket::BucketVisitor as BucketVisitorType,
-		cluster::{ClusterCreator as ClusterCreatorType, ClusterProtocol as ClusterProtocolType},
-		customer::{
-			CustomerCharger as CustomerChargerType, CustomerDepositor as CustomerDepositorType,
-		},
-		node::NodeVisitor as NodeVisitorType,
-		pallet::PalletVisitor as PalletVisitorType,
-		payout::PayoutVisitor,
+		bucket::BucketManager, cluster::ClusterProtocol as ClusterProtocolType,
+		customer::CustomerCharger as CustomerChargerType, node::NodeManager,
+		pallet::PalletVisitor as PalletVisitorType, payout::PayoutProcessor,
 	},
-	BatchIndex, BucketId, BucketVisitorError, ClusterId, CustomerUsage, DdcEra, MMRProof,
-	NodeUsage, PayoutError, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
+	BatchIndex, BillingReportParams, BucketId, BucketUsage, ClusterId, CustomerCharge, DdcEra,
+	MMRProof, NodePubKey, NodeUsage, PayoutError, PayoutState, ProviderReward,
+	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -53,14 +44,6 @@ pub use pallet::*;
 use scale_info::prelude::string::String;
 use sp_runtime::{traits::Convert, AccountId32, PerThing, Perquintill};
 use sp_std::prelude::*;
-/// Stores reward in tokens(units) of node provider as per NodeUsage
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
-pub struct NodeReward {
-	pub transfer: u128, // reward in tokens for NodeUsage::transferred_bytes
-	pub storage: u128,  // reward in tokens for NodeUsage::stored_bytes
-	pub puts: u128,     // reward in tokens for NodeUsage::number_of_puts
-	pub gets: u128,     // reward in tokens for NodeUsage::number_of_gets
-}
 
 #[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
 pub struct BillingReportDebt {
@@ -68,15 +51,6 @@ pub struct BillingReportDebt {
 	pub era: DdcEra,
 	pub batch_index: BatchIndex,
 	pub amount: u128,
-}
-
-/// Stores charge in tokens(units) of customer as per CustomerUsage
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
-pub struct CustomerCharge {
-	pub transfer: u128, // charge in tokens for CustomerUsage::transferred_bytes
-	pub storage: u128,  // charge in tokens for CustomerUsage::stored_bytes
-	pub puts: u128,     // charge in tokens for CustomerUsage::number_of_puts
-	pub gets: u128,     // charge in tokens for CustomerUsage::number_of_gets
 }
 
 /// The balance type of this pallet.
@@ -105,7 +79,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(0);
+		frame_support::traits::StorageVersion::new(1);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -119,14 +93,11 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
 		type CustomerCharger: CustomerChargerType<Self>;
-		type BucketVisitor: BucketVisitorType<Self>;
-		type NodeVisitor: NodeVisitorType<Self>;
-		type CustomerDepositor: CustomerDepositorType<Self>;
+		type BucketManager: BucketManager<Self>;
+		type NodeManager: NodeManager<Self>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
 		type ClusterProtocol: ClusterProtocolType<Self, BalanceOf<Self>>;
 		type NominatorsAndValidatorsList: SortedListProvider<Self::AccountId>;
-		type ClusterCreator: ClusterCreatorType<Self, BalanceOf<Self>>;
-		type WeightInfo: WeightInfo;
 		type VoteScoreToU64: Convert<VoteScoreOf<Self>, u64>;
 		type ValidatorVisitor: ValidatorVisitor<Self>;
 		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
@@ -227,9 +198,6 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era: DdcEra,
 		},
-		AuthorisedCaller {
-			authorised_caller: T::AccountId,
-		},
 		ChargeError {
 			cluster_id: ClusterId,
 			era: DdcEra,
@@ -245,7 +213,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		BillingReportDoesNotExist,
 		NotExpectedState,
-		Unauthorised,
+		Unauthorized,
 		BatchIndexAlreadyProcessed,
 		BatchIndexIsOutOfRange,
 		BatchesMissed,
@@ -275,10 +243,6 @@ pub mod pallet {
 		DdcEra,
 		BillingReport<T>,
 	>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn authorised_caller)]
-	pub type AuthorisedCaller<T: Config> = StorageValue<_, T::AccountId>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn debtor_customers)]
@@ -341,36 +305,262 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
+	impl<T: Config> Pallet<T> {}
+
+	fn charge_treasury_fees<T: Config>(
+		treasury_fee: u128,
+		vault: &T::AccountId,
+		treasury_vault: &T::AccountId,
+	) -> DispatchResult {
+		let amount_to_deduct = treasury_fee.saturated_into::<BalanceOf<T>>();
+		<T as pallet::Config>::Currency::transfer(
+			vault,
+			treasury_vault,
+			amount_to_deduct,
+			ExistenceRequirement::AllowDeath,
+		)
+	}
+
+	fn charge_cluster_reserve_fees<T: Config>(
+		cluster_reserve_fee: u128,
+		vault: &T::AccountId,
+		reserve_vault: &T::AccountId,
+	) -> DispatchResult {
+		let amount_to_deduct = cluster_reserve_fee.saturated_into::<BalanceOf<T>>();
+		<T as pallet::Config>::Currency::transfer(
+			vault,
+			reserve_vault,
+			amount_to_deduct,
+			ExistenceRequirement::AllowDeath,
+		)
+	}
+
+	fn get_current_exposure_ratios<T: Config>(
+	) -> Result<Vec<(T::AccountId, Perquintill)>, DispatchError> {
+		let mut total_score = 0;
+		let mut individual_scores: Vec<(T::AccountId, u64)> = Vec::new();
+		for staker_id in T::NominatorsAndValidatorsList::iter() {
+			let s = T::NominatorsAndValidatorsList::get_score(&staker_id)
+				.map_err(|_| Error::<T>::ScoreRetrievalError)?;
+			let score = T::VoteScoreToU64::convert(s);
+			total_score += score;
+
+			individual_scores.push((staker_id, score));
+		}
+
+		let mut result = Vec::new();
+		for (staker_id, score) in individual_scores {
+			let ratio = Perquintill::from_rational(score, total_score);
+			result.push((staker_id, ratio));
+		}
+
+		Ok(result)
+	}
+
+	fn charge_validator_fees<T: Config>(
+		validators_fee: u128,
+		vault: &T::AccountId,
+		cluster_id: ClusterId,
+		era: DdcEra,
+	) -> DispatchResult {
+		let stakers = get_current_exposure_ratios::<T>()?;
+
+		for (staker_id, ratio) in stakers.iter() {
+			let amount_to_deduct = *ratio * validators_fee;
+
+			<T as pallet::Config>::Currency::transfer(
+				vault,
+				staker_id,
+				amount_to_deduct.saturated_into::<BalanceOf<T>>(),
+				ExistenceRequirement::AllowDeath,
+			)?;
+
+			pallet::Pallet::deposit_event(Event::<T>::ValidatorRewarded {
+				cluster_id,
+				era,
+				validator_id: staker_id.clone(),
+				amount: amount_to_deduct,
+			});
+		}
+
+		Ok(())
+	}
+
+	fn get_node_reward(
+		node_usage: &NodeUsage,
+		total_nodes_usage: &NodeUsage,
+		total_customer_charge: &CustomerCharge,
+	) -> Option<ProviderReward> {
+		let mut node_reward = ProviderReward::default();
+
+		let mut ratio = Perquintill::from_rational(
+			node_usage.transferred_bytes as u128,
+			total_nodes_usage.transferred_bytes as u128,
+		);
+
+		// ratio multiplied by X will be > 0, < X no overflow
+		node_reward.transfer = ratio * total_customer_charge.transfer;
+
+		ratio = Perquintill::from_rational(
+			node_usage.stored_bytes as u128,
+			total_nodes_usage.stored_bytes as u128,
+		);
+		node_reward.storage = ratio * total_customer_charge.storage;
+
+		ratio =
+			Perquintill::from_rational(node_usage.number_of_puts, total_nodes_usage.number_of_puts);
+		node_reward.puts = ratio * total_customer_charge.puts;
+
+		ratio =
+			Perquintill::from_rational(node_usage.number_of_gets, total_nodes_usage.number_of_gets);
+		node_reward.gets = ratio * total_customer_charge.gets;
+
+		Some(node_reward)
+	}
+
+	fn get_customer_charge<T: Config>(
+		cluster_id: &ClusterId,
+		usage: &BucketUsage,
+		bucket_id: BucketId,
+		customer_id: &T::AccountId,
+		start_era: i64,
+		end_era: i64,
+	) -> Result<CustomerCharge, DispatchError> {
+		let mut total = CustomerCharge::default();
+
+		let pricing = T::ClusterProtocol::get_pricing_params(cluster_id)
+			.map_err(|_| Error::<T>::NotExpectedClusterState)?;
+
+		total.transfer = (|| -> Option<u128> {
+			(usage.transferred_bytes as u128)
+				.checked_mul(pricing.unit_per_mb_streamed)?
+				.checked_div(byte_unit::MEBIBYTE)
+		})()
+		.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+		// Calculate the duration of the period in seconds
+		let duration_seconds = end_era - start_era;
+		let seconds_in_month = 30.44 * 24.0 * 3600.0;
+		let fraction_of_month =
+			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
+
+		let mut total_stored_bytes: i64 =
+			T::BucketManager::get_total_bucket_usage(cluster_id, bucket_id, customer_id)?
+				.map_or(0, |customer_usage| customer_usage.stored_bytes);
+
+		total_stored_bytes = total_stored_bytes
+			.checked_add(usage.stored_bytes)
+			.ok_or(Error::<T>::ArithmeticOverflow)?
+			.max(0);
+
+		total.storage = fraction_of_month *
+			(|| -> Option<u128> {
+				(total_stored_bytes as u128)
+					.checked_mul(pricing.unit_per_mb_stored)?
+					.checked_div(byte_unit::MEBIBYTE)
+			})()
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+		total.gets = (usage.number_of_gets as u128)
+			.checked_mul(pricing.unit_per_get_request)
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+		total.puts = (usage.number_of_puts as u128)
+			.checked_mul(pricing.unit_per_put_request)
+			.ok_or(Error::<T>::ArithmeticOverflow)?;
+
+		Ok(total)
+	}
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub feeder_account: Option<T::AccountId>,
+		pub authorised_caller: Option<T::AccountId>,
+		pub debtor_customers: Vec<(ClusterId, T::AccountId, u128)>,
+	}
+
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig {
+				feeder_account: None,
+				authorised_caller: Default::default(),
+				debtor_customers: Default::default(),
+			}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
+		fn build(&self) {
+			let account_id = <Pallet<T>>::account_id();
+			let min = <T as pallet::Config>::Currency::minimum_balance();
+			let balance = <T as pallet::Config>::Currency::free_balance(&account_id);
+			if balance < min {
+				if let Some(vault) = &self.feeder_account {
+					let _ = <T as pallet::Config>::Currency::transfer(
+						vault,
+						&account_id,
+						min - balance,
+						ExistenceRequirement::AllowDeath,
+					);
+				} else {
+					let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
+				}
+			}
+
+			for (cluster_id, customer_id, debt) in &self.debtor_customers {
+				DebtorCustomers::<T>::insert(cluster_id, customer_id, debt);
+			}
+		}
+	}
+
 	impl<T: Config> Pallet<T> {
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// PayoutProcessor trait
-		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::set_authorised_caller())]
-		pub fn set_authorised_caller(
-			origin: OriginFor<T>,
-			authorised_caller: T::AccountId,
+		pub fn account_id() -> T::AccountId {
+			T::PalletId::get().into_account_truncating()
+		}
+
+		pub fn get_account_id_string(caller: T::AccountId) -> String {
+			let account_id: T::AccountIdConverter = caller.into();
+			let account_id_32: AccountId32 = account_id.into();
+			let account_ref: &[u8; 32] = account_id_32.as_ref();
+			hex::encode(account_ref)
+		}
+		pub fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
+			let mut bytes = Vec::new();
+			bytes.extend_from_slice(&cluster_id[..]);
+			bytes.extend_from_slice(&era.encode());
+			let hash = blake2_128(&bytes);
+
+			// "modl" + "payouts_" + hash is 28 bytes, the T::AccountId is 32 bytes, so we should be
+			// safe from the truncation and possible collisions caused by it. The rest 4 bytes will
+			// be fulfilled with trailing zeros.
+			T::PalletId::get().into_sub_account_truncating(hash)
+		}
+
+		pub(crate) fn validate_batches(
+			batches: &BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
+			max_batch_index: &BatchIndex,
 		) -> DispatchResult {
-			ensure_root(origin)?; // requires Governance approval
+			// Check if the Vec contains all integers between 1 and rewarding_max_batch_index
+			ensure!(!batches.is_empty(), Error::<T>::BatchesMissed);
 
-			AuthorisedCaller::<T>::put(authorised_caller.clone());
+			ensure!((*max_batch_index + 1) as usize == batches.len(), Error::<T>::BatchesMissed);
 
-			Self::deposit_event(Event::<T>::AuthorisedCaller { authorised_caller });
+			for index in 0..*max_batch_index + 1 {
+				ensure!(batches.contains(&index), Error::<T>::BatchesMissed);
+			}
 
 			Ok(())
 		}
+	}
 
-		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::begin_billing_report())]
-		pub fn begin_billing_report(
-			origin: OriginFor<T>,
+	impl<T: Config> PayoutProcessor<T> for Pallet<T> {
+		fn begin_billing_report(
 			cluster_id: ClusterId,
 			era: DdcEra,
 			start_era: i64,
 			end_era: i64,
 		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
 			ensure!(
 				ActiveBillingReports::<T>::try_get(cluster_id, era).is_err(),
 				Error::<T>::NotExpectedState
@@ -392,20 +582,11 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// PayoutProcessor trait
-		#[pallet::call_index(2)]
-		#[pallet::weight(T::WeightInfo::begin_charging_customers())]
-		pub fn begin_charging_customers(
-			origin: OriginFor<T>,
+		fn begin_charging_customers(
 			cluster_id: ClusterId,
 			era: DdcEra,
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised); //
-																				  // todo! need to refactor this
-
 			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
@@ -422,21 +603,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// + pass values by reference PayoutProcessor trait
-		#[pallet::call_index(3)]
-		#[pallet::weight(T::WeightInfo::send_charging_customers_batch(payers.len().saturated_into()))]
-		pub fn send_charging_customers_batch(
-			origin: OriginFor<T>,
+		fn send_charging_customers_batch(
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payers: Vec<(T::AccountId, BucketId, CustomerUsage)>,
+			payers: &[(NodePubKey, BucketId, BucketUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
 			ensure!(
 				!payers.is_empty() && payers.len() <= MaxBatchSize::get() as usize,
 				Error::<T>::BatchSizeIsOutOfBounds
@@ -465,18 +638,21 @@ pub mod pallet {
 					cluster_id,
 					era,
 					batch_index,
-					&payers,
-					&batch_proof
+					billing_report.charging_max_batch_index,
+					payers,
+					&batch_proof,
 				),
 				Error::<T>::BatchValidationFailed
 			);
 
 			let mut updated_billing_report = billing_report;
-			for (customer_id, bucket_id, customer_usage) in payers {
-				log::info!("🏭send_charging_customers_batch get_customer_charge customer_id: {:?} -  bucket_id: {:?} - era:{:?} - cluster-id:{:?}", Self::get_account_id_string(customer_id.clone()), bucket_id, era, cluster_id);
+			for (_node_key, bucket_ref, customer_usage) in payers {
+				let bucket_id = *bucket_ref;
+				let customer_id = T::BucketManager::get_bucket_owner_id(bucket_id)?;
+
 				let mut customer_charge = get_customer_charge::<T>(
 					&cluster_id,
-					&customer_usage,
+					customer_usage,
 					bucket_id,
 					&customer_id,
 					updated_billing_report.start_era,
@@ -496,7 +672,7 @@ pub mod pallet {
 					bucket_id,
 					customer_id.clone(),
 					updated_billing_report.vault.clone(),
-					&customer_usage,
+					customer_usage,
 					total_customer_charge,
 				) {
 					Ok(actually_charged) => actually_charged,
@@ -602,18 +778,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// PayoutProcessor trait
-		#[pallet::call_index(4)]
-		#[pallet::weight(T::WeightInfo::end_charging_customers())]
-		pub fn end_charging_customers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era: DdcEra,
-		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
+		fn end_charging_customers(cluster_id: ClusterId, era: DdcEra) -> DispatchResult {
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
@@ -706,20 +871,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// PayoutProcessor trait
-		#[pallet::call_index(5)]
-		#[pallet::weight(T::WeightInfo::begin_rewarding_providers())]
-		pub fn begin_rewarding_providers(
-			origin: OriginFor<T>,
+		fn begin_rewarding_providers(
 			cluster_id: ClusterId,
 			era: DdcEra,
 			max_batch_index: BatchIndex,
 			total_node_usage: NodeUsage,
 		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
 			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
@@ -740,22 +897,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// + pass values by reference PayoutProcessor trait
-		#[pallet::call_index(6)]
-		#[pallet::weight(T::WeightInfo::send_rewarding_providers_batch(payees.len().saturated_into()))]
-		pub fn send_rewarding_providers_batch(
-			origin: OriginFor<T>,
+		fn send_rewarding_providers_batch(
 			cluster_id: ClusterId,
 			era: DdcEra,
 			batch_index: BatchIndex,
-			payees: Vec<(T::AccountId, NodeUsage)>, /* todo! we need to pass NodePubKey inside
-			                                         * NodeUsage and more provider_id */
+			payees: &[(NodePubKey, NodeUsage)],
 			batch_proof: MMRProof,
 		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
 			ensure!(
 				!payees.is_empty() && payees.len() <= MaxBatchSize::get() as usize,
 				Error::<T>::BatchSizeIsOutOfBounds
@@ -782,7 +930,8 @@ pub mod pallet {
 					cluster_id,
 					era,
 					batch_index,
-					&payees,
+					billing_report.rewarding_max_batch_index,
+					payees,
 					&batch_proof
 				),
 				Error::<T>::BatchValidationFailed
@@ -790,9 +939,9 @@ pub mod pallet {
 
 			let max_dust = MaxDust::get().saturated_into::<BalanceOf<T>>();
 			let mut updated_billing_report = billing_report.clone();
-			for (node_provider_id, delta_node_usage) in payees {
-				// todo! deduce node_provider_id from delta_node_usage.node_id
+			for (node_key, delta_node_usage) in payees {
 				// todo! get T::NodeVisitor::get_total_usage(delta_node_usage.node_id).stored_bytes
+				let node_provider_id = T::NodeManager::get_node_provider_id(node_key)?;
 				let mut total_node_stored_bytes: i64 = 0;
 
 				total_node_stored_bytes = total_node_stored_bytes
@@ -882,18 +1031,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// PayoutProcessor trait
-		#[pallet::call_index(7)]
-		#[pallet::weight(T::WeightInfo::end_rewarding_providers())]
-		pub fn end_rewarding_providers(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era: DdcEra,
-		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
+		fn end_rewarding_providers(cluster_id: ClusterId, era: DdcEra) -> DispatchResult {
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
@@ -935,18 +1073,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// todo! remove extrensics from payout pallet and factor the extrensics implementation into
-		// PayoutProcessor trait
-		#[pallet::call_index(8)]
-		#[pallet::weight(T::WeightInfo::end_billing_report())]
-		pub fn end_billing_report(
-			origin: OriginFor<T>,
-			cluster_id: ClusterId,
-			era: DdcEra,
-		) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			ensure!(T::ValidatorVisitor::is_ocw_validator(caller), Error::<T>::Unauthorised);
-
+		fn end_billing_report(cluster_id: ClusterId, era: DdcEra) -> DispatchResult {
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
 
@@ -964,377 +1091,19 @@ pub mod pallet {
 
 			Ok(())
 		}
-	}
-
-	fn charge_treasury_fees<T: Config>(
-		treasury_fee: u128,
-		vault: &T::AccountId,
-		treasury_vault: &T::AccountId,
-	) -> DispatchResult {
-		let amount_to_deduct = treasury_fee.saturated_into::<BalanceOf<T>>();
-		<T as pallet::Config>::Currency::transfer(
-			vault,
-			treasury_vault,
-			amount_to_deduct,
-			ExistenceRequirement::AllowDeath,
-		)
-	}
-
-	fn charge_cluster_reserve_fees<T: Config>(
-		cluster_reserve_fee: u128,
-		vault: &T::AccountId,
-		reserve_vault: &T::AccountId,
-	) -> DispatchResult {
-		let amount_to_deduct = cluster_reserve_fee.saturated_into::<BalanceOf<T>>();
-		<T as pallet::Config>::Currency::transfer(
-			vault,
-			reserve_vault,
-			amount_to_deduct,
-			ExistenceRequirement::AllowDeath,
-		)
-	}
-
-	fn get_current_exposure_ratios<T: Config>(
-	) -> Result<Vec<(T::AccountId, Perquintill)>, DispatchError> {
-		let mut total_score = 0;
-		let mut individual_scores: Vec<(T::AccountId, u64)> = Vec::new();
-		for staker_id in T::NominatorsAndValidatorsList::iter() {
-			let s = T::NominatorsAndValidatorsList::get_score(&staker_id)
-				.map_err(|_| Error::<T>::ScoreRetrievalError)?;
-			let score = T::VoteScoreToU64::convert(s);
-			total_score += score;
-
-			individual_scores.push((staker_id, score));
-		}
-
-		let mut result = Vec::new();
-		for (staker_id, score) in individual_scores {
-			let ratio = Perquintill::from_rational(score, total_score);
-			result.push((staker_id, ratio));
-		}
-
-		Ok(result)
-	}
-
-	fn charge_validator_fees<T: Config>(
-		validators_fee: u128,
-		vault: &T::AccountId,
-		cluster_id: ClusterId,
-		era: DdcEra,
-	) -> DispatchResult {
-		let stakers = get_current_exposure_ratios::<T>()?;
-
-		for (staker_id, ratio) in stakers.iter() {
-			let amount_to_deduct = *ratio * validators_fee;
-
-			<T as pallet::Config>::Currency::transfer(
-				vault,
-				staker_id,
-				amount_to_deduct.saturated_into::<BalanceOf<T>>(),
-				ExistenceRequirement::AllowDeath,
-			)?;
-
-			pallet::Pallet::deposit_event(Event::<T>::ValidatorRewarded {
-				cluster_id,
-				era,
-				validator_id: staker_id.clone(),
-				amount: amount_to_deduct,
-			});
-		}
-
-		Ok(())
-	}
-
-	fn get_node_reward(
-		node_usage: &NodeUsage,
-		total_nodes_usage: &NodeUsage,
-		total_customer_charge: &CustomerCharge,
-	) -> Option<NodeReward> {
-		let mut node_reward = NodeReward::default();
-
-		let mut ratio = Perquintill::from_rational(
-			node_usage.transferred_bytes as u128,
-			total_nodes_usage.transferred_bytes as u128,
-		);
-
-		// ratio multiplied by X will be > 0, < X no overflow
-		node_reward.transfer = ratio * total_customer_charge.transfer;
-
-		ratio = Perquintill::from_rational(
-			node_usage.stored_bytes as u128,
-			total_nodes_usage.stored_bytes as u128,
-		);
-		node_reward.storage = ratio * total_customer_charge.storage;
-
-		ratio =
-			Perquintill::from_rational(node_usage.number_of_puts, total_nodes_usage.number_of_puts);
-		node_reward.puts = ratio * total_customer_charge.puts;
-
-		ratio =
-			Perquintill::from_rational(node_usage.number_of_gets, total_nodes_usage.number_of_gets);
-		node_reward.gets = ratio * total_customer_charge.gets;
-
-		Some(node_reward)
-	}
-
-	fn get_customer_charge<T: Config>(
-		cluster_id: &ClusterId,
-		usage: &CustomerUsage,
-		bucket_id: BucketId,
-		customer_id: &T::AccountId,
-		start_era: i64,
-		end_era: i64,
-	) -> Result<CustomerCharge, Error<T>> {
-		let mut total = CustomerCharge::default();
-
-		let pricing = T::ClusterProtocol::get_pricing_params(cluster_id)
-			.map_err(|_| Error::<T>::NotExpectedClusterState)?;
-
-		total.transfer = (|| -> Option<u128> {
-			(usage.transferred_bytes as u128)
-				.checked_mul(pricing.unit_per_mb_streamed)?
-				.checked_div(byte_unit::MEBIBYTE)
-		})()
-		.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-		// Calculate the duration of the period in seconds
-		let duration_seconds = end_era - start_era;
-		let seconds_in_month = 30.44 * 24.0 * 3600.0;
-		let fraction_of_month =
-			Perquintill::from_rational(duration_seconds as u64, seconds_in_month as u64);
-
-		let mut total_stored_bytes: i64 =
-			T::BucketVisitor::get_total_customer_usage(cluster_id, bucket_id, customer_id)
-				.map_err(Into::<Error<T>>::into)?
-				.map_or(0, |customer_usage| customer_usage.stored_bytes);
-
-		total_stored_bytes = total_stored_bytes
-			.checked_add(usage.stored_bytes)
-			.ok_or(Error::<T>::ArithmeticOverflow)?
-			.max(0);
-
-		total.storage = fraction_of_month *
-			(|| -> Option<u128> {
-				(total_stored_bytes as u128)
-					.checked_mul(pricing.unit_per_mb_stored)?
-					.checked_div(byte_unit::MEBIBYTE)
-			})()
-			.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-		total.gets = (usage.number_of_gets as u128)
-			.checked_mul(pricing.unit_per_get_request)
-			.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-		total.puts = (usage.number_of_puts as u128)
-			.checked_mul(pricing.unit_per_put_request)
-			.ok_or(Error::<T>::ArithmeticOverflow)?;
-
-		Ok(total)
-	}
-
-	impl<T> From<BucketVisitorError> for Error<T> {
-		fn from(error: BucketVisitorError) -> Self {
-			match error {
-				BucketVisitorError::NoBucketWithId => Error::<T>::NoBucketWithId,
-				BucketVisitorError::NotBucketOwner => Error::<T>::NotBucketOwner,
-				BucketVisitorError::IncorrectClusterId => Error::<T>::IncorrectClusterId,
-			}
-		}
-	}
-
-	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
-		pub feeder_account: Option<T::AccountId>,
-		pub authorised_caller: Option<T::AccountId>,
-		pub debtor_customers: Vec<(ClusterId, T::AccountId, u128)>,
-	}
-
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			GenesisConfig {
-				feeder_account: None,
-				authorised_caller: Default::default(),
-				debtor_customers: Default::default(),
-			}
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
-		fn build(&self) {
-			let account_id = <Pallet<T>>::account_id();
-			let min = <T as pallet::Config>::Currency::minimum_balance();
-			let balance = <T as pallet::Config>::Currency::free_balance(&account_id);
-			if balance < min {
-				if let Some(vault) = &self.feeder_account {
-					let _ = <T as pallet::Config>::Currency::transfer(
-						vault,
-						&account_id,
-						min - balance,
-						ExistenceRequirement::AllowDeath,
-					);
-				} else {
-					let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account_id, min);
-				}
-			}
-
-			AuthorisedCaller::<T>::set(self.authorised_caller.clone());
-			for (cluster_id, customer_id, debt) in &self.debtor_customers {
-				DebtorCustomers::<T>::insert(cluster_id, customer_id, debt);
-			}
-		}
-	}
-
-	impl<T: Config> PayoutVisitor<T> for Pallet<T> {
-		fn begin_billing_report(
-			origin: T::AccountId,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			start_era: i64,
-			end_era: i64,
-		) -> DispatchResult {
-			log::info!(
-				"🏭begin_billing_report called by: {:?}",
-				Self::get_account_id_string(origin.clone())
-			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::begin_billing_report(origin, cluster_id, era_id, start_era, end_era)
-		}
-
-		fn begin_charging_customers(
-			origin: T::AccountId,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			max_batch_index: BatchIndex,
-		) -> DispatchResult {
-			log::info!(
-				"🏭begin_charging_customers called by: {:?}",
-				Self::get_account_id_string(origin.clone())
-			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::begin_charging_customers(origin, cluster_id, era_id, max_batch_index)
-		}
-
-		fn send_charging_customers_batch(
-			origin: T::AccountId,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			batch_index: BatchIndex,
-			payers: &[(T::AccountId, BucketId, CustomerUsage)],
-			batch_proof: MMRProof,
-		) -> DispatchResult {
-			log::info!(
-				"🏭send_charging_customers_batch called by: {:?}",
-				Self::get_account_id_string(origin.clone())
-			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::send_charging_customers_batch(
-				origin,
-				cluster_id,
-				era_id,
-				batch_index,
-				(*payers).to_vec(),
-				batch_proof,
-			)
-		}
-
-		fn end_charging_customers(
-			origin: T::AccountId,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-		) -> DispatchResult {
-			log::info!(
-				"🏭end_charging_customers called by: {:?}",
-				Self::get_account_id_string(origin.clone())
-			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::end_charging_customers(origin, cluster_id, era_id)
-		}
-
-		fn begin_rewarding_providers(
-			origin: T::AccountId,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			max_batch_index: BatchIndex,
-			total_node_usage: NodeUsage,
-		) -> DispatchResult {
-			log::info!(
-				"🏭begin_rewarding_providers called by: {:?}",
-				Self::get_account_id_string(origin.clone())
-			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::begin_rewarding_providers(
-				origin,
-				cluster_id,
-				era_id,
-				max_batch_index,
-				total_node_usage,
-			)
-		}
-
-		fn send_rewarding_providers_batch(
-			origin: T::AccountId,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			batch_index: BatchIndex,
-			payees: &[(T::AccountId, NodeUsage)],
-			batch_proof: MMRProof,
-		) -> DispatchResult {
-			log::info!(
-				"🏭send_rewarding_providers_batch called by: {:?}",
-				Self::get_account_id_string(origin.clone())
-			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::send_rewarding_providers_batch(
-				origin,
-				cluster_id,
-				era_id,
-				batch_index,
-				(*payees).to_vec(),
-				batch_proof,
-			)
-		}
-
-		fn end_rewarding_providers(
-			origin: T::AccountId,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-		) -> DispatchResult {
-			log::info!(
-				"🏭end_rewarding_providers called by: {:?}",
-				Self::get_account_id_string(origin.clone())
-			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::end_rewarding_providers(origin, cluster_id, era_id)
-		}
-
-		fn end_billing_report(
-			origin: T::AccountId,
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-		) -> DispatchResult {
-			log::info!(
-				"🏭end_billing_report called by: {:?}",
-				Self::get_account_id_string(origin.clone())
-			);
-			let origin = frame_system::RawOrigin::Signed(origin).into();
-			Self::end_billing_report(origin, cluster_id, era_id)
-		}
 
 		fn get_billing_report_status(cluster_id: &ClusterId, era: DdcEra) -> PayoutState {
 			let billing_report = ActiveBillingReports::<T>::get(cluster_id, era);
-
 			match billing_report {
 				Some(report) => report.state,
-				None => PayoutState::NotInitialized, // Return NotInitialized if entry doesn't exist
+				None => PayoutState::NotInitialized,
 			}
 		}
 
 		fn all_customer_batches_processed(cluster_id: &ClusterId, era_id: DdcEra) -> bool {
 			let billing_report = match ActiveBillingReports::<T>::try_get(cluster_id, era_id) {
 				Ok(report) => report,
-				Err(_) => return false, /* Return false if there's any error (e.g.,
-				                         * BillingReportDoesNotExist) */
+				Err(_) => return false,
 			};
 
 			Self::validate_batches(
@@ -1347,8 +1116,7 @@ pub mod pallet {
 		fn all_provider_batches_processed(cluster_id: &ClusterId, era_id: DdcEra) -> bool {
 			let billing_report = match ActiveBillingReports::<T>::try_get(cluster_id, era_id) {
 				Ok(report) => report,
-				Err(_) => return false, /* Return false if there's any error (e.g.,
-				                         * BillingReportDoesNotExist) */
+				Err(_) => return false,
 			};
 
 			Self::validate_batches(
@@ -1389,45 +1157,39 @@ pub mod pallet {
 
 			Ok(None)
 		}
-	}
 
-	impl<T: Config> Pallet<T> {
-		pub fn account_id() -> T::AccountId {
-			T::PalletId::get().into_account_truncating()
-		}
-
-		pub fn get_account_id_string(caller: T::AccountId) -> String {
-			let account_id: T::AccountIdConverter = caller.into();
-			let account_id_32: AccountId32 = account_id.into();
-			let account_ref: &[u8; 32] = account_id_32.as_ref();
-			hex::encode(account_ref)
-		}
-		pub fn sub_account_id(cluster_id: ClusterId, era: DdcEra) -> T::AccountId {
-			let mut bytes = Vec::new();
-			bytes.extend_from_slice(&cluster_id[..]);
-			bytes.extend_from_slice(&era.encode());
-			let hash = blake2_128(&bytes);
-
-			// "modl" + "payouts_" + hash is 28 bytes, the T::AccountId is 32 bytes, so we should be
-			// safe from the truncation and possible collisions caused by it. The rest 4 bytes will
-			// be fulfilled with trailing zeros.
-			T::PalletId::get().into_sub_account_truncating(hash)
-		}
-
-		pub(crate) fn validate_batches(
-			batches: &BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
-			max_batch_index: &BatchIndex,
-		) -> DispatchResult {
-			// Check if the Vec contains all integers between 1 and rewarding_max_batch_index
-			ensure!(!batches.is_empty(), Error::<T>::BatchesMissed);
-
-			ensure!((*max_batch_index + 1) as usize == batches.len(), Error::<T>::BatchesMissed);
-
-			for index in 0..*max_batch_index + 1 {
-				ensure!(batches.contains(&index), Error::<T>::BatchesMissed);
+		fn create_billing_report(vault: T::AccountId, params: BillingReportParams) {
+			let mut charging_processed_batches =
+				BoundedBTreeSet::<BatchIndex, MaxBatchesCount>::new();
+			for batch in params.charging_processed_batches {
+				charging_processed_batches
+					.try_insert(batch)
+					.expect("Charging batch to be inserted");
 			}
 
-			Ok(())
+			let mut rewarding_processed_batches =
+				BoundedBTreeSet::<BatchIndex, MaxBatchesCount>::new();
+			for batch in params.rewarding_processed_batches {
+				rewarding_processed_batches
+					.try_insert(batch)
+					.expect("Rewarding batch to be inserted");
+			}
+
+			let billing_report = BillingReport::<T> {
+				vault,
+				start_era: params.start_era,
+				end_era: params.end_era,
+				state: params.state,
+				total_customer_charge: params.total_customer_charge,
+				total_distributed_reward: params.total_distributed_reward,
+				total_node_usage: params.total_node_usage,
+				charging_max_batch_index: params.charging_max_batch_index,
+				charging_processed_batches,
+				rewarding_max_batch_index: params.rewarding_max_batch_index,
+				rewarding_processed_batches,
+			};
+
+			ActiveBillingReports::<T>::insert(params.cluster_id, params.era, billing_report);
 		}
 	}
 }

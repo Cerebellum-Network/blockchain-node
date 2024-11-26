@@ -410,23 +410,23 @@ pub mod v2 {
 
 			let post_clusters_count = Clusters::<T>::iter().count() as u32;
 			assert_eq!(
-				pre_clusters_count, post_clusters_count,
-				"the clusters count before (pre: {}) and after (post: {}) the migration should be the same",
-				pre_clusters_count, post_clusters_count
-			);
+                pre_clusters_count, post_clusters_count,
+                "the clusters count before (pre: {}) and after (post: {}) the migration should be the same",
+                pre_clusters_count, post_clusters_count
+            );
 			let post_clusters_nodes_count = ClustersNodes::<T>::iter().count() as u32;
 			assert_eq!(
-				pre_clusters_nodes_count, post_clusters_nodes_count,
-				"the clusters nodes count before (pre: {}) and after (post: {})  the migration should be the same", 
-				pre_clusters_nodes_count, post_clusters_nodes_count
-			);
+                pre_clusters_nodes_count, post_clusters_nodes_count,
+                "the clusters nodes count before (pre: {}) and after (post: {})  the migration should be the same",
+                pre_clusters_nodes_count, post_clusters_nodes_count
+            );
 
 			let post_clusters_nodes_stats_count = ClustersNodesStats::<T>::iter().count() as u32;
 			assert_eq!(
-				post_clusters_nodes_stats_count, post_clusters_count,
-				"the clusters statistics ({}) should be equal to clusters count ({}) after the migration", 
-				post_clusters_nodes_stats_count, post_clusters_count
-			);
+                post_clusters_nodes_stats_count, post_clusters_count,
+                "the clusters statistics ({}) should be equal to clusters count ({}) after the migration",
+                post_clusters_nodes_stats_count, post_clusters_count
+            );
 
 			let current_version = Pallet::<T>::current_storage_version();
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
@@ -465,7 +465,7 @@ pub mod v3 {
 		pub reserve_id: AccountId,
 		pub props: ClusterProps<AccountId>,
 		pub status: ClusterStatus,
-		pub last_validated_era_id: DdcEra, // new field
+		pub last_paid_era: DdcEra, // new field
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
@@ -521,7 +521,7 @@ pub mod v3 {
 							replication_total: old_cluster.props.replication_total,
 						},
 						status: old_cluster.status,
-						last_validated_era_id: 0,
+						last_paid_era: 0,
 					})
 				},
 			);
@@ -610,7 +610,7 @@ pub mod v3 {
 						erasure_coding_total: 48,
 						replication_total: 20,
 					},
-					last_validated_era_id: 0,
+					last_paid_era: 0,
 					status: ClusterStatus::Activated,
 				};
 
@@ -625,7 +625,7 @@ pub mod v3 {
 						erasure_coding_total: 48,
 						replication_total: 20,
 					},
-					last_validated_era_id: 0,
+					last_paid_era: 0,
 					status: ClusterStatus::Activated,
 				};
 
@@ -647,21 +647,21 @@ pub mod v3 {
 				);
 				assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().props.erasure_coding_total, 48);
 				assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().props.replication_total, 20);
-				assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().last_validated_era_id, 0);
+				assert_eq!(Clusters::<T>::get(cluster_id0).unwrap().last_paid_era, 0);
 				assert_eq!(
 					Clusters::<T>::get(cluster_id1).unwrap().props.erasure_coding_required,
 					16
 				);
 				assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().props.erasure_coding_total, 48);
 				assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().props.replication_total, 20);
-				assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().last_validated_era_id, 0);
+				assert_eq!(Clusters::<T>::get(cluster_id1).unwrap().last_paid_era, 0);
 				assert_eq!(
 					Clusters::<T>::get(cluster_id2).unwrap().props.erasure_coding_required,
 					16
 				);
 				assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().props.erasure_coding_total, 48);
 				assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().props.replication_total, 20);
-				assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().last_validated_era_id, 0);
+				assert_eq!(Clusters::<T>::get(cluster_id2).unwrap().last_paid_era, 0);
 			});
 		}
 	}
