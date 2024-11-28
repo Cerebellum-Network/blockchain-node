@@ -1,27 +1,29 @@
 use sp_runtime_interface::runtime_interface;
-use sp_wasm_interface::{Pointer, Result as SandboxResult, Value, WordSize,  };
+use sp_wasm_interface::{Pointer, Result as SandboxResult, Value, WordSize};
 pub type MemoryId = u32;
 use std::{cell::RefCell, rc::Rc, str, sync::Arc};
-mod sandbox_util;
-mod freeing_bump;
 mod env;
-mod util;
+mod freeing_bump;
 mod sandbox_interface;
+mod sandbox_util;
+mod util;
 mod wasmi_backend;
-use crate::sandbox_util::Store;
-use sp_wasm_interface::Function;
-use wasmi::TableRef;
-use wasmi::MemoryRef;
 use crate::freeing_bump::FreeingBumpHeapAllocator;
 use crate::sandbox_interface::Sandbox as SandboxI;
+use crate::sandbox_util::{SandboxBackend, Store};
+use sp_wasm_interface::Function;
+use wasmi::memory_units::Pages;
+use wasmi::MemoryRef;
+use wasmi::TableRef;
+use wasmi::{TableDescriptor, TableInstance};
 
 #[cfg(feature = "std")]
-use sp_externalities::{Externalities, ExternalitiesExt};
+use sp_externalities::{Extensions, ExternalitiesExt};
 
 pub use sp_externalities::MultiRemovalResults;
 
 sp_externalities::decl_extension! {
-    pub struct SandboxExt(FunctionExecutor);
+	pub struct SandboxExt(FunctionExecutor);
 }
 
 /// Something that provides access to the sandbox.
@@ -36,7 +38,9 @@ pub trait Sandbox {
 		buf_len: u32,
 	) -> u32 {
 		log::info!("Going through the memory_get function");
-		let sandbox = self.extension::<SandboxExt>().expect("memory_get: Sandbox should have been initialized before; qed");
+		let sandbox = self
+			.extension::<SandboxExt>()
+			.expect("memory_get: Sandbox should have been initialized before; qed");
 
 		sandbox
 			.memory_get(memory_idx, offset, buf_ptr, buf_len)
@@ -52,7 +56,9 @@ pub trait Sandbox {
 		val_len: u32,
 	) -> u32 {
 		log::info!("Going through the memory_set function");
-		let sandbox = self.extension::<SandboxExt>().expect("memory_set: Sandbox should have been initialized before; qed");
+		let sandbox = self
+			.extension::<SandboxExt>()
+			.expect("memory_set: Sandbox should have been initialized before; qed");
 
 		sandbox
 			.memory_set(memory_idx, offset, val_ptr, val_len)
@@ -62,7 +68,9 @@ pub trait Sandbox {
 	/// Delete a memory instance.
 	fn memory_teardown(&mut self, memory_idx: u32) {
 		log::info!("Going through the memory_teardown function");
-		let sandbox = self.extension::<SandboxExt>().expect("memory_teardown: Sandbox should have been initialized before; qed");
+		let sandbox = self
+			.extension::<SandboxExt>()
+			.expect("memory_teardown: Sandbox should have been initialized before; qed");
 
 		sandbox
 			.memory_teardown(memory_idx)
@@ -72,8 +80,15 @@ pub trait Sandbox {
 	/// The size is given in wasm pages.
 	fn memory_new(&mut self, initial: u32, maximum: u32) -> u32 {
 		log::info!("Going through the memory_new function");
-		let sandbox = self.extension::<SandboxExt>().expect("memory_new: Sandbox should have been initialized before; qed");
 
+		let function_executor: FunctionExecutor = FunctionExecutor::new(initial, maximum);
+		self.register_extension(SandboxExt::from(function_executor));
+
+		log::info!("Extension should be registered");
+
+		let sandbox = self
+			.extension::<SandboxExt>()
+			.expect("memory_new: Sandbox should have been initialized before; qed");
 
 		sandbox
 			.memory_new(initial, maximum)
@@ -90,7 +105,9 @@ pub trait Sandbox {
 		state_ptr: Pointer<u8>,
 	) -> u32 {
 		log::info!("Going through the invoke function");
-		let sandbox = self.extension::<SandboxExt>().expect("invoke: Sandbox should have been initialized before; qed");
+		let sandbox = self
+			.extension::<SandboxExt>()
+			.expect("invoke: Sandbox should have been initialized before; qed");
 
 		sandbox
 			.invoke(instance_idx, function, args, return_val_ptr, return_val_len, state_ptr.into())
@@ -100,7 +117,9 @@ pub trait Sandbox {
 	/// Delete a sandbox instance.
 	fn instance_teardown(&mut self, instance_idx: u32) {
 		log::info!("Going through the instance_teardown function");
-		let sandbox = self.extension::<SandboxExt>().expect("instance_teardown: Sandbox should have been initialized before; qed");
+		let sandbox = self
+			.extension::<SandboxExt>()
+			.expect("instance_teardown: Sandbox should have been initialized before; qed");
 
 		sandbox
 			.instance_teardown(instance_idx)
@@ -117,7 +136,9 @@ pub trait Sandbox {
 		name: &str,
 	) -> Option<sp_wasm_interface::Value> {
 		log::info!("Going through the get_global_val function");
-		let sandbox = self.extension::<SandboxExt>().expect("get_global_val: Sandbox should have been initialized before; qed");
+		let sandbox = self
+			.extension::<SandboxExt>()
+			.expect("get_global_val: Sandbox should have been initialized before; qed");
 
 		sandbox
 			.get_global_val(instance_idx, name)
@@ -134,7 +155,9 @@ pub trait Sandbox {
 		state_ptr: Pointer<u8>,
 	) -> u32 {
 		log::info!("Going through the instantiate function");
-		let sandbox = self.extension::<SandboxExt>().expect("instantiate: Sandbox should have been initialized before; qed");
+		let sandbox = self
+			.extension::<SandboxExt>()
+			.expect("instantiate: Sandbox should have been initialized before; qed");
 
 		// let sandbox = instance_new(dispatch_thunk, wasm_code, env_def, state_ptr);
 
@@ -156,8 +179,27 @@ pub struct FunctionExecutor {
 	missing_functions: Arc<Vec<String>>,
 	panic_message: Option<String>,
 }
+impl FunctionExecutor {
+	pub fn new(initial: u32, maximum: u32) -> Self {
+		let sandbox_backend = SandboxBackend::Wasmi;
+		FunctionExecutor {
+			sandbox_store: Rc::new(RefCell::new(Store::new(sandbox_backend))),
+			heap: RefCell::new(FreeingBumpHeapAllocator::new(0)), // Replace `0` with appropriate heap base.
+			memory: wasmi::MemoryInstance::alloc(
+				Pages(initial.try_into().unwrap()),       // Initial size in pages.
+				Some(Pages(maximum.try_into().unwrap())), // Maximum size in pages.
+			)
+			.expect("Failed to allocate memory instance"),
+			table: Some(TableInstance::alloc(100, Some(1000)).unwrap()), // Default table size.
+			host_functions: Arc::new(Vec::new()),
+			allow_missing_func_imports: false,
+			missing_functions: Arc::new(Vec::new()),
+			panic_message: None,
+		}
+	}
+}
 
-unsafe impl Send for FunctionExecutor{}
+unsafe impl Send for FunctionExecutor {}
 
 // pub struct SandboxTest {}
 //
@@ -225,31 +267,31 @@ unsafe impl Send for FunctionExecutor{}
 // 	fn memory_get(&mut self, memory_id: MemoryId, offset: WordSize, buf_ptr: Pointer<u8>, buf_len: WordSize) -> SandboxResult<u32> {
 // 		todo!()
 // 	}
-//
+
 // 	fn memory_set(&mut self, memory_id: MemoryId, offset: WordSize, val_ptr: Pointer<u8>, val_len: WordSize) -> SandboxResult<u32> {
 // 		todo!()
 // 	}
-//
+
 // 	fn memory_teardown(&mut self, memory_id: MemoryId) -> SandboxResult<()> {
 // 		todo!()
 // 	}
-//
+
 // 	fn memory_new(&mut self, initial: u32, maximum: u32) -> SandboxResult<MemoryId> {
 // 		todo!()
 // 	}
-//
+
 // 	fn invoke(&mut self, instance_id: u32, export_name: &str, args: &[u8], return_val: Pointer<u8>, return_val_len: WordSize, state: u32) -> SandboxResult<u32> {
 // 		todo!()
 // 	}
-//
+
 // 	fn instance_teardown(&mut self, instance_id: u32) -> SandboxResult<()> {
 // 		todo!()
 // 	}
-//
+
 // 	fn get_global_val(&self, instance_idx: u32, name: &str) -> SandboxResult<Option<Value>> {
 // 		todo!()
 // 	}
-//
+
 // 	fn instantiate(&mut self, dispatch_thunk: u32, wasm_code: &[u8], env_def: &[u8], state_ptr: Pointer<u8>) -> u32 {
 // 		todo!()
 // 	}

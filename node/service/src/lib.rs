@@ -28,12 +28,14 @@ pub use cere_client::{
 	AbstractClient, Client, ClientHandle, ExecuteWithClient, FullBackend, FullClient,
 	RuntimeApiCollection,
 };
+use cere_runtime_interfaces::{FunctionExecutor, SandboxExt};
 pub use chain_spec::{CereChainSpec, CereDevChainSpec};
 pub use node_primitives::{Block, BlockNumber};
 use sc_executor::{HeapAllocStrategy, DEFAULT_HEAP_ALLOC_STRATEGY};
 pub use sc_service::ChainSpec;
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 pub use sp_api::ConstructRuntimeApi;
+use sp_externalities::Extensions;
 
 /// The minimum period of blocks on which justifications will be
 /// imported and generated.
@@ -637,9 +639,9 @@ pub trait IdentifyVariant {
 
 impl IdentifyVariant for Box<dyn sc_service::ChainSpec> {
 	fn is_cere(&self) -> bool {
-		self.id().starts_with("cere_mainnet") ||
-			self.id().starts_with("cere_qanet") ||
-			self.id().starts_with("cere_testnet")
+		self.id().starts_with("cere_mainnet")
+			|| self.id().starts_with("cere_qanet")
+			|| self.id().starts_with("cere_testnet")
 	}
 	fn is_cere_dev(&self) -> bool {
 		// Works for "cere-devnet" and "dev" arms in the load_spec(...) call.

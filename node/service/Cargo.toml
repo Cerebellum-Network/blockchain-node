@@ -48,6 +48,7 @@ sp-runtime = { workspace = true }
 sp-timestamp = { workspace = true }
 sp-transaction-storage-proof = { workspace = true }
 sp-trie = { workspace = true }
+sp-externalities = { workspace = true }
 
 # Cere dependencies
 cere-client = { workspace = true, optional = true }
@@ -57,10 +58,16 @@ cere-runtime-common = { workspace = true, optional = true }
 cere-dev-runtime = { workspace = true, optional = true }
 cere-runtime = { workspace = true, optional = true }
 
+cere-runtime-interfaces = { workspace = true }
+
 [features]
 default = ["cere-native"]
 cere-native = ["cere-runtime", "cere-client/cere"]
-cere-dev-native = ["cere-dev-runtime", "cere-runtime-common", "cere-client/cere-dev"]
+cere-dev-native = [
+  "cere-dev-runtime",
+  "cere-runtime-common",
+  "cere-client/cere-dev",
+]
 
 runtime-benchmarks = [
   "cere-runtime/runtime-benchmarks",
@@ -68,7 +75,4 @@ runtime-benchmarks = [
   "sc-service/runtime-benchmarks",
 ]
 
-try-runtime = [
-  "cere-runtime/try-runtime",
-  "cere-dev-runtime/try-runtime",
-]
+try-runtime = ["cere-runtime/try-runtime", "cere-dev-runtime/try-runtime"]
