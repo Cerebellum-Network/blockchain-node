@@ -2982,6 +2982,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
+				true,
 			);
 
 			match aggregate_key {
@@ -3018,6 +3019,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
+				true,
 			);
 
 			let response = match aggregate_key {
@@ -3050,6 +3052,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
+				true,
 			);
 
 			let response = client.eras()?;
@@ -3073,6 +3076,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
+				true,
 			);
 
 			let mut buckets_aggregates = Vec::new();
@@ -3115,6 +3119,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
+				true,
 			);
 
 			let mut nodes_aggregates = Vec::new();
