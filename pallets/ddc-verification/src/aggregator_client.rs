@@ -2,6 +2,7 @@
 
 use ddc_primitives::{AggregatorInfo, BucketId, DdcEra};
 use prost::Message;
+use serde_with::{base64::Base64, serde_as};
 use sp_io::offchain::timestamp;
 use sp_runtime::offchain::{http, Duration};
 
@@ -429,5 +430,18 @@ pub(crate) mod json {
 		pub transferred_bytes: u64,
 		pub number_of_puts: u64,
 		pub number_of_gets: u64,
+	}
+
+	/// Json response wrapped with a signature.
+	#[serde_as]
+	#[derive(
+		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
+	)]
+	pub struct SignedJsonResponse<T> {
+		pub payload: T,
+		#[serde_as(as = "Base64")]
+		pub signer: Vec<u8>,
+		#[serde_as(as = "Base64")]
+		pub signature: Vec<u8>,
 	}
 }
