@@ -1348,6 +1348,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
 	type Currency = Balances;
+	const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool = true;
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = DdcCustomers;
 	#[cfg(feature = "runtime-benchmarks")]

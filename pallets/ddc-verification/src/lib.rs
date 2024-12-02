@@ -163,6 +163,7 @@ pub mod pallet {
 		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
 		type CustomerVisitor: CustomerVisitor<Self>;
 		type Currency: Currency<Self::AccountId>;
+		const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool;
 		#[cfg(feature = "runtime-benchmarks")]
 		type CustomerDepositor: CustomerDepositor<Self>;
 		#[cfg(feature = "runtime-benchmarks")]
@@ -2982,7 +2983,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
-				true,
+				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			match aggregate_key {
@@ -3019,7 +3020,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
-				true,
+				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let response = match aggregate_key {
@@ -3052,7 +3053,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
-				true,
+				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let response = client.eras()?;
@@ -3076,7 +3077,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
-				true,
+				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let mut buckets_aggregates = Vec::new();
@@ -3119,7 +3120,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
-				true,
+				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let mut nodes_aggregates = Vec::new();
