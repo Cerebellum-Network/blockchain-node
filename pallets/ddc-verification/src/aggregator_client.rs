@@ -147,7 +147,7 @@ impl<'a> AggregatorClient<'a> {
 		levels: u16,
 	) -> Result<json::MerkleTreeNodeResponse, http::Error> {
 		let mut url = format!(
-			"{}/activity/buckets/{}/traverse?eraId={}&nodeId={}&merkleTreeNodeId={}&levels={}&signed=true",
+			"{}/activity/buckets/{}/traverse?eraId={}&nodeId={}&merkleTreeNodeId={}&levels={}",
 			self.base_url, bucket_id, era_id, node_id, merkle_tree_node_id, levels,
 		);
 		if self.verify_sig {
@@ -174,7 +174,7 @@ impl<'a> AggregatorClient<'a> {
 		levels: u16,
 	) -> Result<json::MerkleTreeNodeResponse, http::Error> {
 		let mut url = format!(
-			"{}/activity/nodes/{}/traverse?eraId={}&merkleTreeNodeId={}&levels={}&signed=true",
+			"{}/activity/nodes/{}/traverse?eraId={}&merkleTreeNodeId={}&levels={}",
 			self.base_url, node_id, era_id, merkle_tree_node_id, levels,
 		);
 		if self.verify_sig {
