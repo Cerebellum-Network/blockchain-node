@@ -38,15 +38,23 @@ impl<'a> AggregatorClient<'a> {
 			url = format!("{}&sign=true", url);
 		}
 		let response = self.get(&url, Accept::Any)?;
+
 		let body = response.body().collect::<Vec<u8>>();
-		let json_response: json::SignedJsonResponse<Vec<json::BucketAggregateResponse>> =
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+		if self.verify_sig {
+			let json_response: json::SignedJsonResponse<Vec<json::BucketAggregateResponse>> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
-		if self.verify_sig && !json_response.verify() {
-			return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			if !json_response.verify() {
+				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			}
+
+			Ok(json_response.payload)
+		} else {
+			let json_response: Vec<json::BucketAggregateResponse> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			Ok(json_response)
 		}
-
-		Ok(json_response.payload)
 	}
 
 	pub fn nodes_aggregates(
@@ -66,15 +74,23 @@ impl<'a> AggregatorClient<'a> {
 			url = format!("{}&sign=true", url);
 		}
 		let response = self.get(&url, Accept::Any)?;
+
 		let body = response.body().collect::<Vec<u8>>();
-		let json_response: json::SignedJsonResponse<Vec<json::NodeAggregateResponse>> =
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+		if self.verify_sig {
+			let json_response: json::SignedJsonResponse<Vec<json::NodeAggregateResponse>> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
-		if self.verify_sig && !json_response.verify() {
-			return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			if !json_response.verify() {
+				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			}
+
+			Ok(json_response.payload)
+		} else {
+			let json_response: Vec<json::NodeAggregateResponse> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			Ok(json_response)
 		}
-
-		Ok(json_response.payload)
 	}
 
 	pub fn challenge_bucket_sub_aggregate(
@@ -127,15 +143,23 @@ impl<'a> AggregatorClient<'a> {
 			url = format!("{}&sign=true", url);
 		}
 		let response = self.get(&url, Accept::Any)?;
+
 		let body = response.body().collect::<Vec<u8>>();
-		let json_response: json::SignedJsonResponse<Vec<json::AggregationEraResponse>> =
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+		if self.verify_sig {
+			let json_response: json::SignedJsonResponse<Vec<json::AggregationEraResponse>> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
-		if self.verify_sig && !json_response.verify() {
-			return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			if !json_response.verify() {
+				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			}
+
+			Ok(json_response.payload)
+		} else {
+			let json_response: Vec<json::AggregationEraResponse> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			Ok(json_response)
 		}
-
-		Ok(json_response.payload)
 	}
 
 	pub fn traverse_bucket_sub_aggregate(
@@ -155,15 +179,23 @@ impl<'a> AggregatorClient<'a> {
 		}
 
 		let response = self.get(&url, Accept::Any)?;
+
 		let body = response.body().collect::<Vec<u8>>();
-		let json_response: json::SignedJsonResponse<json::MerkleTreeNodeResponse> =
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+		if self.verify_sig {
+			let json_response: json::SignedJsonResponse<json::MerkleTreeNodeResponse> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
-		if self.verify_sig && !json_response.verify() {
-			return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			if !json_response.verify() {
+				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			}
+
+			Ok(json_response.payload)
+		} else {
+			let json_response: json::MerkleTreeNodeResponse =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			Ok(json_response)
 		}
-
-		Ok(json_response.payload)
 	}
 
 	pub fn traverse_node_aggregate(
@@ -180,17 +212,24 @@ impl<'a> AggregatorClient<'a> {
 		if self.verify_sig {
 			url = format!("{}&sign=true", url);
 		}
-
 		let response = self.get(&url, Accept::Any)?;
+
 		let body = response.body().collect::<Vec<u8>>();
-		let json_response: json::SignedJsonResponse<json::MerkleTreeNodeResponse> =
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+		if self.verify_sig {
+			let json_response: json::SignedJsonResponse<json::MerkleTreeNodeResponse> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
-		if self.verify_sig && !json_response.verify() {
-			return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			if !json_response.verify() {
+				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			}
+
+			Ok(json_response.payload)
+		} else {
+			let json_response: json::MerkleTreeNodeResponse =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			Ok(json_response)
 		}
-
-		Ok(json_response.payload)
 	}
 
 	fn merkle_tree_node_id_param(merkle_tree_node_id: &[u32]) -> String {
