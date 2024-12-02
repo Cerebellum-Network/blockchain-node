@@ -1154,8 +1154,12 @@ pub mod pallet {
 				errors.extend(errs);
 			}
 
-			if let Err(errs) = Self::step_end_billing_report(cluster_id, account, signer) {
-				errors.extend(errs);
+			match Self::step_end_billing_report(cluster_id, account, signer) {
+				Ok(Some(era_id)) => {
+					Self::clear_validation_activities(cluster_id, era_id);
+				},
+				Err(errs) => errors.extend(errs),
+				_ => {},
 			}
 
 			if !errors.is_empty() {
@@ -2442,6 +2446,18 @@ pub mod pallet {
 					None
 				},
 			}
+		}
+
+		pub(crate) fn clear_validation_activities(cluster_id: &ClusterId, era_id: DdcEra) {
+			let key = Self::derive_key(cluster_id, era_id);
+			log::debug!(
+				"Clearing validation activities for cluster {:?} at era {:?}, key {:?}",
+				cluster_id,
+				era_id,
+				key,
+			);
+
+			local_storage_clear(StorageKind::PERSISTENT, &key);
 		}
 
 		pub(crate) fn _store_and_fetch_nonce(node_id: String) -> u64 {
