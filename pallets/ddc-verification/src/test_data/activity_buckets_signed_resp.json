@@ -1,0 +1,36 @@
+{
+  "payload": [
+    {
+      "bucket_id": 1,
+      "stored_bytes": 3145728,
+      "transferred_bytes": 6291456,
+      "number_of_puts": 3,
+      "number_of_gets": 3,
+      "sub_aggregates": [
+        {
+          "NodeID": "0x0ac7cb9c53594e9f538d9950c6bcf28f0c0c7b8385deea2ebe24062bc640e7be",
+          "stored_bytes": 3145728,
+          "transferred_bytes": 4194304,
+          "number_of_puts": 3,
+          "number_of_gets": 1
+        },
+        {
+          "NodeID": "0x7adf9ca8b587d3b2184d628baac385b43a247b981a66e20ecc89e15a7a273ca5",
+          "stored_bytes": 0,
+          "transferred_bytes": 1048576,
+          "number_of_puts": 0,
+          "number_of_gets": 1
+        },
+        {
+          "NodeID": "0xc4751f725bf42932f20b3d4d8ec2c074cac405f29d96d6b5df45a2101bc1d78b",
+          "stored_bytes": 0,
+          "transferred_bytes": 1048576,
+          "number_of_puts": 0,
+          "number_of_gets": 1
+        }
+      ]
+    }
+  ],
+  "signer": "xHUfclv0KTLyCz1NjsLAdMrEBfKdlta130WiEBvB14s=",
+  "signature": "XCyDGX+MRqpbRUng54h3UJ5rklshT92FTYfKF2WLR81Aovf4ZpqqoObOoBn7+g2XXf8vX+RY3dXceBipJ8M6CA=="
+}

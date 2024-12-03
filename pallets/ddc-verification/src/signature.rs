@@ -1,3 +1,4 @@
+use aggregator_client::json;
 use prost::Message;
 use sp_core::ed25519::{Public, Signature};
 use sp_io::crypto::ed25519_verify;
@@ -96,6 +97,27 @@ impl Verify for proto::ChallengeResponse {
 		}
 
 		true
+	}
+}
+
+impl<T: Serialize> Verify for json::SignedJsonResponse<T> {
+	fn verify(&self) -> bool {
+		let sig = match Signature::try_from(self.signature.as_slice()) {
+			Ok(s) => s,
+			Err(_) => return false,
+		};
+
+		let payload = match serde_json::to_vec(&self.payload) {
+			Ok(p) => p,
+			Err(_) => return false,
+		};
+
+		let pub_key = match Public::try_from(self.signer.as_slice()) {
+			Ok(p) => p,
+			Err(_) => return false,
+		};
+
+		ed25519_verify(&sig, payload.as_slice(), &pub_key)
 	}
 }
 

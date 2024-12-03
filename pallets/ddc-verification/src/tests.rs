@@ -3097,7 +3097,49 @@ fn challenge_bucket_sub_aggregate_works() {
     });
 }
 
-use crate::aggregator_client::AggregatorClient;
+use crate::aggregator_client::{
+	json::{BucketAggregateResponse, SignedJsonResponse},
+	AggregatorClient,
+};
+
+#[test]
+fn aggregator_client_get_buckets_aggregates_works() {
+	let mut ext = TestExternalities::default();
+	let (offchain, offchain_state) = TestOffchainExt::new();
+
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(OffchainDbExt::new(Box::new(offchain)));
+
+	ext.execute_with(|| {
+		let mut offchain_state = offchain_state.write();
+		offchain_state.timestamp = Timestamp::from_unix_millis(0);
+
+		let base_url = "http://example.com:8080";
+		let era_id = 346524624;
+		let activity_buckets_signed_resp =
+			include_bytes!("./test_data/activity_buckets_signed_resp.json").as_slice();
+
+		let expected_request = PendingRequest {
+			method: "GET".to_string(),
+			uri: format!("{}/activity/buckets?eraId={}&sign=true", base_url, era_id),
+			response: Some(activity_buckets_signed_resp.to_vec()),
+			sent: true,
+			..Default::default()
+		};
+
+		offchain_state.expect_request(expected_request);
+		drop(offchain_state);
+
+		let client = AggregatorClient::new(base_url, Duration::from_millis(1_000), 1, true);
+
+		let expected_response: SignedJsonResponse<Vec<BucketAggregateResponse>> =
+			serde_json::from_slice(activity_buckets_signed_resp)
+				.expect("json parsing failed, broken test data?");
+		let result = client.buckets_aggregates(era_id, None, None);
+
+		assert_eq!(result, Ok(expected_response.payload));
+	})
+}
 
 #[test]
 fn aggregator_client_challenge_bucket_sub_aggregate_works() {
@@ -3148,7 +3190,7 @@ fn aggregator_client_challenge_bucket_sub_aggregate_works() {
 		offchain_state.expect_request(expected);
 		drop(offchain_state);
 
-		let client = AggregatorClient::new(base_url, Duration::from_millis(1_000), 1);
+		let client = AggregatorClient::new(base_url, Duration::from_millis(1_000), 1, false);
 
 		let result = client.challenge_bucket_sub_aggregate(era_id, bucket_id, node_id, vec![2, 6]);
 		assert_eq!(result, Ok(expected_response));
@@ -3203,7 +3245,7 @@ fn aggregator_client_challenge_node_aggregate_works() {
 		offchain_state.expect_request(expected);
 		drop(offchain_state);
 
-		let client = AggregatorClient::new(base_url, Duration::from_millis(1_000), 1);
+		let client = AggregatorClient::new(base_url, Duration::from_millis(1_000), 1, false);
 
 		let result = client.challenge_node_aggregate(era_id, node_id, vec![2, 6]);
 		assert_eq!(result, Ok(expected_response));

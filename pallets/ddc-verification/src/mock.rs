@@ -220,6 +220,7 @@ impl pallet_timestamp::Config for Test {
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
 	pub const MajorityOfAggregators: Percent = Percent::from_percent(67);
+	pub const VerifyAggregatorResponseSignature: bool = false;
 }
 
 impl crate::Config for Test {
@@ -245,6 +246,7 @@ impl crate::Config for Test {
 	type CustomerVisitor = MockCustomerVisitor;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 4;
 	type Currency = Balances;
+	const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool = false;
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = MockCustomerDepositor;
 	#[cfg(feature = "runtime-benchmarks")]
