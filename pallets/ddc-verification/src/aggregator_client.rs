@@ -45,6 +45,7 @@ impl<'a> AggregatorClient<'a> {
 				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
 			if !json_response.verify() {
+				log::debug!("bad signature, req: {:?}, resp: {:?}", url, json_response);
 				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
 			}
 
@@ -81,6 +82,7 @@ impl<'a> AggregatorClient<'a> {
 				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
 			if !json_response.verify() {
+				log::debug!("bad signature, req: {:?}, resp: {:?}", url, json_response);
 				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
 			}
 
@@ -150,6 +152,7 @@ impl<'a> AggregatorClient<'a> {
 				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
 			if !json_response.verify() {
+				log::debug!("bad signature, req: {:?}, resp: {:?}", url, json_response);
 				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
 			}
 
@@ -186,6 +189,7 @@ impl<'a> AggregatorClient<'a> {
 				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
 			if !json_response.verify() {
+				log::debug!("bad signature, req: {:?}, resp: {:?}", url, json_response);
 				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
 			}
 
@@ -220,6 +224,7 @@ impl<'a> AggregatorClient<'a> {
 				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
 			if !json_response.verify() {
+				log::debug!("bad signature, req: {:?}, resp: {:?}", url, json_response);
 				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
 			}
 
