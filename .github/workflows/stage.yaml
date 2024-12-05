@@ -100,10 +100,6 @@ jobs:
         with:
           name: "cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
           path: "./${{ env.CERE_DEV_RUNTIME }}"
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 10c6f172 (chore: e2e trigger is fixed)
 
   trigger-e2e-tests:
     runs-on: ubuntu-latest
@@ -126,14 +122,4 @@ jobs:
           propagate_failure: false
           trigger_workflow: true
           wait_workflow: false
-<<<<<<< HEAD
-<<<<<<< HEAD
           comment_downstream_url: ${{ github.event.pull_request.comments_url }}
-=======
->>>>>>> 79f2bad8 (Remove tests for dev images (#311))
-=======
-          comment_downstream_url: ${{ github.event.pull_request.comments_url }}
->>>>>>> 10c6f172 (chore: e2e trigger is fixed)
-=======
-          comment_downstream_url: ${{ github.event.pull_request.comments_url }}
->>>>>>> 45ea3e5d (docs: changelog recovered)
