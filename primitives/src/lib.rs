@@ -10,8 +10,9 @@ use scale_info::{
 	TypeInfo,
 };
 use serde::{Deserialize, Serialize};
-use sp_core::{crypto::KeyTypeId, hash::H160};
+use sp_core::{crypto::KeyTypeId, hash::H160, H256};
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
+use sp_std::collections::btree_set::BTreeSet;
 
 pub mod traits;
 
@@ -21,7 +22,7 @@ parameter_types! {
 }
 
 pub const MAX_PAYOUT_BATCH_COUNT: u16 = 1000;
-pub const MAX_PAYOUT_BATCH_SIZE: u16 = 1000;
+pub const MAX_PAYOUT_BATCH_SIZE: u16 = 500;
 pub const MILLICENTS: u128 = 100_000;
 pub const CENTS: u128 = 1_000 * MILLICENTS; // assume this is worth about a cent.
 pub const DOLLARS: u128 = 100 * CENTS;
@@ -30,24 +31,31 @@ pub type DdcEra = u32;
 pub type BucketId = u64;
 pub type ClusterNodesCount = u16;
 pub type StorageNodePubKey = AccountId32;
-pub type ActivityHash = [u8; 32];
+/// Hash of verified or unverified delta usage of a bucket or a node.
+pub type DeltaUsageHash = H256;
+/// Hash of usage that a customer is supposed to be charged for, or a provider supposed to be
+/// rewarded for. Includes the current usage and verified delta usage.
+pub type PayableUsageHash = H256;
+/// Selective hash of sensitive information for payouts.
+pub type Fingerprint = H256;
+
 pub type BatchIndex = u16;
 pub const AVG_SECONDS_MONTH: i64 = 2630016; // 30.44 * 24.0 * 3600.0;
 
-pub struct MergeActivityHash;
-impl Merge for MergeActivityHash {
-	type Item = ActivityHash;
+pub struct MergeMMRHash;
+impl Merge for MergeMMRHash {
+	type Item = H256;
 	fn merge(
 		lhs: &Self::Item, // Left side of tree
 		rhs: &Self::Item, // Right side of tree
 	) -> Result<Self::Item, polkadot_ckb_merkle_mountain_range::Error> {
 		let mut hasher = Blake2s256::new();
 
-		hasher.update(lhs.as_slice());
-		hasher.update(rhs.as_slice());
+		hasher.update(lhs.0.as_slice());
+		hasher.update(rhs.0.as_slice());
 		let hash = hasher.finalize();
 
-		Ok(ActivityHash::from(sp_core::H256::from_slice(hash.as_slice())))
+		Ok(H256::from_slice(hash.as_slice()))
 	}
 }
 
@@ -269,7 +277,18 @@ pub struct ClusterNodesStats {
 
 /// Stores usage of a bucket
 #[derive(
-	PartialEq, Eq, Encode, Decode, Debug, TypeInfo, Default, Clone, Serialize, Deserialize,
+	PartialEq,
+	Eq,
+	Encode,
+	Decode,
+	Debug,
+	TypeInfo,
+	Default,
+	Clone,
+	Serialize,
+	Deserialize,
+	PartialOrd,
+	Ord,
 )]
 pub struct BucketUsage {
 	pub transferred_bytes: u64,
@@ -289,7 +308,18 @@ pub struct CustomerCharge {
 
 /// Stores usage of a node
 #[derive(
-	PartialEq, Eq, Encode, Decode, Debug, TypeInfo, Default, Clone, Serialize, Deserialize,
+	PartialEq,
+	Eq,
+	Encode,
+	Decode,
+	Debug,
+	TypeInfo,
+	Default,
+	Clone,
+	Serialize,
+	Deserialize,
+	PartialOrd,
+	Ord,
 )]
 pub struct NodeUsage {
 	pub transferred_bytes: u64,
@@ -309,7 +339,7 @@ pub struct ProviderReward {
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
 pub struct MMRProof {
-	pub proof: Vec<ActivityHash>,
+	pub proof: Vec<DeltaUsageHash>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -401,11 +431,11 @@ pub enum EraValidationStatus {
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 #[scale_info(skip_type_params(T))]
 pub struct EraValidation<T: Config> {
-	pub validators: BTreeMap<(ActivityHash, ActivityHash), Vec<T::AccountId>>,
+	pub validators: BTreeMap<(DeltaUsageHash, DeltaUsageHash), Vec<T::AccountId>>,
 	pub start_era: i64,
 	pub end_era: i64,
-	pub payers_merkle_root_hash: ActivityHash,
-	pub payees_merkle_root_hash: ActivityHash,
+	pub payers_merkle_root_hash: DeltaUsageHash,
+	pub payees_merkle_root_hash: DeltaUsageHash,
 	pub status: EraValidationStatus,
 }
 
@@ -426,14 +456,36 @@ impl<T: Config> Default for EraValidation<T> {
 pub struct BillingReportParams {
 	pub cluster_id: ClusterId,
 	pub era: DdcEra,
-	pub start_era: i64,
-	pub end_era: i64,
 	pub state: PayoutState,
+	pub fingerprint: Fingerprint,
 	pub total_customer_charge: CustomerCharge,
 	pub total_distributed_reward: u128,
-	pub total_node_usage: NodeUsage,
 	pub charging_max_batch_index: BatchIndex,
 	pub charging_processed_batches: Vec<BatchIndex>,
 	pub rewarding_max_batch_index: BatchIndex,
 	pub rewarding_processed_batches: Vec<BatchIndex>,
+}
+
+#[derive(Default)]
+pub struct BillingFingerprintParams<AccountId> {
+	pub cluster_id: ClusterId,
+	pub era: DdcEra,
+	pub start_era: i64,
+	pub end_era: i64,
+	pub payers_merkle_root: PayableUsageHash,
+	pub payees_merkle_root: PayableUsageHash,
+	pub cluster_usage: NodeUsage,
+	pub validators: BTreeSet<AccountId>,
+}
+
+pub struct BucketStorageUsage<AccountId> {
+	pub bucket_id: BucketId,
+	pub owner_id: AccountId,
+	pub stored_bytes: i64,
+}
+
+pub struct NodeStorageUsage<AccountId> {
+	pub node_key: NodePubKey,
+	pub provider_id: AccountId,
+	pub stored_bytes: i64,
 }

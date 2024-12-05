@@ -174,20 +174,12 @@ fn deposit_and_deposit_extra_works() {
 }
 
 #[test]
-fn charge_content_owner_works() {
+fn charge_bucket_owner_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
-		let bucket_id1: BucketId = 1;
-		let bucket_id2: BucketId = 2;
 		let cluster_id = ClusterId::from([1; 20]);
 		let bucket_1_params = BucketParams { is_public: false };
-		let customer_usage = BucketUsage {
-			transferred_bytes: 1,
-			stored_bytes: 2,
-			number_of_puts: 3,
-			number_of_gets: 4,
-		};
 		let account_2: u128 = 2;
 		let account_3: u128 = 3;
 		let vault: u128 = 4;
@@ -224,28 +216,8 @@ fn charge_content_owner_works() {
 
 		// successful transfer
 		let charge1 = 10;
-		let charged = DdcCustomers::charge_content_owner(
-			&cluster_id,
-			bucket_id1,
-			account_3,
-			vault,
-			&customer_usage,
-			charge1,
-		)
-		.unwrap();
+		let charged = DdcCustomers::charge_bucket_owner(account_3, vault, charge1).unwrap();
 		assert_eq!(charge1, charged);
-
-		System::assert_has_event(
-			Event::BucketTotalCustomersUsageUpdated {
-				cluster_id,
-				bucket_id: bucket_id1,
-				transferred_bytes: customer_usage.transferred_bytes,
-				stored_bytes: customer_usage.stored_bytes,
-				number_of_puts: customer_usage.number_of_puts,
-				number_of_gets: customer_usage.number_of_gets,
-			}
-			.into(),
-		);
 
 		let vault_balance = Balances::free_balance(vault);
 		assert_eq!(charged, vault_balance);
@@ -274,15 +246,7 @@ fn charge_content_owner_works() {
 
 		// failed transfer
 		let charge2 = 100u128;
-		let charge_result = DdcCustomers::charge_content_owner(
-			&cluster_id,
-			bucket_id1,
-			account_3,
-			vault,
-			&customer_usage,
-			charge2,
-		)
-		.unwrap();
+		let charge_result = DdcCustomers::charge_bucket_owner(account_3, vault, charge2).unwrap();
 		assert_eq!(
 			DdcCustomers::ledger(account_3),
 			Some(AccountsLedger {
@@ -326,29 +290,6 @@ fn charge_content_owner_works() {
 		);
 
 		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_2), 50_u128));
-		assert_noop!(
-			DdcCustomers::charge_content_owner(
-				&cluster_id,
-				bucket_id1,
-				account_2,
-				vault,
-				&customer_usage,
-				charge1,
-			),
-			Error::<Test>::NotBucketOwner
-		);
-
-		assert_noop!(
-			DdcCustomers::charge_content_owner(
-				&cluster_id,
-				bucket_id2,
-				account_3,
-				vault,
-				&customer_usage,
-				charge1,
-			),
-			Error::<Test>::NoBucketWithId
-		);
 	})
 }
 

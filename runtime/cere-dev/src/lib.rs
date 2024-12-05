@@ -84,7 +84,7 @@ use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_core::{
 	crypto::{AccountId32, KeyTypeId},
-	OpaqueMetadata, H256,
+	OpaqueMetadata,
 };
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_io::hashing::blake2_128;
@@ -153,10 +153,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 63002,
+	spec_version: 61010,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 23,
+	transaction_version: 24,
 	state_version: 0,
 };
 
@@ -314,20 +314,20 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::Any => true,
 			ProxyType::NonTransfer => !matches!(
 				c,
-				RuntimeCall::Balances(..) |
-					RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
-					RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
-					RuntimeCall::NominationPools(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Balances(..)
+					| RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+					| RuntimeCall::Indices(pallet_indices::Call::transfer { .. })
+					| RuntimeCall::NominationPools(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
-				RuntimeCall::Treasury(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Treasury(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Staking => matches!(c, RuntimeCall::Staking(..)),
 		}
@@ -682,8 +682,8 @@ impl Get<Option<BalancingConfig>> for OffchainRandomBalancing {
 			max => {
 				let seed = sp_io::offchain::random_seed();
 				let random = <u32>::decode(&mut TrailingZeroInput::new(&seed))
-					.expect("input is padded with zeroes; qed") %
-					max.saturating_add(1);
+					.expect("input is padded with zeroes; qed")
+					% max.saturating_add(1);
 				random as usize
 			},
 		};
@@ -1230,6 +1230,9 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
 	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
+	type Hasher = BlakeTwo256;
+	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
+	type ValidatorsQuorum = MajorityOfValidators;
 }
 
 parameter_types! {
@@ -1303,6 +1306,7 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
 	pub const MajorityOfAggregators: Percent = Percent::from_percent(67);
+	pub const MajorityOfValidators: Percent = Percent::from_percent(67);
 }
 impl pallet_ddc_verification::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -1314,19 +1318,21 @@ impl pallet_ddc_verification::Config for Runtime {
 	type PayoutProcessor = pallet_ddc_payouts::Pallet<Runtime>;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
-	type ActivityHasher = BlakeTwo256;
-	const MAJORITY: u8 = 67;
+	type Hasher = BlakeTwo256;
 	const BLOCK_TO_START: u16 = 1; // every block
 	const DAC_REDUNDANCY_FACTOR: u16 = 3;
 	type AggregatorsQuorum = MajorityOfAggregators;
+	type ValidatorsQuorum = MajorityOfValidators;
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
-	type ActivityHash = H256;
 	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
 	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
 	type Currency = Balances;
+	const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool = true;
+	type BucketsStorageUsageProvider = DdcCustomers;
+	type NodesStorageUsageProvider = DdcNodes;
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = DdcCustomers;
 	#[cfg(feature = "runtime-benchmarks")]
@@ -1427,7 +1433,7 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
 /// Runtime migrations
-type Migrations = (pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,);
+type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<

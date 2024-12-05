@@ -1,3 +1,4 @@
+use aggregator_client::json;
 use prost::Message;
 use sp_core::ed25519::{Public, Signature};
 use sp_io::crypto::ed25519_verify;
@@ -99,6 +100,27 @@ impl Verify for proto::ChallengeResponse {
 	}
 }
 
+impl<T: Serialize> Verify for json::SignedJsonResponse<T> {
+	fn verify(&self) -> bool {
+		let sig = match Signature::try_from(self.signature.as_slice()) {
+			Ok(s) => s,
+			Err(_) => return false,
+		};
+
+		let payload = match serde_json::to_vec(&self.payload) {
+			Ok(p) => p,
+			Err(_) => return false,
+		};
+
+		let pub_key = match Public::try_from(self.signer.as_slice()) {
+			Ok(p) => p,
+			Err(_) => return false,
+		};
+
+		ed25519_verify(&sig, payload.as_slice(), &pub_key)
+	}
+}
+
 trait Signed {
 	fn get_signature(&self) -> Option<&proto::Signature>;
 	fn reset_signature(&mut self);
@@ -169,7 +191,8 @@ mod tests {
 		let invalid_signature_msg_signature =
 			invalid_signature_msg_signer.sign(invalid_signature_msg.encode_to_vec().as_slice());
 		let mut invalid_signature_msg_signature_vec = invalid_signature_msg_signature.0.to_vec();
-		invalid_signature_msg_signature_vec[0] += 1;
+		invalid_signature_msg_signature_vec[0] =
+			invalid_signature_msg_signature_vec[0].wrapping_add(1);
 		invalid_signature_msg.signature = Some(proto::Signature {
 			algorithm: proto::signature::Algorithm::Ed25519 as i32,
 			value: invalid_signature_msg_signature_vec,

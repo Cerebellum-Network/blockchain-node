@@ -28,8 +28,9 @@ pub mod benchmarking;
 pub mod testing_utils;
 
 use ddc_primitives::{
-	traits::{node::NodeManager, staking::StakingVisitor},
-	ClusterId, NodeParams, NodePubKey, NodeUsage, StorageNodeParams, StorageNodePubKey,
+	traits::{node::NodeManager, payout::StorageUsageProvider, staking::StakingVisitor},
+	ClusterId, NodeParams, NodePubKey, NodeStorageUsage, NodeUsage, StorageNodeParams,
+	StorageNodePubKey,
 };
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
@@ -68,9 +69,22 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		NodeCreated { node_pub_key: NodePubKey },
-		NodeDeleted { node_pub_key: NodePubKey },
-		NodeParamsChanged { node_pub_key: NodePubKey },
+		NodeCreated {
+			node_pub_key: NodePubKey,
+		},
+		NodeDeleted {
+			node_pub_key: NodePubKey,
+		},
+		NodeParamsChanged {
+			node_pub_key: NodePubKey,
+		},
+		NodeTotalUsageUpdated {
+			node_pub_key: NodePubKey,
+			transferred_bytes: u64,
+			stored_bytes: i64,
+			number_of_puts: u64,
+			number_of_gets: u64,
+		},
 	}
 
 	#[pallet::error]
@@ -166,6 +180,32 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::NodeCreated { node_pub_key });
 			Ok(())
 		}
+
+		fn storage_usage_filter(cluster_id: &ClusterId, node: &StorageNode<T>) -> bool {
+			if let Some(clust_id) = node.cluster_id {
+				if *cluster_id != clust_id {
+					false
+				} else {
+					node.total_usage.as_ref().map(|usage| usage.stored_bytes != 0).unwrap_or(false)
+				}
+			} else {
+				false
+			}
+		}
+
+		fn storage_usage_map(
+			node_key: &StorageNodePubKey,
+			node: &StorageNode<T>,
+		) -> NodeStorageUsage<T::AccountId> {
+			let stored_bytes =
+				node.total_usage.as_ref().map(|usage| usage.stored_bytes).unwrap_or(0);
+
+			NodeStorageUsage {
+				node_key: NodePubKey::StoragePubKey(node_key.clone()),
+				provider_id: node.provider_id.clone(),
+				stored_bytes,
+			}
+		}
 	}
 
 	pub trait NodeRepository<T: frame_system::Config> {
@@ -255,7 +295,7 @@ pub mod pallet {
 
 			match node_pub_key {
 				NodePubKey::StoragePubKey(_) => match node_props {
-					NodeProps::StorageProps(node_props) =>
+					NodeProps::StorageProps(node_props) => {
 						Ok(ddc_primitives::NodeParams::StorageParams(StorageNodeParams {
 							mode: node_props.mode,
 							host: node_props.host.into(),
@@ -264,16 +304,46 @@ pub mod pallet {
 							http_port: node_props.http_port,
 							grpc_port: node_props.grpc_port,
 							p2p_port: node_props.p2p_port,
-						})),
+						}))
+					},
 				},
 			}
 		}
 
-		fn get_total_usage(node_pub_key: &NodePubKey) -> Result<Option<NodeUsage>, DispatchError> {
-			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
-			let total_usage = node.get_total_usage().clone();
+		fn update_total_node_usage(
+			node_key: &NodePubKey,
+			payable_usage: &NodeUsage,
+		) -> Result<(), DispatchError> {
+			let mut node = Self::get(node_key.clone()).map_err(Into::<Error<T>>::into)?;
 
-			Ok(total_usage)
+			let total_usage = if let Some(mut total_usage) = node.get_total_usage().clone() {
+				total_usage.transferred_bytes += payable_usage.transferred_bytes;
+				total_usage.stored_bytes = payable_usage.stored_bytes; // already includes the old storage
+				total_usage.number_of_puts += payable_usage.number_of_puts;
+				total_usage.number_of_gets += payable_usage.number_of_gets;
+				total_usage
+			} else {
+				NodeUsage {
+					transferred_bytes: payable_usage.transferred_bytes,
+					stored_bytes: payable_usage.stored_bytes,
+					number_of_puts: payable_usage.number_of_puts,
+					number_of_gets: payable_usage.number_of_gets,
+				}
+			};
+
+			node.set_total_usage(Some(total_usage));
+
+			Self::update(node).map_err(Into::<Error<T>>::into)?;
+
+			Self::deposit_event(Event::<T>::NodeTotalUsageUpdated {
+				node_pub_key: node_key.clone(),
+				transferred_bytes: payable_usage.transferred_bytes,
+				stored_bytes: payable_usage.stored_bytes,
+				number_of_puts: payable_usage.number_of_puts,
+				number_of_gets: payable_usage.number_of_gets,
+			});
+
+			Ok(())
 		}
 
 		#[cfg(feature = "runtime-benchmarks")]
@@ -284,6 +354,48 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::do_create_node(node_pub_key, provider_id, node_params)?;
 			Ok(())
+		}
+	}
+
+	impl<T: Config> StorageUsageProvider<StorageNodePubKey, NodeStorageUsage<T::AccountId>>
+		for Pallet<T>
+	{
+		type Error = ();
+
+		fn iter_storage_usage<'a>(
+			cluster_id: &'a ClusterId,
+		) -> Box<dyn Iterator<Item = NodeStorageUsage<T::AccountId>> + 'a> {
+			let filter_fn: fn(&ClusterId, &StorageNode<T>) -> bool =
+				Pallet::<T>::storage_usage_filter;
+			let map_fn: fn(&StorageNodePubKey, &StorageNode<T>) -> NodeStorageUsage<T::AccountId> =
+				Pallet::<T>::storage_usage_map;
+
+			Box::new(
+				StorageNodes::<T>::iter()
+					.filter(move |(_, node)| filter_fn(cluster_id, node))
+					.map(move |(id, node)| map_fn(&id, &node)),
+			)
+		}
+
+		fn iter_storage_usage_from<'a>(
+			cluster_id: &'a ClusterId,
+			from: &'a StorageNodePubKey,
+		) -> Result<Box<dyn Iterator<Item = NodeStorageUsage<T::AccountId>> + 'a>, ()> {
+			let filter_fn: fn(&ClusterId, &StorageNode<T>) -> bool =
+				Pallet::<T>::storage_usage_filter;
+			let map_fn: fn(&StorageNodePubKey, &StorageNode<T>) -> NodeStorageUsage<T::AccountId> =
+				Pallet::<T>::storage_usage_map;
+
+			if StorageNodes::<T>::contains_key(from) {
+				let from_key = StorageNodes::<T>::hashed_key_for(from);
+				Ok(Box::new(
+					StorageNodes::<T>::iter_from(from_key)
+						.filter(move |(_, node)| filter_fn(cluster_id, node))
+						.map(move |(key, node)| map_fn(&key, &node)),
+				))
+			} else {
+				Err(())
+			}
 		}
 	}
 }
