@@ -36,15 +36,7 @@ benchmarks! {
 								erasure_coding_total: 6,
 								replication_total: 3
 							};
-<<<<<<< HEAD
-<<<<<<< HEAD
 		let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterProtocolParams {
-=======
-		let cluster_gov_params: ClusterGovParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterGovParams {
->>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
-=======
-		let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> = ClusterProtocolParams {
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 			treasury_share: Perquintill::default(),
 			validators_share: Perquintill::default(),
 			cluster_reserve_share: Perquintill::default(),
@@ -70,22 +62,6 @@ benchmarks! {
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key.clone(), ClusterNodeKind::Genesis)
-<<<<<<< HEAD
-	verify {
-		assert!(ClustersNodes::<T>::contains_key(cluster_id, node_pub_key));
-	}
-
-	join_cluster {
-		let bytes = [0u8; 32];
-		let node_pub_key = NodePubKey::StoragePubKey(AccountId32::from(bytes));
-		let cluster_id = ClusterId::from([1; 20]);
-		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
-		let balance = <T as pallet::Config>::Currency::minimum_balance() * 1_000_000u32.into();
-		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
-		let _ = config_cluster_and_node::<T>(user.clone(), node_pub_key.clone(), cluster_id);
-	}: _(RawOrigin::Signed(user.clone()), cluster_id, node_pub_key.clone())
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 	verify {
 		assert!(ClustersNodes::<T>::contains_key(cluster_id, node_pub_key));
 	}
@@ -141,15 +117,7 @@ benchmarks! {
 				node_provider_auth_contract: Some(user_2),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
-<<<<<<< HEAD
-<<<<<<< HEAD
 				replication_total: 3,
-=======
-				replication_total: 3
->>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
-=======
-				replication_total: 3,
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 			}
 		);
 	}

@@ -2,56 +2,6 @@
 
 #![allow(dead_code)]
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-#[cfg(feature = "runtime-benchmarks")]
-use ddc_primitives::BucketParams;
-use ddc_primitives::{
-	traits::{
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-		bucket::BucketManager, cluster::ClusterProtocol, customer::CustomerCharger,
-		node::NodeManager, pallet::PalletVisitor, ClusterQuery, ValidatorVisitor,
-	},
-	ClusterBondingParams, ClusterFeesParams, ClusterPricingParams, ClusterProtocolParams,
-	ClusterStatus, NodeParams, NodePubKey, NodeType, DOLLARS,
-=======
-=======
-		bucket::BucketVisitor,
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-		bucket::BucketManager,
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
-		cluster::{ClusterCreator, ClusterProtocol},
-		customer::{CustomerCharger, CustomerDepositor},
-		node::NodeManager,
-		pallet::PalletVisitor,
-		ClusterQuery, ValidatorVisitor,
-	},
-<<<<<<< HEAD
-<<<<<<< HEAD
-	ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodeType, DOLLARS,
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	BucketVisitorError, ClusterBondingParams, ClusterFeesParams, ClusterParams,
-<<<<<<< HEAD
-	ClusterPricingParams, ClusterProtocolParams, ClusterStatus, NodeType, DOLLARS,
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-	ClusterPricingParams, ClusterProtocolParams, ClusterStatus, NodeParams, NodePubKey, NodeType,
-	DOLLARS,
->>>>>>> e0ce0e5b (node integer delta usage (#412))
-=======
-	ClusterBondingParams, ClusterFeesParams, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodeParams, NodePubKey, NodeType, DOLLARS,
->>>>>>> c3a18c28 (chore: using generic type for bucket visitor)
-=======
-#[cfg(feature = "try-runtime")]
-use ddc_primitives::BucketParams;
-=======
->>>>>>> 74c48760 (fix: unused import is removed)
 #[cfg(feature = "runtime-benchmarks")]
 use ddc_primitives::BucketParams;
 use ddc_primitives::{
@@ -61,18 +11,10 @@ use ddc_primitives::{
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterPricingParams, ClusterProtocolParams,
 	ClusterStatus, NodeParams, NodePubKey, NodeType, DOLLARS,
->>>>>>> 2bdeb4c7 (fix: cleaning up and fixing fmt and clippy issues)
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
-<<<<<<< HEAD
 	construct_runtime, derive_impl, parameter_types,
-=======
-	construct_runtime, parameter_types,
-<<<<<<< HEAD
->>>>>>> 447b5301 (Polkadot v1.1. to v1.2 upgrade)
-=======
->>>>>>> 5f953312 (bump dependnecies and fix implementation)
 	traits::{ConstU32, ConstU64, Everything, ExistenceRequirement, Randomness},
 	weights::constants::RocksDbWeight,
 	PalletId,
@@ -83,26 +25,8 @@ use sp_io::TestExternalities;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
 use sp_runtime::{
-<<<<<<< HEAD
-<<<<<<< HEAD
 	traits::{BlakeTwo256, IdentifyAccount, Identity, IdentityLookup, Verify},
 	AccountId32, BuildStorage, DispatchError, MultiSignature, Perquintill,
-=======
-	traits::{BlakeTwo256, Identity, IdentityLookup},
-<<<<<<< HEAD
-	BuildStorage, DispatchError, Perquintill, TryRuntimeError,
->>>>>>> 1264bdff (Consolidating `master` and `dev` branches (#295))
-=======
-	BuildStorage, DispatchError, Perquintill,
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	traits::{BlakeTwo256, IdentifyAccount, Identity, IdentityLookup, Verify},
-<<<<<<< HEAD
-	BuildStorage, DispatchError, MultiSignature, Perquintill,
->>>>>>> 32dbf724 (Added Logs and Events for OCW-DAC Validation (#411))
-=======
-	AccountId32, BuildStorage, DispatchError, MultiSignature, Perquintill,
->>>>>>> c054878f (chore: fetching node provider from the node data during payout)
 };
 use sp_std::prelude::*;
 
@@ -189,7 +113,6 @@ impl pallet_balances::Config for Test {
 
 parameter_types! {
 	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
-	pub const MajorityOfValidators: Percent = Percent::from_percent(67);
 }
 
 impl crate::pallet::Config for Test {
@@ -197,124 +120,11 @@ impl crate::pallet::Config for Test {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = TestCustomerCharger;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 	type BucketManager = TestBucketManager;
-<<<<<<< HEAD
-=======
-=======
-	type BucketVisitor = TestBucketVisitor;
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-	type BucketManager = TestBucketManager;
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
-	type CustomerDepositor = TestCustomerDepositor;
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-	type ClusterProtocol = TestClusterProtocol;
-	type TreasuryVisitor = TestTreasuryVisitor;
-	type NominatorsAndValidatorsList = TestValidatorVisitor<Self>;
-<<<<<<< HEAD
-=======
-	type ClusterCreator = TestClusterCreator;
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
-	type VoteScoreToU64 = Identity;
-<<<<<<< HEAD
-=======
 	type ClusterProtocol = TestClusterProtocol;
 	type TreasuryVisitor = TestTreasuryVisitor;
 	type NominatorsAndValidatorsList = TestValidatorVisitor<Self>;
 	type VoteScoreToU64 = Identity;
->>>>>>> 2bdeb4c7 (fix: cleaning up and fixing fmt and clippy issues)
-	type ValidatorVisitor = MockValidatorVisitor;
-	type NodeManager = MockNodeManager;
-	type AccountIdConverter = AccountId;
-	type Hasher = BlakeTwo256;
-	type ClusterValidator = MockClusterValidator;
-	type ValidatorsQuorum = MajorityOfValidators;
-}
-
-pub struct MockClusterValidator;
-impl<T: Config> ClusterValidator<T> for MockClusterValidator {
-	fn set_last_paid_era(_cluster_id: &ClusterId, _era_id: DdcEra) -> Result<(), DispatchError> {
-		unimplemented!()
-	}
-
-	fn get_last_paid_era(_cluster_id: &ClusterId) -> Result<DdcEra, DispatchError> {
-		Ok(Default::default())
-	}
-}
-
-pub struct MockNodeManager;
-impl<T: Config> NodeManager<T> for MockNodeManager
-where
-	<T as frame_system::Config>::AccountId: From<AccountId>,
-{
-	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn exists(_node_pub_key: &NodePubKey) -> bool {
-		unimplemented!()
-	}
-
-	fn update_total_node_usage(
-		_node_key: &NodePubKey,
-		_payable_usage: &NodeUsage,
-	) -> Result<(), DispatchError> {
-		Ok(())
-	}
-
-	fn get_node_provider_id(pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
-		match pub_key {
-			NodePubKey::StoragePubKey(key) if key == &NODE1_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER1_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE2_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER2_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE3_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER3_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE4_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER4_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE5_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER5_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE6_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER6_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE7_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER7_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE8_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER8_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE9_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER9_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE10_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER10_KEY_32.clone().into()),
-
-			_ => Err(DispatchError::Other("Unexpected node pub_key")),
-		}
-	}
-
-	fn get_node_params(_node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
-		unimplemented!()
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	fn create_node(
-		_node_pub_key: NodePubKey,
-		_provider_id: T::AccountId,
-		_node_params: NodeParams,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-}
-
-pub struct MockValidatorVisitor;
-impl<T: Config> ValidatorVisitor<T> for MockValidatorVisitor
-where
-	<T as frame_system::Config>::AccountId: From<AccountId>,
-{
-	fn is_ocw_validator(caller: T::AccountId) -> bool {
-		caller == VALIDATOR_OCW_KEY_32.into()
-=======
-	type WeightInfo = ();
 	type ValidatorVisitor = MockValidatorVisitor;
 	type NodeManager = MockNodeManager;
 	type AccountIdConverter = AccountId;
@@ -384,152 +194,32 @@ where
 	<T as frame_system::Config>::AccountId: From<AccountId>,
 {
 	fn is_ocw_validator(caller: T::AccountId) -> bool {
-<<<<<<< HEAD
-		let account_id: [u8; 32] = [123; 32];
-		let dac: [u8; 32] = DAC_ACCOUNT_ID;
-		let validators = [
-			T::AccountId::decode(&mut &dac[..]).unwrap(),
-			T::AccountId::decode(&mut &account_id[..]).unwrap(),
-		];
-		validators.contains(&caller)
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
 		caller == VALIDATOR_OCW_KEY_32.into()
->>>>>>> fd642396 (chore: unused account is removed from tests)
 	}
-<<<<<<< HEAD
 	fn is_customers_batch_valid(
 		_cluster_id: ClusterId,
 		_era: DdcEra,
 		_batch_index: BatchIndex,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 		_max_batch_index: BatchIndex,
 		_payers: &[(NodePubKey, BucketId, BucketUsage)],
-<<<<<<< HEAD
-=======
-		_payers: &[(T::AccountId, BucketId, CustomerUsage)],
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-		_payers: &[(T::AccountId, String, BucketId, CustomerUsage)],
->>>>>>> b2f51555 (wip: verifying customers batch hash in merkle path)
-=======
-=======
-		_max_batch_index: BatchIndex,
->>>>>>> 0c3d2872 (chore: calculating mmr size based on max batch index)
-		_payers: &[(NodePubKey, BucketId, CustomerUsage)],
->>>>>>> 04bac35e (chore: fetching bucket owner from the bucket data during payout)
-=======
->>>>>>> 411b1b73 (refactor: 'CustomerUsage' is renamed to 'BucketUsage')
 		_batch_proof: &MMRProof,
 	) -> bool {
 		true
 	}
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
->>>>>>> 04bac35e (chore: fetching bucket owner from the bucket data during payout)
 	fn is_providers_batch_valid(
 		_cluster_id: ClusterId,
 		_era: DdcEra,
 		_batch_index: BatchIndex,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 0c3d2872 (chore: calculating mmr size based on max batch index)
 		_max_batch_index: BatchIndex,
 		_payees: &[(NodePubKey, NodeUsage)],
-=======
-		_payees: &[(T::AccountId, NodeUsage)],
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-		_payees: &[(T::AccountId, String, NodeUsage)],
->>>>>>> acbb6a47 (fix: checking MMR proof for a batch)
-=======
-		_payees: &[(NodePubKey, NodeUsage)],
->>>>>>> c054878f (chore: fetching node provider from the node data during payout)
 		_batch_proof: &MMRProof,
 	) -> bool {
-=======
-	fn is_quorum_reached(_quorum: Percent, _members_count: usize) -> bool {
->>>>>>> 67b2560f (feat: input for payout batches is decoupled from the verified delta usage and merged with the current usage)
 		true
 	}
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 pub struct TestBucketManager;
 impl<T: Config> BucketManager<T> for TestBucketManager
-where
-	<T as frame_system::Config>::AccountId: From<AccountId>,
-{
-	fn get_bucket_owner_id(bucket_id: BucketId) -> Result<T::AccountId, DispatchError> {
-		match bucket_id {
-			BUCKET_ID1 => Ok(CUSTOMER1_KEY_32.clone().into()),
-			BUCKET_ID2 => Ok(CUSTOMER2_KEY_32.clone().into()),
-			BUCKET_ID3 => Ok(CUSTOMER3_KEY_32.clone().into()),
-			BUCKET_ID4 => Ok(CUSTOMER4_KEY_32.clone().into()),
-			BUCKET_ID5 => Ok(CUSTOMER5_KEY_32.clone().into()),
-			BUCKET_ID6 => Ok(CUSTOMER6_KEY_32.clone().into()),
-			BUCKET_ID7 => Ok(CUSTOMER7_KEY_32.clone().into()),
-
-			BUCKET_ID100 => Ok(CUSTOMER100_KEY_32.clone().into()),
-			BUCKET_ID101 => Ok(CUSTOMER101_KEY_32.clone().into()),
-			BUCKET_ID102 => Ok(CUSTOMER102_KEY_32.clone().into()),
-			BUCKET_ID103 => Ok(CUSTOMER103_KEY_32.clone().into()),
-			BUCKET_ID104 => Ok(CUSTOMER104_KEY_32.clone().into()),
-			BUCKET_ID105 => Ok(CUSTOMER105_KEY_32.clone().into()),
-			BUCKET_ID106 => Ok(CUSTOMER106_KEY_32.clone().into()),
-			BUCKET_ID107 => Ok(CUSTOMER107_KEY_32.clone().into()),
-			BUCKET_ID108 => Ok(CUSTOMER108_KEY_32.clone().into()),
-			BUCKET_ID109 => Ok(CUSTOMER109_KEY_32.clone().into()),
-
-			_ => Err(DispatchError::Other("Unexpected bucket_id")),
-		}
-	}
-
-	fn get_total_bucket_usage(
-		_cluster_id: &ClusterId,
-		_bucket_id: BucketId,
-		_bucket_owner: &T::AccountId,
-	) -> Result<Option<BucketUsage>, DispatchError> {
-<<<<<<< HEAD
-		Ok(None)
-	}
-
-	fn update_total_bucket_usage(
-		_cluster_id: &ClusterId,
-		_bucket_id: BucketId,
-		_bucket_owner: T::AccountId,
-		_payable_usage: &BucketUsage,
-	) -> DispatchResult {
-		Ok(())
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	fn create_bucket(
-		_cluster_id: &ClusterId,
-		_bucket_id: BucketId,
-		_owner_id: T::AccountId,
-		_bucket_params: BucketParams,
-	) -> Result<(), DispatchError> {
-		unimplemented!()
-	}
-=======
-pub struct TestBucketVisitor;
-impl<T: Config> BucketVisitor<T> for TestBucketVisitor
-=======
-pub struct TestBucketManager;
-impl<T: Config> BucketManager<T> for TestBucketManager
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 where
 	<T as frame_system::Config>::AccountId: From<AccountId>,
 {
@@ -562,14 +252,9 @@ where
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
 		_content_owner: &T::AccountId,
-	) -> Result<Option<CustomerUsage>, DispatchError> {
-=======
->>>>>>> 411b1b73 (refactor: 'CustomerUsage' is renamed to 'BucketUsage')
+	) -> Result<Option<BucketUsage>, DispatchError> {
 		Ok(None)
 	}
-<<<<<<< HEAD
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
 
 	fn inc_total_bucket_usage(
 		_cluster_id: &ClusterId,
@@ -589,7 +274,6 @@ where
 	) -> Result<(), DispatchError> {
 		unimplemented!()
 	}
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 }
 
 pub struct TestCustomerCharger;
@@ -597,48 +281,20 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger
 where
 	<T as frame_system::Config>::AccountId: From<AccountId>,
 {
-	fn charge_bucket_owner(
+	fn charge_content_owner(
+		_cluster_id: &ClusterId,
+		_bucket_id: BucketId,
 		content_owner: T::AccountId,
 		billing_vault: T::AccountId,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 		_customer_usage: &BucketUsage,
-=======
-		_customer_usage: &CustomerUsage,
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-		_customer_usage: &BucketUsage,
->>>>>>> 411b1b73 (refactor: 'CustomerUsage' is renamed to 'BucketUsage')
-=======
->>>>>>> 67b2560f (feat: input for payout batches is decoupled from the verified delta usage and merged with the current usage)
 		amount: u128,
 	) -> Result<u128, DispatchError> {
 		let mut amount_to_charge = amount;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 04bac35e (chore: fetching bucket owner from the bucket data during payout)
 		let account_1: T::AccountId = CUSTOMER1_KEY_32.into();
 		let account_2: T::AccountId = CUSTOMER2_KEY_32.into();
 		let account_3: T::AccountId = CUSTOMER3_KEY_32.into();
 		let account_4: T::AccountId = CUSTOMER4_KEY_32.into();
 		let account_5: T::AccountId = CUSTOMER5_KEY_32.into();
-<<<<<<< HEAD
-=======
-		let mut temp: [u8; 32] = ACCOUNT_ID_1;
-		let account_1 = T::AccountId::decode(&mut &temp[..]).unwrap();
-		temp = ACCOUNT_ID_2;
-		let account_2 = T::AccountId::decode(&mut &temp[..]).unwrap();
-		temp = ACCOUNT_ID_3;
-		let account_3 = T::AccountId::decode(&mut &temp[..]).unwrap();
-		temp = ACCOUNT_ID_4;
-		let account_4 = T::AccountId::decode(&mut &temp[..]).unwrap();
-		temp = ACCOUNT_ID_5;
-		let account_5 = T::AccountId::decode(&mut &temp[..]).unwrap();
->>>>>>> 32dbf724 (Added Logs and Events for OCW-DAC Validation (#411))
-=======
->>>>>>> 04bac35e (chore: fetching bucket owner from the bucket data during payout)
 
 		if content_owner == account_1 ||
 			content_owner == account_3 ||
@@ -669,83 +325,12 @@ where
 	}
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 pub const RESERVE_ACCOUNT_ID: [u8; 32] = [9; 32];
 pub const TREASURY_ACCOUNT_ID: [u8; 32] = [8; 32];
 pub const VALIDATOR1_ACCOUNT_ID: [u8; 32] = [111; 32];
 pub const VALIDATOR2_ACCOUNT_ID: [u8; 32] = [222; 32];
 pub const VALIDATOR3_ACCOUNT_ID: [u8; 32] = [250; 32];
 pub const VALIDATOR_OCW_KEY_32: AccountId32 = AccountId32::new([123; 32]);
-=======
-pub const ACCOUNT_ID_1: AccountId = 1;
-pub const ACCOUNT_ID_2: AccountId = 2;
-pub const ACCOUNT_ID_3: AccountId = 3;
-pub const ACCOUNT_ID_4: AccountId = 4;
-pub const ACCOUNT_ID_5: AccountId = 5;
-pub const ACCOUNT_ID_6: AccountId = 6;
-pub const ACCOUNT_ID_7: AccountId = 7;
-=======
-pub const ACCOUNT_ID_1: [u8; 32] = [1; 32];
-pub const ACCOUNT_ID_2: [u8; 32] = [2; 32];
-pub const ACCOUNT_ID_3: [u8; 32] = [3; 32];
-pub const ACCOUNT_ID_4: [u8; 32] = [4; 32];
-pub const ACCOUNT_ID_5: [u8; 32] = [5; 32];
-pub const ACCOUNT_ID_6: [u8; 32] = [6; 32];
-pub const ACCOUNT_ID_7: [u8; 32] = [7; 32];
->>>>>>> 32dbf724 (Added Logs and Events for OCW-DAC Validation (#411))
-=======
->>>>>>> 04bac35e (chore: fetching bucket owner from the bucket data during payout)
-pub struct TestClusterCreator;
-impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
-	fn create_cluster(
-		_cluster_id: ClusterId,
-		_cluster_manager_id: T::AccountId,
-		_cluster_reserve_id: T::AccountId,
-		_cluster_params: ClusterParams<T::AccountId>,
-		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
-	) -> DispatchResult {
-		Ok(())
-	}
-}
-
-pub struct TestCustomerDepositor;
-impl<T: Config> CustomerDepositor<T> for TestCustomerDepositor {
-	fn deposit(_customer: T::AccountId, _amount: u128) -> Result<(), DispatchError> {
-		Ok(())
-	}
-	fn deposit_extra(_customer: T::AccountId, _amount: u128) -> Result<(), DispatchError> {
-		Ok(())
-	}
-}
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-pub const DAC_ACCOUNT_ID: AccountId = 2;
-pub const RESERVE_ACCOUNT_ID: AccountId = 999;
-pub const TREASURY_ACCOUNT_ID: AccountId = 888;
-pub const VALIDATOR1_ACCOUNT_ID: AccountId = 111;
-pub const VALIDATOR2_ACCOUNT_ID: AccountId = 222;
-pub const VALIDATOR3_ACCOUNT_ID: AccountId = 333;
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-pub const DAC_ACCOUNT_ID: [u8; 32] = [2; 32];
-=======
->>>>>>> fd642396 (chore: unused account is removed from tests)
-=======
->>>>>>> 2bdeb4c7 (fix: cleaning up and fixing fmt and clippy issues)
-pub const RESERVE_ACCOUNT_ID: [u8; 32] = [9; 32];
-pub const TREASURY_ACCOUNT_ID: [u8; 32] = [8; 32];
-pub const VALIDATOR1_ACCOUNT_ID: [u8; 32] = [111; 32];
-pub const VALIDATOR2_ACCOUNT_ID: [u8; 32] = [222; 32];
-pub const VALIDATOR3_ACCOUNT_ID: [u8; 32] = [250; 32];
-<<<<<<< HEAD
->>>>>>> 32dbf724 (Added Logs and Events for OCW-DAC Validation (#411))
-=======
-pub const VALIDATOR_OCW_KEY_32: AccountId32 = AccountId32::new([123; 32]);
->>>>>>> fd642396 (chore: unused account is removed from tests)
 
 pub const VALIDATOR1_SCORE: u64 = 30;
 pub const VALIDATOR2_SCORE: u64 = 45;
@@ -756,104 +341,6 @@ pub const PARTIAL_CHARGE: u128 = 10;
 pub const CUSTOMER2_BALANCE: u128 = 5;
 // > PARTIAL_CHARGE
 pub const CUSTOMER3_BALANCE: u128 = 1000;
-<<<<<<< HEAD
-
-pub const NODE1_PUB_KEY_32: AccountId32 = AccountId32::new([
-	48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
-	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-]);
-pub const NODE2_PUB_KEY_32: AccountId32 = AccountId32::new([
-	49, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
-	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-]);
-pub const NODE3_PUB_KEY_32: AccountId32 = AccountId32::new([
-	50, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
-	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-]);
-pub const NODE4_PUB_KEY_32: AccountId32 = AccountId32::new([
-	51, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
-	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-]);
-pub const NODE5_PUB_KEY_32: AccountId32 = AccountId32::new([
-	52, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
-	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-]);
-pub const NODE6_PUB_KEY_32: AccountId32 = AccountId32::new([
-	53, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
-	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-]);
-pub const NODE7_PUB_KEY_32: AccountId32 = AccountId32::new([
-	54, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
-	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-]);
-pub const NODE8_PUB_KEY_32: AccountId32 = AccountId32::new([
-	55, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
-	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-]);
-pub const NODE9_PUB_KEY_32: AccountId32 = AccountId32::new([
-	56, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
-	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-]);
-pub const NODE10_PUB_KEY_32: AccountId32 = AccountId32::new([
-	57, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
-	212, 147, 206, 245, 33, 161, 225, 73, 67, 132, 67, 149,
-]);
-
-pub const NODE_PROVIDER1_KEY_32: AccountId32 = AccountId32::new([10; 32]);
-pub const NODE_PROVIDER2_KEY_32: AccountId32 = AccountId32::new([11; 32]);
-pub const NODE_PROVIDER3_KEY_32: AccountId32 = AccountId32::new([12; 32]);
-pub const NODE_PROVIDER4_KEY_32: AccountId32 = AccountId32::new([13; 32]);
-pub const NODE_PROVIDER5_KEY_32: AccountId32 = AccountId32::new([14; 32]);
-pub const NODE_PROVIDER6_KEY_32: AccountId32 = AccountId32::new([15; 32]);
-pub const NODE_PROVIDER7_KEY_32: AccountId32 = AccountId32::new([16; 32]);
-pub const NODE_PROVIDER8_KEY_32: AccountId32 = AccountId32::new([17; 32]);
-pub const NODE_PROVIDER9_KEY_32: AccountId32 = AccountId32::new([18; 32]);
-pub const NODE_PROVIDER10_KEY_32: AccountId32 = AccountId32::new([19; 32]);
-
-pub const BUCKET_ID1: BucketId = 1;
-pub const BUCKET_ID2: BucketId = 2;
-pub const BUCKET_ID3: BucketId = 3;
-pub const BUCKET_ID4: BucketId = 4;
-pub const BUCKET_ID5: BucketId = 5;
-pub const BUCKET_ID6: BucketId = 6;
-pub const BUCKET_ID7: BucketId = 7;
-pub const BUCKET_ID8: BucketId = 8;
-pub const BUCKET_ID9: BucketId = 9;
-pub const BUCKET_ID10: BucketId = 10;
-
-pub const BUCKET_ID100: BucketId = 100;
-pub const BUCKET_ID101: BucketId = 101;
-pub const BUCKET_ID102: BucketId = 102;
-pub const BUCKET_ID103: BucketId = 103;
-pub const BUCKET_ID104: BucketId = 104;
-pub const BUCKET_ID105: BucketId = 105;
-pub const BUCKET_ID106: BucketId = 106;
-pub const BUCKET_ID107: BucketId = 107;
-pub const BUCKET_ID108: BucketId = 108;
-pub const BUCKET_ID109: BucketId = 109;
-
-pub const CUSTOMER1_KEY_32: AccountId32 = AccountId32::new([1; 32]);
-pub const CUSTOMER2_KEY_32: AccountId32 = AccountId32::new([2; 32]);
-pub const CUSTOMER3_KEY_32: AccountId32 = AccountId32::new([3; 32]);
-pub const CUSTOMER4_KEY_32: AccountId32 = AccountId32::new([4; 32]);
-pub const CUSTOMER5_KEY_32: AccountId32 = AccountId32::new([5; 32]);
-pub const CUSTOMER6_KEY_32: AccountId32 = AccountId32::new([6; 32]);
-pub const CUSTOMER7_KEY_32: AccountId32 = AccountId32::new([7; 32]);
-
-pub const CUSTOMER100_KEY_32: AccountId32 = AccountId32::new([100; 32]);
-pub const CUSTOMER101_KEY_32: AccountId32 = AccountId32::new([101; 32]);
-pub const CUSTOMER102_KEY_32: AccountId32 = AccountId32::new([102; 32]);
-pub const CUSTOMER103_KEY_32: AccountId32 = AccountId32::new([103; 32]);
-pub const CUSTOMER104_KEY_32: AccountId32 = AccountId32::new([104; 32]);
-pub const CUSTOMER105_KEY_32: AccountId32 = AccountId32::new([105; 32]);
-pub const CUSTOMER106_KEY_32: AccountId32 = AccountId32::new([106; 32]);
-pub const CUSTOMER107_KEY_32: AccountId32 = AccountId32::new([107; 32]);
-pub const CUSTOMER108_KEY_32: AccountId32 = AccountId32::new([108; 32]);
-pub const CUSTOMER109_KEY_32: AccountId32 = AccountId32::new([109; 32]);
-
-pub const BANK_KEY_32: AccountId32 = AccountId32::new([200; 32]);
-=======
->>>>>>> 4c37f795 (fix: unussed variables are removed and clippy issues fixed)
 
 pub const NODE1_PUB_KEY_32: AccountId32 = AccountId32::new([
 	48, 47, 147, 125, 243, 160, 236, 76, 101, 142, 129, 34, 67, 158, 116, 141, 34, 116, 66, 235,
@@ -1027,9 +514,6 @@ pub const PRICING_FEES_ZERO: ClusterFeesParams = ClusterFeesParams {
 	cluster_reserve_share: Perquintill::from_percent(0),
 };
 
-pub const DEFAULT_PAYERS_ROOT: H256 = H256([112; 32]);
-pub const DEFAULT_PAYEES_ROOT: H256 = H256([113; 32]);
-
 pub struct TestTreasuryVisitor;
 impl<T: frame_system::Config> PalletVisitor<T> for TestTreasuryVisitor {
 	fn get_account_id() -> T::AccountId {
@@ -1195,15 +679,7 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 	}
 
 	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
-<<<<<<< HEAD
-<<<<<<< HEAD
 		let reserve_account: [u8; 32] = RESERVE_ACCOUNT_ID;
-=======
-		let reserve_account = RESERVE_ACCOUNT_ID.to_ne_bytes();
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-		let reserve_account: [u8; 32] = RESERVE_ACCOUNT_ID;
->>>>>>> 32dbf724 (Added Logs and Events for OCW-DAC Validation (#411))
 		Ok(T::AccountId::decode(&mut &reserve_account[..]).unwrap())
 	}
 
@@ -1243,42 +719,14 @@ impl ExtBuilder {
 
 		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![
-<<<<<<< HEAD
-<<<<<<< HEAD
 				(CUSTOMER1_KEY_32, 10000000000000000000000000000),
 				(CUSTOMER2_KEY_32, CUSTOMER2_BALANCE),
 				(CUSTOMER3_KEY_32, CUSTOMER3_BALANCE),
-=======
-				(CUSTOMER1_KEY_32, 10000000000000000000000000000),
-<<<<<<< HEAD
-				(CUSTOMER2_KEY_32, USER2_BALANCE), // < PARTIAL_CHARGE
-				(CUSTOMER3_KEY_32, USER3_BALANCE), // > PARTIAL_CHARGE
->>>>>>> 04bac35e (chore: fetching bucket owner from the bucket data during payout)
-=======
-				(CUSTOMER2_KEY_32, CUSTOMER2_BALANCE),
-				(CUSTOMER3_KEY_32, CUSTOMER3_BALANCE),
->>>>>>> 4c37f795 (fix: unussed variables are removed and clippy issues fixed)
 				(CUSTOMER4_KEY_32, 1000000000000000000000000),
 				(CUSTOMER5_KEY_32, 1000000000000000000000000),
 				(CUSTOMER6_KEY_32, 1000000000000000000000000),
 				(CUSTOMER7_KEY_32, 1000000000000000000000000),
-<<<<<<< HEAD
-<<<<<<< HEAD
 				(BANK_KEY_32, 10000000000000000000000000000),
-=======
-				([1; 32].into(), 10000000000000000000000000000),
-				([2; 32].into(), USER2_BALANCE), // < PARTIAL_CHARGE
-				([3; 32].into(), USER3_BALANCE), // > PARTIAL_CHARGE
-				([4; 32].into(), 1000000000000000000000000),
-				([5; 32].into(), 1000000000000000000000000),
-				([6; 32].into(), 1000000000000000000000000),
-				([7; 32].into(), 1000000000000000000000000),
->>>>>>> 32dbf724 (Added Logs and Events for OCW-DAC Validation (#411))
-=======
->>>>>>> 04bac35e (chore: fetching bucket owner from the bucket data during payout)
-=======
-				(BANK_KEY_32, 10000000000000000000000000000),
->>>>>>> c0869191 (chore: unified faucet account in tests)
 			],
 		}
 		.assimilate_storage(&mut storage);

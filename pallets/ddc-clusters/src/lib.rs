@@ -26,42 +26,17 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-pub mod migrations;
-const LOG_TARGET: &str = "runtime::ddc-clusters";
-=======
-pub mod migration;
->>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
-
-use ddc_primitives::{
-	traits::{
-		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery, ClusterValidator},
-=======
 pub mod migrations;
 const LOG_TARGET: &str = "runtime::ddc-clusters";
 
 use ddc_primitives::{
 	traits::{
-<<<<<<< HEAD
-		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery, ClusterValidator},
->>>>>>> 99095ecd (verified copy of PR#393 (#402))
 		staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-<<<<<<< HEAD
-<<<<<<< HEAD
 	ClusterProtocolParams, ClusterStatus, DdcEra, NodePubKey, NodeType,
-=======
-	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	ClusterProtocolParams, ClusterStatus, DdcEra, NodePubKey, NodeType,
->>>>>>> 99095ecd (verified copy of PR#393 (#402))
 };
 use frame_support::{
 	assert_ok,
@@ -95,19 +70,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 		frame_support::traits::StorageVersion::new(3);
-=======
-		frame_support::traits::StorageVersion::new(1);
->>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
-=======
-		frame_support::traits::StorageVersion::new(2);
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-		frame_support::traits::StorageVersion::new(3);
->>>>>>> 57a38769 (Fixing Cluster Migration (#408))
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -140,26 +103,10 @@ pub mod pallet {
 		ClusterProtocolParamsSet { cluster_id: ClusterId },
 		ClusterActivated { cluster_id: ClusterId },
 		ClusterBonded { cluster_id: ClusterId },
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 		ClusterUnbonding { cluster_id: ClusterId },
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
-<<<<<<< HEAD
-<<<<<<< HEAD
 		ClusterEraPaid { cluster_id: ClusterId, era_id: DdcEra },
-=======
-		ClusterUnbonded { cluster_id: ClusterId },
-		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-		ClusterEraValidated { cluster_id: ClusterId, era_id: DdcEra },
->>>>>>> 99095ecd (verified copy of PR#393 (#402))
-=======
-		ClusterEraPaid { cluster_id: ClusterId, era_id: DdcEra },
->>>>>>> 342b5f27 (chore: methods for last paid removed to eliminate ambiguity)
 	}
 
 	#[pallet::error]
@@ -184,26 +131,13 @@ pub mod pallet {
 		ErasureCodingRequiredDidNotMeetMinimum,
 		ErasureCodingTotalNotMeetMinimum,
 		ReplicationTotalDidNotMeetMinimum,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 		ClusterAlreadyActivated,
 		UnexpectedClusterStatus,
 		AttemptToValidateNotAssignedNode,
 		ClusterProtocolParamsNotSet,
 		ArithmeticOverflow,
 		NodeIsNotAssignedToCluster,
-<<<<<<< HEAD
-<<<<<<< HEAD
 		ControllerDoesNotExist,
-=======
->>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-		ControllerDoesNotExist,
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 	}
 
 	#[pallet::storage]
@@ -273,21 +207,9 @@ pub mod pallet {
 							.props
 							.node_provider_auth_contract
 							.clone(),
-<<<<<<< HEAD
-<<<<<<< HEAD
 						erasure_coding_required: cluster.props.erasure_coding_required,
 						erasure_coding_total: cluster.props.erasure_coding_total,
 						replication_total: cluster.props.replication_total,
-=======
-						erasure_coding_required: 4,
-						erasure_coding_total: 6,
-						replication_total: 3
->>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
-=======
-						erasure_coding_required: cluster.props.erasure_coding_required,
-						erasure_coding_total: cluster.props.erasure_coding_total,
-						replication_total: cluster.props.replication_total,
->>>>>>> 5d85b7a3 (Accept cluster replication props from genesis config (#344))
 					},
 					self.clusters_protocol_params
 						.iter()
@@ -393,26 +315,6 @@ pub mod pallet {
 			T::NodeRepository::get(node_pub_key.clone())
 				.map_err(|_| Error::<T>::AttemptToAddNonExistentNode)?;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-			// Cluster extension smart contract allows joining.
-			if let Some(address) = cluster.props.node_provider_auth_contract.clone() {
-				let auth_contract = NodeProviderAuthContract::<T>::new(address, caller_id);
-
-				let is_authorized = auth_contract
-					.is_authorized(
-						node.get_provider_id().to_owned(),
-						node.get_pub_key(),
-						node.get_type(),
-					)
-					.map_err(Into::<Error<T>>::into)?;
-				ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
-			};
-
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> d9cc7c7d (New `join_cluster` extrinsic (#425))
 			Self::do_add_node(cluster, node_pub_key, node_kind)
 		}
 
@@ -456,15 +358,7 @@ pub mod pallet {
 				cluster_params.replication_total >= T::MinReplicationTotalLimit::get(),
 				Error::<T>::ReplicationTotalDidNotMeetMinimum
 			);
-<<<<<<< HEAD
-<<<<<<< HEAD
 			cluster.set_params(cluster_params);
-=======
-			cluster.set_params(cluster_params).map_err(Into::<Error<T>>::into)?;
->>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
-=======
-			cluster.set_params(cluster_params);
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterParamsSet { cluster_id });
 
@@ -482,8 +376,6 @@ pub mod pallet {
 			let caller_id = ensure_signed(origin)?;
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-<<<<<<< HEAD
-<<<<<<< HEAD
 			// todo: allow to execute this extrinsic to Validator's manager only
 			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
 
@@ -537,18 +429,6 @@ pub mod pallet {
 			ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
 
 			Self::do_join_cluster(cluster, node_pub_key)
-<<<<<<< HEAD
-=======
-			// todo: allow to execute this extrinsic to Validator's OCW only
-=======
-			// todo: allow to execute this extrinsic to Validator's manager only
->>>>>>> 99095ecd (verified copy of PR#393 (#402))
-			ensure!(cluster.manager_id == caller_id, Error::<T>::OnlyClusterManager);
-
-			Self::do_validate_node(cluster_id, node_pub_key, succeeded)
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> d9cc7c7d (New `join_cluster` extrinsic (#425))
 		}
 	}
 
@@ -575,23 +455,10 @@ pub mod pallet {
 				Error::<T>::ReplicationTotalDidNotMeetMinimum
 			);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
 			let cluster =
 				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params);
 
-=======
-			let cluster =
-				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params)
-					.map_err(Into::<Error<T>>::into)?;
->>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
-=======
-			ensure!(!Clusters::<T>::contains_key(cluster_id), Error::<T>::ClusterAlreadyExists);
-			let cluster =
-				Cluster::new(cluster_id, cluster_manager_id, cluster_reserve_id, cluster_params);
-
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 			Clusters::<T>::insert(cluster_id, cluster);
 			Self::deposit_event(Event::<T>::ClusterCreated { cluster_id });
 			ClustersGovParams::<T>::insert(cluster_id, initial_protocol_params);
@@ -632,15 +499,7 @@ pub mod pallet {
 
 			cluster.set_status(ClusterStatus::Unbonding);
 			Clusters::<T>::insert(cluster_id, cluster);
-<<<<<<< HEAD
-<<<<<<< HEAD
 			Self::deposit_event(Event::<T>::ClusterUnbonding { cluster_id: *cluster_id });
-=======
-			Self::deposit_event(Event::<T>::ClusterBonded { cluster_id: *cluster_id });
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-			Self::deposit_event(Event::<T>::ClusterUnbonding { cluster_id: *cluster_id });
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 
 			Ok(())
 		}
@@ -715,10 +574,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d9cc7c7d (New `join_cluster` extrinsic (#425))
 		fn do_join_cluster(
 			cluster: Cluster<T::AccountId>,
 			node_pub_key: NodePubKey,
@@ -757,11 +612,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-<<<<<<< HEAD
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> d9cc7c7d (New `join_cluster` extrinsic (#425))
 		fn do_remove_node(
 			cluster: Cluster<T::AccountId>,
 			node_pub_key: NodePubKey,
@@ -1038,28 +888,6 @@ pub mod pallet {
 		fn end_unbond_cluster(cluster_id: &ClusterId) -> DispatchResult {
 			Self::do_end_unbond_cluster(cluster_id)
 		}
-<<<<<<< HEAD
-	}
-	impl<T: Config> ClusterValidator<T> for Pallet<T> {
-		fn set_last_paid_era(cluster_id: &ClusterId, era_id: DdcEra) -> Result<(), DispatchError> {
-			let mut cluster =
-				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-
-			cluster.last_paid_era = era_id;
-			Clusters::<T>::insert(cluster_id, cluster);
-			Self::deposit_event(Event::<T>::ClusterEraPaid { cluster_id: *cluster_id, era_id });
-
-			Ok(())
-		}
-
-		fn get_last_paid_era(cluster_id: &ClusterId) -> Result<DdcEra, DispatchError> {
-			let cluster =
-				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
-
-			Ok(cluster.last_paid_era)
-		}
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 	}
 	impl<T: Config> ClusterValidator<T> for Pallet<T> {
 		fn set_last_paid_era(cluster_id: &ClusterId, era_id: DdcEra) -> Result<(), DispatchError> {
@@ -1088,10 +916,6 @@ pub mod pallet {
 			Ok(cluster.manager_id)
 		}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 		fn get_nodes(cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError> {
 			let mut nodes = Vec::new();
 
@@ -1103,11 +927,6 @@ pub mod pallet {
 			Ok(nodes)
 		}
 
-<<<<<<< HEAD
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 		fn contains_node(
 			cluster_id: &ClusterId,
 			node_pub_key: &NodePubKey,
@@ -1161,19 +980,6 @@ pub mod pallet {
 			succeeded: bool,
 		) -> Result<(), DispatchError> {
 			Self::do_validate_node(*cluster_id, node_pub_key.clone(), succeeded)
-<<<<<<< HEAD
-		}
-
-		fn get_clusters(status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError> {
-			let mut clusters_ids = Vec::new();
-			for (cluster_id, cluster) in <Clusters<T>>::iter() {
-				if cluster.status == status {
-					clusters_ids.push(cluster_id);
-				}
-			}
-			Ok(clusters_ids)
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 		}
 
 		fn get_clusters(status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError> {

@@ -15,49 +15,11 @@ mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 		bucket::BucketManager,
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
-<<<<<<< HEAD
-=======
-=======
-		bucket::{BucketManager, BucketVisitor},
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
-<<<<<<< HEAD
-		customer::{CustomerCharger, CustomerDepositor},
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
->>>>>>> 91b446cb (Changes to fetch minimum sub-trees which are in consensus (#424))
 	},
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 	BucketId, BucketParams, BucketUsage, ClusterId,
-=======
-	BucketId, BucketVisitorError, ClusterId, CustomerUsage,
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-	BucketId, ClusterId, CustomerUsage,
->>>>>>> c3a18c28 (chore: using generic type for bucket visitor)
-=======
-	BucketId, BucketParams, ClusterId, CustomerUsage,
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
-=======
-	BucketId, BucketParams, BucketUsage, ClusterId,
->>>>>>> 411b1b73 (refactor: 'CustomerUsage' is renamed to 'BucketUsage')
-=======
-		payout::StorageUsageProvider,
-	},
-	BucketId, BucketParams, BucketStorageUsage, BucketUsage, ClusterId,
->>>>>>> 67b2560f (feat: input for payout batches is decoupled from the verified delta usage and merged with the current usage)
 };
 use frame_support::{
 	parameter_types,
@@ -105,30 +67,12 @@ pub struct Bucket<T: Config> {
 	cluster_id: ClusterId,
 	is_public: bool,
 	is_removed: bool,
-<<<<<<< HEAD
-<<<<<<< HEAD
 	// todo(yahortsaryk): `total_customers_usage` should be renamed to `total_usage` to eliminate
 	// ambiguity, as the bucket owner is the only customer of the bucket who pays for its usage.
 	total_customers_usage: Option<BucketUsage>,
-=======
-	total_customers_usage: Option<CustomerUsage>,
-=======
-	// todo(yahortsaryk): `total_customers_usage` should be renamed to `total_usage` to eliminate
-	// ambiguity, as the bucket owner is the only customer of the bucket who pays for its usage.
-	total_customers_usage: Option<BucketUsage>,
->>>>>>> 411b1b73 (refactor: 'CustomerUsage' is renamed to 'BucketUsage')
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-<<<<<<< HEAD
-pub struct BucketParams {
-	is_public: bool,
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-}
-
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-=======
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 #[scale_info(skip_type_params(T))]
 pub struct AccountsLedger<T: Config> {
 	/// The owner account whose balance is actually locked and can be used to pay for DDC network
@@ -257,15 +201,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			bucket_id: BucketId,
 			transferred_bytes: u64,
-<<<<<<< HEAD
-<<<<<<< HEAD
 			stored_bytes: i64,
-=======
-			stored_bytes: u64,
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-			stored_bytes: i64,
->>>>>>> 00eed38c (Changes to accept stored_bytes as signed input (#410))
 			number_of_puts: u64,
 			number_of_gets: u64,
 		},
@@ -274,15 +210,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			bucket_id: BucketId,
 			transferred_bytes: u64,
-<<<<<<< HEAD
-<<<<<<< HEAD
 			stored_bytes: i64,
-=======
-			stored_bytes: u64,
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-			stored_bytes: i64,
->>>>>>> 00eed38c (Changes to accept stored_bytes as signed input (#410))
 			number_of_puts: u64,
 			number_of_gets: u64,
 		},
@@ -396,36 +324,7 @@ pub mod pallet {
 			let bucket_id =
 				Self::buckets_count().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 			Self::do_create_bucket(cluster_id, bucket_id, bucket_owner, bucket_params)?;
-=======
-			ensure!(
-				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
-				Error::<T>::ClusterDoesNotExist
-			);
-
-			let bucket = Bucket {
-				bucket_id: cur_bucket_id,
-				owner_id: bucket_owner,
-				cluster_id,
-				is_public: bucket_params.is_public,
-				is_removed: false,
-				total_customers_usage: None,
-			};
-
-			<BucketsCount<T>>::set(cur_bucket_id);
-			<Buckets<T>>::insert(cur_bucket_id, bucket);
-
-<<<<<<< HEAD
-			Self::deposit_event(Event::<T>::BucketCreated { bucket_id: cur_bucket_id });
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-			Self::deposit_event(Event::<T>::BucketCreated { cluster_id, bucket_id: cur_bucket_id });
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-			Self::do_create_bucket(cluster_id, bucket_id, bucket_owner, bucket_params)?;
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 
 			Ok(())
 		}
@@ -756,8 +655,6 @@ pub mod pallet {
 
 			Ok(())
 		}
-<<<<<<< HEAD
-<<<<<<< HEAD
 	}
 
 	impl<T: Config> BucketManager<T> for Pallet<T> {
@@ -827,131 +724,19 @@ pub mod pallet {
 			Self::do_create_bucket(*cluster_id, bucket_id, owner_id, bucket_params)?;
 			Ok(())
 		}
-=======
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
-=======
-
-		fn storage_usage_filter(cluster_id: &ClusterId, bucket: &Bucket<T>) -> bool {
-			if bucket.is_removed || *cluster_id != bucket.cluster_id {
-				false
-			} else {
-				bucket
-					.total_customers_usage
-					.as_ref()
-					.map(|usage| usage.stored_bytes != 0)
-					.unwrap_or(false)
-			}
-		}
-
-		fn storage_usage_map(
-			bucket_id: &BucketId,
-			bucket: &Bucket<T>,
-		) -> BucketStorageUsage<T::AccountId> {
-			let stored_bytes = bucket
-				.total_customers_usage
-				.as_ref()
-				.map(|usage| usage.stored_bytes)
-				.unwrap_or(0);
-
-			BucketStorageUsage {
-				bucket_id: *bucket_id,
-				owner_id: bucket.owner_id.clone(),
-				stored_bytes,
-			}
-		}
->>>>>>> 67b2560f (feat: input for payout batches is decoupled from the verified delta usage and merged with the current usage)
-	}
-
-	impl<T: Config> BucketManager<T> for Pallet<T> {
-		fn get_bucket_owner_id(bucket_id: BucketId) -> Result<T::AccountId, DispatchError> {
-			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::BucketDoesNotExist)?;
-			Ok(bucket.owner_id)
-		}
-
-		fn get_total_bucket_usage(
-			cluster_id: &ClusterId,
-			bucket_id: BucketId,
-			content_owner: &T::AccountId,
-		) -> Result<Option<BucketUsage>, DispatchError> {
-			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
-			ensure!(bucket.owner_id == *content_owner, Error::<T>::NotBucketOwner);
-			ensure!(bucket.cluster_id == *cluster_id, Error::<T>::ClusterMismatch);
-
-			Ok(bucket.total_customers_usage)
-		}
-
-		fn update_total_bucket_usage(
-			cluster_id: &ClusterId,
-			bucket_id: BucketId,
-			bucket_owner: T::AccountId,
-			payable_usage: &BucketUsage,
-		) -> DispatchResult {
-			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
-			ensure!(bucket.owner_id == bucket_owner, Error::<T>::NotBucketOwner);
-
-			let total_usage = if let Some(mut total_usage) = bucket.total_customers_usage {
-				total_usage.transferred_bytes += payable_usage.transferred_bytes;
-				total_usage.stored_bytes = payable_usage.stored_bytes; // already includes the old storage
-				total_usage.number_of_puts += payable_usage.number_of_puts;
-				total_usage.number_of_gets += payable_usage.number_of_gets;
-				total_usage
-			} else {
-				BucketUsage {
-					transferred_bytes: payable_usage.transferred_bytes,
-					stored_bytes: payable_usage.stored_bytes,
-					number_of_puts: payable_usage.number_of_puts,
-					number_of_gets: payable_usage.number_of_gets,
-				}
-			};
-
-			bucket.total_customers_usage = Some(total_usage);
-
-			Buckets::<T>::insert(bucket_id, bucket);
-
-			Self::deposit_event(Event::<T>::BucketTotalCustomersUsageUpdated {
-				cluster_id: *cluster_id,
-				bucket_id,
-				transferred_bytes: payable_usage.transferred_bytes,
-				stored_bytes: payable_usage.stored_bytes,
-				number_of_puts: payable_usage.number_of_puts,
-				number_of_gets: payable_usage.number_of_gets,
-			});
-
-			Ok(())
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		fn create_bucket(
-			cluster_id: &ClusterId,
-			bucket_id: BucketId,
-			owner_id: T::AccountId,
-			bucket_params: BucketParams,
-		) -> Result<(), DispatchError> {
-			Self::do_create_bucket(*cluster_id, bucket_id, owner_id, bucket_params)?;
-			Ok(())
-		}
 	}
 
 	impl<T: Config> CustomerCharger<T> for Pallet<T> {
-		fn charge_bucket_owner(
-			bucket_owner: T::AccountId,
+		fn charge_content_owner(
+			cluster_id: &ClusterId,
+			bucket_id: BucketId,
+			content_owner: T::AccountId,
 			billing_vault: T::AccountId,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 			customer_usage: &BucketUsage,
-=======
-			customer_usage: &CustomerUsage,
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-			customer_usage: &BucketUsage,
->>>>>>> 411b1b73 (refactor: 'CustomerUsage' is renamed to 'BucketUsage')
-=======
->>>>>>> 67b2560f (feat: input for payout batches is decoupled from the verified delta usage and merged with the current usage)
 			amount: u128,
 		) -> Result<u128, DispatchError> {
 			let actually_charged: BalanceOf<T>;
-			let mut ledger = Self::ledger(&bucket_owner).ok_or(Error::<T>::NotOwner)?;
+			let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotOwner)?;
 			let amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
 
 			if ledger.active >= amount_to_deduct {
@@ -982,24 +767,13 @@ pub mod pallet {
 				actually_charged.checked_add(&charged).ok_or(Error::<T>::ArithmeticUnderflow)?;
 			}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 			Self::inc_total_bucket_usage(
-=======
-			Self::inc_total_customer_usage(
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-			Self::inc_total_bucket_usage(
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 				cluster_id,
 				bucket_id,
 				content_owner.clone(),
 				customer_usage,
 			)?;
 
-=======
->>>>>>> 67b2560f (feat: input for payout batches is decoupled from the verified delta usage and merged with the current usage)
 			<T as pallet::Config>::Currency::transfer(
 				&Self::account_id(),
 				&billing_vault,
@@ -1007,9 +781,9 @@ pub mod pallet {
 				ExistenceRequirement::AllowDeath,
 			)?;
 
-			<Ledger<T>>::insert(&bucket_owner, &ledger); // update state after successful transfer
+			<Ledger<T>>::insert(&content_owner, &ledger); // update state after successful transfer
 			Self::deposit_event(Event::<T>::Charged {
-				owner_id: bucket_owner,
+				owner_id: content_owner,
 				charged: actually_charged,
 				expected_to_charge: amount_to_deduct,
 			});
@@ -1078,44 +852,6 @@ pub mod pallet {
 		fn get_bucket_owner(bucket_id: &BucketId) -> Result<T::AccountId, DispatchError> {
 			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 			Ok(bucket.owner_id)
-		}
-	}
-
-	impl<T: Config> StorageUsageProvider<BucketId, BucketStorageUsage<T::AccountId>> for Pallet<T> {
-		type Error = ();
-
-		fn iter_storage_usage<'a>(
-			cluster_id: &'a ClusterId,
-		) -> Box<dyn Iterator<Item = BucketStorageUsage<T::AccountId>> + 'a> {
-			let filter_fn: fn(&ClusterId, &Bucket<T>) -> bool = Pallet::<T>::storage_usage_filter;
-			let map_fn: fn(&BucketId, &Bucket<T>) -> BucketStorageUsage<T::AccountId> =
-				Pallet::<T>::storage_usage_map;
-
-			Box::new(
-				Buckets::<T>::iter()
-					.filter(move |(_, bucket)| filter_fn(cluster_id, bucket))
-					.map(move |(id, bucket)| map_fn(&id, &bucket)),
-			)
-		}
-
-		fn iter_storage_usage_from<'a>(
-			cluster_id: &'a ClusterId,
-			from: &'a BucketId,
-		) -> Result<Box<dyn Iterator<Item = BucketStorageUsage<T::AccountId>> + 'a>, ()> {
-			let filter_fn: fn(&ClusterId, &Bucket<T>) -> bool = Pallet::<T>::storage_usage_filter;
-			let map_fn: fn(&BucketId, &Bucket<T>) -> BucketStorageUsage<T::AccountId> =
-				Pallet::<T>::storage_usage_map;
-
-			if Buckets::<T>::contains_key(from) {
-				let from_key = Buckets::<T>::hashed_key_for(from);
-				Ok(Box::new(
-					Buckets::<T>::iter_from(from_key)
-						.filter(move |(_, bucket)| filter_fn(cluster_id, bucket))
-						.map(move |(id, bucket)| map_fn(&id, &bucket)),
-				))
-			} else {
-				Err(())
-			}
 		}
 	}
 }

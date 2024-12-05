@@ -215,13 +215,6 @@
       },
       "ddcPayouts": {
         "feederAccount": null,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-        "authorisedCaller": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
->>>>>>> 5df04dd6 (Update `example.json` chain spec (#348))
-=======
->>>>>>> a0328fc0 (chore: 'AuthorisedCaller' storage item is removed)
         "debtorCustomers": [
           [
             "0x0000000000000000000000000000000000000001",

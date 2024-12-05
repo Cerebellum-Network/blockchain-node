@@ -23,14 +23,6 @@ pub mod pallet {
 		/// Origin for spending up to $10,000,000 DOT from the treasury as well as generally
 		/// administering it.
 		Treasurer,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-		/// Origin for managing the composition of the fellowship.
-		FellowshipAdmin,
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 8df744f4 (Backporting Referendum Support Curves to `dev` branch (#365))
 		/// Origin for managing the registrar.
 		GeneralAdmin,
 		/// Origin able to cancel referenda.
@@ -88,13 +80,6 @@ pub mod pallet {
 	decl_unit_ensures!(
 		StakingAdmin,
 		Treasurer,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-		FellowshipAdmin,
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 8df744f4 (Backporting Referendum Support Curves to `dev` branch (#365))
 		GeneralAdmin,
 		ReferendumCanceller,
 		ReferendumKiller,

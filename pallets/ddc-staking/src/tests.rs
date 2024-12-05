@@ -2,15 +2,7 @@
 
 use ddc_primitives::{
 	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
-<<<<<<< HEAD
-<<<<<<< HEAD
 	DdcEra, StorageNodeParams, StorageNodePubKey,
-=======
-	StorageNodeParams, StorageNodePubKey,
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
-=======
-	DdcEra, StorageNodeParams, StorageNodePubKey,
->>>>>>> 99095ecd (verified copy of PR#393 (#402))
 };
 use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
 use pallet_balances::Error as BalancesError;
@@ -546,29 +538,10 @@ fn storage_full_unbonding_works() {
 	ExtBuilder.build_and_execute(clusters, nodes, clusters_bonds, nodes_bondes, || {
 		System::set_block_number(1);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 		let provider_stash = AccountId::from(USER_KEY_3);
 		let provider_controller = AccountId::from(USER_KEY_4);
 		let cluster_id = ClusterId::from(CLUSTER_ID);
 		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5));
-<<<<<<< HEAD
-=======
-		let provider_stash: u64 = 3;
-		let provider_controller: u64 = 4;
-		let cluster_id = ClusterId::from([1; 20]);
-		let node_pub_key = NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32]));
-
-		let lock = MockNodeVisitor::set_and_hold_lock(MockNode {
-			cluster_id: Some(cluster_id),
-			exists: true,
-			node_provider_id: provider_controller,
-		});
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 
 		let storage_bond_size = 10_u128;
 		let storage_chill_delay = 10_u64;
@@ -799,18 +772,7 @@ fn bond_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Bonded,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 				last_paid_era: DdcEra::default()
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
-=======
-				last_validated_era_id: DdcEra::default()
->>>>>>> 99095ecd (verified copy of PR#393 (#402))
-=======
-				last_paid_era: DdcEra::default()
->>>>>>> beaea12a (chore: addressing PR comments)
 			})
 		);
 
@@ -960,18 +922,7 @@ fn unbond_bonded_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Unbonding,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 				last_paid_era: DdcEra::default()
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
-=======
-				last_validated_era_id: DdcEra::default()
->>>>>>> 99095ecd (verified copy of PR#393 (#402))
-=======
-				last_paid_era: DdcEra::default()
->>>>>>> beaea12a (chore: addressing PR comments)
 			})
 		);
 
@@ -1051,18 +1002,7 @@ fn unbond_activated_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Unbonding,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 				last_paid_era: DdcEra::default()
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
-=======
-				last_validated_era_id: DdcEra::default()
->>>>>>> 99095ecd (verified copy of PR#393 (#402))
-=======
-				last_paid_era: DdcEra::default()
->>>>>>> beaea12a (chore: addressing PR comments)
 			})
 		);
 
@@ -1157,18 +1097,7 @@ fn withdraw_unbonded_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Unbonded,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 				last_paid_era: DdcEra::default()
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
-=======
-				last_validated_era_id: DdcEra::default()
->>>>>>> 99095ecd (verified copy of PR#393 (#402))
-=======
-				last_paid_era: DdcEra::default()
->>>>>>> beaea12a (chore: addressing PR comments)
 			})
 		);
 	});
@@ -1255,18 +1184,7 @@ fn withdraw_activated_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Unbonded,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 				last_paid_era: DdcEra::default()
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
-=======
-				last_validated_era_id: DdcEra::default()
->>>>>>> 99095ecd (verified copy of PR#393 (#402))
-=======
-				last_paid_era: DdcEra::default()
->>>>>>> beaea12a (chore: addressing PR comments)
 			})
 		);
 	});

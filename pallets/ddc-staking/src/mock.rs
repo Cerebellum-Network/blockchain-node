@@ -3,36 +3,12 @@
 #![allow(dead_code)]
 
 use ddc_primitives::{
-<<<<<<< HEAD
-<<<<<<< HEAD
 	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
 	NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
 };
 use frame_support::{
 	construct_runtime, derive_impl,
 	traits::{ConstBool, ConstU32, ConstU64, Everything, Nothing},
-=======
-	traits::{
-		cluster::{ClusterManager, ClusterProtocol},
-		node::NodeVisitor,
-		ClusterQuery,
-	},
-	ClusterBondingParams, ClusterFeesParams, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus,
-	ClusterNodesStats, ClusterParams, ClusterPricingParams, ClusterProtocolParams, ClusterStatus,
-	NodeParams, NodePubKey, StorageNodePubKey,
-};
-use frame_support::{
-	construct_runtime,
-	traits::{ConstU32, ConstU64, Everything},
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
-	NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
-};
-use frame_support::{
-	construct_runtime,
-	traits::{ConstBool, ConstU32, ConstU64, Everything, Nothing},
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
@@ -41,18 +17,8 @@ use pallet_ddc_nodes::StorageNode;
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
-<<<<<<< HEAD
-<<<<<<< HEAD
 	traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, MultiSignature, Perbill, Perquintill,
-=======
-	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage, DispatchError, DispatchResult, Perquintill,
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify},
-	BuildStorage, MultiSignature, Perbill, Perquintill,
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 };
 
 use crate::{self as pallet_ddc_staking, *};
@@ -84,18 +50,8 @@ construct_runtime!(
 
 parameter_types! {
 	pub static ExistentialDeposit: Balance = 1;
-<<<<<<< HEAD
-<<<<<<< HEAD
 	pub static ClusterBondingAmount: Balance = 50;
 	pub static ClusterUnboningDelay: BlockNumber = 2;
-=======
-	pub static ClusterBondingAmount: Balance = 1;
-	pub static ClusterUnboningDelay: BlockNumber = 1;
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	pub static ClusterBondingAmount: Balance = 50;
-	pub static ClusterUnboningDelay: BlockNumber = 2;
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 }
 
 impl Convert<Weight, BalanceOf<Self>> for Test {
@@ -108,10 +64,7 @@ type BalanceOf<T> = <<T as crate::pallet::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
 
-<<<<<<< HEAD
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
 	type DbWeight = RocksDbWeight;
@@ -144,15 +97,7 @@ impl pallet_balances::Config for Test {
 	type FreezeIdentifier = ();
 	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
-<<<<<<< HEAD
-<<<<<<< HEAD
 	type MaxHolds = ConstU32<1>;
-=======
-	type MaxHolds = ();
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
-=======
-	type MaxHolds = ConstU32<1>;
->>>>>>> 8d24d2f2 (fix types for tests)
 	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
@@ -206,14 +151,7 @@ impl pallet_contracts::Config for Test {
 	type Debug = ();
 	type Environment = ();
 	type Migrations = ();
-<<<<<<< HEAD
-<<<<<<< HEAD
 	type Xcm = ();
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
-=======
-	type Xcm = ();
->>>>>>> c64a7d00 (fix mock)
 }
 
 impl pallet_insecure_randomness_collective_flip::Config for Test {}
@@ -240,45 +178,16 @@ impl crate::pallet::Config for Test {
 	type Currency = Balances;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-<<<<<<< HEAD
-<<<<<<< HEAD
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
 	type NodeManager = pallet_ddc_nodes::Pallet<Test>;
-=======
-	type ClusterProtocol = TestClusterProtocol;
-	type ClusterManager = TestClusterManager;
-	type NodeVisitor = MockNodeVisitor;
-	type NodeCreator = TestNodeCreator;
-	type ClusterCreator = TestClusterCreator;
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	type ClusterProtocol = pallet_ddc_clusters::Pallet<Test>;
-	type ClusterManager = pallet_ddc_clusters::Pallet<Test>;
-	type ClusterCreator = pallet_ddc_clusters::Pallet<Test>;
-<<<<<<< HEAD
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Test>;
-	type NodeCreator = pallet_ddc_nodes::Pallet<Test>;
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
-=======
-	type NodeManager = pallet_ddc_nodes::Pallet<Test>;
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 	type ClusterBondingAmount = ClusterBondingAmount;
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
 
 pub(crate) type DdcStakingCall = crate::Call<Test>;
 pub(crate) type TestRuntimeCall = <Test as frame_system::Config>::RuntimeCall;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-pub struct TestNodeCreator;
-pub struct TestClusterCreator;
-pub struct TestClusterProtocol;
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 
 // (stash, controller, cluster)
 #[allow(clippy::type_complexity)]
@@ -479,266 +388,7 @@ fn insert_unique_balance(
 	}
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 pub struct ExtBuilder;
-=======
-impl<T: Config> ClusterCreator<T, u128> for TestClusterCreator {
-	fn create_cluster(
-		_cluster_id: ClusterId,
-		_cluster_manager_id: T::AccountId,
-		_cluster_reserve_id: T::AccountId,
-		_cluster_params: ClusterParams<T::AccountId>,
-		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
-	) -> DispatchResult {
-		Ok(())
-	}
-}
-
-impl<T: Config> ClusterQuery<T> for TestClusterProtocol {
-	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
-		true
-	}
-
-	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
-		unimplemented!()
-	}
-
-	fn get_manager_and_reserve_id(
-		_cluster_id: &ClusterId,
-	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
-		unimplemented!()
-	}
-}
-
-impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
-	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
-		Ok(10)
-	}
-
-	fn get_chill_delay(
-		_cluster_id: &ClusterId,
-		_node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, DispatchError> {
-		Ok(BlockNumberFor::<T>::from(10u32))
-	}
-
-	fn get_unbonding_delay(
-		_cluster_id: &ClusterId,
-		_node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, DispatchError> {
-		Ok(BlockNumberFor::<T>::from(10u32))
-	}
-
-	fn get_pricing_params(_cluster_id: &ClusterId) -> Result<ClusterPricingParams, DispatchError> {
-		Ok(ClusterPricingParams {
-			unit_per_mb_stored: 2,
-			unit_per_mb_streamed: 3,
-			unit_per_put_request: 4,
-			unit_per_get_request: 5,
-		})
-	}
-
-	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, DispatchError> {
-		Ok(ClusterFeesParams {
-			treasury_share: Perquintill::from_percent(1),
-			validators_share: Perquintill::from_percent(10),
-			cluster_reserve_share: Perquintill::from_percent(2),
-		})
-	}
-
-	fn get_bonding_params(
-		cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, DispatchError> {
-		Ok(ClusterBondingParams {
-			storage_bond_size:
-				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_bond_size(
-					cluster_id,
-					NodeType::Storage,
-				)
-				.unwrap_or_default(),
-			storage_chill_delay:
-				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_chill_delay(
-					cluster_id,
-					NodeType::Storage,
-				)
-				.unwrap_or_default(),
-			storage_unbonding_delay:
-				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_unbonding_delay(
-					cluster_id,
-					NodeType::Storage,
-				)
-				.unwrap_or_default(),
-		})
-	}
-
-	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
-		unimplemented!()
-	}
-
-	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn update_cluster_protocol(
-		_cluster_id: &ClusterId,
-		_cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
-	) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn bond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn start_unbond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
-		unimplemented!()
-	}
-
-	fn end_unbond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
-		unimplemented!()
-	}
-}
-
-pub struct TestClusterManager;
-impl<T: Config> ClusterQuery<T> for TestClusterManager {
-	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
-		true
-	}
-
-	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
-		unimplemented!()
-	}
-
-	fn get_manager_and_reserve_id(
-		_cluster_id: &ClusterId,
-	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
-		unimplemented!()
-	}
-}
-
-impl<T: Config> ClusterManager<T> for TestClusterManager {
-	fn contains_node(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-		_validation_status: Option<ClusterNodeStatus>,
-	) -> bool {
-		true
-	}
-
-	fn add_node(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-		_node_kind: &ClusterNodeKind,
-	) -> Result<(), DispatchError> {
-		Ok(())
-	}
-
-	fn remove_node(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-	) -> Result<(), DispatchError> {
-		Ok(())
-	}
-
-	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
-		unimplemented!()
-	}
-
-	fn get_node_state(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-	) -> Result<ClusterNodeState<BlockNumberFor<T>>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
-		unimplemented!()
-	}
-
-	fn validate_node(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-		_succeeded: bool,
-	) -> Result<(), DispatchError> {
-		unimplemented!()
-	}
-}
-
-lazy_static! {
-	// We have to use the ReentrantMutex as every test's thread that needs to perform some configuration on the mock acquires the lock at least 2 times:
-	// the first time when the mock configuration happens, and
-	// the second time when the pallet calls the MockNodeVisitor during execution
-	static ref MOCK_NODE: ReentrantMutex<RefCell<MockNode>> =
-		ReentrantMutex::new(RefCell::new(MockNode::default()));
-}
-
-pub struct MockNode {
-	pub cluster_id: Option<ClusterId>,
-	pub exists: bool,
-	pub node_provider_id: AccountId,
-}
-
-impl Default for MockNode {
-	fn default() -> Self {
-		Self { cluster_id: None, exists: true, node_provider_id: 0 }
-	}
-}
-
-pub struct MockNodeVisitor;
-
-impl MockNodeVisitor {
-	// Every test's thread must hold the lock till the end of its test
-	pub fn set_and_hold_lock(mock: MockNode) -> ReentrantMutexGuard<'static, RefCell<MockNode>> {
-		let lock = MOCK_NODE.lock();
-		*lock.borrow_mut() = mock;
-		lock
-	}
-
-	// Every test's thread must release the lock that it previously acquired in the end of its
-	// test
-	pub fn reset_and_release_lock(lock: ReentrantMutexGuard<'static, RefCell<MockNode>>) {
-		*lock.borrow_mut() = MockNode::default();
-	}
-}
-
-impl<T: Config> NodeVisitor<T> for MockNodeVisitor
-where
-	<T as frame_system::Config>::AccountId: From<u64>,
-{
-	fn get_cluster_id(_node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
-		let lock = MOCK_NODE.lock();
-		let mock_ref = lock.borrow();
-		Ok(mock_ref.cluster_id)
-	}
-	fn exists(_node_pub_key: &NodePubKey) -> bool {
-		let lock = MOCK_NODE.lock();
-		let mock_ref = lock.borrow();
-		mock_ref.exists
-	}
-
-	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
-		let lock = MOCK_NODE.lock();
-		let mock_ref = lock.borrow();
-		Ok(mock_ref.node_provider_id.into())
-	}
-}
-
-pub struct ExtBuilder {
-	has_storages: bool,
-	stakes: BTreeMap<AccountId, Balance>,
-	storages: Vec<(AccountId, AccountId, Balance, ClusterId)>,
-}
-
-impl Default for ExtBuilder {
-	fn default() -> Self {
-		Self { has_storages: true, stakes: Default::default(), storages: Default::default() }
-	}
-}
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-pub struct ExtBuilder;
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 
 impl ExtBuilder {
 	pub fn build(
@@ -796,35 +446,11 @@ impl ExtBuilder {
 			insert_unique_balance(&mut balances, controller.clone(), ENDOWMENT);
 		}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 		let _ =
 			pallet_balances::GenesisConfig::<Test> { balances }.assimilate_storage(&mut storage);
 
 		let _ = pallet_ddc_nodes::GenesisConfig::<Test> { storage_nodes }
-<<<<<<< HEAD
 			.assimilate_storage(&mut storage);
-
-		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
-			clusters,
-			clusters_protocol_params,
-			clusters_nodes: clusters_storage_nodes,
-		}
-		.assimilate_storage(&mut storage);
-
-		let _ = pallet_ddc_staking::GenesisConfig::<Test> {
-			storages: nodes_bondes,
-			clusters: clusters_bonds,
-		}
-		.assimilate_storage(&mut storage);
-=======
-		let _ = pallet_ddc_staking::GenesisConfig::<Test> { storages, clusters: vec![] }
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
-			.assimilate_storage(&mut storage);
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 
 		let _ = pallet_ddc_clusters::GenesisConfig::<Test> {
 			clusters,

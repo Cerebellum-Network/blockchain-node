@@ -38,10 +38,6 @@ pallet-bounties = { workspace = true }
 pallet-child-bounties = { workspace = true }
 pallet-collective = { workspace = true }
 pallet-contracts = { workspace = true }
-<<<<<<< HEAD
-=======
-pallet-contracts-primitives = { workspace = true }
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
 pallet-conviction-voting = { workspace = true }
 pallet-democracy = { workspace = true }
 pallet-election-provider-multi-phase = { workspace = true }
@@ -66,18 +62,7 @@ pallet-recovery = { workspace = true }
 pallet-referenda = { workspace = true }
 pallet-scheduler = { workspace = true }
 pallet-session = { workspace = true, features = ["historical"] }
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 pallet-session-benchmarking = { workspace = true, optional = true }
-=======
-pallet-society = { workspace = true }
->>>>>>> 656e5410 (Fix/staking migrations (#300))
-=======
->>>>>>> 56b59dc7 (Remove pallet society (#275))
-=======
-pallet-session-benchmarking = { workspace = true, optional = true }
->>>>>>> c2a9d508 (Fix/original staking (#322))
 pallet-staking = { workspace = true }
 pallet-staking-reward-curve = { workspace = true }
 pallet-sudo = { workspace = true }
@@ -200,11 +185,6 @@ std = [
   "pallet-ddc-staking/std",
   "pallet-ddc-customers/std",
   "pallet-ddc-clusters/std",
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
   "pallet-ddc-verification/std",
   "cere-runtime-common/std",
   "pallet-conviction-voting/std",
@@ -213,26 +193,6 @@ std = [
   "pallet-ddc-clusters-gov/std",
   "sp-arithmetic/std",
   "pallet-origins/std",
-=======
-  "pallet-ddc-payouts/std",
-  "cere-runtime-common/std",
-<<<<<<< HEAD
->>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
-=======
-  "sp-arithmetic/std",
-  "pallet-conviction-voting/std",
-  "pallet-referenda/std",
-  "pallet-whitelist/std",
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-=======
-  "cere-runtime-common/std",
-  "pallet-conviction-voting/std",
-  "pallet-referenda/std",
-  "pallet-whitelist/std",
-  "pallet-ddc-clusters-gov/std",
-  "sp-arithmetic/std",
-  "pallet-origins/std",
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -263,18 +223,7 @@ runtime-benchmarks = [
   "pallet-proxy/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
   "pallet-scheduler/runtime-benchmarks",
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
   "pallet-session-benchmarking/runtime-benchmarks",
-=======
-  "pallet-society/runtime-benchmarks",
->>>>>>> 656e5410 (Fix/staking migrations (#300))
-=======
->>>>>>> 56b59dc7 (Remove pallet society (#275))
-=======
-  "pallet-session-benchmarking/runtime-benchmarks",
->>>>>>> c2a9d508 (Fix/original staking (#322))
   "pallet-staking/runtime-benchmarks",
   "pallet-ddc-customers/runtime-benchmarks",
   "pallet-ddc-clusters/runtime-benchmarks",
@@ -293,22 +242,10 @@ runtime-benchmarks = [
   "pallet-conviction-voting/runtime-benchmarks",
   "pallet-referenda/runtime-benchmarks",
   "pallet-whitelist/runtime-benchmarks",
-<<<<<<< HEAD
-<<<<<<< HEAD
   "pallet-preimage/runtime-benchmarks",
   "pallet-ddc-clusters-gov/runtime-benchmarks",
   "pallet-origins/runtime-benchmarks",
   "pallet-ddc-verification/runtime-benchmarks",
-<<<<<<< HEAD
-=======
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-=======
-  "pallet-preimage/runtime-benchmarks",
-  "pallet-ddc-clusters-gov/runtime-benchmarks",
-  "pallet-origins/runtime-benchmarks",
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 ]
 try-runtime = [
   "frame-executive/try-runtime",
@@ -360,20 +297,8 @@ try-runtime = [
   "pallet-conviction-voting/try-runtime",
   "pallet-referenda/try-runtime",
   "pallet-whitelist/try-runtime",
-<<<<<<< HEAD
-<<<<<<< HEAD
   "pallet-preimage/try-runtime",
   "pallet-origins/try-runtime",
   "pallet-ddc-clusters-gov/try-runtime",
   "pallet-ddc-verification/try-runtime",
-<<<<<<< HEAD
-=======
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-=======
-  "pallet-preimage/try-runtime",
-  "pallet-origins/try-runtime",
-  "pallet-ddc-clusters-gov/try-runtime",
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 ]

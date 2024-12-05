@@ -45,10 +45,6 @@ pub mod v1 {
 				);
 			}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 0b026611 (fix: updating storage version)
 			// Update storage version.
 			StorageVersion::new(1).put::<Pallet<T>>();
 			log::info!(
@@ -57,11 +53,6 @@ pub mod v1 {
 				current_version
 			);
 
-<<<<<<< HEAD
-=======
->>>>>>> 732d4a4c (chore: migration for deprecated storage item)
-=======
->>>>>>> 0b026611 (fix: updating storage version)
 			T::DbWeight::get().reads_writes(1, res.unique.into())
 		} else {
 			log::info!(target: LOG_TARGET, " >>> Unused migration!");

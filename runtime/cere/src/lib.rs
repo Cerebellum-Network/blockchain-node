@@ -22,20 +22,10 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 use codec::{Decode, Encode, MaxEncodedLen};
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 use ddc_primitives::{
 	traits::pallet::{GetDdcOrigin, PalletVisitor},
 	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
 };
-<<<<<<< HEAD
-=======
-use ddc_primitives::traits::pallet::PalletVisitor;
->>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
@@ -45,52 +35,11 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 		fungible::HoldConsideration,
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
 		Nothing, OnUnbalanced, WithdrawReasons,
-=======
-		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly,
-<<<<<<< HEAD
-<<<<<<< HEAD
-		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
-=======
-		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, Nothing,
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-		OnUnbalanced, WithdrawReasons,
->>>>>>> 1264bdff (Consolidating `master` and `dev` branches (#295))
-=======
-		Everything, GetStorageVersion, Imbalance, InstanceFilter, KeyOwnerProofSystem,
-		LockIdentifier, Nothing, OnRuntimeUpgrade, OnUnbalanced, WithdrawReasons,
->>>>>>> 34e74219 (Set Balances storage version (#304))
-=======
-		Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem, LockIdentifier, Nothing,
-		OnUnbalanced, WithdrawReasons,
->>>>>>> c2a9d508 (Fix/original staking (#322))
-=======
-		fungible::HoldConsideration, ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf,
-		EitherOfDiverse, EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter,
-		KeyOwnerProofSystem, LinearStoragePrice, Nothing, OnUnbalanced, WithdrawReasons,
->>>>>>> 447b5301 (Polkadot v1.1. to v1.2 upgrade)
-=======
-		fungible::HoldConsideration, ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf,
-		EitherOfDiverse, EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter,
-		KeyOwnerProofSystem, LinearStoragePrice, Nothing, OnUnbalanced, WithdrawReasons,
->>>>>>> 5f953312 (bump dependnecies and fix implementation)
-=======
-		fungible::HoldConsideration,
-		tokens::{PayFromAccount, UnityAssetBalanceConversion},
-		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Everything, Imbalance, InstanceFilter, KeyOwnerProofSystem,
-		LinearStoragePrice, Nothing, OnUnbalanced, WithdrawReasons,
->>>>>>> b7633f93 (bump dependencies and fix runtime impl)
 	},
 	weights::{
 		constants::{
@@ -126,20 +75,10 @@ pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdj
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 32dbf724 (Added Logs and Events for OCW-DAC Validation (#411))
 use sp_core::{
 	crypto::{AccountId32, KeyTypeId},
-	OpaqueMetadata,
+	OpaqueMetadata, H256,
 };
-<<<<<<< HEAD
-=======
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
->>>>>>> 32dbf724 (Added Logs and Events for OCW-DAC Validation (#411))
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
@@ -150,20 +89,8 @@ use sp_runtime::{
 	generic, impl_opaque_keys,
 	traits::{
 		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, Convert, ConvertInto,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 		Identity as IdentityConvert, IdentityLookup, NumberFor, OpaqueKeys, SaturatedConversion,
 		StaticLookup, Verify,
-=======
-=======
->>>>>>> 5f953312 (bump dependnecies and fix implementation)
-		Identity as IdentityConvert, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup,
->>>>>>> 447b5301 (Polkadot v1.1. to v1.2 upgrade)
-=======
-		Identity as IdentityConvert, IdentityLookup, NumberFor, OpaqueKeys, SaturatedConversion,
-		StaticLookup,
->>>>>>> b7633f93 (bump dependencies and fix runtime impl)
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
@@ -186,36 +113,13 @@ use impls::Author;
 use pallet_identity::legacy::IdentityInfo;
 use sp_runtime::generic::Era;
 use sp_std::marker::PhantomData;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 
-=======
-use pallet_identity::legacy::IdentityInfo;
->>>>>>> b7633f93 (bump dependencies and fix runtime impl)
-=======
->>>>>>> f1d94467 (fmt)
 // Governance configurations.
 pub mod governance;
-<<<<<<< HEAD
-=======
-// Governance configurations.
-pub mod governance;
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 use governance::{
 	ClusterProtocolActivator, ClusterProtocolUpdater, GeneralAdmin, StakingAdmin, Treasurer,
 	TreasurySpender,
 };
-<<<<<<< HEAD
-=======
-use governance::{pallet_custom_origins, GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender};
-
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 /// Generated voter bag information.
 mod voter_bags;
 
@@ -243,249 +147,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 	spec_version: 63002,
-=======
-	spec_version: 51100,
->>>>>>> 1264bdff (Consolidating `master` and `dev` branches (#295))
-=======
-	spec_version: 51200,
->>>>>>> ed664665 (feat: inflation is doubled to increase validators payout and burning … (#297))
-=======
-	spec_version: 51300,
->>>>>>> 2ffe15b8 (fix: chainbridge's pallet storage prefixes fixed (#301))
-=======
-	spec_version: 51301,
->>>>>>> 656e5410 (Fix/staking migrations (#300))
-=======
-	spec_version: 51401,
->>>>>>> 3c6074f4 (Merging PR #305 to 'dev' branch (#306))
-=======
-	spec_version: 61006,
->>>>>>> 374e6c17 (Bump `spec_version`)
-=======
-	spec_version: 61007,
->>>>>>> 52b0f9b8 (Bump `spec_version`)
-=======
-	spec_version: 61008,
->>>>>>> 2ad19b5e (refactor: allocating validation and payouts phases to individual functions; introducing macro for payout repetitive steps)
-=======
-	spec_version: 61009,
->>>>>>> d227d8f5 (Bump `spec_version`)
-=======
-	spec_version: 61009,
->>>>>>> 18f672f2 (Bump `spec_version`)
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 23,
-<<<<<<< HEAD
-=======
-	spec_version: 53000,
-=======
-	spec_version: 53001,
->>>>>>> 99feab3a (Fix of the substrate 1.1.0 and OpenGov to pass the try-runtime check (#330))
-	impl_version: 0,
-	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 16,
->>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
-=======
-	spec_version: 53002,
-=======
-	spec_version: 53003,
->>>>>>> ae760901 (fix: depositing extra amount is fixed (#333) (#334))
-	impl_version: 0,
-	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 17,
->>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
-=======
-	spec_version: 54000,
-=======
-	spec_version: 54001,
->>>>>>> f598255f (Enable try-runtime (#325))
-=======
-	spec_version: 54002,
->>>>>>> 37c0c055 (Backporting Tech Committee to the `dev` branch (#353))
-=======
-	spec_version: 54003,
->>>>>>> 8df744f4 (Backporting Referendum Support Curves to `dev` branch (#365))
-=======
-	spec_version: 54004,
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
-=======
-	spec_version: 54006,
->>>>>>> 5f953312 (bump dependnecies and fix implementation)
-=======
-	spec_version: 55000,
->>>>>>> 22cc20ab (fix migration issue)
-=======
-	spec_version: 56000,
->>>>>>> 509154bd (bump spec_version)
-	impl_version: 0,
-	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 18,
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	spec_version: 54100,
-=======
-	spec_version: 54101,
->>>>>>> a11d78d6 (Commented out min node condition (#398))
-=======
-	spec_version: 54102,
->>>>>>> 7d165a87 (Allow all nodes to participate (#399))
-=======
-	spec_version: 54103,
->>>>>>> ff5f61a5 (Fixed SSL condition (#400))
-=======
-	spec_version: 54104,
->>>>>>> 11ede58f (Debug validator (#401))
-=======
-	spec_version: 54105,
->>>>>>> 99095ecd (verified copy of PR#393 (#402))
-=======
-	spec_version: 54113,
->>>>>>> e0ce0e5b (node integer delta usage (#412))
-=======
-	spec_version: 54114,
->>>>>>> 92e08a3b (OCW additional logs (#413))
-=======
-	spec_version: 54115,
->>>>>>> f164ec01 (Added OCW activity logs (#415))
-=======
-	spec_version: 54116,
->>>>>>> a1b604af (Added logs for activity (#417))
-=======
-	spec_version: 54118,
->>>>>>> 1ba3cdc8 (Check for not-processed eras (#422))
-=======
-	spec_version: 54119,
->>>>>>> 626be780 (Changes to fix unprocessed eras (#423))
-=======
-	spec_version: 54120,
->>>>>>> 91b446cb (Changes to fetch minimum sub-trees which are in consensus (#424))
-=======
-	spec_version: 54121,
->>>>>>> de8c66fb (Added new extrinsic to add era validations from root (#428))
-=======
-	spec_version: 54122,
->>>>>>> 5ae6d1bb (Fixed response format error (#429))
-=======
-	spec_version: 54123,
->>>>>>> 7e421cfb (Fixed start and end era (#430))
-=======
-	spec_version: 54126,
->>>>>>> 5288a1a7 (Fixing billing activity issue (#431))
-=======
-	spec_version: 54127,
->>>>>>> 18369b0b (Challenge sub trees and make them ready for payout (#434))
-=======
-	spec_version: 541278,
->>>>>>> d9cc7c7d (New `join_cluster` extrinsic (#425))
-=======
-	spec_version: 54128,
->>>>>>> 6de8e08c (Typo fix)
-=======
-	spec_version: 54129,
->>>>>>> d719fd33 (chore: runtime version is upgraded and bucket response is fixed)
-=======
-	spec_version: 55000,
->>>>>>> 447b5301 (Polkadot v1.1. to v1.2 upgrade)
-	impl_version: 0,
-	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 19,
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-	spec_version: 61001,
-=======
-	spec_version: 61002,
->>>>>>> 0005656f (Bump `spec_version`)
-	impl_version: 0,
-	apis: RUNTIME_API_VERSIONS,
-<<<<<<< HEAD
-	transaction_version: 22,
->>>>>>> 80f9b2bb (chore: retrieving verification key from the keystore)
-=======
-	transaction_version: 21,
->>>>>>> bef8a657 (fix: transaction_version bump)
-=======
->>>>>>> 6b3b52df (chore: runtime version is upgraded)
-=======
-	spec_version: 61003,
-	impl_version: 0,
-	apis: RUNTIME_API_VERSIONS,
-<<<<<<< HEAD
-	transaction_version: 24,
->>>>>>> 43573081 (chore: runtime version updated)
-=======
-	transaction_version: 22,
->>>>>>> da978578 (fix: 'transaction_version' is fixed)
-=======
-	spec_version: 61004,
-=======
-	spec_version: 61005,
->>>>>>> 034ca93d (Bump `spec_version`)
-	impl_version: 0,
-	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 23,
->>>>>>> e494bb78 (chore: 'spec_version' is increased)
-=======
-	spec_version: 61010,
-=======
-	spec_version: 63003,
->>>>>>> c7dd3fb3 (fix: runtime version is increased)
-	impl_version: 0,
-	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 24,
->>>>>>> 67b2560f (feat: input for payout batches is decoupled from the verified delta usage and merged with the current usage)
 	state_version: 0,
 };
 
@@ -653,55 +318,10 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			),
 			ProxyType::Governance => matches!(
 				c,
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-=======
->>>>>>> 716ee103 (fix: clippy and tests)
-=======
->>>>>>> 0a21d03a (fix: removing executed migrations and fixing formatting)
-=======
->>>>>>> c7dd3fb3 (fix: runtime version is increased)
 				RuntimeCall::Treasury(..) |
 					RuntimeCall::ConvictionVoting(..) |
 					RuntimeCall::Referenda(..) |
 					RuntimeCall::Whitelist(..)
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-				RuntimeCall::Democracy(..) |
-					RuntimeCall::Council(..) |
-					RuntimeCall::TechnicalCommittee(..) |
-					RuntimeCall::Elections(..) |
-					RuntimeCall::Treasury(..)
->>>>>>> 56b59dc7 (Remove pallet society (#275))
-=======
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-=======
-=======
->>>>>>> 80f9b2bb (chore: retrieving verification key from the keystore)
-				RuntimeCall::Treasury(..)
-					| RuntimeCall::ConvictionVoting(..)
-					| RuntimeCall::Referenda(..)
-					| RuntimeCall::Whitelist(..)
-<<<<<<< HEAD
->>>>>>> af308160 (ClusterGov params on-chain params (#419))
-=======
->>>>>>> 716ee103 (fix: clippy and tests)
-=======
->>>>>>> 80f9b2bb (chore: retrieving verification key from the keystore)
-=======
->>>>>>> 0a21d03a (fix: removing executed migrations and fixing formatting)
-=======
->>>>>>> c7dd3fb3 (fix: runtime version is increased)
 			),
 			ProxyType::Staking => matches!(c, RuntimeCall::Staking(..)),
 		}
@@ -829,15 +449,7 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 	type FreezeIdentifier = RuntimeFreezeReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
-<<<<<<< HEAD
-<<<<<<< HEAD
 	type MaxFreezes = ConstU32<1>;
-=======
-	type MaxFreezes = ();
->>>>>>> b7633f93 (bump dependencies and fix runtime impl)
-=======
-	type MaxFreezes = ConstU32<1>;
->>>>>>> 8d24d2f2 (fix types for tests)
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type MaxHolds = MaxHolds;
 }
@@ -951,29 +563,15 @@ parameter_types! {
 	pub const BondingDuration: sp_staking::EraIndex = 3;
 	pub const SlashDeferDuration: sp_staking::EraIndex = 2;
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 	pub const MaxExposurePageSize: u32 = 512;
-=======
->>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
-=======
-	pub const MaxExposurePageSize: u32 = 64;
->>>>>>> b7633f93 (bump dependencies and fix runtime impl)
-=======
-	pub const MaxExposurePageSize: u32 = 512;
->>>>>>> 6b886633 (Change with original value)
 	pub const MaxNominatorRewardedPerValidator: u32 = 512;
 	pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
 	pub OffchainRepeat: BlockNumber = 5;
 	pub HistoryDepth: u32 = 84;
 	// 16
 	pub const MaxNominations: u32 = <NposSolution16 as frame_election_provider_support::NposSolution>::LIMIT as u32;
-<<<<<<< HEAD
 	pub const MaxControllersInDeprecationBatch: u32 = 5900;
 
-=======
->>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
 }
 
 pub struct StakingBenchmarkingConfig;
@@ -1147,16 +745,6 @@ impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
 
 /// Returning a fixed value to respect the initial logic.
 /// This could depend on the length of the solution.
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-/// TODO: Validate.
->>>>>>> 5f953312 (bump dependnecies and fix implementation)
-=======
->>>>>>> 2a8518ae (remove TODOs)
-=======
->>>>>>> d846507c (added some documentation)
 pub struct FixedSignedDepositBase;
 impl Convert<usize, u128> for FixedSignedDepositBase {
 	fn convert(_: usize) -> u128 {
@@ -1193,15 +781,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
 	)>;
 	type GovernanceFallback = onchain::OnChainExecution<OnChainSeqPhragmen>;
 	type Solver = SequentialPhragmen<AccountId, SolutionAccuracyOf<Self>, OffchainRandomBalancing>;
-<<<<<<< HEAD
-<<<<<<< HEAD
 	type ForceOrigin = EitherOf<EnsureRoot<Self::AccountId>, StakingAdmin>;
-=======
-	type ForceOrigin = EnsureRootOrHalfCouncil;
->>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
-=======
-	type ForceOrigin = EitherOf<EnsureRoot<Self::AccountId>, StakingAdmin>;
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
 	type BenchmarkingConfig = ElectionProviderBenchmarkConfig;
 	type WeightInfo = pallet_election_provider_multi_phase::weights::SubstrateWeight<Self>;
 	type MaxWinners = MaxActiveValidators;
@@ -1225,19 +805,7 @@ parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 50_000 * DOLLARS;
 	pub const SpendPeriod: BlockNumber = DAYS;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 	pub const Burn: Permill = Permill::from_parts(25000);
-=======
-	pub const Burn: Permill = Permill::from_percent(0);
->>>>>>> 1264bdff (Consolidating `master` and `dev` branches (#295))
-=======
-	pub const Burn: Permill = Permill::from_parts(580);
->>>>>>> ed664665 (feat: inflation is doubled to increase validators payout and burning … (#297))
-=======
-	pub const Burn: Permill = Permill::from_parts(25000);
->>>>>>> 3c6074f4 (Merging PR #305 to 'dev' branch (#306))
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
 	pub const TipReportDepositBase: Balance = 50_000 * DOLLARS;
@@ -1268,10 +836,6 @@ impl pallet_treasury::Config for Runtime {
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
 	type MaxApprovals = MaxApprovals;
 	type SpendOrigin = TreasurySpender;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> b7633f93 (bump dependencies and fix runtime impl)
 	type AssetKind = ();
 	type Beneficiary = Self::AccountId;
 	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
@@ -1280,11 +844,6 @@ impl pallet_treasury::Config for Runtime {
 	type PayoutPeriod = ConstU32<10>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
-<<<<<<< HEAD
-=======
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-=======
->>>>>>> b7633f93 (bump dependencies and fix runtime impl)
 }
 
 parameter_types! {
@@ -1367,48 +926,13 @@ impl pallet_contracts::Config for Runtime {
 	type MaxStorageKeyLen = ConstU32<128>;
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type MaxDelegateDependencies = MaxDelegateDependencies;
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Debug = ();
 	type Environment = ();
-<<<<<<< HEAD
-<<<<<<< HEAD
 	type Migrations = ();
 	type Xcm = ();
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-	type Migrations = (
-		pallet_contracts::migration::v9::Migration<Runtime>,
-		pallet_contracts::migration::v10::Migration<Runtime>,
-		pallet_contracts::migration::v11::Migration<Runtime>,
-		pallet_contracts::migration::v12::Migration<Runtime>,
-	);
->>>>>>> 1264bdff (Consolidating `master` and `dev` branches (#295))
-=======
-	type Migrations = ();
->>>>>>> 656e5410 (Fix/staking migrations (#300))
-=======
-	type Migrations = (
-		pallet_contracts::migration::v13::Migration<Runtime>,
-		pallet_contracts::migration::v14::Migration<Runtime, Balances>,
-		pallet_contracts::migration::v15::Migration<Runtime>,
-	);
->>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
-=======
-	type Migrations = ();
->>>>>>> 4223a998 (build: Devnet runtime version is aligned with Qanet)
-=======
-
->>>>>>> b7633f93 (bump dependencies and fix runtime impl)
-=======
->>>>>>> f1d94467 (fmt)
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -1523,19 +1047,7 @@ impl pallet_grandpa::Config for Runtime {
 
 parameter_types! {
 	pub const BasicDeposit: Balance = 10 * DOLLARS;       // 258 bytes on-chain
-<<<<<<< HEAD
-<<<<<<< HEAD
 	pub const ByteDeposit: Balance = deposit(0, 1);
-=======
-	//TODO: Validate
-=======
->>>>>>> 2a8518ae (remove TODOs)
-	pub const ByteDeposit: Balance = deposit(0, 1);
-<<<<<<< HEAD
-	pub const FieldDeposit: Balance = 250 * CENTS;        // 66 bytes on-chain
->>>>>>> b7633f93 (bump dependencies and fix runtime impl)
-=======
->>>>>>> ce7aa3cd (remove unused variables)
 	pub const SubAccountDeposit: Balance = 2 * DOLLARS;   // 53 bytes on-chain
 	pub const MaxSubAccounts: u32 = 100;
 	pub const MaxAdditionalFields: u32 = 100;
@@ -1554,15 +1066,12 @@ impl pallet_identity::Config for Runtime {
 	type Slashed = Treasury;
 	type ForceOrigin = EitherOf<EnsureRoot<Self::AccountId>, GeneralAdmin>;
 	type RegistrarOrigin = EitherOf<EnsureRoot<Self::AccountId>, GeneralAdmin>;
-<<<<<<< HEAD
 	type OffchainSignature = Signature;
 	type SigningPublicKey = <Signature as Verify>::Signer;
 	type UsernameAuthorityOrigin = EitherOf<EnsureRoot<Self::AccountId>, GeneralAdmin>;
 	type PendingUsernameExpiration = ConstU32<{ 7 * DAYS }>;
 	type MaxSuffixLength = ConstU32<7>;
 	type MaxUsernameLength = ConstU32<32>;
-=======
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
 	type WeightInfo = pallet_identity::weights::SubstrateWeight<Runtime>;
 }
 
@@ -1716,63 +1225,14 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 	type BucketManager = DdcCustomers;
-<<<<<<< HEAD
-=======
-=======
-	type BucketVisitor = DdcCustomers;
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-	type BucketManager = DdcCustomers;
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
-	type CustomerDepositor = DdcCustomers;
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-	type ClusterCreator = DdcClusters;
->>>>>>> 54e582cd (refactor: ddc-verification benchmarks)
-=======
-	type ClusterProtocol = DdcClusters;
-	type TreasuryVisitor = TreasuryWrapper;
-	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
->>>>>>> 2bdeb4c7 (fix: cleaning up and fixing fmt and clippy issues)
 	type VoteScoreToU64 = IdentityConvert;
 	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
 	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
-	type Hasher = BlakeTwo256;
-	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
-	type ValidatorsQuorum = MajorityOfValidators;
-}
-
-parameter_types! {
-	pub const ClusterBondingAmount: Balance = 100 * GRAND;
-	pub const ClusterUnboningDelay: BlockNumber = 28 * DAYS;
-=======
-	type ClusterCreator = DdcClusters;
-	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
-	type VoteScoreToU64 = IdentityConvert;
-	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-=======
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
->>>>>>> e0ce0e5b (node integer delta usage (#412))
-=======
-	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
-	type AccountIdConverter = AccountId32;
->>>>>>> 32dbf724 (Added Logs and Events for OCW-DAC Validation (#411))
 }
 
 parameter_types! {
@@ -1787,25 +1247,12 @@ impl pallet_ddc_staking::Config for Runtime {
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
-<<<<<<< HEAD
-<<<<<<< HEAD
 	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
-=======
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
-	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 	type ClusterBondingAmount = ClusterBondingAmount;
 	type ClusterUnboningDelay = ClusterUnboningDelay;
 }
 
 parameter_types! {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 37c0c055 (Backporting Tech Committee to the `dev` branch (#353))
 	pub const TechnicalMotionDuration: BlockNumber = 5 * DAYS;
 	pub const TechnicalMaxProposals: u32 = 100;
 	pub const TechnicalMaxMembers: u32 = 100;
@@ -1826,11 +1273,6 @@ impl pallet_collective::Config<TechCommCollective> for Runtime {
 }
 
 parameter_types! {
-<<<<<<< HEAD
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 37c0c055 (Backporting Tech Committee to the `dev` branch (#353))
 	pub const ClustersGovPalletId: PalletId = PalletId(*b"clustgov");
 	pub const ClusterProposalDuration: BlockNumber = 7 * DAYS;
 	pub const MinValidatedNodesCount: u16 = 3;
@@ -1853,28 +1295,12 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
-<<<<<<< HEAD
-<<<<<<< HEAD
 	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
-=======
-	type NodeVisitor = pallet_ddc_nodes::Pallet<Runtime>;
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 	type SeatsConsensus = pallet_ddc_clusters_gov::Unanimous;
 	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
 	type MinValidatedNodesCount = MinValidatedNodesCount;
 	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
 	#[cfg(feature = "runtime-benchmarks")]
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-	type NodeCreator = pallet_ddc_nodes::Pallet<Runtime>;
-	#[cfg(feature = "runtime-benchmarks")]
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 }
 
@@ -1892,7 +1318,6 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 	fn get() -> T::RuntimeOrigin {
 		DdcOrigin::get()
 	}
-<<<<<<< HEAD
 }
 
 parameter_types! {
@@ -1923,47 +1348,6 @@ impl pallet_ddc_verification::Config for Runtime {
 	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
 	type Currency = Balances;
-	#[cfg(feature = "runtime-benchmarks")]
-	type CustomerDepositor = DdcCustomers;
-	#[cfg(feature = "runtime-benchmarks")]
-	type ClusterCreator = DdcClusters;
-	#[cfg(feature = "runtime-benchmarks")]
-	type BucketManager = DdcCustomers;
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-}
-
-parameter_types! {
-	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
-	pub const MajorityOfAggregators: Percent = Percent::from_percent(67);
-	pub const MajorityOfValidators: Percent = Percent::from_percent(67);
-}
-
-impl pallet_ddc_verification::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type PalletId = VerificationPalletId;
-	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
-	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
-	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
-	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
-	type PayoutProcessor = pallet_ddc_payouts::Pallet<Runtime>;
-	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
-	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
-	type Hasher = BlakeTwo256;
-	const BLOCK_TO_START: u16 = 1; // every block
-	const DAC_REDUNDANCY_FACTOR: u16 = 3;
-	type AggregatorsQuorum = MajorityOfAggregators;
-	type ValidatorsQuorum = MajorityOfValidators;
-	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
-	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
-	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
-	type AccountIdConverter = AccountId32;
-	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
-	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
-	type Currency = Balances;
-	const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool = true;
-	type BucketsStorageUsageProvider = DdcCustomers;
-	type NodesStorageUsageProvider = DdcNodes;
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = DdcCustomers;
 	#[cfg(feature = "runtime-benchmarks")]
@@ -2020,29 +1404,12 @@ construct_runtime!(
 		// Start OpenGov.
 		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
 		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
-<<<<<<< HEAD
-<<<<<<< HEAD
 		Origins: pallet_origins::{Origin},
 		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
 		// End OpenGov.
 		TechComm: pallet_collective::<Instance3>,
 		DdcClustersGov: pallet_ddc_clusters_gov,
 		DdcVerification: pallet_ddc_verification,
-<<<<<<< HEAD
-=======
-		Origins: pallet_custom_origins::{Origin},
-		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
-		// End OpenGov.
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-=======
-		Origins: pallet_origins::{Origin},
-		Whitelist: pallet_whitelist::{Pallet, Call, Storage, Event<T>},
-		// End OpenGov.
-		TechComm: pallet_collective::<Instance3>,
-		DdcClustersGov: pallet_ddc_clusters_gov,
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 	}
 );
 
@@ -2072,35 +1439,6 @@ pub type SignedExtra = (
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-pub struct StakingMigrationV11OldPallet;
-impl Get<&'static str> for StakingMigrationV11OldPallet {
-	fn get() -> &'static str {
-		"BagsList"
-	}
-}
-
-// We don't need to run pallet_balances::pallets::MigrateToTrackInactive or
-// pallet_balances::pallets::MigrateManyToTrackInactive since XCM related only.
-// MigrateToTrackInactive and MigrateManyToTrackInactive simply add CheckingAccount value to
-// InactiveIssuance so it's safe to skip it.
-pub struct SetBalancesStorageVersions;
-impl OnRuntimeUpgrade for SetBalancesStorageVersions {
-	fn on_runtime_upgrade() -> Weight {
-		let storage_version = <Balances>::on_chain_storage_version();
-		if storage_version < 1 {
-			StorageVersion::new(1).put::<Balances>();
-		}
-
-		RocksDbWeight::get().reads_writes(1, 1)
-	}
-}
-
->>>>>>> 34e74219 (Set Balances storage version (#304))
-=======
->>>>>>> c2a9d508 (Fix/original staking (#322))
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
 	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
@@ -2108,27 +1446,10 @@ pub type UncheckedExtrinsic =
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
-<<<<<<< HEAD
-<<<<<<< HEAD
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
-=======
-
-<<<<<<< HEAD
-parameter_types! {
-	pub const SocietyPalletName: &'static str = "Society";
-}
->>>>>>> 56b59dc7 (Remove pallet society (#275))
 
 /// Runtime migrations
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 type Migrations = (
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 	// pallet_nomination_pools::migration::versioned::V5toV6<Runtime>,
 	// pallet_nomination_pools::migration::versioned::V6ToV7<Runtime>,
 	// pallet_nomination_pools::migration::versioned::V7ToV8<Runtime>,
@@ -2138,40 +1459,7 @@ type Migrations = (
 	// pallet_identity::migration::versioned::V0ToV1<Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
 	pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>,
 	pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,
-=======
-/// Runtime migrations
-<<<<<<< HEAD
-type Migrations = (
-	// Contracts migrate in sequence so make them last.
-	// Substrate upgrades run in reverse order so this migration
-	// is the last one to execute.
-	pallet_contracts::migration::Migration<Runtime>,
-	pallet_im_online::migration::v1::Migration<Runtime>,
-	pallet_democracy::migrations::v1::v1::Migration<Runtime>,
-	pallet_fast_unstake::migrations::v1::MigrateToV1<Runtime>,
->>>>>>> 1264bdff (Consolidating `master` and `dev` branches (#295))
 );
-=======
-type Migrations = SetBalancesStorageVersions;
->>>>>>> 34e74219 (Set Balances storage version (#304))
-=======
-type Migrations = (
-	pallet_nomination_pools::migration::versioned_migrations::V5toV6<Runtime>,
-	pallet_nomination_pools::migration::versioned_migrations::V6ToV7<Runtime>,
-	pallet_staking::migrations::v14::MigrateToV14<Runtime>,
-	pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-	// This should be carefully enabled in the server, if not enabled
-	// migrations::Unreleased,
->>>>>>> adc59924 (refactoring)
-=======
-	// The 'Unreleased' migration enables DAC Verification, that atm. is enabled at QANET only.
-	// Uncomment this line when DAC is ready for TESTNET and MAINNET migrations::Unreleased,
->>>>>>> 0a21d03a (fix: removing executed migrations and fixing formatting)
-);
->>>>>>> 77896264 (fix runtime migration)
 
 pub mod migrations {
 	use super::*;
@@ -2190,169 +1478,6 @@ pub mod migrations {
 		pallet_ddc_customers::migration::v2::MigrateToV2<Runtime>,
 		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
 		pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>,
-	);
-}
-=======
-	MigrateStakingPalletToV8,
-=======
->>>>>>> 5cda1974 (Remove migration to v8 since it's already executed (#313))
-	pallet_staking::migrations::v9::InjectValidatorsIntoVoterList<Runtime>,
-	pallet_staking::migrations::v10::MigrateToV10<Runtime>,
-	pallet_staking::migrations::v11::MigrateToV11<Runtime, VoterList, StakingMigrationV11OldPallet>,
-	pallet_staking::migrations::v12::MigrateToV12<Runtime>,
-	pallet_staking::migrations::v13::MigrateToV13<Runtime>,
-	frame_support::migrations::RemovePallet<
-		SocietyPalletName,
-		<Runtime as frame_system::Config>::DbWeight,
-	>,
-	SetBalancesStorageVersions,
-);
->>>>>>> 656e5410 (Fix/staking migrations (#300))
-=======
-/// Runtime migrations
-type Migrations = ();
->>>>>>> c2a9d508 (Fix/original staking (#322))
-=======
-	pallet_contracts::migration::Migration<Runtime>,
-	// TODO: Leaving this for the OpenGov PR
-	// Gov v1 storage migrations
-	// https://github.com/paritytech/polkadot/issues/6749
-	// pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
-	// pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
-	// pallet_tips::migrations::unreserve_deposits::UnreserveDeposits<UnlockConfig, ()>,
-
-	// Delete all Gov v1 pallet storage key/values.
-	// frame_support::migrations::RemovePallet<DemocracyPalletName, <Runtime as
-	// frame_system::Config>::DbWeight>, frame_support::migrations::RemovePallet<CouncilPalletName,
-	// <Runtime as frame_system::Config>::DbWeight>,
-	// frame_support::migrations::RemovePallet<TechnicalCommitteePalletName, <Runtime as
-	// frame_system::Config>::DbWeight>,
-	// frame_support::migrations::RemovePallet<PhragmenElectionPalletName, <Runtime as
-	// frame_system::Config>::DbWeight>,
-	// frame_support::migrations::RemovePallet<TechnicalMembershipPalletName, <Runtime as
-	// frame_system::Config>::DbWeight>, frame_support::migrations::RemovePallet<TipsPalletName,
-	// <Runtime as frame_system::Config>::DbWeight>,
-);
->>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
-=======
-type Migrations = migrations::Unreleased;
-
-/// The runtime migrations per release.
-#[allow(deprecated, missing_docs)]
-pub mod migrations {
-	use frame_support::traits::LockIdentifier;
-	use frame_system::pallet_prelude::BlockNumberFor;
-
-	use super::*;
-
-	parameter_types! {
-		pub const DemocracyPalletName: &'static str = "Democracy";
-		pub const CouncilPalletName: &'static str = "Council";
-		pub const TechnicalCommitteePalletName: &'static str = "TechnicalCommittee";
-		pub const ElectionPalletName: &'static str = "Elections";
-		pub const TechnicalMembershipPalletName: &'static str = "TechnicalMembership";
-		pub const TipsPalletName: &'static str = "Tips";
-		pub const ElectionPalletId: LockIdentifier = *b"phrelect";
-	}
-
-	// Special Config for Gov V1 pallets, allowing us to run migrations for them without
-	// implementing their configs on [`Runtime`].
-	pub struct UnlockConfig;
-	impl pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockConfig for UnlockConfig {
-		type Currency = Balances;
-		type MaxVotes = ConstU32<100>;
-		type MaxDeposits = ConstU32<100>;
-		type AccountId = AccountId;
-		type BlockNumber = BlockNumberFor<Runtime>;
-		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-		type PalletName = DemocracyPalletName;
-	}
-	impl pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockConfig
-		for UnlockConfig
-	{
-		type Currency = Balances;
-		type MaxVotesPerVoter = ConstU32<16>;
-		type PalletId = ElectionPalletId;
-		type AccountId = AccountId;
-		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-		type PalletName = ElectionPalletName;
-	}
-	impl pallet_tips::migrations::unreserve_deposits::UnlockConfig<()> for UnlockConfig {
-		type Currency = Balances;
-		type Hash = Hash;
-		type DataDepositPerByte = DataDepositPerByte;
-		type TipReportDepositBase = TipReportDepositBase;
-		type AccountId = AccountId;
-		type BlockNumber = BlockNumberFor<Runtime>;
-		type DbWeight = <Runtime as frame_system::Config>::DbWeight;
-		type PalletName = TipsPalletName;
-	}
-
-	/// Unreleased migrations. Add new ones here:
-	pub type Unreleased = (
-        pallet_ddc_clusters::migration::MigrateToV1<Runtime>,
-		pallet_contracts::migration::Migration<Runtime>,
-		pallet_referenda::migration::v1::MigrateV0ToV1<Runtime>,
-		// Gov v1 storage migrations
-		// https://github.com/paritytech/polkadot/issues/6749
-		pallet_elections_phragmen::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
-		pallet_democracy::migrations::unlock_and_unreserve_all_funds::UnlockAndUnreserveAllFunds<UnlockConfig>,
-		pallet_tips::migrations::unreserve_deposits::UnreserveDeposits<UnlockConfig, ()>,
-
-		// Delete all Gov v1 pallet storage key/values.
-		frame_support::migrations::RemovePallet<DemocracyPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<CouncilPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<TechnicalCommitteePalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<ElectionPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<TechnicalMembershipPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-		frame_support::migrations::RemovePallet<TipsPalletName,
-			<Runtime as frame_system::Config>::DbWeight>,
-	);
-}
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-=======
-type Migrations = (
-	pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
-	pallet_ddc_clusters::migrations::v2::MigrateToV2<Runtime>,
-	pallet_ddc_staking::migrations::v1::MigrateToV1<Runtime>,
-	pallet_ddc_customers::migration::MigrateToV2<Runtime>,
-	migrations::Unreleased,
-	pallet_ddc_nodes::migrations::MigrateToV1<Runtime>,
-);
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-type Migrations = ();
->>>>>>> 447b5301 (Polkadot v1.1. to v1.2 upgrade)
-=======
-type Migrations = ();
->>>>>>> 22cc20ab (fix migration issue)
-
-pub mod migrations {
-	use super::*;
-
-	/// When this is removed, should also remove `OldSessionKeys`.
-	pub struct UpgradeSessionKeys;
-	impl frame_support::traits::OnRuntimeUpgrade for UpgradeSessionKeys {
-		fn on_runtime_upgrade() -> Weight {
-			Session::upgrade_keys::<OldSessionKeys, _>(transform_session_keys);
-			Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block
-		}
-	}
-
-	/// Unreleased migrations. Add new ones here:
-	pub type Unreleased = (
-		pallet_ddc_customers::migration::v2::MigrateToV2<Runtime>,
-		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
-		pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>,
-		UpgradeSessionKeys,
-		pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>,
-		pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,
-		pallet_ddc_payouts::migrations::v2::MigrateToV2<Runtime>,
 	);
 }
 
@@ -2389,13 +1514,6 @@ mod benches {
 		[pallet_ddc_clusters, DdcClusters]
 		[pallet_ddc_staking, DdcStaking]
 		[pallet_ddc_nodes, DdcNodes]
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-		[pallet_ddc_payouts, DdcPayouts]
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-=======
->>>>>>> 2bdeb4c7 (fix: cleaning up and fixing fmt and clippy issues)
 		[pallet_election_provider_multi_phase, ElectionProviderMultiPhase]
 		[pallet_election_provider_support_benchmarking, EPSBench::<Runtime>]
 		[pallet_fast_unstake, FastUnstake]
@@ -2419,21 +1537,9 @@ mod benches {
 		[pallet_conviction_voting, ConvictionVoting]
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
-<<<<<<< HEAD
-<<<<<<< HEAD
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
 		[pallet_ddc_verification, DdcVerification]
-<<<<<<< HEAD
-=======
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-=======
-		[pallet_preimage, Preimage]
-		[pallet_collective, TechComm]
-		[pallet_ddc_clusters_gov, DdcClustersGov]
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 67d2e038 (feat: benchmarking for ddc-verification pallet calls part 1)
 	);
 }
 

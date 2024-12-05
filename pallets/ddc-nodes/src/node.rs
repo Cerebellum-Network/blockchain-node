@@ -28,7 +28,6 @@ pub trait NodeTrait<T: frame_system::Config> {
 	fn get_props(&self) -> NodeProps;
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError>;
 	fn set_params(&mut self, props: NodeParams) -> Result<(), NodeError>;
-	fn set_total_usage(&mut self, usage: Option<NodeUsage>);
 	fn get_cluster_id(&self) -> &Option<ClusterId>;
 	fn set_cluster_id(&mut self, cluster_id: Option<ClusterId>);
 	fn get_type(&self) -> NodeType;
@@ -64,7 +63,6 @@ impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
 			Node::Storage(node) => node.get_props(),
 		}
 	}
-
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError> {
 		match self {
 			Node::Storage(node) => node.set_props(props),
@@ -75,13 +73,6 @@ impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
 			Node::Storage(node) => node.set_params(params),
 		}
 	}
-
-	fn set_total_usage(&mut self, usage: Option<NodeUsage>) {
-		match self {
-			Node::Storage(node) => node.set_total_usage(usage),
-		}
-	}
-
 	fn get_cluster_id(&self) -> &Option<ClusterId> {
 		match &self {
 			Node::Storage(node) => node.get_cluster_id(),

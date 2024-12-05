@@ -165,13 +165,6 @@ pub fn cere_dev_genesis(
 	const STASH: Balance = ENDOWMENT / 1000;
 
 	cere_dev::RuntimeGenesisConfig {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-		//TODO: check
->>>>>>> e5e8e1a3 (fix chain spec)
-=======
->>>>>>> 2a8518ae (remove TODOs)
 		system: cere_dev::SystemConfig::default(),
 		balances: cere_dev::BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
@@ -233,14 +226,7 @@ pub fn cere_dev_genesis(
 				.collect(),
 			phantom: Default::default(),
 		},
-<<<<<<< HEAD
-<<<<<<< HEAD
 		ddc_verification: Default::default(),
-=======
->>>>>>> 37c0c055 (Backporting Tech Committee to the `dev` branch (#353))
-=======
-		ddc_verification: Default::default(),
->>>>>>> 80f9b2bb (chore: retrieving verification key from the keystore)
 	}
 }
 
@@ -285,15 +271,7 @@ pub fn cere_dev_development_config() -> Result<CereDevChainSpec, String> {
 		"Development",
 		"cere_dev",
 		ChainType::Development,
-<<<<<<< HEAD
-<<<<<<< HEAD
 		cere_dev_config_genesis,
-=======
-		move || cere_dev_config_genesis(),
->>>>>>> e5e8e1a3 (fix chain spec)
-=======
-		cere_dev_config_genesis,
->>>>>>> ab573eb6 (fix clippy)
 		vec![],
 		None,
 		Some(DEFAULT_PROTOCOL_ID),
@@ -336,15 +314,7 @@ pub fn cere_dev_local_testnet_config() -> Result<CereDevChainSpec, String> {
 		"Local Testnet",
 		"cere_dev_local_testnet",
 		ChainType::Local,
-<<<<<<< HEAD
-<<<<<<< HEAD
 		cere_dev_local_testnet_genesis,
-=======
-		move || cere_dev_local_testnet_genesis(),
->>>>>>> e5e8e1a3 (fix chain spec)
-=======
-		cere_dev_local_testnet_genesis,
->>>>>>> ab573eb6 (fix clippy)
 		vec![],
 		None,
 		Some(DEFAULT_PROTOCOL_ID),

@@ -2,15 +2,7 @@ pub mod v1 {
 	#[cfg(feature = "try-runtime")]
 	use ddc_primitives::ClusterStatus;
 	use ddc_primitives::{
-<<<<<<< HEAD
-<<<<<<< HEAD
 		traits::{ClusterProtocol, ClusterQuery, NodeManager},
-=======
-		traits::{ClusterProtocol, ClusterQuery, NodeVisitor},
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-		traits::{ClusterProtocol, ClusterQuery, NodeManager},
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 		ClusterId, NodePubKey,
 	};
 	use frame_support::{
@@ -62,15 +54,7 @@ pub mod v1 {
 
 				let mut served_clusters: BTreeMap<ClusterId, ()> = BTreeMap::new();
 				for node_pub_key in bonded_nodes.iter() {
-<<<<<<< HEAD
-<<<<<<< HEAD
 					if let Ok(Some(cluster_id)) = T::NodeManager::get_cluster_id(node_pub_key) {
-=======
-					if let Ok(Some(cluster_id)) = T::NodeVisitor::get_cluster_id(node_pub_key) {
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-					if let Ok(Some(cluster_id)) = T::NodeManager::get_cluster_id(node_pub_key) {
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 						served_clusters.insert(cluster_id, ());
 					}
 					weight.saturating_accrue(T::DbWeight::get().reads(1));

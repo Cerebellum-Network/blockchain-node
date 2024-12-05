@@ -17,15 +17,7 @@ First, complete the [basic Rust setup instructions](./docs/rust-setup.md).
 Use the following command to build the node without launching it:
 
 ```sh
-<<<<<<< HEAD
-<<<<<<< HEAD
 cargo +1.79.0 build --release
-=======
-cargo +nightly-2024-03-12 build --release
->>>>>>> c2a9d508 (Fix/original staking (#322))
-=======
-cargo +1.77.0 build --release
->>>>>>> 7ad744e7 (Enable Clippy (#324))
 ```
 
 ## Run

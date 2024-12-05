@@ -13,7 +13,6 @@ repository.workspace = true
 byte-unit = { workspace = true }
 codec = { workspace = true }
 log = { workspace = true }
-polkadot-ckb-merkle-mountain-range = { workspace = true }
 scale-info = { workspace = true }
 
 # Substrate dependencies

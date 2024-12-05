@@ -28,34 +28,8 @@ pub mod benchmarking;
 pub mod testing_utils;
 
 use ddc_primitives::{
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 	traits::{node::NodeManager, staking::StakingVisitor},
 	ClusterId, NodeParams, NodePubKey, NodeUsage, StorageNodeParams, StorageNodePubKey,
-=======
-	traits::{
-		node::{NodeCreator, NodeVisitor},
-		staking::StakingVisitor,
-	},
-<<<<<<< HEAD
-<<<<<<< HEAD
-	ClusterId, NodeParams, NodePubKey, StorageNodePubKey,
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	ClusterId, NodeParams, NodePubKey, StorageNodeParams, StorageNodePubKey,
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
-=======
-=======
-	traits::{node::NodeManager, staking::StakingVisitor},
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
-	ClusterId, NodeParams, NodePubKey, NodeUsage, StorageNodeParams, StorageNodePubKey,
->>>>>>> e0ce0e5b (node integer delta usage (#412))
-=======
-	traits::{node::NodeManager, payout::StorageUsageProvider, staking::StakingVisitor},
-	ClusterId, NodeParams, NodePubKey, NodeStorageUsage, NodeUsage, StorageNodeParams,
-	StorageNodePubKey,
->>>>>>> 67b2560f (feat: input for payout batches is decoupled from the verified delta usage and merged with the current usage)
 };
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
@@ -94,22 +68,9 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		NodeCreated {
-			node_pub_key: NodePubKey,
-		},
-		NodeDeleted {
-			node_pub_key: NodePubKey,
-		},
-		NodeParamsChanged {
-			node_pub_key: NodePubKey,
-		},
-		NodeTotalUsageUpdated {
-			node_pub_key: NodePubKey,
-			transferred_bytes: u64,
-			stored_bytes: i64,
-			number_of_puts: u64,
-			number_of_gets: u64,
-		},
+		NodeCreated { node_pub_key: NodePubKey },
+		NodeDeleted { node_pub_key: NodePubKey },
+		NodeParamsChanged { node_pub_key: NodePubKey },
 	}
 
 	#[pallet::error]
@@ -205,32 +166,6 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::NodeCreated { node_pub_key });
 			Ok(())
 		}
-
-		fn storage_usage_filter(cluster_id: &ClusterId, node: &StorageNode<T>) -> bool {
-			if let Some(clust_id) = node.cluster_id {
-				if *cluster_id != clust_id {
-					false
-				} else {
-					node.total_usage.as_ref().map(|usage| usage.stored_bytes != 0).unwrap_or(false)
-				}
-			} else {
-				false
-			}
-		}
-
-		fn storage_usage_map(
-			node_key: &StorageNodePubKey,
-			node: &StorageNode<T>,
-		) -> NodeStorageUsage<T::AccountId> {
-			let stored_bytes =
-				node.total_usage.as_ref().map(|usage| usage.stored_bytes).unwrap_or(0);
-
-			NodeStorageUsage {
-				node_key: NodePubKey::StoragePubKey(node_key.clone()),
-				provider_id: node.provider_id.clone(),
-				stored_bytes,
-			}
-		}
 	}
 
 	pub trait NodeRepository<T: frame_system::Config> {
@@ -299,15 +234,7 @@ pub mod pallet {
 		}
 	}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 	impl<T: Config> NodeManager<T> for Pallet<T> {
-=======
-	impl<T: Config> NodeVisitor<T> for Pallet<T> {
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	impl<T: Config> NodeManager<T> for Pallet<T> {
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 		fn get_cluster_id(node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
 			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
 			Ok(*node.get_cluster_id())
@@ -316,8 +243,6 @@ pub mod pallet {
 		fn exists(node_pub_key: &NodePubKey) -> bool {
 			Self::get(node_pub_key.clone()).is_ok()
 		}
-<<<<<<< HEAD
-=======
 
 		fn get_node_provider_id(node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
 			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
@@ -340,7 +265,6 @@ pub mod pallet {
 							grpc_port: node_props.grpc_port,
 							p2p_port: node_props.p2p_port,
 						})),
-<<<<<<< HEAD
 				},
 			}
 		}
@@ -351,76 +275,7 @@ pub mod pallet {
 
 			Ok(total_usage)
 		}
-<<<<<<< HEAD
-	}
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 
-		fn get_node_provider_id(node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
-			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
-			Ok(node.get_provider_id().clone())
-		}
-
-		fn get_node_params(node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
-			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
-			let node_props = node.get_props().clone();
-
-			match node_pub_key {
-				NodePubKey::StoragePubKey(_) => match node_props {
-					NodeProps::StorageProps(node_props) =>
-						Ok(ddc_primitives::NodeParams::StorageParams(StorageNodeParams {
-							mode: node_props.mode,
-							host: node_props.host.into(),
-							domain: node_props.domain.into(),
-							ssl: node_props.ssl,
-							http_port: node_props.http_port,
-							grpc_port: node_props.grpc_port,
-							p2p_port: node_props.p2p_port,
-						})),
-=======
->>>>>>> c7dd3fb3 (fix: runtime version is increased)
-				},
-			}
-		}
-
-		fn update_total_node_usage(
-			node_key: &NodePubKey,
-			payable_usage: &NodeUsage,
-		) -> Result<(), DispatchError> {
-			let mut node = Self::get(node_key.clone()).map_err(Into::<Error<T>>::into)?;
-
-			let total_usage = if let Some(mut total_usage) = node.get_total_usage().clone() {
-				total_usage.transferred_bytes += payable_usage.transferred_bytes;
-				total_usage.stored_bytes = payable_usage.stored_bytes; // already includes the old storage
-				total_usage.number_of_puts += payable_usage.number_of_puts;
-				total_usage.number_of_gets += payable_usage.number_of_gets;
-				total_usage
-			} else {
-				NodeUsage {
-					transferred_bytes: payable_usage.transferred_bytes,
-					stored_bytes: payable_usage.stored_bytes,
-					number_of_puts: payable_usage.number_of_puts,
-					number_of_gets: payable_usage.number_of_gets,
-				}
-			};
-
-			node.set_total_usage(Some(total_usage));
-
-			Self::update(node).map_err(Into::<Error<T>>::into)?;
-
-			Self::deposit_event(Event::<T>::NodeTotalUsageUpdated {
-				node_pub_key: node_key.clone(),
-				transferred_bytes: payable_usage.transferred_bytes,
-				stored_bytes: payable_usage.stored_bytes,
-				number_of_puts: payable_usage.number_of_puts,
-				number_of_gets: payable_usage.number_of_gets,
-			});
-
-			Ok(())
-		}
-
-=======
-
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 		#[cfg(feature = "runtime-benchmarks")]
 		fn create_node(
 			node_pub_key: NodePubKey,
@@ -429,48 +284,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			Self::do_create_node(node_pub_key, provider_id, node_params)?;
 			Ok(())
-		}
-	}
-
-	impl<T: Config> StorageUsageProvider<StorageNodePubKey, NodeStorageUsage<T::AccountId>>
-		for Pallet<T>
-	{
-		type Error = ();
-
-		fn iter_storage_usage<'a>(
-			cluster_id: &'a ClusterId,
-		) -> Box<dyn Iterator<Item = NodeStorageUsage<T::AccountId>> + 'a> {
-			let filter_fn: fn(&ClusterId, &StorageNode<T>) -> bool =
-				Pallet::<T>::storage_usage_filter;
-			let map_fn: fn(&StorageNodePubKey, &StorageNode<T>) -> NodeStorageUsage<T::AccountId> =
-				Pallet::<T>::storage_usage_map;
-
-			Box::new(
-				StorageNodes::<T>::iter()
-					.filter(move |(_, node)| filter_fn(cluster_id, node))
-					.map(move |(id, node)| map_fn(&id, &node)),
-			)
-		}
-
-		fn iter_storage_usage_from<'a>(
-			cluster_id: &'a ClusterId,
-			from: &'a StorageNodePubKey,
-		) -> Result<Box<dyn Iterator<Item = NodeStorageUsage<T::AccountId>> + 'a>, ()> {
-			let filter_fn: fn(&ClusterId, &StorageNode<T>) -> bool =
-				Pallet::<T>::storage_usage_filter;
-			let map_fn: fn(&StorageNodePubKey, &StorageNode<T>) -> NodeStorageUsage<T::AccountId> =
-				Pallet::<T>::storage_usage_map;
-
-			if StorageNodes::<T>::contains_key(from) {
-				let from_key = StorageNodes::<T>::hashed_key_for(from);
-				Ok(Box::new(
-					StorageNodes::<T>::iter_from(from_key)
-						.filter(move |(_, node)| filter_fn(cluster_id, node))
-						.map(move |(key, node)| map_fn(&key, &node)),
-				))
-			} else {
-				Err(())
-			}
 		}
 	}
 }

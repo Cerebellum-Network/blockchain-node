@@ -10,18 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 ## [6.3.0]
 
-<<<<<<< HEAD
 - [C,D] Update Substrate from `v1.5` to `v1.6`.
 
 ## [6.2.0]
@@ -43,111 +33,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] `pallet-ddc-verification`: Verification Pallet and validator OCW for DAC verification.
 - [C] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
 
-=======
-## [5.6.0]
-
-- [C,D] Update Substrate from `v1.2` to `v1.4`.
-
->>>>>>> 7656e16b (choir: bump workspace version and update changelog)
 ## [5.5.0]
 
 ### Changed
 
 - [C,D] Update Substrate from `v1.1` to `v1.2`.
 
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 ## [5.4.1]
 
 ### Changed
 
-<<<<<<< HEAD
 - [D] `pallet-ddc-verification`: Introduction of the Verification pallet to ensure the secure posting and retrieval of verification keys to and from the blockchain.
 - [D] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
 
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 ## [5.4.0]
-=======
->>>>>>> 37c0c055 (Backporting Tech Committee to the `dev` branch (#353))
-=======
-## [5.5.0]
-
-- [C,D] Update Substrate from `v1.1` to `v1.2`.
->>>>>>> 351fdb75 (update changelog file)
-
-## [5.4.0]
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> d97d5c7e (Feature/token utility events (#331))
-=======
-=======
-
-## [5.5.0]
 
 ### Changed
 
-- [C,D] Update Substrate from `v1.1` to `v1.2`.
->>>>>>> 447b5301 (Polkadot v1.1. to v1.2 upgrade)
-- [C,D] `pallet-ddc-verification`: Introduction of the Verification pallet to ensure the secure posting and retrieval of verification keys to and from the blockchain.
-- [C,D] `pallet-ddc-clusters`: New `join_cluster` extrinsic.
-
-
-## [5.4.1]
-
-### Changed
-
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 - [C,D] Introduce new events to the DDC Payouts Pallet
 - [C,D] `pallet-ddc-clusters-gov`: Introduction of the Cluster Governance pallet for managing clusters protocol parameters.
-- [C,D] `WhitelistOrigin` is set to the Technical Committee Collective Body
-- [C,D] The _Support Curve_ in OpenGov Tracks is made more strict
 
-<<<<<<< HEAD
 ## [5.3.1]
 
 ### Changed
 
 - [C,D] `WhitelistOrigin` is set to the Technical Committee Collective Body
 - [C,D] The _Support Curve_ in OpenGov Tracks is made more strict
-=======
-## [VNext]
->>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
-=======
->>>>>>> ae760901 (fix: depositing extra amount is fixed (#333) (#334))
-=======
-- [C,D] `pallet-ddc-clusters-gov`: Introduction of the Cluster Governance pallet for managing clusters protocol parameters.
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 447b5301 (Polkadot v1.1. to v1.2 upgrade)
 
 ## [5.3.0]
 
 ### Changed
 
 - [C,D] Updated Substrate to polkadot-v1.1.0
-<<<<<<< HEAD
-<<<<<<< HEAD
 - [C,D] Introduction of the OpenGov
 - [C,D] `pallet-ddc-clusters`: Added Erasure coding and Replication in cluster params
-<<<<<<< HEAD
-
-## [5.2.2]
-
-- [C,D] Depositing extra amount in ddc-customers pallet is fixed
-
-## [5.2.1]
-
-### Changed
-
-- [C,D] Fix inflation parameters for the staking reward curve
-=======
-- [C,D] Introduction of the OpenGov
->>>>>>> c8ff9efa (Introduce OpenGov into Cere and CereDev (#238))
-=======
->>>>>>> b1afc1d4 (Extended Cluster pallet by Cluster Configuration parameters (#332))
 
 ## [5.2.2]
 
@@ -162,13 +81,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [5.2.0]
 
 - DAC ddc node mode
-<<<<<<< HEAD
-=======
-
-## [5.2.0]
->>>>>>> 71462ce6 (Feature: Substrate 1.1.0 (#281))
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 
 ### Added
 
@@ -186,63 +98,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C,D] Inflation parameters for the staking reward curve are back to normal values
 - [C,D] Daily burning is set to 2.5%
 
-<<<<<<< HEAD
-## [5.1.3]
-
-### Changed
-
-- [C,D] Fixed prefixes for ChainBridge's pallet storage items
-- [C,D] Fixed prefixes for ERC721 pallet storage items
-
-## [5.1.2]
-
-### Changed
-
-- [C,D] Inflation parameters for the staking reward curve are doubled to temporarily increase validators payouts
-- [C,D] Daily burning is set to 0.058%
-
-## [5.1.1]
-
-### Added
-
-- [C,D] Missing storage migrations for `pallet_contracts`, `pallet_im_online`, `pallet_democracy`, and `pallet_fast_unstake`
-
-## [5.1.0]
-
-### Changed
-
-- [C] `5.0.1` release changes are reverted
-- [C,D] Off-chain workers are enabled
-
-## [5.0.1]
-
-### Changed
-
-- [C,D] Set burn rate at 0.058% CERE tokens at the end of every era.
-=======
-### Added
-
-- ...
->>>>>>> 1264bdff (Consolidating `master` and `dev` branches (#295))
-=======
-## [vNext]
-
-### Added
-
-<<<<<<< HEAD
-- Missing storage migrations to Staking pallet
->>>>>>> 656e5410 (Fix/staking migrations (#300))
-=======
-- [C,D] Missing storage migrations to Staking pallet
->>>>>>> 56b59dc7 (Remove pallet society (#275))
-
-### Changed
-
-- [C,D] Remove Society pallet
-- [C,D] Bump Balances storage version
-
-=======
->>>>>>> 3c6074f4 (Merging PR #305 to 'dev' branch (#306))
 ## [5.1.3]
 
 ### Changed

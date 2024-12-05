@@ -33,15 +33,7 @@ use core::fmt::Debug;
 use codec::{Decode, Encode, HasCompact};
 use ddc_primitives::traits::{
 	cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
-<<<<<<< HEAD
-<<<<<<< HEAD
 	node::NodeManager,
-=======
-	node::{NodeCreator, NodeVisitor},
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-	node::NodeManager,
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 	staking::{StakerCreator, StakingVisitor, StakingVisitorError},
 };
 pub use ddc_primitives::{ClusterId, ClusterNodesCount, NodePubKey, NodeType};
@@ -188,15 +180,7 @@ pub mod pallet {
 		type ClusterManager: ClusterManager<Self>;
 
 		type NodeManager: NodeManager<Self>;
-<<<<<<< HEAD
 
-<<<<<<< HEAD
-=======
-		type NodeCreator: NodeCreator<Self>;
-=======
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
-
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 		type ClusterBondingAmount: Get<BalanceOf<Self>>;
 
 		type ClusterUnboningDelay: Get<BlockNumberFor<Self>>;
@@ -298,14 +282,6 @@ pub mod pallet {
 					"Cluster Stash do not have enough balance to participate in storage network."
 				);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-				assert!(T::Currency::free_balance(cluster_stash) < amount, "Insufficient bond");
-
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 743b403e (Integration tests for `ddc-staking` pallet (#385))
 				assert_ok!(frame_system::Pallet::<T>::inc_consumers(cluster_stash));
 
 				<ClusterBonded<T>>::insert(cluster_stash, cluster_controller);
@@ -530,18 +506,8 @@ pub mod pallet {
 				let node_pub_key =
 					<Providers<T>>::get(&ledger.stash).ok_or(Error::<T>::BadState)?;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 				let unbonding_delay = if T::NodeManager::exists(&node_pub_key) {
 					let node_cluster_id = T::NodeManager::get_cluster_id(&node_pub_key)
-=======
-				let unbonding_delay = if T::NodeVisitor::exists(&node_pub_key) {
-					let node_cluster_id = T::NodeVisitor::get_cluster_id(&node_pub_key)
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-				let unbonding_delay = if T::NodeManager::exists(&node_pub_key) {
-					let node_cluster_id = T::NodeManager::get_cluster_id(&node_pub_key)
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 						.map_err(|_| Error::<T>::NoCluster)?;
 
 					if let Some(cluster_id) = node_cluster_id {
@@ -1186,20 +1152,11 @@ pub mod pallet {
 
 			Ok(is_chilling_attempt)
 		}
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 
 		fn stash_by_ctrl(controller: &T::AccountId) -> Result<T::AccountId, StakingVisitorError> {
 			Self::ledger(controller)
 				.map(|l| l.stash)
 				.ok_or(StakingVisitorError::ControllerDoesNotExist)
 		}
-<<<<<<< HEAD
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 	}
 }

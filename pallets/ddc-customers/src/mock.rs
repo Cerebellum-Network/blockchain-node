@@ -1,22 +1,10 @@
 //! Test utilities
 
 use ddc_primitives::{
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 	traits::cluster::{ClusterCreator, ClusterManager, ClusterProtocol, ClusterQuery},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
 	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
-<<<<<<< HEAD
-=======
-	traits::cluster::{ClusterManager, ClusterManagerError, ClusterVisitorError},
-	ClusterBondingParams, ClusterFeesParams, ClusterGovParams, ClusterParams, ClusterPricingParams,
-	NodePubKey, NodeType,
->>>>>>> c181722b (Additional Test for Remove Bucket feature (#323))
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
 };
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
@@ -242,19 +230,10 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		unimplemented!()
 	}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 	fn get_nodes(_cluster_id: &ClusterId) -> Result<Vec<NodePubKey>, DispatchError> {
 		unimplemented!()
 	}
 
-<<<<<<< HEAD
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 33240126 (OCW-DAC-Validation changes (#397))
 	fn contains_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
@@ -296,19 +275,10 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 	) -> Result<(), DispatchError> {
 		unimplemented!()
 	}
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 36ff1650 (feat: supporting multicluster environment in DAC validation)
 
 	fn get_clusters(_status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError> {
 		unimplemented!()
 	}
-<<<<<<< HEAD
-=======
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> 36ff1650 (feat: supporting multicluster environment in DAC validation)
 }
 
 pub struct TestClusterCreator;

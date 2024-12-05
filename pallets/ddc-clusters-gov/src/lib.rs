@@ -16,28 +16,12 @@
 
 use codec::{Decode, Encode};
 #[cfg(feature = "runtime-benchmarks")]
-<<<<<<< HEAD
-<<<<<<< HEAD
 use ddc_primitives::traits::staking::StakerCreator;
-=======
-use ddc_primitives::traits::{node::NodeCreator, staking::StakerCreator};
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-use ddc_primitives::traits::staking::StakerCreator;
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterManager, ClusterProtocol, ClusterQuery},
 		cluster_gov::{DefaultVote, MemberCount, SeatsConsensus},
-<<<<<<< HEAD
-<<<<<<< HEAD
 		node::NodeManager,
-=======
-		node::NodeVisitor,
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-		node::NodeManager,
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 		pallet::GetDdcOrigin,
 	},
 	ClusterId, ClusterNodeStatus, ClusterProtocolParams, ClusterStatus, NodePubKey,
@@ -154,28 +138,12 @@ pub mod pallet {
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type ClusterManager: ClusterManager<Self>;
 		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
-<<<<<<< HEAD
-<<<<<<< HEAD
 		type NodeManager: NodeManager<Self>;
-=======
-		type NodeVisitor: NodeVisitor<Self>;
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-		type NodeManager: NodeManager<Self>;
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 		type SeatsConsensus: SeatsConsensus;
 		type DefaultVote: DefaultVote;
 		type MinValidatedNodesCount: Get<u16>;
 		type ReferendumEnactmentDuration: Get<BlockNumberFor<Self>>;
 		#[cfg(feature = "runtime-benchmarks")]
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-		type NodeCreator: NodeCreator<Self>;
-		#[cfg(feature = "runtime-benchmarks")]
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 	}
 
@@ -518,15 +486,7 @@ pub mod pallet {
 					if !is_validated_node {
 						Err(Error::<T>::NotValidatedNode.into())
 					} else {
-<<<<<<< HEAD
-<<<<<<< HEAD
 						let node_provider = T::NodeManager::get_node_provider_id(&node_pub_key)?;
-=======
-						let node_provider = T::NodeVisitor::get_node_provider_id(&node_pub_key)?;
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-						let node_provider = T::NodeManager::get_node_provider_id(&node_pub_key)?;
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 						if origin == node_provider {
 							Ok(())
 						} else {
@@ -550,15 +510,7 @@ pub mod pallet {
 					if node_state.status != ClusterNodeStatus::ValidationSucceeded {
 						Err(Error::<T>::NotValidatedNode.into())
 					} else {
-<<<<<<< HEAD
-<<<<<<< HEAD
 						let node_provider = T::NodeManager::get_node_provider_id(&node_pub_key)?;
-=======
-						let node_provider = T::NodeVisitor::get_node_provider_id(&node_pub_key)?;
->>>>>>> 1c1576b4 (Cluster Governance Pallet (#249))
-=======
-						let node_provider = T::NodeManager::get_node_provider_id(&node_pub_key)?;
->>>>>>> e2d1813f (fix: benchmarking is fixed for payouts pallet)
 						if origin == node_provider {
 							let voting = ClusterProposalVoting::<T>::get(cluster_id)
 								.ok_or(Error::<T>::ProposalMissing)?;

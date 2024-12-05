@@ -117,7 +117,4 @@ impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 	fn get_type(&self) -> NodeType {
 		NodeType::Storage
 	}
-	fn set_total_usage(&mut self, total_usage: Option<NodeUsage>) {
-		self.total_usage = total_usage;
-	}
 }
