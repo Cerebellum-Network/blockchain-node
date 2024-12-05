@@ -18,8 +18,9 @@ use ddc_primitives::{
 		bucket::BucketManager,
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
+		payout::StorageUsageProvider,
 	},
-	BucketId, BucketParams, BucketUsage, ClusterId,
+	BucketId, BucketParams, BucketStorageUsage, BucketUsage, ClusterId,
 };
 use frame_support::{
 	parameter_types,
@@ -655,6 +656,35 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		fn storage_usage_filter(cluster_id: &ClusterId, bucket: &Bucket<T>) -> bool {
+			if bucket.is_removed || *cluster_id != bucket.cluster_id {
+				false
+			} else {
+				bucket
+					.total_customers_usage
+					.as_ref()
+					.map(|usage| usage.stored_bytes != 0)
+					.unwrap_or(false)
+			}
+		}
+
+		fn storage_usage_map(
+			bucket_id: &BucketId,
+			bucket: &Bucket<T>,
+		) -> BucketStorageUsage<T::AccountId> {
+			let stored_bytes = bucket
+				.total_customers_usage
+				.as_ref()
+				.map(|usage| usage.stored_bytes)
+				.unwrap_or(0);
+
+			BucketStorageUsage {
+				bucket_id: *bucket_id,
+				owner_id: bucket.owner_id.clone(),
+				stored_bytes,
+			}
+		}
 	}
 
 	impl<T: Config> BucketManager<T> for Pallet<T> {
@@ -675,40 +705,41 @@ pub mod pallet {
 			Ok(bucket.total_customers_usage)
 		}
 
-		fn inc_total_bucket_usage(
+		fn update_total_bucket_usage(
 			cluster_id: &ClusterId,
 			bucket_id: BucketId,
-			content_owner: T::AccountId,
-			customer_usage: &BucketUsage,
+			bucket_owner: T::AccountId,
+			payable_usage: &BucketUsage,
 		) -> DispatchResult {
 			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
-			ensure!(bucket.owner_id == content_owner, Error::<T>::NotBucketOwner);
+			ensure!(bucket.owner_id == bucket_owner, Error::<T>::NotBucketOwner);
 
-			// Update or initialize total_customers_usage
-			match &mut bucket.total_customers_usage {
-				Some(total_customers_usage) => {
-					total_customers_usage.transferred_bytes += customer_usage.transferred_bytes;
-					total_customers_usage.stored_bytes += customer_usage.stored_bytes;
-					total_customers_usage.number_of_puts += customer_usage.number_of_puts;
-					total_customers_usage.number_of_gets += customer_usage.number_of_gets;
-				},
-				None => {
-					bucket.total_customers_usage = Some(BucketUsage {
-						transferred_bytes: customer_usage.transferred_bytes,
-						stored_bytes: customer_usage.stored_bytes,
-						number_of_puts: customer_usage.number_of_puts,
-						number_of_gets: customer_usage.number_of_gets,
-					});
-				},
-			}
+			let total_usage = if let Some(mut total_usage) = bucket.total_customers_usage {
+				total_usage.transferred_bytes += payable_usage.transferred_bytes;
+				total_usage.stored_bytes = payable_usage.stored_bytes; // already includes the old storage
+				total_usage.number_of_puts += payable_usage.number_of_puts;
+				total_usage.number_of_gets += payable_usage.number_of_gets;
+				total_usage
+			} else {
+				BucketUsage {
+					transferred_bytes: payable_usage.transferred_bytes,
+					stored_bytes: payable_usage.stored_bytes,
+					number_of_puts: payable_usage.number_of_puts,
+					number_of_gets: payable_usage.number_of_gets,
+				}
+			};
+
+			bucket.total_customers_usage = Some(total_usage);
+
+			Buckets::<T>::insert(bucket_id, bucket);
 
 			Self::deposit_event(Event::<T>::BucketTotalCustomersUsageUpdated {
 				cluster_id: *cluster_id,
 				bucket_id,
-				transferred_bytes: customer_usage.transferred_bytes,
-				stored_bytes: customer_usage.stored_bytes,
-				number_of_puts: customer_usage.number_of_puts,
-				number_of_gets: customer_usage.number_of_gets,
+				transferred_bytes: payable_usage.transferred_bytes,
+				stored_bytes: payable_usage.stored_bytes,
+				number_of_puts: payable_usage.number_of_puts,
+				number_of_gets: payable_usage.number_of_gets,
 			});
 
 			Ok(())
@@ -727,16 +758,13 @@ pub mod pallet {
 	}
 
 	impl<T: Config> CustomerCharger<T> for Pallet<T> {
-		fn charge_content_owner(
-			cluster_id: &ClusterId,
-			bucket_id: BucketId,
-			content_owner: T::AccountId,
+		fn charge_bucket_owner(
+			bucket_owner: T::AccountId,
 			billing_vault: T::AccountId,
-			customer_usage: &BucketUsage,
 			amount: u128,
 		) -> Result<u128, DispatchError> {
 			let actually_charged: BalanceOf<T>;
-			let mut ledger = Self::ledger(&content_owner).ok_or(Error::<T>::NotOwner)?;
+			let mut ledger = Self::ledger(&bucket_owner).ok_or(Error::<T>::NotOwner)?;
 			let amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
 
 			if ledger.active >= amount_to_deduct {
@@ -767,13 +795,6 @@ pub mod pallet {
 				actually_charged.checked_add(&charged).ok_or(Error::<T>::ArithmeticUnderflow)?;
 			}
 
-			Self::inc_total_bucket_usage(
-				cluster_id,
-				bucket_id,
-				content_owner.clone(),
-				customer_usage,
-			)?;
-
 			<T as pallet::Config>::Currency::transfer(
 				&Self::account_id(),
 				&billing_vault,
@@ -781,9 +802,9 @@ pub mod pallet {
 				ExistenceRequirement::AllowDeath,
 			)?;
 
-			<Ledger<T>>::insert(&content_owner, &ledger); // update state after successful transfer
+			<Ledger<T>>::insert(&bucket_owner, &ledger); // update state after successful transfer
 			Self::deposit_event(Event::<T>::Charged {
-				owner_id: content_owner,
+				owner_id: bucket_owner,
 				charged: actually_charged,
 				expected_to_charge: amount_to_deduct,
 			});
@@ -852,6 +873,44 @@ pub mod pallet {
 		fn get_bucket_owner(bucket_id: &BucketId) -> Result<T::AccountId, DispatchError> {
 			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 			Ok(bucket.owner_id)
+		}
+	}
+
+	impl<T: Config> StorageUsageProvider<BucketId, BucketStorageUsage<T::AccountId>> for Pallet<T> {
+		type Error = ();
+
+		fn iter_storage_usage<'a>(
+			cluster_id: &'a ClusterId,
+		) -> Box<dyn Iterator<Item = BucketStorageUsage<T::AccountId>> + 'a> {
+			let filter_fn: fn(&ClusterId, &Bucket<T>) -> bool = Pallet::<T>::storage_usage_filter;
+			let map_fn: fn(&BucketId, &Bucket<T>) -> BucketStorageUsage<T::AccountId> =
+				Pallet::<T>::storage_usage_map;
+
+			Box::new(
+				Buckets::<T>::iter()
+					.filter(move |(_, bucket)| filter_fn(cluster_id, bucket))
+					.map(move |(id, bucket)| map_fn(&id, &bucket)),
+			)
+		}
+
+		fn iter_storage_usage_from<'a>(
+			cluster_id: &'a ClusterId,
+			from: &'a BucketId,
+		) -> Result<Box<dyn Iterator<Item = BucketStorageUsage<T::AccountId>> + 'a>, ()> {
+			let filter_fn: fn(&ClusterId, &Bucket<T>) -> bool = Pallet::<T>::storage_usage_filter;
+			let map_fn: fn(&BucketId, &Bucket<T>) -> BucketStorageUsage<T::AccountId> =
+				Pallet::<T>::storage_usage_map;
+
+			if Buckets::<T>::contains_key(from) {
+				let from_key = Buckets::<T>::hashed_key_for(from);
+				Ok(Box::new(
+					Buckets::<T>::iter_from(from_key)
+						.filter(move |(_, bucket)| filter_fn(cluster_id, bucket))
+						.map(move |(id, bucket)| map_fn(&id, &bucket)),
+				))
+			} else {
+				Err(())
+			}
 		}
 	}
 }
