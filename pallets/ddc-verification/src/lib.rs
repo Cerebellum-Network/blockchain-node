@@ -17,18 +17,19 @@ use ddc_primitives::traits::{BucketManager, ClusterCreator, CustomerDepositor};
 use ddc_primitives::{
 	traits::{
 		ClusterManager, ClusterValidator, CustomerVisitor, NodeManager, PayoutProcessor,
-		ValidatorVisitor,
+		StorageUsageProvider, ValidatorVisitor,
 	},
-	ActivityHash, BatchIndex, BillingReportParams, BucketUsage, ClusterId, ClusterStatus, DdcEra,
-	EraValidation, EraValidationStatus, MMRProof, NodeParams, NodePubKey, NodeUsage, PayoutState,
-	StorageNodeParams,
+	BatchIndex, BillingFingerprintParams, BillingReportParams, BucketStorageUsage, BucketUsage,
+	ClusterId, ClusterStatus, DdcEra, EraValidation, EraValidationStatus, MMRProof, NodeParams,
+	NodePubKey, NodeStorageUsage, NodeUsage, PayableUsageHash, PayoutState, StorageNodeParams,
+	StorageNodePubKey,
 };
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, Get, OneSessionHandler},
 };
 use frame_system::{
-	offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
+	offchain::{Account, AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
 	pallet_prelude::*,
 };
 use itertools::Itertools;
@@ -42,7 +43,8 @@ use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use scale_info::prelude::{format, string::String};
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
-use sp_core::crypto::UncheckedFrom;
+use sp_core::{crypto::UncheckedFrom, H256};
+use sp_io::hashing::blake2_256;
 pub use sp_io::{
 	crypto::sr25519_public_keys,
 	offchain::{
@@ -55,7 +57,11 @@ use sp_runtime::{
 	Percent,
 };
 use sp_staking::StakingInterface;
-use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, prelude::*};
+use sp_std::{
+	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
+	fmt::Debug,
+	prelude::*,
+};
 
 pub mod weights;
 use crate::weights::WeightInfo;
@@ -84,7 +90,10 @@ pub(crate) type BalanceOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 
-	use ddc_primitives::{AggregatorInfo, BucketId, MergeActivityHash, DAC_VERIFICATION_KEY_TYPE};
+	use ddc_primitives::{
+		AggregatorInfo, BucketId, DeltaUsageHash, Fingerprint, MergeMMRHash,
+		DAC_VERIFICATION_KEY_TYPE,
+	};
 	use frame_support::PalletId;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::SaturatedConversion;
@@ -102,6 +111,56 @@ pub mod pallet {
 	pub const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
 	pub const IS_RUNNING_KEY: &[u8] = b"offchain::validator::is_running";
 	pub const IS_RUNNING_VALUE: &[u8] = &[1];
+
+	/// Delta usage of a bucket includes only the delta usage for the processing era reported by
+	/// collectors. This usage can be verified of unverified by inspectors.
+	pub(crate) type BucketDeltaUsage = aggregator_client::json::BucketSubAggregate;
+
+	/// Delta usage of a node includes only the delta usage for the processing era reported by
+	/// collectors. This usage can be verified of unverified by inspectors.
+	pub(crate) type NodeDeltaUsage = aggregator_client::json::NodeAggregate;
+
+	/// Payable usage of a bucket includes the current storage usage this bucket consumes and the
+	/// delta usage verified by inspectors. This is overall amount of bytes that the bucket owner
+	/// will be charged for.
+	#[derive(Clone, PartialOrd, Ord, Eq, PartialEq, Encode, Decode)]
+	pub(crate) struct BucketPayableUsage(BucketId, BucketUsage);
+
+	/// Payable usage of a node includes the current storage usage this node provides and the delta
+	/// usage verified by inspectors. This is overall amount of bytes that the node owner will be
+	/// rewarded for.
+	#[derive(Clone, PartialOrd, Ord, Eq, PartialEq, Encode, Decode)]
+	pub(crate) struct NodePayableUsage(NodePubKey, NodeUsage);
+
+	/// Payable usage of an Era includes all the batches of customers and providers that will be
+	/// processed during the payout process along with merkle root hashes and proofs. To calculate
+	/// the same billing fingerprint and let the payouts to start the required quorum of validators
+	/// need to agree on the same values for the Era usage and commit the same billing fingerprint.
+	#[derive(Clone, Encode, Decode)]
+	pub(crate) struct PayableEraUsage {
+		cluster_id: ClusterId,
+		era: EraActivity,
+		payers_usage: Vec<BucketPayableUsage>,
+		payers_root: PayableUsageHash,
+		payers_batch_roots: Vec<PayableUsageHash>,
+		payees_usage: Vec<NodePayableUsage>,
+		payees_root: PayableUsageHash,
+		payees_batch_roots: Vec<PayableUsageHash>,
+		cluster_usage: NodeUsage,
+	}
+
+	impl PayableEraUsage {
+		fn fingerprint(&self) -> Fingerprint {
+			let mut data = self.cluster_id.encode();
+			data.extend_from_slice(&self.era.id.encode());
+			data.extend_from_slice(&self.era.start.encode());
+			data.extend_from_slice(&self.era.end.encode());
+			data.extend_from_slice(&self.payers_root.encode());
+			data.extend_from_slice(&self.payees_root.encode());
+			data.extend_from_slice(&self.cluster_usage.encode());
+			blake2_256(&data).into()
+		}
+	}
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -124,15 +183,8 @@ pub mod pallet {
 		type PayoutProcessor: PayoutProcessor<Self>;
 		/// DDC nodes read-only registry.
 		type NodeManager: NodeManager<Self>;
-		/// The output of the `ActivityHasher` function.
-		type ActivityHash: Member
-			+ Parameter
-			+ MaybeSerializeDeserialize
-			+ Ord
-			+ Into<ActivityHash>
-			+ From<ActivityHash>;
 		/// The hashing system (algorithm)
-		type ActivityHasher: Hash<Output = Self::ActivityHash>;
+		type Hasher: Hash<Output = DeltaUsageHash>;
 		/// The identifier type for an authority.
 		type AuthorityId: Member
 			+ Parameter
@@ -143,14 +195,14 @@ pub mod pallet {
 			+ From<sp_core::sr25519::Public>;
 		/// The identifier type for an offchain worker.
 		type OffchainIdentifierId: AppCrypto<Self::Public, Self::Signature>;
-		/// The majority of validators.
-		const MAJORITY: u8;
 		/// Block to start from.
 		const BLOCK_TO_START: u16;
 		const DAC_REDUNDANCY_FACTOR: u16;
 
 		#[pallet::constant]
 		type AggregatorsQuorum: Get<Percent>;
+		#[pallet::constant]
+		type ValidatorsQuorum: Get<Percent>;
 
 		const MAX_PAYOUT_BATCH_COUNT: u16;
 		const MAX_PAYOUT_BATCH_SIZE: u16;
@@ -162,7 +214,16 @@ pub mod pallet {
 		>;
 		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
 		type CustomerVisitor: CustomerVisitor<Self>;
+		type BucketsStorageUsageProvider: StorageUsageProvider<
+			BucketId,
+			BucketStorageUsage<Self::AccountId>,
+		>;
+		type NodesStorageUsageProvider: StorageUsageProvider<
+			StorageNodePubKey,
+			NodeStorageUsage<Self::AccountId>,
+		>;
 		type Currency: Currency<Self::AccountId>;
+		const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool;
 		#[cfg(feature = "runtime-benchmarks")]
 		type CustomerDepositor: CustomerDepositor<Self>;
 		#[cfg(feature = "runtime-benchmarks")]
@@ -223,8 +284,15 @@ pub mod pallet {
 		PrepareEraTransactionError {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			payers_merkle_root_hash: ActivityHash,
-			payees_merkle_root_hash: ActivityHash,
+			payers_merkle_root_hash: DeltaUsageHash,
+			payees_merkle_root_hash: DeltaUsageHash,
+			validator: T::AccountId,
+		},
+		CommitBillingFingerprintTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			payers_root: PayableUsageHash,
+			payees_root: PayableUsageHash,
 			validator: T::AccountId,
 		},
 		BeginBillingReportTransactionError {
@@ -328,10 +396,10 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			validator: T::AccountId,
-			payers_merkle_root_hash: ActivityHash,
-			payees_merkle_root_hash: ActivityHash,
-			payers_batch_merkle_root_hashes: Vec<ActivityHash>,
-			payees_batch_merkle_root_hashes: Vec<ActivityHash>,
+			payers_merkle_root_hash: DeltaUsageHash,
+			payees_merkle_root_hash: DeltaUsageHash,
+			payers_batch_merkle_root_hashes: Vec<DeltaUsageHash>,
+			payees_batch_merkle_root_hashes: Vec<DeltaUsageHash>,
 		},
 		BucketAggregateRetrievalError {
 			cluster_id: ClusterId,
@@ -355,6 +423,8 @@ pub mod pallet {
 			validator: T::AccountId,
 		},
 		EmptyConsistentGroup,
+		FailedToFetchVerifiedDeltaUsage,
+		FailedToFetchVerifiedPayableUsage,
 	}
 
 	/// Consensus Errors
@@ -400,8 +470,14 @@ pub mod pallet {
 		PrepareEraTransactionError {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
-			payers_merkle_root_hash: ActivityHash,
-			payees_merkle_root_hash: ActivityHash,
+			payers_merkle_root_hash: DeltaUsageHash,
+			payees_merkle_root_hash: DeltaUsageHash,
+		},
+		CommitBillingFingerprintTransactionError {
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			payers_root: PayableUsageHash,
+			payees_root: PayableUsageHash,
 		},
 		BeginBillingReportTransactionError {
 			cluster_id: ClusterId,
@@ -471,6 +547,8 @@ pub mod pallet {
 			node_pub_key: NodePubKey,
 		},
 		EmptyConsistentGroup,
+		FailedToFetchVerifiedDeltaUsage,
+		FailedToFetchVerifiedPayableUsage,
 	}
 
 	#[pallet::error]
@@ -506,9 +584,9 @@ pub mod pallet {
 		TransactionSubmissionError,
 		NoAvailableSigner,
 		/// Fail to generate proof
-		FailToGenerateProof,
+		FailedToGenerateProof,
 		/// Fail to verify merkle proof
-		FailToVerifyMerkleProof,
+		FailedToVerifyMerkleProof,
 		/// No Era Validation exist
 		NoEraValidation,
 		/// Given era is already validated and paid.
@@ -543,6 +621,7 @@ pub mod pallet {
 		Serialize,
 		Deserialize,
 		Clone,
+		Copy,
 		Hash,
 		Ord,
 		PartialOrd,
@@ -565,12 +644,14 @@ pub mod pallet {
 		}
 	}
 
+	#[derive(Clone)]
 	pub struct CustomerBatch {
 		pub(crate) batch_index: BatchIndex,
-		pub(crate) payers: Vec<(NodePubKey, BucketId, BucketUsage)>,
+		pub(crate) payers: Vec<(BucketId, BucketUsage)>,
 		pub(crate) batch_proof: MMRProof,
 	}
 
+	#[derive(Clone)]
 	pub struct ProviderBatch {
 		pub(crate) batch_index: BatchIndex,
 		pub(crate) payees: Vec<(NodePubKey, NodeUsage)>,
@@ -609,13 +690,16 @@ pub mod pallet {
 		BucketSubAggregateKey(BucketId, String),
 	}
 
+	pub(crate) trait Hashable {
+		/// Hash of the entity
+		fn hash<T: Config>(&self) -> H256;
+	}
+
 	/// The 'Aggregate' trait defines a set of members common to activity aggregates, which reflect
 	/// the usage of a node or bucket within an Era..
 	pub(crate) trait Aggregate:
-		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Debug
+		Hashable + Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Debug
 	{
-		/// Hash of the aggregate that is defined by it 'usage' values
-		fn hash<T: Config>(&self) -> ActivityHash;
 		/// Aggregation key of this aggregate, i.e. bucket composite key or node key
 		fn get_key(&self) -> AggregateKey;
 		/// Number of activity records this aggregated by this aggregate
@@ -624,17 +708,19 @@ pub mod pallet {
 		fn get_aggregator(&self) -> AggregatorInfo;
 	}
 
-	impl Aggregate for aggregator_client::json::BucketSubAggregate {
-		fn hash<T: Config>(&self) -> ActivityHash {
+	impl Hashable for aggregator_client::json::BucketSubAggregate {
+		fn hash<T: Config>(&self) -> DeltaUsageHash {
 			let mut data = self.bucket_id.encode();
 			data.extend_from_slice(&self.node_id.encode());
 			data.extend_from_slice(&self.stored_bytes.encode());
 			data.extend_from_slice(&self.transferred_bytes.encode());
 			data.extend_from_slice(&self.number_of_puts.encode());
 			data.extend_from_slice(&self.number_of_gets.encode());
-			T::ActivityHasher::hash(&data).into()
+			T::Hasher::hash(&data)
 		}
+	}
 
+	impl Aggregate for aggregator_client::json::BucketSubAggregate {
 		fn get_key(&self) -> AggregateKey {
 			AggregateKey::BucketSubAggregateKey(self.bucket_id, self.node_id.clone())
 		}
@@ -648,16 +734,18 @@ pub mod pallet {
 		}
 	}
 
-	impl Aggregate for aggregator_client::json::NodeAggregate {
-		fn hash<T: Config>(&self) -> ActivityHash {
+	impl Hashable for aggregator_client::json::NodeAggregate {
+		fn hash<T: Config>(&self) -> DeltaUsageHash {
 			let mut data = self.node_id.encode();
 			data.extend_from_slice(&self.stored_bytes.encode());
 			data.extend_from_slice(&self.transferred_bytes.encode());
 			data.extend_from_slice(&self.number_of_puts.encode());
 			data.extend_from_slice(&self.number_of_gets.encode());
-			T::ActivityHasher::hash(&data).into()
+			T::Hasher::hash(&data)
 		}
+	}
 
+	impl Aggregate for aggregator_client::json::NodeAggregate {
 		fn get_key(&self) -> AggregateKey {
 			AggregateKey::NodeAggregateKey(self.node_id.clone())
 		}
@@ -673,33 +761,55 @@ pub mod pallet {
 	pub trait NodeAggregateLeaf:
 		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
 	{
-		fn leaf_hash<T: Config>(&self) -> ActivityHash;
+		fn leaf_hash<T: Config>(&self) -> DeltaUsageHash;
 	}
 
 	pub trait BucketSubAggregateLeaf:
 		Clone + Ord + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
 	{
-		fn leaf_hash<T: Config>(&self) -> ActivityHash;
+		fn leaf_hash<T: Config>(&self) -> DeltaUsageHash;
 	}
 
 	impl NodeAggregateLeaf for aggregator_client::json::Leaf {
-		fn leaf_hash<T: Config>(&self) -> ActivityHash {
+		fn leaf_hash<T: Config>(&self) -> DeltaUsageHash {
 			let mut data = self.record.id.encode();
 			data.extend_from_slice(&self.record.upstream.request.requestType.encode());
 			data.extend_from_slice(&self.stored_bytes.encode());
 			data.extend_from_slice(&self.transferred_bytes.encode());
-			T::ActivityHasher::hash(&data).into()
+			T::Hasher::hash(&data)
 		}
 	}
 
 	impl BucketSubAggregateLeaf for aggregator_client::json::Leaf {
-		fn leaf_hash<T: Config>(&self) -> ActivityHash {
+		fn leaf_hash<T: Config>(&self) -> DeltaUsageHash {
 			let mut data = self.record.upstream.request.bucketId.encode();
 			data.extend_from_slice(&self.record.encode());
 			data.extend_from_slice(&self.record.upstream.request.requestType.encode());
 			data.extend_from_slice(&self.stored_bytes.encode());
 			data.extend_from_slice(&self.transferred_bytes.encode());
-			T::ActivityHasher::hash(&data).into()
+			T::Hasher::hash(&data)
+		}
+	}
+
+	impl Hashable for BucketPayableUsage {
+		fn hash<T: Config>(&self) -> PayableUsageHash {
+			let mut data = self.0.encode(); // bucket_id
+			data.extend_from_slice(&self.1.stored_bytes.encode());
+			data.extend_from_slice(&self.1.transferred_bytes.encode());
+			data.extend_from_slice(&self.1.number_of_puts.encode());
+			data.extend_from_slice(&self.1.number_of_gets.encode());
+			T::Hasher::hash(&data)
+		}
+	}
+
+	impl Hashable for NodePayableUsage {
+		fn hash<T: Config>(&self) -> PayableUsageHash {
+			let mut data = self.0.encode(); // node_key
+			data.extend_from_slice(&self.1.stored_bytes.encode());
+			data.extend_from_slice(&self.1.transferred_bytes.encode());
+			data.extend_from_slice(&self.1.number_of_puts.encode());
+			data.extend_from_slice(&self.1.number_of_gets.encode());
+			T::Hasher::hash(&data)
 		}
 	}
 
@@ -737,20 +847,20 @@ pub mod pallet {
 				return;
 			}
 
-			let verification_key = unwrap_or_log_error!(
+			let verification_account = unwrap_or_log_error!(
 				Self::collect_verification_pub_key(),
 				"❌ Error collecting validator verification key"
 			);
 
 			let signer = Signer::<T, T::OffchainIdentifierId>::any_account()
-				.with_filter(vec![verification_key.clone()]);
+				.with_filter(vec![verification_account.public.clone()]);
 
 			if !signer.can_sign() {
 				log::error!("🚨 OCW signer is not available");
 				return;
 			}
 
-			Self::store_verification_account_id(verification_key.clone().into_account());
+			Self::store_verification_account_id(verification_account.public.clone().into_account());
 
 			let clusters_ids = unwrap_or_log_error!(
 				T::ClusterManager::get_clusters(ClusterStatus::Activated),
@@ -759,518 +869,93 @@ pub mod pallet {
 			log::info!("🎡 {:?} of 'Activated' clusters found", clusters_ids.len());
 
 			for cluster_id in clusters_ids {
-				let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 				let mut errors: Vec<OCWError> = Vec::new();
 
-				let dac_era_result = Self::process_dac_era(&cluster_id, None, batch_size.into());
+				let validation_result =
+					Self::start_validation_phase(&cluster_id, &verification_account, &signer);
 
-				match dac_era_result {
-					Ok(Some((
-						era_activity,
-						payers_merkle_root_hash,
-						payees_merkle_root_hash,
-						payers_batch_merkle_root_hashes,
-						payees_batch_merkle_root_hashes,
-					))) => {
-						log::info!(
-							"🏭🚀 Processing era_id: {:?} for cluster_id: {:?}",
-							era_activity.clone(),
-							cluster_id
-						);
-
-						let results = signer.send_signed_transaction(|_account| {
-							Call::set_prepare_era_for_payout {
-								cluster_id,
-								era_activity: era_activity.clone(),
-								payers_merkle_root_hash,
-								payees_merkle_root_hash,
-								payers_batch_merkle_root_hashes: payers_batch_merkle_root_hashes
-									.clone(),
-								payees_batch_merkle_root_hashes: payees_batch_merkle_root_hashes
-									.clone(),
-							}
-						});
-
-						for (_, res) in &results {
-							match res {
-								Ok(()) => {
-									log::info!(
-										"🏭⛳️ Merkle roots posted on-chain for cluster_id: {:?}, era: {:?}",
-										cluster_id,
-										era_activity.clone()
-									);
-								},
-								Err(e) => {
-									log::error!(
-										"🏭❌ Error to post merkle roots on-chain for cluster_id: {:?}, era: {:?}: {:?}",
-										cluster_id,
-										era_activity.clone(),
-										e
-									);
-									// Extrinsic call failed
-									errors.push(OCWError::PrepareEraTransactionError {
-										cluster_id,
-										era_id: era_activity.id,
-										payers_merkle_root_hash,
-										payees_merkle_root_hash,
-									});
-								},
-							}
-						}
-					},
-					Ok(None) => {
-						log::info!("🏭ℹ️  No eras for DAC process for cluster_id: {:?}", cluster_id);
-					},
-					Err(process_errors) => {
-						errors.extend(process_errors);
-					},
-				};
-
-				// todo! factor out as macro as this is repetitive
-				match Self::prepare_begin_billing_report(&cluster_id) {
-					Ok(Some((era_id, start_era, end_era))) => {
-						log::info!(
-						"🏭🚀 process_start_payout processed successfully for cluster_id: {:?}, era_id: {:?},  start_era: {:?},  end_era: {:?} ",
-						cluster_id,
-						era_id,
-						start_era,
-						end_era
-					);
-						let results = signer.send_signed_transaction(|_account| {
-							Call::begin_billing_report { cluster_id, era_id, start_era, end_era }
-						});
-
-						for (_, res) in &results {
-							match res {
-								Ok(()) => {
-									log::info!(
-									"🏭🏄‍ Sent begin_billing_report successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-								},
-								Err(e) => {
-									log::error!(
-										"🏭❌ Error to post begin_billing_report for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-									// Extrinsic call failed
-									errors.push(OCWError::BeginBillingReportTransactionError {
-										cluster_id,
-										era_id,
-									});
-								},
-							}
-						}
-					},
-					Ok(None) => {
-						log::info!("🏭❌ No era for payout for cluster_id: {:?}", cluster_id);
-					},
-					Err(e) => {
-						errors.push(e);
-					},
+				if let Err(errs) = validation_result {
+					errors.extend(errs);
 				}
 
-				// todo! factor out as macro as this is repetitive
-				match Self::prepare_begin_charging_customers(&cluster_id, batch_size.into()) {
-					Ok(Some((era_id, max_batch_index))) => {
-						log::info!(
-						"🏭🎁 prepare_begin_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
-						cluster_id,
-						era_id
-					);
+				let payouts_result =
+					Self::start_payouts_phase(&cluster_id, &verification_account, &signer);
 
-						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
-							Call::begin_charging_customers { cluster_id, era_id, max_batch_index }
-						}) {
-							match res {
-								Ok(_) => {
-									// Extrinsic call succeeded
-									log::info!(
-									"🏭🚀 Sent begin_charging_customers successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-								},
-								Err(e) => {
-									log::error!(
-										"🏭❌ Error to post begin_charging_customers for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-									// Extrinsic call failed
-									errors.push(OCWError::BeginChargingCustomersTransactionError {
-										cluster_id,
-										era_id,
-									});
-								},
-							}
-						} else {
-							log::error!("🏭❌ No account available to sign the transaction");
-							errors.push(OCWError::NoAvailableSigner);
-						}
-					},
-					Ok(None) => {
-						log::error!(
-							"🏭🦀 No era for begin_charging_customers for cluster_id: {:?}",
-							cluster_id
-						);
-					},
-					Err(e) => errors.extend(e),
+				if let Err(errs) = payouts_result {
+					errors.extend(errs);
 				}
 
-				// todo! factor out as macro as this is repetitive
-				match Self::prepare_send_charging_customers_batch(&cluster_id, batch_size.into()) {
-					Ok(Some((era_id, batch_payout))) => {
-						log::info!(
-							"🎁 prepare_send_charging_customers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
-							cluster_id,
-							era_id
-						);
-
-						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
-							Call::send_charging_customers_batch {
-								cluster_id,
-								era_id,
-								batch_index: batch_payout.batch_index,
-								payers: batch_payout.payers.clone(),
-								batch_proof: batch_payout.batch_proof.clone(),
-							}
-						}) {
-							match res {
-								Ok(_) => {
-									// Extrinsic call succeeded
-									log::info!(
-									"🏭🚀 Sent send_charging_customers_batch successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-								},
-								Err(e) => {
-									log::error!(
-										"🏭❌ Error to post send_charging_customers_batch for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-									// Extrinsic call failed
-									errors.push(
-										OCWError::SendChargingCustomersBatchTransactionError {
-											cluster_id,
-											era_id,
-											batch_index: batch_payout.batch_index,
-										},
-									);
-								},
-							}
-						} else {
-							log::error!("🏭❌ No account available to sign the transaction");
-							errors.push(OCWError::NoAvailableSigner);
-						}
-					},
-					Ok(None) => {
-						log::info!(
-							"🏭🦀 No era for send_charging_customers_batch for cluster_id: {:?}",
-							cluster_id
-						);
-					},
-					Err(e) => {
-						errors.extend(e);
-					},
-				}
-
-				// todo! factor out as macro as this is repetitive
-				match Self::prepare_end_charging_customers(&cluster_id) {
-					Ok(Some(era_id)) => {
-						log::info!(
-						"🏭📝prepare_end_charging_customers processed successfully for cluster_id: {:?}, era_id: {:?}",
-						cluster_id,
-						era_id
-					);
-
-						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
-							Call::end_charging_customers { cluster_id, era_id }
-						}) {
-							match res {
-								Ok(_) => {
-									// Extrinsic call succeeded
-									log::info!(
-									"🏭📝Sent end_charging_customers successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-								},
-								Err(e) => {
-									log::error!(
-										"🏭❌Error to post end_charging_customers for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-									// Extrinsic call failed
-									errors.push(OCWError::EndChargingCustomersTransactionError {
-										cluster_id,
-										era_id,
-									});
-								},
-							}
-						} else {
-							log::error!("🏭❌No account available to sign the transaction");
-							errors.push(OCWError::NoAvailableSigner);
-						}
-					},
-					Ok(None) => {
-						log::info!(
-							"🏭📝No era for end_charging_customers for cluster_id: {:?}",
-							cluster_id
-						);
-					},
-					Err(e) => {
-						errors.push(e);
-					},
-				}
-
-				// todo! factor out as macro as this is repetitive
-				match Self::prepare_begin_rewarding_providers(&cluster_id, batch_size.into()) {
-					Ok(Some((era_id, max_batch_index, total_node_usage))) => {
-						log::info!(
-						"🏭📝prepare_begin_rewarding_providers processed successfully for cluster_id: {:?}, era_id: {:?}",
-						cluster_id,
-						era_id
-					);
-
-						if let Some((_, res)) =
-							signer.send_signed_transaction(|_acc| Call::begin_rewarding_providers {
-								cluster_id,
-								era_id,
-								max_batch_index,
-								total_node_usage: total_node_usage.clone(),
-							}) {
-							match res {
-								Ok(_) => {
-									// Extrinsic call succeeded
-									log::info!(
-									"🏭📝Sent begin_rewarding_providers successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-								},
-								Err(e) => {
-									log::error!(
-										"🏭❌Error to post begin_rewarding_providers for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-									// Extrinsic call failed
-									errors.push(
-										OCWError::BeginRewardingProvidersTransactionError {
-											cluster_id,
-											era_id,
-										},
-									);
-								},
-							}
-						} else {
-							log::error!("🏭❌No account available to sign the transaction");
-							errors.push(OCWError::NoAvailableSigner);
-						}
-					},
-					Ok(None) => {
-						log::info!(
-							"🏭📝No era for begin_rewarding_providers for cluster_id: {:?}",
-							cluster_id
-						);
-					},
-					Err(e) => {
-						errors.extend(e);
-					},
-				}
-
-				// todo! factor out as macro as this is repetitive
-				match Self::prepare_send_rewarding_providers_batch(&cluster_id, batch_size.into()) {
-					Ok(Some((era_id, batch_payout))) => {
-						log::info!(
-						"🎁 prepare_send_rewarding_providers_batch processed successfully for cluster_id: {:?}, era_id: {:?}",
-						cluster_id,
-						era_id
-						);
-
-						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
-							Call::send_rewarding_providers_batch {
-								cluster_id,
-								era_id,
-								batch_index: batch_payout.batch_index,
-								payees: batch_payout.payees.clone(),
-								batch_proof: batch_payout.batch_proof.clone(),
-							}
-						}) {
-							match res {
-								Ok(_) => {
-									// Extrinsic call succeeded
-									log::info!(
-									"🚀 Sent send_rewarding_providers_batch successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-								},
-								Err(e) => {
-									log::error!(
-										"🦀 Error to post send_rewarding_providers_batch for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-									// Extrinsic call failed
-									errors.push(
-										OCWError::SendRewardingProvidersBatchTransactionError {
-											cluster_id,
-											era_id,
-											batch_index: batch_payout.batch_index,
-										},
-									);
-								},
-							}
-						} else {
-							log::error!("🦀 No account available to sign the transaction");
-							errors.push(OCWError::NoAvailableSigner);
-						}
-					},
-					Ok(None) => {
-						log::info!(
-							"🦀 No era for send_rewarding_providers_batch for cluster_id: {:?}",
-							cluster_id
-						);
-					},
-					Err(e) => {
-						errors.extend(e);
-					},
-				}
-
-				// todo! factor out as macro as this is repetitive
-				match Self::prepare_end_rewarding_providers(&cluster_id) {
-					Ok(Some(era_id)) => {
-						log::info!(
-						"🏭📝prepare_end_rewarding_providers processed successfully for cluster_id: {:?}, era_id: {:?}",
-						cluster_id,
-						era_id
-					);
-
-						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
-							Call::end_rewarding_providers { cluster_id, era_id }
-						}) {
-							match res {
-								Ok(_) => {
-									// Extrinsic call succeeded
-									log::info!(
-									"🏭📝Sent end_rewarding_providers successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-								},
-								Err(e) => {
-									log::error!(
-										"🏭❌Error to post end_rewarding_providers for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-									// Extrinsic call failed
-									errors.push(OCWError::EndRewardingProvidersTransactionError {
-										cluster_id,
-										era_id,
-									});
-								},
-							}
-						} else {
-							log::error!("🏭❌No account available to sign the transaction");
-							errors.push(OCWError::NoAvailableSigner);
-						}
-					},
-					Ok(None) => {
-						log::info!(
-							"🏭📝No era for end_rewarding_providers for cluster_id: {:?}",
-							cluster_id
-						);
-					},
-					Err(e) => {
-						errors.push(e);
-					},
-				}
-
-				// todo! factor out as macro as this is repetitive
-				match Self::prepare_end_billing_report(&cluster_id) {
-					Ok(Some(era_id)) => {
-						log::info!(
-						"🏭📝prepare_end_billing_report processed successfully for cluster_id: {:?}, era_id: {:?}",
-						cluster_id,
-						era_id
-					);
-
-						if let Some((_, res)) = signer.send_signed_transaction(|_acc| {
-							Call::end_billing_report { cluster_id, era_id }
-						}) {
-							match res {
-								Ok(_) => {
-									// Extrinsic call succeeded
-									log::info!(
-									"🏭📝Sent end_billing_report successfully for cluster_id: {:?}, era_id: {:?}",
-									cluster_id,
-									era_id
-								);
-								},
-								Err(e) => {
-									log::error!(
-										"🏭❌Error to post end_billing_report for cluster_id: {:?}, era_id: {:?}: {:?}",
-										cluster_id,
-										era_id,
-										e
-									);
-									// Extrinsic call failed
-									errors.push(OCWError::EndBillingReportTransactionError {
-										cluster_id,
-										era_id,
-									});
-								},
-							}
-						} else {
-							log::error!("🏭❌No account available to sign the transaction");
-							errors.push(OCWError::NoAvailableSigner);
-						}
-					},
-					Ok(None) => {
-						log::info!(
-							"🏭📝No era for end_billing_report for cluster_id: {:?}",
-							cluster_id
-						);
-					},
-					Err(e) => {
-						errors.push(e);
-					},
-				}
-
-				if !errors.is_empty() {
-					let results = signer.send_signed_transaction(|_account| {
-						Call::emit_consensus_errors { errors: errors.clone() }
-					});
-
-					for (_, res) in &results {
-						match res {
-							Ok(()) => {
-								log::info!("✅ Successfully submitted emit_consensus_errors tx")
-							},
-							Err(_) => log::error!("🏭❌ Failed to submit emit_consensus_errors tx"),
-						}
-					}
-				}
+				Self::submit_errors(&errors, &verification_account, &signer);
 			}
 
 			// Allow the next invocation of the offchain worker hook to run.
 			local_storage_clear(StorageKind::PERSISTENT, IS_RUNNING_KEY);
 		}
+	}
+
+	macro_rules! define_payout_step_function {
+		(
+			$func_name:ident,
+			$prepare_fn:ident,
+			$call_variant:expr,
+			$era_variant:expr,
+			$log_prefix:literal,
+			$error_variant:expr
+		) => {
+			#[allow(clippy::redundant_closure_call)]
+			pub(crate) fn $func_name(
+				cluster_id: &ClusterId,
+				account: &Account<T>,
+				signer: &Signer<T, T::OffchainIdentifierId>,
+			) -> Result<Option<DdcEra>, Vec<OCWError>> {
+				match Self::$prepare_fn(&cluster_id) {
+					Ok(Some(prepared_data)) => {
+
+						let era_id = $era_variant(&prepared_data);
+
+						log::info!(
+							concat!($log_prefix, " Initializing '{}' call for cluster_id: {:?}, era_id: {:?}"),
+							stringify!($func_name),
+							cluster_id,
+							era_id,
+						);
+
+						let call = $call_variant(cluster_id, prepared_data.clone());
+						let result = signer.send_single_signed_transaction(account, call);
+
+						match result {
+							Some(Ok(_)) => {
+								log::info!(
+									concat!($log_prefix, " Successfully sent '{}' call for cluster_id: {:?}, era_id: {:?}"),
+									stringify!($func_name),
+									cluster_id,
+									era_id,
+								);
+								Ok(Some(era_id))
+							}
+							_ => {
+								log::error!(
+									concat!($log_prefix, " Failed to send '{}' call for cluster_id: {:?}, era_id: {:?}"),
+									stringify!($func_name),
+									cluster_id,
+									era_id,
+								);
+								Err(vec![$error_variant(cluster_id, prepared_data)])
+							}
+						}
+					}
+					Ok(None) => {
+						log::info!(
+							concat!($log_prefix, " Skipping '{}' call as there is no era for payout for cluster_id: {:?}"),
+							stringify!($func_name),
+							cluster_id,
+						);
+						Ok(None)
+					}
+					Err(errs) => Err(errs),
+				}
+			}
+		};
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -1288,7 +973,7 @@ pub mod pallet {
 
 				let signed_validators = era_validation
 					.validators
-					.entry((ActivityHash::default(), ActivityHash::default()))
+					.entry((DeltaUsageHash::default(), DeltaUsageHash::default()))
 					.or_insert_with(Vec::new);
 
 				let validators = <ValidatorSet<T>>::get();
@@ -1305,15 +990,20 @@ pub mod pallet {
 		pub(crate) fn process_dac_era(
 			cluster_id: &ClusterId,
 			era_id_to_process: Option<EraActivity>,
-			batch_size: usize,
 		) -> Result<
-			Option<(EraActivity, ActivityHash, ActivityHash, Vec<ActivityHash>, Vec<ActivityHash>)>,
+			Option<(
+				EraActivity,
+				DeltaUsageHash,
+				DeltaUsageHash,
+				Vec<DeltaUsageHash>,
+				Vec<DeltaUsageHash>,
+			)>,
 			Vec<OCWError>,
 		> {
-			log::info!("🚀 Processing dac data for cluster_id: {:?}", cluster_id);
+			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 
 			let dac_nodes = Self::get_dac_nodes(cluster_id).map_err(|_| {
-				log::error!("🏭❌ Error retrieving dac nodes to validate cluster {:?}", cluster_id);
+				log::error!("❌ Error retrieving dac nodes to validate cluster {:?}", cluster_id);
 				vec![OCWError::FailedToFetchDacNodes]
 			})?;
 
@@ -1330,6 +1020,12 @@ pub mod pallet {
 					Err(err) => return Err(vec![err]),
 				}
 			};
+
+			log::info!(
+				"👁️‍🗨️  Start processing DAC for cluster_id: {:?} era_id; {:?}",
+				cluster_id,
+				era_activity.id
+			);
 
 			// todo: move to cluster protocol parameters
 			let dac_redundancy_factor = T::DAC_REDUNDANCY_FACTOR;
@@ -1358,14 +1054,14 @@ pub mod pallet {
 				true,
 			)?;
 
-			let customer_activity_hashes: Vec<ActivityHash> =
+			let customer_activity_hashes: Vec<DeltaUsageHash> =
 				total_buckets_usage.clone().into_iter().map(|c| c.hash::<T>()).collect();
 
 			let customer_activity_hashes_string: Vec<String> =
 				customer_activity_hashes.clone().into_iter().map(hex::encode).collect();
 
 			log::info!(
-				"🧗‍ Customer Activity hashes for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				"👁️‍🗨️  Customer Activity hashes for cluster_id: {:?} era_id: {:?} is: {:?}",
 				cluster_id,
 				era_activity.id,
 				customer_activity_hashes_string
@@ -1373,7 +1069,7 @@ pub mod pallet {
 			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				cluster_id,
 				era_activity.id,
-				Self::split_to_batches(&total_buckets_usage, batch_size),
+				Self::split_to_batches(&total_buckets_usage, batch_size.into()),
 			)
 			.map_err(|err| vec![err])?;
 
@@ -1382,7 +1078,7 @@ pub mod pallet {
 
 			for (pos, batch_root) in customer_batch_roots_string.iter().enumerate() {
 				log::info!(
-				"🧗‍  Customer Activity batches for ClusterId: {:?} EraId: {:?}  is: batch {:?} with root {:?} for activities {:?}",
+				"👁️‍🗨️‍  Customer Activity batches for cluster_id: {:?} era_id: {:?} is: batch {:?} with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
 					pos + 1,
@@ -1399,7 +1095,7 @@ pub mod pallet {
 			.map_err(|err| vec![err])?;
 
 			log::info!(
-				"🧗‍  Customer Activity batches tree for ClusterId: {:?} EraId: {:?}  is: batch with root {:?} for activities {:?}",
+				"👁️‍🗨️‍  Customer Activity batches tree for cluster_id: {:?} era_id: {:?} is: batch with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
 				hex::encode(customers_activity_root),
@@ -1417,14 +1113,14 @@ pub mod pallet {
 			let total_nodes_usage =
 				Self::get_total_usage(cluster_id, era_activity.id, nodes_aggregates_groups, true)?;
 
-			let node_activity_hashes: Vec<ActivityHash> =
+			let node_activity_hashes: Vec<DeltaUsageHash> =
 				total_nodes_usage.clone().into_iter().map(|c| c.hash::<T>()).collect();
 
 			let node_activity_hashes_string: Vec<String> =
 				node_activity_hashes.clone().into_iter().map(hex::encode).collect();
 
 			log::info!(
-				"🧗‍ Node Activity hashes for ClusterId: {:?} EraId: {:?}  is: {:?}",
+				"👁️‍🗨️  Node Activity hashes for cluster_id: {:?} era_id: {:?} is: {:?}",
 				cluster_id,
 				era_activity.id,
 				node_activity_hashes_string
@@ -1433,7 +1129,7 @@ pub mod pallet {
 			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
 				cluster_id,
 				era_activity.id,
-				Self::split_to_batches(&total_nodes_usage, batch_size),
+				Self::split_to_batches(&total_nodes_usage, batch_size.into()),
 			)
 			.map_err(|err| vec![err])?;
 
@@ -1442,7 +1138,7 @@ pub mod pallet {
 
 			for (pos, batch_root) in nodes_activity_batch_roots_string.iter().enumerate() {
 				log::info!(
-				"🧗‍  Node Activity batches for ClusterId: {:?} EraId: {:?}  is: batch {:?} with root {:?} for activities {:?}",
+				"👁️‍🗨️  Node Activity batches for cluster_id: {:?} era_id: {:?} are: batch {:?} with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
 					pos + 1,
@@ -1456,14 +1152,14 @@ pub mod pallet {
 					.map_err(|err| vec![err])?;
 
 			log::info!(
-				"🧗‍  Node Activity batches tree for ClusterId: {:?} EraId: {:?}  is: batch with root {:?} for activities {:?}",
+				"👁️‍🗨️  Node Activity batches tree for cluster_id: {:?} era_id: {:?} are: batch with root {:?} for activities {:?}",
 				cluster_id,
 				era_activity.id,
 				hex::encode(nodes_activity_root),
 					nodes_activity_batch_roots_string,
 			);
 
-			Self::store_validation_activities(
+			Self::store_verified_delta_usage(
 				cluster_id,
 				era_activity.id,
 				&total_buckets_usage,
@@ -1473,7 +1169,11 @@ pub mod pallet {
 				nodes_activity_root,
 				&nodes_activity_batch_roots,
 			);
-			log::info!("🙇‍ Dac data processing completed for cluster_id: {:?}", cluster_id);
+			log::info!(
+				"👁️‍🗨️‍  End processing DAC for cluster_id: {:?} era_id: {:?}",
+				cluster_id,
+				era_activity.id
+			);
 			Ok(Some((
 				era_activity,
 				customers_activity_root,
@@ -1481,6 +1181,291 @@ pub mod pallet {
 				customers_activity_batch_roots,
 				nodes_activity_batch_roots,
 			)))
+		}
+
+		pub(crate) fn start_validation_phase(
+			cluster_id: &ClusterId,
+			verification_account: &Account<T>,
+			signer: &Signer<T, T::OffchainIdentifierId>,
+		) -> Result<(), Vec<OCWError>> {
+			let validation_output = Self::process_dac_era(cluster_id, None)?;
+
+			match validation_output {
+				Some((
+					era_activity,
+					payers_merkle_root_hash,
+					payees_merkle_root_hash,
+					payers_batch_merkle_root_hashes,
+					payees_batch_merkle_root_hashes,
+				)) => {
+					let call = Call::set_prepare_era_for_payout {
+						cluster_id: *cluster_id,
+						era_activity,
+						payers_merkle_root_hash,
+						payees_merkle_root_hash,
+						payers_batch_merkle_root_hashes: payers_batch_merkle_root_hashes.clone(),
+						payees_batch_merkle_root_hashes: payees_batch_merkle_root_hashes.clone(),
+					};
+
+					let result = signer.send_single_signed_transaction(verification_account, call);
+
+					match result {
+						Some(Ok(_)) => {
+							log::info!(
+								"👁️‍🗨️  DAC Validation merkle roots posted on-chain for cluster_id: {:?}, era: {:?}",
+								cluster_id,
+								era_activity.clone()
+							);
+							Ok(())
+						},
+						_ => Err(vec![OCWError::PrepareEraTransactionError {
+							cluster_id: *cluster_id,
+							era_id: era_activity.id,
+							payers_merkle_root_hash,
+							payees_merkle_root_hash,
+						}]),
+					}
+				},
+				None => {
+					log::info!("👁️‍🗨️  No eras for DAC processing for cluster_id: {:?}", cluster_id);
+					Ok(())
+				},
+			}
+		}
+
+		pub(crate) fn start_payouts_phase(
+			cluster_id: &ClusterId,
+			account: &Account<T>,
+			signer: &Signer<T, T::OffchainIdentifierId>,
+		) -> Result<(), Vec<OCWError>> {
+			let mut errors: Vec<OCWError> = Vec::new();
+
+			if let Err(errs) = Self::step_commit_billing_fingerprint(cluster_id, account, signer) {
+				errors.extend(errs);
+			}
+
+			if let Err(errs) = Self::step_begin_billing_report(cluster_id, account, signer) {
+				errors.extend(errs);
+			}
+
+			if let Err(errs) = Self::step_begin_charging_customers(cluster_id, account, signer) {
+				errors.extend(errs);
+			}
+
+			if let Err(errs) = Self::step_send_charging_customers(cluster_id, account, signer) {
+				errors.extend(errs);
+			}
+
+			if let Err(errs) = Self::step_end_charging_customers(cluster_id, account, signer) {
+				errors.extend(errs);
+			}
+
+			if let Err(errs) = Self::step_begin_rewarding_providers(cluster_id, account, signer) {
+				errors.extend(errs);
+			}
+
+			if let Err(errs) = Self::step_send_rewarding_providers(cluster_id, account, signer) {
+				errors.extend(errs);
+			}
+
+			if let Err(errs) = Self::step_end_rewarding_providers(cluster_id, account, signer) {
+				errors.extend(errs);
+			}
+
+			match Self::step_end_billing_report(cluster_id, account, signer) {
+				Ok(Some(era_id)) => {
+					Self::clear_verified_delta_usage(cluster_id, era_id);
+				},
+				Err(errs) => errors.extend(errs),
+				_ => {},
+			}
+
+			if !errors.is_empty() {
+				Err(errors)
+			} else {
+				Ok(())
+			}
+		}
+
+		define_payout_step_function!(
+			step_commit_billing_fingerprint,
+			prepare_commit_billing_fingerprint,
+			|cluster_id: &ClusterId, (era, era_payable_usage): (EraActivity, PayableEraUsage)| {
+				Call::commit_billing_fingerprint {
+					cluster_id: *cluster_id,
+					era_id: era.id,
+					start_era: era.start,
+					end_era: era.end,
+					payers_root: era_payable_usage.payers_root,
+					payees_root: era_payable_usage.payees_root,
+					cluster_usage: era_payable_usage.cluster_usage,
+				}
+			},
+			|prepared_data: &(EraActivity, PayableEraUsage)| prepared_data.0.id,
+			"🔑",
+			|cluster_id: &ClusterId, (era, era_payable_usage): (EraActivity, PayableEraUsage)| {
+				OCWError::CommitBillingFingerprintTransactionError {
+					cluster_id: *cluster_id,
+					era_id: era.id,
+					payers_root: era_payable_usage.payers_root,
+					payees_root: era_payable_usage.payees_root,
+				}
+			}
+		);
+
+		define_payout_step_function!(
+			step_begin_billing_report,
+			prepare_begin_billing_report,
+			|cluster_id: &ClusterId, (era_id, fingerprint)| Call::begin_billing_report {
+				cluster_id: *cluster_id,
+				era_id,
+				fingerprint
+			},
+			|prepared_data: &(DdcEra, _)| prepared_data.0,
+			"🗓️ ",
+			|cluster_id: &ClusterId, (era_id, _)| OCWError::BeginBillingReportTransactionError {
+				cluster_id: *cluster_id,
+				era_id,
+			}
+		);
+
+		define_payout_step_function!(
+			step_begin_charging_customers,
+			prepare_begin_charging_customers,
+			|cluster_id: &ClusterId, (era_id, max_batch_index)| Call::begin_charging_customers {
+				cluster_id: *cluster_id,
+				era_id,
+				max_batch_index,
+			},
+			|prepared_data: &(DdcEra, _)| prepared_data.0,
+			"📥",
+			|cluster_id: &ClusterId, (era_id, _)| {
+				OCWError::BeginChargingCustomersTransactionError { cluster_id: *cluster_id, era_id }
+			}
+		);
+
+		define_payout_step_function!(
+			step_send_charging_customers,
+			prepare_send_charging_customers_batch,
+			|cluster_id: &ClusterId, (era_id, batch_payout): (DdcEra, CustomerBatch)| {
+				Call::send_charging_customers_batch {
+					cluster_id: *cluster_id,
+					era_id,
+					batch_index: batch_payout.batch_index,
+					payers: batch_payout.payers.clone(),
+					batch_proof: batch_payout.batch_proof.clone(),
+				}
+			},
+			|prepared_data: &(DdcEra, _)| prepared_data.0,
+			"🧾",
+			|cluster_id: &ClusterId, (era_id, batch_payout): (DdcEra, CustomerBatch)| {
+				OCWError::SendChargingCustomersBatchTransactionError {
+					cluster_id: *cluster_id,
+					era_id,
+					batch_index: batch_payout.batch_index,
+				}
+			}
+		);
+
+		define_payout_step_function!(
+			step_end_charging_customers,
+			prepare_end_charging_customers,
+			|cluster_id: &ClusterId, era_id| Call::end_charging_customers {
+				cluster_id: *cluster_id,
+				era_id
+			},
+			|prepared_data: &DdcEra| *prepared_data,
+			"📪",
+			|cluster_id: &ClusterId, era_id| OCWError::EndChargingCustomersTransactionError {
+				cluster_id: *cluster_id,
+				era_id,
+			}
+		);
+
+		define_payout_step_function!(
+			step_begin_rewarding_providers,
+			prepare_begin_rewarding_providers,
+			|cluster_id: &ClusterId, (era_id, max_batch_index): (DdcEra, u16)| {
+				Call::begin_rewarding_providers { cluster_id: *cluster_id, era_id, max_batch_index }
+			},
+			|prepared_data: &(DdcEra, _)| prepared_data.0,
+			"📤",
+			|cluster_id: &ClusterId, (era_id, _)| {
+				OCWError::BeginRewardingProvidersTransactionError {
+					cluster_id: *cluster_id,
+					era_id,
+				}
+			}
+		);
+
+		define_payout_step_function!(
+			step_send_rewarding_providers,
+			prepare_send_rewarding_providers_batch,
+			|cluster_id: &ClusterId, (era_id, batch_payout): (DdcEra, ProviderBatch)| {
+				Call::send_rewarding_providers_batch {
+					cluster_id: *cluster_id,
+					era_id,
+					batch_index: batch_payout.batch_index,
+					payees: batch_payout.payees.clone(),
+					batch_proof: batch_payout.batch_proof.clone(),
+				}
+			},
+			|prepared_data: &(DdcEra, _)| prepared_data.0,
+			"💸",
+			|cluster_id: &ClusterId, (era_id, batch_payout): (DdcEra, ProviderBatch)| {
+				OCWError::SendRewardingProvidersBatchTransactionError {
+					cluster_id: *cluster_id,
+					era_id,
+					batch_index: batch_payout.batch_index,
+				}
+			}
+		);
+
+		define_payout_step_function!(
+			step_end_rewarding_providers,
+			prepare_end_rewarding_providers,
+			|cluster_id: &ClusterId, era_id| Call::end_rewarding_providers {
+				cluster_id: *cluster_id,
+				era_id
+			},
+			|prepared_data: &DdcEra| *prepared_data,
+			"📭",
+			|cluster_id: &ClusterId, era_id| OCWError::EndRewardingProvidersTransactionError {
+				cluster_id: *cluster_id,
+				era_id,
+			}
+		);
+
+		define_payout_step_function!(
+			step_end_billing_report,
+			prepare_end_billing_report,
+			|cluster_id: &ClusterId, era_id| Call::end_billing_report {
+				cluster_id: *cluster_id,
+				era_id
+			},
+			|prepared_data: &DdcEra| *prepared_data,
+			"🧮",
+			|cluster_id: &ClusterId, era_id| OCWError::EndBillingReportTransactionError {
+				cluster_id: *cluster_id,
+				era_id,
+			}
+		);
+
+		pub(crate) fn submit_errors(
+			errors: &Vec<OCWError>,
+			verification_account: &Account<T>,
+			signer: &Signer<T, T::OffchainIdentifierId>,
+		) {
+			if !errors.is_empty() {
+				let call = Call::emit_consensus_errors { errors: errors.to_owned() };
+				let result = signer.send_single_signed_transaction(verification_account, call);
+
+				if let Some(Ok(_)) = result {
+					log::info!("✔️ Successfully sent 'emit_consensus_errors' call");
+				} else {
+					log::error!("❌ Failed to send 'emit_consensus_errors' call");
+				};
+			}
 		}
 
 		pub(crate) fn get_total_usage<A: Aggregate>(
@@ -1614,7 +1599,7 @@ pub mod pallet {
 			let number_of_identifiers = T::MAX_MERKLE_NODE_IDENTIFIER;
 
 			log::info!(
-				"🚀 Challenge process starts when bucket sub aggregates are not in consensus!"
+				"👁️‍🗨️  Challenge process starts when bucket sub aggregates are not in consensus!"
 			);
 
 			let aggregate_key = aggregate.get_key();
@@ -1625,7 +1610,7 @@ pub mod pallet {
 			);
 
 			log::info!(
-				"🚀 Merkle Node Identifiers for aggregate key: {:?} identifiers: {:?}",
+				"👁️‍🗨️  Merkle Node Identifiers for aggregate key: {:?} identifiers: {:?}",
 				aggregate_key,
 				merkle_node_ids
 			);
@@ -1642,7 +1627,7 @@ pub mod pallet {
 			.map_err(|err| vec![err])?;
 
 			log::info!(
-				"🚀 Fetched challenge response for aggregate key: {:?}, challenge_response: {:?}",
+				"👁️‍🗨️  Fetched challenge response for aggregate key: {:?}, challenge_response: {:?}",
 				aggregate_key,
 				challenge_response
 			);
@@ -1655,7 +1640,7 @@ pub mod pallet {
 			)?;
 
 			log::info!(
-				"🚀 Calculated merkle root for aggregate key: {:?}, calculated_merkle_root: {:?}",
+				"👁️‍🗨️  Calculated merkle root for aggregate key: {:?}, calculated_merkle_root: {:?}",
 				aggregate_key,
 				calculated_merkle_root
 			);
@@ -1679,17 +1664,17 @@ pub mod pallet {
 			let mut merkle_root_buf = [0u8; _BUF_SIZE];
 			let bytes =
 				Base64::decode(root_merkle_node.hash.clone(), &mut merkle_root_buf).unwrap(); // todo! remove unwrap
-			let traversed_merkle_root = ActivityHash::from(sp_core::H256::from_slice(bytes));
+			let traversed_merkle_root = DeltaUsageHash::from(sp_core::H256::from_slice(bytes));
 
 			log::info!(
-				"🚀 Fetched merkle root for aggregate key: {:?} traversed_merkle_root: {:?}",
+				"👁️‍🗨️  Fetched merkle root for aggregate key: {:?} traversed_merkle_root: {:?}",
 				aggregate_key,
 				traversed_merkle_root
 			);
 
 			let is_matched = if calculated_merkle_root == traversed_merkle_root {
 				log::info!(
-					"🚀👍 The aggregate with hash {:?} and key {:?} has passed the challenge.",
+					"👁️‍🗨️👍 The aggregate with hash {:?} and key {:?} has passed the challenge.",
 					aggregate.hash::<T>(),
 					aggregate_key,
 				);
@@ -1697,7 +1682,7 @@ pub mod pallet {
 				true
 			} else {
 				log::info!(
-					"🚀👎 The aggregate with hash {:?} and key {:?} has not passed the challenge.",
+					"👁️‍🗨️👎 The aggregate with hash {:?} and key {:?} has not passed the challenge.",
 					aggregate.hash::<T>(),
 					aggregate_key,
 				);
@@ -1716,7 +1701,7 @@ pub mod pallet {
 			let number_of_identifiers = T::MAX_MERKLE_NODE_IDENTIFIER;
 
 			log::info!(
-				"🚀 Challenge process starts when bucket sub aggregates are not in consensus!"
+				"👁️‍🗨️  Challenge process starts when bucket sub aggregates are not in consensus!"
 			);
 
 			let aggregate_key = aggregate.get_key();
@@ -1727,7 +1712,7 @@ pub mod pallet {
 			);
 
 			log::info!(
-				"🚀 Merkle Node Identifiers for aggregate key: {:?} identifiers: {:?}",
+				"👁️‍🗨️  Merkle Node Identifiers for aggregate key: {:?} identifiers: {:?}",
 				aggregate_key,
 				merkle_node_ids
 			);
@@ -1744,7 +1729,7 @@ pub mod pallet {
 			.map_err(|err| vec![err])?;
 
 			log::info!(
-				"🚀 Fetched challenge response for aggregate key: {:?}, challenge_response: {:?}",
+				"👁️‍🗨️  Fetched challenge response for aggregate key: {:?}, challenge_response: {:?}",
 				aggregate_key,
 				challenge_response
 			);
@@ -1765,13 +1750,13 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			aggregate_key: AggregateKey,
-		) -> Result<ActivityHash, Vec<OCWError>> {
+		) -> Result<DeltaUsageHash, Vec<OCWError>> {
 			log::info!("Getting hash from merkle tree path for aggregate key: {:?}", aggregate_key);
 
-			let mut resulting_hash = ActivityHash::default();
+			let mut resulting_hash = DeltaUsageHash::default();
 
 			for proof in challenge_response.proofs {
-				let leaf_record_hashes: Vec<ActivityHash> = match aggregate_key {
+				let leaf_record_hashes: Vec<DeltaUsageHash> = match aggregate_key {
 					AggregateKey::BucketSubAggregateKey(_, _) => proof
 						.leafs
 						.into_iter()
@@ -1788,7 +1773,7 @@ pub mod pallet {
 					leaf_record_hashes.clone().into_iter().map(hex::encode).collect();
 
 				log::info!(
-					"🚀 Fetched leaf record hashes aggregate key: {:?} leaf_record_hashes: {:?}",
+					"👁️‍🗨️  Fetched leaf record hashes aggregate key: {:?} leaf_record_hashes: {:?}",
 					aggregate_key,
 					leaf_record_hashes_string
 				);
@@ -1798,7 +1783,7 @@ pub mod pallet {
 						.map_err(|err| vec![err])?;
 
 				log::info!(
-					"🚀 Fetched leaf record root aggregate key: {:?} leaf_record_root_hash: {:?}",
+					"👁️‍🗨️  Fetched leaf record root aggregate key: {:?} leaf_record_root_hash: {:?}",
 					aggregate_key,
 					hex::encode(leaf_node_root)
 				);
@@ -1809,14 +1794,13 @@ pub mod pallet {
 				for path in paths {
 					let mut dec_buf = [0u8; _BUF_SIZE];
 					let bytes = Base64::decode(path, &mut dec_buf).unwrap(); // todo! remove unwrap
-					let path_hash: ActivityHash =
-						ActivityHash::from(sp_core::H256::from_slice(bytes));
+					let path_hash: DeltaUsageHash = DeltaUsageHash::from(H256::from_slice(bytes));
 
 					let node_root =
 						Self::create_merkle_root(cluster_id, era_id, &[resulting_hash, path_hash])
 							.map_err(|err| vec![err])?;
 
-					log::info!("🚀 Fetched leaf node root aggregate_key: {:?} for path:{:?} leaf_node_hash: {:?}",
+					log::info!("👁️‍🗨️  Fetched leaf node root aggregate_key: {:?} for path:{:?} leaf_node_hash: {:?}",
 						aggregate_key, path, hex::encode(node_root));
 
 					resulting_hash = node_root;
@@ -1888,7 +1872,7 @@ pub mod pallet {
 				Vec::new();
 
 			log::info!(
-				"🏠⏳ Starting fetching bucket sub-aggregates for cluster_id: {:?} for era_id: {:?}",
+				"👁️‍🗨️‍  Starting fetching bucket sub-aggregates for cluster_id: {:?} for era_id: {:?}",
 				cluster_id,
 				era_id
 			);
@@ -1910,68 +1894,287 @@ pub mod pallet {
 						buckets_sub_aggregates.push(bucket_sub_aggregate);
 					}
 
-					log::info!("🏠🚀 Fetched Bucket sub-aggregates for cluster_id: {:?} for era_id: {:?} for bucket_id {:?}::: Bucket Sub-Aggregates are {:?}", cluster_id, era_id, bucket_aggregate_resp.bucket_id, bucket_aggregate_resp.sub_aggregates);
+					log::info!("👁️‍🗨️‍  Fetched Bucket sub-aggregates for cluster_id: {:?} for era_id: {:?} for bucket_id {:?}::: Bucket Sub-Aggregates are {:?}", cluster_id, era_id, bucket_aggregate_resp.bucket_id, bucket_aggregate_resp.sub_aggregates);
 				}
 			}
 
 			let buckets_sub_aggregates_groups =
 				Self::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
 
-			log::info!("🏠🌕 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.consensus);
-			log::info!("🏠🌗 Bucket Sub-Aggregates, which are in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.quorum);
-			log::info!("🏠🌘 Bucket Sub-Aggregates, which are neither in consensus nor in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.others);
+			log::info!("👁️‍🗨️‍🌕 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.consensus);
+			log::info!("👁️‍🗨️‍🌗 Bucket Sub-Aggregates, which are in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.quorum);
+			log::info!("👁️‍🗨️‍🌘 Bucket Sub-Aggregates, which are neither in consensus nor in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.others);
 
 			buckets_sub_aggregates_groups
+		}
+
+		pub(crate) fn build_and_store_payable_usage(
+			cluster_id: &ClusterId,
+			era: EraActivity,
+		) -> Result<(), Vec<OCWError>> {
+			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
+
+			let (buckets_delta_usage, nodes_delta_usage) =
+				Self::fetch_verified_delta_usage_or_retry(cluster_id, era.id, era.start, era.end)?;
+
+			let payers_usage =
+				Self::calculate_buckets_payable_usage(cluster_id, buckets_delta_usage);
+
+			let payees_usage = Self::calculate_nodes_payable_usage(cluster_id, nodes_delta_usage);
+
+			let payers_batch_roots = Self::convert_to_batch_merkle_roots(
+				cluster_id,
+				era.id,
+				Self::split_to_batches(&payers_usage, batch_size.into()),
+			)
+			.map_err(|err| vec![err])?;
+
+			let payees_batch_roots = Self::convert_to_batch_merkle_roots(
+				cluster_id,
+				era.id,
+				Self::split_to_batches(&payees_usage, batch_size.into()),
+			)
+			.map_err(|err| vec![err])?;
+
+			let payers_root = Self::create_merkle_root(cluster_id, era.id, &payers_batch_roots)
+				.map_err(|err| vec![err])?;
+
+			let payees_root = Self::create_merkle_root(cluster_id, era.id, &payees_batch_roots)
+				.map_err(|err| vec![err])?;
+
+			Self::store_payable_usage(
+				cluster_id,
+				era,
+				payers_usage,
+				payers_root,
+				payers_batch_roots,
+				payees_usage,
+				payees_root,
+				payees_batch_roots,
+			);
+
+			Ok(())
+		}
+
+		fn fetch_payable_usage_or_retry(
+			cluster_id: &ClusterId,
+			era: EraActivity,
+		) -> Result<PayableEraUsage, Vec<OCWError>> {
+			if let Some(payble_usage) = Self::fetch_payable_usage(cluster_id, era.id) {
+				Ok(payble_usage)
+			} else {
+				Self::build_and_store_payable_usage(cluster_id, era)?;
+				if let Some(payble_usage) = Self::fetch_payable_usage(cluster_id, era.id) {
+					Ok(payble_usage)
+				} else {
+					Err(vec![OCWError::FailedToFetchVerifiedPayableUsage])
+				}
+			}
+		}
+
+		fn calculate_buckets_payable_usage(
+			cluster_id: &ClusterId,
+			buckets_delta_usage: Vec<BucketDeltaUsage>,
+		) -> Vec<BucketPayableUsage> {
+			let mut result = Vec::new();
+
+			let delta_usage_map: BTreeMap<BucketId, BucketDeltaUsage> = buckets_delta_usage
+				.into_iter()
+				.map(|delta_usage| (delta_usage.bucket_id, delta_usage))
+				.collect();
+
+			let mut merged_bucket_ids: BTreeSet<BucketId> = BTreeSet::new();
+
+			for current_usage in T::BucketsStorageUsageProvider::iter_storage_usage(cluster_id) {
+				if let Some(delta_usage) = delta_usage_map.get(&current_usage.bucket_id) {
+					// Intersection: Charge for the sum of the current usage and delta usage.
+					let payable_usage = BucketPayableUsage(
+						current_usage.bucket_id,
+						BucketUsage {
+							transferred_bytes: delta_usage.transferred_bytes,
+							stored_bytes: current_usage
+								.stored_bytes
+								.saturating_add(delta_usage.stored_bytes),
+							number_of_puts: delta_usage.number_of_puts,
+							number_of_gets: delta_usage.number_of_gets,
+						},
+					);
+
+					result.push(payable_usage);
+				} else {
+					// No Intersection: Charge for the current usage only. There was no activity for
+					// this bucket in the operating era.
+					let payable_usage = BucketPayableUsage(
+						current_usage.bucket_id,
+						BucketUsage {
+							transferred_bytes: 0,
+							stored_bytes: current_usage.stored_bytes,
+							number_of_puts: 0,
+							number_of_gets: 0,
+						},
+					);
+					result.push(payable_usage);
+				}
+				merged_bucket_ids.insert(current_usage.bucket_id);
+			}
+
+			for delta_usage in delta_usage_map.values() {
+				if !merged_bucket_ids.contains(&delta_usage.bucket_id) {
+					// No Intersection: Charge for the delta usage only. Possibly, this is a new
+					// bucket that is charged after its first operating era.
+					let payable_usage = BucketPayableUsage(
+						delta_usage.bucket_id,
+						BucketUsage {
+							transferred_bytes: delta_usage.transferred_bytes,
+							stored_bytes: delta_usage.stored_bytes,
+							number_of_puts: delta_usage.number_of_puts,
+							number_of_gets: delta_usage.number_of_gets,
+						},
+					);
+					result.push(payable_usage);
+				}
+			}
+
+			result
+		}
+
+		fn calculate_nodes_payable_usage(
+			cluster_id: &ClusterId,
+			nodes_delta_usage: Vec<NodeDeltaUsage>,
+		) -> Vec<NodePayableUsage> {
+			let mut result = Vec::new();
+
+			let delta_usage_map: BTreeMap<NodePubKey, NodeDeltaUsage> = nodes_delta_usage
+				.into_iter()
+				.filter_map(|delta_usage| {
+					if let Ok(node_key) = Self::node_key_from_hex(delta_usage.node_id.clone()) {
+						Option::Some((node_key, delta_usage))
+					} else {
+						Option::None
+					}
+				})
+				.collect();
+
+			let mut merged_nodes_keys: BTreeSet<NodePubKey> = BTreeSet::new();
+
+			for current_usage in T::NodesStorageUsageProvider::iter_storage_usage(cluster_id) {
+				if let Some(delta_usage) = delta_usage_map.get(&current_usage.node_key) {
+					// Intersection: Reward for the sum of the current usage and delta usage.
+					let payable_usage = NodePayableUsage(
+						current_usage.node_key.clone(),
+						NodeUsage {
+							transferred_bytes: delta_usage.transferred_bytes,
+							stored_bytes: current_usage
+								.stored_bytes
+								.saturating_add(delta_usage.stored_bytes),
+							number_of_puts: delta_usage.number_of_puts,
+							number_of_gets: delta_usage.number_of_gets,
+						},
+					);
+
+					result.push(payable_usage);
+				} else {
+					// No Intersection: Reward for the current usage only. There was no activity for
+					// this node in the operating era.
+					let payable_usage = NodePayableUsage(
+						current_usage.node_key.clone(),
+						NodeUsage {
+							transferred_bytes: 0,
+							stored_bytes: current_usage.stored_bytes,
+							number_of_puts: 0,
+							number_of_gets: 0,
+						},
+					);
+					result.push(payable_usage);
+				}
+				merged_nodes_keys.insert(current_usage.node_key);
+			}
+
+			for (node_key, delta_usage) in delta_usage_map.into_iter() {
+				if !merged_nodes_keys.contains(&node_key) {
+					// No Intersection: Reward for the delta usage only. Possibly, this is a new
+					// node that is rewarded after its first operating era.
+					let payable_usage = NodePayableUsage(
+						node_key,
+						NodeUsage {
+							transferred_bytes: delta_usage.transferred_bytes,
+							stored_bytes: delta_usage.stored_bytes,
+							number_of_puts: delta_usage.number_of_puts,
+							number_of_gets: delta_usage.number_of_gets,
+						},
+					);
+					result.push(payable_usage);
+				}
+			}
+
+			result
+		}
+
+		fn fetch_verified_delta_usage_or_retry(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+			start: i64,
+			end: i64,
+		) -> Result<(Vec<BucketDeltaUsage>, Vec<NodeDeltaUsage>), Vec<OCWError>> {
+			if let Some((buckets_deltas, _, _, nodes_deltas, _, _)) =
+				Self::fetch_verified_delta_usage(cluster_id, era_id)
+			{
+				Ok((buckets_deltas, nodes_deltas))
+			} else {
+				let era_activity = EraActivity { id: era_id, start, end };
+				Self::process_dac_era(cluster_id, Some(era_activity))?;
+				if let Some((buckets_deltas, _, _, nodes_deltas, _, _)) =
+					Self::fetch_verified_delta_usage(cluster_id, era_id)
+				{
+					Ok((buckets_deltas, nodes_deltas))
+				} else {
+					Err(vec![OCWError::FailedToFetchVerifiedDeltaUsage])
+				}
+			}
+		}
+
+		pub(crate) fn prepare_commit_billing_fingerprint(
+			cluster_id: &ClusterId,
+		) -> Result<Option<(EraActivity, PayableEraUsage)>, Vec<OCWError>> {
+			if let Some(era) =
+				Self::get_era_for_payout(cluster_id, EraValidationStatus::ReadyForPayout)
+			{
+				let era_payable_usage = Self::fetch_payable_usage_or_retry(cluster_id, era)?;
+				Ok(Some((era, era_payable_usage)))
+			} else {
+				Ok(None)
+			}
 		}
 
 		#[allow(dead_code)]
 		pub(crate) fn prepare_begin_billing_report(
 			cluster_id: &ClusterId,
-		) -> Result<Option<(DdcEra, i64, i64)>, OCWError> {
-			Ok(Self::get_era_for_payout(cluster_id, EraValidationStatus::ReadyForPayout))
+		) -> Result<Option<(DdcEra, Fingerprint)>, Vec<OCWError>> {
+			if let Some(era) =
+				Self::get_era_for_payout(cluster_id, EraValidationStatus::ReadyForPayout)
+			{
+				let era_payable_usage = Self::fetch_payable_usage_or_retry(cluster_id, era)?;
+				Ok(Some((era.id, era_payable_usage.fingerprint())))
+			} else {
+				Ok(None)
+			}
 		}
 
 		pub(crate) fn prepare_begin_charging_customers(
 			cluster_id: &ClusterId,
-			batch_size: usize,
 		) -> Result<Option<(DdcEra, BatchIndex)>, Vec<OCWError>> {
-			if let Some((era_id, start, end)) =
+			if let Some(era) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era.id) ==
 					PayoutState::Initialized
 				{
-					if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
-						Self::fetch_validation_activities::<
-							aggregator_client::json::BucketSubAggregate,
-							aggregator_client::json::NodeAggregate,
-						>(cluster_id, era_id)
-					{
-						Self::fetch_customer_activity(
-							cluster_id,
-							era_id,
-							customers_activity_batch_roots,
-						)
-					} else {
-						let era_activity = EraActivity { id: era_id, start, end };
-
-						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
-
-						if let Some((_, _, customers_activity_batch_roots, _, _, _)) =
-							Self::fetch_validation_activities::<
-								aggregator_client::json::BucketSubAggregate,
-								aggregator_client::json::NodeAggregate,
-							>(cluster_id, era_id)
-						{
-							Self::fetch_customer_activity(
-								cluster_id,
-								era_id,
-								customers_activity_batch_roots,
-							)
-						} else {
-							Ok(None)
-						}
-					}
+					let era_payable_usage = Self::fetch_payable_usage_or_retry(cluster_id, era)?;
+					Self::fetch_charging_loop_input(
+						cluster_id,
+						era.id,
+						era_payable_usage.payers_batch_roots,
+					)
 				} else {
 					Ok(None)
 				}
@@ -1980,14 +2183,12 @@ pub mod pallet {
 			}
 		}
 
-		pub(crate) fn fetch_customer_activity(
+		pub(crate) fn fetch_charging_loop_input(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			customers_activity_batch_roots: Vec<ActivityHash>,
+			payers_batch_roots: Vec<PayableUsageHash>,
 		) -> Result<Option<(DdcEra, BatchIndex)>, Vec<OCWError>> {
-			if let Some(max_batch_index) = customers_activity_batch_roots.len().checked_sub(1)
-			// -1 cause payout expects max_index, not length
-			{
+			if let Some(max_batch_index) = payers_batch_roots.len().checked_sub(1) {
 				let max_batch_index: u16 = max_batch_index.try_into().map_err(|_| {
 					vec![OCWError::BatchIndexConversionFailed { cluster_id: *cluster_id, era_id }]
 				})?;
@@ -1999,61 +2200,23 @@ pub mod pallet {
 
 		pub(crate) fn prepare_send_charging_customers_batch(
 			cluster_id: &ClusterId,
-			batch_size: usize,
 		) -> Result<Option<(DdcEra, CustomerBatch)>, Vec<OCWError>> {
-			if let Some((era_id, start, end)) =
+			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
+
+			if let Some(era) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era.id) ==
 					PayoutState::ChargingCustomers
 				{
-					if let Some((
-						customers_total_activity,
-						_,
-						customers_activity_batch_roots,
-						_,
-						_,
-						_,
-					)) = Self::fetch_validation_activities::<
-						aggregator_client::json::BucketSubAggregate,
-						aggregator_client::json::NodeAggregate,
-					>(cluster_id, era_id)
-					{
-						Self::fetch_charging_activities(
-							cluster_id,
-							batch_size,
-							era_id,
-							customers_total_activity,
-							customers_activity_batch_roots,
-						)
-					} else {
-						let era_activity = EraActivity { id: era_id, start, end };
-
-						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
-
-						if let Some((
-							customers_total_activity,
-							_,
-							customers_activity_batch_roots,
-							_,
-							_,
-							_,
-						)) = Self::fetch_validation_activities::<
-							aggregator_client::json::BucketSubAggregate,
-							aggregator_client::json::NodeAggregate,
-						>(cluster_id, era_id)
-						{
-							Self::fetch_charging_activities(
-								cluster_id,
-								batch_size,
-								era_id,
-								customers_total_activity,
-								customers_activity_batch_roots,
-							)
-						} else {
-							Ok(None)
-						}
-					}
+					let era_payable_usage = Self::fetch_payable_usage_or_retry(cluster_id, era)?;
+					Self::fetch_charging_customers_batch(
+						cluster_id,
+						batch_size.into(),
+						era.id,
+						era_payable_usage.payers_usage,
+						era_payable_usage.payers_batch_roots,
+					)
 				} else {
 					Ok(None)
 				}
@@ -2062,12 +2225,12 @@ pub mod pallet {
 			}
 		}
 
-		fn fetch_charging_activities(
+		fn fetch_charging_customers_batch(
 			cluster_id: &ClusterId,
 			batch_size: usize,
 			era_id: DdcEra,
-			customers_total_activity: Vec<aggregator_client::json::BucketSubAggregate>,
-			customers_activity_batch_roots: Vec<ActivityHash>,
+			payers_usage: Vec<BucketPayableUsage>,
+			payers_batch_roots: Vec<PayableUsageHash>,
 		) -> Result<Option<(DdcEra, CustomerBatch)>, Vec<OCWError>> {
 			let batch_index =
 				T::PayoutProcessor::get_next_customer_batch_for_payment(cluster_id, era_id)
@@ -2081,20 +2244,17 @@ pub mod pallet {
 			if let Some(index) = batch_index {
 				let i: usize = index.into();
 				// todo! store batched activity to avoid splitting it again each time
-				let customers_activity_batched =
-					Self::split_to_batches(&customers_total_activity, batch_size);
+				let payers_batches = Self::split_to_batches(&payers_usage, batch_size);
 
-				let batch_root = customers_activity_batch_roots[i];
+				let batch_root = payers_batch_roots[i];
 				let store = MemStore::default();
-				let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
-					MemMMR::<_, MergeActivityHash>::new(0, &store);
+				let mut mmr: MMR<DeltaUsageHash, MergeMMRHash, &MemStore<DeltaUsageHash>> =
+					MemMMR::<_, MergeMMRHash>::new(0, &store);
 
-				let leaf_position_map: Vec<(ActivityHash, u64)> = customers_activity_batch_roots
-					.iter()
-					.map(|a| (*a, mmr.push(*a).unwrap()))
-					.collect();
+				let leaf_position_map: Vec<(DeltaUsageHash, u64)> =
+					payers_batch_roots.iter().map(|a| (*a, mmr.push(*a).unwrap())).collect();
 
-				let leaf_position: Vec<(u64, ActivityHash)> = leaf_position_map
+				let leaf_position: Vec<(u64, DeltaUsageHash)> = leaf_position_map
 					.iter()
 					.filter(|&(l, _)| l == &batch_root)
 					.map(|&(ref l, p)| (p, *l))
@@ -2117,19 +2277,17 @@ pub mod pallet {
 					era_id,
 					CustomerBatch {
 						batch_index: index,
-						payers: customers_activity_batched[i]
+						payers: payers_batches[i]
 							.iter()
-							.map(|activity| {
-								let node_key = Self::node_key_from_hex(activity.node_id.clone())
-									.expect("Node Public Key to be decoded");
-								let bucket_id = activity.bucket_id;
+							.map(|payable_usage| {
+								let bucket_id = payable_usage.0;
 								let customer_usage = BucketUsage {
-									transferred_bytes: activity.transferred_bytes,
-									stored_bytes: activity.stored_bytes,
-									number_of_puts: activity.number_of_puts,
-									number_of_gets: activity.number_of_gets,
+									transferred_bytes: payable_usage.1.transferred_bytes,
+									stored_bytes: payable_usage.1.stored_bytes,
+									number_of_puts: payable_usage.1.number_of_puts,
+									number_of_gets: payable_usage.1.number_of_gets,
 								};
-								(node_key, bucket_id, customer_usage)
+								(bucket_id, customer_usage)
 							})
 							.collect(),
 						batch_proof,
@@ -2142,15 +2300,15 @@ pub mod pallet {
 
 		pub(crate) fn prepare_end_charging_customers(
 			cluster_id: &ClusterId,
-		) -> Result<Option<DdcEra>, OCWError> {
-			if let Some((era_id, _start, _end)) =
+		) -> Result<Option<DdcEra>, Vec<OCWError>> {
+			if let Some(era) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era.id) ==
 					PayoutState::ChargingCustomers &&
-					T::PayoutProcessor::all_customer_batches_processed(cluster_id, era_id)
+					T::PayoutProcessor::all_customer_batches_processed(cluster_id, era.id)
 				{
-					return Ok(Some(era_id));
+					return Ok(Some(era.id));
 				}
 			}
 			Ok(None)
@@ -2158,62 +2316,19 @@ pub mod pallet {
 
 		pub(crate) fn prepare_begin_rewarding_providers(
 			cluster_id: &ClusterId,
-			batch_size: usize,
-		) -> Result<Option<(DdcEra, BatchIndex, NodeUsage)>, Vec<OCWError>> {
-			if let Some((era_id, start, end)) =
+		) -> Result<Option<(DdcEra, BatchIndex)>, Vec<OCWError>> {
+			if let Some(era) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				let nodes_total_usages = Self::get_nodes_total_usage(cluster_id)?;
-
-				let nodes_total_usage: i64 = nodes_total_usages
-					.iter()
-					.filter_map(|usage| usage.as_ref().map(|u| u.stored_bytes))
-					.sum();
-
-				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era.id) ==
 					PayoutState::CustomersChargedWithFees
 				{
-					if let Some((_, _, _, nodes_total_activity, _, nodes_activity_batch_roots)) =
-						Self::fetch_validation_activities::<
-							aggregator_client::json::BucketSubAggregate,
-							aggregator_client::json::NodeAggregate,
-						>(cluster_id, era_id)
-					{
-						Self::fetch_reward_activities(
-							cluster_id,
-							era_id,
-							nodes_total_activity,
-							nodes_activity_batch_roots,
-							nodes_total_usage,
-						)
-					} else {
-						let era_activity = EraActivity { id: era_id, start, end };
-
-						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
-
-						if let Some((
-							_,
-							_,
-							_,
-							nodes_total_activity,
-							_,
-							nodes_activity_batch_roots,
-						)) = Self::fetch_validation_activities::<
-							aggregator_client::json::BucketSubAggregate,
-							aggregator_client::json::NodeAggregate,
-						>(cluster_id, era_id)
-						{
-							Self::fetch_reward_activities(
-								cluster_id,
-								era_id,
-								nodes_total_activity,
-								nodes_activity_batch_roots,
-								nodes_total_usage,
-							)
-						} else {
-							Ok(None)
-						}
-					}
+					let era_payable_usage = Self::fetch_payable_usage_or_retry(cluster_id, era)?;
+					Self::fetch_rewarding_loop_input(
+						cluster_id,
+						era.id,
+						era_payable_usage.payees_batch_roots,
+					)
 				} else {
 					Ok(None)
 				}
@@ -2222,35 +2337,17 @@ pub mod pallet {
 			}
 		}
 
-		pub(crate) fn fetch_reward_activities(
+		pub(crate) fn fetch_rewarding_loop_input(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			nodes_total_activity: Vec<aggregator_client::json::NodeAggregate>,
-			nodes_activity_batch_roots: Vec<ActivityHash>,
-			current_nodes_total_usage: i64,
-		) -> Result<Option<(DdcEra, BatchIndex, NodeUsage)>, Vec<OCWError>> {
-			if let Some(max_batch_index) = nodes_activity_batch_roots.len().checked_sub(1)
-			// -1 cause payout expects max_index, not length
-			{
+			payees_batch_roots: Vec<PayableUsageHash>,
+		) -> Result<Option<(DdcEra, BatchIndex)>, Vec<OCWError>> {
+			if let Some(max_batch_index) = payees_batch_roots.len().checked_sub(1) {
 				let max_batch_index: u16 = max_batch_index.try_into().map_err(|_| {
 					vec![OCWError::BatchIndexConversionFailed { cluster_id: *cluster_id, era_id }]
 				})?;
 
-				let mut total_node_usage = NodeUsage {
-					transferred_bytes: 0,
-					stored_bytes: current_nodes_total_usage,
-					number_of_puts: 0,
-					number_of_gets: 0,
-				};
-
-				for activity in nodes_total_activity {
-					total_node_usage.transferred_bytes += activity.transferred_bytes;
-					total_node_usage.stored_bytes += activity.stored_bytes;
-					total_node_usage.number_of_puts += activity.number_of_puts;
-					total_node_usage.number_of_gets += activity.number_of_gets;
-				}
-
-				Ok(Some((era_id, max_batch_index, total_node_usage)))
+				Ok(Some((era_id, max_batch_index)))
 			} else {
 				Err(vec![OCWError::EmptyCustomerActivity { cluster_id: *cluster_id, era_id }])
 			}
@@ -2258,55 +2355,23 @@ pub mod pallet {
 
 		pub(crate) fn prepare_send_rewarding_providers_batch(
 			cluster_id: &ClusterId,
-			batch_size: usize,
 		) -> Result<Option<(DdcEra, ProviderBatch)>, Vec<OCWError>> {
-			if let Some((era_id, start, end)) =
+			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
+
+			if let Some(era) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era.id) ==
 					PayoutState::RewardingProviders
 				{
-					if let Some((_, _, _, nodes_total_activity, _, nodes_activity_batch_roots)) =
-						Self::fetch_validation_activities::<
-							aggregator_client::json::BucketSubAggregate,
-							aggregator_client::json::NodeAggregate,
-						>(cluster_id, era_id)
-					{
-						Self::fetch_reward_provider_batch(
-							cluster_id,
-							batch_size,
-							era_id,
-							nodes_total_activity,
-							nodes_activity_batch_roots,
-						)
-					} else {
-						let era_activity = EraActivity { id: era_id, start, end };
-
-						let _ = Self::process_dac_era(cluster_id, Some(era_activity), batch_size)?;
-
-						if let Some((
-							_,
-							_,
-							_,
-							nodes_total_activity,
-							_,
-							nodes_activity_batch_roots,
-						)) = Self::fetch_validation_activities::<
-							aggregator_client::json::BucketSubAggregate,
-							aggregator_client::json::NodeAggregate,
-						>(cluster_id, era_id)
-						{
-							Self::fetch_reward_provider_batch(
-								cluster_id,
-								batch_size,
-								era_id,
-								nodes_total_activity,
-								nodes_activity_batch_roots,
-							)
-						} else {
-							Ok(None)
-						}
-					}
+					let era_payable_usage = Self::fetch_payable_usage_or_retry(cluster_id, era)?;
+					Self::fetch_rewarding_providers_batch(
+						cluster_id,
+						batch_size.into(),
+						era.id,
+						era_payable_usage.payees_usage,
+						era_payable_usage.payees_batch_roots,
+					)
 				} else {
 					Ok(None)
 				}
@@ -2315,12 +2380,12 @@ pub mod pallet {
 			}
 		}
 
-		fn fetch_reward_provider_batch(
+		fn fetch_rewarding_providers_batch(
 			cluster_id: &ClusterId,
 			batch_size: usize,
 			era_id: DdcEra,
-			nodes_total_activity: Vec<aggregator_client::json::NodeAggregate>,
-			nodes_activity_batch_roots: Vec<ActivityHash>,
+			payees_usage: Vec<NodePayableUsage>,
+			payees_batch_roots: Vec<PayableUsageHash>,
 		) -> Result<Option<(DdcEra, ProviderBatch)>, Vec<OCWError>> {
 			let batch_index =
 				T::PayoutProcessor::get_next_provider_batch_for_payment(cluster_id, era_id)
@@ -2334,20 +2399,17 @@ pub mod pallet {
 			if let Some(index) = batch_index {
 				let i: usize = index.into();
 				// todo! store batched activity to avoid splitting it again each time
-				let nodes_activity_batched =
-					Self::split_to_batches(&nodes_total_activity, batch_size);
+				let nodes_activity_batched = Self::split_to_batches(&payees_usage, batch_size);
 
-				let batch_root = nodes_activity_batch_roots[i];
+				let batch_root = payees_batch_roots[i];
 				let store = MemStore::default();
-				let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
-					MemMMR::<_, MergeActivityHash>::new(0, &store);
+				let mut mmr: MMR<DeltaUsageHash, MergeMMRHash, &MemStore<DeltaUsageHash>> =
+					MemMMR::<_, MergeMMRHash>::new(0, &store);
 
-				let leaf_position_map: Vec<(ActivityHash, u64)> = nodes_activity_batch_roots
-					.iter()
-					.map(|a| (*a, mmr.push(*a).unwrap()))
-					.collect();
+				let leaf_position_map: Vec<(DeltaUsageHash, u64)> =
+					payees_batch_roots.iter().map(|a| (*a, mmr.push(*a).unwrap())).collect();
 
-				let leaf_position: Vec<(u64, ActivityHash)> = leaf_position_map
+				let leaf_position: Vec<(u64, DeltaUsageHash)> = leaf_position_map
 					.iter()
 					.filter(|&(l, _)| l == &batch_root)
 					.map(|&(ref l, p)| (p, *l))
@@ -2373,16 +2435,15 @@ pub mod pallet {
 						batch_index: index,
 						payees: nodes_activity_batched[i]
 							.iter()
-							.map(|activity| {
-								let node_key = Self::node_key_from_hex(activity.node_id.clone())
-									.expect("Node Public Key to be decoded");
-								let node_usage = NodeUsage {
-									transferred_bytes: activity.transferred_bytes,
-									stored_bytes: activity.stored_bytes,
-									number_of_puts: activity.number_of_puts,
-									number_of_gets: activity.number_of_gets,
+							.map(|payable_usage| {
+								let node_key = payable_usage.0.clone();
+								let provider_usage = NodeUsage {
+									transferred_bytes: payable_usage.1.transferred_bytes,
+									stored_bytes: payable_usage.1.stored_bytes,
+									number_of_puts: payable_usage.1.number_of_puts,
+									number_of_gets: payable_usage.1.number_of_gets,
 								};
-								(node_key, node_usage)
+								(node_key, provider_usage)
 							})
 							.collect(),
 						batch_proof,
@@ -2395,15 +2456,15 @@ pub mod pallet {
 
 		pub(crate) fn prepare_end_rewarding_providers(
 			cluster_id: &ClusterId,
-		) -> Result<Option<DdcEra>, OCWError> {
-			if let Some((era_id, _start, _end)) =
+		) -> Result<Option<DdcEra>, Vec<OCWError>> {
+			if let Some(era) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era.id) ==
 					PayoutState::RewardingProviders &&
-					T::PayoutProcessor::all_provider_batches_processed(cluster_id, era_id)
+					T::PayoutProcessor::all_provider_batches_processed(cluster_id, era.id)
 				{
-					return Ok(Some(era_id));
+					return Ok(Some(era.id));
 				}
 			}
 			Ok(None)
@@ -2411,38 +2472,45 @@ pub mod pallet {
 
 		pub(crate) fn prepare_end_billing_report(
 			cluster_id: &ClusterId,
-		) -> Result<Option<DdcEra>, OCWError> {
-			if let Some((era_id, _start, _end)) =
+		) -> Result<Option<DdcEra>, Vec<OCWError>> {
+			if let Some(era) =
 				Self::get_era_for_payout(cluster_id, EraValidationStatus::PayoutInProgress)
 			{
-				if T::PayoutProcessor::get_billing_report_status(cluster_id, era_id) ==
+				if T::PayoutProcessor::get_billing_report_status(cluster_id, era.id) ==
 					PayoutState::ProvidersRewarded
 				{
-					return Ok(Some(era_id));
+					return Ok(Some(era.id));
 				}
 			}
 			Ok(None)
 		}
 
-		pub(crate) fn derive_key(cluster_id: &ClusterId, era_id: DdcEra) -> Vec<u8> {
+		pub(crate) fn derive_delta_usage_key(cluster_id: &ClusterId, era_id: DdcEra) -> Vec<u8> {
 			format!("offchain::activities::{:?}::{:?}", cluster_id, era_id).into_bytes()
 		}
 
-		pub(crate) fn collect_verification_pub_key() -> Result<T::Public, OCWError> {
+		pub(crate) fn derive_paybale_usage_key(cluster_id: &ClusterId, era_id: DdcEra) -> Vec<u8> {
+			format!("offchain::paybale_usage::{:?}::{:?}", cluster_id, era_id).into_bytes()
+		}
+
+		pub(crate) fn collect_verification_pub_key() -> Result<Account<T>, OCWError> {
 			let session_verification_keys = <T::OffchainIdentifierId as AppCrypto<
 				T::Public,
 				T::Signature,
 			>>::RuntimeAppPublic::all()
 			.into_iter()
-			.filter_map(|key| {
+			.enumerate()
+			.filter_map(|(i, key)| {
 				let generic_public = <T::OffchainIdentifierId as AppCrypto<
 					T::Public,
 					T::Signature,
 				>>::GenericPublic::from(key);
 				let public_key: T::Public = generic_public.into();
 				let account_id = public_key.clone().into_account();
+
 				if <ValidatorSet<T>>::get().contains(&account_id) {
-					Option::Some(public_key)
+					let account = Account::new(i, account_id, public_key);
+					Option::Some(account)
 				} else {
 					Option::None
 				}
@@ -2482,28 +2550,25 @@ pub mod pallet {
 			}
 		}
 
-		#[allow(clippy::too_many_arguments)] // todo! (2) refactor into 2 different methods (for customers and nodes) + use type info for
-									 // derive_key
-									 // todo! introduce new struct for input and remove clippy::type_complexity
-		pub(crate) fn store_validation_activities<A: Encode, B: Encode>(
-			// todo! (3) add tests
+		#[allow(clippy::too_many_arguments)]
+		pub(crate) fn store_verified_delta_usage<A: Encode, B: Encode>(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			customers_total_activity: &[A],
-			customers_activity_root: ActivityHash,
-			customers_activity_batch_roots: &[ActivityHash],
-			nodes_total_activity: &[B],
-			nodes_activity_root: ActivityHash,
-			nodes_activity_batch_roots: &[ActivityHash],
+			buckets_deltas: &[A],
+			buckets_deltas_root: DeltaUsageHash,
+			buckets_deltas_batch_roots: &[DeltaUsageHash],
+			nodes_deltas: &[B],
+			nodes_deltas_root: DeltaUsageHash,
+			nodes_deltas_batch_roots: &[DeltaUsageHash],
 		) {
-			let key = Self::derive_key(cluster_id, era_id);
+			let key = Self::derive_delta_usage_key(cluster_id, era_id);
 			let encoded_tuple = (
-				customers_total_activity,
-				customers_activity_root,
-				customers_activity_batch_roots,
-				nodes_total_activity,
-				nodes_activity_root,
-				nodes_activity_batch_roots,
+				buckets_deltas,
+				buckets_deltas_root,
+				buckets_deltas_batch_roots,
+				nodes_deltas,
+				nodes_deltas_root,
+				nodes_deltas_batch_roots,
 			)
 				.encode();
 
@@ -2511,59 +2576,24 @@ pub mod pallet {
 			local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
 		}
 
-		pub(crate) fn get_nodes_total_usage(
-			cluster_id: &ClusterId,
-		) -> Result<Vec<Option<NodeUsage>>, Vec<OCWError>> {
-			let mut results: Vec<Option<NodeUsage>> = Vec::new();
-			let mut errors: Vec<OCWError> = Vec::new();
-
-			let nodes = match T::ClusterManager::get_nodes(cluster_id) {
-				Ok(nodes_pub_keys) => nodes_pub_keys,
-				Err(_) => {
-					errors.push(OCWError::FailedToFetchClusterNodes);
-					return Err(errors);
-				},
-			};
-
-			for node_pub_key in nodes.iter() {
-				match T::NodeManager::get_total_usage(node_pub_key) {
-					Ok(usage) => results.push(usage),
-					Err(_err) => {
-						errors.push(OCWError::FailedToFetchNodeTotalUsage {
-							cluster_id: *cluster_id,
-							node_pub_key: node_pub_key.clone(),
-						});
-					},
-				}
-			}
-
-			if !errors.is_empty() {
-				return Err(errors);
-			}
-
-			Ok(results)
-		}
-
 		#[allow(clippy::type_complexity)]
-		pub(crate) fn fetch_validation_activities<A: Decode, B: Decode>(
-			// todo! (4) add tests
-			// todo! introduce new struct for results and remove clippy::type_complexity
+		pub(crate) fn fetch_verified_delta_usage(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 		) -> Option<(
-			Vec<A>,
-			ActivityHash,
-			Vec<ActivityHash>,
-			Vec<B>,
-			ActivityHash,
-			Vec<ActivityHash>,
+			Vec<BucketDeltaUsage>,
+			DeltaUsageHash,
+			Vec<DeltaUsageHash>,
+			Vec<NodeDeltaUsage>,
+			DeltaUsageHash,
+			Vec<DeltaUsageHash>,
 		)> {
 			log::info!(
-				"🏠 Off-chain validation_activities cache hit for ClusterId: {:?} EraId: {:?}",
+				"👁️‍🗨️🏠 Off-chain cache hit for Verified Delta in cluster_id: {:?} era_id: {:?}",
 				cluster_id,
 				era_id
 			);
-			let key = Self::derive_key(cluster_id, era_id);
+			let key = Self::derive_delta_usage_key(cluster_id, era_id);
 
 			// Retrieve encoded tuple from local storage
 			let encoded_tuple = match local_storage_get(StorageKind::PERSISTENT, &key) {
@@ -2574,26 +2604,107 @@ pub mod pallet {
 			// Attempt to decode tuple from bytes
 			match Decode::decode(&mut &encoded_tuple[..]) {
 				Ok((
-					customers_total_activity,
-					customers_activity_root,
-					customers_activity_batch_roots,
-					nodes_total_activity,
-					nodes_activity_root,
-					nodes_activity_batch_roots,
+					buckets_deltas,
+					buckets_deltas_root,
+					buckets_deltas_batch_roots,
+					nodes_deltas,
+					nodes_deltas_root,
+					nodes_deltas_batch_roots,
 				)) => Some((
-					customers_total_activity,
-					customers_activity_root,
-					customers_activity_batch_roots,
-					nodes_total_activity,
-					nodes_activity_root,
-					nodes_activity_batch_roots,
+					buckets_deltas,
+					buckets_deltas_root,
+					buckets_deltas_batch_roots,
+					nodes_deltas,
+					nodes_deltas_root,
+					nodes_deltas_batch_roots,
 				)),
 				Err(err) => {
 					// Print error message with details of the decoding error
-					log::error!("🦀Decoding error: {:?}", err);
+					log::error!("Decoding error: {:?}", err);
 					None
 				},
 			}
+		}
+
+		#[allow(clippy::too_many_arguments)]
+		pub(crate) fn store_payable_usage(
+			cluster_id: &ClusterId,
+			era: EraActivity,
+			payers_usage: Vec<BucketPayableUsage>,
+			payers_root: PayableUsageHash,
+			payers_batch_roots: Vec<PayableUsageHash>,
+			payees_usage: Vec<NodePayableUsage>,
+			payees_root: PayableUsageHash,
+			payees_batch_roots: Vec<PayableUsageHash>,
+		) {
+			let key = Self::derive_paybale_usage_key(cluster_id, era.id);
+
+			let mut cluster_usage = NodeUsage {
+				transferred_bytes: 0,
+				stored_bytes: 0,
+				number_of_puts: 0,
+				number_of_gets: 0,
+			};
+
+			for usage in payees_usage.clone() {
+				cluster_usage.transferred_bytes += usage.1.transferred_bytes;
+				cluster_usage.stored_bytes += usage.1.stored_bytes;
+				cluster_usage.number_of_puts += usage.1.number_of_puts;
+				cluster_usage.number_of_gets += usage.1.number_of_gets;
+			}
+			let era_paybale_usage = PayableEraUsage {
+				cluster_id: *cluster_id,
+				era,
+				payers_usage,
+				payers_root,
+				payers_batch_roots,
+				payees_usage,
+				payees_root,
+				payees_batch_roots,
+				cluster_usage,
+			};
+			let encoded_era_paybale_usage = era_paybale_usage.encode();
+
+			// Store the serialized data in local offchain storage
+			local_storage_set(StorageKind::PERSISTENT, &key, &encoded_era_paybale_usage);
+		}
+
+		#[allow(clippy::type_complexity)]
+		pub(crate) fn fetch_payable_usage(
+			cluster_id: &ClusterId,
+			era_id: DdcEra,
+		) -> Option<PayableEraUsage> {
+			log::info!(
+				"🪙🏠 Off-chain cache hit for Payable Usage in cluster_id: {:?} era_id: {:?}",
+				cluster_id,
+				era_id
+			);
+			let key = Self::derive_paybale_usage_key(cluster_id, era_id);
+
+			let encoded_era_paybale_usage = match local_storage_get(StorageKind::PERSISTENT, &key) {
+				Some(encoded_data) => encoded_data,
+				None => return None,
+			};
+
+			match Decode::decode(&mut &encoded_era_paybale_usage[..]) {
+				Ok(era_paybale_usage) => Some(era_paybale_usage),
+				Err(err) => {
+					log::error!("Decoding error: {:?}", err);
+					None
+				},
+			}
+		}
+
+		pub(crate) fn clear_verified_delta_usage(cluster_id: &ClusterId, era_id: DdcEra) {
+			let key = Self::derive_delta_usage_key(cluster_id, era_id);
+			log::debug!(
+				"Clearing validation activities for cluster {:?} at era {:?}, key {:?}",
+				cluster_id,
+				era_id,
+				key,
+			);
+
+			local_storage_clear(StorageKind::PERSISTENT, &key);
 		}
 
 		pub(crate) fn _store_and_fetch_nonce(node_id: String) -> u64 {
@@ -2604,8 +2715,7 @@ pub mod pallet {
 			let nonce_data = match Decode::decode(&mut &encoded_nonce[..]) {
 				Ok(nonce) => nonce,
 				Err(err) => {
-					// Print error message with details of the decoding error
-					log::error!("🦀Decoding error while fetching nonce: {:?}", err);
+					log::error!("Decoding error while fetching nonce: {:?}", err);
 					0
 				},
 			};
@@ -2616,33 +2726,33 @@ pub mod pallet {
 			nonce_data
 		}
 
-		/// Converts a vector of activity batches into their corresponding Merkle roots.
+		/// Converts a vector of hashable batches into their corresponding Merkle roots.
 		///
-		/// This function takes a vector of activity batches, where each batch is a vector of
-		/// activities. It computes the Merkle root for each batch by first hashing each activity
-		/// and then combining these hashes into a single Merkle root.
+		/// This function takes a vector of hashable batches, where each batch is a vector of
+		/// hashable items. It computes the Merkle root for each batch by first hashing each
+		/// activity and then combining these hashes into a single Merkle root.
 		///
 		/// # Input Parameters
-		/// - `activities: Vec<Vec<A>>`: A vector of vectors, where each inner vector represents a
-		///   batch of activities.
+		/// - `batches: Vec<Vec<A>>`: A vector of vectors, where each inner vector represents a
+		///   batch of hashable items..
 		///
 		/// # Output
-		/// - `Vec<ActivityHash>`: A vector of Merkle roots, one for each batch of activities.
-		pub(crate) fn convert_to_batch_merkle_roots<A: Aggregate>(
+		/// - `Vec<H256>`: A vector of Merkle roots, one for each batch of items.
+		pub(crate) fn convert_to_batch_merkle_roots<A: Hashable>(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
 			batches: Vec<Vec<A>>,
-		) -> Result<Vec<ActivityHash>, OCWError> {
+		) -> Result<Vec<H256>, OCWError> {
 			batches
 				.into_iter()
 				.map(|batch| {
-					let activity_hashes: Vec<ActivityHash> =
+					let activity_hashes: Vec<H256> =
 						batch.into_iter().map(|a| a.hash::<T>()).collect();
 					Self::create_merkle_root(cluster_id, era_id, &activity_hashes).map_err(|_| {
 						OCWError::FailedToCreateMerkleRoot { cluster_id: *cluster_id, era_id }
 					})
 				})
-				.collect::<Result<Vec<ActivityHash>, OCWError>>()
+				.collect::<Result<Vec<H256>, OCWError>>()
 		}
 
 		/// Splits a slice of activities into batches of a specified size.
@@ -2656,7 +2766,7 @@ pub mod pallet {
 		///
 		/// # Output
 		/// - `Vec<Vec<A>>`: A vector of vectors, where each inner vector is a batch of activities.
-		pub(crate) fn split_to_batches<A: Aggregate>(
+		pub(crate) fn split_to_batches<A: Ord + Clone>(
 			activities: &[A],
 			batch_size: usize,
 		) -> Vec<Vec<A>> {
@@ -2671,38 +2781,37 @@ pub mod pallet {
 			sorted_activities.chunks(batch_size).map(|chunk| chunk.to_vec()).collect()
 		}
 
-		/// Creates a Merkle root from a list of activity hashes.
+		/// Creates a Merkle root from a list of hashes.
 		///
-		/// This function takes a slice of `ActivityHash` and constructs a Merkle tree
+		/// This function takes a slice of `H256` and constructs a Merkle tree
 		/// using an in-memory store. It returns a tuple containing the Merkle root hash,
 		/// the size of the Merkle tree, and a vector mapping each input leaf to its position
 		/// in the Merkle tree.
 		///
 		/// # Input Parameters
 		///
-		/// * `leaves` - A slice of `ActivityHash` representing the leaves of the Merkle tree.
+		/// * `leaves` - A slice of `H256` representing the leaves of the Merkle tree.
 		///
 		/// # Output
 		///
 		/// A `Result` containing:
-		/// * A tuple with the Merkle root `ActivityHash`, the size of the Merkle tree, and a vector
-		///   mapping each input leaf to its position in the Merkle tree.
+		/// * A tuple with the Merkle root `H256`, the size of the Merkle tree, and a vector mapping
+		///   each input leaf to its position in the Merkle tree.
 		/// * `OCWError::FailedToCreateMerkleRoot` if there is an error creating the Merkle root.
 		pub(crate) fn create_merkle_root(
 			cluster_id: &ClusterId,
 			era_id: DdcEra,
-			leaves: &[ActivityHash],
-		) -> Result<ActivityHash, OCWError> {
+			leaves: &[H256],
+		) -> Result<H256, OCWError> {
 			if leaves.is_empty() {
-				return Ok(ActivityHash::default());
+				return Ok(H256::default());
 			}
 
 			let store = MemStore::default();
-			let mut mmr: MMR<ActivityHash, MergeActivityHash, &MemStore<ActivityHash>> =
-				MemMMR::<_, MergeActivityHash>::new(0, &store);
+			let mut mmr: MMR<H256, MergeMMRHash, &MemStore<H256>> =
+				MemMMR::<_, MergeMMRHash>::new(0, &store);
 
-			let mut leaves_with_position: Vec<(u64, ActivityHash)> =
-				Vec::with_capacity(leaves.len());
+			let mut leaves_with_position: Vec<(u64, H256)> = Vec::with_capacity(leaves.len());
 
 			for &leaf in leaves {
 				match mmr.push(leaf) {
@@ -2719,34 +2828,10 @@ pub mod pallet {
 				.map_err(|_| OCWError::FailedToCreateMerkleRoot { cluster_id: *cluster_id, era_id })
 		}
 
-		/// Verify whether leaf is part of tree
-		///
-		/// Parameters:
-		/// - `root_hash`: merkle root hash
-		/// - `batch_hash`: hash of the batch
-		/// - `batch_index`: index of the batch
-		/// - `batch_proof`: MMR proofs
-		pub(crate) fn proof_merkle_leaf(
-			root_hash: ActivityHash,
-			batch_hash: ActivityHash,
-			batch_index: BatchIndex,
-			max_batch_index: BatchIndex,
-			batch_proof: &MMRProof,
-		) -> Result<bool, Error<T>> {
-			let batch_position = leaf_index_to_pos(batch_index.into());
-			let mmr_size = leaf_index_to_mmr_size(max_batch_index.into());
-			let proof: MerkleProof<ActivityHash, MergeActivityHash> =
-				MerkleProof::new(mmr_size, batch_proof.proof.clone());
-			proof
-				.verify(root_hash, vec![(batch_position, batch_hash)])
-				.map_err(|_| Error::<T>::FailToVerifyMerkleProof)
-		}
-
-		// todo! simplify method by removing start/end from the result
 		pub(crate) fn get_era_for_payout(
 			cluster_id: &ClusterId,
 			status: EraValidationStatus,
-		) -> Option<(DdcEra, i64, i64)> {
+		) -> Option<EraActivity> {
 			let mut smallest_era_id: Option<DdcEra> = None;
 			let mut start_era: i64 = Default::default();
 			let mut end_era: i64 = Default::default();
@@ -2762,7 +2847,7 @@ pub mod pallet {
 				}
 			}
 
-			smallest_era_id.map(|era_id| (era_id, start_era, end_era))
+			smallest_era_id.map(|era_id| EraActivity { id: era_id, start: start_era, end: end_era })
 		}
 
 		/// Retrieves the last era in which the specified validator participated for a given
@@ -2839,7 +2924,7 @@ pub mod pallet {
 				})?;
 
 			log::info!(
-				"ℹ️  The last era validated by this specific validator for cluster_id: {:?} is {:?}. The last paid era for the cluster is {:?}",
+				"👁️‍🗨️  The last era validated by this specific validator for cluster_id: {:?} is {:?}. The last paid era for the cluster is {:?}",
 				cluster_id,
 				last_validated_era_by_this_validator,
 				last_paid_era_for_cluster
@@ -2870,7 +2955,7 @@ pub mod pallet {
 			let quorum = T::AggregatorsQuorum::get();
 			let threshold = quorum * dac_nodes.len();
 			for (era_key, candidates) in
-				&processed_eras_to_validate.into_iter().chunk_by(|elt| elt.clone())
+				&processed_eras_to_validate.into_iter().chunk_by(|elt| *elt)
 			{
 				let count = candidates.count();
 				if count >= threshold {
@@ -2926,7 +3011,7 @@ pub mod pallet {
 			let mut nodes_aggregates: Vec<aggregator_client::json::NodeAggregate> = Vec::new();
 
 			log::info!(
-				"🏠⏳ Starting fetching node aggregates for cluster_id: {:?} for era_id: {:?}",
+				"👁️‍🗨️‍  Starting fetching node aggregates for cluster_id: {:?} for era_id: {:?}",
 				cluster_id,
 				era_id
 			);
@@ -2944,15 +3029,15 @@ pub mod pallet {
 					nodes_aggregates.push(node_aggregate);
 				}
 
-				log::info!("🏠🚀 Fetched Node-aggregates for cluster_id: {:?} for era_id: {:?} :::Node Aggregates are {:?}", cluster_id, era_id, nodes_aggregates);
+				log::info!("👁️‍🗨️‍  Fetched Node-aggregates for cluster_id: {:?} for era_id: {:?} :::Node Aggregates are {:?}", cluster_id, era_id, nodes_aggregates);
 			}
 
 			let nodes_aggregates_groups =
 				Self::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
 
-			log::info!("🏠🌕 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.consensus);
-			log::info!("🏠🌗 Node Aggregates, which are in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.quorum);
-			log::info!("🏠🌘 Node Aggregates, which are neither in consensus nor in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.others);
+			log::info!("👁️‍🗨️‍🌕 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.consensus);
+			log::info!("👁️‍🗨️‍🌗 Node Aggregates, which are in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.quorum);
+			log::info!("👁️‍🗨️‍🌘 Node Aggregates, which are neither in consensus nor in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.others);
 
 			nodes_aggregates_groups
 		}
@@ -2965,7 +3050,7 @@ pub mod pallet {
 		where
 			A: Aggregate + Clone,
 		{
-			let mut consistent_aggregates: BTreeMap<ActivityHash, Vec<A>> = BTreeMap::new();
+			let mut consistent_aggregates: BTreeMap<DeltaUsageHash, Vec<A>> = BTreeMap::new();
 
 			for aggregate in aggregates.iter() {
 				consistent_aggregates
@@ -3118,6 +3203,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
+				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			match aggregate_key {
@@ -3154,6 +3240,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
+				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let response = match aggregate_key {
@@ -3186,6 +3273,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
+				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let response = client.eras()?;
@@ -3209,6 +3297,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
+				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let mut buckets_aggregates = Vec::new();
@@ -3251,6 +3340,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				3,
+				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let mut nodes_aggregates = Vec::new();
@@ -3294,7 +3384,7 @@ pub mod pallet {
 					T::NodeManager::get_node_params(&node_pub_key)
 				{
 					log::info!(
-						"🏭📝 Obtained DAC Node for cluster_id: {:?} and with key: {:?}",
+						"🏭 Obtained DAC Node for cluster_id: {:?} and with key: {:?}",
 						cluster_id,
 						node_pub_key.get_hex()
 					);
@@ -3444,6 +3534,29 @@ pub mod pallet {
 			let pub_key = AccountId32::from(bytes_arr);
 			Ok(NodePubKey::StoragePubKey(pub_key))
 		}
+
+		/// Verify whether leaf is part of tree
+		///
+		/// Parameters:
+		/// - `root_hash`: merkle root hash
+		/// - `batch_hash`: hash of the batch
+		/// - `batch_index`: index of the batch
+		/// - `batch_proof`: MMR proofs
+		pub(crate) fn _proof_merkle_leaf(
+			root_hash: PayableUsageHash,
+			batch_hash: PayableUsageHash,
+			batch_index: BatchIndex,
+			max_batch_index: BatchIndex,
+			batch_proof: &MMRProof,
+		) -> Result<bool, Error<T>> {
+			let batch_position = leaf_index_to_pos(batch_index.into());
+			let mmr_size = leaf_index_to_mmr_size(max_batch_index.into());
+			let proof: MerkleProof<PayableUsageHash, MergeMMRHash> =
+				MerkleProof::new(mmr_size, batch_proof.proof.clone());
+			proof
+				.verify(root_hash, vec![(batch_position, batch_hash)])
+				.map_err(|_| Error::<T>::FailedToVerifyMerkleProof)
+		}
 	}
 
 	#[pallet::call]
@@ -3465,10 +3578,10 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era_activity: EraActivity,
-			payers_merkle_root_hash: ActivityHash,
-			payees_merkle_root_hash: ActivityHash,
-			payers_batch_merkle_root_hashes: Vec<ActivityHash>,
-			payees_batch_merkle_root_hashes: Vec<ActivityHash>,
+			payers_merkle_root_hash: DeltaUsageHash,
+			payees_merkle_root_hash: DeltaUsageHash,
+			payers_batch_merkle_root_hashes: Vec<DeltaUsageHash>,
+			payees_batch_merkle_root_hashes: Vec<DeltaUsageHash>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 
@@ -3478,8 +3591,8 @@ pub mod pallet {
 
 				if era_validations.is_none() {
 					EraValidation {
-						payers_merkle_root_hash: ActivityHash::default(),
-						payees_merkle_root_hash: ActivityHash::default(),
+						payers_merkle_root_hash: DeltaUsageHash::default(),
+						payees_merkle_root_hash: DeltaUsageHash::default(),
 						start_era: Default::default(),
 						end_era: Default::default(),
 						validators: Default::default(),
@@ -3506,8 +3619,8 @@ pub mod pallet {
 			ensure!(!signed_validators.contains(&caller.clone()), Error::<T>::AlreadySignedEra);
 			signed_validators.push(caller.clone());
 
-			let percent = Percent::from_percent(T::MAJORITY);
-			let threshold = percent * <ValidatorSet<T>>::get().len();
+			let validators_quorum = T::ValidatorsQuorum::get();
+			let threshold = validators_quorum * <ValidatorSet<T>>::get().len();
 
 			let mut should_deposit_ready_event = false;
 			if threshold <= signed_validators.len() {
@@ -3518,8 +3631,8 @@ pub mod pallet {
 				era_validation.start_era = era_activity.start; // todo! start/end is set by the last validator and is not in consensus
 				era_validation.end_era = era_activity.end;
 
-				if payers_merkle_root_hash == ActivityHash::default() &&
-					payees_merkle_root_hash == ActivityHash::default()
+				if payers_merkle_root_hash == DeltaUsageHash::default() &&
+					payees_merkle_root_hash == DeltaUsageHash::default()
 				{
 					// this condition is satisfied when there is no activity within era, i.e. when a
 					// validator posts empty roots
@@ -3585,18 +3698,45 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(2)]
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_billing_report())]
-		pub fn begin_billing_report(
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::commit_billing_fingerprint())]
+		#[allow(clippy::too_many_arguments)]
+		pub fn commit_billing_fingerprint(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			start_era: i64,
 			end_era: i64,
+			payers_root: PayableUsageHash,
+			payees_root: PayableUsageHash,
+			cluster_usage: NodeUsage,
 		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
+			let sender = ensure_signed(origin.clone())?;
 			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 
-			T::PayoutProcessor::begin_billing_report(cluster_id, era_id, start_era, end_era)?;
+			T::PayoutProcessor::commit_billing_fingerprint(
+				sender,
+				cluster_id,
+				era_id,
+				start_era,
+				end_era,
+				payers_root,
+				payees_root,
+				cluster_usage,
+			)
+		}
+
+		#[pallet::call_index(3)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_billing_report())]
+		pub fn begin_billing_report(
+			origin: OriginFor<T>,
+			cluster_id: ClusterId,
+			era_id: DdcEra,
+			fingerprint: Fingerprint,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin.clone())?;
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+
+			T::PayoutProcessor::begin_billing_report(cluster_id, era_id, fingerprint)?;
 
 			EraValidations::<T>::try_mutate(
 				cluster_id,
@@ -3611,7 +3751,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(3)]
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_charging_customers())]
 		pub fn begin_charging_customers(
 			origin: OriginFor<T>,
@@ -3624,14 +3764,14 @@ pub mod pallet {
 			T::PayoutProcessor::begin_charging_customers(cluster_id, era_id, max_batch_index)
 		}
 
-		#[pallet::call_index(4)]
+		#[pallet::call_index(5)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::send_charging_customers_batch(payers.len() as u32))]
 		pub fn send_charging_customers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			batch_index: BatchIndex,
-			payers: Vec<(NodePubKey, BucketId, BucketUsage)>,
+			payers: Vec<(BucketId, BucketUsage)>,
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -3645,7 +3785,7 @@ pub mod pallet {
 			)
 		}
 
-		#[pallet::call_index(5)]
+		#[pallet::call_index(6)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_charging_customers())]
 		pub fn end_charging_customers(
 			origin: OriginFor<T>,
@@ -3657,26 +3797,20 @@ pub mod pallet {
 			T::PayoutProcessor::end_charging_customers(cluster_id, era_id)
 		}
 
-		#[pallet::call_index(6)]
+		#[pallet::call_index(7)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_rewarding_providers())]
 		pub fn begin_rewarding_providers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
 			era_id: DdcEra,
 			max_batch_index: BatchIndex,
-			total_node_usage: NodeUsage,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
-			T::PayoutProcessor::begin_rewarding_providers(
-				cluster_id,
-				era_id,
-				max_batch_index,
-				total_node_usage,
-			)
+			T::PayoutProcessor::begin_rewarding_providers(cluster_id, era_id, max_batch_index)
 		}
 
-		#[pallet::call_index(7)]
+		#[pallet::call_index(8)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::send_rewarding_providers_batch(payees.len() as u32))]
 		pub fn send_rewarding_providers_batch(
 			origin: OriginFor<T>,
@@ -3697,7 +3831,7 @@ pub mod pallet {
 			)
 		}
 
-		#[pallet::call_index(8)]
+		#[pallet::call_index(9)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_rewarding_providers())]
 		pub fn end_rewarding_providers(
 			origin: OriginFor<T>,
@@ -3709,7 +3843,7 @@ pub mod pallet {
 			T::PayoutProcessor::end_rewarding_providers(cluster_id, era_id)
 		}
 
-		#[pallet::call_index(9)]
+		#[pallet::call_index(10)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_billing_report())]
 		pub fn end_billing_report(
 			origin: OriginFor<T>,
@@ -3736,7 +3870,7 @@ pub mod pallet {
 		///
 		/// Emits `NotEnoughNodesForConsensus`  OR `ActivityNotInConsensus` event depend of error
 		/// type, when successful.
-		#[pallet::call_index(10)]
+		#[pallet::call_index(11)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::emit_consensus_errors(errors.len() as u32))]
 		pub fn emit_consensus_errors(
 			origin: OriginFor<T>,
@@ -3785,6 +3919,20 @@ pub mod pallet {
 							era_id,
 							payers_merkle_root_hash,
 							payees_merkle_root_hash,
+							validator: caller.clone(),
+						});
+					},
+					OCWError::CommitBillingFingerprintTransactionError {
+						cluster_id,
+						era_id,
+						payers_root,
+						payees_root,
+					} => {
+						Self::deposit_event(Event::CommitBillingFingerprintTransactionError {
+							cluster_id,
+							era_id,
+							payers_root,
+							payees_root,
 							validator: caller.clone(),
 						});
 					},
@@ -3975,6 +4123,12 @@ pub mod pallet {
 					OCWError::EmptyConsistentGroup => {
 						Self::deposit_event(Event::EmptyConsistentGroup);
 					},
+					OCWError::FailedToFetchVerifiedDeltaUsage => {
+						Self::deposit_event(Event::FailedToFetchVerifiedDeltaUsage);
+					},
+					OCWError::FailedToFetchVerifiedPayableUsage => {
+						Self::deposit_event(Event::FailedToFetchVerifiedPayableUsage);
+					},
 				}
 			}
 
@@ -3985,7 +4139,7 @@ pub mod pallet {
 		/// nothing.
 		///
 		/// Emits `EraValidationReady`.
-		#[pallet::call_index(11)]
+		#[pallet::call_index(12)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_era_validations())]
 		pub fn set_era_validations(
 			origin: OriginFor<T>,
@@ -4003,7 +4157,7 @@ pub mod pallet {
 		/// Continue DAC validation from an era after a given one. It updates `last_paid_era` of a
 		/// given cluster, creates an empty billing report with a finalized state, and sets an empty
 		/// validation result on validators (in case it does not exist yet).
-		#[pallet::call_index(12)]
+		#[pallet::call_index(13)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::skip_dac_validation_to_era())]
 		pub fn skip_dac_validation_to_era(
 			origin: OriginFor<T>,
@@ -4018,10 +4172,23 @@ pub mod pallet {
 
 			Self::do_skip_era_validation(&cluster_id, era_id)?;
 
+			let fingerprint =
+				T::PayoutProcessor::create_billing_fingerprint(BillingFingerprintParams {
+					cluster_id,
+					era: era_id,
+					start_era: Default::default(),
+					end_era: Default::default(),
+					payers_merkle_root: Default::default(),
+					payees_merkle_root: Default::default(),
+					cluster_usage: Default::default(),
+					validators: BTreeSet::new(),
+				});
+
 			let billing_report_params = BillingReportParams {
 				cluster_id,
 				era: era_id,
 				state: PayoutState::Finalized,
+				fingerprint,
 				..Default::default()
 			};
 
@@ -4045,92 +4212,9 @@ pub mod pallet {
 			}
 		}
 
-		fn is_customers_batch_valid(
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			batch_index: BatchIndex,
-			max_batch_index: BatchIndex,
-			payers: &[(NodePubKey, BucketId, BucketUsage)],
-			batch_proof: &MMRProof,
-		) -> bool {
-			let validation_era = EraValidations::<T>::get(cluster_id, era_id);
-
-			match validation_era {
-				Some(valid_era) => {
-					let root_hash = valid_era.payers_merkle_root_hash;
-
-					let activity_hashes = payers
-						.iter()
-						.map(|(node_key, bucket_id, usage)| {
-							let mut data = bucket_id.encode();
-							let node_id = format!("0x{}", node_key.get_hex());
-							data.extend_from_slice(&node_id.encode());
-							data.extend_from_slice(&usage.stored_bytes.encode());
-							data.extend_from_slice(&usage.transferred_bytes.encode());
-							data.extend_from_slice(&usage.number_of_puts.encode());
-							data.extend_from_slice(&usage.number_of_gets.encode());
-							T::ActivityHasher::hash(&data).into()
-						})
-						.collect::<Vec<_>>();
-
-					let batch_hash =
-						Self::create_merkle_root(&cluster_id, era_id, activity_hashes.as_slice())
-							.expect("batch_hash to be created");
-
-					Self::proof_merkle_leaf(
-						root_hash,
-						batch_hash,
-						batch_index,
-						max_batch_index,
-						batch_proof,
-					)
-					.unwrap_or(false)
-				},
-				None => false,
-			}
-		}
-
-		fn is_providers_batch_valid(
-			cluster_id: ClusterId,
-			era_id: DdcEra,
-			batch_index: BatchIndex,
-			max_batch_index: BatchIndex,
-			payees: &[(NodePubKey, NodeUsage)],
-			batch_proof: &MMRProof,
-		) -> bool {
-			let validation_era = EraValidations::<T>::get(cluster_id, era_id);
-
-			match validation_era {
-				Some(valid_era) => {
-					let root_hash = valid_era.payees_merkle_root_hash;
-
-					let activity_hashes = payees
-						.iter()
-						.map(|(node_key, usage)| {
-							let mut data = format!("0x{}", node_key.get_hex()).encode();
-							data.extend_from_slice(&usage.stored_bytes.encode());
-							data.extend_from_slice(&usage.transferred_bytes.encode());
-							data.extend_from_slice(&usage.number_of_puts.encode());
-							data.extend_from_slice(&usage.number_of_gets.encode());
-							T::ActivityHasher::hash(&data).into()
-						})
-						.collect::<Vec<_>>();
-
-					let batch_hash =
-						Self::create_merkle_root(&cluster_id, era_id, activity_hashes.as_slice())
-							.expect("batch_hash to be created");
-
-					Self::proof_merkle_leaf(
-						root_hash,
-						batch_hash,
-						batch_index,
-						max_batch_index,
-						batch_proof,
-					)
-					.unwrap_or(false)
-				},
-				None => false,
-			}
+		fn is_quorum_reached(quorum: Percent, members_count: usize) -> bool {
+			let threshold = quorum * <ValidatorSet<T>>::get().len();
+			threshold <= members_count
 		}
 	}
 

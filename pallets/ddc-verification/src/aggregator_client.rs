@@ -2,20 +2,23 @@
 
 use ddc_primitives::{AggregatorInfo, BucketId, DdcEra};
 use prost::Message;
+use serde_with::{base64::Base64, serde_as};
 use sp_io::offchain::timestamp;
 use sp_runtime::offchain::{http, Duration};
 
 use super::*;
+use crate::signature::Verify;
 
 pub struct AggregatorClient<'a> {
 	pub base_url: &'a str,
 	timeout: Duration,
 	retries: u32,
+	verify_sig: bool,
 }
 
 impl<'a> AggregatorClient<'a> {
-	pub fn new(base_url: &'a str, timeout: Duration, retries: u32) -> Self {
-		Self { base_url, timeout, retries }
+	pub fn new(base_url: &'a str, timeout: Duration, retries: u32, verify_sig: bool) -> Self {
+		Self { base_url, timeout, retries, verify_sig }
 	}
 
 	pub fn buckets_aggregates(
@@ -31,11 +34,28 @@ impl<'a> AggregatorClient<'a> {
 		if let Some(prev_token) = prev_token {
 			url = format!("{}&prevToken={}", url, prev_token);
 		}
+		if self.verify_sig {
+			url = format!("{}&sign=true", url);
+		}
 		let response = self.get(&url, Accept::Any)?;
-		let body = response.body().collect::<Vec<u8>>();
-		let json_response = serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
-		Ok(json_response)
+		let body = response.body().collect::<Vec<u8>>();
+		if self.verify_sig {
+			let json_response: json::SignedJsonResponse<Vec<json::BucketAggregateResponse>> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			if !json_response.verify() {
+				log::debug!("bad signature, req: {:?}, resp: {:?}", url, json_response);
+				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			}
+
+			Ok(json_response.payload)
+		} else {
+			let json_response: Vec<json::BucketAggregateResponse> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			Ok(json_response)
+		}
 	}
 
 	pub fn nodes_aggregates(
@@ -51,11 +71,28 @@ impl<'a> AggregatorClient<'a> {
 		if let Some(prev_token) = prev_token {
 			url = format!("{}&prevToken={}", url, prev_token);
 		}
+		if self.verify_sig {
+			url = format!("{}&sign=true", url);
+		}
 		let response = self.get(&url, Accept::Any)?;
-		let body = response.body().collect::<Vec<u8>>();
-		let json_response = serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
-		Ok(json_response)
+		let body = response.body().collect::<Vec<u8>>();
+		if self.verify_sig {
+			let json_response: json::SignedJsonResponse<Vec<json::NodeAggregateResponse>> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			if !json_response.verify() {
+				log::debug!("bad signature, req: {:?}, resp: {:?}", url, json_response);
+				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			}
+
+			Ok(json_response.payload)
+		} else {
+			let json_response: Vec<json::NodeAggregateResponse> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			Ok(json_response)
+		}
 	}
 
 	pub fn challenge_bucket_sub_aggregate(
@@ -103,12 +140,29 @@ impl<'a> AggregatorClient<'a> {
 	}
 
 	pub fn eras(&self) -> Result<Vec<json::AggregationEraResponse>, http::Error> {
-		let url = format!("{}/activity/eras", self.base_url);
+		let mut url = format!("{}/activity/eras", self.base_url);
+		if self.verify_sig {
+			url = format!("{}&sign=true", url);
+		}
 		let response = self.get(&url, Accept::Any)?;
-		let body = response.body().collect::<Vec<u8>>();
-		let json_response = serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
-		Ok(json_response)
+		let body = response.body().collect::<Vec<u8>>();
+		if self.verify_sig {
+			let json_response: json::SignedJsonResponse<Vec<json::AggregationEraResponse>> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			if !json_response.verify() {
+				log::debug!("bad signature, req: {:?}, resp: {:?}", url, json_response);
+				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			}
+
+			Ok(json_response.payload)
+		} else {
+			let json_response: Vec<json::AggregationEraResponse> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			Ok(json_response)
+		}
 	}
 
 	pub fn traverse_bucket_sub_aggregate(
@@ -119,16 +173,33 @@ impl<'a> AggregatorClient<'a> {
 		merkle_tree_node_id: u32,
 		levels: u16,
 	) -> Result<json::MerkleTreeNodeResponse, http::Error> {
-		let url = format!(
+		let mut url = format!(
 			"{}/activity/buckets/{}/traverse?eraId={}&nodeId={}&merkleTreeNodeId={}&levels={}",
 			self.base_url, bucket_id, era_id, node_id, merkle_tree_node_id, levels,
 		);
+		if self.verify_sig {
+			url = format!("{}&sign=true", url);
+		}
 
 		let response = self.get(&url, Accept::Any)?;
-		let body = response.body().collect::<Vec<u8>>();
-		let json_response = serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
-		Ok(json_response)
+		let body = response.body().collect::<Vec<u8>>();
+		if self.verify_sig {
+			let json_response: json::SignedJsonResponse<json::MerkleTreeNodeResponse> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			if !json_response.verify() {
+				log::debug!("bad signature, req: {:?}, resp: {:?}", url, json_response);
+				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			}
+
+			Ok(json_response.payload)
+		} else {
+			let json_response: json::MerkleTreeNodeResponse =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			Ok(json_response)
+		}
 	}
 
 	pub fn traverse_node_aggregate(
@@ -138,16 +209,32 @@ impl<'a> AggregatorClient<'a> {
 		merkle_tree_node_id: u32,
 		levels: u16,
 	) -> Result<json::MerkleTreeNodeResponse, http::Error> {
-		let url = format!(
+		let mut url = format!(
 			"{}/activity/nodes/{}/traverse?eraId={}&merkleTreeNodeId={}&levels={}",
 			self.base_url, node_id, era_id, merkle_tree_node_id, levels,
 		);
-
+		if self.verify_sig {
+			url = format!("{}&sign=true", url);
+		}
 		let response = self.get(&url, Accept::Any)?;
-		let body = response.body().collect::<Vec<u8>>();
-		let json_response = serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
 
-		Ok(json_response)
+		let body = response.body().collect::<Vec<u8>>();
+		if self.verify_sig {
+			let json_response: json::SignedJsonResponse<json::MerkleTreeNodeResponse> =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			if !json_response.verify() {
+				log::debug!("bad signature, req: {:?}, resp: {:?}", url, json_response);
+				return Err(http::Error::Unknown); // TODO (khssnv): more specific error.
+			}
+
+			Ok(json_response.payload)
+		} else {
+			let json_response: json::MerkleTreeNodeResponse =
+				serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)?;
+
+			Ok(json_response)
+		}
 	}
 
 	fn merkle_tree_node_id_param(merkle_tree_node_id: &[u32]) -> String {
@@ -429,5 +516,18 @@ pub(crate) mod json {
 		pub transferred_bytes: u64,
 		pub number_of_puts: u64,
 		pub number_of_gets: u64,
+	}
+
+	/// Json response wrapped with a signature.
+	#[serde_as]
+	#[derive(
+		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
+	)]
+	pub struct SignedJsonResponse<T> {
+		pub payload: T,
+		#[serde_as(as = "Base64")]
+		pub signer: Vec<u8>,
+		#[serde_as(as = "Base64")]
+		pub signature: Vec<u8>,
 	}
 }

@@ -1,14 +1,14 @@
-#[cfg(feature = "runtime-benchmarks")]
-use ddc_primitives::traits::{BucketManager, ClusterCreator, CustomerDepositor};
 use ddc_primitives::{
 	crypto, sr25519,
-	traits::{ClusterManager, ClusterQuery},
-	BucketId, ClusterNodeKind, ClusterNodeState, ClusterNodeStatus, ClusterNodesStats,
-	ClusterStatus, PayoutError, PayoutState, StorageNodeMode, StorageNodePubKey,
-	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
+	traits::{ClusterManager, ClusterQuery, StorageUsageProvider},
+	BillingFingerprintParams, BucketId, BucketStorageUsage, ClusterNodeKind, ClusterNodeState,
+	ClusterNodeStatus, ClusterNodesStats, ClusterStatus, Fingerprint, NodeStorageUsage,
+	PayoutError, PayoutState, StorageNodeMode, StorageNodePubKey, MAX_PAYOUT_BATCH_COUNT,
+	MAX_PAYOUT_BATCH_SIZE,
 };
 #[cfg(feature = "runtime-benchmarks")]
 use ddc_primitives::{
+	traits::{BucketManager, ClusterCreator, CustomerDepositor},
 	BillingReportParams, BucketParams, ClusterId, ClusterParams, ClusterProtocolParams,
 };
 use frame_election_provider_support::{
@@ -227,6 +227,8 @@ impl pallet_timestamp::Config for Test {
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
 	pub const MajorityOfAggregators: Percent = Percent::from_percent(67);
+	pub const VerifyAggregatorResponseSignature: bool = false;
+	pub const MajorityOfValidators: Percent = Percent::from_percent(67);
 }
 
 impl crate::Config for Test {
@@ -234,30 +236,68 @@ impl crate::Config for Test {
 	type PalletId = VerificationPalletId;
 	type WeightInfo = ();
 	type ClusterManager = TestClusterManager;
-	type ClusterValidator = TestClusterValidator;
+	type ClusterValidator = MockClusterValidator;
 	type NodeManager = MockNodeManager;
 	type PayoutProcessor = MockPayoutProcessor;
 	type AuthorityId = sr25519::AuthorityId;
 	type OffchainIdentifierId = crypto::OffchainIdentifierId;
-	type ActivityHasher = sp_runtime::traits::BlakeTwo256;
-	const MAJORITY: u8 = 67;
+	type Hasher = sp_runtime::traits::BlakeTwo256;
 	const BLOCK_TO_START: u16 = 100;
 	const DAC_REDUNDANCY_FACTOR: u16 = 3;
 	type AggregatorsQuorum = MajorityOfAggregators;
+	type ValidatorsQuorum = MajorityOfValidators;
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
-	type ActivityHash = H256;
 	type ValidatorStaking = Staking;
 	type AccountIdConverter = AccountId;
 	type CustomerVisitor = MockCustomerVisitor;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 4;
 	type Currency = Balances;
+	const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool = false;
+	type BucketsStorageUsageProvider = MockBucketValidator;
+	type NodesStorageUsageProvider = MockNodeValidator;
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = MockCustomerDepositor;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ClusterCreator = MockClusterCreator;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BucketManager = MockBucketManager;
+}
+
+pub struct MockBucketValidator;
+impl StorageUsageProvider<BucketId, BucketStorageUsage<AccountId>> for MockBucketValidator {
+	type Error = ();
+
+	fn iter_storage_usage<'a>(
+		_cluster_id: &'a ClusterId,
+	) -> Box<dyn Iterator<Item = BucketStorageUsage<AccountId>> + 'a> {
+		unimplemented!()
+	}
+
+	fn iter_storage_usage_from<'a>(
+		_cluster_id: &'a ClusterId,
+		_from: &'a BucketId,
+	) -> Result<Box<dyn Iterator<Item = BucketStorageUsage<AccountId>> + 'a>, ()> {
+		unimplemented!()
+	}
+}
+
+pub struct MockNodeValidator;
+impl StorageUsageProvider<StorageNodePubKey, NodeStorageUsage<AccountId>> for MockNodeValidator {
+	type Error = ();
+
+	fn iter_storage_usage<'a>(
+		_cluster_id: &'a ClusterId,
+	) -> Box<dyn Iterator<Item = NodeStorageUsage<AccountId>> + 'a> {
+		unimplemented!()
+	}
+
+	fn iter_storage_usage_from<'a>(
+		_cluster_id: &'a ClusterId,
+		_from: &'a StorageNodePubKey,
+	) -> Result<Box<dyn Iterator<Item = NodeStorageUsage<AccountId>> + 'a>, ()> {
+		unimplemented!()
+	}
 }
 
 pub struct MockCustomerVisitor;
@@ -308,16 +348,16 @@ impl<T: Config> BucketManager<T> for MockBucketManager {
 	fn get_total_bucket_usage(
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
-		_content_owner: &T::AccountId,
+		_bucket_owner: &T::AccountId,
 	) -> Result<Option<BucketUsage>, DispatchError> {
 		unimplemented!()
 	}
 
-	fn inc_total_bucket_usage(
+	fn update_total_bucket_usage(
 		_cluster_id: &ClusterId,
 		_bucket_id: BucketId,
-		_content_owner: T::AccountId,
-		_customer_usage: &BucketUsage,
+		_bucket_owner: T::AccountId,
+		_payable_usage: &BucketUsage,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -423,8 +463,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	sp_io::TestExternalities::new(storage)
 }
 
-pub struct TestClusterValidator;
-impl<T: Config> ClusterValidator<T> for TestClusterValidator {
+pub struct MockClusterValidator;
+impl<T: Config> ClusterValidator<T> for MockClusterValidator {
 	fn set_last_paid_era(_cluster_id: &ClusterId, _era_id: DdcEra) -> Result<(), DispatchError> {
 		unimplemented!()
 	}
@@ -436,11 +476,23 @@ impl<T: Config> ClusterValidator<T> for TestClusterValidator {
 
 pub struct MockPayoutProcessor;
 impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
-	fn begin_billing_report(
+	fn commit_billing_fingerprint(
+		_validator: T::AccountId,
 		_cluster_id: ClusterId,
 		_era_id: DdcEra,
 		_start_era: i64,
 		_end_era: i64,
+		_payers_merkle_root: PayableUsageHash,
+		_payees_merkle_root: PayableUsageHash,
+		_cluster_usage: NodeUsage,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn begin_billing_report(
+		_cluster_id: ClusterId,
+		_era_id: DdcEra,
+		_fingerprint: Fingerprint,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -457,7 +509,7 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 		_cluster_id: ClusterId,
 		_era_id: DdcEra,
 		_batch_index: BatchIndex,
-		_payers: &[(NodePubKey, BucketId, BucketUsage)],
+		_payers: &[(BucketId, BucketUsage)],
 		_batch_proof: MMRProof,
 	) -> DispatchResult {
 		unimplemented!()
@@ -471,7 +523,6 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 		_cluster_id: ClusterId,
 		_era_id: DdcEra,
 		_max_batch_index: BatchIndex,
-		_total_node_usage: NodeUsage,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -523,14 +574,14 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 	fn create_billing_report(_vault: T::AccountId, _params: BillingReportParams) {
 		unimplemented!()
 	}
+
+	fn create_billing_fingerprint(_params: BillingFingerprintParams<T::AccountId>) -> Fingerprint {
+		unimplemented!()
+	}
 }
 
 pub struct MockNodeManager;
 impl<T: Config> NodeManager<T> for MockNodeManager {
-	fn get_total_usage(_node_pub_key: &NodePubKey) -> Result<Option<NodeUsage>, DispatchError> {
-		Ok(None) // todo! add more complex mock
-	}
-
 	fn get_node_params(node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
 		let key1 =
 			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
@@ -679,6 +730,13 @@ impl<T: Config> NodeManager<T> for MockNodeManager {
 		let account_1 = T::AccountId::decode(&mut &temp.as_slice()[..]).unwrap();
 
 		Ok(account_1)
+	}
+
+	fn update_total_node_usage(
+		_node_key: &NodePubKey,
+		_payable_usage: &NodeUsage,
+	) -> Result<(), DispatchError> {
+		Ok(())
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
