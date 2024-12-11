@@ -40,7 +40,7 @@ type Block = MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub struct Test {
+	pub enum Test {
 		System: frame_system,
 		DdcVerification: pallet_ddc_verification,
 		Timestamp: pallet_timestamp,
@@ -97,7 +97,6 @@ impl pallet_balances::Config for Test {
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = ();
-	type MaxHolds = ();
 	type RuntimeFreezeReason = ();
 }
 

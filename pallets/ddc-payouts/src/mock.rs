@@ -45,7 +45,7 @@ pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 construct_runtime!(
-	pub struct Test
+	pub enum Test
 	{
 		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -107,7 +107,6 @@ impl pallet_balances::Config for Test {
 	type FreezeIdentifier = ();
 	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
-	type MaxHolds = ();
 	type RuntimeHoldReason = ();
 }
 
