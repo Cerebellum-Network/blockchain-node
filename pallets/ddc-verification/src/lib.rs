@@ -101,7 +101,7 @@ pub mod pallet {
 	use super::*;
 
 	/// The current storage version.
-	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
 	const _SUCCESS_CODE: u16 = 200;
 	const _BUF_SIZE: usize = 128;
