@@ -1,4 +1,4 @@
-use frame_support::{migration, traits::OnRuntimeUpgrade};
+use frame_support::{migration, pallet_prelude::*, traits::OnRuntimeUpgrade};
 use log;
 
 use super::*;
@@ -6,8 +6,6 @@ use super::*;
 const LOG_TARGET: &str = "ddc-verification";
 
 pub mod v1 {
-	use frame_support::pallet_prelude::*;
-
 	use super::*;
 
 	pub fn migrate_to_v1<T: Config>() -> Weight {
