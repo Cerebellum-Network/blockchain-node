@@ -26,7 +26,7 @@ use ddc_primitives::{
 };
 use frame_support::{
 	pallet_prelude::*,
-	traits::{Currency, Get, OneSessionHandler},
+	traits::{Currency, Get, OneSessionHandler, StorageVersion},
 };
 use frame_system::{
 	offchain::{Account, AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
@@ -101,8 +101,7 @@ pub mod pallet {
 	use super::*;
 
 	/// The current storage version.
-	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(1);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	const _SUCCESS_CODE: u16 = 200;
 	const _BUF_SIZE: usize = 128;
