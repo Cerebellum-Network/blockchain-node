@@ -846,6 +846,9 @@ pub mod pallet {
 			) {
 				return;
 			}
+			scopeguard::defer!({
+				local_storage_clear(StorageKind::PERSISTENT, IS_RUNNING_KEY);
+			});
 
 			let verification_account = unwrap_or_log_error!(
 				Self::collect_verification_pub_key(),
@@ -887,9 +890,6 @@ pub mod pallet {
 
 				Self::submit_errors(&errors, &verification_account, &signer);
 			}
-
-			// Allow the next invocation of the offchain worker hook to run.
-			local_storage_clear(StorageKind::PERSISTENT, IS_RUNNING_KEY);
 		}
 	}
 
