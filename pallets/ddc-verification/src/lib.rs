@@ -836,6 +836,14 @@ pub mod pallet {
 				return;
 			}
 
+			// Reset `IS_RUNNING_KEY` if it is set to an invalid value externally (by RPC).
+			if let Some(is_running) = local_storage_get(StorageKind::PERSISTENT, IS_RUNNING_KEY) {
+				if is_running != IS_RUNNING_VALUE {
+					log::warn!("Invalid value of `IS_RUNNING_KEY` cleared.");
+					local_storage_clear(StorageKind::PERSISTENT, IS_RUNNING_KEY);
+				}
+			}
+
 			// Allow only one instance of the offchain worker to run at a time.
 			if !local_storage_compare_and_set(
 				StorageKind::PERSISTENT,
