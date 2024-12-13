@@ -65,30 +65,3 @@ pub mod v1 {
 		}
 	}
 }
-
-pub mod v2 {
-	use super::*;
-
-	pub struct MigrateToV2<T>(sp_std::marker::PhantomData<T>);
-	impl<T: Config> OnRuntimeUpgrade for MigrateToV2<T> {
-		fn on_runtime_upgrade() -> Weight {
-			let on_chain_version = Pallet::<T>::on_chain_storage_version();
-			let current_version = Pallet::<T>::current_storage_version();
-			if !(on_chain_version == 1 && current_version == 2) {
-				log::warn!(target: LOG_TARGET, "MigrateToV2 migration not used.");
-				return T::DbWeight::get().reads(2);
-			}
-
-			local_storage_clear(StorageKind::PERSISTENT, pallet::IS_RUNNING_KEY);
-
-			current_version.put::<Pallet<T>>();
-			log::info!(
-				target: LOG_TARGET,
-				"Storage migrated to version {:?}.",
-				current_version,
-			);
-
-			T::DbWeight::get().reads_writes(2, 2)
-		}
-	}
-}
