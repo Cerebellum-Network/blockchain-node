@@ -1452,21 +1452,22 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
 /// Runtime migrations
-type Migrations = (
-	// Migrations related to substrate version upgrades
-	// pallet_nomination_pools::migration::versioned::V5toV6<Runtime>,
-	// pallet_nomination_pools::migration::versioned::V6ToV7<Runtime>,
-	// pallet_nomination_pools::migration::versioned::V7ToV8<Runtime>,
-	// pallet_staking::migrations::v14::MigrateToV14<Runtime>,
-	// pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
-	// pallet_identity::migration::versioned::V0ToV1<Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
+// type Migrations = (
+// 	// Migrations related to substrate version upgrades
+// 	// pallet_nomination_pools::migration::versioned::V5toV6<Runtime>,
+// 	// pallet_nomination_pools::migration::versioned::V6ToV7<Runtime>,
+// 	// pallet_nomination_pools::migration::versioned::V7ToV8<Runtime>,
+// 	// pallet_staking::migrations::v14::MigrateToV14<Runtime>,
+// 	// pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
+// 	// pallet_identity::migration::versioned::V0ToV1<Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
 
-	// The 'Unreleased' migration enables DAC Verification, that atm. is enabled at QANET only.
-	// Uncomment this line when DAC is ready for TESTNET and MAINNET migrations::Unreleased,
-	// migrations::Unreleased,
+// 	// The 'Unreleased' migration enables DAC Verification, that atm. is enabled at QANET only.
+// 	// Uncomment this line when DAC is ready for TESTNET and MAINNET migrations::Unreleased,
+// 	// migrations::Unreleased,
 
-	// Migrations for DAC and Payouts on QANET
-);
+// 	// Migrations for DAC and Payouts on QANET
+// );
+type Migrations = ();
 
 pub mod migrations {
 	use super::*;
