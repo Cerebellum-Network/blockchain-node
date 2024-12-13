@@ -843,6 +843,7 @@ pub mod pallet {
 				None,
 				IS_RUNNING_VALUE,
 			) {
+				log::debug!("Another inspection is already running, terminating...");
 				return;
 			}
 			scopeguard::defer!({
