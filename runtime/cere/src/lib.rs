@@ -1466,7 +1466,6 @@ type Migrations = (
 	// migrations::Unreleased,
 
 	// Migrations for DAC and Payouts on QANET
-	pallet_ddc_payouts::migrations::v2::MigrateToV2<Runtime>,
 	pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
 );
 
