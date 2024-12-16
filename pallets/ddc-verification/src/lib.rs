@@ -15,6 +15,7 @@ use base64ct::{Base64, Encoding};
 #[cfg(feature = "runtime-benchmarks")]
 use ddc_primitives::traits::{BucketManager, ClusterCreator, CustomerDepositor};
 use ddc_primitives::{
+	ocw_mutex::OcwMutex,
 	traits::{
 		ClusterManager, ClusterValidator, CustomerVisitor, NodeManager, PayoutProcessor,
 		StorageUsageProvider, ValidatorVisitor,
@@ -108,8 +109,7 @@ pub mod pallet {
 	const RESPONSE_TIMEOUT: u64 = 20000;
 	pub const BUCKETS_AGGREGATES_FETCH_BATCH_SIZE: usize = 100;
 	pub const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
-	pub const IS_RUNNING_KEY: &[u8] = b"offchain::validator::is_running";
-	pub const IS_RUNNING_VALUE: &[u8] = &[1];
+	pub const OCW_MUTEX_ID: &[u8] = b"inspection";
 
 	/// Delta usage of a bucket includes only the delta usage for the processing era reported by
 	/// collectors. This usage can be verified of unverified by inspectors.
@@ -836,27 +836,13 @@ pub mod pallet {
 				return;
 			}
 
-			// Reset `IS_RUNNING_KEY` if it is set to an invalid value externally (by RPC).
-			if let Some(is_running) = local_storage_get(StorageKind::PERSISTENT, IS_RUNNING_KEY) {
-				if is_running != IS_RUNNING_VALUE {
-					log::warn!("Invalid value of `IS_RUNNING_KEY` cleared.");
-					local_storage_clear(StorageKind::PERSISTENT, IS_RUNNING_KEY);
-				}
-			}
-
-			// Allow only one instance of the offchain worker to run at a time.
-			if !local_storage_compare_and_set(
-				StorageKind::PERSISTENT,
-				IS_RUNNING_KEY,
-				None,
-				IS_RUNNING_VALUE,
-			) {
-				log::debug!("Another inspection is already running, terminating...");
+			// Allow only one instance of the off-chain worker to run at the same time.
+			let mut ocw_mutex = OcwMutex::new(OCW_MUTEX_ID.to_vec());
+			if !ocw_mutex.try_lock() {
+				log::debug!("Another inspection OCW is already running, terminating...",);
 				return;
 			}
-			scopeguard::defer!({
-				local_storage_clear(StorageKind::PERSISTENT, IS_RUNNING_KEY);
-			});
+			log::debug!("OCW mutex 0x{} locked.", hex::encode(ocw_mutex.local_storage_key()));
 
 			let verification_account = unwrap_or_log_error!(
 				Self::collect_verification_pub_key(),
