@@ -86,7 +86,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Check with Clippy
         run: |
-          cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
+          cargo update -p home --precise 0.5.9 && cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
 
   tests:
     name: Run tests
