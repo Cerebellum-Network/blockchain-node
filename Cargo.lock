@@ -1162,6 +1162,7 @@ dependencies = [
  "sc-executor",
  "sc-service",
  "sp-io",
+ "sp-runtime",
  "substrate-build-script-utils",
  "try-runtime-cli",
  "url",
