@@ -55,7 +55,7 @@ type UncheckedExtrinsic = MockUncheckedExtrinsic<Test>;
 type Block = MockBlock<Test>;
 
 frame_support::construct_runtime!(
-	pub struct Test
+	pub enum Test
 	{
 		System: frame_system::{Pallet, Call, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -129,7 +129,6 @@ impl pallet_balances::Config for Test {
 	type FreezeIdentifier = ();
 	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
-	type MaxHolds = ConstU32<2>;
 	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
@@ -560,6 +559,7 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 }
 pallet_referenda::impl_tracksinfo_get!(TracksInfo, Balance, BlockNumber);
 
+#[allow(clippy::manual_inspect)]
 #[allow(unused_imports)]
 #[frame_support::pallet]
 mod pallet_mock_origins {

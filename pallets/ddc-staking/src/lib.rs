@@ -149,6 +149,7 @@ impl<
 	}
 }
 
+#[allow(clippy::manual_inspect)]
 #[frame_support::pallet]
 pub mod pallet {
 	use ddc_primitives::traits::cluster::ClusterManager;

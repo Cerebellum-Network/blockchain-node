@@ -28,10 +28,12 @@ pub struct Erc721Token {
 	pub metadata: Vec<u8>,
 }
 
+#[allow(clippy::manual_inspect)]
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
 
+	#[allow(clippy::manual_inspect)]
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);

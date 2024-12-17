@@ -1,5 +1,3 @@
-use core::u128;
-
 use sp_runtime::DispatchError;
 
 pub trait CustomerCharger<T: frame_system::Config> {

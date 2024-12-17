@@ -109,6 +109,7 @@ parameter_types! {
 	pub MaxBatchSize: u16 = 1000;
 }
 
+#[allow(clippy::manual_inspect)]
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::PalletId;

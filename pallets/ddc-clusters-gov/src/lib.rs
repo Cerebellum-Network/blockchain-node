@@ -104,6 +104,7 @@ pub struct SubmissionDeposit<AccountId> {
 	amount: u128,
 }
 
+#[allow(clippy::manual_inspect)]
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::PalletId;

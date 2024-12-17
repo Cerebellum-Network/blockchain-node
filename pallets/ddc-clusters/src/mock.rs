@@ -36,7 +36,7 @@ type UncheckedExtrinsic = MockUncheckedExtrinsic<Test>;
 type Block = MockBlock<Test>;
 
 construct_runtime!(
-	pub struct Test
+	pub enum Test
 	{
 		Contracts: contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
 		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -175,7 +175,6 @@ impl pallet_balances::Config for Test {
 	type FreezeIdentifier = ();
 	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
-	type MaxHolds = ConstU32<1>;
 	type RuntimeHoldReason = RuntimeHoldReason;
 }
 

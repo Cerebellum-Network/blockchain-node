@@ -4,6 +4,7 @@
 
 pub use pallet::*;
 
+#[allow(clippy::manual_inspect)]
 #[frame_support::pallet]
 pub mod pallet {
 	use cere_runtime_common::constants::currency::{Balance, DOLLARS, GRAND};
