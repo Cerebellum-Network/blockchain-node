@@ -559,7 +559,6 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 }
 pallet_referenda::impl_tracksinfo_get!(TracksInfo, Balance, BlockNumber);
 
-#[allow(clippy::manual_inspect)]
 #[allow(unused_imports)]
 #[frame_support::pallet]
 mod pallet_mock_origins {

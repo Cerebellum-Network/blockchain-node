@@ -103,7 +103,6 @@ pub fn derive_resource_id(chain: u8, id: &[u8]) -> ResourceId {
 	r_id
 }
 
-#[allow(clippy::manual_inspect)]
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;

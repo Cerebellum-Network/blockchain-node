@@ -24,7 +24,6 @@ type ResourceId = bridge::ResourceId;
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-#[allow(clippy::manual_inspect)]
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;

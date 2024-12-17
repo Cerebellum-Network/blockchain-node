@@ -46,7 +46,6 @@ pub use crate::{
 	storage_node::StorageNode,
 };
 
-#[allow(clippy::manual_inspect)]
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
