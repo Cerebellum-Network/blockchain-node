@@ -10,5 +10,7 @@ rustup target add wasm32-unknown-unknown --toolchain 1.79.0
 
 rustup component add rust-src
 
+cargo update -p home --precise 0.5.9
+
 ln -sf $PWD/scripts/pre-commit.sh $PWD/.git/hooks/pre-commit || true
 ln -sf $PWD/scripts/pre-push.sh $PWD/.git/hooks/pre-push || true
