@@ -48,6 +48,8 @@ jobs:
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
       - name: Install try-runtime
         run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.7.0 --locked
       - name: Check Build
@@ -80,6 +82,8 @@ jobs:
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
       - name: Check with Clippy
         run: |
           cargo update -p home --precise 0.5.9 && cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
@@ -101,6 +105,8 @@ jobs:
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
       - name: Update dependency
         run: |
           cargo update -p home --precise 0.5.9
