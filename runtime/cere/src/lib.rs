@@ -1374,18 +1374,8 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
 
-const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX;
-
 /// Runtime migrations
-type Migrations = (
-	// pallet_nomination_pools::migration::versioned::V5toV6<Runtime>,
-	// pallet_nomination_pools::migration::versioned::V6ToV7<Runtime>,
-	// pallet_nomination_pools::migration::versioned::V7ToV8<Runtime>,
-	// pallet_staking::migrations::v14::MigrateToV14<Runtime>,
-	// pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
-	//migrations::Unreleased,
-	// pallet_identity::migration::versioned::V0ToV1<Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
-);
+type Migrations = ();
 //
 // pub mod migrations {
 // 	use super::*;
