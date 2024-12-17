@@ -78,7 +78,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.79.0
+          toolchain: 1.81.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
