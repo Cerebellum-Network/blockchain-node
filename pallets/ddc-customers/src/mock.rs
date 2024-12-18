@@ -1,10 +1,9 @@
 //! Test utilities
 
 use ddc_primitives::{
-	traits::cluster::{ClusterCreator, ClusterManager, ClusterProtocol, ClusterQuery},
-	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
-	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType,
+	traits::cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
+	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterParams, ClusterPricingParams,
+	ClusterProtocolParams, ClusterStatus, NodeType,
 };
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
@@ -29,7 +28,7 @@ pub(crate) type Balance = u128;
 type Block = MockBlock<Test>;
 
 construct_runtime!(
-	pub struct Test
+	pub enum Test
 	{
 		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -75,7 +74,6 @@ impl pallet_balances::Config for Test {
 	type FreezeIdentifier = ();
 	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
-	type MaxHolds = ();
 	type RuntimeHoldReason = ();
 }
 
@@ -203,71 +201,6 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 	}
 
 	fn end_unbond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
-		unimplemented!()
-	}
-}
-
-pub struct TestClusterManager;
-impl<T: Config> ClusterQuery<T> for TestClusterManager {
-	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
-		true
-	}
-
-	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
-		unimplemented!()
-	}
-
-	fn get_manager_and_reserve_id(
-		_cluster_id: &ClusterId,
-	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
-		unimplemented!()
-	}
-}
-
-impl<T: Config> ClusterManager<T> for TestClusterManager {
-	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
-		unimplemented!()
-	}
-
-	fn contains_node(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-		_validation_status: Option<ClusterNodeStatus>,
-	) -> bool {
-		true
-	}
-
-	fn add_node(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-		_node_kind: &ClusterNodeKind,
-	) -> Result<(), DispatchError> {
-		Ok(())
-	}
-
-	fn remove_node(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-	) -> Result<(), DispatchError> {
-		Ok(())
-	}
-
-	fn get_node_state(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-	) -> Result<ClusterNodeState<BlockNumberFor<T>>, DispatchError> {
-		unimplemented!()
-	}
-
-	fn get_nodes_stats(_cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError> {
-		unimplemented!()
-	}
-
-	fn validate_node(
-		_cluster_id: &ClusterId,
-		_node_pub_key: &NodePubKey,
-		_succeeded: bool,
-	) -> Result<(), DispatchError> {
 		unimplemented!()
 	}
 }
