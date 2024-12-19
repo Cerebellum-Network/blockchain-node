@@ -142,7 +142,7 @@ impl<'a> AggregatorClient<'a> {
 	pub fn eras(&self) -> Result<Vec<json::AggregationEraResponse>, http::Error> {
 		let mut url = format!("{}/activity/eras", self.base_url);
 		if self.verify_sig {
-			url = format!("{}&sign=true", url);
+			url = format!("{}?sign=true", url);
 		}
 		let response = self.get(&url, Accept::Any)?;
 
