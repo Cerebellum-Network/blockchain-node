@@ -15,6 +15,7 @@ use base64ct::{Base64, Encoding};
 #[cfg(feature = "runtime-benchmarks")]
 use ddc_primitives::traits::{BucketManager, ClusterCreator, CustomerDepositor};
 use ddc_primitives::{
+	ocw_mutex::OcwMutex,
 	traits::{
 		ClusterManager, ClusterValidator, CustomerVisitor, NodeManager, PayoutProcessor,
 		StorageUsageProvider, ValidatorVisitor,
@@ -26,7 +27,7 @@ use ddc_primitives::{
 };
 use frame_support::{
 	pallet_prelude::*,
-	traits::{Currency, Get, OneSessionHandler},
+	traits::{Currency, Get, OneSessionHandler, StorageVersion},
 };
 use frame_system::{
 	offchain::{Account, AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
@@ -101,16 +102,14 @@ pub mod pallet {
 	use super::*;
 
 	/// The current storage version.
-	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(1);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
 	const _SUCCESS_CODE: u16 = 200;
 	const _BUF_SIZE: usize = 128;
 	const RESPONSE_TIMEOUT: u64 = 20000;
 	pub const BUCKETS_AGGREGATES_FETCH_BATCH_SIZE: usize = 100;
 	pub const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
-	pub const IS_RUNNING_KEY: &[u8] = b"offchain::validator::is_running";
-	pub const IS_RUNNING_VALUE: &[u8] = &[1];
+	pub const OCW_MUTEX_ID: &[u8] = b"inspection";
 
 	/// Delta usage of a bucket includes only the delta usage for the processing era reported by
 	/// collectors. This usage can be verified of unverified by inspectors.
@@ -837,15 +836,13 @@ pub mod pallet {
 				return;
 			}
 
-			// Allow only one instance of the offchain worker to run at a time.
-			if !local_storage_compare_and_set(
-				StorageKind::PERSISTENT,
-				IS_RUNNING_KEY,
-				None,
-				IS_RUNNING_VALUE,
-			) {
+			// Allow only one instance of the off-chain worker to run at the same time.
+			let mut ocw_mutex = OcwMutex::new(OCW_MUTEX_ID.to_vec());
+			if !ocw_mutex.try_lock() {
+				log::debug!("Another inspection OCW is already running, terminating...",);
 				return;
 			}
+			log::debug!("OCW mutex 0x{} locked.", hex::encode(ocw_mutex.local_storage_key()));
 
 			let verification_account = unwrap_or_log_error!(
 				Self::collect_verification_pub_key(),
@@ -887,9 +884,6 @@ pub mod pallet {
 
 				Self::submit_errors(&errors, &verification_account, &signer);
 			}
-
-			// Allow the next invocation of the offchain worker hook to run.
-			local_storage_clear(StorageKind::PERSISTENT, IS_RUNNING_KEY);
 		}
 	}
 

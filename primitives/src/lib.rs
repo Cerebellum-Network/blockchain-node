@@ -16,6 +16,8 @@ use sp_std::collections::btree_set::BTreeSet;
 
 pub mod traits;
 
+pub mod ocw_mutex;
+
 parameter_types! {
 	pub MaxHostLen: u8 = 255;
 	pub MaxDomainLen: u8 = 255;
