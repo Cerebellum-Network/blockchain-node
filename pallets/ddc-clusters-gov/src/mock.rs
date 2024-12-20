@@ -249,6 +249,7 @@ impl pallet_contracts::Config for Test {
 	type Debug = ();
 	type Environment = ();
 	type Migrations = ();
+	type ApiVersion = ();
 	type Xcm = ();
 }
 
