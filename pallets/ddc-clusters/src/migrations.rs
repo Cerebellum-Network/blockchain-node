@@ -65,7 +65,7 @@ pub mod v1 {
 
 	pub fn migrate_to_v1<T: Config>() -> Weight {
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
-		let current_version = Pallet::<T>::current_storage_version();
+		let current_version = Pallet::<T>::in_code_storage_version();
 
 		info!(
 			target: LOG_TARGET,
@@ -141,7 +141,7 @@ pub mod v1 {
 				"the cluster count before and after the migration should be the same"
 			);
 
-			let current_version = Pallet::<T>::current_storage_version();
+			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
 			frame_support::ensure!(current_version == 1, "must_upgrade");
@@ -270,7 +270,7 @@ pub mod v2 {
 	pub type OldNodeStatus = bool;
 
 	pub fn migrate_to_v2<T: Config>() -> Weight {
-		let current_version = Pallet::<T>::current_storage_version();
+		let current_version = Pallet::<T>::in_code_storage_version();
 		let onchain_version = Pallet::<T>::on_chain_storage_version();
 		let mut weight = T::DbWeight::get().reads(1);
 
@@ -428,7 +428,7 @@ pub mod v2 {
                 post_clusters_nodes_stats_count, post_clusters_count
             );
 
-			let current_version = Pallet::<T>::current_storage_version();
+			let current_version = Pallet::<T>::in_code_storage_version();
 			let onchain_version = Pallet::<T>::on_chain_storage_version();
 
 			frame_support::ensure!(current_version == 2, "must_upgrade");
@@ -487,7 +487,7 @@ pub mod v3 {
 	use super::*;
 	pub fn migrate_to_v3<T: Config>() -> Weight {
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
-		let current_version = Pallet::<T>::current_storage_version();
+		let current_version = Pallet::<T>::in_code_storage_version();
 
 		info!(
 			target: LOG_TARGET,
@@ -567,7 +567,7 @@ pub mod v3 {
 				"the cluster count before and after the migration should be the same"
 			);
 
-			let current_version = Pallet::<T>::current_storage_version();
+			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
 			ensure!(current_version == 3, "must_upgrade");

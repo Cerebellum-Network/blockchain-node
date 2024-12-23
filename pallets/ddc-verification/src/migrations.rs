@@ -10,7 +10,7 @@ pub mod v1 {
 
 	pub fn migrate_to_v1<T: Config>() -> Weight {
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
-		let current_version = Pallet::<T>::current_storage_version();
+		let current_version = Pallet::<T>::in_code_storage_version();
 
 		log::info!(
 			target: LOG_TARGET,
