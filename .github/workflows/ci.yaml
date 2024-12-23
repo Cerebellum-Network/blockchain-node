@@ -54,11 +54,11 @@ jobs:
         run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.7.0 --locked
       - name: Check Build
         run: |
-          cargo build --release --features try-runtime
+          cargo update -p home --precise 0.5.9 && cargo build --release --features try-runtime
       - name: Check Try-Runtime
         run: |
            try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-           on-runtime-upgrade --disable-idempotency-checks live --uri wss://archive.qanet.cere.network:443
+           on-runtime-upgrade --disable-idempotency-checks live --uri wss://rpc.qanet.cere.network:443
       - name: Run dev chain
         run: |
           timeout --preserve-status 30s ./target/release/cere --dev
@@ -86,7 +86,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Check with Clippy
         run: |
-          cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
+          cargo update -p home --precise 0.5.9 && cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
 
   tests:
     name: Run tests
@@ -107,6 +107,9 @@ jobs:
           components: rust-src
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
+      - name: Update dependency
+        run: |
+          cargo update -p home --precise 0.5.9
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:

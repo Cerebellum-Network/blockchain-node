@@ -55,7 +55,7 @@ pub mod v1 {
 
 	pub fn migrate_to_v1<T: Config>() -> Weight {
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
-		let current_version = Pallet::<T>::current_storage_version();
+		let current_version = Pallet::<T>::in_code_storage_version();
 
 		info!(
 			target: LOG_TARGET,
@@ -132,7 +132,7 @@ pub mod v1 {
 				"the storage node count before and after the migration should be the same"
 			);
 
-			let current_version = Pallet::<T>::current_storage_version();
+			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
 			ensure!(current_version == 1, "must_upgrade");
