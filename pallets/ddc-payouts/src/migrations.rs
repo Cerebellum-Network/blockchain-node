@@ -39,7 +39,7 @@ pub mod v1 {
 
 	pub fn migrate_to_v1<T: Config>() -> Weight {
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
-		let current_version = Pallet::<T>::current_storage_version();
+		let current_version = Pallet::<T>::in_code_storage_version();
 
 		log::info!(
 			target: LOG_TARGET,
@@ -126,7 +126,7 @@ pub mod v2 {
 
 	pub fn migrate_to_v2<T: Config>() -> Weight {
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
-		let current_version = Pallet::<T>::current_storage_version();
+		let current_version = Pallet::<T>::in_code_storage_version();
 
 		log::info!(
 			target: LOG_TARGET,
@@ -249,7 +249,7 @@ pub mod v2 {
 				"Billing report fingerprints count after the migration should be equal to billing reports count"
 			);
 
-			let current_version = Pallet::<T>::current_storage_version();
+			let current_version = Pallet::<T>::in_code_storage_version();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
 			frame_support::ensure!(current_version == 2, "must_upgrade");
