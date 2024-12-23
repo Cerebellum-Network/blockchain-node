@@ -47,6 +47,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances,
 		Staking: pallet_staking,
 		Session: pallet_session,
+		SessionHistory: pallet_session::historical,
 	}
 );
 
