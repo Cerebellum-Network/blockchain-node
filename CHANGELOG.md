@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [7.2.0]
+
+- [C,D] DAC v5 Inspection + Payouts prototype
+
 ## [7.1.0]
 
 - [C,D] Update Substrate from `stable2407` to `stable2409`.
@@ -197,7 +201,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [C,D] Updated Substrate to polkadot-v0.9.38
 - [C] Added pallet-preimage to support democracy functionality.
-- Changes in `pallet-ddc-payouts::begin_billing_report` crate to accept start and end of the era.
+- Changes in `pallet-ddc-payouts::begin_payout` crate to accept start and end of the era.
 - More explicit events in `pallet-ddc-payouts` and `pallet-ddc-customers`
 
 ## [4.8.6]
