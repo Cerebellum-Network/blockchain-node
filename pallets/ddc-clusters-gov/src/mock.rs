@@ -23,7 +23,7 @@ use frame_support::{
 };
 use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
-	EnsureRoot,
+	EnsureRoot, EnsureSigned,
 };
 use lazy_static::lazy_static;
 use pallet_ddc_clusters::cluster::Cluster;
@@ -246,6 +246,8 @@ impl pallet_contracts::Config for Test {
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type MaxDelegateDependencies = MaxDelegateDependencies;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type UploadOrigin = EnsureSigned<AccountId>;
+	type InstantiateOrigin = EnsureSigned<AccountId>;
 	type Debug = ();
 	type Environment = ();
 	type Migrations = ();
