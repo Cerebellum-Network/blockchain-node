@@ -57,7 +57,7 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 type Balance = u64;
 type BlockNumber = u64;
 
-#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = ();
