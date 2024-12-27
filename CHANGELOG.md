@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [6.7.0]
+
+- [C,D] Update Substrate from `v1.9` to `v1.10`.
+
 ## [6.6.0]
 
 - [C,D] Update Substrate from `v1.8` to `v1.9`.
