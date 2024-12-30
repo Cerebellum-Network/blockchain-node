@@ -6,6 +6,7 @@ use sc_client_api::{
 	AuxStore, Backend as BackendT, BlockchainEvents, KeysIter, MerkleValue, PairsIter,
 	UsageProvider,
 };
+#[allow(deprecated)]
 pub use sc_executor::NativeElseWasmExecutor;
 use sp_api::{CallApiAt, ProvideRuntimeApi};
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
@@ -18,6 +19,7 @@ use sp_runtime::{
 use sp_storage::{ChildInfo, StorageData, StorageKey};
 
 pub type FullBackend = sc_service::TFullBackend<Block>;
+#[allow(deprecated)]
 pub type FullClient<RuntimeApi, ExecutorDispatch> =
 	sc_service::TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<ExecutorDispatch>>;
 
