@@ -15,7 +15,7 @@ use ddc_primitives::{
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
-	traits::{ConstU32, ConstU64, Everything, ExistenceRequirement, Randomness},
+	traits::{ConstU32, ConstU64, ExistenceRequirement, Randomness},
 	weights::constants::RocksDbWeight,
 	PalletId,
 };
@@ -25,7 +25,7 @@ use sp_io::TestExternalities;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
 use sp_runtime::{
-	traits::{BlakeTwo256, IdentifyAccount, Identity, IdentityLookup, Verify},
+	traits::{IdentifyAccount, Identity, IdentityLookup, Verify},
 	AccountId32, BuildStorage, DispatchError, MultiSignature, Perquintill,
 };
 use sp_std::prelude::*;
@@ -76,20 +76,13 @@ impl Randomness<H256, BlockNumber> for MockRandomness {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type BaseCallFilter = Everything;
 	type DbWeight = RocksDbWeight;
-	type RuntimeOrigin = RuntimeOrigin;
 	type Nonce = u64;
 	type Block = Block;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeTask = RuntimeTask;
 	type Hash = H256;
-	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type MaxConsumers = ConstU32<16>;
 }

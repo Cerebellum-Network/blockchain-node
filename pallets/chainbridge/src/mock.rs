@@ -6,7 +6,7 @@ use frame_system::{self as system};
 pub use pallet_balances as balances;
 use sp_core::H256;
 use sp_runtime::{
-	traits::{AccountIdConversion, BlakeTwo256, IdentityLookup},
+	traits::{AccountIdConversion, IdentityLookup},
 	BuildStorage, Perbill,
 };
 
@@ -22,21 +22,12 @@ parameter_types! {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type BaseCallFilter = Everything;
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeTask = RuntimeTask;
 	type Nonce = u64;
 	type Block = Block;
 	type Hash = H256;
-	type Hashing = BlakeTwo256;
 	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = BlockHashCount;
-	// type ModuleToIndex = ();
-	type PalletInfo = PalletInfo;
-	// type MaxLocks = MaxLocks;
 	type AccountData = pallet_balances::AccountData<u64>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
