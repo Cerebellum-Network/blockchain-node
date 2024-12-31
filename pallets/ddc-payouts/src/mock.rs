@@ -25,7 +25,7 @@ use sp_io::TestExternalities;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
 use sp_runtime::{
-	traits::{IdentifyAccount, Identity, IdentityLookup, Verify},
+	traits::{BlakeTwo256, IdentifyAccount, Identity, IdentityLookup, Verify},
 	AccountId32, BuildStorage, DispatchError, MultiSignature, Perquintill,
 };
 use sp_std::prelude::*;

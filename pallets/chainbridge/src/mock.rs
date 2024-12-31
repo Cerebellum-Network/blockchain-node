@@ -1,6 +1,5 @@
 use frame_support::{
-	assert_ok, derive_impl, ord_parameter_types, parameter_types, traits::Everything,
-	weights::Weight,
+	assert_ok, derive_impl, ord_parameter_types, parameter_types, weights::Weight,
 };
 use frame_system::{self as system};
 pub use pallet_balances as balances;
