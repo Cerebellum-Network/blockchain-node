@@ -264,7 +264,9 @@ pub fn cere_dev_genesis(
 				.cloned()
 				.collect::<Vec<_>>(),
 		},
-		"ddcVerification": Default::default(),
+		"ddcVerification": {
+			"validators": []
+		}
 	})
 }
 
