@@ -123,6 +123,7 @@ use governance::{
 };
 /// Generated voter bag information.
 mod voter_bags;
+pub mod ismp;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -1285,6 +1286,44 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 	}
 }
 
+parameter_types! {
+    // The hyperbridge parachain on Polkadot
+    pub const Coprocessor: Option<StateMachine> = Some(StateMachine::Polkadot(3367));
+    // The host state machine of this pallet, this must be unique to all every solochain
+    pub const HostStateMachine: StateMachine = StateMachine::Substrate(*b"solo"); // your unique chain id here
+}
+
+impl pallet_ismp::Config for Runtime {
+	// Configure the runtime event
+	type RuntimeEvent = RuntimeEvent;
+	// Permissioned origin who can create or update consensus clients
+	type AdminOrigin = EnsureRoot<AccountId>;
+	// The state machine identifier for this state machine
+	type HostStateMachine = HostStateMachine;
+	// The pallet_timestamp pallet
+	type TimestampProvider = Timestamp;
+	// The currency implementation that is offered to relayers
+	// this could also be `frame_support::traits::tokens::fungible::ItemOf`
+	type Currency = Balances;
+	// The balance type for the currency implementation
+	type Balance = Balance;
+	// Router implementation for routing requests/responses to their respective modules
+	type Router = Router;
+	// Optional coprocessor for incoming requests/responses
+	type Coprocessor = Coprocessor;
+	// Supported consensus clients
+	type ConsensusClients = (
+		// Add the grandpa consensus client here
+		ismp_grandpa::GrandpaConsensusClient<Runtime>,
+	);
+	// Offchain database implementation. Outgoing requests and responses are
+	// inserted in this database, while their commitments are stored onchain.
+	//
+	// The default implementation for `()` should suffice
+	type OffchainDB = ();
+	// Weight provider for local modules
+	type WeightProvider = ();
+}
 construct_runtime!(
 	pub enum Runtime
 	{
@@ -1338,6 +1377,8 @@ construct_runtime!(
 		// End OpenGov.
 		TechComm: pallet_collective::<Instance3>,
 		DdcClustersGov: pallet_ddc_clusters_gov,
+		Ismp: pallet_ismp,
+		IsmpGrandpa: ismp_grandpa
 	}
 );
 
@@ -1448,6 +1489,59 @@ mod benches {
 }
 
 impl_runtime_apis! {
+
+	impl pallet_ismp_runtime_api::IsmpRuntimeApi<Block, <Block as BlockT>::Hash> for Runtime {
+		fn host_state_machine() -> StateMachine {
+			<Runtime as pallet_ismp::Config>::HostStateMachine::get()
+		}
+
+		fn challenge_period(state_machine_id: StateMachineId) -> Option<u64> {
+			pallet_ismp::Pallet::<Runtime>::challenge_period(state_machine_id)
+		}
+
+		/// Generate a proof for the provided leaf indices
+		fn generate_proof(
+			keys: ProofKeys
+		) -> Result<(Vec<Leaf>, Proof<<Block as BlockT>::Hash>), sp_mmr_primitives::Error> {
+			pallet_ismp::Pallet::<Runtime>::generate_proof(keys)
+		}
+
+		/// Fetch all ISMP events in the block, should only be called from runtime-api.
+		fn block_events() -> Vec<::ismp::events::Event> {
+			pallet_ismp::Pallet::<Runtime>::block_events()
+		}
+
+		/// Fetch all ISMP events and their extrinsic metadata, should only be called from runtime-api.
+		fn block_events_with_metadata() -> Vec<(::ismp::events::Event, Option<u32>)> {
+			pallet_ismp::Pallet::<Runtime>::block_events_with_metadata()
+		}
+
+		/// Return the scale encoded consensus state
+		fn consensus_state(id: ConsensusClientId) -> Option<Vec<u8>> {
+			pallet_ismp::Pallet::<Runtime>::consensus_states(id)
+		}
+
+		/// Return the timestamp this client was last updated in seconds
+		fn state_machine_update_time(height: StateMachineHeight) -> Option<u64> {
+			pallet_ismp::Pallet::<Runtime>::state_machine_update_time(height)
+		}
+
+		/// Return the latest height of the state machine
+		fn latest_state_machine_height(id: StateMachineId) -> Option<u64> {
+			pallet_ismp::Pallet::<Runtime>::latest_state_machine_height(id)
+		}
+
+
+		/// Get actual requests
+		fn requests(commitments: Vec<H256>) -> Vec<Request> {
+			pallet_ismp::Pallet::<Runtime>::requests(commitments)
+		}
+
+		/// Get actual requests
+		fn responses(commitments: Vec<H256>) -> Vec<Response> {
+			pallet_ismp::Pallet::<Runtime>::responses(commitments)
+		}
+	}
 	impl sp_genesis_builder::GenesisBuilder<Block> for Runtime {
 
 		fn get_preset(id: &Option<sp_genesis_builder::PresetId>) -> Option<Vec<u8>> {

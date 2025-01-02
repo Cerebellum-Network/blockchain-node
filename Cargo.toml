@@ -173,6 +173,16 @@ substrate-state-trie-migration-rpc = { git = "https://github.com/paritytech/polk
 substrate-test-utils = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2407", default-features = false }
 substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2407", default-features = false }
 
+
+# Hyperbridge Dependencies
+pallet-ismp = { version = "1.15.3", default-features = false }
+pallet-ismp-runtime-api = { version = "1.15.3", default-features = false }
+pallet-ismp-rpc = { version = "1.15.3" }
+ismp-grandpa = { version = "1.15.4", default-features = false }
+pallet-hyperbridge = { version = "1.15.3", default-features = false }
+pallet-token-gateway = { version = "1.15.3", default-features = false }
+
+
 # Cere Dependenies
 cere-client = { path = "node/client" }
 cere-dev-runtime = { path = "runtime/cere-dev" }

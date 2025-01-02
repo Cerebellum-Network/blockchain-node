@@ -92,6 +92,13 @@ sp-storage = { workspace = true }
 sp-transaction-pool = { workspace = true }
 sp-version = { workspace = true }
 
+# Hyperbridge Dependencies
+pallet-ismp = { workspace = true }
+pallet-ismp-runtime-api = { workspace = true }
+ismp-grandpa = { workspace = true }
+pallet-hyperbridge = { workspace = true }
+pallet-token-gateway = { workspace = true }
+
 # cere dependencies
 cere-runtime-common = { workspace = true }
 ddc-primitives = { workspace = true }
@@ -193,6 +200,11 @@ std = [
   "pallet-ddc-clusters-gov/std",
   "sp-arithmetic/std",
   "pallet-origins/std",
+  "pallet-ismp/std",
+  "pallet-ismp-runtime-api/std",
+  "ismp-grandpa/std",
+  "pallet-hyperbridge/std",
+  "pallet-token-gateway/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
