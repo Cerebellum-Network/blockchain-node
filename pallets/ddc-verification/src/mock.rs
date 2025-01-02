@@ -29,7 +29,7 @@ use sp_core::{ByteArray, H256};
 use sp_runtime::{
 	curve::PiecewiseLinear,
 	testing::{TestXt, UintAuthorityId},
-	traits::{BlakeTwo256, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify, Zero},
+	traits::{Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify, Zero},
 	BuildStorage, MultiSignature, Perbill, Percent,
 };
 use sp_staking::{EraIndex, SessionIndex};
@@ -59,23 +59,16 @@ type BlockNumber = u64;
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeTask = RuntimeTask;
 	type Nonce = u64;
 	type Hash = H256;
-	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<u64>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
