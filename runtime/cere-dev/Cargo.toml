@@ -28,7 +28,7 @@ frame-system = { workspace = true }
 frame-system-benchmarking = { workspace = true, optional = true }
 frame-system-rpc-runtime-api = { workspace = true }
 frame-try-runtime = { workspace = true, optional = true }
-node-primitives = { workspace = true }
+#node-primitives = { workspace = true }
 pallet-authority-discovery = { workspace = true }
 pallet-authorship = { workspace = true }
 pallet-babe = { workspace = true }
@@ -93,12 +93,13 @@ sp-transaction-pool = { workspace = true }
 sp-version = { workspace = true }
 
 # Hyperbridge Dependencies
-pallet-ismp = { workspace = true }
+ismp = { workspace = true }
+pallet-ismp = { workspace = true, features = [ "unsigned" ]}
 pallet-ismp-runtime-api = { workspace = true }
 ismp-grandpa = { workspace = true }
+frame-metadata-hash-extension = { workspace = true }
 pallet-hyperbridge = { workspace = true }
-pallet-token-gateway = { workspace = true }
-
+sp-mmr-primitives = { workspace = true }
 # cere dependencies
 cere-runtime-common = { workspace = true }
 ddc-primitives = { workspace = true }
@@ -112,7 +113,7 @@ pallet-ddc-staking = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
 pallet-origins = { workspace = true }
-
+anyhow = { workspace = true }
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }
 
@@ -120,6 +121,7 @@ substrate-wasm-builder = { workspace = true, default-features = true }
 default = ["std"]
 with-tracing = ["frame-executive/with-tracing"]
 std = [
+"pallet-hyperbridge/std",
   "codec/std",
   "scale-info/std",
   "log/std",
@@ -129,7 +131,6 @@ std = [
   "frame-system-rpc-runtime-api/std",
   "frame-system/std",
   "frame-try-runtime/std",
-  "node-primitives/std",
   "pallet-collective/std",
   "pallet-contracts/std",
   "pallet-democracy/std",
@@ -200,11 +201,12 @@ std = [
   "pallet-ddc-clusters-gov/std",
   "sp-arithmetic/std",
   "pallet-origins/std",
+  "ismp/std",
   "pallet-ismp/std",
   "pallet-ismp-runtime-api/std",
   "ismp-grandpa/std",
-  "pallet-hyperbridge/std",
-  "pallet-token-gateway/std",
+  "anyhow/std",
+  "frame-metadata-hash-extension/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",

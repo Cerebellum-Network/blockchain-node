@@ -54,8 +54,8 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
-pub use node_primitives::{AccountId, Signature};
-use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce};
+pub use ddc_primitives::{AccountId, Signature};
+use ddc_primitives::{AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce};
 #[cfg(any(feature = "std", test))]
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
@@ -107,6 +107,7 @@ use static_assertions::const_assert;
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
+mod weights;
 /// Constant values used within the runtime.
 use cere_runtime_common::{
 	constants::{currency::*, time::*},
@@ -121,9 +122,20 @@ use governance::{
 	ClusterProtocolActivator, ClusterProtocolUpdater, GeneralAdmin, StakingAdmin, Treasurer,
 	TreasurySpender,
 };
+use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
+use ismp::consensus::{ConsensusClientId, StateMachineHeight, StateMachineId};
+use ismp_grandpa::consensus::GrandpaConsensusClient;
+use ismp::{
+	error::Error,
+	host::StateMachine,
+	module::IsmpModule,
+	router::{IsmpRouter, PostRequest, Request, Response, Timeout},
+};
+use pallet_ismp::{dispatcher::FeeMetadata, ModuleId};
+use sp_std::prelude::*;
+use sp_core::H256;
 /// Generated voter bag information.
 mod voter_bags;
-pub mod ismp;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -407,10 +419,10 @@ impl pallet_babe::Config for Runtime {
 	type DisabledValidators = Session;
 
 	type KeyOwnerProof =
-		<Historical as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
+	<Historical as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
 
 	type EquivocationReportSystem =
-		pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
+	pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
 
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
@@ -737,7 +749,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
 	type SignedMaxRefunds = ConstU32<3>;
 	type SignedDepositWeight = ();
 	type SignedMaxWeight =
-		<Self::MinerConfig as pallet_election_provider_multi_phase::MinerConfig>::MaxWeight;
+	<Self::MinerConfig as pallet_election_provider_multi_phase::MinerConfig>::MaxWeight;
 	type MinerConfig = Self;
 	type SlashHandler = (); // burn slashes
 	type RewardHandler = (); // nothing to do upon rewards
@@ -914,8 +926,8 @@ parameter_types! {
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
-where
-	RuntimeCall: From<LocalCall>,
+	where
+		RuntimeCall: From<LocalCall>,
 {
 	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
 		call: RuntimeCall,
@@ -942,6 +954,7 @@ where
 			frame_system::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+			frame_metadata_hash_extension::CheckMetadataHash::new(false)
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -961,8 +974,8 @@ impl frame_system::offchain::SigningTypes for Runtime {
 }
 
 impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
-where
-	RuntimeCall: From<C>,
+	where
+		RuntimeCall: From<C>,
 {
 	type Extrinsic = UncheckedExtrinsic;
 	type OverarchingCall = RuntimeCall;
@@ -1000,7 +1013,7 @@ impl pallet_grandpa::Config for Runtime {
 	type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
 
 	type EquivocationReportSystem =
-		pallet_grandpa::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
+	pallet_grandpa::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
 
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
@@ -1279,7 +1292,7 @@ impl<T: frame_system::Config> PalletVisitor<T> for ClustersGovWrapper {
 
 pub struct DdcOriginAsNative<DdcOrigin, RuntimeOrigin>(PhantomData<(DdcOrigin, RuntimeOrigin)>);
 impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
-	for DdcOriginAsNative<DdcOrigin, T>
+for DdcOriginAsNative<DdcOrigin, T>
 {
 	fn get() -> T::RuntimeOrigin {
 		DdcOrigin::get()
@@ -1308,13 +1321,13 @@ impl pallet_ismp::Config for Runtime {
 	// The balance type for the currency implementation
 	type Balance = Balance;
 	// Router implementation for routing requests/responses to their respective modules
-	type Router = Router;
+	type Router = ModuleRouter;
 	// Optional coprocessor for incoming requests/responses
 	type Coprocessor = Coprocessor;
 	// Supported consensus clients
 	type ConsensusClients = (
 		// Add the grandpa consensus client here
-		ismp_grandpa::GrandpaConsensusClient<Runtime>,
+		GrandpaConsensusClient<Runtime>,
 	);
 	// Offchain database implementation. Outgoing requests and responses are
 	// inserted in this database, while their commitments are stored onchain.
@@ -1324,6 +1337,32 @@ impl pallet_ismp::Config for Runtime {
 	// Weight provider for local modules
 	type WeightProvider = ();
 }
+
+impl pallet_hyperbridge::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type IsmpHost = Ismp;
+}
+
+#[derive(Default)]
+pub struct ModuleRouter;
+
+impl IsmpRouter for ModuleRouter {
+    fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, anyhow::Error> {
+        return match id.as_slice() {
+            pallet_hyperbridge::PALLET_HYPERBRIDGE_ID => Ok(Box::new(pallet_hyperbridge::Pallet::<Runtime>::default())),
+            _ => Err(Error::ModuleNotFound(id).into()),
+        };
+    }
+}
+
+impl ismp_grandpa::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type IsmpHost = Ismp;
+	type WeightInfo = weights::ismp_grandpa::WeightInfo<Runtime>;
+
+}
+
+
 construct_runtime!(
 	pub enum Runtime
 	{
@@ -1378,7 +1417,8 @@ construct_runtime!(
 		TechComm: pallet_collective::<Instance3>,
 		DdcClustersGov: pallet_ddc_clusters_gov,
 		Ismp: pallet_ismp,
-		IsmpGrandpa: ismp_grandpa
+		IsmpGrandpa: ismp_grandpa,
+		Hyperbridge: pallet_hyperbridge,
 	}
 );
 
@@ -1406,11 +1446,12 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
-	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Extrinsic type that has already been checked.
@@ -1488,60 +1529,52 @@ mod benches {
 	);
 }
 
+
 impl_runtime_apis! {
 
 	impl pallet_ismp_runtime_api::IsmpRuntimeApi<Block, <Block as BlockT>::Hash> for Runtime {
-		fn host_state_machine() -> StateMachine {
-			<Runtime as pallet_ismp::Config>::HostStateMachine::get()
-		}
+        fn host_state_machine() -> StateMachine {
+            <Runtime as pallet_ismp::Config>::HostStateMachine::get()
+        }
 
-		fn challenge_period(state_machine_id: StateMachineId) -> Option<u64> {
-			pallet_ismp::Pallet::<Runtime>::challenge_period(state_machine_id)
-		}
+        fn challenge_period(id: StateMachineId) -> Option<u64> {
+            pallet_ismp::Pallet::<Runtime>::challenge_period(id)
+        }
 
-		/// Generate a proof for the provided leaf indices
-		fn generate_proof(
-			keys: ProofKeys
-		) -> Result<(Vec<Leaf>, Proof<<Block as BlockT>::Hash>), sp_mmr_primitives::Error> {
-			pallet_ismp::Pallet::<Runtime>::generate_proof(keys)
-		}
+        fn generate_proof(
+            keys: ProofKeys
+        ) -> Result<(Vec<Leaf>, Proof<<Block as BlockT>::Hash>), sp_mmr_primitives::Error> {
+            pallet_ismp::Pallet::<Runtime>::generate_proof(keys)
+        }
 
-		/// Fetch all ISMP events in the block, should only be called from runtime-api.
-		fn block_events() -> Vec<::ismp::events::Event> {
-			pallet_ismp::Pallet::<Runtime>::block_events()
-		}
+        fn block_events() -> Vec<ismp::events::Event> {
+            pallet_ismp::Pallet::<Runtime>::block_events()
+        }
 
-		/// Fetch all ISMP events and their extrinsic metadata, should only be called from runtime-api.
-		fn block_events_with_metadata() -> Vec<(::ismp::events::Event, Option<u32>)> {
-			pallet_ismp::Pallet::<Runtime>::block_events_with_metadata()
-		}
+        fn block_events_with_metadata() -> Vec<(ismp::events::Event, Option<u32>)> {
+            pallet_ismp::Pallet::<Runtime>::block_events_with_metadata()
+        }
 
-		/// Return the scale encoded consensus state
-		fn consensus_state(id: ConsensusClientId) -> Option<Vec<u8>> {
-			pallet_ismp::Pallet::<Runtime>::consensus_states(id)
-		}
+        fn consensus_state(id: ConsensusClientId) -> Option<Vec<u8>> {
+            pallet_ismp::Pallet::<Runtime>::consensus_states(id)
+        }
 
-		/// Return the timestamp this client was last updated in seconds
-		fn state_machine_update_time(height: StateMachineHeight) -> Option<u64> {
-			pallet_ismp::Pallet::<Runtime>::state_machine_update_time(height)
-		}
+        fn state_machine_update_time(height: StateMachineHeight) -> Option<u64> {
+            pallet_ismp::Pallet::<Runtime>::state_machine_update_time(height)
+        }
 
-		/// Return the latest height of the state machine
-		fn latest_state_machine_height(id: StateMachineId) -> Option<u64> {
-			pallet_ismp::Pallet::<Runtime>::latest_state_machine_height(id)
-		}
+        fn latest_state_machine_height(id: StateMachineId) -> Option<u64> {
+            pallet_ismp::Pallet::<Runtime>::latest_state_machine_height(id)
+        }
 
+        fn requests(commitments: Vec<H256>) -> Vec<Request> {
+            pallet_ismp::Pallet::<Runtime>::requests(commitments)
+        }
 
-		/// Get actual requests
-		fn requests(commitments: Vec<H256>) -> Vec<Request> {
-			pallet_ismp::Pallet::<Runtime>::requests(commitments)
-		}
-
-		/// Get actual requests
-		fn responses(commitments: Vec<H256>) -> Vec<Response> {
-			pallet_ismp::Pallet::<Runtime>::responses(commitments)
-		}
-	}
+        fn responses(commitments: Vec<H256>) -> Vec<Response> {
+            pallet_ismp::Pallet::<Runtime>::responses(commitments)
+        }
+    }
 	impl sp_genesis_builder::GenesisBuilder<Block> for Runtime {
 
 		fn get_preset(id: &Option<sp_genesis_builder::PresetId>) -> Option<Vec<u8>> {
@@ -1972,8 +2005,8 @@ mod tests {
 	#[test]
 	fn validate_transaction_submitter_bounds() {
 		fn is_submit_signed_transaction<T>()
-		where
-			T: CreateSignedTransaction<RuntimeCall>,
+			where
+				T: CreateSignedTransaction<RuntimeCall>,
 		{
 		}
 

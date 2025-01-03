@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use node_primitives::Nonce;
-pub use node_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Signature};
+use ddc_primitives::Nonce;
+pub use ddc_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Signature};
 use sc_client_api::{
 	AuxStore, Backend as BackendT, BlockchainEvents, KeysIter, MerkleValue, PairsIter,
 	UsageProvider,
