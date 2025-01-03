@@ -16,7 +16,7 @@ use frame_support::{
 	derive_impl, parameter_types,
 	traits::{
 		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, EnsureOriginWithArg,
-		EqualPrivilegeOnly, Everything, LinearStoragePrice, Nothing,
+		EqualPrivilegeOnly, LinearStoragePrice, Nothing,
 	},
 	weights::constants::RocksDbWeight,
 	PalletId,
@@ -33,7 +33,7 @@ use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
-	traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify},
+	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, MultiSignature, Perbill,
 };
 
@@ -87,20 +87,13 @@ impl Convert<Weight, BalanceOf<Self>> for Test {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type BaseCallFilter = Everything;
 	type DbWeight = RocksDbWeight;
-	type RuntimeOrigin = RuntimeOrigin;
 	type Nonce = u64;
 	type Block = Block;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeTask = RuntimeTask;
 	type Hash = H256;
-	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type MaxConsumers = ConstU32<16>;
 }

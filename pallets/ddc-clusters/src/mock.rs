@@ -8,7 +8,7 @@ use ddc_primitives::{
 };
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
-	traits::{ConstBool, ConstU32, ConstU64, Everything, Nothing},
+	traits::{ConstBool, ConstU32, ConstU64, Nothing},
 	weights::constants::RocksDbWeight,
 };
 use frame_system::{
@@ -20,9 +20,7 @@ use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::TestXt,
-	traits::{
-		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
-	},
+	traits::{Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, DispatchResult, MultiSignature, Perbill, Perquintill,
 };
 
@@ -150,19 +148,12 @@ parameter_types! {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type BaseCallFilter = Everything;
 	type DbWeight = RocksDbWeight;
-	type RuntimeOrigin = RuntimeOrigin;
 	type Nonce = u64;
 	type Block = Block;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeTask = RuntimeTask;
 	type Hash = H256;
-	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
-	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
-	type PalletInfo = PalletInfo;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type MaxConsumers = ConstU32<16>;
 	type Lookup = IdentityLookup<Self::AccountId>;
