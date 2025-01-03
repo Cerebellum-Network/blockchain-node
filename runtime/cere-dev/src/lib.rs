@@ -30,6 +30,7 @@ use frame_election_provider_support::{
 use frame_support::{
 	construct_runtime, derive_impl,
 	dispatch::DispatchClass,
+	genesis_builder_helper::{build_state, get_preset},
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
@@ -37,7 +38,7 @@ use frame_support::{
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
-		Nothing, OnUnbalanced, WithdrawReasons,
+		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -147,7 +148,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 68000,
+	spec_version: 69000,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -448,7 +449,7 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 	type FreezeIdentifier = RuntimeFreezeReason;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
-	type MaxFreezes = ConstU32<1>;
+	type MaxFreezes = VariantCountOf<RuntimeFreezeReason>;
 	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
@@ -784,13 +785,8 @@ parameter_types! {
 impl pallet_treasury::Config for Runtime {
 	type PalletId = TreasuryPalletId;
 	type Currency = Balances;
-	type ApproveOrigin = EitherOfDiverse<EnsureRoot<AccountId>, Treasurer>;
 	type RejectOrigin = EitherOfDiverse<EnsureRoot<AccountId>, Treasurer>;
 	type RuntimeEvent = RuntimeEvent;
-	type OnSlash = ();
-	type ProposalBond = ProposalBond;
-	type ProposalBondMinimum = ProposalBondMinimum;
-	type ProposalBondMaximum = ();
 	type SpendPeriod = SpendPeriod;
 	type Burn = Burn;
 	type BurnDestination = ();
@@ -832,6 +828,7 @@ impl pallet_bounties::Config for Runtime {
 	type MaximumReasonLength = MaximumReasonLength;
 	type WeightInfo = pallet_bounties::weights::SubstrateWeight<Runtime>;
 	type ChildBountyManager = ChildBounties;
+	type OnSlash = Treasury;
 }
 
 parameter_types! {
@@ -1130,7 +1127,6 @@ impl pallet_nomination_pools::Config for Runtime {
 	type RewardCounter = FixedU128;
 	type BalanceToU256 = cere_runtime_common::BalanceToU256;
 	type U256ToBalance = cere_runtime_common::U256ToBalance;
-	type Staking = Staking;
 	type PostUnbondingPoolsWindow = frame_support::traits::ConstU32<4>;
 	type MaxMetadataLen = frame_support::traits::ConstU32<256>;
 	// we use the same number of allowed unlocking chunks as with staking.
@@ -1139,6 +1135,7 @@ impl pallet_nomination_pools::Config for Runtime {
 	type MaxPointsToBalance = MaxPointsToBalance;
 	type WeightInfo = ();
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	type StakeAdapter = pallet_nomination_pools::adapter::TransferStake<Self, Staking>;
 }
 
 parameter_types! {
@@ -1442,6 +1439,20 @@ mod benches {
 }
 
 impl_runtime_apis! {
+	impl sp_genesis_builder::GenesisBuilder<Block> for Runtime {
+
+		fn get_preset(id: &Option<sp_genesis_builder::PresetId>) -> Option<Vec<u8>> {
+			get_preset::<RuntimeGenesisConfig>(id, |_| None)
+		}
+
+		fn preset_names() -> Vec<sp_genesis_builder::PresetId> {
+			vec![]
+		}
+
+		fn build_state(config: Vec<u8>) -> sp_genesis_builder::Result {
+			build_state::<RuntimeGenesisConfig>(config)
+		}
+	}
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
 			VERSION
@@ -1730,6 +1741,21 @@ impl_runtime_apis! {
 
 		fn balance_to_points(pool_id: pallet_nomination_pools::PoolId, new_funds: Balance) -> Balance {
 			NominationPools::api_balance_to_points(pool_id, new_funds)
+		}
+		fn pool_pending_slash(pool_id: pallet_nomination_pools::PoolId) -> Balance {
+			NominationPools::api_pool_pending_slash(pool_id)
+		}
+
+		fn member_pending_slash(member: AccountId) -> Balance {
+			NominationPools::api_member_pending_slash(member)
+		}
+
+		fn pool_needs_delegate_migration(pool_id: pallet_nomination_pools::PoolId) -> bool {
+			NominationPools::api_pool_needs_delegate_migration(pool_id)
+		}
+
+		fn member_needs_delegate_migration(member: AccountId) -> bool {
+			NominationPools::api_member_needs_delegate_migration(member)
 		}
 	}
 
