@@ -4230,7 +4230,7 @@ pub mod pallet {
 				.collect::<Vec<_>>();
 
 			ValidatorSet::<T>::put(validators); // only active validators in session - this is NOT all the
-			                           // validators
+									// validators
 		}
 
 		#[allow(clippy::multiple_bound_locations)]
