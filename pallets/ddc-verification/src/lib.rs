@@ -4229,8 +4229,7 @@ pub mod pallet {
 				.map(|(_, k)| T::AccountId::decode(&mut &k.into().encode()[..]).unwrap())
 				.collect::<Vec<_>>();
 
-			ValidatorSet::<T>::put(validators); // only active validators in session - this is NOT all the
-									// validators
+			ValidatorSet::<T>::put(validators); // only active validators in session - this is NOT all the validators
 		}
 
 		#[allow(clippy::multiple_bound_locations)]
