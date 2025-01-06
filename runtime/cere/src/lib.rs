@@ -929,7 +929,7 @@ impl pallet_contracts::Config for Runtime {
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	type Debug = ();
 	type Environment = ();
-	type Migrations = (pallet_contracts::migration::v16::Migration<Runtime>,);
+	type Migrations = ();
 	type ApiVersion = ();
 	type Xcm = ();
 }
@@ -1470,10 +1470,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 
 // 	// Migrations for DAC and Payouts on QANET
 // );
-type Migrations = (
-	pallet_staking::migrations::v15::MigrateV14ToV15<Runtime>,
-	pallet_contracts::Migration<Runtime>,
-);
+type Migrations = ();
 
 pub mod migrations {
 	use super::*;
