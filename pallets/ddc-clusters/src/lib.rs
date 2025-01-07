@@ -141,12 +141,10 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn clusters)]
 	pub type Clusters<T: Config> =
 		StorageMap<_, Blake2_128Concat, ClusterId, Cluster<T::AccountId>>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn clusters_protocol_params)]
 	pub type ClustersGovParams<T: Config> = StorageMap<
 		_,
 		Twox64Concat,
@@ -155,7 +153,6 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn clusters_nodes)]
 	pub type ClustersNodes<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
@@ -167,7 +164,6 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn clusters_nodes_stats)]
 	pub type ClustersNodesStats<T: Config> =
 		StorageMap<_, Twox64Concat, ClusterId, ClusterNodesStats>;
 

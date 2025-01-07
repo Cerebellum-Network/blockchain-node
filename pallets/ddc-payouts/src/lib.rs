@@ -261,7 +261,6 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn active_billing_reports)]
 	pub type ActiveBillingReports<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
@@ -272,12 +271,10 @@ pub mod pallet {
 	>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn debtor_customers)]
 	pub type DebtorCustomers<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn owing_providers)]
 	pub type OwingProviders<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
 
@@ -360,7 +357,6 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn billing_fingerprints)]
 	pub type BillingFingerprints<T: Config> =
 		StorageMap<_, Blake2_128Concat, Fingerprint, BillingFingerprint<T::AccountId>>;
 

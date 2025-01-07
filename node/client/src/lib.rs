@@ -6,8 +6,7 @@ use sc_client_api::{
 	AuxStore, Backend as BackendT, BlockchainEvents, KeysIter, MerkleValue, PairsIter,
 	UsageProvider,
 };
-#[allow(deprecated)]
-pub use sc_executor::NativeElseWasmExecutor;
+use sc_executor::WasmExecutor;
 use sp_api::{CallApiAt, ProvideRuntimeApi};
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_consensus::BlockStatus;
@@ -19,46 +18,19 @@ use sp_runtime::{
 use sp_storage::{ChildInfo, StorageData, StorageKey};
 
 pub type FullBackend = sc_service::TFullBackend<Block>;
-#[allow(deprecated)]
-pub type FullClient<RuntimeApi, ExecutorDispatch> =
-	sc_service::TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<ExecutorDispatch>>;
+
+#[cfg(not(feature = "runtime-benchmarks"))]
+pub type HostFunctions = sp_io::SubstrateHostFunctions;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub type HostFunctions =
+	(sp_io::SubstrateHostFunctions, frame_benchmarking::benchmarking::HostFunctions);
+
+pub type ChainExecutor = WasmExecutor<HostFunctions>;
+pub type FullClient<RuntimeApi> = sc_service::TFullClient<Block, RuntimeApi, ChainExecutor>;
 
 #[cfg(not(any(feature = "cere", feature = "cere-dev",)))]
 compile_error!("at least one runtime feature must be enabled");
-
-/// The native executor instance for Cere.
-#[cfg(feature = "cere")]
-pub struct CereExecutorDispatch;
-
-#[cfg(feature = "cere")]
-impl sc_executor::NativeExecutionDispatch for CereExecutorDispatch {
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-
-	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		cere_runtime::api::dispatch(method, data)
-	}
-
-	fn native_version() -> sc_executor::NativeVersion {
-		cere_runtime::native_version()
-	}
-}
-
-/// The native executor instance for Cere Dev.
-#[cfg(feature = "cere-dev")]
-pub struct CereDevExecutorDispatch;
-
-#[cfg(feature = "cere-dev")]
-impl sc_executor::NativeExecutionDispatch for CereDevExecutorDispatch {
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-
-	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		cere_dev_runtime::api::dispatch(method, data)
-	}
-
-	fn native_version() -> sc_executor::NativeVersion {
-		cere_dev_runtime::native_version()
-	}
-}
 
 pub trait AbstractClient<Block, Backend>:
 	BlockchainEvents<Block>
@@ -102,9 +74,9 @@ where
 #[derive(Clone)]
 pub enum Client {
 	#[cfg(feature = "cere")]
-	Cere(Arc<FullClient<cere_runtime::RuntimeApi, CereExecutorDispatch>>),
+	Cere(Arc<FullClient<cere_runtime::RuntimeApi>>),
 	#[cfg(feature = "cere-dev")]
-	CereDev(Arc<FullClient<cere_dev_runtime::RuntimeApi, CereDevExecutorDispatch>>),
+	CereDev(Arc<FullClient<cere_dev_runtime::RuntimeApi>>),
 }
 
 macro_rules! with_client {

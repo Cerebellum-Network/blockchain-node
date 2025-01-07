@@ -21,9 +21,9 @@ fn create_bucket_works() {
 		));
 
 		// Check storage
-		assert_eq!(DdcCustomers::buckets_count(), 1);
+		assert_eq!(BucketsCount::<Test>::get(), 1);
 		assert_eq!(
-			DdcCustomers::buckets(1),
+			Buckets::<Test>::get(1),
 			Some(Bucket {
 				bucket_id: 1,
 				owner_id: account_1,
@@ -67,9 +67,9 @@ fn create_two_buckets_works() {
 		System::assert_last_event(Event::BucketCreated { cluster_id, bucket_id: 2u64 }.into());
 
 		// Check storage
-		assert_eq!(DdcCustomers::buckets_count(), 2);
+		assert_eq!(BucketsCount::<Test>::get(), 2);
 		assert_eq!(
-			DdcCustomers::buckets(1),
+			Buckets::<Test>::get(1),
 			Some(Bucket {
 				bucket_id: 1,
 				owner_id: account_1,
@@ -80,7 +80,7 @@ fn create_two_buckets_works() {
 			})
 		);
 		assert_eq!(
-			DdcCustomers::buckets(2),
+			Buckets::<Test>::get(2),
 			Some(Bucket {
 				bucket_id: 2,
 				owner_id: account_1,
@@ -119,7 +119,7 @@ fn deposit_and_deposit_extra_works() {
 
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(account_1),
+			Ledger::<Test>::get(account_1),
 			Some(AccountsLedger {
 				owner: account_1,
 				total: amount1,
@@ -157,7 +157,7 @@ fn deposit_and_deposit_extra_works() {
 
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(account_1),
+			Ledger::<Test>::get(account_1),
 			Some(AccountsLedger {
 				owner: account_1,
 				total: amount1 + extra_amount2,
@@ -202,7 +202,7 @@ fn charge_bucket_owner_works() {
 
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(account_3),
+			Ledger::<Test>::get(account_3),
 			Some(AccountsLedger {
 				owner: account_3,
 				total: deposit,
@@ -230,7 +230,7 @@ fn charge_bucket_owner_works() {
 
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(account_3),
+			Ledger::<Test>::get(account_3),
 			Some(AccountsLedger {
 				owner: account_3,
 				total: deposit - charge1,
@@ -248,7 +248,7 @@ fn charge_bucket_owner_works() {
 		let charge2 = 100u128;
 		let charge_result = DdcCustomers::charge_bucket_owner(account_3, vault, charge2).unwrap();
 		assert_eq!(
-			DdcCustomers::ledger(account_3),
+			Ledger::<Test>::get(account_3),
 			Some(AccountsLedger {
 				owner: account_3,
 				total: 0,
@@ -275,7 +275,7 @@ fn charge_bucket_owner_works() {
 
 		assert_ok!(DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_3), deposit));
 		assert_eq!(
-			DdcCustomers::ledger(account_3),
+			Ledger::<Test>::get(account_3),
 			Some(AccountsLedger {
 				owner: account_3,
 				total: deposit,
@@ -313,7 +313,7 @@ fn unlock_and_withdraw_deposit_works() {
 		let unlocking_chunks = vec![UnlockChunk { value: 1, block: 11 }];
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(1),
+			Ledger::<Test>::get(1),
 			Some(AccountsLedger {
 				owner: account_1,
 				total: 35_u128,
@@ -340,7 +340,7 @@ fn unlock_and_withdraw_deposit_works() {
 		assert_ok!(DdcCustomers::withdraw_unlocked_deposit(RuntimeOrigin::signed(account_1)));
 		// Check storage
 		assert_eq!(
-			DdcCustomers::ledger(1),
+			Ledger::<Test>::get(1),
 			Some(AccountsLedger {
 				owner: account_1,
 				total: 3_u128,
@@ -355,7 +355,7 @@ fn unlock_and_withdraw_deposit_works() {
 		assert_ok!(DdcCustomers::withdraw_unlocked_deposit(RuntimeOrigin::signed(account_1)));
 
 		// Check storage
-		assert_eq!(DdcCustomers::ledger(account_1), None);
+		assert_eq!(Ledger::<Test>::get(account_1), None);
 	})
 }
 
@@ -387,9 +387,9 @@ fn set_bucket_params_works() {
 			update_bucket_params.clone()
 		));
 
-		assert_eq!(DdcCustomers::buckets_count(), 1);
+		assert_eq!(BucketsCount::<Test>::get(), 1);
 		assert_eq!(
-			DdcCustomers::buckets(1),
+			Buckets::<Test>::get(1),
 			Some(Bucket {
 				bucket_id,
 				owner_id: bucket_owner,
@@ -481,9 +481,9 @@ fn remove_bucket_works() {
 		);
 
 		// Check storage bucket is not removed
-		assert_eq!(DdcCustomers::buckets_count(), 1);
+		assert_eq!(BucketsCount::<Test>::get(), 1);
 		assert_eq!(
-			DdcCustomers::buckets(1),
+			Buckets::<Test>::get(1),
 			Some(Bucket {
 				bucket_id: 1,
 				owner_id: account_1,
@@ -498,9 +498,9 @@ fn remove_bucket_works() {
 		assert_ok!(DdcCustomers::remove_bucket(RuntimeOrigin::signed(account_1), bucket_id_1));
 
 		// Check storage bucket is removed
-		assert_eq!(DdcCustomers::buckets_count(), 1);
+		assert_eq!(BucketsCount::<Test>::get(), 1);
 		assert_eq!(
-			DdcCustomers::buckets(1),
+			Buckets::<Test>::get(1),
 			Some(Bucket {
 				bucket_id: 1,
 				owner_id: account_1,
@@ -575,7 +575,7 @@ fn remove_bucket_checks_with_multiple_buckets_works() {
 
 		// Verify whether bucket has been removed
 		assert_eq!(
-			DdcCustomers::buckets(bucket_id_1),
+			Buckets::<Test>::get(bucket_id_1),
 			Some(Bucket {
 				bucket_id: bucket_id_1,
 				owner_id: account_1,
@@ -587,7 +587,7 @@ fn remove_bucket_checks_with_multiple_buckets_works() {
 		);
 
 		assert_eq!(
-			DdcCustomers::buckets(bucket_id_2),
+			Buckets::<Test>::get(bucket_id_2),
 			Some(Bucket {
 				bucket_id: bucket_id_2,
 				owner_id: account_2,

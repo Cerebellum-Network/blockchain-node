@@ -16,7 +16,6 @@ use frame_election_provider_support::SortedListProvider;
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstU32, ConstU64, ExistenceRequirement, Randomness},
-	weights::constants::RocksDbWeight,
 	PalletId,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
@@ -76,10 +75,7 @@ impl Randomness<H256, BlockNumber> for MockRandomness {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type DbWeight = RocksDbWeight;
-	type Nonce = u64;
 	type Block = Block;
-	type Hash = H256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type BlockHashCount = ConstU64<250>;

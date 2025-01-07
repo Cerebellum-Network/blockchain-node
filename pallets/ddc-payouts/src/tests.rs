@@ -169,10 +169,10 @@ fn begin_billing_report_works() {
 
 		System::assert_last_event(Event::BillingReportInitialized { cluster_id, era }.into());
 
-		let report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(report.state, PayoutState::Initialized);
 
-		let fingerprint = DdcPayouts::billing_fingerprints(fingerprint).unwrap();
+		let fingerprint = BillingFingerprints::<Test>::get(fingerprint).unwrap();
 
 		assert_eq!(fingerprint.start_era, start_era);
 		assert_eq!(fingerprint.end_era, end_era);
@@ -246,7 +246,7 @@ fn begin_charging_customers_works() {
 
 		System::assert_last_event(Event::ChargingStarted { cluster_id, era }.into());
 
-		let report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(report.state, PayoutState::ChargingCustomers);
 		assert_eq!(report.charging_max_batch_index, max_charging_batch_index);
 	})
@@ -558,7 +558,7 @@ fn send_charging_customers_batch_works() {
 		));
 
 		let usage4_charge = calculate_charge_for_month(cluster_id, usage4.clone());
-		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
+		let user2_debt = DebtorCustomers::<Test>::get(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_month(cluster_id, usage2.clone());
 		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
@@ -570,7 +570,7 @@ fn send_charging_customers_batch_works() {
 		charge2.gets = ratio * charge2.gets;
 		charge2.puts = ratio * charge2.puts;
 
-		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let mut report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge4 = calculate_charge_parts_for_month(cluster_id, usage4);
 		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
 		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
@@ -638,7 +638,7 @@ fn send_charging_customers_batch_works() {
 			.into(),
 		);
 
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge1 = calculate_charge_parts_for_month(cluster_id, usage1);
 		assert_eq!(
 			charge1.puts + before_total_customer_charge.puts,
@@ -658,7 +658,7 @@ fn send_charging_customers_batch_works() {
 		);
 
 		assert_eq!(report.state, PayoutState::ChargingCustomers);
-		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		let user1_debt = DebtorCustomers::<Test>::get(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
 		let balance_before = Balances::free_balance(DdcPayouts::account_id());
@@ -677,7 +677,7 @@ fn send_charging_customers_batch_works() {
 		let user3_charge = calculate_charge_for_month(cluster_id, usage3.clone());
 		let charge3 = calculate_charge_parts_for_month(cluster_id, usage3);
 		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(
 			ratio * charge3.puts + before_total_customer_charge.puts,
 			report.total_customer_charge.puts
@@ -698,7 +698,7 @@ fn send_charging_customers_batch_works() {
 		let balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
 
-		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor.clone()).unwrap();
+		let user3_debt = DebtorCustomers::<Test>::get(cluster_id, user3_debtor.clone()).unwrap();
 		debt = user3_charge - PARTIAL_CHARGE;
 		assert_eq!(user3_debt, debt);
 
@@ -808,7 +808,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 			MMRProof::default(),
 		));
 
-		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_before = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let usage6_charge = calculate_charge_for_hour(cluster_id, usage6.clone());
 		let usage7_charge = calculate_charge_for_hour(cluster_id, usage7.clone());
 		let charge6 = calculate_charge_parts_for_hour(cluster_id, usage6);
@@ -867,7 +867,7 @@ fn end_charging_customers_works_small_usage_1_hour() {
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
 		System::assert_has_event(Event::ChargingFinished { cluster_id, era }.into());
-		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_after = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(report_after.state, PayoutState::CustomersChargedWithFees);
 
 		let fees = get_fees(&cluster_id);
@@ -1045,7 +1045,7 @@ fn send_charging_customers_batch_works_for_day() {
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
-		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
+		let user2_debt = DebtorCustomers::<Test>::get(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
 		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
@@ -1057,7 +1057,7 @@ fn send_charging_customers_batch_works_for_day() {
 		charge2.gets = ratio * charge2.gets;
 		charge2.puts = ratio * charge2.puts;
 
-		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let mut report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
 		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
 		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
@@ -1125,7 +1125,7 @@ fn send_charging_customers_batch_works_for_day() {
 			.into(),
 		);
 
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge1 = calculate_charge_parts_for_day(cluster_id, usage1);
 		assert_eq!(
 			charge1.puts + before_total_customer_charge.puts,
@@ -1145,7 +1145,7 @@ fn send_charging_customers_batch_works_for_day() {
 		);
 
 		assert_eq!(report.state, PayoutState::ChargingCustomers);
-		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		let user1_debt = DebtorCustomers::<Test>::get(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
 		let balance_before = Balances::free_balance(DdcPayouts::account_id());
@@ -1164,7 +1164,7 @@ fn send_charging_customers_batch_works_for_day() {
 		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
 		let charge3 = calculate_charge_parts_for_day(cluster_id, usage3);
 		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(
 			ratio * charge3.puts + before_total_customer_charge.puts,
 			report.total_customer_charge.puts
@@ -1185,7 +1185,7 @@ fn send_charging_customers_batch_works_for_day() {
 		let balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
 
-		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor.clone()).unwrap();
+		let user3_debt = DebtorCustomers::<Test>::get(cluster_id, user3_debtor.clone()).unwrap();
 		debt = user3_charge - PARTIAL_CHARGE;
 		assert_eq!(user3_debt, debt);
 
@@ -1322,7 +1322,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
-		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
+		let user2_debt = DebtorCustomers::<Test>::get(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
 		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
@@ -1334,7 +1334,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		charge2.gets = ratio * charge2.gets;
 		charge2.puts = ratio * charge2.puts;
 
-		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let mut report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
 		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
 		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
@@ -1402,7 +1402,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 			.into(),
 		);
 
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge1 = calculate_charge_parts_for_day(cluster_id, usage1);
 		assert_eq!(
 			charge1.puts + before_total_customer_charge.puts,
@@ -1422,7 +1422,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		);
 
 		assert_eq!(report.state, PayoutState::ChargingCustomers);
-		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		let user1_debt = DebtorCustomers::<Test>::get(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
 		let balance_before = Balances::free_balance(DdcPayouts::account_id());
@@ -1441,7 +1441,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
 		let charge3 = calculate_charge_parts_for_day(cluster_id, usage3);
 		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(
 			ratio * charge3.puts + before_total_customer_charge.puts,
 			report.total_customer_charge.puts
@@ -1462,7 +1462,7 @@ fn send_charging_customers_batch_works_for_day_free_storage() {
 		let balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
 
-		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor.clone()).unwrap();
+		let user3_debt = DebtorCustomers::<Test>::get(cluster_id, user3_debtor.clone()).unwrap();
 		debt = user3_charge - PARTIAL_CHARGE;
 		assert_eq!(user3_debt, debt);
 
@@ -1599,7 +1599,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
-		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
+		let user2_debt = DebtorCustomers::<Test>::get(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
 		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
@@ -1611,7 +1611,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		charge2.gets = ratio * charge2.gets;
 		charge2.puts = ratio * charge2.puts;
 
-		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let mut report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
 		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
 		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
@@ -1679,7 +1679,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 			.into(),
 		);
 
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge1 = calculate_charge_parts_for_day(cluster_id, usage1);
 		assert_eq!(
 			charge1.puts + before_total_customer_charge.puts,
@@ -1699,7 +1699,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		);
 
 		assert_eq!(report.state, PayoutState::ChargingCustomers);
-		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		let user1_debt = DebtorCustomers::<Test>::get(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
 		let balance_before = Balances::free_balance(DdcPayouts::account_id());
@@ -1718,7 +1718,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
 		let charge3 = calculate_charge_parts_for_day(cluster_id, usage3);
 		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(
 			ratio * charge3.puts + before_total_customer_charge.puts,
 			report.total_customer_charge.puts
@@ -1739,7 +1739,7 @@ fn send_charging_customers_batch_works_for_day_free_stream() {
 		let balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
 
-		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor.clone()).unwrap();
+		let user3_debt = DebtorCustomers::<Test>::get(cluster_id, user3_debtor.clone()).unwrap();
 		debt = user3_charge - PARTIAL_CHARGE;
 		assert_eq!(user3_debt, debt);
 
@@ -1878,7 +1878,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
-		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
+		let user2_debt = DebtorCustomers::<Test>::get(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
 		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
@@ -1890,7 +1890,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		charge2.gets = ratio * charge2.gets;
 		charge2.puts = ratio * charge2.puts;
 
-		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let mut report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
 		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
 		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
@@ -1958,7 +1958,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 			.into(),
 		);
 
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge1 = calculate_charge_parts_for_day(cluster_id, usage1);
 		assert_eq!(
 			charge1.puts + before_total_customer_charge.puts,
@@ -1978,7 +1978,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		);
 
 		assert_eq!(report.state, PayoutState::ChargingCustomers);
-		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		let user1_debt = DebtorCustomers::<Test>::get(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
 		let balance_before = Balances::free_balance(DdcPayouts::account_id());
@@ -1997,7 +1997,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
 		let charge3 = calculate_charge_parts_for_day(cluster_id, usage3);
 		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(
 			ratio * charge3.puts + before_total_customer_charge.puts,
 			report.total_customer_charge.puts
@@ -2018,7 +2018,7 @@ fn send_charging_customers_batch_works_for_day_free_get() {
 		let balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
 
-		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor.clone()).unwrap();
+		let user3_debt = DebtorCustomers::<Test>::get(cluster_id, user3_debtor.clone()).unwrap();
 		debt = user3_charge - PARTIAL_CHARGE;
 		assert_eq!(user3_debt, debt);
 
@@ -2156,7 +2156,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
-		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
+		let user2_debt = DebtorCustomers::<Test>::get(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
 		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
@@ -2168,7 +2168,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		charge2.gets = ratio * charge2.gets;
 		charge2.puts = ratio * charge2.puts;
 
-		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let mut report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
 		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
 		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
@@ -2236,7 +2236,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 			.into(),
 		);
 
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge1 = calculate_charge_parts_for_day(cluster_id, usage1);
 		assert_eq!(
 			charge1.puts + before_total_customer_charge.puts,
@@ -2256,7 +2256,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		);
 
 		assert_eq!(report.state, PayoutState::ChargingCustomers);
-		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		let user1_debt = DebtorCustomers::<Test>::get(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
 		let balance_before = Balances::free_balance(DdcPayouts::account_id());
@@ -2275,7 +2275,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
 		let charge3 = calculate_charge_parts_for_day(cluster_id, usage3);
 		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(
 			ratio * charge3.puts + before_total_customer_charge.puts,
 			report.total_customer_charge.puts
@@ -2296,7 +2296,7 @@ fn send_charging_customers_batch_works_for_day_free_put() {
 		let balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
 
-		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor.clone()).unwrap();
+		let user3_debt = DebtorCustomers::<Test>::get(cluster_id, user3_debtor.clone()).unwrap();
 		debt = user3_charge - PARTIAL_CHARGE;
 		assert_eq!(user3_debt, debt);
 
@@ -2433,7 +2433,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		));
 
 		let usage4_charge = calculate_charge_for_day(cluster_id, usage4.clone());
-		let user2_debt = DdcPayouts::debtor_customers(cluster_id, user2_debtor.clone()).unwrap();
+		let user2_debt = DebtorCustomers::<Test>::get(cluster_id, user2_debtor.clone()).unwrap();
 		let expected_charge2 = calculate_charge_for_day(cluster_id, usage2.clone());
 		let mut debt = expected_charge2 - CUSTOMER2_BALANCE;
 		assert_eq!(user2_debt, debt);
@@ -2445,7 +2445,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		charge2.gets = ratio * charge2.gets;
 		charge2.puts = ratio * charge2.puts;
 
-		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let mut report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge4 = calculate_charge_parts_for_day(cluster_id, usage4);
 		assert_eq!(charge2.puts + charge4.puts, report.total_customer_charge.puts);
 		assert_eq!(charge2.gets + charge4.gets, report.total_customer_charge.gets);
@@ -2513,7 +2513,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 			.into(),
 		);
 
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge1 = calculate_charge_parts_for_day(cluster_id, usage1);
 		assert_eq!(
 			charge1.puts + before_total_customer_charge.puts,
@@ -2533,7 +2533,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		);
 
 		assert_eq!(report.state, PayoutState::ChargingCustomers);
-		let user1_debt = DdcPayouts::debtor_customers(cluster_id, user1);
+		let user1_debt = DebtorCustomers::<Test>::get(cluster_id, user1);
 		assert_eq!(user1_debt, None);
 
 		let balance_before = Balances::free_balance(DdcPayouts::account_id());
@@ -2552,7 +2552,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		let user3_charge = calculate_charge_for_day(cluster_id, usage3.clone());
 		let charge3 = calculate_charge_parts_for_day(cluster_id, usage3);
 		let ratio = Perquintill::from_rational(PARTIAL_CHARGE, user3_charge);
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(
 			ratio * charge3.puts + before_total_customer_charge.puts,
 			report.total_customer_charge.puts
@@ -2573,7 +2573,7 @@ fn send_charging_customers_batch_works_for_day_free_storage_stream() {
 		let balance = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance, balance_before + PARTIAL_CHARGE);
 
-		let user3_debt = DdcPayouts::debtor_customers(cluster_id, user3_debtor.clone()).unwrap();
+		let user3_debt = DebtorCustomers::<Test>::get(cluster_id, user3_debtor.clone()).unwrap();
 		debt = user3_charge - PARTIAL_CHARGE;
 		assert_eq!(user3_debt, debt);
 
@@ -2665,7 +2665,7 @@ fn send_charging_customers_batch_works_zero_fees() {
 		assert_eq!(System::events().len(), 3);
 
 		// batch 1
-		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let mut report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let before_total_customer_charge = report.total_customer_charge;
 		let balance_before = Balances::free_balance(DdcPayouts::account_id());
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::send_charging_customers_batch(
@@ -2679,7 +2679,7 @@ fn send_charging_customers_batch_works_zero_fees() {
 		let usage5_charge = calculate_charge_for_month(cluster_id, usage1.clone());
 		let charge5 = calculate_charge_parts_for_month(cluster_id, usage1);
 		let balance = Balances::free_balance(DdcPayouts::account_id());
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(balance, usage5_charge + balance_before);
 		assert_eq!(
 			charge5.puts + before_total_customer_charge.puts,
@@ -2870,7 +2870,7 @@ fn end_charging_customers_works() {
 			MMRProof::default(),
 		));
 
-		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_before = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge = calculate_charge_for_month(cluster_id, usage1);
 		System::assert_last_event(
 			Event::Charged {
@@ -2911,7 +2911,7 @@ fn end_charging_customers_works() {
 		let transfers = 3 + 3 + 3 * 3; // for Currency::transfer
 		assert_eq!(System::events().len(), 7 + 2 + 3 + transfers);
 
-		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_after = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(report_after.state, PayoutState::CustomersChargedWithFees);
 
 		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
@@ -3066,7 +3066,7 @@ fn end_charging_customers_works_zero_fees() {
 			MMRProof::default(),
 		));
 
-		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_before = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let charge = calculate_charge_for_month(cluster_id, usage1);
 		System::assert_last_event(
 			Event::Charged {
@@ -3089,7 +3089,7 @@ fn end_charging_customers_works_zero_fees() {
 		System::assert_has_event(Event::ChargingFinished { cluster_id, era }.into());
 		assert_eq!(System::events().len(), 5 + 1);
 
-		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_after = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(report_after.state, PayoutState::CustomersChargedWithFees);
 
 		let fees = get_fees(&cluster_id);
@@ -3292,7 +3292,7 @@ fn begin_rewarding_providers_works() {
 			fingerprint
 		));
 
-		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let mut report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(report.state, PayoutState::Initialized);
 
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
@@ -3319,7 +3319,7 @@ fn begin_rewarding_providers_works() {
 
 		System::assert_last_event(Event::RewardingStarted { cluster_id, era }.into());
 
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(report.state, PayoutState::RewardingProviders);
 	})
 }
@@ -3590,10 +3590,10 @@ fn send_rewarding_providers_batch_works() {
 			payers1_batch_proof,
 		));
 
-		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_before = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
-		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_after = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
 			get_fees(&cluster_id).validators_share +
 			get_fees(&cluster_id).cluster_reserve_share)
@@ -3652,7 +3652,7 @@ fn send_rewarding_providers_batch_works() {
 
 		let balance_node1 = Balances::free_balance(NODE_PROVIDER1_KEY_32.clone());
 		assert_eq!(balance_node1, transfer_charge + storage_charge + puts_charge + gets_charge);
-		let mut report_reward = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let mut report_reward = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 
 		System::assert_has_event(
 			Event::Rewarded {
@@ -3731,7 +3731,7 @@ fn send_rewarding_providers_batch_works() {
 			Perquintill::from_rational(node_usage3.number_of_gets, cluster_usage.number_of_gets);
 		gets_charge = ratio3_gets * report_after.total_customer_charge.gets;
 
-		report_reward = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report_reward = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let balance_node3 = Balances::free_balance(NODE_PROVIDER3_KEY_32.clone());
 		assert_eq!(balance_node3, transfer_charge + storage_charge + puts_charge + gets_charge);
 
@@ -3990,7 +3990,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 			batch_user_index += 1;
 		}
 
-		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_before = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let balance1 = Balances::free_balance(report_before.vault.clone());
 		let balance2 = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance1, balance2);
@@ -3999,7 +3999,7 @@ fn send_rewarding_providers_batch_100_nodes_small_usage_works() {
 
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
-		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_after = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
 			get_fees(&cluster_id).validators_share +
 			get_fees(&cluster_id).cluster_reserve_share)
@@ -4312,7 +4312,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 			batch_user_index += 1;
 		}
 
-		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_before = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let balance1 = Balances::free_balance(report_before.vault.clone());
 		let balance2 = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance1, balance2);
@@ -4321,7 +4321,7 @@ fn send_rewarding_providers_batch_100_nodes_large_usage_works() {
 
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
-		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_after = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
 			get_fees(&cluster_id).validators_share +
 			get_fees(&cluster_id).cluster_reserve_share)
@@ -4597,7 +4597,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 			batch_user_index += 1;
 		}
 
-		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_before = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let balance1 = Balances::free_balance(report_before.vault.clone());
 		let balance2 = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance1, balance2);
@@ -4606,7 +4606,7 @@ fn send_rewarding_providers_batch_100_nodes_small_large_usage_works() {
 
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
-		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_after = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
 			get_fees(&cluster_id).validators_share +
 			get_fees(&cluster_id).cluster_reserve_share)
@@ -4899,7 +4899,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 			batch_user_index += 1;
 		}
 
-		let report_before = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_before = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let balance1 = Balances::free_balance(report_before.vault.clone());
 		let balance2 = Balances::free_balance(DdcPayouts::account_id());
 		assert_eq!(balance1, balance2);
@@ -4908,7 +4908,7 @@ fn send_rewarding_providers_batch_100_nodes_random_usage_works() {
 
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_charging_customers(cluster_id, era,));
 
-		let report_after = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_after = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		let total_left_from_one = (get_fees(&cluster_id).treasury_share +
 			get_fees(&cluster_id).validators_share +
 			get_fees(&cluster_id).cluster_reserve_share)
@@ -5215,7 +5215,7 @@ fn end_rewarding_providers_works() {
 			fingerprint
 		));
 
-		let mut report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let mut report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(report.state, PayoutState::Initialized);
 
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
@@ -5254,7 +5254,7 @@ fn end_rewarding_providers_works() {
 
 		System::assert_last_event(Event::RewardingFinished { cluster_id, era }.into());
 
-		report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(report.state, PayoutState::ProvidersRewarded);
 	})
 }
@@ -5474,7 +5474,7 @@ fn end_billing_report_works() {
 			fingerprint
 		));
 
-		let report = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert_eq!(report.state, PayoutState::Initialized);
 
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::begin_charging_customers(
@@ -5515,7 +5515,7 @@ fn end_billing_report_works() {
 
 		System::assert_last_event(Event::BillingReportFinalized { cluster_id, era }.into());
 
-		let report_end = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
+		let report_end = ActiveBillingReports::<Test>::get(cluster_id, era).unwrap();
 		assert!(report_end.rewarding_processed_batches.is_empty());
 		assert!(report_end.charging_processed_batches.is_empty());
 		assert_eq!(report_end.state, PayoutState::Finalized);
