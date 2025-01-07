@@ -148,7 +148,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 69000,
+	spec_version: 70000,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -922,13 +922,14 @@ impl pallet_contracts::Config for Runtime {
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+	type MaxTransientStorageSize = ConstU32<{ 1024 * 1024 }>;
 	type MaxDelegateDependencies = MaxDelegateDependencies;
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	type Debug = ();
 	type Environment = ();
-	type Migrations = (pallet_contracts::migration::v16::Migration<Runtime>,);
+	type Migrations = ();
 	type ApiVersion = ();
 	type Xcm = ();
 }
@@ -1469,10 +1470,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 
 // 	// Migrations for DAC and Payouts on QANET
 // );
-type Migrations = (
-	pallet_staking::migrations::v15::MigrateV14ToV15<Runtime>,
-	pallet_contracts::Migration<Runtime>,
-);
+type Migrations = ();
 
 pub mod migrations {
 	use super::*;
