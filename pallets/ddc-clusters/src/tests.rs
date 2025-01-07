@@ -50,14 +50,13 @@ fn create_cluster_works() {
 			cluster_protocol_params.clone()
 		));
 
-		let created_cluster = DdcClusters::clusters(cluster_id).unwrap();
+		let created_cluster = Clusters::<Test>::get(cluster_id).unwrap();
 		assert_eq!(created_cluster.cluster_id, cluster_id);
 		assert_eq!(created_cluster.manager_id, cluster_manager_id);
 		assert_eq!(created_cluster.reserve_id, cluster_reserve_id);
 		assert_eq!(created_cluster.props.node_provider_auth_contract, Some(auth_contract.clone()));
 
-		let created_cluster_protocol_params =
-			DdcClusters::clusters_protocol_params(cluster_id).unwrap();
+		let created_cluster_protocol_params = ClustersGovParams::<Test>::get(cluster_id).unwrap();
 		assert_eq!(
 			created_cluster_protocol_params.treasury_share,
 			cluster_protocol_params.treasury_share
@@ -565,7 +564,7 @@ fn set_cluster_params_works() {
 			},
 		));
 
-		let updated_cluster = DdcClusters::clusters(cluster_id).unwrap();
+		let updated_cluster = Clusters::<Test>::get(cluster_id).unwrap();
 		assert_eq!(updated_cluster.props.node_provider_auth_contract, Some(auth_contract_2));
 		assert_eq!(updated_cluster.props.erasure_coding_required, 4);
 		assert_eq!(updated_cluster.props.erasure_coding_total, 6);
@@ -621,7 +620,7 @@ fn set_last_validated_era_works() {
 
 		assert_ok!(<DdcClusters as ClusterValidator<Test>>::set_last_paid_era(&cluster_id, era_id));
 
-		let updated_cluster = DdcClusters::clusters(cluster_id).unwrap();
+		let updated_cluster = Clusters::<Test>::get(cluster_id).unwrap();
 		assert_eq!(updated_cluster.last_paid_era, era_id);
 
 		// Checking that event was emitted

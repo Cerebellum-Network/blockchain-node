@@ -594,7 +594,6 @@ pub mod pallet {
 
 	/// Era validations
 	#[pallet::storage]
-	#[pallet::getter(fn era_validations)]
 	pub type EraValidations<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
@@ -606,12 +605,10 @@ pub mod pallet {
 
 	/// List of validators.
 	#[pallet::storage]
-	#[pallet::getter(fn validator_set)]
 	pub type ValidatorSet<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
 	/// Validator stash key mapping
 	#[pallet::storage]
-	#[pallet::getter(fn get_stash_for_ddc_validator)]
 	pub type ValidatorToStashKey<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
 	/// Era activity of a node.

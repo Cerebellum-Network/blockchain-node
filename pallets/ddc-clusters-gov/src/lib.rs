@@ -148,7 +148,6 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn proposal_of)]
 	pub type ClusterProposal<T: Config> = StorageMap<
 		_,
 		Identity,
@@ -159,13 +158,11 @@ pub mod pallet {
 
 	/// Votes on a given cluster proposal, if it is ongoing.
 	#[pallet::storage]
-	#[pallet::getter(fn voting)]
 	pub type ClusterProposalVoting<T: Config> =
 		StorageMap<_, Identity, ClusterId, Votes<T::AccountId, BlockNumberFor<T>>, OptionQuery>;
 
 	/// Public referendums initiated by clusters
 	#[pallet::storage]
-	#[pallet::getter(fn submission_depositor)]
 	pub type SubmissionDeposits<T: Config> =
 		StorageMap<_, Identity, ReferendumIndex, SubmissionDeposit<T::AccountId>, OptionQuery>;
 
@@ -532,7 +529,8 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			approve: bool,
 		) -> Result<bool, DispatchError> {
-			let mut voting = Self::voting(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
+			let mut voting =
+				ClusterProposalVoting::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
 
 			let position_yes = voting.ayes.iter().position(|a| a == &voter_id);
 			let position_no = voting.nays.iter().position(|a| a == &voter_id);
@@ -577,7 +575,8 @@ pub mod pallet {
 
 		/// Close a vote that is either approved, disapproved or whose voting period has ended.
 		fn do_close(cluster_id: ClusterId, caller_id: T::AccountId) -> DispatchResultWithPostInfo {
-			let voting = Self::voting(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
+			let voting =
+				ClusterProposalVoting::<T>::get(cluster_id).ok_or(Error::<T>::ProposalMissing)?;
 
 			let mut no_votes = voting.nays.len() as MemberCount;
 			let mut yes_votes = voting.ayes.len() as MemberCount;

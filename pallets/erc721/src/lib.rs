@@ -49,12 +49,10 @@ pub mod pallet {
 
 	/// Maps tokenId to Erc721 object
 	#[pallet::storage]
-	#[pallet::getter(fn tokens)]
 	pub type Tokens<T: Config> = StorageMap<_, Blake2_256, TokenId, Erc721Token>;
 
 	/// Maps tokenId to owner
 	#[pallet::storage]
-	#[pallet::getter(fn owner_of)]
 	pub type TokenOwner<T: Config> = StorageMap<_, Blake2_256, TokenId, T::AccountId>;
 
 	#[pallet::type_value]
@@ -63,7 +61,6 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn token_count)]
 	pub type TokenCount<T: Config> =
 		StorageValue<Value = U256, QueryKind = ValueQuery, OnEmpty = DefaultTokenCount<T>>;
 
@@ -123,7 +120,7 @@ pub mod pallet {
 		pub fn burn(origin: OriginFor<T>, id: TokenId) -> DispatchResult {
 			ensure_root(origin)?;
 
-			let owner = Self::owner_of(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
+			let owner = TokenOwner::<T>::get(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
 
 			Self::burn_token(owner, id)?;
 
@@ -151,7 +148,7 @@ pub mod pallet {
 		/// Modifies ownership of a token
 		pub fn transfer_from(from: T::AccountId, to: T::AccountId, id: TokenId) -> DispatchResult {
 			// Check from is owner and token exists
-			let owner = Self::owner_of(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
+			let owner = TokenOwner::<T>::get(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
 			ensure!(owner == from, Error::<T>::NotOwner);
 			// Update owner
 			<TokenOwner<T>>::insert(id, to.clone());
@@ -163,7 +160,7 @@ pub mod pallet {
 
 		/// Deletes a token from the system.
 		pub fn burn_token(from: T::AccountId, id: TokenId) -> DispatchResult {
-			let owner = Self::owner_of(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
+			let owner = TokenOwner::<T>::get(id).ok_or(Error::<T>::TokenIdDoesNotExist)?;
 			ensure!(owner == from, Error::<T>::NotOwner);
 
 			<Tokens<T>>::remove(id);

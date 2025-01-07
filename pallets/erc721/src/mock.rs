@@ -4,8 +4,8 @@ use frame_support::{derive_impl, ord_parameter_types, parameter_types, weights::
 use frame_system::{self as system};
 pub use pallet_balances as balances;
 use pallet_chainbridge as bridge;
-use sp_core::{hashing::blake2_128, H256};
-use sp_runtime::{testing::Header, traits::IdentityLookup, BuildStorage, Perbill};
+use sp_core::hashing::blake2_128;
+use sp_runtime::{testing::Header, BuildStorage, Perbill};
 
 use crate::{self as erc721, Config};
 
@@ -18,12 +18,8 @@ parameter_types! {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type Nonce = u64;
 	type Block = Block;
-	type Hash = H256;
 	type AccountId = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type BlockHashCount = BlockHashCount;
 	type AccountData = balances::AccountData<u64>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
