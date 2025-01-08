@@ -188,44 +188,36 @@ pub mod pallet {
 
 	/// Map from all locked "stash" accounts to the controller account.
 	#[pallet::storage]
-	#[pallet::getter(fn bonded)]
 	pub type Bonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
 
 	/// Map from all (unlocked) "controller" accounts to the info regarding the staking.
 	#[pallet::storage]
-	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>, T>>;
 
 	/// The map of (wannabe) Storage nodes participants stash keys to the DDC cluster ID they
 	/// wish to participate into.
 	#[pallet::storage]
-	#[pallet::getter(fn storages)]
 	pub type Storages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
 	/// Map from DDC node ID to the node operator stash account.
 	#[pallet::storage]
-	#[pallet::getter(fn nodes)]
 	pub type Nodes<T: Config> = StorageMap<_, Twox64Concat, NodePubKey, T::AccountId>;
 
 	/// Map from operator stash account to DDC node ID.
 	#[pallet::storage]
-	#[pallet::getter(fn providers)]
 	pub type Providers<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, NodePubKey>;
 
 	/// Map of Storage node provider stash accounts that aim to leave a cluster
 	#[pallet::storage]
-	#[pallet::getter(fn leaving_storages)]
 	pub type LeavingStorages<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, ClusterId>;
 
 	/// Map from all clusters locked "stash" accounts to the controller account.
 	#[pallet::storage]
-	#[pallet::getter(fn cluster_bonded)]
 	pub type ClusterBonded<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, T::AccountId>;
 
 	/// Map of all clusters staking ledgers.
 	#[pallet::storage]
-	#[pallet::getter(fn cluster_ledger)]
 	pub type ClusterLedger<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StakingLedger<T::AccountId, BalanceOf<T>, T>>;
 
@@ -468,7 +460,7 @@ pub mod pallet {
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+			let mut ledger = Ledger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
 
 			ensure!(
 				ledger.unlocking.len() < MaxUnlockingChunks::get() as usize,
@@ -488,7 +480,7 @@ pub mod pallet {
 					ledger.active = Zero::zero();
 				}
 
-				let min_active_bond = if let Some(cluster_id) = Self::storages(&ledger.stash) {
+				let min_active_bond = if let Some(cluster_id) = Storages::<T>::get(&ledger.stash) {
 					let bond_size =
 						T::ClusterProtocol::get_bond_size(&cluster_id, NodeType::Storage)
 							.map_err(|_| Error::<T>::NoClusterGovParams)?;
@@ -578,7 +570,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::withdraw_unbonded())]
 		pub fn withdraw_unbonded(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			let mut ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+			let mut ledger = Ledger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
 			let node_pub_key = <Providers<T>>::get(stash.clone()).ok_or(Error::<T>::BadState)?;
 
@@ -637,7 +629,7 @@ pub mod pallet {
 				Error::<T>::NoCluster
 			);
 
-			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+			let ledger = Ledger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
 			// Retrieve the respective bond size from Cluster Visitor
 			let bond_size = T::ClusterProtocol::get_bond_size(&cluster_id, NodeType::Storage)
 				.map_err(|_| Error::<T>::NoClusterGovParams)?;
@@ -655,7 +647,7 @@ pub mod pallet {
 			);
 
 			// Is it an attempt to cancel a previous "chill"?
-			if let Some(current_cluster) = Self::storages(stash) {
+			if let Some(current_cluster) = Storages::<T>::get(stash) {
 				// Switching the cluster is prohibited. The user should chill first.
 				ensure!(current_cluster == cluster_id, Error::<T>::AlreadyInRole);
 				// Cancel previous "chill" attempts
@@ -693,11 +685,11 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::chill())]
 		pub fn chill(origin: OriginFor<T>) -> DispatchResult {
 			let controller = ensure_signed(origin)?;
-			let ledger = Self::ledger(&controller).ok_or(Error::<T>::NotController)?;
+			let ledger = Ledger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
 			let current_block = <frame_system::Pallet<T>>::block_number();
 
 			// Extract delay from the cluster settings.
-			let (cluster, delay) = if let Some(cluster) = Self::storages(&ledger.stash) {
+			let (cluster, delay) = if let Some(cluster) = Storages::<T>::get(&ledger.stash) {
 				let chill_delay = T::ClusterProtocol::get_chill_delay(&cluster, NodeType::Storage)
 					.map_err(|_| Error::<T>::NoClusterGovParams)?;
 				(cluster, chill_delay)
@@ -747,7 +739,7 @@ pub mod pallet {
 			controller: <T::Lookup as StaticLookup>::Source,
 		) -> DispatchResult {
 			let stash = ensure_signed(origin)?;
-			let old_controller = Self::bonded(&stash).ok_or(Error::<T>::NotStash)?;
+			let old_controller = Bonded::<T>::get(&stash).ok_or(Error::<T>::NotStash)?;
 			let controller = T::Lookup::lookup(controller)?;
 			if <Ledger<T>>::contains_key(&controller) {
 				Err(Error::<T>::AlreadyPaired)?
@@ -875,7 +867,8 @@ pub mod pallet {
 
 			ensure!(controller == cluster_controller, Error::<T>::NotController);
 
-			let mut ledger = Self::cluster_ledger(&controller).ok_or(Error::<T>::NotController)?;
+			let mut ledger =
+				ClusterLedger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
 			ensure!(
 				ledger.unlocking.len() < MaxUnlockingChunks::get() as usize,
 				Error::<T>::NoMoreChunks,
@@ -921,7 +914,8 @@ pub mod pallet {
 			let controller = T::ClusterManager::get_manager_account_id(&cluster_id)?;
 			ensure!(controller == cluster_controller, Error::<T>::NotController);
 
-			let mut ledger = Self::cluster_ledger(&controller).ok_or(Error::<T>::NotController)?;
+			let mut ledger =
+				ClusterLedger::<T>::get(&controller).ok_or(Error::<T>::NotController)?;
 			let (stash, old_total) = (ledger.stash.clone(), ledger.total);
 
 			ledger = ledger.consolidate_unlocked(<frame_system::Pallet<T>>::block_number());
@@ -1154,7 +1148,7 @@ pub mod pallet {
 		}
 
 		fn stash_by_ctrl(controller: &T::AccountId) -> Result<T::AccountId, StakingVisitorError> {
-			Self::ledger(controller)
+			Ledger::<T>::get(controller)
 				.map(|l| l.stash)
 				.ok_or(StakingVisitorError::ControllerDoesNotExist)
 		}

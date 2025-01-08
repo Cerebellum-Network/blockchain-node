@@ -8,7 +8,7 @@ use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
 use pallet_balances::Error as BalancesError;
 use pallet_ddc_clusters::{
 	cluster::{Cluster, ClusterProps},
-	Error as ClustersError,
+	Clusters, Error as ClustersError,
 };
 
 use super::{mock::*, *};
@@ -37,20 +37,20 @@ fn basic_setup_works() {
 	ExtBuilder.build_and_execute(clusters, nodes, clusters_bonds, nodes_bondes, || {
 		// Account 11 is stashed and locked, and account 10 is the controller
 		assert_eq!(
-			DdcStaking::bonded(AccountId::from(NODE_STASH_1)),
+			Bonded::<Test>::get(AccountId::from(NODE_STASH_1)),
 			Some(AccountId::from(NODE_CONTROLLER_1))
 		);
 		// Account 21 is stashed and locked, and account 20 is the controller
 		assert_eq!(
-			DdcStaking::bonded(AccountId::from(NODE_STASH_2)),
+			Bonded::<Test>::get(AccountId::from(NODE_STASH_2)),
 			Some(AccountId::from(NODE_CONTROLLER_2))
 		);
 		// Account 1 is not a stashed
-		assert_eq!(DdcStaking::bonded(AccountId::from(USER_KEY_1)), None);
+		assert_eq!(Bonded::<Test>::get(AccountId::from(USER_KEY_1)), None);
 
 		// Account 10 controls the stash from account 11, which is 100 units
 		assert_eq!(
-			DdcStaking::ledger(AccountId::from(NODE_CONTROLLER_1)),
+			Ledger::<Test>::get(AccountId::from(NODE_CONTROLLER_1)),
 			Some(StakingLedger {
 				stash: AccountId::from(NODE_STASH_1),
 				total: 100,
@@ -61,7 +61,7 @@ fn basic_setup_works() {
 		);
 		// Account 20 controls the stash from account 21, which is 100 units
 		assert_eq!(
-			DdcStaking::ledger(AccountId::from(NODE_CONTROLLER_2)),
+			Ledger::<Test>::get(AccountId::from(NODE_CONTROLLER_2)),
 			Some(StakingLedger {
 				stash: AccountId::from(NODE_STASH_2),
 				total: 100,
@@ -71,7 +71,7 @@ fn basic_setup_works() {
 			})
 		);
 		// Account 1 does not control any stash
-		assert_eq!(DdcStaking::ledger(AccountId::from(USER_KEY_1)), None);
+		assert_eq!(Ledger::<Test>::get(AccountId::from(USER_KEY_1)), None);
 	});
 }
 
@@ -81,7 +81,7 @@ fn change_controller_works() {
 	ExtBuilder.build_and_execute(clusters, nodes, clusters_bonds, nodes_bondes, || {
 		// 10 and 11 are bonded as stash controller.
 		assert_eq!(
-			DdcStaking::bonded(AccountId::from(NODE_STASH_1)),
+			Bonded::<Test>::get(AccountId::from(NODE_STASH_1)),
 			Some(AccountId::from(NODE_CONTROLLER_1))
 		);
 
@@ -103,7 +103,7 @@ fn change_controller_works() {
 			Error::<Test>::AlreadyPaired
 		);
 		assert_eq!(
-			DdcStaking::bonded(AccountId::from(NODE_STASH_1)),
+			Bonded::<Test>::get(AccountId::from(NODE_STASH_1)),
 			Some(AccountId::from(USER_KEY_3))
 		);
 
@@ -250,7 +250,7 @@ fn set_node_works() {
 		System::set_block_number(1);
 		// 10 and 11 are bonded as stash controller.
 		assert_eq!(
-			DdcStaking::bonded(AccountId::from(NODE_STASH_1)),
+			Bonded::<Test>::get(AccountId::from(NODE_STASH_1)),
 			Some(AccountId::from(NODE_CONTROLLER_1))
 		);
 
@@ -427,11 +427,11 @@ fn staking_should_work() {
 		// Account 4 controls the stash from account 3, which is 1500 units, 3 is a Storage
 		// participant, 5 is a DDC node.
 		assert_eq!(
-			DdcStaking::bonded(AccountId::from(USER_KEY_3)),
+			Bonded::<Test>::get(AccountId::from(USER_KEY_3)),
 			Some(AccountId::from(USER_KEY_4))
 		);
 		assert_eq!(
-			DdcStaking::ledger(AccountId::from(USER_KEY_4)),
+			Ledger::<Test>::get(AccountId::from(USER_KEY_4)),
 			Some(StakingLedger {
 				stash: AccountId::from(USER_KEY_3),
 				total: 1500,
@@ -441,11 +441,11 @@ fn staking_should_work() {
 			})
 		);
 		assert_eq!(
-			DdcStaking::storages(AccountId::from(USER_KEY_3)),
+			Storages::<Test>::get(AccountId::from(USER_KEY_3)),
 			Some(ClusterId::from(CLUSTER_ID))
 		);
 		assert_eq!(
-			DdcStaking::nodes(NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5))),
+			Nodes::<Test>::get(NodePubKey::StoragePubKey(StorageNodePubKey::new(NODE_KEY_5))),
 			Some(AccountId::from(USER_KEY_3))
 		);
 
@@ -463,7 +463,7 @@ fn staking_should_work() {
 		// TestClusterProtocol::get_chill_delay(&ClusterId::from([1; 20]), NodeType::Storage)
 		// 	.unwrap_or(10_u64);
 		assert_eq!(
-			DdcStaking::ledger(AccountId::from(USER_KEY_4)),
+			Ledger::<Test>::get(AccountId::from(USER_KEY_4)),
 			Some(StakingLedger {
 				stash: AccountId::from(USER_KEY_3),
 				total: 1500,
@@ -499,7 +499,7 @@ fn staking_should_work() {
 
 		// Ledger is not changed until we make another call to `chill`.
 		assert_eq!(
-			DdcStaking::ledger(AccountId::from(USER_KEY_4)),
+			Ledger::<Test>::get(AccountId::from(USER_KEY_4)),
 			Some(StakingLedger {
 				stash: AccountId::from(USER_KEY_3),
 				total: 1500,
@@ -514,7 +514,7 @@ fn staking_should_work() {
 		System::assert_last_event(Event::Chilled(AccountId::from(USER_KEY_3)).into());
 
 		// Account 3 is no longer a Storage participant.
-		assert_eq!(DdcStaking::storages(AccountId::from(USER_KEY_3)), None);
+		assert_eq!(Storages::<Test>::get(AccountId::from(USER_KEY_3)), None);
 	});
 }
 
@@ -569,8 +569,8 @@ fn storage_full_unbonding_works() {
 		));
 		System::assert_last_event(Event::Activated(provider_stash.clone()).into());
 
-		assert_eq!(DdcStaking::storages(provider_stash.clone()), Some(cluster_id));
-		assert_eq!(DdcStaking::nodes(node_pub_key), Some(provider_stash.clone()));
+		assert_eq!(Storages::<Test>::get(provider_stash.clone()), Some(cluster_id));
+		assert_eq!(Nodes::<Test>::get(node_pub_key), Some(provider_stash.clone()));
 
 		// Set block timestamp.
 		Timestamp::set_timestamp(System::block_number() * BLOCK_TIME + INIT_TIMESTAMP);
@@ -593,7 +593,7 @@ fn storage_full_unbonding_works() {
 		System::assert_last_event(Event::Chilled(provider_stash.clone()).into());
 
 		// Account is no longer a Storage participant.
-		assert_eq!(DdcStaking::storages(provider_stash.clone()), None);
+		assert_eq!(Storages::<Test>::get(provider_stash.clone()), None);
 
 		// Start unbonding all tokens
 		assert_ok!(DdcStaking::unbond(
@@ -601,7 +601,7 @@ fn storage_full_unbonding_works() {
 			storage_bond_size
 		));
 		System::assert_has_event(Event::LeaveSoon(provider_stash.clone()).into());
-		assert_eq!(DdcStaking::leaving_storages(provider_stash.clone()), Some(cluster_id));
+		assert_eq!(LeavingStorages::<Test>::get(provider_stash.clone()), Some(cluster_id));
 		System::assert_last_event(
 			Event::Unbonded(provider_stash.clone(), storage_bond_size).into(),
 		);
@@ -619,7 +619,7 @@ fn storage_full_unbonding_works() {
 		System::assert_has_event(
 			Event::Withdrawn(provider_stash.clone(), storage_bond_size).into(),
 		);
-		assert_eq!(DdcStaking::leaving_storages(provider_stash.clone()), None);
+		assert_eq!(LeavingStorages::<Test>::get(provider_stash.clone()), None);
 		System::assert_last_event(Event::Left(provider_stash).into());
 	});
 }
@@ -742,12 +742,12 @@ fn bond_cluster_works() {
 		));
 
 		assert_eq!(
-			DdcStaking::cluster_bonded(AccountId::from(CLUSTER_STASH)),
+			ClusterBonded::<Test>::get(AccountId::from(CLUSTER_STASH)),
 			Some(AccountId::from(CLUSTER_CONTROLLER))
 		);
 
 		assert_eq!(
-			DdcStaking::cluster_ledger(AccountId::from(CLUSTER_CONTROLLER)),
+			ClusterLedger::<Test>::get(AccountId::from(CLUSTER_CONTROLLER)),
 			Some(StakingLedger {
 				stash: AccountId::from(CLUSTER_STASH),
 				total: 50,
@@ -760,7 +760,7 @@ fn bond_cluster_works() {
 		System::assert_has_event(Event::Bonded(AccountId::from(CLUSTER_STASH), 50).into());
 
 		assert_eq!(
-			DdcClusters::clusters(ClusterId::from(CLUSTER_ID)),
+			Clusters::<Test>::get(ClusterId::from(CLUSTER_ID)),
 			Some(Cluster {
 				cluster_id: ClusterId::from(CLUSTER_ID),
 				manager_id: AccountId::from(CLUSTER_CONTROLLER),
@@ -897,7 +897,7 @@ fn unbond_bonded_cluster_works() {
 		unlocking.push(chunk);
 
 		assert_eq!(
-			DdcStaking::cluster_ledger(AccountId::from(USER_KEY_1)),
+			ClusterLedger::<Test>::get(AccountId::from(USER_KEY_1)),
 			Some(StakingLedger {
 				stash: AccountId::from(USER_KEY_1),
 				total: 50,
@@ -910,7 +910,7 @@ fn unbond_bonded_cluster_works() {
 		System::assert_has_event(Event::Unbonded(AccountId::from(USER_KEY_1), 50).into());
 
 		assert_eq!(
-			DdcClusters::clusters(ClusterId::from(BONDED_CLUSTER_ID)),
+			Clusters::<Test>::get(ClusterId::from(BONDED_CLUSTER_ID)),
 			Some(Cluster {
 				cluster_id: ClusterId::from(BONDED_CLUSTER_ID),
 				manager_id: AccountId::from(USER_KEY_1),
@@ -977,7 +977,7 @@ fn unbond_activated_cluster_works() {
 		let chunk = UnlockChunk { value: 50u128, block: 3u64 };
 		unlocking.push(chunk);
 		assert_eq!(
-			DdcStaking::cluster_ledger(AccountId::from(USER_KEY_1)),
+			ClusterLedger::<Test>::get(AccountId::from(USER_KEY_1)),
 			Some(StakingLedger {
 				stash: AccountId::from(USER_KEY_1),
 				total: 50,
@@ -990,7 +990,7 @@ fn unbond_activated_cluster_works() {
 		System::assert_has_event(Event::Unbonded(AccountId::from(USER_KEY_1), 50).into());
 
 		assert_eq!(
-			DdcClusters::clusters(ClusterId::from(ACTIVATED_CLUSTER_ID)),
+			Clusters::<Test>::get(ClusterId::from(ACTIVATED_CLUSTER_ID)),
 			Some(Cluster {
 				cluster_id: ClusterId::from(ACTIVATED_CLUSTER_ID),
 				manager_id: AccountId::from(USER_KEY_1),
@@ -1062,7 +1062,7 @@ fn withdraw_unbonded_cluster_works() {
 		let chunk = UnlockChunk { value: 50u128, block: 3u64 };
 		unlocking.push(chunk);
 		assert_eq!(
-			DdcStaking::cluster_ledger(AccountId::from(USER_KEY_1)),
+			ClusterLedger::<Test>::get(AccountId::from(USER_KEY_1)),
 			Some(StakingLedger {
 				stash: AccountId::from(USER_KEY_1),
 				total: 50,
@@ -1081,11 +1081,11 @@ fn withdraw_unbonded_cluster_works() {
 
 		System::assert_last_event(Event::Withdrawn(AccountId::from(USER_KEY_1), 50).into());
 
-		assert_eq!(DdcStaking::cluster_ledger(AccountId::from(USER_KEY_1)), None);
-		assert_eq!(DdcStaking::cluster_bonded(AccountId::from(USER_KEY_1)), None);
+		assert_eq!(ClusterLedger::<Test>::get(AccountId::from(USER_KEY_1)), None);
+		assert_eq!(ClusterBonded::<Test>::get(AccountId::from(USER_KEY_1)), None);
 
 		assert_eq!(
-			DdcClusters::clusters(ClusterId::from(BONDED_CLUSTER_ID)),
+			Clusters::<Test>::get(ClusterId::from(BONDED_CLUSTER_ID)),
 			Some(Cluster {
 				cluster_id: ClusterId::from(BONDED_CLUSTER_ID),
 				manager_id: AccountId::from(USER_KEY_1),
@@ -1149,7 +1149,7 @@ fn withdraw_activated_cluster_works() {
 		let chunk = UnlockChunk { value: 50u128, block: 3u64 };
 		unlocking.push(chunk);
 		assert_eq!(
-			DdcStaking::cluster_ledger(AccountId::from(USER_KEY_1)),
+			ClusterLedger::<Test>::get(AccountId::from(USER_KEY_1)),
 			Some(StakingLedger {
 				stash: AccountId::from(USER_KEY_1),
 				total: 50,
@@ -1168,11 +1168,11 @@ fn withdraw_activated_cluster_works() {
 
 		System::assert_last_event(Event::Withdrawn(AccountId::from(USER_KEY_1), 50).into());
 
-		assert_eq!(DdcStaking::cluster_ledger(AccountId::from(USER_KEY_1)), None);
-		assert_eq!(DdcStaking::cluster_bonded(AccountId::from(USER_KEY_1)), None);
+		assert_eq!(ClusterLedger::<Test>::get(AccountId::from(USER_KEY_1)), None);
+		assert_eq!(ClusterBonded::<Test>::get(AccountId::from(USER_KEY_1)), None);
 
 		assert_eq!(
-			DdcClusters::clusters(ClusterId::from(ACTIVATED_CLUSTER_ID)),
+			Clusters::<Test>::get(ClusterId::from(ACTIVATED_CLUSTER_ID)),
 			Some(Cluster {
 				cluster_id: ClusterId::from(ACTIVATED_CLUSTER_ID),
 				manager_id: AccountId::from(USER_KEY_1),

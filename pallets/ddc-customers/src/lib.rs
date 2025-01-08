@@ -159,7 +159,6 @@ pub mod pallet {
 
 	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
 	#[pallet::storage]
-	#[pallet::getter(fn ledger)]
 	pub type Ledger<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, AccountsLedger<T>>;
 
 	#[pallet::type_value]
@@ -168,13 +167,11 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn buckets_count)]
 	pub type BucketsCount<T: Config> =
 		StorageValue<Value = BucketId, QueryKind = ValueQuery, OnEmpty = DefaultBucketCount<T>>;
 
 	/// Map from bucket ID to the bucket structure
 	#[pallet::storage]
-	#[pallet::getter(fn buckets)]
 	pub type Buckets<T: Config> = StorageMap<_, Twox64Concat, BucketId, Bucket<T>, OptionQuery>;
 
 	#[pallet::event]
@@ -323,7 +320,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let bucket_owner = ensure_signed(origin)?;
 			let bucket_id =
-				Self::buckets_count().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
+				BucketsCount::<T>::get().checked_add(1).ok_or(Error::<T>::ArithmeticOverflow)?;
 
 			Self::do_create_bucket(cluster_id, bucket_id, bucket_owner, bucket_params)?;
 
@@ -389,7 +386,7 @@ pub mod pallet {
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
+			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
 			ensure!(
 				ledger.unlocking.len() < MaxUnlockingChunks::get() as usize,
 				Error::<T>::NoMoreChunks,
@@ -451,7 +448,7 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::withdraw_unlocked_deposit_kill())]
 		pub fn withdraw_unlocked_deposit(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
-			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
+			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
 			let (owner, old_total) = (ledger.owner.clone(), ledger.total);
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
@@ -511,7 +508,7 @@ pub mod pallet {
 			bucket_params: BucketParams,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+			let mut bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 			ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
 
 			bucket.is_public = bucket_params.is_public;
@@ -689,7 +686,7 @@ pub mod pallet {
 
 	impl<T: Config> BucketManager<T> for Pallet<T> {
 		fn get_bucket_owner_id(bucket_id: BucketId) -> Result<T::AccountId, DispatchError> {
-			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::BucketDoesNotExist)?;
+			let bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::BucketDoesNotExist)?;
 			Ok(bucket.owner_id)
 		}
 
@@ -698,7 +695,7 @@ pub mod pallet {
 			bucket_id: BucketId,
 			content_owner: &T::AccountId,
 		) -> Result<Option<BucketUsage>, DispatchError> {
-			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+			let bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 			ensure!(bucket.owner_id == *content_owner, Error::<T>::NotBucketOwner);
 			ensure!(bucket.cluster_id == *cluster_id, Error::<T>::ClusterMismatch);
 
@@ -711,7 +708,7 @@ pub mod pallet {
 			bucket_owner: T::AccountId,
 			payable_usage: &BucketUsage,
 		) -> DispatchResult {
-			let mut bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+			let mut bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 			ensure!(bucket.owner_id == bucket_owner, Error::<T>::NotBucketOwner);
 			let total_usage = if let Some(mut total_usage) = bucket.total_customers_usage {
 				total_usage.transferred_bytes += payable_usage.transferred_bytes;
@@ -763,7 +760,7 @@ pub mod pallet {
 			amount: u128,
 		) -> Result<u128, DispatchError> {
 			let actually_charged: BalanceOf<T>;
-			let mut ledger = Self::ledger(&bucket_owner).ok_or(Error::<T>::NotOwner)?;
+			let mut ledger = Ledger::<T>::get(&bucket_owner).ok_or(Error::<T>::NotOwner)?;
 			let amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
 
 			if ledger.active >= amount_to_deduct {
@@ -845,7 +842,7 @@ pub mod pallet {
 
 		fn deposit_extra(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
 			let max_additional = amount.saturated_into::<BalanceOf<T>>();
-			let mut ledger = Self::ledger(&owner).ok_or(Error::<T>::NotOwner)?;
+			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
 
 			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
 			let extra = owner_balance.min(max_additional);
@@ -870,7 +867,7 @@ pub mod pallet {
 
 	impl<T: Config> CustomerVisitor<T> for Pallet<T> {
 		fn get_bucket_owner(bucket_id: &BucketId) -> Result<T::AccountId, DispatchError> {
-			let bucket = Self::buckets(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
+			let bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 			Ok(bucket.owner_id)
 		}
 	}

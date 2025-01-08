@@ -23,13 +23,8 @@ parameter_types! {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type Origin = Origin;
-	type Call = Call;
-	type Nonce = u64;
 	type Block = u64;
-	type Hash = H256;
 	type AccountId = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Event = Event;
 	type BlockHashCount = BlockHashCount;
 	type MaximumBlockWeight = MaximumBlockWeight;
