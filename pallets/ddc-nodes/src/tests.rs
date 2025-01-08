@@ -66,7 +66,7 @@ fn create_storage_node_works() {
 			NodeParams::StorageParams(storage_node_params.clone())
 		));
 
-		let created_storage_node = DdcNodes::storage_nodes(&node_pub_key).unwrap();
+		let created_storage_node = StorageNodes::<Test>::get(&node_pub_key).unwrap();
 		let expected_host: BoundedVec<u8, MaxHostLen> =
 			storage_node_params.clone().host.try_into().unwrap();
 		let expected_domain: BoundedVec<u8, MaxDomainLen> =
@@ -91,7 +91,7 @@ fn create_storage_node_works() {
 		{
 			assert_eq!(cluster_id, None);
 		}
-		let storage_node = DdcNodes::storage_nodes(&node_pub_key).unwrap();
+		let storage_node = StorageNodes::<Test>::get(&node_pub_key).unwrap();
 		assert_eq!(storage_node.pub_key, node_pub_key);
 
 		// Node already exists
@@ -143,7 +143,7 @@ fn create_storage_node_with_node_creator() {
 		{
 			assert_eq!(cluster_id, None);
 		}
-		let storage_node = DdcNodes::storage_nodes(&node_pub_key).unwrap();
+		let storage_node = StorageNodes::<Test>::get(&node_pub_key).unwrap();
 		assert_eq!(storage_node.pub_key, node_pub_key);
 	})
 }
@@ -198,7 +198,7 @@ fn set_storage_node_params_works() {
 			NodeParams::StorageParams(updated_params.clone())
 		));
 
-		let updated_storage_node = DdcNodes::storage_nodes(&node_pub_key).unwrap();
+		let updated_storage_node = StorageNodes::<Test>::get(&node_pub_key).unwrap();
 		let expected_host: BoundedVec<u8, MaxHostLen> = updated_params.host.try_into().unwrap();
 		let expected_domain: BoundedVec<u8, MaxDomainLen> =
 			updated_params.domain.try_into().unwrap();

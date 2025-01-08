@@ -52,7 +52,7 @@ benchmarks! {
 		whitelist_account!(user);
 	}: _(RawOrigin::Signed(user), cluster_id, bucket_params)
 	verify {
-		assert_eq!(Pallet::<T>::buckets_count(), 1);
+		assert_eq!(BucketsCount::<T>::get(), 1);
 	}
 
 	deposit {

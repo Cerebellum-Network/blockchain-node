@@ -9,14 +9,12 @@ use ddc_primitives::{
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstBool, ConstU32, ConstU64, Nothing},
-	weights::constants::RocksDbWeight,
 };
 use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
 	EnsureSigned,
 };
 use pallet_contracts as contracts;
-use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::TestXt,
@@ -149,20 +147,13 @@ parameter_types! {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type DbWeight = RocksDbWeight;
 	type Nonce = u64;
 	type Block = Block;
-	type Hash = H256;
 	type AccountId = AccountId;
 	type BlockHashCount = ConstU64<250>;
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type MaxConsumers = ConstU32<16>;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type SingleBlockMigrations = ();
-	type MultiBlockMigrator = ();
-	type PreInherents = ();
-	type PostInherents = ();
-	type PostTransactions = ();
 }
 
 impl pallet_balances::Config for Test {

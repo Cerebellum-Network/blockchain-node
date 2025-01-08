@@ -3,11 +3,7 @@ use frame_support::{
 };
 use frame_system::{self as system};
 pub use pallet_balances as balances;
-use sp_core::H256;
-use sp_runtime::{
-	traits::{AccountIdConversion, IdentityLookup},
-	BuildStorage, Perbill,
-};
+use sp_runtime::{traits::AccountIdConversion, BuildStorage, Perbill};
 
 use crate::{self as bridge, *};
 
@@ -20,14 +16,9 @@ parameter_types! {
 }
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type Nonce = u64;
 	type Block = Block;
-	type Hash = H256;
 	type AccountId = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type BlockHashCount = BlockHashCount;
-	// type ModuleToIndex = ();
-	// type MaxLocks = MaxLocks;
 	type AccountData = pallet_balances::AccountData<u64>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
@@ -110,7 +101,7 @@ pub fn new_test_ext_initialized(
 	t.execute_with(|| {
 		// Set and check threshold
 		assert_ok!(Bridge::set_threshold(RuntimeOrigin::root(), TEST_THRESHOLD));
-		assert_eq!(Bridge::relayer_threshold(), TEST_THRESHOLD);
+		assert_eq!(RelayerThreshold::<Test>::get(), TEST_THRESHOLD);
 		// Add relayers
 		assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_A));
 		assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_B));
