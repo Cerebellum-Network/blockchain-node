@@ -86,7 +86,6 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn storage_nodes)]
 	pub type StorageNodes<T: Config> =
 		StorageMap<_, Blake2_128Concat, StorageNodePubKey, StorageNode<T>>;
 
