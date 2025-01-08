@@ -16,7 +16,7 @@ futures = { workspace = true }
 frame-benchmarking = { workspace = true, default-features = true }
 frame-system = { workspace = true, default-features = true }
 frame-system-rpc-runtime-api = { workspace = true, default-features = true }
-node-primitives = { workspace = true, default-features = true }
+ddc-primitives = { workspace = true, default-features = true }
 pallet-transaction-payment = { workspace = true, default-features = true }
 pallet-transaction-payment-rpc-runtime-api = { workspace = true, default-features = true }
 sc-client-api = { workspace = true, default-features = true }

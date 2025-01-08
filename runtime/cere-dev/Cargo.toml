@@ -28,7 +28,7 @@ frame-system = { workspace = true }
 frame-system-benchmarking = { workspace = true, optional = true }
 frame-system-rpc-runtime-api = { workspace = true }
 frame-try-runtime = { workspace = true, optional = true }
-node-primitives = { workspace = true }
+ddc-primitives = { workspace = true }
 pallet-authority-discovery = { workspace = true }
 pallet-authorship = { workspace = true }
 pallet-babe = { workspace = true }
@@ -94,7 +94,6 @@ sp-version = { workspace = true }
 
 # cere dependencies
 cere-runtime-common = { workspace = true }
-ddc-primitives = { workspace = true }
 pallet-chainbridge = { workspace = true }
 pallet-ddc-clusters = { workspace = true }
 pallet-ddc-clusters-gov = { workspace = true }
@@ -122,7 +121,7 @@ std = [
   "frame-system-rpc-runtime-api/std",
   "frame-system/std",
   "frame-try-runtime/std",
-  "node-primitives/std",
+  "ddc-primitives/std",
   "pallet-collective/std",
   "pallet-contracts/std",
   "pallet-democracy/std",

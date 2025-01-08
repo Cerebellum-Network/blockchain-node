@@ -14,7 +14,7 @@ log = { workspace = true, default-features = false }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-node-primitives = { workspace = true }
+ddc-primitives = { workspace = true }
 pallet-contracts = { workspace = true }
 pallet-referenda = { workspace = true }
 pallet-session = { workspace = true }
@@ -31,7 +31,7 @@ default = ["std"]
 no_std = []
 std = [
   "frame-support/std",
-  "node-primitives/std",
+  "ddc-primitives/std",
   "sp-core/std",
   "sp-runtime/std",
   "sp-staking/std",

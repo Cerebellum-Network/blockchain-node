@@ -3,7 +3,7 @@ use cere_dev_runtime as cere_dev;
 #[cfg(feature = "cere-dev-native")]
 use cere_runtime_common::constants::currency::DOLLARS as TEST_UNITS;
 use jsonrpsee::core::__reexports::serde_json;
-pub use node_primitives::{AccountId, Balance, Block, Signature};
+pub use ddc_primitives::{AccountId, Balance, Block, Signature};
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;
 use sc_service::ChainType;
