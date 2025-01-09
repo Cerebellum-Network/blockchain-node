@@ -12,7 +12,7 @@
 //! `GenesisConfig` is optional and allow to set some initial stakers in DDC.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
-
+#![allow(clippy::manual_inspect)]
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
 #[cfg(any(feature = "runtime-benchmarks", test))]

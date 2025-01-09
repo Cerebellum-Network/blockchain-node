@@ -13,7 +13,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
-
+#![allow(clippy::manual_inspect)]
 pub mod weights;
 use crate::weights::WeightInfo;
 

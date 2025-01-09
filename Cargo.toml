@@ -192,5 +192,15 @@ pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
 pallet-origins = { path = "pallets/origins", default-features = false }
 
+ismp = { default-features = false, version = "0.2.2" }
+pallet-ismp = { default-features = false, version = "1.15.3" }
+pallet-ismp-rpc = { default-features = false, version = "1.15.3" }
+pallet-ismp-runtime-api = { default-features = false, version = "1.15.3" }
+pallet-hyperbridge = { default-features = false, version = "1.15.3" }
+ismp-grandpa = { default-features = false, version = "1.15.4" }
+frame-metadata-hash-extension = { default-features = false, version = "0.5.0" }
+sp-mmr-primitives = { default-features = false, version = "34.0.0" }
+anyhow = { version = "1.0", default-features = false }
+
 [profile.release]
 panic = "unwind"

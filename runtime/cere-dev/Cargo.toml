@@ -20,6 +20,7 @@ scale-info = { workspace = true }
 static_assertions = { workspace = true }
 
 # Substrate dependencies
+ddc-primitives = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 frame-election-provider-support = { workspace = true }
 frame-executive = { workspace = true }
@@ -28,7 +29,6 @@ frame-system = { workspace = true }
 frame-system-benchmarking = { workspace = true, optional = true }
 frame-system-rpc-runtime-api = { workspace = true }
 frame-try-runtime = { workspace = true, optional = true }
-ddc-primitives = { workspace = true }
 pallet-authority-discovery = { workspace = true }
 pallet-authorship = { workspace = true }
 pallet-babe = { workspace = true }
@@ -104,6 +104,16 @@ pallet-ddc-staking = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
 pallet-origins = { workspace = true }
+
+# Hyperbridge Depedencies
+anyhow = { workspace = true }
+frame-metadata-hash-extension = { workspace = true }
+ismp = { workspace = true }
+ismp-grandpa = { workspace = true }
+pallet-hyperbridge = { workspace = true }
+pallet-ismp = { workspace = true, features = ["unsigned"] }
+pallet-ismp-runtime-api = { workspace = true }
+sp-mmr-primitives = { workspace = true }
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }
@@ -192,6 +202,13 @@ std = [
   "pallet-ddc-clusters-gov/std",
   "sp-arithmetic/std",
   "pallet-origins/std",
+  "pallet-hyperbridge/std",
+  "ismp/std",
+  "pallet-ismp/std",
+  "pallet-ismp-runtime-api/std",
+  "ismp-grandpa/std",
+  "anyhow/std",
+  "frame-metadata-hash-extension/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -298,4 +315,7 @@ try-runtime = [
   "pallet-preimage/try-runtime",
   "pallet-origins/try-runtime",
   "pallet-ddc-clusters-gov/try-runtime",
+  "pallet-ismp/try-runtime",
+  "pallet-hyperbridge/try-runtime",
+  "ismp-grandpa/try-runtime",
 ]

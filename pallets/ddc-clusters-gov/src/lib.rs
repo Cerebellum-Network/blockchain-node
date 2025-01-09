@@ -13,7 +13,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
-
+#![allow(clippy::manual_inspect)]
 use codec::{Decode, Encode};
 #[cfg(feature = "runtime-benchmarks")]
 use ddc_primitives::traits::{node::NodeCreator, staking::StakerCreator};

@@ -22,7 +22,10 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 use codec::{Decode, Encode, MaxEncodedLen};
-use ddc_primitives::traits::pallet::PalletVisitor;
+use ddc_primitives::{
+	traits::pallet::PalletVisitor, AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce,
+};
+pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
@@ -53,8 +56,6 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
-pub use ddc_primitives::{AccountId, Signature};
-use ddc_primitives::{AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce};
 #[cfg(any(feature = "std", test))]
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
@@ -119,6 +120,18 @@ use governance::{
 /// Generated voter bag information.
 mod voter_bags;
 
+use ismp::{
+	consensus::{ConsensusClientId, StateMachineHeight, StateMachineId},
+	error::Error,
+	host::StateMachine,
+	module::IsmpModule,
+	router::{IsmpRouter, Request, Response},
+};
+use ismp_grandpa::consensus::GrandpaConsensusClient;
+use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
+use sp_core::H256;
+mod weights;
+
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
@@ -143,7 +156,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 70000,
+	spec_version: 71000,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -943,6 +956,7 @@ where
 			frame_system::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+			frame_metadata_hash_extension::CheckMetadataHash::new(false),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -1287,6 +1301,69 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 	}
 }
 
+parameter_types! {
+	// The hyperbridge parachain on Polkadot
+	pub const Coprocessor: Option<StateMachine> = Some(StateMachine::Polkadot(3367));
+	// The host state machine of this pallet, this must be unique to all every solochain
+	pub const HostStateMachine: StateMachine = StateMachine::Substrate(*b"solo"); // your unique chain id here
+}
+
+impl pallet_ismp::Config for Runtime {
+	// Configure the runtime event
+	type RuntimeEvent = RuntimeEvent;
+	// Permissioned origin who can create or update consensus clients
+	type AdminOrigin = EnsureRoot<AccountId>;
+	// The state machine identifier for this state machine
+	type HostStateMachine = HostStateMachine;
+	// The pallet_timestamp pallet
+	type TimestampProvider = Timestamp;
+	// The currency implementation that is offered to relayers
+	// this could also be `frame_support::traits::tokens::fungible::ItemOf`
+	type Currency = Balances;
+	// The balance type for the currency implementation
+	type Balance = Balance;
+	// Router implementation for routing requests/responses to their respective modules
+	type Router = ModuleRouter;
+	// Optional coprocessor for incoming requests/responses
+	type Coprocessor = Coprocessor;
+	// Supported consensus clients
+	type ConsensusClients = (
+		// Add the grandpa consensus client here
+		GrandpaConsensusClient<Runtime>,
+	);
+	// Offchain database implementation. Outgoing requests and responses are
+	// inserted in this database, while their commitments are stored onchain.
+	//
+	// The default implementation for `()` should suffice
+	type OffchainDB = ();
+	// Weight provider for local modules
+	type WeightProvider = ();
+}
+
+impl pallet_hyperbridge::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type IsmpHost = Ismp;
+}
+
+#[derive(Default)]
+pub struct ModuleRouter;
+
+impl IsmpRouter for ModuleRouter {
+	fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, anyhow::Error> {
+		return match id.as_slice() {
+			pallet_hyperbridge::PALLET_HYPERBRIDGE_ID =>
+				Ok(Box::new(pallet_hyperbridge::Pallet::<Runtime>::default())),
+			_ => Err(Error::ModuleNotFound(id).into()),
+		};
+	}
+}
+
+impl ismp_grandpa::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type IsmpHost = Ismp;
+	type WeightInfo = weights::ismp_grandpa::WeightInfo<Runtime>;
+}
+
 construct_runtime!(
 	pub enum Runtime
 	{
@@ -1340,6 +1417,9 @@ construct_runtime!(
 		// End OpenGov.
 		TechComm: pallet_collective::<Instance3>,
 		DdcClustersGov: pallet_ddc_clusters_gov,
+		Ismp: pallet_ismp,
+		IsmpGrandpa: ismp_grandpa,
+		Hyperbridge: pallet_hyperbridge,
 	}
 );
 
@@ -1367,6 +1447,7 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
@@ -1629,6 +1710,50 @@ impl_runtime_apis! {
 	impl frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce> for Runtime {
 		fn account_nonce(account: AccountId) -> Nonce {
 			System::account_nonce(account)
+		}
+	}
+
+	impl pallet_ismp_runtime_api::IsmpRuntimeApi<Block, <Block as BlockT>::Hash> for Runtime {
+		fn host_state_machine() -> StateMachine {
+			<Runtime as pallet_ismp::Config>::HostStateMachine::get()
+		}
+
+		fn challenge_period(id: StateMachineId) -> Option<u64> {
+			pallet_ismp::Pallet::<Runtime>::challenge_period(id)
+		}
+
+		fn generate_proof(
+			keys: ProofKeys
+		) -> Result<(Vec<Leaf>, Proof<<Block as BlockT>::Hash>), sp_mmr_primitives::Error> {
+			pallet_ismp::Pallet::<Runtime>::generate_proof(keys)
+		}
+
+		fn block_events() -> Vec<ismp::events::Event> {
+			pallet_ismp::Pallet::<Runtime>::block_events()
+		}
+
+		fn block_events_with_metadata() -> Vec<(ismp::events::Event, Option<u32>)> {
+			pallet_ismp::Pallet::<Runtime>::block_events_with_metadata()
+		}
+
+		fn consensus_state(id: ConsensusClientId) -> Option<Vec<u8>> {
+			pallet_ismp::Pallet::<Runtime>::consensus_states(id)
+		}
+
+		fn state_machine_update_time(height: StateMachineHeight) -> Option<u64> {
+			pallet_ismp::Pallet::<Runtime>::state_machine_update_time(height)
+		}
+
+		fn latest_state_machine_height(id: StateMachineId) -> Option<u64> {
+			pallet_ismp::Pallet::<Runtime>::latest_state_machine_height(id)
+		}
+
+		fn requests(commitments: Vec<H256>) -> Vec<Request> {
+			pallet_ismp::Pallet::<Runtime>::requests(commitments)
+		}
+
+		fn responses(commitments: Vec<H256>) -> Vec<Response> {
+			pallet_ismp::Pallet::<Runtime>::responses(commitments)
 		}
 	}
 

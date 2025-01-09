@@ -12,9 +12,9 @@ repository.workspace = true
 codec = { workspace = true }
 log = { workspace = true, default-features = false }
 
+ddc-primitives = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-ddc-primitives = { workspace = true }
 pallet-contracts = { workspace = true }
 pallet-referenda = { workspace = true }
 pallet-session = { workspace = true }

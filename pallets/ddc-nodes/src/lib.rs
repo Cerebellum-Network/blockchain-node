@@ -11,9 +11,9 @@
 //! The DDC Nodes pallet depends on the [`GenesisConfig`]. The
 //! `GenesisConfig` is optional and allow to set some initial nodes in DDC.
 
+#![allow(clippy::manual_inspect)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
-
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
