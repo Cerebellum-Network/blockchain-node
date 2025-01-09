@@ -80,7 +80,7 @@ macro_rules! unwrap_client {
 pub fn run() -> sc_cli::Result<()> {
 	let mut cli = Cli::from_args();
 
-	cli.run.offchain_worker_params.indexing_enabled = true;
+	cli.run.base.offchain_worker_params.indexing_enabled = true;
 
 	match &cli.subcommand {
 		Some(Subcommand::Key(cmd)) => cmd.run(&cli),
