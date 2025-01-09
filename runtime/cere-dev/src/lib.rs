@@ -1301,9 +1301,9 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 
 parameter_types! {
 	// The hyperbridge parachain on Polkadot
-	pub const Coprocessor: Option<StateMachine> = Some(StateMachine::Polkadot(3367));
+	pub const Coprocessor: Option<StateMachine> = Some(StateMachine::Polkadot(4009));
 	// The host state machine of this pallet, this must be unique to all every solochain
-	pub const HostStateMachine: StateMachine = StateMachine::Substrate(*b"solo"); // your unique chain id here
+	pub const HostStateMachine: StateMachine = StateMachine::Substrate(*b"cere"); // your unique chain id here
 }
 
 impl pallet_ismp::Config for Runtime {
