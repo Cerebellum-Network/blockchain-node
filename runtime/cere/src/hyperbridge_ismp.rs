@@ -210,7 +210,7 @@ impl pallet_token_gateway::Config for Runtime {
 	// configure the runtime event
 	type RuntimeEvent = RuntimeEvent;
 	// Configured as Pallet Ismp
-	type Dispatcher = Ismp;
+	type Dispatcher = pallet_hyperbridge::Pallet<Runtime>;
 	// Configured as Pallet Assets
 	type Assets = MockAssets;
 	// Configured as Pallet balances
