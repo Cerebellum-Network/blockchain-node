@@ -20,7 +20,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 use codec::{Decode, Encode, MaxEncodedLen};
 use ddc_primitives::{
 	traits::pallet::PalletVisitor, AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce,
@@ -37,7 +37,12 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		fungible::HoldConsideration,
-		tokens::{PayFromAccount, UnityAssetBalanceConversion},
+		fungibles,
+		fungibles::{Dust, Inspect, Unbalanced},
+		tokens::{
+			DepositConsequence, Fortitude, PayFromAccount, Preservation, Provenance,
+			UnityAssetBalanceConversion, WithdrawConsequence,
+		},
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
 		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
@@ -91,8 +96,8 @@ use sp_runtime::{
 		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
-	RuntimeDebug,
+	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill,
+	Percent, Permill, Perquintill, RuntimeDebug,
 };
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
@@ -122,14 +127,12 @@ mod voter_bags;
 
 use ismp::{
 	consensus::{ConsensusClientId, StateMachineHeight, StateMachineId},
-	error::Error,
 	host::StateMachine,
-	module::IsmpModule,
-	router::{IsmpRouter, Request, Response},
+	router::{Request, Response},
 };
-use ismp_grandpa::consensus::GrandpaConsensusClient;
 use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
 use sp_core::H256;
+mod hyperbridge_ismp;
 mod weights;
 
 // Make the WASM binary available.
@@ -1301,69 +1304,6 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 	}
 }
 
-parameter_types! {
-	// The hyperbridge parachain on Polkadot
-	pub const Coprocessor: Option<StateMachine> = Some(StateMachine::Polkadot(4009));
-	// The host state machine of this pallet, this must be unique to all every solochain
-	pub const HostStateMachine: StateMachine = StateMachine::Substrate(*b"cere"); // your unique chain id here
-}
-
-impl pallet_ismp::Config for Runtime {
-	// Configure the runtime event
-	type RuntimeEvent = RuntimeEvent;
-	// Permissioned origin who can create or update consensus clients
-	type AdminOrigin = EnsureRoot<AccountId>;
-	// The state machine identifier for this state machine
-	type HostStateMachine = HostStateMachine;
-	// The pallet_timestamp pallet
-	type TimestampProvider = Timestamp;
-	// The currency implementation that is offered to relayers
-	// this could also be `frame_support::traits::tokens::fungible::ItemOf`
-	type Currency = Balances;
-	// The balance type for the currency implementation
-	type Balance = Balance;
-	// Router implementation for routing requests/responses to their respective modules
-	type Router = ModuleRouter;
-	// Optional coprocessor for incoming requests/responses
-	type Coprocessor = Coprocessor;
-	// Supported consensus clients
-	type ConsensusClients = (
-		// Add the grandpa consensus client here
-		GrandpaConsensusClient<Runtime>,
-	);
-	// Offchain database implementation. Outgoing requests and responses are
-	// inserted in this database, while their commitments are stored onchain.
-	//
-	// The default implementation for `()` should suffice
-	type OffchainDB = ();
-	// Weight provider for local modules
-	type WeightProvider = ();
-}
-
-impl pallet_hyperbridge::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type IsmpHost = Ismp;
-}
-
-#[derive(Default)]
-pub struct ModuleRouter;
-
-impl IsmpRouter for ModuleRouter {
-	fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, anyhow::Error> {
-		return match id.as_slice() {
-			pallet_hyperbridge::PALLET_HYPERBRIDGE_ID =>
-				Ok(Box::new(pallet_hyperbridge::Pallet::<Runtime>::default())),
-			_ => Err(Error::ModuleNotFound(id).into()),
-		};
-	}
-}
-
-impl ismp_grandpa::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type IsmpHost = Ismp;
-	type WeightInfo = weights::ismp_grandpa::WeightInfo<Runtime>;
-}
-
 construct_runtime!(
 	pub enum Runtime
 	{
@@ -1420,6 +1360,7 @@ construct_runtime!(
 		Ismp: pallet_ismp,
 		IsmpGrandpa: ismp_grandpa,
 		Hyperbridge: pallet_hyperbridge,
+		TokenGateway: pallet_token_gateway,
 	}
 );
 

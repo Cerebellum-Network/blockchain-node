@@ -113,6 +113,7 @@ ismp-grandpa = { workspace = true }
 pallet-hyperbridge = { workspace = true }
 pallet-ismp = { workspace = true, features = ["unsigned"] }
 pallet-ismp-runtime-api = { workspace = true }
+pallet-token-gateway = { workspace = true }
 sp-mmr-primitives = { workspace = true }
 
 [build-dependencies]
@@ -209,6 +210,7 @@ std = [
   "ismp-grandpa/std",
   "anyhow/std",
   "frame-metadata-hash-extension/std",
+  "pallet-token-gateway/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -318,4 +320,5 @@ try-runtime = [
   "pallet-ismp/try-runtime",
   "pallet-hyperbridge/try-runtime",
   "ismp-grandpa/try-runtime",
+  "pallet-token-gateway/try-runtime",
 ]

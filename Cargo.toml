@@ -29,6 +29,7 @@ resolver = "2"
 
 [workspace.dependencies]
 # 3rd-party dependencies
+anyhow = { version = "1.0", default-features = false }
 base64ct = { version = "1.6.0" }
 blake2 = { version = "0.10.6", default-features = false }
 byte-unit = { version = "4.0.19", default-features = false, features = ["u128"] }
@@ -60,6 +61,7 @@ frame-benchmarking = { version = "37.0.0", default-features = false }
 frame-benchmarking-cli = { version = "42.0.0", default-features = false }
 frame-election-provider-support = { version = "37.0.0", default-features = false }
 frame-executive = { version = "37.0.0", default-features = false }
+frame-metadata-hash-extension = { default-features = false, version = "0.5.0" }
 frame-support = { version = "37.0.0", default-features = false, features = ["tuples-96"] }
 frame-system = { version = "37.0.0", default-features = false }
 frame-system-benchmarking = { version = "37.0.0", default-features = false }
@@ -152,6 +154,7 @@ sp-core = { version = "34.0.0", default-features = false, features = ["serde"] }
 sp-inherents = { version = "34.0.0", default-features = false }
 sp-io = { version = "38.0.0", default-features = false }
 sp-keystore = { version = "0.40.0", default-features = false }
+sp-mmr-primitives = { default-features = false, version = "34.0.0" }
 sp-offchain = { version = "34.0.0", default-features = false }
 sp-rpc = { version = "32.0.0", default-features = false }
 sp-rpc-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2407", default-features = false }
@@ -192,15 +195,14 @@ pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
 pallet-origins = { path = "pallets/origins", default-features = false }
 
+# Hyperbridge
 ismp = { default-features = false, version = "0.2.2" }
+ismp-grandpa = { default-features = false, version = "1.15.4" }
+pallet-hyperbridge = { default-features = false, version = "1.15.3" }
 pallet-ismp = { default-features = false, version = "1.15.3" }
 pallet-ismp-rpc = { default-features = false, version = "1.15.3" }
 pallet-ismp-runtime-api = { default-features = false, version = "1.15.3" }
-pallet-hyperbridge = { default-features = false, version = "1.15.3" }
-ismp-grandpa = { default-features = false, version = "1.15.4" }
-frame-metadata-hash-extension = { default-features = false, version = "0.5.0" }
-sp-mmr-primitives = { default-features = false, version = "34.0.0" }
-anyhow = { version = "1.0", default-features = false }
+pallet-token-gateway = { default-features = false, version = "1.15.3" }
 
 [profile.release]
 panic = "unwind"
