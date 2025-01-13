@@ -7047,9 +7047,9 @@ dependencies = [
 
 [[package]]
 name = "pallet-token-gateway"
-version = "15.0.0"
+version = "15.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13facf07e0ecf506d56638b96f22975a6d00e68261a17e094fdee34114902932"
+checksum = "82e58d5904ab6df742cd60059adec0f94d94318b6d10c0eb147f105a7b0dd9f6"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-macro",

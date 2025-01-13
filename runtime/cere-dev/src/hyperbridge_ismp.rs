@@ -232,11 +232,9 @@ impl pallet_token_gateway::Config for Runtime {
 	type AssetAdmin = AssetAdmin;
 	// The Native asset Id
 	type NativeAssetId = NativeAssetId;
-	// A type that provides a function for creating unique asset ids
-	// A concrete implementation for your specific runtime is required
-	type AssetIdFactory = ();
 	// The precision of the native asset
 	type Decimals = Decimals;
 	type EvmToSubstrate = EvmToSubstrateFactory;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_token_gateway::WeightInfo<Runtime>;
+	type CreateOrigin = EnsureSigned<AccountId>;
 }
