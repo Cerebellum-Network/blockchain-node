@@ -115,7 +115,7 @@ pallet-ismp = { workspace = true, features = ["unsigned"] }
 pallet-ismp-runtime-api = { workspace = true }
 pallet-token-gateway = { workspace = true }
 sp-mmr-primitives = { workspace = true }
-
+pallet-assets = { workspace = true }
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }
 
@@ -211,6 +211,7 @@ std = [
   "anyhow/std",
   "frame-metadata-hash-extension/std",
   "pallet-token-gateway/std",
+  "pallet-assets/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -263,8 +264,11 @@ runtime-benchmarks = [
   "pallet-preimage/runtime-benchmarks",
   "pallet-ddc-clusters-gov/runtime-benchmarks",
   "pallet-origins/runtime-benchmarks",
+  "pallet-token-gateway/runtime-benchmarks",
+  "pallet-assets/runtime-benchmarks",
 ]
 try-runtime = [
+  "pallet-assets/try-runtime",
   "frame-executive/try-runtime",
   "frame-try-runtime",
   "frame-system/try-runtime",

@@ -2,7 +2,7 @@ use frame_support::parameter_types;
 use frame_system::EnsureRoot;
 use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
 use ismp_grandpa::consensus::GrandpaConsensusClient;
-use pallet_token_gateway::types::EvmToSubstrate;
+use pallet_token_gateway::types::{CreateAssetId, EvmToSubstrate};
 use sp_core::H160;
 
 use super::*;
@@ -73,7 +73,6 @@ impl ismp_grandpa::Config for Runtime {
 
 parameter_types! {
 	// A constant that should represent the native asset id, this id must be unique to the native currency
-	pub const NativeAssetId: u32 = 0;
 	// Set the correct decimals for the native currency
 	pub const Decimals: u8 = 10;
 }
@@ -219,13 +218,31 @@ impl EvmToSubstrate<Runtime> for EvmToSubstrateFactory {
 	}
 }
 
+pub struct AssetIdFactory;
+
+
+impl CreateAssetId<H256> for AssetIdFactory {
+	fn create_asset_id(symbol: Vec<u8>) -> Result<H256, anyhow::Error> {
+		Ok(sp_io::hashing::keccak_256(&symbol).into())
+	}
+}
+
+pub struct NativeAssetId;
+
+impl Get<H256> for NativeAssetId {
+	fn get() -> H256 {
+		sp_io::hashing::keccak_256(b"BRIDGE").into()
+	}
+}
+
+
 impl pallet_token_gateway::Config for Runtime {
 	// configure the runtime event
 	type RuntimeEvent = RuntimeEvent;
 	// Configured as Pallet Ismp
 	type Dispatcher = pallet_hyperbridge::Pallet<Runtime>;
 	// Configured as Pallet Assets
-	type Assets = MockAssets;
+	type Assets = Assets;
 	// Configured as Pallet balances
 	type NativeCurrency = Balances;
 	// AssetAdmin account
@@ -234,7 +251,7 @@ impl pallet_token_gateway::Config for Runtime {
 	type NativeAssetId = NativeAssetId;
 	// A type that provides a function for creating unique asset ids
 	// A concrete implementation for your specific runtime is required
-	type AssetIdFactory = ();
+	type AssetIdFactory =AssetIdFactory;
 	// The precision of the native asset
 	type Decimals = Decimals;
 	type EvmToSubstrate = EvmToSubstrateFactory;

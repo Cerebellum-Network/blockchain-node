@@ -21,7 +21,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "512"]
-
+use frame_support::instances::Instance1;
 use codec::{Decode, Encode, MaxEncodedLen};
 use ddc_primitives::{
 	traits::pallet::{GetDdcOrigin, PalletVisitor},
@@ -31,32 +31,24 @@ pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
-use frame_support::{
-	construct_runtime, derive_impl,
-	dispatch::DispatchClass,
-	genesis_builder_helper::{build_state, get_preset},
-	pallet_prelude::Get,
-	parameter_types,
-	traits::{
-		fungible::HoldConsideration,
-		fungibles,
-		fungibles::{Dust, Inspect, Unbalanced},
-		tokens::{
-			DepositConsequence, Fortitude, PayFromAccount, Preservation, Provenance,
-			UnityAssetBalanceConversion, WithdrawConsequence,
-		},
-		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
-		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
+use frame_support::{construct_runtime, derive_impl, dispatch::DispatchClass, genesis_builder_helper::{build_state, get_preset}, pallet_prelude::Get, parameter_types, traits::{
+	fungible::HoldConsideration,
+	fungibles,
+	fungibles::{Dust, Inspect, Unbalanced},
+	tokens::{
+		DepositConsequence, Fortitude, PayFromAccount, Preservation, Provenance,
+		UnityAssetBalanceConversion, WithdrawConsequence,
 	},
-	weights::{
-		constants::{
-			BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND,
-		},
-		ConstantMultiplier, IdentityFee, Weight,
+	ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
+	EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
+	Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
+}, weights::{
+	constants::{
+		BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND,
 	},
-	PalletId,
-};
+	ConstantMultiplier, IdentityFee, Weight,
+}, PalletId, Hashable};
+use frame_support::traits::AsEnsureOriginWithArg;
 #[cfg(any(feature = "std", test))]
 pub use frame_system::Call as SystemCall;
 use frame_system::{
@@ -136,6 +128,7 @@ use ismp::{
 	host::StateMachine,
 	router::{Request, Response},
 };
+use pallet_assets::BenchmarkHelper;
 use sp_core::H256;
 mod hyperbridge_ismp;
 mod weights;
@@ -1301,6 +1294,39 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 	}
 }
 
+impl pallet_assets::Config<Instance1> for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Balance = u128;
+	type AssetId = H256;
+	type AssetIdParameter = H256;
+	type Currency = Balances;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type AssetDeposit = ConstU128<1>;
+	type AssetAccountDeposit = ConstU128<10>;
+	type MetadataDepositBase = ConstU128<1>;
+	type MetadataDepositPerByte = ConstU128<1>;
+	type ApprovalDeposit = ConstU128<1>;
+	type StringLimit = ConstU32<50>;
+	type Freezer = ();
+	type Extra = ();
+	type CallbackHandle = ();
+	type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
+	type RemoveItemsLimit = ConstU32<1000>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = IdentityBenchmarkHelper;
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+pub struct IdentityBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<H256> for IdentityBenchmarkHelper {
+	fn create_asset_id_parameter(id: u32) -> H256 {
+		use codec::Encode;
+		sp_io::hashing::keccak_256(&id.blake2_256()).into()
+	}
+}
+
 construct_runtime!(
 	pub enum Runtime
 	{
@@ -1358,6 +1384,7 @@ construct_runtime!(
 		IsmpGrandpa: ismp_grandpa,
 		Hyperbridge: pallet_hyperbridge,
 		TokenGateway: pallet_token_gateway,
+		Assets: pallet_assets::<Instance1>,
 	}
 );
 
@@ -1454,6 +1481,8 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
+		[pallet_token_gateway, TokenGateway]
+		[pallet_assets, Assets]
 	);
 }
 
