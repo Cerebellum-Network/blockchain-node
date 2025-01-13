@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [7.1.0]
 
 - [C,D] Hyperbridge Integration.
+- [C,D] Replace Git dependencies with Crates version.
 
 ## [7.0.0]
 
