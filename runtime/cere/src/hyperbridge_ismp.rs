@@ -2,6 +2,8 @@ use frame_support::parameter_types;
 use frame_system::EnsureRoot;
 use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
 use ismp_grandpa::consensus::GrandpaConsensusClient;
+use pallet_token_gateway::types::EvmToSubstrate;
+use sp_core::H160;
 
 use super::*;
 
@@ -206,6 +208,16 @@ impl fungibles::roles::Inspect<AccountId> for MockAssets {
 		None
 	}
 }
+
+pub struct EvmToSubstrateFactory;
+
+impl EvmToSubstrate<Runtime> for EvmToSubstrateFactory {
+	fn convert(addr: H160) -> AccountId {
+		let mut account = [0u8; 32];
+		account[12..].copy_from_slice(&addr.0);
+		account.into()
+	}
+}
 impl pallet_token_gateway::Config for Runtime {
 	// configure the runtime event
 	type RuntimeEvent = RuntimeEvent;
@@ -224,4 +236,6 @@ impl pallet_token_gateway::Config for Runtime {
 	type AssetIdFactory = ();
 	// The precision of the native asset
 	type Decimals = Decimals;
+	type EvmToSubstrate = EvmToSubstrateFactory;
+	type WeightInfo = ();
 }

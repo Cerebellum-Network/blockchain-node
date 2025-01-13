@@ -197,12 +197,12 @@ pallet-origins = { path = "pallets/origins", default-features = false }
 
 # Hyperbridge
 ismp = { default-features = false, version = "0.2.2" }
-ismp-grandpa = { default-features = false, version = "1.15.4" }
-pallet-hyperbridge = { default-features = false, version = "1.15.3" }
-pallet-ismp = { default-features = false, version = "1.15.3" }
-pallet-ismp-rpc = { default-features = false, version = "1.15.3" }
-pallet-ismp-runtime-api = { default-features = false, version = "1.15.3" }
-pallet-token-gateway = { default-features = false, version = "1.15.3" }
+ismp-grandpa = { default-features = false, version = "15.0.0" }
+pallet-hyperbridge = { default-features = false, version = "15.0.0" }
+pallet-ismp = { default-features = false, version = "15.0.0" }
+pallet-ismp-rpc = { default-features = false, version = "15.0.0" }
+pallet-ismp-runtime-api = { default-features = false, version = "15.0.0" }
+pallet-token-gateway = { default-features = false, version = "15.0.0" }
 
 [profile.release]
 panic = "unwind"

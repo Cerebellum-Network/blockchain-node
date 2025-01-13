@@ -130,7 +130,6 @@ use ismp::{
 	host::StateMachine,
 	router::{Request, Response},
 };
-use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
 use sp_core::H256;
 mod hyperbridge_ismp;
 mod weights;
@@ -1661,12 +1660,6 @@ impl_runtime_apis! {
 
 		fn challenge_period(id: StateMachineId) -> Option<u64> {
 			pallet_ismp::Pallet::<Runtime>::challenge_period(id)
-		}
-
-		fn generate_proof(
-			keys: ProofKeys
-		) -> Result<(Vec<Leaf>, Proof<<Block as BlockT>::Hash>), sp_mmr_primitives::Error> {
-			pallet_ismp::Pallet::<Runtime>::generate_proof(keys)
 		}
 
 		fn block_events() -> Vec<ismp::events::Event> {
