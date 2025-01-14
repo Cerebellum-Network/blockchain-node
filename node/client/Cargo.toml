@@ -13,10 +13,10 @@ repository.workspace = true
 futures = { workspace = true }
 
 # Substrate dependencies
+ddc-primitives = { workspace = true, default-features = true }
 frame-benchmarking = { workspace = true, default-features = true }
 frame-system = { workspace = true, default-features = true }
 frame-system-rpc-runtime-api = { workspace = true, default-features = true }
-node-primitives = { workspace = true, default-features = true }
 pallet-transaction-payment = { workspace = true, default-features = true }
 pallet-transaction-payment-rpc-runtime-api = { workspace = true, default-features = true }
 sc-client-api = { workspace = true, default-features = true }
@@ -29,6 +29,7 @@ sp-blockchain = { workspace = true, default-features = true }
 sp-consensus = { workspace = true, default-features = true }
 sp-consensus-babe = { workspace = true, default-features = true }
 sp-consensus-grandpa = { workspace = true, default-features = true }
+sp-core = { workspace = true, default-features = true }
 sp-inherents = { workspace = true, default-features = true }
 sp-offchain = { workspace = true, default-features = true }
 sp-runtime = { workspace = true, default-features = true }
@@ -40,7 +41,8 @@ sp-transaction-pool = { workspace = true, default-features = true }
 # Local
 cere-dev-runtime = { workspace = true, optional = true }
 cere-runtime = { workspace = true, optional = true }
-
+pallet-ismp = { workspace = true, default-features = true }
+pallet-ismp-runtime-api = { workspace = true, default-features = true }
 [features]
 default = ["cere"]
 cere = ["cere-runtime"]

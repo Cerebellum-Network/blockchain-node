@@ -29,7 +29,7 @@ pub use cere_client::{
 	RuntimeApiCollection,
 };
 pub use chain_spec::{CereChainSpec, CereDevChainSpec};
-pub use node_primitives::{Block, BlockNumber};
+pub use ddc_primitives::{Block, BlockNumber};
 #[allow(deprecated)]
 use sc_executor::{
 	HeapAllocStrategy, NativeElseWasmExecutor, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY,
@@ -257,6 +257,7 @@ where
 					subscription_executor,
 					finality_provider: finality_proof_provider.clone(),
 				},
+				backend: rpc_backend.clone(),
 			};
 
 			cere_rpc::create_full(deps, rpc_backend.clone()).map_err(Into::into)

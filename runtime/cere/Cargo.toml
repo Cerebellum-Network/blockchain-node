@@ -20,6 +20,7 @@ scale-info = { version = "2.1.2", default-features = false, features = ["derive"
 static_assertions = "1.1.0"
 
 # Substrate dependencies
+ddc-primitives = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 frame-election-provider-support = { workspace = true }
 frame-executive = { workspace = true }
@@ -28,7 +29,6 @@ frame-system = { workspace = true }
 frame-system-benchmarking = { workspace = true, optional = true }
 frame-system-rpc-runtime-api = { workspace = true }
 frame-try-runtime = { workspace = true, optional = true }
-node-primitives = { workspace = true }
 pallet-authority-discovery = { workspace = true }
 pallet-authorship = { workspace = true }
 pallet-babe = { workspace = true }
@@ -91,7 +91,6 @@ sp-version = { workspace = true }
 
 # Cere dependencies
 cere-runtime-common = { workspace = true }
-ddc-primitives = { workspace = true }
 pallet-chainbridge = { workspace = true }
 pallet-conviction-voting = { workspace = true }
 pallet-ddc-clusters = { workspace = true }
@@ -105,6 +104,17 @@ pallet-erc721 = { workspace = true }
 pallet-origins = { workspace = true }
 pallet-referenda = { workspace = true }
 pallet-whitelist = { workspace = true }
+
+# Hyperbridge Depedencies
+anyhow = { workspace = true }
+frame-metadata-hash-extension = { workspace = true }
+ismp = { workspace = true }
+ismp-grandpa = { workspace = true }
+pallet-hyperbridge = { workspace = true }
+pallet-ismp = { workspace = true, features = ["unsigned"] }
+pallet-ismp-runtime-api = { workspace = true }
+pallet-token-gateway = { workspace = true }
+sp-mmr-primitives = { workspace = true }
 
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }
@@ -122,7 +132,7 @@ std = [
   "frame-system/std",
   "frame-executive/std",
   "frame-try-runtime/std",
-  "node-primitives/std",
+  "ddc-primitives/std",
   "pallet-authority-discovery/std",
   "pallet-authorship/std",
   "pallet-babe/std",
@@ -191,6 +201,14 @@ std = [
   "pallet-whitelist/std",
   "pallet-preimage/std",
   "pallet-origins/std",
+  "pallet-hyperbridge/std",
+  "ismp/std",
+  "pallet-ismp/std",
+  "pallet-ismp-runtime-api/std",
+  "ismp-grandpa/std",
+  "anyhow/std",
+  "frame-metadata-hash-extension/std",
+  "pallet-token-gateway/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -297,4 +315,8 @@ try-runtime = [
   "pallet-preimage/try-runtime",
   "pallet-origins/try-runtime",
   "pallet-ddc-clusters-gov/try-runtime",
+  "pallet-ismp/try-runtime",
+  "pallet-hyperbridge/try-runtime",
+  "ismp-grandpa/try-runtime",
+  "pallet-token-gateway/try-runtime",
 ]

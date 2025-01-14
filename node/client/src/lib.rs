@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use node_primitives::Nonce;
-pub use node_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Signature};
+use ddc_primitives::Nonce;
+pub use ddc_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Header, Signature};
 use sc_client_api::{
 	AuxStore, Backend as BackendT, BlockchainEvents, KeysIter, MerkleValue, PairsIter,
 	UsageProvider,
@@ -11,6 +11,7 @@ pub use sc_executor::NativeElseWasmExecutor;
 use sp_api::{CallApiAt, ProvideRuntimeApi};
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_consensus::BlockStatus;
+use sp_core::H256;
 use sp_runtime::{
 	generic::SignedBlock,
 	traits::{BlakeTwo256, Block as BlockT, NumberFor},
@@ -512,6 +513,7 @@ pub trait RuntimeApiCollection:
 	+ sp_block_builder::BlockBuilder<Block>
 	+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 	+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
+	+ pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>
 	+ sp_api::Metadata<Block>
 	+ sp_offchain::OffchainWorkerApi<Block>
 	+ sp_session::SessionKeys<Block>
@@ -527,6 +529,7 @@ impl<Api> RuntimeApiCollection for Api where
 		+ sp_block_builder::BlockBuilder<Block>
 		+ frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
 		+ pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
+		+ pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>
 		+ sp_api::Metadata<Block>
 		+ sp_offchain::OffchainWorkerApi<Block>
 		+ sp_session::SessionKeys<Block>
