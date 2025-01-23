@@ -148,7 +148,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 71000,
+	spec_version: 72000,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -1356,6 +1356,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool = true;
 	type BucketsStorageUsageProvider = DdcCustomers;
 	type NodesStorageUsageProvider = DdcNodes;
+	type ClusterProtocol = DdcClusters;
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = DdcCustomers;
 	#[cfg(feature = "runtime-benchmarks")]
@@ -1574,10 +1575,13 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 // 	// The 'Unreleased' migration enables DAC Verification, that atm. is enabled at QANET only.
 // 	// Uncomment this line when DAC is ready for TESTNET and MAINNET migrations::Unreleased,
 // 	// migrations::Unreleased,
-
-// 	// Migrations for DAC and Payouts on QANET
 // );
-type Migrations = ();
+
+// Migrations for DAC and Payouts on QANET
+type Migrations = (
+	pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
+	pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
+);
 
 pub mod migrations {
 	use super::*;
@@ -1600,6 +1604,8 @@ pub mod migrations {
 		pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>,
 		pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,
 		pallet_ddc_payouts::migrations::v2::MigrateToV2<Runtime>,
+		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
+		pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
 	);
 }
 

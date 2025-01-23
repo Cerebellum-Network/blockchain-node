@@ -216,7 +216,7 @@ fn charge_bucket_owner_works() {
 
 		// successful transfer
 		let charge1 = 10;
-		let charged = DdcCustomers::charge_bucket_owner(account_3, vault, charge1).unwrap();
+		let charged = DdcCustomers::charge_customer(account_3, vault, charge1).unwrap();
 		assert_eq!(charge1, charged);
 
 		let vault_balance = Balances::free_balance(vault);
@@ -246,7 +246,7 @@ fn charge_bucket_owner_works() {
 
 		// failed transfer
 		let charge2 = 100u128;
-		let charge_result = DdcCustomers::charge_bucket_owner(account_3, vault, charge2).unwrap();
+		let charge_result = DdcCustomers::charge_customer(account_3, vault, charge2).unwrap();
 		assert_eq!(
 			Ledger::<Test>::get(account_3),
 			Some(AccountsLedger {

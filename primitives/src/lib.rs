@@ -3,18 +3,17 @@
 use blake2::{Blake2s256, Digest};
 use codec::{Decode, Encode};
 use frame_support::parameter_types;
-use frame_system::Config;
 use polkadot_ckb_merkle_mountain_range::Merge;
 use scale_info::{
-	prelude::{collections::BTreeMap, string::String, vec::Vec},
+	prelude::{format, string::String, vec::Vec},
 	TypeInfo,
 };
 use serde::{Deserialize, Serialize};
 use sp_core::{crypto::KeyTypeId, hash::H160, H256};
 use sp_runtime::{AccountId32, Perquintill, RuntimeDebug};
 use sp_std::collections::btree_set::BTreeSet;
-
 pub mod traits;
+use sp_std::str::FromStr;
 
 pub mod ocw_mutex;
 
@@ -29,6 +28,8 @@ pub const MILLICENTS: u128 = 100_000;
 pub const CENTS: u128 = 1_000 * MILLICENTS; // assume this is worth about a cent.
 pub const DOLLARS: u128 = 100 * CENTS;
 pub type ClusterId = H160;
+pub type PaymentEra = u32;
+pub type EhdEra = u32;
 pub type DdcEra = u32;
 pub type BucketId = u64;
 pub type ClusterNodesCount = u16;
@@ -131,6 +132,8 @@ pub struct AggregatorInfo {
 	pub node_params: StorageNodeParams,
 }
 
+// The `StoragePubKey` is the only variant of DDC node key. This enum should be replaced with
+// trait-bounded type.
 #[derive(
 	Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, PartialEq, Eq, Encode, Decode, TypeInfo,
 )]
@@ -138,11 +141,129 @@ pub enum NodePubKey {
 	StoragePubKey(StorageNodePubKey),
 }
 
-impl NodePubKey {
-	pub fn get_hex(&self) -> String {
-		match self {
-			NodePubKey::StoragePubKey(pub_key_ref) => hex::encode(pub_key_ref),
+impl From<NodePubKey> for String {
+	fn from(node_key: NodePubKey) -> Self {
+		match node_key {
+			NodePubKey::StoragePubKey(pub_key) => format!("0x{}", hex::encode(pub_key)),
 		}
+	}
+}
+
+impl TryFrom<String> for NodePubKey {
+	type Error = ();
+	fn try_from(value: String) -> Result<Self, Self::Error> {
+		if !value.starts_with("0x") || value.len() != 66 {
+			return Err(());
+		}
+
+		let hex_str = &value[2..]; // skip '0x'
+		let hex_bytes = match hex::decode(hex_str) {
+			Ok(bytes) => bytes,
+			Err(_) => return Err(()),
+		};
+		if hex_bytes.len() != 32 {
+			return Err(());
+		}
+		let mut pub_key = [0u8; 32];
+		pub_key.copy_from_slice(&hex_bytes[..32]);
+
+		Ok(NodePubKey::StoragePubKey(AccountId32::from(pub_key)))
+	}
+}
+
+#[derive(Clone, PartialOrd, Ord, Eq, PartialEq, Encode, Decode, Debug)]
+pub struct EHDId(pub ClusterId, pub NodePubKey, pub EhdEra);
+
+impl From<EHDId> for String {
+	fn from(ehd_id: EHDId) -> Self {
+		let cluster_str = format!("0x{}", hex::encode(ehd_id.0.encode()));
+		let node_key_str: String = ehd_id.1.clone().into();
+		format!("{}-{}-{}", cluster_str, node_key_str, ehd_id.2)
+	}
+}
+
+impl TryFrom<String> for EHDId {
+	type Error = ();
+	fn try_from(value: String) -> Result<Self, Self::Error> {
+		let parts: Vec<&str> = value.split('-').collect();
+		if parts.len() != 3 {
+			return Err(());
+		}
+		let cluster_str = parts[0];
+		let g_collector_str = String::from(parts[1]);
+		let payment_era_str = parts[2];
+
+		if !cluster_str.starts_with("0x") || cluster_str.len() != 42 {
+			return Err(());
+		}
+
+		let cluster_hex_str = &cluster_str[2..]; // skip '0x'
+		let cluster_hex_bytes = match hex::decode(cluster_hex_str) {
+			Ok(bytes) => bytes,
+			Err(_) => return Err(()),
+		};
+
+		if cluster_hex_bytes.len() != 20 {
+			return Err(());
+		}
+
+		let mut cluster_id = [0u8; 20];
+		cluster_id.copy_from_slice(&cluster_hex_bytes[..20]);
+
+		let g_collector: NodePubKey = g_collector_str.try_into()?;
+
+		let payment_era = match DdcEra::from_str(payment_era_str) {
+			Ok(era) => era,
+			Err(_) => return Err(()),
+		};
+
+		Ok(EHDId(H160(cluster_id), g_collector, payment_era))
+	}
+}
+
+impl TryFrom<&str> for EHDId {
+	type Error = ();
+	fn try_from(value: &str) -> Result<Self, Self::Error> {
+		EHDId::try_from(String::from(value))
+	}
+}
+
+#[derive(Clone, PartialOrd, Ord, Eq, PartialEq, Encode, Decode, Debug)]
+pub struct PHDId(pub NodePubKey, pub EhdEra);
+
+impl From<PHDId> for String {
+	fn from(ehd_id: PHDId) -> Self {
+		let node_key_str: String = ehd_id.0.clone().into();
+		format!("{}-{}", node_key_str, ehd_id.1)
+	}
+}
+
+impl TryFrom<String> for PHDId {
+	type Error = ();
+	fn try_from(value: String) -> Result<Self, Self::Error> {
+		let parts: Vec<&str> = value.split('-').collect();
+		if parts.len() != 2 {
+			return Err(());
+		}
+
+		let collector_str = String::from(parts[0]);
+		let payment_era_str = parts[1];
+
+		let collector: NodePubKey = collector_str.try_into()?;
+
+		let payment_era = match DdcEra::from_str(payment_era_str) {
+			Ok(era) => era,
+			Err(_) => return Err(()),
+		};
+
+		Ok(PHDId(collector, payment_era))
+	}
+}
+
+impl TryFrom<&str> for PHDId {
+	type Error = ();
+	fn try_from(value: &str) -> Result<Self, Self::Error> {
+		PHDId::try_from(String::from(value))
 	}
 }
 
@@ -352,7 +473,7 @@ pub enum NodeRepositoryError {
 
 #[derive(Debug, PartialEq)]
 pub enum PayoutError {
-	BillingReportDoesNotExist,
+	PayoutReceiptDoesNotExist,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
@@ -420,48 +541,15 @@ pub mod crypto {
 	}
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-pub enum EraValidationStatus {
-	ValidatingData,
-	ReadyForPayout,
-	PayoutInProgress,
-	PayoutFailed,
-	PayoutSuccess,
-	PayoutSkipped,
-}
-
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
-#[scale_info(skip_type_params(T))]
-pub struct EraValidation<T: Config> {
-	pub validators: BTreeMap<(DeltaUsageHash, DeltaUsageHash), Vec<T::AccountId>>,
-	pub start_era: i64,
-	pub end_era: i64,
-	pub payers_merkle_root_hash: DeltaUsageHash,
-	pub payees_merkle_root_hash: DeltaUsageHash,
-	pub status: EraValidationStatus,
-}
-
-impl<T: Config> Default for EraValidation<T> {
-	fn default() -> Self {
-		EraValidation {
-			validators: Default::default(),
-			start_era: Default::default(),
-			end_era: Default::default(),
-			payers_merkle_root_hash: Default::default(),
-			payees_merkle_root_hash: Default::default(),
-			status: EraValidationStatus::PayoutSkipped,
-		}
-	}
-}
-
 #[derive(Default)]
-pub struct BillingReportParams {
+pub struct PayoutReceiptParams {
 	pub cluster_id: ClusterId,
-	pub era: DdcEra,
+	pub era: EhdEra,
 	pub state: PayoutState,
 	pub fingerprint: Fingerprint,
-	pub total_customer_charge: CustomerCharge,
-	pub total_distributed_reward: u128,
+	pub total_collected_charges: u128,
+	pub total_distributed_rewards: u128,
+	pub total_settled_fees: u128,
 	pub charging_max_batch_index: BatchIndex,
 	pub charging_processed_batches: Vec<BatchIndex>,
 	pub rewarding_max_batch_index: BatchIndex,
@@ -469,14 +557,11 @@ pub struct BillingReportParams {
 }
 
 #[derive(Default)]
-pub struct BillingFingerprintParams<AccountId> {
+pub struct PayoutFingerprintParams<AccountId> {
 	pub cluster_id: ClusterId,
-	pub era: DdcEra,
-	pub start_era: i64,
-	pub end_era: i64,
+	pub ehd_id: String,
 	pub payers_merkle_root: PayableUsageHash,
 	pub payees_merkle_root: PayableUsageHash,
-	pub cluster_usage: NodeUsage,
 	pub validators: BTreeSet<AccountId>,
 }
 
