@@ -14,7 +14,7 @@ async function run(nodeName, networkInfo) {
   const bob = '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty';
 
   // Create a extrinsic, transferring 10^10 units to Bob
-  const transfer = api.tx.balances.transfer(bob, 10n ** 10n);
+  const transfer = api.tx.balances.transferAllowDeath(bob, 10n ** 10n);
 
   let transaction_success_event = false;
   try {

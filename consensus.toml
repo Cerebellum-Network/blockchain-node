@@ -34,7 +34,7 @@ type = "grandpa"
 
 [cere.substrate]
 # Solochains's websocket RPC
-rpc_ws = "wss://rpc.testnet.cere.network:443"
+rpc_ws = "wss://archive.testnet.cere.network:443"
 # Hashing can be "Keccak" or "Blake2"
 hashing = "Blake2"
 # Solochains's consensus state id on Hyperbridge
@@ -45,7 +45,7 @@ state_machine = "SUBSTRATE-cere"
 
 [cere.grandpa]
 # Solochains's websocket RPC
-rpc = "wss://rpc.testnet.cere.network:443"
+rpc = "wss://archive.testnet.cere.network:443"
 # Solochains's slot duration
 slot_duration = 6
 # How frequently to exchange consensus proofs
