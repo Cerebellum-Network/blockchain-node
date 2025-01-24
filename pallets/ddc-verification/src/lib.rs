@@ -116,7 +116,7 @@ pub mod pallet {
 	pub const MAX_RETRIES_COUNT: u32 = 3;
 	pub const BUCKETS_AGGREGATES_FETCH_BATCH_SIZE: usize = 100;
 	pub const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
-	pub const OCW_MUTEX_ID: &[u8] = b"inspection";
+	pub const OCW_MUTEX_ID: &[u8] = b"inspection_lock";
 
 	// todo(yahortsaryk): provide an endpoint for fetching G-collector from DDC
 	pub const G_COLLECTOR_KEY: NodePubKey = NodePubKey::StoragePubKey(AccountId32::new([
