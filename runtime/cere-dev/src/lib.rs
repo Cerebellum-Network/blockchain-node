@@ -155,7 +155,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 72003,
+	spec_version: 72004,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -1235,7 +1235,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type AccountIdConverter = AccountId32;
 	type Hasher = BlakeTwo256;
 	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
-	type ValidatorsQuorum = MajorityOfValidators;
+	type ValidatorsQuorum = HalfOfValidators;
 }
 
 parameter_types! {
@@ -1309,7 +1309,8 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
 	pub const MajorityOfAggregators: Percent = Percent::from_percent(67);
-	pub const MajorityOfValidators: Percent = Percent::from_percent(67);
+	pub const _MajorityOfValidators: Percent = Percent::from_percent(67);
+	pub const HalfOfValidators: Percent = Percent::from_percent(50);
 }
 impl pallet_ddc_verification::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -1325,7 +1326,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const BLOCK_TO_START: u16 = 1; // every block
 	const DAC_REDUNDANCY_FACTOR: u16 = 3;
 	type AggregatorsQuorum = MajorityOfAggregators;
-	type ValidatorsQuorum = MajorityOfValidators;
+	type ValidatorsQuorum = HalfOfValidators;
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ValidatorStaking = pallet_staking::Pallet<Runtime>;

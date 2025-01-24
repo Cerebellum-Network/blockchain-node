@@ -220,7 +220,8 @@ parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
 	pub const MajorityOfAggregators: Percent = Percent::from_percent(67);
 	pub const VerifyAggregatorResponseSignature: bool = false;
-	pub const MajorityOfValidators: Percent = Percent::from_percent(67);
+	pub const _MajorityOfValidators: Percent = Percent::from_percent(67);
+	pub const HalfOfValidators: Percent = Percent::from_percent(50);
 }
 
 impl crate::Config for Test {
@@ -237,7 +238,7 @@ impl crate::Config for Test {
 	const BLOCK_TO_START: u16 = 100;
 	const DAC_REDUNDANCY_FACTOR: u16 = 3;
 	type AggregatorsQuorum = MajorityOfAggregators;
-	type ValidatorsQuorum = MajorityOfValidators;
+	type ValidatorsQuorum = HalfOfValidators;
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ValidatorStaking = Staking;
