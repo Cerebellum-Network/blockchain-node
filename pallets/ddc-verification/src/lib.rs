@@ -1414,9 +1414,18 @@ pub mod pallet {
 						val.pop_first().expect("Collected activity records to exist.");
 					let collector_key = phd_id.0.clone();
 
+					if node_leaves_count == 0 {
+						continue;
+					}
+
 					let n = calculate_sample_size_fin(n0, node_leaves_count)
 						.expect("Sample size to be calculated.");
 					let n_per_tcaa = n / node_tcaa_count;
+
+					if n_per_tcaa == 0 {
+						continue;
+					}
+
 					let mut remainder = n % node_tcaa_count;
 
 					let mut verified_tcaas: BTreeMap<DdcEra, Vec<u64>> = BTreeMap::new();
