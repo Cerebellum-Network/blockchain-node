@@ -42,7 +42,7 @@ cere-service = { workspace = true, optional = true }
 substrate-build-script-utils = { workspace = true, default-features = true }
 
 [features]
-default = ["cli", "cere-dev-native"]
+default = ["cli", "cere-native", "cere-dev-native"]
 cli = [
   "clap",
   "sc-cli",
