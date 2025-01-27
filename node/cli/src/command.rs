@@ -35,6 +35,8 @@ impl SubstrateCli for Cli {
 			"cere-mainnet" => Box::new(cere_service::chain_spec::cere_mainnet_config()?),
 			"cere-testnet" => Box::new(cere_service::chain_spec::cere_testnet_config()?),
 			"cere-qanet" => Box::new(cere_service::chain_spec::cere_qanet_config()?),
+			#[cfg(feature = "cere-native")]
+			"cere-thirdparty" => Box::new(cere_service::chain_spec::cere_thirdparty_config()?),
 			#[cfg(feature = "cere-dev-native")]
 			"cere-devnet" => Box::new(cere_service::chain_spec::cere_devnet_config()?),
 			#[cfg(feature = "cere-dev-native")]
@@ -141,18 +143,27 @@ pub fn run() -> sc_cli::Result<()> {
 							.into());
 					}
 
-					#[cfg(feature = "cere-dev-native")]
 					if chain_spec.is_cere_dev() {
+						#[cfg(feature = "cere-dev-native")]
 						return runner.sync_run(|config| {
 							cmd.run_with_spec::<sp_runtime::traits::HashingFor<cere_service::cere_dev_runtime::Block>, ()>(Some(config.chain_spec))
 						});
-					}
 
-					#[cfg(not(feature = "cere-native"))]
-					#[allow(unreachable_code)]
-					Err(Error::Service(ServiceError::Other(
-						"No runtime feature (cere-native, cere-dev-native) is enabled".to_string(),
-					)))
+						#[cfg(not(feature = "cere-dev-native"))]
+						Err(Error::Service(ServiceError::Other(
+							"No runtime feature (cere-dev-native) is enabled".to_string(),
+						)))
+					} else {
+						#[cfg(feature = "cere-native")]
+						return runner.sync_run(|config| {
+							cmd.run_with_spec::<sp_runtime::traits::HashingFor<cere_service::cere_runtime::Block>, ()>(Some(config.chain_spec))
+						});
+
+						#[cfg(not(feature = "cere-native"))]
+						Err(Error::Service(ServiceError::Other(
+							"No runtime feature (cere-native) is enabled".to_string(),
+						)))
+					}
 				},
 				BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {
 					let (client, _, _, _) = cere_service::new_chain_ops(&config)?;
