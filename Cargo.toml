@@ -197,7 +197,7 @@ pallet-origins = { path = "pallets/origins", default-features = false }
 
 # Hyperbridge
 ismp = { default-features = false, version = "0.2.2" }
-ismp-grandpa = { default-features = false, version = "15.0.0" }
+ismp-grandpa = { default-features = false, version = "15.0.1" }
 pallet-hyperbridge = { default-features = false, version = "15.0.0" }
 pallet-ismp = { default-features = false, version = "15.0.0" }
 pallet-ismp-rpc = { default-features = false, version = "15.0.0" }
