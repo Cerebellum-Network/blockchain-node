@@ -41,6 +41,7 @@ sp-transaction-pool = { workspace = true, default-features = true }
 # Local
 cere-dev-runtime = { workspace = true, optional = true }
 cere-runtime = { workspace = true, optional = true }
+pallet-ddc-verification = { workspace = true }
 
 [features]
 default = ["cere"]

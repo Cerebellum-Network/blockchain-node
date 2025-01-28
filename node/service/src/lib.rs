@@ -295,6 +295,26 @@ impl<C> NewFull<C> {
 	}
 }
 
+// use sp_runtime_interface::runtime_interface;
+
+// #[cfg(feature = "std")]
+// use sp_externalities::ExternalitiesExt;
+
+// #[cfg(feature = "std")]
+// sp_externalities::decl_extension! {
+// 	pub struct CustomExt(u32);
+// }
+
+// // #[cfg(feature = "std")]
+// pub type HostFunctions = (custom::HostFunctions,);
+
+// #[runtime_interface]
+// pub trait Custom {
+// 	fn get_val(&mut self) -> Option<u32> {
+// 		self.extension::<CustomExt>().map(|ext| ext.0)
+// 	}
+// }
+
 pub fn new_full<RuntimeApi, N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
@@ -392,6 +412,7 @@ where
 				network_provider: Arc::new(network.clone()),
 				enable_http_requests: true,
 				custom_extensions: |_| vec![],
+				// custom_extensions: |_| vec![Box::new(CustomExt(10)) as Box<_>],
 			})
 			.run(client.clone(), task_manager.spawn_handle())
 			.boxed(),
@@ -637,9 +658,9 @@ pub trait IdentifyVariant {
 
 impl IdentifyVariant for Box<dyn sc_service::ChainSpec> {
 	fn is_cere(&self) -> bool {
-		self.id().starts_with("cere_mainnet") ||
-			self.id().starts_with("cere_qanet") ||
-			self.id().starts_with("cere_testnet")
+		self.id().starts_with("cere_mainnet")
+			|| self.id().starts_with("cere_qanet")
+			|| self.id().starts_with("cere_testnet")
 	}
 	fn is_cere_dev(&self) -> bool {
 		// Works for "cere-devnet" and "dev" arms in the load_spec(...) call.

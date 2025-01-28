@@ -48,6 +48,9 @@ sp-runtime = { workspace = true }
 sp-timestamp = { workspace = true }
 sp-transaction-storage-proof = { workspace = true }
 sp-trie = { workspace = true }
+sp-runtime-interface = { workspace = true }
+sp-externalities = { workspace = true }
+sp-runtime-interface-proc-macro = { workspace = true }
 
 # Cere dependencies
 cere-client = { workspace = true, optional = true }

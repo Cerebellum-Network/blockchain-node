@@ -20,7 +20,8 @@ use sp_storage::{ChildInfo, StorageData, StorageKey};
 pub type FullBackend = sc_service::TFullBackend<Block>;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
-pub type HostFunctions = sp_io::SubstrateHostFunctions;
+pub type HostFunctions =
+	(pallet_ddc_verification::images::HostFunctions, sp_io::SubstrateHostFunctions);
 
 #[cfg(feature = "runtime-benchmarks")]
 pub type HostFunctions =
