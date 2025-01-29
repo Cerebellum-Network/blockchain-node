@@ -92,7 +92,11 @@ mod signature;
 use signature::Verify;
 
 mod extensons;
+pub use extensons::custom;
 pub use extensons::images;
+
+#[cfg(feature = "std")]
+pub use extensons::CustomExt;
 
 pub(crate) type BalanceOf<T> =
 	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -1191,6 +1195,12 @@ pub mod pallet {
 					log::info!("NOTHING");
 				},
 			};
+
+			if let Some(key) = custom::get_val() {
+				log::info!("Ext 2 Got value {}", key);
+			} else {
+				log::warn!("Ext 2 Got None");
+			}
 
 			if !sp_io::offchain::is_validator() {
 				return;

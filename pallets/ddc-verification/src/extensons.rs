@@ -20,3 +20,21 @@ pub trait Images {
 		}
 	}
 }
+
+#[cfg(feature = "std")]
+use sp_externalities::ExternalitiesExt;
+
+#[cfg(feature = "std")]
+sp_externalities::decl_extension! {
+	pub struct CustomExt(u32);
+}
+
+// #[cfg(feature = "std")]
+// pub type HostFunctions = (custom::HostFunctions,);
+
+#[runtime_interface]
+pub trait Custom {
+	fn get_val(&mut self) -> Option<u32> {
+		self.extension::<CustomExt>().map(|ext| ext.0)
+	}
+}
