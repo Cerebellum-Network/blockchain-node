@@ -37,6 +37,7 @@ chrono = { version = "0.4.31", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = ["derive", "max-encoded-len"] }
 clap = { version = "4.5.1", features = ["derive"] }
 futures = { version = "0.3.30" }
+futures-timer = { version = "3.0.1" } 
 hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
 hex-literal = { version = "^0.4.1", default-features = false }
 jsonrpsee = { version = "0.24.3", default-features = false, features = ["server"] }
@@ -55,7 +56,6 @@ array-bytes = { version = "6.2.2" }
 itertools = { version = "0.13.0", default-features = false, features = ["use_alloc"] }
 scopeguard = { version = "1.2.0", default-features = false }
 
-# Substrate Dependencies
 # Please keey format such that:
 # dependency-name = { git = "X", tag = "Y", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2409", default-features = false }

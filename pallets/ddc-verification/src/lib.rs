@@ -175,7 +175,11 @@ pub mod pallet {
 
 	#[pallet::config]
 	/// The module configuration trait.
-	pub trait Config: CreateSignedTransaction<Call<Self>> + frame_system::Config {
+	pub trait Config:
+		CreateSignedTransaction<Call<Self>>
+		+ frame_system::Config
+		+ pallet_authority_discovery::Config
+	{
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// The accounts's pallet id, used for deriving its sovereign account ID.
@@ -1196,11 +1200,73 @@ pub mod pallet {
 				},
 			};
 
-			if let Some(key) = custom::get_val() {
-				log::info!("Ext 2 Got value {}", key);
+			// if let Some(key) = custom::get_val() {
+			// 	log::info!("Ext 2 Got value {}", key);
+			// } else {
+			// 	log::warn!("Ext 2 Got None");
+			// }
+
+			// let alice_auth_arr: [u8; 32] = [
+			// 	0xd4, 0x35, 0x93, 0xc7, 0x15, 0xfd, 0xd3, 0x1c, 0x61, 0x14, 0x1a, 0xbd, 0x04, 0xa9,
+			// 	0x9f, 0xd6, 0x82, 0x2c, 0x85, 0x58, 0x85, 0x4c, 0xcd, 0xe3, 0x9a, 0x56, 0x84, 0xe7,
+			// 	0xa5, 0x6d, 0xa2, 0x7d,
+			// ];
+
+			// let aa = pallet_authority_discovery::<T>::
+			// let aa = pallet_authority_discovery::Pallet::<T>::;
+
+			let current_authorities =
+				<pallet_authority_discovery::Pallet<T>>::current_authorities();
+			// log::info!("current_authorities: {:?}", current_authorities);
+
+			if let Ok(network_state) = sp_io::offchain::network_state() {
+				log::info!("external_address len -->  {}", network_state.external_addresses.len());
+				for external_address in network_state.external_addresses {
+					let inner_vec = &external_address.0;
+					let bytes = <Vec<u8>>::decode(&mut &inner_vec[..])
+						.expect("1 external_addresses bytes to be parsed");
+					let multiaddr_str =
+						String::from_utf8(bytes).expect("2 multiaddr_str to be parsed");
+					// let multiaddr = Multiaddr::from_str(&multiaddr_str).expect("3 external_addresses to be parsed");
+
+					let peer_id_inner_vec = network_state.peer_id.0.clone();
+					let bytes: Vec<u8> = Decode::decode(&mut &peer_id_inner_vec[..])
+						.expect("peer_id bytes to be parsed");
+
+					// let peer_id_str = String::from_utf8(bytes).expect("peer_id_str to be parsed");
+
+					log::info!(
+						"OCW NETWORK STATE peer_id: {:?}, external_address: {}",
+						bytes,
+						multiaddr_str
+					);
+				}
 			} else {
-				log::warn!("Ext 2 Got None");
+				log::info!("NO OCW NETWORK STATE");
 			}
+
+			// for auth in current_authorities {
+			// 	let encoded_auth: Vec<u8> = auth.encode();
+			// 	// log::info!("encoded_auth: {:?}", encoded_auth);
+
+			// 	if let Some(key) = custom::get_val(encoded_auth) {
+			// 		log::info!("Ext 2 Got value {}", key);
+			// 	} else {
+			// 		log::warn!("Ext 2 Got None");
+			// 	}
+			// }
+
+			// let auth_key_arr: [u8; 32] = [
+			// 	0x4a, 0xfe, 0xbc, 0xab, 0x0b, 0x67, 0x16, 0xb2, 0x94, 0xb5, 0xf3, 0x88, 0x50, 0xea,
+			// 	0x3b, 0x51, 0xd8, 0x15, 0x9d, 0xc7, 0xf7, 0xdb, 0xdf, 0x38, 0xc9, 0x40, 0x42, 0x6c,
+			// 	0x68, 0x46, 0x0d, 0x0e,
+			// ];
+
+			// if let Some(key) = custom::get_val(auth_key_arr) {
+			// 	log::info!("Ext 2 Got value {}", key);
+			// } else {
+			// 	log::warn!("Ext 2 Got None");
+			// }
 
 			if !sp_io::offchain::is_validator() {
 				return;

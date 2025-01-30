@@ -29,11 +29,14 @@ pub use cere_client::{
 	RuntimeApiCollection,
 };
 pub use chain_spec::{CereChainSpec, CereDevChainSpec};
+use futures::{executor::LocalPool, task::LocalSpawn};
 pub use node_primitives::{Block, BlockNumber};
 use sc_executor::{HeapAllocStrategy, DEFAULT_HEAP_ALLOC_STRATEGY};
 pub use sc_service::ChainSpec;
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 pub use sp_api::ConstructRuntimeApi;
+use sp_core::Decode;
+use sp_core::Pair;
 
 /// The minimum period of blocks on which justifications will be
 /// imported and generated.
@@ -377,29 +380,6 @@ where
 			metrics,
 		})?;
 
-	if config.offchain_worker.enabled {
-		task_manager.spawn_handle().spawn(
-			"offchain-workers-runner",
-			"offchain-worker",
-			sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
-				runtime_api_provider: client.clone(),
-				is_validator: config.role.is_authority(),
-				keystore: Some(keystore_container.keystore()),
-				offchain_db: backend.offchain_storage(),
-				transaction_pool: Some(OffchainTransactionPoolFactory::new(
-					transaction_pool.clone(),
-				)),
-				network_provider: Arc::new(network.clone()),
-				enable_http_requests: true,
-				custom_extensions: |_| {
-					vec![Box::new(pallet_ddc_verification::CustomExt(10)) as Box<_>]
-				},
-			})
-			.run(client.clone(), task_manager.spawn_handle())
-			.boxed(),
-		);
-	}
-
 	let role = config.role;
 	let force_authoring = config.force_authoring;
 	let backoff_authoring_blocks =
@@ -407,6 +387,7 @@ where
 	let name = config.network.node_name.clone();
 	let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
+	let is_ocw_enabled = config.offchain_worker.enabled;
 
 	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		config,
@@ -496,7 +477,75 @@ where
 	}
 
 	// Spawn authority discovery module.
-	if role.is_authority() {
+	// let mut authority_discovery_service_opt = if role.is_authority() {
+	// 	let authority_discovery_role =
+	// 		sc_authority_discovery::Role::PublishAndDiscover(keystore_container.keystore());
+	// 	let dht_event_stream =
+	// 		network.event_stream("authority-discovery").filter_map(|e| async move {
+	// 			match e {
+	// 				Event::Dht(e) => Some(e),
+	// 				_ => None,
+	// 			}
+	// 		});
+	// 	let (authority_discovery_worker, authority_discovery_service) =
+	// 		sc_authority_discovery::new_worker_and_service_with_config(
+	// 			sc_authority_discovery::WorkerConfig {
+	// 				publish_non_global_ips: auth_disc_publish_non_global_ips,
+	// 				..Default::default()
+	// 			},
+	// 			client.clone(),
+	// 			Arc::new(network.clone()),
+	// 			Box::pin(dht_event_stream),
+	// 			authority_discovery_role,
+	// 			prometheus_registry.clone(),
+	// 		);
+
+	// 	task_manager.spawn_handle().spawn(
+	// 		"authority-discovery-worker",
+	// 		Some("networking"),
+	// 		authority_discovery_worker.run(),
+	// 	);
+
+	// 	Some(authority_discovery_service)
+	// } else {
+	// 	None
+	// };
+
+	// let authority_discovery_service_opt = if role.is_authority() {
+	// 	let authority_discovery_role =
+	// 		sc_authority_discovery::Role::PublishAndDiscover(keystore_container.keystore());
+	// 	let dht_event_stream =
+	// 		network.event_stream("authority-discovery").filter_map(|e| async move {
+	// 			match e {
+	// 				Event::Dht(e) => Some(e),
+	// 				_ => None,
+	// 			}
+	// 		});
+	// 	let (authority_discovery_worker, authority_discovery_service) =
+	// 		sc_authority_discovery::new_worker_and_service_with_config(
+	// 			sc_authority_discovery::WorkerConfig {
+	// 				publish_non_global_ips: auth_disc_publish_non_global_ips,
+	// 				..Default::default()
+	// 			},
+	// 			client.clone(),
+	// 			Arc::new(network.clone()),
+	// 			Box::pin(dht_event_stream),
+	// 			authority_discovery_role,
+	// 			prometheus_registry.clone(),
+	// 		);
+
+	// 	task_manager.spawn_handle().spawn(
+	// 		"authority-discovery-worker",
+	// 		Some("networking"),
+	// 		authority_discovery_worker.run(),
+	// 	);
+
+	// 	Some(authority_discovery_service)
+	// } else {
+	// 	None
+	// };
+
+	let authority_discovery_service_opt = if role.is_authority() {
 		let authority_discovery_role =
 			sc_authority_discovery::Role::PublishAndDiscover(keystore_container.keystore());
 		let dht_event_stream =
@@ -506,7 +555,7 @@ where
 					_ => None,
 				}
 			});
-		let (authority_discovery_worker, _service) =
+		let (authority_discovery_worker, authority_discovery_service) =
 			sc_authority_discovery::new_worker_and_service_with_config(
 				sc_authority_discovery::WorkerConfig {
 					publish_non_global_ips: auth_disc_publish_non_global_ips,
@@ -523,6 +572,151 @@ where
 			"authority-discovery-worker",
 			Some("networking"),
 			authority_discovery_worker.run(),
+		);
+
+		Some(authority_discovery_service)
+	} else {
+		None
+	};
+
+	if is_ocw_enabled {
+		// let mut authority_discovery_service =
+		// 	authority_discovery_service_opt.expect("authority_discovery_service to ne not None");
+
+		// let authority_id: sp_authority_discovery::AuthorityId =
+		// 	sp_authority_discovery::AuthorityPair::from_string(&format!("//{}", "Alice"), None)
+		// 		.expect("static values are valid; qed")
+		// 		.public();
+
+		// let mut pool = LocalPool::new();
+
+		// pool.run_until(async {
+		// 	let addr =
+		// 		authority_discovery_service.get_addresses_by_authority_id(authority_id).await;
+
+		// 	println!("=+=+=+=+=+=> Discovered address {:?}", addr);
+		// });
+
+		task_manager.spawn_handle().spawn(
+			"offchain-workers-runner",
+			"offchain-worker",
+			sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
+				runtime_api_provider: client.clone(),
+				is_validator: role.is_authority(),
+				keystore: Some(keystore_container.keystore()),
+				offchain_db: backend.offchain_storage(),
+				transaction_pool: Some(OffchainTransactionPoolFactory::new(
+					transaction_pool.clone(),
+				)),
+				network_provider: Arc::new(network.clone()),
+				enable_http_requests: true,
+				// custom_extensions: |_| {
+				// 	vec![Box::new(pallet_ddc_verification::CustomExt(10)) as Box<_>]
+				// },
+				// custom_extensions: move |_| {
+				// 	let callback = |id: [u8; 32]| -> Option<u32> {
+				// 		let mut pool = LocalPool::new();
+
+				// 		pool.run_until(async {
+				// 			let mut authority_discovery_service = authority_discovery_service_opt
+				// 				.clone()
+				// 				.expect("authority_discovery_service to ne not None");
+
+				// 			let authority_id: sp_authority_discovery::AuthorityId =
+				// 				sp_authority_discovery::AuthorityId::decode(&mut &id[..]).unwrap();
+
+				// 			let addr = authority_discovery_service
+				// 				.get_addresses_by_authority_id(authority_id)
+				// 				.await;
+
+				// 			println!("=+=+=+=+=+=> Discovered address {:?}", addr);
+				// 		});
+				// 		Some(6u32)
+				// 	};
+				// 	vec![Box::new(pallet_ddc_verification::CustomExt(Box::new(callback))) as Box<_>]
+				// },
+
+				// ----worked
+				// custom_extensions: {
+				// 	let authority_discovery_service_opt = authority_discovery_service_opt.clone(); // Clone to avoid borrowing issues
+				// 	move |_| {
+				// 		let mut authority_discovery_service =
+				// 			authority_discovery_service_opt.clone(); // Move into closure
+				// 		let callback = move |id: sp_std::vec::Vec<u8>| -> Option<u32> {
+				// 			let mut pool = LocalPool::new();
+
+				// 			pool.run_until(async {
+				// 				let authority_id: sp_authority_discovery::AuthorityId =
+				// 					sp_authority_discovery::AuthorityId::decode(&mut &id[..])
+				// 						.unwrap();
+
+				// 				println!("authority_id --> {:?}", authority_id);
+
+				// 				let addr = authority_discovery_service
+				// 					.as_mut()
+				// 					.expect("authority_discovery_service to be not None")
+				// 					.get_addresses_by_authority_id(authority_id)
+				// 					.await;
+
+				// 				println!("=+=+=+=+=+=> Discovered address {:?}", addr);
+				// 			});
+
+				// 			Some(6u32)
+				// 		};
+
+				// 		vec![Box::new(pallet_ddc_verification::CustomExt(Box::new(callback)))
+				// 			as Box<_>]
+				// 	}
+				// },
+				//  ----worked
+				custom_extensions: {
+					// let authority_discovery_service_opt = authority_discovery_service_opt.clone(); // Clone to avoid borrowing issues
+					let network = network.clone();
+					move |_| {
+						// let mut authority_discovery_service =
+						// 	authority_discovery_service_opt.clone();
+						let network = network.clone();
+						let callback = move |id: sp_std::vec::Vec<u8>| -> Option<u32> {
+							let mut pool = LocalPool::new();
+
+							pool.run_until(async {
+								let authority_id: sp_authority_discovery::AuthorityId =
+									sp_authority_discovery::AuthorityId::decode(&mut &id[..])
+										.unwrap();
+
+								// println!("authority_id --> {:?}", authority_id);
+
+								// let addr = authority_discovery_service
+								// 	.as_mut()
+								// 	.expect("authority_discovery_service to be not None")
+								// 	.get_addresses_by_authority_id(authority_id)
+								// 	.await;
+
+								// println!("=+=+=+=+=+=> Discovered address {:?}", addr);
+
+								let a = network
+									// .as_mut()
+									// .expect("authority_discovery_service to be not None")
+									.network_state()
+									.await;
+
+								if let Ok(state) = a {
+									// println!("=+=+=+=+=+=> network_state {:?}", state);
+								} else {
+									println!("NO STATE NO FATE");
+								}
+							});
+
+							Some(6u32)
+						};
+
+						vec![Box::new(pallet_ddc_verification::CustomExt(Box::new(callback)))
+							as Box<_>]
+					}
+				},
+			})
+			.run(client.clone(), task_manager.spawn_handle())
+			.boxed(),
 		);
 	}
 

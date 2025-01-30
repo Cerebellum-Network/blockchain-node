@@ -21,20 +21,45 @@ pub trait Images {
 	}
 }
 
+use sp_authority_discovery::AuthorityId;
+
 #[cfg(feature = "std")]
 use sp_externalities::ExternalitiesExt;
 
+// #[cfg(feature = "std")]
+// sp_externalities::decl_extension! {
+// 	pub struct CustomExt(u32);
+// }
+
+// #[cfg(feature = "std")]
+// sp_externalities::decl_extension! {
+// 	pub struct CustomExt(Box<dyn Fn([u8; 32]) -> Option<u32> + Send + Sync>);
+// }
+
 #[cfg(feature = "std")]
 sp_externalities::decl_extension! {
-	pub struct CustomExt(u32);
+	// pub struct CustomExt(Box<dyn FnMut([u8; 32]) -> Option<u32> + Send + Sync>);
+
+	pub struct CustomExt(Box<dyn FnMut(sp_std::vec::Vec<u8>) -> Option<u32> + Send + Sync>);
+
+}
+
+#[cfg(feature = "std")]
+use std::sync::Arc;
+
+#[runtime_interface]
+pub trait Custom {
+	// fn get_val(&mut self) -> Option<u32> {
+	// 	self.extension::<CustomExt>().map(|ext| ext.0)
+	// }
+	// fn get_val(&mut self, id: [u8; 32]) -> Option<u32> {
+	// 	self.extension::<CustomExt>().and_then(|ext| (ext.0)(id)) // Call the stored function with the provided `id`
+	// }
+
+	fn get_val(&mut self, id: sp_std::vec::Vec<u8>) -> Option<u32> {
+		self.extension::<CustomExt>().and_then(|ext| (ext.0)(id)) // Call the stored function with the provided `id`
+	}
 }
 
 // #[cfg(feature = "std")]
 // pub type HostFunctions = (custom::HostFunctions,);
-
-#[runtime_interface]
-pub trait Custom {
-	fn get_val(&mut self) -> Option<u32> {
-		self.extension::<CustomExt>().map(|ext| ext.0)
-	}
-}

@@ -41,6 +41,9 @@ sp-std = { workspace = true }
 sp-runtime-interface = { workspace = true }
 sp-externalities = { workspace = true }
 sp-runtime-interface-proc-macro = { workspace = true }
+sp-authority-discovery = { workspace = true }
+pallet-authority-discovery = { workspace = true }
+
 
 [dev-dependencies]
 pallet-balances = { workspace = true, default-features = true }

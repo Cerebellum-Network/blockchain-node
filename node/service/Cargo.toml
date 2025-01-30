@@ -51,6 +51,7 @@ sp-trie = { workspace = true }
 sp-runtime-interface = { workspace = true }
 sp-externalities = { workspace = true }
 sp-runtime-interface-proc-macro = { workspace = true }
+sp-std = { workspace = true }
 
 # Cere dependencies
 cere-client = { workspace = true, optional = true }
