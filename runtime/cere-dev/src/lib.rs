@@ -1454,6 +1454,7 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
+		[pallet_token_gateway, TokenGateway]
 	);
 }
 
