@@ -4666,7 +4666,7 @@ pub mod pallet {
 			for (verification_key, stash_key) in &self.validators {
 				// <ValidatorSet<T>> should be updated in 'on_genesis_session' handler
 				if <ValidatorSet<T>>::get().contains(verification_key) {
-					ValidatorToStashKey::<T>::insert(&verification_key, &stash_key);
+					ValidatorToStashKey::<T>::insert(verification_key, stash_key);
 				}
 			}
 		}
