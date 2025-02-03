@@ -99,7 +99,7 @@ jobs:
     runs-on: ["self-hosted", "cere-network-memory-large"]
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make
       - name: Install toolchain
@@ -117,7 +117,7 @@ jobs:
           version: '0.22.0'
           args: '--verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out "Xml"'
       - name: Upload coverage report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tarpaulin coverage
           path: ./tarpaulin-report.xml
