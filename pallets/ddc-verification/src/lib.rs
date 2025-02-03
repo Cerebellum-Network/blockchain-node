@@ -2696,6 +2696,15 @@ pub mod pallet {
 					if let Some(inspected_ehds) = Self::fetch_last_inspected_ehds(cluster_id) {
 						for inspected_ehd in inspected_ehds.clone().into_iter().sorted() {
 							if inspected_ehd.2 > last_paid_era_for_cluster {
+								let ehd_root =
+									Self::get_ehd_root(cluster_id, inspected_ehd.clone())
+										.expect("EHD to be fetched");
+
+								let cluster_usage = ehd_root.get_cluster_usage();
+								if !cluster_usage.has_usage() {
+									continue;
+								}
+
 								let receipts_by_inspector = Self::fetch_inspection_receipts(
 									cluster_id,
 									inspected_ehd.clone(),
