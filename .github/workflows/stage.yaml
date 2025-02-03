@@ -82,13 +82,13 @@ jobs:
           docker cp "${CONTAINER_ID}:/home/cere/cere-dev-runtime-artifacts/cere_dev_runtime.compact.compressed.wasm" "./${{ env.CERE_DEV_RUNTIME }}"
 
       - name: Upload cere-runtime wasm artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: "cere_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
           path: "./${{ env.CERE_RUNTIME }}"
 
       - name: Upload cere-dev-runtime wasm artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: "cere_dev_runtime.compact.compressed.${{ env.GITHUB_SHA }}.wasm"
           path: "./${{ env.CERE_DEV_RUNTIME }}"
