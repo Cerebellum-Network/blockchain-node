@@ -527,8 +527,10 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	let verification_key = AccountId::decode(&mut &arr[..]).unwrap();
 
-	let _ = pallet_ddc_verification::GenesisConfig::<Test> { validators: vec![verification_key] }
-		.assimilate_storage(&mut storage);
+	let _ = pallet_ddc_verification::GenesisConfig::<Test> {
+		validators: vec![(verification_key.clone(), verification_key)],
+	}
+	.assimilate_storage(&mut storage);
 
 	sp_io::TestExternalities::new(storage)
 }
