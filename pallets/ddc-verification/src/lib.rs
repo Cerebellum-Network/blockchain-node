@@ -4648,7 +4648,7 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub validators: Vec<T::AccountId>,
+		pub validators: Vec<(T::AccountId, T::AccountId)>,
 	}
 
 	impl<T: Config> Default for GenesisConfig<T> {
@@ -4663,8 +4663,11 @@ pub mod pallet {
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
 		fn build(&self) {
-			for validator in &self.validators {
-				<ValidatorSet<T>>::append(validator);
+			for (verification_key, stash_key) in &self.validators {
+				// <ValidatorSet<T>> should be updated in 'on_genesis_session' handler
+				if <ValidatorSet<T>>::get().contains(verification_key) {
+					ValidatorToStashKey::<T>::insert(&verification_key, &stash_key);
+				}
 			}
 		}
 	}
