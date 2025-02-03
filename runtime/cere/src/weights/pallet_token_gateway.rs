@@ -30,18 +30,10 @@
 use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use sp_std::marker::PhantomData;
 
-/// Weight functions needed for pallet_token_gateway.
-pub trait WeightInfo {
-    fn create_erc6160_asset(x: u32, ) -> Weight;
-    fn teleport() -> Weight;
-    fn set_token_gateway_addresses(x: u32, ) -> Weight;
-    fn update_erc6160_asset() -> Weight;
-    fn update_asset_precision(x: u32, ) -> Weight;
-}
 
 /// Weights for pallet_token_gateway using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+impl<T: frame_system::Config> pallet_token_gateway::WeightInfo for SubstrateWeight<T> {
     // Storage: `Hyperbridge::HostParams` (r:1 w:0)
     // Proof: `Hyperbridge::HostParams` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
     // Storage: `Ismp::Nonce` (r:1 w:1)
