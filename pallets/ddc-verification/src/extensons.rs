@@ -1,3 +1,5 @@
+use sp_io::offchain::timestamp;
+use sp_runtime::offchain::{http, Duration};
 use sp_runtime_interface::runtime_interface;
 
 #[runtime_interface]
@@ -40,7 +42,7 @@ use sp_externalities::ExternalitiesExt;
 sp_externalities::decl_extension! {
 	// pub struct CustomExt(Box<dyn FnMut([u8; 32]) -> Option<u32> + Send + Sync>);
 
-	pub struct CustomExt(Box<dyn FnMut(sp_std::vec::Vec<u8>) -> Option<u32> + Send + Sync>);
+	pub struct CustomExt(Box<dyn FnMut(sp_std::vec::Vec<u8>) -> Option<u16> + Send + Sync>);
 
 }
 
@@ -56,7 +58,10 @@ pub trait Custom {
 	// 	self.extension::<CustomExt>().and_then(|ext| (ext.0)(id)) // Call the stored function with the provided `id`
 	// }
 
-	fn get_val(&mut self, id: sp_std::vec::Vec<u8>) -> Option<u32> {
+	fn get_val(&mut self, id: sp_std::vec::Vec<u8>) -> Option<u16> {
+		let deadline = timestamp().add(Duration::from_millis(10000));
+		let a = http::Request::get("fwf").deadline(deadline);
+
 		self.extension::<CustomExt>().and_then(|ext| (ext.0)(id)) // Call the stored function with the provided `id`
 	}
 }

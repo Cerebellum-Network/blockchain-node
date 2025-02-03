@@ -1245,16 +1245,16 @@ pub mod pallet {
 				log::info!("NO OCW NETWORK STATE");
 			}
 
-			// for auth in current_authorities {
-			// 	let encoded_auth: Vec<u8> = auth.encode();
-			// 	// log::info!("encoded_auth: {:?}", encoded_auth);
+			for auth in current_authorities {
+				let encoded_auth: Vec<u8> = auth.encode();
+				// log::info!("encoded_auth: {:?}", encoded_auth);
 
-			// 	if let Some(key) = custom::get_val(encoded_auth) {
-			// 		log::info!("Ext 2 Got value {}", key);
-			// 	} else {
-			// 		log::warn!("Ext 2 Got None");
-			// 	}
-			// }
+				if let Some(key) = custom::get_val(encoded_auth) {
+					log::info!("Ext 2 Got value {}", key);
+				} else {
+					log::warn!("Ext 2 Got None");
+				}
+			}
 
 			// let auth_key_arr: [u8; 32] = [
 			// 	0x4a, 0xfe, 0xbc, 0xab, 0x0b, 0x67, 0x16, 0xb2, 0x94, 0xb5, 0xf3, 0x88, 0x50, 0xea,

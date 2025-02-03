@@ -30,6 +30,7 @@ pub use cere_client::{
 };
 pub use chain_spec::{CereChainSpec, CereDevChainSpec};
 use futures::{executor::LocalPool, task::LocalSpawn};
+use futures::{future::poll_fn, pin_mut, Future};
 pub use node_primitives::{Block, BlockNumber};
 use sc_executor::{HeapAllocStrategy, DEFAULT_HEAP_ALLOC_STRATEGY};
 pub use sc_service::ChainSpec;
@@ -37,6 +38,7 @@ use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 pub use sp_api::ConstructRuntimeApi;
 use sp_core::Decode;
 use sp_core::Pair;
+use std::task::Poll;
 
 /// The minimum period of blocks on which justifications will be
 /// imported and generated.
@@ -256,6 +258,7 @@ where
 pub fn build_full<N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
+	custom_rpc_port: Option<u16>,
 ) -> Result<NewFull<Client>, ServiceError> {
 	#[cfg(feature = "cere-dev-native")]
 	if config.chain_spec.is_cere_dev() {
@@ -263,14 +266,20 @@ pub fn build_full<N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 			config,
 			disable_hardware_benchmarks,
 			|_, _| (),
+			custom_rpc_port,
 		)
 		.map(|full| full.with_client(Client::CereDev));
 	}
 
 	#[cfg(feature = "cere-native")]
 	{
-		new_full::<cere_runtime::RuntimeApi, N>(config, disable_hardware_benchmarks, |_, _| ())
-			.map(|full| full.with_client(Client::Cere))
+		new_full::<cere_runtime::RuntimeApi, N>(
+			config,
+			disable_hardware_benchmarks,
+			|_, _| (),
+			custom_rpc_port,
+		)
+		.map(|full| full.with_client(Client::Cere))
 	}
 
 	#[cfg(not(feature = "cere-native"))]
@@ -309,6 +318,7 @@ pub fn new_full<RuntimeApi, N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 		>,
 		&sc_consensus_babe::BabeLink<Block>,
 	),
+	custom_rpc_port: Option<u16>,
 ) -> Result<NewFull<Arc<FullClient<RuntimeApi>>>, ServiceError>
 where
 	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
@@ -337,7 +347,8 @@ where
 	} = new_partial(&config, basics)?;
 
 	let shared_voter_state = rpc_setup;
-	let auth_disc_publish_non_global_ips = config.network.allow_non_globals_in_dht;
+	// let auth_disc_publish_non_global_ips = config.network.allow_non_globals_in_dht;
+	let auth_disc_publish_non_global_ips = true;
 
 	let mut net_config =
 		sc_network::config::FullNetworkConfiguration::<
@@ -388,6 +399,7 @@ where
 	let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
 	let is_ocw_enabled = config.offchain_worker.enabled;
+	let rpc_port = custom_rpc_port.unwrap_or(config.rpc.port);
 
 	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		config,
@@ -551,7 +563,10 @@ where
 		let dht_event_stream =
 			network.event_stream("authority-discovery").filter_map(|e| async move {
 				match e {
-					Event::Dht(e) => Some(e),
+					Event::Dht(e) => {
+						println!("DHT EVENT !!!!!! {:?}", e);
+						Some(e)
+					},
 					_ => None,
 				}
 			});
@@ -580,23 +595,6 @@ where
 	};
 
 	if is_ocw_enabled {
-		// let mut authority_discovery_service =
-		// 	authority_discovery_service_opt.expect("authority_discovery_service to ne not None");
-
-		// let authority_id: sp_authority_discovery::AuthorityId =
-		// 	sp_authority_discovery::AuthorityPair::from_string(&format!("//{}", "Alice"), None)
-		// 		.expect("static values are valid; qed")
-		// 		.public();
-
-		// let mut pool = LocalPool::new();
-
-		// pool.run_until(async {
-		// 	let addr =
-		// 		authority_discovery_service.get_addresses_by_authority_id(authority_id).await;
-
-		// 	println!("=+=+=+=+=+=> Discovered address {:?}", addr);
-		// });
-
 		task_manager.spawn_handle().spawn(
 			"offchain-workers-runner",
 			"offchain-worker",
@@ -610,73 +608,14 @@ where
 				)),
 				network_provider: Arc::new(network.clone()),
 				enable_http_requests: true,
-				// custom_extensions: |_| {
-				// 	vec![Box::new(pallet_ddc_verification::CustomExt(10)) as Box<_>]
-				// },
-				// custom_extensions: move |_| {
-				// 	let callback = |id: [u8; 32]| -> Option<u32> {
-				// 		let mut pool = LocalPool::new();
-
-				// 		pool.run_until(async {
-				// 			let mut authority_discovery_service = authority_discovery_service_opt
-				// 				.clone()
-				// 				.expect("authority_discovery_service to ne not None");
-
-				// 			let authority_id: sp_authority_discovery::AuthorityId =
-				// 				sp_authority_discovery::AuthorityId::decode(&mut &id[..]).unwrap();
-
-				// 			let addr = authority_discovery_service
-				// 				.get_addresses_by_authority_id(authority_id)
-				// 				.await;
-
-				// 			println!("=+=+=+=+=+=> Discovered address {:?}", addr);
-				// 		});
-				// 		Some(6u32)
-				// 	};
-				// 	vec![Box::new(pallet_ddc_verification::CustomExt(Box::new(callback))) as Box<_>]
-				// },
-
-				// ----worked
-				// custom_extensions: {
-				// 	let authority_discovery_service_opt = authority_discovery_service_opt.clone(); // Clone to avoid borrowing issues
-				// 	move |_| {
-				// 		let mut authority_discovery_service =
-				// 			authority_discovery_service_opt.clone(); // Move into closure
-				// 		let callback = move |id: sp_std::vec::Vec<u8>| -> Option<u32> {
-				// 			let mut pool = LocalPool::new();
-
-				// 			pool.run_until(async {
-				// 				let authority_id: sp_authority_discovery::AuthorityId =
-				// 					sp_authority_discovery::AuthorityId::decode(&mut &id[..])
-				// 						.unwrap();
-
-				// 				println!("authority_id --> {:?}", authority_id);
-
-				// 				let addr = authority_discovery_service
-				// 					.as_mut()
-				// 					.expect("authority_discovery_service to be not None")
-				// 					.get_addresses_by_authority_id(authority_id)
-				// 					.await;
-
-				// 				println!("=+=+=+=+=+=> Discovered address {:?}", addr);
-				// 			});
-
-				// 			Some(6u32)
-				// 		};
-
-				// 		vec![Box::new(pallet_ddc_verification::CustomExt(Box::new(callback)))
-				// 			as Box<_>]
-				// 	}
-				// },
-				//  ----worked
 				custom_extensions: {
-					// let authority_discovery_service_opt = authority_discovery_service_opt.clone(); // Clone to avoid borrowing issues
+					let authority_discovery_service_opt = authority_discovery_service_opt.clone(); // Clone to avoid borrowing issues
 					let network = network.clone();
 					move |_| {
-						// let mut authority_discovery_service =
-						// 	authority_discovery_service_opt.clone();
+						let mut authority_discovery_service =
+							authority_discovery_service_opt.clone();
 						let network = network.clone();
-						let callback = move |id: sp_std::vec::Vec<u8>| -> Option<u32> {
+						let callback = move |id: sp_std::vec::Vec<u8>| -> Option<u16> {
 							let mut pool = LocalPool::new();
 
 							pool.run_until(async {
@@ -692,22 +631,37 @@ where
 								// 	.get_addresses_by_authority_id(authority_id)
 								// 	.await;
 
-								// println!("=+=+=+=+=+=> Discovered address {:?}", addr);
-
-								let a = network
-									// .as_mut()
-									// .expect("authority_discovery_service to be not None")
-									.network_state()
+								let addr = authority_discovery_service
+									.as_mut()
+									.expect("authority_discovery_service to be not None")
+									.get_addresses_by_authority_id(authority_id)
 									.await;
 
-								if let Ok(state) = a {
-									// println!("=+=+=+=+=+=> network_state {:?}", state);
-								} else {
-									println!("NO STATE NO FATE");
-								}
+								// println!("=+=+=+=+=+=> Discovered address {:?}", addr);
+
+								// let a = network
+								// 	// .as_mut()
+								// 	// .expect("authority_discovery_service to be not None")
+								// 	.network_state()
+								// 	.await;
+
+								let mut pinned = network.network_state();
+								let network_state = poll_fn(|cx| {
+									let f = pinned.as_mut().poll(cx);
+									Poll::Ready(f)
+								})
+								.await;
+
+								println!("=+=+=+=+=+=> network_state {:?}", network_state);
+
+								// if let Ok(state) = a {
+								// 	println!("=+=+=+=+=+=> network_state {:?}", state);
+								// } else {
+								// 	println!("NO STATE");
+								// }
 							});
 
-							Some(6u32)
+							Some(rpc_port)
 						};
 
 						vec![Box::new(pallet_ddc_verification::CustomExt(Box::new(callback)))
