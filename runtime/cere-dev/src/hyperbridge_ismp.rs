@@ -235,6 +235,6 @@ impl pallet_token_gateway::Config for Runtime {
 	// The precision of the native asset
 	type Decimals = Decimals;
 	type EvmToSubstrate = EvmToSubstrateFactory;
-	type WeightInfo = weights::pallet_token_gateway::WeightInfo<Runtime>;
+	type WeightInfo = weights::pallet_token_gateway::SubstrateWeight<Runtime>;
 	type CreateOrigin = EnsureSigned<AccountId>;
 }

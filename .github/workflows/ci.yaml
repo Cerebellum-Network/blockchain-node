@@ -117,7 +117,7 @@ jobs:
           version: '0.22.0'
           args: '--verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out "Xml"'
       - name: Upload coverage report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tarpaulin coverage
           path: ./tarpaulin-report.xml
