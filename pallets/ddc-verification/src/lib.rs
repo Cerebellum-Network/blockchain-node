@@ -2701,7 +2701,7 @@ pub mod pallet {
 										.expect("EHD to be fetched");
 
 								let cluster_usage = ehd_root.get_cluster_usage();
-								if !cluster_usage.has_usage() {
+								if cluster_usage == Default::default() {
 									continue;
 								}
 
@@ -4648,6 +4648,8 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
+		// the first key is 'verification_key' that is used to sign inspection receipts
+		// the second key is 'stash_key' that should be used in staking by this validator
 		pub validators: Vec<(T::AccountId, T::AccountId)>,
 	}
 
