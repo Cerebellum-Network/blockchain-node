@@ -2696,6 +2696,15 @@ pub mod pallet {
 					if let Some(inspected_ehds) = Self::fetch_last_inspected_ehds(cluster_id) {
 						for inspected_ehd in inspected_ehds.clone().into_iter().sorted() {
 							if inspected_ehd.2 > last_paid_era_for_cluster {
+								let ehd_root =
+									Self::get_ehd_root(cluster_id, inspected_ehd.clone())
+										.expect("EHD to be fetched");
+
+								let cluster_usage = ehd_root.get_cluster_usage();
+								if cluster_usage == Default::default() {
+									continue;
+								}
+
 								let receipts_by_inspector = Self::fetch_inspection_receipts(
 									cluster_id,
 									inspected_ehd.clone(),
@@ -4639,7 +4648,9 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub validators: Vec<T::AccountId>,
+		// the first key is 'verification_key' that is used to sign inspection receipts
+		// the second key is 'stash_key' that should be used in staking by this validator
+		pub validators: Vec<(T::AccountId, T::AccountId)>,
 	}
 
 	impl<T: Config> Default for GenesisConfig<T> {
@@ -4654,8 +4665,11 @@ pub mod pallet {
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
 		fn build(&self) {
-			for validator in &self.validators {
-				<ValidatorSet<T>>::append(validator);
+			for (verification_key, stash_key) in &self.validators {
+				// <ValidatorSet<T>> should be updated in 'on_genesis_session' handler
+				if <ValidatorSet<T>>::get().contains(verification_key) {
+					ValidatorToStashKey::<T>::insert(verification_key, stash_key);
+				}
 			}
 		}
 	}

@@ -633,7 +633,18 @@ pub(crate) mod json {
 	}
 
 	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
+		Default,
+		Debug,
+		Serialize,
+		Deserialize,
+		Clone,
+		Hash,
+		Ord,
+		PartialOrd,
+		PartialEq,
+		Eq,
+		Encode,
+		Decode,
 	)]
 	pub struct EHDUsage {
 		#[serde(rename = "storedBytes")]
