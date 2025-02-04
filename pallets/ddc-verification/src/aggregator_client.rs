@@ -633,7 +633,18 @@ pub(crate) mod json {
 	}
 
 	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
+		Default,
+		Debug,
+		Serialize,
+		Deserialize,
+		Clone,
+		Hash,
+		Ord,
+		PartialOrd,
+		PartialEq,
+		Eq,
+		Encode,
+		Decode,
 	)]
 	pub struct EHDUsage {
 		#[serde(rename = "storedBytes")]
@@ -644,15 +655,6 @@ pub(crate) mod json {
 		pub number_of_puts: u64,
 		#[serde(rename = "gets")]
 		pub number_of_gets: u64,
-	}
-
-	impl EHDUsage {
-		pub fn has_usage(&self) -> bool {
-			self.stored_bytes > 0 &&
-				self.transferred_bytes > 0 &&
-				self.number_of_puts > 0 &&
-				self.number_of_gets > 0
-		}
 	}
 
 	#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Encode, Decode)]
