@@ -1212,7 +1212,7 @@ pub mod pallet {
 					buckets_inspection,
 				};
 
-				Self::send_inspection_receipt(cluster_id, &g_collector, receipt)
+				Self::send_inspection_receipt(cluster_id, g_collector, receipt)
 					.map_err(|e| vec![e])?;
 
 				Self::store_last_inspected_ehd(cluster_id, ehd_id);
@@ -1221,6 +1221,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[allow(clippy::collapsible_else_if)]
 		pub(crate) fn inspect_nodes_aggregates(
 			cluster_id: &ClusterId,
 			phd_roots: &Vec<aggregator_client::json::TraversedPHDResponse>,
@@ -1414,12 +1415,14 @@ pub mod pallet {
 			Ok(nodes_inspection_result)
 		}
 
+		#[allow(clippy::collapsible_else_if)]
 		pub(crate) fn inspect_buckets_aggregates(
 			cluster_id: &ClusterId,
 			phd_roots: &Vec<aggregator_client::json::TraversedPHDResponse>,
 			tcaa_start: DdcEra,
 			tcaa_end: DdcEra,
 		) -> Result<aggregator_client::json::InspectionResult, Vec<OCWError>> {
+			#[allow(clippy::type_complexity)]
 			let mut era_leaves_map: BTreeMap<
 				(BucketId, NodePubKey), // bucket sub-aggegate key
 				BTreeMap<(PHDId, (u64, u64)), BTreeMap<DdcEra, Vec<u64>>>,
@@ -2744,7 +2747,7 @@ pub mod pallet {
 		) -> Result<aggregator_client::json::TraversedEHDResponse, OCWError> {
 			Self::fetch_traversed_era_historical_document(cluster_id, ehd_id, 1, 1)?
 				.first()
-				.ok_or_else(|| OCWError::FailedToFetchTraversedEHD)
+				.ok_or(OCWError::FailedToFetchTraversedEHD)
 				.cloned()
 		}
 
@@ -2754,7 +2757,7 @@ pub mod pallet {
 		) -> Result<aggregator_client::json::TraversedPHDResponse, OCWError> {
 			Self::fetch_traversed_partial_historical_document(cluster_id, phd_id, 1, 1)?
 				.first()
-				.ok_or_else(|| OCWError::FailedToFetchTraversedPHD)
+				.ok_or(OCWError::FailedToFetchTraversedPHD)
 				.cloned()
 		}
 
@@ -3404,7 +3407,7 @@ pub mod pallet {
 				.map_err(|_| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?
 				.first()
 				.cloned()
-				.ok_or_else(|| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?;
+				.ok_or(OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?;
 
 			if let Ok(host) = str::from_utf8(&g_collector.1.host) {
 				let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
