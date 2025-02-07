@@ -283,6 +283,11 @@ impl<'a> AggregatorClient<'a> {
 		fetch_and_parse!(self, url, BTreeMap<String, json::GroupedInspectionReceipt>, BTreeMap<String, json::GroupedInspectionReceipt>)
 	}
 
+	pub fn check_grouping_collector(&self) -> Result<json::IsGCollectorResponse, http::Error> {
+		let mut url = format!("{}/activity/is-grouping-collector", self.base_url);
+		fetch_and_parse!(self, url, json::IsGCollectorResponse, json::IsGCollectorResponse)
+	}
+
 	fn get(&self, url: &str, accept: Accept) -> Result<http::Response, http::Error> {
 		let mut maybe_response = None;
 
@@ -1043,5 +1048,11 @@ pub(crate) mod json {
 		#[serde(rename = "bucketsInspection")]
 		pub buckets_inspection: Option<InspectionResult>, /* todo(yahortsaryk): remove optional
 		                                                   * after fix in DDC api */
+	}
+
+	#[derive(Debug, Serialize, Deserialize, Clone, Hash, Encode, Decode)]
+	pub struct IsGCollectorResponse {
+		#[serde(rename = "isGroupingCollector")]
+		pub is_g_collector: bool,
 	}
 }

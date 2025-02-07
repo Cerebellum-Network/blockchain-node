@@ -118,13 +118,6 @@ pub mod pallet {
 	pub const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
 	pub const OCW_MUTEX_ID: &[u8] = b"inspection_lock";
 
-	// todo(yahortsaryk): provide an endpoint for fetching G-collector from DDC
-	pub const G_COLLECTOR_KEY: NodePubKey = NodePubKey::StoragePubKey(AccountId32::new([
-		0x9e, 0xf9, 0x8a, 0xd9, 0xc3, 0x62, 0x6b, 0xa7, 0x25, 0xe7, 0x8d, 0x76, 0xcf, 0xcf, 0xc4,
-		0xb4, 0xd0, 0x7e, 0x84, 0xf0, 0x38, 0x84, 0x65, 0xbc, 0x7e, 0xb9, 0x92, 0xe3, 0xe1, 0x17,
-		0x23, 0x4a,
-	]));
-
 	/// This is overall amount that the bucket owner will be charged for his buckets within a
 	/// payment Era.
 	#[derive(Clone, PartialOrd, Ord, Eq, PartialEq, Encode, Decode)]
@@ -331,6 +324,10 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			validator: T::AccountId,
 		},
+		FailedToFetchGCollectors {
+			cluster_id: ClusterId,
+			validator: T::AccountId,
+		},
 		ChallengeResponseError {
 			cluster_id: ClusterId,
 			era_id: DdcEra,
@@ -448,6 +445,9 @@ pub mod pallet {
 		FailedToCollectVerificationKey,
 		FailedToFetchVerificationKey,
 		FailedToFetchCollectors {
+			cluster_id: ClusterId,
+		},
+		FailedToFetchGCollectors {
 			cluster_id: ClusterId,
 		},
 		FailedToFetchVerifiedDeltaUsage,
@@ -873,6 +873,12 @@ pub mod pallet {
 							cluster_id,
 						});
 					},
+					OCWError::FailedToFetchGCollectors { cluster_id } => {
+						Self::deposit_event(Event::FailedToFetchGCollectors {
+							validator: caller.clone(),
+							cluster_id,
+						});
+					},
 					OCWError::FailedToFetchVerifiedDeltaUsage => {
 						Self::deposit_event(Event::FailedToFetchVerifiedDeltaUsage);
 					},
@@ -1137,15 +1143,14 @@ pub mod pallet {
 			verification_account: &Account<T>,
 			_signer: &Signer<T, T::OffchainIdentifierId>,
 		) -> Result<(), Vec<OCWError>> {
-			let collectors = Self::get_collectors_nodes(cluster_id).map_err(|_| {
-				log::error!("❌ Error retrieving collectors for cluster {:?}", cluster_id);
-				vec![OCWError::FailedToFetchCollectors { cluster_id: *cluster_id }]
+			let g_collectors = Self::get_g_collectors_nodes(cluster_id).map_err(|_| {
+				vec![OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id }]
 			})?;
-			let g_collector = collectors
-				.iter()
-				.find(|(key, _)| *key == G_COLLECTOR_KEY)
-				.cloned()
-				.expect("G-Collector to be found");
+			// todo(yahortsaryk): infer the node deterministically
+			let Some(g_collector) = g_collectors.first() else {
+				log::warn!("⚠️ No Grouping Collector found in cluster {:?}", cluster_id);
+				return Ok(());
+			};
 
 			if let Some(ehd_era) =
 				Self::get_ehd_era_for_inspection(cluster_id, vec![g_collector.clone()].as_slice())
@@ -1207,9 +1212,7 @@ pub mod pallet {
 					buckets_inspection,
 				};
 
-				log::info!("##### INSPECTION RECEIPT ##### {:?}", receipt);
-
-				Self::send_inspection_receipt(cluster_id, &g_collector, receipt)
+				Self::send_inspection_receipt(cluster_id, g_collector, receipt)
 					.map_err(|e| vec![e])?;
 
 				Self::store_last_inspected_ehd(cluster_id, ehd_id);
@@ -1218,6 +1221,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[allow(clippy::collapsible_else_if)]
 		pub(crate) fn inspect_nodes_aggregates(
 			cluster_id: &ClusterId,
 			phd_roots: &Vec<aggregator_client::json::TraversedPHDResponse>,
@@ -1411,12 +1415,14 @@ pub mod pallet {
 			Ok(nodes_inspection_result)
 		}
 
+		#[allow(clippy::collapsible_else_if)]
 		pub(crate) fn inspect_buckets_aggregates(
 			cluster_id: &ClusterId,
 			phd_roots: &Vec<aggregator_client::json::TraversedPHDResponse>,
 			tcaa_start: DdcEra,
 			tcaa_end: DdcEra,
 		) -> Result<aggregator_client::json::InspectionResult, Vec<OCWError>> {
+			#[allow(clippy::type_complexity)]
 			let mut era_leaves_map: BTreeMap<
 				(BucketId, NodePubKey), // bucket sub-aggegate key
 				BTreeMap<(PHDId, (u64, u64)), BTreeMap<DdcEra, Vec<u64>>>,
@@ -1904,16 +1910,14 @@ pub mod pallet {
 		) -> Result<(), Vec<OCWError>> {
 			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 
-			let collectors = Self::get_collectors_nodes(cluster_id).map_err(|_| {
-				log::error!("❌ Error retrieving collectors for cluster {:?}", cluster_id);
-				vec![OCWError::FailedToFetchCollectors { cluster_id: *cluster_id }]
-			})?;
-
-			let g_collector = collectors
-				.iter()
-				.find(|(key, _)| *key == G_COLLECTOR_KEY)
+			// todo(yahortsaryk): infer the node deterministically
+			let g_collector = Self::get_g_collectors_nodes(cluster_id)
+				.map_err(|_| vec![OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id }])?
+				.first()
 				.cloned()
-				.expect("G-Collector to be found");
+				.ok_or_else(|| {
+					vec![OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id }]
+				})?;
 
 			let ehd = Self::get_ehd_root(cluster_id, ehd_id.clone()).map_err(|e| vec![e])?;
 
@@ -2743,7 +2747,7 @@ pub mod pallet {
 		) -> Result<aggregator_client::json::TraversedEHDResponse, OCWError> {
 			Self::fetch_traversed_era_historical_document(cluster_id, ehd_id, 1, 1)?
 				.first()
-				.ok_or_else(|| OCWError::FailedToFetchTraversedEHD)
+				.ok_or(OCWError::FailedToFetchTraversedEHD)
 				.cloned()
 		}
 
@@ -2753,7 +2757,7 @@ pub mod pallet {
 		) -> Result<aggregator_client::json::TraversedPHDResponse, OCWError> {
 			Self::fetch_traversed_partial_historical_document(cluster_id, phd_id, 1, 1)?
 				.first()
-				.ok_or_else(|| OCWError::FailedToFetchTraversedPHD)
+				.ok_or(OCWError::FailedToFetchTraversedPHD)
 				.cloned()
 		}
 
@@ -2930,35 +2934,46 @@ pub mod pallet {
 			Ok(ehd_era_to_inspect)
 		}
 
-		/// Fetch DAC nodes of a cluster.
+		/// Fetch collectors nodes of a cluster.
 		/// Parameters:
 		/// - `cluster_id`: Cluster id of a cluster.
 		fn get_collectors_nodes(
 			cluster_id: &ClusterId,
 		) -> Result<Vec<(NodePubKey, StorageNodeParams)>, Error<T>> {
-			let mut dac_nodes = Vec::new();
+			let mut collectors = Vec::new();
 
 			let nodes = T::ClusterManager::get_nodes(cluster_id)
 				.map_err(|_| Error::<T>::NodeRetrievalError)?;
 
-			// Iterate over each node
 			for node_pub_key in nodes {
-				// Get the node parameters
 				if let Ok(NodeParams::StorageParams(storage_params)) =
 					T::NodeManager::get_node_params(&node_pub_key)
 				{
-					// log::info!(
-					// 	"🏭 Obtained DAC Node for cluster_id: {:?} and with key: {:?}",
-					// 	cluster_id,
-					// 	node_pub_key
-					// );
-
-					// Add to the results if the mode matches
-					dac_nodes.push((node_pub_key, storage_params));
+					collectors.push((node_pub_key, storage_params));
 				}
 			}
 
-			Ok(dac_nodes)
+			Ok(collectors)
+		}
+
+		/// Fetch grouping collectors nodes of a cluster.
+		/// Parameters:
+		/// - `cluster_id`: Cluster id of a cluster.
+		fn get_g_collectors_nodes(
+			cluster_id: &ClusterId,
+		) -> Result<Vec<(NodePubKey, StorageNodeParams)>, Error<T>> {
+			let mut g_collectors = Vec::new();
+
+			let collectors = Self::get_collectors_nodes(cluster_id)?;
+			for (node_key, node_params) in collectors {
+				if Self::check_grouping_collector(&node_params)
+					.map_err(|_| Error::<T>::NodeRetrievalError)?
+				{
+					g_collectors.push((node_key, node_params))
+				}
+			}
+
+			Ok(g_collectors)
 		}
 
 		/// Fetch processed payment era for across all nodes.
@@ -3387,13 +3402,12 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			ehd_id: EHDId,
 		) -> Result<BTreeMap<String, aggregator_client::json::GroupedInspectionReceipt>, OCWError> {
-			let collectors = Self::get_collectors_nodes(cluster_id)
-				.map_err(|_| OCWError::FailedToFetchCollectors { cluster_id: *cluster_id })?;
-			let g_collector = collectors
-				.iter()
-				.find(|(key, _)| *key == G_COLLECTOR_KEY)
+			// todo(yahortsaryk): infer the node deterministically
+			let g_collector = Self::get_g_collectors_nodes(cluster_id)
+				.map_err(|_| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?
+				.first()
 				.cloned()
-				.expect("G-Collector to be found");
+				.ok_or(OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?;
 
 			if let Ok(host) = str::from_utf8(&g_collector.1.host) {
 				let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
@@ -4719,6 +4733,26 @@ pub mod pallet {
 			}
 
 			Ok(buckets_aggregates)
+		}
+
+		/// Fetch customer usage.
+		///
+		/// Parameters:
+		/// - `node_params`: Requesting DDC node
+		pub(crate) fn check_grouping_collector(
+			node_params: &StorageNodeParams,
+		) -> Result<bool, http::Error> {
+			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
+			let base_url = format!("http://{}:{}", host, node_params.http_port);
+			let client = aggregator_client::AggregatorClient::new(
+				&base_url,
+				Duration::from_millis(RESPONSE_TIMEOUT),
+				MAX_RETRIES_COUNT,
+				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
+			);
+
+			let response = client.check_grouping_collector()?;
+			Ok(response.is_g_collector)
 		}
 	}
 

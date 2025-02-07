@@ -2726,9 +2726,14 @@ fn fetch_reward_activities_works() {
 	let c: DeltaUsageHash = H256([2; 32]);
 	let d: DeltaUsageHash = H256([3; 32]);
 	let e: DeltaUsageHash = H256([4; 32]);
+	let g_collector_key: NodePubKey = NodePubKey::StoragePubKey(AccountId32::new([
+		0x9e, 0xf9, 0x8a, 0xd9, 0xc3, 0x62, 0x6b, 0xa7, 0x25, 0xe7, 0x8d, 0x76, 0xcf, 0xcf, 0xc4,
+		0xb4, 0xd0, 0x7e, 0x84, 0xf0, 0x38, 0x84, 0x65, 0xbc, 0x7e, 0xb9, 0x92, 0xe3, 0xe1, 0x17,
+		0x23, 0x4a,
+	]));
 
 	let leaves = [a, b, c, d, e];
-	let ehd_id = EHDId(cluster_id, G_COLLECTOR_KEY, 1);
+	let ehd_id = EHDId(cluster_id, g_collector_key, 1);
 
 	let result = DdcVerification::fetch_ehd_charging_loop_input(
 		&cluster_id,
