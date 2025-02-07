@@ -155,7 +155,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 72007,
+	spec_version: 72008,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -1342,7 +1342,6 @@ impl pallet_ddc_verification::Config for Runtime {
 	type CustomerDepositor = DdcCustomers;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ClusterCreator = DdcClusters;
-	#[cfg(feature = "runtime-benchmarks")]
 	type BucketManager = DdcCustomers;
 }
 
