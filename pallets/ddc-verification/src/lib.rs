@@ -352,6 +352,9 @@ pub mod pallet {
 		FailedToParseNodeKey {
 			node_key: String,
 		},
+		FailedToFetchProviderId {
+			node_key: NodePubKey,
+		},
 		FailedToParseBucketId {
 			bucket_id: String,
 		},
@@ -361,7 +364,7 @@ pub mod pallet {
 		FailedToParseCustomerId {
 			customer_id: AccountId32,
 		},
-		FailedToParseTCAA,
+		TimeCapsuleError,
 		FailedToFetchTraversedEHD,
 		FailedToFetchTraversedPHD,
 		FailedToFetchNodeChallenge,
@@ -378,6 +381,9 @@ pub mod pallet {
 		FailedToFetchProtocolParams {
 			cluster_id: ClusterId,
 		},
+		NodesInspectionError,
+		BucketsInspectionError,
+		FailedToSignInspectionReceipt,
 	}
 
 	/// Consensus Errors
@@ -479,6 +485,9 @@ pub mod pallet {
 		FailedToParseNodeKey {
 			node_key: String,
 		},
+		FailedToFetchProviderId {
+			node_key: NodePubKey,
+		},
 		FailedToParseBucketId {
 			bucket_id: String,
 		},
@@ -488,7 +497,7 @@ pub mod pallet {
 		FailedToParseCustomerId {
 			customer_id: AccountId32,
 		},
-		FailedToParseTCAA,
+		TimeCapsuleError,
 		FailedToFetchTraversedEHD,
 		FailedToFetchTraversedPHD,
 		FailedToFetchNodeChallenge,
@@ -505,6 +514,9 @@ pub mod pallet {
 		FailedToFetchProtocolParams {
 			cluster_id: ClusterId,
 		},
+		NodesInspectionError,
+		BucketsInspectionError,
+		FailedToSignInspectionReceipt,
 	}
 
 	#[pallet::error]
@@ -937,8 +949,14 @@ pub mod pallet {
 					OCWError::FailedToFetchCustomerId { bucket_id } => {
 						Self::deposit_event(Event::FailedToFetchCustomerId { bucket_id });
 					},
-					OCWError::FailedToParseTCAA => {
-						Self::deposit_event(Event::FailedToParseTCAA);
+					OCWError::FailedToFetchProviderId { node_key } => {
+						Self::deposit_event(Event::FailedToFetchProviderId { node_key });
+					},
+					OCWError::TimeCapsuleError => {
+						Self::deposit_event(Event::TimeCapsuleError);
+					},
+					OCWError::FailedToSignInspectionReceipt => {
+						Self::deposit_event(Event::FailedToSignInspectionReceipt);
 					},
 					OCWError::FailedToFetchTraversedEHD => {
 						Self::deposit_event(Event::FailedToFetchTraversedEHD);
@@ -972,6 +990,12 @@ pub mod pallet {
 					},
 					OCWError::FailedToParseCustomerId { customer_id } => {
 						Self::deposit_event(Event::FailedToParseCustomerId { customer_id });
+					},
+					OCWError::NodesInspectionError => {
+						Self::deposit_event(Event::NodesInspectionError);
+					},
+					OCWError::BucketsInspectionError => {
+						Self::deposit_event(Event::BucketsInspectionError);
 					},
 				}
 			}
@@ -1215,8 +1239,8 @@ pub mod pallet {
 					.map_err(|e| vec![e])?
 			{
 				let tcaa_start =
-					ehd_era.era_start.ok_or_else(|| vec![OCWError::FailedToParseTCAA])?;
-				let tcaa_end = ehd_era.era_end.ok_or_else(|| vec![OCWError::FailedToParseTCAA])?;
+					ehd_era.era_start.ok_or_else(|| vec![OCWError::TimeCapsuleError])?;
+				let tcaa_end = ehd_era.era_end.ok_or_else(|| vec![OCWError::TimeCapsuleError])?;
 
 				let ehd_root = Self::get_ehd_root(
 					cluster_id,
@@ -1256,7 +1280,7 @@ pub mod pallet {
 						&payload,
 						verification_account.public.clone(),
 					)
-					.expect("Inspection receipt to be signed.");
+					.ok_or([OCWError::FailedToSignInspectionReceipt])?;
 
 				let inspector_pub_key: Vec<u8> = verification_account.public.encode();
 				let inspector = format!("0x{}", hex::encode(&inspector_pub_key[1..])); // skip byte of SCALE encoding
@@ -1328,12 +1352,18 @@ pub mod pallet {
 							node_key.clone(),
 							vec![1],
 						) {
-							let tcaa_root =
-								challenge_res.proofs.first().expect("TCAA root to exist.");
+							let tcaa_root = challenge_res
+								.proofs
+								.first()
+								.ok_or([OCWError::FailedToFetchNodeChallenge])?;
 
-							let tcaa_leaves_count =
-								tcaa_root.usage.expect("TCAA root usage to exist.").puts +
-									tcaa_root.usage.expect("TCAA root usage to exist.").gets;
+							let tcaa_leaves_count = tcaa_root
+								.usage
+								.ok_or([OCWError::FailedToFetchNodeChallenge])?
+								.puts + tcaa_root
+								.usage
+								.ok_or([OCWError::FailedToFetchNodeChallenge])?
+								.gets;
 
 							let ids = get_leaves_ids(tcaa_leaves_count);
 							tcaa_leaves.insert(tcaa_id, ids);
@@ -1364,7 +1394,7 @@ pub mod pallet {
 
 			for (node_key, mut val) in era_leaves_map {
 				let ((phd_id, (node_leaves_count, node_tcaa_count)), tcaa_leaves) =
-					val.pop_first().expect("Collected activity records to exist.");
+					val.pop_first().ok_or([OCWError::NodesInspectionError])?;
 				let collector_key = phd_id.0.clone();
 
 				let n = match calculate_sample_size_fin(n0, node_leaves_count) {
@@ -1422,7 +1452,7 @@ pub mod pallet {
 							if verified_tcaas.contains_key(&tcaa_id) {
 								let mut verified_ids = verified_tcaas
 									.get(&tcaa_id)
-									.expect("Verified TCAA to exist.")
+									.ok_or([OCWError::TimeCapsuleError])?
 									.clone();
 								verified_ids.extend(leaves_to_inspect);
 								verified_tcaas.insert(tcaa_id, verified_ids.clone());
@@ -1433,7 +1463,7 @@ pub mod pallet {
 							if unverified_tcaas.contains_key(&tcaa_id) {
 								let mut unverified_ids = unverified_tcaas
 									.get(&tcaa_id)
-									.expect("Unverified TCAA to exist.")
+									.ok_or([OCWError::TimeCapsuleError])?
 									.clone();
 								unverified_ids.extend(leaves_to_inspect);
 								unverified_tcaas.insert(tcaa_id, unverified_ids);
@@ -1527,12 +1557,18 @@ pub mod pallet {
 								bucket_id,
 								vec![1],
 							) {
-								let tcaa_root =
-									challenge_res.proofs.first().expect("TCAA root to exist.");
+								let tcaa_root = challenge_res
+									.proofs
+									.first()
+									.ok_or([OCWError::FailedToFetchBucketChallenge])?;
 
-								let tcaa_leaves_count =
-									tcaa_root.usage.expect("TCAA root usage to exist.").puts +
-										tcaa_root.usage.expect("TCAA root usage to exist.").gets;
+								let tcaa_leaves_count = tcaa_root
+									.usage
+									.ok_or([OCWError::FailedToFetchBucketChallenge])?
+									.puts + tcaa_root
+									.usage
+									.ok_or([OCWError::FailedToFetchBucketChallenge])?
+									.gets;
 
 								let ids = get_leaves_ids(tcaa_leaves_count);
 								tcaa_leaves.insert(tcaa_id, ids);
@@ -1567,7 +1603,7 @@ pub mod pallet {
 
 			for ((bucket_id, node_key), mut val) in era_leaves_map {
 				let ((phd_id, (bucket_sub_leaves_count, bucket_sub_tcaa_count)), tcaa_leaves) =
-					val.pop_first().expect("Collected activity records to exist.");
+					val.pop_first().ok_or([OCWError::BucketsInspectionError])?;
 
 				let collector_key = phd_id.0.clone();
 
@@ -1628,7 +1664,7 @@ pub mod pallet {
 							if verified_tcaas.contains_key(&tcaa_id) {
 								let mut verified_ids = verified_tcaas
 									.get(&tcaa_id)
-									.expect("Verified TCAA to exist.")
+									.ok_or([OCWError::TimeCapsuleError])?
 									.clone();
 								verified_ids.extend(leaves_to_inspect);
 								verified_tcaas.insert(tcaa_id, verified_ids.clone());
@@ -1639,7 +1675,7 @@ pub mod pallet {
 							if unverified_tcaas.contains_key(&tcaa_id) {
 								let mut unverified_ids = unverified_tcaas
 									.get(&tcaa_id)
-									.expect("Unverified TCAA to exist.")
+									.ok_or([OCWError::TimeCapsuleError])?
 									.clone();
 								unverified_ids.extend(leaves_to_inspect);
 								unverified_tcaas.insert(tcaa_id, unverified_ids);
@@ -1879,7 +1915,7 @@ pub mod pallet {
 						.map(|payee| {
 							(
 								T::AccountId::decode(&mut &payee.0.encode()[..])
-									.expect("CustomerId to be parsed"),
+									.expect("ProviderId to be parsed"),
 								payee.1,
 							)
 						})
@@ -1995,15 +2031,19 @@ pub mod pallet {
 				&ehd.customers,
 				&customers_usage_cutoff,
 				&pricing,
-				era.time_start.ok_or(OCWError::FailedToParseTCAA)?,
-				era.time_end.ok_or(OCWError::FailedToParseTCAA)?,
+				era.time_start.ok_or(OCWError::TimeCapsuleError)?,
+				era.time_end.ok_or(OCWError::TimeCapsuleError)?,
 			)
 			.map_err(|_| OCWError::FailedToCalculatePayersBatches { era_id: ehd_id.2 })?;
 
 			let cluster_usage = ehd.get_cluster_usage();
 
+			let providers_usage_cutoff =
+				Self::calculate_providers_usage_cutoff(cluster_id, &inspection_receipts)?;
+
 			let payees = Self::calculate_ehd_providers_rewards(
 				&ehd.providers,
+				&providers_usage_cutoff,
 				&fees,
 				&cluster_usage,
 				&cluster_costs,
@@ -2060,7 +2100,7 @@ pub mod pallet {
 
 		fn calculate_ehd_customers_charges(
 			customers: &Vec<aggregator_client::json::TraversedEHDCustomer>,
-			cutoff_usage: &BTreeMap<T::AccountId, BucketUsage>,
+			cutoff_usage_map: &BTreeMap<T::AccountId, BucketUsage>,
 			pricing: &ClusterPricingParams,
 			time_start: i64,
 			time_end: i64,
@@ -2073,7 +2113,7 @@ pub mod pallet {
 					let customer_costs = Self::get_customer_costs(
 						pricing,
 						&customer.consumed_usage,
-						cutoff_usage.get(
+						cutoff_usage_map.get(
 							&T::AccountId::decode(&mut &customer_id.encode()[..])
 								.map_err(|_| ArithmeticError::Overflow)?,
 						),
@@ -2172,13 +2212,18 @@ pub mod pallet {
 
 		fn get_provider_profits(
 			provided_usage: &aggregator_client::json::EHDUsage,
+			cutoff_usage: Option<&NodeUsage>,
 			cluster_usage: &aggregator_client::json::EHDUsage,
 			cluster_costs: &CustomerCosts,
 		) -> Result<ProviderProfits, ArithmeticError> {
 			let mut provider_profits = ProviderProfits::default();
+			let no_cutoff = Default::default();
+			let cutoff = cutoff_usage.unwrap_or(&no_cutoff);
 
 			let mut ratio = Perquintill::from_rational(
-				provided_usage.transferred_bytes as u128,
+				(provided_usage.transferred_bytes as u128)
+					.checked_sub(cutoff.transferred_bytes as u128)
+					.ok_or(ArithmeticError::Underflow)?,
 				cluster_usage.transferred_bytes as u128,
 			);
 
@@ -2186,19 +2231,27 @@ pub mod pallet {
 			provider_profits.transfer = ratio * cluster_costs.transfer;
 
 			ratio = Perquintill::from_rational(
-				provided_usage.stored_bytes as u128,
+				(provided_usage.stored_bytes as u128)
+					.checked_sub(cutoff.stored_bytes as u128)
+					.ok_or(ArithmeticError::Underflow)?,
 				cluster_usage.stored_bytes as u128,
 			);
 			provider_profits.storage = ratio * cluster_costs.storage;
 
 			ratio = Perquintill::from_rational(
-				provided_usage.number_of_puts,
+				provided_usage
+					.number_of_puts
+					.checked_sub(cutoff.number_of_puts)
+					.ok_or(ArithmeticError::Underflow)?,
 				cluster_usage.number_of_puts,
 			);
 			provider_profits.puts = ratio * cluster_costs.puts;
 
 			ratio = Perquintill::from_rational(
-				provided_usage.number_of_gets,
+				provided_usage
+					.number_of_gets
+					.checked_sub(cutoff.number_of_gets)
+					.ok_or(ArithmeticError::Underflow)?,
 				cluster_usage.number_of_gets,
 			);
 			provider_profits.gets = ratio * cluster_costs.gets;
@@ -2208,6 +2261,7 @@ pub mod pallet {
 
 		fn calculate_ehd_providers_rewards(
 			providers: &Vec<aggregator_client::json::TraversedEHDProvider>,
+			cutoff_usage_map: &BTreeMap<T::AccountId, NodeUsage>,
 			fees: &ClusterFeesParams,
 			cluster_usage: &aggregator_client::json::EHDUsage,
 			cluster_costs: &CustomerCosts,
@@ -2218,6 +2272,10 @@ pub mod pallet {
 				if let Ok(provider_id) = provider.parse_provider_id() {
 					let provider_profits = Self::get_provider_profits(
 						&provider.provided_usage,
+						cutoff_usage_map.get(
+							&T::AccountId::decode(&mut &provider_id.encode()[..])
+								.map_err(|_| ArithmeticError::Overflow)?,
+						),
 						cluster_usage,
 						cluster_costs,
 					)?;
@@ -2892,8 +2950,7 @@ pub mod pallet {
 						for inspected_ehd in inspected_ehds.clone().into_iter().sorted() {
 							if inspected_ehd.2 > last_paid_era_for_cluster {
 								let ehd_root =
-									Self::get_ehd_root(cluster_id, inspected_ehd.clone())
-										.expect("EHD to be fetched");
+									Self::get_ehd_root(cluster_id, inspected_ehd.clone()).ok()?;
 
 								let cluster_usage = ehd_root.get_cluster_usage();
 								if cluster_usage == Default::default() {
@@ -3124,7 +3181,8 @@ pub mod pallet {
 					// Skip unavailable aggregators and continue with available ones
 					continue;
 				} else {
-					let eras = processed_payment_eras.expect("Era Response to be available");
+					let eras =
+						processed_payment_eras.map_err(|_| OCWError::FailedToFetchPaymentEra)?;
 					if !eras.is_empty() {
 						processed_eras_by_nodes.push(eras.into_iter().collect::<Vec<_>>());
 					}
@@ -3630,6 +3688,77 @@ pub mod pallet {
 			}
 
 			Ok(customers_usage_cutoff)
+		}
+
+		fn calculate_providers_usage_cutoff(
+			cluster_id: &ClusterId,
+			receipts_by_inspector: &BTreeMap<
+				String,
+				aggregator_client::json::GroupedInspectionReceipt,
+			>,
+		) -> Result<BTreeMap<T::AccountId, NodeUsage>, OCWError> {
+			let mut nodes_usage_cutoff: BTreeMap<(DdcEra, NodePubKey), NodeUsage> = BTreeMap::new();
+			let mut nodes_to_providers: BTreeMap<NodePubKey, T::AccountId> = BTreeMap::new();
+			let mut providers_usage_cutoff: BTreeMap<T::AccountId, NodeUsage> = BTreeMap::new();
+
+			for (_inspector_key, inspection_receipt) in receipts_by_inspector {
+				for unverified_branch in &inspection_receipt.nodes_inspection.unverified_branches {
+					let collector_key = NodePubKey::try_from(unverified_branch.collector.clone())
+						.map_err(|_| OCWError::FailedToParseNodeKey {
+						node_key: unverified_branch.collector.clone(),
+					})?;
+					let node_key = match &unverified_branch.aggregate {
+						AggregateKey::NodeAggregateKey(key) => {
+							let node_key = NodePubKey::try_from(key.clone()).map_err(|_| {
+								OCWError::FailedToParseNodeKey { node_key: key.clone() }
+							})?;
+							node_key
+						},
+						_ => continue, // can happen only in case of a malformed response or bug
+					};
+
+					for (tcaa_id, _leafs) in &unverified_branch.leafs {
+						let tcaa_usage = Self::get_tcaa_node_usage(
+							cluster_id,
+							collector_key.clone(),
+							*tcaa_id,
+							node_key.clone(),
+						)?;
+
+						if !nodes_usage_cutoff.contains_key(&(*tcaa_id, node_key.clone())) {
+							nodes_usage_cutoff.insert((*tcaa_id, node_key.clone()), tcaa_usage);
+							if !nodes_to_providers.contains_key(&node_key) {
+								let provider_id = T::NodeManager::get_node_provider_id(&node_key)
+									.map_err(|_| {
+									OCWError::FailedToFetchProviderId { node_key: node_key.clone() }
+								})?;
+
+								nodes_to_providers.insert(node_key.clone(), provider_id);
+							}
+						}
+					}
+				}
+			}
+
+			for ((_, node_key), node_usage) in nodes_usage_cutoff {
+				let provider_id = nodes_to_providers
+					.get(&node_key)
+					.ok_or(OCWError::FailedToFetchProviderId { node_key: node_key.clone() })?;
+
+				match providers_usage_cutoff.get_mut(&provider_id) {
+					Some(total_usage) => {
+						total_usage.number_of_puts += node_usage.number_of_puts;
+						total_usage.number_of_gets += node_usage.number_of_gets;
+						total_usage.transferred_bytes += node_usage.transferred_bytes;
+						total_usage.stored_bytes += node_usage.stored_bytes;
+					},
+					None => {
+						providers_usage_cutoff.insert(provider_id.clone(), node_usage.clone());
+					},
+				}
+			}
+
+			Ok(providers_usage_cutoff)
 		}
 
 		/// Send Inspection Receipt.
