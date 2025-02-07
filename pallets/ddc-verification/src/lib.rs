@@ -13,18 +13,18 @@ use core::str;
 
 use base64ct::{Base64, Encoding};
 #[cfg(feature = "runtime-benchmarks")]
-use ddc_primitives::traits::{BucketManager, ClusterCreator, CustomerDepositor};
+use ddc_primitives::traits::{ClusterCreator, CustomerDepositor};
 use ddc_primitives::{
 	ocw_mutex::OcwMutex,
 	traits::{
-		ClusterManager, ClusterProtocol, ClusterValidator, CustomerVisitor, NodeManager,
-		PayoutProcessor, StorageUsageProvider, ValidatorVisitor,
+		BucketManager, ClusterManager, ClusterProtocol, ClusterValidator, CustomerVisitor,
+		NodeManager, PayoutProcessor, StorageUsageProvider, ValidatorVisitor,
 	},
-	BatchIndex, BucketStorageUsage, ClusterFeesParams, ClusterId, ClusterPricingParams,
-	ClusterStatus, CustomerCharge as CustomerCosts, DdcEra, EHDId, EhdEra, MMRProof, NodeParams,
-	NodePubKey, NodeStorageUsage, PHDId, PayableUsageHash, PaymentEra, PayoutFingerprintParams,
-	PayoutReceiptParams, PayoutState, ProviderReward as ProviderProfits, StorageNodeParams,
-	StorageNodePubKey, AVG_SECONDS_MONTH,
+	BatchIndex, BucketStorageUsage, BucketUsage, ClusterFeesParams, ClusterId,
+	ClusterPricingParams, ClusterStatus, CustomerCharge as CustomerCosts, DdcEra, EHDId, EhdEra,
+	MMRProof, NodeParams, NodePubKey, NodeStorageUsage, NodeUsage, PHDId, PayableUsageHash,
+	PaymentEra, PayoutFingerprintParams, PayoutReceiptParams, PayoutState,
+	ProviderReward as ProviderProfits, StorageNodeParams, StorageNodePubKey, AVG_SECONDS_MONTH,
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -221,7 +221,6 @@ pub mod pallet {
 		type CustomerDepositor: CustomerDepositor<Self>;
 		#[cfg(feature = "runtime-benchmarks")]
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
-		#[cfg(feature = "runtime-benchmarks")]
 		type BucketManager: BucketManager<Self>;
 	}
 
@@ -353,13 +352,32 @@ pub mod pallet {
 		FailedToParseNodeKey {
 			node_key: String,
 		},
+		FailedToParseBucketId {
+			bucket_id: String,
+		},
+		FailedToFetchCustomerId {
+			bucket_id: BucketId,
+		},
+		FailedToParseCustomerId {
+			customer_id: AccountId32,
+		},
 		FailedToParseTCAA,
 		FailedToFetchTraversedEHD,
 		FailedToFetchTraversedPHD,
 		FailedToFetchNodeChallenge,
+		FailedToFetchBucketChallenge,
 		FailedToSaveInspectionReceipt,
 		FailedToFetchInspectionReceipt,
 		FailedToFetchPaymentEra,
+		FailedToCalculatePayersBatches {
+			era_id: EhdEra,
+		},
+		FailedToCalculatePayeesBatches {
+			era_id: EhdEra,
+		},
+		FailedToFetchProtocolParams {
+			cluster_id: ClusterId,
+		},
 	}
 
 	/// Consensus Errors
@@ -461,13 +479,32 @@ pub mod pallet {
 		FailedToParseNodeKey {
 			node_key: String,
 		},
+		FailedToParseBucketId {
+			bucket_id: String,
+		},
+		FailedToFetchCustomerId {
+			bucket_id: BucketId,
+		},
+		FailedToParseCustomerId {
+			customer_id: AccountId32,
+		},
 		FailedToParseTCAA,
 		FailedToFetchTraversedEHD,
 		FailedToFetchTraversedPHD,
 		FailedToFetchNodeChallenge,
+		FailedToFetchBucketChallenge,
 		FailedToSaveInspectionReceipt,
 		FailedToFetchInspectionReceipt,
 		FailedToFetchPaymentEra,
+		FailedToCalculatePayersBatches {
+			era_id: EhdEra,
+		},
+		FailedToCalculatePayeesBatches {
+			era_id: EhdEra,
+		},
+		FailedToFetchProtocolParams {
+			cluster_id: ClusterId,
+		},
 	}
 
 	#[pallet::error]
@@ -894,6 +931,12 @@ pub mod pallet {
 					OCWError::FailedToParseNodeKey { node_key } => {
 						Self::deposit_event(Event::FailedToParseNodeKey { node_key });
 					},
+					OCWError::FailedToParseBucketId { bucket_id } => {
+						Self::deposit_event(Event::FailedToParseBucketId { bucket_id });
+					},
+					OCWError::FailedToFetchCustomerId { bucket_id } => {
+						Self::deposit_event(Event::FailedToFetchCustomerId { bucket_id });
+					},
 					OCWError::FailedToParseTCAA => {
 						Self::deposit_event(Event::FailedToParseTCAA);
 					},
@@ -906,6 +949,9 @@ pub mod pallet {
 					OCWError::FailedToFetchNodeChallenge => {
 						Self::deposit_event(Event::FailedToFetchNodeChallenge);
 					},
+					OCWError::FailedToFetchBucketChallenge => {
+						Self::deposit_event(Event::FailedToFetchBucketChallenge);
+					},
 					OCWError::FailedToSaveInspectionReceipt => {
 						Self::deposit_event(Event::FailedToSaveInspectionReceipt);
 					},
@@ -914,6 +960,18 @@ pub mod pallet {
 					},
 					OCWError::FailedToFetchPaymentEra => {
 						Self::deposit_event(Event::FailedToFetchPaymentEra);
+					},
+					OCWError::FailedToCalculatePayersBatches { era_id } => {
+						Self::deposit_event(Event::FailedToCalculatePayersBatches { era_id });
+					},
+					OCWError::FailedToCalculatePayeesBatches { era_id } => {
+						Self::deposit_event(Event::FailedToCalculatePayeesBatches { era_id });
+					},
+					OCWError::FailedToFetchProtocolParams { cluster_id } => {
+						Self::deposit_event(Event::FailedToFetchProtocolParams { cluster_id });
+					},
+					OCWError::FailedToParseCustomerId { customer_id } => {
+						Self::deposit_event(Event::FailedToParseCustomerId { customer_id });
 					},
 				}
 			}
@@ -1907,38 +1965,40 @@ pub mod pallet {
 		pub(crate) fn build_and_store_ehd_payable_usage(
 			cluster_id: &ClusterId,
 			ehd_id: EHDId,
-		) -> Result<(), Vec<OCWError>> {
+		) -> Result<(), OCWError> {
 			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 
-			// todo(yahortsaryk): infer the node deterministically
+			// todo(yahortsaryk): infer g-collectors deterministically
 			let g_collector = Self::get_g_collectors_nodes(cluster_id)
-				.map_err(|_| vec![OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id }])?
+				.map_err(|_| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?
 				.first()
 				.cloned()
-				.ok_or_else(|| {
-					vec![OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id }]
-				})?;
+				.ok_or_else(|| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?;
 
-			let ehd = Self::get_ehd_root(cluster_id, ehd_id.clone()).map_err(|e| vec![e])?;
+			let ehd = Self::get_ehd_root(cluster_id, ehd_id.clone())?;
 
 			let era =
-				Self::fetch_processed_ehd_era_from_collector(cluster_id, ehd_id.2, &g_collector)
-					.map_err(|e| vec![e])?
-					.expect("EHD era be found");
+				Self::fetch_processed_ehd_era_from_collector(cluster_id, ehd_id.2, &g_collector)?;
 
 			let pricing = T::ClusterProtocol::get_pricing_params(cluster_id)
-				.expect("Pricing params to be fetched");
+				.map_err(|_| OCWError::FailedToFetchProtocolParams { cluster_id: *cluster_id })?;
 
-			let fees =
-				T::ClusterProtocol::get_fees_params(cluster_id).expect("Fees params to be fetched");
+			let fees = T::ClusterProtocol::get_fees_params(cluster_id)
+				.map_err(|_| OCWError::FailedToFetchProtocolParams { cluster_id: *cluster_id })?;
+
+			let inspection_receipts = Self::fetch_inspection_receipts(cluster_id, ehd_id.clone())?;
+
+			let customers_usage_cutoff =
+				Self::calculate_customers_usage_cutoff(cluster_id, &inspection_receipts)?;
 
 			let (payers, cluster_costs) = Self::calculate_ehd_customers_charges(
 				&ehd.customers,
+				&customers_usage_cutoff,
 				&pricing,
-				era.time_start.expect("Processed era to contain start time"),
-				era.time_end.expect("Processed era to contain end time"),
+				era.time_start.ok_or(OCWError::FailedToParseTCAA)?,
+				era.time_end.ok_or(OCWError::FailedToParseTCAA)?,
 			)
-			.expect("Payers batch to be calculated");
+			.map_err(|_| OCWError::FailedToCalculatePayersBatches { era_id: ehd_id.2 })?;
 
 			let cluster_usage = ehd.get_cluster_usage();
 
@@ -1948,27 +2008,22 @@ pub mod pallet {
 				&cluster_usage,
 				&cluster_costs,
 			)
-			.expect("Payees batch to be calculated");
+			.map_err(|_| OCWError::FailedToCalculatePayeesBatches { era_id: ehd_id.2 })?;
 
 			let payers_batch_roots = Self::convert_to_batch_merkle_roots(
 				cluster_id,
 				Self::split_to_batches(&payers, batch_size.into()),
 				ehd_id.2,
-			)
-			.map_err(|err| vec![err])?;
+			)?;
 
 			let payees_batch_roots = Self::convert_to_batch_merkle_roots(
 				cluster_id,
 				Self::split_to_batches(&payees, batch_size.into()),
 				ehd_id.2,
-			)
-			.map_err(|err| vec![err])?;
+			)?;
 
-			let payers_root = Self::create_merkle_root(cluster_id, &payers_batch_roots, ehd_id.2)
-				.map_err(|err| vec![err])?;
-
-			let payees_root = Self::create_merkle_root(cluster_id, &payees_batch_roots, ehd_id.2)
-				.map_err(|err| vec![err])?;
+			let payers_root = Self::create_merkle_root(cluster_id, &payers_batch_roots, ehd_id.2)?;
+			let payees_root = Self::create_merkle_root(cluster_id, &payees_batch_roots, ehd_id.2)?;
 
 			Self::store_ehd_payable_usage(
 				cluster_id,
@@ -1993,7 +2048,8 @@ pub mod pallet {
 			{
 				Ok(ehd_paybale_usage)
 			} else {
-				Self::build_and_store_ehd_payable_usage(cluster_id, ehd_id.clone())?;
+				Self::build_and_store_ehd_payable_usage(cluster_id, ehd_id.clone())
+					.map_err(|e| [e])?;
 				if let Some(ehd_paybale_usage) = Self::fetch_ehd_payable_usage(cluster_id, ehd_id) {
 					Ok(ehd_paybale_usage)
 				} else {
@@ -2004,6 +2060,7 @@ pub mod pallet {
 
 		fn calculate_ehd_customers_charges(
 			customers: &Vec<aggregator_client::json::TraversedEHDCustomer>,
+			cutoff_usage: &BTreeMap<T::AccountId, BucketUsage>,
 			pricing: &ClusterPricingParams,
 			time_start: i64,
 			time_end: i64,
@@ -2016,6 +2073,10 @@ pub mod pallet {
 					let customer_costs = Self::get_customer_costs(
 						pricing,
 						&customer.consumed_usage,
+						cutoff_usage.get(
+							&T::AccountId::decode(&mut &customer_id.encode()[..])
+								.map_err(|_| ArithmeticError::Overflow)?,
+						),
 						time_start,
 						time_end,
 					)?;
@@ -2063,18 +2124,22 @@ pub mod pallet {
 		fn get_customer_costs(
 			pricing: &ClusterPricingParams,
 			consumed_usage: &aggregator_client::json::EHDUsage,
+			cutoff_usage: Option<&BucketUsage>,
 			time_start: i64,
 			time_end: i64,
 		) -> Result<CustomerCosts, ArithmeticError> {
 			#[allow(clippy::field_reassign_with_default)]
 			let mut customer_costs = CustomerCosts::default();
+			let no_cutoff = Default::default();
+			let cutoff = cutoff_usage.unwrap_or(&no_cutoff);
 
-			customer_costs.transfer = (|| -> Option<u128> {
-				(consumed_usage.transferred_bytes as u128)
-					.checked_mul(pricing.unit_per_mb_streamed)?
-					.checked_div(byte_unit::MEBIBYTE)
-			})()
-			.ok_or(ArithmeticError::Overflow)?;
+			customer_costs.transfer = (consumed_usage.transferred_bytes as u128)
+				.checked_sub(cutoff.transferred_bytes as u128)
+				.ok_or(ArithmeticError::Underflow)?
+				.checked_mul(pricing.unit_per_mb_streamed)
+				.ok_or(ArithmeticError::Overflow)?
+				.checked_div(byte_unit::MEBIBYTE)
+				.ok_or(ArithmeticError::Underflow)?;
 
 			// Calculate the duration of the period in seconds
 			let duration_seconds = time_end - time_start;
@@ -2082,18 +2147,23 @@ pub mod pallet {
 				Perquintill::from_rational(duration_seconds as u64, AVG_SECONDS_MONTH as u64);
 
 			customer_costs.storage = fraction_of_month *
-				(|| -> Option<u128> {
-					(consumed_usage.stored_bytes as u128)
-						.checked_mul(pricing.unit_per_mb_stored)?
-						.checked_div(byte_unit::MEBIBYTE)
-				})()
-				.ok_or(ArithmeticError::Overflow)?;
+				((consumed_usage.stored_bytes as u128)
+					.checked_sub(cutoff.stored_bytes as u128)
+					.ok_or(ArithmeticError::Underflow)?
+					.checked_mul(pricing.unit_per_mb_stored)
+					.ok_or(ArithmeticError::Overflow)?
+					.checked_div(byte_unit::MEBIBYTE)
+					.ok_or(ArithmeticError::Underflow)?);
 
 			customer_costs.gets = (consumed_usage.number_of_gets as u128)
+				.checked_sub(cutoff.number_of_gets as u128)
+				.ok_or(ArithmeticError::Underflow)?
 				.checked_mul(pricing.unit_per_get_request)
 				.ok_or(ArithmeticError::Overflow)?;
 
 			customer_costs.puts = (consumed_usage.number_of_puts as u128)
+				.checked_sub(cutoff.number_of_puts as u128)
+				.ok_or(ArithmeticError::Underflow)?
 				.checked_mul(pricing.unit_per_put_request)
 				.ok_or(ArithmeticError::Overflow)?;
 
@@ -2761,6 +2831,60 @@ pub mod pallet {
 				.cloned()
 		}
 
+		pub(crate) fn get_tcaa_bucket_usage(
+			cluster_id: &ClusterId,
+			collector_key: NodePubKey,
+			tcaa_id: DdcEra,
+			node_key: NodePubKey,
+			bucket_id: BucketId,
+		) -> Result<BucketUsage, OCWError> {
+			let challenge_res = Self::fetch_bucket_challenge_response(
+				cluster_id,
+				tcaa_id,
+				collector_key,
+				node_key,
+				bucket_id,
+				vec![1],
+			)?;
+
+			let tcaa_root =
+				challenge_res.proofs.first().ok_or(OCWError::FailedToFetchBucketChallenge)?;
+			let tcaa_usage = tcaa_root.usage.ok_or(OCWError::FailedToFetchBucketChallenge)?;
+
+			Ok(BucketUsage {
+				stored_bytes: tcaa_usage.stored,
+				transferred_bytes: tcaa_usage.delivered,
+				number_of_puts: tcaa_usage.puts,
+				number_of_gets: tcaa_usage.gets,
+			})
+		}
+
+		pub(crate) fn get_tcaa_node_usage(
+			cluster_id: &ClusterId,
+			collector_key: NodePubKey,
+			tcaa_id: DdcEra,
+			node_key: NodePubKey,
+		) -> Result<NodeUsage, OCWError> {
+			let challenge_res = Self::fetch_node_challenge_response(
+				cluster_id,
+				tcaa_id,
+				collector_key,
+				node_key,
+				vec![1],
+			)?;
+
+			let tcaa_root =
+				challenge_res.proofs.first().ok_or(OCWError::FailedToFetchNodeChallenge)?;
+			let tcaa_usage = tcaa_root.usage.ok_or(OCWError::FailedToFetchNodeChallenge)?;
+
+			Ok(NodeUsage {
+				stored_bytes: tcaa_usage.stored,
+				transferred_bytes: tcaa_usage.delivered,
+				number_of_puts: tcaa_usage.puts,
+				number_of_gets: tcaa_usage.gets,
+			})
+		}
+
 		pub(crate) fn get_ehd_id_for_payout(cluster_id: &ClusterId) -> Option<EHDId> {
 			match T::ClusterValidator::get_last_paid_era(cluster_id) {
 				Ok(last_paid_era_for_cluster) => {
@@ -3014,16 +3138,19 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			era: EhdEra,
 			g_collector: &(NodePubKey, StorageNodeParams),
-		) -> Result<Option<aggregator_client::json::EHDEra>, OCWError> {
+		) -> Result<aggregator_client::json::EHDEra, OCWError> {
 			let ehd_eras = Self::fetch_processed_ehd_eras_from_collector(
 				cluster_id,
 				vec![g_collector.clone()].as_slice(),
 			)?;
 
-			let era =
-				ehd_eras.iter().flat_map(|eras| eras.iter()).find(|ehd| ehd.id == era).cloned();
+			let era = ehd_eras
+				.iter()
+				.flat_map(|eras| eras.iter())
+				.find(|ehd| ehd.id == era)
+				.ok_or(OCWError::FailedToFetchPaymentEra)?;
 
-			Ok(era)
+			Ok(era.clone())
 		}
 
 		/// Verify whether leaf is part of tree
@@ -3426,6 +3553,85 @@ pub mod pallet {
 			Err(OCWError::FailedToFetchInspectionReceipt)
 		}
 
+		fn calculate_customers_usage_cutoff(
+			cluster_id: &ClusterId,
+			receipts_by_inspector: &BTreeMap<
+				String,
+				aggregator_client::json::GroupedInspectionReceipt,
+			>,
+		) -> Result<BTreeMap<T::AccountId, BucketUsage>, OCWError> {
+			let mut buckets_usage_cutoff: BTreeMap<(DdcEra, BucketId, NodePubKey), BucketUsage> =
+				BTreeMap::new();
+			let mut buckets_to_customers: BTreeMap<BucketId, T::AccountId> = BTreeMap::new();
+			let mut customers_usage_cutoff: BTreeMap<T::AccountId, BucketUsage> = BTreeMap::new();
+
+			for (_inspector_key, inspection_receipt) in receipts_by_inspector {
+				for unverified_branch in &inspection_receipt.buckets_inspection.unverified_branches
+				{
+					let collector_key = NodePubKey::try_from(unverified_branch.collector.clone())
+						.map_err(|_| OCWError::FailedToParseNodeKey {
+						node_key: unverified_branch.collector.clone(),
+					})?;
+					let (bucket_id, node_key) = match &unverified_branch.aggregate {
+						AggregateKey::BucketSubAggregateKey(bucket_id, key) => {
+							let node_key = NodePubKey::try_from(key.clone()).map_err(|_| {
+								OCWError::FailedToParseNodeKey { node_key: key.clone() }
+							})?;
+							(bucket_id, node_key)
+						},
+						_ => continue, // can happen only in case of a malformed response or bug
+					};
+
+					for (tcaa_id, _leafs) in &unverified_branch.leafs {
+						let tcaa_usage = Self::get_tcaa_bucket_usage(
+							cluster_id,
+							collector_key.clone(),
+							*tcaa_id,
+							node_key.clone(),
+							*bucket_id,
+						)?;
+
+						if !buckets_usage_cutoff.contains_key(&(
+							*tcaa_id,
+							*bucket_id,
+							node_key.clone(),
+						)) {
+							buckets_usage_cutoff
+								.insert((*tcaa_id, *bucket_id, node_key.clone()), tcaa_usage);
+							if !buckets_to_customers.contains_key(&bucket_id) {
+								let customer_id = T::BucketManager::get_bucket_owner_id(*bucket_id)
+									.map_err(|_| OCWError::FailedToFetchCustomerId {
+										bucket_id: *bucket_id,
+									})?;
+
+								buckets_to_customers.insert(*bucket_id, customer_id);
+							}
+						}
+					}
+				}
+			}
+
+			for ((_, bucket_id, _), bucket_usage) in buckets_usage_cutoff {
+				let customer_id = buckets_to_customers
+					.get(&bucket_id)
+					.ok_or(OCWError::FailedToFetchCustomerId { bucket_id })?;
+
+				match customers_usage_cutoff.get_mut(&customer_id) {
+					Some(total_usage) => {
+						total_usage.number_of_puts += bucket_usage.number_of_puts;
+						total_usage.number_of_gets += bucket_usage.number_of_gets;
+						total_usage.transferred_bytes += bucket_usage.transferred_bytes;
+						total_usage.stored_bytes += bucket_usage.stored_bytes;
+					},
+					None => {
+						customers_usage_cutoff.insert(customer_id.clone(), bucket_usage.clone());
+					},
+				}
+			}
+
+			Ok(customers_usage_cutoff)
+		}
+
 		/// Send Inspection Receipt.
 		///
 		/// Parameters:
@@ -3468,11 +3674,9 @@ pub mod pallet {
 			collector_key: NodePubKey,
 			node_key: NodePubKey,
 			tree_node_ids: Vec<u64>,
-		) -> Result<proto::ChallengeResponse, Vec<OCWError>> {
-			let collectors = Self::get_collectors_nodes(cluster_id).map_err(|_| {
-				log::error!("❌ Error retrieving collectors for cluster {:?}", cluster_id);
-				vec![OCWError::FailedToFetchCollectors { cluster_id: *cluster_id }]
-			})?;
+		) -> Result<proto::ChallengeResponse, OCWError> {
+			let collectors = Self::get_collectors_nodes(cluster_id)
+				.map_err(|_| OCWError::FailedToFetchCollectors { cluster_id: *cluster_id })?;
 
 			for (key, collector_params) in collectors {
 				if key != collector_key {
@@ -3505,7 +3709,7 @@ pub mod pallet {
 				}
 			}
 
-			Err(vec![OCWError::FailedToFetchNodeChallenge])
+			Err(OCWError::FailedToFetchNodeChallenge)
 		}
 
 		pub(crate) fn fetch_bucket_challenge_response(
@@ -3515,11 +3719,9 @@ pub mod pallet {
 			node_key: NodePubKey,
 			bucket_id: BucketId,
 			tree_node_ids: Vec<u64>,
-		) -> Result<proto::ChallengeResponse, Vec<OCWError>> {
-			let collectors = Self::get_collectors_nodes(cluster_id).map_err(|_| {
-				log::error!("❌ Error retrieving collectors for cluster {:?}", cluster_id);
-				vec![OCWError::FailedToFetchCollectors { cluster_id: *cluster_id }]
-			})?;
+		) -> Result<proto::ChallengeResponse, OCWError> {
+			let collectors = Self::get_collectors_nodes(cluster_id)
+				.map_err(|_| OCWError::FailedToFetchCollectors { cluster_id: *cluster_id })?;
 
 			for (key, collector_params) in collectors {
 				if key != collector_key {
@@ -3553,7 +3755,7 @@ pub mod pallet {
 				}
 			}
 
-			Err(vec![OCWError::FailedToFetchNodeChallenge])
+			Err(OCWError::FailedToFetchBucketChallenge)
 		}
 	}
 
