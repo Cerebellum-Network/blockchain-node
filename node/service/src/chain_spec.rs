@@ -7,8 +7,8 @@ use cere_runtime_common::constants::currency::DOLLARS as TEST_UNITS;
 #[cfg(feature = "cere-native")]
 use cere_runtime_common::constants::currency::DOLLARS;
 use ddc_primitives::sr25519::AuthorityId as DdcVerificationId;
+pub use ddc_primitives::{AccountId, Balance, Block, Signature};
 use jsonrpsee::core::__reexports::serde_json;
-pub use node_primitives::{AccountId, Balance, Block, Signature};
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;
 use sc_service::ChainType;
