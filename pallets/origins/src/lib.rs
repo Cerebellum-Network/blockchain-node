@@ -1,7 +1,7 @@
 //! Custom origins for governance interventions.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-
+#![allow(clippy::manual_inspect)]
 pub use pallet::*;
 
 #[frame_support::pallet]

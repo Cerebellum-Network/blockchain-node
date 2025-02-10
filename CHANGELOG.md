@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [7.3.0]
+
+- [C,D] Update to Polkadot-2409 crate version
+- [C,D] Hyperbridge Integration
+
 ## [7.2.0]
 
 - [C,D] DAC v5 Inspection + Payouts prototype
