@@ -1361,12 +1361,13 @@ pub mod pallet {
 								.first()
 								.ok_or([OCWError::FailedToFetchNodeChallenge])?;
 
-							let tcaa_leaves_count =
-								tcaa_root.usage.ok_or([OCWError::FailedToFetchNodeChallenge])?.puts
-									+ tcaa_root
-										.usage
-										.ok_or([OCWError::FailedToFetchNodeChallenge])?
-										.gets;
+							let tcaa_leaves_count = tcaa_root
+								.usage
+								.ok_or([OCWError::FailedToFetchNodeChallenge])?
+								.puts + tcaa_root
+								.usage
+								.ok_or([OCWError::FailedToFetchNodeChallenge])?
+								.gets;
 
 							let ids = get_leaves_ids(tcaa_leaves_count);
 							tcaa_leaves.insert(tcaa_id, ids);
@@ -2195,8 +2196,8 @@ pub mod pallet {
 			let fraction_of_month =
 				Perquintill::from_rational(duration_seconds as u64, AVG_SECONDS_MONTH as u64);
 
-			customer_costs.storage = fraction_of_month
-				* ((consumed_usage.stored_bytes as u128)
+			customer_costs.storage = fraction_of_month *
+				((consumed_usage.stored_bytes as u128)
 					.checked_sub(cutoff.stored_bytes as u128)
 					.ok_or(ArithmeticError::Underflow)?
 					.checked_mul(pricing.unit_per_mb_stored)
@@ -2346,8 +2347,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<(EHDId, BatchIndex)>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2)
-					== PayoutState::Initialized
+				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2) ==
+					PayoutState::Initialized
 				{
 					let era_payable_usage =
 						Self::fetch_ehd_payable_usage_or_retry(cluster_id, ehd_id.clone())?;
@@ -2388,8 +2389,8 @@ pub mod pallet {
 			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2)
-					== PayoutState::ChargingCustomers
+				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2) ==
+					PayoutState::ChargingCustomers
 				{
 					let era_payable_usage =
 						Self::fetch_ehd_payable_usage_or_retry(cluster_id, ehd_id.clone())?;
@@ -2472,9 +2473,9 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<EHDId>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2)
-					== PayoutState::ChargingCustomers
-					&& T::PayoutProcessor::is_customers_charging_finished(cluster_id, ehd_id.2)
+				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2) ==
+					PayoutState::ChargingCustomers &&
+					T::PayoutProcessor::is_customers_charging_finished(cluster_id, ehd_id.2)
 				{
 					return Ok(Some(ehd_id));
 				}
@@ -2486,8 +2487,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<(EHDId, BatchIndex)>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2)
-					== PayoutState::CustomersChargedWithFees
+				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2) ==
+					PayoutState::CustomersChargedWithFees
 				{
 					let ehd_payable_usage =
 						Self::fetch_ehd_payable_usage_or_retry(cluster_id, ehd_id.clone())?;
@@ -2529,8 +2530,8 @@ pub mod pallet {
 			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2)
-					== PayoutState::RewardingProviders
+				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2) ==
+					PayoutState::RewardingProviders
 				{
 					let era_payable_usage =
 						Self::fetch_ehd_payable_usage_or_retry(cluster_id, ehd_id.clone())?;
@@ -2614,9 +2615,9 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<EHDId>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2)
-					== PayoutState::RewardingProviders
-					&& T::PayoutProcessor::is_providers_rewarding_finished(cluster_id, ehd_id.2)
+				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2) ==
+					PayoutState::RewardingProviders &&
+					T::PayoutProcessor::is_providers_rewarding_finished(cluster_id, ehd_id.2)
 				{
 					return Ok(Some(ehd_id));
 				}
@@ -2628,8 +2629,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<EHDId>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2)
-					== PayoutState::ProvidersRewarded
+				if T::PayoutProcessor::get_payout_state(cluster_id, ehd_id.2) ==
+					PayoutState::ProvidersRewarded
 				{
 					return Ok(Some(ehd_id));
 				}
@@ -2866,12 +2867,11 @@ pub mod pallet {
 			for &leaf in leaves {
 				match mmr.push(leaf) {
 					Ok(pos) => leaves_with_position.push((pos, leaf)),
-					Err(_) => {
+					Err(_) =>
 						return Err(OCWError::FailedToCreateMerkleRoot {
 							cluster_id: *cluster_id,
 							era_id,
-						})
-					},
+						}),
 				}
 			}
 
@@ -3080,8 +3080,8 @@ pub mod pallet {
 					.flat_map(|eras| {
 						eras.iter()
 							.filter(|&ids| {
-								ids.id > last_validated_era_by_this_validator
-									&& ids.id > last_paid_era_for_cluster
+								ids.id > last_validated_era_by_this_validator &&
+									ids.id > last_paid_era_for_cluster
 							})
 							.cloned()
 					})
@@ -4997,9 +4997,8 @@ pub mod pallet {
 						merkle_tree_node_id,
 						levels,
 					),
-				AggregateKey::NodeAggregateKey(node_id) => {
-					client.traverse_node_aggregate(era_id, &node_id, merkle_tree_node_id, levels)
-				},
+				AggregateKey::NodeAggregateKey(node_id) =>
+					client.traverse_node_aggregate(era_id, &node_id, merkle_tree_node_id, levels),
 			}?;
 
 			Ok(response)
@@ -5029,9 +5028,8 @@ pub mod pallet {
 						&node_id,
 						merkle_tree_node_id,
 					),
-				AggregateKey::NodeAggregateKey(node_id) => {
-					client.challenge_node_aggregate(era_id, &node_id, merkle_tree_node_id)
-				},
+				AggregateKey::NodeAggregateKey(node_id) =>
+					client.challenge_node_aggregate(era_id, &node_id, merkle_tree_node_id),
 			}
 		}
 
