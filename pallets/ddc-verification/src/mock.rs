@@ -247,6 +247,8 @@ impl crate::Config for Test {
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 4;
 	type Currency = Balances;
 	const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool = false;
+	const DISABLE_PAYOUTS_CUTOFF: bool = false;
+	const DEBUG_MODE: bool = true;
 	type BucketsStorageUsageProvider = MockBucketValidator;
 	type NodesStorageUsageProvider = MockNodeValidator;
 	type ClusterProtocol = MockClusterProtocol;
@@ -254,7 +256,6 @@ impl crate::Config for Test {
 	type CustomerDepositor = MockCustomerDepositor;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ClusterCreator = MockClusterCreator;
-	#[cfg(feature = "runtime-benchmarks")]
 	type BucketManager = MockBucketManager;
 }
 
@@ -407,9 +408,7 @@ impl<T: Config> ClusterCreator<T, Balance> for MockClusterCreator {
 	}
 }
 
-#[cfg(feature = "runtime-benchmarks")]
 pub struct MockBucketManager;
-#[cfg(feature = "runtime-benchmarks")]
 impl<T: Config> BucketManager<T> for MockBucketManager {
 	fn get_bucket_owner_id(_bucket_id: BucketId) -> Result<T::AccountId, DispatchError> {
 		unimplemented!()
