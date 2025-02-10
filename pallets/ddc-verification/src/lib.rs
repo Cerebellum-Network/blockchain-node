@@ -2009,7 +2009,7 @@ pub mod pallet {
 				.map_err(|_| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?
 				.first()
 				.cloned()
-				.ok_or_else(|| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?;
+				.ok_or(OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?;
 
 			let ehd = Self::get_ehd_root(cluster_id, ehd_id.clone())?;
 
@@ -3623,7 +3623,7 @@ pub mod pallet {
 			let mut buckets_to_customers: BTreeMap<BucketId, T::AccountId> = BTreeMap::new();
 			let mut customers_usage_cutoff: BTreeMap<T::AccountId, BucketUsage> = BTreeMap::new();
 
-			for (_inspector_key, inspection_receipt) in receipts_by_inspector {
+			for inspection_receipt in receipts_by_inspector.values() {
 				for unverified_branch in &inspection_receipt.buckets_inspection.unverified_branches
 				{
 					let collector_key = NodePubKey::try_from(unverified_branch.collector.clone())
@@ -3640,7 +3640,7 @@ pub mod pallet {
 						_ => continue, // can happen only in case of a malformed response or bug
 					};
 
-					for (tcaa_id, _leafs) in &unverified_branch.leafs {
+					for tcaa_id in unverified_branch.leafs.keys() {
 						let tcaa_usage = Self::get_tcaa_bucket_usage(
 							cluster_id,
 							collector_key.clone(),
@@ -3649,6 +3649,7 @@ pub mod pallet {
 							*bucket_id,
 						)?;
 
+						#[allow(clippy::map_entry)]
 						if !buckets_usage_cutoff.contains_key(&(
 							*tcaa_id,
 							*bucket_id,
@@ -3656,7 +3657,7 @@ pub mod pallet {
 						)) {
 							buckets_usage_cutoff
 								.insert((*tcaa_id, *bucket_id, node_key.clone()), tcaa_usage);
-							if !buckets_to_customers.contains_key(&bucket_id) {
+							if !buckets_to_customers.contains_key(bucket_id) {
 								let customer_id = T::BucketManager::get_bucket_owner_id(*bucket_id)
 									.map_err(|_| OCWError::FailedToFetchCustomerId {
 										bucket_id: *bucket_id,
@@ -3674,7 +3675,7 @@ pub mod pallet {
 					.get(&bucket_id)
 					.ok_or(OCWError::FailedToFetchCustomerId { bucket_id })?;
 
-				match customers_usage_cutoff.get_mut(&customer_id) {
+				match customers_usage_cutoff.get_mut(customer_id) {
 					Some(total_usage) => {
 						total_usage.number_of_puts += bucket_usage.number_of_puts;
 						total_usage.number_of_gets += bucket_usage.number_of_gets;
@@ -3701,23 +3702,21 @@ pub mod pallet {
 			let mut nodes_to_providers: BTreeMap<NodePubKey, T::AccountId> = BTreeMap::new();
 			let mut providers_usage_cutoff: BTreeMap<T::AccountId, NodeUsage> = BTreeMap::new();
 
-			for (_inspector_key, inspection_receipt) in receipts_by_inspector {
+			for inspection_receipt in receipts_by_inspector.values() {
 				for unverified_branch in &inspection_receipt.nodes_inspection.unverified_branches {
 					let collector_key = NodePubKey::try_from(unverified_branch.collector.clone())
 						.map_err(|_| OCWError::FailedToParseNodeKey {
 						node_key: unverified_branch.collector.clone(),
 					})?;
 					let node_key = match &unverified_branch.aggregate {
-						AggregateKey::NodeAggregateKey(key) => {
-							let node_key = NodePubKey::try_from(key.clone()).map_err(|_| {
-								OCWError::FailedToParseNodeKey { node_key: key.clone() }
-							})?;
-							node_key
-						},
+						AggregateKey::NodeAggregateKey(key) => NodePubKey::try_from(key.clone())
+							.map_err(|_| OCWError::FailedToParseNodeKey {
+								node_key: key.clone(),
+							})?,
 						_ => continue, // can happen only in case of a malformed response or bug
 					};
 
-					for (tcaa_id, _leafs) in &unverified_branch.leafs {
+					for tcaa_id in unverified_branch.leafs.keys() {
 						let tcaa_usage = Self::get_tcaa_node_usage(
 							cluster_id,
 							collector_key.clone(),
@@ -3725,6 +3724,7 @@ pub mod pallet {
 							node_key.clone(),
 						)?;
 
+						#[allow(clippy::map_entry)]
 						if !nodes_usage_cutoff.contains_key(&(*tcaa_id, node_key.clone())) {
 							nodes_usage_cutoff.insert((*tcaa_id, node_key.clone()), tcaa_usage);
 							if !nodes_to_providers.contains_key(&node_key) {
@@ -3745,7 +3745,7 @@ pub mod pallet {
 					.get(&node_key)
 					.ok_or(OCWError::FailedToFetchProviderId { node_key: node_key.clone() })?;
 
-				match providers_usage_cutoff.get_mut(&provider_id) {
+				match providers_usage_cutoff.get_mut(provider_id) {
 					Some(total_usage) => {
 						total_usage.number_of_puts += node_usage.number_of_puts;
 						total_usage.number_of_gets += node_usage.number_of_gets;
