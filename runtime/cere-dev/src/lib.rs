@@ -1349,6 +1349,8 @@ impl pallet_ddc_verification::Config for Runtime {
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
 	type Currency = Balances;
 	const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool = false;
+	const DISABLE_PAYOUTS_CUTOFF: bool = true;
+	const DEBUG_MODE: bool = true;
 	type BucketsStorageUsageProvider = DdcCustomers;
 	type NodesStorageUsageProvider = DdcNodes;
 	type ClusterProtocol = DdcClusters;
@@ -1356,7 +1358,6 @@ impl pallet_ddc_verification::Config for Runtime {
 	type CustomerDepositor = DdcCustomers;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ClusterCreator = DdcClusters;
-	#[cfg(feature = "runtime-benchmarks")]
 	type BucketManager = DdcCustomers;
 }
 
