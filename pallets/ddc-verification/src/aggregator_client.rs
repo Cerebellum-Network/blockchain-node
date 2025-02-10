@@ -1043,11 +1043,11 @@ pub(crate) mod json {
 		pub inspector: String,
 		pub signature: String,
 		#[serde(rename = "nodesInspection")]
-		pub nodes_inspection: Option<InspectionResult>, /* todo(yahortsaryk): remove optional
-		                                                 * after fix in DDC api */
+		pub nodes_inspection: InspectionResult, /* todo(yahortsaryk): remove optional
+		                                         * after fix in DDC api */
 		#[serde(rename = "bucketsInspection")]
-		pub buckets_inspection: Option<InspectionResult>, /* todo(yahortsaryk): remove optional
-		                                                   * after fix in DDC api */
+		pub buckets_inspection: InspectionResult, /* todo(yahortsaryk): remove optional
+		                                           * after fix in DDC api */
 	}
 
 	#[derive(Debug, Serialize, Deserialize, Clone, Hash, Encode, Decode)]
