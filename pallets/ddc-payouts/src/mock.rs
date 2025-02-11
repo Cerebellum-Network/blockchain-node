@@ -9,8 +9,8 @@ use ddc_primitives::{
 		bucket::BucketManager, cluster::ClusterProtocol, customer::CustomerCharger,
 		node::NodeManager, pallet::PalletVisitor, ClusterQuery, ValidatorVisitor,
 	},
-	ClusterBondingParams, ClusterFeesParams, ClusterPricingParams, ClusterProtocolParams,
-	ClusterStatus, NodeParams, NodePubKey, NodeType, DOLLARS,
+	BucketUsage, ClusterBondingParams, ClusterFeesParams, ClusterPricingParams,
+	ClusterProtocolParams, ClusterStatus, NodeParams, NodePubKey, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -270,9 +270,9 @@ impl<T: Config> CustomerCharger<T> for TestCustomerCharger
 where
 	<T as frame_system::Config>::AccountId: From<AccountId>,
 {
-	fn charge_bucket_owner(
+	fn charge_customer(
 		content_owner: T::AccountId,
-		billing_vault: T::AccountId,
+		payout_vault: T::AccountId,
 		amount: u128,
 	) -> Result<u128, DispatchError> {
 		let mut amount_to_charge = amount;
@@ -303,7 +303,7 @@ where
 		let charge = amount_to_charge.saturated_into::<BalanceOf<T>>();
 		<T as pallet::Config>::Currency::transfer(
 			&content_owner,
-			&billing_vault,
+			&payout_vault,
 			charge,
 			ExistenceRequirement::AllowDeath,
 		)?;

@@ -3,9 +3,9 @@ use sp_runtime::DispatchError;
 use crate::BucketId;
 
 pub trait CustomerCharger<T: frame_system::Config> {
-	fn charge_bucket_owner(
+	fn charge_customer(
 		content_owner: T::AccountId,
-		billing_vault: T::AccountId,
+		payout_vault: T::AccountId,
 		amount: u128,
 	) -> Result<u128, DispatchError>;
 }

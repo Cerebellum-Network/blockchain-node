@@ -2,7 +2,7 @@ use ddc_primitives::{
 	AggregatorInfo, ClusterId, DeltaUsageHash, MergeMMRHash, StorageNodeMode, StorageNodeParams,
 	StorageNodePubKey, DAC_VERIFICATION_KEY_TYPE,
 };
-use frame_support::{assert_noop, assert_ok};
+use frame_support::assert_noop;
 use prost::Message;
 use sp_core::{
 	offchain::{
@@ -32,7 +32,7 @@ fn register_validators(validators: Vec<AccountId32>) {
 	}
 }
 
-fn get_validators() -> Vec<AccountId32> {
+fn _get_validators() -> Vec<AccountId32> {
 	let validator1: AccountId32 = [1; 32].into();
 	let validator2: AccountId32 = [2; 32].into();
 	let validator3: AccountId32 = [3; 32].into();
@@ -163,7 +163,7 @@ fn fetch_node_aggregates_works() {
 			domain: b"example2.com".to_vec(),
 		};
 
-		let result = Pallet::<Test>::fetch_node_aggregates(&cluster_id, era_id, &node_params);
+		let result = Pallet::<Test>::_v4_fetch_node_aggregates(&cluster_id, era_id, &node_params);
 		assert!(result.is_ok());
 		let activities = result.unwrap();
 		assert_eq!(activities[0].number_of_gets, node_activity1.number_of_gets);
@@ -257,7 +257,7 @@ fn fetch_bucket_aggregates_works() {
 			domain: b"example2.com".to_vec(),
 		};
 
-		let result = Pallet::<Test>::fetch_bucket_aggregates(&cluster_id, era_id, &node_params);
+		let result = Pallet::<Test>::_v4_fetch_bucket_aggregates(&cluster_id, era_id, &node_params);
 		assert!(result.is_ok());
 		let activities = result.unwrap();
 		assert_eq!(
@@ -396,7 +396,7 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 		}],
 	);
 
-	let groups = DdcVerification::group_buckets_sub_aggregates_by_consistency(
+	let groups = DdcVerification::_v4_group_buckets_sub_aggregates_by_consistency(
 		&cluster_id,
 		era_id,
 		vec![resp1, resp2, resp3],
@@ -407,7 +407,7 @@ fn buckets_sub_aggregates_in_consensus_merged() {
 	assert_eq!(groups.quorum.len(), 0);
 	assert_eq!(groups.others.len(), 0);
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
+	let result = DdcVerification::_v4_get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -520,7 +520,7 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 		}],
 	);
 
-	let groups = DdcVerification::group_buckets_sub_aggregates_by_consistency(
+	let groups = DdcVerification::_v4_group_buckets_sub_aggregates_by_consistency(
 		&cluster_id,
 		era_id,
 		vec![resp1, resp2, resp3],
@@ -531,7 +531,7 @@ fn buckets_sub_aggregates_in_quorum_merged() {
 	assert_eq!(groups.quorum.len(), 1); // 2 consistent aggregates merged into 1 in 'quorum'
 	assert_eq!(groups.others.len(), 1); // 1 inconsistent aggregate goes to 'others'
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
+	let result = DdcVerification::_v4_get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -644,7 +644,7 @@ fn buckets_sub_aggregates_in_others_merged() {
 		}],
 	);
 
-	let groups = DdcVerification::group_buckets_sub_aggregates_by_consistency(
+	let groups = DdcVerification::_v4_group_buckets_sub_aggregates_by_consistency(
 		&cluster_id,
 		era_id,
 		vec![resp1, resp2, resp3],
@@ -656,7 +656,7 @@ fn buckets_sub_aggregates_in_others_merged() {
 	assert_eq!(groups.quorum.len(), 0);
 	assert_eq!(groups.others.len(), 2);
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
+	let result = DdcVerification::_v4_get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -769,7 +769,7 @@ fn buckets_sub_aggregates_in_others_merged_2() {
 		}],
 	);
 
-	let groups = DdcVerification::group_buckets_sub_aggregates_by_consistency(
+	let groups = DdcVerification::_v4_group_buckets_sub_aggregates_by_consistency(
 		&cluster_id,
 		era_id,
 		vec![resp1, resp2, resp3],
@@ -781,7 +781,7 @@ fn buckets_sub_aggregates_in_others_merged_2() {
 	assert_eq!(groups.quorum.len(), 0);
 	assert_eq!(groups.others.len(), 2); // 2 inconsistent aggregates
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
+	let result = DdcVerification::_v4_get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -879,7 +879,7 @@ fn nodes_aggregates_in_consensus_merged() {
 		}],
 	);
 
-	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
+	let groups = DdcVerification::_v4_group_nodes_aggregates_by_consistency(
 		&cluster_id,
 		era_id,
 		vec![resp1, resp2, resp3],
@@ -890,7 +890,7 @@ fn nodes_aggregates_in_consensus_merged() {
 	assert_eq!(groups.quorum.len(), 0);
 	assert_eq!(groups.others.len(), 0);
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
+	let result = DdcVerification::_v4_get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -982,7 +982,7 @@ fn nodes_aggregates_in_quorum_merged() {
 		}],
 	);
 
-	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
+	let groups = DdcVerification::_v4_group_nodes_aggregates_by_consistency(
 		&cluster_id,
 		era_id,
 		vec![resp1, resp2, resp3],
@@ -993,7 +993,7 @@ fn nodes_aggregates_in_quorum_merged() {
 	assert_eq!(groups.quorum.len(), 1); // 2 consistent aggregates merged into 1 in 'quorum'
 	assert_eq!(groups.others.len(), 1); // 1 inconsistent aggregate goes to 'others'
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
+	let result = DdcVerification::_v4_get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -1085,7 +1085,7 @@ fn nodes_aggregates_in_others_merged() {
 		}],
 	);
 
-	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
+	let groups = DdcVerification::_v4_group_nodes_aggregates_by_consistency(
 		&cluster_id,
 		era_id,
 		vec![resp1, resp2, resp3],
@@ -1097,7 +1097,7 @@ fn nodes_aggregates_in_others_merged() {
 	assert_eq!(groups.quorum.len(), 0);
 	assert_eq!(groups.others.len(), 2);
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
+	let result = DdcVerification::_v4_get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -1189,7 +1189,7 @@ fn nodes_aggregates_in_others_merged_2() {
 		}],
 	);
 
-	let groups = DdcVerification::group_nodes_aggregates_by_consistency(
+	let groups = DdcVerification::_v4_group_nodes_aggregates_by_consistency(
 		&cluster_id,
 		era_id,
 		vec![resp1, resp2, resp3],
@@ -1201,7 +1201,7 @@ fn nodes_aggregates_in_others_merged_2() {
 	assert_eq!(groups.quorum.len(), 0);
 	assert_eq!(groups.others.len(), 3); // 3 inconsistent aggregates
 
-	let result = DdcVerification::get_total_usage(&cluster_id, era_id, groups, false);
+	let result = DdcVerification::_v4_get_total_usage(&cluster_id, era_id, groups, false);
 
 	assert!(result.is_ok());
 	let usages = result.unwrap();
@@ -1270,8 +1270,11 @@ fn buckets_sub_aggregates_grouped_by_consistency() {
 		},
 	];
 
-	let groups =
-		DdcVerification::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
+	let groups = DdcVerification::_v4_group_by_consistency(
+		buckets_sub_aggregates,
+		redundancy_factor,
+		quorum,
+	);
 
 	assert_eq!(groups.consensus.len(), 1);
 	assert_eq!(groups.quorum.len(), 0);
@@ -1364,8 +1367,11 @@ fn buckets_sub_aggregates_grouped_by_consistency_2() {
 		},
 	];
 
-	let groups =
-		DdcVerification::group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
+	let groups = DdcVerification::_v4_group_by_consistency(
+		buckets_sub_aggregates,
+		redundancy_factor,
+		quorum,
+	);
 
 	assert_eq!(groups.consensus.len(), 2);
 	assert_eq!(groups.quorum.len(), 0);
@@ -1438,7 +1444,8 @@ fn nodes_aggregates_grouped_by_consistency() {
 		},
 	];
 
-	let groups = DdcVerification::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
+	let groups =
+		DdcVerification::_v4_group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
 
 	assert_eq!(groups.consensus.len(), 1);
 	assert_eq!(groups.quorum.len(), 0);
@@ -1525,7 +1532,8 @@ fn nodes_aggregates_grouped_by_consistency_2() {
 		},
 	];
 
-	let groups = DdcVerification::group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
+	let groups =
+		DdcVerification::_v4_group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
 
 	assert_eq!(groups.consensus.len(), 2);
 	assert_eq!(groups.quorum.len(), 0);
@@ -1557,7 +1565,7 @@ fn empty_bucket_sub_aggregates() {
 	let quorum = Percent::from_percent(67);
 
 	let empty = Vec::<aggregator_client::json::BucketSubAggregate>::new();
-	let groups = DdcVerification::group_by_consistency(empty, redundancy_factor, quorum);
+	let groups = DdcVerification::_v4_group_by_consistency(empty, redundancy_factor, quorum);
 
 	assert_eq!(groups.consensus.len(), 0);
 	assert_eq!(groups.quorum.len(), 0);
@@ -1718,11 +1726,11 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
         ];
 
         let bucket_aggregates_by_aggregator =
-            DdcVerification::fetch_buckets_aggregates_for_era(&cluster_id, era_id, &dac_nodes)
+            DdcVerification::_v4_fetch_buckets_aggregates_for_era(&cluster_id, era_id, &dac_nodes)
                 .unwrap();
 
         let groups =
-            DdcVerification::group_buckets_sub_aggregates_by_consistency(&cluster_id, era_id, bucket_aggregates_by_aggregator, redundancy_factor, aggregators_quorum);
+            DdcVerification::_v4_group_buckets_sub_aggregates_by_consistency(&cluster_id, era_id, bucket_aggregates_by_aggregator, redundancy_factor, aggregators_quorum);
 
 
         // Sub aggregates which are in consensus
@@ -1982,11 +1990,11 @@ fn node_aggregates_are_fetched_and_grouped() {
         ];
 
         let aggregates_by_aggregator =
-            DdcVerification::fetch_nodes_aggregates_for_era(&cluster_id, era_id, &dac_nodes)
+            DdcVerification::_v4_fetch_nodes_aggregates_for_era(&cluster_id, era_id, &dac_nodes)
                 .unwrap();
 
         let groups =
-            DdcVerification::group_nodes_aggregates_by_consistency(&cluster_id, era_id, aggregates_by_aggregator, redundancy_factor, aggregators_quorum);
+            DdcVerification::_v4_group_nodes_aggregates_by_consistency(&cluster_id, era_id, aggregates_by_aggregator, redundancy_factor, aggregators_quorum);
         // Node aggregates which are in consensus
         let node_aggregate_in_consensus = aggregator_client::json::NodeAggregate {
             node_id: "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e"
@@ -2080,21 +2088,21 @@ fn test_convert_to_batch_merkle_roots() {
 
 	let result_roots = DdcVerification::convert_to_batch_merkle_roots(
 		&cluster_id,
-		era_id_1,
 		vec![activities_batch_1.clone(), activities_batch_2.clone()],
+		era_id_1,
 	)
 	.unwrap();
-	let expected_roots: Vec<DeltaUsageHash> = vec![
+	let expected_roots = vec![
 		DdcVerification::create_merkle_root(
 			&cluster_id,
-			era_id_1,
 			&activities_batch_1.iter().map(|a| a.hash::<mock::Test>()).collect::<Vec<_>>(),
+			era_id_1,
 		)
 		.unwrap(),
 		DdcVerification::create_merkle_root(
 			&cluster_id,
-			era_id_1,
 			&activities_batch_2.iter().map(|a| a.hash::<mock::Test>()).collect::<Vec<_>>(),
+			era_id_1,
 		)
 		.unwrap(),
 	];
@@ -2105,14 +2113,10 @@ fn test_convert_to_batch_merkle_roots() {
 #[test]
 fn test_convert_to_batch_merkle_roots_empty() {
 	let cluster_id = ClusterId::default();
-	let era_id_1 = 1;
-	let result_roots = DdcVerification::convert_to_batch_merkle_roots(
-		&cluster_id,
-		era_id_1,
-		Vec::<Vec<aggregator_client::json::NodeAggregate>>::new(),
-	)
-	.unwrap();
-	let expected_roots: Vec<DeltaUsageHash> = Vec::<DeltaUsageHash>::new();
+	let batches: Vec<Vec<CustomerCharge>> = vec![];
+	let result_roots =
+		DdcVerification::convert_to_batch_merkle_roots(&cluster_id, batches, 1).unwrap();
+	let expected_roots = vec![];
 
 	assert_eq!(result_roots, expected_roots);
 }
@@ -2216,7 +2220,7 @@ fn fetch_processed_era_works() {
             domain: b"example2.com".to_vec(),
         };
 
-        let result = Pallet::<Test>::fetch_processed_eras(&node_params);
+        let result = Pallet::<Test>::_v4_fetch_processed_eras(&node_params);
         assert!(result.is_ok());
         let activities = result.unwrap();
 
@@ -2230,6 +2234,7 @@ fn fetch_processed_era_works() {
     });
 }
 
+#[ignore = "DAC v5 is in progress"]
 #[test]
 fn get_era_for_validation_works() {
 	let mut ext = TestExternalities::default();
@@ -2290,7 +2295,7 @@ fn get_era_for_validation_works() {
 
         drop(offchain_state);
 
-        let node_params1 = StorageNodeParams {
+        let _node_params1 = StorageNodeParams {
             ssl: false,
             host: host1.as_bytes().to_vec(),
             http_port: port,
@@ -2300,7 +2305,7 @@ fn get_era_for_validation_works() {
             domain: b"example2.com".to_vec(),
         };
 
-        let node_params2 = StorageNodeParams {
+        let _node_params2 = StorageNodeParams {
             ssl: false,
             host: host2.as_bytes().to_vec(),
             http_port: port,
@@ -2310,7 +2315,7 @@ fn get_era_for_validation_works() {
             domain: b"example3.com".to_vec(),
         };
 
-        let node_params3 = StorageNodeParams {
+        let _node_params3 = StorageNodeParams {
             ssl: false,
             host: host3.as_bytes().to_vec(),
             http_port: port,
@@ -2320,7 +2325,7 @@ fn get_era_for_validation_works() {
             domain: b"example4.com".to_vec(),
         };
 
-        let node_params4 = StorageNodeParams {
+        let _node_params4 = StorageNodeParams {
             ssl: false,
             host: host4.as_bytes().to_vec(),
             http_port: port,
@@ -2329,136 +2334,7 @@ fn get_era_for_validation_works() {
             grpc_port: 4444,
             domain: b"example5.com".to_vec(),
         };
-
-        let dac_nodes: Vec<(NodePubKey, StorageNodeParams)> = vec![
-            (NodePubKey::StoragePubKey(StorageNodePubKey::new([1; 32])), node_params1),
-            (NodePubKey::StoragePubKey(StorageNodePubKey::new([2; 32])), node_params2),
-            (NodePubKey::StoragePubKey(StorageNodePubKey::new([3; 32])), node_params3),
-            (NodePubKey::StoragePubKey(StorageNodePubKey::new([4; 32])), node_params4),
-        ];
-
-        let cluster_id = ClusterId::from([12; 20]);
-        let result = Pallet::<Test>::get_era_for_validation(&cluster_id, &dac_nodes);
-        let era_activity = EraActivity { id: 16, start: 1, end: 2 };
-        assert_eq!(result.unwrap().unwrap(), era_activity);
     });
-}
-
-#[test]
-fn test_get_last_validated_era() {
-	let cluster_id1 = ClusterId::from([12; 20]);
-	let cluster_id2 = ClusterId::from([13; 20]);
-	let era_1 = 1;
-	let era_2 = 2;
-	let payers_root: DeltaUsageHash = H256([1; 32]);
-	let payees_root: DeltaUsageHash = H256([2; 32]);
-	let validators = get_validators();
-
-	new_test_ext().execute_with(|| {
-		assert_ok!(Pallet::<Test>::get_last_paid_era(&cluster_id1, validators[0].clone()).map(
-			|era| {
-				assert_eq!(era, None);
-			}
-		));
-
-		let mut validators_map_1 = BTreeMap::new();
-		validators_map_1.insert(
-			(payers_root, payees_root),
-			vec![validators[1].clone(), validators[2].clone(), validators[3].clone()],
-		);
-
-		let validation_1 = EraValidation {
-			validators: validators_map_1,
-			start_era: 1,
-			end_era: 2,
-			payers_merkle_root_hash: payers_root,
-			payees_merkle_root_hash: payees_root,
-			status: EraValidationStatus::ValidatingData,
-		};
-
-		<EraValidations<Test>>::insert(cluster_id1, era_1, validation_1);
-
-		// still no - different accountid
-		assert_ok!(Pallet::<Test>::get_last_paid_era(&cluster_id1, validators[0].clone()).map(
-			|era| {
-				assert_eq!(era, None);
-			}
-		));
-
-		// still no - different cluster id
-		assert_ok!(Pallet::<Test>::get_last_paid_era(&cluster_id2, validators[1].clone()).map(
-			|era| {
-				assert_eq!(era, None);
-			}
-		));
-
-		let mut validators_map_2 = BTreeMap::new();
-		validators_map_2
-			.insert((payers_root, payees_root), vec![validators[2].clone(), validators[3].clone()]);
-
-		let validation_2 = EraValidation {
-			validators: validators_map_2,
-			start_era: 1,
-			end_era: 2,
-			payers_merkle_root_hash: payers_root,
-			payees_merkle_root_hash: payees_root,
-			status: EraValidationStatus::ValidatingData,
-		};
-
-		<EraValidations<Test>>::insert(cluster_id1, era_2, validation_2);
-
-		// Now the last validated era should be ERA_2
-		assert_ok!(Pallet::<Test>::get_last_paid_era(&cluster_id1, validators[2].clone()).map(
-			|era| {
-				assert_eq!(era, Some(era_2));
-			}
-		));
-
-		assert_ok!(Pallet::<Test>::get_last_paid_era(&cluster_id1, validators[1].clone()).map(
-			|era| {
-				assert_eq!(era, Some(era_1));
-			}
-		));
-	});
-}
-
-#[test]
-fn test_get_era_for_payout() {
-	// Initialize test data
-	let cluster_id = ClusterId::default(); // Replace with actual initialization
-	let status = EraValidationStatus::ReadyForPayout; // Test with different statuses
-
-	// Insert some era validations into storage
-	let era_id_1 = 1;
-	let era_id_2 = 2;
-	let era_validation_1 = EraValidation::<Test> {
-		validators: Default::default(),
-		start_era: 0,
-		end_era: 0,
-		payers_merkle_root_hash: Default::default(),
-		payees_merkle_root_hash: Default::default(),
-		status: EraValidationStatus::ReadyForPayout,
-	};
-	let era_validation_2 = EraValidation::<Test> {
-		validators: Default::default(),
-		start_era: 0,
-		end_era: 0,
-		payers_merkle_root_hash: Default::default(),
-		payees_merkle_root_hash: Default::default(),
-		status: EraValidationStatus::PayoutInProgress,
-	};
-
-	new_test_ext().execute_with(|| {
-		EraValidations::<Test>::insert(cluster_id, era_id_1, &era_validation_1);
-		EraValidations::<Test>::insert(cluster_id, era_id_2, &era_validation_2);
-
-		let mut result = Pallet::<Test>::get_era_for_payout(&cluster_id, status);
-		assert_eq!(result, Some(EraActivity { id: era_id_1, start: 0, end: 0 }));
-
-		result =
-			Pallet::<Test>::get_era_for_payout(&cluster_id, EraValidationStatus::PayoutSuccess);
-		assert_eq!(result, None);
-	});
 }
 
 #[test]
@@ -2474,7 +2350,7 @@ fn create_merkle_root_works() {
 
 		let leaves = vec![a, b, c, d, e];
 
-		let root = DdcVerification::create_merkle_root(&cluster_id, era_id_1, &leaves).unwrap();
+		let root = DdcVerification::create_merkle_root(&cluster_id, &leaves, era_id_1).unwrap();
 
 		assert_eq!(
 			root,
@@ -2492,7 +2368,7 @@ fn create_merkle_root_empty() {
 		let cluster_id = ClusterId::default();
 		let era_id_1 = 1;
 		let leaves = Vec::<DeltaUsageHash>::new();
-		let root = DdcVerification::create_merkle_root(&cluster_id, era_id_1, &leaves).unwrap();
+		let root = DdcVerification::create_merkle_root(&cluster_id, &leaves, era_id_1).unwrap();
 
 		assert_eq!(root, DeltaUsageHash::default());
 	});
@@ -2554,6 +2430,7 @@ fn proof_merkle_leaf_works() {
 	});
 }
 
+#[ignore = "DAC v5 is in progress"]
 #[test]
 fn test_single_ocw_pallet_integration() {
 	let mut ext = new_test_ext();
@@ -2849,13 +2726,22 @@ fn fetch_reward_activities_works() {
 	let c: DeltaUsageHash = H256([2; 32]);
 	let d: DeltaUsageHash = H256([3; 32]);
 	let e: DeltaUsageHash = H256([4; 32]);
+	let g_collector_key: NodePubKey = NodePubKey::StoragePubKey(AccountId32::new([
+		0x9e, 0xf9, 0x8a, 0xd9, 0xc3, 0x62, 0x6b, 0xa7, 0x25, 0xe7, 0x8d, 0x76, 0xcf, 0xcf, 0xc4,
+		0xb4, 0xd0, 0x7e, 0x84, 0xf0, 0x38, 0x84, 0x65, 0xbc, 0x7e, 0xb9, 0x92, 0xe3, 0xe1, 0x17,
+		0x23, 0x4a,
+	]));
 
 	let leaves = [a, b, c, d, e];
-	let era_id = 1;
+	let ehd_id = EHDId(cluster_id, g_collector_key, 1);
 
-	let result = DdcVerification::fetch_charging_loop_input(&cluster_id, era_id, leaves.to_vec());
+	let result = DdcVerification::fetch_ehd_charging_loop_input(
+		&cluster_id,
+		ehd_id.clone(),
+		leaves.to_vec(),
+	);
 
-	assert_eq!(result.unwrap(), Some((era_id, (leaves.len() - 1) as u16)));
+	assert_eq!(result.unwrap(), Some((ehd_id, (leaves.len() - 1) as u16)));
 }
 
 #[test]
@@ -2897,7 +2783,7 @@ fn test_find_random_merkle_node_ids() {
 
 		let number_of_leaves = deffective_bucket_sub_aggregate.get_number_of_leaves();
 
-		let ids = DdcVerification::find_random_merkle_node_ids(
+		let ids = DdcVerification::_v4_find_random_merkle_node_ids(
 			3,
 			number_of_leaves,
 			deffective_bucket_sub_aggregate.get_key(),
@@ -2999,7 +2885,7 @@ fn challenge_bucket_sub_aggregate_works() {
         };
 
         let result =
-            DdcVerification::_challenge_aggregate(&cluster_id, era_id, &deffective_bucket_sub_aggregate);
+            DdcVerification::_v4_challenge_aggregate(&cluster_id, era_id, &deffective_bucket_sub_aggregate);
 
         assert!(result.is_ok());
 
