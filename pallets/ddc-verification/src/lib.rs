@@ -3596,8 +3596,7 @@ pub mod pallet {
 		fn fetch_inspection_receipts(
 			cluster_id: &ClusterId,
 			ehd_id: EHDId,
-		) -> Result<BTreeMap<String, aggregator_client::json::GroupedInspectionReceipt>, OCWError>
-		{
+		) -> Result<BTreeMap<String, aggregator_client::json::GroupedInspectionReceipt>, OCWError> {
 			// todo(yahortsaryk): infer the node deterministically
 			let g_collector = Self::get_g_collectors_nodes(cluster_id)
 				.map_err(|_| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?
