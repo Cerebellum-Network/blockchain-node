@@ -7,9 +7,10 @@
 
 use std::sync::Arc;
 
+use ddc_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Nonce};
 use jsonrpsee::RpcModule;
-use node_primitives::{AccountId, Balance, Block, BlockNumber, Hash, Nonce};
-use sc_client_api::AuxStore;
+use pallet_ismp_rpc::{IsmpApiServer, IsmpRpcHandler};
+use sc_client_api::{AuxStore, BlockBackend, ProofProvider};
 use sc_consensus_grandpa::{
 	FinalityProofProvider, GrandpaJustificationStream, SharedAuthoritySet, SharedVoterState,
 };
@@ -21,6 +22,7 @@ use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_consensus::SelectChain;
 use sp_consensus_babe::BabeApi;
+use sp_core::H256;
 use sp_keystore::KeystorePtr;
 
 /// Extra dependencies for BABE.
@@ -58,12 +60,14 @@ pub struct FullDeps<C, P, SC, B> {
 	pub babe: BabeDeps,
 	/// GRANDPA specific dependencies.
 	pub grandpa: GrandpaDeps<B>,
+	/// Backend used by the node.
+	pub backend: Arc<B>,
 }
 
 /// Instantiate all full RPC extensions.
 pub fn create_full<C, P, SC, B>(
 	deps: FullDeps<C, P, SC, B>,
-	backend: Arc<B>,
+	_backend: Arc<B>,
 ) -> Result<RpcModule<()>, Box<dyn std::error::Error + Send + Sync>>
 where
 	C: ProvideRuntimeApi<Block>
@@ -74,10 +78,13 @@ where
 		+ Sync
 		+ Send
 		+ 'static,
+	C: BlockBackend<Block>,
+	C: ProofProvider<Block>,
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: BabeApi<Block>,
 	C::Api: BlockBuilder<Block>,
+	C::Api: pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>,
 	P: TransactionPool + 'static,
 	SC: SelectChain<Block> + 'static,
 	B: sc_client_api::Backend<Block> + Send + Sync + 'static,
@@ -92,7 +99,7 @@ where
 	use substrate_state_trie_migration_rpc::StateMigrationApiServer;
 
 	let mut io = RpcModule::new(());
-	let FullDeps { client, pool, select_chain, chain_spec, babe, grandpa, .. } = deps;
+	let FullDeps { client, pool, select_chain, chain_spec, babe, grandpa, backend } = deps;
 
 	let BabeDeps { babe_worker_handle, keystore } = babe;
 	let GrandpaDeps {
@@ -128,9 +135,11 @@ where
 	)?;
 
 	io.merge(
-		substrate_state_trie_migration_rpc::StateMigration::new(client.clone(), backend).into_rpc(),
+		substrate_state_trie_migration_rpc::StateMigration::new(client.clone(), backend.clone())
+			.into_rpc(),
 	)?;
-	io.merge(Dev::new(client).into_rpc())?;
+	io.merge(Dev::new(client.clone()).into_rpc())?;
+	io.merge(IsmpRpcHandler::new(client, backend)?.into_rpc())?;
 
 	Ok(io)
 }

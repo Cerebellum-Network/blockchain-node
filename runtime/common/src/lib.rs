@@ -3,7 +3,7 @@
 pub mod constants;
 pub mod migrations;
 
-use node_primitives::Balance;
+use ddc_primitives::Balance;
 
 /// The type used for currency conversion.
 ///
