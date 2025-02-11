@@ -43,6 +43,7 @@ sp-transaction-pool = { workspace = true, default-features = true }
 cere-dev-runtime = { workspace = true, optional = true }
 cere-runtime = { workspace = true, optional = true }
 
+# Hyperbridge
 pallet-ismp = { workspace = true, default-features = true }
 pallet-ismp-runtime-api = { workspace = true, default-features = true }
 
