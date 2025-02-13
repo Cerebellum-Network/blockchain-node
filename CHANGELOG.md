@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [7.3.0]
+
+- [C,D] Update Hyperbridge 16.0.0
+- [C,D] Update Substrate from `stable2407` to `stable2409`.
+
 ## [7.1.1]
 
 - [C,D] Update Hyperbridge pallet `Token-Gateway` to provide supports for the erc20 deployment.

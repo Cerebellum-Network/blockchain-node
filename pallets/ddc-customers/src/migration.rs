@@ -97,13 +97,13 @@ impl<T: Config> OnRuntimeUpgrade for MigrateToV1<T> {
 		let (prev_bucket_id, prev_count): (u64, u64) =
 			Decode::decode(&mut &prev_state[..]).expect("pre_upgrade provides a valid state; qed");
 
-		let post_bucket_id = Pallet::<T>::buckets_count();
+		let post_bucket_id = BucketsCount::<T>::get();
 		ensure!(
 			prev_bucket_id == post_bucket_id,
 			"the last bucket ID before and after the migration should be the same"
 		);
 
-		let post_count = Buckets::<T>::iter().count() as u64;
+		let post_count = BucketsCount::<T>::get();
 		ensure!(
 			prev_count == post_count,
 			"the bucket count before and after the migration should be the same"
