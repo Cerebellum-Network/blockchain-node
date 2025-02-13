@@ -1,15 +1,15 @@
 use ddc_primitives::{
 	crypto, sr25519,
-	traits::{ClusterManager, ClusterQuery, StorageUsageProvider},
-	BillingFingerprintParams, BucketId, BucketStorageUsage, ClusterNodeKind, ClusterNodeState,
-	ClusterNodeStatus, ClusterNodesStats, ClusterStatus, Fingerprint, NodeStorageUsage,
-	PayoutError, PayoutState, StorageNodeMode, StorageNodePubKey, MAX_PAYOUT_BATCH_COUNT,
-	MAX_PAYOUT_BATCH_SIZE,
+	traits::{ClusterManager, ClusterProtocol, ClusterQuery, StorageUsageProvider},
+	BucketId, BucketStorageUsage, ClusterBondingParams, ClusterNodeKind, ClusterNodeState,
+	ClusterNodeStatus, ClusterNodesStats, ClusterProtocolParams, ClusterStatus, Fingerprint,
+	NodeStorageUsage, NodeType, NodeUsage, PayoutError, PayoutFingerprintParams, PayoutState,
+	StorageNodeMode, StorageNodePubKey, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
 };
 #[cfg(feature = "runtime-benchmarks")]
 use ddc_primitives::{
 	traits::{BucketManager, ClusterCreator, CustomerDepositor},
-	BillingReportParams, BucketParams, ClusterId, ClusterParams, ClusterProtocolParams,
+	BucketParams, BucketUsage, ClusterId, ClusterParams, PayoutReceiptParams,
 };
 use frame_election_provider_support::{
 	bounds::{ElectionBounds, ElectionBoundsBuilder},
@@ -22,7 +22,7 @@ use frame_support::{
 	traits::{ConstU16, ConstU64},
 	PalletId,
 };
-use frame_system::mocking::MockBlock;
+use frame_system::{mocking::MockBlock, pallet_prelude::BlockNumberFor};
 use pallet_staking::BalanceOf;
 use scale_info::prelude::string::String;
 use sp_core::{ByteArray, H256};
@@ -220,7 +220,8 @@ parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
 	pub const MajorityOfAggregators: Percent = Percent::from_percent(67);
 	pub const VerifyAggregatorResponseSignature: bool = false;
-	pub const MajorityOfValidators: Percent = Percent::from_percent(67);
+	pub const _MajorityOfValidators: Percent = Percent::from_percent(67);
+	pub const HalfOfValidators: Percent = Percent::from_percent(50);
 }
 
 impl crate::Config for Test {
@@ -237,7 +238,7 @@ impl crate::Config for Test {
 	const BLOCK_TO_START: u16 = 100;
 	const DAC_REDUNDANCY_FACTOR: u16 = 3;
 	type AggregatorsQuorum = MajorityOfAggregators;
-	type ValidatorsQuorum = MajorityOfValidators;
+	type ValidatorsQuorum = HalfOfValidators;
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ValidatorStaking = Staking;
@@ -246,13 +247,15 @@ impl crate::Config for Test {
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 4;
 	type Currency = Balances;
 	const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool = false;
+	const DISABLE_PAYOUTS_CUTOFF: bool = false;
+	const DEBUG_MODE: bool = true;
 	type BucketsStorageUsageProvider = MockBucketValidator;
 	type NodesStorageUsageProvider = MockNodeValidator;
+	type ClusterProtocol = MockClusterProtocol;
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = MockCustomerDepositor;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ClusterCreator = MockClusterCreator;
-	#[cfg(feature = "runtime-benchmarks")]
 	type BucketManager = MockBucketManager;
 }
 
@@ -302,6 +305,82 @@ impl<T: Config> CustomerVisitor<T> for MockCustomerVisitor {
 	}
 }
 
+pub struct MockClusterProtocol;
+impl<T: Config, Balance> ClusterProtocol<T, Balance> for MockClusterProtocol {
+	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_pricing_params(_cluster_id: &ClusterId) -> Result<ClusterPricingParams, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_fees_params(_cluster_id: &ClusterId) -> Result<ClusterFeesParams, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_chill_delay(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<BlockNumberFor<T>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_unbonding_delay(
+		_cluster_id: &ClusterId,
+		_node_type: NodeType,
+	) -> Result<BlockNumberFor<T>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_bonding_params(
+		_cluster_id: &ClusterId,
+	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, DispatchError> {
+		unimplemented!()
+	}
+
+	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+		unimplemented!()
+	}
+
+	fn activate_cluster_protocol(_cluster_id: &ClusterId) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn update_cluster_protocol(
+		_cluster_id: &ClusterId,
+		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
+	) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn bond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn start_unbond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
+		unimplemented!()
+	}
+
+	fn end_unbond_cluster(_cluster_id: &ClusterId) -> DispatchResult {
+		unimplemented!()
+	}
+}
+
+impl<T: Config> ClusterQuery<T> for MockClusterProtocol {
+	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
+		unimplemented!()
+	}
+	fn get_cluster_status(_cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError> {
+		unimplemented!()
+	}
+	fn get_manager_and_reserve_id(
+		_cluster_id: &ClusterId,
+	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
+		unimplemented!()
+	}
+}
+
 #[cfg(feature = "runtime-benchmarks")]
 pub struct MockCustomerDepositor;
 #[cfg(feature = "runtime-benchmarks")]
@@ -329,9 +408,7 @@ impl<T: Config> ClusterCreator<T, Balance> for MockClusterCreator {
 	}
 }
 
-#[cfg(feature = "runtime-benchmarks")]
 pub struct MockBucketManager;
-#[cfg(feature = "runtime-benchmarks")]
 impl<T: Config> BucketManager<T> for MockBucketManager {
 	fn get_bucket_owner_id(_bucket_id: BucketId) -> Result<T::AccountId, DispatchError> {
 		unimplemented!()
@@ -449,8 +526,10 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	let verification_key = AccountId::decode(&mut &arr[..]).unwrap();
 
-	let _ = pallet_ddc_verification::GenesisConfig::<Test> { validators: vec![verification_key] }
-		.assimilate_storage(&mut storage);
+	let _ = pallet_ddc_verification::GenesisConfig::<Test> {
+		validators: vec![(verification_key.clone(), verification_key)],
+	}
+	.assimilate_storage(&mut storage);
 
 	sp_io::TestExternalities::new(storage)
 }
@@ -468,20 +547,17 @@ impl<T: Config> ClusterValidator<T> for MockClusterValidator {
 
 pub struct MockPayoutProcessor;
 impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
-	fn commit_billing_fingerprint(
+	fn commit_payout_fingerprint(
 		_validator: T::AccountId,
 		_cluster_id: ClusterId,
-		_era_id: DdcEra,
-		_start_era: i64,
-		_end_era: i64,
+		_ehd_id: String,
 		_payers_merkle_root: PayableUsageHash,
 		_payees_merkle_root: PayableUsageHash,
-		_cluster_usage: NodeUsage,
 	) -> DispatchResult {
 		unimplemented!()
 	}
 
-	fn begin_billing_report(
+	fn begin_payout(
 		_cluster_id: ClusterId,
 		_era_id: DdcEra,
 		_fingerprint: Fingerprint,
@@ -501,7 +577,7 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 		_cluster_id: ClusterId,
 		_era_id: DdcEra,
 		_batch_index: BatchIndex,
-		_payers: &[(BucketId, BucketUsage)],
+		_payers: &[(T::AccountId, u128)],
 		_batch_proof: MMRProof,
 	) -> DispatchResult {
 		unimplemented!()
@@ -523,7 +599,7 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 		_cluster_id: ClusterId,
 		_era_id: DdcEra,
 		_batch_index: BatchIndex,
-		_payees: &[(NodePubKey, NodeUsage)],
+		_payees: &[(T::AccountId, u128)],
 		_batch_proof: MMRProof,
 	) -> DispatchResult {
 		unimplemented!()
@@ -533,41 +609,41 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 		unimplemented!()
 	}
 
-	fn end_billing_report(_cluster_id: ClusterId, _era_id: DdcEra) -> DispatchResult {
+	fn end_payout(_cluster_id: ClusterId, _era_id: DdcEra) -> DispatchResult {
 		unimplemented!()
 	}
 
-	fn get_next_customer_batch_for_payment(
+	fn get_next_customers_batch(
 		_cluster_id: &ClusterId,
 		_era_id: DdcEra,
 	) -> Result<Option<BatchIndex>, PayoutError> {
 		Ok(None)
 	}
 
-	fn get_next_provider_batch_for_payment(
+	fn get_next_providers_batch(
 		_cluster_id: &ClusterId,
 		_era_id: DdcEra,
 	) -> Result<Option<BatchIndex>, PayoutError> {
 		Ok(None)
 	}
 
-	fn all_customer_batches_processed(_cluster_id: &ClusterId, _era_id: DdcEra) -> bool {
+	fn is_customers_charging_finished(_cluster_id: &ClusterId, _era_id: DdcEra) -> bool {
 		true
 	}
 
-	fn all_provider_batches_processed(_cluster_id: &ClusterId, _era_id: DdcEra) -> bool {
+	fn is_providers_rewarding_finished(_cluster_id: &ClusterId, _era_id: DdcEra) -> bool {
 		true
 	}
 
-	fn get_billing_report_status(_cluster_id: &ClusterId, _era_id: DdcEra) -> PayoutState {
+	fn get_payout_state(_cluster_id: &ClusterId, _era_id: DdcEra) -> PayoutState {
 		PayoutState::NotInitialized
 	}
 
-	fn create_billing_report(_vault: T::AccountId, _params: BillingReportParams) {
+	fn create_payout_receipt(_vault: T::AccountId, _params: PayoutReceiptParams) {
 		unimplemented!()
 	}
 
-	fn create_billing_fingerprint(_params: BillingFingerprintParams<T::AccountId>) -> Fingerprint {
+	fn create_payout_fingerprint(_params: PayoutFingerprintParams<T::AccountId>) -> Fingerprint {
 		unimplemented!()
 	}
 }

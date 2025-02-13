@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
-
+#![allow(clippy::manual_inspect)]
 pub mod weights;
 use crate::weights::WeightInfo;
 
@@ -754,9 +754,9 @@ pub mod pallet {
 	}
 
 	impl<T: Config> CustomerCharger<T> for Pallet<T> {
-		fn charge_bucket_owner(
+		fn charge_customer(
 			bucket_owner: T::AccountId,
-			billing_vault: T::AccountId,
+			payout_vault: T::AccountId,
 			amount: u128,
 		) -> Result<u128, DispatchError> {
 			let actually_charged: BalanceOf<T>;
@@ -793,7 +793,7 @@ pub mod pallet {
 
 			<T as pallet::Config>::Currency::transfer(
 				&Self::account_id(),
-				&billing_vault,
+				&payout_vault,
 				actually_charged,
 				ExistenceRequirement::AllowDeath,
 			)?;
