@@ -1471,7 +1471,7 @@ mod runtime {
 	pub type IsmpGrandpa = ismp_grandpa::Pallet<Runtime>;
 
 	#[runtime::pallet_index(48)]
-	pub type Hyperbridge = pallet_hyperbridge::Pallet<Runtime, Instance3>;
+	pub type Hyperbridge = pallet_hyperbridge::Pallet<Runtime>;
 
 	#[runtime::pallet_index(49)]
 	pub type TokenGateway = pallet_token_gateway::Pallet<Runtime>;

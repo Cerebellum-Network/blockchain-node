@@ -27,7 +27,7 @@ fn set_authorised_caller_works() {
 			Event::AuthorisedCaller { authorised_caller: dac_account }.into(),
 		);
 
-		assert_eq!(DdcPayouts::authorised_caller().unwrap(), dac_account);
+		assert_eq!(AuthorisedCaller::<Test>::get().unwrap(), dac_account);
 	})
 }
 

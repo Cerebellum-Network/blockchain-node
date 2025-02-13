@@ -367,7 +367,7 @@ pub mod pallet {
 			end_era: i64,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(AuthorisedCaller::<T>::get() == Some(caller), Error::<T>::Unauthorised);
 
 			ensure!(
 				ActiveBillingReports::<T>::try_get(cluster_id, era).is_err(),
@@ -399,7 +399,7 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(AuthorisedCaller::<T>::get() == Some(caller), Error::<T>::Unauthorised);
 
 			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
 
@@ -427,7 +427,7 @@ pub mod pallet {
 			payers: Vec<(T::AccountId, CustomerUsage)>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(AuthorisedCaller::<T>::get() == Some(caller), Error::<T>::Unauthorised);
 
 			ensure!(
 				!payers.is_empty() && payers.len() <= MaxBatchSize::get() as usize,
@@ -578,7 +578,7 @@ pub mod pallet {
 			era: DdcEra,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(AuthorisedCaller::<T>::get() == Some(caller), Error::<T>::Unauthorised);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
@@ -679,7 +679,7 @@ pub mod pallet {
 			total_node_usage: NodeUsage,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(AuthorisedCaller::<T>::get() == Some(caller), Error::<T>::Unauthorised);
 
 			ensure!(max_batch_index < MaxBatchesCount::get(), Error::<T>::BatchIndexOverflow);
 
@@ -711,7 +711,7 @@ pub mod pallet {
 			payees: Vec<(T::AccountId, NodeUsage)>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(AuthorisedCaller::<T>::get() == Some(caller), Error::<T>::Unauthorised);
 
 			ensure!(
 				!payees.is_empty() && payees.len() <= MaxBatchSize::get() as usize,
@@ -823,7 +823,7 @@ pub mod pallet {
 			era: DdcEra,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(AuthorisedCaller::<T>::get() == Some(caller), Error::<T>::Unauthorised);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
@@ -874,7 +874,7 @@ pub mod pallet {
 			era: DdcEra,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
-			ensure!(Self::authorised_caller() == Some(caller), Error::<T>::Unauthorised);
+			ensure!(AuthorisedCaller::<T>::get() == Some(caller), Error::<T>::Unauthorised);
 
 			let mut billing_report = ActiveBillingReports::<T>::try_get(cluster_id, era)
 				.map_err(|_| Error::<T>::BillingReportDoesNotExist)?;
