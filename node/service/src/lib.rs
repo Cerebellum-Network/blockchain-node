@@ -5,10 +5,12 @@ use std::sync::Arc;
 #[cfg(not(any(feature = "cere-native", feature = "cere-dev-native",)))]
 compile_error!("at least one runtime feature must be enabled");
 
+use cere_client::ChainExecutor;
 #[cfg(feature = "cere-dev-native")]
 pub use cere_dev_runtime;
 #[cfg(feature = "cere-native")]
 pub use cere_runtime;
+use frame_benchmarking_cli::SUBSTRATE_REFERENCE_HARDWARE;
 use futures::prelude::*;
 use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_babe::SlotProportion;
@@ -16,24 +18,18 @@ pub use sc_executor::NativeExecutionDispatch;
 use sc_network::{service::traits::NetworkService, Event, NetworkBackend, NetworkEventStream};
 use sc_service::{
 	error::Error as ServiceError, Configuration, KeystoreContainer, RpcHandlers, TaskManager,
+	WarpSyncConfig,
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
 pub mod chain_spec;
-#[cfg(feature = "cere-dev-native")]
-pub use cere_client::CereDevExecutorDispatch;
-#[cfg(feature = "cere-native")]
-pub use cere_client::CereExecutorDispatch;
 pub use cere_client::{
 	AbstractClient, Client, ClientHandle, ExecuteWithClient, FullBackend, FullClient,
 	RuntimeApiCollection,
 };
 pub use chain_spec::{CereChainSpec, CereDevChainSpec};
 pub use ddc_primitives::{Block, BlockNumber};
-#[allow(deprecated)]
-use sc_executor::{
-	HeapAllocStrategy, NativeElseWasmExecutor, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY,
-};
+use sc_executor::{HeapAllocStrategy, DEFAULT_HEAP_ALLOC_STRATEGY};
 pub use sc_service::ChainSpec;
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 pub use sp_api::ConstructRuntimeApi;
@@ -43,40 +39,31 @@ pub use sp_api::ConstructRuntimeApi;
 const GRANDPA_JUSTIFICATION_PERIOD: u32 = 512;
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
-type FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch> =
-	sc_consensus_grandpa::GrandpaBlockImport<
-		FullBackend,
-		Block,
-		FullClient<RuntimeApi, ExecutorDispatch>,
-		FullSelectChain,
-	>;
+type FullGrandpaBlockImport<RuntimeApi> = sc_consensus_grandpa::GrandpaBlockImport<
+	FullBackend,
+	Block,
+	FullClient<RuntimeApi>,
+	FullSelectChain,
+>;
 
-struct Basics<RuntimeApi, ExecutorDispatch>
+struct Basics<RuntimeApi>
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, ExecutorDispatch>>
-		+ Send
-		+ Sync
-		+ 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
-	ExecutorDispatch: NativeExecutionDispatch + 'static,
 {
 	task_manager: TaskManager,
-	client: Arc<FullClient<RuntimeApi, ExecutorDispatch>>,
+	client: Arc<FullClient<RuntimeApi>>,
 	backend: Arc<FullBackend>,
 	keystore_container: KeystoreContainer,
 	telemetry: Option<Telemetry>,
 }
 
-fn new_partial_basics<RuntimeApi, ExecutorDispatch>(
+fn new_partial_basics<RuntimeApi>(
 	config: &Configuration,
-) -> Result<Basics<RuntimeApi, ExecutorDispatch>, ServiceError>
+) -> Result<Basics<RuntimeApi>, ServiceError>
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, ExecutorDispatch>>
-		+ Send
-		+ Sync
-		+ 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
-	ExecutorDispatch: NativeExecutionDispatch + 'static,
 {
 	let telemetry = config
 		.telemetry_endpoints
@@ -90,19 +77,17 @@ where
 		.transpose()?;
 
 	let heap_pages = config
+		.executor
 		.default_heap_pages
 		.map_or(DEFAULT_HEAP_ALLOC_STRATEGY, |h| HeapAllocStrategy::Static { extra_pages: h as _ });
 
-	let wasm = WasmExecutor::builder()
-		.with_execution_method(config.wasm_method)
+	let executor = ChainExecutor::builder()
+		.with_execution_method(config.executor.wasm_method)
 		.with_onchain_heap_alloc_strategy(heap_pages)
 		.with_offchain_heap_alloc_strategy(heap_pages)
-		.with_max_runtime_instances(config.max_runtime_instances)
-		.with_runtime_cache_size(config.runtime_cache_size)
+		.with_max_runtime_instances(config.executor.max_runtime_instances)
+		.with_runtime_cache_size(config.executor.runtime_cache_size)
 		.build();
-
-	#[allow(deprecated)]
-	let executor = NativeElseWasmExecutor::<ExecutorDispatch>::new_with_wasm_executor(wasm);
 
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(
@@ -122,35 +107,27 @@ where
 }
 
 #[allow(clippy::type_complexity)]
-fn new_partial<RuntimeApi, ExecutorDispatch>(
+fn new_partial<RuntimeApi>(
 	config: &Configuration,
-	Basics { task_manager, backend, client, keystore_container, telemetry }: Basics<
-		RuntimeApi,
-		ExecutorDispatch,
-	>,
+	Basics { task_manager, backend, client, keystore_container, telemetry }: Basics<RuntimeApi>,
 ) -> Result<
 	sc_service::PartialComponents<
-		FullClient<RuntimeApi, ExecutorDispatch>,
+		FullClient<RuntimeApi>,
 		FullBackend,
 		FullSelectChain,
 		sc_consensus::DefaultImportQueue<Block>,
-		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi, ExecutorDispatch>>,
+		sc_transaction_pool::FullPool<Block, FullClient<RuntimeApi>>,
 		(
 			impl Fn(
-				cere_rpc::DenyUnsafe,
 				sc_rpc::SubscriptionTaskExecutor,
 			) -> Result<jsonrpsee::RpcModule<()>, sc_service::Error>,
 			(
 				sc_consensus_babe::BabeBlockImport<
 					Block,
-					FullClient<RuntimeApi, ExecutorDispatch>,
-					FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch>,
+					FullClient<RuntimeApi>,
+					FullGrandpaBlockImport<RuntimeApi>,
 				>,
-				sc_consensus_grandpa::LinkHalf<
-					Block,
-					FullClient<RuntimeApi, ExecutorDispatch>,
-					FullSelectChain,
-				>,
+				sc_consensus_grandpa::LinkHalf<Block, FullClient<RuntimeApi>, FullSelectChain>,
 				sc_consensus_babe::BabeLink<Block>,
 			),
 			sc_consensus_grandpa::SharedVoterState,
@@ -160,12 +137,8 @@ fn new_partial<RuntimeApi, ExecutorDispatch>(
 	ServiceError,
 >
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, ExecutorDispatch>>
-		+ Send
-		+ Sync
-		+ 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
-	ExecutorDispatch: NativeExecutionDispatch + 'static,
 {
 	let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
@@ -239,13 +212,12 @@ where
 		let chain_spec = config.chain_spec.cloned_box();
 
 		let rpc_backend = backend.clone();
-		let rpc_extensions_builder = move |deny_unsafe, subscription_executor| {
+		let rpc_extensions_builder = move |subscription_executor| {
 			let deps = cere_rpc::FullDeps {
 				client: client.clone(),
 				pool: pool.clone(),
 				select_chain: select_chain.clone(),
 				chain_spec: chain_spec.cloned_box(),
-				deny_unsafe,
 				babe: cere_rpc::BabeDeps {
 					babe_worker_handle: babe_worker_handle.clone(),
 					keystore: keystore.clone(),
@@ -284,7 +256,7 @@ pub fn build_full<N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 ) -> Result<NewFull<Client>, ServiceError> {
 	#[cfg(feature = "cere-dev-native")]
 	if config.chain_spec.is_cere_dev() {
-		return new_full::<cere_dev_runtime::RuntimeApi, CereDevExecutorDispatch, N>(
+		return new_full::<cere_dev_runtime::RuntimeApi, N>(
 			config,
 			disable_hardware_benchmarks,
 			|_, _| (),
@@ -294,12 +266,8 @@ pub fn build_full<N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 
 	#[cfg(feature = "cere-native")]
 	{
-		new_full::<cere_runtime::RuntimeApi, CereExecutorDispatch, N>(
-			config,
-			disable_hardware_benchmarks,
-			|_, _| (),
-		)
-		.map(|full| full.with_client(Client::Cere))
+		new_full::<cere_runtime::RuntimeApi, N>(config, disable_hardware_benchmarks, |_, _| ())
+			.map(|full| full.with_client(Client::Cere))
 	}
 
 	#[cfg(not(feature = "cere-native"))]
@@ -327,38 +295,32 @@ impl<C> NewFull<C> {
 	}
 }
 
-pub fn new_full<RuntimeApi, ExecutorDispatch, N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
+pub fn new_full<RuntimeApi, N: NetworkBackend<Block, <Block as BlockT>::Hash>>(
 	config: Configuration,
 	disable_hardware_benchmarks: bool,
 	with_startup_data: impl FnOnce(
 		&sc_consensus_babe::BabeBlockImport<
 			Block,
-			FullClient<RuntimeApi, ExecutorDispatch>,
-			FullGrandpaBlockImport<RuntimeApi, ExecutorDispatch>,
+			FullClient<RuntimeApi>,
+			FullGrandpaBlockImport<RuntimeApi>,
 		>,
 		&sc_consensus_babe::BabeLink<Block>,
 	),
-) -> Result<NewFull<Arc<FullClient<RuntimeApi, ExecutorDispatch>>>, ServiceError>
+) -> Result<NewFull<Arc<FullClient<RuntimeApi>>>, ServiceError>
 where
-	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi, ExecutorDispatch>>
-		+ Send
-		+ Sync
-		+ 'static,
+	RuntimeApi: ConstructRuntimeApi<Block, FullClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiCollection,
-	ExecutorDispatch: NativeExecutionDispatch + 'static,
 {
-	use sc_service::WarpSyncParams;
-
 	let hwbench = if !disable_hardware_benchmarks {
 		config.database.path().map(|database_path| {
 			let _ = std::fs::create_dir_all(database_path);
-			sc_sysinfo::gather_hwbench(Some(database_path))
+			sc_sysinfo::gather_hwbench(Some(database_path), &SUBSTRATE_REFERENCE_HARDWARE)
 		})
 	} else {
 		None
 	};
 
-	let basics = new_partial_basics::<RuntimeApi, ExecutorDispatch>(&config)?;
+	let basics = new_partial_basics::<RuntimeApi>(&config)?;
 
 	let sc_service::PartialComponents {
 		client,
@@ -374,11 +336,12 @@ where
 	let shared_voter_state = rpc_setup;
 	let auth_disc_publish_non_global_ips = config.network.allow_non_globals_in_dht;
 
-	let mut net_config = sc_network::config::FullNetworkConfiguration::<
-		Block,
-		<Block as sp_runtime::traits::Block>::Hash,
-		N,
-	>::new(&config.network);
+	let mut net_config =
+		sc_network::config::FullNetworkConfiguration::<
+			Block,
+			<Block as sp_runtime::traits::Block>::Hash,
+			N,
+		>::new(&config.network, config.prometheus_config.as_ref().map(|cfg| cfg.registry.clone()));
 	let metrics = N::register_notification_metrics(config.prometheus_registry());
 	let peer_store_handle = net_config.peer_store_handle();
 
@@ -409,7 +372,7 @@ where
 			spawn_handle: task_manager.spawn_handle(),
 			import_queue,
 			block_announce_validator_builder: None,
-			warp_sync_params: Some(WarpSyncParams::WithProvider(warp_sync)),
+			warp_sync_config: Some(WarpSyncConfig::WithProvider(warp_sync)),
 			block_relay: None,
 			metrics,
 		})?;
@@ -435,7 +398,7 @@ where
 		);
 	}
 
-	let role = config.role.clone();
+	let role = config.role;
 	let force_authoring = config.force_authoring;
 	let backoff_authoring_blocks =
 		Some(sc_consensus_slots::BackoffAuthoringOnFinalizedHeadLagging::default());
@@ -632,12 +595,12 @@ impl ExecuteWithClient for RevertConsensus {
 }
 
 macro_rules! chain_ops {
-	($config:expr; $scope:ident, $executor:ident, $variant:ident) => {{
+	($config:expr; $scope:ident, $variant:ident) => {{
 		let config = $config;
-		let basics = new_partial_basics::<$scope::RuntimeApi, $executor>(config)?;
+		let basics = new_partial_basics::<$scope::RuntimeApi>(config)?;
 
 		let sc_service::PartialComponents { client, backend, import_queue, task_manager, .. } =
-			new_partial::<$scope::RuntimeApi, $executor>(&config, basics)?;
+			new_partial::<$scope::RuntimeApi>(&config, basics)?;
 		Ok((Arc::new(Client::$variant(client)), backend, import_queue, task_manager))
 	}};
 }
@@ -651,12 +614,12 @@ pub fn new_chain_ops(
 > {
 	#[cfg(feature = "cere-dev-native")]
 	if config.chain_spec.is_cere_dev() {
-		return chain_ops!(config; cere_dev_runtime, CereDevExecutorDispatch, CereDev);
+		return chain_ops!(config; cere_dev_runtime, CereDev);
 	}
 
 	#[cfg(feature = "cere-native")]
 	{
-		chain_ops!(config; cere_runtime, CereExecutorDispatch, Cere)
+		chain_ops!(config; cere_runtime, Cere)
 	}
 
 	#[cfg(not(feature = "cere-native"))]

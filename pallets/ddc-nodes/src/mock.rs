@@ -6,10 +6,8 @@ use ddc_primitives::traits::staking::{StakingVisitor, StakingVisitorError};
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstU32, ConstU64},
-	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::{MockBlock, MockUncheckedExtrinsic};
-use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{traits::IdentityLookup, BuildStorage};
 
@@ -40,15 +38,10 @@ parameter_types! {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type DbWeight = RocksDbWeight;
-	type Nonce = u64;
 	type Block = Block;
-	type Hash = H256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type BlockHashCount = ConstU64<250>;
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type MaxConsumers = ConstU32<16>;
 }
 
 impl pallet_balances::Config for Test {

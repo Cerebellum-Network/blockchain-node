@@ -8,10 +8,8 @@ use ddc_primitives::{
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{ConstU32, ConstU64},
-	weights::constants::RocksDbWeight,
 };
 use frame_system::mocking::MockBlock;
-use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	traits::IdentityLookup, BuildStorage, DispatchError, DispatchResult, Perquintill,
@@ -42,10 +40,7 @@ parameter_types! {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type DbWeight = RocksDbWeight;
-	type Nonce = u64;
 	type Block = Block;
-	type Hash = H256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type RuntimeEvent = RuntimeEvent;

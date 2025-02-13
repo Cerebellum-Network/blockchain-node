@@ -31,6 +31,7 @@ sp-consensus-babe = { workspace = true, default-features = true }
 sp-consensus-grandpa = { workspace = true, default-features = true }
 sp-core = { workspace = true, default-features = true }
 sp-inherents = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 sp-offchain = { workspace = true, default-features = true }
 sp-runtime = { workspace = true, default-features = true }
 sp-session = { workspace = true, default-features = true }
@@ -47,3 +48,4 @@ pallet-ismp-runtime-api = { workspace = true, default-features = true }
 default = ["cere"]
 cere = ["cere-runtime"]
 cere-dev = ["cere-dev-runtime"]
+runtime-benchmarks = []

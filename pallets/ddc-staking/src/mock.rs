@@ -9,7 +9,6 @@ use ddc_primitives::{
 use frame_support::{
 	construct_runtime, derive_impl,
 	traits::{ConstBool, ConstU32, ConstU64, Nothing},
-	weights::constants::RocksDbWeight,
 };
 use frame_system::{
 	mocking::{MockBlock, MockUncheckedExtrinsic},
@@ -17,7 +16,6 @@ use frame_system::{
 };
 use pallet_ddc_clusters::cluster::Cluster;
 use pallet_ddc_nodes::StorageNode;
-use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
@@ -69,10 +67,7 @@ type BalanceOf<T> = <<T as crate::pallet::Config>::Currency as Currency<
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type DbWeight = RocksDbWeight;
-	type Nonce = u64;
 	type Block = Block;
-	type Hash = H256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type BlockHashCount = ConstU64<250>;
@@ -494,7 +489,7 @@ fn check_ledgers() {
 
 fn assert_ledger_consistent(controller: AccountId) {
 	// ensures ledger.total == ledger.active + sum(ledger.unlocking).
-	let ledger = DdcStaking::ledger(controller.clone()).expect("Not a controller.");
+	let ledger = Ledger::<Test>::get(controller.clone()).expect("Not a controller.");
 	let real_total: Balance = ledger.unlocking.iter().fold(ledger.active, |a, c| a + c.value);
 	assert_eq!(real_total, ledger.total);
 	assert!(

@@ -16,7 +16,6 @@ use sc_consensus_grandpa::{
 };
 use sc_consensus_grandpa_rpc::Grandpa;
 use sc_rpc::SubscriptionTaskExecutor;
-pub use sc_rpc_api::DenyUnsafe;
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
@@ -57,8 +56,6 @@ pub struct FullDeps<C, P, SC, B> {
 	pub select_chain: SC,
 	/// A copy of the chain spec.
 	pub chain_spec: Box<dyn sc_chain_spec::ChainSpec>,
-	/// Whether to deny unsafe calls
-	pub deny_unsafe: DenyUnsafe,
 	/// BABE specific dependencies.
 	pub babe: BabeDeps,
 	/// GRANDPA specific dependencies.
@@ -102,8 +99,7 @@ where
 	use substrate_state_trie_migration_rpc::StateMigrationApiServer;
 
 	let mut io = RpcModule::new(());
-	let FullDeps { client, pool, select_chain, chain_spec, deny_unsafe, babe, grandpa, backend } =
-		deps;
+	let FullDeps { client, pool, select_chain, chain_spec, babe, grandpa, backend } = deps;
 
 	let BabeDeps { babe_worker_handle, keystore } = babe;
 	let GrandpaDeps {
@@ -114,14 +110,13 @@ where
 		finality_provider,
 	} = grandpa;
 
-	io.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
+	io.merge(System::new(client.clone(), pool).into_rpc())?;
 	// Making synchronous calls in light client freezes the browser currently,
 	// more context: https://github.com/paritytech/substrate/pull/3480
 	// These RPCs should use an asynchronous caller instead.
 	io.merge(TransactionPayment::new(client.clone()).into_rpc())?;
 	io.merge(
-		Babe::new(client.clone(), babe_worker_handle.clone(), keystore, select_chain, deny_unsafe)
-			.into_rpc(),
+		Babe::new(client.clone(), babe_worker_handle.clone(), keystore, select_chain).into_rpc(),
 	)?;
 	io.merge(
 		Grandpa::new(
@@ -140,14 +135,10 @@ where
 	)?;
 
 	io.merge(
-		substrate_state_trie_migration_rpc::StateMigration::new(
-			client.clone(),
-			backend.clone(),
-			deny_unsafe,
-		)
-		.into_rpc(),
+		substrate_state_trie_migration_rpc::StateMigration::new(client.clone(), backend.clone())
+			.into_rpc(),
 	)?;
-	io.merge(Dev::new(client.clone(), deny_unsafe).into_rpc())?;
+	io.merge(Dev::new(client.clone()).into_rpc())?;
 	io.merge(IsmpRpcHandler::new(client, backend)?.into_rpc())?;
 
 	Ok(io)
