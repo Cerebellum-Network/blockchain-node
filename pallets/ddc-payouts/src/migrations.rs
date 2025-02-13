@@ -502,8 +502,8 @@ pub mod v3 {
 				Decode::decode(&mut &prev_state[..])
 					.expect("pre_upgrade provides a valid state; qed");
 
-			let post_receipts_count = PayoutReceipts::<T>::iter().count() as u64;
-			let post_fingerprints_count = PayoutFingerprints::<T>::iter().count() as u64;
+			let post_receipts_count = ActiveBillingReports::<T>::iter().count() as u64;
+			let post_fingerprints_count = BillingFingerprints::<T>::iter().count() as u64;
 
 			log::info!(
 				target: LOG_TARGET,
