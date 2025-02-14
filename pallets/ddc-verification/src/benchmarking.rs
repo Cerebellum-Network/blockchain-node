@@ -22,7 +22,7 @@ mod benchmarks {
 
 	fn create_validator_account<T: Config>() -> T::AccountId {
 		let validator = create_account::<T>("validator_account", 0, 0);
-		ValidatorToStashKey::<T>::insert(&validator.clone(), &validator.clone());
+		ValidatorToStashKey::<T>::insert(validator.clone(), validator.clone());
 		ValidatorSet::<T>::put(vec![validator.clone()]);
 		validator
 	}

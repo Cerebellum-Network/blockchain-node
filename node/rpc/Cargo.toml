@@ -13,7 +13,6 @@ repository.workspace = true
 jsonrpsee = { workspace = true, default-features = true }
 
 # Substrate dependencies
-node-primitives = { workspace = true, default-features = true }
 pallet-transaction-payment-rpc = { workspace = true, default-features = true }
 sc-chain-spec = { workspace = true, default-features = true }
 sc-client-api = { workspace = true, default-features = true }
@@ -31,7 +30,15 @@ sp-block-builder = { workspace = true, default-features = true }
 sp-blockchain = { workspace = true, default-features = true }
 sp-consensus = { workspace = true, default-features = true }
 sp-consensus-babe = { workspace = true, default-features = true }
+sp-core = { workspace = true, default-features = true }
 sp-keystore = { workspace = true, default-features = true }
 sp-runtime = { workspace = true, default-features = true }
 substrate-frame-rpc-system = { workspace = true, default-features = true }
 substrate-state-trie-migration-rpc = { workspace = true, default-features = true }
+
+# Cere
+ddc-primitives = { workspace = true, default-features = true }
+
+# Hyperbridge
+pallet-ismp-rpc = { workspace = true, default-features = true }
+pallet-ismp-runtime-api = { workspace = true, default-features = true }
