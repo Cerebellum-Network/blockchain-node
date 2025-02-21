@@ -23,6 +23,12 @@ sp-core = { workspace = true }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
+serde_json = { workspace = true }
+prost = { version = "0.13", default-features = false, features = ["prost-derive"] }
+serde_with = { version = "3", default-features = false, features = ["base64", "macros"] }
+
+[build-dependencies]
+prost-build = "0.13.3"
 
 [features]
 default = ["std"]
