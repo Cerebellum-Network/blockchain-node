@@ -17,7 +17,6 @@ serde = { workspace = true, default-features = true }
 
 # Substrate dependencies
 frame-benchmarking-cli = { workspace = true }
-node-primitives = { workspace = true }
 pallet-im-online = { workspace = true }
 sc-authority-discovery = { workspace = true }
 sc-basic-authorship = { workspace = true }
@@ -51,11 +50,10 @@ sp-trie = { workspace = true }
 
 # Cere dependencies
 cere-client = { workspace = true, optional = true }
-cere-rpc = { workspace = true }
-cere-runtime-common = { workspace = true, optional = true }
-
 cere-dev-runtime = { workspace = true, optional = true }
+cere-rpc = { workspace = true }
 cere-runtime = { workspace = true, optional = true }
+cere-runtime-common = { workspace = true, optional = true }
 ddc-primitives = { workspace = true }
 
 [features]

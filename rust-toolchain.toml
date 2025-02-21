@@ -1,4 +1,4 @@
 [toolchain]
-channel = "nightly-aarch64-apple-darwin"
+channel = "1.81.0"
 components = ["clippy", "rustfmt"]
 targets = ["wasm32-unknown-unknown"]

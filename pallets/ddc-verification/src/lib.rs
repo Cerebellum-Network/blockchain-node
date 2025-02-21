@@ -8,7 +8,7 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
-
+#![allow(clippy::manual_inspect)]
 use core::str;
 
 use base64ct::{Base64, Encoding};

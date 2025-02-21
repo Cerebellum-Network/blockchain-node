@@ -13,7 +13,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
-
+#![allow(clippy::manual_inspect)]
 // todo(yahortsaryk) tests for DAC v4 payments should be completely revised
 #[cfg(test)]
 pub(crate) mod mock;

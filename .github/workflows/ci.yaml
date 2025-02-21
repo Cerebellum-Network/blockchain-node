@@ -44,21 +44,21 @@ jobs:
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.79.0
+          toolchain: 1.81.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Install try-runtime
-        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.7.0 --locked
+        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
       - name: Check Build
         run: |
-          cargo update -p home --precise 0.5.9 && cargo build --release --features try-runtime
+          cargo build --release --features try-runtime
       - name: Check Try-Runtime
         run: |
            try-runtime --runtime ./target/release/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm \
-           on-runtime-upgrade --disable-idempotency-checks live --uri wss://archive.devnet.cere.network:443
+           on-runtime-upgrade --blocktime 6000 --disable-idempotency-checks live --uri wss://archive.devnet.cere.network:443
       - name: Run dev chain
         run: |
           timeout --preserve-status 30s ./target/release/cere --dev
@@ -78,7 +78,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.79.0
+          toolchain: 1.81.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
@@ -86,7 +86,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Check with Clippy
         run: |
-          cargo update -p home --precise 0.5.9 && cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
+          cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
 
   tests:
     name: Run tests
@@ -101,15 +101,12 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.79.0
+          toolchain: 1.81.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
-      - name: Update dependency
-        run: |
-          cargo update -p home --precise 0.5.9
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
