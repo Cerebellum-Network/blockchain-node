@@ -20,13 +20,15 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use ddc_primitives::{
 	traits::pallet::{GetDdcOrigin, PalletVisitor},
-	MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
+	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce, MAX_PAYOUT_BATCH_COUNT,
+	MAX_PAYOUT_BATCH_SIZE,
 };
+pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
@@ -38,7 +40,12 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		fungible::HoldConsideration,
-		tokens::{PayFromAccount, UnityAssetBalanceConversion},
+		fungibles,
+		fungibles::{Dust, Inspect, Unbalanced},
+		tokens::{
+			DepositConsequence, Fortitude, PayFromAccount, Preservation, Provenance,
+			UnityAssetBalanceConversion, WithdrawConsequence,
+		},
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
 		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
@@ -57,8 +64,6 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
-pub use node_primitives::{AccountId, Signature};
-use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce};
 #[cfg(any(feature = "std", test))]
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_chainbridge;
@@ -102,8 +107,8 @@ use sp_runtime::{
 		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, FixedPointNumber, FixedU128, Perbill, Percent, Permill, Perquintill,
-	RuntimeDebug,
+	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill,
+	Percent, Permill, Perquintill, RuntimeDebug,
 };
 use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(any(feature = "std", test))]
@@ -130,6 +135,14 @@ use governance::{
 
 /// Generated voter bag information.
 mod voter_bags;
+use ismp::{
+	consensus::{ConsensusClientId, StateMachineHeight, StateMachineId},
+	host::StateMachine,
+	router::{Request, Response},
+};
+use sp_core::H256;
+mod hyperbridge_ismp;
+mod weights;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -155,7 +168,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 72008,
+	spec_version: 73001,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -198,7 +211,7 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
 /// We allow `Normal` extrinsics to fill up the block up to 75%, the rest can be used
 /// by  Operational  extrinsics.
-const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
+const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(80);
 /// We allow for 2 seconds of compute with a 6 second average block time, with maximum proof size.
 const MAXIMUM_BLOCK_WEIGHT: Weight =
 	Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2), u64::MAX);
@@ -207,7 +220,7 @@ parameter_types! {
 	pub const BlockHashCount: BlockNumber = 2400;
 	pub const Version: RuntimeVersion = VERSION;
 	pub RuntimeBlockLength: BlockLength =
-		BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
+		BlockLength::max_with_normal_ratio(7.5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
 	pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
 		.base_block(BlockExecutionWeight::get())
 		.for_class(DispatchClass::all(), |weights| {
@@ -961,6 +974,7 @@ where
 			frame_system::CheckNonce::<Runtime>::from(nonce),
 			frame_system::CheckWeight::<Runtime>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+			frame_metadata_hash_extension::CheckMetadataHash::new(false),
 		);
 		let raw_payload = SignedPayload::new(call, extra)
 			.map_err(|e| {
@@ -1507,6 +1521,19 @@ mod runtime {
 
 	#[runtime::pallet_index(46)]
 	pub type DdcClustersGov = pallet_ddc_clusters_gov::Pallet<Runtime>;
+
+	#[runtime::pallet_index(47)]
+	pub type Ismp = pallet_ismp::Pallet<Runtime>;
+
+	#[runtime::pallet_index(48)]
+	pub type IsmpGrandpa = ismp_grandpa::Pallet<Runtime>;
+
+	// End OpenGov.
+	#[runtime::pallet_index(49)]
+	pub type Hyperbridge = pallet_hyperbridge::Pallet<Runtim>;
+
+	#[runtime::pallet_index(50)]
+	pub type TokenGateway = pallet_token_gateway::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
@@ -1533,6 +1560,7 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
@@ -1601,6 +1629,7 @@ mod benches {
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
 		[pallet_ddc_verification, DdcVerification]
+		[pallet_token_gateway, TokenGateway]
 	);
 }
 
@@ -1842,6 +1871,44 @@ impl_runtime_apis! {
 			key: Vec<u8>,
 		) -> pallet_contracts::GetStorageResult {
 			Contracts::get_storage(address, key)
+		}
+	}
+
+	impl pallet_ismp_runtime_api::IsmpRuntimeApi<Block, <Block as BlockT>::Hash> for Runtime {
+		fn host_state_machine() -> StateMachine {
+			<Runtime as pallet_ismp::Config>::HostStateMachine::get()
+		}
+
+		fn challenge_period(id: StateMachineId) -> Option<u64> {
+			pallet_ismp::Pallet::<Runtime>::challenge_period(id)
+		}
+
+		fn block_events() -> Vec<ismp::events::Event> {
+			pallet_ismp::Pallet::<Runtime>::block_events()
+		}
+
+		fn block_events_with_metadata() -> Vec<(ismp::events::Event, Option<u32>)> {
+			pallet_ismp::Pallet::<Runtime>::block_events_with_metadata()
+		}
+
+		fn consensus_state(id: ConsensusClientId) -> Option<Vec<u8>> {
+			pallet_ismp::Pallet::<Runtime>::consensus_states(id)
+		}
+
+		fn state_machine_update_time(height: StateMachineHeight) -> Option<u64> {
+			pallet_ismp::Pallet::<Runtime>::state_machine_update_time(height)
+		}
+
+		fn latest_state_machine_height(id: StateMachineId) -> Option<u64> {
+			pallet_ismp::Pallet::<Runtime>::latest_state_machine_height(id)
+		}
+
+		fn requests(commitments: Vec<H256>) -> Vec<Request> {
+			pallet_ismp::Pallet::<Runtime>::requests(commitments)
+		}
+
+		fn responses(commitments: Vec<H256>) -> Vec<Response> {
+			pallet_ismp::Pallet::<Runtime>::responses(commitments)
 		}
 	}
 
