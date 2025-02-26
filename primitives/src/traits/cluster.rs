@@ -5,7 +5,7 @@ use sp_std::prelude::*;
 use crate::{
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, DdcEra, NodePubKey, NodeType,
+	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType, TcaEra,
 };
 
 pub trait ClusterQuery<T: Config> {
@@ -114,7 +114,7 @@ pub trait ClusterValidator<T: Config> {
 	/// # Events
 	///
 	/// Emits `ClusterEraPaid` event if the operation is successful.
-	fn set_last_paid_era(cluster_id: &ClusterId, era_id: DdcEra) -> Result<(), DispatchError>;
+	fn set_last_paid_era(cluster_id: &ClusterId, era_id: TcaEra) -> Result<(), DispatchError>;
 
 	/// Retrieves the `last_paid_era` for the given cluster
 	/// update.
@@ -126,6 +126,6 @@ pub trait ClusterValidator<T: Config> {
 	///
 	/// # Returns
 	///
-	/// Returns `Ok(DdcEra)` identifier of the last validated era in cluster
-	fn get_last_paid_era(cluster_id: &ClusterId) -> Result<DdcEra, DispatchError>;
+	/// Returns `Ok(TcaEra)` identifier of the last validated era in cluster
+	fn get_last_paid_era(cluster_id: &ClusterId) -> Result<TcaEra, DispatchError>;
 }

@@ -585,7 +585,7 @@ fn set_last_validated_era_works() {
 		let cluster_manager_id = AccountId::from([1; 32]);
 		let cluster_reserve_id = AccountId::from([2; 32]);
 		let auth_contract_1 = AccountId::from([3; 32]);
-		let era_id: DdcEra = 22;
+		let era_id: TcaEra = 22;
 
 		// Cluster doesn't exist
 		assert_noop!(
