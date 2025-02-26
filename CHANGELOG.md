@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [C,D] Update to Polkadot-2409 crate version
 - [C,D] Hyperbridge Integration
+- [C,D] To accommodate larger GRANDPA proofs, increased `BlockLength` to 7.5MB with 80% for normal extrinsics.
 
 ## [7.2.0]
 
