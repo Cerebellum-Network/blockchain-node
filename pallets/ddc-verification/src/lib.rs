@@ -1328,13 +1328,10 @@ pub mod pallet {
 				})?;
 
 				let collector_key = phd_id.0.clone();
-				for node_aggregate in &phd_root.nodes_aggregates {
-					let node_key =
-						NodePubKey::try_from(node_aggregate.node_key.clone()).map_err(|_| {
-							vec![OCWError::FailedToParseNodeKey {
-								node_key: node_aggregate.node_key.clone(),
-							}]
-						})?;
+				for node_key in phd_root.nodes_aggregates.keys() {
+					let node_key = NodePubKey::try_from(node_key.clone()).map_err(|_| {
+						vec![OCWError::FailedToParseNodeKey { node_key: node_key.clone() }]
+					})?;
 
 					if tcaas_map.contains_key(&node_key.clone()) {
 						// Currently, we inspect node aggregation from a single (first
@@ -1529,18 +1526,13 @@ pub mod pallet {
 
 				let collector_key = phd_id.0.clone();
 
-				for bucket_aggregate in &phd_root.buckets_aggregates {
-					let bucket_id = bucket_aggregate.bucket_id;
+				for bucket_id in phd_root.buckets_aggregates.keys() {
+					for node_key in phd_root.nodes_aggregates.keys() {
+						let node_key = NodePubKey::try_from(node_key.clone()).map_err(|_| {
+							vec![OCWError::FailedToParseNodeKey { node_key: node_key.clone() }]
+						})?;
 
-					for node_aggregate in &phd_root.nodes_aggregates {
-						let node_key = NodePubKey::try_from(node_aggregate.node_key.clone())
-							.map_err(|_| {
-								vec![OCWError::FailedToParseNodeKey {
-									node_key: node_aggregate.node_key.clone(),
-								}]
-							})?;
-
-						if tcaas_map.contains_key(&(bucket_id, node_key.clone())) {
+						if tcaas_map.contains_key(&(*bucket_id, node_key.clone())) {
 							// Currently, we inspect node aggregation from a single (first
 							// responded) collector. We may compare the aggregation for the same
 							// node between different collectors in the next iterations to ensure
@@ -1558,7 +1550,7 @@ pub mod pallet {
 								tcaa_id,
 								collector_key.clone(),
 								node_key.clone(),
-								bucket_id,
+								*bucket_id,
 								vec![1],
 							) {
 								let tcaa_root = challenge_res
@@ -1580,13 +1572,13 @@ pub mod pallet {
 								bucket_sub_leaves_count += tcaa_leaves_count;
 								bucket_sub_tcaa_count += 1;
 
-								tcaas_map.insert((bucket_id, node_key.clone()), tcaa_id);
+								tcaas_map.insert((*bucket_id, node_key.clone()), tcaa_id);
 							}
 						}
 
 						if bucket_sub_tcaa_count > 0 {
 							era_leaves_map.insert(
-								(bucket_id, node_key.clone()),
+								(*bucket_id, node_key.clone()),
 								BTreeMap::from([(
 									(
 										phd_id.clone(),
