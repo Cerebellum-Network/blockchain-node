@@ -1316,10 +1316,6 @@ pub mod pallet {
 			for phd_root in phd_roots {
 				let collector_key = phd_root.phd_id.0.clone();
 				for node_key in phd_root.nodes_aggregates.keys() {
-					let node_key = NodePubKey::try_from(node_key.clone()).map_err(|_| {
-						vec![OCWError::FailedToParseNodeKey { node_key: node_key.clone() }]
-					})?;
-
 					if tcaas_map.contains_key(&node_key.clone()) {
 						// Currently, we inspect node aggregation from a single (first
 						// responded) collector. We may compare the aggregation for the same
@@ -1365,7 +1361,7 @@ pub mod pallet {
 
 					if node_tcaa_count > 0 {
 						era_leaves_map.insert(
-							node_key,
+							node_key.clone(),
 							BTreeMap::from([(
 								(phd_root.phd_id.clone(), (node_leaves_count, node_tcaa_count)),
 								tcaa_leaves,
@@ -1511,10 +1507,6 @@ pub mod pallet {
 
 				for bucket_id in phd_root.buckets_aggregates.keys() {
 					for node_key in phd_root.nodes_aggregates.keys() {
-						let node_key = NodePubKey::try_from(node_key.clone()).map_err(|_| {
-							vec![OCWError::FailedToParseNodeKey { node_key: node_key.clone() }]
-						})?;
-
 						if tcaas_map.contains_key(&(*bucket_id, node_key.clone())) {
 							// Currently, we inspect node aggregation from a single (first
 							// responded) collector. We may compare the aggregation for the same
