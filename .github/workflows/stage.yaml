@@ -2,7 +2,7 @@ name: Release to stage
 on:
   push:
     branches:
-      - new-dev
+      - dev
       - new-staging
       - master
       - 'release/**'
