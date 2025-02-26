@@ -63,7 +63,7 @@ pub const DOLLARS: u128 = 100 * CENTS;
 pub type ClusterId = H160;
 pub type PaymentEra = u32;
 pub type EhdEra = u32;
-pub type DdcEra = u32;
+pub type TcaEra = u32;
 pub type BucketId = u64;
 pub type ClusterNodesCount = u16;
 pub type StorageNodePubKey = AccountId32;
@@ -183,19 +183,19 @@ impl From<NodePubKey> for String {
 }
 
 impl TryFrom<String> for NodePubKey {
-	type Error = ();
+	type Error = &'static str;
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		if !value.starts_with("0x") || value.len() != 66 {
-			return Err(());
+			return Err("NodePubKey must be a 32-byte hex string start with '0x'");
 		}
 
 		let hex_str = &value[2..]; // skip '0x'
 		let hex_bytes = match hex::decode(hex_str) {
 			Ok(bytes) => bytes,
-			Err(_) => return Err(()),
+			Err(_) => return Err("NodePubKey must be a valid hex string"),
 		};
 		if hex_bytes.len() != 32 {
-			return Err(());
+			return Err("NodePubKey must be a 32 chars in length");
 		}
 		let mut pub_key = [0u8; 32];
 		pub_key.copy_from_slice(&hex_bytes[..32]);
@@ -204,7 +204,7 @@ impl TryFrom<String> for NodePubKey {
 	}
 }
 
-#[derive(Clone, PartialOrd, Ord, Eq, PartialEq, Encode, Decode, Debug)]
+#[derive(Clone, PartialOrd, Serialize, Deserialize, Ord, Eq, PartialEq, Encode, Decode, Debug)]
 pub struct EHDId(pub ClusterId, pub NodePubKey, pub EhdEra);
 
 impl From<EHDId> for String {
@@ -216,28 +216,28 @@ impl From<EHDId> for String {
 }
 
 impl TryFrom<String> for EHDId {
-	type Error = ();
+	type Error = &'static str;
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		let parts: Vec<&str> = value.split('-').collect();
 		if parts.len() != 3 {
-			return Err(());
+			return Err("EHDId must be composed of 3 parts divided by '-' character");
 		}
 		let cluster_str = parts[0];
 		let g_collector_str = String::from(parts[1]);
 		let payment_era_str = parts[2];
 
 		if !cluster_str.starts_with("0x") || cluster_str.len() != 42 {
-			return Err(());
+			return Err("ClusterId must be a 20-byte hex string start with '0x'");
 		}
 
 		let cluster_hex_str = &cluster_str[2..]; // skip '0x'
 		let cluster_hex_bytes = match hex::decode(cluster_hex_str) {
 			Ok(bytes) => bytes,
-			Err(_) => return Err(()),
+			Err(_) => return Err("ClusterId must be a valid hex string"),
 		};
 
 		if cluster_hex_bytes.len() != 20 {
-			return Err(());
+			return Err("ClusterId must be a 20 chars in length");
 		}
 
 		let mut cluster_id = [0u8; 20];
@@ -245,9 +245,9 @@ impl TryFrom<String> for EHDId {
 
 		let g_collector: NodePubKey = g_collector_str.try_into()?;
 
-		let payment_era = match DdcEra::from_str(payment_era_str) {
+		let payment_era = match TcaEra::from_str(payment_era_str) {
 			Ok(era) => era,
-			Err(_) => return Err(()),
+			Err(_) => return Err("TcaEra must be a valid u32 value"),
 		};
 
 		Ok(EHDId(H160(cluster_id), g_collector, payment_era))
@@ -255,7 +255,7 @@ impl TryFrom<String> for EHDId {
 }
 
 impl TryFrom<&str> for EHDId {
-	type Error = ();
+	type Error = &'static str;
 	fn try_from(value: &str) -> Result<Self, Self::Error> {
 		EHDId::try_from(String::from(value))
 	}
@@ -272,11 +272,11 @@ impl From<PHDId> for String {
 }
 
 impl TryFrom<String> for PHDId {
-	type Error = ();
+	type Error = &'static str;
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		let parts: Vec<&str> = value.split('-').collect();
 		if parts.len() != 2 {
-			return Err(());
+			return Err("PHDId must be composed of 2 parts divided by '-' character");
 		}
 
 		let collector_str = String::from(parts[0]);
@@ -284,9 +284,9 @@ impl TryFrom<String> for PHDId {
 
 		let collector: NodePubKey = collector_str.try_into()?;
 
-		let payment_era = match DdcEra::from_str(payment_era_str) {
+		let payment_era = match TcaEra::from_str(payment_era_str) {
 			Ok(era) => era,
-			Err(_) => return Err(()),
+			Err(_) => return Err("TcaEra must be a valid u32 value"),
 		};
 
 		Ok(PHDId(collector, payment_era))
@@ -294,7 +294,7 @@ impl TryFrom<String> for PHDId {
 }
 
 impl TryFrom<&str> for PHDId {
-	type Error = ();
+	type Error = &'static str;
 	fn try_from(value: &str) -> Result<Self, Self::Error> {
 		PHDId::try_from(String::from(value))
 	}

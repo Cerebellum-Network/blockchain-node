@@ -124,11 +124,11 @@ impl crate::pallet::Config for Test {
 
 pub struct MockClusterValidator;
 impl<T: Config> ClusterValidator<T> for MockClusterValidator {
-	fn set_last_paid_era(_cluster_id: &ClusterId, _era_id: DdcEra) -> Result<(), DispatchError> {
+	fn set_last_paid_era(_cluster_id: &ClusterId, _era_id: TcaEra) -> Result<(), DispatchError> {
 		unimplemented!()
 	}
 
-	fn get_last_paid_era(_cluster_id: &ClusterId) -> Result<DdcEra, DispatchError> {
+	fn get_last_paid_era(_cluster_id: &ClusterId) -> Result<TcaEra, DispatchError> {
 		Ok(Default::default())
 	}
 }
