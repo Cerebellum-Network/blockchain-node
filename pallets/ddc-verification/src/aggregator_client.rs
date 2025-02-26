@@ -169,22 +169,6 @@ impl<'a> AggregatorClient<'a> {
 		fetch_and_parse!(self, url, Vec<json::EHDEra>, Vec<json::EHDEra>)
 	}
 
-	pub fn era_historical_document(
-		&self,
-		era_id: DdcEra,
-	) -> Result<json::EHDResponse, http::Error> {
-		let mut url = format!("{}/activity/ehd/{}", self.base_url, era_id);
-		fetch_and_parse!(self, url, json::EHDResponse, json::EHDResponse)
-	}
-
-	pub fn partial_historical_document(
-		&self,
-		phd_id: String,
-	) -> Result<json::PHDResponse, http::Error> {
-		let mut url = format!("{}/activity/phd/{}", self.base_url, phd_id);
-		fetch_and_parse!(self, url, json::PHDResponse, json::PHDResponse)
-	}
-
 	pub fn traverse_era_historical_document(
 		&self,
 		ehd_id: EHDId,
@@ -619,24 +603,6 @@ pub(crate) mod json {
 		pub signature: Vec<u8>,
 	}
 
-	#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Encode, Decode)]
-	pub struct EHDResponse {
-		#[serde(rename = "ehdId")]
-		pub ehd_id: String,
-		#[serde(rename = "clusterId")]
-		pub cluster_id: String,
-		#[serde(rename = "eraId")]
-		pub era_id: DdcEra,
-		#[serde(rename = "gCollector")]
-		pub g_collector: String,
-		#[serde(rename = "pdhIds")]
-		pub pdh_ids: Vec<String>,
-		pub hash: String,
-		pub status: String,
-		pub customers: Vec<EHDCustomer>,
-		pub providers: Vec<EHDProvider>,
-	}
-
 	#[derive(
 		Default,
 		Debug,
@@ -659,178 +625,6 @@ pub(crate) mod json {
 		#[serde(rename = "puts")]
 		pub number_of_puts: u64,
 		#[serde(rename = "gets")]
-		pub number_of_gets: u64,
-	}
-
-	#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Encode, Decode)]
-	pub struct EHDUsagePercent {
-		#[serde(rename = "storedBytesPercent")]
-		pub stored_bytes: f64,
-		#[serde(rename = "transferredBytesPercent")]
-		pub transferred_bytes: f64,
-		#[serde(rename = "putsPercent")]
-		pub number_of_puts: f64,
-		#[serde(rename = "getsPercent")]
-		pub number_of_gets: f64,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub struct EHDCustomer {
-		#[serde(rename = "customerId")]
-		pub customer_id: String,
-		#[serde(rename = "consumedUsage")]
-		pub consumed_usage: EHDUsage,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub struct EHDProvider {
-		#[serde(rename = "providerId")]
-		pub provider_id: String,
-		#[serde(rename = "providedUsage")]
-		pub provided_usage: EHDUsage,
-		pub nodes: Vec<EHDNodeResources>,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub struct EHDNodeResources {
-		#[serde(rename = "nodeId")]
-		pub node_key: String,
-		#[serde(rename = "storedBytes")]
-		pub stored_bytes: i64,
-		#[serde(rename = "transferredBytes")]
-		pub transferred_bytes: u64,
-		#[serde(rename = "puts")]
-		pub number_of_puts: u64,
-		#[serde(rename = "gets")]
-		pub number_of_gets: u64,
-		#[serde(rename = "avgLatency")]
-		pub avg_latency: u64,
-		#[serde(rename = "avgBandwidth")]
-		pub avg_bandwidth: u64,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub struct PHDNodeAggregate {
-		#[serde(rename = "nodeId")]
-		pub node_key: String,
-		#[serde(rename = "storedBytes")]
-		pub stored_bytes: i64,
-		#[serde(rename = "transferredBytes")]
-		pub transferred_bytes: u64,
-		#[serde(rename = "numberOfPuts")]
-		pub number_of_puts: u64,
-		#[serde(rename = "numberOfGets")]
-		pub number_of_gets: u64,
-		pub metrics: PHDNodeMetrics,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub struct PHDNodeMetrics {
-		latency: LatencyMetrics,
-		availability: AvailabilityMetrics,
-		bandwidth: BandwidthMetrics,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub struct LatencyMetrics {
-		#[serde(rename = "p50")]
-		p_50: u64,
-		#[serde(rename = "p95")]
-		p_95: u64,
-		#[serde(rename = "p99")]
-		p_99: u64,
-		#[serde(rename = "p999")]
-		p_999: u64,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub struct AvailabilityMetrics {
-		#[serde(rename = "totalRequests")]
-		total_requests: u64,
-		#[serde(rename = "failedRequests")]
-		failed_requests: u64,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub struct BandwidthMetrics {
-		#[serde(rename = "100kbps")]
-		kbps_100: u64,
-		#[serde(rename = "1Mbps")]
-		mbps_1: u64,
-		#[serde(rename = "10Mbps")]
-		mbps_10: u64,
-		#[serde(rename = "100Mbps")]
-		mbps_100: u64,
-		inf: u64,
-	}
-
-	#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Encode, Decode)]
-	pub struct PHDResponse {
-		#[serde(rename = "phdId")]
-		pub phd_id: String,
-		#[serde(rename = "merkleTreeNodeId")]
-		pub tree_node_id: u32,
-		#[serde(rename = "NodesAggregates")]
-		pub nodes_aggregates: Vec<PHDNodeAggregate>,
-		#[serde(rename = "BucketsAggregates")]
-		pub buckets_aggregates: Vec<PHDBucketAggregate>,
-		pub hash: String,
-		pub collector: String,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub struct PHDBucketAggregate {
-		#[serde(rename = "bucketId")]
-		pub bucket_id: BucketId,
-		#[serde(rename = "storedBytes")]
-		pub stored_bytes: i64,
-		#[serde(rename = "transferredBytes")]
-		pub transferred_bytes: u64,
-		#[serde(rename = "numberOfPuts")]
-		pub number_of_puts: u64,
-		#[serde(rename = "numberOfGets")]
-		pub number_of_gets: u64,
-		#[serde(rename = "subAggregates")]
-		pub sub_aggregates: Vec<PHDBucketSubAggregate>,
-
-		// todo: remove from top-level bucket aggregation
-		#[serde(rename = "nodeId")]
-		pub node_key: String,
-	}
-
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
-	pub struct PHDBucketSubAggregate {
-		#[serde(rename = "bucketId")]
-		pub bucket_id: BucketId,
-		#[serde(rename = "nodeId")]
-		pub node_key: String,
-		#[serde(rename = "storedBytes")]
-		pub stored_bytes: i64,
-		#[serde(rename = "transferredBytes")]
-		pub transferred_bytes: u64,
-		#[serde(rename = "numberOfPuts")]
-		pub number_of_puts: u64,
-		#[serde(rename = "numberOfGets")]
 		pub number_of_gets: u64,
 	}
 
@@ -959,17 +753,21 @@ pub(crate) mod json {
 		#[serde(rename = "merkleTreeNodeHash")]
 		pub tree_node_hash: String,
 		#[serde(rename = "nodesAggregates")]
-		pub nodes_aggregates: Vec<TraversedPHDNodeAggregate>,
+		pub nodes_aggregates: TraversedPHDNodesTCAs,
 		#[serde(rename = "bucketsAggregates")]
-		pub buckets_aggregates: Vec<TraversedPHDBucketAggregate>,
+		pub buckets_aggregates: TraversedPHDBucketsTCAs,
 	}
+
+	pub type TraversedPHDNodesTCAs = BTreeMap<String, Vec<TraversedPHDNodeTCA>>;
 
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub struct TraversedPHDNodeAggregate {
-		#[serde(rename = "nodeId")]
-		pub node_key: String,
+	pub struct TraversedPHDNodeTCA {
+		#[serde(rename = "tcaaId")]
+		pub tca_id: DdcEra,
+		#[serde(rename = "tcaaRootHash")]
+		pub tca_hash: String,
 		#[serde(rename = "storedBytes")]
 		pub stored_bytes: i64,
 		#[serde(rename = "transferredBytes")]
@@ -980,12 +778,16 @@ pub(crate) mod json {
 		pub number_of_gets: u64,
 	}
 
+	pub type TraversedPHDBucketsTCAs = BTreeMap<BucketId, Vec<TraversedPHDBucketTCA>>;
+
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub struct TraversedPHDBucketAggregate {
-		#[serde(rename = "bucketId")]
-		pub bucket_id: BucketId,
+	pub struct TraversedPHDBucketTCA {
+		#[serde(rename = "tcaaId")]
+		pub tca_id: DdcEra,
+		#[serde(rename = "tcaaRootHash")]
+		pub tca_hash: String,
 		#[serde(rename = "storedBytes")]
 		pub stored_bytes: i64,
 		#[serde(rename = "transferredBytes")]
