@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - dev
-      - staging
+      - new-staging
       - master
       - 'release/**'
       - 'hotfix/**'
@@ -20,9 +20,6 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v3
-
-      - name: Configure Git
-        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
       - name: Cache cargo registry
         uses: actions/cache@v3
@@ -79,7 +76,7 @@ jobs:
             "AWS_SESSION_TOKEN=${{ env.AWS_SESSION_TOKEN }}"
             "SCCACHE_REGION=us-west-2"
             "SCCACHE_BUCKET=cere-blockchain-sccache"
-            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
+
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}
