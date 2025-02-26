@@ -2,8 +2,8 @@ name: Release to stage
 on:
   push:
     branches:
-      - new-dev
-      - new-staging
+      - dev
+      - staging
       - master
       - 'release/**'
       - 'hotfix/**'
