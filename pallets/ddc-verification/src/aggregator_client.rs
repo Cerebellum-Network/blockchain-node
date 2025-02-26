@@ -2,7 +2,7 @@
 
 use ddc_primitives::{AggregatorInfo, BucketId, TcaEra};
 use prost::Message;
-use scale_info::prelude::{string::String, vec::Vec};
+use scale_info::prelude::{collections::BTreeMap, string::String, vec::Vec};
 use serde_with::{base64::Base64, serde_as, TryFromInto};
 use sp_core::crypto::AccountId32;
 use sp_io::offchain::timestamp;
@@ -762,13 +762,14 @@ pub(crate) mod json {
 		pub tree_node_hash: Vec<u8>,
 
 		#[serde(rename = "nodesAggregates")]
+		#[serde_as(as = "BTreeMap<TryFromInto<String>, _>")]
 		pub nodes_aggregates: PHDNodesTCAs,
 
 		#[serde(rename = "bucketsAggregates")]
 		pub buckets_aggregates: PHDBucketsTCAs,
 	}
 
-	pub type PHDNodesTCAs = BTreeMap<String, Vec<PHDNodeTCA>>;
+	pub type PHDNodesTCAs = BTreeMap<NodePubKey, Vec<PHDNodeTCA>>;
 
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
