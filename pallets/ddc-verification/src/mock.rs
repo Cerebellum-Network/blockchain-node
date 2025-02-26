@@ -536,11 +536,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 pub struct MockClusterValidator;
 impl<T: Config> ClusterValidator<T> for MockClusterValidator {
-	fn set_last_paid_era(_cluster_id: &ClusterId, _era_id: DdcEra) -> Result<(), DispatchError> {
+	fn set_last_paid_era(_cluster_id: &ClusterId, _era_id: TcaEra) -> Result<(), DispatchError> {
 		unimplemented!()
 	}
 
-	fn get_last_paid_era(_cluster_id: &ClusterId) -> Result<DdcEra, DispatchError> {
+	fn get_last_paid_era(_cluster_id: &ClusterId) -> Result<TcaEra, DispatchError> {
 		Ok(Default::default())
 	}
 }
@@ -559,7 +559,7 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 
 	fn begin_payout(
 		_cluster_id: ClusterId,
-		_era_id: DdcEra,
+		_era_id: TcaEra,
 		_fingerprint: Fingerprint,
 	) -> DispatchResult {
 		unimplemented!()
@@ -567,7 +567,7 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 
 	fn begin_charging_customers(
 		_cluster_id: ClusterId,
-		_era_id: DdcEra,
+		_era_id: TcaEra,
 		_max_batch_index: BatchIndex,
 	) -> DispatchResult {
 		unimplemented!()
@@ -575,7 +575,7 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 
 	fn send_charging_customers_batch(
 		_cluster_id: ClusterId,
-		_era_id: DdcEra,
+		_era_id: TcaEra,
 		_batch_index: BatchIndex,
 		_payers: &[(T::AccountId, u128)],
 		_batch_proof: MMRProof,
@@ -583,13 +583,13 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 		unimplemented!()
 	}
 
-	fn end_charging_customers(_cluster_id: ClusterId, _era_id: DdcEra) -> DispatchResult {
+	fn end_charging_customers(_cluster_id: ClusterId, _era_id: TcaEra) -> DispatchResult {
 		unimplemented!()
 	}
 
 	fn begin_rewarding_providers(
 		_cluster_id: ClusterId,
-		_era_id: DdcEra,
+		_era_id: TcaEra,
 		_max_batch_index: BatchIndex,
 	) -> DispatchResult {
 		unimplemented!()
@@ -597,7 +597,7 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 
 	fn send_rewarding_providers_batch(
 		_cluster_id: ClusterId,
-		_era_id: DdcEra,
+		_era_id: TcaEra,
 		_batch_index: BatchIndex,
 		_payees: &[(T::AccountId, u128)],
 		_batch_proof: MMRProof,
@@ -605,37 +605,37 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 		unimplemented!()
 	}
 
-	fn end_rewarding_providers(_cluster_id: ClusterId, _era_id: DdcEra) -> DispatchResult {
+	fn end_rewarding_providers(_cluster_id: ClusterId, _era_id: TcaEra) -> DispatchResult {
 		unimplemented!()
 	}
 
-	fn end_payout(_cluster_id: ClusterId, _era_id: DdcEra) -> DispatchResult {
+	fn end_payout(_cluster_id: ClusterId, _era_id: TcaEra) -> DispatchResult {
 		unimplemented!()
 	}
 
 	fn get_next_customers_batch(
 		_cluster_id: &ClusterId,
-		_era_id: DdcEra,
+		_era_id: TcaEra,
 	) -> Result<Option<BatchIndex>, PayoutError> {
 		Ok(None)
 	}
 
 	fn get_next_providers_batch(
 		_cluster_id: &ClusterId,
-		_era_id: DdcEra,
+		_era_id: TcaEra,
 	) -> Result<Option<BatchIndex>, PayoutError> {
 		Ok(None)
 	}
 
-	fn is_customers_charging_finished(_cluster_id: &ClusterId, _era_id: DdcEra) -> bool {
+	fn is_customers_charging_finished(_cluster_id: &ClusterId, _era_id: TcaEra) -> bool {
 		true
 	}
 
-	fn is_providers_rewarding_finished(_cluster_id: &ClusterId, _era_id: DdcEra) -> bool {
+	fn is_providers_rewarding_finished(_cluster_id: &ClusterId, _era_id: TcaEra) -> bool {
 		true
 	}
 
-	fn get_payout_state(_cluster_id: &ClusterId, _era_id: DdcEra) -> PayoutState {
+	fn get_payout_state(_cluster_id: &ClusterId, _era_id: TcaEra) -> PayoutState {
 		PayoutState::NotInitialized
 	}
 
