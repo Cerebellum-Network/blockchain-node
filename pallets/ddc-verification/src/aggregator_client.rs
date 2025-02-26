@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 
-use ddc_primitives::{AggregatorInfo, BucketId, DdcEra};
+use ddc_primitives::{AggregatorInfo, BucketId, TcaEra};
 use prost::Message;
-use serde_with::{base64::Base64, serde_as};
+use scale_info::prelude::{string::String, vec::Vec};
+use serde_with::{base64::Base64, serde_as, TryFromInto};
 use sp_core::crypto::AccountId32;
 use sp_io::offchain::timestamp;
 use sp_runtime::offchain::{http, Duration};
@@ -65,7 +66,7 @@ impl<'a> AggregatorClient<'a> {
 
 	pub fn buckets_aggregates(
 		&self,
-		era_id: DdcEra,
+		era_id: TcaEra,
 		limit: Option<u32>,
 		prev_token: Option<BucketId>,
 	) -> Result<Vec<json::BucketAggregateResponse>, http::Error> {
@@ -89,7 +90,7 @@ impl<'a> AggregatorClient<'a> {
 
 	pub fn nodes_aggregates(
 		&self,
-		era_id: DdcEra,
+		era_id: TcaEra,
 		limit: Option<u32>,
 		prev_token: Option<String>,
 	) -> Result<Vec<json::NodeAggregateResponse>, http::Error> {
@@ -112,7 +113,7 @@ impl<'a> AggregatorClient<'a> {
 
 	pub fn challenge_bucket_sub_aggregate(
 		&self,
-		era_id: DdcEra,
+		era_id: TcaEra,
 		bucket_id: BucketId,
 		node_id: &str,
 		merkle_tree_node_id: Vec<u64>,
@@ -135,7 +136,7 @@ impl<'a> AggregatorClient<'a> {
 
 	pub fn challenge_node_aggregate(
 		&self,
-		era_id: DdcEra,
+		era_id: TcaEra,
 		node_id: &str,
 		merkle_tree_node_id: Vec<u64>,
 	) -> Result<proto::ChallengeResponse, http::Error> {
@@ -174,7 +175,7 @@ impl<'a> AggregatorClient<'a> {
 		ehd_id: EHDId,
 		tree_node_id: u32,
 		tree_levels_count: u32,
-	) -> Result<Vec<json::TraversedEHDResponse>, http::Error> {
+	) -> Result<Vec<json::EHDTreeNode>, http::Error> {
 		let mut url = format!(
 			"{}/activity/ehds/{}/traverse?merkleTreeNodeId={}&levels={}",
 			self.base_url,
@@ -182,12 +183,7 @@ impl<'a> AggregatorClient<'a> {
 			tree_node_id,
 			tree_levels_count
 		);
-		fetch_and_parse!(
-			self,
-			url,
-			Vec<json::TraversedEHDResponse>,
-			Vec<json::TraversedEHDResponse>
-		)
+		fetch_and_parse!(self, url, Vec<json::EHDTreeNode>, Vec<json::EHDTreeNode>)
 	}
 
 	pub fn traverse_partial_historical_document(
@@ -195,7 +191,7 @@ impl<'a> AggregatorClient<'a> {
 		phd_id: PHDId,
 		tree_node_id: u32,
 		tree_levels_count: u32,
-	) -> Result<Vec<json::TraversedPHDResponse>, http::Error> {
+	) -> Result<Vec<json::PHDTreeNode>, http::Error> {
 		let mut url = format!(
 			"{}/activity/phds/{}/traverse?merkleTreeNodeId={}&levels={}",
 			self.base_url,
@@ -203,17 +199,12 @@ impl<'a> AggregatorClient<'a> {
 			tree_node_id,
 			tree_levels_count
 		);
-		fetch_and_parse!(
-			self,
-			url,
-			Vec<json::TraversedPHDResponse>,
-			Vec<json::TraversedPHDResponse>
-		)
+		fetch_and_parse!(self, url, Vec<json::PHDTreeNode>, Vec<json::PHDTreeNode>)
 	}
 
 	pub fn traverse_bucket_sub_aggregate(
 		&self,
-		era_id: DdcEra,
+		era_id: TcaEra,
 		bucket_id: BucketId,
 		node_id: &str,
 		merkle_tree_node_id: u32,
@@ -228,7 +219,7 @@ impl<'a> AggregatorClient<'a> {
 
 	pub fn traverse_node_aggregate(
 		&self,
-		era_id: DdcEra,
+		era_id: TcaEra,
 		node_id: &str,
 		merkle_tree_node_id: u32,
 		levels: u16,
@@ -396,7 +387,7 @@ pub(crate) mod json {
 	/// DDC aggregation era
 	#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Encode, Decode)]
 	pub struct AggregationEraResponse {
-		pub id: DdcEra,
+		pub id: TcaEra,
 		pub status: String,
 		pub start: i64,
 		pub end: i64,
@@ -628,24 +619,34 @@ pub(crate) mod json {
 		pub number_of_gets: u64,
 	}
 
+	#[serde_as]
 	#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Encode, Decode)]
-	pub struct TraversedEHDResponse {
+	pub struct EHDTreeNode {
 		#[serde(rename = "ehdId")]
-		pub ehd_id: String,
+		#[serde_as(as = "TryFromInto<String>")]
+		pub ehd_id: EHDId,
+
 		#[serde(rename = "groupingCollector")]
-		pub g_collector: String,
+		#[serde_as(as = "TryFromInto<String>")]
+		pub g_collector: NodePubKey,
+
 		#[serde(rename = "merkleTreeNodeId")]
 		pub tree_node_id: u32,
+
 		#[serde(rename = "merkleTreeNodeHash")]
-		pub tree_node_hash: String,
+		#[serde_as(as = "Base64")]
+		pub tree_node_hash: Vec<u8>,
+
 		#[serde(rename = "pdhIds")]
-		pub pdh_ids: Vec<String>,
+		#[serde_as(as = "Vec<TryFromInto<String>>")]
+		pub pdh_ids: Vec<PHDId>,
+
 		pub status: String,
-		pub customers: Vec<TraversedEHDCustomer>,
-		pub providers: Vec<TraversedEHDProvider>,
+		pub customers: Vec<EHDCustomer>,
+		pub providers: Vec<EHDProvider>,
 	}
 
-	impl TraversedEHDResponse {
+	impl EHDTreeNode {
 		pub fn get_cluster_usage(&self) -> EHDUsage {
 			self.providers.iter().fold(
 				EHDUsage {
@@ -668,14 +669,14 @@ pub(crate) mod json {
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub struct TraversedEHDCustomer {
+	pub struct EHDCustomer {
 		#[serde(rename = "customerId")]
 		pub customer_id: String,
 		#[serde(rename = "consumedUsage")]
 		pub consumed_usage: EHDUsage,
 	}
 
-	impl TraversedEHDCustomer {
+	impl EHDCustomer {
 		pub fn parse_customer_id(&self) -> Result<AccountId32, ()> {
 			if !self.customer_id.starts_with("0x") || self.customer_id.len() != 66 {
 				return Err(());
@@ -697,15 +698,15 @@ pub(crate) mod json {
 	}
 
 	#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Encode, Decode)]
-	pub struct TraversedEHDProvider {
+	pub struct EHDProvider {
 		#[serde(rename = "providerId")]
 		pub provider_id: String,
 		#[serde(rename = "providedUsage")]
 		pub provided_usage: EHDUsage,
-		pub nodes: Vec<TraversedEHDNodeResources>,
+		pub nodes: Vec<EHDProviderUsage>,
 	}
 
-	impl TraversedEHDProvider {
+	impl EHDProvider {
 		pub fn parse_provider_id(&self) -> Result<AccountId32, ()> {
 			if !self.provider_id.starts_with("0x") || self.provider_id.len() != 66 {
 				return Err(());
@@ -729,7 +730,7 @@ pub(crate) mod json {
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub struct TraversedEHDNodeResources {
+	pub struct EHDProviderUsage {
 		#[serde(rename = "nodeId")]
 		pub node_key: String,
 		#[serde(rename = "storedBytes")]
@@ -742,30 +743,39 @@ pub(crate) mod json {
 		pub number_of_gets: u64,
 	}
 
+	#[serde_as]
 	#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Encode, Decode)]
-	pub struct TraversedPHDResponse {
+	pub struct PHDTreeNode {
 		#[serde(rename = "phdId")]
-		pub phd_id: String,
+		#[serde_as(as = "TryFromInto<String>")]
+		pub phd_id: PHDId,
+
 		#[serde(rename = "collectorId")]
-		pub collector: String,
+		#[serde_as(as = "TryFromInto<String>")]
+		pub collector: NodePubKey,
+
 		#[serde(rename = "merkleTreeNodeId")]
 		pub tree_node_id: u32,
+
 		#[serde(rename = "merkleTreeNodeHash")]
-		pub tree_node_hash: String,
+		#[serde_as(as = "Base64")]
+		pub tree_node_hash: Vec<u8>,
+
 		#[serde(rename = "nodesAggregates")]
-		pub nodes_aggregates: TraversedPHDNodesTCAs,
+		pub nodes_aggregates: PHDNodesTCAs,
+
 		#[serde(rename = "bucketsAggregates")]
-		pub buckets_aggregates: TraversedPHDBucketsTCAs,
+		pub buckets_aggregates: PHDBucketsTCAs,
 	}
 
-	pub type TraversedPHDNodesTCAs = BTreeMap<String, Vec<TraversedPHDNodeTCA>>;
+	pub type PHDNodesTCAs = BTreeMap<String, Vec<PHDNodeTCA>>;
 
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub struct TraversedPHDNodeTCA {
+	pub struct PHDNodeTCA {
 		#[serde(rename = "tcaaId")]
-		pub tca_id: DdcEra,
+		pub tca_id: TcaEra,
 		#[serde(rename = "tcaaRootHash")]
 		pub tca_hash: String,
 		#[serde(rename = "storedBytes")]
@@ -778,14 +788,14 @@ pub(crate) mod json {
 		pub number_of_gets: u64,
 	}
 
-	pub type TraversedPHDBucketsTCAs = BTreeMap<BucketId, Vec<TraversedPHDBucketTCA>>;
+	pub type PHDBucketsTCAs = BTreeMap<BucketId, Vec<PHDBucketTCA>>;
 
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
 	)]
-	pub struct TraversedPHDBucketTCA {
+	pub struct PHDBucketTCA {
 		#[serde(rename = "tcaaId")]
-		pub tca_id: DdcEra,
+		pub tca_id: TcaEra,
 		#[serde(rename = "tcaaRootHash")]
 		pub tca_hash: String,
 		#[serde(rename = "storedBytes")]
@@ -832,8 +842,8 @@ pub(crate) mod json {
 	pub struct EHDEra {
 		pub id: u32,
 		pub status: String,
-		pub era_start: Option<DdcEra>,
-		pub era_end: Option<DdcEra>,
+		pub era_start: Option<TcaEra>,
+		pub era_end: Option<TcaEra>,
 		pub time_start: Option<i64>,
 		pub time_end: Option<i64>,
 	}

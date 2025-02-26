@@ -2,7 +2,7 @@
 
 use ddc_primitives::{
 	ClusterNodeKind, ClusterNodeStatus, ClusterParams, ClusterProtocolParams, ClusterStatus,
-	EhdEra, StorageNodeParams, StorageNodePubKey,
+	StorageNodeParams, StorageNodePubKey, TcaEra,
 };
 use frame_support::{assert_noop, assert_ok, traits::ReservableCurrency};
 use pallet_balances::Error as BalancesError;
@@ -772,7 +772,7 @@ fn bond_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Bonded,
-				last_paid_era: EhdEra::default()
+				last_paid_era: TcaEra::default()
 			})
 		);
 
@@ -922,7 +922,7 @@ fn unbond_bonded_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Unbonding,
-				last_paid_era: EhdEra::default()
+				last_paid_era: TcaEra::default()
 			})
 		);
 
@@ -1002,7 +1002,7 @@ fn unbond_activated_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Unbonding,
-				last_paid_era: EhdEra::default()
+				last_paid_era: TcaEra::default()
 			})
 		);
 
@@ -1097,7 +1097,7 @@ fn withdraw_unbonded_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Unbonded,
-				last_paid_era: EhdEra::default()
+				last_paid_era: TcaEra::default()
 			})
 		);
 	});
@@ -1184,7 +1184,7 @@ fn withdraw_activated_cluster_works() {
 					replication_total: 0
 				},
 				status: ClusterStatus::Unbonded,
-				last_paid_era: EhdEra::default()
+				last_paid_era: TcaEra::default()
 			})
 		);
 	});
