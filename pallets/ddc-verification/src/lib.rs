@@ -2086,49 +2086,48 @@ pub mod pallet {
 			let mut cluster_costs = CustomerCosts::default();
 
 			for customer in customers {
-				if let Ok(customer_id) = customer.parse_customer_id() {
-					let customer_costs = Self::get_customer_costs(
-						pricing,
-						&customer.consumed_usage,
-						cutoff_usage_map.get(
-							&T::AccountId::decode(&mut &customer_id.encode()[..])
-								.map_err(|_| ArithmeticError::Overflow)?,
-						),
-						time_start,
-						time_end,
-					)?;
+				let customer_id: AccountId32 = customer.customer_id.clone().into();
+				let customer_costs = Self::get_customer_costs(
+					pricing,
+					&customer.consumed_usage,
+					cutoff_usage_map.get(
+						&T::AccountId::decode(&mut &customer_id.encode()[..])
+							.map_err(|_| ArithmeticError::Overflow)?,
+					),
+					time_start,
+					time_end,
+				)?;
 
-					cluster_costs.storage = cluster_costs
-						.storage
-						.checked_add(customer_costs.storage)
-						.ok_or(ArithmeticError::Overflow)?;
-
-					cluster_costs.transfer = cluster_costs
-						.transfer
-						.checked_add(customer_costs.transfer)
-						.ok_or(ArithmeticError::Overflow)?;
-
-					cluster_costs.puts = cluster_costs
-						.puts
-						.checked_add(customer_costs.puts)
-						.ok_or(ArithmeticError::Overflow)?;
-
-					cluster_costs.gets = cluster_costs
-						.gets
-						.checked_add(customer_costs.gets)
-						.ok_or(ArithmeticError::Overflow)?;
-
-					let charge_amount = (|| -> Option<u128> {
-						customer_costs
-							.transfer
-							.checked_add(customer_costs.storage)?
-							.checked_add(customer_costs.puts)?
-							.checked_add(customer_costs.gets)
-					})()
+				cluster_costs.storage = cluster_costs
+					.storage
+					.checked_add(customer_costs.storage)
 					.ok_or(ArithmeticError::Overflow)?;
 
-					customers_charges.push(CustomerCharge(customer_id, charge_amount));
-				}
+				cluster_costs.transfer = cluster_costs
+					.transfer
+					.checked_add(customer_costs.transfer)
+					.ok_or(ArithmeticError::Overflow)?;
+
+				cluster_costs.puts = cluster_costs
+					.puts
+					.checked_add(customer_costs.puts)
+					.ok_or(ArithmeticError::Overflow)?;
+
+				cluster_costs.gets = cluster_costs
+					.gets
+					.checked_add(customer_costs.gets)
+					.ok_or(ArithmeticError::Overflow)?;
+
+				let charge_amount = (|| -> Option<u128> {
+					customer_costs
+						.transfer
+						.checked_add(customer_costs.storage)?
+						.checked_add(customer_costs.puts)?
+						.checked_add(customer_costs.gets)
+				})()
+				.ok_or(ArithmeticError::Overflow)?;
+
+				customers_charges.push(CustomerCharge(customer_id, charge_amount));
 			}
 
 			Ok((customers_charges, cluster_costs))
@@ -2243,40 +2242,39 @@ pub mod pallet {
 			let mut providers_profits = Vec::new();
 
 			for provider in providers {
-				if let Ok(provider_id) = provider.parse_provider_id() {
-					let provider_profits = Self::get_provider_profits(
-						&provider.provided_usage,
-						cutoff_usage_map.get(
-							&T::AccountId::decode(&mut &provider_id.encode()[..])
-								.map_err(|_| ArithmeticError::Overflow)?,
-						),
-						cluster_usage,
-						cluster_costs,
-					)?;
+				let provider_id: AccountId32 = provider.provider_id.clone().into();
+				let provider_profits = Self::get_provider_profits(
+					&provider.provided_usage,
+					cutoff_usage_map.get(
+						&T::AccountId::decode(&mut &provider_id.encode()[..])
+							.map_err(|_| ArithmeticError::Overflow)?,
+					),
+					cluster_usage,
+					cluster_costs,
+				)?;
 
-					let reward_amount = (|| -> Option<u128> {
-						provider_profits
-							.transfer
-							.checked_add(provider_profits.storage)?
-							.checked_add(provider_profits.puts)?
-							.checked_add(provider_profits.gets)
-					})()
-					.ok_or(ArithmeticError::Overflow)?;
+				let reward_amount = (|| -> Option<u128> {
+					provider_profits
+						.transfer
+						.checked_add(provider_profits.storage)?
+						.checked_add(provider_profits.puts)?
+						.checked_add(provider_profits.gets)
+				})()
+				.ok_or(ArithmeticError::Overflow)?;
 
-					let treasury_fee_amount = fees.treasury_share * reward_amount;
-					let validators_fee_amount = fees.validators_share * reward_amount;
-					let cluster_reserve_fee_amount = fees.cluster_reserve_share * reward_amount;
+				let treasury_fee_amount = fees.treasury_share * reward_amount;
+				let validators_fee_amount = fees.validators_share * reward_amount;
+				let cluster_reserve_fee_amount = fees.cluster_reserve_share * reward_amount;
 
-					let profit_amount = (|| -> Option<u128> {
-						reward_amount
-							.checked_sub(treasury_fee_amount)?
-							.checked_sub(validators_fee_amount)?
-							.checked_sub(cluster_reserve_fee_amount)
-					})()
-					.ok_or(ArithmeticError::Overflow)?;
+				let profit_amount = (|| -> Option<u128> {
+					reward_amount
+						.checked_sub(treasury_fee_amount)?
+						.checked_sub(validators_fee_amount)?
+						.checked_sub(cluster_reserve_fee_amount)
+				})()
+				.ok_or(ArithmeticError::Overflow)?;
 
-					providers_profits.push(ProviderReward(provider_id, profit_amount));
-				}
+				providers_profits.push(ProviderReward(provider_id, profit_amount));
 			}
 
 			Ok(providers_profits)
