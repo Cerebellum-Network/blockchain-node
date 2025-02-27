@@ -278,7 +278,7 @@ mod benchmarks {
 	#[benchmark]
 	fn send_charging_customers_batch(b: Linear<1, { MAX_PAYOUT_BATCH_SIZE.into() }>) {
 		let cluster_id = ClusterId::from([1; 20]);
-		let payment_era: TcaEra = 1;
+		let payment_era: EhdEra = 1;
 		let collector_key = NodePubKey::StoragePubKey(AccountId32::from([0u8; 32]));
 		let ehd_id = EHDId(cluster_id, collector_key, payment_era);
 		let state = PayoutState::ChargingCustomers;
