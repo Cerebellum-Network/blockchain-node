@@ -30,8 +30,7 @@ use ddc_primitives::{
 	},
 	BatchIndex, ClusterId, CustomerCharge, EHDId, EhdEra, Fingerprint, MMRProof, MergeMMRHash,
 	NodePubKey, NodeUsage, PayableUsageHash, PaymentEra, PayoutError, PayoutFingerprintParams,
-	PayoutReceiptParams, PayoutState, TcaEra, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE,
-	MILLICENTS,
+	PayoutReceiptParams, PayoutState, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 };
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
@@ -115,22 +114,22 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		PayoutInitialized {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 		},
 		ChargingStarted {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 		},
 		Charged {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 			batch_index: BatchIndex,
 			customer_id: T::AccountId,
 			amount: u128,
 		},
 		ChargedPartially {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 			batch_index: BatchIndex,
 			customer_id: T::AccountId,
 			charged: u128,
@@ -138,37 +137,37 @@ pub mod pallet {
 		},
 		Indebted {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 			batch_index: BatchIndex,
 			customer_id: T::AccountId,
 			amount: u128,
 		},
 		ChargingFinished {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 		},
 		TreasuryFeesCollected {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 			amount: u128,
 		},
 		ClusterReserveFeesCollected {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 			amount: u128,
 		},
 		ValidatorFeesCollected {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 			amount: u128,
 		},
 		RewardingStarted {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 		},
 		Rewarded {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 			batch_index: BatchIndex,
 			node_provider_id: T::AccountId,
 			rewarded: u128,
@@ -176,13 +175,13 @@ pub mod pallet {
 		},
 		ValidatorRewarded {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 			validator_id: T::AccountId,
 			amount: u128,
 		},
 		NotDistributedReward {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 			batch_index: BatchIndex,
 			node_provider_id: T::AccountId,
 			expected_reward: u128,
@@ -190,21 +189,21 @@ pub mod pallet {
 		},
 		NotDistributedOverallReward {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 			expected_reward: u128,
 			total_distributed_rewards: u128,
 		},
 		RewardingFinished {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 		},
 		PayoutReceiptFinalized {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 		},
 		ChargeError {
 			cluster_id: ClusterId,
-			era: TcaEra,
+			era: EhdEra,
 			batch_index: BatchIndex,
 			customer_id: T::AccountId,
 			amount: u128,
@@ -402,7 +401,7 @@ pub mod pallet {
 		validators_fee: u128,
 		vault: &T::AccountId,
 		cluster_id: ClusterId,
-		era: TcaEra,
+		era: EhdEra,
 	) -> DispatchResult {
 		let stakers = get_current_exposure_ratios::<T>()?;
 
@@ -480,7 +479,7 @@ pub mod pallet {
 			let account_ref: &[u8; 32] = account_id_32.as_ref();
 			hex::encode(account_ref)
 		}
-		pub fn sub_account_id(cluster_id: ClusterId, era: TcaEra) -> T::AccountId {
+		pub fn sub_account_id(cluster_id: ClusterId, era: EhdEra) -> T::AccountId {
 			let mut bytes = Vec::new();
 			bytes.extend_from_slice(&cluster_id[..]);
 			bytes.extend_from_slice(&era.encode());
