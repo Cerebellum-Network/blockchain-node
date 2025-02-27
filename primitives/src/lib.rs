@@ -186,7 +186,7 @@ impl TryFrom<String> for NodePubKey {
 	type Error = &'static str;
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		if !value.starts_with("0x") || value.len() != 66 {
-			return Err("NodePubKey must be a 32-byte hex string start with '0x'");
+			return Err("NodePubKey must be a 32-byte hex string started with '0x'");
 		}
 
 		let hex_str = &value[2..]; // skip '0x'
@@ -195,7 +195,7 @@ impl TryFrom<String> for NodePubKey {
 			Err(_) => return Err("NodePubKey must be a valid hex string"),
 		};
 		if hex_bytes.len() != 32 {
-			return Err("NodePubKey must be a 32 chars in length");
+			return Err("NodePubKey must be 32 chars in length");
 		}
 		let mut pub_key = [0u8; 32];
 		pub_key.copy_from_slice(&hex_bytes[..32]);
@@ -227,7 +227,7 @@ impl TryFrom<String> for EHDId {
 		let payment_era_str = parts[2];
 
 		if !cluster_str.starts_with("0x") || cluster_str.len() != 42 {
-			return Err("ClusterId must be a 20-byte hex string start with '0x'");
+			return Err("ClusterId must be a 20-byte hex string started with '0x'");
 		}
 
 		let cluster_hex_str = &cluster_str[2..]; // skip '0x'
@@ -237,7 +237,7 @@ impl TryFrom<String> for EHDId {
 		};
 
 		if cluster_hex_bytes.len() != 20 {
-			return Err("ClusterId must be a 20 chars in length");
+			return Err("ClusterId must be 20 chars in length");
 		}
 
 		let mut cluster_id = [0u8; 20];
@@ -320,6 +320,55 @@ impl TryFrom<u8> for NodeType {
 			1 => Ok(NodeType::Storage),
 			_ => Err(()),
 		}
+	}
+}
+
+/// The type for keeping account id in hexadecimal notation (prefixed with '0x')
+#[derive(
+	Debug, Serialize, Deserialize, Hash, Clone, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
+)]
+pub struct AccountId32Hex {
+	pub id: [u8; 32],
+}
+
+impl TryFrom<String> for AccountId32Hex {
+	type Error = &'static str;
+	fn try_from(value: String) -> Result<Self, Self::Error> {
+		if !value.starts_with("0x") || value.len() != 66 {
+			return Err("NodePubKey must be a 32-byte hex string started with '0x'");
+		}
+
+		let hex_str = &value[2..]; // skip '0x'
+		let hex_bytes = match hex::decode(hex_str) {
+			Ok(bytes) => bytes,
+			Err(_) => return Err("NodePubKey must be a valid hex string"),
+		};
+		if hex_bytes.len() != 32 {
+			return Err("NodePubKey must be 32 chars in length");
+		}
+		let mut acc_id = [0u8; 32];
+		acc_id.copy_from_slice(&hex_bytes[..32]);
+
+		Ok(AccountId32Hex { id: acc_id })
+	}
+}
+
+impl From<AccountId32Hex> for String {
+	fn from(value: AccountId32Hex) -> Self {
+		format!("0x{}", hex::encode(value.id.encode()))
+	}
+}
+
+impl TryFrom<&str> for AccountId32Hex {
+	type Error = &'static str;
+	fn try_from(value: &str) -> Result<Self, Self::Error> {
+		AccountId32Hex::try_from(String::from(value))
+	}
+}
+
+impl From<AccountId32Hex> for AccountId32 {
+	fn from(val: AccountId32Hex) -> Self {
+		AccountId32::from(val.id)
 	}
 }
 

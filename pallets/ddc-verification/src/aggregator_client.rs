@@ -1,10 +1,9 @@
 #![allow(dead_code)]
 
-use ddc_primitives::{AggregatorInfo, BucketId, TcaEra};
+use ddc_primitives::{AccountId32Hex, AggregatorInfo, BucketId, TcaEra};
 use prost::Message;
 use scale_info::prelude::{collections::BTreeMap, string::String, vec::Vec};
 use serde_with::{base64::Base64, serde_as, TryFromInto};
-use sp_core::crypto::AccountId32;
 use sp_io::offchain::timestamp;
 use sp_runtime::offchain::{http, Duration};
 
@@ -666,65 +665,27 @@ pub(crate) mod json {
 		}
 	}
 
-	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
-	)]
+	#[serde_as]
+	#[derive(Debug, Serialize, Deserialize, Clone, Hash, PartialEq, Eq, Encode, Decode)]
 	pub struct EHDCustomer {
 		#[serde(rename = "customerId")]
-		pub customer_id: String,
+		#[serde_as(as = "TryFromInto<String>")]
+		pub customer_id: AccountId32Hex,
+
 		#[serde(rename = "consumedUsage")]
 		pub consumed_usage: EHDUsage,
 	}
 
-	impl EHDCustomer {
-		pub fn parse_customer_id(&self) -> Result<AccountId32, ()> {
-			if !self.customer_id.starts_with("0x") || self.customer_id.len() != 66 {
-				return Err(());
-			}
-
-			let hex_str = &self.customer_id[2..]; // skip '0x'
-			let hex_bytes = match hex::decode(hex_str) {
-				Ok(bytes) => bytes,
-				Err(_) => return Err(()),
-			};
-			if hex_bytes.len() != 32 {
-				return Err(());
-			}
-			let mut pub_key = [0u8; 32];
-			pub_key.copy_from_slice(&hex_bytes[..32]);
-
-			Ok(AccountId32::from(pub_key))
-		}
-	}
-
-	#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Encode, Decode)]
+	#[serde_as]
+	#[derive(Debug, Serialize, Deserialize, Hash, Clone, PartialEq, Encode, Decode)]
 	pub struct EHDProvider {
 		#[serde(rename = "providerId")]
-		pub provider_id: String,
+		#[serde_as(as = "TryFromInto<String>")]
+		pub provider_id: AccountId32Hex,
+
 		#[serde(rename = "providedUsage")]
 		pub provided_usage: EHDUsage,
 		pub nodes: Vec<EHDProviderUsage>,
-	}
-
-	impl EHDProvider {
-		pub fn parse_provider_id(&self) -> Result<AccountId32, ()> {
-			if !self.provider_id.starts_with("0x") || self.provider_id.len() != 66 {
-				return Err(());
-			}
-
-			let hex_str = &self.provider_id[2..]; // skip '0x'
-			let hex_bytes = match hex::decode(hex_str) {
-				Ok(bytes) => bytes,
-				Err(_) => return Err(()),
-			};
-			if hex_bytes.len() != 32 {
-				return Err(());
-			}
-			let mut pub_key = [0u8; 32];
-			pub_key.copy_from_slice(&hex_bytes[..32]);
-
-			Ok(AccountId32::from(pub_key))
-		}
 	}
 
 	#[derive(
