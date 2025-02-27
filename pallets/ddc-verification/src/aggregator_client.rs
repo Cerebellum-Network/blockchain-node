@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(clippy::from_over_into)]
 
 use ddc_primitives::{AccountId32Hex, AggregatorInfo, BucketId, TcaEra};
 use prost::Message;
@@ -619,7 +620,9 @@ pub(crate) mod json {
 	}
 
 	#[serde_as]
-	#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Encode, Decode)]
+	#[derive(
+		Debug, Serialize, Deserialize, Clone, PartialOrd, Ord, Eq, PartialEq, Encode, Decode,
+	)]
 	pub struct EHDTreeNode {
 		#[serde(rename = "ehdId")]
 		#[serde_as(as = "TryFromInto<String>")]
@@ -666,7 +669,9 @@ pub(crate) mod json {
 	}
 
 	#[serde_as]
-	#[derive(Debug, Serialize, Deserialize, Clone, Hash, PartialEq, Eq, Encode, Decode)]
+	#[derive(
+		Debug, Serialize, Deserialize, PartialOrd, Ord, Clone, Hash, PartialEq, Eq, Encode, Decode,
+	)]
 	pub struct EHDCustomer {
 		#[serde(rename = "customerId")]
 		#[serde_as(as = "TryFromInto<String>")]
@@ -677,7 +682,9 @@ pub(crate) mod json {
 	}
 
 	#[serde_as]
-	#[derive(Debug, Serialize, Deserialize, Hash, Clone, PartialEq, Encode, Decode)]
+	#[derive(
+		Debug, Serialize, Deserialize, PartialOrd, Ord, Hash, Clone, PartialEq, Eq, Encode, Decode,
+	)]
 	pub struct EHDProvider {
 		#[serde(rename = "providerId")]
 		#[serde_as(as = "TryFromInto<String>")]
@@ -689,7 +696,7 @@ pub(crate) mod json {
 	}
 
 	#[derive(
-		Debug, Serialize, Deserialize, Clone, Hash, Ord, PartialOrd, PartialEq, Eq, Encode, Decode,
+		Debug, Serialize, Deserialize, Clone, Hash, PartialOrd, Ord, PartialEq, Eq, Encode, Decode,
 	)]
 	pub struct EHDProviderUsage {
 		#[serde(rename = "nodeId")]
@@ -750,6 +757,17 @@ pub(crate) mod json {
 		pub number_of_gets: u64,
 	}
 
+	impl Into<NodeUsage> for PHDNodeTCA {
+		fn into(self) -> NodeUsage {
+			NodeUsage {
+				transferred_bytes: self.transferred_bytes,
+				stored_bytes: self.stored_bytes,
+				number_of_gets: self.number_of_gets,
+				number_of_puts: self.number_of_puts,
+			}
+		}
+	}
+
 	pub type PHDBucketsTCAs = BTreeMap<BucketId, Vec<PHDBucketTCA>>;
 
 	#[derive(
@@ -768,6 +786,17 @@ pub(crate) mod json {
 		pub number_of_puts: u64,
 		#[serde(rename = "numberOfGets")]
 		pub number_of_gets: u64,
+	}
+
+	impl Into<BucketUsage> for PHDBucketTCA {
+		fn into(self) -> BucketUsage {
+			BucketUsage {
+				transferred_bytes: self.transferred_bytes,
+				stored_bytes: self.stored_bytes,
+				number_of_gets: self.number_of_gets,
+				number_of_puts: self.number_of_puts,
+			}
+		}
 	}
 
 	#[derive(Debug, Serialize, Deserialize, Clone, Hash, Encode, Decode)]
