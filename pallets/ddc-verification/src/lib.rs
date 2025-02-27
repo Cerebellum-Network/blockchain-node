@@ -21,10 +21,10 @@ use ddc_primitives::{
 		NodeManager, PayoutProcessor, StorageUsageProvider, ValidatorVisitor,
 	},
 	BatchIndex, BucketStorageUsage, BucketUsage, ClusterFeesParams, ClusterId,
-	ClusterPricingParams, ClusterStatus, CustomerCharge as CustomerCosts, DdcEra, EHDId, EhdEra,
-	MMRProof, NodeParams, NodePubKey, NodeStorageUsage, NodeUsage, PHDId, PayableUsageHash,
-	PaymentEra, PayoutFingerprintParams, PayoutReceiptParams, PayoutState,
-	ProviderReward as ProviderProfits, StorageNodeParams, StorageNodePubKey, AVG_SECONDS_MONTH,
+	ClusterPricingParams, ClusterStatus, CustomerCharge as CustomerCosts, EHDId, EhdEra, MMRProof,
+	NodeParams, NodePubKey, NodeStorageUsage, NodeUsage, PHDId, PayableUsageHash, PaymentEra,
+	PayoutFingerprintParams, PayoutReceiptParams, PayoutState, ProviderReward as ProviderProfits,
+	StorageNodeParams, StorageNodePubKey, TcaEra, AVG_SECONDS_MONTH,
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -331,14 +331,14 @@ pub mod pallet {
 		},
 		ChallengeResponseError {
 			cluster_id: ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			aggregate_key: AggregateKey,
 			aggregator: NodePubKey,
 			validator: T::AccountId,
 		},
 		TraverseResponseError {
 			cluster_id: ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			aggregate_key: AggregateKey,
 			aggregator: NodePubKey,
 			validator: T::AccountId,
@@ -366,7 +366,7 @@ pub mod pallet {
 		FailedToParseCustomerId {
 			customer_id: AccountId32,
 		},
-		TimeCapsuleError,
+		TCAError,
 		FailedToFetchTraversedEHD,
 		FailedToFetchTraversedPHD,
 		FailedToFetchNodeChallenge,
@@ -397,14 +397,14 @@ pub mod pallet {
 		/// Challenge Response Retrieval Error.
 		ChallengeResponseError {
 			cluster_id: ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			aggregate_key: AggregateKey,
 			aggregator: NodePubKey,
 		},
 		/// Traverse Response Retrieval Error.
 		TraverseResponseError {
 			cluster_id: ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			aggregate_key: AggregateKey,
 			aggregator: NodePubKey,
 		},
@@ -499,7 +499,7 @@ pub mod pallet {
 		FailedToParseCustomerId {
 			customer_id: AccountId32,
 		},
-		TimeCapsuleError,
+		TCAError,
 		FailedToFetchTraversedEHD,
 		FailedToFetchTraversedPHD,
 		FailedToFetchNodeChallenge,
@@ -954,8 +954,8 @@ pub mod pallet {
 					OCWError::FailedToFetchProviderId { node_key } => {
 						Self::deposit_event(Event::FailedToFetchProviderId { node_key });
 					},
-					OCWError::TimeCapsuleError => {
-						Self::deposit_event(Event::TimeCapsuleError);
+					OCWError::TCAError => {
+						Self::deposit_event(Event::TCAError);
 					},
 					OCWError::FailedToSignInspectionReceipt => {
 						Self::deposit_event(Event::FailedToSignInspectionReceipt);
@@ -1171,7 +1171,7 @@ pub mod pallet {
 				cluster_id: &ClusterId,
 				account: &Account<T>,
 				signer: &Signer<T, T::OffchainIdentifierId>,
-			) -> Result<Option<DdcEra>, Vec<OCWError>> {
+			) -> Result<Option<TcaEra>, Vec<OCWError>> {
 				match Self::$prepare_fn(&cluster_id) {
 					Ok(Some(prepared_data)) => {
 
@@ -1240,40 +1240,31 @@ pub mod pallet {
 
 			if let Some(ehd_era) =
 				Self::get_ehd_era_for_inspection(cluster_id, vec![g_collector.clone()].as_slice())
-					.map_err(|e| vec![e])?
+					.map_err(|e| [e])?
 			{
-				let tcaa_start =
-					ehd_era.era_start.ok_or_else(|| vec![OCWError::TimeCapsuleError])?;
-				let tcaa_end = ehd_era.era_end.ok_or_else(|| vec![OCWError::TimeCapsuleError])?;
+				let tca_start = ehd_era.era_start.ok_or([OCWError::TCAError])?;
+				let tca_end = ehd_era.era_end.ok_or([OCWError::TCAError])?;
 
 				let ehd_root = Self::get_ehd_root(
 					cluster_id,
 					EHDId(*cluster_id, g_collector.0.clone(), ehd_era.id),
 				)
-				.map_err(|e| vec![e])?;
-
-				let ehd_id = EHDId::try_from(ehd_root.ehd_id.clone()).map_err(|_| {
-					vec![OCWError::FailedToParseEHDId { ehd_id: ehd_root.ehd_id.clone() }]
-				})?;
+				.map_err(|e| [e])?;
 
 				let mut phd_roots = vec![];
-				for phd_id in &ehd_root.pdh_ids {
-					let phd_id = PHDId::try_from(phd_id.clone()).map_err(|_| {
-						vec![OCWError::FailedToParsePHDId { phd_id: phd_id.clone() }]
-					})?;
-
-					let phd_root = Self::get_phd_root(cluster_id, phd_id).map_err(|e| vec![e])?;
+				for phd_id in ehd_root.pdh_ids {
+					let phd_root = Self::get_phd_root(cluster_id, phd_id).map_err(|e| [e])?;
 					phd_roots.push(phd_root.clone());
 				}
 
 				let nodes_inspection =
-					Self::inspect_nodes_aggregates(cluster_id, &phd_roots, tcaa_start, tcaa_end)?;
+					Self::inspect_nodes_aggregates(cluster_id, &phd_roots, tca_start, tca_end)?;
 
 				let buckets_inspection =
-					Self::inspect_buckets_aggregates(cluster_id, &phd_roots, tcaa_start, tcaa_end)?;
+					Self::inspect_buckets_aggregates(cluster_id, &phd_roots, tca_start, tca_end)?;
 
 				let payload = (
-					Into::<String>::into(ehd_id.clone()),
+					Into::<String>::into(ehd_root.ehd_id.clone()),
 					nodes_inspection.clone(),
 					buckets_inspection.clone(),
 				)
@@ -1291,7 +1282,7 @@ pub mod pallet {
 				let signature = format!("0x{}", hex::encode(signature.encode()));
 
 				let receipt = aggregator_client::json::InspectionReceipt {
-					ehd_id: ehd_id.clone().into(),
+					ehd_id: ehd_root.ehd_id.clone().into(),
 					inspector,
 					signature,
 					nodes_inspection,
@@ -1301,7 +1292,7 @@ pub mod pallet {
 				Self::send_inspection_receipt(cluster_id, g_collector, receipt)
 					.map_err(|e| vec![e])?;
 
-				Self::store_last_inspected_ehd(cluster_id, ehd_id);
+				Self::store_last_inspected_ehd(cluster_id, ehd_root.ehd_id);
 			}
 
 			Ok(())
@@ -1310,32 +1301,21 @@ pub mod pallet {
 		#[allow(clippy::collapsible_else_if)]
 		pub(crate) fn inspect_nodes_aggregates(
 			cluster_id: &ClusterId,
-			phd_roots: &Vec<aggregator_client::json::TraversedPHDResponse>,
-			tcaa_start: DdcEra,
-			tcaa_end: DdcEra,
+			phd_roots: &Vec<aggregator_client::json::PHDTreeNode>,
+			tca_start: TcaEra,
+			tca_end: TcaEra,
 		) -> Result<aggregator_client::json::InspectionResult, Vec<OCWError>> {
 			#[allow(clippy::type_complexity)]
 			let mut era_leaves_map: BTreeMap<
-				NodePubKey, // node aggrehate key
-				BTreeMap<(PHDId, (u64, u64)), BTreeMap<DdcEra, Vec<u64>>>,
+				NodePubKey, // node aggregate key
+				BTreeMap<(PHDId, (u64, u64)), BTreeMap<TcaEra, Vec<u64>>>,
 			> = BTreeMap::new();
 
-			let mut tcaas_map: BTreeMap<NodePubKey, DdcEra> = BTreeMap::new();
+			let mut tcaas_map: BTreeMap<NodePubKey, TcaEra> = BTreeMap::new();
 
 			for phd_root in phd_roots {
-				let phd_id = PHDId::try_from(phd_root.phd_id.clone()).map_err(|_| {
-					vec![OCWError::FailedToParsePHDId { phd_id: phd_root.phd_id.clone() }]
-				})?;
-
-				let collector_key = phd_id.0.clone();
-				for node_aggregate in &phd_root.nodes_aggregates {
-					let node_key =
-						NodePubKey::try_from(node_aggregate.node_key.clone()).map_err(|_| {
-							vec![OCWError::FailedToParseNodeKey {
-								node_key: node_aggregate.node_key.clone(),
-							}]
-						})?;
-
+				let collector_key = phd_root.phd_id.0.clone();
+				for node_key in phd_root.nodes_aggregates.keys() {
 					if tcaas_map.contains_key(&node_key.clone()) {
 						// Currently, we inspect node aggregation from a single (first
 						// responded) collector. We may compare the aggregation for the same
@@ -1348,7 +1328,7 @@ pub mod pallet {
 					let mut node_tcaa_count: u64 = 0;
 
 					let mut tcaa_leaves = BTreeMap::new();
-					for tcaa_id in tcaa_start..=tcaa_end {
+					for tcaa_id in tca_start..=tca_end {
 						if let Ok(challenge_res) = Self::fetch_node_challenge_response(
 							cluster_id,
 							tcaa_id,
@@ -1381,9 +1361,9 @@ pub mod pallet {
 
 					if node_tcaa_count > 0 {
 						era_leaves_map.insert(
-							node_key,
+							node_key.clone(),
 							BTreeMap::from([(
-								(phd_id.clone(), (node_leaves_count, node_tcaa_count)),
+								(phd_root.phd_id.clone(), (node_leaves_count, node_tcaa_count)),
 								tcaa_leaves,
 							)]),
 						);
@@ -1413,8 +1393,8 @@ pub mod pallet {
 
 				let mut remainder = n % node_tcaa_count;
 
-				let mut verified_tcaas: BTreeMap<DdcEra, Vec<u64>> = BTreeMap::new();
-				let mut unverified_tcaas: BTreeMap<DdcEra, Vec<u64>> = BTreeMap::new();
+				let mut verified_tcaas: BTreeMap<TcaEra, Vec<u64>> = BTreeMap::new();
+				let mut unverified_tcaas: BTreeMap<TcaEra, Vec<u64>> = BTreeMap::new();
 
 				for (tcaa_id, ids) in tcaa_leaves {
 					let ids_count: u64 = ids.len().try_into().unwrap();
@@ -1456,7 +1436,7 @@ pub mod pallet {
 							if verified_tcaas.contains_key(&tcaa_id) {
 								let mut verified_ids = verified_tcaas
 									.get(&tcaa_id)
-									.ok_or([OCWError::TimeCapsuleError])?
+									.ok_or([OCWError::TCAError])?
 									.clone();
 								verified_ids.extend(leaves_to_inspect);
 								verified_tcaas.insert(tcaa_id, verified_ids.clone());
@@ -1467,7 +1447,7 @@ pub mod pallet {
 							if unverified_tcaas.contains_key(&tcaa_id) {
 								let mut unverified_ids = unverified_tcaas
 									.get(&tcaa_id)
-									.ok_or([OCWError::TimeCapsuleError])?
+									.ok_or([OCWError::TCAError])?
 									.clone();
 								unverified_ids.extend(leaves_to_inspect);
 								unverified_tcaas.insert(tcaa_id, unverified_ids);
@@ -1510,37 +1490,24 @@ pub mod pallet {
 		#[allow(clippy::collapsible_else_if)]
 		pub(crate) fn inspect_buckets_aggregates(
 			cluster_id: &ClusterId,
-			phd_roots: &Vec<aggregator_client::json::TraversedPHDResponse>,
-			tcaa_start: DdcEra,
-			tcaa_end: DdcEra,
+			phd_roots: &Vec<aggregator_client::json::PHDTreeNode>,
+			tca_start: TcaEra,
+			tca_end: TcaEra,
 		) -> Result<aggregator_client::json::InspectionResult, Vec<OCWError>> {
 			#[allow(clippy::type_complexity)]
 			let mut era_leaves_map: BTreeMap<
 				(BucketId, NodePubKey), // bucket sub-aggegate key
-				BTreeMap<(PHDId, (u64, u64)), BTreeMap<DdcEra, Vec<u64>>>,
+				BTreeMap<(PHDId, (u64, u64)), BTreeMap<TcaEra, Vec<u64>>>,
 			> = BTreeMap::new();
 
-			let mut tcaas_map: BTreeMap<(BucketId, NodePubKey), DdcEra> = BTreeMap::new();
+			let mut tcaas_map: BTreeMap<(BucketId, NodePubKey), TcaEra> = BTreeMap::new();
 
 			for phd_root in phd_roots {
-				let phd_id = PHDId::try_from(phd_root.phd_id.clone()).map_err(|_| {
-					vec![OCWError::FailedToParsePHDId { phd_id: phd_root.phd_id.clone() }]
-				})?;
+				let collector_key = phd_root.phd_id.0.clone();
 
-				let collector_key = phd_id.0.clone();
-
-				for bucket_aggregate in &phd_root.buckets_aggregates {
-					let bucket_id = bucket_aggregate.bucket_id;
-
-					for node_aggregate in &phd_root.nodes_aggregates {
-						let node_key = NodePubKey::try_from(node_aggregate.node_key.clone())
-							.map_err(|_| {
-								vec![OCWError::FailedToParseNodeKey {
-									node_key: node_aggregate.node_key.clone(),
-								}]
-							})?;
-
-						if tcaas_map.contains_key(&(bucket_id, node_key.clone())) {
+				for bucket_id in phd_root.buckets_aggregates.keys() {
+					for node_key in phd_root.nodes_aggregates.keys() {
+						if tcaas_map.contains_key(&(*bucket_id, node_key.clone())) {
 							// Currently, we inspect node aggregation from a single (first
 							// responded) collector. We may compare the aggregation for the same
 							// node between different collectors in the next iterations to ensure
@@ -1552,13 +1519,13 @@ pub mod pallet {
 						let mut bucket_sub_tcaa_count: u64 = 0;
 
 						let mut tcaa_leaves = BTreeMap::new();
-						for tcaa_id in tcaa_start..=tcaa_end {
+						for tcaa_id in tca_start..=tca_end {
 							if let Ok(challenge_res) = Self::fetch_bucket_challenge_response(
 								cluster_id,
 								tcaa_id,
 								collector_key.clone(),
 								node_key.clone(),
-								bucket_id,
+								*bucket_id,
 								vec![1],
 							) {
 								let tcaa_root = challenge_res
@@ -1580,16 +1547,16 @@ pub mod pallet {
 								bucket_sub_leaves_count += tcaa_leaves_count;
 								bucket_sub_tcaa_count += 1;
 
-								tcaas_map.insert((bucket_id, node_key.clone()), tcaa_id);
+								tcaas_map.insert((*bucket_id, node_key.clone()), tcaa_id);
 							}
 						}
 
 						if bucket_sub_tcaa_count > 0 {
 							era_leaves_map.insert(
-								(bucket_id, node_key.clone()),
+								(*bucket_id, node_key.clone()),
 								BTreeMap::from([(
 									(
-										phd_id.clone(),
+										phd_root.phd_id.clone(),
 										(bucket_sub_leaves_count, bucket_sub_tcaa_count),
 									),
 									tcaa_leaves,
@@ -1623,8 +1590,8 @@ pub mod pallet {
 
 				let mut remainder = n % bucket_sub_tcaa_count;
 
-				let mut verified_tcaas: BTreeMap<DdcEra, Vec<u64>> = BTreeMap::new();
-				let mut unverified_tcaas: BTreeMap<DdcEra, Vec<u64>> = BTreeMap::new();
+				let mut verified_tcaas: BTreeMap<TcaEra, Vec<u64>> = BTreeMap::new();
+				let mut unverified_tcaas: BTreeMap<TcaEra, Vec<u64>> = BTreeMap::new();
 
 				for (tcaa_id, ids) in tcaa_leaves {
 					let ids_count: u64 = ids.len().try_into().unwrap();
@@ -1668,7 +1635,7 @@ pub mod pallet {
 							if verified_tcaas.contains_key(&tcaa_id) {
 								let mut verified_ids = verified_tcaas
 									.get(&tcaa_id)
-									.ok_or([OCWError::TimeCapsuleError])?
+									.ok_or([OCWError::TCAError])?
 									.clone();
 								verified_ids.extend(leaves_to_inspect);
 								verified_tcaas.insert(tcaa_id, verified_ids.clone());
@@ -1679,7 +1646,7 @@ pub mod pallet {
 							if unverified_tcaas.contains_key(&tcaa_id) {
 								let mut unverified_ids = unverified_tcaas
 									.get(&tcaa_id)
-									.ok_or([OCWError::TimeCapsuleError])?
+									.ok_or([OCWError::TCAError])?
 									.clone();
 								unverified_ids.extend(leaves_to_inspect);
 								unverified_tcaas.insert(tcaa_id, unverified_ids);
@@ -2038,8 +2005,8 @@ pub mod pallet {
 				&ehd.customers,
 				&customers_usage_cutoff,
 				&pricing,
-				era.time_start.ok_or(OCWError::TimeCapsuleError)?,
-				era.time_end.ok_or(OCWError::TimeCapsuleError)?,
+				era.time_start.ok_or(OCWError::TCAError)?,
+				era.time_end.ok_or(OCWError::TCAError)?,
 			)
 			.map_err(|_| OCWError::FailedToCalculatePayersBatches { era_id: ehd_id.2 })?;
 
@@ -2109,7 +2076,7 @@ pub mod pallet {
 		}
 
 		fn calculate_ehd_customers_charges(
-			customers: &Vec<aggregator_client::json::TraversedEHDCustomer>,
+			customers: &Vec<aggregator_client::json::EHDCustomer>,
 			cutoff_usage_map: &BTreeMap<T::AccountId, BucketUsage>,
 			pricing: &ClusterPricingParams,
 			time_start: i64,
@@ -2119,52 +2086,48 @@ pub mod pallet {
 			let mut cluster_costs = CustomerCosts::default();
 
 			for customer in customers {
-				if let Ok(customer_id) = customer.parse_customer_id() {
-					let customer_costs = Self::get_customer_costs(
-						pricing,
-						&customer.consumed_usage,
-						cutoff_usage_map.get(
-							&T::AccountId::decode(&mut &customer_id.encode()[..])
-								.map_err(|_| ArithmeticError::Overflow)?,
-						),
-						time_start,
-						time_end,
-					)?;
+				let customer_id: AccountId32 = customer.customer_id.clone().into();
+				let customer_costs = Self::get_customer_costs(
+					pricing,
+					&customer.consumed_usage,
+					cutoff_usage_map.get(
+						&T::AccountId::decode(&mut &customer_id.encode()[..])
+							.map_err(|_| ArithmeticError::Overflow)?,
+					),
+					time_start,
+					time_end,
+				)?;
 
-					// todo: cut off unverified activity of buckets if it is detected during
-					// inspection
-
-					cluster_costs.storage = cluster_costs
-						.storage
-						.checked_add(customer_costs.storage)
-						.ok_or(ArithmeticError::Overflow)?;
-
-					cluster_costs.transfer = cluster_costs
-						.transfer
-						.checked_add(customer_costs.transfer)
-						.ok_or(ArithmeticError::Overflow)?;
-
-					cluster_costs.puts = cluster_costs
-						.puts
-						.checked_add(customer_costs.puts)
-						.ok_or(ArithmeticError::Overflow)?;
-
-					cluster_costs.gets = cluster_costs
-						.gets
-						.checked_add(customer_costs.gets)
-						.ok_or(ArithmeticError::Overflow)?;
-
-					let charge_amount = (|| -> Option<u128> {
-						customer_costs
-							.transfer
-							.checked_add(customer_costs.storage)?
-							.checked_add(customer_costs.puts)?
-							.checked_add(customer_costs.gets)
-					})()
+				cluster_costs.storage = cluster_costs
+					.storage
+					.checked_add(customer_costs.storage)
 					.ok_or(ArithmeticError::Overflow)?;
 
-					customers_charges.push(CustomerCharge(customer_id, charge_amount));
-				}
+				cluster_costs.transfer = cluster_costs
+					.transfer
+					.checked_add(customer_costs.transfer)
+					.ok_or(ArithmeticError::Overflow)?;
+
+				cluster_costs.puts = cluster_costs
+					.puts
+					.checked_add(customer_costs.puts)
+					.ok_or(ArithmeticError::Overflow)?;
+
+				cluster_costs.gets = cluster_costs
+					.gets
+					.checked_add(customer_costs.gets)
+					.ok_or(ArithmeticError::Overflow)?;
+
+				let charge_amount = (|| -> Option<u128> {
+					customer_costs
+						.transfer
+						.checked_add(customer_costs.storage)?
+						.checked_add(customer_costs.puts)?
+						.checked_add(customer_costs.gets)
+				})()
+				.ok_or(ArithmeticError::Overflow)?;
+
+				customers_charges.push(CustomerCharge(customer_id, charge_amount));
 			}
 
 			Ok((customers_charges, cluster_costs))
@@ -2270,7 +2233,7 @@ pub mod pallet {
 		}
 
 		fn calculate_ehd_providers_rewards(
-			providers: &Vec<aggregator_client::json::TraversedEHDProvider>,
+			providers: &Vec<aggregator_client::json::EHDProvider>,
 			cutoff_usage_map: &BTreeMap<T::AccountId, NodeUsage>,
 			fees: &ClusterFeesParams,
 			cluster_usage: &aggregator_client::json::EHDUsage,
@@ -2279,40 +2242,39 @@ pub mod pallet {
 			let mut providers_profits = Vec::new();
 
 			for provider in providers {
-				if let Ok(provider_id) = provider.parse_provider_id() {
-					let provider_profits = Self::get_provider_profits(
-						&provider.provided_usage,
-						cutoff_usage_map.get(
-							&T::AccountId::decode(&mut &provider_id.encode()[..])
-								.map_err(|_| ArithmeticError::Overflow)?,
-						),
-						cluster_usage,
-						cluster_costs,
-					)?;
+				let provider_id: AccountId32 = provider.provider_id.clone().into();
+				let provider_profits = Self::get_provider_profits(
+					&provider.provided_usage,
+					cutoff_usage_map.get(
+						&T::AccountId::decode(&mut &provider_id.encode()[..])
+							.map_err(|_| ArithmeticError::Overflow)?,
+					),
+					cluster_usage,
+					cluster_costs,
+				)?;
 
-					let reward_amount = (|| -> Option<u128> {
-						provider_profits
-							.transfer
-							.checked_add(provider_profits.storage)?
-							.checked_add(provider_profits.puts)?
-							.checked_add(provider_profits.gets)
-					})()
-					.ok_or(ArithmeticError::Overflow)?;
+				let reward_amount = (|| -> Option<u128> {
+					provider_profits
+						.transfer
+						.checked_add(provider_profits.storage)?
+						.checked_add(provider_profits.puts)?
+						.checked_add(provider_profits.gets)
+				})()
+				.ok_or(ArithmeticError::Overflow)?;
 
-					let treasury_fee_amount = fees.treasury_share * reward_amount;
-					let validators_fee_amount = fees.validators_share * reward_amount;
-					let cluster_reserve_fee_amount = fees.cluster_reserve_share * reward_amount;
+				let treasury_fee_amount = fees.treasury_share * reward_amount;
+				let validators_fee_amount = fees.validators_share * reward_amount;
+				let cluster_reserve_fee_amount = fees.cluster_reserve_share * reward_amount;
 
-					let profit_amount = (|| -> Option<u128> {
-						reward_amount
-							.checked_sub(treasury_fee_amount)?
-							.checked_sub(validators_fee_amount)?
-							.checked_sub(cluster_reserve_fee_amount)
-					})()
-					.ok_or(ArithmeticError::Overflow)?;
+				let profit_amount = (|| -> Option<u128> {
+					reward_amount
+						.checked_sub(treasury_fee_amount)?
+						.checked_sub(validators_fee_amount)?
+						.checked_sub(cluster_reserve_fee_amount)
+				})()
+				.ok_or(ArithmeticError::Overflow)?;
 
-					providers_profits.push(ProviderReward(provider_id, profit_amount));
-				}
+				providers_profits.push(ProviderReward(provider_id, profit_amount));
 			}
 
 			Ok(providers_profits)
@@ -2882,7 +2844,7 @@ pub mod pallet {
 		pub(crate) fn get_ehd_root(
 			cluster_id: &ClusterId,
 			ehd_id: EHDId,
-		) -> Result<aggregator_client::json::TraversedEHDResponse, OCWError> {
+		) -> Result<aggregator_client::json::EHDTreeNode, OCWError> {
 			Self::fetch_traversed_era_historical_document(cluster_id, ehd_id, 1, 1)?
 				.first()
 				.ok_or(OCWError::FailedToFetchTraversedEHD)
@@ -2892,7 +2854,7 @@ pub mod pallet {
 		pub(crate) fn get_phd_root(
 			cluster_id: &ClusterId,
 			phd_id: PHDId,
-		) -> Result<aggregator_client::json::TraversedPHDResponse, OCWError> {
+		) -> Result<aggregator_client::json::PHDTreeNode, OCWError> {
 			Self::fetch_traversed_partial_historical_document(cluster_id, phd_id, 1, 1)?
 				.first()
 				.ok_or(OCWError::FailedToFetchTraversedPHD)
@@ -2902,7 +2864,7 @@ pub mod pallet {
 		pub(crate) fn get_tcaa_bucket_usage(
 			cluster_id: &ClusterId,
 			collector_key: NodePubKey,
-			tcaa_id: DdcEra,
+			tcaa_id: TcaEra,
 			node_key: NodePubKey,
 			bucket_id: BucketId,
 		) -> Result<BucketUsage, OCWError> {
@@ -2930,7 +2892,7 @@ pub mod pallet {
 		pub(crate) fn get_tcaa_node_usage(
 			cluster_id: &ClusterId,
 			collector_key: NodePubKey,
-			tcaa_id: DdcEra,
+			tcaa_id: TcaEra,
 			node_key: NodePubKey,
 		) -> Result<NodeUsage, OCWError> {
 			let challenge_res = Self::fetch_node_challenge_response(
@@ -3278,7 +3240,7 @@ pub mod pallet {
 	)]
 	pub struct EraActivity {
 		/// Era id.
-		pub id: DdcEra,
+		pub id: TcaEra,
 		pub start: i64,
 		pub end: i64,
 	}
@@ -3496,7 +3458,7 @@ pub mod pallet {
 			ehd_id: EHDId,
 			tree_node_id: u32,
 			tree_levels_count: u32,
-		) -> Result<Vec<aggregator_client::json::TraversedEHDResponse>, OCWError> {
+		) -> Result<Vec<aggregator_client::json::EHDTreeNode>, OCWError> {
 			let collectors = Self::get_collectors_nodes(cluster_id).map_err(|_| {
 				log::error!("❌ Error retrieving collectors for cluster {:?}", cluster_id);
 				OCWError::FailedToFetchCollectors { cluster_id: *cluster_id }
@@ -3552,7 +3514,7 @@ pub mod pallet {
 			phd_id: PHDId,
 			tree_node_id: u32,
 			tree_levels_count: u32,
-		) -> Result<Vec<aggregator_client::json::TraversedPHDResponse>, OCWError> {
+		) -> Result<Vec<aggregator_client::json::PHDTreeNode>, OCWError> {
 			let collectors = Self::get_collectors_nodes(cluster_id).map_err(|_| {
 				log::error!("❌ Error retrieving collectors for cluster {:?}", cluster_id);
 				OCWError::FailedToFetchCollectors { cluster_id: *cluster_id }
@@ -3628,7 +3590,7 @@ pub mod pallet {
 				aggregator_client::json::GroupedInspectionReceipt,
 			>,
 		) -> Result<BTreeMap<T::AccountId, BucketUsage>, OCWError> {
-			let mut buckets_usage_cutoff: BTreeMap<(DdcEra, BucketId, NodePubKey), BucketUsage> =
+			let mut buckets_usage_cutoff: BTreeMap<(TcaEra, BucketId, NodePubKey), BucketUsage> =
 				BTreeMap::new();
 			let mut buckets_to_customers: BTreeMap<BucketId, T::AccountId> = BTreeMap::new();
 			let mut customers_usage_cutoff: BTreeMap<T::AccountId, BucketUsage> = BTreeMap::new();
@@ -3708,7 +3670,7 @@ pub mod pallet {
 				aggregator_client::json::GroupedInspectionReceipt,
 			>,
 		) -> Result<BTreeMap<T::AccountId, NodeUsage>, OCWError> {
-			let mut nodes_usage_cutoff: BTreeMap<(DdcEra, NodePubKey), NodeUsage> = BTreeMap::new();
+			let mut nodes_usage_cutoff: BTreeMap<(TcaEra, NodePubKey), NodeUsage> = BTreeMap::new();
 			let mut nodes_to_providers: BTreeMap<NodePubKey, T::AccountId> = BTreeMap::new();
 			let mut providers_usage_cutoff: BTreeMap<T::AccountId, NodeUsage> = BTreeMap::new();
 
@@ -3809,7 +3771,7 @@ pub mod pallet {
 
 		pub(crate) fn fetch_node_challenge_response(
 			cluster_id: &ClusterId,
-			tcaa_id: DdcEra,
+			tcaa_id: TcaEra,
 			collector_key: NodePubKey,
 			node_key: NodePubKey,
 			tree_node_ids: Vec<u64>,
@@ -3853,7 +3815,7 @@ pub mod pallet {
 
 		pub(crate) fn fetch_bucket_challenge_response(
 			cluster_id: &ClusterId,
-			tcaa_id: DdcEra,
+			tcaa_id: TcaEra,
 			collector_key: NodePubKey,
 			node_key: NodePubKey,
 			bucket_id: BucketId,
@@ -4096,7 +4058,7 @@ pub mod pallet {
 		/// - `node_params`: DAC node parameters
 		pub(crate) fn _v4_fetch_nodes_aggregates_for_era(
 			cluster_id: &ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<
 			Vec<(AggregatorInfo, Vec<aggregator_client::json::NodeAggregateResponse>)>,
@@ -4140,7 +4102,7 @@ pub mod pallet {
 		/// - `node_params`: DAC node parameters
 		pub(crate) fn _v4_fetch_buckets_aggregates_for_era(
 			cluster_id: &ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			dac_nodes: &[(NodePubKey, StorageNodeParams)],
 		) -> Result<
 			Vec<(AggregatorInfo, Vec<aggregator_client::json::BucketAggregateResponse>)>,
@@ -4190,7 +4152,7 @@ pub mod pallet {
 		///
 		/// # Input Parameters
 		/// - `cluster_id: &ClusterId`: The ID of the cluster for which consensus is being computed.
-		/// - `era_id: DdcEra`: The era ID within the cluster.
+		/// - `era_id: TcaEra`: The era ID within the cluster.
 		/// - `buckets_aggregates_by_aggregator: &[(NodePubKey, Vec<A>)]`: A list of tuples, where
 		///   each tuple contains a node's public key and a vector of activities reported for that
 		///   bucket.
@@ -4206,7 +4168,7 @@ pub mod pallet {
 		///     for some activities.
 		pub(crate) fn _v4_group_buckets_sub_aggregates_by_consistency(
 			cluster_id: &ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			buckets_aggregates_by_aggregator: Vec<(
 				AggregatorInfo,
 				Vec<aggregator_client::json::BucketAggregateResponse>,
@@ -4264,7 +4226,7 @@ pub mod pallet {
 		///
 		/// # Input Parameters
 		/// - `cluster_id: &ClusterId`: The ID of the cluster for which consensus is being computed.
-		/// - `era_id: DdcEra`: The era ID within the cluster.
+		/// - `era_id: TcaEra`: The era ID within the cluster.
 		/// - `nodes_aggregates_by_aggregator: &[(NodePubKey, Vec<A>)]`: A list of tuples, where
 		///   each tuple contains a node's public key and a vector of activities reported by that
 		///   node.
@@ -4280,7 +4242,7 @@ pub mod pallet {
 		///     for some activities.
 		pub(crate) fn _v4_group_nodes_aggregates_by_consistency(
 			cluster_id: &ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			nodes_aggregates_by_aggregator: Vec<(
 				AggregatorInfo,
 				Vec<aggregator_client::json::NodeAggregateResponse>,
@@ -4324,7 +4286,7 @@ pub mod pallet {
 
 		pub(crate) fn _v4_get_total_usage<A: Aggregate>(
 			cluster_id: &ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			consistency_groups: ConsistencyGroups<A>,
 			should_challenge: bool,
 		) -> Result<Vec<A>, Vec<OCWError>> {
@@ -4372,7 +4334,7 @@ pub mod pallet {
 
 		pub(crate) fn _v4_challenge_others<A: Aggregate>(
 			_cluster_id: &ClusterId,
-			_era_id: DdcEra,
+			_era_id: TcaEra,
 			consistency_groups: ConsistencyGroups<A>,
 			accepted_keys: &mut Vec<AggregateKey>,
 			should_challenge: bool,
@@ -4499,7 +4461,7 @@ pub mod pallet {
 
 		pub(crate) fn _v4_challenge_aggregate<A: Aggregate>(
 			cluster_id: &ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			aggregate: &A,
 		) -> Result<bool, Vec<OCWError>> {
 			let number_of_identifiers = T::MAX_MERKLE_NODE_IDENTIFIER;
@@ -4601,7 +4563,7 @@ pub mod pallet {
 
 		pub(crate) fn _v4_challenge_aggregate_proto<A: Aggregate>(
 			cluster_id: &ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			aggregate: &A,
 		) -> Result<bool, Vec<OCWError>> {
 			let number_of_identifiers = T::MAX_MERKLE_NODE_IDENTIFIER;
@@ -4654,7 +4616,7 @@ pub mod pallet {
 		/// Fetch Challenge node aggregate or bucket sub-aggregate.
 		pub(crate) fn _v4_fetch_challenge_responses(
 			cluster_id: &ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			aggregate_key: AggregateKey,
 			merkle_node_identifiers: Vec<u64>,
 			aggregator: AggregatorInfo,
@@ -4678,7 +4640,7 @@ pub mod pallet {
 		/// Challenge node aggregate or bucket sub-aggregate.
 		pub(crate) fn _v4_fetch_challenge_responses_proto(
 			cluster_id: &ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			aggregate_key: AggregateKey,
 			merkle_tree_node_id: Vec<u64>,
 			aggregator: AggregatorInfo,
@@ -4707,7 +4669,7 @@ pub mod pallet {
 		/// - `node_params`: DAC node parameters
 		pub(crate) fn _v4_fetch_node_aggregates(
 			_cluster_id: &ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			node_params: &StorageNodeParams,
 		) -> Result<Vec<aggregator_client::json::NodeAggregateResponse>, http::Error> {
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
@@ -4750,7 +4712,7 @@ pub mod pallet {
 		/// - `merkle_node_identifiers`: set of merkle node identifiers to challenge
 		/// - `node_params`: aggregator node parameters
 		pub(crate) fn _v4_fetch_challenge_response(
-			era_id: DdcEra,
+			era_id: TcaEra,
 			aggregate_key: AggregateKey,
 			merkle_node_identifiers: Vec<u64>,
 			node_params: &StorageNodeParams,
@@ -4872,7 +4834,7 @@ pub mod pallet {
 		pub(crate) fn _v4_get_hash_from_merkle_path(
 			challenge_response: aggregator_client::json::ChallengeAggregateResponse,
 			cluster_id: &ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			aggregate_key: AggregateKey,
 		) -> Result<DeltaUsageHash, Vec<OCWError>> {
 			log::info!("Getting hash from merkle tree path for aggregate key: {:?}", aggregate_key);
@@ -4934,14 +4896,14 @@ pub mod pallet {
 			Ok(resulting_hash)
 		}
 
-		pub(crate) fn _v4_derive_usage_key(cluster_id: &ClusterId, era_id: DdcEra) -> Vec<u8> {
+		pub(crate) fn _v4_derive_usage_key(cluster_id: &ClusterId, era_id: TcaEra) -> Vec<u8> {
 			format!("offchain::activities::{:?}::{:?}", cluster_id, era_id).into_bytes()
 		}
 
 		#[allow(clippy::too_many_arguments)]
 		pub(crate) fn _v4_store_verified_usage<A: Encode, B: Encode>(
 			cluster_id: &ClusterId,
-			era_id: DdcEra,
+			era_id: TcaEra,
 			buckets_deltas: &[A],
 			buckets_deltas_root: DeltaUsageHash,
 			buckets_deltas_batch_roots: &[DeltaUsageHash],
@@ -4973,7 +4935,7 @@ pub mod pallet {
 		/// - `levels`: a number of levels to raverse
 		/// - `node_params`: aggregator node parameters
 		pub(crate) fn _v4_fetch_traverse_response(
-			era_id: DdcEra,
+			era_id: TcaEra,
 			aggregate_key: AggregateKey,
 			merkle_tree_node_id: u32,
 			levels: u16,
@@ -5006,7 +4968,7 @@ pub mod pallet {
 
 		/// Fetch protobuf challenge response.
 		pub(crate) fn _v4_fetch_challenge_response_proto(
-			era_id: DdcEra,
+			era_id: TcaEra,
 			aggregate_key: AggregateKey,
 			merkle_tree_node_id: Vec<u64>,
 			node_params: &StorageNodeParams,
@@ -5041,7 +5003,7 @@ pub mod pallet {
 		/// - `node_params`: DAC node parameters
 		pub(crate) fn _v4_fetch_bucket_aggregates(
 			_cluster_id: &ClusterId,
-			tcaa_id: DdcEra,
+			tcaa_id: TcaEra,
 			node_params: &StorageNodeParams,
 		) -> Result<Vec<aggregator_client::json::BucketAggregateResponse>, http::Error> {
 			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;

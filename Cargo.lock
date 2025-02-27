@@ -3691,6 +3691,8 @@ dependencies = [
  "polkadot-ckb-merkle-mountain-range",
  "scale-info",
  "serde",
+ "serde_json",
+ "serde_with",
  "sp-application-crypto",
  "sp-core",
  "sp-io",
