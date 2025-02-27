@@ -33,7 +33,7 @@ pub mod v1 {
 		Blake2_128Concat,
 		ClusterId,
 		Blake2_128Concat,
-		TcaEra,
+		EhdEra,
 		BillingReport<T>,
 	>;
 
@@ -120,14 +120,14 @@ pub mod v2 {
 		Blake2_128Concat,
 		ClusterId,
 		Blake2_128Concat,
-		TcaEra,
+		EhdEra,
 		BillingReport<T>,
 	>;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
 	pub struct PayoutFingerprint<AccountId> {
 		pub cluster_id: ClusterId,
-		pub era_id: TcaEra, // removed field
+		pub era_id: EhdEra, // removed field
 		pub start_era: i64, // removed field
 		pub end_era: i64,   // removed field
 		pub payers_merkle_root: PayableUsageHash,
@@ -181,7 +181,7 @@ pub mod v2 {
 			let mut billing_fingerprints: Vec<PayoutFingerprint<T::AccountId>> = Vec::new();
 
 			v2::ActiveBillingReports::<T>::translate::<v1::BillingReport<T>, _>(
-				|cluster_id: ClusterId, era_id: TcaEra, payout_receipt: v1::BillingReport<T>| {
+				|cluster_id: ClusterId, era_id: EhdEra, payout_receipt: v1::BillingReport<T>| {
 					log::info!(target: LOG_TARGET, "Migrating Billing Report for cluster_id {:?} era_id {:?}", cluster_id, era_id);
 					translated.saturating_inc();
 
@@ -323,7 +323,7 @@ pub mod v3 {
 		Blake2_128Concat,
 		ClusterId,
 		Blake2_128Concat,
-		TcaEra,
+		EhdEra,
 		BillingReport<T>,
 	>;
 

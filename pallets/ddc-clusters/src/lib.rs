@@ -36,7 +36,7 @@ use ddc_primitives::{
 	},
 	ClusterBondingParams, ClusterFeesParams, ClusterId, ClusterNodeKind, ClusterNodeState,
 	ClusterNodeStatus, ClusterNodesStats, ClusterParams, ClusterPricingParams,
-	ClusterProtocolParams, ClusterStatus, NodePubKey, NodeType, TcaEra,
+	ClusterProtocolParams, ClusterStatus, EhdEra, NodePubKey, NodeType,
 };
 use frame_support::{
 	assert_ok,
@@ -106,7 +106,7 @@ pub mod pallet {
 		ClusterUnbonding { cluster_id: ClusterId },
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
-		ClusterEraPaid { cluster_id: ClusterId, era_id: TcaEra },
+		ClusterEraPaid { cluster_id: ClusterId, era_id: EhdEra },
 	}
 
 	#[pallet::error]
@@ -886,7 +886,7 @@ pub mod pallet {
 		}
 	}
 	impl<T: Config> ClusterValidator<T> for Pallet<T> {
-		fn set_last_paid_era(cluster_id: &ClusterId, era_id: TcaEra) -> Result<(), DispatchError> {
+		fn set_last_paid_era(cluster_id: &ClusterId, era_id: EhdEra) -> Result<(), DispatchError> {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 
@@ -897,7 +897,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn get_last_paid_era(cluster_id: &ClusterId) -> Result<TcaEra, DispatchError> {
+		fn get_last_paid_era(cluster_id: &ClusterId) -> Result<EhdEra, DispatchError> {
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
 
