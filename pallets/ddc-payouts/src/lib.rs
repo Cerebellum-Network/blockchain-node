@@ -22,6 +22,12 @@ mod tests;
 
 pub mod migrations;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
+pub mod weights;
+use crate::weights::WeightInfo;
+
 use core::str;
 
 use ddc_primitives::{
@@ -149,6 +155,7 @@ pub mod pallet {
 		type ValidatorVisitor: ValidatorVisitor<Self>;
 		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
 		type Hasher: Hash<Output = H256>;
+		type WeightInfo: WeightInfo;
 		/// The identifier type for an authority.
 		type AuthorityId: Member
 		+ Parameter
@@ -742,7 +749,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 
 		#[pallet::call_index(0)]
-		#[pallet::weight(100_000)] //FIXME: benchmark!
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::commit_payout_fingerprint())]
 		#[allow(clippy::too_many_arguments)]
 		pub fn commit_payout_fingerprint(
 			origin: OriginFor<T>,
@@ -763,7 +770,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(1)]
-		#[pallet::weight(100_000)] //FIXME: benchmark!
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_payout())]
 		pub fn begin_payout(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -777,7 +784,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(2)]
-		#[pallet::weight(100_000)] //FIXME: benchmark!
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_charging_customers())]
 		pub fn begin_charging_customers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -790,7 +797,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight(100_000)] //FIXME: benchmark!
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::send_charging_customers_batch(payers.len() as u32))]
 		pub fn send_charging_customers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -811,7 +818,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(4)]
-		#[pallet::weight(100_000)] //FIXME: benchmark!
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_charging_customers())]
 		pub fn end_charging_customers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -823,7 +830,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(5)]
-		#[pallet::weight(100_000)] //FIXME: benchmark!
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::begin_rewarding_providers())]
 		pub fn begin_rewarding_providers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -836,7 +843,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(6)]
-		#[pallet::weight(100_000)] //FIXME: benchmark!
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::send_rewarding_providers_batch(payees.len() as u32))]
 		pub fn send_rewarding_providers_batch(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -857,7 +864,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(7)]
-		#[pallet::weight(100_000)] //FIXME: benchmark!
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_rewarding_providers())]
 		pub fn end_rewarding_providers(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
@@ -869,7 +876,7 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(8)]
-		#[pallet::weight(100_000)] //FIXME: benchmark!
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::end_payout())]
 		pub fn end_payout(
 			origin: OriginFor<T>,
 			cluster_id: ClusterId,
