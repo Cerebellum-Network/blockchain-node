@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [7.3.2]
+
+- [C] Update Hyperbridge Coprocessor for Mainnet.
+
 ## [7.3.1]
 
 - [C,D] To accommodate larger GRANDPA proofs, increased `BlockLength` to 7.5MB with 80% for normal extrinsics.
