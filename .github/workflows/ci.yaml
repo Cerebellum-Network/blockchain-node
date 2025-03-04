@@ -102,6 +102,14 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make
+      - name: Install Rust and Use It
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          . "$HOME/.cargo/env"
+          rustup toolchain install 1.81.0
+          rustup default 1.81.0
+          rustup show
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
