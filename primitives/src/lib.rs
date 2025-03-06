@@ -245,9 +245,9 @@ impl TryFrom<String> for EHDId {
 
 		let g_collector: NodePubKey = g_collector_str.try_into()?;
 
-		let payment_era = match TcaEra::from_str(payment_era_str) {
+		let payment_era = match EhdEra::from_str(payment_era_str) {
 			Ok(era) => era,
-			Err(_) => return Err("TcaEra must be a valid u32 value"),
+			Err(_) => return Err("EhdEra must be a valid u32 value"),
 		};
 
 		Ok(EHDId(H160(cluster_id), g_collector, payment_era))
@@ -284,9 +284,9 @@ impl TryFrom<String> for PHDId {
 
 		let collector: NodePubKey = collector_str.try_into()?;
 
-		let payment_era = match TcaEra::from_str(payment_era_str) {
+		let payment_era = match EhdEra::from_str(payment_era_str) {
 			Ok(era) => era,
-			Err(_) => return Err("TcaEra must be a valid u32 value"),
+			Err(_) => return Err("EhdEra must be a valid u32 value"),
 		};
 
 		Ok(PHDId(collector, payment_era))
