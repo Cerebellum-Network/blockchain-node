@@ -2,6 +2,7 @@ use aggregator::json;
 use prost::Message;
 use sp_core::ed25519::{Public, Signature};
 use sp_io::crypto::ed25519_verify;
+use serde::{Deserialize, Serialize};
 
 use super::*;
 

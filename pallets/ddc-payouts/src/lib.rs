@@ -42,7 +42,9 @@ use ddc_primitives::{
 	MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 	DAC_VERIFICATION_KEY_TYPE
 };
-use ddc_primitives::{proto, BucketId, AggregateKey};
+use ddc_primitives::{BucketId, AggregateKey};
+pub use aggregator::{proto, aggregator as aggregator_client};
+
 use frame_election_provider_support::SortedListProvider;
 use frame_support::{
 	pallet_prelude::*,
@@ -81,7 +83,6 @@ pub use sp_io::{
 	},
 };
 use sp_application_crypto::RuntimeAppPublic;
-use ddc_primitives::aggregator as aggregator_client;
 use ddc_primitives::ProviderReward;
 use ddc_primitives::DeltaUsageHash;
 use ddc_primitives::{
@@ -759,7 +760,7 @@ pub mod pallet {
 			payees_root: PayableUsageHash,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::commit_payout_fingerprint(
 				sender,
 				cluster_id,
@@ -778,7 +779,7 @@ pub mod pallet {
 			fingerprint: Fingerprint,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
+			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::begin_payout(cluster_id, era_id, fingerprint)?;
 			Ok(())
 		}
@@ -792,7 +793,7 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::begin_charging_customers(cluster_id, era_id, max_batch_index)
 		}
 
@@ -807,7 +808,7 @@ pub mod pallet {
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::send_charging_customers_batch(
 				cluster_id,
 				era_id,
@@ -825,7 +826,7 @@ pub mod pallet {
 			era_id: PaymentEra,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::end_charging_customers(cluster_id, era_id)
 		}
 
@@ -838,7 +839,7 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::begin_rewarding_providers(cluster_id, era_id, max_batch_index)
 		}
 
@@ -853,7 +854,7 @@ pub mod pallet {
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
 			<Self as PayoutProcessor<T>>::send_rewarding_providers_batch(
 				cluster_id,
 				era_id,
@@ -871,7 +872,7 @@ pub mod pallet {
 			era_id: PaymentEra,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::end_rewarding_providers(cluster_id, era_id)
 		}
 
@@ -883,7 +884,7 @@ pub mod pallet {
 			era_id: PaymentEra,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::end_payout(cluster_id, era_id)?;
 			T::ClusterValidator::set_last_paid_era(&cluster_id, era_id)
 		}
@@ -1649,7 +1650,7 @@ pub mod pallet {
 		fn fetch_inspection_receipts(
 			cluster_id: &ClusterId,
 			ehd_id: EHDId,
-		) -> Result<BTreeMap<String, ddc_primitives::aggregator::json::GroupedInspectionReceipt>, OCWError>
+		) -> Result<BTreeMap<String, aggregator_client::json::GroupedInspectionReceipt>, OCWError>
 		{
 			// todo(yahortsaryk): infer the node deterministically
 			let g_collector = Self::get_g_collectors_nodes(cluster_id)
@@ -1660,7 +1661,7 @@ pub mod pallet {
 
 			if let Ok(host) = str::from_utf8(&g_collector.1.host) {
 				let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
-				let client = ddc_primitives::aggregator::AggregatorClient::new(
+				let client = aggregator_client::AggregatorClient::new(
 					&base_url,
 					Duration::from_millis(RESPONSE_TIMEOUT),
 					MAX_RETRIES_COUNT,
@@ -2782,13 +2783,13 @@ pub mod pallet {
 			}
 		}
 
-		pub(crate) fn store_verification_account_id(account_id: T::AccountId) {
+		pub(crate) fn store_verification_account_id(account_id: T::AccountId) { //FIXME: Checkout this
 			let validator: Vec<u8> = account_id.encode();
 			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
 			local_storage_set(StorageKind::PERSISTENT, &key, &validator);
 		}
 
-		pub(crate) fn fetch_verification_account_id() -> Result<T::AccountId, OCWError> {
+		pub(crate) fn fetch_verification_account_id() -> Result<T::AccountId, OCWError> { //FIXME: Checkout this
 			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
 
 			match local_storage_get(StorageKind::PERSISTENT, &key) {
@@ -3479,5 +3480,20 @@ pub mod pallet {
 		}
 
 		fn on_disabled(_i: u32) {}
+	}
+
+	impl<T: Config> ValidatorVisitor<T> for Pallet<T> {
+		fn is_ocw_validator(caller: T::AccountId) -> bool {
+			if ValidatorToStashKey::<T>::contains_key(caller.clone()) {
+				<ValidatorSet<T>>::get().contains(&caller)
+			} else {
+				false
+			}
+		}
+
+		fn is_quorum_reached(quorum: Percent, members_count: usize) -> bool {
+			let threshold = quorum * <ValidatorSet<T>>::get().len();
+			threshold <= members_count
+		}
 	}
 }

@@ -31,6 +31,7 @@ sp-application-crypto = { workspace = true }
 
 # Cere dependencies
 ddc-primitives = { workspace = true }
+aggregator = { workspace = true }
 itertools = "0.11.0"
 
 [dev-dependencies]
@@ -58,6 +59,7 @@ std = [
   "sp-core/std",
   "frame-election-provider-support/std",
   "sp-application-crypto/std",
+  "aggregator/std"
 ]
 runtime-benchmarks = [
   "ddc-primitives/runtime-benchmarks",

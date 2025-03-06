@@ -38,6 +38,7 @@ sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-staking = { workspace = true }
 sp-std = { workspace = true }
+aggregator = { workspace = true }
 
 [dev-dependencies]
 pallet-balances = { workspace = true, default-features = true }
@@ -71,6 +72,7 @@ std = [
   "sp-application-crypto/std",
   "sp-staking/std",
   "frame-election-provider-support/std",
+  "aggregator/std"
 ]
 runtime-benchmarks = [
   "ddc-primitives/runtime-benchmarks",

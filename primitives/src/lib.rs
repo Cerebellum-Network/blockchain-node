@@ -18,14 +18,8 @@ use sp_runtime::{
 use sp_std::collections::btree_set::BTreeSet;
 pub mod traits;
 use sp_std::str::FromStr;
-
 pub mod ocw_mutex;
-pub mod aggregator;
-pub mod signature;
 
-pub mod proto {
-	include!(concat!(env!("OUT_DIR"), "/activity.rs"));
-}
 
 parameter_types! {
 	pub MaxHostLen: u8 = 255;

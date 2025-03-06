@@ -25,6 +25,7 @@ use ddc_primitives::{
 	MMRProof, NodeParams, NodePubKey, NodeStorageUsage, NodeUsage, PHDId, PayableUsageHash,
 	PaymentEra, PayoutFingerprintParams, PayoutReceiptParams, PayoutState,
 	ProviderReward as ProviderProfits, StorageNodeParams, StorageNodePubKey, AVG_SECONDS_MONTH,
+	AggregateKey
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -77,19 +78,12 @@ mod tests;
 
 pub mod migrations;
 
-mod aggregator_client;
+use aggregator::{aggregator as aggregator_client, signature, signature::Verify, proto};
 
 pub mod aggregate_tree;
 use aggregate_tree::{
 	calculate_sample_size_fin, calculate_sample_size_inf, get_leaves_ids, D_099, P_001,
 };
-
-pub mod proto {
-	include!(concat!(env!("OUT_DIR"), "/activity.rs"));
-}
-
-mod signature;
-use signature::Verify;
 
 pub(crate) type BalanceOf<T> =
 	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -2581,13 +2575,6 @@ pub mod pallet {
 		pub(crate) consensus: Vec<ConsolidatedAggregate<A>>,
 		pub(crate) quorum: Vec<ConsolidatedAggregate<A>>,
 		pub(crate) others: Vec<ConsolidatedAggregate<A>>,
-	}
-
-	#[allow(unused)]
-	#[derive(Debug, Serialize, Deserialize, Clone, Encode, Decode, Hash, TypeInfo, PartialEq)]
-	pub enum AggregateKey {
-		NodeAggregateKey(String),
-		BucketSubAggregateKey(BucketId, String),
 	}
 
 	pub(crate) trait Hashable {

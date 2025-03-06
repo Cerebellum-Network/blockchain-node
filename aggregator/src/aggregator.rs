@@ -1,12 +1,13 @@
 #![allow(dead_code)]
 
-use crate::{AggregatorInfo, BucketId, DdcEra};
+use ddc_primitives::{AggregatorInfo, BucketId, DdcEra, EHDId, PHDId, AggregateKey};
 use prost::Message;
 use serde_with::{base64::Base64, serde_as};
 use sp_core::crypto::AccountId32;
 use sp_io::offchain::timestamp;
 use sp_runtime::offchain::{http, Duration};
 use sp_std::collections::btree_map::BTreeMap;
+use serde::{Deserialize, Serialize};
 use sp_std::vec;
 
 use super::*;
@@ -392,6 +393,8 @@ enum Accept {
 }
 
 pub mod json {
+    use codec::{Decode, Encode};
+    use frame_support::{Deserialize, Serialize};
     use super::*;
 
     /// Node aggregate response from aggregator.
