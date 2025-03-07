@@ -161,7 +161,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73003,
+	spec_version: 73004,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -1606,10 +1606,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 // );
 
 // Migrations for DAC and Payouts on QANET
-type Migrations = (
-	pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
-	pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
-);
+type Migrations = pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>;
 
 pub mod migrations {
 	use super::*;
@@ -1634,6 +1631,7 @@ pub mod migrations {
 		pallet_ddc_payouts::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
 		pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
+		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
 	);
 }
 
