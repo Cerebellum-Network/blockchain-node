@@ -5307,8 +5307,11 @@ fn end_billing_report_works() {
 		);
 
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_payout(cluster_id, era,));
+		let finalized_at = <frame_system::Pallet<Test>>::block_number();
 
-		System::assert_last_event(Event::PayoutReceiptFinalized { cluster_id, era }.into());
+		System::assert_last_event(
+			Event::PayoutReceiptFinalized { cluster_id, era, finalized_at }.into(),
+		);
 
 		let report_end = DdcPayouts::active_billing_reports(cluster_id, era).unwrap();
 		assert!(report_end.rewarding_processed_batches.is_empty());
