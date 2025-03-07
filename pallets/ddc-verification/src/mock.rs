@@ -639,7 +639,11 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 		PayoutState::NotInitialized
 	}
 
-	fn create_payout_receipt(_vault: T::AccountId, _params: PayoutReceiptParams) {
+	fn create_payout_receipt(
+		_vault: T::AccountId,
+		_params: PayoutReceiptParams,
+		_finalized_at: Option<BlockNumberFor<T>>,
+	) {
 		unimplemented!()
 	}
 

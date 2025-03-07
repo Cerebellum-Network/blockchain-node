@@ -25,7 +25,7 @@ use sp_std::{
 };
 
 use crate::{
-	aggregate_tree, aggregator_client, fetch_last_inspected_ehds, get_last_paid_era_hash,
+	aggregate_tree, aggregator_client, fetch_last_inspected_ehds,
 	insp_ddc_api::{
 		fetch_bucket_aggregates, fetch_bucket_challenge_response, fetch_node_challenge_response,
 		fetch_processed_eras, get_ehd_root, get_g_collectors_nodes, get_phd_root,
@@ -158,7 +158,7 @@ where
 	AccountId: Ord + Clone,
 {
 	NotReadyForInspection,
-	AssigningInspectors { era: EhdEra, assigner: AccountId, lease_ttl: u32 },
+	AssigningInspectors { era: EhdEra, assigner: AccountId, lease_ttl: u32, salt: u64 },
 	ReadyForInspection { assignments_table: InspAssignmentsTable<AccountId> },
 }
 
@@ -203,14 +203,15 @@ impl<T: Config> InspTaskAssigner<T> {
 			era,
 			assigner: self.inspector.public.clone().into_account(),
 			lease_ttl: 60000,
+			salt: 0,
 		};
 
 		match sync_status {
 			InspSyncStatus::NotReadyForInspection => Ok(None),
-			InspSyncStatus::AssigningInspectors { era, assigner, lease_ttl: _lease_ttl } => {
+			InspSyncStatus::AssigningInspectors { era, assigner, lease_ttl: _lease_ttl, salt } => {
 				let inspector_account = &self.inspector.public.clone().into_account();
 				if *inspector_account == assigner {
-					let assignmens_table = &self.build_assignments_table(cluster_id, &era)?;
+					let assignmens_table = &self.build_assignments_table(cluster_id, &era, salt)?;
 
 					// todo(yahortsaryk): optimize performance by eliminating cloning of the whole
 					// table
@@ -315,6 +316,7 @@ impl<T: Config> InspTaskAssigner<T> {
 		&self,
 		cluster_id: &ClusterId,
 		era: &EhdEra,
+		salt: u64,
 	) -> Result<InspAssignmentsTable<T::AccountId>, InspAssignmentError> {
 		let mut inspection_paths: Vec<InspPath> = Vec::new();
 
@@ -334,7 +336,6 @@ impl<T: Config> InspTaskAssigner<T> {
 		inspection_paths.extend(build_buckets_inspection_paths::<T>(&phd_roots)?);
 
 		let inspectors = <ValidatorSet<T>>::get().clone();
-		let seed = get_last_paid_era_hash::<T>(cluster_id);
 		let assignments_table = InspAssignmentsTable::<T::AccountId>::build::<T>(
 			*cluster_id,
 			*era,
@@ -342,7 +343,7 @@ impl<T: Config> InspTaskAssigner<T> {
 			INSPECTION_BACKUPS_COUNT,
 			inspection_paths,
 			inspectors,
-			seed,
+			salt,
 		)?;
 
 		Ok(assignments_table)
