@@ -513,7 +513,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let mut bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
-			ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
+			ensure!(bucket.owner_id == who, Error::<T>::NotBucketOwner);
 
 			bucket.is_public = bucket_params.is_public;
 			let cluster_id = bucket.cluster_id;
@@ -534,7 +534,7 @@ pub mod pallet {
 
 			<Buckets<T>>::try_mutate(bucket_id, |maybe_bucket| -> DispatchResult {
 				let bucket = maybe_bucket.as_mut().ok_or(Error::<T>::NoBucketWithId)?;
-				ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
+				ensure!(bucket.owner_id == who, Error::<T>::NotBucketOwner);
 				ensure!(!bucket.is_removed, Error::<T>::AlreadyRemoved);
 
 				// Mark the bucket as removed
