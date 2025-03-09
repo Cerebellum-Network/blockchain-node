@@ -80,8 +80,7 @@ pub mod pallet {
 	use super::*;
 
 	/// The current storage version.
-	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(3);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -380,9 +379,9 @@ pub mod pallet {
 		let mut total_score = 0;
 		let mut individual_scores: Vec<(T::AccountId, u64)> = Vec::new();
 		for staker_id in T::NominatorsAndValidatorsList::iter() {
-			let s = T::NominatorsAndValidatorsList::get_score(&staker_id)
+			let score_to_convert = T::NominatorsAndValidatorsList::get_score(&staker_id)
 				.map_err(|_| Error::<T>::ScoreRetrievalError)?;
-			let score = T::VoteScoreToU64::convert(s);
+			let score = T::VoteScoreToU64::convert(score_to_convert);
 			total_score += score;
 
 			individual_scores.push((staker_id, score));

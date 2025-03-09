@@ -1,3 +1,8 @@
+//! # DDC Customer Module
+//!
+//! It provides a mechanism for account owners to deposit CERE tokens
+//! in order to pay for DDC CDN and Storage network.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 #![allow(clippy::manual_inspect)]
@@ -134,8 +139,7 @@ pub mod pallet {
 	use super::*;
 
 	/// The current storage version.
-	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(2);
+	const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -341,8 +345,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
-			let owner = ensure_signed(origin)?;
-			<Self as CustomerDepositor<T>>::deposit(owner, value.saturated_into())?;
+			let who = ensure_signed(origin)?;
+			<Self as CustomerDepositor<T>>::deposit(who, value.saturated_into())?;
 			Ok(())
 		}
 
@@ -358,8 +362,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			#[pallet::compact] max_additional: BalanceOf<T>,
 		) -> DispatchResult {
-			let owner = ensure_signed(origin)?;
-			<Self as CustomerDepositor<T>>::deposit_extra(owner, max_additional.saturated_into())?;
+			let who = ensure_signed(origin)?;
+			<Self as CustomerDepositor<T>>::deposit_extra(who, max_additional.saturated_into())?;
 			Ok(())
 		}
 
@@ -385,8 +389,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
-			let owner = ensure_signed(origin)?;
-			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
+			let who = ensure_signed(origin)?;
+			let mut ledger = Ledger::<T>::get(&who).ok_or(Error::<T>::NotOwner)?;
 			ensure!(
 				ledger.unlocking.len() < MaxUnlockingChunks::get() as usize,
 				Error::<T>::NoMoreChunks,
@@ -424,7 +428,7 @@ pub mod pallet {
 						.map_err(|_| Error::<T>::NoMoreChunks)?;
 				};
 
-				<Ledger<T>>::insert(&owner, &ledger);
+				<Ledger<T>>::insert(&who, &ledger);
 
 				Self::deposit_event(Event::<T>::InitialDepositUnlock {
 					owner_id: ledger.owner,
@@ -447,8 +451,8 @@ pub mod pallet {
 		#[pallet::call_index(4)]
 		#[pallet::weight(T::WeightInfo::withdraw_unlocked_deposit_kill())]
 		pub fn withdraw_unlocked_deposit(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-			let owner = ensure_signed(origin)?;
-			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
+			let who = ensure_signed(origin)?;
+			let mut ledger = Ledger::<T>::get(&who).ok_or(Error::<T>::NotOwner)?;
 			let (owner, old_total) = (ledger.owner.clone(), ledger.total);
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
@@ -507,9 +511,9 @@ pub mod pallet {
 			bucket_id: BucketId,
 			bucket_params: BucketParams,
 		) -> DispatchResult {
-			let owner = ensure_signed(origin)?;
+			let who = ensure_signed(origin)?;
 			let mut bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
-			ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
+			ensure!(bucket.owner_id == who, Error::<T>::NotBucketOwner);
 
 			bucket.is_public = bucket_params.is_public;
 			let cluster_id = bucket.cluster_id;
@@ -526,11 +530,11 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::remove_bucket())]
 		pub fn remove_bucket(origin: OriginFor<T>, bucket_id: BucketId) -> DispatchResult {
 			// todo! can we set total_usage to None and save bytes
-			let owner = ensure_signed(origin)?;
+			let who = ensure_signed(origin)?;
 
 			<Buckets<T>>::try_mutate(bucket_id, |maybe_bucket| -> DispatchResult {
 				let bucket = maybe_bucket.as_mut().ok_or(Error::<T>::NoBucketWithId)?;
-				ensure!(bucket.owner_id == owner, Error::<T>::NotBucketOwner);
+				ensure!(bucket.owner_id == who, Error::<T>::NotBucketOwner);
 				ensure!(!bucket.is_removed, Error::<T>::AlreadyRemoved);
 
 				// Mark the bucket as removed
