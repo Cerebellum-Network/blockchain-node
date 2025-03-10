@@ -8,7 +8,9 @@ use scale_info::prelude::{format, string::String};
 use sp_runtime::offchain::{http, Duration};
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
-use crate::{aggregator_client, proto, Config, Error, OCWError};
+use crate::{
+	aggregator_client, insp_task_manager::InspAssignmentsTable, proto, Config, Error, OCWError,
+};
 
 pub(crate) const RESPONSE_TIMEOUT: u64 = 20000;
 pub(crate) const MAX_RETRIES_COUNT: u32 = 3;
@@ -519,4 +521,51 @@ pub(crate) fn get_inspection_assignment_table(
 	// todo(yahortsaryk): request DDC Sync node for the inspection assignments table
 
 	Ok(())
+}
+
+pub(crate) fn send_assignments_table<T: Config>(
+	cluster_id: &ClusterId,
+	g_collector: &(NodePubKey, StorageNodeParams),
+	table: InspAssignmentsTable<T::AccountId>,
+) -> Result<(), OCWError> {
+	if let Ok(host) = str::from_utf8(&g_collector.1.host) {
+		let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
+		let client = aggregator_client::AggregatorClient::new(
+			&base_url,
+			Duration::from_millis(RESPONSE_TIMEOUT),
+			MAX_RETRIES_COUNT,
+			false, // no response signature verification for now
+		);
+
+		if client.send_assignments_table::<T>(table.clone()).is_ok() {
+			// proceed with the first available EHD record for the prototype
+			return Ok(());
+		} else {
+			log::warn!(
+						"⚠️  Collector from cluster {:?} is unavailable while fetching EHD record or responded with unexpected body. Key: {:?} Host: {:?}",
+						cluster_id,
+						g_collector.0,
+						String::from_utf8(g_collector.1.host.clone())
+					);
+		}
+	}
+
+	Err(OCWError::FailedToSaveInspectionReceipt)
+}
+
+pub(crate) fn get_assignments_table<T: Config>(
+	cluster_id: &ClusterId,
+	ehd_era: EhdEra,
+	node_params: StorageNodeParams,
+) -> Result<InspAssignmentsTable<T::AccountId>, ()> {
+	let host = str::from_utf8(&node_params.host).map_err(|_| ())?;
+	let base_url = format!("http://{}:{}", host, node_params.http_port);
+	let client = aggregator_client::AggregatorClient::new(
+		&base_url,
+		Duration::from_millis(RESPONSE_TIMEOUT),
+		MAX_RETRIES_COUNT,
+		false,
+	);
+	let response = client.get_assignments_table::<T>(ehd_era).map_err(|_| ())?;
+	Ok(response)
 }

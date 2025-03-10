@@ -84,9 +84,10 @@ mod insp_task_manager;
 
 use insp_ddc_api::{
 	fetch_bucket_challenge_response, fetch_inspection_receipts, fetch_node_challenge_response,
-	fetch_processed_era, get_collectors_nodes, get_ehd_root, get_g_collectors_nodes,
-	send_inspection_receipt, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE, MAX_RETRIES_COUNT,
-	NODES_AGGREGATES_FETCH_BATCH_SIZE, RESPONSE_TIMEOUT,
+	fetch_processed_era, get_assignments_table, get_collectors_nodes, get_ehd_root,
+	get_g_collectors_nodes, send_assignments_table, send_inspection_receipt,
+	BUCKETS_AGGREGATES_FETCH_BATCH_SIZE, MAX_RETRIES_COUNT, NODES_AGGREGATES_FETCH_BATCH_SIZE,
+	RESPONSE_TIMEOUT,
 };
 use insp_task_manager::{
 	store_and_fetch_nonce, InspEraResult, InspPath, InspPathException, InspTaskManager,
@@ -394,6 +395,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			err: InspectionError,
 		},
+		Unexpected,
 	}
 
 	/// Consensus Errors
@@ -530,6 +532,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			err: InspectionError,
 		},
+		Unexpected,
 	}
 
 	#[pallet::error]
@@ -1014,6 +1017,9 @@ pub mod pallet {
 					OCWError::FailedToFetchBucketAggregate => {
 						Self::deposit_event(Event::FailedToFetchBucketAggregate);
 					},
+					OCWError::Unexpected => {
+						Self::deposit_event(Event::FailedToFetchBucketAggregate);
+					},
 				}
 			}
 
@@ -1287,6 +1293,7 @@ pub mod pallet {
 					inspector,
 					signature,
 					&insp_task_manager,
+					&g_collector,
 				)?;
 
 				send_inspection_receipt(cluster_id, g_collector, receipt)?;
@@ -1305,6 +1312,7 @@ pub mod pallet {
 			inspector: String,
 			signature: String,
 			insp_task_manager: &InspTaskManager<T>,
+			g_collector: &(NodePubKey, StorageNodeParams),
 		) -> Result<aggregator_client::json::InspectionReceipt, OCWError> {
 			let Some(insp_table) =
 				insp_task_manager.get_assignments_table(cluster_id).map_err(|e| {
@@ -1318,6 +1326,32 @@ pub mod pallet {
 					cluster_id: *cluster_id,
 					err: InspectionError::Unexpected,
 				});
+			};
+
+			let assignments_table_json = serde_json::to_string(&insp_table).map_err(|e| {
+				log::info!("insp table serde_json error {:?}", e);
+				OCWError::Unexpected
+			})?;
+			log::info!("\nASSIGNMENTS TABLE\n{:?}\n", assignments_table_json);
+			let insp_results_json = serde_json::to_string(&insp_result).map_err(|e| {
+				log::info!("insp result serde_json error {:?}", e);
+				OCWError::Unexpected
+			})?;
+			log::info!("\nASSIGNMENTS PATHS RESULTS\n{:?}\n", insp_results_json);
+
+			if let Ok(_) = send_assignments_table::<T>(cluster_id, g_collector, insp_table.clone())
+			{
+				log::info!("Saved assignemnts table!");
+
+				if let Ok(table) =
+					get_assignments_table::<T>(cluster_id, insp_result.era, g_collector.clone().1)
+				{
+					log::info!("Got assignemnts table! {:?}\n", table);
+				} else {
+					log::error!("Error retrieving assignemnts table!");
+				}
+			} else {
+				log::error!("Error saving assignemnts table")
 			};
 
 			let (nodes_inspection, buckets_inspection) = insp_result.receipts.iter().fold(

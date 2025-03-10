@@ -2,6 +2,7 @@
 #![allow(clippy::from_over_into)]
 
 use ddc_primitives::{AccountId32Hex, AggregatorInfo, BucketId, TcaEra};
+use insp_task_manager::InspAssignmentsTable;
 use prost::Message;
 use scale_info::prelude::{collections::BTreeMap, string::String, vec::Vec};
 use serde_with::{base64::Base64, serde_as, TryFromInto};
@@ -9,7 +10,7 @@ use sp_io::offchain::timestamp;
 use sp_runtime::offchain::{http, Duration};
 
 use super::*;
-use crate::signature::Verify;
+use crate::{signature::Verify, Config};
 
 pub struct AggregatorClient<'a> {
 	pub base_url: &'a str,
@@ -261,6 +262,28 @@ impl<'a> AggregatorClient<'a> {
 	pub fn check_grouping_collector(&self) -> Result<json::IsGCollectorResponse, http::Error> {
 		let mut url = format!("{}/activity/is-grouping-collector", self.base_url);
 		fetch_and_parse!(self, url, json::IsGCollectorResponse, json::IsGCollectorResponse)
+	}
+
+	pub fn send_assignments_table<T: Config>(
+		&self,
+		table: InspAssignmentsTable<T::AccountId>,
+	) -> Result<http::Response, http::Error> {
+		let url = format!("{}/activity/assignments-tables", self.base_url);
+		let body = serde_json::to_vec(&table).expect("Assignments table to be encoded");
+		self.post(&url, body)
+	}
+
+	pub fn get_assignments_table<T: Config>(
+		&self,
+		ehd_era: EhdEra,
+	) -> Result<InspAssignmentsTable<T::AccountId>, http::Error> {
+		let mut url = format!("{}/activity/assignments-tables&ehdEraId={}", self.base_url, ehd_era);
+		fetch_and_parse!(
+			self,
+			url,
+			InspAssignmentsTable<T::AccountId>,
+			InspAssignmentsTable<T::AccountId>
+		)
 	}
 
 	fn get(&self, url: &str, accept: Accept) -> Result<http::Response, http::Error> {
