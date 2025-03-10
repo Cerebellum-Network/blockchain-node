@@ -11,20 +11,18 @@
 #![allow(clippy::manual_inspect)]
 use core::str;
 
-use base64ct::{Base64, Encoding};
+use ddc_api::json;
 #[cfg(feature = "runtime-benchmarks")]
 use ddc_primitives::traits::{ClusterCreator, CustomerDepositor};
 use ddc_primitives::{
 	ocw_mutex::OcwMutex,
 	traits::{
 		BucketManager, ClusterManager, ClusterProtocol, ClusterValidator, CustomerVisitor,
-		NodeManager, PayoutProcessor, StorageUsageProvider, ValidatorVisitor,
+		InspReceiptsInterceptor, NodeManager, PayoutProcessor, StorageUsageProvider,
+		ValidatorVisitor,
 	},
-	AggregateKey, BatchIndex, BucketStorageUsage, BucketUsage, ClusterFeesParams, ClusterId,
-	ClusterPricingParams, ClusterStatus, CustomerCharge as CustomerCosts, EHDId, EhdEra, MMRProof,
-	NodePubKey, NodeStorageUsage, NodeUsage, PayableUsageHash, PayoutFingerprintParams,
-	PayoutReceiptParams, PayoutState, ProviderReward as ProviderProfits, StorageNodeParams,
-	StorageNodePubKey, TcaEra, AVG_SECONDS_MONTH,
+	AggregateKey, BucketStorageUsage, ClusterId, ClusterStatus, EHDId, NodeStorageUsage,
+	PayoutFingerprintParams, PayoutReceiptParams, PayoutState, StorageNodePubKey,
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -36,17 +34,10 @@ use frame_system::{
 };
 use itertools::Itertools;
 pub use pallet::*;
-use polkadot_ckb_merkle_mountain_range::{
-	helper::{leaf_index_to_mmr_size, leaf_index_to_pos},
-	util::{MemMMR, MemStore},
-	MerkleProof, MMR,
-};
-use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use scale_info::prelude::{format, string::String};
 use serde::{Deserialize, Serialize};
 use sp_application_crypto::RuntimeAppPublic;
 use sp_core::{crypto::UncheckedFrom, H256};
-use sp_io::hashing::blake2_256;
 pub use sp_io::{
 	crypto::sr25519_public_keys,
 	offchain::{
@@ -54,17 +45,14 @@ pub use sp_io::{
 	},
 };
 use sp_runtime::{
-	offchain::{http, Duration, StorageKind},
+	offchain::StorageKind,
 	traits::{Hash, IdentifyAccount},
-	ArithmeticError, Percent, Perquintill,
+	Percent,
 };
 use sp_staking::StakingInterface;
-use sp_std::{
-	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
-	fmt::Debug,
-	prelude::*,
-};
+use sp_std::{collections::btree_set::BTreeSet, fmt::Debug, prelude::*};
 pub mod weights;
+
 use crate::weights::WeightInfo;
 
 // #[cfg(feature = "runtime-benchmarks")]
@@ -75,25 +63,15 @@ use crate::weights::WeightInfo;
 // #[cfg(test)]
 // mod tests;
 
+pub mod demo;
 pub mod migrations;
-
-use aggregator::{
-	aggregator as aggregator_client,
-	insp_ddc_api::{
-		fetch_bucket_challenge_response, fetch_inspection_receipts, fetch_node_challenge_response,
-		fetch_processed_era, get_collectors_nodes, get_ehd_root, get_g_collectors_nodes,
-		send_inspection_receipt, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE, MAX_RETRIES_COUNT,
-		NODES_AGGREGATES_FETCH_BATCH_SIZE, RESPONSE_TIMEOUT,
-	},
-	proto, signature,
-};
-use insp_task_manager::{
-	store_and_fetch_nonce, InspEraResult, InspPath, InspPathException, InspTaskManager,
-	InspectionError,
-};
+use ddc_api::api::{get_g_collectors_nodes, submit_inspection_report};
 
 pub mod aggregate_tree;
-mod insp_task_manager;
+pub mod insp_task_manager;
+use insp_task_manager::{
+	HashedInspPathReceipt, InspEraReport, InspPathsReceipts, InspTaskManager, InspectionError,
+};
 
 pub(crate) type BalanceOf<T> =
 	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -101,10 +79,7 @@ pub(crate) type BalanceOf<T> =
 #[frame_support::pallet]
 pub mod pallet {
 
-	use ddc_primitives::{
-		AggregatorInfo, BucketId, DeltaUsageHash, Fingerprint, MergeMMRHash,
-		DAC_VERIFICATION_KEY_TYPE, VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
-	};
+	use ddc_primitives::{AggregatorInfo, BucketId, DeltaUsageHash, DAC_VERIFICATION_KEY_TYPE};
 	use frame_support::PalletId;
 	use sp_core::crypto::AccountId32;
 	use sp_runtime::SaturatedConversion;
@@ -117,42 +92,6 @@ pub mod pallet {
 	const _SUCCESS_CODE: u16 = 200;
 	const _BUF_SIZE: usize = 128;
 	pub const OCW_MUTEX_ID: &[u8] = b"inspection_lock";
-
-	/// This is overall amount that the bucket owner will be charged for his buckets within a
-	/// payment Era.
-	#[derive(Clone, PartialOrd, Ord, Eq, PartialEq, Encode, Decode)]
-	pub(crate) struct CustomerCharge(AccountId32, u128);
-
-	/// This is overall amount of bytes that the node owner will be
-	#[derive(Clone, PartialOrd, Ord, Eq, PartialEq, Encode, Decode)]
-	pub(crate) struct ProviderReward(AccountId32, u128);
-
-	/// Payable usage of a Payment Era (EHD) includes all the batches of customers and providers
-	/// that will be processed during the payout process along with merkle root hashes and proofs.
-	/// To calculate the same payout fingerprint and let the payouts to start the required quorum
-	/// of validators need to agree on the same values for the Era usage and commit the same payout
-	/// fingerprint.
-	#[derive(Clone, Encode, Decode)]
-	pub(crate) struct PayableEHDUsage {
-		cluster_id: ClusterId,
-		ehd_id: String,
-		payers_usage: Vec<CustomerCharge>,
-		payers_root: PayableUsageHash,
-		payers_batch_roots: Vec<PayableUsageHash>,
-		payees_usage: Vec<ProviderReward>,
-		payees_root: PayableUsageHash,
-		payees_batch_roots: Vec<PayableUsageHash>,
-	}
-
-	impl PayableEHDUsage {
-		fn fingerprint(&self) -> Fingerprint {
-			let mut data = self.cluster_id.encode();
-			data.extend_from_slice(&self.ehd_id.encode());
-			data.extend_from_slice(&self.payers_root.encode());
-			data.extend_from_slice(&self.payees_root.encode());
-			blake2_256(&data).into()
-		}
-	}
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -227,6 +166,7 @@ pub mod pallet {
 		#[cfg(feature = "runtime-benchmarks")]
 		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
 		type BucketManager: BucketManager<Self>;
+		type InspReceiptsInterceptor: InspReceiptsInterceptor<Receipt = HashedInspPathReceipt>;
 	}
 
 	/// The event type.
@@ -237,346 +177,47 @@ pub mod pallet {
 	/// `frame_system::Pallet::deposit_event`.
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		PaidEraRetrievalError {
-			cluster_id: ClusterId,
-			validator: T::AccountId,
-		},
-		CommitPayoutFingerprintTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			payers_root: PayableUsageHash,
-			payees_root: PayableUsageHash,
-			validator: T::AccountId,
-		},
-		BeginPayoutTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			validator: T::AccountId,
-		},
-		BeginChargingCustomersTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			validator: T::AccountId,
-		},
-		SendChargingCustomersBatchTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			batch_index: BatchIndex,
-			validator: T::AccountId,
-		},
-		SendRewardingProvidersBatchTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			batch_index: BatchIndex,
-			validator: T::AccountId,
-		},
-		EndChargingCustomersTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			validator: T::AccountId,
-		},
-		BeginRewardingProvidersTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			validator: T::AccountId,
-		},
-		EndRewardingProvidersTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			validator: T::AccountId,
-		},
-		EndPayoutTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			validator: T::AccountId,
-		},
-		PayoutReceiptDoesNotExist {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			validator: T::AccountId,
-		},
-		BatchIndexUnderflow {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			validator: T::AccountId,
-		},
-		BatchIndexOverflow {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			validator: T::AccountId,
-		},
-		FailedToCreateMerkleRoot {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			validator: T::AccountId,
-		},
-		FailedToCreateMerkleProof {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			validator: T::AccountId,
-		},
-		FailedToCollectVerificationKey {
-			validator: T::AccountId,
-		},
-		FailedToFetchVerificationKey {
-			validator: T::AccountId,
-		},
-		ValidatorKeySet {
-			validator: T::AccountId,
-		},
-		FailedToFetchCollectors {
-			cluster_id: ClusterId,
-			validator: T::AccountId,
-		},
-		FailedToFetchGCollectors {
-			cluster_id: ClusterId,
-			validator: T::AccountId,
-		},
-		ChallengeResponseError {
-			cluster_id: ClusterId,
-			era_id: TcaEra,
-			aggregate_key: AggregateKey,
-			aggregator: NodePubKey,
-			validator: T::AccountId,
-		},
-		TraverseResponseError {
-			cluster_id: ClusterId,
-			era_id: TcaEra,
-			aggregate_key: AggregateKey,
-			aggregator: NodePubKey,
-			validator: T::AccountId,
-		},
-		FailedToFetchVerifiedDeltaUsage,
-		FailedToFetchVerifiedPayableUsage,
-		FailedToParseEHDId {
-			ehd_id: String,
-		},
-		FailedToParsePHDId {
-			phd_id: String,
-		},
-		FailedToParseNodeKey {
-			node_key: String,
-		},
-		FailedToFetchProviderId {
-			node_key: NodePubKey,
-		},
-		FailedToParseBucketId {
-			bucket_id: String,
-		},
-		FailedToFetchCustomerId {
-			bucket_id: BucketId,
-		},
-		FailedToParseCustomerId {
-			customer_id: AccountId32,
-		},
-		TimeCapsuleError,
-		FailedToFetchTraversedEHD,
-		FailedToFetchTraversedPHD,
-		FailedToFetchNodeChallenge,
-		FailedToFetchBucketChallenge,
-		FailedToSaveInspectionReceipt,
-		FailedToFetchInspectionReceipt,
-		FailedToFetchPaymentEra,
-		FailedToCalculatePayersBatches {
-			era_id: EhdEra,
-		},
-		FailedToCalculatePayeesBatches {
-			era_id: EhdEra,
-		},
-		FailedToFetchProtocolParams {
-			cluster_id: ClusterId,
-		},
-		NodesInspectionError,
-		BucketsInspectionError,
-		FailedToSignInspectionReceipt,
-		InspError {
-			cluster_id: ClusterId,
-			err: InspectionError,
-		},
-		FailedToInspectCluster {
-			validator: T::AccountId,
-			cluster_id: ClusterId,
-			err: InspectionError,
-		},
-		FailedToFetchBucketAggregate,
+		FailedToCollectVerificationKey { validator: T::AccountId },
+		FailedToFetchVerificationKey { validator: T::AccountId },
+		ValidatorKeySet { validator: T::AccountId },
+		InspError { validator: T::AccountId, cluster_id: ClusterId, err: InspectionError },
+		FailedToSignPathsInspection { validator: T::AccountId, cluster_id: ClusterId },
+		Unexpected { validator: T::AccountId },
+		ApiError { validator: T::AccountId },
 	}
 
-	/// Consensus Errors
+	/// Debugging errors
 	#[derive(Debug, Encode, Decode, Clone, TypeInfo, PartialEq)]
-	pub enum OCWError {
-		PaidEraRetrievalError {
-			cluster_id: ClusterId,
-		},
-		/// Challenge Response Retrieval Error.
-		ChallengeResponseError {
-			cluster_id: ClusterId,
-			era_id: TcaEra,
-			aggregate_key: AggregateKey,
-			aggregator: NodePubKey,
-		},
+	pub enum InspOCWError {
 		/// Traverse Response Retrieval Error.
-		TraverseResponseError {
-			cluster_id: ClusterId,
-			era_id: TcaEra,
-			aggregate_key: AggregateKey,
-			aggregator: NodePubKey,
-		},
-		CommitPayoutFingerprintTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			payers_root: PayableUsageHash,
-			payees_root: PayableUsageHash,
-		},
-		BeginPayoutTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-		},
-		BeginChargingCustomersTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-		},
-		SendChargingCustomersBatchTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			batch_index: BatchIndex,
-		},
-		SendRewardingProvidersBatchTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-			batch_index: BatchIndex,
-		},
-		EndChargingCustomersTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-		},
-		BeginRewardingProvidersTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-		},
-		EndRewardingProvidersTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-		},
-		EndPayoutTransactionError {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-		},
-		PayoutReceiptDoesNotExist {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-		},
-		BatchIndexUnderflow {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-		},
-		BatchIndexOverflow {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-		},
-		FailedToCreateMerkleRoot {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-		},
-		FailedToCreateMerkleProof {
-			cluster_id: ClusterId,
-			era_id: EhdEra,
-		},
 		FailedToCollectVerificationKey,
 		FailedToFetchVerificationKey,
-		FailedToFetchCollectors {
+		FailedToSignPathsInspection {
 			cluster_id: ClusterId,
 		},
-		FailedToFetchGCollectors {
-			cluster_id: ClusterId,
-		},
-		FailedToFetchVerifiedDeltaUsage,
-		FailedToFetchVerifiedPayableUsage,
-		FailedToParseEHDId {
-			ehd_id: String,
-		},
-		FailedToParsePHDId {
-			phd_id: String,
-		},
-		FailedToParseNodeKey {
-			node_key: String,
-		},
-		FailedToFetchProviderId {
-			node_key: NodePubKey,
-		},
-		FailedToParseBucketId {
-			bucket_id: String,
-		},
-		FailedToFetchCustomerId {
-			bucket_id: BucketId,
-		},
-		FailedToParseCustomerId {
-			customer_id: AccountId32,
-		},
-		TCAError,
-		FailedToFetchTraversedEHD,
-		FailedToFetchTraversedPHD,
-		FailedToFetchNodeChallenge,
-		FailedToFetchBucketChallenge,
-		FailedToFetchBucketAggregate,
-		FailedToSaveInspectionReceipt,
-		FailedToFetchInspectionReceipt,
-		ApiError, //Updaate the error
-		FailedToFetchPaymentEra,
-		FailedToCalculatePayersBatches {
-			era_id: EhdEra,
-		},
-		FailedToCalculatePayeesBatches {
-			era_id: EhdEra,
-		},
-		FailedToFetchProtocolParams {
-			cluster_id: ClusterId,
-		},
-		FailedToSignInspectionReceipt,
 		InspError {
 			cluster_id: ClusterId,
 			err: InspectionError,
 		},
+		Unexpected,
+		ApiError,
 	}
 
 	#[pallet::error]
 	#[derive(PartialEq)]
 	pub enum Error<T> {
-		/// Bad verification key.
-		BadVerificationKey,
 		/// Bad requests.
 		BadRequest,
 		/// Not a validator.
 		Unauthorized,
-		/// Already signed era.
-		AlreadySignedEra,
-		NotExpectedState,
-		/// Already signed payout batch.
-		AlreadySignedPayoutBatch,
-		/// Node Retrieval Error.
-		NodeRetrievalError,
-		/// Era To Validate Retrieval Error.
-		EraToValidateRetrievalError,
-		/// Era Per Node Retrieval Error.
-		EraPerNodeRetrievalError,
-		/// Fail to fetch Ids.
-		FailToFetchIds,
-		/// No validator exists.
-		NoValidatorExist,
 		/// Not a controller.
 		NotController,
 		/// Not a validator stash.
 		NotValidatorStash,
-		/// Fail to generate proof
-		FailedToGenerateProof,
-		/// Fail to verify merkle proof
-		FailedToVerifyMerkleProof,
-		/// No Era Validation exist
-		NoEraValidation,
 		/// Given era is already validated and paid.
 		EraAlreadyPaid,
 		VerificationKeyAlreadySet,
 		VerificationKeyAlreadyPaired,
-		FailedToFetchBucketAggregate,
 	}
 
 	/// List of validators.
@@ -629,256 +270,41 @@ pub mod pallet {
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::emit_consensus_errors(errors.len() as u32))]
 		pub fn emit_consensus_errors(
 			origin: OriginFor<T>,
-			errors: Vec<OCWError>,
+			errors: Vec<InspOCWError>,
 		) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			ensure!(Self::is_ocw_validator(caller.clone()), Error::<T>::Unauthorized);
 
 			for error in errors {
 				match error {
-					OCWError::PaidEraRetrievalError { cluster_id } => {
-						Self::deposit_event(Event::PaidEraRetrievalError {
-							cluster_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::CommitPayoutFingerprintTransactionError {
-						cluster_id,
-						era_id,
-						payers_root,
-						payees_root,
-					} => {
-						Self::deposit_event(Event::CommitPayoutFingerprintTransactionError {
-							cluster_id,
-							era_id,
-							payers_root,
-							payees_root,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::BeginPayoutTransactionError { cluster_id, era_id } => {
-						Self::deposit_event(Event::BeginPayoutTransactionError {
-							cluster_id,
-							era_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::BeginChargingCustomersTransactionError { cluster_id, era_id } => {
-						Self::deposit_event(Event::BeginChargingCustomersTransactionError {
-							cluster_id,
-							era_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::SendChargingCustomersBatchTransactionError {
-						cluster_id,
-						era_id,
-						batch_index,
-					} => {
-						Self::deposit_event(Event::SendChargingCustomersBatchTransactionError {
-							cluster_id,
-							era_id,
-							batch_index,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::SendRewardingProvidersBatchTransactionError {
-						cluster_id,
-						era_id,
-						batch_index,
-					} => {
-						Self::deposit_event(Event::SendRewardingProvidersBatchTransactionError {
-							cluster_id,
-							era_id,
-							batch_index,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::EndChargingCustomersTransactionError { cluster_id, era_id } => {
-						Self::deposit_event(Event::EndChargingCustomersTransactionError {
-							cluster_id,
-							era_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::BeginRewardingProvidersTransactionError { cluster_id, era_id } => {
-						Self::deposit_event(Event::BeginRewardingProvidersTransactionError {
-							cluster_id,
-							era_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::EndRewardingProvidersTransactionError { cluster_id, era_id } => {
-						Self::deposit_event(Event::EndRewardingProvidersTransactionError {
-							cluster_id,
-							era_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::EndPayoutTransactionError { cluster_id, era_id } => {
-						Self::deposit_event(Event::EndPayoutTransactionError {
-							cluster_id,
-							era_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::PayoutReceiptDoesNotExist { cluster_id, era_id } => {
-						Self::deposit_event(Event::PayoutReceiptDoesNotExist {
-							cluster_id,
-							era_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::BatchIndexUnderflow { cluster_id, era_id } => {
-						Self::deposit_event(Event::BatchIndexUnderflow {
-							cluster_id,
-							era_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::BatchIndexOverflow { cluster_id, era_id } => {
-						Self::deposit_event(Event::BatchIndexOverflow {
-							cluster_id,
-							era_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::FailedToCreateMerkleRoot { cluster_id, era_id } => {
-						Self::deposit_event(Event::FailedToCreateMerkleRoot {
-							cluster_id,
-							era_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::FailedToCreateMerkleProof { cluster_id, era_id } => {
-						Self::deposit_event(Event::FailedToCreateMerkleProof {
-							cluster_id,
-							era_id,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::FailedToCollectVerificationKey => {
+					InspOCWError::FailedToCollectVerificationKey => {
 						Self::deposit_event(Event::FailedToCollectVerificationKey {
 							validator: caller.clone(),
 						});
 					},
-					OCWError::FailedToFetchVerificationKey => {
+					InspOCWError::FailedToFetchVerificationKey => {
 						Self::deposit_event(Event::FailedToFetchVerificationKey {
 							validator: caller.clone(),
 						});
 					},
-					OCWError::ChallengeResponseError {
-						cluster_id,
-						era_id,
-						aggregate_key,
-						aggregator,
-					} => {
-						Self::deposit_event(Event::ChallengeResponseError {
-							cluster_id,
-							era_id,
-							aggregate_key,
-							aggregator,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::TraverseResponseError {
-						cluster_id,
-						era_id,
-						aggregate_key,
-						aggregator,
-					} => {
-						Self::deposit_event(Event::TraverseResponseError {
-							cluster_id,
-							era_id,
-							aggregate_key,
-							aggregator,
-							validator: caller.clone(),
-						});
-					},
-					OCWError::FailedToFetchCollectors { cluster_id } => {
-						Self::deposit_event(Event::FailedToFetchCollectors {
+					InspOCWError::FailedToSignPathsInspection { cluster_id } => {
+						Self::deposit_event(Event::FailedToSignPathsInspection {
 							validator: caller.clone(),
 							cluster_id,
 						});
 					},
-					OCWError::FailedToFetchGCollectors { cluster_id } => {
-						Self::deposit_event(Event::FailedToFetchGCollectors {
-							validator: caller.clone(),
-							cluster_id,
-						});
+					InspOCWError::Unexpected => {
+						Self::deposit_event(Event::Unexpected { validator: caller.clone() });
 					},
-					OCWError::FailedToFetchVerifiedDeltaUsage => {
-						Self::deposit_event(Event::FailedToFetchVerifiedDeltaUsage);
+					InspOCWError::ApiError => {
+						Self::deposit_event(Event::ApiError { validator: caller.clone() });
 					},
-					OCWError::FailedToFetchVerifiedPayableUsage => {
-						Self::deposit_event(Event::FailedToFetchVerifiedPayableUsage);
-					},
-					OCWError::FailedToParseEHDId { ehd_id } => {
-						Self::deposit_event(Event::FailedToParseEHDId { ehd_id });
-					},
-					OCWError::FailedToParsePHDId { phd_id } => {
-						Self::deposit_event(Event::FailedToParsePHDId { phd_id });
-					},
-					OCWError::FailedToParseNodeKey { node_key } => {
-						Self::deposit_event(Event::FailedToParseNodeKey { node_key });
-					},
-					OCWError::FailedToParseBucketId { bucket_id } => {
-						Self::deposit_event(Event::FailedToParseBucketId { bucket_id });
-					},
-					OCWError::FailedToFetchCustomerId { bucket_id } => {
-						Self::deposit_event(Event::FailedToFetchCustomerId { bucket_id });
-					},
-					OCWError::FailedToFetchProviderId { node_key } => {
-						Self::deposit_event(Event::FailedToFetchProviderId { node_key });
-					},
-					OCWError::FailedToSignInspectionReceipt => {
-						Self::deposit_event(Event::FailedToSignInspectionReceipt);
-					},
-					OCWError::FailedToFetchTraversedEHD => {
-						Self::deposit_event(Event::FailedToFetchTraversedEHD);
-					},
-					OCWError::FailedToFetchTraversedPHD => {
-						Self::deposit_event(Event::FailedToFetchTraversedPHD);
-					},
-					OCWError::FailedToFetchNodeChallenge => {
-						Self::deposit_event(Event::FailedToFetchNodeChallenge);
-					},
-					OCWError::FailedToFetchBucketChallenge => {
-						Self::deposit_event(Event::FailedToFetchBucketChallenge);
-					},
-					OCWError::FailedToSaveInspectionReceipt => {
-						Self::deposit_event(Event::FailedToSaveInspectionReceipt);
-					},
-					OCWError::FailedToFetchInspectionReceipt => {
-						Self::deposit_event(Event::FailedToFetchInspectionReceipt);
-					},
-					OCWError::FailedToFetchPaymentEra => {
-						Self::deposit_event(Event::FailedToFetchPaymentEra);
-					},
-					OCWError::FailedToCalculatePayersBatches { era_id } => {
-						Self::deposit_event(Event::FailedToCalculatePayersBatches { era_id });
-					},
-					OCWError::FailedToCalculatePayeesBatches { era_id } => {
-						Self::deposit_event(Event::FailedToCalculatePayeesBatches { era_id });
-					},
-					OCWError::FailedToFetchProtocolParams { cluster_id } => {
-						Self::deposit_event(Event::FailedToFetchProtocolParams { cluster_id });
-					},
-					OCWError::FailedToParseCustomerId { customer_id } => {
-						Self::deposit_event(Event::FailedToParseCustomerId { customer_id });
-					},
-					OCWError::InspError { cluster_id, err } => {
-						Self::deposit_event(Event::FailedToInspectCluster {
+					InspOCWError::InspError { cluster_id, err } => {
+						Self::deposit_event(Event::InspError {
 							validator: caller.clone(),
 							cluster_id,
 							err,
 						});
-					},
-					OCWError::FailedToFetchBucketAggregate => {
-						Self::deposit_event(Event::FailedToFetchBucketAggregate);
-					},
-					_ => {
-						todo!()
 					},
 				}
 			}
@@ -1016,10 +442,14 @@ pub mod pallet {
 			log::info!("🎡 {:?} of 'Activated' clusters found", clusters_ids.len());
 
 			for cluster_id in clusters_ids {
-				let mut errors: Vec<OCWError> = Vec::new();
+				let mut errors: Vec<InspOCWError> = Vec::new();
 
-				let inspection_result =
-					Self::start_inspection_phase(&cluster_id, &verification_account, &signer);
+				let inspection_result = Self::start_inspection_phase(
+					&cluster_id,
+					&verification_account,
+					&signer,
+					&block_number,
+				);
 
 				if let Err(errs) = inspection_result {
 					errors.extend(vec![errs]);
@@ -1038,14 +468,15 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			verification_account: &Account<T>,
 			_signer: &Signer<T, T::OffchainIdentifierId>,
-		) -> Result<(), OCWError> {
+			block_number: &BlockNumberFor<T>,
+		) -> Result<(), InspOCWError> {
 			let g_collectors = get_g_collectors_nodes::<
 				T::AccountId,
 				BlockNumberFor<T>,
 				T::ClusterManager,
 				T::NodeManager,
 			>(cluster_id)
-			.map_err(|_| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?;
+			.map_err(|_| InspOCWError::ApiError)?;
 			// todo(yahortsaryk): infer G-Collector node deterministically
 			let Some(g_collector) = g_collectors.first() else {
 				log::warn!("⚠️ No Grouping Collector found in cluster {:?}", cluster_id);
@@ -1054,199 +485,89 @@ pub mod pallet {
 
 			let mut insp_task_manager = InspTaskManager::<T>::new(verification_account.clone());
 			insp_task_manager
-				.assign_cluster(cluster_id)
-				.map_err(|e| OCWError::InspError { cluster_id: *cluster_id, err: e })?;
+				.assign_cluster(cluster_id, block_number)
+				.map_err(|e| InspOCWError::InspError { cluster_id: *cluster_id, err: e })?;
 
-			if let Some(insp_result) = insp_task_manager
-				.inspect_cluster(cluster_id)
-				.map_err(|e| OCWError::InspError { cluster_id: *cluster_id, err: e })?
+			for era_receipts in insp_task_manager
+				.inspect_cluster(cluster_id, block_number)
+				.map_err(|e| InspOCWError::InspError { cluster_id: *cluster_id, err: e })?
 			{
-				let payload = insp_result.encode();
-				let signature =
-					<T::OffchainIdentifierId as AppCrypto<T::Public, T::Signature>>::sign(
-						&payload,
-						verification_account.public.clone(),
-					)
-					.ok_or(OCWError::FailedToSignInspectionReceipt)?;
-
-				let inspector_pub_key: Vec<u8> = verification_account.public.encode();
-				let inspector = format!("0x{}", hex::encode(&inspector_pub_key[1..])); // skip byte of SCALE encoding
-				let signature = format!("0x{}", hex::encode(signature.encode()));
-
 				// todo(yahortsaryk): retrieve ID of canonical EHD from inspection result
-				let ehd_id = EHDId(*cluster_id, g_collector.clone().0, insp_result.era);
-
-				// todo(yahortsaryk): remove legacy inspection receipt format
-				let receipt = Self::map_legacy_inspection_receipt(
+				let ehd_id = EHDId(*cluster_id, g_collector.clone().0, era_receipts.era);
+				let signed_report = Self::build_signed_inspection_report(
 					cluster_id,
-					ehd_id.clone(),
-					&insp_result,
-					inspector,
-					signature,
-					&insp_task_manager,
+					era_receipts,
+					verification_account,
 				)?;
 
-				send_inspection_receipt(cluster_id, g_collector, receipt)
-					.map_err(|_| OCWError::ApiError)?; //TODO: Errors have to be fixed
+				// todo(yahortsaryk): add .proto definition for `InspEraReport` type
+				let signed_report_json_str =
+					serde_json::to_string(&signed_report).map_err(|_| InspOCWError::Unexpected)?;
+
+				let _ = submit_inspection_report::<
+					T::AccountId,
+					BlockNumberFor<T>,
+					T::ClusterManager,
+					T::NodeManager,
+				>(cluster_id, signed_report_json_str)
+				.map_err(|e| {
+					log::error!("Could not submit inspection report {:?}", e);
+					InspOCWError::Unexpected
+				})?;
+
 				store_last_inspected_ehd(cluster_id, ehd_id);
 			}
 
 			Ok(())
 		}
 
-		// todo(yahortsaryk): !!! REMOVE this method after deprecating `InspectionReceipt` format
 		#[allow(clippy::map_entry)]
-		fn map_legacy_inspection_receipt(
+		fn build_signed_inspection_report(
 			cluster_id: &ClusterId,
-			ehd_id: EHDId,
-			insp_result: &InspEraResult,
-			inspector: String,
-			signature: String,
-			insp_task_manager: &InspTaskManager<T>,
-		) -> Result<aggregator_client::json::InspectionReceipt, OCWError> {
-			let Some(insp_table) =
-				insp_task_manager.get_assignments_table(cluster_id).map_err(|e| {
-					OCWError::InspError {
-						cluster_id: *cluster_id,
-						err: InspectionError::AssignmentsError(e),
-					}
-				})?
-			else {
-				return Err(OCWError::InspError {
-					cluster_id: *cluster_id,
-					err: InspectionError::Unexpected,
+			era_receipts: InspPathsReceipts,
+			verification_account: &Account<T>,
+		) -> Result<InspEraReport, InspOCWError> {
+			let hashed_receipts: Vec<HashedInspPathReceipt> =
+				era_receipts.receipts.into_iter().fold(vec![], |mut receipts, receipt| {
+					let hash = receipt.hash::<T>();
+					let hash_hex = hex::encode(hash);
+					let hashed_receipt =
+						HashedInspPathReceipt::new(receipt, format!("0x{}", hash_hex));
+					receipts.push(hashed_receipt);
+					receipts
 				});
+
+			let hashed_receipts = T::InspReceiptsInterceptor::intercept(hashed_receipts);
+
+			let sig_payload = hashed_receipts
+				.iter()
+				.map(|hashed_receipt| hashed_receipt.hash.clone())
+				.collect::<Vec<_>>()
+				.encode();
+
+			let signature = <T::OffchainIdentifierId as AppCrypto<T::Public, T::Signature>>::sign(
+				&sig_payload,
+				verification_account.public.clone(),
+			)
+			.ok_or(InspOCWError::FailedToSignPathsInspection { cluster_id: *cluster_id })?;
+
+			let inspector_pub_bytes: Vec<u8> = verification_account.public.encode();
+			let inspector_pub = format!("0x{}", hex::encode(&inspector_pub_bytes[1..])); // skip byte of SCALE encoding
+			let signature_bytes: Vec<u8> = signature.encode();
+			let signature = format!("0x{}", hex::encode(&signature_bytes[1..])); // skip byte of SCALE encoding
+
+			let report = InspEraReport {
+				era: era_receipts.era,
+				inspector: inspector_pub,
+				signature,
+				path_receipts: hashed_receipts,
 			};
 
-			let (nodes_inspection, buckets_inspection) = insp_result.receipts.iter().fold(
-				(
-					aggregator_client::json::InspectionResult {
-						unverified_branches: vec![],
-						verified_branches: vec![],
-					},
-					aggregator_client::json::InspectionResult {
-						unverified_branches: vec![],
-						verified_branches: vec![],
-					},
-				),
-				|(mut nodes_inspection, mut buckets_inspection), receipt| {
-					if let Some(path) = insp_table.paths.get(&receipt.path_id) {
-						match path {
-							InspPath::NodeAR { node, tca_id, leaves_ids, collectors } => {
-								let aggregate = AggregateKey::NodeAggregateKey(node.clone().into());
-								if receipt.is_verified {
-									if let Some(subtree) = nodes_inspection
-										.verified_branches
-										.iter_mut()
-										.find(|subtree| subtree.aggregate == aggregate)
-									{
-										subtree.leafs.insert(*tca_id, leaves_ids.clone());
-									} else {
-										let subtree = aggregator_client::json::InspectedTreePart {
-											collector: collectors
-												.first()
-												.map(|key| key.clone().into())
-												.unwrap_or(Default::default()),
-											aggregate,
-											nodes: vec![],
-											leafs: BTreeMap::from([(*tca_id, leaves_ids.clone())]),
-										};
-										nodes_inspection.verified_branches.push(subtree);
-									}
-								} else {
-									let bad_leaves_ids = match &receipt.exception {
-										Some(InspPathException::NodeAR { bad_leaves_ids }) =>
-											bad_leaves_ids.clone(),
-										_ => vec![],
-									};
-									if let Some(subtree) = nodes_inspection
-										.unverified_branches
-										.iter_mut()
-										.find(|subtree| subtree.aggregate == aggregate)
-									{
-										subtree.leafs.insert(*tca_id, bad_leaves_ids);
-									} else {
-										let subtree = aggregator_client::json::InspectedTreePart {
-											collector: collectors
-												.first()
-												.map(|key| key.clone().into())
-												.unwrap_or(Default::default()),
-											aggregate,
-											nodes: vec![],
-											leafs: BTreeMap::from([(*tca_id, bad_leaves_ids)]),
-										};
-										nodes_inspection.unverified_branches.push(subtree);
-									}
-								}
-								(buckets_inspection, nodes_inspection)
-							},
-							InspPath::BucketAR { bucket, tca_id, leaves_pos, collectors } => {
-								let aggregate = AggregateKey::BucketAggregateKey(*bucket);
-								if receipt.is_verified {
-									if let Some(subtree) = buckets_inspection
-										.verified_branches
-										.iter_mut()
-										.find(|subtree| subtree.aggregate == aggregate)
-									{
-										subtree.leafs.insert(*tca_id, leaves_pos.clone());
-									} else {
-										let subtree = aggregator_client::json::InspectedTreePart {
-											collector: collectors
-												.first()
-												.map(|key| key.clone().into())
-												.unwrap_or(Default::default()),
-											aggregate,
-											nodes: vec![],
-											leafs: BTreeMap::from([(*tca_id, leaves_pos.clone())]),
-										};
-										buckets_inspection.verified_branches.push(subtree);
-									}
-								} else {
-									let bad_leaves_pos = match &receipt.exception {
-										Some(InspPathException::BucketAR { bad_leaves_pos }) =>
-											bad_leaves_pos.clone(),
-										_ => vec![],
-									};
-									if let Some(subtree) = buckets_inspection
-										.unverified_branches
-										.iter_mut()
-										.find(|subtree| subtree.aggregate == aggregate)
-									{
-										subtree.leafs.insert(*tca_id, bad_leaves_pos);
-									} else {
-										let subtree = aggregator_client::json::InspectedTreePart {
-											collector: collectors
-												.first()
-												.map(|key| key.clone().into())
-												.unwrap_or(Default::default()),
-											aggregate,
-											nodes: vec![],
-											leafs: BTreeMap::from([(*tca_id, bad_leaves_pos)]),
-										};
-										buckets_inspection.unverified_branches.push(subtree);
-									}
-								}
-
-								(buckets_inspection, nodes_inspection)
-							},
-						}
-					} else {
-						(buckets_inspection, nodes_inspection)
-					}
-				},
-			);
-
-			Ok(aggregator_client::json::InspectionReceipt {
-				ehd_id: ehd_id.into(),
-				inspector,
-				signature,
-				nodes_inspection,
-				buckets_inspection,
-			})
+			Ok(report)
 		}
 
 		pub(crate) fn submit_errors(
-			errors: &Vec<OCWError>,
+			errors: &Vec<InspOCWError>,
 			verification_account: &Account<T>,
 			signer: &Signer<T, T::OffchainIdentifierId>,
 		) {
@@ -1262,355 +583,7 @@ pub mod pallet {
 			}
 		}
 
-		pub(crate) fn build_and_store_ehd_payable_usage(
-			cluster_id: &ClusterId,
-			ehd_id: EHDId,
-		) -> Result<(), OCWError> {
-			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
-
-			// todo(yahortsaryk): infer g-collectors deterministically
-			let g_collector = get_g_collectors_nodes::<
-				T::AccountId,
-				BlockNumberFor<T>,
-				T::ClusterManager,
-				T::NodeManager,
-			>(cluster_id)
-			.map_err(|_| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?
-			.first()
-			.cloned()
-			.ok_or(OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?;
-
-			let ehd =
-				get_ehd_root::<T::AccountId, BlockNumberFor<T>, T::ClusterManager, T::NodeManager>(
-					cluster_id,
-					ehd_id.clone(),
-				)
-				.map_err(|_| OCWError::ApiError)?;
-
-			let era = fetch_processed_era(cluster_id, ehd_id.2, &g_collector)
-				.map_err(|_| OCWError::ApiError)?;
-
-			let pricing = T::ClusterProtocol::get_pricing_params(cluster_id)
-				.map_err(|_| OCWError::FailedToFetchProtocolParams { cluster_id: *cluster_id })?;
-
-			let fees = T::ClusterProtocol::get_fees_params(cluster_id)
-				.map_err(|_| OCWError::FailedToFetchProtocolParams { cluster_id: *cluster_id })?;
-
-			let inspection_receipts = fetch_inspection_receipts::<
-				T::AccountId,
-				BlockNumberFor<T>,
-				T::ClusterManager,
-				T::NodeManager,
-			>(cluster_id, ehd_id.clone())
-			.map_err(|_| OCWError::ApiError)?;
-
-			let customers_usage_cutoff = if !T::DISABLE_PAYOUTS_CUTOFF {
-				Self::calculate_customers_usage_cutoff(cluster_id, &inspection_receipts)?
-			} else {
-				Default::default()
-			};
-
-			let (payers, cluster_costs) = Self::calculate_ehd_customers_charges(
-				&ehd.customers,
-				&customers_usage_cutoff,
-				&pricing,
-				era.time_start.ok_or(OCWError::TCAError)?,
-				era.time_end.ok_or(OCWError::TCAError)?,
-			)
-			.map_err(|_| OCWError::FailedToCalculatePayersBatches { era_id: ehd_id.2 })?;
-
-			let cluster_usage = ehd.get_cluster_usage();
-
-			let providers_usage_cutoff = if !T::DISABLE_PAYOUTS_CUTOFF {
-				Self::calculate_providers_usage_cutoff(cluster_id, &inspection_receipts)?
-			} else {
-				Default::default()
-			};
-
-			let payees = Self::calculate_ehd_providers_rewards(
-				&ehd.providers,
-				&providers_usage_cutoff,
-				&fees,
-				&cluster_usage,
-				&cluster_costs,
-			)
-			.map_err(|_| OCWError::FailedToCalculatePayeesBatches { era_id: ehd_id.2 })?;
-
-			let payers_batch_roots = Self::convert_to_batch_merkle_roots(
-				cluster_id,
-				Self::split_to_batches(&payers, batch_size.into()),
-				ehd_id.2,
-			)?;
-
-			let payees_batch_roots = Self::convert_to_batch_merkle_roots(
-				cluster_id,
-				Self::split_to_batches(&payees, batch_size.into()),
-				ehd_id.2,
-			)?;
-
-			let payers_root = Self::create_merkle_root(cluster_id, &payers_batch_roots, ehd_id.2)?;
-			let payees_root = Self::create_merkle_root(cluster_id, &payees_batch_roots, ehd_id.2)?;
-
-			Self::store_ehd_payable_usage(
-				cluster_id,
-				ehd_id,
-				payers,
-				payers_root,
-				payers_batch_roots,
-				payees,
-				payees_root,
-				payees_batch_roots,
-			);
-
-			Ok(())
-		}
-
-		fn fetch_ehd_payable_usage_or_retry(
-			cluster_id: &ClusterId,
-			ehd_id: EHDId,
-		) -> Result<PayableEHDUsage, Vec<OCWError>> {
-			if let Some(ehd_paybale_usage) =
-				Self::fetch_ehd_payable_usage(cluster_id, ehd_id.clone())
-			{
-				Ok(ehd_paybale_usage)
-			} else {
-				Self::build_and_store_ehd_payable_usage(cluster_id, ehd_id.clone())
-					.map_err(|e| [e])?;
-				if let Some(ehd_paybale_usage) = Self::fetch_ehd_payable_usage(cluster_id, ehd_id) {
-					Ok(ehd_paybale_usage)
-				} else {
-					Err(vec![OCWError::FailedToFetchVerifiedPayableUsage])
-				}
-			}
-		}
-
-		fn calculate_ehd_customers_charges(
-			customers: &Vec<aggregator_client::json::EHDCustomer>,
-			cutoff_usage_map: &BTreeMap<T::AccountId, BucketUsage>,
-			pricing: &ClusterPricingParams,
-			time_start: i64,
-			time_end: i64,
-		) -> Result<(Vec<CustomerCharge>, CustomerCosts), ArithmeticError> {
-			let mut customers_charges = Vec::new();
-			let mut cluster_costs = CustomerCosts::default();
-
-			for customer in customers {
-				let customer_id: AccountId32 = customer.customer_id.clone().into();
-				let customer_costs = Self::get_customer_costs(
-					pricing,
-					&customer.consumed_usage,
-					cutoff_usage_map.get(
-						&T::AccountId::decode(&mut &customer_id.encode()[..])
-							.map_err(|_| ArithmeticError::Overflow)?,
-					),
-					time_start,
-					time_end,
-				)?;
-
-				cluster_costs.storage = cluster_costs
-					.storage
-					.checked_add(customer_costs.storage)
-					.ok_or(ArithmeticError::Overflow)?;
-
-				cluster_costs.transfer = cluster_costs
-					.transfer
-					.checked_add(customer_costs.transfer)
-					.ok_or(ArithmeticError::Overflow)?;
-
-				cluster_costs.puts = cluster_costs
-					.puts
-					.checked_add(customer_costs.puts)
-					.ok_or(ArithmeticError::Overflow)?;
-
-				cluster_costs.gets = cluster_costs
-					.gets
-					.checked_add(customer_costs.gets)
-					.ok_or(ArithmeticError::Overflow)?;
-
-				let charge_amount = (|| -> Option<u128> {
-					customer_costs
-						.transfer
-						.checked_add(customer_costs.storage)?
-						.checked_add(customer_costs.puts)?
-						.checked_add(customer_costs.gets)
-				})()
-				.ok_or(ArithmeticError::Overflow)?;
-
-				customers_charges.push(CustomerCharge(customer_id, charge_amount));
-			}
-
-			Ok((customers_charges, cluster_costs))
-		}
-
-		#[allow(clippy::field_reassign_with_default)]
-		fn get_customer_costs(
-			pricing: &ClusterPricingParams,
-			consumed_usage: &aggregator_client::json::EHDUsage,
-			cutoff_usage: Option<&BucketUsage>,
-			time_start: i64,
-			time_end: i64,
-		) -> Result<CustomerCosts, ArithmeticError> {
-			#[allow(clippy::field_reassign_with_default)]
-			let mut customer_costs = CustomerCosts::default();
-			let no_cutoff = Default::default();
-			let cutoff = cutoff_usage.unwrap_or(&no_cutoff);
-
-			customer_costs.transfer = (consumed_usage.transferred_bytes as u128)
-				.checked_sub(cutoff.transferred_bytes as u128)
-				.ok_or(ArithmeticError::Underflow)?
-				.checked_mul(pricing.unit_per_mb_streamed)
-				.ok_or(ArithmeticError::Overflow)?
-				.checked_div(byte_unit::MEBIBYTE)
-				.ok_or(ArithmeticError::Underflow)?;
-
-			// Calculate the duration of the period in seconds
-			let duration_seconds = time_end - time_start;
-			let fraction_of_month =
-				Perquintill::from_rational(duration_seconds as u64, AVG_SECONDS_MONTH as u64);
-
-			customer_costs.storage = fraction_of_month *
-				((consumed_usage.stored_bytes as u128)
-					.checked_sub(cutoff.stored_bytes as u128)
-					.ok_or(ArithmeticError::Underflow)?
-					.checked_mul(pricing.unit_per_mb_stored)
-					.ok_or(ArithmeticError::Overflow)?
-					.checked_div(byte_unit::MEBIBYTE)
-					.ok_or(ArithmeticError::Underflow)?);
-
-			customer_costs.gets = (consumed_usage.number_of_gets as u128)
-				.checked_sub(cutoff.number_of_gets as u128)
-				.ok_or(ArithmeticError::Underflow)?
-				.checked_mul(pricing.unit_per_get_request)
-				.ok_or(ArithmeticError::Overflow)?;
-
-			customer_costs.puts = (consumed_usage.number_of_puts as u128)
-				.checked_sub(cutoff.number_of_puts as u128)
-				.ok_or(ArithmeticError::Underflow)?
-				.checked_mul(pricing.unit_per_put_request)
-				.ok_or(ArithmeticError::Overflow)?;
-
-			Ok(customer_costs)
-		}
-
-		fn get_provider_profits(
-			provided_usage: &aggregator_client::json::EHDUsage,
-			cutoff_usage: Option<&NodeUsage>,
-			cluster_usage: &aggregator_client::json::EHDUsage,
-			cluster_costs: &CustomerCosts,
-		) -> Result<ProviderProfits, ArithmeticError> {
-			let mut provider_profits = ProviderProfits::default();
-			let no_cutoff = Default::default();
-			let cutoff = cutoff_usage.unwrap_or(&no_cutoff);
-
-			let mut ratio = Perquintill::from_rational(
-				(provided_usage.transferred_bytes as u128)
-					.checked_sub(cutoff.transferred_bytes as u128)
-					.ok_or(ArithmeticError::Underflow)?,
-				cluster_usage.transferred_bytes as u128,
-			);
-
-			// ratio multiplied by X will be > 0, < X no overflow
-			provider_profits.transfer = ratio * cluster_costs.transfer;
-
-			ratio = Perquintill::from_rational(
-				(provided_usage.stored_bytes as u128)
-					.checked_sub(cutoff.stored_bytes as u128)
-					.ok_or(ArithmeticError::Underflow)?,
-				cluster_usage.stored_bytes as u128,
-			);
-			provider_profits.storage = ratio * cluster_costs.storage;
-
-			ratio = Perquintill::from_rational(
-				provided_usage
-					.number_of_puts
-					.checked_sub(cutoff.number_of_puts)
-					.ok_or(ArithmeticError::Underflow)?,
-				cluster_usage.number_of_puts,
-			);
-			provider_profits.puts = ratio * cluster_costs.puts;
-
-			ratio = Perquintill::from_rational(
-				provided_usage
-					.number_of_gets
-					.checked_sub(cutoff.number_of_gets)
-					.ok_or(ArithmeticError::Underflow)?,
-				cluster_usage.number_of_gets,
-			);
-			provider_profits.gets = ratio * cluster_costs.gets;
-
-			Ok(provider_profits)
-		}
-
-		fn calculate_ehd_providers_rewards(
-			providers: &Vec<aggregator_client::json::EHDProvider>,
-			cutoff_usage_map: &BTreeMap<T::AccountId, NodeUsage>,
-			fees: &ClusterFeesParams,
-			cluster_usage: &aggregator_client::json::EHDUsage,
-			cluster_costs: &CustomerCosts,
-		) -> Result<Vec<ProviderReward>, ArithmeticError> {
-			let mut providers_profits = Vec::new();
-
-			for provider in providers {
-				let provider_id: AccountId32 = provider.provider_id.clone().into();
-				let provider_profits = Self::get_provider_profits(
-					&provider.provided_usage,
-					cutoff_usage_map.get(
-						&T::AccountId::decode(&mut &provider_id.encode()[..])
-							.map_err(|_| ArithmeticError::Overflow)?,
-					),
-					cluster_usage,
-					cluster_costs,
-				)?;
-
-				let reward_amount = (|| -> Option<u128> {
-					provider_profits
-						.transfer
-						.checked_add(provider_profits.storage)?
-						.checked_add(provider_profits.puts)?
-						.checked_add(provider_profits.gets)
-				})()
-				.ok_or(ArithmeticError::Overflow)?;
-
-				let treasury_fee_amount = fees.treasury_share * reward_amount;
-				let validators_fee_amount = fees.validators_share * reward_amount;
-				let cluster_reserve_fee_amount = fees.cluster_reserve_share * reward_amount;
-
-				let profit_amount = (|| -> Option<u128> {
-					reward_amount
-						.checked_sub(treasury_fee_amount)?
-						.checked_sub(validators_fee_amount)?
-						.checked_sub(cluster_reserve_fee_amount)
-				})()
-				.ok_or(ArithmeticError::Overflow)?;
-
-				providers_profits.push(ProviderReward(provider_id, profit_amount));
-			}
-
-			Ok(providers_profits)
-		}
-
-		#[allow(dead_code)]
-		pub(crate) fn prepare_begin_payout(
-			cluster_id: &ClusterId,
-		) -> Result<Option<(EHDId, Fingerprint)>, Vec<OCWError>> {
-			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				let ehd_payable_usage =
-					Self::fetch_ehd_payable_usage_or_retry(cluster_id, ehd_id.clone())?;
-				Ok(Some((ehd_id, ehd_payable_usage.fingerprint())))
-			} else {
-				Ok(None)
-			}
-		}
-
-		pub(crate) fn derive_ehd_paybale_usage_key(
-			cluster_id: &ClusterId,
-			ehd_id: EHDId,
-		) -> Vec<u8> {
-			format!("offchain::paybale_usage::{:?}::{:?}", cluster_id, Into::<String>::into(ehd_id))
-				.into_bytes()
-		}
-
-		pub(crate) fn collect_verification_pub_key() -> Result<Account<T>, OCWError> {
+		pub(crate) fn collect_verification_pub_key() -> Result<Account<T>, InspOCWError> {
 			let session_verification_keys = <T::OffchainIdentifierId as AppCrypto<
 				T::Public,
 				T::Signature,
@@ -1639,13 +612,13 @@ pub mod pallet {
 					"🚨 Unexpected number of session verification keys is found. Expected: 1, Actual: {:?}",
 					session_verification_keys.len()
 				);
-				return Err(OCWError::FailedToCollectVerificationKey);
+				return Err(InspOCWError::FailedToCollectVerificationKey);
 			}
 
 			session_verification_keys
 				.into_iter()
 				.next() // first
-				.ok_or(OCWError::FailedToCollectVerificationKey)
+				.ok_or(InspOCWError::FailedToCollectVerificationKey)
 		}
 
 		pub(crate) fn store_verification_account_id(account_id: T::AccountId) {
@@ -1654,293 +627,17 @@ pub mod pallet {
 			local_storage_set(StorageKind::PERSISTENT, &key, &validator);
 		}
 
-		pub(crate) fn _fetch_verification_account_id() -> Result<T::AccountId, OCWError> {
+		pub(crate) fn _fetch_verification_account_id() -> Result<T::AccountId, InspOCWError> {
 			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
 
 			match local_storage_get(StorageKind::PERSISTENT, &key) {
 				Some(data) => {
 					let account_id = T::AccountId::decode(&mut &data[..])
-						.map_err(|_| OCWError::FailedToFetchVerificationKey)?;
+						.map_err(|_| InspOCWError::FailedToFetchVerificationKey)?;
 					Ok(account_id)
 				},
-				None => Err(OCWError::FailedToFetchVerificationKey),
+				None => Err(InspOCWError::FailedToFetchVerificationKey),
 			}
-		}
-
-		#[allow(clippy::too_many_arguments)]
-		pub(crate) fn store_ehd_payable_usage(
-			cluster_id: &ClusterId,
-			ehd_id: EHDId,
-			payers_usage: Vec<CustomerCharge>,
-			payers_root: PayableUsageHash,
-			payers_batch_roots: Vec<PayableUsageHash>,
-			payees_usage: Vec<ProviderReward>,
-			payees_root: PayableUsageHash,
-			payees_batch_roots: Vec<PayableUsageHash>,
-		) {
-			let key = Self::derive_ehd_paybale_usage_key(cluster_id, ehd_id.clone());
-
-			let ehd_paybale_usage = PayableEHDUsage {
-				cluster_id: *cluster_id,
-				ehd_id: ehd_id.into(),
-				payers_usage,
-				payers_root,
-				payers_batch_roots,
-				payees_usage,
-				payees_root,
-				payees_batch_roots,
-			};
-			let encoded_ehd_paybale_usage = ehd_paybale_usage.encode();
-
-			// Store the serialized data in local offchain storage
-			local_storage_set(StorageKind::PERSISTENT, &key, &encoded_ehd_paybale_usage);
-		}
-
-		#[allow(clippy::type_complexity)]
-		pub(crate) fn fetch_ehd_payable_usage(
-			cluster_id: &ClusterId,
-			ehd_id: EHDId,
-		) -> Option<PayableEHDUsage> {
-			log::info!(
-				"🪙🏠 Off-chain cache hit for Payable Usage in cluster_id: {:?} ehd_id: {:?}",
-				cluster_id,
-				ehd_id
-			);
-			let key = Self::derive_ehd_paybale_usage_key(cluster_id, ehd_id);
-
-			let encoded_ehd_paybale_usage = match local_storage_get(StorageKind::PERSISTENT, &key) {
-				Some(encoded_data) => encoded_data,
-				None => return None,
-			};
-
-			match Decode::decode(&mut &encoded_ehd_paybale_usage[..]) {
-				Ok(ehd_paybale_usage) => Some(ehd_paybale_usage),
-				Err(err) => {
-					log::error!("Decoding error: {:?}", err);
-					None
-				},
-			}
-		}
-
-		/// Converts a vector of hashable batches into their corresponding Merkle roots.
-		///
-		/// This function takes a vector of hashable batches, where each batch is a vector of
-		/// hashable items. It computes the Merkle root for each batch by first hashing each
-		/// activity and then combining these hashes into a single Merkle root.
-		///
-		/// # Input Parameters
-		/// - `batches: Vec<Vec<A>>`: A vector of vectors, where each inner vector represents a
-		///   batch of hashable items..
-		///
-		/// # Output
-		/// - `Vec<H256>`: A vector of Merkle roots, one for each batch of items.
-		pub(crate) fn convert_to_batch_merkle_roots<A: Hashable>(
-			cluster_id: &ClusterId,
-			batches: Vec<Vec<A>>,
-			era_id: EhdEra,
-		) -> Result<Vec<H256>, OCWError> {
-			batches
-				.into_iter()
-				.map(|batch| {
-					let activity_hashes: Vec<H256> =
-						batch.into_iter().map(|a| a.hash::<T>()).collect();
-					Self::create_merkle_root(cluster_id, &activity_hashes, era_id).map_err(|_| {
-						OCWError::FailedToCreateMerkleRoot { cluster_id: *cluster_id, era_id }
-					})
-				})
-				.collect::<Result<Vec<H256>, OCWError>>()
-		}
-
-		/// Splits a slice of activities into batches of a specified size.
-		///
-		/// This function sorts the given activities and splits them into batches of the specified
-		/// size. Each batch is returned as a separate vector.
-		///
-		/// # Input Parameters
-		/// - `activities: &[A]`: A slice of activities to be split into batches.
-		/// - `batch_size: usize`: The size of each batch.
-		///
-		/// # Output
-		/// - `Vec<Vec<A>>`: A vector of vectors, where each inner vector is a batch of activities.
-		pub(crate) fn split_to_batches<A: Ord + Clone>(
-			activities: &[A],
-			batch_size: usize,
-		) -> Vec<Vec<A>> {
-			if activities.is_empty() {
-				return vec![];
-			}
-			// Sort the activities first
-			let mut sorted_activities = activities.to_vec();
-			sorted_activities.sort(); // Sort using the derived Ord trait
-
-			// Split the sorted activities into chunks and collect them into vectors
-			sorted_activities.chunks(batch_size).map(|chunk| chunk.to_vec()).collect()
-		}
-
-		/// Creates a Merkle root from a list of hashes.
-		///
-		/// This function takes a slice of `H256` and constructs a Merkle tree
-		/// using an in-memory store. It returns a tuple containing the Merkle root hash,
-		/// the size of the Merkle tree, and a vector mapping each input leaf to its position
-		/// in the Merkle tree.
-		///
-		/// # Input Parameters
-		///
-		/// * `leaves` - A slice of `H256` representing the leaves of the Merkle tree.
-		///
-		/// # Output
-		///
-		/// A `Result` containing:
-		/// * A tuple with the Merkle root `H256`, the size of the Merkle tree, and a vector mapping
-		///   each input leaf to its position in the Merkle tree.
-		/// * `OCWError::FailedToCreateMerkleRoot` if there is an error creating the Merkle root.
-		pub(crate) fn create_merkle_root(
-			cluster_id: &ClusterId,
-			leaves: &[H256],
-			era_id: EhdEra,
-		) -> Result<H256, OCWError> {
-			if leaves.is_empty() {
-				return Ok(H256::default());
-			}
-
-			let store = MemStore::default();
-			let mut mmr: MMR<H256, MergeMMRHash, &MemStore<H256>> =
-				MemMMR::<_, MergeMMRHash>::new(0, &store);
-
-			let mut leaves_with_position: Vec<(u64, H256)> = Vec::with_capacity(leaves.len());
-
-			for &leaf in leaves {
-				match mmr.push(leaf) {
-					Ok(pos) => leaves_with_position.push((pos, leaf)),
-					Err(_) =>
-						return Err(OCWError::FailedToCreateMerkleRoot {
-							cluster_id: *cluster_id,
-							era_id,
-						}),
-				}
-			}
-
-			mmr.get_root()
-				.map_err(|_| OCWError::FailedToCreateMerkleRoot { cluster_id: *cluster_id, era_id })
-		}
-
-		pub(crate) fn get_tcaa_bucket_usage(
-			cluster_id: &ClusterId,
-			collector_key: NodePubKey,
-			tcaa_id: TcaEra,
-			node_key: NodePubKey,
-			bucket_id: BucketId,
-		) -> Result<BucketUsage, OCWError> {
-			let challenge_res = fetch_bucket_challenge_response::<
-				T::AccountId,
-				BlockNumberFor<T>,
-				T::ClusterManager,
-				T::NodeManager,
-			>(cluster_id, tcaa_id, collector_key, node_key, bucket_id, vec![1])
-			.map_err(|_| OCWError::ApiError)?;
-
-			let tcaa_root =
-				challenge_res.proofs.first().ok_or(OCWError::FailedToFetchBucketChallenge)?;
-			let tcaa_usage = tcaa_root.usage.ok_or(OCWError::FailedToFetchBucketChallenge)?;
-
-			Ok(BucketUsage {
-				stored_bytes: tcaa_usage.stored,
-				transferred_bytes: tcaa_usage.delivered,
-				number_of_puts: tcaa_usage.puts,
-				number_of_gets: tcaa_usage.gets,
-			})
-		}
-
-		pub(crate) fn get_tcaa_node_usage(
-			cluster_id: &ClusterId,
-			collector_key: NodePubKey,
-			tcaa_id: TcaEra,
-			node_key: NodePubKey,
-		) -> Result<NodeUsage, OCWError> {
-			let challenge_res = fetch_node_challenge_response::<
-				T::AccountId,
-				BlockNumberFor<T>,
-				T::ClusterManager,
-				T::NodeManager,
-			>(cluster_id, tcaa_id, collector_key, node_key, vec![1])
-			.map_err(|_| OCWError::ApiError)?;
-
-			let tcaa_root =
-				challenge_res.proofs.first().ok_or(OCWError::FailedToFetchNodeChallenge)?;
-			let tcaa_usage = tcaa_root.usage.ok_or(OCWError::FailedToFetchNodeChallenge)?;
-
-			Ok(NodeUsage {
-				stored_bytes: tcaa_usage.stored,
-				transferred_bytes: tcaa_usage.delivered,
-				number_of_puts: tcaa_usage.puts,
-				number_of_gets: tcaa_usage.gets,
-			})
-		}
-
-		pub(crate) fn get_ehd_id_for_payout(cluster_id: &ClusterId) -> Option<EHDId> {
-			match T::ClusterValidator::get_last_paid_era(cluster_id) {
-				Ok(last_paid_era_for_cluster) => {
-					if let Some(inspected_ehds) = fetch_last_inspected_ehds(cluster_id) {
-						for inspected_ehd in inspected_ehds.clone().into_iter().sorted() {
-							if inspected_ehd.2 > last_paid_era_for_cluster {
-								let ehd_root = get_ehd_root::<
-									T::AccountId,
-									BlockNumberFor<T>,
-									T::ClusterManager,
-									T::NodeManager,
-								>(cluster_id, inspected_ehd.clone())
-								.ok()?;
-
-								let cluster_usage = ehd_root.get_cluster_usage();
-								if cluster_usage == Default::default() {
-									continue;
-								}
-
-								let receipts_by_inspector = fetch_inspection_receipts::<
-									T::AccountId,
-									BlockNumberFor<T>,
-									T::ClusterManager,
-									T::NodeManager,
-								>(cluster_id, inspected_ehd.clone())
-								.map_err(|e| vec![e])
-								.ok()?;
-
-								let inspectors_quorum = T::ValidatorsQuorum::get();
-								let threshold = inspectors_quorum * <ValidatorSet<T>>::get().len();
-
-								if threshold <= receipts_by_inspector.len() {
-									return Some(inspected_ehd);
-								}
-							}
-						}
-					}
-					None
-				},
-				Err(_) => None,
-			}
-		}
-
-		/// Verify whether leaf is part of tree
-		///
-		/// Parameters:
-		/// - `root_hash`: merkle root hash
-		/// - `batch_hash`: hash of the batch
-		/// - `batch_index`: index of the batch
-		/// - `batch_proof`: MMR proofs
-		pub(crate) fn _proof_merkle_leaf(
-			root_hash: PayableUsageHash,
-			batch_hash: PayableUsageHash,
-			batch_index: BatchIndex,
-			max_batch_index: BatchIndex,
-			batch_proof: &MMRProof,
-		) -> Result<bool, Error<T>> {
-			let batch_position = leaf_index_to_pos(batch_index.into());
-			let mmr_size = leaf_index_to_mmr_size(max_batch_index.into());
-			let proof: MerkleProof<PayableUsageHash, MergeMMRHash> =
-				MerkleProof::new(mmr_size, batch_proof.proof.clone());
-			proof
-				.verify(root_hash, vec![(batch_position, batch_hash)])
-				.map_err(|_| Error::<T>::FailedToVerifyMerkleProof)
 		}
 	}
 
@@ -1957,80 +654,6 @@ pub mod pallet {
 			let threshold = quorum * <ValidatorSet<T>>::get().len();
 			threshold <= members_count
 		}
-	}
-
-	/// Era activity of a node.
-	#[derive(
-		Debug,
-		Serialize,
-		Deserialize,
-		Clone,
-		Copy,
-		Hash,
-		Ord,
-		PartialOrd,
-		PartialEq,
-		Eq,
-		TypeInfo,
-		Encode,
-		Decode,
-	)]
-	pub struct EraActivity {
-		/// Era id.
-		pub id: TcaEra,
-		pub start: i64,
-		pub end: i64,
-	}
-
-	impl From<aggregator_client::json::AggregationEraResponse> for EraActivity {
-		fn from(era: aggregator_client::json::AggregationEraResponse) -> Self {
-			Self { id: era.id, start: era.start, end: era.end }
-		}
-	}
-
-	impl Hashable for CustomerCharge {
-		fn hash<T: Config>(&self) -> PayableUsageHash {
-			let mut data = self.0.encode(); // customer_id
-			data.extend_from_slice(&self.1.encode()); // amount
-			T::Hasher::hash(&data)
-		}
-	}
-
-	impl Hashable for ProviderReward {
-		fn hash<T: Config>(&self) -> PayableUsageHash {
-			let mut data = self.0.encode(); // provider_id
-			data.extend_from_slice(&self.1.encode()); // amount
-			T::Hasher::hash(&data)
-		}
-	}
-
-	/// The `ConsolidatedAggregate` struct represents a merging result of multiple aggregates
-	/// that have reached consensus on the usage criteria. This result should be taken into
-	/// consideration when choosing the intensity of the challenge.
-	#[allow(unused)]
-	#[derive(Debug, Clone, PartialEq)]
-	pub(crate) struct ConsolidatedAggregate<A: Aggregate> {
-		/// The representative aggregate after consolidation
-		pub(crate) aggregate: A,
-		/// Number of aggregates that were consistent
-		pub(crate) count: u16,
-		/// Aggregators that provided consistent aggregates
-		pub(crate) aggregators: Vec<AggregatorInfo>,
-	}
-
-	#[allow(unused)]
-	impl<A: Aggregate> ConsolidatedAggregate<A> {
-		pub(crate) fn new(aggregate: A, count: u16, aggregators: Vec<AggregatorInfo>) -> Self {
-			ConsolidatedAggregate { aggregate, count, aggregators }
-		}
-	}
-
-	#[allow(unused)]
-	#[derive(Debug, Clone, PartialEq)]
-	pub(crate) struct ConsistencyGroups<A: Aggregate> {
-		pub(crate) consensus: Vec<ConsolidatedAggregate<A>>,
-		pub(crate) quorum: Vec<ConsolidatedAggregate<A>>,
-		pub(crate) others: Vec<ConsolidatedAggregate<A>>,
 	}
 
 	pub(crate) trait Hashable {
@@ -2052,7 +675,7 @@ pub mod pallet {
 		fn get_aggregator(&self) -> AggregatorInfo;
 	}
 
-	impl Hashable for aggregator_client::json::BucketSubAggregate {
+	impl Hashable for json::BucketSubAggregate {
 		fn hash<T: Config>(&self) -> DeltaUsageHash {
 			let mut data = self.bucket_id.encode();
 			data.extend_from_slice(&self.node_id.encode());
@@ -2064,7 +687,7 @@ pub mod pallet {
 		}
 	}
 
-	impl Hashable for aggregator_client::json::BucketAggregateResponse {
+	impl Hashable for json::BucketAggregateResponse {
 		fn hash<T: Config>(&self) -> DeltaUsageHash {
 			let mut data = self.bucket_id.encode();
 			data.extend_from_slice(&self.stored_bytes.encode());
@@ -2075,7 +698,7 @@ pub mod pallet {
 		}
 	}
 
-	impl Aggregate for aggregator_client::json::BucketAggregateResponse {
+	impl Aggregate for json::BucketAggregateResponse {
 		fn get_key(&self) -> AggregateKey {
 			AggregateKey::BucketAggregateKey(self.bucket_id)
 		}
@@ -2089,7 +712,7 @@ pub mod pallet {
 		}
 	}
 
-	impl Aggregate for aggregator_client::json::BucketSubAggregate {
+	impl Aggregate for json::BucketSubAggregate {
 		fn get_key(&self) -> AggregateKey {
 			AggregateKey::BucketSubAggregateKey(self.bucket_id, self.node_id.clone())
 		}
@@ -2103,7 +726,7 @@ pub mod pallet {
 		}
 	}
 
-	impl Hashable for aggregator_client::json::NodeAggregate {
+	impl Hashable for json::NodeAggregate {
 		fn hash<T: Config>(&self) -> DeltaUsageHash {
 			let mut data = self.node_id.encode();
 			data.extend_from_slice(&self.stored_bytes.encode());
@@ -2114,7 +737,7 @@ pub mod pallet {
 		}
 	}
 
-	impl Aggregate for aggregator_client::json::NodeAggregate {
+	impl Aggregate for json::NodeAggregate {
 		fn get_key(&self) -> AggregateKey {
 			AggregateKey::NodeAggregateKey(self.node_id.clone())
 		}
@@ -2139,7 +762,7 @@ pub mod pallet {
 		fn leaf_hash<T: Config>(&self) -> DeltaUsageHash;
 	}
 
-	impl NodeAggregateLeaf for aggregator_client::json::Leaf {
+	impl NodeAggregateLeaf for json::Leaf {
 		fn leaf_hash<T: Config>(&self) -> DeltaUsageHash {
 			let mut data = self.record.id.encode();
 			data.extend_from_slice(&self.record.upstream.request.requestType.encode());
@@ -2149,7 +772,7 @@ pub mod pallet {
 		}
 	}
 
-	impl BucketSubAggregateLeaf for aggregator_client::json::Leaf {
+	impl BucketSubAggregateLeaf for json::Leaf {
 		fn leaf_hash<T: Config>(&self) -> DeltaUsageHash {
 			let mut data = self.record.upstream.request.bucketId.encode();
 			data.extend_from_slice(&self.record.encode());
@@ -2157,159 +780,6 @@ pub mod pallet {
 			data.extend_from_slice(&self.stored_bytes.encode());
 			data.extend_from_slice(&self.transferred_bytes.encode());
 			T::Hasher::hash(&data)
-		}
-	}
-
-	/* ######## DAC v5 DDC endpoints ######## */
-	impl<T: Config> Pallet<T> {
-		fn calculate_customers_usage_cutoff(
-			cluster_id: &ClusterId,
-			receipts_by_inspector: &BTreeMap<
-				String,
-				aggregator_client::json::GroupedInspectionReceipt,
-			>,
-		) -> Result<BTreeMap<T::AccountId, BucketUsage>, OCWError> {
-			let mut buckets_usage_cutoff: BTreeMap<(TcaEra, BucketId, NodePubKey), BucketUsage> =
-				BTreeMap::new();
-			let mut buckets_to_customers: BTreeMap<BucketId, T::AccountId> = BTreeMap::new();
-			let mut customers_usage_cutoff: BTreeMap<T::AccountId, BucketUsage> = BTreeMap::new();
-
-			for inspection_receipt in receipts_by_inspector.values() {
-				for unverified_branch in &inspection_receipt.buckets_inspection.unverified_branches
-				{
-					let collector_key = NodePubKey::try_from(unverified_branch.collector.clone())
-						.map_err(|_| OCWError::FailedToParseNodeKey {
-						node_key: unverified_branch.collector.clone(),
-					})?;
-					let (bucket_id, node_key) = match &unverified_branch.aggregate {
-						AggregateKey::BucketSubAggregateKey(bucket_id, key) => {
-							let node_key = NodePubKey::try_from(key.clone()).map_err(|_| {
-								OCWError::FailedToParseNodeKey { node_key: key.clone() }
-							})?;
-							(bucket_id, node_key)
-						},
-						_ => continue, // can happen only in case of a malformed response or bug
-					};
-
-					for tcaa_id in unverified_branch.leafs.keys() {
-						let tcaa_usage = Self::get_tcaa_bucket_usage(
-							cluster_id,
-							collector_key.clone(),
-							*tcaa_id,
-							node_key.clone(),
-							*bucket_id,
-						)?;
-
-						#[allow(clippy::map_entry)]
-						if !buckets_usage_cutoff.contains_key(&(
-							*tcaa_id,
-							*bucket_id,
-							node_key.clone(),
-						)) {
-							buckets_usage_cutoff
-								.insert((*tcaa_id, *bucket_id, node_key.clone()), tcaa_usage);
-							if !buckets_to_customers.contains_key(bucket_id) {
-								let customer_id = T::BucketManager::get_bucket_owner_id(*bucket_id)
-									.map_err(|_| OCWError::FailedToFetchCustomerId {
-										bucket_id: *bucket_id,
-									})?;
-
-								buckets_to_customers.insert(*bucket_id, customer_id);
-							}
-						}
-					}
-				}
-			}
-
-			for ((_, bucket_id, _), bucket_usage) in buckets_usage_cutoff {
-				let customer_id = buckets_to_customers
-					.get(&bucket_id)
-					.ok_or(OCWError::FailedToFetchCustomerId { bucket_id })?;
-
-				match customers_usage_cutoff.get_mut(customer_id) {
-					Some(total_usage) => {
-						total_usage.number_of_puts += bucket_usage.number_of_puts;
-						total_usage.number_of_gets += bucket_usage.number_of_gets;
-						total_usage.transferred_bytes += bucket_usage.transferred_bytes;
-						total_usage.stored_bytes += bucket_usage.stored_bytes;
-					},
-					None => {
-						customers_usage_cutoff.insert(customer_id.clone(), bucket_usage.clone());
-					},
-				}
-			}
-
-			Ok(customers_usage_cutoff)
-		}
-
-		fn calculate_providers_usage_cutoff(
-			cluster_id: &ClusterId,
-			receipts_by_inspector: &BTreeMap<
-				String,
-				aggregator_client::json::GroupedInspectionReceipt,
-			>,
-		) -> Result<BTreeMap<T::AccountId, NodeUsage>, OCWError> {
-			let mut nodes_usage_cutoff: BTreeMap<(TcaEra, NodePubKey), NodeUsage> = BTreeMap::new();
-			let mut nodes_to_providers: BTreeMap<NodePubKey, T::AccountId> = BTreeMap::new();
-			let mut providers_usage_cutoff: BTreeMap<T::AccountId, NodeUsage> = BTreeMap::new();
-
-			for inspection_receipt in receipts_by_inspector.values() {
-				for unverified_branch in &inspection_receipt.nodes_inspection.unverified_branches {
-					let collector_key = NodePubKey::try_from(unverified_branch.collector.clone())
-						.map_err(|_| OCWError::FailedToParseNodeKey {
-						node_key: unverified_branch.collector.clone(),
-					})?;
-					let node_key = match &unverified_branch.aggregate {
-						AggregateKey::NodeAggregateKey(key) => NodePubKey::try_from(key.clone())
-							.map_err(|_| OCWError::FailedToParseNodeKey {
-								node_key: key.clone(),
-							})?,
-						_ => continue, // can happen only in case of a malformed response or bug
-					};
-
-					for tcaa_id in unverified_branch.leafs.keys() {
-						let tcaa_usage = Self::get_tcaa_node_usage(
-							cluster_id,
-							collector_key.clone(),
-							*tcaa_id,
-							node_key.clone(),
-						)?;
-
-						#[allow(clippy::map_entry)]
-						if !nodes_usage_cutoff.contains_key(&(*tcaa_id, node_key.clone())) {
-							nodes_usage_cutoff.insert((*tcaa_id, node_key.clone()), tcaa_usage);
-							if !nodes_to_providers.contains_key(&node_key) {
-								let provider_id = T::NodeManager::get_node_provider_id(&node_key)
-									.map_err(|_| {
-									OCWError::FailedToFetchProviderId { node_key: node_key.clone() }
-								})?;
-
-								nodes_to_providers.insert(node_key.clone(), provider_id);
-							}
-						}
-					}
-				}
-			}
-
-			for ((_, node_key), node_usage) in nodes_usage_cutoff {
-				let provider_id = nodes_to_providers
-					.get(&node_key)
-					.ok_or(OCWError::FailedToFetchProviderId { node_key: node_key.clone() })?;
-
-				match providers_usage_cutoff.get_mut(provider_id) {
-					Some(total_usage) => {
-						total_usage.number_of_puts += node_usage.number_of_puts;
-						total_usage.number_of_gets += node_usage.number_of_gets;
-						total_usage.transferred_bytes += node_usage.transferred_bytes;
-						total_usage.stored_bytes += node_usage.stored_bytes;
-					},
-					None => {
-						providers_usage_cutoff.insert(provider_id.clone(), node_usage.clone());
-					},
-				}
-			}
-
-			Ok(providers_usage_cutoff)
 		}
 	}
 
@@ -2322,6 +792,15 @@ pub mod pallet {
 		let key = derive_last_inspected_ehd_key(cluster_id);
 
 		if let Some(mut inspected_ehds) = fetch_last_inspected_ehds(cluster_id) {
+			let last_era = inspected_ehds
+				.iter()
+				.max_by_key(|ehd| ehd.2)
+				.map(|ehd| ehd.2)
+				.unwrap_or(Default::default());
+			if last_era >= ehd_id.2 {
+				return;
+			}
+
 			inspected_ehds.push(ehd_id);
 
 			let encoded_ehds_ids =
@@ -2356,1208 +835,6 @@ pub mod pallet {
 				);
 				None
 			},
-		}
-	}
-
-	/* ######## DAC v4 functions ######## */
-	impl<T: Config> Pallet<T> {
-		#[allow(clippy::type_complexity)]
-		pub(crate) fn _v4_process_era(
-			cluster_id: &ClusterId,
-			era_activity: EraActivity,
-		) -> Result<
-			Option<(
-				EraActivity,
-				DeltaUsageHash,
-				DeltaUsageHash,
-				Vec<DeltaUsageHash>,
-				Vec<DeltaUsageHash>,
-			)>,
-			Vec<OCWError>,
-		> {
-			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
-
-			let dac_nodes = get_collectors_nodes::<
-				T::AccountId,
-				BlockNumberFor<T>,
-				T::ClusterManager,
-				T::NodeManager,
-			>(cluster_id)
-			.map_err(|_| {
-				log::error!("❌ Error retrieving dac nodes to validate cluster {:?}", cluster_id);
-				vec![OCWError::FailedToFetchCollectors { cluster_id: *cluster_id }]
-			})?;
-
-			log::info!(
-				"👁️‍🗨️  Start processing DAC for cluster_id: {:?} era_id; {:?}",
-				cluster_id,
-				era_activity.id
-			);
-
-			// todo: move to cluster protocol parameters
-			let dac_redundancy_factor = T::DAC_REDUNDANCY_FACTOR;
-			let aggregators_quorum = T::AggregatorsQuorum::get();
-
-			let nodes_aggregates_by_aggregator =
-				Self::_v4_fetch_nodes_aggregates_for_era(cluster_id, era_activity.id, &dac_nodes)
-					.map_err(|err| vec![err])?;
-
-			let buckets_aggregates_by_aggregator =
-				Self::_v4_fetch_buckets_aggregates_for_era(cluster_id, era_activity.id, &dac_nodes)
-					.map_err(|err| vec![err])?;
-
-			let buckets_sub_aggregates_groups =
-				Self::_v4_group_buckets_sub_aggregates_by_consistency(
-					cluster_id,
-					era_activity.id,
-					buckets_aggregates_by_aggregator,
-					dac_redundancy_factor,
-					aggregators_quorum,
-				);
-
-			let total_buckets_usage = Self::_v4_get_total_usage(
-				cluster_id,
-				era_activity.id,
-				buckets_sub_aggregates_groups,
-				true,
-			)?;
-
-			let customer_activity_hashes: Vec<DeltaUsageHash> =
-				total_buckets_usage.clone().into_iter().map(|c| c.hash::<T>()).collect();
-
-			let customer_activity_hashes_string: Vec<String> =
-				customer_activity_hashes.clone().into_iter().map(hex::encode).collect();
-
-			log::info!(
-				"👁️‍🗨️  Customer Activity hashes for cluster_id: {:?} era_id: {:?} is: {:?}",
-				cluster_id,
-				era_activity.id,
-				customer_activity_hashes_string
-			);
-			let customers_activity_batch_roots = Self::convert_to_batch_merkle_roots(
-				cluster_id,
-				Self::split_to_batches(&total_buckets_usage, batch_size.into()),
-				era_activity.id,
-			)
-			.map_err(|err| vec![err])?;
-
-			let customer_batch_roots_string: Vec<String> =
-				customers_activity_batch_roots.clone().into_iter().map(hex::encode).collect();
-
-			for (pos, batch_root) in customer_batch_roots_string.iter().enumerate() {
-				log::info!(
-				"👁️‍🗨️‍  Customer Activity batches for cluster_id: {:?} era_id: {:?} is: batch {:?} with root {:?} for activities {:?}",
-				cluster_id,
-				era_activity.id,
-					pos + 1,
-					batch_root,
-					customer_activity_hashes_string
-				);
-			}
-
-			let customers_activity_root = Self::create_merkle_root(
-				cluster_id,
-				&customers_activity_batch_roots,
-				era_activity.id,
-			)
-			.map_err(|err| vec![err])?;
-
-			log::info!(
-				"👁️‍🗨️‍  Customer Activity batches tree for cluster_id: {:?} era_id: {:?} is: batch with root {:?} for activities {:?}",
-				cluster_id,
-				era_activity.id,
-				hex::encode(customers_activity_root),
-					customer_batch_roots_string,
-			);
-
-			let nodes_aggregates_groups = Self::_v4_group_nodes_aggregates_by_consistency(
-				cluster_id,
-				era_activity.id,
-				nodes_aggregates_by_aggregator,
-				dac_redundancy_factor,
-				aggregators_quorum,
-			);
-
-			let total_nodes_usage = Self::_v4_get_total_usage(
-				cluster_id,
-				era_activity.id,
-				nodes_aggregates_groups,
-				true,
-			)?;
-
-			let node_activity_hashes: Vec<DeltaUsageHash> =
-				total_nodes_usage.clone().into_iter().map(|c| c.hash::<T>()).collect();
-
-			let node_activity_hashes_string: Vec<String> =
-				node_activity_hashes.clone().into_iter().map(hex::encode).collect();
-
-			log::info!(
-				"👁️‍🗨️  Node Activity hashes for cluster_id: {:?} era_id: {:?} is: {:?}",
-				cluster_id,
-				era_activity.id,
-				node_activity_hashes_string
-			);
-
-			let nodes_activity_batch_roots = Self::convert_to_batch_merkle_roots(
-				cluster_id,
-				Self::split_to_batches(&total_nodes_usage, batch_size.into()),
-				era_activity.id,
-			)
-			.map_err(|err| vec![err])?;
-
-			let nodes_activity_batch_roots_string: Vec<String> =
-				nodes_activity_batch_roots.clone().into_iter().map(hex::encode).collect();
-
-			for (pos, batch_root) in nodes_activity_batch_roots_string.iter().enumerate() {
-				log::info!(
-				"👁️‍🗨️  Node Activity batches for cluster_id: {:?} era_id: {:?} are: batch {:?} with root {:?} for activities {:?}",
-				cluster_id,
-				era_activity.id,
-					pos + 1,
-					batch_root,
-					node_activity_hashes_string
-				);
-			}
-
-			let nodes_activity_root =
-				Self::create_merkle_root(cluster_id, &nodes_activity_batch_roots, era_activity.id)
-					.map_err(|err| vec![err])?;
-
-			log::info!(
-				"👁️‍🗨️  Node Activity batches tree for cluster_id: {:?} era_id: {:?} are: batch with root {:?} for activities {:?}",
-				cluster_id,
-				era_activity.id,
-				hex::encode(nodes_activity_root),
-					nodes_activity_batch_roots_string,
-			);
-
-			Self::_v4_store_verified_usage(
-				cluster_id,
-				era_activity.id,
-				&total_buckets_usage,
-				customers_activity_root,
-				&customers_activity_batch_roots,
-				&total_nodes_usage,
-				nodes_activity_root,
-				&nodes_activity_batch_roots,
-			);
-			log::info!(
-				"👁️‍🗨️‍  End processing DAC for cluster_id: {:?} era_id: {:?}",
-				cluster_id,
-				era_activity.id
-			);
-			Ok(Some((
-				era_activity,
-				customers_activity_root,
-				nodes_activity_root,
-				customers_activity_batch_roots,
-				nodes_activity_batch_roots,
-			)))
-		}
-
-		/// Fetch node usage of an era.
-		///
-		/// Parameters:
-		/// - `cluster_id`: cluster id of a cluster
-		/// - `era_id`: era id
-		/// - `node_params`: DAC node parameters
-		pub(crate) fn _v4_fetch_nodes_aggregates_for_era(
-			cluster_id: &ClusterId,
-			era_id: TcaEra,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<
-			Vec<(AggregatorInfo, Vec<aggregator_client::json::NodeAggregateResponse>)>,
-			OCWError,
-		> {
-			let mut nodes_aggregates = Vec::new();
-
-			for (node_key, node_params) in dac_nodes {
-				let aggregates_res =
-					Self::_v4_fetch_node_aggregates(cluster_id, era_id, node_params);
-				if aggregates_res.is_err() {
-					log::warn!(
-						"Aggregator from cluster {:?} is unavailable while fetching nodes aggregates. Key: {:?} Host: {:?}",
-						cluster_id,
-						node_key,
-						String::from_utf8(node_params.host.clone())
-					);
-					// skip unavailable aggregators and continue with available ones
-					continue;
-				}
-
-				let aggregates = aggregates_res.expect("Nodes Aggregates Response to be available");
-
-				nodes_aggregates.push((
-					AggregatorInfo {
-						node_pub_key: node_key.clone(),
-						node_params: node_params.clone(),
-					},
-					aggregates,
-				));
-			}
-
-			Ok(nodes_aggregates)
-		}
-
-		/// Fetch customer usage for an era.
-		///
-		/// Parameters:
-		/// - `cluster_id`: cluster id of a cluster
-		/// - `era_id`: era id
-		/// - `node_params`: DAC node parameters
-		pub(crate) fn _v4_fetch_buckets_aggregates_for_era(
-			cluster_id: &ClusterId,
-			era_id: TcaEra,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<
-			Vec<(AggregatorInfo, Vec<aggregator_client::json::BucketAggregateResponse>)>,
-			OCWError,
-		> {
-			let mut bucket_aggregates: Vec<(
-				AggregatorInfo,
-				Vec<aggregator_client::json::BucketAggregateResponse>,
-			)> = Vec::new();
-
-			for (node_key, node_params) in dac_nodes {
-				let aggregates_res =
-					Self::_v4_fetch_bucket_aggregates(cluster_id, era_id, node_params);
-				if aggregates_res.is_err() {
-					log::warn!(
-						"Aggregator from cluster {:?} is unavailable while fetching buckets aggregates. Key: {:?} Host: {:?}",
-						cluster_id,
-						node_key,
-						String::from_utf8(node_params.host.clone())
-					);
-					// skip unavailable aggregators and continue with available ones
-					continue;
-				}
-
-				let aggregates =
-					aggregates_res.expect("Buckets Aggregates Response to be available");
-
-				bucket_aggregates.push((
-					AggregatorInfo {
-						node_pub_key: node_key.clone(),
-						node_params: node_params.clone(),
-					},
-					aggregates,
-				));
-			}
-
-			Ok(bucket_aggregates)
-		}
-
-		/// Computes the consensus for a set of partial activities across multiple buckets within a
-		/// given cluster and era.
-		///
-		/// This function collects activities from various buckets, groups them by their consensus
-		/// ID, and then determines if a consensus is reached for each group based on the minimum
-		/// number of nodes and a given threshold. If the consensus is reached, the activity is
-		/// included in the result. Otherwise, appropriate errors are returned.
-		///
-		/// # Input Parameters
-		/// - `cluster_id: &ClusterId`: The ID of the cluster for which consensus is being computed.
-		/// - `era_id: TcaEra`: The era ID within the cluster.
-		/// - `buckets_aggregates_by_aggregator: &[(NodePubKey, Vec<A>)]`: A list of tuples, where
-		///   each tuple contains a node's public key and a vector of activities reported for that
-		///   bucket.
-		/// - `redundancy_factor: u16`: The number of aggregators that should report total activity
-		///   for a node or a bucket
-		/// - `quorum: Percent`: The threshold percentage that determines if an activity is in
-		///   consensus.
-		///
-		/// # Output
-		/// - `Result<Vec<A>, Vec<OCWError>>`:
-		///   - `Ok(Vec<A>)`: A vector of activities that have reached consensus.
-		///   - `Err(Vec<OCWError>)`: A vector of errors indicating why consensus was not reached
-		///     for some activities.
-		pub(crate) fn _v4_group_buckets_sub_aggregates_by_consistency(
-			cluster_id: &ClusterId,
-			era_id: TcaEra,
-			buckets_aggregates_by_aggregator: Vec<(
-				AggregatorInfo,
-				Vec<aggregator_client::json::BucketAggregateResponse>,
-			)>,
-			redundancy_factor: u16,
-			quorum: Percent,
-		) -> ConsistencyGroups<aggregator_client::json::BucketSubAggregate> {
-			let mut buckets_sub_aggregates: Vec<aggregator_client::json::BucketSubAggregate> =
-				Vec::new();
-
-			log::info!(
-				"👁️‍🗨️‍  Starting fetching bucket sub-aggregates for cluster_id: {:?} for era_id: {:?}",
-				cluster_id,
-				era_id
-			);
-			for (aggregator_info, buckets_aggregates_resp) in
-				buckets_aggregates_by_aggregator.clone()
-			{
-				for bucket_aggregate_resp in buckets_aggregates_resp {
-					for bucket_sub_aggregate_resp in bucket_aggregate_resp.sub_aggregates.clone() {
-						let bucket_sub_aggregate = aggregator_client::json::BucketSubAggregate {
-							bucket_id: bucket_aggregate_resp.bucket_id,
-							node_id: bucket_sub_aggregate_resp.NodeID,
-							stored_bytes: bucket_sub_aggregate_resp.stored_bytes,
-							transferred_bytes: bucket_sub_aggregate_resp.transferred_bytes,
-							number_of_puts: bucket_sub_aggregate_resp.number_of_puts,
-							number_of_gets: bucket_sub_aggregate_resp.number_of_gets,
-							aggregator: aggregator_info.clone(),
-						};
-
-						buckets_sub_aggregates.push(bucket_sub_aggregate);
-					}
-
-					log::info!("👁️‍🗨️‍  Fetched Bucket sub-aggregates for cluster_id: {:?} for era_id: {:?} for bucket_id {:?}::: Bucket Sub-Aggregates are {:?}", cluster_id, era_id, bucket_aggregate_resp.bucket_id, bucket_aggregate_resp.sub_aggregates);
-				}
-			}
-
-			let buckets_sub_aggregates_groups =
-				Self::_v4_group_by_consistency(buckets_sub_aggregates, redundancy_factor, quorum);
-
-			log::info!("👁️‍🗨️‍🌕 Bucket Sub-Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.consensus);
-			log::info!("👁️‍🗨️‍🌗 Bucket Sub-Aggregates, which are in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.quorum);
-			log::info!("👁️‍🗨️‍🌘 Bucket Sub-Aggregates, which are neither in consensus nor in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, buckets_sub_aggregates_groups.others);
-
-			buckets_sub_aggregates_groups
-		}
-
-		/// Computes the consensus for a set of activities across multiple nodes within a given
-		/// cluster and era.
-		///
-		/// This function collects activities from various nodes, groups them by their consensus ID,
-		/// and then determines if a consensus is reached for each group based on the minimum number
-		/// of nodes and a given threshold. If the consensus is reached, the activity is included
-		/// in the result. Otherwise, appropriate errors are returned.
-		///
-		/// # Input Parameters
-		/// - `cluster_id: &ClusterId`: The ID of the cluster for which consensus is being computed.
-		/// - `era_id: TcaEra`: The era ID within the cluster.
-		/// - `nodes_aggregates_by_aggregator: &[(NodePubKey, Vec<A>)]`: A list of tuples, where
-		///   each tuple contains a node's public key and a vector of activities reported by that
-		///   node.
-		/// - `redundancy_factor: u16`: The number of aggregators that should report total activity
-		///   for a node or a bucket
-		/// - `quorum: Percent`: The threshold percentage that determines if an activity is in
-		///   consensus.
-		///
-		/// # Output
-		/// - `Result<Vec<A>, Vec<OCWError>>`:
-		///   - `Ok(Vec<A>)`: A vector of activities that have reached consensus.
-		///   - `Err(Vec<OCWError>)`: A vector of errors indicating why consensus was not reached
-		///     for some activities.
-		pub(crate) fn _v4_group_nodes_aggregates_by_consistency(
-			cluster_id: &ClusterId,
-			era_id: TcaEra,
-			nodes_aggregates_by_aggregator: Vec<(
-				AggregatorInfo,
-				Vec<aggregator_client::json::NodeAggregateResponse>,
-			)>,
-			redundancy_factor: u16,
-			quorum: Percent,
-		) -> ConsistencyGroups<aggregator_client::json::NodeAggregate> {
-			let mut nodes_aggregates: Vec<aggregator_client::json::NodeAggregate> = Vec::new();
-
-			log::info!(
-				"👁️‍🗨️‍  Starting fetching node aggregates for cluster_id: {:?} for era_id: {:?}",
-				cluster_id,
-				era_id
-			);
-
-			for (aggregator_info, nodes_aggregates_resp) in nodes_aggregates_by_aggregator.clone() {
-				for node_aggregate_resp in nodes_aggregates_resp.clone() {
-					let node_aggregate = aggregator_client::json::NodeAggregate {
-						node_id: node_aggregate_resp.node_id,
-						stored_bytes: node_aggregate_resp.stored_bytes,
-						transferred_bytes: node_aggregate_resp.transferred_bytes,
-						number_of_puts: node_aggregate_resp.number_of_puts,
-						number_of_gets: node_aggregate_resp.number_of_gets,
-						aggregator: aggregator_info.clone(),
-					};
-					nodes_aggregates.push(node_aggregate);
-				}
-
-				log::info!("👁️‍🗨️‍  Fetched Node-aggregates for cluster_id: {:?} for era_id: {:?} :::Node Aggregates are {:?}", cluster_id, era_id, nodes_aggregates);
-			}
-
-			let nodes_aggregates_groups =
-				Self::_v4_group_by_consistency(nodes_aggregates, redundancy_factor, quorum);
-
-			log::info!("👁️‍🗨️‍🌕 Node Aggregates, which are in consensus for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.consensus);
-			log::info!("👁️‍🗨️‍🌗 Node Aggregates, which are in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.quorum);
-			log::info!("👁️‍🗨️‍🌘 Node Aggregates, which are neither in consensus nor in quorum for cluster_id: {:?} for era_id: {:?}:::  {:?}", cluster_id, era_id, nodes_aggregates_groups.others);
-
-			nodes_aggregates_groups
-		}
-
-		pub(crate) fn _v4_get_total_usage<A: Aggregate>(
-			cluster_id: &ClusterId,
-			era_id: TcaEra,
-			consistency_groups: ConsistencyGroups<A>,
-			should_challenge: bool,
-		) -> Result<Vec<A>, Vec<OCWError>> {
-			let mut total_usage = vec![];
-			let mut total_usage_keys = vec![];
-
-			// todo: implement 'challenge_consensus' fn and run a light challenge for unanimous
-			// consensus
-			let in_consensus_usage = consistency_groups
-				.consensus
-				.clone()
-				.into_iter()
-				.map(|ca| ca.aggregate.clone())
-				.collect::<Vec<_>>();
-			total_usage.extend(in_consensus_usage.clone());
-			total_usage_keys
-				.extend(in_consensus_usage.into_iter().map(|a| a.get_key()).collect::<Vec<_>>());
-
-			// todo: implement 'challenge_quorum' fn and run a light challenge for the quorum, i.e.
-			// for majority
-			let in_quorum_usage = consistency_groups
-				.quorum
-				.clone()
-				.into_iter()
-				.map(|ca| ca.aggregate.clone())
-				.collect::<Vec<_>>();
-			total_usage.extend(in_quorum_usage.clone());
-			total_usage_keys
-				.extend(in_quorum_usage.into_iter().map(|a| a.get_key()).collect::<Vec<_>>());
-
-			let verified_usage = Self::_v4_challenge_others(
-				cluster_id,
-				era_id,
-				consistency_groups,
-				&mut total_usage_keys,
-				should_challenge,
-			)?;
-
-			if !verified_usage.is_empty() {
-				total_usage.extend(verified_usage.clone());
-			}
-
-			Ok(total_usage)
-		}
-
-		pub(crate) fn _v4_challenge_others<A: Aggregate>(
-			_cluster_id: &ClusterId,
-			_era_id: TcaEra,
-			consistency_groups: ConsistencyGroups<A>,
-			accepted_keys: &mut Vec<AggregateKey>,
-			should_challenge: bool,
-		) -> Result<Vec<A>, Vec<OCWError>> {
-			let redundancy_factor = T::DAC_REDUNDANCY_FACTOR;
-			let mut verified_usage: Vec<A> = vec![];
-
-			for consolidated_aggregate in consistency_groups.others {
-				let aggregate_key = consolidated_aggregate.aggregate.get_key();
-
-				if accepted_keys.contains(&aggregate_key) {
-					log::warn!(
-						"⚠️ The aggregate {:?} is inconsistent between aggregators.",
-						aggregate_key
-					);
-
-					// This prevents the double spending in case of inconsistencies between
-					// aggregators for the same aggregation key
-					continue;
-				}
-
-				if consolidated_aggregate.count > redundancy_factor {
-					let excessive_aggregate = consolidated_aggregate.aggregate.clone();
-
-					log::warn!(
-						"⚠️ Number of consistent aggregates with key {:?} exceeds the redundancy factor",
-						aggregate_key
-					);
-
-					log::info!(
-						"🔎‍ Challenging excessive aggregate with key {:?} and hash {:?}",
-						aggregate_key,
-						excessive_aggregate.hash::<T>()
-					);
-
-					// todo: run a challenge dedicated to the excessive number of aggregates.
-					// we assume it won't happen at the moment, so we just take the aggregate to
-					// payouts stage
-					verified_usage.push(excessive_aggregate);
-					accepted_keys.push(aggregate_key);
-				} else {
-					let defective_aggregate = consolidated_aggregate.aggregate.clone();
-
-					log::info!(
-						"🔎‍ Challenging defective aggregate with key {:?} and hash {:?}",
-						aggregate_key,
-						defective_aggregate.hash::<T>()
-					);
-
-					let mut is_passed = true;
-					// todo: run an intensive challenge for deviating aggregate
-					// let is_passed = Self::_v4_challenge_aggregate(_cluster_id, _era_id,
-					// &defective_aggregate)?;
-					if should_challenge {
-						is_passed = Self::_v4_challenge_aggregate_proto(
-							_cluster_id,
-							_era_id,
-							&defective_aggregate,
-						)?;
-					}
-					if is_passed {
-						// we assume all aggregates are valid at the moment, so we just take the
-						// aggregate to payouts stage
-						verified_usage.push(defective_aggregate);
-						accepted_keys.push(aggregate_key);
-					}
-				}
-			}
-
-			Ok(verified_usage)
-		}
-
-		pub(crate) fn _v4_group_by_consistency<A>(
-			aggregates: Vec<A>,
-			redundancy_factor: u16,
-			quorum: Percent,
-		) -> ConsistencyGroups<A>
-		where
-			A: Aggregate + Clone,
-		{
-			let mut consistent_aggregates: BTreeMap<DeltaUsageHash, Vec<A>> = BTreeMap::new();
-
-			for aggregate in aggregates.iter() {
-				consistent_aggregates
-					.entry(aggregate.hash::<T>())
-					.or_default()
-					.push(aggregate.clone());
-			}
-
-			let mut consensus_group = Vec::new();
-			let mut quorum_group = Vec::new();
-			let mut others_group = Vec::new();
-
-			let max_aggregates_count = redundancy_factor;
-			let quorum_threshold = quorum * max_aggregates_count;
-
-			for (_hash, group) in consistent_aggregates {
-				let aggregate = group.first().unwrap();
-				let aggregates_count = u16::try_from(group.len()).unwrap_or(u16::MAX);
-				let aggregators: Vec<AggregatorInfo> =
-					group.clone().into_iter().map(|a| a.get_aggregator()).collect();
-
-				let consolidated_aggregate = ConsolidatedAggregate::<A>::new(
-					aggregate.clone(),
-					aggregates_count,
-					aggregators,
-				);
-
-				if aggregates_count == max_aggregates_count {
-					consensus_group.push(consolidated_aggregate);
-				} else if aggregates_count >= quorum_threshold {
-					quorum_group.push(consolidated_aggregate);
-				} else {
-					others_group.push(consolidated_aggregate);
-				}
-			}
-
-			ConsistencyGroups {
-				consensus: consensus_group,
-				quorum: quorum_group,
-				others: others_group,
-			}
-		}
-
-		pub(crate) fn _v4_challenge_aggregate<A: Aggregate>(
-			cluster_id: &ClusterId,
-			era_id: TcaEra,
-			aggregate: &A,
-		) -> Result<bool, Vec<OCWError>> {
-			let number_of_identifiers = T::MAX_MERKLE_NODE_IDENTIFIER;
-
-			log::info!(
-				"👁️‍🗨️  Challenge process starts when bucket sub aggregates are not in consensus!"
-			);
-
-			let aggregate_key = aggregate.get_key();
-			let merkle_node_ids = Self::_v4_find_random_merkle_node_ids(
-				number_of_identifiers.into(),
-				aggregate.get_number_of_leaves(),
-				aggregate_key.clone(),
-			);
-
-			log::info!(
-				"👁️‍🗨️  Merkle Node Identifiers for aggregate key: {:?} identifiers: {:?}",
-				aggregate_key,
-				merkle_node_ids
-			);
-
-			let aggregator = aggregate.get_aggregator();
-
-			let challenge_response = Self::_v4_fetch_challenge_responses(
-				cluster_id,
-				era_id,
-				aggregate_key.clone(),
-				merkle_node_ids,
-				aggregator.clone(),
-			)
-			.map_err(|err| vec![err])?;
-
-			log::info!(
-				"👁️‍🗨️  Fetched challenge response for aggregate key: {:?}, challenge_response: {:?}",
-				aggregate_key,
-				challenge_response
-			);
-
-			let calculated_merkle_root = Self::_v4_get_hash_from_merkle_path(
-				challenge_response,
-				cluster_id,
-				era_id,
-				aggregate_key.clone(),
-			)?;
-
-			log::info!(
-				"👁️‍🗨️  Calculated merkle root for aggregate key: {:?}, calculated_merkle_root: {:?}",
-				aggregate_key,
-				calculated_merkle_root
-			);
-
-			let root_merkle_node = Self::_v4_fetch_traverse_response(
-				era_id,
-				aggregate_key.clone(),
-				1,
-				1,
-				&aggregator.node_params,
-			)
-			.map_err(|_| {
-				vec![OCWError::TraverseResponseError {
-					cluster_id: *cluster_id,
-					era_id,
-					aggregate_key: aggregate_key.clone(),
-					aggregator: aggregator.node_pub_key,
-				}]
-			})?;
-
-			let mut merkle_root_buf = [0u8; _BUF_SIZE];
-			let bytes =
-				Base64::decode(root_merkle_node.hash.clone(), &mut merkle_root_buf).unwrap(); // todo! remove unwrap
-			let traversed_merkle_root = DeltaUsageHash::from(sp_core::H256::from_slice(bytes));
-
-			log::info!(
-				"👁️‍🗨️  Fetched merkle root for aggregate key: {:?} traversed_merkle_root: {:?}",
-				aggregate_key,
-				traversed_merkle_root
-			);
-
-			let is_matched = if calculated_merkle_root == traversed_merkle_root {
-				log::info!(
-					"👁️‍🗨️👍 The aggregate with hash {:?} and key {:?} has passed the challenge.",
-					aggregate.hash::<T>(),
-					aggregate_key,
-				);
-
-				true
-			} else {
-				log::info!(
-					"👁️‍🗨️👎 The aggregate with hash {:?} and key {:?} has not passed the challenge.",
-					aggregate.hash::<T>(),
-					aggregate_key,
-				);
-
-				false
-			};
-
-			Ok(is_matched)
-		}
-
-		pub(crate) fn _v4_challenge_aggregate_proto<A: Aggregate>(
-			cluster_id: &ClusterId,
-			era_id: TcaEra,
-			aggregate: &A,
-		) -> Result<bool, Vec<OCWError>> {
-			let number_of_identifiers = T::MAX_MERKLE_NODE_IDENTIFIER;
-
-			log::info!(
-				"👁️‍🗨️  Challenge process starts when bucket sub aggregates are not in consensus!"
-			);
-
-			let aggregate_key = aggregate.get_key();
-			let merkle_node_ids = Self::_v4_find_random_merkle_node_ids(
-				number_of_identifiers.into(),
-				aggregate.get_number_of_leaves(),
-				aggregate_key.clone(),
-			);
-
-			log::info!(
-				"👁️‍🗨️  Merkle Node Identifiers for aggregate key: {:?} identifiers: {:?}",
-				aggregate_key,
-				merkle_node_ids
-			);
-
-			let aggregator = aggregate.get_aggregator();
-
-			let challenge_response = Self::_v4_fetch_challenge_responses_proto(
-				cluster_id,
-				era_id,
-				aggregate_key.clone(),
-				merkle_node_ids,
-				aggregator.clone(),
-			)
-			.map_err(|err| vec![err])?;
-
-			log::info!(
-				"👁️‍🗨️  Fetched challenge response for aggregate key: {:?}, challenge_response: {:?}",
-				aggregate_key,
-				challenge_response
-			);
-
-			let are_signatures_valid = signature::Verify::verify(&challenge_response);
-
-			if are_signatures_valid {
-				log::info!("👍 Valid challenge signatures for aggregate key: {:?}", aggregate_key,);
-			} else {
-				log::info!("👎 Invalid challenge signatures at aggregate key: {:?}", aggregate_key,);
-			}
-
-			Ok(are_signatures_valid)
-		}
-
-		/// Fetch Challenge node aggregate or bucket sub-aggregate.
-		pub(crate) fn _v4_fetch_challenge_responses(
-			cluster_id: &ClusterId,
-			era_id: TcaEra,
-			aggregate_key: AggregateKey,
-			merkle_node_identifiers: Vec<u64>,
-			aggregator: AggregatorInfo,
-		) -> Result<aggregator_client::json::ChallengeAggregateResponse, OCWError> {
-			let response = Self::_v4_fetch_challenge_response(
-				era_id,
-				aggregate_key.clone(),
-				merkle_node_identifiers.clone(),
-				&aggregator.node_params,
-			)
-			.map_err(|_| OCWError::ChallengeResponseError {
-				cluster_id: *cluster_id,
-				era_id,
-				aggregate_key,
-				aggregator: aggregator.node_pub_key,
-			})?;
-
-			Ok(response)
-		}
-
-		/// Challenge node aggregate or bucket sub-aggregate.
-		pub(crate) fn _v4_fetch_challenge_responses_proto(
-			cluster_id: &ClusterId,
-			era_id: TcaEra,
-			aggregate_key: AggregateKey,
-			merkle_tree_node_id: Vec<u64>,
-			aggregator: AggregatorInfo,
-		) -> Result<proto::ChallengeResponse, OCWError> {
-			let response = Self::_v4_fetch_challenge_response_proto(
-				era_id,
-				aggregate_key.clone(),
-				merkle_tree_node_id.clone(),
-				&aggregator.node_params,
-			)
-			.map_err(|_| OCWError::ChallengeResponseError {
-				cluster_id: *cluster_id,
-				era_id,
-				aggregate_key,
-				aggregator: aggregator.node_pub_key,
-			})?;
-
-			Ok(response)
-		}
-
-		/// Fetch node usage.
-		///
-		/// Parameters:
-		/// - `cluster_id`: cluster id of a cluster
-		/// - `era_id`: era id
-		/// - `node_params`: DAC node parameters
-		pub(crate) fn _v4_fetch_node_aggregates(
-			_cluster_id: &ClusterId,
-			era_id: TcaEra,
-			node_params: &StorageNodeParams,
-		) -> Result<Vec<aggregator_client::json::NodeAggregateResponse>, http::Error> {
-			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let base_url = format!("http://{}:{}", host, node_params.http_port);
-			let client = aggregator_client::AggregatorClient::new(
-				&base_url,
-				Duration::from_millis(RESPONSE_TIMEOUT),
-				MAX_RETRIES_COUNT,
-				VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
-			);
-
-			let mut nodes_aggregates = Vec::new();
-			let mut prev_token = None;
-
-			loop {
-				let response = client.nodes_aggregates(
-					era_id,
-					Some(NODES_AGGREGATES_FETCH_BATCH_SIZE as u32),
-					prev_token,
-				)?;
-
-				let response_len = response.len();
-				prev_token = response.last().map(|a| a.node_id.clone());
-
-				nodes_aggregates.extend(response);
-
-				if response_len < NODES_AGGREGATES_FETCH_BATCH_SIZE {
-					break;
-				}
-			}
-
-			Ok(nodes_aggregates)
-		}
-
-		/// Fetch challenge response.
-		///
-		/// Parameters:
-		/// - `era_id`: era id
-		/// - `aggregate_key`: key of the aggregate to challenge
-		/// - `merkle_node_identifiers`: set of merkle node identifiers to challenge
-		/// - `node_params`: aggregator node parameters
-		pub(crate) fn _v4_fetch_challenge_response(
-			era_id: TcaEra,
-			aggregate_key: AggregateKey,
-			merkle_node_identifiers: Vec<u64>,
-			node_params: &StorageNodeParams,
-		) -> Result<aggregator_client::json::ChallengeAggregateResponse, http::Error> {
-			let scheme = "http";
-			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-
-			let ids = merkle_node_identifiers
-				.iter()
-				.map(|x| format!("{}", x.clone()))
-				.collect::<Vec<_>>()
-				.join(",");
-
-			let url = match aggregate_key {
-				AggregateKey::NodeAggregateKey(node_id) => format!(
-					"{}://{}:{}/activity/nodes/{}/challenge?eraId={}&merkleTreeNodeId={}",
-					scheme, host, node_params.http_port, node_id, era_id, ids
-				),
-				AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => format!(
-					"{}://{}:{}/activity/buckets/{}/challenge?eraId={}&nodeId={}&merkleTreeNodeId={}",
-					scheme, host, node_params.http_port, bucket_id, era_id, node_id, ids
-				),
-				AggregateKey::BucketAggregateKey(_) => {
-					log::error!("Challenging of Bucket Aggregate is not supported");
-					unimplemented!()
-				},
-			};
-
-			let request = http::Request::get(&url);
-			let timeout = sp_io::offchain::timestamp()
-				.add(sp_runtime::offchain::Duration::from_millis(RESPONSE_TIMEOUT));
-			let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError)?;
-
-			let response =
-				pending.try_wait(timeout).map_err(|_| http::Error::DeadlineReached)??;
-			if response.code != _SUCCESS_CODE {
-				return Err(http::Error::Unknown);
-			}
-
-			let body = response.body().collect::<Vec<u8>>();
-			serde_json::from_slice(&body).map_err(|_| http::Error::Unknown)
-		}
-
-		pub(crate) fn _v4_find_random_merkle_node_ids(
-			number_of_identifiers: usize,
-			number_of_leaves: u64,
-			aggregate_key: AggregateKey,
-		) -> Vec<u64> {
-			let nonce_key = match aggregate_key {
-				AggregateKey::NodeAggregateKey(node_id) => node_id,
-				AggregateKey::BucketSubAggregateKey(.., node_id) => node_id,
-				AggregateKey::BucketAggregateKey(bucket_id) => format!("bucket-{}", bucket_id),
-			};
-
-			let nonce = store_and_fetch_nonce(nonce_key);
-			let mut small_rng = SmallRng::seed_from_u64(nonce);
-
-			let total_levels = number_of_leaves.ilog2() + 1;
-			let int_list: Vec<u64> = (0..total_levels as u64).collect();
-
-			let ids: Vec<u64> = int_list
-				.choose_multiple(&mut small_rng, number_of_identifiers)
-				.cloned()
-				.collect::<Vec<u64>>();
-
-			ids
-		}
-
-		/// Fetch processed era for across all nodes.
-		///
-		/// Parameters:
-		/// - `cluster_id`: Cluster id
-		/// - `node_params`: DAC node parameters
-		fn _v4_fetch_processed_era_for_nodes(
-			cluster_id: &ClusterId,
-			dac_nodes: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<Vec<EraActivity>>, OCWError> {
-			let mut processed_eras_by_nodes: Vec<Vec<EraActivity>> = Vec::new();
-
-			for (node_key, node_params) in dac_nodes {
-				let processed_eras_by_node = Self::_v4_fetch_processed_eras(node_params);
-				if processed_eras_by_node.is_err() {
-					log::warn!(
-						"Aggregator from cluster {:?} is unavailable while fetching processed eras. Key: {:?} Host: {:?}",
-						cluster_id,
-						node_key,
-						String::from_utf8(node_params.host.clone())
-					);
-					// skip unavailable aggregators and continue with available ones
-					continue;
-				} else {
-					let eras = processed_eras_by_node.expect("Era Response to be available");
-					if !eras.is_empty() {
-						processed_eras_by_nodes
-							.push(eras.into_iter().map(|e| e.into()).collect::<Vec<_>>());
-					}
-				}
-			}
-
-			Ok(processed_eras_by_nodes)
-		}
-		/// Fetch processed era.
-		///
-		/// Parameters:
-		/// - `node_params`: DAC node parameters
-		#[allow(dead_code)]
-		pub(crate) fn _v4_fetch_processed_eras(
-			node_params: &StorageNodeParams,
-		) -> Result<Vec<aggregator_client::json::AggregationEraResponse>, http::Error> {
-			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let base_url = format!("http://{}:{}", host, node_params.http_port);
-			let client = aggregator_client::AggregatorClient::new(
-				&base_url,
-				Duration::from_millis(RESPONSE_TIMEOUT),
-				MAX_RETRIES_COUNT,
-				VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
-			);
-
-			let response = client.eras()?;
-
-			Ok(response.into_iter().filter(|e| e.status == "PROCESSED").collect::<Vec<_>>())
-		}
-
-		pub(crate) fn _v4_get_hash_from_merkle_path(
-			challenge_response: aggregator_client::json::ChallengeAggregateResponse,
-			cluster_id: &ClusterId,
-			era_id: TcaEra,
-			aggregate_key: AggregateKey,
-		) -> Result<DeltaUsageHash, Vec<OCWError>> {
-			log::info!("Getting hash from merkle tree path for aggregate key: {:?}", aggregate_key);
-
-			let mut resulting_hash = DeltaUsageHash::default();
-
-			for proof in challenge_response.proofs {
-				let leaf_record_hashes: Vec<DeltaUsageHash> = match aggregate_key {
-					AggregateKey::BucketSubAggregateKey(_, _) => proof
-						.leafs
-						.into_iter()
-						.map(|p| NodeAggregateLeaf::leaf_hash::<T>(&p))
-						.collect(),
-					AggregateKey::NodeAggregateKey(_) => proof
-						.leafs
-						.into_iter()
-						.map(|p| BucketSubAggregateLeaf::leaf_hash::<T>(&p))
-						.collect(),
-					AggregateKey::BucketAggregateKey(_) => {
-						log::error!("Challenging of Bucket Aggregate is not supported");
-						unimplemented!()
-					},
-				};
-
-				let leaf_record_hashes_string: Vec<String> =
-					leaf_record_hashes.clone().into_iter().map(hex::encode).collect();
-
-				log::info!(
-					"👁️‍🗨️  Fetched leaf record hashes aggregate key: {:?} leaf_record_hashes: {:?}",
-					aggregate_key,
-					leaf_record_hashes_string
-				);
-
-				let leaf_node_root =
-					Self::create_merkle_root(cluster_id, &leaf_record_hashes, era_id)
-						.map_err(|err| vec![err])?;
-
-				log::info!(
-					"👁️‍🗨️  Fetched leaf record root aggregate key: {:?} leaf_record_root_hash: {:?}",
-					aggregate_key,
-					hex::encode(leaf_node_root)
-				);
-
-				let paths = proof.path.iter().rev();
-
-				resulting_hash = leaf_node_root;
-				for path in paths {
-					let mut dec_buf = [0u8; _BUF_SIZE];
-					let bytes = Base64::decode(path, &mut dec_buf).unwrap(); // todo! remove unwrap
-					let path_hash: DeltaUsageHash = DeltaUsageHash::from(H256::from_slice(bytes));
-
-					let node_root =
-						Self::create_merkle_root(cluster_id, &[resulting_hash, path_hash], era_id)
-							.map_err(|err| vec![err])?;
-
-					log::info!("👁️‍🗨️  Fetched leaf node root aggregate_key: {:?} for path:{:?} leaf_node_hash: {:?}",
-						aggregate_key, path, hex::encode(node_root));
-
-					resulting_hash = node_root;
-				}
-			}
-
-			Ok(resulting_hash)
-		}
-
-		pub(crate) fn _v4_derive_usage_key(cluster_id: &ClusterId, era_id: EhdEra) -> Vec<u8> {
-			format!("offchain::activities::{:?}::{:?}", cluster_id, era_id).into_bytes()
-		}
-
-		#[allow(clippy::too_many_arguments)]
-		pub(crate) fn _v4_store_verified_usage<A: Encode, B: Encode>(
-			cluster_id: &ClusterId,
-			era_id: EhdEra,
-			buckets_deltas: &[A],
-			buckets_deltas_root: DeltaUsageHash,
-			buckets_deltas_batch_roots: &[DeltaUsageHash],
-			nodes_deltas: &[B],
-			nodes_deltas_root: DeltaUsageHash,
-			nodes_deltas_batch_roots: &[DeltaUsageHash],
-		) {
-			let key = Self::_v4_derive_usage_key(cluster_id, era_id);
-			let encoded_tuple = (
-				buckets_deltas,
-				buckets_deltas_root,
-				buckets_deltas_batch_roots,
-				nodes_deltas,
-				nodes_deltas_root,
-				nodes_deltas_batch_roots,
-			)
-				.encode();
-
-			// Store the serialized data in local offchain storage
-			local_storage_set(StorageKind::PERSISTENT, &key, &encoded_tuple);
-		}
-
-		/// Fetch traverse response.
-		///
-		/// Parameters:
-		/// - `era_id`: era id
-		/// - `aggregate_key`: key of the aggregate to challenge
-		/// - `merkle_node_identifiers`: set of merkle node identifiers to challenge
-		/// - `levels`: a number of levels to raverse
-		/// - `node_params`: aggregator node parameters
-		pub(crate) fn _v4_fetch_traverse_response(
-			era_id: TcaEra,
-			aggregate_key: AggregateKey,
-			merkle_tree_node_id: u32,
-			levels: u16,
-			node_params: &StorageNodeParams,
-		) -> Result<aggregator_client::json::MerkleTreeNodeResponse, http::Error> {
-			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let base_url = format!("http://{}:{}", host, node_params.http_port);
-			let client = aggregator_client::AggregatorClient::new(
-				&base_url,
-				Duration::from_millis(RESPONSE_TIMEOUT),
-				MAX_RETRIES_COUNT,
-				VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
-			);
-
-			let response = match aggregate_key {
-				AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => client
-					.traverse_bucket_sub_aggregate(
-						era_id,
-						bucket_id,
-						&node_id,
-						merkle_tree_node_id,
-						levels,
-					),
-				AggregateKey::NodeAggregateKey(node_id) =>
-					client.traverse_node_aggregate(era_id, &node_id, merkle_tree_node_id, levels),
-				AggregateKey::BucketAggregateKey(_) => {
-					log::error!("Traversing of Bucket Aggregate is not supported");
-					unimplemented!()
-				},
-			}?;
-
-			Ok(response)
-		}
-
-		/// Fetch protobuf challenge response.
-		pub(crate) fn _v4_fetch_challenge_response_proto(
-			era_id: TcaEra,
-			aggregate_key: AggregateKey,
-			merkle_tree_node_id: Vec<u64>,
-			node_params: &StorageNodeParams,
-		) -> Result<proto::ChallengeResponse, http::Error> {
-			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let base_url = format!("http://{}:{}", host, node_params.http_port);
-			let client = aggregator_client::AggregatorClient::new(
-				&base_url,
-				Duration::from_millis(RESPONSE_TIMEOUT),
-				MAX_RETRIES_COUNT,
-				VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
-			);
-
-			match aggregate_key {
-				AggregateKey::BucketSubAggregateKey(bucket_id, node_id) => client
-					.challenge_bucket_sub_aggregate(
-						era_id,
-						bucket_id,
-						&node_id,
-						merkle_tree_node_id,
-					),
-				AggregateKey::NodeAggregateKey(node_id) =>
-					client.challenge_node_aggregate(era_id, &node_id, merkle_tree_node_id),
-				AggregateKey::BucketAggregateKey(_) => {
-					log::error!("Challenging of Bucket Aggregate is not supported");
-					unimplemented!()
-				},
-			}
-		}
-
-		/// Fetch customer usage.
-		///
-		/// Parameters:
-		/// - `cluster_id`: cluster id of a cluster
-		/// - `tcaa_id`: tcaa id
-		/// - `node_params`: DAC node parameters
-		pub(crate) fn _v4_fetch_bucket_aggregates(
-			_cluster_id: &ClusterId,
-			tcaa_id: TcaEra,
-			node_params: &StorageNodeParams,
-		) -> Result<Vec<aggregator_client::json::BucketAggregateResponse>, http::Error> {
-			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let base_url = format!("http://{}:{}", host, node_params.http_port);
-			let client = aggregator_client::AggregatorClient::new(
-				&base_url,
-				Duration::from_millis(RESPONSE_TIMEOUT),
-				MAX_RETRIES_COUNT,
-				VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
-			);
-
-			let mut buckets_aggregates = Vec::new();
-			let mut prev_token = None;
-
-			loop {
-				let response = client.buckets_aggregates(
-					tcaa_id,
-					Some(BUCKETS_AGGREGATES_FETCH_BATCH_SIZE as u32),
-					prev_token,
-				)?;
-
-				let response_len = response.len();
-				prev_token = response.last().map(|a| a.bucket_id);
-
-				buckets_aggregates.extend(response);
-
-				if response_len < BUCKETS_AGGREGATES_FETCH_BATCH_SIZE {
-					break;
-				}
-			}
-
-			Ok(buckets_aggregates)
 		}
 	}
 
@@ -3624,5 +901,14 @@ pub mod pallet {
 				}
 			}
 		}
+	}
+}
+
+pub struct NoReceiptsInterceptor;
+impl InspReceiptsInterceptor for NoReceiptsInterceptor {
+	type Receipt = HashedInspPathReceipt;
+
+	fn intercept(receipts: Vec<HashedInspPathReceipt>) -> Vec<HashedInspPathReceipt> {
+		receipts
 	}
 }

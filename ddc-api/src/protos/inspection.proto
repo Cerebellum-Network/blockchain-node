@@ -1,0 +1,173 @@
+syntax = "proto3";
+
+package inspection;
+
+// GET  /itm/table  -- returns the table or era "not found" / "not yet processed" / "waiting" / "building".
+
+message ItmTable {
+  string json_string = 1;
+  string inspector_key = 2;
+}
+
+message ItmTableEraNotFound {
+  string error = 1;
+}
+
+message ItmTableEraDataCorrupted {
+  string corrupted_data = 1;
+}
+
+message ItmTableEraNotYetProcessed {
+  string current_status = 1;
+}
+
+message ItmTableWaiting {
+}
+
+message ItmTableBuilding {
+  string inspector_key = 1;
+  int64 remaining_millis = 2;
+}
+
+message EndpointItmTable {
+  uint32 eid = 1;
+  oneof variant {
+    ItmTable table = 2;
+    ItmTableEraNotFound era_not_found = 3;
+    ItmTableEraDataCorrupted era_data_corrupted = 4;
+    ItmTableEraNotYetProcessed era_not_yet_processed = 5;
+    ItmTableWaiting table_waiting = 6;
+    ItmTableBuilding table_building = 7;
+  }
+}
+
+// POST /itm/lease  -- claims the requestor is the Inspector node that will submit the ITM table, in time.
+
+message ItmLeaseAcquired {
+  string inspector_key = 1;
+}
+
+message ItmLeaseAlreadyInProgress {
+  string lease_holder_inspector_key = 1;
+  int64 lease_remaining_millis = 2;
+}
+
+message ItmLeaseTableAlreadyAvailable {
+  string inspector_key = 1;
+}
+
+message ItmLeaseEraNotFound {
+  string error = 1;
+}
+
+message ItmLeaseEraFailedToUpdate {
+  string error = 1;
+}
+
+message ItmLeaseEraDataCorrupted {
+  string corrupted_data = 1;
+}
+
+message ItmLeaseEraNotYetProcessed {
+  string current_status = 1;
+}
+
+message EndpointItmLease {
+  uint32 eid = 1;
+  oneof variant {
+    ItmLeaseAcquired acquired = 2;
+    ItmLeaseAlreadyInProgress already_in_progress = 3;
+    ItmLeaseTableAlreadyAvailable table_already_available = 4;
+    ItmLeaseEraNotFound era_not_found = 5;
+    ItmLeaseEraDataCorrupted era_data_corrupted = 6;
+    ItmLeaseEraFailedToUpdate era_failed_to_update = 7;
+    ItmLeaseEraNotYetProcessed era_not_yet_processed = 8;
+  }
+}
+
+// POST /itm/submit -- submits the table, if it is from the right Inspector, within the Lease.
+
+message ItmSubmitSuccess {
+  string inspector_key = 1;
+}
+
+message ItmSubmitTooLate {
+  int64 now_millis = 1;
+  optional int64 lease_acquired_millis = 2;
+  optional int64 late_by_millis = 3;
+}
+
+message ItmSubmitEraNotFound {
+  string error = 1;
+}
+
+message ItmSubmitEraDataCorrupted {
+  string corrupted_data = 1;
+}
+
+message ItmSubmitWrongInspector {
+  string expected = 1;
+  string actual = 2;
+}
+
+message ItmSubmitFailedToUpdate {
+  string error = 1;
+}
+
+message EndpointItmSubmit {
+  uint32 eid = 1;
+  oneof variant {
+    ItmSubmitSuccess success = 2;
+    ItmSubmitTooLate too_late = 3;
+    ItmSubmitEraNotFound era_not_found = 4;
+    ItmSubmitEraDataCorrupted era_data_corrupted = 5;
+    ItmSubmitWrongInspector wrong_inspector = 6;
+    ItmSubmitFailedToUpdate failed_to_update = 7;
+  }
+}
+
+message PostPathSuccess {
+  string inspector = 1;
+  uint32 eid = 2;  // Era ID.
+  bool era_finalized = 3;
+}
+
+message PostPathError {
+  string error_message = 101;
+}
+
+message EndpointItmPostPath {
+  oneof variant {
+    PostPathSuccess success = 1;
+    PostPathError error = 2;
+  }
+}
+
+message GetPathsStateSuccess {
+  uint32 eid = 1;
+  bool era_finalized = 2;
+  uint32 paths_total = 3;
+  uint32 paths_irf_satisfied = 4;
+  repeated PathInspReceipts paths_receipts = 5;
+}
+
+message GetPathsStateError {
+  string error_message = 101;
+}
+
+message EndpointItmGetPathsState {
+  oneof variant {
+    GetPathsStateSuccess success = 1;
+    GetPathsStateError error = 2;
+  }
+}
+
+message PathInspReceipts {
+  string path_id = 1;
+  repeated PathInspReceipt receipts = 2;
+}
+
+message PathInspReceipt {
+  string hash = 1;
+  uint32 counter = 2;
+}
