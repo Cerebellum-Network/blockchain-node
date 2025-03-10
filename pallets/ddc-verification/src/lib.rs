@@ -1339,20 +1339,20 @@ pub mod pallet {
 			})?;
 			log::info!("\nASSIGNMENTS PATHS RESULTS\n{:?}\n", insp_results_json);
 
-			if let Ok(_) = send_assignments_table::<T>(cluster_id, g_collector, insp_table.clone())
-			{
-				log::info!("Saved assignemnts table!");
+			// if let Ok(_) = send_assignments_table::<T>(cluster_id, g_collector,
+			// insp_table.clone()) {
+			// 	log::info!("Saved assignemnts table!");
 
-				if let Ok(table) =
-					get_assignments_table::<T>(cluster_id, insp_result.era, g_collector.clone().1)
-				{
-					log::info!("Got assignemnts table! {:?}\n", table);
-				} else {
-					log::error!("Error retrieving assignemnts table!");
-				}
-			} else {
-				log::error!("Error saving assignemnts table")
-			};
+			// 	if let Ok(table) =
+			// 		get_assignments_table::<T>(cluster_id, insp_result.era, g_collector.clone().1)
+			// 	{
+			// 		log::info!("Got assignemnts table! {:?}\n", table);
+			// 	} else {
+			// 		log::error!("Error retrieving assignemnts table!");
+			// 	}
+			// } else {
+			// 	log::error!("Error saving assignemnts table")
+			// };
 
 			let (nodes_inspection, buckets_inspection) = insp_result.receipts.iter().fold(
 				(
