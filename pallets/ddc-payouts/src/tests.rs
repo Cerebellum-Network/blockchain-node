@@ -1778,7 +1778,15 @@ fn test_end_payout_happy_path() {
 		);
 
 		assert_ok!(<DdcPayouts as PayoutProcessor<Test>>::end_payout(cluster_id, era,));
+	});
+}
 
+#[test]
+fn test_end_payout_error_payout_receipt_does_not_exist() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+		let cluster_id = ClusterId::from([1u8; 20]);
+		let era = 100;
 		let finalized_at = <frame_system::Pallet<Test>>::block_number();
 
 		System::assert_last_event(

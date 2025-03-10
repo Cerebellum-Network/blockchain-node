@@ -25,7 +25,7 @@ members = [
   "primitives",
   "runtime/cere",
   "runtime/cere-dev",
-  "aggregator",
+  "ddc-api",
 ]
 resolver = "2"
 
@@ -188,7 +188,7 @@ cere-runtime = { path = "runtime/cere" }
 cere-runtime-common = { path = "runtime/common", default-features = false }
 cere-service = { path = "node/service" }
 ddc-primitives = { path = "primitives", default-features = false }
-aggregator = { path = "aggregator", default-features = false }
+ddc-api = { path = "ddc-api", default-features = false }
 pallet-chainbridge = { path = "pallets/chainbridge", default-features = false }
 pallet-ddc-clusters = { path = "pallets/ddc-clusters", default-features = false }
 pallet-ddc-clusters-gov = { path = "pallets/ddc-clusters-gov", default-features = false }

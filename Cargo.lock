@@ -72,31 +72,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aggregator"
-version = "7.3.1"
-dependencies = [
- "blake2 0.10.6",
- "ddc-primitives",
- "frame-support",
- "frame-system",
- "hex",
- "log",
- "parity-scale-codec",
- "polkadot-ckb-merkle-mountain-range",
- "prost 0.13.4",
- "prost-build 0.13.4",
- "scale-info",
- "serde",
- "serde_json",
- "serde_with",
- "sp-application-crypto",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "ahash"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3679,6 +3654,31 @@ checksum = "332d754c0af53bc87c108fed664d121ecf59207ec4196041f04d6ab9002ad33f"
 dependencies = [
  "data-encoding",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "ddc-api"
+version = "7.3.0"
+dependencies = [
+ "blake2 0.10.6",
+ "ddc-primitives",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "log",
+ "parity-scale-codec",
+ "polkadot-ckb-merkle-mountain-range",
+ "prost 0.13.4",
+ "prost-build 0.13.4",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "sp-application-crypto",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -8700,9 +8700,9 @@ dependencies = [
 name = "pallet-ddc-payouts"
 version = "7.3.1"
 dependencies = [
- "aggregator",
  "byte-unit",
  "chrono",
+ "ddc-api",
  "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -8716,6 +8716,8 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-ckb-merkle-mountain-range",
  "scale-info",
+ "serde",
+ "serde_json",
  "sp-application-crypto",
  "sp-core",
  "sp-io",
@@ -8758,10 +8760,10 @@ dependencies = [
 name = "pallet-ddc-verification"
 version = "7.3.1"
 dependencies = [
- "aggregator",
  "array-bytes",
  "base64ct",
  "byte-unit",
+ "ddc-api",
  "ddc-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
