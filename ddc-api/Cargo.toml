@@ -1,5 +1,5 @@
 [package]
-name = "aggregator" # Make it ddc-api
+name = "ddc-api"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
