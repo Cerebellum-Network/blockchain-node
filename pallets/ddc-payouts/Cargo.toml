@@ -15,6 +15,8 @@ codec = { workspace = true }
 log = { workspace = true }
 polkadot-ckb-merkle-mountain-range = { workspace = true }
 scale-info = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }
@@ -30,9 +32,11 @@ sp-staking = { workspace = true }
 sp-std = { workspace = true }
 
 # Cere dependencies
-aggregator = { workspace = true }
+ddc-api = { workspace = true }
 ddc-primitives = { workspace = true }
 itertools = { workspace = true }
+# Temporal until all the Inspection-related schemas are moved to .proto
+pallet-ddc-verification = { workspace = true }
 
 [dev-dependencies]
 chrono = { workspace = true, default-features = true }
@@ -59,7 +63,7 @@ std = [
   "sp-core/std",
   "frame-election-provider-support/std",
   "sp-application-crypto/std",
-  "aggregator/std",
+  "ddc-api/std",
 ]
 runtime-benchmarks = [
   "ddc-primitives/runtime-benchmarks",
