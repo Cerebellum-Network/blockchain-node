@@ -1,5 +1,6 @@
 use core::str;
 
+use base64ct::{Base64, Decoder, Encoding};
 use ddc_primitives::{
 	traits::{ClusterManager, NodeManager},
 	BucketId, ClusterId, EHDId, EhdEra, NodeParams, NodePubKey, PHDId, StorageNodeParams, TcaEra,
@@ -557,8 +558,10 @@ pub(crate) fn get_assignments_table<T: Config>(
 	cluster_id: &ClusterId,
 	ehd_era: EhdEra,
 	node_params: StorageNodeParams,
-) -> Result<InspAssignmentsTable<T::AccountId>, ()> {
-	let host = str::from_utf8(&node_params.host).map_err(|_| ())?;
+) -> Result<InspAssignmentsTable<T::AccountId>, http::Error> {
+	log::info!("Inside get_assignments_table function...");
+
+	let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
 	let base_url = format!("http://{}:{}", host, node_params.http_port);
 	let client = aggregator_client::AggregatorClient::new(
 		&base_url,
@@ -566,6 +569,35 @@ pub(crate) fn get_assignments_table<T: Config>(
 		MAX_RETRIES_COUNT,
 		false,
 	);
-	let response = client.get_assignments_table::<T>(ehd_era).map_err(|_| ())?;
+
+	let base64_str: String =
+		client.get_assignments_table::<T>(ehd_era).map_err(|_| http::Error::Unknown)?;
+
+	let mut decoder = Decoder::<Base64>::new(base64_str.trim().as_bytes()).map_err(|e| {
+		log::error!("Decoder::<Base64> error {:?}", e);
+		http::Error::Unknown
+	})?;
+
+	let mut decoded_bytes = Vec::new();
+
+	while !decoder.is_finished() {
+		let remaining_len = decoder.remaining_len();
+		let buffer_size = sp_std::cmp::min(remaining_len, 4); // Cap buffer size at 64 bytes
+		let mut buffer = vec![0u8; buffer_size];
+
+		let decoded_slice = decoder.decode(&mut buffer).map_err(|e| {
+			log::error!("decoder.decode error {:?}", e);
+			http::Error::Unknown
+		})?;
+
+		decoded_bytes.extend_from_slice(decoded_slice);
+	}
+
+	let response: InspAssignmentsTable<T::AccountId> = serde_json::from_slice(&decoded_bytes)
+		.map_err(|e| {
+			log::error!("InspAssignmentsTable<T::AccountId> deserialization error {:?}", e);
+			http::Error::Unknown
+		})?;
+
 	Ok(response)
 }

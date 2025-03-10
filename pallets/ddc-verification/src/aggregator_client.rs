@@ -273,17 +273,9 @@ impl<'a> AggregatorClient<'a> {
 		self.post(&url, body)
 	}
 
-	pub fn get_assignments_table<T: Config>(
-		&self,
-		ehd_era: EhdEra,
-	) -> Result<InspAssignmentsTable<T::AccountId>, http::Error> {
-		let mut url = format!("{}/activity/assignments-tables&ehdEraId={}", self.base_url, ehd_era);
-		fetch_and_parse!(
-			self,
-			url,
-			InspAssignmentsTable<T::AccountId>,
-			InspAssignmentsTable<T::AccountId>
-		)
+	pub fn get_assignments_table<T: Config>(&self, ehd_era: EhdEra) -> Result<String, http::Error> {
+		let mut url = format!("{}/activity/assignments-tables?ehdEraId={}", self.base_url, ehd_era);
+		fetch_and_parse!(self, url, String, String)
 	}
 
 	fn get(&self, url: &str, accept: Accept) -> Result<http::Response, http::Error> {
