@@ -118,7 +118,7 @@ where
 				path_assignments.push(inspector.clone());
 
 				let path_seed: u64 =
-					path_id[..8].try_into().map(u64::from_le_bytes).unwrap_or(Default::default());
+					path_id[..8].try_into().map(u64::from_le_bytes).unwrap_or(seed);
 				let mut rng = SmallRng::seed_from_u64(path_seed);
 
 				path_assignments.shuffle(&mut rng);
