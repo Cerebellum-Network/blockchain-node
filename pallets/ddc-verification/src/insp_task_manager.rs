@@ -28,7 +28,8 @@ use crate::{
 	aggregate_tree, aggregator_client, fetch_last_inspected_ehds,
 	insp_ddc_api::{
 		fetch_bucket_aggregates, fetch_bucket_challenge_response, fetch_node_challenge_response,
-		fetch_processed_eras, get_ehd_root, get_g_collectors_nodes, get_phd_root,
+		fetch_processed_eras, get_assignments_table, get_ehd_root, get_g_collectors_nodes,
+		get_phd_root, send_assignments_table,
 	},
 	pallet::{Error, ValidatorSet},
 	signature::Verify,
@@ -38,6 +39,11 @@ use crate::{
 pub(crate) const TCA_INSPECTION_STEP: usize = 0;
 pub(crate) const INSPECTION_REDUNDANCY_FACTOR: u8 = 3;
 pub(crate) const INSPECTION_BACKUPS_COUNT: u8 = 2;
+
+pub(crate) const ALICE: [u8; 32] = [
+	0xd4, 0x35, 0x93, 0xc7, 0x15, 0xfd, 0xd3, 0x1c, 0x61, 0x14, 0x1a, 0xbd, 0x04, 0xa9, 0x9f, 0xd6,
+	0x82, 0x2c, 0x85, 0x58, 0x85, 0x4c, 0xcd, 0xe3, 0x9a, 0x56, 0x84, 0xe7, 0xa5, 0x6d, 0xa2, 0x7d,
+];
 
 type GCollectorNodeKey = NodePubKey;
 type CollectorNodeKey = NodePubKey;
@@ -196,31 +202,52 @@ impl<T: Config> InspTaskAssigner<T> {
 		let Some(era) = Self::try_get_era_to_inspect(cluster_id)? else {
 			return Ok(None);
 		};
-		// todo(yahortsaryk): try to request DDC Sync node for the Inspection assignments table, and
-		// extract inspection tasks if there are any
-		// let sync_status = get_inspection_assignment_table(cluster_id, era);
-		let sync_status = InspSyncStatus::<T::AccountId>::AssigningInspectors {
-			era,
-			assigner: self.inspector.public.clone().into_account(),
-			lease_ttl: 60000,
-			salt: 0,
+
+		let alice_account = T::AccountId::decode(&mut &ALICE.encode()[..])
+			.map_err(|_| InspAssignmentError::Unexpected)?;
+		let inspector_account = &self.inspector.public.clone().into_account();
+
+		let sync_status = if *inspector_account == alice_account {
+			InspSyncStatus::<T::AccountId>::AssigningInspectors {
+				era,
+				assigner: self.inspector.public.clone().into_account(),
+				lease_ttl: 60000,
+				salt: 0,
+			}
+		} else {
+			if let Ok(assignments_table) = get_assignments_table::<T>(cluster_id, era) {
+				InspSyncStatus::ReadyForInspection { assignments_table }
+			} else {
+				InspSyncStatus::NotReadyForInspection
+			}
 		};
 
 		match sync_status {
-			InspSyncStatus::NotReadyForInspection => Ok(None),
+			InspSyncStatus::NotReadyForInspection => {
+				log::info!("*** Waiting for assignments table");
+				Ok(None)
+			},
 			InspSyncStatus::AssigningInspectors { era, assigner, lease_ttl: _lease_ttl, salt } => {
 				let inspector_account = &self.inspector.public.clone().into_account();
 				if *inspector_account == assigner {
+					log::info!("*** Building assignments table");
 					let assignmens_table = &self.build_assignments_table(cluster_id, &era, salt)?;
-
 					// todo(yahortsaryk): optimize performance by eliminating cloning of the whole
 					// table
+					let _ = send_assignments_table::<T>(cluster_id, assignmens_table.clone())
+						.map_err(|_| InspAssignmentError::Unexpected)?;
 					Ok(Some(assignmens_table.clone()))
 				} else {
+					log::info!("*** Waiting for assignments table to be completed");
+
 					Ok(None)
 				}
 			},
-			InspSyncStatus::ReadyForInspection { assignments_table } => Ok(Some(assignments_table)),
+			InspSyncStatus::ReadyForInspection { assignments_table } => {
+				log::info!("*** Obtained assignments table");
+
+				Ok(Some(assignments_table))
+			},
 		}
 	}
 

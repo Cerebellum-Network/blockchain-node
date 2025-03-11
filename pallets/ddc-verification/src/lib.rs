@@ -1334,26 +1334,6 @@ pub mod pallet {
 			})?;
 			log::info!("\nASSIGNMENTS PATHS RESULTS\n{:?}\n", insp_results_json);
 
-			if let Ok(_) = send_assignments_table::<T>(cluster_id, g_collector, insp_table.clone())
-			{
-				log::info!("Saved assignemnts table!");
-
-				if let Ok(insp_table) =
-					get_assignments_table::<T>(cluster_id, insp_result.era, g_collector.clone().1)
-				{
-					let assignments_table_json =
-						serde_json::to_string(&insp_table).map_err(|e| {
-							log::info!("insp table serde_json error {:?}", e);
-							OCWError::Unexpected
-						})?;
-					log::info!("Got assignemnts table JSON ! {:?}\n", assignments_table_json);
-				} else {
-					log::error!("Error retrieving assignemnts table!");
-				}
-			} else {
-				log::error!("Error saving assignemnts table")
-			};
-
 			let (nodes_inspection, buckets_inspection) = insp_result.receipts.iter().fold(
 				(
 					aggregator_client::json::InspectionResult {

@@ -514,21 +514,17 @@ pub(crate) fn send_inspection_receipt(
 	Err(OCWError::FailedToSaveInspectionReceipt)
 }
 
-#[allow(dead_code)]
-pub(crate) fn get_inspection_assignment_table(
-	_cluster_id: &ClusterId,
-	_sync_node: &(NodePubKey, StorageNodeParams),
-) -> Result<(), ()> {
-	// todo(yahortsaryk): request DDC Sync node for the inspection assignments table
-
-	Ok(())
-}
-
 pub(crate) fn send_assignments_table<T: Config>(
 	cluster_id: &ClusterId,
-	g_collector: &(NodePubKey, StorageNodeParams),
 	table: InspAssignmentsTable<T::AccountId>,
 ) -> Result<(), OCWError> {
+	let g_collectors =
+		get_g_collectors_nodes(cluster_id).map_err(|_: Error<T>| OCWError::Unexpected)?;
+	let Some(g_collector) = g_collectors.first() else {
+		log::warn!("⚠️ No Grouping Collector found in cluster {:?}", cluster_id);
+		return Err(OCWError::Unexpected);
+	};
+
 	if let Ok(host) = str::from_utf8(&g_collector.1.host) {
 		let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
 		let client = aggregator_client::AggregatorClient::new(
@@ -557,12 +553,17 @@ pub(crate) fn send_assignments_table<T: Config>(
 pub(crate) fn get_assignments_table<T: Config>(
 	cluster_id: &ClusterId,
 	ehd_era: EhdEra,
-	node_params: StorageNodeParams,
 ) -> Result<InspAssignmentsTable<T::AccountId>, http::Error> {
-	log::info!("Inside get_assignments_table function...");
+	// todo(yahortsaryk): replace with Sync node
+	let g_collectors =
+		get_g_collectors_nodes(cluster_id).map_err(|_: Error<T>| http::Error::Unknown)?;
+	let Some(g_collector) = g_collectors.first() else {
+		log::warn!("⚠️ No Grouping Collector found in cluster {:?}", cluster_id);
+		return Err(http::Error::Unknown);
+	};
 
-	let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-	let base_url = format!("http://{}:{}", host, node_params.http_port);
+	let host = str::from_utf8(&g_collector.1.host).map_err(|_| http::Error::Unknown)?;
+	let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
 	let client = aggregator_client::AggregatorClient::new(
 		&base_url,
 		Duration::from_millis(RESPONSE_TIMEOUT),
@@ -582,7 +583,7 @@ pub(crate) fn get_assignments_table<T: Config>(
 
 	while !decoder.is_finished() {
 		let remaining_len = decoder.remaining_len();
-		let buffer_size = sp_std::cmp::min(remaining_len, 4); // Cap buffer size at 64 bytes
+		let buffer_size = sp_std::cmp::min(remaining_len, 4);
 		let mut buffer = vec![0u8; buffer_size];
 
 		let decoded_slice = decoder.decode(&mut buffer).map_err(|e| {
