@@ -85,9 +85,8 @@ mod insp_task_manager;
 use insp_ddc_api::{
 	fetch_bucket_challenge_response, fetch_inspection_receipts, fetch_node_challenge_response,
 	fetch_processed_era, get_assignments_table, get_collectors_nodes, get_ehd_root,
-	get_g_collectors_nodes, send_assignments_table, send_inspection_receipt,
-	BUCKETS_AGGREGATES_FETCH_BATCH_SIZE, MAX_RETRIES_COUNT, NODES_AGGREGATES_FETCH_BATCH_SIZE,
-	RESPONSE_TIMEOUT,
+	get_g_collectors_nodes, send_inspection_receipt, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE,
+	MAX_RETRIES_COUNT, NODES_AGGREGATES_FETCH_BATCH_SIZE, RESPONSE_TIMEOUT,
 };
 use insp_task_manager::{
 	store_and_fetch_nonce, InspEraResult, InspPath, InspPathException, InspTaskManager,
@@ -1292,11 +1291,10 @@ pub mod pallet {
 					&insp_result,
 					inspector,
 					signature,
-					&insp_task_manager,
-					&g_collector,
 				)?;
 
-				send_inspection_receipt(cluster_id, g_collector, receipt)?;
+				send_inspection_receipt::<T>(cluster_id, receipt)
+					.map_err(|_| OCWError::Unexpected)?;
 				store_last_inspected_ehd(cluster_id, ehd_id);
 			}
 
@@ -1311,17 +1309,8 @@ pub mod pallet {
 			insp_result: &InspEraResult,
 			inspector: String,
 			signature: String,
-			insp_task_manager: &InspTaskManager<T>,
-			g_collector: &(NodePubKey, StorageNodeParams),
 		) -> Result<aggregator_client::json::InspectionReceipt, OCWError> {
-			let Some(insp_table) =
-				insp_task_manager.get_assignments_table(cluster_id).map_err(|e| {
-					OCWError::InspError {
-						cluster_id: *cluster_id,
-						err: InspectionError::AssignmentsError(e),
-					}
-				})?
-			else {
+			let Ok(insp_table) = get_assignments_table::<T>(cluster_id, ehd_id.2) else {
 				return Err(OCWError::InspError {
 					cluster_id: *cluster_id,
 					err: InspectionError::Unexpected,

@@ -59,9 +59,9 @@ where
 	cluster_id: ClusterId,
 	era: EhdEra,
 	irf: u8,
-	// todo(yahortsaryk): make private after deprecating `InspectionReceipt` format
+	// todo(yahortsaryk): make private after deprecating `InspectionReceipt`
 	pub(crate) paths: BTreeMap<InspPathId, InspPath>,
-	assignments: BTreeMap<InspPathId, BTreeSet<AccountId>>,
+	assignments: BTreeMap<InspPathId, Vec<AccountId>>,
 }
 
 impl<AccountId> InspAssignmentsTable<AccountId>
@@ -110,20 +110,18 @@ where
 			}
 		}
 
-		let mut inspectors_assignments: BTreeMap<InspPathId, BTreeSet<AccountId>> =
-			Default::default();
-
+		let mut inspectors_assignments: BTreeMap<InspPathId, Vec<AccountId>> = Default::default();
 		for (inspector, paths_ids) in assignments {
 			for path_id in paths_ids {
-				if !inspectors_assignments.contains_key(&path_id) {
-					inspectors_assignments.insert(path_id, Default::default());
-				}
+				let path_assignments =
+					inspectors_assignments.entry(path_id).or_insert_with(Vec::new);
+				path_assignments.push(inspector.clone());
 
-				let path_inspectors = inspectors_assignments
-					.get_mut(&path_id)
-					.ok_or(InspAssignmentError::Unexpected)?;
+				let path_seed: u64 =
+					path_id[..8].try_into().map(u64::from_le_bytes).unwrap_or(Default::default());
+				let mut rng = SmallRng::seed_from_u64(path_seed);
 
-				path_inspectors.insert(inspector.clone());
+				path_assignments.shuffle(&mut rng);
 			}
 		}
 
@@ -1060,15 +1058,6 @@ impl<T: Config> InspTaskManager<T> {
 		} else {
 			Ok(None)
 		}
-	}
-
-	// todo(yahortsaryk): !!! REMOVE this method after deprecating current `InspectionReceipt`
-	// format. The table should be pulled directly from the Sync node if needed
-	pub(crate) fn get_assignments_table(
-		&self,
-		cluster_id: &ClusterId,
-	) -> Result<Option<InspAssignmentsTable<T::AccountId>>, InspAssignmentError> {
-		self.assigner.try_get_assignments_table(cluster_id)
 	}
 }
 

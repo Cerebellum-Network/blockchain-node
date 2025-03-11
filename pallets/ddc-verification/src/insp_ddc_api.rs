@@ -1,6 +1,6 @@
 use core::str;
 
-use base64ct::{Base64, Decoder, Encoding};
+use base64ct::{Base64, Decoder};
 use ddc_primitives::{
 	traits::{ClusterManager, NodeManager},
 	BucketId, ClusterId, EHDId, EhdEra, NodeParams, NodePubKey, PHDId, StorageNodeParams, TcaEra,
@@ -482,72 +482,57 @@ pub(crate) fn fetch_inspection_receipts<T: Config>(
 ///
 /// Parameters:
 /// - `cluster_id`: cluster id of a cluster
-/// - `g_collector`: grouping collector node to save the receipt
 /// - `receipt`: inspection receipt
-pub(crate) fn send_inspection_receipt(
+pub(crate) fn send_inspection_receipt<T: Config>(
 	cluster_id: &ClusterId,
-	g_collector: &(NodePubKey, StorageNodeParams),
 	receipt: aggregator_client::json::InspectionReceipt,
-) -> Result<(), OCWError> {
-	if let Ok(host) = str::from_utf8(&g_collector.1.host) {
-		let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
-		let client = aggregator_client::AggregatorClient::new(
-			&base_url,
-			Duration::from_millis(RESPONSE_TIMEOUT),
-			MAX_RETRIES_COUNT,
-			false, // no response signature verification for now
-		);
+) -> Result<(), http::Error> {
+	// todo(yahortsaryk): replace with Sync node
+	let g_collectors =
+		get_g_collectors_nodes(cluster_id).map_err(|_: Error<T>| http::Error::Unknown)?;
+	let Some(g_collector) = g_collectors.first() else {
+		log::warn!("⚠️ No Grouping Collector found in cluster {:?}", cluster_id);
+		return Err(http::Error::Unknown);
+	};
 
-		if client.send_inspection_receipt(receipt.clone()).is_ok() {
-			// proceed with the first available EHD record for the prototype
-			return Ok(());
-		} else {
-			log::warn!(
-						"⚠️  Collector from cluster {:?} is unavailable while fetching EHD record or responded with unexpected body. Key: {:?} Host: {:?}",
-						cluster_id,
-						g_collector.0,
-						String::from_utf8(g_collector.1.host.clone())
-					);
-		}
-	}
+	let host = str::from_utf8(&g_collector.1.host).map_err(|_| http::Error::Unknown)?;
+	let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
+	let client = aggregator_client::AggregatorClient::new(
+		&base_url,
+		Duration::from_millis(RESPONSE_TIMEOUT),
+		MAX_RETRIES_COUNT,
+		false, // no response signature verification for now
+	);
 
-	Err(OCWError::FailedToSaveInspectionReceipt)
+	client.send_inspection_receipt(receipt.clone())?;
+
+	Ok(())
 }
 
 pub(crate) fn send_assignments_table<T: Config>(
 	cluster_id: &ClusterId,
 	table: InspAssignmentsTable<T::AccountId>,
-) -> Result<(), OCWError> {
+) -> Result<(), http::Error> {
+	// todo(yahortsaryk): replace with Sync node
 	let g_collectors =
-		get_g_collectors_nodes(cluster_id).map_err(|_: Error<T>| OCWError::Unexpected)?;
+		get_g_collectors_nodes(cluster_id).map_err(|_: Error<T>| http::Error::Unknown)?;
 	let Some(g_collector) = g_collectors.first() else {
 		log::warn!("⚠️ No Grouping Collector found in cluster {:?}", cluster_id);
-		return Err(OCWError::Unexpected);
+		return Err(http::Error::Unknown);
 	};
 
-	if let Ok(host) = str::from_utf8(&g_collector.1.host) {
-		let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
-		let client = aggregator_client::AggregatorClient::new(
-			&base_url,
-			Duration::from_millis(RESPONSE_TIMEOUT),
-			MAX_RETRIES_COUNT,
-			false, // no response signature verification for now
-		);
+	let host = str::from_utf8(&g_collector.1.host).map_err(|_| http::Error::Unknown)?;
+	let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
+	let client = aggregator_client::AggregatorClient::new(
+		&base_url,
+		Duration::from_millis(RESPONSE_TIMEOUT),
+		MAX_RETRIES_COUNT,
+		false, // no response signature verification for now
+	);
 
-		if client.send_assignments_table::<T>(table.clone()).is_ok() {
-			// proceed with the first available EHD record for the prototype
-			return Ok(());
-		} else {
-			log::warn!(
-						"⚠️  Collector from cluster {:?} is unavailable while fetching EHD record or responded with unexpected body. Key: {:?} Host: {:?}",
-						cluster_id,
-						g_collector.0,
-						String::from_utf8(g_collector.1.host.clone())
-					);
-		}
-	}
+	let _ = client.send_assignments_table::<T>(table)?;
 
-	Err(OCWError::FailedToSaveInspectionReceipt)
+	Ok(())
 }
 
 pub(crate) fn get_assignments_table<T: Config>(
@@ -587,7 +572,7 @@ pub(crate) fn get_assignments_table<T: Config>(
 		let mut buffer = vec![0u8; buffer_size];
 
 		let decoded_slice = decoder.decode(&mut buffer).map_err(|e| {
-			log::error!("decoder.decode error {:?}", e);
+			log::error!("Decoder::<Base64> decode error {:?}", e);
 			http::Error::Unknown
 		})?;
 
