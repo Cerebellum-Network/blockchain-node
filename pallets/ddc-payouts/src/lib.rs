@@ -81,7 +81,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(3);
+		frame_support::traits::StorageVersion::new(4);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -200,6 +200,7 @@ pub mod pallet {
 		PayoutReceiptFinalized {
 			cluster_id: ClusterId,
 			era: EhdEra,
+			finalized_at: BlockNumberFor<T>,
 		},
 		ChargeError {
 			cluster_id: ClusterId,
@@ -281,6 +282,7 @@ pub mod pallet {
 		pub charging_processed_batches: BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
 		pub rewarding_max_batch_index: BatchIndex,
 		pub rewarding_processed_batches: BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
+		pub finalized_at: Option<BlockNumberFor<T>>,
 	}
 
 	impl<T: pallet::Config> Default for PayoutReceipt<T> {
@@ -296,6 +298,7 @@ pub mod pallet {
 				charging_processed_batches: BoundedBTreeSet::default(),
 				rewarding_max_batch_index: Zero::zero(),
 				rewarding_processed_batches: BoundedBTreeSet::default(),
+				finalized_at: None,
 			}
 		}
 	}
@@ -1096,12 +1099,19 @@ pub mod pallet {
 				Error::<T>::NotExpectedState
 			);
 
+			let finalized_at = <frame_system::Pallet<T>>::block_number();
+
 			payout_receipt.charging_processed_batches.clear();
 			payout_receipt.rewarding_processed_batches.clear();
 			payout_receipt.state = PayoutState::Finalized;
+			payout_receipt.finalized_at = Some(finalized_at);
 
 			PayoutReceipts::<T>::insert(cluster_id, era, payout_receipt);
-			Self::deposit_event(Event::<T>::PayoutReceiptFinalized { cluster_id, era });
+			Self::deposit_event(Event::<T>::PayoutReceiptFinalized {
+				cluster_id,
+				era,
+				finalized_at,
+			});
 
 			Ok(())
 		}
@@ -1172,7 +1182,11 @@ pub mod pallet {
 			Ok(None)
 		}
 
-		fn create_payout_receipt(vault: T::AccountId, params: PayoutReceiptParams) {
+		fn create_payout_receipt(
+			vault: T::AccountId,
+			params: PayoutReceiptParams,
+			finalized_at: Option<BlockNumberFor<T>>,
+		) {
 			let mut charging_processed_batches =
 				BoundedBTreeSet::<BatchIndex, MaxBatchesCount>::new();
 			for batch in params.charging_processed_batches {
@@ -1189,6 +1203,13 @@ pub mod pallet {
 					.expect("Rewarding batch to be inserted");
 			}
 
+			if params.state == PayoutState::Finalized {
+				assert!(
+					finalized_at.is_some(),
+					"Finalized payout receipt must keep `finalized_at` block value"
+				);
+			}
+
 			let payout_receipt = PayoutReceipt::<T> {
 				vault,
 				state: params.state,
@@ -1200,6 +1221,7 @@ pub mod pallet {
 				charging_processed_batches,
 				rewarding_max_batch_index: params.rewarding_max_batch_index,
 				rewarding_processed_batches,
+				finalized_at,
 			};
 
 			PayoutReceipts::<T>::insert(params.cluster_id, params.era, payout_receipt);

@@ -1055,9 +1055,11 @@ pub mod pallet {
 				..Default::default()
 			};
 
+			let finalized_at = <frame_system::Pallet<T>>::block_number();
 			T::PayoutProcessor::create_payout_receipt(
 				T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap(),
 				payout_receipt_params,
+				Some(finalized_at),
 			);
 
 			T::ClusterValidator::set_last_paid_era(&cluster_id, era_id)?;
@@ -3111,12 +3113,6 @@ pub mod pallet {
 				None
 			},
 		}
-	}
-
-	#[allow(clippy::extra_unused_type_parameters)]
-	pub(crate) fn get_last_paid_era_hash<T: Config>(_cluster_id: &ClusterId) -> u64 {
-		// todo(yahortsaryk): fetch last processed era hash
-		Default::default()
 	}
 
 	/* ######## DAC v4 functions ######## */

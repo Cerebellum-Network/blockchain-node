@@ -146,6 +146,7 @@ mod benchmarks {
 				rewarding_max_batch_index,
 				rewarding_processed_batches,
 			},
+			None,
 		);
 	}
 
