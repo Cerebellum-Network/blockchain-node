@@ -1158,8 +1158,12 @@ pub mod pallet {
 			for cluster_id in clusters_ids {
 				let mut errors: Vec<OCWError> = Vec::new();
 
-				let inspection_result =
-					Self::start_inspection_phase(&cluster_id, &verification_account, &signer);
+				let inspection_result = Self::start_inspection_phase(
+					&cluster_id,
+					&verification_account,
+					&signer,
+					&block_number,
+				);
 
 				if let Err(err) = inspection_result {
 					errors.extend(vec![err]);
@@ -1250,6 +1254,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			verification_account: &Account<T>,
 			_signer: &Signer<T, T::OffchainIdentifierId>,
+			block_number: &BlockNumberFor<T>,
 		) -> Result<(), OCWError> {
 			let g_collectors = get_g_collectors_nodes(cluster_id).map_err(|_: Error<T>| {
 				OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id }
@@ -1262,14 +1267,14 @@ pub mod pallet {
 
 			let mut insp_task_manager = InspTaskManager::<T>::new(verification_account.clone());
 			insp_task_manager
-				.assign_cluster(cluster_id)
+				.assign_cluster(cluster_id, block_number)
 				.map_err(|e| OCWError::InspError { cluster_id: *cluster_id, err: e })?;
 
-			if let Some(insp_result) = insp_task_manager
-				.inspect_cluster(cluster_id)
+			for era_receipt in insp_task_manager
+				.inspect_cluster(cluster_id, block_number)
 				.map_err(|e| OCWError::InspError { cluster_id: *cluster_id, err: e })?
 			{
-				let payload = insp_result.encode();
+				let payload = era_receipt.encode();
 				let signature =
 					<T::OffchainIdentifierId as AppCrypto<T::Public, T::Signature>>::sign(
 						&payload,
@@ -1282,13 +1287,13 @@ pub mod pallet {
 				let signature = format!("0x{}", hex::encode(signature.encode()));
 
 				// todo(yahortsaryk): retrieve ID of canonical EHD from inspection result
-				let ehd_id = EHDId(*cluster_id, g_collector.clone().0, insp_result.era);
+				let ehd_id = EHDId(*cluster_id, g_collector.clone().0, era_receipt.era);
 
 				// todo(yahortsaryk): remove legacy inspection receipt format
 				let receipt = Self::map_legacy_inspection_receipt(
 					cluster_id,
 					ehd_id.clone(),
-					&insp_result,
+					&era_receipt,
 					inspector,
 					signature,
 				)?;
@@ -3081,6 +3086,15 @@ pub mod pallet {
 		let key = derive_last_inspected_ehd_key(cluster_id);
 
 		if let Some(mut inspected_ehds) = fetch_last_inspected_ehds(cluster_id) {
+			let last_era = inspected_ehds
+				.iter()
+				.max_by_key(|ehd| ehd.2)
+				.map(|ehd| ehd.2)
+				.unwrap_or(Default::default());
+			if last_era >= ehd_id.2 {
+				return;
+			}
+
 			inspected_ehds.push(ehd_id);
 
 			let encoded_ehds_ids =

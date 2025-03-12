@@ -7,13 +7,13 @@ use ddc_primitives::{
 	NodeUsage, TcaEra,
 };
 use frame_support::pallet_prelude::{Decode, Encode, TypeInfo};
-use frame_system::offchain::Account;
+use frame_system::{offchain::Account, pallet_prelude::BlockNumberFor};
 use itertools::Itertools;
 use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use scale_info::prelude::{format, string::String};
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
-use sp_io::offchain::{local_storage_get, local_storage_set};
+use sp_io::offchain::{local_storage_clear, local_storage_get, local_storage_set};
 use sp_runtime::{
 	offchain::StorageKind,
 	traits::{Hash, IdentifyAccount},
@@ -39,6 +39,7 @@ use crate::{
 pub(crate) const TCA_INSPECTION_STEP: usize = 0;
 pub(crate) const INSPECTION_REDUNDANCY_FACTOR: u8 = 3;
 pub(crate) const INSPECTION_BACKUPS_COUNT: u8 = 2;
+pub(crate) const INSP_BACKUP_BLOCK_DELAY: u32 = 5;
 
 pub(crate) const ALICE: [u8; 32] = [
 	0xd4, 0x35, 0x93, 0xc7, 0x15, 0xfd, 0xd3, 0x1c, 0x61, 0x14, 0x1a, 0xbd, 0x04, 0xa9, 0x9f, 0xd6,
@@ -134,17 +135,36 @@ where
 		})
 	}
 
-	pub fn get_assigned_paths(&self, inspector: &AccountId) -> BTreeMap<InspPathId, InspPath> {
-		let mut result: BTreeMap<InspPathId, InspPath> = Default::default();
+	pub fn get_assigned_paths(&self, inspector: &AccountId, irf: u8) -> Vec<InspPathOrdered> {
+		let mut result: Vec<InspPathOrdered> = Default::default();
 		for (path_id, inspectors) in &self.assignments {
-			if inspectors.contains(inspector) {
+			if let Some(inspector_idx) = inspectors.iter().position(|insp| insp == inspector) {
 				if let Some(path) = self.paths.get(path_id) {
-					result.insert(*path_id, path.clone());
+					let order = if inspector_idx < irf.into() {
+						InspPathOrder::Main
+					} else {
+						InspPathOrder::Backup
+					};
+					let path_ord = InspPathOrdered { path_id: *path_id, path: path.clone(), order };
+					result.push(path_ord);
 				}
 			}
 		}
 		result
 	}
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum InspPathOrder {
+	Main,
+	Backup,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct InspPathOrdered {
+	path_id: InspPathId,
+	path: InspPath,
+	order: InspPathOrder,
 }
 
 #[derive(Debug, Encode, Decode, Clone, TypeInfo, PartialEq)]
@@ -153,6 +173,7 @@ pub enum InspectionError {
 	NoCollectors(TcaEra),
 	NoBucketAggregate(BucketId),
 	AssignmentsError(InspAssignmentError),
+	ClusterError(ClusterId),
 	Unexpected,
 }
 
@@ -171,7 +192,7 @@ pub(crate) struct InspTaskAssigner<T: Config> {
 }
 pub(crate) struct InspEraAssignments {
 	era: EhdEra,
-	assigned_paths: BTreeMap<InspPathId, InspPath>,
+	assigned_paths: Vec<InspPathOrdered>,
 }
 
 impl<T: Config> InspTaskAssigner<T> {
@@ -185,7 +206,8 @@ impl<T: Config> InspTaskAssigner<T> {
 	) -> Result<Option<InspEraAssignments>, InspAssignmentError> {
 		if let Some(assignments_table) = &self.try_get_assignments_table(cluster_id)? {
 			let inspector_account = &self.inspector.public.clone().into_account();
-			let assigned_paths = assignments_table.get_assigned_paths(inspector_account);
+			let assigned_paths =
+				assignments_table.get_assigned_paths(inspector_account, assignments_table.irf);
 			let era_assignments = InspEraAssignments { era: assignments_table.era, assigned_paths };
 			Ok(Some(era_assignments))
 		} else {
@@ -253,21 +275,16 @@ impl<T: Config> InspTaskAssigner<T> {
 	///
 	/// Parameters:
 	/// - `cluster_id`: cluster id of a cluster
-	/// - `g_collectors`: List of G-Collectors nodes
 	fn try_get_era_to_inspect(
 		cluster_id: &ClusterId,
 	) -> Result<Option<EhdEra>, InspAssignmentError> {
 		let g_collectors = get_g_collectors_nodes(cluster_id)
 			.map_err(|_: Error<T>| InspAssignmentError::NoGCollectors(*cluster_id))?;
 
-		let last_inspected_ehd_by_this_validator = Self::try_get_last_inspected_ehd(cluster_id);
-
 		let last_inspected_era_by_this_validator: EhdEra =
-			if let Some(ehd) = last_inspected_ehd_by_this_validator {
-				ehd.2
-			} else {
-				Default::default()
-			};
+			Self::try_get_last_inspected_ehd(cluster_id)
+				.map(|ehd| ehd.2)
+				.unwrap_or(Default::default());
 
 		let last_paid_era_for_cluster: EhdEra = T::ClusterValidator::get_last_paid_era(cluster_id)
 			.map_err(|_| InspAssignmentError::ClusterError(*cluster_id))?;
@@ -327,6 +344,21 @@ impl<T: Config> InspTaskAssigner<T> {
 		let era_to_inspect =
 			processed_eras_with_quorum.iter().cloned().min_by_key(|e| e.id).map(|e| e.id);
 		Ok(era_to_inspect)
+	}
+
+	pub fn try_get_era_to_backup(cluster_id: &ClusterId) -> Result<EhdEra, InspAssignmentError> {
+		let last_inspected_era_by_this_validator = Self::try_get_last_inspected_ehd(cluster_id)
+			.map(|ehd| ehd.2)
+			.unwrap_or(Default::default());
+
+		let last_paid_era_for_cluster: EhdEra = T::ClusterValidator::get_last_paid_era(cluster_id)
+			.map_err(|_| InspAssignmentError::ClusterError(*cluster_id))?;
+
+		if last_paid_era_for_cluster > last_inspected_era_by_this_validator {
+			Ok(last_paid_era_for_cluster + 1)
+		} else {
+			Ok(last_inspected_era_by_this_validator)
+		}
 	}
 
 	fn try_get_last_inspected_ehd(cluster_id: &ClusterId) -> Option<EHDId> {
@@ -865,7 +897,7 @@ fn build_buckets_inspection_paths<T: Config>(
 #[allow(clippy::collapsible_else_if)]
 fn process_tasks<T: Config>(
 	cluster_id: &ClusterId,
-	tasks: Vec<&InspTask>,
+	tasks: &Vec<InspTask<BlockNumberFor<T>>>,
 ) -> Result<Vec<InspPathReceipt>, InspectionError> {
 	let mut results: Vec<InspPathReceipt> = Default::default();
 
@@ -988,19 +1020,20 @@ fn process_tasks<T: Config>(
 	Ok(results)
 }
 
-struct InspTask {
+struct InspTask<BlockNumber> {
 	path_id: InspPathId,
 	path: InspPath,
-	priority: u8,
+	execute_at: BlockNumber,
 }
 
 #[allow(dead_code)]
-pub struct InspTaskManager<T: Config> {
+pub(crate) struct InspTaskManager<T: Config> {
 	inspector: Rc<Account<T>>,
 	assigner: InspTaskAssigner<T>,
 	// currently we don't support pending eras in the pool, so there will be always one era per
-	// cluster in inspection processing
-	tasks_pool: BTreeMap<ClusterId, (EhdEra, Vec<InspTask>)>,
+	// cluster during inspection processing
+	// tasks_pool: BTreeMap<ClusterId, (EhdEra, Vec<InspTask<BlockNumberFor<T>>>)>,
+	tasks_pool: BTreeMap<ClusterId, BTreeMap<EhdEra, Vec<InspTask<BlockNumberFor<T>>>>>,
 }
 
 impl<T: Config> InspTaskManager<T> {
@@ -1010,54 +1043,119 @@ impl<T: Config> InspTaskManager<T> {
 		InspTaskManager { inspector, assigner, tasks_pool: Default::default() }
 	}
 
-	pub(crate) fn assign_cluster(&mut self, cluster_id: &ClusterId) -> Result<(), InspectionError> {
+	pub(crate) fn assign_cluster(
+		&mut self,
+		cluster_id: &ClusterId,
+		current_block: &BlockNumberFor<T>,
+	) -> Result<(), InspectionError> {
 		if let Some(era_assignments) = self
 			.assigner
 			.try_get_assignments(cluster_id)
 			.map_err(InspectionError::AssignmentsError)?
 		{
-			self.add_inspection_tasks(
-				*cluster_id,
-				era_assignments.era,
+			let main_tasks = self.plan_inspection_tasks(
+				cluster_id,
+				&era_assignments.era,
 				era_assignments.assigned_paths,
+				current_block,
 			);
+
+			self.add_inspection_tasks(cluster_id, &era_assignments.era, main_tasks);
+		}
+
+		let era_to_backup = InspTaskAssigner::<T>::try_get_era_to_backup(cluster_id)
+			.map_err(|e| InspectionError::AssignmentsError(e))?;
+
+		if let Some(insp_paths_ids) =
+			fetch_backup_tasks::<T>(cluster_id, &era_to_backup, current_block)
+		{
+			if let Ok(assignments_table) = get_assignments_table::<T>(cluster_id, era_to_backup) {
+				let backup_tasks: Vec<InspTask<BlockNumberFor<T>>> = insp_paths_ids
+					.into_iter()
+					.filter_map(|path_id| {
+						let path = assignments_table.paths.get(&path_id)?;
+						Some(InspTask::<BlockNumberFor<T>> {
+							path_id,
+							path: path.clone(),
+							execute_at: *current_block,
+						})
+					})
+					.collect();
+
+				self.add_inspection_tasks(cluster_id, &era_to_backup, backup_tasks);
+			}
 		}
 
 		Ok(())
 	}
 
+	fn plan_inspection_tasks(
+		&mut self,
+		cluster_id: &ClusterId,
+		era: &EhdEra,
+		insp_paths: Vec<InspPathOrdered>,
+		current_block: &BlockNumberFor<T>,
+	) -> Vec<InspTask<BlockNumberFor<T>>> {
+		let insp_tasks = insp_paths
+			.into_iter()
+			.map(|path_ord| InspTask::<BlockNumberFor<T>> {
+				path_id: path_ord.path_id,
+				path: path_ord.path,
+				execute_at: match path_ord.order {
+					InspPathOrder::Main => *current_block,
+					InspPathOrder::Backup => *current_block + INSP_BACKUP_BLOCK_DELAY.into(),
+				},
+			})
+			.collect::<Vec<_>>();
+
+		let future_backup_tasks: BTreeMap<BlockNumberFor<T>, Vec<InspPathId>> = insp_tasks
+			.iter()
+			.filter(|task| task.execute_at > *current_block)
+			.fold(BTreeMap::new(), |mut acc, task| {
+				acc.entry(task.execute_at).or_insert_with(Vec::new).push(task.path_id);
+				acc
+			});
+
+		for (future_block, insp_paths_ids) in future_backup_tasks {
+			store_backup_tasks::<T>(cluster_id, era, &future_block, insp_paths_ids);
+		}
+
+		let current_main_tasks = insp_tasks
+			.into_iter()
+			.filter(|task| task.execute_at == *current_block)
+			.collect::<Vec<_>>();
+
+		current_main_tasks
+	}
+
 	fn add_inspection_tasks(
 		&mut self,
-		cluster_id: ClusterId,
-		era: EhdEra,
-		insp_paths: BTreeMap<InspPathId, InspPath>,
+		cluster_id: &ClusterId,
+		era: &EhdEra,
+		tasks: Vec<InspTask<BlockNumberFor<T>>>,
 	) {
-		self.tasks_pool.entry(cluster_id).or_insert((
-			era,
-			insp_paths
-				.into_iter()
-				.map(|(path_id, path)| {
-					// todo(yahortsaryk): set the priority based on inspector's assignment
-					// (main/backup)
-					InspTask { path_id, path, priority: 1 }
-				})
-				.collect::<Vec<_>>(),
-		));
+		let cluster_eras = self.tasks_pool.entry(*cluster_id).or_insert(Default::default());
+		let era_tasks = cluster_eras.entry(*era).or_insert(Default::default());
+		era_tasks.extend(tasks);
 	}
 
 	pub(crate) fn inspect_cluster(
 		&mut self,
 		cluster_id: &ClusterId,
-	) -> Result<Option<InspEraResult>, InspectionError> {
-		if let Some((era, insp_tasks)) = &self.tasks_pool.remove(cluster_id) {
-			let prioritized_tasks =
-				insp_tasks.iter().sorted_by_key(|task| task.priority).collect::<Vec<_>>();
-			let era_results = process_tasks::<T>(cluster_id, prioritized_tasks)?;
-
-			Ok(Some(InspEraResult { era: *era, receipts: era_results }))
-		} else {
-			Ok(None)
+		current_block: &BlockNumberFor<T>,
+	) -> Result<Vec<InspEraResult>, InspectionError> {
+		let mut results = vec![];
+		if let Some(cluster_eras) = &self.tasks_pool.remove(cluster_id) {
+			for (era, era_tasks) in cluster_eras {
+				let era_receipts = process_tasks::<T>(cluster_id, era_tasks)?;
+				results.push(InspEraResult { era: *era, receipts: era_receipts });
+				// todo(yahortsaryk): we might want to save inspection receipt before clearing the
+				// cached backup tasks to ensure the inspection result is not lost in case inspector
+				// fails to submit it to DDC in the next step
+				clear_backup_tasks::<T>(cluster_id, era, current_block);
+			}
 		}
+		Ok(results)
 	}
 }
 
@@ -1101,4 +1199,65 @@ pub(crate) fn store_and_fetch_nonce(node_id: String) -> u64 {
 
 	local_storage_set(StorageKind::PERSISTENT, &key, &new_nonce.encode());
 	nonce_data
+}
+
+pub(crate) fn fetch_backup_tasks<T: Config>(
+	cluster_id: &ClusterId,
+	era: &EhdEra,
+	block_number: &BlockNumberFor<T>,
+) -> Option<Vec<InspPathId>> {
+	let key = derive_backup_tasks_key::<T>(cluster_id, era, block_number);
+
+	let encoded_insp_paths_ids = match local_storage_get(StorageKind::PERSISTENT, &key) {
+		Some(encoded_data) => encoded_data,
+		None => return None,
+	};
+
+	match Decode::decode(&mut &encoded_insp_paths_ids[..]) {
+		Ok(insp_paths_ids) => Some(insp_paths_ids),
+		Err(err) => {
+			log::error!(
+				"Decoding `insp_paths_ids` error for Cluster/Era {:?}/{:?} : {:?}",
+				cluster_id,
+				era,
+				err
+			);
+			None
+		},
+	}
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn store_backup_tasks<T: Config>(
+	cluster_id: &ClusterId,
+	era: &EhdEra,
+	block_number: &BlockNumberFor<T>,
+	insp_paths_ids: Vec<InspPathId>,
+) {
+	let key = derive_backup_tasks_key::<T>(cluster_id, era, block_number);
+	local_storage_set(StorageKind::PERSISTENT, &key, &insp_paths_ids.encode());
+}
+
+pub(crate) fn derive_backup_tasks_key<T: Config>(
+	cluster_id: &ClusterId,
+	era: &EhdEra,
+	block_number: &BlockNumberFor<T>,
+) -> Vec<u8> {
+	format!("offchain::insp::{:?}::{:?}::{:?}", cluster_id, era, block_number).into_bytes()
+}
+
+pub(crate) fn clear_backup_tasks<T: Config>(
+	cluster_id: &ClusterId,
+	era: &EhdEra,
+	block_number: &BlockNumberFor<T>,
+) {
+	let key = derive_backup_tasks_key::<T>(cluster_id, era, block_number);
+	log::info!(
+		"Clearing backup tasks for Cluster/Era {:?}/{:?} at block {:?}",
+		cluster_id,
+		era,
+		block_number
+	);
+
+	local_storage_clear(StorageKind::PERSISTENT, &key);
 }
