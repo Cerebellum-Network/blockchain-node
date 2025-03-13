@@ -3,8 +3,8 @@ use aggregate_tree::{
 };
 use aggregator_client::json::{EHDTreeNode, PHDTreeNode};
 use ddc_primitives::{
-	traits::ClusterValidator, BucketId, BucketUsage, ClusterId, EHDId, EhdEra, NodePubKey,
-	NodeUsage, TcaEra,
+	traits::ClusterValidator, AccountId32Hex, BucketId, BucketUsage, ClusterId, EHDId, EhdEra,
+	NodePubKey, NodeUsage, TcaEra,
 };
 use frame_support::pallet_prelude::{Decode, Encode, TypeInfo};
 use frame_system::{offchain::Account, pallet_prelude::BlockNumberFor};
@@ -17,6 +17,7 @@ use sp_io::offchain::{local_storage_clear, local_storage_get, local_storage_set}
 use sp_runtime::{
 	offchain::StorageKind,
 	traits::{Hash, IdentifyAccount},
+	AccountId32,
 };
 use sp_std::{
 	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
@@ -29,9 +30,14 @@ use crate::{
 	insp_ddc_api::{
 		fetch_bucket_aggregates, fetch_bucket_challenge_response, fetch_node_challenge_response,
 		fetch_processed_eras, get_assignments_table, get_ehd_root, get_g_collectors_nodes,
-		get_phd_root, send_assignments_table,
+		get_phd_root, post_itm_lease, submit_assignments_table,
 	},
 	pallet::{Error, ValidatorSet},
+	proto::{
+		endpoint_itm_lease::Variant as ItmLeaseVariant, ItmLeaseAcquired,
+		ItmLeaseAlreadyInProgress, ItmLeaseEraDataCorrupted, ItmLeaseEraFailedToUpdate,
+		ItmLeaseEraNotFound, ItmLeaseEraNotYetProcessed, ItmLeaseTableAlreadyAvailable,
+	},
 	signature::Verify,
 	Config, Hashable,
 };
@@ -58,7 +64,7 @@ where
 	AccountId: Ord + Clone,
 {
 	cluster_id: ClusterId,
-	era: EhdEra,
+	pub(crate) era: EhdEra,
 	irf: u8,
 	// todo(yahortsaryk): make private after deprecating `InspectionReceipt`
 	pub(crate) paths: BTreeMap<InspPathId, InspPath>,
@@ -223,51 +229,104 @@ impl<T: Config> InspTaskAssigner<T> {
 			return Ok(None);
 		};
 
-		let alice_account = T::AccountId::decode(&mut &ALICE.encode()[..])
-			.map_err(|_| InspAssignmentError::Unexpected)?;
 		let inspector_account = &self.inspector.public.clone().into_account();
+		let lease_response = post_itm_lease::<T>(cluster_id, era, self.get_inspector_key_hex())
+			.map_err(|_| InspAssignmentError::ClusterApiError(*cluster_id))?;
 
-		let sync_status = if *inspector_account == alice_account {
-			InspSyncStatus::<T::AccountId>::AssigningInspectors {
-				era,
-				assigner: self.inspector.public.clone().into_account(),
-				lease_ttl: 60000,
-				salt: 0,
-			}
-		} else {
-			if let Ok(assignments_table) = get_assignments_table::<T>(cluster_id, era) {
-				InspSyncStatus::ReadyForInspection { assignments_table }
-			} else {
-				InspSyncStatus::NotReadyForInspection
-			}
-		};
-
-		match sync_status {
-			InspSyncStatus::NotReadyForInspection => {
-				log::info!("*** Waiting for assignments table");
+		match lease_response.variant {
+			Some(ItmLeaseVariant::EraNotYetProcessed(ItmLeaseEraNotYetProcessed {
+				current_status: status,
+			})) => {
+				log::info!(
+					"Got `EraNotYetProcessed` lease variant: cluster_id={:?} era={:?} status={:?}",
+					cluster_id,
+					lease_response.eid,
+					status
+				);
 				Ok(None)
 			},
-			InspSyncStatus::AssigningInspectors { era, assigner, lease_ttl: _lease_ttl, salt } => {
-				let inspector_account = &self.inspector.public.clone().into_account();
-				if *inspector_account == assigner {
-					log::info!("*** Building assignments table");
+			Some(ItmLeaseVariant::AlreadyInProgress(ItmLeaseAlreadyInProgress {
+				lease_holder_inspector_key: holder_key,
+				lease_remaining_millis: remaining_millis,
+			})) => {
+				log::info!(
+					"Got `AlreadyInProgress` lease variant: cluster_id={:?} era={:?} holder_key={:?} remaining_millis={:?}",
+					cluster_id,
+					lease_response.eid,
+					holder_key,
+                    remaining_millis
+				);
+				Ok(None)
+			},
+			Some(ItmLeaseVariant::EraNotFound(ItmLeaseEraNotFound { error })) => {
+				log::info!(
+					"Got `EraNotFound` lease variant: cluster_id={:?} era={:?} error={:?}",
+					cluster_id,
+					lease_response.eid,
+					error,
+				);
+				Ok(None)
+			},
+			Some(ItmLeaseVariant::EraDataCorrupted(ItmLeaseEraDataCorrupted {
+				corrupted_data,
+			})) => {
+				log::info!(
+					"Got `EraDataCorrupted` lease variant: cluster_id={:?} era={:?} corrupted_data={:?}",
+					cluster_id,
+					lease_response.eid,
+					corrupted_data,
+				);
+				Ok(None)
+			},
+			Some(ItmLeaseVariant::EraFailedToUpdate(ItmLeaseEraFailedToUpdate { error })) => {
+				log::info!(
+					"Got `EraFailedToUpdate` lease variant: cluster_id={:?} era={:?} error={:?}",
+					cluster_id,
+					lease_response.eid,
+					error,
+				);
+				Ok(None)
+			},
+			Some(ItmLeaseVariant::Acquired(ItmLeaseAcquired { inspector_key: holder_key })) => {
+				let salt = 0u64;
+				let holder_account = parse_account_id::<T>(holder_key)
+					.map_err(|_| InspAssignmentError::Unexpected)?;
+
+				if *inspector_account == holder_account {
 					let assignmens_table = &self.build_assignments_table(cluster_id, &era, salt)?;
-					// todo(yahortsaryk): optimize performance by eliminating cloning of the whole
+					// todo(yahortsaryk): improve performance by avoiding cloning of the whole
 					// table
-					let _ = send_assignments_table::<T>(cluster_id, assignmens_table.clone())
-						.map_err(|_| InspAssignmentError::Unexpected)?;
+
+					// todo(yahortsaryk): handle `EndpointItmSubmit` variants
+					let _submit_response = submit_assignments_table::<T>(
+						cluster_id,
+						assignmens_table.clone(),
+						self.get_inspector_key_hex(),
+					)
+					.map_err(|_| InspAssignmentError::Unexpected)?;
+
 					Ok(Some(assignmens_table.clone()))
 				} else {
-					log::info!("*** Waiting for assignments table to be completed");
-
 					Ok(None)
 				}
 			},
-			InspSyncStatus::ReadyForInspection { assignments_table } => {
-				log::info!("*** Obtained assignments table");
 
+			Some(ItmLeaseVariant::TableAlreadyAvailable(ItmLeaseTableAlreadyAvailable {
+				inspector_key,
+			})) => {
+				log::info!(
+					"Got `TableAlreadyAvailable` lease variant: cluster_id={:?} era={:?} inspector_key={:?}",
+					cluster_id,
+					lease_response.eid,
+					inspector_key,
+				);
+
+				let assignments_table = get_assignments_table::<T>(cluster_id, lease_response.eid)
+					.map_err(|_| InspAssignmentError::Unexpected)?;
 				Ok(Some(assignments_table))
 			},
+
+			None => Ok(None),
 		}
 	}
 
@@ -404,6 +463,11 @@ impl<T: Config> InspTaskAssigner<T> {
 		)?;
 
 		Ok(assignments_table)
+	}
+
+	fn get_inspector_key_hex(&self) -> String {
+		let inspector_pub_key: Vec<u8> = self.inspector.public.encode();
+		format!("0x{}", hex::encode(&inspector_pub_key[1..])) // skip byte of SCALE encoding
 	}
 }
 
@@ -1260,4 +1324,11 @@ pub(crate) fn clear_backup_tasks<T: Config>(
 	);
 
 	local_storage_clear(StorageKind::PERSISTENT, &key);
+}
+
+fn parse_account_id<T: Config>(key_str: String) -> Result<T::AccountId, ()> {
+	let acc32_hex: AccountId32Hex = key_str.try_into().map_err(|_| ())?;
+	let acc32: AccountId32 = acc32_hex.into();
+	let account_id = T::AccountId::decode(&mut &acc32.encode()[..]).map_err(|_| ())?;
+	Ok(account_id)
 }

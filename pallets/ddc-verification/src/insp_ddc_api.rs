@@ -1,10 +1,10 @@
 use core::str;
 
-use base64ct::{Base64, Decoder};
 use ddc_primitives::{
 	traits::{ClusterManager, NodeManager},
 	BucketId, ClusterId, EHDId, EhdEra, NodeParams, NodePubKey, PHDId, StorageNodeParams, TcaEra,
 };
+use proto::{endpoint_itm_table::Variant as ItmTableVariant, ItmTable};
 use scale_info::prelude::{format, string::String};
 use sp_runtime::offchain::{http, Duration};
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
@@ -509,10 +509,11 @@ pub(crate) fn send_inspection_receipt<T: Config>(
 	Ok(())
 }
 
-pub(crate) fn send_assignments_table<T: Config>(
+pub(crate) fn submit_assignments_table<T: Config>(
 	cluster_id: &ClusterId,
 	table: InspAssignmentsTable<T::AccountId>,
-) -> Result<(), http::Error> {
+	inspector_hex: String,
+) -> Result<proto::EndpointItmSubmit, http::Error> {
 	// todo(yahortsaryk): replace with Sync node
 	let g_collectors =
 		get_g_collectors_nodes(cluster_id).map_err(|_: Error<T>| http::Error::Unknown)?;
@@ -530,14 +531,12 @@ pub(crate) fn send_assignments_table<T: Config>(
 		false, // no response signature verification for now
 	);
 
-	let _ = client.send_assignments_table::<T>(table)?;
-
-	Ok(())
+	client.submit_assignments_table::<T>(table, inspector_hex)
 }
 
 pub(crate) fn get_assignments_table<T: Config>(
 	cluster_id: &ClusterId,
-	ehd_era: EhdEra,
+	era: EhdEra,
 ) -> Result<InspAssignmentsTable<T::AccountId>, http::Error> {
 	// todo(yahortsaryk): replace with Sync node
 	let g_collectors =
@@ -556,34 +555,46 @@ pub(crate) fn get_assignments_table<T: Config>(
 		false,
 	);
 
-	let base64_str: String =
-		client.get_assignments_table::<T>(ehd_era).map_err(|_| http::Error::Unknown)?;
+	let table_response: proto::EndpointItmTable =
+		client.get_assignments_table::<T>(era).map_err(|_| http::Error::Unknown)?;
 
-	let mut decoder = Decoder::<Base64>::new(base64_str.trim().as_bytes()).map_err(|e| {
-		log::error!("Decoder::<Base64> error {:?}", e);
-		http::Error::Unknown
-	})?;
-
-	let mut decoded_bytes = Vec::new();
-
-	while !decoder.is_finished() {
-		let remaining_len = decoder.remaining_len();
-		let buffer_size = sp_std::cmp::min(remaining_len, 4);
-		let mut buffer = vec![0u8; buffer_size];
-
-		let decoded_slice = decoder.decode(&mut buffer).map_err(|e| {
-			log::error!("Decoder::<Base64> decode error {:?}", e);
-			http::Error::Unknown
-		})?;
-
-		decoded_bytes.extend_from_slice(decoded_slice);
+	// todo(yahortsaryk): move the below pattern matching to `InspTaskAssigner`
+	match table_response.variant {
+		Some(ItmTableVariant::Table(ItmTable { base64: json_str, inspector_key: _key })) => {
+			let response: InspAssignmentsTable<T::AccountId> = serde_json::from_str(&json_str)
+				.map_err(|e| {
+					log::error!("ItmTable deserialization error {:?}", e);
+					http::Error::Unknown
+				})?;
+			return Ok(response);
+		},
+		_ => {
+			// todo(yahortsaryk): handle other `EndpointItmTable` variants
+			Err(http::Error::Unknown)
+		},
 	}
+}
 
-	let response: InspAssignmentsTable<T::AccountId> = serde_json::from_slice(&decoded_bytes)
-		.map_err(|e| {
-			log::error!("InspAssignmentsTable<T::AccountId> deserialization error {:?}", e);
-			http::Error::Unknown
-		})?;
+pub(crate) fn post_itm_lease<T: Config>(
+	cluster_id: &ClusterId,
+	era: EhdEra,
+	inspector_hex: String,
+) -> Result<proto::EndpointItmLease, http::Error> {
+	let g_collectors =
+		get_g_collectors_nodes(cluster_id).map_err(|_: Error<T>| http::Error::Unknown)?;
+	let Some(g_collector) = g_collectors.first() else {
+		log::warn!("⚠️ No Grouping Collector found in cluster {:?}", cluster_id);
+		return Err(http::Error::Unknown);
+	};
 
-	Ok(response)
+	let host = str::from_utf8(&g_collector.1.host).map_err(|_| http::Error::Unknown)?;
+	let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
+	let client = aggregator_client::AggregatorClient::new(
+		&base_url,
+		Duration::from_millis(RESPONSE_TIMEOUT),
+		MAX_RETRIES_COUNT,
+		false, // no response signature verification for now
+	);
+
+	client.post_itm_lease(era, inspector_hex)
 }

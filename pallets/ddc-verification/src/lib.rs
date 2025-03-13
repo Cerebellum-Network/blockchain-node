@@ -95,6 +95,7 @@ use insp_task_manager::{
 
 pub mod proto {
 	include!(concat!(env!("OUT_DIR"), "/activity.rs"));
+	include!(concat!(env!("OUT_DIR"), "/inspection.rs"));
 }
 
 mod signature;

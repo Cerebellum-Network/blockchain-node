@@ -246,7 +246,7 @@ impl<'a> AggregatorClient<'a> {
 	) -> Result<http::Response, http::Error> {
 		let url = format!("{}/activity/inspection-receipts", self.base_url);
 		let body = serde_json::to_vec(&receipt).expect("Inspection receipt to be encoded");
-		self.post(&url, body)
+		self.post(&url, body, Accept::Any)
 	}
 
 	pub fn fetch_grouped_inspection_receipts(
@@ -264,18 +264,56 @@ impl<'a> AggregatorClient<'a> {
 		fetch_and_parse!(self, url, json::IsGCollectorResponse, json::IsGCollectorResponse)
 	}
 
-	pub fn send_assignments_table<T: Config>(
+	pub fn submit_assignments_table<T: Config>(
 		&self,
 		table: InspAssignmentsTable<T::AccountId>,
-	) -> Result<http::Response, http::Error> {
-		let url = format!("{}/activity/assignments-tables", self.base_url);
-		let body = serde_json::to_vec(&table).expect("Assignments table to be encoded");
-		self.post(&url, body)
+		inspector_hex: String,
+	) -> Result<proto::EndpointItmSubmit, http::Error> {
+		let url = format!(
+			"{}/itm/submit?eraId={}&inspectorKey={}",
+			self.base_url, table.era, inspector_hex
+		);
+		let body = serde_json::to_string(&table).expect("Assignments table to be encoded");
+
+		let response = self.post(&url, body.into(), Accept::Protobuf)?;
+		let body = response.body().collect::<Vec<u8>>();
+
+		let proto_response =
+			proto::EndpointItmSubmit::decode(body.as_slice()).map_err(|_| http::Error::Unknown)?;
+		Ok(proto_response)
 	}
 
-	pub fn get_assignments_table<T: Config>(&self, ehd_era: EhdEra) -> Result<String, http::Error> {
-		let mut url = format!("{}/activity/assignments-tables?ehdEraId={}", self.base_url, ehd_era);
-		fetch_and_parse!(self, url, String, String)
+	pub fn get_assignments_table<T: Config>(
+		&self,
+		era: EhdEra,
+	) -> Result<proto::EndpointItmTable, http::Error> {
+		let url = format!("{}/itm/table?eraId={}", self.base_url, era);
+		let response = self.get(&url, Accept::Protobuf)?;
+		let body = response.body().collect::<Vec<u8>>();
+
+		let proto_response =
+			proto::EndpointItmTable::decode(body.as_slice()).map_err(|_| http::Error::Unknown)?;
+		Ok(proto_response)
+	}
+
+	pub fn post_itm_lease(
+		&self,
+		era: EhdEra,
+		inspector_hex: String,
+	) -> Result<proto::EndpointItmLease, http::Error> {
+		let url =
+			format!("{}/itm/lease?eraId={}&inspectorKey={}", self.base_url, era, inspector_hex);
+
+		let json = serde_json::json!({ "inspector_key": inspector_hex });
+		let body = serde_json::to_string(&json).expect("Assignments table to be encoded");
+
+		let response = self.post(&url, body.into(), Accept::Protobuf)?;
+		let body = response.body().collect::<Vec<u8>>();
+
+		let proto_response =
+			proto::EndpointItmLease::decode(body.as_slice()).map_err(|_| http::Error::Unknown)?;
+
+		Ok(proto_response)
 	}
 
 	fn get(&self, url: &str, accept: Accept) -> Result<http::Response, http::Error> {
@@ -321,22 +359,32 @@ impl<'a> AggregatorClient<'a> {
 			None => return Err(http::Error::Unknown),
 		};
 
-		if response.code != 200 {
+		if response.code >= 500 {
 			return Err(http::Error::Unknown);
 		}
 
 		Ok(response)
 	}
 
-	fn post(&self, url: &str, request_body: Vec<u8>) -> Result<http::Response, http::Error> {
+	fn post(
+		&self,
+		url: &str,
+		request_body: Vec<u8>,
+		accept: Accept,
+	) -> Result<http::Response, http::Error> {
 		let mut maybe_response = None;
 
 		let deadline = timestamp().add(self.timeout);
 		let mut error = None;
 
 		for _ in 0..self.retries {
-			let request = http::Request::post(url, vec![request_body.clone()])
+			let mut request = http::Request::post(url, vec![request_body.clone()])
 				.add_header("content-type", "application/json");
+
+			request = match accept {
+				Accept::Any => request,
+				Accept::Protobuf => request.add_header("Accept", "application/protobuf"),
+			};
 
 			let pending = request
 				.deadline(deadline)
@@ -366,7 +414,7 @@ impl<'a> AggregatorClient<'a> {
 			None => return Err(http::Error::Unknown),
 		};
 
-		if response.code != 201 {
+		if response.code >= 500 {
 			return Err(http::Error::Unknown);
 		}
 
