@@ -21,6 +21,9 @@ name = "cere"
 path = "src/main.rs"
 
 [dependencies]
+
+private-pallet = { workspace = true }
+
 # 3rd-party dependencies
 clap = { workspace = true, optional = true }
 url = { workspace = true }

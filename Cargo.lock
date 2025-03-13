@@ -1828,6 +1828,7 @@ dependencies = [
  "cere-service",
  "clap",
  "frame-benchmarking-cli",
+ "private-pallet",
  "sc-cli",
  "sc-executor",
  "sc-network",
@@ -12746,6 +12747,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "private-pallet"
+version = "0.1.0"
+source = "git+https://github.com/ayushmishra2005/private-pallet.git?branch=main#1714dd05ed6a8bcf29b5437527f95547a9ed031d"
+
+[[package]]
 name = "proc-macro-crate"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -19926,3 +19932,7 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
+
+[[patch.unused]]
+name = "private-pallet"
+version = "0.1.0"

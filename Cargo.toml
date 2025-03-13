@@ -28,7 +28,9 @@ members = [
 ]
 resolver = "2"
 
+
 [workspace.dependencies]
+private-pallet = { git = "https://github.com/ayushmishra2005/private-pallet.git", branch = "main" }
 # 3rd-party dependencies
 anyhow = { version = "1.0", default-features = false }
 base64ct = { version = "1.6.0" }
@@ -210,3 +212,7 @@ pallet-token-gateway = { default-features = false, version = "16.0.0" }
 
 [profile.release]
 panic = "unwind"
+
+[patch.crates-io]
+# This patch tells Cargo to use the stub version instead of trying to download the private crate.
+private-pallet = { path = "stub/private-pallet" }
