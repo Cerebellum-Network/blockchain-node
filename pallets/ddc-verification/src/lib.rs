@@ -85,12 +85,13 @@ mod insp_task_manager;
 use insp_ddc_api::{
 	fetch_bucket_challenge_response, fetch_inspection_receipts, fetch_node_challenge_response,
 	fetch_processed_era, get_assignments_table, get_collectors_nodes, get_ehd_root,
-	get_g_collectors_nodes, send_inspection_receipt, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE,
-	MAX_RETRIES_COUNT, NODES_AGGREGATES_FETCH_BATCH_SIZE, RESPONSE_TIMEOUT,
+	get_g_collectors_nodes, send_inspection_receipt, submit_inspection_report,
+	BUCKETS_AGGREGATES_FETCH_BATCH_SIZE, MAX_RETRIES_COUNT, NODES_AGGREGATES_FETCH_BATCH_SIZE,
+	RESPONSE_TIMEOUT,
 };
 use insp_task_manager::{
-	store_and_fetch_nonce, InspEraResult, InspPath, InspPathException, InspTaskManager,
-	InspectionError,
+	store_and_fetch_nonce, HashedInspPathReceipt, InspEraReport, InspPath, InspPathException,
+	InspPathsReceipts, InspTaskManager, InspectionError,
 };
 
 pub mod proto {
@@ -1271,11 +1272,11 @@ pub mod pallet {
 				.assign_cluster(cluster_id, block_number)
 				.map_err(|e| OCWError::InspError { cluster_id: *cluster_id, err: e })?;
 
-			for era_receipt in insp_task_manager
+			for era_receipts in insp_task_manager
 				.inspect_cluster(cluster_id, block_number)
 				.map_err(|e| OCWError::InspError { cluster_id: *cluster_id, err: e })?
 			{
-				let payload = era_receipt.encode();
+				let payload = era_receipts.encode();
 				let signature =
 					<T::OffchainIdentifierId as AppCrypto<T::Public, T::Signature>>::sign(
 						&payload,
@@ -1288,19 +1289,26 @@ pub mod pallet {
 				let signature = format!("0x{}", hex::encode(signature.encode()));
 
 				// todo(yahortsaryk): retrieve ID of canonical EHD from inspection result
-				let ehd_id = EHDId(*cluster_id, g_collector.clone().0, era_receipt.era);
+				let ehd_id = EHDId(*cluster_id, g_collector.clone().0, era_receipts.era);
 
 				// todo(yahortsaryk): remove legacy inspection receipt format
 				let receipt = Self::map_legacy_inspection_receipt(
 					cluster_id,
 					ehd_id.clone(),
-					&era_receipt,
+					&era_receipts,
 					inspector,
 					signature,
 				)?;
 
 				send_inspection_receipt::<T>(cluster_id, receipt)
 					.map_err(|_| OCWError::Unexpected)?;
+
+				let signed_report =
+					Self::get_signed_inspection_report(era_receipts, verification_account)?;
+
+				let _ = submit_inspection_report::<T>(cluster_id, signed_report);
+				// .map_err(|_| OCWError::Unexpected)?;
+
 				store_last_inspected_ehd(cluster_id, ehd_id);
 			}
 
@@ -1309,10 +1317,52 @@ pub mod pallet {
 
 		// todo(yahortsaryk): !!! REMOVE this method after deprecating `InspectionReceipt` format
 		#[allow(clippy::map_entry)]
+		fn get_signed_inspection_report(
+			era_receipts: InspPathsReceipts,
+			verification_account: &Account<T>,
+		) -> Result<InspEraReport, OCWError> {
+			let hashed_receipts: Vec<HashedInspPathReceipt> =
+				era_receipts.receipts.into_iter().fold(vec![], |mut receipts, receipt| {
+					let hash = receipt.hash::<T>();
+					let hash_hex = format!("0x{}", hex::encode(&hash[1..])); // skip byte of SCALE encoding
+					let hashed_receipt =
+						HashedInspPathReceipt::new(receipt, format!("0x{}", hash_hex));
+					receipts.push(hashed_receipt);
+					receipts
+				});
+
+			let sig_payload = hashed_receipts
+				.iter()
+				.map(|hashed_receipt| hashed_receipt.hash.clone())
+				.collect::<Vec<_>>()
+				.encode();
+
+			let signature = <T::OffchainIdentifierId as AppCrypto<T::Public, T::Signature>>::sign(
+				&sig_payload,
+				verification_account.public.clone(),
+			)
+			.ok_or(OCWError::FailedToSignInspectionReceipt)?;
+
+			let inspector_pub_key: Vec<u8> = verification_account.public.encode();
+			let inspector = format!("0x{}", hex::encode(&inspector_pub_key[1..])); // skip byte of SCALE encoding
+			let signature = format!("0x{}", hex::encode(signature.encode()));
+
+			let report = InspEraReport {
+				era: era_receipts.era,
+				inspector,
+				signature,
+				path_receipts: hashed_receipts,
+			};
+
+			Ok(report)
+		}
+
+		// todo(yahortsaryk): !!! REMOVE this method after deprecating `InspectionReceipt` format
+		#[allow(clippy::map_entry)]
 		fn map_legacy_inspection_receipt(
 			cluster_id: &ClusterId,
 			ehd_id: EHDId,
-			insp_result: &InspEraResult,
+			insp_result: &InspPathsReceipts,
 			inspector: String,
 			signature: String,
 		) -> Result<aggregator_client::json::InspectionReceipt, OCWError> {

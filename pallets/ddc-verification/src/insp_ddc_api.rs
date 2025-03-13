@@ -10,7 +10,9 @@ use sp_runtime::offchain::{http, Duration};
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 use crate::{
-	aggregator_client, insp_task_manager::InspAssignmentsTable, proto, Config, Error, OCWError,
+	aggregator_client,
+	insp_task_manager::{InspAssignmentsTable, InspEraReport},
+	proto, Config, Error, OCWError,
 };
 
 pub(crate) const RESPONSE_TIMEOUT: u64 = 20000;
@@ -505,6 +507,32 @@ pub(crate) fn send_inspection_receipt<T: Config>(
 	);
 
 	client.send_inspection_receipt(receipt.clone())?;
+
+	Ok(())
+}
+
+pub(crate) fn submit_inspection_report<T: Config>(
+	cluster_id: &ClusterId,
+	report: InspEraReport,
+) -> Result<(), http::Error> {
+	// todo(yahortsaryk): replace with Sync node
+	let g_collectors =
+		get_g_collectors_nodes(cluster_id).map_err(|_: Error<T>| http::Error::Unknown)?;
+	let Some(g_collector) = g_collectors.first() else {
+		log::warn!("⚠️ No Grouping Collector found in cluster {:?}", cluster_id);
+		return Err(http::Error::Unknown);
+	};
+
+	let host = str::from_utf8(&g_collector.1.host).map_err(|_| http::Error::Unknown)?;
+	let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
+	let client = aggregator_client::AggregatorClient::new(
+		&base_url,
+		Duration::from_millis(RESPONSE_TIMEOUT),
+		MAX_RETRIES_COUNT,
+		false, // no response signature verification for now
+	);
+
+	client.submit_inspection_report(report.clone())?;
 
 	Ok(())
 }

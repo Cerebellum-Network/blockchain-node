@@ -2,7 +2,7 @@
 #![allow(clippy::from_over_into)]
 
 use ddc_primitives::{AccountId32Hex, AggregatorInfo, BucketId, TcaEra};
-use insp_task_manager::InspAssignmentsTable;
+use insp_task_manager::{InspAssignmentsTable, InspEraReport};
 use prost::Message;
 use scale_info::prelude::{collections::BTreeMap, string::String, vec::Vec};
 use serde_with::{base64::Base64, serde_as, TryFromInto};
@@ -246,6 +246,15 @@ impl<'a> AggregatorClient<'a> {
 	) -> Result<http::Response, http::Error> {
 		let url = format!("{}/activity/inspection-receipts", self.base_url);
 		let body = serde_json::to_vec(&receipt).expect("Inspection receipt to be encoded");
+		self.post(&url, body, Accept::Any)
+	}
+
+	pub fn submit_inspection_report(
+		&self,
+		report: InspEraReport,
+	) -> Result<http::Response, http::Error> {
+		let url = format!("{}/itm/path", self.base_url);
+		let body = serde_json::to_vec(&report).expect("Inspection report to be encoded");
 		self.post(&url, body, Accept::Any)
 	}
 

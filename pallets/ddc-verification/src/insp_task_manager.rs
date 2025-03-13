@@ -554,6 +554,39 @@ impl Hashable for InspPathReceipt {
 	}
 }
 
+//todo(yahortsaryk): this is temporal wrapper until DDC sync nodes start to hash the receipts
+// itself
+#[derive(
+	Debug, Clone, Encode, Decode, Deserialize, Serialize, PartialOrd, Ord, TypeInfo, Eq, PartialEq,
+)]
+pub struct HashedInspPathReceipt {
+	pub path_id: InspPathId,
+	pub hash: String,
+	pub is_verified: bool,
+	pub exception: Option<InspPathException>,
+}
+
+impl HashedInspPathReceipt {
+	pub fn new(path_receipt: InspPathReceipt, receipt_hash: String) -> Self {
+		Self {
+			path_id: path_receipt.path_id,
+			hash: receipt_hash,
+			is_verified: path_receipt.is_verified,
+			exception: path_receipt.exception,
+		}
+	}
+}
+
+#[derive(
+	Debug, Clone, Encode, Decode, Deserialize, Serialize, PartialOrd, Ord, TypeInfo, Eq, PartialEq,
+)]
+pub struct InspEraReport {
+	pub era: EhdEra,
+	pub inspector: String,
+	pub signature: String,
+	pub path_receipts: Vec<HashedInspPathReceipt>,
+}
+
 #[derive(
 	Debug, Clone, Deserialize, Serialize, Encode, Decode, PartialOrd, Ord, TypeInfo, Eq, PartialEq,
 )]
@@ -1203,12 +1236,12 @@ impl<T: Config> InspTaskManager<T> {
 		&mut self,
 		cluster_id: &ClusterId,
 		current_block: &BlockNumberFor<T>,
-	) -> Result<Vec<InspEraResult>, InspectionError> {
+	) -> Result<Vec<InspPathsReceipts>, InspectionError> {
 		let mut results = vec![];
 		if let Some(cluster_eras) = &self.tasks_pool.remove(cluster_id) {
 			for (era, era_tasks) in cluster_eras {
 				let era_receipts = process_tasks::<T>(cluster_id, era_tasks)?;
-				results.push(InspEraResult { era: *era, receipts: era_receipts });
+				results.push(InspPathsReceipts { era: *era, receipts: era_receipts });
 				// todo(yahortsaryk): we might want to save inspection receipt before clearing the
 				// cached backup tasks to ensure the inspection result is not lost in case inspector
 				// fails to submit it to DDC in the next step
@@ -1222,7 +1255,7 @@ impl<T: Config> InspTaskManager<T> {
 #[derive(
 	Debug, Clone, Encode, Decode, Deserialize, Serialize, PartialOrd, Ord, TypeInfo, Eq, PartialEq,
 )]
-pub(crate) struct InspEraResult {
+pub(crate) struct InspPathsReceipts {
 	pub(crate) era: EhdEra,
 	pub(crate) receipts: Vec<InspPathReceipt>,
 }
