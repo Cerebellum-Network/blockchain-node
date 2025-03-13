@@ -6,16 +6,21 @@ use sp_io::crypto::ed25519_verify;
 use super::*;
 
 pub trait Verify {
-	fn verify(&self) -> bool;
+	type VerificationResult;
+	fn verify(&self) -> Self::VerificationResult;
 }
 
 impl Verify for proto::ActivityAcknowledgment {
+	type VerificationResult = bool;
+
 	fn verify(&self) -> bool {
 		verify_signature(self.clone())
 	}
 }
 
 impl Verify for proto::ActivityRecord {
+	type VerificationResult = bool;
+
 	fn verify(&self) -> bool {
 		if !verify_signature(self.clone()) {
 			return false;
@@ -38,6 +43,8 @@ impl Verify for proto::ActivityRecord {
 }
 
 impl Verify for proto::ActivityRequest {
+	type VerificationResult = bool;
+
 	fn verify(&self) -> bool {
 		if !verify_signature(self.clone()) {
 			return false;
@@ -55,6 +62,8 @@ impl Verify for proto::ActivityRequest {
 }
 
 impl Verify for proto::ActivityFulfillment {
+	type VerificationResult = bool;
+
 	fn verify(&self) -> bool {
 		if let Some(request) = &self.request {
 			if !request.verify() {
@@ -73,6 +82,8 @@ impl Verify for proto::ActivityFulfillment {
 }
 
 impl Verify for proto::challenge_response::proof::Record {
+	type VerificationResult = bool;
+
 	fn verify(&self) -> bool {
 		if let Some(record) = &self.record {
 			return record.verify();
@@ -82,25 +93,37 @@ impl Verify for proto::challenge_response::proof::Record {
 	}
 }
 
+pub struct LeavesChallengeResult {
+	pub is_verified: bool,
+	pub unverified_leaves: Vec<u64>,
+}
+
 impl Verify for proto::ChallengeResponse {
-	fn verify(&self) -> bool {
+	type VerificationResult = LeavesChallengeResult;
+
+	fn verify(&self) -> LeavesChallengeResult {
+		let mut unverified_leaves = vec![];
+
 		for proof in self.proofs.iter() {
 			for leaf in proof.leaves.iter() {
 				if let Some(proto::challenge_response::proof::leaf::LeafVariant::Record(record)) =
 					&leaf.leaf_variant
 				{
 					if !record.verify() {
-						return false;
+						unverified_leaves.push(proof.merkle_tree_node_id.into());
 					}
 				}
 			}
 		}
 
-		true
+		let is_verified = unverified_leaves.is_empty();
+		LeavesChallengeResult { is_verified, unverified_leaves }
 	}
 }
 
 impl<T: Serialize> Verify for json::SignedJsonResponse<T> {
+	type VerificationResult = bool;
+
 	fn verify(&self) -> bool {
 		let sig = match Signature::try_from(self.signature.as_slice()) {
 			Ok(s) => s,
@@ -219,6 +242,8 @@ mod tests {
 			include_bytes!("./test_data/challenge_response.pb").as_slice();
 		let challenge_response = proto::ChallengeResponse::decode(challenge_response_serialized)
 			.expect("protobuf fixture decoding failed, fix the test data");
-		assert!(challenge_response.verify());
+
+		let result = challenge_response.verify();
+		assert!(result.is_verified);
 	}
 }

@@ -1017,14 +1017,15 @@ fn process_tasks<T: Config>(
 					leaves_ids.clone(),
 				) {
 					// todo(yahortsaryk): fix AR signatures
-					let is_verified = challenge_res.verify();
-					let exception: Option<_> = if is_verified {
+					let result = challenge_res.verify();
+
+					let exception: Option<_> = if result.is_verified {
 						None
 					} else {
-						// todo(yahortsaryk): add only bad leaves to exceptions
-						Some(InspPathException::NodeAR { bad_leaves_ids: leaves_ids.clone() })
+						Some(InspPathException::NodeAR { bad_leaves_ids: result.unverified_leaves })
 					};
-					let path_receipt = InspPathReceipt { path_id, is_verified, exception };
+					let path_receipt =
+						InspPathReceipt { path_id, is_verified: result.is_verified, exception };
 					results.push(path_receipt);
 				}
 			},
@@ -1095,14 +1096,16 @@ fn process_tasks<T: Config>(
 						subagg_leaves_to_inspect.clone(),
 					) {
 						// todo(yahortsaryk): fix AR signatures
-						let is_verified = challenge_res.verify();
-						let exception: Option<_> = if is_verified {
+						let result = challenge_res.verify();
+						let exception: Option<_> = if result.is_verified {
 							None
 						} else {
-							// todo(yahortsaryk): add only bad leaves to exceptions
-							Some(InspPathException::BucketAR { bad_leaves_pos: leaves_pos.clone() })
+							Some(InspPathException::BucketAR {
+								bad_leaves_pos: result.unverified_leaves,
+							})
 						};
-						let path_receipt = InspPathReceipt { path_id, is_verified, exception };
+						let path_receipt =
+							InspPathReceipt { path_id, is_verified: result.is_verified, exception };
 						results.push(path_receipt);
 					}
 				}

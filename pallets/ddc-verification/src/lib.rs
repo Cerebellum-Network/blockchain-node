@@ -1306,6 +1306,8 @@ pub mod pallet {
 				let signed_report =
 					Self::get_signed_inspection_report(era_receipts, verification_account)?;
 
+				log::info!("Signed Era Report {:?}", signed_report);
+
 				let _ = submit_inspection_report::<T>(cluster_id, signed_report);
 				// .map_err(|_| OCWError::Unexpected)?;
 
@@ -3925,15 +3927,15 @@ pub mod pallet {
 				challenge_response
 			);
 
-			let are_signatures_valid = signature::Verify::verify(&challenge_response);
+			let result = signature::Verify::verify(&challenge_response);
 
-			if are_signatures_valid {
+			if result.is_verified {
 				log::info!("👍 Valid challenge signatures for aggregate key: {:?}", aggregate_key,);
 			} else {
 				log::info!("👎 Invalid challenge signatures at aggregate key: {:?}", aggregate_key,);
 			}
 
-			Ok(are_signatures_valid)
+			Ok(result.is_verified)
 		}
 
 		/// Fetch Challenge node aggregate or bucket sub-aggregate.
