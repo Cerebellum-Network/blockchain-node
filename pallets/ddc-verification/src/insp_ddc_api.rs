@@ -560,12 +560,12 @@ pub(crate) fn get_assignments_table<T: Config>(
 
 	// todo(yahortsaryk): move the below pattern matching to `InspTaskAssigner`
 	match table_response.variant {
-		Some(ItmTableVariant::Table(ItmTable { base64: json_str, inspector_key: _key })) => {
-			let response: InspAssignmentsTable<T::AccountId> = serde_json::from_str(&json_str)
+		Some(ItmTableVariant::Table(ItmTable { json_string, inspector_key: _key })) => {
+			let response: InspAssignmentsTable<T::AccountId> = serde_json::from_str(&json_string)
 				.map_err(|e| {
-					log::error!("ItmTable deserialization error {:?}", e);
-					http::Error::Unknown
-				})?;
+				log::error!("ItmTable deserialization error {:?}", e);
+				http::Error::Unknown
+			})?;
 			return Ok(response);
 		},
 		_ => {

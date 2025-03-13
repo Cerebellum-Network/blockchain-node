@@ -5,7 +5,7 @@ package inspection;
 // GET  /itm/table  -- returns the table or era "not found" / "not yet processed" / "waiting" / "building".
 
 message ItmTable {
-  string base64 = 1;
+  string json_string = 1;
   string inspector_key = 2;
 }
 

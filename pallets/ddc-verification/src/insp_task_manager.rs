@@ -47,11 +47,6 @@ pub(crate) const INSPECTION_REDUNDANCY_FACTOR: u8 = 3;
 pub(crate) const INSPECTION_BACKUPS_COUNT: u8 = 2;
 pub(crate) const INSP_BACKUP_BLOCK_DELAY: u32 = 5;
 
-pub(crate) const ALICE: [u8; 32] = [
-	0xd4, 0x35, 0x93, 0xc7, 0x15, 0xfd, 0xd3, 0x1c, 0x61, 0x14, 0x1a, 0xbd, 0x04, 0xa9, 0x9f, 0xd6,
-	0x82, 0x2c, 0x85, 0x58, 0x85, 0x4c, 0xcd, 0xe3, 0x9a, 0x56, 0x84, 0xe7, 0xa5, 0x6d, 0xa2, 0x7d,
-];
-
 type GCollectorNodeKey = NodePubKey;
 type CollectorNodeKey = NodePubKey;
 type DataNodeKey = NodePubKey;
@@ -294,6 +289,7 @@ impl<T: Config> InspTaskAssigner<T> {
 
 				if *inspector_account == holder_account {
 					let assignmens_table = &self.build_assignments_table(cluster_id, &era, salt)?;
+					log::info!("ITM table is built !");
 					// todo(yahortsaryk): improve performance by avoiding cloning of the whole
 					// table
 
