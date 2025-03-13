@@ -1284,9 +1284,10 @@ pub mod pallet {
 					)
 					.ok_or(OCWError::FailedToSignInspectionReceipt)?;
 
-				let inspector_pub_key: Vec<u8> = verification_account.public.encode();
-				let inspector = format!("0x{}", hex::encode(&inspector_pub_key[1..])); // skip byte of SCALE encoding
-				let signature = format!("0x{}", hex::encode(signature.encode()));
+				let inspector_pub_bytes: Vec<u8> = verification_account.public.encode();
+				let inspector_pub = format!("0x{}", hex::encode(&inspector_pub_bytes[1..])); // skip byte of SCALE encoding
+				let signature_bytes: Vec<u8> = signature.encode();
+				let signature = format!("0x{}", hex::encode(&signature_bytes[1..])); // skip byte of SCALE encoding
 
 				// todo(yahortsaryk): retrieve ID of canonical EHD from inspection result
 				let ehd_id = EHDId(*cluster_id, g_collector.clone().0, era_receipts.era);
@@ -1296,7 +1297,7 @@ pub mod pallet {
 					cluster_id,
 					ehd_id.clone(),
 					&era_receipts,
-					inspector,
+					inspector_pub,
 					signature,
 				)?;
 
@@ -1317,7 +1318,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// todo(yahortsaryk): !!! REMOVE this method after deprecating `InspectionReceipt` format
 		#[allow(clippy::map_entry)]
 		fn get_signed_inspection_report(
 			era_receipts: InspPathsReceipts,
@@ -1326,7 +1326,7 @@ pub mod pallet {
 			let hashed_receipts: Vec<HashedInspPathReceipt> =
 				era_receipts.receipts.into_iter().fold(vec![], |mut receipts, receipt| {
 					let hash = receipt.hash::<T>();
-					let hash_hex = format!("0x{}", hex::encode(&hash[1..])); // skip byte of SCALE encoding
+					let hash_hex = hex::encode(&hash);
 					let hashed_receipt =
 						HashedInspPathReceipt::new(receipt, format!("0x{}", hash_hex));
 					receipts.push(hashed_receipt);
@@ -1345,13 +1345,14 @@ pub mod pallet {
 			)
 			.ok_or(OCWError::FailedToSignInspectionReceipt)?;
 
-			let inspector_pub_key: Vec<u8> = verification_account.public.encode();
-			let inspector = format!("0x{}", hex::encode(&inspector_pub_key[1..])); // skip byte of SCALE encoding
-			let signature = format!("0x{}", hex::encode(signature.encode()));
+			let inspector_pub_bytes: Vec<u8> = verification_account.public.encode();
+			let inspector_pub = format!("0x{}", hex::encode(&inspector_pub_bytes[1..])); // skip byte of SCALE encoding
+			let signature_bytes: Vec<u8> = signature.encode();
+			let signature = format!("0x{}", hex::encode(&signature_bytes[1..])); // skip byte of SCALE encoding
 
 			let report = InspEraReport {
 				era: era_receipts.era,
-				inspector,
+				inspector: inspector_pub,
 				signature,
 				path_receipts: hashed_receipts,
 			};
