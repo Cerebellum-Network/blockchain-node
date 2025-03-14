@@ -142,3 +142,22 @@ message EndpointItmPostPath {
     PostPathError error = 2;
   }
 }
+
+message GetPathSuccess {
+  uint32 eid = 1;  // Era ID.
+  bool era_finalized = 2;
+  uint32 paths_total = 3;
+  uint32 paths_irf_satisfied = 4;
+  // todo(yahortsaryk): add fields for path details
+}
+
+message GetPathError {
+  string error_message = 101;
+}
+
+message EndpointItmGetPath {
+  oneof variant {
+    GetPathSuccess success = 1;
+    GetPathError error = 2;
+  }
+}

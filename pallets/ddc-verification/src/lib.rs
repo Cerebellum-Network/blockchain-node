@@ -85,9 +85,9 @@ mod insp_task_manager;
 use insp_ddc_api::{
 	fetch_bucket_challenge_response, fetch_inspection_receipts, fetch_node_challenge_response,
 	fetch_processed_era, get_assignments_table, get_collectors_nodes, get_ehd_root,
-	get_g_collectors_nodes, send_inspection_receipt, submit_inspection_report,
-	BUCKETS_AGGREGATES_FETCH_BATCH_SIZE, MAX_RETRIES_COUNT, NODES_AGGREGATES_FETCH_BATCH_SIZE,
-	RESPONSE_TIMEOUT,
+	get_g_collectors_nodes, get_inspection_report, send_inspection_receipt,
+	submit_inspection_report, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE, MAX_RETRIES_COUNT,
+	NODES_AGGREGATES_FETCH_BATCH_SIZE, RESPONSE_TIMEOUT,
 };
 use insp_task_manager::{
 	store_and_fetch_nonce, HashedInspPathReceipt, InspEraReport, InspPath, InspPathException,
@@ -2689,7 +2689,8 @@ pub mod pallet {
 				Ok(last_paid_era_for_cluster) => {
 					if let Some(inspected_ehds) = fetch_last_inspected_ehds(cluster_id) {
 						for inspected_ehd in inspected_ehds.clone().into_iter().sorted() {
-							if inspected_ehd.2 > last_paid_era_for_cluster {
+							let era = inspected_ehd.2;
+							if era > last_paid_era_for_cluster {
 								let ehd_root =
 									get_ehd_root::<T>(cluster_id, inspected_ehd.clone()).ok()?;
 
@@ -2698,18 +2699,30 @@ pub mod pallet {
 									continue;
 								}
 
-								let receipts_by_inspector = fetch_inspection_receipts::<T>(
-									cluster_id,
-									inspected_ehd.clone(),
-								)
-								.map_err(|e| vec![e])
-								.ok()?;
+								let era_report_response =
+									get_inspection_report::<T>(cluster_id, era);
 
-								let inspectors_quorum = T::ValidatorsQuorum::get();
-								let threshold = inspectors_quorum * <ValidatorSet<T>>::get().len();
+								log::info!(
+									"GOT INSPECTION REPORT RESPONSE {:?}",
+									era_report_response
+								);
 
-								if threshold <= receipts_by_inspector.len() {
-									return Some(inspected_ehd);
+								if let Ok(era_report) = era_report_response {
+									match era_report.variant {
+										Some(proto::endpoint_itm_get_path::Variant::Success(
+											proto::GetPathSuccess {
+												eid,
+												paths_total,
+												paths_irf_satisfied,
+												era_finalized,
+											},
+										)) =>
+											if era_finalized {
+												return Some(inspected_ehd);
+											},
+
+										_ => {},
+									}
 								}
 							}
 						}
