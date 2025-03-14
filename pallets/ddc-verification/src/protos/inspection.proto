@@ -39,7 +39,6 @@ message EndpointItmTable {
     ItmTableWaiting table_waiting = 6;
     ItmTableBuilding table_building = 7;
   }
-  optional string debug = 99;
 }
 
 // POST /itm/lease  -- claims the requestor is the Inspector node that will submit the ITM table, in time.
@@ -124,5 +123,22 @@ message EndpointItmSubmit {
     ItmSubmitEraDataCorrupted era_data_corrupted = 5;
     ItmSubmitWrongInspector wrong_inspector = 6;
     ItmSubmitFailedToUpdate failed_to_update = 7;
+  }
+}
+
+message PostPathSuccess {
+  string inspector = 1;
+  uint32 eid = 2;  // Era ID.
+  bool era_finalized = 3;
+}
+
+message PostPathError {
+  string error_message = 101;
+}
+
+message EndpointItmPostPath {
+  oneof variant {
+    PostPathSuccess success = 1;
+    PostPathError error = 2;
   }
 }

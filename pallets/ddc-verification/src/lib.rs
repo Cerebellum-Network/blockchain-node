@@ -1309,8 +1309,13 @@ pub mod pallet {
 
 				log::info!("Signed Era Report {:?}", signed_report);
 
-				let _ = submit_inspection_report::<T>(cluster_id, signed_report);
-				// .map_err(|_| OCWError::Unexpected)?;
+				let result = submit_inspection_report::<T>(cluster_id, signed_report)
+					.map_err(|_| OCWError::Unexpected)?;
+
+				log::info!(
+					"################# submit_inspection_report #################\n{:?}",
+					result
+				);
 
 				store_last_inspected_ehd(cluster_id, ehd_id);
 			}

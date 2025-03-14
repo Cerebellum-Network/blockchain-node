@@ -514,7 +514,7 @@ pub(crate) fn send_inspection_receipt<T: Config>(
 pub(crate) fn submit_inspection_report<T: Config>(
 	cluster_id: &ClusterId,
 	report: InspEraReport,
-) -> Result<(), http::Error> {
+) -> Result<proto::EndpointItmPostPath, http::Error> {
 	// todo(yahortsaryk): replace with Sync node
 	let g_collectors =
 		get_g_collectors_nodes(cluster_id).map_err(|_: Error<T>| http::Error::Unknown)?;
@@ -532,9 +532,7 @@ pub(crate) fn submit_inspection_report<T: Config>(
 		false, // no response signature verification for now
 	);
 
-	client.submit_inspection_report(report.clone())?;
-
-	Ok(())
+	client.submit_inspection_report(report.clone())
 }
 
 pub(crate) fn submit_assignments_table<T: Config>(

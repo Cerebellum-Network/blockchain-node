@@ -252,10 +252,16 @@ impl<'a> AggregatorClient<'a> {
 	pub fn submit_inspection_report(
 		&self,
 		report: InspEraReport,
-	) -> Result<http::Response, http::Error> {
+	) -> Result<proto::EndpointItmPostPath, http::Error> {
 		let url = format!("{}/itm/path", self.base_url);
-		let body = serde_json::to_vec(&report).expect("Inspection report to be encoded");
-		self.post(&url, body, Accept::Any)
+		let body = serde_json::to_string(&report).expect("Assignments table to be encoded");
+
+		let response = self.post(&url, body.into(), Accept::Protobuf)?;
+		let body = response.body().collect::<Vec<u8>>();
+
+		let proto_response = proto::EndpointItmPostPath::decode(body.as_slice())
+			.map_err(|_| http::Error::Unknown)?;
+		Ok(proto_response)
 	}
 
 	pub fn fetch_grouped_inspection_receipts(
