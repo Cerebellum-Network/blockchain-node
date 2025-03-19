@@ -539,6 +539,7 @@ impl Hashable for InspPath {
 pub struct InspPathReceipt {
 	pub path_id: InspPathId,
 	pub is_verified: bool,
+	// ommitted if IsVerified=true
 	pub exception: Option<InspPathException>,
 }
 
@@ -561,18 +562,18 @@ impl Hashable for InspPathReceipt {
 )]
 pub struct HashedInspPathReceipt {
 	pub path_id: InspPathId,
-	pub hash: String,
 	pub is_verified: bool,
 	pub exception: Option<InspPathException>,
+	pub hash: String, // BlakeTwo256(PathId, IsVerified, ExceptionJson)
 }
 
 impl HashedInspPathReceipt {
 	pub fn new(path_receipt: InspPathReceipt, receipt_hash: String) -> Self {
 		Self {
 			path_id: path_receipt.path_id,
-			hash: receipt_hash,
 			is_verified: path_receipt.is_verified,
 			exception: path_receipt.exception,
+			hash: receipt_hash,
 		}
 	}
 }
