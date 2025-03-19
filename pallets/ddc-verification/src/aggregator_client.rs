@@ -240,17 +240,18 @@ impl<'a> AggregatorClient<'a> {
 			.join(",")
 	}
 
-	pub fn get_inspection_report(
+	pub fn get_inspection_state(
 		&self,
 		era: EhdEra,
-	) -> Result<proto::EndpointItmGetPath, http::Error> {
-		let url = format!("{}/itm/path?eraId={}", self.base_url, era);
+	) -> Result<proto::EndpointItmGetPathsState, http::Error> {
+		let url = format!("{}/itm/state?eraId={}", self.base_url, era);
 		let response = self.get(&url, Accept::Protobuf)?;
 		let body = response.body().collect::<Vec<u8>>();
-		let proto_response = proto::EndpointItmGetPath::decode(body.as_slice()).map_err(|e| {
-			log::info!("Decode ITM Path Report protobuf error: {:?}", e);
-			http::Error::Unknown
-		})?;
+		let proto_response =
+			proto::EndpointItmGetPathsState::decode(body.as_slice()).map_err(|e| {
+				log::info!("Decode ITM Path Report protobuf error: {:?}", e);
+				http::Error::Unknown
+			})?;
 
 		Ok(proto_response)
 	}

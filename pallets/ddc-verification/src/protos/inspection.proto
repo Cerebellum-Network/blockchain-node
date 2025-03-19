@@ -143,21 +143,31 @@ message EndpointItmPostPath {
   }
 }
 
-message GetPathSuccess {
-  uint32 eid = 1;  // Era ID.
+message GetPathsStateSuccess {
+  uint32 eid = 1;
   bool era_finalized = 2;
   uint32 paths_total = 3;
   uint32 paths_irf_satisfied = 4;
-  // todo(yahortsaryk): add fields for path details
+  repeated PathInspReceipts paths_receipts = 5;
 }
 
-message GetPathError {
+message GetPathsStateError {
   string error_message = 101;
 }
 
-message EndpointItmGetPath {
+message EndpointItmGetPathsState {
   oneof variant {
-    GetPathSuccess success = 1;
-    GetPathError error = 2;
+    GetPathsStateSuccess success = 1;
+    GetPathsStateError error = 2;
   }
+}
+
+message PathInspReceipts {
+  string path_id = 1;
+  repeated PathInspReceipt receipts = 2;
+}
+
+message PathInspReceipt {
+  string hash = 1;
+  uint32 counter = 2;
 }

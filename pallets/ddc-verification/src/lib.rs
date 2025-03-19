@@ -87,7 +87,7 @@ mod insp_task_manager;
 use insp_ddc_api::{
 	fetch_bucket_challenge_response, fetch_inspection_exceptions, fetch_node_challenge_response,
 	fetch_processed_era, get_assignments_table, get_collectors_nodes, get_ehd_root,
-	get_g_collectors_nodes, get_inspection_report, submit_inspection_report,
+	get_g_collectors_nodes, get_inspection_state, submit_inspection_report,
 	BUCKETS_AGGREGATES_FETCH_BATCH_SIZE, MAX_RETRIES_COUNT, NODES_AGGREGATES_FETCH_BATCH_SIZE,
 	RESPONSE_TIMEOUT,
 };
@@ -1278,12 +1278,10 @@ pub mod pallet {
 				let signed_report =
 					Self::build_signed_inspection_report(era_receipts, verification_account)?;
 
-				log::info!("Signed Era Report {:?}", signed_report);
-				let result =
-					submit_inspection_report::<T>(cluster_id, signed_report).map_err(|e| {
-						log::error!("Could not submit inspection report {:?}", e);
-						OCWError::Unexpected
-					})?;
+				let _ = submit_inspection_report::<T>(cluster_id, signed_report).map_err(|e| {
+					log::error!("Could not submit inspection report {:?}", e);
+					OCWError::Unexpected
+				})?;
 
 				store_last_inspected_ehd(cluster_id, ehd_id);
 			}
@@ -1620,15 +1618,19 @@ pub mod pallet {
 			let fees = T::ClusterProtocol::get_fees_params(cluster_id)
 				.map_err(|_| OCWError::FailedToFetchProtocolParams { cluster_id: *cluster_id })?;
 
-			let inspection_exceptions = fetch_inspection_exceptions::<T>(cluster_id, era.id)?;
+			let insp_exceptions = fetch_inspection_exceptions::<T>(cluster_id, era.id)?;
 			let assignments_table =
 				get_assignments_table::<T>(cluster_id, era.id).map_err(|_| OCWError::Unexpected)?;
+
+			let insp_paths_receipts = Self::get_irf_paths_receipts(cluster_id, &era.id)
+				.map_err(|_| OCWError::Unexpected)?;
 
 			let customers_usage_cutoff = if !T::DISABLE_PAYOUTS_CUTOFF {
 				Self::calculate_customers_usage_cutoff(
 					cluster_id,
-					&inspection_exceptions,
+					&insp_exceptions,
 					&assignments_table,
+					&insp_paths_receipts,
 				)?
 			} else {
 				Default::default()
@@ -1648,8 +1650,9 @@ pub mod pallet {
 			let providers_usage_cutoff = if !T::DISABLE_PAYOUTS_CUTOFF {
 				Self::calculate_providers_usage_cutoff(
 					cluster_id,
-					&inspection_exceptions,
+					&insp_exceptions,
 					&assignments_table,
+					&insp_paths_receipts,
 				)?
 			} else {
 				Default::default()
@@ -1691,6 +1694,49 @@ pub mod pallet {
 			);
 
 			Ok(())
+		}
+
+		fn get_irf_paths_receipts(
+			cluster_id: &ClusterId,
+			era: &EhdEra,
+		) -> Result<BTreeMap<String, String>, ()> {
+			let paths_state = get_inspection_state::<T>(cluster_id, *era);
+
+			if let Ok(era_report) = paths_state {
+				match era_report.variant {
+					Some(proto::endpoint_itm_get_paths_state::Variant::Success(
+						proto::GetPathsStateSuccess { paths_receipts, .. },
+					)) => {
+						let paths_receipts_counters: BTreeMap<String, BTreeMap<String, u32>> =
+							paths_receipts.iter().fold(BTreeMap::new(), |mut acc, path_receipt| {
+								let path_hashes = acc
+									.entry(path_receipt.path_id.clone())
+									.or_insert_with(BTreeMap::new);
+
+								for receipt in &path_receipt.receipts {
+									path_hashes.insert(receipt.hash.clone(), receipt.counter);
+								}
+								acc
+							});
+
+						let irf_receipts: BTreeMap<String, String> = paths_receipts_counters
+							.iter()
+							.filter_map(|(path_id, hash_map)| {
+								hash_map
+									.iter()
+									.max_by_key(|&(_, counter)| counter) // select hash with the highest number of votes that should be
+									// equal to IRF
+									.map(|(hash, _)| (path_id.clone(), hash.clone()))
+							})
+							.collect();
+
+						return Ok(irf_receipts);
+					},
+					_ => {},
+				}
+			}
+
+			Err(())
 		}
 
 		fn fetch_ehd_payable_usage_or_retry(
@@ -2531,27 +2577,20 @@ pub mod pallet {
 								}
 
 								let era_report_response =
-									get_inspection_report::<T>(cluster_id, era);
-
-								log::info!(
-									"GOT INSPECTION REPORT RESPONSE {:?}",
-									era_report_response
-								);
+									get_inspection_state::<T>(cluster_id, era);
 
 								if let Ok(era_report) = era_report_response {
 									match era_report.variant {
-										Some(proto::endpoint_itm_get_path::Variant::Success(
-											proto::GetPathSuccess {
-												eid,
-												paths_total,
-												paths_irf_satisfied,
-												era_finalized,
-											},
-										)) =>
+										Some(
+											proto::endpoint_itm_get_paths_state::Variant::Success(
+												proto::GetPathsStateSuccess {
+													era_finalized, ..
+												},
+											),
+										) =>
 											if era_finalized {
 												return Some(inspected_ehd);
 											},
-
 										_ => {},
 									}
 								}
@@ -2833,6 +2872,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			exceptions_by_paths: &BTreeMap<String, BTreeMap<String, InspPathException>>,
 			table: &InspAssignmentsTable<T::AccountId>,
+			receipts: &BTreeMap<String, String>,
 		) -> Result<BTreeMap<T::AccountId, BucketUsage>, OCWError> {
 			let mut buckets_usage_cutoff: BTreeMap<(TcaEra, BucketId, NodePubKey), BucketUsage> =
 				BTreeMap::new();
@@ -2840,110 +2880,112 @@ pub mod pallet {
 			let mut customers_usage_cutoff: BTreeMap<T::AccountId, BucketUsage> = BTreeMap::new();
 
 			for (path_id, exception_variants) in exceptions_by_paths {
+				let receipt_hash = receipts.get(path_id).ok_or(OCWError::Unexpected)?;
+				let exception = exception_variants
+					.iter()
+					.find(|(hash, _)| receipt_hash == *hash)
+					.map(|(_, exception)| exception)
+					.ok_or(OCWError::Unexpected)?;
+
 				let path_id =
 					try_hex_from_string(path_id.clone()).map_err(|_| OCWError::Unexpected)?;
 
-				// todo(yahortsaryk): select the exception depending on quorum counter on the hash
-				if let Some((_hash, exception)) = exception_variants.first_key_value() {
-					let path = table.paths.get(&path_id).ok_or(OCWError::Unexpected)?;
-					match path {
-						InspPath::BucketAR { bucket: bucket_id, tca_id, collectors, .. } => {
-							match exception {
-								InspPathException::BucketAR { bad_leaves_pos } => {
-									let collector =
-										collectors.first().cloned().ok_or(OCWError::Unexpected)?;
+				let path = table.paths.get(&path_id).ok_or(OCWError::Unexpected)?;
+				match path {
+					InspPath::BucketAR { bucket: bucket_id, tca_id, collectors, .. } => {
+						match exception {
+							InspPathException::BucketAR { bad_leaves_pos } => {
+								let collector =
+									collectors.first().cloned().ok_or(OCWError::Unexpected)?;
 
-									// todo(yahortaryk): add endpoint to fetch only 1 bucket
-									// aggregate
-									let bucket_aggregate = fetch_bucket_aggregates::<T>(
-										cluster_id,
-										*tca_id,
-										collector.clone(),
-									)
-									.map_err(|_| OCWError::Unexpected)?
-									.into_iter()
-									.find(|aggr| aggr.bucket_id == *bucket_id)
-									.map(|mut aggr| {
-										aggr.sub_aggregates
-											.sort_by_key(|subagg| subagg.NodeID.clone());
-										aggr
-									})
-									.unwrap();
+								// todo(yahortaryk): add endpoint to fetch only 1 bucket
+								// aggregate
+								let bucket_aggregate = fetch_bucket_aggregates::<T>(
+									cluster_id,
+									*tca_id,
+									collector.clone(),
+								)
+								.map_err(|_| OCWError::Unexpected)?
+								.into_iter()
+								.find(|aggr| aggr.bucket_id == *bucket_id)
+								.map(|mut aggr| {
+									aggr.sub_aggregates.sort_by_key(|subagg| subagg.NodeID.clone());
+									aggr
+								})
+								.unwrap();
 
-									let mut total_subaggs_leaf_count: u64 = 0;
+								let mut total_subaggs_leaf_count: u64 = 0;
 
-									for (j, sub_aggregate) in
-										bucket_aggregate.sub_aggregates.iter().enumerate()
-									{
-										let subagg_leaves_count = sub_aggregate
-											.number_of_puts
-											.saturating_add(sub_aggregate.number_of_gets);
+								for (j, sub_aggregate) in
+									bucket_aggregate.sub_aggregates.iter().enumerate()
+								{
+									let subagg_leaves_count = sub_aggregate
+										.number_of_puts
+										.saturating_add(sub_aggregate.number_of_gets);
 
-										for i in 0..subagg_leaves_count {
-											let leaf_pos = if j == 0 {
-												i as u64
-											} else {
-												i as u64 + total_subaggs_leaf_count
-											};
+									for i in 0..subagg_leaves_count {
+										let leaf_pos = if j == 0 {
+											i as u64
+										} else {
+											i as u64 + total_subaggs_leaf_count
+										};
 
-											if bad_leaves_pos.contains(&leaf_pos) {
-												let node_key = NodePubKey::try_from(
-													sub_aggregate.NodeID.clone(),
-												)
-												.map_err(|_| OCWError::Unexpected)?;
+										if bad_leaves_pos.contains(&leaf_pos) {
+											let node_key =
+												NodePubKey::try_from(sub_aggregate.NodeID.clone())
+													.map_err(|_| OCWError::Unexpected)?;
 
-												// todo(yahortsaryk): in case the request fails due
-												// to collector unavailability, re-try with the next
-												// one
-												let tca_usage = Self::get_tcaa_bucket_usage(
-													cluster_id,
-													collector.clone(),
-													*tca_id,
-													node_key.clone(),
-													*bucket_id,
-												)?;
+											// todo(yahortsaryk): in case the request fails due
+											// to collector unavailability, re-try with the next
+											// one
+											let tca_usage = Self::get_tcaa_bucket_usage(
+												cluster_id,
+												collector.clone(),
+												*tca_id,
+												node_key.clone(),
+												*bucket_id,
+											)?;
 
-												buckets_usage_cutoff.insert(
-													(*tca_id, *bucket_id, node_key.clone()),
-													tca_usage,
-												);
+											buckets_usage_cutoff.insert(
+												(*tca_id, *bucket_id, node_key.clone()),
+												tca_usage,
+											);
 
-												if !buckets_to_customers.contains_key(bucket_id) {
-													let customer_id =
-														T::BucketManager::get_bucket_owner_id(
-															*bucket_id,
-														)
-														.map_err(|_| {
-															OCWError::FailedToFetchCustomerId {
-																bucket_id: *bucket_id,
-															}
-														})?;
+											if !buckets_to_customers.contains_key(bucket_id) {
+												let customer_id =
+													T::BucketManager::get_bucket_owner_id(
+														*bucket_id,
+													)
+													.map_err(|_| {
+														OCWError::FailedToFetchCustomerId {
+															bucket_id: *bucket_id,
+														}
+													})?;
 
-													buckets_to_customers
-														.insert(*bucket_id, customer_id);
-												}
-												// once we have identified at least 1 bad leaf in
-												// bucket sub-aggregate, the aggregate should be
-												// discarded for this TCA
-												break;
+												buckets_to_customers
+													.insert(*bucket_id, customer_id);
 											}
+											// once we have identified at least 1 bad leaf in
+											// bucket sub-aggregate, the aggregate should be
+											// discarded for this TCA
+											break;
 										}
-
-										total_subaggs_leaf_count =
-											total_subaggs_leaf_count + subagg_leaves_count as u64;
 									}
-								},
-								_ => {
-									// this should never be the case
-									continue;
-								},
-							}
-						},
-						_ => {
-							// we're handling only buckets activity
-							continue;
-						},
-					}
+
+									total_subaggs_leaf_count =
+										total_subaggs_leaf_count + subagg_leaves_count as u64;
+								}
+							},
+							_ => {
+								// this should never be the case
+								continue;
+							},
+						}
+					},
+					_ => {
+						// we're handling only buckets activity
+						continue;
+					},
 				}
 			}
 
@@ -2973,61 +3015,66 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 			exceptions_by_paths: &BTreeMap<String, BTreeMap<String, InspPathException>>,
 			table: &InspAssignmentsTable<T::AccountId>,
+			receipts: &BTreeMap<String, String>,
 		) -> Result<BTreeMap<T::AccountId, NodeUsage>, OCWError> {
 			let mut nodes_usage_cutoff: BTreeMap<(TcaEra, NodePubKey), NodeUsage> = BTreeMap::new();
 			let mut nodes_to_providers: BTreeMap<NodePubKey, T::AccountId> = BTreeMap::new();
 			let mut providers_usage_cutoff: BTreeMap<T::AccountId, NodeUsage> = BTreeMap::new();
 
 			for (path_id, exception_variants) in exceptions_by_paths {
+				let receipt_hash = receipts.get(path_id).ok_or(OCWError::Unexpected)?;
+				let exception = exception_variants
+					.iter()
+					.find(|(hash, _)| receipt_hash == *hash)
+					.map(|(_, exception)| exception)
+					.ok_or(OCWError::Unexpected)?;
+
 				let path_id =
 					try_hex_from_string(path_id.clone()).map_err(|_| OCWError::Unexpected)?;
 
-				// todo(yahortsaryk): select the exception depending on quorum counter on the hash
-				if let Some((_hash, exception)) = exception_variants.first_key_value() {
-					let path = table.paths.get(&path_id).ok_or(OCWError::Unexpected)?;
-					match path {
-						InspPath::NodeAR { node, tca_id, collectors, .. } => {
-							match exception {
-								InspPathException::NodeAR { .. } => {
-									let collector =
-										collectors.first().cloned().ok_or(OCWError::Unexpected)?;
+				let path = table.paths.get(&path_id).ok_or(OCWError::Unexpected)?;
+				match path {
+					InspPath::NodeAR { node, tca_id, collectors, .. } => {
+						match exception {
+							InspPathException::NodeAR { .. } => {
+								let collector =
+									collectors.first().cloned().ok_or(OCWError::Unexpected)?;
 
-									let node_key = NodePubKey::try_from(node.clone())
-										.map_err(|_| OCWError::Unexpected)?;
+								let node_key = NodePubKey::try_from(node.clone())
+									.map_err(|_| OCWError::Unexpected)?;
 
-									// todo(yahortsaryk): in case the request fails due to collector
-									// unavailability, re-try with the next one
-									let tca_usage = Self::get_tcaa_node_usage(
-										cluster_id,
-										collector.clone(),
-										*tca_id,
-										node_key.clone(),
-									)?;
+								// todo(yahortsaryk): in case the request fails due to collector
+								// unavailability, re-try with the next one
+								let tca_usage = Self::get_tcaa_node_usage(
+									cluster_id,
+									collector.clone(),
+									*tca_id,
+									node_key.clone(),
+								)?;
 
-									nodes_usage_cutoff
-										.insert((*tca_id, node_key.clone()), tca_usage);
+								nodes_usage_cutoff.insert((*tca_id, node_key.clone()), tca_usage);
 
-									if !nodes_to_providers.contains_key(&node_key) {
-										let provider_id =
-											T::NodeManager::get_node_provider_id(&node_key)
-												.map_err(|_| OCWError::FailedToFetchProviderId {
-													node_key: node_key.clone(),
-												})?;
+								if !nodes_to_providers.contains_key(&node_key) {
+									let provider_id = T::NodeManager::get_node_provider_id(
+										&node_key,
+									)
+									.map_err(|_| OCWError::FailedToFetchProviderId {
+										node_key: node_key.clone(),
+									})?;
 
-										nodes_to_providers.insert(node_key.clone(), provider_id);
-									}
-								},
-								_ => {
-									// this should never be the case
-									continue;
-								},
-							}
-						},
-						_ => {
-							// we're handling only buckets activity
-							continue;
-						},
-					}
+									nodes_to_providers.insert(node_key.clone(), provider_id);
+								}
+							},
+							_ => {
+								// this should never be the case
+								continue;
+							},
+						}
+					},
+					_ => {
+						// we're handling only nodes activity
+						continue;
+					},
 				}
 			}
 

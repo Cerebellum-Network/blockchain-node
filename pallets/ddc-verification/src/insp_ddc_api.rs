@@ -477,10 +477,10 @@ pub(crate) fn fetch_inspection_exceptions<T: Config>(
 		.map_err(|_| OCWError::FailedToFetchPathsExceptions)
 }
 
-pub(crate) fn get_inspection_report<T: Config>(
+pub(crate) fn get_inspection_state<T: Config>(
 	cluster_id: &ClusterId,
 	era: EhdEra,
-) -> Result<proto::EndpointItmGetPath, http::Error> {
+) -> Result<proto::EndpointItmGetPathsState, http::Error> {
 	// todo(yahortsaryk): replace with Sync node
 	let g_collectors =
 		get_g_collectors_nodes(cluster_id).map_err(|_: Error<T>| http::Error::Unknown)?;
@@ -498,7 +498,7 @@ pub(crate) fn get_inspection_report<T: Config>(
 		false, // no response signature verification for now
 	);
 
-	client.get_inspection_report(era)
+	client.get_inspection_state(era)
 }
 
 pub(crate) fn submit_inspection_report<T: Config>(
