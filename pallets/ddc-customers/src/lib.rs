@@ -840,7 +840,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn deposit_extra(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
+		fn v	(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
 			let max_additional = amount.saturated_into::<BalanceOf<T>>();
 			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
 

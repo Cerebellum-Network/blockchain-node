@@ -124,11 +124,11 @@ impl crate::pallet::Config for Test {
 
 pub struct MockClusterValidator;
 impl<T: Config> ClusterValidator<T> for MockClusterValidator {
-	fn set_last_paid_era(_cluster_id: &ClusterId, _era_id: DdcEra) -> Result<(), DispatchError> {
+	fn set_last_paid_era(_cluster_id: &ClusterId, _era_id: EhdEra) -> Result<(), DispatchError> {
 		unimplemented!()
 	}
 
-	fn get_last_paid_era(_cluster_id: &ClusterId) -> Result<DdcEra, DispatchError> {
+	fn get_last_paid_era(_cluster_id: &ClusterId) -> Result<EhdEra, DispatchError> {
 		Ok(Default::default())
 	}
 }
@@ -155,26 +155,36 @@ where
 
 	fn get_node_provider_id(pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
 		match pub_key {
-			NodePubKey::StoragePubKey(key) if key == &NODE1_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER1_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE2_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER2_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE3_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER3_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE4_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER4_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE5_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER5_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE6_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER6_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE7_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER7_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE8_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER8_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE9_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER9_KEY_32.clone().into()),
-			NodePubKey::StoragePubKey(key) if key == &NODE10_PUB_KEY_32 =>
-				Ok(NODE_PROVIDER10_KEY_32.clone().into()),
+			NodePubKey::StoragePubKey(key) if key == &NODE1_PUB_KEY_32 => {
+				Ok(NODE_PROVIDER1_KEY_32.clone().into())
+			},
+			NodePubKey::StoragePubKey(key) if key == &NODE2_PUB_KEY_32 => {
+				Ok(NODE_PROVIDER2_KEY_32.clone().into())
+			},
+			NodePubKey::StoragePubKey(key) if key == &NODE3_PUB_KEY_32 => {
+				Ok(NODE_PROVIDER3_KEY_32.clone().into())
+			},
+			NodePubKey::StoragePubKey(key) if key == &NODE4_PUB_KEY_32 => {
+				Ok(NODE_PROVIDER4_KEY_32.clone().into())
+			},
+			NodePubKey::StoragePubKey(key) if key == &NODE5_PUB_KEY_32 => {
+				Ok(NODE_PROVIDER5_KEY_32.clone().into())
+			},
+			NodePubKey::StoragePubKey(key) if key == &NODE6_PUB_KEY_32 => {
+				Ok(NODE_PROVIDER6_KEY_32.clone().into())
+			},
+			NodePubKey::StoragePubKey(key) if key == &NODE7_PUB_KEY_32 => {
+				Ok(NODE_PROVIDER7_KEY_32.clone().into())
+			},
+			NodePubKey::StoragePubKey(key) if key == &NODE8_PUB_KEY_32 => {
+				Ok(NODE_PROVIDER8_KEY_32.clone().into())
+			},
+			NodePubKey::StoragePubKey(key) if key == &NODE9_PUB_KEY_32 => {
+				Ok(NODE_PROVIDER9_KEY_32.clone().into())
+			},
+			NodePubKey::StoragePubKey(key) if key == &NODE10_PUB_KEY_32 => {
+				Ok(NODE_PROVIDER10_KEY_32.clone().into())
+			},
 
 			_ => Err(DispatchError::Other("Unexpected node pub_key")),
 		}
@@ -282,10 +292,10 @@ where
 		let account_4: T::AccountId = CUSTOMER4_KEY_32.into();
 		let account_5: T::AccountId = CUSTOMER5_KEY_32.into();
 
-		if content_owner == account_1 ||
-			content_owner == account_3 ||
-			content_owner == account_4 ||
-			content_owner == account_5
+		if content_owner == account_1
+			|| content_owner == account_3
+			|| content_owner == account_4
+			|| content_owner == account_5
 		{
 			ensure!(amount > 1_000_000, DispatchError::BadOrigin); //  any error will do
 		}
@@ -587,9 +597,9 @@ impl<T: frame_system::Config> SortedListProvider<T::AccountId> for TestValidator
 }
 
 pub fn get_fees(cluster_id: &ClusterId) -> ClusterFeesParams {
-	if *cluster_id == NO_FEE_CLUSTER_ID ||
-		*cluster_id == ONE_CLUSTER_ID ||
-		*cluster_id == CERE_CLUSTER_ID
+	if *cluster_id == NO_FEE_CLUSTER_ID
+		|| *cluster_id == ONE_CLUSTER_ID
+		|| *cluster_id == CERE_CLUSTER_ID
 	{
 		PRICING_FEES_ZERO
 	} else if *cluster_id == HIGH_FEES_CLUSTER_ID {

@@ -3,6 +3,7 @@ use ddc_primitives::{
 	StorageNodePubKey, DAC_VERIFICATION_KEY_TYPE,
 };
 use frame_support::assert_noop;
+use insp_ddc_api::{BUCKETS_AGGREGATES_FETCH_BATCH_SIZE, NODES_AGGREGATES_FETCH_BATCH_SIZE};
 use prost::Message;
 use sp_core::{
 	offchain::{
@@ -139,10 +140,7 @@ fn fetch_node_aggregates_works() {
 			method: "GET".to_string(),
 			uri: format!(
 				"http://{}:{}/activity/nodes?eraId={}&limit={}",
-				host,
-				port,
-				era_id,
-				pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE
+				host, port, era_id, NODES_AGGREGATES_FETCH_BATCH_SIZE
 			),
 			response: Some(nodes_activity_json.as_bytes().to_vec()),
 			sent: true,
@@ -233,10 +231,7 @@ fn fetch_bucket_aggregates_works() {
 			method: "GET".to_string(),
 			uri: format!(
 				"http://{}:{}/activity/buckets?eraId={}&limit={}",
-				host,
-				port,
-				era_id,
-				pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE
+				host, port, era_id, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE
 			),
 			response: Some(customers_activity_json.as_bytes().to_vec()),
 			sent: true,
@@ -1615,7 +1610,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 
 		let pending_request1 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=476817&limit={}", host1, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817&limit={}", host1, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"transferred_bytes":505,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -1623,7 +1618,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 
 		let pending_request2 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=476817&limit={}", host2, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817&limit={}", host2, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"transferred_bytes":506,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -1631,7 +1626,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 
 		let pending_request3 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=476817&limit={}", host3, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817&limit={}", host3, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa318","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]},{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa319","stored_bytes":0,"transferred_bytes":505,"number_of_puts":0,"number_of_gets":1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -1639,7 +1634,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 
 		let pending_request4 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=476817&limit={}", host4, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817&limit={}", host4, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -1647,7 +1642,7 @@ fn bucket_sub_aggregates_are_fetched_and_grouped() {
 
 		let pending_request5 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=476817&limit={}", host5, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=476817&limit={}", host5, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"bucket_id":90235,"stored_bytes":0,"transferred_bytes":38,"number_of_puts":0,"number_of_gets":1,"sub_aggregates":[{"NodeID":"0xb6186f80dce7190294665ab53860de2841383bb202c562bb8b81a624351fa320","stored_bytes":578,"transferred_bytes":578,"number_of_puts":2,"number_of_gets":0}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -1880,7 +1875,7 @@ fn node_aggregates_are_fetched_and_grouped() {
 
 		let pending_request1 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=476817&limit={}", host1, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476817&limit={}", host1, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -1888,7 +1883,7 @@ fn node_aggregates_are_fetched_and_grouped() {
 
 		let pending_request2 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=476817&limit={}", host2, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476817&limit={}", host2, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 48,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -1896,7 +1891,7 @@ fn node_aggregates_are_fetched_and_grouped() {
 
 		let pending_request3 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=476817&limit={}", host3, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476817&limit={}", host3, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -1904,7 +1899,7 @@ fn node_aggregates_are_fetched_and_grouped() {
 
 		let pending_request4 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=476817&limit={}", host4, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476817&limit={}", host4, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -1912,7 +1907,7 @@ fn node_aggregates_are_fetched_and_grouped() {
 
 		let pending_request5 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=476817&limit={}", host5, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=476817&limit={}", host5, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0xfc28d5f5bb10212077a8654f62c4f8f0b5ab985fc322a51f5a3c75943b29194b","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2539,7 +2534,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let node_pending_request1 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host1, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host1, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2547,7 +2542,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let node_pending_request2 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host2, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host2, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2555,7 +2550,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let node_pending_request3 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host3, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host3, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2563,7 +2558,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let node_pending_request4 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host4, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host4, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2571,7 +2566,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let node_pending_request5 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host5, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host5, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2579,7 +2574,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let node_pending_request6 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host6, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host6, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2587,7 +2582,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let node_pending_request7 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host7, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host7, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2595,7 +2590,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let node_pending_request8 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host8, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host8, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2603,7 +2598,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let node_pending_request9 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host9, port, pallet::NODES_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/nodes?eraId=5738616&limit={}", host9, port, NODES_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"node_id": "0x48594f1fd4f05135914c42b03e63b61f6a3e4c537ccee3dbac555ef6df371b7e","stored_bytes": 675613289,"transferred_bytes": 1097091579,"number_of_puts": 889,"number_of_gets": 97},{"node_id": "0x9ef98ad9c3626ba725e78d76cfcfc4b4d07e84f0388465bc7eb992e3e117234a","stored_bytes": 0, "transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2611,7 +2606,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let bucket_pending_request1 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host1, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host1, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"bucket_id": 90235,"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2619,7 +2614,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let bucket_pending_request2 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host2, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host2, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2627,7 +2622,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let bucket_pending_request3 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host3, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host3, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2635,7 +2630,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let bucket_pending_request4 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host4, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host4, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2643,7 +2638,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let bucket_pending_request5 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host5, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host5, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2651,7 +2646,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let bucket_pending_request6 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host6, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host6, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2659,7 +2654,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let bucket_pending_request7 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host7, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host7, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"bucket_id": 90235,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2667,7 +2662,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let bucket_pending_request8 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host8, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host8, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"bucket_id": 90235,"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()
@@ -2675,7 +2670,7 @@ fn test_single_ocw_pallet_integration() {
 
 		let bucket_pending_request9 = PendingRequest {
 			method: "GET".to_string(),
-			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host9, port, pallet::BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
+			uri: format!("http://{}:{}/activity/buckets?eraId=5738616&limit={}", host9, port, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE),
 			response: Some(br#"[{"bucket_id": 90235,"stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1,"sub_aggregates": [{"NodeID": "0xbe26b2458fb0c9df4ec26ec5ba083051402b2a3b9d4a7fe6106fe9f8b5efde2c","stored_bytes": 0,"transferred_bytes": 38,"number_of_puts": 0,"number_of_gets": 1}]}]"#.to_vec()),
 			sent: true,
 			..Default::default()

@@ -465,7 +465,7 @@ pub mod v3 {
 		pub reserve_id: AccountId,
 		pub props: ClusterProps<AccountId>,
 		pub status: ClusterStatus,
-		pub last_paid_era: DdcEra, // new field
+		pub last_paid_era: EhdEra, // new field
 	}
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]

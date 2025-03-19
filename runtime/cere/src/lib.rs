@@ -161,7 +161,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73000,
+	spec_version: 73004,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -204,7 +204,7 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
 /// We allow `Normal` extrinsics to fill up the block up to 75%, the rest can be used
 /// by  Operational  extrinsics.
-const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
+const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(85);
 /// We allow for 2 seconds of compute with a 6 second average block time, with maximum proof size.
 const MAXIMUM_BLOCK_WEIGHT: Weight =
 	Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2), u64::MAX);
@@ -213,7 +213,7 @@ parameter_types! {
 	pub const BlockHashCount: BlockNumber = 2400;
 	pub const Version: RuntimeVersion = VERSION;
 	pub RuntimeBlockLength: BlockLength =
-		BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
+		BlockLength::max_with_normal_ratio(8 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
 	pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
 		.base_block(BlockExecutionWeight::get())
 		.for_class(DispatchClass::all(), |weights| {
@@ -1606,10 +1606,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 // );
 
 // Migrations for DAC and Payouts on QANET
-type Migrations = (
-	pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
-	pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
-);
+type Migrations = pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>;
 
 pub mod migrations {
 	use super::*;
@@ -1634,6 +1631,7 @@ pub mod migrations {
 		pallet_ddc_payouts::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
 		pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
+		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
 	);
 }
 

@@ -1,3 +1,4 @@
+use frame_system::pallet_prelude::BlockNumberFor;
 use scale_info::prelude::string::String;
 use sp_runtime::DispatchResult;
 use sp_std::boxed::Box;
@@ -73,7 +74,11 @@ pub trait PayoutProcessor<T: frame_system::Config> {
 		era_id: PaymentEra,
 	) -> Result<Option<BatchIndex>, PayoutError>;
 
-	fn create_payout_receipt(vault: T::AccountId, params: PayoutReceiptParams);
+	fn create_payout_receipt(
+		vault: T::AccountId,
+		params: PayoutReceiptParams,
+		finalized_at: Option<BlockNumberFor<T>>,
+	);
 
 	fn create_payout_fingerprint(params: PayoutFingerprintParams<T::AccountId>) -> Fingerprint;
 }
