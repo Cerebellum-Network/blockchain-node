@@ -2,7 +2,7 @@
 #![allow(clippy::from_over_into)]
 
 use ddc_primitives::{AccountId32Hex, AggregatorInfo, BucketId, TcaEra};
-use insp_task_manager::{InspAssignmentsTable, InspEraReport};
+use insp_task_manager::{InspAssignmentsTable, InspEraReport, InspPathException};
 use prost::Message;
 use scale_info::prelude::{collections::BTreeMap, string::String, vec::Vec};
 use serde_with::{base64::Base64, serde_as, TryFromInto};
@@ -240,15 +240,6 @@ impl<'a> AggregatorClient<'a> {
 			.join(",")
 	}
 
-	pub fn send_inspection_receipt(
-		&self,
-		receipt: json::InspectionReceipt,
-	) -> Result<http::Response, http::Error> {
-		let url = format!("{}/activity/inspection-receipts", self.base_url);
-		let body = serde_json::to_vec(&receipt).expect("Inspection receipt to be encoded");
-		self.post(&url, body, Accept::Any)
-	}
-
 	pub fn get_inspection_report(
 		&self,
 		era: EhdEra,
@@ -279,14 +270,13 @@ impl<'a> AggregatorClient<'a> {
 		Ok(proto_response)
 	}
 
-	pub fn fetch_grouped_inspection_receipts(
+	pub fn fetch_inspection_exceptions(
 		&self,
-		ehd_id: EHDId,
-	) -> Result<BTreeMap<String, json::GroupedInspectionReceipt>, http::Error> {
-		let ehd_param: String = ehd_id.into();
-		let mut url = format!("{}/activity/inspection-receipts?ehdId={}", self.base_url, ehd_param);
+		era: EhdEra,
+	) -> Result<BTreeMap<String, BTreeMap<String, InspPathException>>, http::Error> {
+		let mut url = format!("{}/itm/exception?eraId={}", self.base_url, era);
 
-		fetch_and_parse!(self, url, BTreeMap<String, json::GroupedInspectionReceipt>, BTreeMap<String, json::GroupedInspectionReceipt>)
+		fetch_and_parse!(self, url, BTreeMap<String, BTreeMap<String, InspPathException>>, BTreeMap<String, BTreeMap<String, InspPathException>>)
 	}
 
 	pub fn check_grouping_collector(&self) -> Result<json::IsGCollectorResponse, http::Error> {
@@ -892,34 +882,6 @@ pub(crate) mod json {
 		}
 	}
 
-	#[derive(Debug, Serialize, Deserialize, Clone, Hash, Encode, Decode)]
-	pub struct InspectionReceipt {
-		#[serde(rename = "ehdId")]
-		pub ehd_id: String,
-		pub inspector: String,
-		pub signature: String,
-		#[serde(rename = "nodesInspection")]
-		pub nodes_inspection: InspectionResult,
-		#[serde(rename = "bucketsInspection")]
-		pub buckets_inspection: InspectionResult,
-	}
-
-	#[derive(Debug, Serialize, Deserialize, Clone, Hash, Encode, Decode)]
-	pub struct InspectionResult {
-		#[serde(rename = "unverifiedBranches")]
-		pub unverified_branches: Vec<InspectedTreePart>,
-		#[serde(rename = "verifiedBranches")]
-		pub verified_branches: Vec<InspectedTreePart>,
-	}
-
-	#[derive(Debug, Serialize, Deserialize, Clone, Hash, Encode, Decode)]
-	pub struct InspectedTreePart {
-		pub collector: String,
-		pub aggregate: AggregateKey,
-		pub nodes: Vec<u64>,
-		pub leafs: BTreeMap<u32, Vec<u64>>,
-	}
-
 	#[derive(
 		Debug, Serialize, Deserialize, Clone, Hash, Encode, Decode, Ord, PartialOrd, PartialEq, Eq,
 	)]
@@ -930,20 +892,6 @@ pub(crate) mod json {
 		pub era_end: Option<TcaEra>,
 		pub time_start: Option<i64>,
 		pub time_end: Option<i64>,
-	}
-
-	#[derive(Debug, Serialize, Deserialize, Clone, Hash, Encode, Decode)]
-	pub struct GroupedInspectionReceipt {
-		#[serde(rename = "ehdId")]
-		pub ehd_id: String,
-		pub inspector: String,
-		pub signature: String,
-		#[serde(rename = "nodesInspection")]
-		pub nodes_inspection: InspectionResult, /* todo(yahortsaryk): remove optional
-		                                         * after fix in DDC api */
-		#[serde(rename = "bucketsInspection")]
-		pub buckets_inspection: InspectionResult, /* todo(yahortsaryk): remove optional
-		                                           * after fix in DDC api */
 	}
 
 	#[derive(Debug, Serialize, Deserialize, Clone, Hash, Encode, Decode)]

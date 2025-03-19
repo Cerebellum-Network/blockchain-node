@@ -658,3 +658,22 @@ pub struct NodeStorageUsage<AccountId> {
 	pub provider_id: AccountId,
 	pub stored_bytes: i64,
 }
+
+pub fn try_hex_from_string(value: String) -> Result<H256, &'static str> {
+	if !value.starts_with("0x") || value.len() != 66 {
+		return Err("Input must be a 32-byte hex string started with '0x'");
+	}
+
+	let hex_str = &value[2..]; // skip '0x'
+	let hex_bytes = match hex::decode(hex_str) {
+		Ok(bytes) => bytes,
+		Err(_) => return Err("Input must be a valid hex string"),
+	};
+	if hex_bytes.len() != 32 {
+		return Err("Input must be 32 chars in length");
+	}
+	let mut hash = [0u8; 32];
+	hash.copy_from_slice(&hex_bytes[..32]);
+
+	Ok(H256::from(hash))
+}

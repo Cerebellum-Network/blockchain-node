@@ -11,7 +11,7 @@ use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 use crate::{
 	aggregator_client,
-	insp_task_manager::{InspAssignmentsTable, InspEraReport},
+	insp_task_manager::{InspAssignmentsTable, InspEraReport, InspPathException},
 	proto, Config, Error, OCWError,
 };
 
@@ -452,52 +452,18 @@ pub(crate) fn fetch_processed_era<T: Config>(
 	Ok(era.clone())
 }
 
-pub(crate) fn fetch_inspection_receipts<T: Config>(
+pub(crate) fn fetch_inspection_exceptions<T: Config>(
 	cluster_id: &ClusterId,
-	ehd_id: EHDId,
-) -> Result<BTreeMap<String, aggregator_client::json::GroupedInspectionReceipt>, OCWError> {
-	// todo(yahortsaryk): infer the G-collector deterministically
+	era: EhdEra,
+) -> Result<BTreeMap<String, BTreeMap<String, InspPathException>>, OCWError> {
+	// todo(yahortsaryk): replace with Sync node
 	let g_collector = get_g_collectors_nodes(cluster_id)
 		.map_err(|_: Error<T>| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?
 		.first()
 		.cloned()
 		.ok_or(OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?;
 
-	if let Ok(host) = str::from_utf8(&g_collector.1.host) {
-		let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
-		let client = aggregator_client::AggregatorClient::new(
-			&base_url,
-			Duration::from_millis(RESPONSE_TIMEOUT),
-			MAX_RETRIES_COUNT,
-			false, // no response signature verification for now
-		);
-
-		if let Ok(res) = client.fetch_grouped_inspection_receipts(ehd_id) {
-			return Ok(res);
-		}
-	}
-
-	Err(OCWError::FailedToFetchInspectionReceipt)
-}
-
-/// Send Inspection Receipt.
-///
-/// Parameters:
-/// - `cluster_id`: cluster id of a cluster
-/// - `receipt`: inspection receipt
-pub(crate) fn send_inspection_receipt<T: Config>(
-	cluster_id: &ClusterId,
-	receipt: aggregator_client::json::InspectionReceipt,
-) -> Result<(), http::Error> {
-	// todo(yahortsaryk): replace with Sync node
-	let g_collectors =
-		get_g_collectors_nodes(cluster_id).map_err(|_: Error<T>| http::Error::Unknown)?;
-	let Some(g_collector) = g_collectors.first() else {
-		log::warn!("⚠️ No Grouping Collector found in cluster {:?}", cluster_id);
-		return Err(http::Error::Unknown);
-	};
-
-	let host = str::from_utf8(&g_collector.1.host).map_err(|_| http::Error::Unknown)?;
+	let host = str::from_utf8(&g_collector.1.host).map_err(|_| OCWError::Unexpected)?;
 	let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
 	let client = aggregator_client::AggregatorClient::new(
 		&base_url,
@@ -506,9 +472,9 @@ pub(crate) fn send_inspection_receipt<T: Config>(
 		false, // no response signature verification for now
 	);
 
-	client.send_inspection_receipt(receipt.clone())?;
-
-	Ok(())
+	client
+		.fetch_inspection_exceptions(era)
+		.map_err(|_| OCWError::FailedToFetchPathsExceptions)
 }
 
 pub(crate) fn get_inspection_report<T: Config>(

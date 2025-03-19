@@ -200,8 +200,6 @@ fn verify_signature(mut signed: impl Clone + Message + Signed) -> bool {
 	};
 	match algorithm {
 		proto::signature::Algorithm::Ed25519 => {
-			log::info!("Verifying Ed25519 signature");
-
 			let sig = match SignatureEd25519::try_from(signature.value.as_slice()) {
 				Ok(s) => s,
 				Err(e) => {
@@ -222,13 +220,10 @@ fn verify_signature(mut signed: impl Clone + Message + Signed) -> bool {
 			};
 
 			let is_verified = ed25519_verify(&sig, payload.as_slice(), &pub_key);
-			log::info!("Signature ed25519 is verified: {:?}", is_verified);
 
 			is_verified
 		},
 		proto::signature::Algorithm::Sr25519 => {
-			log::info!("Verifying Sr25519 signature");
-
 			let sig = match SignatureSr25519::try_from(signature.value.as_slice()) {
 				Ok(s) => s,
 				Err(e) => {
@@ -249,7 +244,6 @@ fn verify_signature(mut signed: impl Clone + Message + Signed) -> bool {
 			};
 
 			let is_verified = sr25519_verify(&sig, payload.as_slice(), &pub_key);
-			log::info!("Signature sr25519 is verified: {:?}", is_verified);
 
 			is_verified
 		},

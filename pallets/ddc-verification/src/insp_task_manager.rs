@@ -61,7 +61,6 @@ where
 	cluster_id: ClusterId,
 	pub(crate) era: EhdEra,
 	irf: u8,
-	// todo(yahortsaryk): make private after deprecating `InspectionReceipt`
 	pub(crate) paths: BTreeMap<InspPathId, InspPath>,
 	assignments: BTreeMap<InspPathId, Vec<AccountId>>,
 }
