@@ -30,7 +30,7 @@ use aggregator::insp_ddc_api::{
 };
 use crate::{
 	aggregate_tree, aggregator_client, fetch_last_inspected_ehds,
-	pallet::{Error, ValidatorSet},
+	pallet::ValidatorSet,
 	signature::Verify,
 	Config, Hashable,
 };

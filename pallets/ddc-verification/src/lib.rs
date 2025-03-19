@@ -23,8 +23,8 @@ use ddc_primitives::{
 	},
 	BatchIndex, BucketStorageUsage, BucketUsage, ClusterFeesParams, ClusterId,
 	ClusterPricingParams, ClusterStatus, CustomerCharge as CustomerCosts, EHDId, EhdEra,
-	MMRProof, NodeParams, NodePubKey, NodeStorageUsage, NodeUsage, PHDId, PayableUsageHash,
-	PaymentEra, PayoutFingerprintParams, PayoutReceiptParams, PayoutState,
+	MMRProof, NodePubKey, NodeStorageUsage, NodeUsage, PayableUsageHash,
+	PayoutFingerprintParams, PayoutReceiptParams, PayoutState,
 	ProviderReward as ProviderProfits, StorageNodeParams, StorageNodePubKey, AVG_SECONDS_MONTH,
 	AggregateKey
 };
@@ -79,7 +79,7 @@ mod tests;
 
 pub mod migrations;
 
-use aggregator::{aggregator as aggregator_client, signature, signature::Verify, proto};
+use aggregator::{aggregator as aggregator_client, signature, proto};
 use aggregator::insp_ddc_api::{
 	fetch_bucket_challenge_response, fetch_inspection_receipts, fetch_node_challenge_response,
 	fetch_processed_era, get_collectors_nodes, get_ehd_root, get_g_collectors_nodes,
@@ -93,9 +93,6 @@ use insp_task_manager::{
 
 pub mod aggregate_tree;
 mod insp_task_manager;
-use aggregate_tree::{
-	calculate_sample_size_fin, calculate_sample_size_inf, get_leaves_ids, D_099, P_001,
-};
 
 pub(crate) type BalanceOf<T> =
 <<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -118,9 +115,6 @@ pub mod pallet {
 
 	const _SUCCESS_CODE: u16 = 200;
 	const _BUF_SIZE: usize = 128;
-	const RESPONSE_TIMEOUT: u64 = 20000;
-	pub const MAX_RETRIES_COUNT: u32 = 3;
-	pub const NODES_AGGREGATES_FETCH_BATCH_SIZE: usize = 10;
 	pub const OCW_MUTEX_ID: &[u8] = b"inspection_lock";
 
 	/// This is overall amount that the bucket owner will be charged for his buckets within a
@@ -920,10 +914,11 @@ pub mod pallet {
 				fingerprint,
 				..Default::default()
 			};
-
+			let finalized_at = <frame_system::Pallet<T>>::block_number();
 			T::PayoutProcessor::create_payout_receipt(
 				T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap(),
 				payout_receipt_params,
+				Some(finalized_at)
 			);
 
 			T::ClusterValidator::set_last_paid_era(&cluster_id, era_id)?;
@@ -1083,7 +1078,7 @@ pub mod pallet {
 
 				send_inspection_receipt(cluster_id, g_collector, receipt).map_err(|e| {
 					OCWError::ApiError
-				})?;
+				})?; //TODO: Errors have to be fixed
 				store_last_inspected_ehd(cluster_id, ehd_id);
 			}
 
@@ -1256,21 +1251,6 @@ pub mod pallet {
 					log::error!("❌ Failed to send 'emit_consensus_errors' call");
 				};
 			}
-		}
-
-		pub(crate) fn select_random_leaves(
-			sample_size: u64,
-			leaves_ids: Vec<u64>,
-			nonce_key: String,
-		) -> Vec<u64> {
-			let nonce = Self::store_and_fetch_nonce(nonce_key);
-			let mut small_rng = SmallRng::seed_from_u64(nonce);
-
-			leaves_ids
-				.choose_multiple(&mut small_rng, sample_size.try_into().unwrap())
-				.cloned()
-				.sorted()
-				.collect::<Vec<u64>>()
 		}
 
 		pub(crate) fn build_and_store_ehd_payable_usage(
@@ -1718,25 +1698,6 @@ pub mod pallet {
 			}
 		}
 
-		pub(crate) fn store_and_fetch_nonce(node_id: String) -> u64 {
-			let key = format!("offchain::activities::nonce::{:?}", node_id).into_bytes();
-			let encoded_nonce =
-				local_storage_get(StorageKind::PERSISTENT, &key).unwrap_or_else(|| 0.encode());
-
-			let nonce_data = match Decode::decode(&mut &encoded_nonce[..]) {
-				Ok(nonce) => nonce,
-				Err(err) => {
-					log::error!("Decoding error while fetching nonce: {:?}", err);
-					0
-				},
-			};
-
-			let new_nonce = nonce_data + 1;
-
-			local_storage_set(StorageKind::PERSISTENT, &key, &new_nonce.encode());
-			nonce_data
-		}
-
 		/// Converts a vector of hashable batches into their corresponding Merkle roots.
 		///
 		/// This function takes a vector of hashable batches, where each batch is a vector of
@@ -1995,20 +1956,6 @@ pub mod pallet {
 		fn from(era: aggregator_client::json::AggregationEraResponse) -> Self {
 			Self { id: era.id, start: era.start, end: era.end }
 		}
-	}
-
-	#[derive(Clone)]
-	pub struct CustomerBatch {
-		pub(crate) batch_index: BatchIndex,
-		pub(crate) payers: Vec<CustomerCharge>,
-		pub(crate) batch_proof: MMRProof,
-	}
-
-	#[derive(Clone)]
-	pub struct ProviderBatch {
-		pub(crate) batch_index: BatchIndex,
-		pub(crate) payees: Vec<ProviderReward>,
-		pub(crate) batch_proof: MMRProof,
 	}
 
 	impl Hashable for CustomerCharge {
@@ -3575,26 +3522,6 @@ pub mod pallet {
 			}
 
 			Ok(buckets_aggregates)
-		}
-
-		/// Fetch customer usage.
-		///
-		/// Parameters:
-		/// - `node_params`: Requesting DDC node
-		pub(crate) fn check_grouping_collector(
-			node_params: &StorageNodeParams,
-		) -> Result<bool, http::Error> {
-			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let base_url = format!("http://{}:{}", host, node_params.http_port);
-			let client = aggregator_client::AggregatorClient::new(
-				&base_url,
-				Duration::from_millis(RESPONSE_TIMEOUT),
-				MAX_RETRIES_COUNT,
-				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
-			);
-
-			let response = client.check_grouping_collector()?;
-			Ok(response.is_g_collector)
 		}
 	}
 

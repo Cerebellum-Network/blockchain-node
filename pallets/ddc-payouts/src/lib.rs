@@ -89,17 +89,16 @@ pub use sp_io::{
 	},
 };
 use sp_application_crypto::RuntimeAppPublic;
-use ddc_primitives::ProviderReward;
 use ddc_primitives::DeltaUsageHash;
 use ddc_primitives::{
 	ocw_mutex::OcwMutex,
 	traits::{
-		BucketManager, ClusterManager, ClusterProtocol, ClusterValidator, CustomerVisitor,
-		NodeManager, PayoutProcessor, StorageUsageProvider, ValidatorVisitor,
+		BucketManager, ClusterManager, ClusterProtocol, ClusterValidator,
+		NodeManager, PayoutProcessor
 	},
-	BatchIndex, BucketStorageUsage, BucketUsage, ClusterFeesParams, ClusterId,
+	BatchIndex, BucketUsage, ClusterFeesParams, ClusterId,
 	ClusterPricingParams, ClusterStatus, EhdEra, EHDId,
-	MMRProof, NodeParams, NodePubKey, NodeStorageUsage, NodeUsage, PHDId, PayableUsageHash,
+	MMRProof, NodeParams, NodePubKey, NodeUsage, PayableUsageHash,
 	PaymentEra, PayoutFingerprintParams, PayoutReceiptParams, PayoutState,
 	ProviderReward as ProviderProfits, StorageNodeParams, StorageNodePubKey, AVG_SECONDS_MONTH,
 };
@@ -776,7 +775,7 @@ pub mod pallet {
 			fingerprint: Fingerprint,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			//ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::begin_payout(cluster_id, era_id, fingerprint)?;
 			Ok(())
 		}
@@ -1644,75 +1643,6 @@ pub mod pallet {
 			}
 		}
 
-		fn fetch_inspection_receipts(
-			cluster_id: &ClusterId,
-			ehd_id: EHDId,
-		) -> Result<BTreeMap<String, aggregator_client::json::GroupedInspectionReceipt>, OCWError>
-		{
-			// todo(yahortsaryk): infer the node deterministically
-			let g_collector = Self::get_g_collectors_nodes(cluster_id)
-				.map_err(|_| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?
-				.first()
-				.cloned()
-				.ok_or(OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?;
-
-			if let Ok(host) = str::from_utf8(&g_collector.1.host) {
-				let base_url = format!("http://{}:{}", host, g_collector.1.http_port);
-				let client = aggregator_client::AggregatorClient::new(
-					&base_url,
-					Duration::from_millis(RESPONSE_TIMEOUT),
-					MAX_RETRIES_COUNT,
-					false, // no response signature verification for now
-				);
-
-				if let Ok(res) = client.fetch_grouped_inspection_receipts(ehd_id) {
-					return Ok(res);
-				}
-			}
-
-			Err(OCWError::FailedToFetchInspectionReceipt)
-		}
-
-		/// Fetch grouping collectors nodes of a cluster.
-		/// Parameters:
-		/// - `cluster_id`: Cluster id of a cluster.
-		fn get_g_collectors_nodes(
-			cluster_id: &ClusterId,
-		) -> Result<Vec<(NodePubKey, ddc_primitives::StorageNodeParams)>, Error<T>> {
-			let mut g_collectors = Vec::new();
-
-			let collectors = Self::get_collectors_nodes(cluster_id)?;
-			for (node_key, node_params) in collectors {
-				if Self::check_grouping_collector(&node_params)
-					.map_err(|_| Error::<T>::NodeRetrievalError)?
-				{
-					g_collectors.push((node_key, node_params))
-				}
-			}
-
-			Ok(g_collectors)
-		}
-
-		/// Fetch customer usage.
-		///
-		/// Parameters:
-		/// - `node_params`: Requesting DDC node
-		pub(crate) fn check_grouping_collector(
-			node_params: &StorageNodeParams,
-		) -> Result<bool, http::Error> {
-			let host = str::from_utf8(&node_params.host).map_err(|_| http::Error::Unknown)?;
-			let base_url = format!("http://{}:{}", host, node_params.http_port);
-			let client = aggregator_client::AggregatorClient::new(
-				&base_url,
-				Duration::from_millis(RESPONSE_TIMEOUT),
-				MAX_RETRIES_COUNT,
-				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
-			);
-
-			let response = client.check_grouping_collector()?;
-			Ok(response.is_g_collector)
-		}
-
 		/// Fetch collectors nodes of a cluster.
 		/// Parameters:
 		/// - `cluster_id`: Cluster id of a cluster.
@@ -1733,26 +1663,6 @@ pub mod pallet {
 			}
 
 			Ok(collectors)
-		}
-
-		pub(crate) fn fetch_last_inspected_ehds(cluster_id: &ClusterId) -> Option<Vec<EHDId>> {
-			log::info!("🗄️  Trying to fetch last inspected ehds for cluster_id: {:?}", cluster_id,);
-
-			let key = Self::derive_last_inspected_ehd_key(cluster_id);
-
-			let encoded_last_inspected_ehd: Vec<u8> =
-				match local_storage_get(StorageKind::PERSISTENT, &key) {
-					Some(encoded_data) => encoded_data,
-					None => return Some(vec![]),
-				};
-
-			match Decode::decode(&mut &encoded_last_inspected_ehd[..]) {
-				Ok(last_inspected_ehd) => Some(last_inspected_ehd),
-				Err(err) => {
-					log::error!("🗄️  Error occured while decoding last inspected ehds in cluster_id: {:?} {:?}", cluster_id, err);
-					None
-				},
-			}
 		}
 
 		fn fetch_rewarding_providers_batch(
@@ -2557,54 +2467,6 @@ pub mod pallet {
 			Err(OCWError::FailedToFetchBucketChallenge)
 		}
 
-		fn fetch_processed_ehd_era_from_collector(
-			cluster_id: &ClusterId,
-			era: EhdEra,
-			g_collector: &(NodePubKey, StorageNodeParams),
-		) -> Result<aggregator_client::json::EHDEra, OCWError> {
-			let ehd_eras = Self::fetch_processed_ehd_eras_from_collector(
-				cluster_id,
-				vec![g_collector.clone()].as_slice(),
-			)?;
-
-			let era = ehd_eras
-				.iter()
-				.flat_map(|eras| eras.iter())
-				.find(|ehd| ehd.id == era)
-				.ok_or(OCWError::FailedToFetchPaymentEra)?;
-
-			Ok(era.clone())
-		}
-
-		fn fetch_processed_ehd_eras_from_collector(
-			cluster_id: &ClusterId,
-			g_collectors: &[(NodePubKey, StorageNodeParams)],
-		) -> Result<Vec<Vec<aggregator_client::json::EHDEra>>, OCWError> {
-			let mut processed_eras_by_nodes: Vec<Vec<aggregator_client::json::EHDEra>> = Vec::new();
-
-			for (collector_key, node_params) in g_collectors {
-				let processed_payment_eras = Self::fetch_processed_ehd_eras(node_params);
-				if processed_payment_eras.is_err() {
-					log::warn!(
-						"Aggregator from cluster {:?} is unavailable while fetching processed eras. Key: {:?} Host: {:?}",
-						cluster_id,
-						collector_key,
-						String::from_utf8(node_params.host.clone())
-					);
-					// Skip unavailable aggregators and continue with available ones
-					continue;
-				} else {
-					let eras =
-						processed_payment_eras.map_err(|_| OCWError::FailedToFetchPaymentEra)?;
-					if !eras.is_empty() {
-						processed_eras_by_nodes.push(eras.into_iter().collect::<Vec<_>>());
-					}
-				}
-			}
-
-			Ok(processed_eras_by_nodes)
-		}
-
 		/// Fetch processed EHD eras.
 		///
 		/// Parameters:
@@ -2625,10 +2487,6 @@ pub mod pallet {
 			let response = client.payment_eras()?;
 
 			Ok(response.into_iter().filter(|e| e.status == "PROCESSED").collect::<Vec<_>>())
-		}
-
-		pub(crate) fn derive_last_inspected_ehd_key(cluster_id: &ClusterId) -> Vec<u8> {
-			format!("offchain::inspected_ehds::v1::{:?}", cluster_id).into_bytes()
 		}
 
 		pub(crate) fn fetch_ehd_rewarding_loop_input(
@@ -2716,19 +2574,6 @@ pub mod pallet {
 			local_storage_set(StorageKind::PERSISTENT, &key, &validator);
 		}
 
-		pub(crate) fn fetch_verification_account_id() -> Result<T::AccountId, OCWError> { //FIXME: Checkout this
-			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
-
-			match local_storage_get(StorageKind::PERSISTENT, &key) {
-				Some(data) => {
-					let account_id = T::AccountId::decode(&mut &data[..])
-						.map_err(|_| OCWError::FailedToFetchVerificationKey)?;
-					Ok(account_id)
-				},
-				None => Err(OCWError::FailedToFetchVerificationKey),
-			}
-		}
-
 		pub(crate) fn collect_verification_pub_key() -> Result<Account<T>, OCWError> {
 			let session_verification_keys = <T::OffchainIdentifierId as AppCrypto<
 				T::Public,
@@ -2771,23 +2616,6 @@ pub mod pallet {
 	/* ######## Off-chain storage functions ######## */
 	pub(crate) fn derive_last_inspected_ehd_key(cluster_id: &ClusterId) -> Vec<u8> {
 		format!("offchain::inspected_ehds::v1::{:?}", cluster_id).into_bytes()
-	}
-
-	pub(crate) fn store_last_inspected_ehd(cluster_id: &ClusterId, ehd_id: EHDId) {
-		let key = derive_last_inspected_ehd_key(cluster_id);
-
-		if let Some(mut inspected_ehds) = fetch_last_inspected_ehds(cluster_id) {
-			inspected_ehds.push(ehd_id);
-
-			let encoded_ehds_ids =
-				inspected_ehds.into_iter().sorted().collect::<Vec<EHDId>>().encode();
-			local_storage_set(StorageKind::PERSISTENT, &key, &encoded_ehds_ids);
-		} else {
-			log::warn!(
-				"🗄️  Failed to retrieve last inspected ehds from offchain storage for cluster_id: {:?}",
-				cluster_id,
-			);
-		}
 	}
 
 	pub(crate) fn fetch_last_inspected_ehds(cluster_id: &ClusterId) -> Option<Vec<EHDId>> {
@@ -3275,7 +3103,6 @@ pub mod pallet {
 					total_distributed_rewards: payout_receipt.total_distributed_rewards,
 				});
 			}
-			let finalized_at = <frame_system::Pallet<T>>::block_number();
 			payout_receipt.state = PayoutState::ProvidersRewarded;
 			PayoutReceipts::<T>::insert(cluster_id, era, payout_receipt);
 
