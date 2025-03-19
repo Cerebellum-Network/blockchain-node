@@ -1309,8 +1309,11 @@ pub mod pallet {
 
 				log::info!("Signed Era Report {:?}", signed_report);
 
-				let result = submit_inspection_report::<T>(cluster_id, signed_report)
-					.map_err(|_| OCWError::Unexpected)?;
+				let result =
+					submit_inspection_report::<T>(cluster_id, signed_report).map_err(|e| {
+						log::error!("Could not submit inspection report {:?}", e);
+						OCWError::Unexpected
+					})?;
 
 				log::info!(
 					"################# submit_inspection_report #################\n{:?}",
