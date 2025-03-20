@@ -18,7 +18,8 @@ use ddc_primitives::{
 	ocw_mutex::OcwMutex,
 	traits::{
 		BucketManager, ClusterManager, ClusterProtocol, ClusterValidator, CustomerVisitor,
-		NodeManager, PayoutProcessor, StorageUsageProvider, ValidatorVisitor,
+		InspReceiptsInterceptor, NodeManager, PayoutProcessor, StorageUsageProvider,
+		ValidatorVisitor,
 	},
 	try_hex_from_string, BatchIndex, BucketStorageUsage, BucketUsage, ClusterFeesParams, ClusterId,
 	ClusterPricingParams, ClusterStatus, CustomerCharge as CustomerCosts, EHDId, EhdEra, MMRProof,
@@ -77,6 +78,7 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod demo;
 pub mod migrations;
 
 mod aggregate_tree;
@@ -232,6 +234,7 @@ pub mod pallet {
 		#[cfg(feature = "runtime-benchmarks")]
 		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
 		type BucketManager: BucketManager<Self>;
+		type InspReceiptsInterceptor: InspReceiptsInterceptor<Receipt = HashedInspPathReceipt>;
 	}
 
 	/// The event type.
@@ -1303,6 +1306,8 @@ pub mod pallet {
 					receipts.push(hashed_receipt);
 					receipts
 				});
+
+			let hashed_receipts = T::InspReceiptsInterceptor::intercept(hashed_receipts);
 
 			let sig_payload = hashed_receipts
 				.iter()
@@ -4414,5 +4419,14 @@ pub mod pallet {
 				}
 			}
 		}
+	}
+}
+
+pub struct NoReceiptsInterceptor;
+impl InspReceiptsInterceptor for NoReceiptsInterceptor {
+	type Receipt = HashedInspPathReceipt;
+
+	fn intercept(receipts: Vec<HashedInspPathReceipt>) -> Vec<HashedInspPathReceipt> {
+		receipts
 	}
 }

@@ -1177,6 +1177,11 @@ impl<T: Config> InspTaskManager<T> {
 						})
 					})
 					.collect();
+				log::info!(
+					"🛡️ {:?} backup tasks from era {:?} are added to pool",
+					backup_tasks.len(),
+					era_to_backup
+				);
 
 				self.add_inspection_tasks(cluster_id, &era_to_backup, backup_tasks);
 			}

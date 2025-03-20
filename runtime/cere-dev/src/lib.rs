@@ -1359,6 +1359,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	#[cfg(feature = "runtime-benchmarks")]
 	type ClusterCreator = DdcClusters;
 	type BucketManager = DdcCustomers;
+	type InspReceiptsInterceptor = pallet_ddc_verification::demo::v1::DemoReceiptsInterceptor;
 }
 
 #[frame_support::runtime]
