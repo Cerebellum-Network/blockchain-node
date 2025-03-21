@@ -273,7 +273,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> NodeManager<T> for Pallet<T> {
+	impl<T: Config> NodeManager<T::AccountId> for Pallet<T> {
 		fn get_cluster_id(node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
 			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
 			Ok(*node.get_cluster_id())
@@ -294,7 +294,7 @@ pub mod pallet {
 
 			match node_pub_key {
 				NodePubKey::StoragePubKey(_) => match node_props {
-					NodeProps::StorageProps(node_props) =>
+					NodeProps::StorageProps(node_props) => {
 						Ok(ddc_primitives::NodeParams::StorageParams(StorageNodeParams {
 							mode: node_props.mode,
 							host: node_props.host.into(),
@@ -303,7 +303,8 @@ pub mod pallet {
 							http_port: node_props.http_port,
 							grpc_port: node_props.grpc_port,
 							p2p_port: node_props.p2p_port,
-						})),
+						}))
+					},
 				},
 			}
 		}

@@ -173,11 +173,15 @@ pub mod pallet {
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 
-		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
+		type ClusterProtocol: ClusterProtocol<
+			Self::AccountId,
+			BlockNumberFor<Self>,
+			BalanceOf<Self>,
+		>;
 
-		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
+		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
 
-		type ClusterManager: ClusterManager<Self>;
+		type ClusterManager: ClusterManager<Self::AccountId, BlockNumberFor<Self>>;
 
 		type NodeManager: NodeManager<Self>;
 
@@ -514,8 +518,9 @@ pub mod pallet {
 						// cluster eventually, we keep its stake till the end of unbonding period.
 						if ledger.active < min_bond_size.saturated_into::<BalanceOf<T>>() {
 							match node_pub_key {
-								NodePubKey::StoragePubKey(_) =>
-									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id),
+								NodePubKey::StoragePubKey(_) => {
+									LeavingStorages::<T>::insert(ledger.stash.clone(), cluster_id)
+								},
 							};
 
 							Self::deposit_event(Event::<T>::LeaveSoon(ledger.stash.clone()));
@@ -625,7 +630,7 @@ pub mod pallet {
 			let controller = ensure_signed(origin)?;
 
 			ensure!(
-				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::cluster_exists(&cluster_id),
 				Error::<T>::NoCluster
 			);
 
@@ -817,7 +822,9 @@ pub mod pallet {
 		pub fn bond_cluster(origin: OriginFor<T>, cluster_id: ClusterId) -> DispatchResult {
 			let cluster_stash = ensure_signed(origin)?;
 			let (controller, stash) =
-				<T::ClusterProtocol as ClusterQuery<T>>::get_manager_and_reserve_id(&cluster_id)?;
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::get_manager_and_reserve_id(
+					&cluster_id,
+				)?;
 
 			ensure!(stash == cluster_stash, Error::<T>::NotStash);
 

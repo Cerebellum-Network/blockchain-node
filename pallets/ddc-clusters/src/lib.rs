@@ -750,17 +750,17 @@ pub mod pallet {
 
 			let is_empty_nodes = ClustersNodesStats::<T>::try_get(cluster_id)
 				.map(|status| {
-					status.await_validation + status.validation_succeeded + status.validation_failed ==
-						0
+					status.await_validation + status.validation_succeeded + status.validation_failed
+						== 0
 				})
 				.unwrap_or(false);
 
-			is_empty_nodes &&
-				matches!(cluster.status, ClusterStatus::Bonded | ClusterStatus::Activated)
+			is_empty_nodes
+				&& matches!(cluster.status, ClusterStatus::Bonded | ClusterStatus::Activated)
 		}
 	}
 
-	impl<T: Config> ClusterQuery<T> for Pallet<T> {
+	impl<T: Config> ClusterQuery<T::AccountId> for Pallet<T> {
 		fn cluster_exists(cluster_id: &ClusterId) -> bool {
 			Clusters::<T>::contains_key(cluster_id)
 		}
@@ -780,7 +780,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for Pallet<T>
+	impl<T: Config> ClusterProtocol<T::AccountId, BlockNumberFor<T>, BalanceOf<T>> for Pallet<T>
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
@@ -791,8 +791,9 @@ pub mod pallet {
 			let cluster_protocol_params = ClustersGovParams::<T>::try_get(cluster_id)
 				.map_err(|_| Error::<T>::ClusterProtocolParamsNotSet)?;
 			match node_type {
-				NodeType::Storage =>
-					Ok(cluster_protocol_params.storage_bond_size.saturated_into::<u128>()),
+				NodeType::Storage => {
+					Ok(cluster_protocol_params.storage_bond_size.saturated_into::<u128>())
+				},
 			}
 		}
 
@@ -885,7 +886,7 @@ pub mod pallet {
 			Self::do_end_unbond_cluster(cluster_id)
 		}
 	}
-	impl<T: Config> ClusterValidator<T> for Pallet<T> {
+	impl<T: Config> ClusterValidator for Pallet<T> {
 		fn set_last_paid_era(cluster_id: &ClusterId, era_id: EhdEra) -> Result<(), DispatchError> {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
@@ -905,7 +906,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterManager<T> for Pallet<T> {
+	impl<T: Config> ClusterManager<T::AccountId, BlockNumberFor<T>> for Pallet<T> {
 		fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
@@ -989,7 +990,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterCreator<T, BalanceOf<T>> for Pallet<T>
+	impl<T: Config> ClusterCreator<T::AccountId, BlockNumberFor<T>, BalanceOf<T>> for Pallet<T>
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
@@ -1023,12 +1024,15 @@ pub mod pallet {
 	impl<T> From<NodeProviderAuthContractError> for Error<T> {
 		fn from(error: NodeProviderAuthContractError) -> Self {
 			match error {
-				NodeProviderAuthContractError::ContractCallFailed =>
-					Error::<T>::NodeAuthContractCallFailed,
-				NodeProviderAuthContractError::ContractDeployFailed =>
-					Error::<T>::NodeAuthContractDeployFailed,
-				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
-					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful,
+				NodeProviderAuthContractError::ContractCallFailed => {
+					Error::<T>::NodeAuthContractCallFailed
+				},
+				NodeProviderAuthContractError::ContractDeployFailed => {
+					Error::<T>::NodeAuthContractDeployFailed
+				},
+				NodeProviderAuthContractError::NodeAuthorizationNotSuccessful => {
+					Error::<T>::NodeAuthNodeAuthorizationNotSuccessful
+				},
 			}
 		}
 	}

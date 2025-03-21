@@ -62,7 +62,7 @@ pub mod v1 {
 
 				for (cluster_id, _) in served_clusters.iter() {
 					if let Ok((cluster_controller, cluster_stash)) =
-						<T::ClusterProtocol as ClusterQuery<T>>::get_manager_and_reserve_id(
+						<T::ClusterProtocol as ClusterQuery<T::AccountId>>::get_manager_and_reserve_id(
 							cluster_id,
 						) {
 						let cluster_stash_balance = T::Currency::free_balance(&cluster_stash);

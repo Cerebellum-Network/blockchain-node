@@ -156,6 +156,7 @@ pub mod pallet {
 		type NodeManager: NodeManager<Self::AccountId>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
 		type ClusterProtocol: ClusterProtocol<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
+		type ValidatorVerification: ValidatorVisitor<Self>;
 		type NominatorsAndValidatorsList: SortedListProvider<Self::AccountId>;
 		type VoteScoreToU64: Convert<VoteScoreOf<Self>, u64>;
 		type ValidatorVisitor: ValidatorVisitor<Self>;
@@ -756,7 +757,7 @@ pub mod pallet {
 			payees_root: PayableUsageHash,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::commit_payout_fingerprint(
 				sender,
 				cluster_id,
@@ -775,7 +776,7 @@ pub mod pallet {
 			fingerprint: Fingerprint,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::begin_payout(cluster_id, era_id, fingerprint)?;
 			Ok(())
 		}
@@ -789,7 +790,7 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::begin_charging_customers(cluster_id, era_id, max_batch_index)
 		}
 
@@ -804,7 +805,7 @@ pub mod pallet {
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::send_charging_customers_batch(
 				cluster_id,
 				era_id,
@@ -822,7 +823,7 @@ pub mod pallet {
 			era_id: PaymentEra,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::end_charging_customers(cluster_id, era_id)
 		}
 
@@ -835,7 +836,7 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::begin_rewarding_providers(cluster_id, era_id, max_batch_index)
 		}
 
@@ -850,7 +851,7 @@ pub mod pallet {
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
+			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
 			<Self as PayoutProcessor<T>>::send_rewarding_providers_batch(
 				cluster_id,
 				era_id,
@@ -868,7 +869,7 @@ pub mod pallet {
 			era_id: PaymentEra,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::end_rewarding_providers(cluster_id, era_id)
 		}
 
@@ -880,7 +881,7 @@ pub mod pallet {
 			era_id: PaymentEra,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(Self::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
 			<Self as PayoutProcessor<T>>::end_payout(cluster_id, era_id)?;
 			T::ClusterValidator::set_last_paid_era(&cluster_id, era_id)
 		}
@@ -3254,58 +3255,6 @@ pub mod pallet {
 			PayoutFingerprints::<T>::insert(fingerprint, payout_fingerprint);
 
 			fingerprint
-		}
-	}
-
-	impl<T: Config> sp_application_crypto::BoundToRuntimeAppPublic for Pallet<T> {
-		type Public = T::AuthorityId;
-	}
-
-	impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
-		type Key = T::AuthorityId;
-
-		#[allow(clippy::multiple_bound_locations)]
-		fn on_genesis_session<'a, I: 'a>(validators: I)
-			where
-				I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
-		{
-			log::info!("🙌Adding Validator from genesis session.");
-			let validators = validators
-				.map(|(_, k)| T::AccountId::decode(&mut &k.into().encode()[..]).unwrap())
-				.collect::<Vec<_>>();
-
-			// only active validators in session - this is NOT all the validators
-			ValidatorSet::<T>::put(validators);
-		}
-
-		#[allow(clippy::multiple_bound_locations)]
-		fn on_new_session<'a, I: 'a>(_changed: bool, validators: I, _queued_authorities: I)
-			where
-				I: Iterator<Item = (&'a T::AccountId, Self::Key)>,
-		{
-			log::info!("🙌Adding Validator from new session.");
-			let validators = validators
-				.map(|(_, k)| T::AccountId::decode(&mut &k.into().encode()[..]).unwrap())
-				.collect::<Vec<_>>();
-			log::info!("🙌Total validator from new session. {:?}", validators.len());
-			ValidatorSet::<T>::put(validators);
-		}
-
-		fn on_disabled(_i: u32) {}
-	}
-
-	impl<T: Config> ValidatorVisitor<T> for Pallet<T> {
-		fn is_ocw_validator(caller: T::AccountId) -> bool {
-			if ValidatorToStashKey::<T>::contains_key(caller.clone()) {
-				<ValidatorSet<T>>::get().contains(&caller)
-			} else {
-				false
-			}
-		}
-
-		fn is_quorum_reached(quorum: Percent, members_count: usize) -> bool {
-			let threshold = quorum * <ValidatorSet<T>>::get().len();
-			threshold <= members_count
 		}
 	}
 }

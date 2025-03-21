@@ -152,8 +152,12 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type UnlockingDelay: Get<BlockNumberFor<Self>>;
-		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
-		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
+		type ClusterProtocol: ClusterProtocol<
+			Self::AccountId,
+			BlockNumberFor<Self>,
+			BalanceOf<Self>,
+		>;
+		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
 	}
 
@@ -453,8 +457,8 @@ pub mod pallet {
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
 
-			let post_info_weight = if ledger.unlocking.is_empty() &&
-				ledger.active < <T as pallet::Config>::Currency::minimum_balance()
+			let post_info_weight = if ledger.unlocking.is_empty()
+				&& ledger.active < <T as pallet::Config>::Currency::minimum_balance()
 			{
 				log::debug!("Killing owner");
 				// This account must have called `unlock_deposit()` with some value that caused the
@@ -633,7 +637,7 @@ pub mod pallet {
 			bucket_params: BucketParams,
 		) -> DispatchResult {
 			ensure!(
-				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::cluster_exists(&cluster_id),
 				Error::<T>::ClusterDoesNotExist
 			);
 
@@ -840,7 +844,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn v	(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
+		fn deposit_extra(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
 			let max_additional = amount.saturated_into::<BalanceOf<T>>();
 			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
 

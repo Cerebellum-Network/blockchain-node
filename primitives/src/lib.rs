@@ -20,7 +20,6 @@ pub mod traits;
 use sp_std::str::FromStr;
 pub mod ocw_mutex;
 
-
 parameter_types! {
 	pub MaxHostLen: u8 = 255;
 	pub MaxDomainLen: u8 = 255;
@@ -664,5 +663,5 @@ pub struct NodeStorageUsage<AccountId> {
 pub enum AggregateKey {
 	NodeAggregateKey(String),
 	BucketSubAggregateKey(BucketId, String),
-	BucketAggregateKey(BucketId)
+	BucketAggregateKey(BucketId),
 }

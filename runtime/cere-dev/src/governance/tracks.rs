@@ -219,15 +219,17 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 			}
 		} else if let Ok(custom_origin) = pallet_origins::pallet::Origin::try_from(id.clone()) {
 			match custom_origin {
-				pallet_origins::pallet::Origin::WhitelistedCaller =>
-					Ok(WHITELISTED_CALLER_TRACK_ID),
+				pallet_origins::pallet::Origin::WhitelistedCaller => {
+					Ok(WHITELISTED_CALLER_TRACK_ID)
+				},
 				// General admin
 				pallet_origins::pallet::Origin::StakingAdmin => Ok(STAKING_ADMIN_TRACK_ID),
 				pallet_origins::pallet::Origin::Treasurer => Ok(TREASURER_TRACK_ID),
 				pallet_origins::pallet::Origin::GeneralAdmin => Ok(GENERAL_ADMIN_TRACK_ID),
 				// Referendum admins
-				pallet_origins::pallet::Origin::ReferendumCanceller =>
-					Ok(REFERENDUM_CANCELER_TRACK_ID),
+				pallet_origins::pallet::Origin::ReferendumCanceller => {
+					Ok(REFERENDUM_CANCELER_TRACK_ID)
+				},
 				pallet_origins::pallet::Origin::ReferendumKiller => Ok(REFERENDUM_KILLER_TRACK_ID),
 				// Limited treasury spenders
 				pallet_origins::pallet::Origin::SmallTipper => Ok(SMALL_TIPPER_TRACK_ID),
@@ -236,10 +238,12 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 				pallet_origins::pallet::Origin::MediumSpender => Ok(MEDIUM_SPENDER_TRACK_ID),
 				pallet_origins::pallet::Origin::BigSpender => Ok(BIG_SPENDER_TRACK_ID),
 				// DDC admins
-				pallet_origins::pallet::Origin::ClusterProtocolActivator =>
-					Ok(CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID),
-				pallet_origins::pallet::Origin::ClusterProtocolUpdater =>
-					Ok(CLUSTER_PROTOCOL_UPDATER_TRACK_ID),
+				pallet_origins::pallet::Origin::ClusterProtocolActivator => {
+					Ok(CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID)
+				},
+				pallet_origins::pallet::Origin::ClusterProtocolUpdater => {
+					Ok(CLUSTER_PROTOCOL_UPDATER_TRACK_ID)
+				},
 			}
 		} else {
 			Err(())
