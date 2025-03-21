@@ -335,20 +335,8 @@ impl<T: Config> InspTaskAssigner<T> {
 		let g_collectors = get_g_collectors_nodes(cluster_id)
 			.map_err(|_: Error<T>| InspAssignmentError::NoGCollectors(*cluster_id))?;
 
-		let last_inspected_era_by_this_validator: EhdEra =
-			Self::try_get_last_inspected_ehd(cluster_id)
-				.map(|ehd| ehd.2)
-				.unwrap_or(Default::default());
-
 		let last_paid_era_for_cluster: EhdEra = T::ClusterValidator::get_last_paid_era(cluster_id)
 			.map_err(|_| InspAssignmentError::ClusterError(*cluster_id))?;
-
-		log::info!(
-				"👁️‍🗨️  The last era inspected by this inspector for cluster_id: {:?} is {:?}. The last paid era for the cluster is {:?}",
-				cluster_id,
-				last_inspected_era_by_this_validator,
-				last_paid_era_for_cluster
-			);
 
 		// we want to fetch processed eras from all available G-Collectors
 		let available_processed_ehd_eras = fetch_processed_eras::<T>(cluster_id, &g_collectors)
@@ -360,12 +348,7 @@ impl<T: Config> InspTaskAssigner<T> {
 			available_processed_ehd_eras
 				.iter()
 				.flat_map(|eras| {
-					eras.iter()
-						.filter(|&ids| {
-							ids.id > last_inspected_era_by_this_validator &&
-								ids.id > last_paid_era_for_cluster
-						})
-						.cloned()
+					eras.iter().filter(|&ids| ids.id > last_paid_era_for_cluster).cloned()
 				})
 				.sorted()
 				.collect::<Vec<aggregator_client::json::EHDEra>>();
@@ -397,30 +380,13 @@ impl<T: Config> InspTaskAssigner<T> {
 
 		let era_to_inspect =
 			processed_eras_with_quorum.iter().cloned().min_by_key(|e| e.id).map(|e| e.id);
+
 		Ok(era_to_inspect)
 	}
 
 	pub fn try_get_era_to_backup(cluster_id: &ClusterId) -> Result<EhdEra, InspAssignmentError> {
-		let last_inspected_era_by_this_validator = Self::try_get_last_inspected_ehd(cluster_id)
-			.map(|ehd| ehd.2)
-			.unwrap_or(Default::default());
-
-		let last_paid_era_for_cluster: EhdEra = T::ClusterValidator::get_last_paid_era(cluster_id)
-			.map_err(|_| InspAssignmentError::ClusterError(*cluster_id))?;
-
-		if last_paid_era_for_cluster > last_inspected_era_by_this_validator {
-			Ok(last_paid_era_for_cluster + 1)
-		} else {
-			Ok(last_inspected_era_by_this_validator)
-		}
-	}
-
-	fn try_get_last_inspected_ehd(cluster_id: &ClusterId) -> Option<EHDId> {
-		if let Some(last_inspected_ehds) = fetch_last_inspected_ehds(cluster_id) {
-			last_inspected_ehds.iter().max_by_key(|ehd| ehd.2).cloned()
-		} else {
-			None
-		}
+		let era_to_inspect = Self::try_get_era_to_inspect(cluster_id)?;
+		Ok(era_to_inspect.unwrap_or(Default::default()))
 	}
 
 	fn build_assignments_table(
@@ -554,7 +520,7 @@ impl Hashable for InspPathReceipt {
 	}
 }
 
-//todo(yahortsaryk): this is temporal wrapper until DDC sync nodes start to hash the receipts
+// todo(yahortsaryk): this is temporal wrapper until DDC sync nodes start to hash the receipts
 // itself
 #[derive(
 	Debug, Clone, Encode, Decode, Deserialize, Serialize, PartialOrd, Ord, TypeInfo, Eq, PartialEq,
@@ -1177,8 +1143,9 @@ impl<T: Config> InspTaskManager<T> {
 						})
 					})
 					.collect();
+
 				log::info!(
-					"🛡️ {:?} backup tasks from era {:?} are added to pool",
+					"🛡️🛡️🛡️ {:?} backup tasks from era {:?} are added to pool",
 					backup_tasks.len(),
 					era_to_backup
 				);

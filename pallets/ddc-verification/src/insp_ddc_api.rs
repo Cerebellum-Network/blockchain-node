@@ -393,7 +393,7 @@ pub(crate) fn fetch_processed_ehd_eras<T: Config>(
 
 	let response = client.payment_eras()?;
 
-	Ok(response.into_iter().filter(|e| e.status == "PROCESSED").collect::<Vec<_>>())
+	Ok(response.into_iter().filter(|e| e.status == "EHD_PROCESSED").collect::<Vec<_>>())
 }
 
 /// Fetch processed payment era for across all nodes.

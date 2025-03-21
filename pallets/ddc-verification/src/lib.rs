@@ -1276,8 +1276,6 @@ pub mod pallet {
 				.inspect_cluster(cluster_id, block_number)
 				.map_err(|e| OCWError::InspError { cluster_id: *cluster_id, err: e })?
 			{
-				// todo(yahortsaryk): retrieve ID of canonical EHD from inspection result
-				let ehd_id = EHDId(*cluster_id, g_collector.clone().0, era_receipts.era);
 				let signed_report =
 					Self::build_signed_inspection_report(era_receipts, verification_account)?;
 
@@ -1286,6 +1284,8 @@ pub mod pallet {
 					OCWError::Unexpected
 				})?;
 
+				// todo(yahortsaryk): retrieve ID of canonical EHD from inspection result
+				let ehd_id = EHDId(*cluster_id, g_collector.clone().0, era_receipts.era);
 				store_last_inspected_ehd(cluster_id, ehd_id);
 			}
 
