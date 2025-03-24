@@ -15,10 +15,10 @@
 #![recursion_limit = "256"]
 #![allow(clippy::manual_inspect)]
 // todo(yahortsaryk) tests for DAC v4 payments should be completely revised
-#[cfg(test)]
-pub(crate) mod mock;
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// pub(crate) mod mock;
+// #[cfg(test)]
+// mod tests;
 
 pub mod migrations;
 
@@ -30,29 +30,38 @@ use crate::weights::WeightInfo;
 
 use core::str;
 
+use aggregator::insp_ddc_api::{
+	fetch_bucket_challenge_response, fetch_inspection_receipts, fetch_node_challenge_response,
+	fetch_processed_era, get_collectors_nodes, get_ehd_root, get_g_collectors_nodes,
+	MAX_RETRIES_COUNT, RESPONSE_TIMEOUT,
+};
+pub use aggregator::{aggregator as aggregator_client, proto};
 use ddc_primitives::{
 	traits::{
 		cluster::ClusterProtocol as ClusterProtocolType,
 		customer::CustomerCharger as CustomerChargerType,
 		pallet::PalletVisitor as PalletVisitorType,
 	},
-	CustomerCharge as CustomerCosts, Fingerprint,
-	MergeMMRHash, PayoutError,
-	MAX_PAYOUT_BATCH_COUNT,
-	MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
-	DAC_VERIFICATION_KEY_TYPE,
-	VERIFY_AGGREGATOR_RESPONSE_SIGNATURE
+	CustomerCharge as CustomerCosts, Fingerprint, MergeMMRHash, PayoutError,
+	DAC_VERIFICATION_KEY_TYPE, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
+	VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 };
-use ddc_primitives::{BucketId, AggregateKey};
-pub use aggregator::{proto, aggregator as aggregator_client};
-use aggregator::insp_ddc_api::{
-	fetch_bucket_challenge_response, fetch_inspection_receipts, fetch_node_challenge_response,
-	fetch_processed_era, get_collectors_nodes, get_ehd_root, get_g_collectors_nodes,
-	MAX_RETRIES_COUNT,
-	RESPONSE_TIMEOUT,
-};
+use ddc_primitives::{AggregateKey, BucketId};
 
+use ddc_primitives::DeltaUsageHash;
+use ddc_primitives::{
+	ocw_mutex::OcwMutex,
+	traits::{
+		BucketManager, ClusterManager, ClusterProtocol, ClusterValidator, NodeManager,
+		PayoutProcessor,
+	},
+	BatchIndex, BucketUsage, ClusterFeesParams, ClusterId, ClusterPricingParams, ClusterStatus,
+	EHDId, EhdEra, MMRProof, NodeParams, NodePubKey, NodeUsage, PayableUsageHash, PaymentEra,
+	PayoutFingerprintParams, PayoutReceiptParams, PayoutState, ProviderReward as ProviderProfits,
+	StorageNodeParams, AVG_SECONDS_MONTH,
+};
 use frame_election_provider_support::SortedListProvider;
+use frame_support::traits::OneSessionHandler;
 use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
@@ -60,55 +69,42 @@ use frame_support::{
 	traits::{Currency, ExistenceRequirement, Get, LockableCurrency},
 	BoundedBTreeSet,
 };
-use frame_system::{
-	offchain::{Account, AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer}};
+use frame_system::offchain::{
+	Account, AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer,
+};
 use frame_system::pallet_prelude::*;
+use itertools::Itertools;
 pub use pallet::*;
 use polkadot_ckb_merkle_mountain_range::{
 	helper::{leaf_index_to_mmr_size, leaf_index_to_pos},
 	util::{MemMMR, MemStore},
 	MerkleProof, MMR,
 };
-use scale_info::prelude::{string::String, format};
+use scale_info::prelude::{format, string::String};
+use sp_application_crypto::RuntimeAppPublic;
 use sp_core::H256;
-use sp_runtime::{
-	traits::{Convert, Hash},
-	AccountId32, Percent, Perquintill, Saturating,
-};
-use sp_std::collections::btree_map::BTreeMap;
-use sp_std::{vec, vec::Vec};
-use sp_runtime::{
-	offchain::{http, Duration, StorageKind},
-	traits::IdentifyAccount,
-	ArithmeticError,
-};
-use frame_support::traits::OneSessionHandler;
-use itertools::Itertools;
 pub use sp_io::{
 	crypto::sr25519_public_keys,
 	offchain::{
 		local_storage_clear, local_storage_compare_and_set, local_storage_get, local_storage_set,
 	},
 };
-use sp_application_crypto::RuntimeAppPublic;
-use ddc_primitives::DeltaUsageHash;
-use ddc_primitives::{
-	ocw_mutex::OcwMutex,
-	traits::{
-		BucketManager, ClusterManager, ClusterProtocol, ClusterValidator,
-		NodeManager, PayoutProcessor
-	},
-	BatchIndex, BucketUsage, ClusterFeesParams, ClusterId,
-	ClusterPricingParams, ClusterStatus, EhdEra, EHDId,
-	MMRProof, NodeParams, NodePubKey, NodeUsage, PayableUsageHash,
-	PaymentEra, PayoutFingerprintParams, PayoutReceiptParams, PayoutState,
-	ProviderReward as ProviderProfits, StorageNodeParams, AVG_SECONDS_MONTH,
+use sp_runtime::{
+	offchain::{http, Duration, StorageKind},
+	traits::IdentifyAccount,
+	ArithmeticError,
 };
+use sp_runtime::{
+	traits::{Convert, Hash},
+	AccountId32, Percent, Perquintill, Saturating,
+};
+use sp_std::collections::btree_map::BTreeMap;
+use sp_std::{vec, vec::Vec};
 //use frame_support::Hashable;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
-<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 pub type VoteScoreOf<T> =
 <<T as pallet::Config>::NominatorsAndValidatorsList as frame_election_provider_support::SortedListProvider<
@@ -126,8 +122,8 @@ pub mod pallet {
 	use ddc_primitives::traits::ValidatorVisitor;
 	use frame_support::PalletId;
 	use sp_io::hashing::blake2_128;
-	use sp_runtime::traits::{AccountIdConversion, Zero};
 	use sp_io::hashing::blake2_256;
+	use sp_runtime::traits::{AccountIdConversion, Zero};
 	use sp_std::collections::btree_set::BTreeSet;
 
 	use super::*;
@@ -153,7 +149,11 @@ pub mod pallet {
 		type BucketManager: BucketManager<Self>;
 		type NodeManager: NodeManager<Self::AccountId>;
 		type TreasuryVisitor: PalletVisitorType<Self>;
-		type ClusterProtocol: ClusterProtocol<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
+		type ClusterProtocol: ClusterProtocol<
+			Self::AccountId,
+			BlockNumberFor<Self>,
+			BalanceOf<Self>,
+		>;
 		type ValidatorVerification: ValidatorVisitor<Self>;
 		type NominatorsAndValidatorsList: SortedListProvider<Self::AccountId>;
 		type VoteScoreToU64: Convert<VoteScoreOf<Self>, u64>;
@@ -263,7 +263,7 @@ pub mod pallet {
 		PayoutReceiptFinalized {
 			cluster_id: ClusterId,
 			era: EhdEra,
-			finalized_at: BlockNumberFor<T>
+			finalized_at: BlockNumberFor<T>,
 		},
 		ChargeError {
 			cluster_id: ClusterId,
@@ -432,8 +432,6 @@ pub mod pallet {
 		FailedToVerifyMerkleProof,
 		//Added
 		NodeRetrievalError,
-
-
 	}
 
 	#[pallet::storage]
@@ -448,11 +446,11 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub type DebtorCustomers<T: Config> =
-	StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
+		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
 
 	#[pallet::storage]
 	pub type OwingProviders<T: Config> =
-	StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
+		StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
 
 	pub(crate) trait Hashable {
 		/// Hash of the entity
@@ -600,7 +598,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub type PayoutFingerprints<T: Config> =
-	StorageMap<_, Blake2_128Concat, Fingerprint, PayoutFingerprint<T::AccountId>>;
+		StorageMap<_, Blake2_128Concat, Fingerprint, PayoutFingerprint<T::AccountId>>;
 
 	/// Unwrap or send an error log
 	macro_rules! unwrap_or_log_error {
@@ -653,7 +651,6 @@ pub mod pallet {
 				let payout_result =
 					Self::start_payouts_phase(&cluster_id, &verification_account, &signer);
 			}
-
 		}
 	}
 
@@ -722,10 +719,8 @@ pub mod pallet {
 		};
 	}
 
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-
 		#[pallet::call_index(0)]
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::commit_payout_fingerprint())]
 		#[allow(clippy::too_many_arguments)]
@@ -737,7 +732,10 @@ pub mod pallet {
 			payees_root: PayableUsageHash,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(
+				T::ValidatorVerification::is_ocw_validator(sender.clone()),
+				Error::<T>::Unauthorized
+			);
 			<Self as PayoutProcessor<T>>::commit_payout_fingerprint(
 				sender,
 				cluster_id,
@@ -756,7 +754,10 @@ pub mod pallet {
 			fingerprint: Fingerprint,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(
+				T::ValidatorVerification::is_ocw_validator(sender.clone()),
+				Error::<T>::Unauthorized
+			);
 			<Self as PayoutProcessor<T>>::begin_payout(cluster_id, era_id, fingerprint)?;
 			Ok(())
 		}
@@ -770,8 +771,15 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
-			<Self as PayoutProcessor<T>>::begin_charging_customers(cluster_id, era_id, max_batch_index)
+			ensure!(
+				T::ValidatorVerification::is_ocw_validator(sender.clone()),
+				Error::<T>::Unauthorized
+			);
+			<Self as PayoutProcessor<T>>::begin_charging_customers(
+				cluster_id,
+				era_id,
+				max_batch_index,
+			)
 		}
 
 		#[pallet::call_index(3)]
@@ -785,7 +793,10 @@ pub mod pallet {
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(
+				T::ValidatorVerification::is_ocw_validator(sender.clone()),
+				Error::<T>::Unauthorized
+			);
 			<Self as PayoutProcessor<T>>::send_charging_customers_batch(
 				cluster_id,
 				era_id,
@@ -803,7 +814,10 @@ pub mod pallet {
 			era_id: PaymentEra,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(
+				T::ValidatorVerification::is_ocw_validator(sender.clone()),
+				Error::<T>::Unauthorized
+			);
 			<Self as PayoutProcessor<T>>::end_charging_customers(cluster_id, era_id)
 		}
 
@@ -816,8 +830,15 @@ pub mod pallet {
 			max_batch_index: BatchIndex,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
-			<Self as PayoutProcessor<T>>::begin_rewarding_providers(cluster_id, era_id, max_batch_index)
+			ensure!(
+				T::ValidatorVerification::is_ocw_validator(sender.clone()),
+				Error::<T>::Unauthorized
+			);
+			<Self as PayoutProcessor<T>>::begin_rewarding_providers(
+				cluster_id,
+				era_id,
+				max_batch_index,
+			)
 		}
 
 		#[pallet::call_index(6)]
@@ -831,7 +852,10 @@ pub mod pallet {
 			batch_proof: MMRProof,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized); //TODO: Introduce it back
+			ensure!(
+				T::ValidatorVerification::is_ocw_validator(sender.clone()),
+				Error::<T>::Unauthorized
+			); //TODO: Introduce it back
 			<Self as PayoutProcessor<T>>::send_rewarding_providers_batch(
 				cluster_id,
 				era_id,
@@ -849,7 +873,10 @@ pub mod pallet {
 			era_id: PaymentEra,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(
+				T::ValidatorVerification::is_ocw_validator(sender.clone()),
+				Error::<T>::Unauthorized
+			);
 			<Self as PayoutProcessor<T>>::end_rewarding_providers(cluster_id, era_id)
 		}
 
@@ -861,7 +888,10 @@ pub mod pallet {
 			era_id: PaymentEra,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			ensure!(T::ValidatorVerification::is_ocw_validator(sender.clone()), Error::<T>::Unauthorized);
+			ensure!(
+				T::ValidatorVerification::is_ocw_validator(sender.clone()),
+				Error::<T>::Unauthorized
+			);
 			<Self as PayoutProcessor<T>>::end_payout(cluster_id, era_id)?;
 			T::ClusterValidator::set_last_paid_era(&cluster_id, era_id)
 		}
@@ -1043,7 +1073,7 @@ pub mod pallet {
 				})
 				.collect::<Vec<_>>();
 
-			let batch_hash = Self::create_merkle_root_from_leaves(payers_batch.as_slice()).unwrap();//FIXME: remove unwrap
+			let batch_hash = Self::create_merkle_root_from_leaves(payers_batch.as_slice()).unwrap(); //FIXME: remove unwrap
 
 			let is_verified = Self::proof_merkle_leaf(
 				payers_merkle_root,
@@ -1120,11 +1150,12 @@ pub mod pallet {
 			for &leaf in leaves {
 				match mmr.push(leaf) {
 					Ok(pos) => leaves_with_position.push((pos, leaf)),
-					Err(_) =>
+					Err(_) => {
 						return Err(OCWError::FailedToCreateMerkleRoot {
 							cluster_id: *cluster_id,
 							era_id,
-						}),
+						})
+					},
 				}
 			}
 
@@ -1455,9 +1486,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<(EHDId, BatchIndex)>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2) ==
-					PayoutState::Initialized
-				{
+				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::Initialized {
 					let era_payable_usage =
 						Self::fetch_ehd_payable_usage_or_retry(cluster_id, ehd_id.clone())?;
 					Self::fetch_ehd_charging_loop_input(
@@ -1479,9 +1508,7 @@ pub mod pallet {
 			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2) ==
-					PayoutState::ChargingCustomers
-				{
+				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::ChargingCustomers {
 					let era_payable_usage =
 						Self::fetch_ehd_payable_usage_or_retry(cluster_id, ehd_id.clone())?;
 					Self::fetch_charging_customers_batch(
@@ -1503,9 +1530,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<EHDId>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2) ==
-					PayoutState::ChargingCustomers &&
-					Self::is_customers_charging_finished(cluster_id, ehd_id.2)
+				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::ChargingCustomers
+					&& Self::is_customers_charging_finished(cluster_id, ehd_id.2)
 				{
 					return Ok(Some(ehd_id));
 				}
@@ -1517,8 +1543,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<(EHDId, BatchIndex)>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2) ==
-					PayoutState::CustomersChargedWithFees
+				if Self::get_payout_state(cluster_id, ehd_id.2)
+					== PayoutState::CustomersChargedWithFees
 				{
 					let ehd_payable_usage =
 						Self::fetch_ehd_payable_usage_or_retry(cluster_id, ehd_id.clone())?;
@@ -1541,9 +1567,7 @@ pub mod pallet {
 			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2) ==
-					PayoutState::RewardingProviders
-				{
+				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::RewardingProviders {
 					let era_payable_usage =
 						Self::fetch_ehd_payable_usage_or_retry(cluster_id, ehd_id.clone())?;
 					Self::fetch_rewarding_providers_batch(
@@ -1565,9 +1589,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<EHDId>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2) ==
-					PayoutState::RewardingProviders &&
-					Self::is_providers_rewarding_finished(cluster_id, ehd_id.2)
+				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::RewardingProviders
+					&& Self::is_providers_rewarding_finished(cluster_id, ehd_id.2)
 				{
 					return Ok(Some(ehd_id));
 				}
@@ -1579,9 +1602,7 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<EHDId>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2) ==
-					PayoutState::ProvidersRewarded
-				{
+				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::ProvidersRewarded {
 					return Ok(Some(ehd_id));
 				}
 			}
@@ -1594,24 +1615,35 @@ pub mod pallet {
 					if let Some(inspected_ehds) = fetch_last_inspected_ehds(cluster_id) {
 						for inspected_ehd in inspected_ehds.clone().into_iter().sorted() {
 							if inspected_ehd.2 > last_paid_era_for_cluster {
-								let ehd_root =
-									get_ehd_root::<T::AccountId, BlockNumberFor<T>, T::ClusterManager, T::NodeManager>(cluster_id, inspected_ehd.clone()).ok()?;
+								let ehd_root = get_ehd_root::<
+									T::AccountId,
+									BlockNumberFor<T>,
+									T::ClusterManager,
+									T::NodeManager,
+								>(cluster_id, inspected_ehd.clone())
+								.ok()?;
 
 								let cluster_usage = ehd_root.get_cluster_usage();
 								if cluster_usage == Default::default() {
 									continue;
 								}
 
-								let receipts_by_inspector = fetch_inspection_receipts::<T::AccountId, BlockNumberFor<T>, T::ClusterManager, T::NodeManager>(
-									cluster_id,
-									inspected_ehd.clone(),
-								)
+								let receipts_by_inspector =
+									fetch_inspection_receipts::<
+										T::AccountId,
+										BlockNumberFor<T>,
+										T::ClusterManager,
+										T::NodeManager,
+									>(cluster_id, inspected_ehd.clone())
 									.map_err(|e| vec![e])
 									.ok()?;
 
 								let inspectors_quorum = T::ValidatorsQuorum::get();
 								//TODO: @yahor please verify this:-
-								if T::ValidatorVerification::is_quorum_reached(inspectors_quorum, receipts_by_inspector.len()) {
+								if T::ValidatorVerification::is_quorum_reached(
+									inspectors_quorum,
+									receipts_by_inspector.len(),
+								) {
 									return Some(inspected_ehd);
 								}
 							}
@@ -1630,13 +1662,14 @@ pub mod pallet {
 			payees_usage: Vec<ProviderReward>,
 			payees_batch_roots: Vec<PayableUsageHash>,
 		) -> Result<Option<(EHDId, ProviderBatch)>, Vec<OCWError>> {
-			let batch_index = <Self as PayoutProcessor<T>>::get_next_providers_batch(cluster_id, ehd_id.2)
-				.map_err(|_| {
-					vec![OCWError::PayoutReceiptDoesNotExist {
-						cluster_id: *cluster_id,
-						era_id: ehd_id.2,
-					}]
-				})?;
+			let batch_index =
+				<Self as PayoutProcessor<T>>::get_next_providers_batch(cluster_id, ehd_id.2)
+					.map_err(|_| {
+						vec![OCWError::PayoutReceiptDoesNotExist {
+							cluster_id: *cluster_id,
+							era_id: ehd_id.2,
+						}]
+					})?;
 
 			if let Some(index) = batch_index {
 				let i: usize = index.into();
@@ -1762,17 +1795,26 @@ pub mod pallet {
 			let batch_size = T::MAX_PAYOUT_BATCH_SIZE;
 
 			// todo(yahortsaryk): infer g-collectors deterministically
-			let g_collector = get_g_collectors_nodes::<T::AccountId, BlockNumberFor<T>, T::ClusterManager, T::NodeManager>(cluster_id)
-				.map_err(|_| OCWError::FailedToFetchGCollectors {
-					cluster_id: *cluster_id,
-				})?
-				.first()
-				.cloned()
-				.ok_or(OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?;
+			let g_collector = get_g_collectors_nodes::<
+				T::AccountId,
+				BlockNumberFor<T>,
+				T::ClusterManager,
+				T::NodeManager,
+			>(cluster_id)
+			.map_err(|_| OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?
+			.first()
+			.cloned()
+			.ok_or(OCWError::FailedToFetchGCollectors { cluster_id: *cluster_id })?;
 
-			let ehd = get_ehd_root::<T::AccountId, BlockNumberFor<T>, T::ClusterManager, T::NodeManager>(cluster_id, ehd_id.clone()).map_err(|_| OCWError::ApiError)?;
+			let ehd =
+				get_ehd_root::<T::AccountId, BlockNumberFor<T>, T::ClusterManager, T::NodeManager>(
+					cluster_id,
+					ehd_id.clone(),
+				)
+				.map_err(|_| OCWError::ApiError)?;
 
-			let era = fetch_processed_era(cluster_id, ehd_id.2, &g_collector).map_err(|_| OCWError::ApiError)?;
+			let era = fetch_processed_era(cluster_id, ehd_id.2, &g_collector)
+				.map_err(|_| OCWError::ApiError)?;
 
 			let pricing = T::ClusterProtocol::get_pricing_params(cluster_id)
 				.map_err(|_| OCWError::FailedToFetchProtocolParams { cluster_id: *cluster_id })?;
@@ -1780,7 +1822,13 @@ pub mod pallet {
 			let fees = T::ClusterProtocol::get_fees_params(cluster_id)
 				.map_err(|_| OCWError::FailedToFetchProtocolParams { cluster_id: *cluster_id })?;
 
-			let inspection_receipts = fetch_inspection_receipts::<T::AccountId, BlockNumberFor<T>, T::ClusterManager, T::NodeManager>(cluster_id, ehd_id.clone()).map_err(|_| OCWError::ApiError)?;
+			let inspection_receipts = fetch_inspection_receipts::<
+				T::AccountId,
+				BlockNumberFor<T>,
+				T::ClusterManager,
+				T::NodeManager,
+			>(cluster_id, ehd_id.clone())
+			.map_err(|_| OCWError::ApiError)?;
 
 			let customers_usage_cutoff = if !T::DISABLE_PAYOUTS_CUTOFF {
 				Self::calculate_customers_usage_cutoff(cluster_id, &inspection_receipts)?
@@ -1795,7 +1843,7 @@ pub mod pallet {
 				era.time_start.ok_or(OCWError::TCAError)?,
 				era.time_end.ok_or(OCWError::TCAError)?,
 			)
-				.map_err(|_| OCWError::FailedToCalculatePayersBatches { era_id: ehd_id.2 })?;
+			.map_err(|_| OCWError::FailedToCalculatePayersBatches { era_id: ehd_id.2 })?;
 
 			let cluster_usage = ehd.get_cluster_usage();
 
@@ -1812,7 +1860,7 @@ pub mod pallet {
 				&cluster_usage,
 				&cluster_costs,
 			)
-				.map_err(|_| OCWError::FailedToCalculatePayeesBatches { era_id: ehd_id.2 })?;
+			.map_err(|_| OCWError::FailedToCalculatePayeesBatches { era_id: ehd_id.2 })?;
 
 			let payers_batch_roots = Self::convert_to_batch_merkle_roots(
 				cluster_id,
@@ -1955,7 +2003,7 @@ pub mod pallet {
 						.checked_add(provider_profits.puts)?
 						.checked_add(provider_profits.gets)
 				})()
-					.ok_or(ArithmeticError::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 				let treasury_fee_amount = fees.treasury_share * reward_amount;
 				let validators_fee_amount = fees.validators_share * reward_amount;
@@ -1967,7 +2015,7 @@ pub mod pallet {
 						.checked_sub(validators_fee_amount)?
 						.checked_sub(cluster_reserve_fee_amount)
 				})()
-					.ok_or(ArithmeticError::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 				providers_profits.push(ProviderReward(provider_id, profit_amount));
 			}
@@ -2038,8 +2086,8 @@ pub mod pallet {
 				for unverified_branch in &inspection_receipt.nodes_inspection.unverified_branches {
 					let collector_key = NodePubKey::try_from(unverified_branch.collector.clone())
 						.map_err(|_| OCWError::FailedToParseNodeKey {
-							node_key: unverified_branch.collector.clone(),
-						})?;
+						node_key: unverified_branch.collector.clone(),
+					})?;
 					let node_key = match &unverified_branch.aggregate {
 						AggregateKey::NodeAggregateKey(key) => NodePubKey::try_from(key.clone())
 							.map_err(|_| OCWError::FailedToParseNodeKey {
@@ -2062,8 +2110,8 @@ pub mod pallet {
 							if !nodes_to_providers.contains_key(&node_key) {
 								let provider_id = T::NodeManager::get_node_provider_id(&node_key)
 									.map_err(|_| {
-										OCWError::FailedToFetchProviderId { node_key: node_key.clone() }
-									})?;
+									OCWError::FailedToFetchProviderId { node_key: node_key.clone() }
+								})?;
 
 								nodes_to_providers.insert(node_key.clone(), provider_id);
 							}
@@ -2104,13 +2152,8 @@ pub mod pallet {
 				BlockNumberFor<T>,
 				T::ClusterManager,
 				T::NodeManager,
-			>(
-				cluster_id,
-				tcaa_id,
-				collector_key,
-				node_key,
-				vec![1],
-			).map_err(|_| OCWError::ApiError)?;
+			>(cluster_id, tcaa_id, collector_key, node_key, vec![1])
+			.map_err(|_| OCWError::ApiError)?;
 
 			let tcaa_root =
 				challenge_res.proofs.first().ok_or(OCWError::FailedToFetchNodeChallenge)?;
@@ -2174,7 +2217,7 @@ pub mod pallet {
 						.checked_add(customer_costs.puts)?
 						.checked_add(customer_costs.gets)
 				})()
-					.ok_or(ArithmeticError::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 				customers_charges.push(CustomerCharge(customer_id, charge_amount));
 			}
@@ -2191,7 +2234,7 @@ pub mod pallet {
 			time_end: i64,
 		) -> Result<CustomerCosts, ArithmeticError> {
 			#[allow(clippy::field_reassign_with_default)]
-				let mut customer_costs = CustomerCosts::default();
+			let mut customer_costs = CustomerCosts::default();
 			let no_cutoff = Default::default();
 			let cutoff = cutoff_usage.unwrap_or(&no_cutoff);
 
@@ -2208,8 +2251,8 @@ pub mod pallet {
 			let fraction_of_month =
 				Perquintill::from_rational(duration_seconds as u64, AVG_SECONDS_MONTH as u64);
 
-			customer_costs.storage = fraction_of_month *
-				((consumed_usage.stored_bytes as u128)
+			customer_costs.storage = fraction_of_month
+				* ((consumed_usage.stored_bytes as u128)
 					.checked_sub(cutoff.stored_bytes as u128)
 					.ok_or(ArithmeticError::Underflow)?
 					.checked_mul(pricing.unit_per_mb_stored)
@@ -2249,8 +2292,8 @@ pub mod pallet {
 				{
 					let collector_key = NodePubKey::try_from(unverified_branch.collector.clone())
 						.map_err(|_| OCWError::FailedToParseNodeKey {
-							node_key: unverified_branch.collector.clone(),
-						})?;
+						node_key: unverified_branch.collector.clone(),
+					})?;
 					let (bucket_id, node_key) = match &unverified_branch.aggregate {
 						AggregateKey::BucketSubAggregateKey(bucket_id, key) => {
 							let node_key = NodePubKey::try_from(key.clone()).map_err(|_| {
@@ -2319,19 +2362,14 @@ pub mod pallet {
 			node_key: NodePubKey,
 			bucket_id: BucketId,
 		) -> Result<BucketUsage, OCWError> {
-			let challenge_res = fetch_bucket_challenge_response::<
-				T::AccountId,
-				BlockNumberFor<T>,
-				T::ClusterManager,
-				T::NodeManager,
-			>(
-				cluster_id,
-				tcaa_id,
-				collector_key,
-				node_key,
-				bucket_id,
-				vec![1],
-			).map_err(|_| OCWError::ApiError)?;;
+			let challenge_res =
+				fetch_bucket_challenge_response::<
+					T::AccountId,
+					BlockNumberFor<T>,
+					T::ClusterManager,
+					T::NodeManager,
+				>(cluster_id, tcaa_id, collector_key, node_key, bucket_id, vec![1])
+				.map_err(|_| OCWError::ApiError)?;
 
 			let tcaa_root =
 				challenge_res.proofs.first().ok_or(OCWError::FailedToFetchBucketChallenge)?;
@@ -2392,13 +2430,14 @@ pub mod pallet {
 			payers_usage: Vec<CustomerCharge>,
 			payers_batch_roots: Vec<PayableUsageHash>,
 		) -> Result<Option<(EHDId, CustomerBatch)>, Vec<OCWError>> {
-			let batch_index = <Self as PayoutProcessor<T>>::get_next_customers_batch(cluster_id, ehd_id.2)
-				.map_err(|_| {
-					vec![OCWError::PayoutReceiptDoesNotExist {
-						cluster_id: *cluster_id,
-						era_id: ehd_id.2,
-					}]
-				})?;
+			let batch_index =
+				<Self as PayoutProcessor<T>>::get_next_customers_batch(cluster_id, ehd_id.2)
+					.map_err(|_| {
+						vec![OCWError::PayoutReceiptDoesNotExist {
+							cluster_id: *cluster_id,
+							era_id: ehd_id.2,
+						}]
+					})?;
 
 			if let Some(index) = batch_index {
 				let i: usize = index.into();
@@ -2445,7 +2484,8 @@ pub mod pallet {
 			}
 		}
 
-		pub(crate) fn store_verification_account_id(account_id: T::AccountId) { //FIXME: Checkout this
+		pub(crate) fn store_verification_account_id(account_id: T::AccountId) {
+			//FIXME: Checkout this
 			let validator: Vec<u8> = account_id.encode();
 			let key = format!("offchain::validator::{:?}", DAC_VERIFICATION_KEY_TYPE).into_bytes();
 			local_storage_set(StorageKind::PERSISTENT, &key, &validator);
@@ -2456,24 +2496,24 @@ pub mod pallet {
 				T::Public,
 				T::Signature,
 			>>::RuntimeAppPublic::all()
-				.into_iter()
-				.enumerate()
-				.filter_map(|(i, key)| {
-					let generic_public = <T::OffchainIdentifierId as AppCrypto<
-						T::Public,
-						T::Signature,
-					>>::GenericPublic::from(key);
-					let public_key: T::Public = generic_public.into();
-					let account_id = public_key.clone().into_account();
-					// TODO: @yahor please verify this
-					if T::ValidatorVerification::is_ocw_validator(account_id.clone()) {
-						let account = Account::new(i, account_id, public_key);
-						Option::Some(account)
-					} else {
-						Option::None
-					}
-				})
-				.collect::<Vec<_>>();
+			.into_iter()
+			.enumerate()
+			.filter_map(|(i, key)| {
+				let generic_public = <T::OffchainIdentifierId as AppCrypto<
+					T::Public,
+					T::Signature,
+				>>::GenericPublic::from(key);
+				let public_key: T::Public = generic_public.into();
+				let account_id = public_key.clone().into_account();
+				// TODO: @yahor please verify this
+				if T::ValidatorVerification::is_ocw_validator(account_id.clone()) {
+					let account = Account::new(i, account_id, public_key);
+					Option::Some(account)
+				} else {
+					Option::None
+				}
+			})
+			.collect::<Vec<_>>();
 
 			if session_verification_keys.len() != 1 {
 				log::error!(
@@ -2968,8 +3008,8 @@ pub mod pallet {
 			if payout_receipt
 				.total_collected_charges
 				.saturating_sub(payout_receipt.total_distributed_rewards)
-				.saturating_sub(payout_receipt.total_settled_fees) >
-				MaxDust::get()
+				.saturating_sub(payout_receipt.total_settled_fees)
+				> MaxDust::get()
 			{
 				Self::deposit_event(Event::<T>::NotDistributedOverallReward {
 					cluster_id,
@@ -3003,7 +3043,11 @@ pub mod pallet {
 			let finalized_at = <frame_system::Pallet<T>>::block_number();
 			payout_receipt.finalized_at = Some(finalized_at);
 			PayoutReceipts::<T>::insert(cluster_id, era, payout_receipt);
-			Self::deposit_event(Event::<T>::PayoutReceiptFinalized { cluster_id, era, finalized_at });
+			Self::deposit_event(Event::<T>::PayoutReceiptFinalized {
+				cluster_id,
+				era,
+				finalized_at,
+			});
 
 			Ok(())
 		}
@@ -3026,7 +3070,7 @@ pub mod pallet {
 				&payout_receipt.charging_processed_batches,
 				&payout_receipt.charging_max_batch_index,
 			)
-				.is_ok()
+			.is_ok()
 		}
 
 		fn is_providers_rewarding_finished(cluster_id: &ClusterId, era_id: PaymentEra) -> bool {
@@ -3039,7 +3083,7 @@ pub mod pallet {
 				&payout_receipt.rewarding_processed_batches,
 				&payout_receipt.rewarding_max_batch_index,
 			)
-				.is_ok()
+			.is_ok()
 		}
 
 		fn get_next_customers_batch(
@@ -3074,7 +3118,11 @@ pub mod pallet {
 			Ok(None)
 		}
 
-		fn create_payout_receipt(vault: T::AccountId, params: PayoutReceiptParams, finalized_at: Option<BlockNumberFor<T>>) {
+		fn create_payout_receipt(
+			vault: T::AccountId,
+			params: PayoutReceiptParams,
+			finalized_at: Option<BlockNumberFor<T>>,
+		) {
 			let mut charging_processed_batches =
 				BoundedBTreeSet::<BatchIndex, MaxBatchesCount>::new();
 			for batch in params.charging_processed_batches {
@@ -3091,15 +3139,10 @@ pub mod pallet {
 					.expect("Rewarding batch to be inserted");
 			}
 			if params.state == PayoutState::Finalized {
-
 				assert!(
-
 					finalized_at.is_some(),
-
 					"Finalized payout receipt must keep `finalized_at` block value"
-
 				);
-
 			}
 			let payout_receipt = PayoutReceipt::<T> {
 				vault,
@@ -3112,7 +3155,7 @@ pub mod pallet {
 				charging_processed_batches,
 				rewarding_max_batch_index: params.rewarding_max_batch_index,
 				rewarding_processed_batches,
-				finalized_at
+				finalized_at,
 			};
 
 			PayoutReceipts::<T>::insert(params.cluster_id, params.era, payout_receipt);

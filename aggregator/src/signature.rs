@@ -1,4 +1,4 @@
-use aggregator::json;
+use super::aggregator::json;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use sp_core::ed25519::{Public, Signature};
