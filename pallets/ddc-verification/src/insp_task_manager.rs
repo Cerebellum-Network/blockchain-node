@@ -269,8 +269,8 @@ impl<T: Config> InspTaskAssigner<T> {
 				.flat_map(|eras| {
 					eras.iter()
 						.filter(|&ids| {
-							ids.id > last_inspected_era_by_this_validator
-								&& ids.id > last_paid_era_for_cluster
+							ids.id > last_inspected_era_by_this_validator &&
+								ids.id > last_paid_era_for_cluster
 						})
 						.cloned()
 				})
