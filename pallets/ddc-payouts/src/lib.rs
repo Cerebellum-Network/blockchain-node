@@ -1135,11 +1135,12 @@ pub mod pallet {
 			for &leaf in leaves {
 				match mmr.push(leaf) {
 					Ok(pos) => leaves_with_position.push((pos, leaf)),
-					Err(_) =>
+					Err(_) => {
 						return Err(OCWError::FailedToCreateMerkleRoot {
 							cluster_id: *cluster_id,
 							era_id,
-						}),
+						})
+					},
 				}
 			}
 
@@ -1514,8 +1515,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<EHDId>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::ChargingCustomers &&
-					Self::is_customers_charging_finished(cluster_id, ehd_id.2)
+				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::ChargingCustomers
+					&& Self::is_customers_charging_finished(cluster_id, ehd_id.2)
 				{
 					return Ok(Some(ehd_id));
 				}
@@ -1527,8 +1528,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<(EHDId, BatchIndex)>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2) ==
-					PayoutState::CustomersChargedWithFees
+				if Self::get_payout_state(cluster_id, ehd_id.2)
+					== PayoutState::CustomersChargedWithFees
 				{
 					let ehd_payable_usage =
 						Self::fetch_ehd_payable_usage_or_retry(cluster_id, ehd_id.clone())?;
@@ -1573,8 +1574,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<EHDId>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::RewardingProviders &&
-					Self::is_providers_rewarding_finished(cluster_id, ehd_id.2)
+				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::RewardingProviders
+					&& Self::is_providers_rewarding_finished(cluster_id, ehd_id.2)
 				{
 					return Ok(Some(ehd_id));
 				}
@@ -2235,8 +2236,8 @@ pub mod pallet {
 			let fraction_of_month =
 				Perquintill::from_rational(duration_seconds as u64, AVG_SECONDS_MONTH as u64);
 
-			customer_costs.storage = fraction_of_month *
-				((consumed_usage.stored_bytes as u128)
+			customer_costs.storage = fraction_of_month
+				* ((consumed_usage.stored_bytes as u128)
 					.checked_sub(cutoff.stored_bytes as u128)
 					.ok_or(ArithmeticError::Underflow)?
 					.checked_mul(pricing.unit_per_mb_stored)
@@ -2992,8 +2993,8 @@ pub mod pallet {
 			if payout_receipt
 				.total_collected_charges
 				.saturating_sub(payout_receipt.total_distributed_rewards)
-				.saturating_sub(payout_receipt.total_settled_fees) >
-				MaxDust::get()
+				.saturating_sub(payout_receipt.total_settled_fees)
+				> MaxDust::get()
 			{
 				Self::deposit_event(Event::<T>::NotDistributedOverallReward {
 					cluster_id,

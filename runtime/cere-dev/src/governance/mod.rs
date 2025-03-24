@@ -102,8 +102,8 @@ where
 				Err(_) => return Err(o),
 			};
 
-		if track_id == CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID ||
-			track_id == CLUSTER_PROTOCOL_UPDATER_TRACK_ID
+		if track_id == CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID
+			|| track_id == CLUSTER_PROTOCOL_UPDATER_TRACK_ID
 		{
 			let clusters_governance = <ClustersGovWrapper as PalletVisitor<T>>::get_account_id();
 			if origin == clusters_governance {
