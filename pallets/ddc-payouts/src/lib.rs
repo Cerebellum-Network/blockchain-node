@@ -26,8 +26,6 @@ pub mod migrations;
 mod benchmarking;
 
 pub mod weights;
-use crate::weights::WeightInfo;
-
 use core::str;
 
 use aggregator::insp_ddc_api::{
@@ -37,42 +35,33 @@ use aggregator::insp_ddc_api::{
 };
 pub use aggregator::{aggregator as aggregator_client, proto};
 use ddc_primitives::{
+	ocw_mutex::OcwMutex,
 	traits::{
 		cluster::ClusterProtocol as ClusterProtocolType,
 		customer::CustomerCharger as CustomerChargerType,
-		pallet::PalletVisitor as PalletVisitorType,
+		pallet::PalletVisitor as PalletVisitorType, BucketManager, ClusterManager, ClusterProtocol,
+		ClusterValidator, NodeManager, PayoutProcessor,
 	},
-	CustomerCharge as CustomerCosts, Fingerprint, MergeMMRHash, PayoutError,
+	AggregateKey, BatchIndex, BucketId, BucketUsage, ClusterFeesParams, ClusterId,
+	ClusterPricingParams, ClusterStatus, CustomerCharge as CustomerCosts, DeltaUsageHash, EHDId,
+	EhdEra, Fingerprint, MMRProof, MergeMMRHash, NodeParams, NodePubKey, NodeUsage,
+	PayableUsageHash, PaymentEra, PayoutError, PayoutFingerprintParams, PayoutReceiptParams,
+	PayoutState, ProviderReward as ProviderProfits, StorageNodeParams, AVG_SECONDS_MONTH,
 	DAC_VERIFICATION_KEY_TYPE, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
 	VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 };
-use ddc_primitives::{AggregateKey, BucketId};
-
-use ddc_primitives::DeltaUsageHash;
-use ddc_primitives::{
-	ocw_mutex::OcwMutex,
-	traits::{
-		BucketManager, ClusterManager, ClusterProtocol, ClusterValidator, NodeManager,
-		PayoutProcessor,
-	},
-	BatchIndex, BucketUsage, ClusterFeesParams, ClusterId, ClusterPricingParams, ClusterStatus,
-	EHDId, EhdEra, MMRProof, NodeParams, NodePubKey, NodeUsage, PayableUsageHash, PaymentEra,
-	PayoutFingerprintParams, PayoutReceiptParams, PayoutState, ProviderReward as ProviderProfits,
-	StorageNodeParams, AVG_SECONDS_MONTH,
-};
 use frame_election_provider_support::SortedListProvider;
-use frame_support::traits::OneSessionHandler;
 use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	sp_runtime::SaturatedConversion,
-	traits::{Currency, ExistenceRequirement, Get, LockableCurrency},
+	traits::{Currency, ExistenceRequirement, Get, LockableCurrency, OneSessionHandler},
 	BoundedBTreeSet,
 };
-use frame_system::offchain::{
-	Account, AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer,
+use frame_system::{
+	offchain::{Account, AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
+	pallet_prelude::*,
 };
-use frame_system::pallet_prelude::*;
 use itertools::Itertools;
 pub use pallet::*;
 use polkadot_ckb_merkle_mountain_range::{
@@ -91,15 +80,12 @@ pub use sp_io::{
 };
 use sp_runtime::{
 	offchain::{http, Duration, StorageKind},
-	traits::IdentifyAccount,
-	ArithmeticError,
+	traits::{Convert, Hash, IdentifyAccount},
+	AccountId32, ArithmeticError, Percent, Perquintill, Saturating,
 };
-use sp_runtime::{
-	traits::{Convert, Hash},
-	AccountId32, Percent, Perquintill, Saturating,
-};
-use sp_std::collections::btree_map::BTreeMap;
-use sp_std::{vec, vec::Vec};
+use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
+
+use crate::weights::WeightInfo;
 //use frame_support::Hashable;
 
 /// The balance type of this pallet.
@@ -121,8 +107,7 @@ parameter_types! {
 pub mod pallet {
 	use ddc_primitives::traits::ValidatorVisitor;
 	use frame_support::PalletId;
-	use sp_io::hashing::blake2_128;
-	use sp_io::hashing::blake2_256;
+	use sp_io::hashing::{blake2_128, blake2_256};
 	use sp_runtime::traits::{AccountIdConversion, Zero};
 	use sp_std::collections::btree_set::BTreeSet;
 
@@ -1150,12 +1135,11 @@ pub mod pallet {
 			for &leaf in leaves {
 				match mmr.push(leaf) {
 					Ok(pos) => leaves_with_position.push((pos, leaf)),
-					Err(_) => {
+					Err(_) =>
 						return Err(OCWError::FailedToCreateMerkleRoot {
 							cluster_id: *cluster_id,
 							era_id,
-						})
-					},
+						}),
 				}
 			}
 
@@ -1530,8 +1514,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<EHDId>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::ChargingCustomers
-					&& Self::is_customers_charging_finished(cluster_id, ehd_id.2)
+				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::ChargingCustomers &&
+					Self::is_customers_charging_finished(cluster_id, ehd_id.2)
 				{
 					return Ok(Some(ehd_id));
 				}
@@ -1543,8 +1527,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<(EHDId, BatchIndex)>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2)
-					== PayoutState::CustomersChargedWithFees
+				if Self::get_payout_state(cluster_id, ehd_id.2) ==
+					PayoutState::CustomersChargedWithFees
 				{
 					let ehd_payable_usage =
 						Self::fetch_ehd_payable_usage_or_retry(cluster_id, ehd_id.clone())?;
@@ -1589,8 +1573,8 @@ pub mod pallet {
 			cluster_id: &ClusterId,
 		) -> Result<Option<EHDId>, Vec<OCWError>> {
 			if let Some(ehd_id) = Self::get_ehd_id_for_payout(cluster_id) {
-				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::RewardingProviders
-					&& Self::is_providers_rewarding_finished(cluster_id, ehd_id.2)
+				if Self::get_payout_state(cluster_id, ehd_id.2) == PayoutState::RewardingProviders &&
+					Self::is_providers_rewarding_finished(cluster_id, ehd_id.2)
 				{
 					return Ok(Some(ehd_id));
 				}
@@ -2251,8 +2235,8 @@ pub mod pallet {
 			let fraction_of_month =
 				Perquintill::from_rational(duration_seconds as u64, AVG_SECONDS_MONTH as u64);
 
-			customer_costs.storage = fraction_of_month
-				* ((consumed_usage.stored_bytes as u128)
+			customer_costs.storage = fraction_of_month *
+				((consumed_usage.stored_bytes as u128)
 					.checked_sub(cutoff.stored_bytes as u128)
 					.ok_or(ArithmeticError::Underflow)?
 					.checked_mul(pricing.unit_per_mb_stored)
@@ -3008,8 +2992,8 @@ pub mod pallet {
 			if payout_receipt
 				.total_collected_charges
 				.saturating_sub(payout_receipt.total_distributed_rewards)
-				.saturating_sub(payout_receipt.total_settled_fees)
-				> MaxDust::get()
+				.saturating_sub(payout_receipt.total_settled_fees) >
+				MaxDust::get()
 			{
 				Self::deposit_event(Event::<T>::NotDistributedOverallReward {
 					cluster_id,

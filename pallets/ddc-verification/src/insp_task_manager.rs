@@ -1,8 +1,3 @@
-use crate::BlockNumberFor;
-use crate::{
-	aggregate_tree, aggregator_client, fetch_last_inspected_ehds, pallet::ValidatorSet,
-	signature::Verify, Config, Hashable,
-};
 use aggregate_tree::{
 	calculate_sample_size_fin, calculate_sample_size_inf, get_leaves_ids, D_099, P_001,
 };
@@ -31,6 +26,11 @@ use sp_std::{
 	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
 	prelude::*,
 	rc::Rc,
+};
+
+use crate::{
+	aggregate_tree, aggregator_client, fetch_last_inspected_ehds, pallet::ValidatorSet,
+	signature::Verify, BlockNumberFor, Config, Hashable,
 };
 
 pub(crate) const TCA_INSPECTION_STEP: usize = 0;
@@ -269,8 +269,8 @@ impl<T: Config> InspTaskAssigner<T> {
 				.flat_map(|eras| {
 					eras.iter()
 						.filter(|&ids| {
-							ids.id > last_inspected_era_by_this_validator
-								&& ids.id > last_paid_era_for_cluster
+							ids.id > last_inspected_era_by_this_validator &&
+								ids.id > last_paid_era_for_cluster
 						})
 						.cloned()
 				})

@@ -77,13 +77,16 @@ pub mod benchmarking;
 
 pub mod migrations;
 
-use aggregator::insp_ddc_api::{
-	fetch_bucket_challenge_response, fetch_inspection_receipts, fetch_node_challenge_response,
-	fetch_processed_era, get_collectors_nodes, get_ehd_root, get_g_collectors_nodes,
-	send_inspection_receipt, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE, MAX_RETRIES_COUNT,
-	NODES_AGGREGATES_FETCH_BATCH_SIZE, RESPONSE_TIMEOUT,
+use aggregator::{
+	aggregator as aggregator_client,
+	insp_ddc_api::{
+		fetch_bucket_challenge_response, fetch_inspection_receipts, fetch_node_challenge_response,
+		fetch_processed_era, get_collectors_nodes, get_ehd_root, get_g_collectors_nodes,
+		send_inspection_receipt, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE, MAX_RETRIES_COUNT,
+		NODES_AGGREGATES_FETCH_BATCH_SIZE, RESPONSE_TIMEOUT,
+	},
+	proto, signature,
 };
-use aggregator::{aggregator as aggregator_client, proto, signature};
 use insp_task_manager::{
 	store_and_fetch_nonce, InspEraResult, InspPath, InspPathException, InspTaskManager,
 	InspectionError,
@@ -1152,9 +1155,8 @@ pub mod pallet {
 									}
 								} else {
 									let bad_leaves_ids = match &receipt.exception {
-										Some(InspPathException::NodeAR { bad_leaves_ids }) => {
-											bad_leaves_ids.clone()
-										},
+										Some(InspPathException::NodeAR { bad_leaves_ids }) =>
+											bad_leaves_ids.clone(),
 										_ => vec![],
 									};
 									if let Some(subtree) = nodes_inspection
@@ -1201,9 +1203,8 @@ pub mod pallet {
 									}
 								} else {
 									let bad_leaves_pos = match &receipt.exception {
-										Some(InspPathException::BucketAR { bad_leaves_pos }) => {
-											bad_leaves_pos.clone()
-										},
+										Some(InspPathException::BucketAR { bad_leaves_pos }) =>
+											bad_leaves_pos.clone(),
 										_ => vec![],
 									};
 									if let Some(subtree) = buckets_inspection
@@ -1467,8 +1468,8 @@ pub mod pallet {
 			let fraction_of_month =
 				Perquintill::from_rational(duration_seconds as u64, AVG_SECONDS_MONTH as u64);
 
-			customer_costs.storage = fraction_of_month
-				* ((consumed_usage.stored_bytes as u128)
+			customer_costs.storage = fraction_of_month *
+				((consumed_usage.stored_bytes as u128)
 					.checked_sub(cutoff.stored_bytes as u128)
 					.ok_or(ArithmeticError::Underflow)?
 					.checked_mul(pricing.unit_per_mb_stored)
@@ -1811,12 +1812,11 @@ pub mod pallet {
 			for &leaf in leaves {
 				match mmr.push(leaf) {
 					Ok(pos) => leaves_with_position.push((pos, leaf)),
-					Err(_) => {
+					Err(_) =>
 						return Err(OCWError::FailedToCreateMerkleRoot {
 							cluster_id: *cluster_id,
 							era_id,
-						})
-					},
+						}),
 				}
 			}
 
@@ -3475,9 +3475,8 @@ pub mod pallet {
 						merkle_tree_node_id,
 						levels,
 					),
-				AggregateKey::NodeAggregateKey(node_id) => {
-					client.traverse_node_aggregate(era_id, &node_id, merkle_tree_node_id, levels)
-				},
+				AggregateKey::NodeAggregateKey(node_id) =>
+					client.traverse_node_aggregate(era_id, &node_id, merkle_tree_node_id, levels),
 				AggregateKey::BucketAggregateKey(_) => {
 					log::error!("Traversing of Bucket Aggregate is not supported");
 					unimplemented!()
@@ -3511,9 +3510,8 @@ pub mod pallet {
 						&node_id,
 						merkle_tree_node_id,
 					),
-				AggregateKey::NodeAggregateKey(node_id) => {
-					client.challenge_node_aggregate(era_id, &node_id, merkle_tree_node_id)
-				},
+				AggregateKey::NodeAggregateKey(node_id) =>
+					client.challenge_node_aggregate(era_id, &node_id, merkle_tree_node_id),
 				AggregateKey::BucketAggregateKey(_) => {
 					log::error!("Challenging of Bucket Aggregate is not supported");
 					unimplemented!()

@@ -2,9 +2,10 @@
 #![allow(clippy::from_over_into)]
 
 use codec::{Decode, Encode};
-use ddc_primitives::NodeUsage;
-use ddc_primitives::{AccountId32Hex, AggregatorInfo, BucketId, TcaEra};
-use ddc_primitives::{AggregateKey, BucketUsage, EHDId, NodePubKey, PHDId};
+use ddc_primitives::{
+	AccountId32Hex, AggregateKey, AggregatorInfo, BucketId, BucketUsage, EHDId, NodePubKey,
+	NodeUsage, PHDId, TcaEra,
+};
 use prost::Message;
 use scale_info::prelude::{collections::BTreeMap, format, string::String, vec::Vec};
 use serde::{Deserialize, Serialize};

@@ -1,10 +1,9 @@
-use super::aggregator::json;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use sp_core::ed25519::{Public, Signature};
 use sp_io::crypto::ed25519_verify;
 
-use super::*;
+use super::{aggregator::json, *};
 
 pub trait Verify {
 	fn verify(&self) -> bool;
