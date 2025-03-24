@@ -40,15 +40,16 @@ use ddc_primitives::{
 	MergeMMRHash, PayoutError,
 	MAX_PAYOUT_BATCH_COUNT,
 	MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
-	DAC_VERIFICATION_KEY_TYPE
+	DAC_VERIFICATION_KEY_TYPE,
+	VERIFY_AGGREGATOR_RESPONSE_SIGNATURE
 };
 use ddc_primitives::{BucketId, AggregateKey};
 pub use aggregator::{proto, aggregator as aggregator_client};
 use aggregator::insp_ddc_api::{
 	fetch_bucket_challenge_response, fetch_inspection_receipts, fetch_node_challenge_response,
 	fetch_processed_era, get_collectors_nodes, get_ehd_root, get_g_collectors_nodes,
-	send_inspection_receipt, BUCKETS_AGGREGATES_FETCH_BATCH_SIZE, MAX_RETRIES_COUNT,
-	NODES_AGGREGATES_FETCH_BATCH_SIZE, RESPONSE_TIMEOUT,
+	MAX_RETRIES_COUNT,
+	RESPONSE_TIMEOUT,
 };
 
 use frame_election_provider_support::SortedListProvider;
@@ -68,13 +69,14 @@ use polkadot_ckb_merkle_mountain_range::{
 	util::{MemMMR, MemStore},
 	MerkleProof, MMR,
 };
-use scale_info::prelude::string::String;
+use scale_info::prelude::{string::String, format};
 use sp_core::H256;
 use sp_runtime::{
 	traits::{Convert, Hash},
 	AccountId32, Percent, Perquintill, Saturating,
 };
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::{vec, vec::Vec};
 use sp_runtime::{
 	offchain::{http, Duration, StorageKind},
 	traits::IdentifyAccount,
@@ -100,7 +102,7 @@ use ddc_primitives::{
 	ClusterPricingParams, ClusterStatus, EhdEra, EHDId,
 	MMRProof, NodeParams, NodePubKey, NodeUsage, PayableUsageHash,
 	PaymentEra, PayoutFingerprintParams, PayoutReceiptParams, PayoutState,
-	ProviderReward as ProviderProfits, StorageNodeParams, StorageNodePubKey, AVG_SECONDS_MONTH,
+	ProviderReward as ProviderProfits, StorageNodeParams, AVG_SECONDS_MONTH,
 };
 //use frame_support::Hashable;
 
@@ -133,10 +135,6 @@ pub mod pallet {
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
 		frame_support::traits::StorageVersion::new(3);
-
-	pub const MAX_RETRIES_COUNT: u32 = 3;
-	const RESPONSE_TIMEOUT: u64 = 20000;
-
 	pub const OCW_MUTEX_ID: &[u8] = b"payment_lock"; //TODO: Both offchain worker can run in parallel
 
 	#[pallet::pallet]
@@ -163,14 +161,6 @@ pub mod pallet {
 		type AccountIdConverter: From<Self::AccountId> + Into<AccountId32>;
 		type Hasher: Hash<Output = H256>;
 		type WeightInfo: WeightInfo;
-		/// The identifier type for an authority.
-		type AuthorityId: Member
-		+ Parameter
-		+ RuntimeAppPublic
-		+ Ord
-		+ MaybeSerializeDeserialize
-		+ Into<sp_core::sr25519::Public>
-		+ From<sp_core::sr25519::Public>;
 		type ClusterValidator: ClusterValidator;
 		#[pallet::constant]
 		type ValidatorsQuorum: Get<Percent>;
@@ -179,8 +169,6 @@ pub mod pallet {
 
 		const DISABLE_PAYOUTS_CUTOFF: bool;
 		type OffchainIdentifierId: AppCrypto<Self::Public, Self::Signature>;
-
-		const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool;
 		const BLOCK_TO_START: u16;
 	}
 
@@ -411,7 +399,7 @@ pub mod pallet {
 		FailedToFetchProtocolParams {
 			cluster_id: ClusterId,
 		},
-		FailedToSignInspectionReceipt
+		FailedToSignInspectionReceipt,
 	}
 
 	#[pallet::error]
@@ -465,14 +453,6 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type OwingProviders<T: Config> =
 	StorageDoubleMap<_, Blake2_128Concat, ClusterId, Blake2_128Concat, T::AccountId, u128>;
-
-	/// List of validators.
-	#[pallet::storage]
-	pub type ValidatorSet<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
-
-	/// Validator stash key mapping
-	#[pallet::storage]
-	pub type ValidatorToStashKey<T: Config> = StorageMap<_, Identity, T::AccountId, T::AccountId>;
 
 	pub(crate) trait Hashable {
 		/// Hash of the entity
@@ -1630,9 +1610,8 @@ pub mod pallet {
 									.ok()?;
 
 								let inspectors_quorum = T::ValidatorsQuorum::get();
-								let threshold = inspectors_quorum * <ValidatorSet<T>>::get().len();
-
-								if threshold <= receipts_by_inspector.len() {
+								//TODO: @yahor please verify this:-
+								if T::ValidatorVerification::is_quorum_reached(inspectors_quorum, receipts_by_inspector.len()) {
 									return Some(inspected_ehd);
 								}
 							}
@@ -1642,28 +1621,6 @@ pub mod pallet {
 				},
 				Err(_) => None,
 			}
-		}
-
-		/// Fetch collectors nodes of a cluster.
-		/// Parameters:
-		/// - `cluster_id`: Cluster id of a cluster.
-		fn get_collectors_nodes(
-			cluster_id: &ClusterId,
-		) -> Result<Vec<(NodePubKey, StorageNodeParams)>, Error<T>> {
-			let mut collectors = Vec::new();
-
-			let nodes = T::ClusterManager::get_nodes(cluster_id)
-				.map_err(|_| Error::<T>::NodeRetrievalError)?;
-
-			for node_pub_key in nodes {
-				if let Ok(NodeParams::StorageParams(storage_params)) =
-					T::NodeManager::get_node_params(&node_pub_key)
-				{
-					collectors.push((node_pub_key, storage_params));
-				}
-			}
-
-			Ok(collectors)
 		}
 
 		fn fetch_rewarding_providers_batch(
@@ -2142,13 +2099,18 @@ pub mod pallet {
 			tcaa_id: EhdEra,
 			node_key: NodePubKey,
 		) -> Result<NodeUsage, OCWError> {
-			let challenge_res = Self::fetch_node_challenge_response(
+			let challenge_res = fetch_node_challenge_response::<
+				T::AccountId,
+				BlockNumberFor<T>,
+				T::ClusterManager,
+				T::NodeManager,
+			>(
 				cluster_id,
 				tcaa_id,
 				collector_key,
 				node_key,
 				vec![1],
-			)?;
+			).map_err(|_| OCWError::ApiError)?;
 
 			let tcaa_root =
 				challenge_res.proofs.first().ok_or(OCWError::FailedToFetchNodeChallenge)?;
@@ -2160,50 +2122,6 @@ pub mod pallet {
 				number_of_puts: tcaa_usage.puts,
 				number_of_gets: tcaa_usage.gets,
 			})
-		}
-
-		pub(crate) fn fetch_node_challenge_response(
-			cluster_id: &ClusterId,
-			tcaa_id: EhdEra,
-			collector_key: NodePubKey,
-			node_key: NodePubKey,
-			tree_node_ids: Vec<u64>,
-		) -> Result<proto::ChallengeResponse, OCWError> {
-			let collectors = Self::get_collectors_nodes(cluster_id)
-				.map_err(|_| OCWError::FailedToFetchCollectors { cluster_id: *cluster_id })?;
-
-			for (key, collector_params) in collectors {
-				if key != collector_key {
-					continue;
-				};
-
-				if let Ok(host) = str::from_utf8(&collector_params.host) {
-					let base_url = format!("http://{}:{}", host, collector_params.http_port);
-					let client = aggregator_client::AggregatorClient::new(
-						&base_url,
-						Duration::from_millis(RESPONSE_TIMEOUT),
-						MAX_RETRIES_COUNT,
-						false, // no response signature verification for now
-					);
-
-					if let Ok(node_challenge_res) = client.challenge_node_aggregate(
-						tcaa_id,
-						Into::<String>::into(node_key.clone()).as_str(),
-						tree_node_ids.clone(),
-					) {
-						return Ok(node_challenge_res);
-					} else {
-						log::warn!(
-							"Collector from cluster {:?} is unavailable while challenging node aggregate or responded with unexpected body. Key: {:?} Host: {:?}",
-							cluster_id,
-							collector_key,
-							String::from_utf8(collector_params.host)
-						);
-					}
-				}
-			}
-
-			Err(OCWError::FailedToFetchNodeChallenge)
 		}
 
 		fn calculate_ehd_customers_charges(
@@ -2401,14 +2319,19 @@ pub mod pallet {
 			node_key: NodePubKey,
 			bucket_id: BucketId,
 		) -> Result<BucketUsage, OCWError> {
-			let challenge_res = Self::fetch_bucket_challenge_response(
+			let challenge_res = fetch_bucket_challenge_response::<
+				T::AccountId,
+				BlockNumberFor<T>,
+				T::ClusterManager,
+				T::NodeManager,
+			>(
 				cluster_id,
 				tcaa_id,
 				collector_key,
 				node_key,
 				bucket_id,
 				vec![1],
-			)?;
+			).map_err(|_| OCWError::ApiError)?;;
 
 			let tcaa_root =
 				challenge_res.proofs.first().ok_or(OCWError::FailedToFetchBucketChallenge)?;
@@ -2420,52 +2343,6 @@ pub mod pallet {
 				number_of_puts: tcaa_usage.puts,
 				number_of_gets: tcaa_usage.gets,
 			})
-		}
-
-		pub(crate) fn fetch_bucket_challenge_response(
-			cluster_id: &ClusterId,
-			tcaa_id: EhdEra,
-			collector_key: NodePubKey,
-			node_key: NodePubKey,
-			bucket_id: BucketId,
-			tree_node_ids: Vec<u64>,
-		) -> Result<proto::ChallengeResponse, OCWError> {
-			let collectors = Self::get_collectors_nodes(cluster_id)
-				.map_err(|_| OCWError::FailedToFetchCollectors { cluster_id: *cluster_id })?;
-
-			for (key, collector_params) in collectors {
-				if key != collector_key {
-					continue;
-				};
-
-				if let Ok(host) = str::from_utf8(&collector_params.host) {
-					let base_url = format!("http://{}:{}", host, collector_params.http_port);
-					let client = aggregator_client::AggregatorClient::new(
-						&base_url,
-						Duration::from_millis(RESPONSE_TIMEOUT),
-						MAX_RETRIES_COUNT,
-						false, // no response signature verification for now
-					);
-
-					if let Ok(node_challenge_res) = client.challenge_bucket_sub_aggregate(
-						tcaa_id,
-						bucket_id,
-						Into::<String>::into(node_key.clone()).as_str(),
-						tree_node_ids.clone(),
-					) {
-						return Ok(node_challenge_res);
-					} else {
-						log::warn!(
-							"Collector from cluster {:?} is unavailable while challenging bucket sub-aggregate or responded with unexpected body. Key: {:?} Host: {:?}",
-							cluster_id,
-							collector_key,
-							String::from_utf8(collector_params.host)
-						);
-					}
-				}
-			}
-
-			Err(OCWError::FailedToFetchBucketChallenge)
 		}
 
 		/// Fetch processed EHD eras.
@@ -2482,7 +2359,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				MAX_RETRIES_COUNT,
-				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
+				VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let response = client.payment_eras()?;
@@ -2508,7 +2385,6 @@ pub mod pallet {
 				}])
 			}
 		}
-
 		fn fetch_charging_customers_batch(
 			cluster_id: &ClusterId,
 			batch_size: usize,
@@ -2589,8 +2465,8 @@ pub mod pallet {
 					>>::GenericPublic::from(key);
 					let public_key: T::Public = generic_public.into();
 					let account_id = public_key.clone().into_account();
-
-					if <ValidatorSet<T>>::get().contains(&account_id) {
+					// TODO: @yahor please verify this
+					if T::ValidatorVerification::is_ocw_validator(account_id.clone()) {
 						let account = Account::new(i, account_id, public_key);
 						Option::Some(account)
 					} else {

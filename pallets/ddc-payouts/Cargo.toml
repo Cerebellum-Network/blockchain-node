@@ -32,7 +32,7 @@ sp-application-crypto = { workspace = true }
 # Cere dependencies
 ddc-primitives = { workspace = true }
 aggregator = { workspace = true }
-itertools = "0.11.0"
+itertools = { workspace = true }
 
 [dev-dependencies]
 chrono = { workspace = true, default-features = true }

@@ -1252,6 +1252,13 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type Hasher = BlakeTwo256;
 	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
 	type ValidatorsQuorum = MajorityOfValidators;
+	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
+	type ValidatorVerification = DdcVerification;
+	type WeightInfo = ();
+	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
+	const DISABLE_PAYOUTS_CUTOFF: bool = false;
+	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+	const BLOCK_TO_START: u16 = 1; // every block
 }
 
 parameter_types! {
@@ -1367,7 +1374,6 @@ impl pallet_ddc_verification::Config for Runtime {
 	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
 	type Currency = Balances;
-	const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool = true;
 	const DISABLE_PAYOUTS_CUTOFF: bool = false;
 	const DEBUG_MODE: bool = false;
 	type BucketsStorageUsageProvider = DdcCustomers;

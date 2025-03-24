@@ -24,7 +24,7 @@ use ddc_primitives::{
 	ClusterPricingParams, ClusterStatus, CustomerCharge as CustomerCosts, EHDId, EhdEra, MMRProof,
 	NodePubKey, NodeStorageUsage, NodeUsage, PayableUsageHash, PayoutFingerprintParams,
 	PayoutReceiptParams, PayoutState, ProviderReward as ProviderProfits, StorageNodeParams,
-	StorageNodePubKey, TcaEra, AVG_SECONDS_MONTH,
+	StorageNodePubKey, TcaEra, AVG_SECONDS_MONTH, VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -100,7 +100,7 @@ pub mod pallet {
 
 	use ddc_primitives::{
 		AggregatorInfo, BucketId, DeltaUsageHash, Fingerprint, MergeMMRHash,
-		DAC_VERIFICATION_KEY_TYPE,
+		DAC_VERIFICATION_KEY_TYPE, VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 	};
 	use frame_support::PalletId;
 	use sp_core::crypto::AccountId32;
@@ -212,7 +212,6 @@ pub mod pallet {
 			NodeStorageUsage<Self::AccountId>,
 		>;
 		type Currency: Currency<Self::AccountId>;
-		const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool;
 		const DISABLE_PAYOUTS_CUTOFF: bool;
 		const DEBUG_MODE: bool;
 		type ClusterProtocol: ClusterProtocol<
@@ -3186,7 +3185,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				MAX_RETRIES_COUNT,
-				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
+				VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let mut nodes_aggregates = Vec::new();
@@ -3336,7 +3335,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				MAX_RETRIES_COUNT,
-				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
+				VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let response = client.eras()?;
@@ -3464,7 +3463,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				MAX_RETRIES_COUNT,
-				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
+				VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let response = match aggregate_key {
@@ -3501,7 +3500,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				MAX_RETRIES_COUNT,
-				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
+				VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			match aggregate_key {
@@ -3539,7 +3538,7 @@ pub mod pallet {
 				&base_url,
 				Duration::from_millis(RESPONSE_TIMEOUT),
 				MAX_RETRIES_COUNT,
-				T::VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
+				VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
 			);
 
 			let mut buckets_aggregates = Vec::new();

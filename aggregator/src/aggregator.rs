@@ -6,11 +6,12 @@ use ddc_primitives::NodeUsage;
 use ddc_primitives::{AccountId32Hex, AggregatorInfo, BucketId, TcaEra};
 use ddc_primitives::{AggregateKey, BucketUsage, EHDId, NodePubKey, PHDId};
 use prost::Message;
-use scale_info::prelude::{collections::BTreeMap, string::String, vec::Vec};
+use scale_info::prelude::{collections::BTreeMap, format, string::String, vec::Vec};
 use serde::{Deserialize, Serialize};
 use serde_with::{base64::Base64, serde_as, TryFromInto};
 use sp_io::offchain::timestamp;
 use sp_runtime::offchain::{http, Duration};
+use sp_std::vec;
 
 use super::*;
 use crate::signature::Verify;

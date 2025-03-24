@@ -183,7 +183,7 @@ pub mod pallet {
 
 		type ClusterManager: ClusterManager<Self::AccountId, BlockNumberFor<Self>>;
 
-		type NodeManager: NodeManager<Self>;
+		type NodeManager: NodeManager<Self::AccountId>;
 
 		type ClusterBondingAmount: Get<BalanceOf<Self>>;
 
