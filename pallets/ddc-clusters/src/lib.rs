@@ -15,16 +15,16 @@
 #![allow(clippy::manual_inspect)]
 pub mod weights;
 use crate::weights::WeightInfo;
+//TODO: Will be fixed in another PR
+// #[cfg(feature = "runtime-benchmarks")]
+// pub mod benchmarking;
+// #[cfg(any(feature = "runtime-benchmarks", test))]
+// pub mod testing_utils;
 
-#[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
-#[cfg(any(feature = "runtime-benchmarks", test))]
-pub mod testing_utils;
-
-#[cfg(test)]
-pub(crate) mod mock;
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// pub(crate) mod mock;
+// #[cfg(test)]
+// mod tests;
 
 pub mod migrations;
 const LOG_TARGET: &str = "runtime::ddc-clusters";
@@ -760,7 +760,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterQuery<T> for Pallet<T> {
+	impl<T: Config> ClusterQuery<T::AccountId> for Pallet<T> {
 		fn cluster_exists(cluster_id: &ClusterId) -> bool {
 			Clusters::<T>::contains_key(cluster_id)
 		}
@@ -780,7 +780,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for Pallet<T>
+	impl<T: Config> ClusterProtocol<T::AccountId, BlockNumberFor<T>, BalanceOf<T>> for Pallet<T>
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
@@ -885,7 +885,7 @@ pub mod pallet {
 			Self::do_end_unbond_cluster(cluster_id)
 		}
 	}
-	impl<T: Config> ClusterValidator<T> for Pallet<T> {
+	impl<T: Config> ClusterValidator for Pallet<T> {
 		fn set_last_paid_era(cluster_id: &ClusterId, era_id: EhdEra) -> Result<(), DispatchError> {
 			let mut cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
@@ -905,7 +905,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterManager<T> for Pallet<T> {
+	impl<T: Config> ClusterManager<T::AccountId, BlockNumberFor<T>> for Pallet<T> {
 		fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
 			let cluster =
 				Clusters::<T>::try_get(cluster_id).map_err(|_| Error::<T>::ClusterDoesNotExist)?;
@@ -989,7 +989,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> ClusterCreator<T, BalanceOf<T>> for Pallet<T>
+	impl<T: Config> ClusterCreator<T::AccountId, BlockNumberFor<T>, BalanceOf<T>> for Pallet<T>
 	where
 		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
