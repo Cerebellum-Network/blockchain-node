@@ -166,9 +166,10 @@ pub mod v1 {
 			);
 
 			for cluster_id in clusters_to_activate.iter() {
-				let (cluster_controller, cluster_stash) =
-					<T::ClusterProtocol as ClusterQuery<T::AccountId>>::get_manager_and_reserve_id(cluster_id)
-						.expect("no controller and stash accounts found for activating cluster");
+				let (cluster_controller, cluster_stash) = <T::ClusterProtocol as ClusterQuery<
+					T::AccountId,
+				>>::get_manager_and_reserve_id(cluster_id)
+				.expect("no controller and stash accounts found for activating cluster");
 
 				assert_eq!(
 					<ClusterBonded<T>>::get(cluster_stash)
@@ -184,8 +185,10 @@ pub mod v1 {
 				assert_eq!(ledger.active, bonding_amount);
 
 				let cluster_status =
-					<T::ClusterProtocol as ClusterQuery<T::AccountId>>::get_cluster_status(cluster_id)
-						.expect("no activating cluster found");
+					<T::ClusterProtocol as ClusterQuery<T::AccountId>>::get_cluster_status(
+						cluster_id,
+					)
+					.expect("no activating cluster found");
 
 				assert_eq!(cluster_status, ClusterStatus::Activated);
 			}
