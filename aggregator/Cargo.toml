@@ -1,16 +1,16 @@
 [package]
-name = "ddc-primitives"
+name = "aggregator" # Make it ddc-api
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
-readme.workspace = true
 repository.workspace = true
 
 [dependencies]
 blake2 = { workspace = true }
 codec = { workspace = true }
+ddc-primitives = { workspace = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 hex = { workspace = true }
@@ -42,6 +42,7 @@ std = [
   "sp-std/std",
   "sp-runtime/std",
   "sp-application-crypto/std",
+  "ddc-primitives/std",
 ]
 runtime-benchmarks = [
   "frame-support/runtime-benchmarks",

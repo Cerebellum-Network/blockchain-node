@@ -1,12 +1,18 @@
 #![allow(dead_code)]
 #![allow(clippy::from_over_into)]
 
-use ddc_primitives::{AccountId32Hex, AggregatorInfo, BucketId, TcaEra};
+use codec::{Decode, Encode};
+use ddc_primitives::{
+	AccountId32Hex, AggregateKey, AggregatorInfo, BucketId, BucketUsage, EHDId, NodePubKey,
+	NodeUsage, PHDId, TcaEra,
+};
 use prost::Message;
-use scale_info::prelude::{collections::BTreeMap, string::String, vec::Vec};
+use scale_info::prelude::{collections::BTreeMap, format, string::String, vec::Vec};
+use serde::{Deserialize, Serialize};
 use serde_with::{base64::Base64, serde_as, TryFromInto};
 use sp_io::offchain::timestamp;
 use sp_runtime::offchain::{http, Duration};
+use sp_std::vec;
 
 use super::*;
 use crate::signature::Verify;
@@ -238,6 +244,16 @@ impl<'a> AggregatorClient<'a> {
 			.collect::<Vec<_>>()
 			.join(",")
 	}
+
+	pub fn send_inspection_receipt(
+		&self,
+		receipt: json::InspectionReceipt,
+	) -> Result<http::Response, http::Error> {
+		let url = format!("{}/activity/inspection-receipts", self.base_url);
+		let body = serde_json::to_vec(&receipt).expect("Inspection receipt to be encoded");
+		self.post(&url, body)
+	}
+
 	pub fn fetch_grouped_inspection_receipts(
 		&self,
 		ehd_id: EHDId,
@@ -354,7 +370,7 @@ enum Accept {
 	Protobuf,
 }
 
-pub(crate) mod json {
+pub mod json {
 	use super::*;
 
 	/// Node aggregate response from aggregator.

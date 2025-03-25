@@ -135,10 +135,14 @@ pub mod pallet {
 			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
 			+ IsType<<Self as pallet_referenda::Config>::RuntimeCall>
 			+ GetDispatchInfo;
-		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
-		type ClusterManager: ClusterManager<Self>;
-		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
-		type NodeManager: NodeManager<Self>;
+		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
+		type ClusterManager: ClusterManager<Self::AccountId, BlockNumberFor<Self>>;
+		type ClusterProtocol: ClusterProtocol<
+			Self::AccountId,
+			BlockNumberFor<Self>,
+			BalanceOf<Self>,
+		>;
+		type NodeManager: NodeManager<Self::AccountId>;
 		type SeatsConsensus: SeatsConsensus;
 		type DefaultVote: DefaultVote;
 		type MinValidatedNodesCount: Get<u16>;
@@ -256,7 +260,7 @@ pub mod pallet {
 			ensure!(!<ClusterProposal<T>>::contains_key(cluster_id), Error::<T>::ActiveProposal);
 
 			let cluster_status =
-				<T::ClusterProtocol as ClusterQuery<T>>::get_cluster_status(&cluster_id)
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::get_cluster_status(&cluster_id)
 					.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_status == ClusterStatus::Bonded, Error::<T>::UnexpectedState);
 
@@ -308,7 +312,7 @@ pub mod pallet {
 			ensure!(!<ClusterProposal<T>>::contains_key(cluster_id), Error::<T>::ActiveProposal);
 
 			let cluster_status =
-				<T::ClusterProtocol as ClusterQuery<T>>::get_cluster_status(&cluster_id)
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::get_cluster_status(&cluster_id)
 					.map_err(|_| Error::<T>::NoCluster)?;
 			ensure!(cluster_status == ClusterStatus::Activated, Error::<T>::UnexpectedState);
 
