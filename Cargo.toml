@@ -1,5 +1,5 @@
 [workspace.package]
-version = "7.3.2"
+version = "7.3.0"
 authors = ["Cerebellum-Network"]
 edition = "2021"
 homepage = "https://cere.network/"
@@ -21,8 +21,11 @@ members = [
   "pallets/erc721",
   "pallets/ddc-clusters-gov",
   "pallets/origins",
+  "pallets/ddc-verification",
+  "primitives",
   "runtime/cere",
   "runtime/cere-dev",
+  "aggregator",
 ]
 resolver = "2"
 
@@ -184,21 +187,19 @@ cere-rpc = { path = "node/rpc" }
 cere-runtime = { path = "runtime/cere" }
 cere-runtime-common = { path = "runtime/common", default-features = false }
 cere-service = { path = "node/service" }
+ddc-primitives = { path = "primitives", default-features = false }
+aggregator = { path = "aggregator", default-features = false }
 pallet-chainbridge = { path = "pallets/chainbridge", default-features = false }
 pallet-ddc-clusters = { path = "pallets/ddc-clusters", default-features = false }
 pallet-ddc-clusters-gov = { path = "pallets/ddc-clusters-gov", default-features = false }
 pallet-ddc-customers = { path = "pallets/ddc-customers", default-features = false }
 pallet-ddc-nodes = { path = "pallets/ddc-nodes", default-features = false }
+pallet-ddc-payouts = { path = "pallets/ddc-payouts", default-features = false }
 pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
+pallet-ddc-verification = { path = "pallets/ddc-verification", default-features = false }
 pallet-erc20 = { path = "pallets/erc20", default-features = false }
 pallet-erc721 = { path = "pallets/erc721", default-features = false }
 pallet-origins = { path = "pallets/origins", default-features = false }
-
-# Cere External Dependencies
-ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "staging", default-features = false }
-ddc-api = { git = "https://github.com/Cerebellum-Network/ddc-api.git", branch = "staging", default-features = false }
-pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "staging", default-features = false }
-pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "staging", default-features = false }
 
 # Hyperbridge
 ismp = { default-features = false, version = "0.2.2" }

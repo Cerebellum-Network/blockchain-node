@@ -9,7 +9,7 @@ use ddc_primitives::{
 		bucket::BucketManager, cluster::ClusterProtocol, customer::CustomerCharger,
 		node::NodeManager, pallet::PalletVisitor, ClusterQuery, ValidatorVisitor,
 	},
-	BucketUsage, ClusterBondingParams, ClusterFeesParams, ClusterPricingParams,
+	BucketId, BucketUsage, ClusterBondingParams, ClusterFeesParams, ClusterPricingParams,
 	ClusterProtocolParams, ClusterStatus, NodeParams, NodePubKey, NodeType, DOLLARS,
 };
 use frame_election_provider_support::SortedListProvider;

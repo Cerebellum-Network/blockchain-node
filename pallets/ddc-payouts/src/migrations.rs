@@ -1,6 +1,7 @@
 use frame_support::{migration, storage::unhashed, storage_alias, traits::OnRuntimeUpgrade};
 use log;
 use sp_runtime::Saturating;
+use sp_std::collections::btree_set::BTreeSet;
 
 use super::*;
 
@@ -18,7 +19,7 @@ pub mod v1 {
 		pub vault: T::AccountId,
 		pub start_era: i64, // removed field
 		pub end_era: i64,   // removed field
-		pub total_customer_charge: CustomerCharge,
+		pub total_customer_charge: CustomerCosts,
 		pub total_distributed_reward: u128,
 		pub total_node_usage: NodeUsage, // removed field
 		pub charging_max_batch_index: BatchIndex,
@@ -106,7 +107,7 @@ pub mod v2 {
 		pub state: PayoutState,
 		pub vault: T::AccountId,
 		pub fingerprint: Fingerprint,
-		pub total_customer_charge: CustomerCharge, // removed field
+		pub total_customer_charge: CustomerCosts, // removed field
 		pub total_distributed_reward: u128,
 		pub charging_max_batch_index: BatchIndex,
 		pub charging_processed_batches: BoundedBTreeSet<BatchIndex, MaxBatchesCount>,
