@@ -1,6 +1,5 @@
 #[cfg(feature = "runtime-benchmarks")]
 use frame_support::dispatch::DispatchResult;
-use frame_system::Config;
 use sp_runtime::DispatchError;
 
 use crate::{ClusterId, NodeParams, NodePubKey, NodeUsage};

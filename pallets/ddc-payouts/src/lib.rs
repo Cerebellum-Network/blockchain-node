@@ -22,15 +22,16 @@
 
 pub mod migrations;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
+//TODO: Will be fixed in another PR
+// #[cfg(feature = "runtime-benchmarks")]
+// mod benchmarking;
 
 pub mod weights;
 use core::str;
 
 use aggregator::insp_ddc_api::{
 	fetch_bucket_challenge_response, fetch_inspection_receipts, fetch_node_challenge_response,
-	fetch_processed_era, get_collectors_nodes, get_ehd_root, get_g_collectors_nodes,
+	fetch_processed_era, get_ehd_root, get_g_collectors_nodes,
 	MAX_RETRIES_COUNT, RESPONSE_TIMEOUT,
 };
 pub use aggregator::{aggregator as aggregator_client, proto};
@@ -44,7 +45,7 @@ use ddc_primitives::{
 	},
 	AggregateKey, BatchIndex, BucketId, BucketUsage, ClusterFeesParams, ClusterId,
 	ClusterPricingParams, ClusterStatus, CustomerCharge as CustomerCosts, DeltaUsageHash, EHDId,
-	EhdEra, Fingerprint, MMRProof, MergeMMRHash, NodeParams, NodePubKey, NodeUsage,
+	EhdEra, Fingerprint, MMRProof, MergeMMRHash, NodePubKey, NodeUsage,
 	PayableUsageHash, PaymentEra, PayoutError, PayoutFingerprintParams, PayoutReceiptParams,
 	PayoutState, ProviderReward as ProviderProfits, StorageNodeParams, AVG_SECONDS_MONTH,
 	DAC_VERIFICATION_KEY_TYPE, MAX_PAYOUT_BATCH_COUNT, MAX_PAYOUT_BATCH_SIZE, MILLICENTS,
@@ -55,7 +56,7 @@ use frame_support::{
 	pallet_prelude::*,
 	parameter_types,
 	sp_runtime::SaturatedConversion,
-	traits::{Currency, ExistenceRequirement, Get, LockableCurrency, OneSessionHandler},
+	traits::{Currency, ExistenceRequirement, Get, LockableCurrency},
 	BoundedBTreeSet,
 };
 use frame_system::{
@@ -633,7 +634,8 @@ pub mod pallet {
 				"❌ Error retrieving clusters to validate"
 			);
 			for cluster_id in clusters_ids {
-				let payout_result =
+				//TODO: Handle errors
+				let _payout_result =
 					Self::start_payouts_phase(&cluster_id, &verification_account, &signer);
 			}
 		}

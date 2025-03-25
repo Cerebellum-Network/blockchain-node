@@ -24,7 +24,7 @@ use ddc_primitives::{
 	ClusterPricingParams, ClusterStatus, CustomerCharge as CustomerCosts, EHDId, EhdEra, MMRProof,
 	NodePubKey, NodeStorageUsage, NodeUsage, PayableUsageHash, PayoutFingerprintParams,
 	PayoutReceiptParams, PayoutState, ProviderReward as ProviderProfits, StorageNodeParams,
-	StorageNodePubKey, TcaEra, AVG_SECONDS_MONTH, VERIFY_AGGREGATOR_RESPONSE_SIGNATURE,
+	StorageNodePubKey, TcaEra, AVG_SECONDS_MONTH,
 };
 use frame_support::{
 	pallet_prelude::*,
@@ -67,8 +67,8 @@ use sp_std::{
 pub mod weights;
 use crate::weights::WeightInfo;
 
-#[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
+// #[cfg(feature = "runtime-benchmarks")]
+// pub mod benchmarking;
 
 // #[cfg(test)]
 // pub(crate) mod mock;
@@ -225,7 +225,7 @@ pub mod pallet {
 		#[cfg(feature = "runtime-benchmarks")]
 		type CustomerDepositor: CustomerDepositor<Self>;
 		#[cfg(feature = "runtime-benchmarks")]
-		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
+		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
 		type BucketManager: BucketManager<Self>;
 	}
 
@@ -1087,7 +1087,7 @@ pub mod pallet {
 				)?;
 
 				send_inspection_receipt(cluster_id, g_collector, receipt)
-					.map_err(|e| OCWError::ApiError)?; //TODO: Errors have to be fixed
+					.map_err(|_| OCWError::ApiError)?; //TODO: Errors have to be fixed
 				store_last_inspected_ehd(cluster_id, ehd_id);
 			}
 

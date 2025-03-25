@@ -574,6 +574,7 @@ pub fn send_inspection_receipt(
 }
 
 #[allow(dead_code)]
+#[allow(clippy::result_unit_err)]
 pub fn get_inspection_assignment_table(
 	_cluster_id: &ClusterId,
 	_sync_node: &(NodePubKey, StorageNodeParams),

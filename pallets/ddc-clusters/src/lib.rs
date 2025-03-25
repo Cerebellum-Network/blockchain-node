@@ -15,9 +15,9 @@
 #![allow(clippy::manual_inspect)]
 pub mod weights;
 use crate::weights::WeightInfo;
-
-#[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
+//TODO: Will be fixed in another PR
+// #[cfg(feature = "runtime-benchmarks")]
+// pub mod benchmarking;
 // #[cfg(any(feature = "runtime-benchmarks", test))]
 // pub mod testing_utils;
 

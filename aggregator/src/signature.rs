@@ -1,5 +1,5 @@
 use prost::Message;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use sp_core::ed25519::{Public, Signature};
 use sp_io::crypto::ed25519_verify;
 
