@@ -22,7 +22,7 @@ members = [
   "pallets/ddc-clusters-gov",
   "pallets/origins",
   "pallets/ddc-verification",
-  "primitives",
+#  "primitives",
   "runtime/cere",
   "runtime/cere-dev",
 ]
@@ -188,12 +188,12 @@ cere-rpc = { path = "node/rpc" }
 cere-runtime = { path = "runtime/cere" }
 cere-runtime-common = { path = "runtime/common", default-features = false }
 cere-service = { path = "node/service" }
-ddc-primitives = { path = "primitives", default-features = false }
+ddc-primitives = { git = "https://github.com/Cerebellum-Network/blockchain-node.git", branch = "pri_repo", default-features = false }
 pallet-chainbridge = { path = "pallets/chainbridge", default-features = false }
 pallet-ddc-clusters = { path = "pallets/ddc-clusters", default-features = false }
 pallet-ddc-clusters-gov = { path = "pallets/ddc-clusters-gov", default-features = false }
 pallet-ddc-customers = { path = "pallets/ddc-customers", default-features = false }
-pallet-ddc-nodes = { path = "pallets/ddc-nodes", default-features = false }
+pallet-ddc-nodes = { version = "7.3.0", default-features = false }
 pallet-ddc-payouts = { path = "pallets/ddc-payouts", default-features = false }
 pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
 pallet-ddc-verification = { path = "pallets/ddc-verification", default-features = false }
@@ -214,5 +214,7 @@ pallet-token-gateway = { default-features = false, version = "16.0.0" }
 panic = "unwind"
 
 [patch.crates-io]
+ddc-primitives = { path = "primitives" }
 # This patch tells Cargo to use the stub version instead of trying to download the private crate.
 private-pallet = { path = "stub/private-pallet" }
+pallet-ddc-nodes = { path = "pallets/ddc-nodes" }

@@ -35,3 +35,6 @@ git-fetch-with-cli = true
 
 #[patch.crates-io]
 #private-pallet = { git = "https://github.com/ashi20192020/private-pallet.git", branch = "main" }
+
+[patch.crates-io]
+pallet-ddc-nodes = { git = "https://github.com/ashi20192020/ddc-nodes.git", branch = "main", default-features = false}
