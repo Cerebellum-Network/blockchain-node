@@ -30,7 +30,7 @@ resolver = "2"
 
 
 [workspace.dependencies]
-private-pallet = { git = "https://github.com/ayushmishra2005/private-pallet.git", branch = "main" }
+private-pallet = "0.1.0"
 # 3rd-party dependencies
 anyhow = { version = "1.0", default-features = false }
 base64ct = { version = "1.6.0" }

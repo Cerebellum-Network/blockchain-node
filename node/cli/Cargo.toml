@@ -41,6 +41,7 @@ sp-runtime = { workspace = true, default-features = true }
 cere-client = { workspace = true, optional = true }
 cere-service = { workspace = true, optional = true }
 
+
 [build-dependencies]
 substrate-build-script-utils = { workspace = true, default-features = true }
 

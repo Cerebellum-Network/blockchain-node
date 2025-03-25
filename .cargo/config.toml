@@ -32,3 +32,6 @@ rustflags = [
 
 [net]
 git-fetch-with-cli = true
+
+#[patch.crates-io]
+#private-pallet = { git = "https://github.com/ashi20192020/private-pallet.git", branch = "main" }
