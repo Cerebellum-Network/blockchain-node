@@ -1612,15 +1612,14 @@ pub mod pallet {
 									continue;
 								}
 
-								let receipts_by_inspector =
-									fetch_inspection_receipts::<
-										T::AccountId,
-										BlockNumberFor<T>,
-										T::ClusterManager,
-										T::NodeManager,
-									>(cluster_id, inspected_ehd.clone())
-									.map_err(|e| vec![e])
-									.ok()?;
+								let receipts_by_inspector = fetch_inspection_receipts::<
+									T::AccountId,
+									BlockNumberFor<T>,
+									T::ClusterManager,
+									T::NodeManager,
+								>(cluster_id, inspected_ehd.clone())
+								.map_err(|e| vec![e])
+								.ok()?;
 
 								let inspectors_quorum = T::ValidatorsQuorum::get();
 								//TODO: @yahor please verify this:-
@@ -2346,14 +2345,13 @@ pub mod pallet {
 			node_key: NodePubKey,
 			bucket_id: BucketId,
 		) -> Result<BucketUsage, OCWError> {
-			let challenge_res =
-				fetch_bucket_challenge_response::<
-					T::AccountId,
-					BlockNumberFor<T>,
-					T::ClusterManager,
-					T::NodeManager,
-				>(cluster_id, tcaa_id, collector_key, node_key, bucket_id, vec![1])
-				.map_err(|_| OCWError::ApiError)?;
+			let challenge_res = fetch_bucket_challenge_response::<
+				T::AccountId,
+				BlockNumberFor<T>,
+				T::ClusterManager,
+				T::NodeManager,
+			>(cluster_id, tcaa_id, collector_key, node_key, bucket_id, vec![1])
+			.map_err(|_| OCWError::ApiError)?;
 
 			let tcaa_root =
 				challenge_res.proofs.first().ok_or(OCWError::FailedToFetchBucketChallenge)?;

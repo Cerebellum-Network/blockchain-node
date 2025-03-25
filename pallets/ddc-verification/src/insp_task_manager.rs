@@ -880,9 +880,8 @@ fn process_tasks<T: Config>(
 						BlockNumberFor<T>,
 						T::ClusterManager,
 						T::NodeManager,
-					>(
-						cluster_id, *tca_id, collector.clone(), node_key.clone(), leaves_ids.clone()
-					) {
+					>(cluster_id, *tca_id, collector.clone(), node_key.clone(), leaves_ids.clone())
+				{
 					// todo(yahortsaryk): fix AR signatures
 					let is_verified = challenge_res.verify();
 					let exception: Option<_> = if is_verified {
