@@ -2907,7 +2907,7 @@ fn aggregator_client_get_buckets_aggregates_works() {
 		let base_url = "http://example.com:8080";
 		let era_id = 346524624;
 		let activity_buckets_signed_resp =
-			include_bytes!("./test_data/activity_buckets_signed_resp.json").as_slice();
+			include_bytes!("test_data/activity_buckets_signed_resp.json").as_slice();
 
 		let expected_request = PendingRequest {
 			method: "GET".to_string(),

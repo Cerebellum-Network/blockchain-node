@@ -1,6 +1,10 @@
 use aggregate_tree::{
 	calculate_sample_size_fin, calculate_sample_size_inf, get_leaves_ids, D_099, P_001,
 };
+use aggregator::insp_ddc_api::{
+	fetch_bucket_aggregates, fetch_bucket_challenge_response, fetch_node_challenge_response,
+	fetch_processed_eras, get_ehd_root, get_g_collectors_nodes, get_phd_root,
+};
 use aggregator_client::json::{EHDTreeNode, PHDTreeNode};
 use ddc_primitives::{
 	traits::ClusterValidator, BucketId, BucketUsage, ClusterId, EHDId, EhdEra, NodePubKey,
@@ -25,14 +29,8 @@ use sp_std::{
 };
 
 use crate::{
-	aggregate_tree, aggregator_client, fetch_last_inspected_ehds,
-	insp_ddc_api::{
-		fetch_bucket_aggregates, fetch_bucket_challenge_response, fetch_node_challenge_response,
-		fetch_processed_eras, get_ehd_root, get_g_collectors_nodes, get_phd_root,
-	},
-	pallet::{Error, ValidatorSet},
-	signature::Verify,
-	Config, Hashable,
+	aggregate_tree, aggregator_client, fetch_last_inspected_ehds, pallet::ValidatorSet,
+	signature::Verify, BlockNumberFor, Config, Hashable,
 };
 
 pub(crate) const TCA_INSPECTION_STEP: usize = 0;
@@ -232,8 +230,13 @@ impl<T: Config> InspTaskAssigner<T> {
 	fn try_get_era_to_inspect(
 		cluster_id: &ClusterId,
 	) -> Result<Option<EhdEra>, InspAssignmentError> {
-		let g_collectors = get_g_collectors_nodes(cluster_id)
-			.map_err(|_: Error<T>| InspAssignmentError::NoGCollectors(*cluster_id))?;
+		let g_collectors = get_g_collectors_nodes::<
+			T::AccountId,
+			BlockNumberFor<T>,
+			T::ClusterManager,
+			T::NodeManager,
+		>(cluster_id)
+		.map_err(|_| InspAssignmentError::NoGCollectors(*cluster_id))?;
 
 		let last_inspected_ehd_by_this_validator = Self::try_get_last_inspected_ehd(cluster_id);
 
@@ -255,7 +258,7 @@ impl<T: Config> InspTaskAssigner<T> {
 			);
 
 		// we want to fetch processed eras from all available G-Collectors
-		let available_processed_ehd_eras = fetch_processed_eras::<T>(cluster_id, &g_collectors)
+		let available_processed_ehd_eras = fetch_processed_eras(cluster_id, &g_collectors)
 			.map_err(|_| InspAssignmentError::ClusterApiError(*cluster_id))?;
 
 		// we want to let the current inspector to inspect available processed/completed eras
@@ -325,7 +328,11 @@ impl<T: Config> InspTaskAssigner<T> {
 
 		let mut phd_roots = vec![];
 		for phd_id in &ehd_root.pdh_ids {
-			let phd_root = get_phd_root::<T>(cluster_id, phd_id.clone())
+			let phd_root =
+				get_phd_root::<T::AccountId, BlockNumberFor<T>, T::ClusterManager, T::NodeManager>(
+					cluster_id,
+					phd_id.clone(),
+				)
 				.map_err(|_| InspAssignmentError::NoPHD(*era, phd_id.clone().0))?;
 			phd_roots.push(phd_root.clone());
 		}
@@ -466,14 +473,22 @@ fn build_ehd_inspection_paths<T: Config>(
 	era: &EhdEra,
 ) -> Result<(EHDTreeNode, Vec<InspPath>), InspAssignmentError> {
 	let inspection_paths: Vec<InspPath> = Default::default();
-	let g_collectors = get_g_collectors_nodes(cluster_id)
-		.map_err(|_: Error<T>| InspAssignmentError::NoEHDs(*era, *cluster_id))?;
+	let g_collectors = get_g_collectors_nodes::<
+		T::AccountId,
+		BlockNumberFor<T>,
+		T::ClusterManager,
+		T::NodeManager,
+	>(cluster_id)
+	.map_err(|_| InspAssignmentError::NoEHDs(*era, *cluster_id))?;
 
 	let mut ehd_variants: BTreeMap<EHDTreeNode, BTreeSet<GCollectorNodeKey>> = Default::default();
 
 	for (g_collector_key, _) in g_collectors {
 		let ehd_id = EHDId(*cluster_id, g_collector_key.clone(), *era);
-		let ehd_root = get_ehd_root::<T>(cluster_id, ehd_id)
+		let ehd_root =
+			get_ehd_root::<T::AccountId, BlockNumberFor<T>, T::ClusterManager, T::NodeManager>(
+				cluster_id, ehd_id,
+			)
 			.map_err(|_| InspAssignmentError::NoEHD(*era, g_collector_key.clone()))?;
 
 		if !ehd_variants.contains_key(&ehd_root) {
@@ -859,13 +874,14 @@ fn process_tasks<T: Config>(
 
 				// todo(yahortsaryk): in case the request fails due to collector
 				// unavailability, re-try with the next one
-				if let Ok(challenge_res) = fetch_node_challenge_response::<T>(
-					cluster_id,
-					*tca_id,
-					collector.clone(),
-					node_key.clone(),
-					leaves_ids.clone(),
-				) {
+				if let Ok(challenge_res) =
+					fetch_node_challenge_response::<
+						T::AccountId,
+						BlockNumberFor<T>,
+						T::ClusterManager,
+						T::NodeManager,
+					>(cluster_id, *tca_id, collector.clone(), node_key.clone(), leaves_ids.clone())
+				{
 					// todo(yahortsaryk): fix AR signatures
 					let is_verified = challenge_res.verify();
 					let exception: Option<_> = if is_verified {
@@ -888,9 +904,13 @@ fn process_tasks<T: Config>(
 					if let Some(aggregate) = cached_bucket_aggregates.get(&(*bucket_id, *tca_id)) {
 						aggregate
 					} else {
-						let aggregates =
-							fetch_bucket_aggregates::<T>(cluster_id, *tca_id, collector.clone())
-								.map_err(|_| InspectionError::NoBucketAggregate(*bucket_id))?;
+						let aggregates = fetch_bucket_aggregates::<
+							T::AccountId,
+							BlockNumberFor<T>,
+							T::ClusterManager,
+							T::NodeManager,
+						>(cluster_id, *tca_id, collector.clone())
+						.map_err(|_| InspectionError::NoBucketAggregate(*bucket_id))?;
 
 						for mut aggregate in aggregates {
 							aggregate.sub_aggregates.sort_by_key(|subagg| subagg.NodeID.clone());
@@ -931,7 +951,12 @@ fn process_tasks<T: Config>(
 						continue;
 					}
 
-					if let Ok(challenge_res) = fetch_bucket_challenge_response::<T>(
+					if let Ok(challenge_res) = fetch_bucket_challenge_response::<
+						T::AccountId,
+						BlockNumberFor<T>,
+						T::ClusterManager,
+						T::NodeManager,
+					>(
 						cluster_id,
 						*tca_id,
 						collector.clone(),
