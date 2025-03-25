@@ -7,13 +7,6 @@ function print_message() {
   echo "========== $1 =========="
 }
 
-# Step 1: Install Rust toolchain and dependencies
-print_message "Installing Rust toolchain and dependencies"
-rustup install nightly-2024-03-12
-rustup override set nightly-2024-03-12
-rustup component add rustfmt
-
-# Install macOS dependencies using Homebrew
 print_message "Installing macOS dependencies"
 brew update
 brew install clang llvm openssl protobuf
@@ -28,7 +21,7 @@ dprint check
 
 # Check code formatting using rustfmt
 print_message "Checking code formatting"
-cargo fmt -- --check
+cargo +nightly-2024-03-12 fmt -- --check
 
 # Build and check Cargo project
 print_message "Building Cargo project"

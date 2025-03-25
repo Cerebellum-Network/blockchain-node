@@ -115,7 +115,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(3);
+		frame_support::traits::StorageVersion::new(4);
 	pub const OCW_MUTEX_ID: &[u8] = b"payment_lock"; //TODO: Both offchain worker can run in parallel
 
 	#[pallet::pallet]
