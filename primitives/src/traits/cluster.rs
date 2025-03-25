@@ -1,4 +1,3 @@
-use frame_system::{pallet_prelude::BlockNumberFor, Config};
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::prelude::*;
 
@@ -8,15 +7,15 @@ use crate::{
 	ClusterProtocolParams, ClusterStatus, EhdEra, NodePubKey, NodeType,
 };
 
-pub trait ClusterQuery<T: Config> {
+pub trait ClusterQuery<AccountId> {
 	fn cluster_exists(cluster_id: &ClusterId) -> bool;
 	fn get_cluster_status(cluster_id: &ClusterId) -> Result<ClusterStatus, DispatchError>;
 	fn get_manager_and_reserve_id(
 		cluster_id: &ClusterId,
-	) -> Result<(T::AccountId, T::AccountId), DispatchError>;
+	) -> Result<(AccountId, AccountId), DispatchError>;
 }
 
-pub trait ClusterProtocol<T: Config, Balance>: ClusterQuery<T> {
+pub trait ClusterProtocol<AccountId, BlockNumber, Balance>: ClusterQuery<AccountId> {
 	fn get_bond_size(cluster_id: &ClusterId, node_type: NodeType) -> Result<u128, DispatchError>;
 
 	fn get_pricing_params(cluster_id: &ClusterId) -> Result<ClusterPricingParams, DispatchError>;
@@ -26,24 +25,24 @@ pub trait ClusterProtocol<T: Config, Balance>: ClusterQuery<T> {
 	fn get_chill_delay(
 		cluster_id: &ClusterId,
 		node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, DispatchError>;
+	) -> Result<BlockNumber, DispatchError>;
 
 	fn get_unbonding_delay(
 		cluster_id: &ClusterId,
 		node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, DispatchError>;
+	) -> Result<BlockNumber, DispatchError>;
 
 	fn get_bonding_params(
 		cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, DispatchError>;
+	) -> Result<ClusterBondingParams<BlockNumber>, DispatchError>;
 
-	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError>;
+	fn get_reserve_account_id(cluster_id: &ClusterId) -> Result<AccountId, DispatchError>;
 
 	fn activate_cluster_protocol(cluster_id: &ClusterId) -> DispatchResult;
 
 	fn update_cluster_protocol(
 		cluster_id: &ClusterId,
-		cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
+		cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
 	) -> DispatchResult;
 
 	fn bond_cluster(cluster_id: &ClusterId) -> DispatchResult;
@@ -53,18 +52,18 @@ pub trait ClusterProtocol<T: Config, Balance>: ClusterQuery<T> {
 	fn end_unbond_cluster(cluster_id: &ClusterId) -> DispatchResult;
 }
 
-pub trait ClusterCreator<T: Config, Balance> {
+pub trait ClusterCreator<AccountId, BlockNumber, Balance> {
 	fn create_cluster(
 		cluster_id: ClusterId,
-		cluster_manager_id: T::AccountId,
-		cluster_reserve_id: T::AccountId,
-		cluster_params: ClusterParams<T::AccountId>,
-		initial_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
+		cluster_manager_id: AccountId,
+		cluster_reserve_id: AccountId,
+		cluster_params: ClusterParams<AccountId>,
+		initial_protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
 	) -> DispatchResult;
 }
 
-pub trait ClusterManager<T: Config>: ClusterQuery<T> {
-	fn get_manager_account_id(cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError>;
+pub trait ClusterManager<AccountId, BlockNumber>: ClusterQuery<AccountId> {
+	fn get_manager_account_id(cluster_id: &ClusterId) -> Result<AccountId, DispatchError>;
 
 	fn contains_node(
 		cluster_id: &ClusterId,
@@ -85,7 +84,7 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 	fn get_node_state(
 		cluster_id: &ClusterId,
 		node_pub_key: &NodePubKey,
-	) -> Result<ClusterNodeState<BlockNumberFor<T>>, DispatchError>;
+	) -> Result<ClusterNodeState<BlockNumber>, DispatchError>;
 
 	fn get_nodes_stats(cluster_id: &ClusterId) -> Result<ClusterNodesStats, DispatchError>;
 
@@ -97,7 +96,7 @@ pub trait ClusterManager<T: Config>: ClusterQuery<T> {
 
 	fn get_clusters(status: ClusterStatus) -> Result<Vec<ClusterId>, DispatchError>;
 }
-pub trait ClusterValidator<T: Config> {
+pub trait ClusterValidator {
 	/// Updates the `last_paid_era` for the given cluster and emits an event indicating the
 	/// update.
 	///

@@ -18,7 +18,6 @@ use sp_runtime::{
 use sp_std::collections::btree_set::BTreeSet;
 pub mod traits;
 use sp_std::str::FromStr;
-
 pub mod ocw_mutex;
 
 parameter_types! {
@@ -225,7 +224,6 @@ impl TryFrom<String> for EHDId {
 		let cluster_str = parts[0];
 		let g_collector_str = String::from(parts[1]);
 		let payment_era_str = parts[2];
-
 		if !cluster_str.starts_with("0x") || cluster_str.len() != 42 {
 			return Err("ClusterId must be a 20-byte hex string started with '0x'");
 		}
@@ -242,7 +240,6 @@ impl TryFrom<String> for EHDId {
 
 		let mut cluster_id = [0u8; 20];
 		cluster_id.copy_from_slice(&cluster_hex_bytes[..20]);
-
 		let g_collector: NodePubKey = g_collector_str.try_into()?;
 
 		let payment_era = match EhdEra::from_str(payment_era_str) {
@@ -579,6 +576,8 @@ pub struct BucketParams {
 
 pub const DAC_VERIFICATION_KEY_TYPE: KeyTypeId = KeyTypeId(*b"cer!");
 
+pub const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool = false;
+
 pub mod sr25519 {
 	mod app_sr25519 {
 		use sp_application_crypto::{app_crypto, sr25519};
@@ -657,4 +656,12 @@ pub struct NodeStorageUsage<AccountId> {
 	pub node_key: NodePubKey,
 	pub provider_id: AccountId,
 	pub stored_bytes: i64,
+}
+
+#[allow(unused)]
+#[derive(Debug, Serialize, Deserialize, Clone, Encode, Decode, Hash, TypeInfo, PartialEq)]
+pub enum AggregateKey {
+	NodeAggregateKey(String),
+	BucketSubAggregateKey(BucketId, String),
+	BucketAggregateKey(BucketId),
 }

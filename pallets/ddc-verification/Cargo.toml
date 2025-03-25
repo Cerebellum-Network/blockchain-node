@@ -9,6 +9,7 @@ readme.workspace = true
 repository.workspace = true
 
 [dependencies]
+aggregator = { workspace = true }
 array-bytes = { workspace = true }
 base64ct = { workspace = true }
 byte-unit = { workspace = true }
@@ -71,6 +72,7 @@ std = [
   "sp-application-crypto/std",
   "sp-staking/std",
   "frame-election-provider-support/std",
+  "aggregator/std",
 ]
 runtime-benchmarks = [
   "ddc-primitives/runtime-benchmarks",
