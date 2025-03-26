@@ -22,7 +22,7 @@ members = [
   "pallets/ddc-clusters-gov",
   "pallets/origins",
   "pallets/ddc-verification",
-  "primitives",
+#  "primitives",
   "runtime/cere",
   "runtime/cere-dev",
   "aggregator",
@@ -187,7 +187,7 @@ cere-rpc = { path = "node/rpc" }
 cere-runtime = { path = "runtime/cere" }
 cere-runtime-common = { path = "runtime/common", default-features = false }
 cere-service = { path = "node/service" }
-ddc-primitives = { path = "primitives", default-features = false }
+ddc-primitives = {git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "dev", default-features = false }
 aggregator = { path = "aggregator", default-features = false }
 pallet-chainbridge = { path = "pallets/chainbridge", default-features = false }
 pallet-ddc-clusters = { path = "pallets/ddc-clusters", default-features = false }
