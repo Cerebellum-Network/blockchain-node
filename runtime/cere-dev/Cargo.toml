@@ -120,6 +120,15 @@ sp-mmr-primitives = { workspace = true }
 [build-dependencies]
 substrate-wasm-builder = { workspace = true, default-features = true }
 
+# Enable the metadata hash generation.
+#
+# This is hidden behind a feature because it increases the compile time.
+# The wasm binary needs to be compiled twice, once to fetch the metadata,
+# generate the metadata hash and then a second time with the
+# `RUNTIME_METADATA_HASH` environment variable set for the `CheckMetadataHash`
+# extension.
+
+
 [features]
 default = ["std"]
 with-tracing = ["frame-executive/with-tracing"]
@@ -327,3 +336,11 @@ try-runtime = [
   "ismp-grandpa/try-runtime",
   "pallet-token-gateway/try-runtime",
 ]
+
+# Enable the metadata hash generation in the wasm builder.
+metadata-hash = ["substrate-wasm-builder/metadata-hash"]
+
+# A feature that should be enabled when the runtime should be built for on-chain
+# deployment. This will disable stuff that shouldn't be part of the on-chain wasm
+# to make it smaller, like logging for example.
+on-chain-release-build = ["metadata-hash"]
