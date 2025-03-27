@@ -1,26 +1,35 @@
-use aggregate_tree::{
-	calculate_sample_size_fin, calculate_sample_size_inf, get_leaves_ids, D_099, P_001,
+#![allow(clippy::unwrap_or_default)]
+
+use ddc_api::{
+	api::{
+		fetch_bucket_aggregates, fetch_bucket_challenge_response, fetch_node_challenge_response,
+		fetch_processed_eras, get_assignments_table, get_ehd_root, get_g_collectors_nodes,
+		get_phd_root, post_itm_lease, submit_assignments_table,
+	},
+	json,
+	proto::{
+		endpoint_itm_lease::Variant as ItmLeaseVariant, ItmLeaseAcquired,
+		ItmLeaseAlreadyInProgress, ItmLeaseEraDataCorrupted, ItmLeaseEraFailedToUpdate,
+		ItmLeaseEraNotFound, ItmLeaseEraNotYetProcessed, ItmLeaseTableAlreadyAvailable,
+	},
+	signature::Verify,
 };
-use aggregator::insp_ddc_api::{
-	fetch_bucket_aggregates, fetch_bucket_challenge_response, fetch_node_challenge_response,
-	fetch_processed_eras, get_ehd_root, get_g_collectors_nodes, get_phd_root,
-};
-use aggregator_client::json::{EHDTreeNode, PHDTreeNode};
 use ddc_primitives::{
-	traits::ClusterValidator, BucketId, BucketUsage, ClusterId, EHDId, EhdEra, NodePubKey,
-	NodeUsage, TcaEra,
+	traits::ClusterValidator, AccountId32Hex, BucketId, BucketUsage, ClusterId, EHDId, EhdEra,
+	NodePubKey, NodeUsage, TcaEra,
 };
 use frame_support::pallet_prelude::{Decode, Encode, TypeInfo};
-use frame_system::offchain::Account;
+use frame_system::{offchain::Account, pallet_prelude::BlockNumberFor};
 use itertools::Itertools;
 use rand::{prelude::*, rngs::SmallRng, SeedableRng};
 use scale_info::prelude::{format, string::String};
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
-use sp_io::offchain::{local_storage_get, local_storage_set};
+use sp_io::offchain::{local_storage_clear, local_storage_get, local_storage_set};
 use sp_runtime::{
 	offchain::StorageKind,
 	traits::{Hash, IdentifyAccount},
+	AccountId32,
 };
 use sp_std::{
 	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
@@ -29,13 +38,16 @@ use sp_std::{
 };
 
 use crate::{
-	aggregate_tree, aggregator_client, fetch_last_inspected_ehds, pallet::ValidatorSet,
-	signature::Verify, BlockNumberFor, Config, Hashable,
+	aggregate_tree::{
+		calculate_sample_size_fin, calculate_sample_size_inf, get_leaves_ids, D_099, P_001,
+	},
+	Config, Hashable, InspOCWError, ValidatorSet,
 };
 
 pub(crate) const TCA_INSPECTION_STEP: usize = 0;
 pub(crate) const INSPECTION_REDUNDANCY_FACTOR: u8 = 3;
 pub(crate) const INSPECTION_BACKUPS_COUNT: u8 = 2;
+pub(crate) const INSP_BACKUP_BLOCK_DELAY: u32 = 5;
 
 type GCollectorNodeKey = NodePubKey;
 type CollectorNodeKey = NodePubKey;
@@ -49,11 +61,10 @@ where
 	AccountId: Ord + Clone,
 {
 	cluster_id: ClusterId,
-	era: EhdEra,
+	pub era: EhdEra,
 	irf: u8,
-	// todo(yahortsaryk): make private after deprecating `InspectionReceipt` format
-	pub(crate) paths: BTreeMap<InspPathId, InspPath>,
-	assignments: BTreeMap<InspPathId, BTreeSet<AccountId>>,
+	pub paths: BTreeMap<InspPathId, InspPath>,
+	assignments: BTreeMap<InspPathId, Vec<AccountId>>,
 }
 
 impl<AccountId> InspAssignmentsTable<AccountId>
@@ -102,20 +113,18 @@ where
 			}
 		}
 
-		let mut inspectors_assignments: BTreeMap<InspPathId, BTreeSet<AccountId>> =
-			Default::default();
-
+		let mut inspectors_assignments: BTreeMap<InspPathId, Vec<AccountId>> = Default::default();
 		for (inspector, paths_ids) in assignments {
 			for path_id in paths_ids {
-				if !inspectors_assignments.contains_key(&path_id) {
-					inspectors_assignments.insert(path_id, Default::default());
-				}
+				let path_assignments =
+					inspectors_assignments.entry(path_id).or_insert_with(Vec::new);
+				path_assignments.push(inspector.clone());
 
-				let path_inspectors = inspectors_assignments
-					.get_mut(&path_id)
-					.ok_or(InspAssignmentError::Unexpected)?;
+				let path_seed: u64 =
+					path_id[..8].try_into().map(u64::from_le_bytes).unwrap_or(seed);
+				let mut rng = SmallRng::seed_from_u64(path_seed);
 
-				path_inspectors.insert(inspector.clone());
+				path_assignments.shuffle(&mut rng);
 			}
 		}
 
@@ -128,17 +137,40 @@ where
 		})
 	}
 
-	pub fn get_assigned_paths(&self, inspector: &AccountId) -> BTreeMap<InspPathId, InspPath> {
-		let mut result: BTreeMap<InspPathId, InspPath> = Default::default();
+	pub(crate) fn get_assigned_paths(
+		&self,
+		inspector: &AccountId,
+		irf: u8,
+	) -> Vec<InspPathOrdered> {
+		let mut result: Vec<InspPathOrdered> = Default::default();
 		for (path_id, inspectors) in &self.assignments {
-			if inspectors.contains(inspector) {
+			if let Some(inspector_idx) = inspectors.iter().position(|insp| insp == inspector) {
 				if let Some(path) = self.paths.get(path_id) {
-					result.insert(*path_id, path.clone());
+					let order = if inspector_idx < irf.into() {
+						InspPathOrder::Main
+					} else {
+						InspPathOrder::Backup
+					};
+					let path_ord = InspPathOrdered { path_id: *path_id, path: path.clone(), order };
+					result.push(path_ord);
 				}
 			}
 		}
 		result
 	}
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum InspPathOrder {
+	Main,
+	Backup,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct InspPathOrdered {
+	path_id: InspPathId,
+	path: InspPath,
+	order: InspPathOrder,
 }
 
 #[derive(Debug, Encode, Decode, Clone, TypeInfo, PartialEq)]
@@ -147,6 +179,7 @@ pub enum InspectionError {
 	NoCollectors(TcaEra),
 	NoBucketAggregate(BucketId),
 	AssignmentsError(InspAssignmentError),
+	ClusterError(ClusterId),
 	Unexpected,
 }
 
@@ -165,7 +198,7 @@ pub(crate) struct InspTaskAssigner<T: Config> {
 }
 pub(crate) struct InspEraAssignments {
 	era: EhdEra,
-	assigned_paths: BTreeMap<InspPathId, InspPath>,
+	assigned_paths: Vec<InspPathOrdered>,
 }
 
 impl<T: Config> InspTaskAssigner<T> {
@@ -179,7 +212,8 @@ impl<T: Config> InspTaskAssigner<T> {
 	) -> Result<Option<InspEraAssignments>, InspAssignmentError> {
 		if let Some(assignments_table) = &self.try_get_assignments_table(cluster_id)? {
 			let inspector_account = &self.inspector.public.clone().into_account();
-			let assigned_paths = assignments_table.get_assigned_paths(inspector_account);
+			let assigned_paths =
+				assignments_table.get_assigned_paths(inspector_account, assignments_table.irf);
 			let era_assignments = InspEraAssignments { era: assignments_table.era, assigned_paths };
 			Ok(Some(era_assignments))
 		} else {
@@ -194,39 +228,147 @@ impl<T: Config> InspTaskAssigner<T> {
 		let Some(era) = Self::try_get_era_to_inspect(cluster_id)? else {
 			return Ok(None);
 		};
-		// todo(yahortsaryk): try to request DDC Sync node for the Inspection assignments table, and
-		// extract inspection tasks if there are any
-		// let sync_status = get_inspection_assignment_table(cluster_id, era);
-		let sync_status = InspSyncStatus::<T::AccountId>::AssigningInspectors {
-			era,
-			assigner: self.inspector.public.clone().into_account(),
-			lease_ttl: 60000,
-			salt: 0,
-		};
 
-		match sync_status {
-			InspSyncStatus::NotReadyForInspection => Ok(None),
-			InspSyncStatus::AssigningInspectors { era, assigner, lease_ttl: _lease_ttl, salt } => {
-				let inspector_account = &self.inspector.public.clone().into_account();
-				if *inspector_account == assigner {
+		let inspector_account = &self.inspector.public.clone().into_account();
+		let lease_response = post_itm_lease::<
+			T::AccountId,
+			BlockNumberFor<T>,
+			T::ClusterManager,
+			T::NodeManager,
+		>(cluster_id, era, self.get_inspector_key_hex())
+		.map_err(|_| InspAssignmentError::ClusterApiError(*cluster_id))?;
+
+		match lease_response.variant {
+			Some(ItmLeaseVariant::EraNotYetProcessed(ItmLeaseEraNotYetProcessed {
+				current_status: status,
+			})) => {
+				log::info!(
+					"Got `EraNotYetProcessed` lease variant: cluster_id={:?} era={:?} status={:?}",
+					cluster_id,
+					lease_response.eid,
+					status
+				);
+				Ok(None)
+			},
+			Some(ItmLeaseVariant::AlreadyInProgress(ItmLeaseAlreadyInProgress {
+				lease_holder_inspector_key: holder_key,
+				lease_remaining_millis: remaining_millis,
+			})) => {
+				log::info!(
+					"Got `AlreadyInProgress` lease variant: cluster_id={:?} era={:?} holder_key={:?} remaining_millis={:?}",
+					cluster_id,
+					lease_response.eid,
+					holder_key,
+                    remaining_millis
+				);
+				Ok(None)
+			},
+			Some(ItmLeaseVariant::EraNotFound(ItmLeaseEraNotFound { error })) => {
+				log::info!(
+					"Got `EraNotFound` lease variant: cluster_id={:?} era={:?} error={:?}",
+					cluster_id,
+					lease_response.eid,
+					error,
+				);
+				Ok(None)
+			},
+			Some(ItmLeaseVariant::EraDataCorrupted(ItmLeaseEraDataCorrupted {
+				corrupted_data,
+			})) => {
+				log::info!(
+					"Got `EraDataCorrupted` lease variant: cluster_id={:?} era={:?} corrupted_data={:?}",
+					cluster_id,
+					lease_response.eid,
+					corrupted_data,
+				);
+				Ok(None)
+			},
+			Some(ItmLeaseVariant::EraFailedToUpdate(ItmLeaseEraFailedToUpdate { error })) => {
+				log::info!(
+					"Got `EraFailedToUpdate` lease variant: cluster_id={:?} era={:?} error={:?}",
+					cluster_id,
+					lease_response.eid,
+					error,
+				);
+				Ok(None)
+			},
+			Some(ItmLeaseVariant::Acquired(ItmLeaseAcquired { inspector_key: holder_key })) => {
+				let salt = 0u64;
+				let holder_account = parse_account_id::<T>(holder_key)
+					.map_err(|_| InspAssignmentError::Unexpected)?;
+
+				if *inspector_account == holder_account {
 					let assignmens_table = &self.build_assignments_table(cluster_id, &era, salt)?;
+					// todo(yahortsaryk): add .proto definition for `InspAssignmentsTable` type
+					let assignmens_table_json_str = serde_json::to_string(&assignmens_table)
+						.expect("Assignments table to be encoded");
 
-					// todo(yahortsaryk): optimize performance by eliminating cloning of the whole
-					// table
+					// todo(yahortsaryk): handle `EndpointItmSubmit` variants
+					let _submit_response =
+						submit_assignments_table::<
+							T::AccountId,
+							BlockNumberFor<T>,
+							T::ClusterManager,
+							T::NodeManager,
+						>(cluster_id, era, assignmens_table_json_str, self.get_inspector_key_hex())
+						.map_err(|_| InspAssignmentError::Unexpected)?;
+
 					Ok(Some(assignmens_table.clone()))
 				} else {
 					Ok(None)
 				}
 			},
-			InspSyncStatus::ReadyForInspection { assignments_table } => Ok(Some(assignments_table)),
+
+			Some(ItmLeaseVariant::TableAlreadyAvailable(ItmLeaseTableAlreadyAvailable {
+				inspector_key,
+			})) => {
+				log::info!(
+					"Got `TableAlreadyAvailable` lease variant: cluster_id={:?} era={:?} inspector_key={:?}",
+					cluster_id,
+					lease_response.eid,
+					inspector_key,
+				);
+
+				// let assignments_table = get_assignments_table::<T>(cluster_id,
+				// lease_response.eid) 	.map_err(|_| InspAssignmentError::Unexpected)?;
+
+				let assignments_table =
+					Self::get_insp_assignments_table(cluster_id, lease_response.eid)
+						.map_err(|_| InspAssignmentError::Unexpected)?;
+
+				Ok(Some(assignments_table))
+			},
+
+			None => Ok(None),
 		}
+	}
+
+	// todo(yahortsaryk): remove this function after adding .proto `InspAssignmentsTable` type
+	pub(crate) fn get_insp_assignments_table(
+		cluster_id: &ClusterId,
+		era: EhdEra,
+	) -> Result<InspAssignmentsTable<T::AccountId>, InspOCWError> {
+		let table_json_string = get_assignments_table::<
+			T::AccountId,
+			BlockNumberFor<T>,
+			T::ClusterManager,
+			T::NodeManager,
+		>(cluster_id, era)
+		.map_err(|_| InspOCWError::Unexpected)?;
+
+		let response: InspAssignmentsTable<T::AccountId> = serde_json::from_str(&table_json_string)
+			.map_err(|e| {
+				log::error!("ItmTable deserialization error {:?}", e);
+				InspOCWError::Unexpected
+			})?;
+
+		Ok(response)
 	}
 
 	/// Fetch current era across all DAC nodes to validate.
 	///
 	/// Parameters:
 	/// - `cluster_id`: cluster id of a cluster
-	/// - `g_collectors`: List of G-Collectors nodes
 	fn try_get_era_to_inspect(
 		cluster_id: &ClusterId,
 	) -> Result<Option<EhdEra>, InspAssignmentError> {
@@ -238,24 +380,8 @@ impl<T: Config> InspTaskAssigner<T> {
 		>(cluster_id)
 		.map_err(|_| InspAssignmentError::NoGCollectors(*cluster_id))?;
 
-		let last_inspected_ehd_by_this_validator = Self::try_get_last_inspected_ehd(cluster_id);
-
-		let last_inspected_era_by_this_validator: EhdEra =
-			if let Some(ehd) = last_inspected_ehd_by_this_validator {
-				ehd.2
-			} else {
-				Default::default()
-			};
-
 		let last_paid_era_for_cluster: EhdEra = T::ClusterValidator::get_last_paid_era(cluster_id)
 			.map_err(|_| InspAssignmentError::ClusterError(*cluster_id))?;
-
-		log::info!(
-				"👁️‍🗨️  The last era inspected by this inspector for cluster_id: {:?} is {:?}. The last paid era for the cluster is {:?}",
-				cluster_id,
-				last_inspected_era_by_this_validator,
-				last_paid_era_for_cluster
-			);
 
 		// we want to fetch processed eras from all available G-Collectors
 		let available_processed_ehd_eras = fetch_processed_eras(cluster_id, &g_collectors)
@@ -263,22 +389,14 @@ impl<T: Config> InspTaskAssigner<T> {
 
 		// we want to let the current inspector to inspect available processed/completed eras
 		// that are greater than the last validated era in the cluster
-		let processed_eras_to_inspect: Vec<aggregator_client::json::EHDEra> =
-			available_processed_ehd_eras
-				.iter()
-				.flat_map(|eras| {
-					eras.iter()
-						.filter(|&ids| {
-							ids.id > last_inspected_era_by_this_validator &&
-								ids.id > last_paid_era_for_cluster
-						})
-						.cloned()
-				})
-				.sorted()
-				.collect::<Vec<aggregator_client::json::EHDEra>>();
+		let processed_eras_to_inspect: Vec<json::EHDEra> = available_processed_ehd_eras
+			.iter()
+			.flat_map(|eras| eras.iter().filter(|&ids| ids.id > last_paid_era_for_cluster).cloned())
+			.sorted()
+			.collect::<Vec<json::EHDEra>>();
 
 		// we want to process only eras reported by quorum of G-Collector
-		let mut processed_eras_with_quorum: Vec<aggregator_client::json::EHDEra> = vec![];
+		let mut processed_eras_with_quorum: Vec<json::EHDEra> = vec![];
 
 		// todo(yahortsaryk): agree on the result within a quorum of G-Collectors
 		// let quorum = T::AggregatorsQuorum::get();
@@ -304,15 +422,13 @@ impl<T: Config> InspTaskAssigner<T> {
 
 		let era_to_inspect =
 			processed_eras_with_quorum.iter().cloned().min_by_key(|e| e.id).map(|e| e.id);
+
 		Ok(era_to_inspect)
 	}
 
-	fn try_get_last_inspected_ehd(cluster_id: &ClusterId) -> Option<EHDId> {
-		if let Some(last_inspected_ehds) = fetch_last_inspected_ehds(cluster_id) {
-			last_inspected_ehds.iter().max_by_key(|ehd| ehd.2).cloned()
-		} else {
-			None
-		}
+	pub fn try_get_era_to_backup(cluster_id: &ClusterId) -> Result<EhdEra, InspAssignmentError> {
+		let era_to_inspect = Self::try_get_era_to_inspect(cluster_id)?;
+		Ok(era_to_inspect.unwrap_or(Default::default()))
 	}
 
 	fn build_assignments_table(
@@ -354,6 +470,11 @@ impl<T: Config> InspTaskAssigner<T> {
 		)?;
 
 		Ok(assignments_table)
+	}
+
+	fn get_inspector_key_hex(&self) -> String {
+		let inspector_pub_key: Vec<u8> = self.inspector.public.encode();
+		format!("0x{}", hex::encode(&inspector_pub_key[1..])) // skip byte of SCALE encoding
 	}
 }
 
@@ -429,6 +550,7 @@ impl Hashable for InspPath {
 pub struct InspPathReceipt {
 	pub path_id: InspPathId,
 	pub is_verified: bool,
+	// ommitted if IsVerified=true
 	pub exception: Option<InspPathException>,
 }
 
@@ -442,6 +564,39 @@ impl Hashable for InspPathReceipt {
 		}
 		T::Hasher::hash(&data)
 	}
+}
+
+// todo(yahortsaryk): this is temporal wrapper until DDC sync nodes start to hash the receipts
+// itself
+#[derive(
+	Debug, Clone, Encode, Decode, Deserialize, Serialize, PartialOrd, Ord, TypeInfo, Eq, PartialEq,
+)]
+pub struct HashedInspPathReceipt {
+	pub path_id: InspPathId,
+	pub is_verified: bool,
+	pub exception: Option<InspPathException>,
+	pub hash: String, // BlakeTwo256(PathId, IsVerified, ExceptionJson)
+}
+
+impl HashedInspPathReceipt {
+	pub fn new(path_receipt: InspPathReceipt, receipt_hash: String) -> Self {
+		Self {
+			path_id: path_receipt.path_id,
+			is_verified: path_receipt.is_verified,
+			exception: path_receipt.exception,
+			hash: receipt_hash,
+		}
+	}
+}
+
+#[derive(
+	Debug, Clone, Encode, Decode, Deserialize, Serialize, PartialOrd, Ord, TypeInfo, Eq, PartialEq,
+)]
+pub struct InspEraReport {
+	pub era: EhdEra,
+	pub inspector: String,
+	pub signature: String,
+	pub path_receipts: Vec<HashedInspPathReceipt>,
 }
 
 #[derive(
@@ -467,11 +622,23 @@ impl Hashable for InspPathException {
 	}
 }
 
+// todo(yahortsaryk): replace with .proto schema
+impl From<json::InspPathException> for InspPathException {
+	fn from(exception: json::InspPathException) -> Self {
+		match exception {
+			json::InspPathException::NodeAR { bad_leaves_ids } =>
+				InspPathException::NodeAR { bad_leaves_ids },
+			json::InspPathException::BucketAR { bad_leaves_pos } =>
+				InspPathException::BucketAR { bad_leaves_pos },
+		}
+	}
+}
+
 #[allow(clippy::collapsible_else_if)]
 fn build_ehd_inspection_paths<T: Config>(
 	cluster_id: &ClusterId,
 	era: &EhdEra,
-) -> Result<(EHDTreeNode, Vec<InspPath>), InspAssignmentError> {
+) -> Result<(json::EHDTreeNode, Vec<InspPath>), InspAssignmentError> {
 	let inspection_paths: Vec<InspPath> = Default::default();
 	let g_collectors = get_g_collectors_nodes::<
 		T::AccountId,
@@ -481,7 +648,8 @@ fn build_ehd_inspection_paths<T: Config>(
 	>(cluster_id)
 	.map_err(|_| InspAssignmentError::NoEHDs(*era, *cluster_id))?;
 
-	let mut ehd_variants: BTreeMap<EHDTreeNode, BTreeSet<GCollectorNodeKey>> = Default::default();
+	let mut ehd_variants: BTreeMap<json::EHDTreeNode, BTreeSet<GCollectorNodeKey>> =
+		Default::default();
 
 	for (g_collector_key, _) in g_collectors {
 		let ehd_id = EHDId(*cluster_id, g_collector_key.clone(), *era);
@@ -527,7 +695,7 @@ fn build_ehd_inspection_paths<T: Config>(
 #[allow(clippy::collapsible_else_if)]
 #[allow(clippy::extra_unused_type_parameters)]
 fn build_nodes_inspection_paths<T: Config>(
-	phd_roots: &Vec<PHDTreeNode>,
+	phd_roots: &Vec<json::PHDTreeNode>,
 ) -> Result<Vec<InspPath>, InspAssignmentError> {
 	let mut inspection_paths: Vec<InspPath> = Default::default();
 
@@ -691,7 +859,7 @@ fn build_nodes_inspection_paths<T: Config>(
 #[allow(clippy::collapsible_else_if)]
 #[allow(clippy::extra_unused_type_parameters)]
 fn build_buckets_inspection_paths<T: Config>(
-	phd_roots: &Vec<PHDTreeNode>,
+	phd_roots: &Vec<json::PHDTreeNode>,
 ) -> Result<Vec<InspPath>, InspAssignmentError> {
 	let mut inspection_paths: Vec<InspPath> = Default::default();
 
@@ -855,14 +1023,12 @@ fn build_buckets_inspection_paths<T: Config>(
 #[allow(clippy::collapsible_else_if)]
 fn process_tasks<T: Config>(
 	cluster_id: &ClusterId,
-	tasks: Vec<&InspTask>,
+	tasks: &Vec<InspTask<BlockNumberFor<T>>>,
 ) -> Result<Vec<InspPathReceipt>, InspectionError> {
 	let mut results: Vec<InspPathReceipt> = Default::default();
 
-	let mut cached_bucket_aggregates: BTreeMap<
-		(BucketId, TcaEra),
-		aggregator_client::json::BucketAggregateResponse,
-	> = Default::default();
+	let mut cached_bucket_aggregates: BTreeMap<(BucketId, TcaEra), json::BucketAggregateResponse> =
+		Default::default();
 
 	for task in tasks {
 		let path_id = task.path_id;
@@ -883,14 +1049,15 @@ fn process_tasks<T: Config>(
 					>(cluster_id, *tca_id, collector.clone(), node_key.clone(), leaves_ids.clone())
 				{
 					// todo(yahortsaryk): fix AR signatures
-					let is_verified = challenge_res.verify();
-					let exception: Option<_> = if is_verified {
+					let result = challenge_res.verify();
+
+					let exception: Option<_> = if result.is_verified {
 						None
 					} else {
-						// todo(yahortsaryk): add only bad leaves to exceptions
-						Some(InspPathException::NodeAR { bad_leaves_ids: leaves_ids.clone() })
+						Some(InspPathException::NodeAR { bad_leaves_ids: result.unverified_leaves })
 					};
-					let path_receipt = InspPathReceipt { path_id, is_verified, exception };
+					let path_receipt =
+						InspPathReceipt { path_id, is_verified: result.is_verified, exception };
 					results.push(path_receipt);
 				}
 			},
@@ -970,14 +1137,16 @@ fn process_tasks<T: Config>(
 						subagg_leaves_to_inspect.clone(),
 					) {
 						// todo(yahortsaryk): fix AR signatures
-						let is_verified = challenge_res.verify();
-						let exception: Option<_> = if is_verified {
+						let result = challenge_res.verify();
+						let exception: Option<_> = if result.is_verified {
 							None
 						} else {
-							// todo(yahortsaryk): add only bad leaves to exceptions
-							Some(InspPathException::BucketAR { bad_leaves_pos: leaves_pos.clone() })
+							Some(InspPathException::BucketAR {
+								bad_leaves_pos: result.unverified_leaves,
+							})
 						};
-						let path_receipt = InspPathReceipt { path_id, is_verified, exception };
+						let path_receipt =
+							InspPathReceipt { path_id, is_verified: result.is_verified, exception };
 						results.push(path_receipt);
 					}
 				}
@@ -988,19 +1157,21 @@ fn process_tasks<T: Config>(
 	Ok(results)
 }
 
-struct InspTask {
+struct InspTask<BlockNumber> {
 	path_id: InspPathId,
 	path: InspPath,
-	priority: u8,
+	execute_at: BlockNumber,
 }
 
 #[allow(dead_code)]
-pub struct InspTaskManager<T: Config> {
+#[allow(clippy::type_complexity)]
+pub(crate) struct InspTaskManager<T: Config> {
 	inspector: Rc<Account<T>>,
 	assigner: InspTaskAssigner<T>,
 	// currently we don't support pending eras in the pool, so there will be always one era per
-	// cluster in inspection processing
-	tasks_pool: BTreeMap<ClusterId, (EhdEra, Vec<InspTask>)>,
+	// cluster during inspection processing
+	// tasks_pool: BTreeMap<ClusterId, (EhdEra, Vec<InspTask<BlockNumberFor<T>>>)>,
+	tasks_pool: BTreeMap<ClusterId, BTreeMap<EhdEra, Vec<InspTask<BlockNumberFor<T>>>>>,
 }
 
 impl<T: Config> InspTaskManager<T> {
@@ -1010,70 +1181,137 @@ impl<T: Config> InspTaskManager<T> {
 		InspTaskManager { inspector, assigner, tasks_pool: Default::default() }
 	}
 
-	pub(crate) fn assign_cluster(&mut self, cluster_id: &ClusterId) -> Result<(), InspectionError> {
+	pub(crate) fn assign_cluster(
+		&mut self,
+		cluster_id: &ClusterId,
+		current_block: &BlockNumberFor<T>,
+	) -> Result<(), InspectionError> {
 		if let Some(era_assignments) = self
 			.assigner
 			.try_get_assignments(cluster_id)
 			.map_err(InspectionError::AssignmentsError)?
 		{
-			self.add_inspection_tasks(
-				*cluster_id,
-				era_assignments.era,
+			let main_tasks = self.plan_inspection_tasks(
+				cluster_id,
+				&era_assignments.era,
 				era_assignments.assigned_paths,
+				current_block,
 			);
+
+			self.add_inspection_tasks(cluster_id, &era_assignments.era, main_tasks);
+		}
+
+		let era_to_backup = InspTaskAssigner::<T>::try_get_era_to_backup(cluster_id)
+			.map_err(InspectionError::AssignmentsError)?;
+
+		if let Some(insp_paths_ids) =
+			fetch_backup_tasks::<T>(cluster_id, &era_to_backup, current_block)
+		{
+			// if let Ok(assignments_table) = get_assignments_table::<T>(cluster_id, era_to_backup)
+			// {
+			if let Ok(assignments_table) =
+				InspTaskAssigner::<T>::get_insp_assignments_table(cluster_id, era_to_backup)
+			{
+				let backup_tasks: Vec<InspTask<BlockNumberFor<T>>> = insp_paths_ids
+					.into_iter()
+					.filter_map(|path_id| {
+						let path = assignments_table.paths.get(&path_id)?;
+						Some(InspTask::<BlockNumberFor<T>> {
+							path_id,
+							path: path.clone(),
+							execute_at: *current_block,
+						})
+					})
+					.collect();
+
+				log::info!(
+					"🛡️🛡️🛡️ {:?} backup tasks from era {:?} are added to pool",
+					backup_tasks.len(),
+					era_to_backup
+				);
+
+				self.add_inspection_tasks(cluster_id, &era_to_backup, backup_tasks);
+			}
 		}
 
 		Ok(())
 	}
 
+	#[allow(clippy::let_and_return)]
+	fn plan_inspection_tasks(
+		&mut self,
+		cluster_id: &ClusterId,
+		era: &EhdEra,
+		insp_paths: Vec<InspPathOrdered>,
+		current_block: &BlockNumberFor<T>,
+	) -> Vec<InspTask<BlockNumberFor<T>>> {
+		let insp_tasks = insp_paths
+			.into_iter()
+			.map(|path_ord| InspTask::<BlockNumberFor<T>> {
+				path_id: path_ord.path_id,
+				path: path_ord.path,
+				execute_at: match path_ord.order {
+					InspPathOrder::Main => *current_block,
+					InspPathOrder::Backup => *current_block + INSP_BACKUP_BLOCK_DELAY.into(),
+				},
+			})
+			.collect::<Vec<_>>();
+
+		let future_backup_tasks: BTreeMap<BlockNumberFor<T>, Vec<InspPathId>> = insp_tasks
+			.iter()
+			.filter(|task| task.execute_at > *current_block)
+			.fold(BTreeMap::new(), |mut acc, task| {
+				acc.entry(task.execute_at).or_insert_with(Vec::new).push(task.path_id);
+				acc
+			});
+
+		for (future_block, insp_paths_ids) in future_backup_tasks {
+			store_backup_tasks::<T>(cluster_id, era, &future_block, insp_paths_ids);
+		}
+
+		let current_main_tasks = insp_tasks
+			.into_iter()
+			.filter(|task| task.execute_at == *current_block)
+			.collect::<Vec<_>>();
+
+		current_main_tasks
+	}
+
 	fn add_inspection_tasks(
 		&mut self,
-		cluster_id: ClusterId,
-		era: EhdEra,
-		insp_paths: BTreeMap<InspPathId, InspPath>,
+		cluster_id: &ClusterId,
+		era: &EhdEra,
+		tasks: Vec<InspTask<BlockNumberFor<T>>>,
 	) {
-		self.tasks_pool.entry(cluster_id).or_insert((
-			era,
-			insp_paths
-				.into_iter()
-				.map(|(path_id, path)| {
-					// todo(yahortsaryk): set the priority based on inspector's assignment
-					// (main/backup)
-					InspTask { path_id, path, priority: 1 }
-				})
-				.collect::<Vec<_>>(),
-		));
+		let cluster_eras = self.tasks_pool.entry(*cluster_id).or_insert(Default::default());
+		let era_tasks = cluster_eras.entry(*era).or_insert(Default::default());
+		era_tasks.extend(tasks);
 	}
 
 	pub(crate) fn inspect_cluster(
 		&mut self,
 		cluster_id: &ClusterId,
-	) -> Result<Option<InspEraResult>, InspectionError> {
-		if let Some((era, insp_tasks)) = &self.tasks_pool.remove(cluster_id) {
-			let prioritized_tasks =
-				insp_tasks.iter().sorted_by_key(|task| task.priority).collect::<Vec<_>>();
-			let era_results = process_tasks::<T>(cluster_id, prioritized_tasks)?;
-
-			Ok(Some(InspEraResult { era: *era, receipts: era_results }))
-		} else {
-			Ok(None)
+		current_block: &BlockNumberFor<T>,
+	) -> Result<Vec<InspPathsReceipts>, InspectionError> {
+		let mut results = vec![];
+		if let Some(cluster_eras) = &self.tasks_pool.remove(cluster_id) {
+			for (era, era_tasks) in cluster_eras {
+				let era_receipts = process_tasks::<T>(cluster_id, era_tasks)?;
+				results.push(InspPathsReceipts { era: *era, receipts: era_receipts });
+				// todo(yahortsaryk): we might want to save inspection receipt before clearing the
+				// cached backup tasks to ensure the inspection result is not lost in case inspector
+				// fails to submit it to DDC in the next step
+				clear_backup_tasks::<T>(cluster_id, era, current_block);
+			}
 		}
-	}
-
-	// todo(yahortsaryk): !!! REMOVE this method after deprecating current `InspectionReceipt`
-	// format. The table should be pulled directly from the Sync node if needed
-	pub(crate) fn get_assignments_table(
-		&self,
-		cluster_id: &ClusterId,
-	) -> Result<Option<InspAssignmentsTable<T::AccountId>>, InspAssignmentError> {
-		self.assigner.try_get_assignments_table(cluster_id)
+		Ok(results)
 	}
 }
 
 #[derive(
 	Debug, Clone, Encode, Decode, Deserialize, Serialize, PartialOrd, Ord, TypeInfo, Eq, PartialEq,
 )]
-pub(crate) struct InspEraResult {
+pub(crate) struct InspPathsReceipts {
 	pub(crate) era: EhdEra,
 	pub(crate) receipts: Vec<InspPathReceipt>,
 }
@@ -1110,4 +1348,72 @@ pub(crate) fn store_and_fetch_nonce(node_id: String) -> u64 {
 
 	local_storage_set(StorageKind::PERSISTENT, &key, &new_nonce.encode());
 	nonce_data
+}
+
+pub(crate) fn fetch_backup_tasks<T: Config>(
+	cluster_id: &ClusterId,
+	era: &EhdEra,
+	block_number: &BlockNumberFor<T>,
+) -> Option<Vec<InspPathId>> {
+	let key = derive_backup_tasks_key::<T>(cluster_id, era, block_number);
+
+	let encoded_insp_paths_ids = match local_storage_get(StorageKind::PERSISTENT, &key) {
+		Some(encoded_data) => encoded_data,
+		None => return None,
+	};
+
+	match Decode::decode(&mut &encoded_insp_paths_ids[..]) {
+		Ok(insp_paths_ids) => Some(insp_paths_ids),
+		Err(err) => {
+			log::error!(
+				"Decoding `insp_paths_ids` error for Cluster/Era {:?}/{:?} : {:?}",
+				cluster_id,
+				era,
+				err
+			);
+			None
+		},
+	}
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn store_backup_tasks<T: Config>(
+	cluster_id: &ClusterId,
+	era: &EhdEra,
+	block_number: &BlockNumberFor<T>,
+	insp_paths_ids: Vec<InspPathId>,
+) {
+	let key = derive_backup_tasks_key::<T>(cluster_id, era, block_number);
+	local_storage_set(StorageKind::PERSISTENT, &key, &insp_paths_ids.encode());
+}
+
+pub(crate) fn derive_backup_tasks_key<T: Config>(
+	cluster_id: &ClusterId,
+	era: &EhdEra,
+	block_number: &BlockNumberFor<T>,
+) -> Vec<u8> {
+	format!("offchain::insp::{:?}::{:?}::{:?}", cluster_id, era, block_number).into_bytes()
+}
+
+pub(crate) fn clear_backup_tasks<T: Config>(
+	cluster_id: &ClusterId,
+	era: &EhdEra,
+	block_number: &BlockNumberFor<T>,
+) {
+	let key = derive_backup_tasks_key::<T>(cluster_id, era, block_number);
+	log::info!(
+		"Clearing backup tasks for Cluster/Era {:?}/{:?} at block {:?}",
+		cluster_id,
+		era,
+		block_number
+	);
+
+	local_storage_clear(StorageKind::PERSISTENT, &key);
+}
+
+fn parse_account_id<T: Config>(key_str: String) -> Result<T::AccountId, ()> {
+	let acc32_hex: AccountId32Hex = key_str.try_into().map_err(|_| ())?;
+	let acc32: AccountId32 = acc32_hex.into();
+	let account_id = T::AccountId::decode(&mut &acc32.encode()[..]).map_err(|_| ())?;
+	Ok(account_id)
 }
