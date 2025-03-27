@@ -67,13 +67,13 @@ use sp_std::{
 pub mod weights;
 use crate::weights::WeightInfo;
 
-// #[cfg(feature = "runtime-benchmarks")]
-// pub mod benchmarking;
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
 
-// #[cfg(test)]
-// pub(crate) mod mock;
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+pub(crate) mod mock;
+#[cfg(test)]
+mod tests;
 
 pub mod migrations;
 

@@ -246,7 +246,6 @@ impl crate::Config for Test {
 	type CustomerVisitor = MockCustomerVisitor;
 	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 4;
 	type Currency = Balances;
-	const VERIFY_AGGREGATOR_RESPONSE_SIGNATURE: bool = false;
 	const DISABLE_PAYOUTS_CUTOFF: bool = false;
 	const DEBUG_MODE: bool = true;
 	type BucketsStorageUsageProvider = MockBucketValidator;
@@ -306,7 +305,7 @@ impl<T: Config> CustomerVisitor<T> for MockCustomerVisitor {
 }
 
 pub struct MockClusterProtocol;
-impl<T: Config, Balance> ClusterProtocol<T, Balance> for MockClusterProtocol {
+impl ClusterProtocol<AccountId, BlockNumber, Balance> for MockClusterProtocol {
 	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
 		unimplemented!()
 	}
@@ -322,24 +321,24 @@ impl<T: Config, Balance> ClusterProtocol<T, Balance> for MockClusterProtocol {
 	fn get_chill_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, DispatchError> {
+	) -> Result<BlockNumber, DispatchError> {
 		unimplemented!()
 	}
 
 	fn get_unbonding_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, DispatchError> {
+	) -> Result<BlockNumber, DispatchError> {
 		unimplemented!()
 	}
 
 	fn get_bonding_params(
 		_cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, DispatchError> {
+	) -> Result<ClusterBondingParams<BlockNumber>, DispatchError> {
 		unimplemented!()
 	}
 
-	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<AccountId, DispatchError> {
 		unimplemented!()
 	}
 
@@ -349,7 +348,7 @@ impl<T: Config, Balance> ClusterProtocol<T, Balance> for MockClusterProtocol {
 
 	fn update_cluster_protocol(
 		_cluster_id: &ClusterId,
-		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
+		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -367,7 +366,7 @@ impl<T: Config, Balance> ClusterProtocol<T, Balance> for MockClusterProtocol {
 	}
 }
 
-impl<T: Config> ClusterQuery<T> for MockClusterProtocol {
+impl ClusterQuery<AccountId> for MockClusterProtocol {
 	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
 		unimplemented!()
 	}
@@ -376,7 +375,7 @@ impl<T: Config> ClusterQuery<T> for MockClusterProtocol {
 	}
 	fn get_manager_and_reserve_id(
 		_cluster_id: &ClusterId,
-	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
+	) -> Result<(AccountId, AccountId), DispatchError> {
 		unimplemented!()
 	}
 }
@@ -396,13 +395,13 @@ impl<T: Config> CustomerDepositor<T> for MockCustomerDepositor {
 #[cfg(feature = "runtime-benchmarks")]
 pub struct MockClusterCreator;
 #[cfg(feature = "runtime-benchmarks")]
-impl<T: Config> ClusterCreator<T, Balance> for MockClusterCreator {
+impl ClusterCreator<AccountId, BlockNumber, Balance> for MockClusterCreator {
 	fn create_cluster(
 		_cluster_id: ClusterId,
-		_cluster_manager_id: T::AccountId,
-		_cluster_reserve_id: T::AccountId,
-		_cluster_params: ClusterParams<T::AccountId>,
-		_initial_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
+		_cluster_manager_id: AccountId,
+		_cluster_reserve_id: AccountId,
+		_cluster_params: ClusterParams<AccountId>,
+		_initial_protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -535,7 +534,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 pub struct MockClusterValidator;
-impl<T: Config> ClusterValidator<T> for MockClusterValidator {
+impl ClusterValidator for MockClusterValidator {
 	fn set_last_paid_era(_cluster_id: &ClusterId, _era_id: EhdEra) -> Result<(), DispatchError> {
 		unimplemented!()
 	}
@@ -653,7 +652,7 @@ impl<T: Config> PayoutProcessor<T> for MockPayoutProcessor {
 }
 
 pub struct MockNodeManager;
-impl<T: Config> NodeManager<T> for MockNodeManager {
+impl NodeManager<AccountId> for MockNodeManager {
 	fn get_node_params(node_pub_key: &NodePubKey) -> Result<NodeParams, DispatchError> {
 		let key1 =
 			NodePubKey::StoragePubKey(StorageNodePubKey::new(array_bytes::hex_n_into_unchecked(
@@ -797,9 +796,9 @@ impl<T: Config> NodeManager<T> for MockNodeManager {
 		unimplemented!()
 	}
 
-	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<T::AccountId, DispatchError> {
+	fn get_node_provider_id(_node_pub_key: &NodePubKey) -> Result<AccountId, DispatchError> {
 		let temp: AccountId = AccountId::from([0xa; 32]);
-		let account_1 = T::AccountId::decode(&mut &temp.as_slice()[..]).unwrap();
+		let account_1 = AccountId::decode(&mut &temp.as_slice()[..]).unwrap();
 
 		Ok(account_1)
 	}
@@ -814,7 +813,7 @@ impl<T: Config> NodeManager<T> for MockNodeManager {
 	#[cfg(feature = "runtime-benchmarks")]
 	fn create_node(
 		_node_pub_key: NodePubKey,
-		_provider_id: T::AccountId,
+		_provider_id: AccountId,
 		_node_params: NodeParams,
 	) -> DispatchResult {
 		unimplemented!()
@@ -822,7 +821,7 @@ impl<T: Config> NodeManager<T> for MockNodeManager {
 }
 
 pub struct TestClusterManager;
-impl<T: Config> ClusterQuery<T> for TestClusterManager {
+impl ClusterQuery<AccountId> for TestClusterManager {
 	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
 		unimplemented!()
 	}
@@ -831,12 +830,12 @@ impl<T: Config> ClusterQuery<T> for TestClusterManager {
 	}
 	fn get_manager_and_reserve_id(
 		_cluster_id: &ClusterId,
-	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
+	) -> Result<(AccountId, AccountId), DispatchError> {
 		unimplemented!()
 	}
 }
 
-impl<T: Config> ClusterManager<T> for TestClusterManager {
+impl ClusterManager<AccountId, BlockNumber> for TestClusterManager {
 	fn contains_node(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
@@ -892,14 +891,14 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 		unimplemented!()
 	}
 
-	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<AccountId, DispatchError> {
 		unimplemented!()
 	}
 
 	fn get_node_state(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
-	) -> Result<ClusterNodeState<BlockNumberFor<T>>, DispatchError> {
+	) -> Result<ClusterNodeState<BlockNumber>, DispatchError> {
 		unimplemented!()
 	}
 
