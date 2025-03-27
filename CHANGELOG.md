@@ -10,11 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
-## [7.3.2]
-
-- [C,D] `pallet-ddc-verification`: Inspection for DAC v5
-- [C,D] `pallet-ddc-payouts`: Payouts for DAC v5
-
 ## [7.3.1]
 
 - [C,D] Fix `CheckMetadataHash` extension issue
