@@ -3659,6 +3659,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.0"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#93cbb568c842cce8b77c55b7043bf0472c8d68b7"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -3683,7 +3684,8 @@ dependencies = [
 
 [[package]]
 name = "ddc-primitives"
-version = "7.3.1"
+version = "7.3.0"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#30ece1634b85c6474e4892c9f868ad59a77b6bbf"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -7470,12 +7472,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 
 [[package]]
-name = "multimap"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "defc4c55412d89136f966bbb339008b474350e5e6e78d2714439c386b3137a03"
-
-[[package]]
 name = "multistream-select"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8698,10 +8694,10 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-payouts"
-version = "7.3.1"
+version = "7.3.0"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#b832a5eabb164a7e6ab3e40a2a14771f1bd8b14d"
 dependencies = [
  "byte-unit",
- "chrono",
  "ddc-api",
  "ddc-primitives",
  "frame-benchmarking",
@@ -8711,7 +8707,6 @@ dependencies = [
  "hex",
  "itertools 0.13.0",
  "log",
- "pallet-balances",
  "pallet-ddc-verification",
  "parity-scale-codec",
  "polkadot-ckb-merkle-mountain-range",
@@ -8724,8 +8719,6 @@ dependencies = [
  "sp-runtime",
  "sp-staking 36.0.0",
  "sp-std",
- "sp-tracing",
- "substrate-test-utils",
 ]
 
 [[package]]
@@ -8758,7 +8751,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-verification"
-version = "7.3.1"
+version = "7.3.0"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#25babf09217a9b5e55ee47ac1b5bd0e56555de04"
 dependencies = [
  "array-bytes",
  "base64ct",
@@ -8772,11 +8766,6 @@ dependencies = [
  "hex",
  "itertools 0.13.0",
  "log",
- "pallet-balances",
- "pallet-session",
- "pallet-staking",
- "pallet-staking-reward-curve",
- "pallet-timestamp",
  "parity-scale-codec",
  "polkadot-ckb-merkle-mountain-range",
  "prost 0.13.4",
@@ -8790,7 +8779,6 @@ dependencies = [
  "sp-application-crypto",
  "sp-core",
  "sp-io",
- "sp-keystore",
  "sp-runtime",
  "sp-staking 36.0.0",
  "sp-std",
@@ -12938,7 +12926,7 @@ dependencies = [
  "itertools 0.10.5",
  "lazy_static",
  "log",
- "multimap 0.8.3",
+ "multimap",
  "petgraph",
  "prettyplease 0.1.25",
  "prost 0.11.9",
@@ -12959,7 +12947,7 @@ dependencies = [
  "heck 0.5.0",
  "itertools 0.12.1",
  "log",
- "multimap 0.10.0",
+ "multimap",
  "once_cell",
  "petgraph",
  "prettyplease 0.2.25",
@@ -12979,7 +12967,7 @@ dependencies = [
  "heck 0.5.0",
  "itertools 0.13.0",
  "log",
- "multimap 0.10.0",
+ "multimap",
  "once_cell",
  "petgraph",
  "prettyplease 0.2.25",
