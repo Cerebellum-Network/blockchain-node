@@ -1,10 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub mod aggregator;
+pub mod api;
+pub mod client;
 pub mod signature;
 
-pub mod insp_ddc_api;
-
+pub mod json;
 pub mod proto {
 	include!(concat!(env!("OUT_DIR"), "/activity.rs"));
+	include!(concat!(env!("OUT_DIR"), "/inspection.rs"));
 }
