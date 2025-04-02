@@ -12,6 +12,9 @@ jobs:
   tag-and-push:
     runs-on: [self-hosted, cere-network-xlarge]
     steps:
+      - name: Configure Git
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
