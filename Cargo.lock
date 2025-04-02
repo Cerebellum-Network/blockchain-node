@@ -3659,7 +3659,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#93cbb568c842cce8b77c55b7043bf0472c8d68b7"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#f749e4126c1e9ad623b23dfb5eabcad47d6790c6"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -8695,7 +8695,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#b832a5eabb164a7e6ab3e40a2a14771f1bd8b14d"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#4a0d6534b94e1a5865e83dba1d692e43693bae13"
 dependencies = [
  "byte-unit",
  "ddc-api",
@@ -8752,7 +8752,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#25babf09217a9b5e55ee47ac1b5bd0e56555de04"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#f48d20a4c4ed2a3eb08fe4fb44ce739579ea07fe"
 dependencies = [
  "array-bytes",
  "base64ct",
@@ -12944,7 +12944,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22505a5c94da8e3b7c2996394d1c933236c4d743e81a410bcca4e6989fc066a4"
 dependencies = [
  "bytes 1.9.0",
- "heck 0.5.0",
+ "heck 0.4.1",
  "itertools 0.12.1",
  "log",
  "multimap",
@@ -12964,8 +12964,8 @@ version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0f3e5beed80eb580c68e2c600937ac2c4eedabdfd5ef1e5b7ea4f3fba84497b"
 dependencies = [
- "heck 0.5.0",
- "itertools 0.13.0",
+ "heck 0.4.1",
+ "itertools 0.12.1",
  "log",
  "multimap",
  "once_cell",
@@ -13011,7 +13011,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "157c5a9d7ea5c2ed2d9fb8f495b64759f7816c7eaea54ba3978f0d63000162e3"
 dependencies = [
  "anyhow",
- "itertools 0.13.0",
+ "itertools 0.12.1",
  "proc-macro2",
  "quote",
  "syn 2.0.91",
