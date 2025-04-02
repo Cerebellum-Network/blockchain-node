@@ -53,7 +53,7 @@ jobs:
 #      - name: Install try-runtime
 #        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
       - name: Configure Git
-        run: git config --global url."https://${{ secrets.TRIGGER_GITHUB_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+        run: git config --global url."https://${{ secrets.PRD_DEPLOYER }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
       - name: Check Build
         run: |
           cargo build --release --features try-runtime
