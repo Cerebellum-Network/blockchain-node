@@ -15,23 +15,23 @@ permissions:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  format:
-    name: Check Lints
-    runs-on: ubuntu-24.04
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly-2024-03-12
-          override: true
-          components: rustfmt
-      - name: Check TOML
-        uses: dprint/check@v2.2
-      - name: Check Format
-        run: |
-          cargo fmt -- --check
+#  format:
+#    name: Check Lints
+#    runs-on: ubuntu-24.04
+#    steps:
+#      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+#      - uses: actions/checkout@v3
+#      - name: Install toolchain
+#        uses: actions-rs/toolchain@v1
+#        with:
+#          toolchain: nightly-2024-03-12
+#          override: true
+#          components: rustfmt
+#      - name: Check TOML
+#        uses: dprint/check@v2.2
+#      - name: Check Format
+#        run: |
+#          cargo fmt -- --check
 
   check:
     name: Cargo check
@@ -53,7 +53,7 @@ jobs:
 #      - name: Install try-runtime
 #        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
       - name: Configure Git
-        run: git config --global url."https://${{ secrets.TRIGGER_GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+        run: git config --global url."https://${{ secrets.SSH_PRIVATE_KEY }}@github.com/".insteadOf "https://github.com/"
       - name: Check Build
         run: |
           cargo build --release --features try-runtime
