@@ -37,6 +37,7 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
 ARG AWS_ACCESS_KEY_ID
 ARG AWS_SECRET_ACCESS_KEY
 ARG AWS_SESSION_TOKEN
+ARG GH_READ_TOKEN
 ARG SCCACHE_REGION=us-west-2
 ARG SCCACHE_BUCKET=cere-blockchain-sccache
 ENV \
@@ -47,6 +48,9 @@ ENV \
   SCCACHE_REGION=$SCCACHE_REGION \
   SCCACHE_BUCKET=$SCCACHE_BUCKET \
   SCCACHE_S3_USE_SSL=true
+
+# Configure Git for private repos using GH_READ_TOKEN
+RUN git config --global url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
