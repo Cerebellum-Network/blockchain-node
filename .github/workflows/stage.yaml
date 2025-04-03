@@ -50,7 +50,7 @@ jobs:
           echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> ${GITHUB_ENV}
           echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> ${GITHUB_ENV}
           echo "AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}" >> ${GITHUB_ENV}
-          echo "GH_READ_TOKEN=${GH_READ_TOKEN}" >> ${GITHUB_ENV}
+
           echo "CERE_RUNTIME=cere_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
           echo "CERE_DEV_RUNTIME=cere_dev_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
 
