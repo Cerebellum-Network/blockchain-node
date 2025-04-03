@@ -6,7 +6,7 @@ WORKDIR /cerenetwork
 COPY . /cerenetwork
 
 RUN apt-get -qq update && \
-    apt-get -qq install -y \
+	  apt-get -qq install -y \
       clang \
       cmake \
       git \
@@ -34,10 +34,10 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
     chmod +x /usr/local/protoc/bin/protoc && \
     ln -s /usr/local/protoc/bin/protoc /usr/local/bin
 
-# Build arguments for AWS and GitHub token
 ARG AWS_ACCESS_KEY_ID
 ARG AWS_SECRET_ACCESS_KEY
 ARG AWS_SESSION_TOKEN
+ARG GH_READ_TOKEN
 ARG SCCACHE_REGION=us-west-2
 ARG SCCACHE_BUCKET=cere-blockchain-sccache
 ENV \
@@ -49,7 +49,7 @@ ENV \
   SCCACHE_BUCKET=$SCCACHE_BUCKET \
   SCCACHE_S3_USE_SSL=true
 
-ARG GH_READ_TOKEN
+# Configure Git for private repos using GH_READ_TOKEN
 RUN git config --global url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
