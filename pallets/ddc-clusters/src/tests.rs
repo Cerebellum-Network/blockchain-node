@@ -297,7 +297,7 @@ fn add_join_and_delete_node_works() {
 			ClusterNodeKind::Genesis
 		));
 
-		assert!(<DdcClusters as ClusterManager<Test>>::contains_node(
+		assert!(<DdcClusters as ClusterManager<AccountId, BlockNumberFor<Test>>>::contains_node(
 			&cluster_id,
 			&NodePubKey::StoragePubKey(node_pub_key.clone()),
 			None
@@ -364,7 +364,7 @@ fn add_join_and_delete_node_works() {
 			NodePubKey::StoragePubKey(node_pub_key.clone()),
 		));
 
-		assert!(<DdcClusters as ClusterManager<Test>>::contains_node(
+		assert!(<DdcClusters as ClusterManager<AccountId, BlockNumberFor<Test>>>::contains_node(
 			&cluster_id,
 			&NodePubKey::StoragePubKey(node_pub_key.clone()),
 			None
@@ -589,7 +589,7 @@ fn set_last_validated_era_works() {
 
 		// Cluster doesn't exist
 		assert_noop!(
-			<DdcClusters as ClusterValidator<Test>>::set_last_paid_era(&cluster_id, era_id),
+			<DdcClusters as ClusterValidator>::set_last_paid_era(&cluster_id, era_id),
 			Error::<Test>::ClusterDoesNotExist
 		);
 
@@ -618,7 +618,7 @@ fn set_last_validated_era_works() {
 			}
 		));
 
-		assert_ok!(<DdcClusters as ClusterValidator<Test>>::set_last_paid_era(&cluster_id, era_id));
+		assert_ok!(<DdcClusters as ClusterValidator>::set_last_paid_era(&cluster_id, era_id));
 
 		let updated_cluster = Clusters::<Test>::get(cluster_id).unwrap();
 		assert_eq!(updated_cluster.last_paid_era, era_id);
@@ -666,10 +666,10 @@ fn cluster_visitor_works() {
 			cluster_protocol_params
 		));
 
-		assert!(<DdcClusters as ClusterQuery<Test>>::cluster_exists(&cluster_id));
+		assert!(<DdcClusters as ClusterQuery<AccountId>>::cluster_exists(&cluster_id));
 
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_bond_size(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_bond_size(
 				&cluster_id,
 				NodeType::Storage
 			)
@@ -677,7 +677,7 @@ fn cluster_visitor_works() {
 			100u128
 		);
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_bond_size(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_bond_size(
 				&cluster_id,
 				NodeType::Storage
 			)
@@ -686,7 +686,7 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_pricing_params(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_pricing_params(
 				&cluster_id
 			)
 			.unwrap(),
@@ -699,7 +699,7 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_fees_params(&cluster_id)
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_fees_params(&cluster_id)
 				.unwrap(),
 			ClusterFeesParams {
 				treasury_share: Perquintill::from_float(0.05),
@@ -709,7 +709,7 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_reserve_account_id(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_reserve_account_id(
 				&cluster_id
 			)
 			.unwrap(),
@@ -717,7 +717,7 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_chill_delay(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_chill_delay(
 				&cluster_id,
 				NodeType::Storage
 			)
@@ -725,24 +725,7 @@ fn cluster_visitor_works() {
 			50
 		);
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_chill_delay(
-				&cluster_id,
-				NodeType::Storage
-			)
-			.unwrap(),
-			50
-		);
-
-		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_unbonding_delay(
-				&cluster_id,
-				NodeType::Storage
-			)
-			.unwrap(),
-			50
-		);
-		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_unbonding_delay(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_chill_delay(
 				&cluster_id,
 				NodeType::Storage
 			)
@@ -751,7 +734,24 @@ fn cluster_visitor_works() {
 		);
 
 		assert_eq!(
-			<DdcClusters as ClusterProtocol<Test, BalanceOf<Test>>>::get_bonding_params(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_unbonding_delay(
+				&cluster_id,
+				NodeType::Storage
+			)
+			.unwrap(),
+			50
+		);
+		assert_eq!(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_unbonding_delay(
+				&cluster_id,
+				NodeType::Storage
+			)
+			.unwrap(),
+			50
+		);
+
+		assert_eq!(
+			<DdcClusters as ClusterProtocol<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::get_bonding_params(
 				&cluster_id
 			)
 			.unwrap(),
@@ -787,7 +787,7 @@ fn cluster_creator_works() {
 			unit_per_get_request: 10,
 		};
 
-		assert_ok!(<DdcClusters as ClusterCreator<Test, BalanceOf<Test>>>::create_cluster(
+		assert_ok!(<DdcClusters as ClusterCreator<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::create_cluster(
 			cluster_id,
 			cluster_manager_id,
 			cluster_reserve_id,
