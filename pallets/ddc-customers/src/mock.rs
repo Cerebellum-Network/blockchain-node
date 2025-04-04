@@ -152,13 +152,13 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 				)
 				.unwrap_or_default(),
 			storage_chill_delay:
-				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_chill_delay(
+				<TestClusterProtocol as ClusterProtocol<AccountId, BlockNumberFor<T>, BalanceOf<T>>>::get_chill_delay(
 					cluster_id,
 					NodeType::Storage,
 				)
 				.unwrap_or_default(),
 			storage_unbonding_delay:
-				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_unbonding_delay(
+				<TestClusterProtocol as ClusterProtocol<AccountId, BlockNumberFor<T>, BalanceOf<T>>>::get_unbonding_delay(
 					cluster_id,
 					NodeType::Storage,
 				)

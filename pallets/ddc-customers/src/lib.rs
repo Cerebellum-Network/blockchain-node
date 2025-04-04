@@ -5,10 +5,10 @@ pub mod weights;
 // #[cfg(feature = "runtime-benchmarks")]
 // pub mod benchmarking;
 
-// #[cfg(test)]
-// pub(crate) mod mock;
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+pub(crate) mod mock;
+#[cfg(test)]
+mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
@@ -571,6 +571,7 @@ pub mod pallet {
 			<T as pallet::Config>::Currency::transfer(
 				owner,
 				&Self::account_id(),
+				amount,
 				amount,
 				ExistenceRequirement::AllowDeath,
 			)?;
