@@ -6,7 +6,7 @@ WORKDIR /cerenetwork
 COPY . /cerenetwork
 
 RUN apt-get -qq update && \
-      apt-get -qq install -y \
+    apt-get -qq install -y \
       clang \
       cmake \
       git \
