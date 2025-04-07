@@ -1,9 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 #![allow(clippy::manual_inspect)]
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
 pub mod weights;
-// #[cfg(feature = "runtime-benchmarks")]
-// pub mod benchmarking;
 
 #[cfg(test)]
 pub(crate) mod mock;
@@ -571,7 +571,6 @@ pub mod pallet {
 			<T as pallet::Config>::Currency::transfer(
 				owner,
 				&Self::account_id(),
-				amount,
 				amount,
 				ExistenceRequirement::AllowDeath,
 			)?;
