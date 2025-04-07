@@ -787,7 +787,11 @@ fn cluster_creator_works() {
 			unit_per_get_request: 10,
 		};
 
-		assert_ok!(<DdcClusters as ClusterCreator<AccountId, BlockNumberFor<Test>, BalanceOf<Test>>>::create_cluster(
+		assert_ok!(<DdcClusters as ClusterCreator<
+			AccountId,
+			BlockNumberFor<Test>,
+			BalanceOf<Test>,
+		>>::create_cluster(
 			cluster_id,
 			cluster_manager_id,
 			cluster_reserve_id,
