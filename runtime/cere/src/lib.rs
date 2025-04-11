@@ -1613,7 +1613,10 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 // );
 
 // Migrations for DAC and Payouts on QANET
-type Migrations = pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>;
+type Migrations = (
+	pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
+	pallet_ddc_payouts::migrations::v5::MigrateToV5<Runtime>,
+);
 
 pub mod migrations {
 	use super::*;
@@ -1639,6 +1642,7 @@ pub mod migrations {
 		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
 		pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
+		pallet_ddc_payouts::migrations::v5::MigrateToV5<Runtime>,
 	);
 }
 
