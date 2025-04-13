@@ -22,7 +22,7 @@ members = [
   "pallets/ddc-clusters-gov",
   "pallets/origins",
   "runtime/cere",
-  "runtime/cere-dev",
+  "runtime/cere-dev", "pallets/template",
 ]
 resolver = "2"
 
