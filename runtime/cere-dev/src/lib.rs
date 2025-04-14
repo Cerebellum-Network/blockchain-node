@@ -58,6 +58,7 @@ use frame_support::{
 	},
 	PalletId,
 };
+use frame_support::traits::ExistenceRequirement;
 #[cfg(any(feature = "std", test))]
 pub use frame_system::Call as SystemCall;
 use frame_system::{
@@ -140,6 +141,7 @@ use ismp::{
 	host::StateMachine,
 	router::{Request, Response},
 };
+use pallet_treasury::PositiveImbalanceOf;
 use sp_core::H256;
 mod hyperbridge_ismp;
 mod weights;
@@ -581,6 +583,28 @@ impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
 	type MaxValidators = ConstU32<1000>;
 }
 
+pub struct RewardSource;
+
+impl OnUnbalanced<PositiveImbalanceOf<Runtime>> for RewardSource {
+	fn on_unbalanced(amount: PositiveImbalanceOf<Runtime>) {
+
+		let fee_pot_pallet_account: AccountId = FeeHandlerPalletId::get().into_account_truncating();
+
+		if let Ok(remaining_balance) = Balances::withdraw(
+			&fee_pot_pallet_account,
+			amount.peek(),
+			WithdrawReasons::TRANSFER,
+			ExistenceRequirement::KeepAlive,
+		) {
+			// Handle the successful withdrawal (burn)
+			let _ = remaining_balance;
+		} else {
+			// Log an error
+			log::error!("Failed to burn rewards from custom pallet account.");
+		}
+	}
+}
+
 impl pallet_staking::Config for Runtime {
 	type Currency = Balances;
 	type CurrencyBalance = Balance;
@@ -589,7 +613,7 @@ impl pallet_staking::Config for Runtime {
 	type RewardRemainder = Treasury;
 	type RuntimeEvent = RuntimeEvent;
 	type Slash = Treasury; // send the slashed funds to the treasury.
-	type Reward = (); // rewards are minted from the void
+	type Reward = RewardSource;
 	type SessionsPerEra = SessionsPerEra;
 	type BondingDuration = BondingDuration;
 	type SlashDeferDuration = SlashDeferDuration;
@@ -1361,6 +1385,19 @@ impl pallet_ddc_verification::Config for Runtime {
 	type BucketManager = DdcCustomers;
 }
 
+parameter_types! {
+	pub const FeeHandlerPalletId: PalletId = PalletId(*b"feehandl");
+}
+
+impl pallet_fee_handler::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type GovernanceOrigin = EnsureRoot<Self::AccountId>;
+	type PalletId = FeeHandlerPalletId;
+	type TreasuryPalletId = TreasuryPalletId;
+	type WeightInfo = ();
+}
+
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1534,6 +1571,9 @@ mod runtime {
 
 	#[runtime::pallet_index(50)]
 	pub type TokenGateway = pallet_token_gateway::Pallet<Runtime>;
+
+	#[runtime::pallet_index(51)]
+	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
