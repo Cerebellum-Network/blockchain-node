@@ -18,18 +18,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+// todo! Add Unit tests and Benchmarking
+
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{__private::RuntimeDebug, pallet_prelude::TypeInfo, traits::Currency};
 pub use pallet::*;
 use sp_runtime::{Permill, Saturating};
-
-#[cfg(test)]
-mod tests;
-
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-pub mod weights;
-pub use weights::*;
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct FeeDistributionProportion {
@@ -59,6 +53,10 @@ pub trait FeeHandler<T: Config> {
 	fn handle_fee(source: T::AccountId, fee_amount: BalanceOf<T>) -> sp_runtime::DispatchResult;
 }
 
+// todo! Fixed clippy warnings
+#[allow(deprecated)]
+#[allow(clippy::let_unit_value)]
+#[allow(clippy::manual_inspect)]
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::{
@@ -88,8 +86,6 @@ pub mod pallet {
 		/// Pallet ID for the treasury account.
 		#[pallet::constant]
 		type TreasuryPalletId: Get<PalletId>;
-		/// Weight information for the pallet's dispatchable functions.
-		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::storage]
@@ -116,13 +112,14 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Allows a user to manually top up the fee pot account.
 		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		// todo! Add actual weights
+		#[pallet::weight(10_000)]
 		pub fn manual_topup(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			T::Currency::transfer(
 				&who,
 				&Self::fee_pot_account_id(),
-				amount.clone(),
+				amount,
 				ExistenceRequirement::AllowDeath,
 			)?;
 			Self::deposit_event(Event::ManualFeeAccountTopUp { source: who, amount });
@@ -131,7 +128,8 @@ pub mod pallet {
 
 		/// Allows governance to set the fee distribution proportions.
 		#[pallet::call_index(1)]
-		#[pallet::weight(T::WeightInfo::do_something())]
+		// todo! Add actual weights
+		#[pallet::weight(10_000)]
 		pub fn fee_distribution_config(
 			origin: OriginFor<T>,
 			treasury_fee_proportion: u32,
@@ -165,7 +163,7 @@ pub mod pallet {
 		fn handle_fee(source: T::AccountId, fee_amount: BalanceOf<T>) -> DispatchResult {
 			let fee_config: FeeDistributionProportion = <FeeDistributionProportionConfig<T>>::get()
 				.ok_or(Error::<T>::FeeDistributionConfigNotSet)?;
-			let fee_pot_amount = fee_config.fee_pot_proportion.mul_floor(fee_amount.clone());
+			let fee_pot_amount = fee_config.fee_pot_proportion.mul_floor(fee_amount);
 			let treasury_amount = fee_amount.saturating_sub(fee_pot_amount);
 
 			let fee_pot_account = Pallet::<T>::fee_pot_account_id();

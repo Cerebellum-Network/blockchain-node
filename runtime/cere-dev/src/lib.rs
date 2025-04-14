@@ -1393,7 +1393,6 @@ impl pallet_fee_handler::Config for Runtime {
 	type GovernanceOrigin = EnsureRoot<Self::AccountId>;
 	type PalletId = FeeHandlerPalletId;
 	type TreasuryPalletId = TreasuryPalletId;
-	type WeightInfo = ();
 }
 
 #[frame_support::runtime]
