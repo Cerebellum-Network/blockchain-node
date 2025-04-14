@@ -104,8 +104,8 @@ pallet-ddc-staking = { workspace = true }
 pallet-ddc-verification = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
-pallet-origins = { workspace = true }
 pallet-fee-handler = { workspace = true }
+pallet-origins = { workspace = true }
 
 # Hyperbridge Depedencies
 anyhow = { workspace = true }
@@ -214,7 +214,7 @@ std = [
   "anyhow/std",
   "frame-metadata-hash-extension/std",
   "pallet-token-gateway/std",
-  "pallet-fee-handler/std"
+  "pallet-fee-handler/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",

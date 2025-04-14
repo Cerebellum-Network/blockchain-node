@@ -46,8 +46,8 @@ use frame_support::{
 			UnityAssetBalanceConversion, WithdrawConsequence,
 		},
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
-		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
+		EqualPrivilegeOnly, ExistenceRequirement, Imbalance, InstanceFilter, KeyOwnerProofSystem,
+		LinearStoragePrice, Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -57,7 +57,6 @@ use frame_support::{
 	},
 	PalletId,
 };
-use frame_support::traits::ExistenceRequirement;
 #[cfg(any(feature = "std", test))]
 pub use frame_system::Call as SystemCall;
 use frame_system::{
@@ -135,7 +134,6 @@ use ismp::{
 	router::{Request, Response},
 };
 use pallet_treasury::PositiveImbalanceOf;
-
 use sp_core::H256;
 mod hyperbridge_ismp;
 mod weights;
@@ -601,7 +599,6 @@ pub struct RewardSource;
 
 impl OnUnbalanced<PositiveImbalanceOf<Runtime>> for RewardSource {
 	fn on_unbalanced(amount: PositiveImbalanceOf<Runtime>) {
-
 		let fee_pot_pallet_account: AccountId = FeeHandlerPalletId::get().into_account_truncating();
 
 		if let Ok(remaining_balance) = Balances::withdraw(
@@ -618,7 +615,6 @@ impl OnUnbalanced<PositiveImbalanceOf<Runtime>> for RewardSource {
 		}
 	}
 }
-
 
 impl pallet_staking::Config for Runtime {
 	type Currency = Balances;
@@ -650,8 +646,6 @@ impl pallet_staking::Config for Runtime {
 	type NominationsQuota = pallet_staking::FixedNominationsQuota<{ MaxNominations::get() }>;
 	type DisablingStrategy = pallet_staking::UpToLimitDisablingStrategy;
 }
-
-
 
 impl pallet_fast_unstake::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
