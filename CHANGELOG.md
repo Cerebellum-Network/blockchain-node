@@ -10,10 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [7.3.4]
+
+- [C,D] Stop Daily Burn from Treasury 
+
 ## [7.3.3]
 
 - [C,D] Fix `CheckMetadataHash` extension issue
-- 
+  
 ## [7.3.2]
 
 - [C] Update Hyperbridge Coprocessor for Mainnet.
