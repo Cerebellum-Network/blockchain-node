@@ -4,6 +4,10 @@ on:
     types:
       - published
 
+permissions:
+  contents: read
+  id-token: write
+
 env:
   ECR_REPOSITORY: pos-network-node
   DOCKERHUB_REPOSITORY: cerebellumnetwork
@@ -37,6 +41,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Publish image to DockerHub
         id: docker_publish
         run: |
