@@ -136,7 +136,7 @@ use ismp::{
 	host::StateMachine,
 	router::{Request, Response},
 };
-use pallet_treasury::PositiveImbalanceOf;
+use pallet_treasury::{NegativeImbalanceOf, PositiveImbalanceOf};
 use sp_core::H256;
 mod hyperbridge_ismp;
 mod weights;
@@ -164,7 +164,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73108,
+	spec_version: 73109,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -566,7 +566,14 @@ impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
 	type MaxNominators = ConstU32<1000>;
 	type MaxValidators = ConstU32<1000>;
 }
+pub struct BurnSource;
 
+impl OnUnbalanced<NegativeImbalanceOf<Runtime>> for BurnSource {
+	fn on_unbalanced(amount: NegativeImbalanceOf<Runtime>) {
+		// Burn the tokens (decrease total issuance)
+		drop(amount);
+	}
+}
 pub struct RewardSource;
 
 impl OnUnbalanced<PositiveImbalanceOf<Runtime>> for RewardSource {
@@ -593,7 +600,7 @@ impl pallet_staking::Config for Runtime {
 	type CurrencyBalance = Balance;
 	type UnixTime = Timestamp;
 	type CurrencyToVote = CurrencyToVote;
-	type RewardRemainder = Treasury;
+	type RewardRemainder = BurnSource;
 	type RuntimeEvent = RuntimeEvent;
 	type Slash = Treasury; // send the slashed funds to the treasury.
 	type Reward = RewardSource;
