@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [7.3.6]
+
+- [C,D] Added mechanism to handle Remainder of Era Rewards
+
 ## [7.3.5]
 
 - [C,D] Turn-Off Inflation and change reward source
