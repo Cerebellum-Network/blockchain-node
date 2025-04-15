@@ -3659,7 +3659,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#376936cb798b821bc814467dcf0d9249a9b364fd"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#65b29bbd0626639a221879fd9002278b3a87c185"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -3685,7 +3685,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#0f4592ccf3ef10e68e6f710b369fea74f9fa9263"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#db43e01af826998a759ad2f97fdea970ef573899"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -8695,7 +8695,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#3008f5353316208ce35afc573f37f8967412ae76"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#0e86888d8546ba3151a96e0a1a4f0ec37a1c65a3"
 dependencies = [
  "byte-unit",
  "ddc-api",
@@ -8707,7 +8707,6 @@ dependencies = [
  "hex",
  "itertools 0.13.0",
  "log",
- "pallet-ddc-verification",
  "parity-scale-codec",
  "polkadot-ckb-merkle-mountain-range",
  "scale-info",
@@ -8752,7 +8751,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#581d3162b85e1678a0e1424841f5373f3c4913c9"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#37814caa2e6e45d1c41241f66b04d09b1f79414d"
 dependencies = [
  "array-bytes",
  "base64ct",
