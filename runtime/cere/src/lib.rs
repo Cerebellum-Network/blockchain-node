@@ -1613,7 +1613,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 // );
 
 // Migrations for DAC and Payouts on QANET
-type Migrations = pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>;
+type Migrations = ();
 
 pub mod migrations {
 	use super::*;
