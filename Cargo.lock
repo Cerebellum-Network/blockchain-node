@@ -3683,7 +3683,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#65b29bbd0626639a221879fd9002278b3a87c185"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#d16793a899d8c869f37286a2f95367dc92df2f5d"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -4445,12 +4445,6 @@ name = "fixedbitset"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
-
-[[package]]
-name = "fixedbitset"
-version = "0.5.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
 
 [[package]]
 name = "float-cmp"
@@ -6083,15 +6077,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7533,12 +7518,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 
 [[package]]
-name = "multimap"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "defc4c55412d89136f966bbb339008b474350e5e6e78d2714439c386b3137a03"
-
-[[package]]
 name = "multistream-select"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7981,7 +7960,7 @@ dependencies = [
  "expander",
  "indexmap 2.9.0",
  "itertools 0.11.0",
- "petgraph 0.6.5",
+ "petgraph",
  "proc-macro-crate 3.3.0",
  "proc-macro2",
  "quote",
@@ -8761,7 +8740,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#c3843f94617a54401740d22f8b6612ada4090d8a"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#405df1fd06c279065a999509156281698f09e89c"
 dependencies = [
  "byte-unit",
  "ddc-api",
@@ -8817,7 +8796,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#9eb43388a8a9b3b6a8a82b4e572ab44a4a6f0d9b"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#8278c71c15fc9bcaeb1f66cdaaf3bb44a5731a1e"
 dependencies = [
  "array-bytes",
  "base64ct",
@@ -10688,17 +10667,7 @@ version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
- "fixedbitset 0.4.2",
- "indexmap 2.9.0",
-]
-
-[[package]]
-name = "petgraph"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3672b37090dbd86368a4145bc067582552b29c27377cad4e0a306c97f9bd7772"
-dependencies = [
- "fixedbitset 0.5.7",
+ "fixedbitset",
  "indexmap 2.9.0",
 ]
 
@@ -13003,8 +12972,8 @@ dependencies = [
  "itertools 0.10.5",
  "lazy_static",
  "log",
- "multimap 0.8.3",
- "petgraph 0.6.5",
+ "multimap",
+ "petgraph",
  "prettyplease 0.1.25",
  "prost 0.11.9",
  "prost-types 0.11.9",
@@ -13024,9 +12993,9 @@ dependencies = [
  "heck 0.5.0",
  "itertools 0.12.1",
  "log",
- "multimap 0.10.0",
+ "multimap",
  "once_cell",
- "petgraph 0.6.5",
+ "petgraph",
  "prettyplease 0.2.32",
  "prost 0.12.6",
  "prost-types 0.12.6",
@@ -13042,11 +13011,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
  "heck 0.5.0",
- "itertools 0.14.0",
+ "itertools 0.13.0",
  "log",
- "multimap 0.10.0",
+ "multimap",
  "once_cell",
- "petgraph 0.7.1",
+ "petgraph",
  "prettyplease 0.2.32",
  "prost 0.13.5",
  "prost-types 0.13.5",
@@ -13088,7 +13057,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
- "itertools 0.14.0",
+ "itertools 0.13.0",
  "proc-macro2",
  "quote",
  "syn 2.0.100",
