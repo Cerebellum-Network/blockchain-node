@@ -21,7 +21,15 @@
 // todo! Add Unit tests and Benchmarking
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{__private::RuntimeDebug, pallet_prelude::TypeInfo, traits::Currency};
+use frame_support::{
+	__private::RuntimeDebug,
+	pallet_prelude::TypeInfo,
+	sp_runtime::SaturatedConversion,
+	traits::{
+		fungible::Mutate,
+		tokens::{Fortitude, Precision, Preservation},
+	},
+};
 pub use pallet::*;
 use sp_runtime::{Permill, Saturating};
 
@@ -30,9 +38,6 @@ pub struct FeeDistributionProportion {
 	treasury_proportion: Permill,
 	fee_pot_proportion: Permill,
 }
-
-pub type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 impl FeeDistributionProportion {
 	/// Creates a new `FeeDistributionProportion` if the total proportions equal 100%.
@@ -50,7 +55,7 @@ impl FeeDistributionProportion {
 
 pub trait FeeHandler<T: Config> {
 	/// Handles the distribution of fees to the treasury and fee pot accounts.
-	fn handle_fee(source: T::AccountId, fee_amount: BalanceOf<T>) -> sp_runtime::DispatchResult;
+	fn handle_fee(source: T::AccountId, fee_amount: u128) -> sp_runtime::DispatchResult;
 }
 
 // todo! Fixed clippy warnings
@@ -59,11 +64,7 @@ pub trait FeeHandler<T: Config> {
 #[allow(clippy::manual_inspect)]
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{
-		pallet_prelude::*,
-		traits::{ExistenceRequirement, LockableCurrency},
-		PalletId,
-	};
+	use frame_support::{pallet_prelude::*, PalletId};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::AccountIdConversion;
 
@@ -77,7 +78,7 @@ pub mod pallet {
 		/// The overarching runtime event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Native Currency Support.
-		type Currency: LockableCurrency<Self::AccountId, Moment = BlockNumberFor<Self>>;
+		type Currency: Mutate<Self::AccountId>;
 		/// Governance origin for privileged calls.
 		type GovernanceOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		/// Pallet ID for the fee pot account.
@@ -95,9 +96,11 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Manual top-up of the fee pot account.
-		ManualFeeAccountTopUp { source: T::AccountId, amount: BalanceOf<T> },
+		ManualFeeAccountTopUp { source: T::AccountId, amount: u128 },
 		/// Fee distribution configuration updated.
 		FeeDistributionProportionConfigSet { config: FeeDistributionProportion },
+		/// Native Token Burn event
+		NativeTokenBurned(T::AccountId, u128),
 	}
 
 	#[pallet::error]
@@ -114,13 +117,13 @@ pub mod pallet {
 		#[pallet::call_index(0)]
 		// todo! Add actual weights
 		#[pallet::weight(10_000)]
-		pub fn manual_topup(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
+		pub fn manual_topup(origin: OriginFor<T>, amount: u128) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			T::Currency::transfer(
 				&who,
 				&Self::fee_pot_account_id(),
-				amount,
-				ExistenceRequirement::AllowDeath,
+				amount.saturated_into(),
+				Preservation::Preserve,
 			)?;
 			Self::deposit_event(Event::ManualFeeAccountTopUp { source: who, amount });
 			Ok(())
@@ -145,6 +148,32 @@ pub mod pallet {
 			});
 			Ok(())
 		}
+
+		/// Burn Native tokens of an account
+		///
+		/// # Parameters
+		///
+		/// * `who`: AccountId
+		/// * `amount`: Amount of native tokens to burn.
+		#[pallet::call_index(2)]
+		// todo! Add actual weights
+		#[pallet::weight(10_000)]
+		pub fn burn_native_tokens(
+			origin: OriginFor<T>,
+			who: T::AccountId,
+			amount: u128,
+		) -> DispatchResult {
+			T::GovernanceOrigin::ensure_origin(origin)?;
+			let burned_amt = <T as Config>::Currency::burn_from(
+				&who,
+				amount.saturated_into(),
+				Preservation::Preserve,
+				Precision::BestEffort,
+				Fortitude::Force,
+			)?;
+			Self::deposit_event(Event::<T>::NativeTokenBurned(who, burned_amt.saturated_into()));
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -160,7 +189,7 @@ pub mod pallet {
 	}
 
 	impl<T: Config> FeeHandler<T> for Pallet<T> {
-		fn handle_fee(source: T::AccountId, fee_amount: BalanceOf<T>) -> DispatchResult {
+		fn handle_fee(source: T::AccountId, fee_amount: u128) -> DispatchResult {
 			let fee_config: FeeDistributionProportion = <FeeDistributionProportionConfig<T>>::get()
 				.ok_or(Error::<T>::FeeDistributionConfigNotSet)?;
 			let fee_pot_amount = fee_config.fee_pot_proportion.mul_floor(fee_amount);
@@ -172,14 +201,14 @@ pub mod pallet {
 			T::Currency::transfer(
 				&source,
 				&fee_pot_account,
-				fee_pot_amount,
-				ExistenceRequirement::AllowDeath,
+				fee_pot_amount.saturated_into(),
+				Preservation::Preserve,
 			)?;
 			T::Currency::transfer(
 				&source,
 				&treasury_account,
-				treasury_amount,
-				ExistenceRequirement::AllowDeath,
+				treasury_amount.saturated_into(),
+				Preservation::Preserve,
 			)?;
 			Ok(())
 		}
