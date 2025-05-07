@@ -177,6 +177,9 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type Buckets<T: Config> = StorageMap<_, Twox64Concat, BucketId, Bucket<T>, OptionQuery>;
 
+	#[pallet::storage]
+	pub type Mandate<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BalanceOf<T>>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -217,6 +220,10 @@ pub mod pallet {
 		},
 		/// Bucket with specific id marked as removed
 		BucketRemoved { bucket_id: BucketId },
+		/// A mandate created
+		MandateCreated { owner_id: T::AccountId, amount: BalanceOf<T> },
+		/// A mandate updated
+		MandateUpdated { owner_id: T::AccountId, amount: BalanceOf<T> },
 	}
 
 	#[pallet::error]
@@ -251,6 +258,8 @@ pub mod pallet {
 		AlreadyRemoved,
 		/// Bucket belongs to another cluster
 		ClusterMismatch,
+		/// Mandate with speicifed id doesn't exist.
+		NoMandateWithId,
 	}
 
 	#[pallet::genesis_config]
@@ -546,6 +555,28 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Mandate creation
+		///
+		/// Only an owner can create a mandate
+		#[pallet::call_index(7)]
+		#[pallet::weight(T::WeightInfo::remove_bucket())]
+		pub fn create_mandate(origin: OriginFor<T>,#[pallet::compact] amount: BalanceOf<T>,) -> DispatchResult {
+			let owner = ensure_signed(origin)?;
+
+			<Mandate<T>>::insert(owner.clone(), amount);
+			Self::deposit_event(Event::<T>::MandateCreated { owner_id: owner, amount });
+			Ok(())
+		}
+
+		#[pallet::call_index(8)]
+		#[pallet::weight(T::WeightInfo::remove_bucket())]
+		pub fn update_mandate(origin: OriginFor<T>,#[pallet::compact] amount: BalanceOf<T>,) -> DispatchResult {
+			let owner = ensure_signed(origin)?;
+
+			Self::do_update_mandate(owner, amount)?;
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -685,6 +716,19 @@ pub mod pallet {
 				stored_bytes,
 			}
 		}
+
+		fn do_update_mandate(
+			owner: T::AccountId,
+			amount: BalanceOf<T>,
+		) -> DispatchResult {
+			let mut mandate_balance = Mandate::<T>::get(owner.clone()).ok_or(Error::<T>::NoMandateWithId)?;
+			mandate_balance = mandate_balance.checked_sub(&amount)
+				.ok_or(Error::<T>::ArithmeticUnderflow)?;
+
+			<Mandate<T>>::insert(owner.clone(), mandate_balance);
+			Self::deposit_event(Event::<T>::MandateUpdated{ owner_id: owner, amount });
+			Ok(())
+		}
 	}
 
 	impl<T: Config> BucketManager<T> for Pallet<T> {
@@ -765,6 +809,12 @@ pub mod pallet {
 			let actually_charged: BalanceOf<T>;
 			let mut ledger = Ledger::<T>::get(&bucket_owner).ok_or(Error::<T>::NotOwner)?;
 			let amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
+			//TODO amount_to_deduct > ledger then call deposite extra and reduce amount from mandate
+
+			if amount_to_deduct > ledger.active {
+				<Self as CustomerDepositor<T>>::deposit_extra(bucket_owner.clone(), amount)?;
+				Self::do_update_mandate(bucket_owner.clone(), amount.saturated_into::<BalanceOf<T>>())?;
+			}
 
 			if ledger.active >= amount_to_deduct {
 				actually_charged = amount_to_deduct;
