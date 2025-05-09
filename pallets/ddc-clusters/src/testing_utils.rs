@@ -139,12 +139,15 @@ where
 impl From<NodeProviderAuthContractError> for Box<BenchmarkError> {
 	fn from(error: NodeProviderAuthContractError) -> Self {
 		match error {
-			NodeProviderAuthContractError::ContractCallFailed =>
-				Box::new(BenchmarkError::Stop("NodeAuthContractCallFailed")),
-			NodeProviderAuthContractError::ContractDeployFailed =>
-				Box::new(BenchmarkError::Stop("NodeAuthContractDeployFailed")),
-			NodeProviderAuthContractError::NodeAuthorizationNotSuccessful =>
-				Box::new(BenchmarkError::Stop("NodeAuthNodeAuthorizationNotSuccessful")),
+			NodeProviderAuthContractError::ContractCallFailed => {
+				Box::new(BenchmarkError::Stop("NodeAuthContractCallFailed"))
+			},
+			NodeProviderAuthContractError::ContractDeployFailed => {
+				Box::new(BenchmarkError::Stop("NodeAuthContractDeployFailed"))
+			},
+			NodeProviderAuthContractError::NodeAuthorizationNotSuccessful => {
+				Box::new(BenchmarkError::Stop("NodeAuthNodeAuthorizationNotSuccessful"))
+			},
 		}
 	}
 }

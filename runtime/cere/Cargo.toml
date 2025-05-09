@@ -265,6 +265,7 @@ runtime-benchmarks = [
   "pallet-ddc-verification/runtime-benchmarks",
   "pallet-token-gateway/runtime-benchmarks",
 ]
+# TODO: Will be fixed in another PR
 try-runtime = [
   "frame-executive/try-runtime",
   "frame-try-runtime",

@@ -495,7 +495,7 @@ benchmarks! {
 	}: activate_cluster_protocol(RawOrigin::Root, cluster_id, ClusterProtocolParams::default())
 	verify {
 		let cluster_id = ClusterId::from([1; 20]);
-		let cluster_status = <T::ClusterProtocol as ClusterQuery<T>>::get_cluster_status(&cluster_id).unwrap();
+		let cluster_status = <T::ClusterProtocol as ClusterQuery<T::AccountId>>::get_cluster_status(&cluster_id).unwrap();
 		assert_eq!(cluster_status, ClusterStatus::Activated);
 	}
 

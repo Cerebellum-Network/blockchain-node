@@ -69,6 +69,7 @@ where
 		Ok(is_authorized)
 	}
 
+	#[allow(dead_code)] //FIXME: remove this after fixing benchmark
 	#[cfg(any(feature = "runtime-benchmarks", test))]
 	pub fn deploy_contract(
 		&self,
@@ -119,6 +120,7 @@ where
 		Ok(Self::new(contract_id, caller_id))
 	}
 
+	#[allow(dead_code)] //FIXME: remove this after fixing benchmark
 	#[cfg(any(feature = "runtime-benchmarks", test))]
 	pub fn authorize_node(
 		&self,

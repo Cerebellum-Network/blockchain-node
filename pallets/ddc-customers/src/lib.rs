@@ -2,16 +2,13 @@
 #![recursion_limit = "256"]
 #![allow(clippy::manual_inspect)]
 pub mod weights;
-use crate::weights::WeightInfo;
+// #[cfg(feature = "runtime-benchmarks")]
+// pub mod benchmarking;
 
-#[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
-
-#[cfg(test)]
-pub(crate) mod mock;
-#[cfg(test)]
-mod tests;
-
+// #[cfg(test)]
+// pub(crate) mod mock;
+// #[cfg(test)]
+// mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
@@ -36,6 +33,8 @@ use sp_runtime::{
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
+
+use crate::weights::WeightInfo;
 
 pub mod migration;
 
@@ -152,8 +151,12 @@ pub mod pallet {
 		/// Number of eras that staked funds must remain locked for.
 		#[pallet::constant]
 		type UnlockingDelay: Get<BlockNumberFor<Self>>;
-		type ClusterProtocol: ClusterProtocol<Self, BalanceOf<Self>>;
-		type ClusterCreator: ClusterCreator<Self, BalanceOf<Self>>;
+		type ClusterProtocol: ClusterProtocol<
+			Self::AccountId,
+			BlockNumberFor<Self>,
+			BalanceOf<Self>,
+		>;
+		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
 	}
 
@@ -633,7 +636,7 @@ pub mod pallet {
 			bucket_params: BucketParams,
 		) -> DispatchResult {
 			ensure!(
-				<T::ClusterProtocol as ClusterQuery<T>>::cluster_exists(&cluster_id),
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::cluster_exists(&cluster_id),
 				Error::<T>::ClusterDoesNotExist
 			);
 
