@@ -1819,7 +1819,7 @@ dependencies = [
 
 [[package]]
 name = "cere-cli"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "cere-client",
  "cere-service",
@@ -1837,7 +1837,7 @@ dependencies = [
 
 [[package]]
 name = "cere-client"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "cere-dev-runtime",
  "cere-runtime",
@@ -1873,7 +1873,7 @@ dependencies = [
 
 [[package]]
 name = "cere-dev-runtime"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
@@ -1977,7 +1977,7 @@ dependencies = [
 
 [[package]]
 name = "cere-rpc"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "ddc-primitives",
  "jsonrpsee",
@@ -2009,7 +2009,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "anyhow",
  "cere-runtime-common",
@@ -2113,7 +2113,7 @@ dependencies = [
 
 [[package]]
 name = "cere-runtime-common"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "ddc-primitives",
  "frame-support",
@@ -2134,7 +2134,7 @@ dependencies = [
 
 [[package]]
 name = "cere-service"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "cere-client",
  "cere-dev-runtime",
@@ -3682,8 +3682,8 @@ dependencies = [
 
 [[package]]
 name = "ddc-api"
-version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#2cafcde747a3ea5b09b595578564b956817f571d"
+version = "7.3.2"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=staging#0d3e058ccaad98d62db96a618b105d09acf96536"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -3708,8 +3708,8 @@ dependencies = [
 
 [[package]]
 name = "ddc-primitives"
-version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#469e66ebb858ffcfc60e913588035a690f15e95b"
+version = "7.3.2"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging#78e783404d71a92229061331a791ccd2c969c2d9"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -8417,7 +8417,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-chainbridge"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8632,7 +8632,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-clusters"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -8658,7 +8658,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-clusters-gov"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -8693,7 +8693,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-customers"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -8716,7 +8716,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-nodes"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -8739,8 +8739,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-payouts"
-version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#e8c2175d60b58529c0e5976347c82e795657ef88"
+version = "7.3.2"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=staging#13fa40890fc4b65b5b601a7b979ada1828395a94"
 dependencies = [
  "byte-unit",
  "ddc-api",
@@ -8767,7 +8767,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-staking"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "ddc-primitives",
  "frame-benchmarking",
@@ -8795,8 +8795,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-ddc-verification"
-version = "7.3.0"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#0237e02cb844dfe72d03746dcbc499c05680565e"
+version = "7.3.2"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=staging#9fa1d6e7fb39f4fef38bc6ce25785b55dcb91252"
 dependencies = [
  "array-bytes",
  "base64ct",
@@ -8936,7 +8936,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc20"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -8955,7 +8955,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-erc721"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -9462,7 +9462,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-origins"
-version = "7.3.0"
+version = "7.3.2"
 dependencies = [
  "cere-runtime-common",
  "frame-benchmarking",
