@@ -3683,7 +3683,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=staging#0d3e058ccaad98d62db96a618b105d09acf96536"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=staging#131f711068250a45f20cbac240a2358ce9cbf235"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
