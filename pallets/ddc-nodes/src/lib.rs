@@ -273,7 +273,7 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> NodeManager<T> for Pallet<T> {
+	impl<T: Config> NodeManager<T::AccountId> for Pallet<T> {
 		fn get_cluster_id(node_pub_key: &NodePubKey) -> Result<Option<ClusterId>, DispatchError> {
 			let node = Self::get(node_pub_key.clone()).map_err(|_| Error::<T>::NodeDoesNotExist)?;
 			Ok(*node.get_cluster_id())
