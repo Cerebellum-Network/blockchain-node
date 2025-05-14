@@ -1253,6 +1253,7 @@ impl pallet_ddc_clusters::Config for Runtime {
 
 parameter_types! {
 	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
+	pub const MajorityOfValidators: Percent = Percent::from_percent(67);
 }
 
 pub struct TreasuryWrapper;
@@ -1264,6 +1265,7 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
@@ -1272,19 +1274,23 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type TreasuryVisitor = TreasuryWrapper;
 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
-	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
+	type ValidatorVerification = pallet_ddc_verification::Pallet<Runtime>;
 	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
 	type Hasher = BlakeTwo256;
 	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
-	type ValidatorsQuorum = HalfOfValidators;
+	type ValidatorsQuorum = MajorityOfValidators;
 	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
-	type ValidatorVerification = DdcVerification;
-	type WeightInfo = ();
-	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
-	const DISABLE_PAYOUTS_CUTOFF: bool = false;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
-	const BLOCK_TO_START: u16 = 1; // every block
+	#[cfg(feature = "runtime-benchmarks")]
+	type CustomerDepositor = DdcCustomers;
+	#[cfg(feature = "runtime-benchmarks")]
+	type ClusterCreator = DdcClusters;
+
+	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
+	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
+	const DISABLE_PAYOUTS_CUTOFF: bool = false;
+	const OCW_INTERVAL: u16 = 1; // every block
 }
 
 parameter_types! {
@@ -1360,10 +1366,8 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
-	pub const MajorityOfAggregators: Percent = Percent::from_percent(67);
-	pub const _MajorityOfValidators: Percent = Percent::from_percent(67);
-	pub const HalfOfValidators: Percent = Percent::from_percent(50);
 }
+
 impl pallet_ddc_verification::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = VerificationPalletId;
@@ -1375,28 +1379,17 @@ impl pallet_ddc_verification::Config for Runtime {
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type Hasher = BlakeTwo256;
-	const BLOCK_TO_START: u16 = 1; // every block
-	const DAC_REDUNDANCY_FACTOR: u16 = 3;
-	type AggregatorsQuorum = MajorityOfAggregators;
-	type ValidatorsQuorum = HalfOfValidators;
-	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
-	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
 	type AccountIdConverter = AccountId32;
 	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
-	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
 	type Currency = Balances;
-	const DISABLE_PAYOUTS_CUTOFF: bool = false;
-	const DEBUG_MODE: bool = true;
 	type BucketsStorageUsageProvider = DdcCustomers;
 	type NodesStorageUsageProvider = DdcNodes;
 	type ClusterProtocol = DdcClusters;
-	#[cfg(feature = "runtime-benchmarks")]
-	type CustomerDepositor = DdcCustomers;
-	#[cfg(feature = "runtime-benchmarks")]
-	type ClusterCreator = DdcClusters;
 	type BucketManager = DdcCustomers;
 	type InspReceiptsInterceptor = pallet_ddc_verification::demo::v1::DemoReceiptsInterceptor;
+
+	const OCW_INTERVAL: u16 = 1; // every block
 }
 
 #[frame_support::runtime]
