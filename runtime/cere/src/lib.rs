@@ -2085,81 +2085,81 @@ impl_runtime_apis! {
 		}
 	}
 
-	//TODO: Fix benchmakrs in another PR
-	// #[cfg(feature = "runtime-benchmarks")]
-	// impl frame_benchmarking::Benchmark<Block> for Runtime {
-	// 	fn benchmark_metadata(extra: bool) -> (
-	// 		Vec<frame_benchmarking::BenchmarkList>,
-	// 		Vec<frame_support::traits::StorageInfo>,
-	// 	) {
-	// 		use frame_benchmarking::{baseline, Benchmarking, BenchmarkList};
-	// 		use frame_support::traits::StorageInfoTrait;
-	//
-	// 		// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
-	// 		// issues. To get around that, we separated the Session benchmarks into its own crate,
-	// 		// which is why we need these two lines below.
-	// 		use pallet_session_benchmarking::Pallet as SessionBench;
-	// 		use pallet_offences_benchmarking::Pallet as OffencesBench;
-	// 		use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
-	// 		use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
-	// 		use frame_system_benchmarking::Pallet as SystemBench;
-	// 		use baseline::Pallet as BaselineBench;
-	//
-	// 		let mut list = Vec::<BenchmarkList>::new();
-	// 		list_benchmarks!(list, extra);
-	//
-	// 		let storage_info = AllPalletsWithSystem::storage_info();
-	//
-	// 		(list, storage_info)
-	// 	}
-	//
-	// 	fn dispatch_benchmark(
-	// 		config: frame_benchmarking::BenchmarkConfig
-	// 	) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-	// 		use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch};
-	// 		use sp_storage::TrackedStorageKey;
-	//
-	// 		// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
-	// 		// issues. To get around that, we separated the Session benchmarks into its own crate,
-	// 		// which is why we need these two lines below.
-	// 		use pallet_session_benchmarking::Pallet as SessionBench;
-	// 		use pallet_offences_benchmarking::Pallet as OffencesBench;
-	// 		use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
-	// 		use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
-	// 		use frame_system_benchmarking::Pallet as SystemBench;
-	// 		use baseline::Pallet as BaselineBench;
-	//
-	// 		impl pallet_session_benchmarking::Config for Runtime {}
-	// 		impl pallet_offences_benchmarking::Config for Runtime {}
-	// 		impl pallet_election_provider_support_benchmarking::Config for Runtime {}
-	// 		impl frame_system_benchmarking::Config for Runtime {}
-	// 		impl baseline::Config for Runtime {}
-	// 		impl pallet_nomination_pools_benchmarking::Config for Runtime {}
-	//
-	// 		let whitelist: Vec<TrackedStorageKey> = vec![
-	// 			// Block Number
-	// 			hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec().into(),
-	// 			// Total Issuance
-	// 			hex_literal::hex!("c2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80").to_vec().into(),
-	// 			// Execution Phase
-	// 			hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a").to_vec().into(),
-	// 			// Event Count
-	// 			hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef70a98fdbe9ce6c55837576c60c7af3850").to_vec().into(),
-	// 			// System Events
-	// 			hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7").to_vec().into(),
-	// 			// System BlockWeight
-	// 			hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef734abf5cb34d6244378cddbf18e849d96").to_vec().into(),
-	// 			// Treasury Account
-	// 			hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da95ecffd7b6c0f78751baa9d281e0bfa3a6d6f646c70792f74727372790000000000000000000000000000000000000000").to_vec().into(),
-	// 		];
-	//
-	// 		let mut batches = Vec::<BenchmarkBatch>::new();
-	// 		let params = (&config, &whitelist);
-	// 		add_benchmarks!(params, batches);
-	//
-	// 		Ok(batches)
-	// 	}
-	// }
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl frame_benchmarking::Benchmark<Block> for Runtime {
+		fn benchmark_metadata(extra: bool) -> (
+			Vec<frame_benchmarking::BenchmarkList>,
+			Vec<frame_support::traits::StorageInfo>,
+		) {
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkList};
+			use frame_support::traits::StorageInfoTrait;
+
+			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
+			// issues. To get around that, we separated the Session benchmarks into its own crate,
+			// which is why we need these two lines below.
+			use pallet_session_benchmarking::Pallet as SessionBench;
+			use pallet_offences_benchmarking::Pallet as OffencesBench;
+			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
+			use frame_system_benchmarking::Pallet as SystemBench;
+			use baseline::Pallet as BaselineBench;
+
+			let mut list = Vec::<BenchmarkList>::new();
+			list_benchmarks!(list, extra);
+
+			let storage_info = AllPalletsWithSystem::storage_info();
+
+			(list, storage_info)
+		}
+
+		fn dispatch_benchmark(
+			config: frame_benchmarking::BenchmarkConfig
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch};
+			use sp_storage::TrackedStorageKey;
+
+			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
+			// issues. To get around that, we separated the Session benchmarks into its own crate,
+			// which is why we need these two lines below.
+			use pallet_session_benchmarking::Pallet as SessionBench;
+			use pallet_offences_benchmarking::Pallet as OffencesBench;
+			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
+			use frame_system_benchmarking::Pallet as SystemBench;
+			use baseline::Pallet as BaselineBench;
+
+			impl pallet_session_benchmarking::Config for Runtime {}
+			impl pallet_offences_benchmarking::Config for Runtime {}
+			impl pallet_election_provider_support_benchmarking::Config for Runtime {}
+			impl frame_system_benchmarking::Config for Runtime {}
+			impl baseline::Config for Runtime {}
+			impl pallet_nomination_pools_benchmarking::Config for Runtime {}
+
+			let whitelist: Vec<TrackedStorageKey> = vec![
+				// Block Number
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec().into(),
+				// Total Issuance
+				hex_literal::hex!("c2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80").to_vec().into(),
+				// Execution Phase
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a").to_vec().into(),
+				// Event Count
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef70a98fdbe9ce6c55837576c60c7af3850").to_vec().into(),
+				// System Events
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7").to_vec().into(),
+				// System BlockWeight
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef734abf5cb34d6244378cddbf18e849d96").to_vec().into(),
+				// Treasury Account
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da95ecffd7b6c0f78751baa9d281e0bfa3a6d6f646c70792f74727372790000000000000000000000000000000000000000").to_vec().into(),
+			];
+
+			let mut batches = Vec::<BenchmarkBatch>::new();
+			let params = (&config, &whitelist);
+			add_benchmarks!(params, batches);
+
+			Ok(batches)
+		}
+	}
 }
 
 #[cfg(test)]
