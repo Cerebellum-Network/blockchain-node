@@ -1273,14 +1273,14 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type ClusterProtocol = DdcClusters;
 	type TreasuryVisitor = TreasuryWrapper;
 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
-	type VoteScoreToU64 = IdentityConvert; // used for UseNominatorsAndValidatorsMap
-	type ValidatorVerification = pallet_ddc_verification::Pallet<Runtime>;
-	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
+	type VoteScoreToU64 = IdentityConvert;
+	type InspectorAuthority = DdcVerification;
+	type NodeManager = DdcNodes;
 	type AccountIdConverter = AccountId32;
 	type Hasher = BlakeTwo256;
-	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterValidator = DdcClusters;
 	type ValidatorsQuorum = MajorityOfValidators;
-	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterManager = DdcClusters;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = DdcCustomers;
@@ -1372,21 +1372,19 @@ impl pallet_ddc_verification::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = VerificationPalletId;
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
-	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
-	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
-	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
-	type PayoutProcessor = pallet_ddc_payouts::Pallet<Runtime>;
+	type ClusterProtocol = DdcClusters;
+	type ClusterManager = DdcClusters;
+	type ClusterValidator = DdcClusters;
+	type NodeManager = DdcNodes;
+	type NodesStorageUsageProvider = DdcNodes;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type Hasher = BlakeTwo256;
 	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
-	type AccountIdConverter = AccountId32;
-	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
 	type Currency = Balances;
-	type BucketsStorageUsageProvider = DdcCustomers;
-	type NodesStorageUsageProvider = DdcNodes;
-	type ClusterProtocol = DdcClusters;
+	type CustomerVisitor = DdcCustomers;
 	type BucketManager = DdcCustomers;
+	type BucketsStorageUsageProvider = DdcCustomers;
 	type InspReceiptsInterceptor = pallet_ddc_verification::demo::v1::DemoReceiptsInterceptor;
 
 	const OCW_INTERVAL: u16 = 1; // every block
@@ -1659,7 +1657,7 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
-		[pallet_ddc_verification, DdcVerification]
+		[pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
 	);
 }
