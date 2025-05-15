@@ -118,6 +118,7 @@ impl pallet_balances::Config for Test {
 	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type DoneSlashHandler = ();
 }
 
 parameter_types! {
