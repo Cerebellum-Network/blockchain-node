@@ -18,7 +18,7 @@ use pallet_contracts as contracts;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::TestXt,
-	traits::{Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify},
+	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, DispatchResult, MultiSignature, Perbill, Perquintill,
 };
 
@@ -107,9 +107,7 @@ impl contracts::Config for Test {
 	type Xcm = ();
 }
 
-use frame_system::offchain::{
-	AppCrypto, CreateSignedTransaction, SendTransactionTypes, SigningTypes,
-};
+use frame_system::offchain::SigningTypes;
 
 pub type Extrinsic = TestXt<RuntimeCall, ()>;
 
@@ -118,26 +116,38 @@ impl SigningTypes for Test {
 	type Signature = Signature;
 }
 
-impl<LocalCall> SendTransactionTypes<LocalCall> for Test
+impl<LocalCall> frame_system::offchain::CreateTransactionBase<LocalCall> for Test
 where
 	RuntimeCall: From<LocalCall>,
 {
-	type OverarchingCall = RuntimeCall;
+	type RuntimeCall = RuntimeCall;
 	type Extrinsic = Extrinsic;
 }
 impl pallet_insecure_randomness_collective_flip::Config for Test {}
 
-impl<LocalCall> CreateSignedTransaction<LocalCall> for Test
+impl<LocalCall> frame_system::offchain::CreateTransaction<LocalCall> for Test
+	where
+		RuntimeCall: From<LocalCall>,
+{
+	type Extension = ();
+
+	fn create_transaction(call: RuntimeCall, _extension: Self::Extension) -> Extrinsic {
+		Extrinsic::new_transaction(call, ())
+	}
+}
+impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Test
 where
 	RuntimeCall: From<LocalCall>,
 {
-	fn create_transaction<C: AppCrypto<Self::Public, Self::Signature>>(
+	fn create_signed_transaction<
+		C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
+	>(
 		call: RuntimeCall,
 		_public: <Signature as Verify>::Signer,
 		_account: AccountId,
 		nonce: u64,
-	) -> Option<(RuntimeCall, <Extrinsic as ExtrinsicT>::SignaturePayload)> {
-		Some((call, (nonce, ())))
+	) -> Option<Extrinsic> {
+		Some(Extrinsic::new_signed(call, nonce, (), ()))
 	}
 }
 
@@ -170,6 +180,7 @@ impl pallet_balances::Config for Test {
 	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type DoneSlashHandler = ();
 }
 
 impl pallet_timestamp::Config for Test {
