@@ -66,6 +66,7 @@ use frame_system::{
 };
 #[cfg(any(feature = "std", test))]
 pub use pallet_balances::Call as BalancesCall;
+use pallet_balances::WeightInfo;
 pub use pallet_chainbridge;
 use pallet_contracts::Determinism;
 pub use pallet_ddc_clusters;
@@ -1585,8 +1586,15 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 
+const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX;
+parameter_types! {
+			pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
+}
 /// Runtime migrations
-type Migrations = ();
+type Migrations = (
+	pallet_child_bounties::migration::MigrateV0ToV1<Runtime, BalanceTransferAllowDeath>,
+	pallet_identity::migration::versioned::V0ToV1<Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
