@@ -132,7 +132,6 @@ sc-network-common = { version = "0.47.0", default-features = false }
 sc-rpc = { version = "43.0.0", default-features = false }
 sc-rpc-api = { version = "0.47.0", default-features = false }
 sc-service = { version = "0.49.0", default-features = false }
-sc-sync-state = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2409", default-features = false }
 sc-sync-state-rpc = { version = "0.48.0", default-features = false }
 sc-sysinfo = { version = "41.0.0", default-features = false }
 sc-telemetry = { version = "28.0.0", default-features = false }
@@ -147,10 +146,7 @@ sp-block-builder = { version = "35.0.0", default-features = false }
 sp-blockchain = { version = "38.0.0", default-features = false }
 sp-consensus = { version = "0.41.0", default-features = false }
 sp-consensus-babe = { version = "0.41.0", default-features = false }
-sp-consensus-babe-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
-sp-consensus-epochs = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-consensus-grandpa = { version = "22.0.0", default-features = false }
-sp-consensus-grandpa-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-core = { version = "35.0.0", default-features = false, features = ["serde"] }
 sp-inherents = { version = "35.0.0", default-features = false }
 sp-io = { version = "39.0.0", default-features = false }
@@ -158,7 +154,6 @@ sp-keystore = { version = "0.41.0", default-features = false }
 sp-mmr-primitives = { version = "35.0.0", default-features = false }
 sp-offchain = { version = "35.0.0", default-features = false }
 sp-rpc = { version = "33.0.0", default-features = false }
-sp-rpc-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2409", default-features = false }
 sp-runtime = { version = "40.1.0", default-features = false }
 sp-genesis-builder = { version = "0.16.0", default-features = false }
 sp-session = { version = "37.0.0", default-features = false }
@@ -201,13 +196,13 @@ pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.
 pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "stable-2412", default-features = false }
 
 # Hyperbridge
-ismp = { default-features = false, version = "0.2.2" }
-ismp-grandpa = { default-features = false, version = "16.0.0" }
-pallet-hyperbridge = { default-features = false, version = "16.0.0" }
-pallet-ismp = { default-features = false, version = "16.1.0" }
-pallet-ismp-rpc = { default-features = false, version = "16.0.0" }
-pallet-ismp-runtime-api = { default-features = false, version = "16.0.0" }
-pallet-token-gateway = { default-features = false, version = "16.0.0" }
+ismp = { default-features = false, version = "1.0.0" }
+ismp-grandpa = { default-features = false, version = "2412.0.0" }
+pallet-hyperbridge = { default-features = false, version = "2412.0.0" }
+pallet-ismp = { default-features = false, version = "2412.0.0" }
+pallet-ismp-rpc = { default-features = false, version = "2412.0.0" }
+pallet-ismp-runtime-api = { default-features = false, version = "2412.0.0" }
+pallet-token-gateway = { default-features = false, version = "2412.0.0" }
 
 [profile.release]
 panic = "unwind"

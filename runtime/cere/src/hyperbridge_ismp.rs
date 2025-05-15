@@ -44,7 +44,6 @@ impl pallet_ismp::Config for Runtime {
 	// The default implementation for `()` should suffice
 	type OffchainDB = ();
 	// Weight provider for local modules
-	type WeightProvider = ();
 	type FeeHandler = WeightFeeHandler<()>;
 }
 
