@@ -32,6 +32,7 @@ pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
+use pallet_balances::WeightInfo;
 extern crate alloc;
 use frame_support::{
 	derive_impl,
@@ -1601,7 +1602,11 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 
 /// Runtime migrations
-type Migrations = ();
+parameter_types! {
+			pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
+}
+type Migrations =
+	(pallet_child_bounties::migration::MigrateV0ToV1<Runtime, BalanceTransferAllowDeath>,);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
