@@ -660,7 +660,7 @@ pub mod pallet {
 		) -> Result<Weight, DispatchError> {
 			Self::deposit_event(Event::Approved { cluster_id });
 
-			let dispatch_weight = proposal.get_dispatch_info().weight;
+			let dispatch_weight = proposal.get_dispatch_info().call_weight;
 			let submission_deposit = Self::do_submission_deposit(depositor.clone())?;
 
 			let post_info = proposal

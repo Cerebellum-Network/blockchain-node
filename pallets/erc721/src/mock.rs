@@ -1,11 +1,11 @@
 #![cfg(test)]
 
 use frame_support::{derive_impl, ord_parameter_types, parameter_types, weights::Weight};
-use frame_system::{self as system};
+use frame_system::{self as system, mocking::MockBlock};
 pub use pallet_balances as balances;
 use pallet_chainbridge as bridge;
 use sp_core::hashing::blake2_128;
-use sp_runtime::{testing::Header, BuildStorage, Perbill};
+use sp_runtime::{BuildStorage, Perbill};
 
 use crate::{self as erc721, Config};
 
@@ -46,6 +46,7 @@ impl pallet_balances::Config for Test {
 	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = ();
+	type DoneSlashHandler = ();
 }
 
 parameter_types! {
@@ -58,8 +59,7 @@ impl Config for Test {
 	type WeightInfo = ();
 }
 
-pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, RuntimeCall, ()>;
+type Block = MockBlock<Test>;
 
 frame_support::construct_runtime!(
 	pub enum Test
