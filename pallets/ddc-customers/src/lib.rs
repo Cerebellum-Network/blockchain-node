@@ -160,7 +160,6 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 	}
 
-	/// Map from all (unlocked) "owner" accounts to the info regarding the staking.
 	#[pallet::storage]
 	pub type Ledger<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, AccountsLedger<T>>;
 
@@ -342,10 +341,11 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::deposit())]
 		pub fn deposit(
 			origin: OriginFor<T>,
+			cluster_id: ClusterId,
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			<Self as CustomerDepositor<T>>::deposit(owner, value.saturated_into())?;
+			<Self as CustomerDepositor<T>>::deposit(owner, value.saturated_into(), cluster_id)?;
 			Ok(())
 		}
 
@@ -456,8 +456,8 @@ pub mod pallet {
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
 
-			let post_info_weight = if ledger.unlocking.is_empty() &&
-				ledger.active < <T as pallet::Config>::Currency::minimum_balance()
+			let post_info_weight = if ledger.unlocking.is_empty()
+				&& ledger.active < <T as pallet::Config>::Currency::minimum_balance()
 			{
 				log::debug!("Killing owner");
 				// This account must have called `unlock_deposit()` with some value that caused the
@@ -553,8 +553,8 @@ pub mod pallet {
 			T::PalletId::get().into_account_truncating()
 		}
 
-		pub fn sub_account_id(account_id: &T::AccountId) -> T::AccountId {
-			let hash = blake2_128(&account_id.encode());
+		pub fn cluster_vault_id(cluster_id: &ClusterId) -> T::AccountId {
+			let hash = blake2_128(&cluster_id.encode());
 
 			// hash is 28 bytes
 			T::PalletId::get().into_sub_account_truncating(hash)
@@ -566,11 +566,12 @@ pub mod pallet {
 		fn update_ledger_and_deposit(
 			owner: &T::AccountId,
 			ledger: &AccountsLedger<T>,
+			cluster_id: &ClusterId,
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
 			<T as pallet::Config>::Currency::transfer(
 				owner,
-				&Self::account_id(),
+				&Self::cluster_vault_id(cluster_id),
 				amount,
 				ExistenceRequirement::AllowDeath,
 			)?;
@@ -813,7 +814,11 @@ pub mod pallet {
 	}
 
 	impl<T: Config> CustomerDepositor<T> for Pallet<T> {
-		fn deposit(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
+		fn deposit(
+			owner: T::AccountId,
+			amount: u128,
+			cluster_id: ClusterId,
+		) -> Result<(), DispatchError> {
 			let value = amount.saturated_into::<BalanceOf<T>>();
 
 			if <Ledger<T>>::contains_key(&owner) {
@@ -836,7 +841,7 @@ pub mod pallet {
 				unlocking: Default::default(),
 			};
 
-			Self::update_ledger_and_deposit(&owner, &ledger, value)
+			Self::update_ledger_and_deposit(&owner, &ledger, &cluster_id, value)
 				.map_err(|_| Error::<T>::TransferFailed)?;
 			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: value });
 
