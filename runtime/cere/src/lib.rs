@@ -1620,7 +1620,6 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
-/// Runtime migrations
 // type Migrations = (
 // 	// Migrations related to substrate version upgrades
 // 	// pallet_nomination_pools::migration::versioned::V5toV6<Runtime>,
@@ -2146,7 +2145,7 @@ impl_runtime_apis! {
 
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
-		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, alloc::string::String> {
 			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch};
 			use sp_storage::TrackedStorageKey;
 
