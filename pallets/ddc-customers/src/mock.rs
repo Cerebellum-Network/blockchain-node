@@ -89,7 +89,7 @@ impl crate::pallet::Config for Test {
 }
 
 pub struct TestClusterProtocol;
-impl<T: Config> ClusterQuery<T> for TestClusterProtocol {
+impl ClusterQuery<AccountId> for TestClusterProtocol {
 	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
 		true
 	}
@@ -100,12 +100,12 @@ impl<T: Config> ClusterQuery<T> for TestClusterProtocol {
 
 	fn get_manager_and_reserve_id(
 		_cluster_id: &ClusterId,
-	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
+	) -> Result<(AccountId, AccountId), DispatchError> {
 		unimplemented!()
 	}
 }
 
-impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
+impl ClusterProtocol<AccountId, BlockNumber, Balance> for TestClusterProtocol {
 	fn get_bond_size(_cluster_id: &ClusterId, _node_type: NodeType) -> Result<u128, DispatchError> {
 		Ok(10)
 	}
@@ -113,15 +113,15 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 	fn get_chill_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, DispatchError> {
-		Ok(BlockNumberFor::<T>::from(10u32))
+	) -> Result<BlockNumber, DispatchError> {
+		Ok(10)
 	}
 
 	fn get_unbonding_delay(
 		_cluster_id: &ClusterId,
 		_node_type: NodeType,
-	) -> Result<BlockNumberFor<T>, DispatchError> {
-		Ok(BlockNumberFor::<T>::from(10u32))
+	) -> Result<BlockNumber, DispatchError> {
+		Ok(10)
 	}
 
 	fn get_pricing_params(_cluster_id: &ClusterId) -> Result<ClusterPricingParams, DispatchError> {
@@ -143,30 +143,30 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 
 	fn get_bonding_params(
 		cluster_id: &ClusterId,
-	) -> Result<ClusterBondingParams<BlockNumberFor<T>>, DispatchError> {
+	) -> Result<ClusterBondingParams<BlockNumber>, DispatchError> {
 		Ok(ClusterBondingParams {
-			storage_bond_size:
-				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_bond_size(
-					cluster_id,
-					NodeType::Storage,
-				)
-				.unwrap_or_default(),
-			storage_chill_delay:
-				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_chill_delay(
-					cluster_id,
-					NodeType::Storage,
-				)
-				.unwrap_or_default(),
-			storage_unbonding_delay:
-				<TestClusterProtocol as ClusterProtocol<T, BalanceOf<T>>>::get_unbonding_delay(
-					cluster_id,
-					NodeType::Storage,
-				)
-				.unwrap_or_default(),
+			storage_bond_size: <TestClusterProtocol as ClusterProtocol<
+				AccountId,
+				BlockNumber,
+				Balance,
+			>>::get_bond_size(cluster_id, NodeType::Storage)
+			.unwrap_or_default(),
+			storage_chill_delay: <TestClusterProtocol as ClusterProtocol<
+				AccountId,
+				BlockNumber,
+				Balance,
+			>>::get_chill_delay(cluster_id, NodeType::Storage)
+			.unwrap_or_default(),
+			storage_unbonding_delay: <TestClusterProtocol as ClusterProtocol<
+				AccountId,
+				BlockNumber,
+				Balance,
+			>>::get_unbonding_delay(cluster_id, NodeType::Storage)
+			.unwrap_or_default(),
 		})
 	}
 
-	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+	fn get_reserve_account_id(_cluster_id: &ClusterId) -> Result<AccountId, DispatchError> {
 		unimplemented!()
 	}
 
@@ -176,7 +176,7 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 
 	fn update_cluster_protocol(
 		_cluster_id: &ClusterId,
-		_cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>>,
+		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
 	) -> DispatchResult {
 		unimplemented!()
 	}
@@ -196,7 +196,7 @@ impl<T: Config> ClusterProtocol<T, BalanceOf<T>> for TestClusterProtocol {
 
 #[allow(dead_code)]
 pub struct TestClusterManager;
-impl<T: Config> ClusterQuery<T> for TestClusterManager {
+impl ClusterQuery<AccountId> for TestClusterManager {
 	fn cluster_exists(_cluster_id: &ClusterId) -> bool {
 		true
 	}
@@ -207,13 +207,13 @@ impl<T: Config> ClusterQuery<T> for TestClusterManager {
 
 	fn get_manager_and_reserve_id(
 		_cluster_id: &ClusterId,
-	) -> Result<(T::AccountId, T::AccountId), DispatchError> {
+	) -> Result<(AccountId, AccountId), DispatchError> {
 		unimplemented!()
 	}
 }
 
-impl<T: Config> ClusterManager<T> for TestClusterManager {
-	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<T::AccountId, DispatchError> {
+impl ClusterManager<AccountId, BlockNumber> for TestClusterManager {
+	fn get_manager_account_id(_cluster_id: &ClusterId) -> Result<AccountId, DispatchError> {
 		unimplemented!()
 	}
 
@@ -247,7 +247,7 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 	fn get_node_state(
 		_cluster_id: &ClusterId,
 		_node_pub_key: &NodePubKey,
-	) -> Result<ClusterNodeState<BlockNumberFor<T>>, DispatchError> {
+	) -> Result<ClusterNodeState<BlockNumber>, DispatchError> {
 		unimplemented!()
 	}
 
@@ -269,13 +269,13 @@ impl<T: Config> ClusterManager<T> for TestClusterManager {
 }
 
 pub struct TestClusterCreator;
-impl<T: Config> ClusterCreator<T, Balance> for TestClusterCreator {
+impl ClusterCreator<AccountId, BlockNumber, Balance> for TestClusterCreator {
 	fn create_cluster(
 		_cluster_id: ClusterId,
-		_cluster_manager_id: T::AccountId,
-		_cluster_reserve_id: T::AccountId,
-		_cluster_params: ClusterParams<T::AccountId>,
-		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumberFor<T>>,
+		_cluster_manager_id: AccountId,
+		_cluster_reserve_id: AccountId,
+		_cluster_params: ClusterParams<AccountId>,
+		_cluster_protocol_params: ClusterProtocolParams<Balance, BlockNumber>,
 	) -> DispatchResult {
 		Ok(())
 	}

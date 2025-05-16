@@ -88,6 +88,7 @@ pallet-im-online = { version = "38.1.0", default-features = false }
 pallet-indices = { version = "39.1.0", default-features = false }
 pallet-insecure-randomness-collective-flip = { version = "27.0.0", default-features = false }
 pallet-membership = { version = "39.0.0", default-features = false }
+pallet-migrations = { version = "9.1.0", default-features = false }
 pallet-multisig = { version = "39.1.0", default-features = false }
 pallet-nomination-pools = { version = "37.0.1", default-features = false }
 pallet-nomination-pools-benchmarking = { version = "37.1.0", default-features = false }

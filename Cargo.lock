@@ -1953,6 +1953,7 @@ dependencies = [
  "pallet-ismp",
  "pallet-ismp-runtime-api",
  "pallet-membership",
+ "pallet-migrations",
  "pallet-multisig",
  "pallet-nomination-pools",
  "pallet-nomination-pools-benchmarking",
@@ -2089,6 +2090,7 @@ dependencies = [
  "pallet-ismp",
  "pallet-ismp-runtime-api",
  "pallet-membership",
+ "pallet-migrations",
  "pallet-multisig",
  "pallet-nomination-pools",
  "pallet-nomination-pools-benchmarking",
@@ -3736,7 +3738,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=stable-2412#3db66d93eb01ad5b071d26301b7e5fc576af2d07"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=stable-2412#07ae1a8366bc7a5ae0d1be0deb1723f85255d3ad"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -3762,7 +3764,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=stable-2412#304ed24ad2445f81e5208626bf172abdc0929b99"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=stable-2412#aa8f34bf6cd786f0347e577ce5b4cfbe5df5abd7"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -4248,9 +4250,9 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "errno"
-version = "0.3.11"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "976dd42dc7e85965fe702eb8164f21f450704bdde31faefd6471dba214cb594e"
+checksum = "cea14ef9355e3beab063703aa9dab15afd25f0667c341310c1e5274bb1d0da18"
 dependencies = [
  "libc",
  "windows-sys 0.59.0",
@@ -5792,7 +5794,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.61.0",
+ "windows-core 0.61.1",
 ]
 
 [[package]]
@@ -9298,7 +9300,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=stable-2412#e8d9367d18b046ae4a88aced8f6c4710c70db807"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=stable-2412#ccbcd916ae8398f789f5b70e863809191f8247d6"
 dependencies = [
  "array-bytes",
  "byte-unit",
@@ -9355,7 +9357,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=stable-2412#7dee613c28f5f323bdee087f4b71bbecbbc10bf9"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=stable-2412#96a841c29035a46b52dd59d377511c493e4cfea0"
 dependencies = [
  "array-bytes",
  "base64ct",
@@ -20003,14 +20005,14 @@ dependencies = [
 
 [[package]]
 name = "windows-core"
-version = "0.61.0"
+version = "0.61.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4763c1de310c86d75a878046489e2e5ba02c649d185f21c67d4cf8a56d098980"
+checksum = "46ec44dc15085cea82cf9c78f85a9114c463a369786585ad2882d1ff0b0acf40"
 dependencies = [
  "windows-implement",
  "windows-interface",
  "windows-link",
- "windows-result 0.3.2",
+ "windows-result 0.3.3",
  "windows-strings",
 ]
 
@@ -20053,18 +20055,18 @@ dependencies = [
 
 [[package]]
 name = "windows-result"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c64fd11a4fd95df68efcfee5f44a294fe71b8bc6a91993e2791938abcc712252"
+checksum = "4b895b5356fc36103d0f64dd1e94dfa7ac5633f1c9dd6e80fe9ec4adef69e09d"
 dependencies = [
  "windows-link",
 ]
 
 [[package]]
 name = "windows-strings"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a2ba9642430ee452d5a7aa78d72907ebe8cfda358e8cb7918a2050581322f97"
+checksum = "2a7ab927b2637c19b3dbe0965e75d8f2d30bdd697a1516191cad2ec4df8fb28a"
 dependencies = [
  "windows-link",
 ]

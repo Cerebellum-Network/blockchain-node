@@ -1,14 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 #![allow(clippy::manual_inspect)]
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
 pub mod weights;
-// #[cfg(feature = "runtime-benchmarks")]
-// pub mod benchmarking;
 
-// #[cfg(test)]
-// pub(crate) mod mock;
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+pub(crate) mod mock;
+#[cfg(test)]
+mod tests;
 use codec::{Decode, Encode};
 use ddc_primitives::{
 	traits::{
