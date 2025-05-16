@@ -31,6 +31,8 @@ pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
+use pallet_balances::WeightInfo;
+extern crate alloc;
 use frame_support::{
 	derive_impl,
 	dispatch::DispatchClass,
@@ -91,7 +93,6 @@ use sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
-	create_runtime_str,
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	traits::{
@@ -154,18 +155,18 @@ pub fn wasm_binary_unwrap() -> &'static [u8] {
 /// Runtime version.
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("node"),
-	impl_name: create_runtime_str!("substrate-node"),
+	spec_name: alloc::borrow::Cow::Borrowed("node"),
+	impl_name: alloc::borrow::Cow::Borrowed("substrate-node"),
 	authoring_version: 10,
 	// Per convention: if the runtime behavior changes, increment spec_version
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73037,
+	spec_version: 73038,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
-	state_version: 0,
+	system_version: 0,
 };
 
 /// The BABE epoch configuration at genesis.
@@ -253,6 +254,7 @@ impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type SS58Prefix = ConstU16<54>;
 	type MaxConsumers = ConstU32<16>;
+	type MultiBlockMigrator = MultiBlockMigrations;
 }
 
 impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
@@ -420,8 +422,7 @@ impl pallet_babe::Config for Runtime {
 	type DisabledValidators = Session;
 	type MaxNominators = MaxNominatorRewardedPerValidator;
 
-	type KeyOwnerProof =
-		<Historical as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
+	type KeyOwnerProof = sp_session::MembershipProof;
 
 	type EquivocationReportSystem =
 		pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
@@ -464,6 +465,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type MaxFreezes = VariantCountOf<RuntimeFreezeReason>;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type DoneSlashHandler = ();
 }
 
 parameter_types! {
@@ -491,6 +493,7 @@ impl pallet_transaction_payment::Config for Runtime {
 		MinimumMultiplier,
 		MaximumMultiplier,
 	>;
+	type WeightInfo = pallet_transaction_payment::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -851,6 +854,7 @@ impl pallet_treasury::Config for Runtime {
 	type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
 	type BalanceConverter = UnityAssetBalanceConversion;
 	type PayoutPeriod = ConstU32<10>;
+	type BlockNumberProvider = System;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
 }
@@ -964,16 +968,29 @@ parameter_types! {
 	pub const MaxPeerInHeartbeats: u32 = 10_000;
 }
 
+impl<LocalCall> frame_system::offchain::CreateTransaction<LocalCall> for Runtime
+where
+	RuntimeCall: From<LocalCall>,
+{
+	type Extension = TxExtension;
+
+	fn create_transaction(call: RuntimeCall, extension: TxExtension) -> UncheckedExtrinsic {
+		UncheckedExtrinsic::new_transaction(call, extension)
+	}
+}
+
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
 where
 	RuntimeCall: From<LocalCall>,
 {
-	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
+	fn create_signed_transaction<
+		C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
+	>(
 		call: RuntimeCall,
 		public: <Signature as traits::Verify>::Signer,
 		account: AccountId,
 		nonce: Nonce,
-	) -> Option<(RuntimeCall, <UncheckedExtrinsic as traits::Extrinsic>::SignaturePayload)> {
+	) -> Option<UncheckedExtrinsic> {
 		let tip = 0;
 		// take the biggest period possible.
 		let period =
@@ -984,7 +1001,7 @@ where
 			// so the actual block number is `n`.
 			.saturating_sub(1);
 		let era = Era::mortal(period, current_block);
-		let extra = (
+		let tx_ext: TxExtension = (
 			frame_system::CheckNonZeroSender::<Runtime>::new(),
 			frame_system::CheckSpecVersion::<Runtime>::new(),
 			frame_system::CheckTxVersion::<Runtime>::new(),
@@ -995,15 +1012,25 @@ where
 			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 			frame_metadata_hash_extension::CheckMetadataHash::new(false),
 		);
-		let raw_payload = SignedPayload::new(call, extra)
+		let raw_payload = SignedPayload::new(call, tx_ext)
 			.map_err(|e| {
 				log::warn!("Unable to create signed payload: {:?}", e);
 			})
 			.ok()?;
 		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
 		let address = Indices::unlookup(account);
-		let (call, extra, _) = raw_payload.deconstruct();
-		Some((call, (address, signature, extra)))
+		let (call, tx_ext, _) = raw_payload.deconstruct();
+		let transaction = UncheckedExtrinsic::new_signed(call, address, signature, tx_ext);
+		Some(transaction)
+	}
+}
+
+impl<LocalCall> frame_system::offchain::CreateInherent<LocalCall> for Runtime
+where
+	RuntimeCall: From<LocalCall>,
+{
+	fn create_inherent(call: RuntimeCall) -> UncheckedExtrinsic {
+		UncheckedExtrinsic::new_bare(call)
 	}
 }
 
@@ -1012,12 +1039,12 @@ impl frame_system::offchain::SigningTypes for Runtime {
 	type Signature = Signature;
 }
 
-impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
+impl<C> frame_system::offchain::CreateTransactionBase<C> for Runtime
 where
 	RuntimeCall: From<C>,
 {
 	type Extrinsic = UncheckedExtrinsic;
-	type OverarchingCall = RuntimeCall;
+	type RuntimeCall = RuntimeCall;
 }
 
 impl pallet_im_online::Config for Runtime {
@@ -1049,7 +1076,7 @@ parameter_types! {
 impl pallet_grandpa::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 
-	type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
+	type KeyOwnerProof = sp_session::MembershipProof;
 
 	type EquivocationReportSystem =
 		pallet_grandpa::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
@@ -1063,6 +1090,7 @@ impl pallet_grandpa::Config for Runtime {
 parameter_types! {
 	pub const BasicDeposit: Balance = 10 * DOLLARS;       // 258 bytes on-chain
 	pub const ByteDeposit: Balance = deposit(0, 1);
+	pub const UsernameDeposit: Balance = deposit(0, 32);
 	pub const SubAccountDeposit: Balance = 2 * DOLLARS;   // 53 bytes on-chain
 	pub const MaxSubAccounts: u32 = 100;
 	pub const MaxAdditionalFields: u32 = 100;
@@ -1074,6 +1102,7 @@ impl pallet_identity::Config for Runtime {
 	type Currency = Balances;
 	type BasicDeposit = BasicDeposit;
 	type ByteDeposit = ByteDeposit;
+	type UsernameDeposit = UsernameDeposit;
 	type SubAccountDeposit = SubAccountDeposit;
 	type MaxSubAccounts = MaxSubAccounts;
 	type IdentityInformation = IdentityInfo<MaxAdditionalFields>;
@@ -1085,6 +1114,7 @@ impl pallet_identity::Config for Runtime {
 	type SigningPublicKey = <Signature as Verify>::Signer;
 	type UsernameAuthorityOrigin = EitherOf<EnsureRoot<Self::AccountId>, GeneralAdmin>;
 	type PendingUsernameExpiration = ConstU32<{ 7 * DAYS }>;
+	type UsernameGracePeriod = ConstU32<{ 30 * DAYS }>;
 	type MaxSuffixLength = ConstU32<7>;
 	type MaxUsernameLength = ConstU32<32>;
 	type WeightInfo = pallet_identity::weights::SubstrateWeight<Runtime>;
@@ -1302,6 +1332,9 @@ impl pallet_collective::Config<TechCommCollective> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
 	type MaxProposalWeight = MaxCollectivesProposalWeight;
+	type DisapproveOrigin = EnsureRoot<Self::AccountId>;
+	type KillOrigin = EnsureRoot<Self::AccountId>;
+	type Consideration = ();
 }
 
 parameter_types! {
@@ -1378,6 +1411,24 @@ impl pallet_ddc_verification::Config for Runtime {
 	const OCW_INTERVAL: u16 = 1; // every block
 }
 
+parameter_types! {
+	pub MbmServiceWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
+}
+
+impl pallet_migrations::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type Migrations = pallet_identity::migration::v2::LazyMigrationV1ToV2<Runtime>;
+	// Benchmarks need mocked migrations to guarantee that they succeed.
+	#[cfg(feature = "runtime-benchmarks")]
+	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
+	type CursorMaxLen = ConstU32<65_536>;
+	type IdentifierMaxLen = ConstU32<256>;
+	type MigrationStatusHandler = ();
+	type FailedMigrationHandler = frame_support::migrations::FreezeChainOnFailedMigration;
+	type MaxServiceWeight = MbmServiceWeight;
+	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
+}
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1550,6 +1601,9 @@ mod runtime {
 
 	#[runtime::pallet_index(50)]
 	pub type TokenGateway = pallet_token_gateway::Pallet<Runtime>;
+	// Migrations pallet
+	#[runtime::pallet_index(51)]
+	pub type MultiBlockMigrations = pallet_migrations;
 }
 
 /// The address format for describing accounts.
@@ -1567,7 +1621,7 @@ pub type BlockId = generic::BlockId<Block>;
 /// When you change this, you **MUST** modify [`sign`] in `bin/node/testing/src/keyring.rs`!
 ///
 /// [`sign`]: <../../testing/src/keyring.rs.html>
-pub type SignedExtra = (
+pub type TxExtension = (
 	frame_system::CheckNonZeroSender<Runtime>,
 	frame_system::CheckSpecVersion<Runtime>,
 	frame_system::CheckTxVersion<Runtime>,
@@ -1581,14 +1635,13 @@ pub type SignedExtra = (
 
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
-	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
 /// The payload being signed in transactions.
-pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
+pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 /// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
+pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
-/// Runtime migrations
 // type Migrations = (
 // 	// Migrations related to substrate version upgrades
 // 	// pallet_nomination_pools::migration::versioned::V5toV6<Runtime>,
@@ -1604,7 +1657,12 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Si
 // );
 
 // Migrations for DAC and Payouts on QANET
-type Migrations = ();
+
+parameter_types! {
+			pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
+}
+type Migrations =
+	(pallet_child_bounties::migration::MigrateV0ToV1<Runtime, BalanceTransferAllowDeath>,);
 
 pub mod migrations {
 	use super::*;
@@ -1689,6 +1747,7 @@ mod benches {
 		[pallet_ddc_clusters_gov, DdcClustersGov]
 		[pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
+		[pallet_migrations, MultiBlockMigrations]
 	);
 }
 
@@ -2054,6 +2113,9 @@ impl_runtime_apis! {
 		fn pool_balance(pool_id: pallet_nomination_pools::PoolId) -> Balance {
 			NominationPools::api_pool_balance(pool_id)
 		}
+		fn pool_accounts(pool_id: pallet_nomination_pools::PoolId) -> (AccountId, AccountId) {
+			NominationPools::api_pool_accounts(pool_id)
+		}
 	}
 
 	#[cfg(feature = "try-runtime")]
@@ -2106,7 +2168,7 @@ impl_runtime_apis! {
 
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
-		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, alloc::string::String> {
 			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch};
 			use sp_storage::TrackedStorageKey;
 
