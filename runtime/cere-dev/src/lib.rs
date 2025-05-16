@@ -1623,7 +1623,6 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 
-/// Runtime migrations
 parameter_types! {
 			pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
