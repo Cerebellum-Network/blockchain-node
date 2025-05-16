@@ -251,6 +251,7 @@ impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type SS58Prefix = ConstU16<54>;
 	type MaxConsumers = ConstU32<16>;
+	type MultiBlockMigrator = MultiBlockMigrations;
 }
 
 impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
@@ -1380,6 +1381,25 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 	}
 }
 
+parameter_types! {
+	pub MbmServiceWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
+}
+
+impl pallet_migrations::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type Migrations = pallet_identity::migration::v2::LazyMigrationV1ToV2<Runtime>;
+	// Benchmarks need mocked migrations to guarantee that they succeed.
+	#[cfg(feature = "runtime-benchmarks")]
+	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
+	type CursorMaxLen = ConstU32<65_536>;
+	type IdentifierMaxLen = ConstU32<256>;
+	type MigrationStatusHandler = ();
+	type FailedMigrationHandler = frame_support::migrations::FreezeChainOnFailedMigration;
+	type MaxServiceWeight = MbmServiceWeight;
+	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
+}
+
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1553,6 +1573,10 @@ mod runtime {
 
 	#[runtime::pallet_index(50)]
 	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
+
+	// Migrations pallet
+	#[runtime::pallet_index(51)]
+	pub type MultiBlockMigrations = pallet_migrations;
 }
 
 /// The address format for describing accounts.
@@ -1679,6 +1703,7 @@ mod benches {
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
 		[pallet_token_gateway, TokenGateway]
+		[pallet_migrations, MultiBlockMigrations]
 	);
 }
 
