@@ -1836,9 +1836,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.22"
+version = "1.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32db95edf998450acc7881c932f94cd9b05c87b4b2599e8bab064753da4acfd1"
+checksum = "5f4ac86a9e5bc1e2b3449ab9d7d3a6a405e3d1bb28d7b9be8614f55846ae3766"
 dependencies = [
  "jobserver",
  "libc",
@@ -3738,7 +3738,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=stable-2412#07ae1a8366bc7a5ae0d1be0deb1723f85255d3ad"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#d7fcc21fd742bd4c1a3cf84540a14431dae5cf41"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -3764,7 +3764,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=stable-2412#aa8f34bf6cd786f0347e577ce5b4cfbe5df5abd7"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#7c4609833873ae155f5c53dc318039e194ae93fe"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -9300,7 +9300,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=stable-2412#ccbcd916ae8398f789f5b70e863809191f8247d6"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#1e90f26674bf8c3f2cd34123fe392f00d92008c4"
 dependencies = [
  "array-bytes",
  "byte-unit",
@@ -9357,7 +9357,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=stable-2412#96a841c29035a46b52dd59d377511c493e4cfea0"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#cf07f3aa4cc55fa32f304c4581263eaced56bea1"
 dependencies = [
  "array-bytes",
  "base64ct",
