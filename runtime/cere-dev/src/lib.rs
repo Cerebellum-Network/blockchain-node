@@ -1387,7 +1387,8 @@ impl pallet_ddc_verification::Config for Runtime {
 	type CustomerVisitor = DdcCustomers;
 	type BucketManager = DdcCustomers;
 	type BucketsStorageUsageProvider = DdcCustomers;
-	type InspReceiptsInterceptor = pallet_ddc_verification::demo::v1::DemoReceiptsInterceptor;
+	type InspReceiptsInterceptor =
+		pallet_ddc_verification::simulations::v1::SimulationReceiptsInterceptor;
 
 	const OCW_INTERVAL: u16 = 1; // every block
 }

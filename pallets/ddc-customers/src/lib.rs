@@ -67,8 +67,7 @@ pub struct Bucket<T: Config> {
 	cluster_id: ClusterId,
 	is_public: bool,
 	is_removed: bool,
-	// todo(yahortsaryk): `total_customers_usage` should be renamed to `total_usage` to eliminate
-	// ambiguity, as the bucket owner is the only customer of the bucket who pays for its usage.
+	// todo(yahortsaryk): provide migration to remove `total_customers_usage` field
 	total_customers_usage: Option<BucketUsage>,
 }
 
@@ -224,24 +223,6 @@ pub mod pallet {
 		BucketCreated { cluster_id: ClusterId, bucket_id: BucketId },
 		/// Bucket with specific id updated
 		BucketUpdated { cluster_id: ClusterId, bucket_id: BucketId },
-		/// Bucket nodes usage with specific id updated
-		BucketTotalNodesUsageUpdated {
-			cluster_id: ClusterId,
-			bucket_id: BucketId,
-			transferred_bytes: u64,
-			stored_bytes: i64,
-			number_of_puts: u64,
-			number_of_gets: u64,
-		},
-		/// Bucket customers usage with specific id updated
-		BucketTotalCustomersUsageUpdated {
-			cluster_id: ClusterId,
-			bucket_id: BucketId,
-			transferred_bytes: u64,
-			stored_bytes: i64,
-			number_of_puts: u64,
-			number_of_gets: u64,
-		},
 		/// Bucket with specific id marked as removed
 		BucketRemoved { cluster_id: ClusterId, bucket_id: BucketId },
 	}
@@ -740,57 +721,6 @@ pub mod pallet {
 		fn get_bucket_owner_id(bucket_id: BucketId) -> Result<T::AccountId, DispatchError> {
 			let bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::BucketDoesNotExist)?;
 			Ok(bucket.owner_id)
-		}
-
-		fn get_total_bucket_usage(
-			cluster_id: &ClusterId,
-			bucket_id: BucketId,
-			content_owner: &T::AccountId,
-		) -> Result<Option<BucketUsage>, DispatchError> {
-			let bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
-			ensure!(bucket.owner_id == *content_owner, Error::<T>::NotBucketOwner);
-			ensure!(bucket.cluster_id == *cluster_id, Error::<T>::ClusterMismatch);
-
-			Ok(bucket.total_customers_usage)
-		}
-
-		fn update_total_bucket_usage(
-			cluster_id: &ClusterId,
-			bucket_id: BucketId,
-			bucket_owner: T::AccountId,
-			payable_usage: &BucketUsage,
-		) -> DispatchResult {
-			let mut bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
-			ensure!(bucket.owner_id == bucket_owner, Error::<T>::NotBucketOwner);
-			let total_usage = if let Some(mut total_usage) = bucket.total_customers_usage {
-				total_usage.transferred_bytes += payable_usage.transferred_bytes;
-				total_usage.stored_bytes = payable_usage.stored_bytes; // already includes the old storage
-				total_usage.number_of_puts += payable_usage.number_of_puts;
-				total_usage.number_of_gets += payable_usage.number_of_gets;
-				total_usage
-			} else {
-				BucketUsage {
-					transferred_bytes: payable_usage.transferred_bytes,
-					stored_bytes: payable_usage.stored_bytes,
-					number_of_puts: payable_usage.number_of_puts,
-					number_of_gets: payable_usage.number_of_gets,
-				}
-			};
-
-			bucket.total_customers_usage = Some(total_usage);
-
-			Buckets::<T>::insert(bucket_id, bucket);
-
-			Self::deposit_event(Event::<T>::BucketTotalCustomersUsageUpdated {
-				cluster_id: *cluster_id,
-				bucket_id,
-				transferred_bytes: payable_usage.transferred_bytes,
-				stored_bytes: payable_usage.stored_bytes,
-				number_of_puts: payable_usage.number_of_puts,
-				number_of_gets: payable_usage.number_of_gets,
-			});
-
-			Ok(())
 		}
 
 		#[cfg(feature = "runtime-benchmarks")]

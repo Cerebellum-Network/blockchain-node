@@ -3738,7 +3738,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat/ddc-customer-balance-per-cluster#5f2072a291d9c8a376f1467b99e6fe9293b4f4a3"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=feat/ddc-customer-balance-per-cluster#768337d5564d987a1a198a68dbe7dcb6cd03e458"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -3764,7 +3764,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat/ddc-customer-balance-per-cluster#d3c5a01da8bcabe8f557d6a9779b63a73b4ee8f9"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=feat/ddc-customer-balance-per-cluster#bcc41d4b984d522817121594ec6d99ccdee672dd"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -9285,7 +9285,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat/ddc-customer-balance-per-cluster#de700eed2bb7074efdc468221bdb25bedff7ae1e"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=feat/ddc-customer-balance-per-cluster#ae3c4a5f94b54b1d53d2c90a220ea0eda370324c"
 dependencies = [
  "array-bytes",
  "byte-unit",
@@ -9342,7 +9342,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat/ddc-customer-balance-per-cluster#1998c90fd5f618aee215fab95457065f759f3b95"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat/ddc-customer-balance-per-cluster#9894f8484314bacc37df86acf482ad24cab13b04"
 dependencies = [
  "array-bytes",
  "base64ct",

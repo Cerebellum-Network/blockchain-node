@@ -21,6 +21,7 @@ pub struct StorageNode<T: frame_system::Config> {
 	pub provider_id: T::AccountId,
 	pub cluster_id: Option<ClusterId>,
 	pub props: StorageNodeProps,
+	// todo(yahortsaryk): provide migration to remove `total_usage` field
 	pub total_usage: Option<NodeUsage>,
 }
 
@@ -108,16 +109,10 @@ impl<T: frame_system::Config> NodeTrait<T> for StorageNode<T> {
 	fn get_cluster_id(&self) -> &Option<ClusterId> {
 		&self.cluster_id
 	}
-	fn get_total_usage(&self) -> &Option<NodeUsage> {
-		&self.total_usage
-	}
 	fn set_cluster_id(&mut self, cluster_id: Option<ClusterId>) {
 		self.cluster_id = cluster_id;
 	}
 	fn get_type(&self) -> NodeType {
 		NodeType::Storage
-	}
-	fn set_total_usage(&mut self, total_usage: Option<NodeUsage>) {
-		self.total_usage = total_usage;
 	}
 }

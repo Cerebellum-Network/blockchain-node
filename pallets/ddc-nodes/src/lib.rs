@@ -69,22 +69,9 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(crate) fn deposit_event)]
 	pub enum Event<T: Config> {
-		NodeCreated {
-			node_pub_key: NodePubKey,
-		},
-		NodeDeleted {
-			node_pub_key: NodePubKey,
-		},
-		NodeParamsChanged {
-			node_pub_key: NodePubKey,
-		},
-		NodeTotalUsageUpdated {
-			node_pub_key: NodePubKey,
-			transferred_bytes: u64,
-			stored_bytes: i64,
-			number_of_puts: u64,
-			number_of_gets: u64,
-		},
+		NodeCreated { node_pub_key: NodePubKey },
+		NodeDeleted { node_pub_key: NodePubKey },
+		NodeParamsChanged { node_pub_key: NodePubKey },
 	}
 
 	#[pallet::error]
@@ -306,42 +293,6 @@ pub mod pallet {
 						})),
 				},
 			}
-		}
-
-		fn update_total_node_usage(
-			node_key: &NodePubKey,
-			payable_usage: &NodeUsage,
-		) -> Result<(), DispatchError> {
-			let mut node = Self::get(node_key.clone()).map_err(Into::<Error<T>>::into)?;
-
-			let total_usage = if let Some(mut total_usage) = node.get_total_usage().clone() {
-				total_usage.transferred_bytes += payable_usage.transferred_bytes;
-				total_usage.stored_bytes = payable_usage.stored_bytes; // already includes the old storage
-				total_usage.number_of_puts += payable_usage.number_of_puts;
-				total_usage.number_of_gets += payable_usage.number_of_gets;
-				total_usage
-			} else {
-				NodeUsage {
-					transferred_bytes: payable_usage.transferred_bytes,
-					stored_bytes: payable_usage.stored_bytes,
-					number_of_puts: payable_usage.number_of_puts,
-					number_of_gets: payable_usage.number_of_gets,
-				}
-			};
-
-			node.set_total_usage(Some(total_usage));
-
-			Self::update(node).map_err(Into::<Error<T>>::into)?;
-
-			Self::deposit_event(Event::<T>::NodeTotalUsageUpdated {
-				node_pub_key: node_key.clone(),
-				transferred_bytes: payable_usage.transferred_bytes,
-				stored_bytes: payable_usage.stored_bytes,
-				number_of_puts: payable_usage.number_of_puts,
-				number_of_gets: payable_usage.number_of_gets,
-			});
-
-			Ok(())
 		}
 
 		#[cfg(feature = "runtime-benchmarks")]
