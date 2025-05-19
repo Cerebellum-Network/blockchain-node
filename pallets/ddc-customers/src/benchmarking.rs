@@ -66,7 +66,7 @@ benchmarks! {
 		whitelist_account!(user);
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, amount)
 	verify {
-		assert!(Ledger::<T>::contains_key(user));
+		assert!(ClusterLedger::<T>::contains_key(cluster_id, &user));
 	}
 
 	deposit_extra {
@@ -81,7 +81,7 @@ benchmarks! {
 		whitelist_account!(user);
 	}: _(RawOrigin::Signed(user.clone()), cluster_id, amount)
 	verify {
-		assert!(Ledger::<T>::contains_key(user));
+		assert!(ClusterLedger::<T>::contains_key(cluster_id, user));
 	}
 
 	unlock_deposit {
@@ -94,9 +94,9 @@ benchmarks! {
 		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), cluster_id, amount);
 
 		whitelist_account!(user);
-	}: unlock_deposit(RawOrigin::Signed(user.clone()), amount)
+	}: unlock_deposit(RawOrigin::Signed(user.clone()), cluster_id, amount)
 	verify {
-		assert!(Ledger::<T>::contains_key(user));
+		assert!(ClusterLedger::<T>::contains_key(cluster_id, user));
 	}
 
 	// Worst case scenario, 31/32 chunks unlocked after the unlocking duration
@@ -113,15 +113,15 @@ benchmarks! {
 		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), cluster_id, amount);
 
 		for _k in 1 .. 32 {
-			let _ = DdcCustomers::<T>::unlock_deposit(RawOrigin::Signed(user.clone()).into(), <T as pallet::Config>::Currency::minimum_balance() * 1u32.into());
+			let _ = DdcCustomers::<T>::unlock_deposit(RawOrigin::Signed(user.clone()).into(), cluster_id, <T as pallet::Config>::Currency::minimum_balance() * 1u32.into());
 		}
 
 		System::<T>::set_block_number(5256001u32.into());
 
 		whitelist_account!(user);
-	}: withdraw_unlocked_deposit(RawOrigin::Signed(user.clone()))
+	}: withdraw_unlocked_deposit(RawOrigin::Signed(user.clone()), cluster_id)
 	verify {
-		let ledger = Ledger::<T>::try_get(user).unwrap();
+		let ledger = ClusterLedger::<T>::try_get(cluster_id, &user).unwrap();
 		assert_eq!(ledger.active, amount / 32u32.into());
 	}
 
@@ -143,15 +143,15 @@ benchmarks! {
 
 
 		for _k in 1 .. 33 {
-			let _ = DdcCustomers::<T>::unlock_deposit(RawOrigin::Signed(user.clone()).into(), <T as pallet::Config>::Currency::minimum_balance() * 1u32.into());
+			let _ = DdcCustomers::<T>::unlock_deposit(RawOrigin::Signed(user.clone()).into(), cluster_id, <T as pallet::Config>::Currency::minimum_balance() * 1u32.into());
 		}
 
 		System::<T>::set_block_number(5256001u32.into());
 
 		whitelist_account!(user);
-	}: withdraw_unlocked_deposit(RawOrigin::Signed(user.clone()))
+	}: withdraw_unlocked_deposit(RawOrigin::Signed(user.clone()), cluster_id)
 	verify {
-		assert!(!Ledger::<T>::contains_key(user));
+		assert!(!ClusterLedger::<T>::contains_key(cluster_id, user));
 	}
 
 	set_bucket_params {

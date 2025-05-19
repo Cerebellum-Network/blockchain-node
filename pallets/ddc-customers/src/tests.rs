@@ -98,34 +98,30 @@ fn deposit_and_deposit_extra_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
+		let cluster_id = ClusterId::from([1; 20]);
 		let account_1 = 1;
 		let account_2 = 2;
 
 		// Deposit dust
 		assert_noop!(
-			DdcCustomers::deposit(RuntimeOrigin::signed(account_1), 0_u128),
+			DdcCustomers::deposit(RuntimeOrigin::signed(account_1), cluster_id, 0_u128),
 			Error::<Test>::InsufficientDeposit
 		);
 
 		// Deposit all tokens fails (should not kill account)
 		assert_noop!(
-			DdcCustomers::deposit(RuntimeOrigin::signed(account_1), 100_u128),
+			DdcCustomers::deposit(RuntimeOrigin::signed(account_1), cluster_id, 100_u128),
 			Error::<Test>::TransferFailed
 		);
 
 		let amount1 = 90_u128;
 		// Deposited
-		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_1), amount1));
+		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_1), cluster_id, amount1));
 
 		// Check storage
 		assert_eq!(
-			Ledger::<Test>::get(account_1),
-			Some(AccountsLedger {
-				owner: account_1,
-				total: amount1,
-				active: amount1,
-				unlocking: Default::default(),
-			})
+			ClusterLedger::<Test>::get(cluster_id, &account_1),
+			Some(CustomerLedger { total: amount1, active: amount1, unlocking: Default::default() })
 		);
 
 		// Checking that event was emitted
@@ -133,33 +129,40 @@ fn deposit_and_deposit_extra_works() {
 
 		// Deposit should fail when called the second time
 		assert_noop!(
-			DdcCustomers::deposit(RuntimeOrigin::signed(account_1), amount1),
+			DdcCustomers::deposit(RuntimeOrigin::signed(account_1), cluster_id, amount1),
 			Error::<Test>::AlreadyPaired
 		);
 
 		// Deposit extra fails if not owner
 		assert_noop!(
-			DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_2), 10_u128),
+			DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_2), cluster_id, 10_u128),
 			Error::<Test>::NotOwner
 		);
 
 		// Deposit of an extra amount that is more than the customer's total balance fails
 		let extra_amount1 = 20_u128;
 		assert_noop!(
-			DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_1), extra_amount1),
+			DdcCustomers::deposit_extra(
+				RuntimeOrigin::signed(account_1),
+				cluster_id,
+				extra_amount1
+			),
 			Error::<Test>::TransferFailed
 		);
 
 		let extra_amount2 = 5_u128;
 
 		// Deposited extra
-		assert_ok!(DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_1), extra_amount2));
+		assert_ok!(DdcCustomers::deposit_extra(
+			RuntimeOrigin::signed(account_1),
+			cluster_id,
+			extra_amount2
+		));
 
 		// Check storage
 		assert_eq!(
-			Ledger::<Test>::get(account_1),
-			Some(AccountsLedger {
-				owner: account_1,
+			ClusterLedger::<Test>::get(cluster_id, &account_1),
+			Some(CustomerLedger {
 				total: amount1 + extra_amount2,
 				active: amount1 + extra_amount2,
 				unlocking: Default::default(),
@@ -193,22 +196,17 @@ fn charge_bucket_owner_works() {
 
 		let balance_before_deposit = Balances::free_balance(account_3);
 		// Deposited
-		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_3), deposit));
+		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_3), cluster_id, deposit));
 		let balance_after_deposit = Balances::free_balance(account_3);
 		assert_eq!(balance_before_deposit - deposit, balance_after_deposit);
 
-		let pallet_balance = Balances::free_balance(DdcCustomers::account_id());
-		assert_eq!(deposit, pallet_balance - Balances::minimum_balance());
+		let pallet_balance = Balances::free_balance(DdcCustomers::cluster_vault_id(&cluster_id));
+		assert_eq!(deposit, pallet_balance);
 
 		// Check storage
 		assert_eq!(
-			Ledger::<Test>::get(account_3),
-			Some(AccountsLedger {
-				owner: account_3,
-				total: deposit,
-				active: deposit,
-				unlocking: Default::default(),
-			})
+			ClusterLedger::<Test>::get(cluster_id, &account_3),
+			Some(CustomerLedger { total: deposit, active: deposit, unlocking: Default::default() })
 		);
 
 		// Checking that event was emitted
@@ -216,7 +214,7 @@ fn charge_bucket_owner_works() {
 
 		// successful transfer
 		let charge1 = 10;
-		let charged = DdcCustomers::charge_customer(account_3, vault, charge1).unwrap();
+		let charged = DdcCustomers::charge_customer(account_3, vault, cluster_id, charge1).unwrap();
 		assert_eq!(charge1, charged);
 
 		let vault_balance = Balances::free_balance(vault);
@@ -225,14 +223,14 @@ fn charge_bucket_owner_works() {
 		let account_balance = Balances::free_balance(account_3);
 		assert_eq!(balance_after_deposit, account_balance);
 
-		let pallet_balance_after_charge = Balances::free_balance(DdcCustomers::account_id());
+		let pallet_balance_after_charge =
+			Balances::free_balance(DdcCustomers::cluster_vault_id(&cluster_id));
 		assert_eq!(pallet_balance - charged, pallet_balance_after_charge);
 
 		// Check storage
 		assert_eq!(
-			Ledger::<Test>::get(account_3),
-			Some(AccountsLedger {
-				owner: account_3,
+			ClusterLedger::<Test>::get(cluster_id, &account_3),
+			Some(CustomerLedger {
 				total: deposit - charge1,
 				active: deposit - charge1,
 				unlocking: Default::default(),
@@ -246,15 +244,11 @@ fn charge_bucket_owner_works() {
 
 		// failed transfer
 		let charge2 = 100u128;
-		let charge_result = DdcCustomers::charge_customer(account_3, vault, charge2).unwrap();
+		let charge_result =
+			DdcCustomers::charge_customer(account_3, vault, cluster_id, charge2).unwrap();
 		assert_eq!(
-			Ledger::<Test>::get(account_3),
-			Some(AccountsLedger {
-				owner: account_3,
-				total: 0,
-				active: 0,
-				unlocking: Default::default(),
-			})
+			ClusterLedger::<Test>::get(cluster_id, &account_3),
+			Some(CustomerLedger { total: 0, active: 0, unlocking: Default::default() })
 		);
 
 		// Checking that event was emitted
@@ -267,29 +261,22 @@ fn charge_bucket_owner_works() {
 			.into(),
 		);
 
-		assert_eq!(
-			0,
-			Balances::free_balance(DdcCustomers::account_id()) - Balances::minimum_balance()
-		);
+		assert_eq!(0, Balances::free_balance(DdcCustomers::cluster_vault_id(&cluster_id)));
 		assert_eq!(charge_result, deposit - charge1);
 
-		assert_ok!(DdcCustomers::deposit_extra(RuntimeOrigin::signed(account_3), deposit));
+		assert_ok!(DdcCustomers::deposit_extra(
+			RuntimeOrigin::signed(account_3),
+			cluster_id,
+			deposit
+		));
 		assert_eq!(
-			Ledger::<Test>::get(account_3),
-			Some(AccountsLedger {
-				owner: account_3,
-				total: deposit,
-				active: deposit,
-				unlocking: Default::default(),
-			})
+			ClusterLedger::<Test>::get(cluster_id, &account_3),
+			Some(CustomerLedger { total: deposit, active: deposit, unlocking: Default::default() })
 		);
 
-		assert_eq!(
-			deposit,
-			Balances::free_balance(DdcCustomers::account_id()) - Balances::minimum_balance()
-		);
+		assert_eq!(deposit, Balances::free_balance(DdcCustomers::cluster_vault_id(&cluster_id)));
 
-		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_2), 50_u128));
+		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_2), cluster_id, 50_u128));
 	})
 }
 
@@ -298,24 +285,28 @@ fn unlock_and_withdraw_deposit_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
 
+		let cluster_id = ClusterId::from([1; 20]);
 		let account_1 = 1;
 		let account_2 = 2;
 
 		// Deposited
-		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_1), 35_u128));
+		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_1), cluster_id, 35_u128));
 		// So there is always positive balance within pallet
-		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_2), 10_u128));
+		assert_ok!(DdcCustomers::deposit(RuntimeOrigin::signed(account_2), cluster_id, 10_u128));
 
 		// Unlock chunk
-		assert_ok!(DdcCustomers::unlock_deposit(RuntimeOrigin::signed(account_1), 1_u128));
+		assert_ok!(DdcCustomers::unlock_deposit(
+			RuntimeOrigin::signed(account_1),
+			cluster_id,
+			1_u128
+		));
 		System::set_block_number(2);
 
 		let unlocking_chunks = vec![UnlockChunk { value: 1, block: 11 }];
 		// Check storage
 		assert_eq!(
-			Ledger::<Test>::get(1),
-			Some(AccountsLedger {
-				owner: account_1,
+			ClusterLedger::<Test>::get(cluster_id, &account_1),
+			Some(CustomerLedger {
 				total: 35_u128,
 				active: 34_u128,
 				unlocking: BoundedVec::try_from(unlocking_chunks).unwrap(),
@@ -324,38 +315,47 @@ fn unlock_and_withdraw_deposit_works() {
 
 		// Reach max unlock chunks
 		for i in 1..32 {
-			assert_ok!(DdcCustomers::unlock_deposit(RuntimeOrigin::signed(account_1), 1_u128));
+			assert_ok!(DdcCustomers::unlock_deposit(
+				RuntimeOrigin::signed(account_1),
+				cluster_id,
+				1_u128
+			));
 			System::set_block_number(i + 2);
 		}
 
 		// No more chunks can be added
 		assert_noop!(
-			DdcCustomers::unlock_deposit(RuntimeOrigin::signed(account_1), 1_u128),
+			DdcCustomers::unlock_deposit(RuntimeOrigin::signed(account_1), cluster_id, 1_u128),
 			Error::<Test>::NoMoreChunks
 		);
 
 		// Set the block to withdraw all unlocked chunks
 		System::set_block_number(42);
 
-		assert_ok!(DdcCustomers::withdraw_unlocked_deposit(RuntimeOrigin::signed(account_1)));
+		assert_ok!(DdcCustomers::withdraw_unlocked_deposit(
+			RuntimeOrigin::signed(account_1),
+			cluster_id
+		));
 		// Check storage
 		assert_eq!(
-			Ledger::<Test>::get(1),
-			Some(AccountsLedger {
-				owner: account_1,
-				total: 3_u128,
-				active: 3_u128,
-				unlocking: Default::default(),
-			})
+			ClusterLedger::<Test>::get(cluster_id, &account_1),
+			Some(CustomerLedger { total: 3_u128, active: 3_u128, unlocking: Default::default() })
 		);
 
 		// Unlock remaining chunks & withdraw
-		assert_ok!(DdcCustomers::unlock_deposit(RuntimeOrigin::signed(account_1), 3_u128));
+		assert_ok!(DdcCustomers::unlock_deposit(
+			RuntimeOrigin::signed(account_1),
+			cluster_id,
+			3_u128
+		));
 		System::set_block_number(52);
-		assert_ok!(DdcCustomers::withdraw_unlocked_deposit(RuntimeOrigin::signed(account_1)));
+		assert_ok!(DdcCustomers::withdraw_unlocked_deposit(
+			RuntimeOrigin::signed(account_1),
+			cluster_id
+		));
 
 		// Check storage
-		assert_eq!(Ledger::<Test>::get(account_1), None);
+		assert_eq!(ClusterLedger::<Test>::get(cluster_id, &account_1), None);
 	})
 }
 
