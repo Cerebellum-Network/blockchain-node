@@ -121,7 +121,12 @@ fn deposit_and_deposit_extra_works() {
 		// Check storage
 		assert_eq!(
 			ClusterLedger::<Test>::get(cluster_id, &account_1),
-			Some(CustomerLedger { total: amount1, active: amount1, unlocking: Default::default() })
+			Some(CustomerLedger {
+				owner: account_1,
+				total: amount1,
+				active: amount1,
+				unlocking: Default::default()
+			})
 		);
 
 		// Checking that event was emitted
@@ -165,6 +170,7 @@ fn deposit_and_deposit_extra_works() {
 		assert_eq!(
 			ClusterLedger::<Test>::get(cluster_id, &account_1),
 			Some(CustomerLedger {
+				owner: account_1,
 				total: amount1 + extra_amount2,
 				active: amount1 + extra_amount2,
 				unlocking: Default::default(),
@@ -208,7 +214,12 @@ fn charge_bucket_owner_works() {
 		// Check storage
 		assert_eq!(
 			ClusterLedger::<Test>::get(cluster_id, &account_3),
-			Some(CustomerLedger { total: deposit, active: deposit, unlocking: Default::default() })
+			Some(CustomerLedger {
+				owner: account_3,
+				total: deposit,
+				active: deposit,
+				unlocking: Default::default()
+			})
 		);
 
 		// Checking that event was emitted
@@ -235,6 +246,7 @@ fn charge_bucket_owner_works() {
 		assert_eq!(
 			ClusterLedger::<Test>::get(cluster_id, &account_3),
 			Some(CustomerLedger {
+				owner: account_3,
 				total: deposit - charge1,
 				active: deposit - charge1,
 				unlocking: Default::default(),
@@ -258,7 +270,12 @@ fn charge_bucket_owner_works() {
 			DdcCustomers::charge_customer(account_3, vault, cluster_id, charge2).unwrap();
 		assert_eq!(
 			ClusterLedger::<Test>::get(cluster_id, &account_3),
-			Some(CustomerLedger { total: 0, active: 0, unlocking: Default::default() })
+			Some(CustomerLedger {
+				owner: account_3,
+				total: 0,
+				active: 0,
+				unlocking: Default::default()
+			})
 		);
 
 		// Checking that event was emitted
@@ -282,7 +299,12 @@ fn charge_bucket_owner_works() {
 		));
 		assert_eq!(
 			ClusterLedger::<Test>::get(cluster_id, &account_3),
-			Some(CustomerLedger { total: deposit, active: deposit, unlocking: Default::default() })
+			Some(CustomerLedger {
+				owner: account_3,
+				total: deposit,
+				active: deposit,
+				unlocking: Default::default()
+			})
 		);
 
 		assert_eq!(deposit, Balances::free_balance(DdcCustomers::cluster_vault_id(&cluster_id)));
@@ -318,6 +340,7 @@ fn unlock_and_withdraw_deposit_works() {
 		assert_eq!(
 			ClusterLedger::<Test>::get(cluster_id, &account_1),
 			Some(CustomerLedger {
+				owner: account_1,
 				total: 35_u128,
 				active: 34_u128,
 				unlocking: BoundedVec::try_from(unlocking_chunks).unwrap(),
@@ -350,7 +373,12 @@ fn unlock_and_withdraw_deposit_works() {
 		// Check storage
 		assert_eq!(
 			ClusterLedger::<Test>::get(cluster_id, &account_1),
-			Some(CustomerLedger { total: 3_u128, active: 3_u128, unlocking: Default::default() })
+			Some(CustomerLedger {
+				owner: account_1,
+				total: 3_u128,
+				active: 3_u128,
+				unlocking: Default::default()
+			})
 		);
 
 		// Unlock remaining chunks & withdraw

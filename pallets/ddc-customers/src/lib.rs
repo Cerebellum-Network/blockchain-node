@@ -95,6 +95,9 @@ pub struct Bucket<T: Config> {
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct CustomerLedger<T: Config> {
+	/// The owner account whose balance is actually locked and can be used to pay for DDC network
+	/// usage.
+	pub owner: T::AccountId,
 	/// The total amount of the owner's balance that we are currently accounting for.
 	/// It's just `active` plus all the `unlocking` balances.
 	#[codec(compact)]
@@ -112,8 +115,8 @@ pub struct CustomerLedger<T: Config> {
 
 impl<T: Config> CustomerLedger<T> {
 	/// Initializes the default object using the given owner.
-	pub fn default_from() -> Self {
-		Self { total: Zero::zero(), active: Zero::zero(), unlocking: Default::default() }
+	pub fn default_from(owner: T::AccountId) -> Self {
+		Self { owner, total: Zero::zero(), active: Zero::zero(), unlocking: Default::default() }
 	}
 
 	/// Remove entries from `unlocking` that are sufficiently old and reduce the
@@ -135,7 +138,7 @@ impl<T: Config> CustomerLedger<T> {
 			.try_into();
 
 		if let Ok(unlocking) = unlocking_result {
-			Self { total, active: self.active, unlocking }
+			Self { owner: self.owner, total, active: self.active, unlocking }
 		} else {
 			panic!("Failed to filter unlocking");
 		}
@@ -306,13 +309,13 @@ pub mod pallet {
 
 				<Buckets<T>>::insert(cur_bucket_id, bucket);
 
-				let owner = bucket.owner_id.clone();
 				let ledger = CustomerLedger::<T> {
+					owner: bucket.owner_id.clone(),
 					total: *deposit,
 					active: *deposit,
 					unlocking: Default::default(),
 				};
-				<ClusterLedger<T>>::insert(bucket.cluster_id, &owner, &ledger);
+				<ClusterLedger<T>>::insert(bucket.cluster_id, &bucket.owner_id, &ledger);
 
 				<T as pallet::Config>::Currency::deposit_into_existing(&cluster_vault, *deposit)
 					.unwrap();
@@ -480,8 +483,8 @@ pub mod pallet {
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
 
-			let post_info_weight = if ledger.unlocking.is_empty() &&
-				ledger.active < <T as pallet::Config>::Currency::minimum_balance()
+			let post_info_weight = if ledger.unlocking.is_empty()
+				&& ledger.active < <T as pallet::Config>::Currency::minimum_balance()
 			{
 				log::debug!("Killing owner");
 				// This account must have called `unlock_deposit()` with some value that caused the
@@ -815,8 +818,12 @@ pub mod pallet {
 
 			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
 			let value = value.min(owner_balance);
-			let ledger =
-				CustomerLedger { total: value, active: value, unlocking: Default::default() };
+			let ledger = CustomerLedger {
+				owner: owner.clone(),
+				total: value,
+				active: value,
+				unlocking: Default::default(),
+			};
 
 			Self::update_ledger_and_deposit(&owner, &ledger, &cluster_id, value)
 				.map_err(|_| Error::<T>::TransferFailed)?;
