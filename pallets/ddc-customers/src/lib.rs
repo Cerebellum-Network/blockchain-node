@@ -29,7 +29,7 @@ pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
+	traits::{AccountIdConversion, Saturating, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
@@ -345,7 +345,7 @@ pub mod pallet {
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			<Self as CustomerDepositor<T>>::deposit(owner, value.saturated_into(), cluster_id)?;
+			<Self as CustomerDepositor<T>>::deposit(owner, cluster_id, value.saturated_into())?;
 			Ok(())
 		}
 
@@ -359,10 +359,15 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::deposit_extra())]
 		pub fn deposit_extra(
 			origin: OriginFor<T>,
+			cluster_id: ClusterId,
 			#[pallet::compact] max_additional: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			<Self as CustomerDepositor<T>>::deposit_extra(owner, max_additional.saturated_into())?;
+			<Self as CustomerDepositor<T>>::deposit_extra(
+				owner,
+				cluster_id,
+				max_additional.saturated_into(),
+			)?;
 			Ok(())
 		}
 
@@ -816,8 +821,8 @@ pub mod pallet {
 	impl<T: Config> CustomerDepositor<T> for Pallet<T> {
 		fn deposit(
 			owner: T::AccountId,
-			amount: u128,
 			cluster_id: ClusterId,
+			amount: u128,
 		) -> Result<(), DispatchError> {
 			let value = amount.saturated_into::<BalanceOf<T>>();
 
@@ -848,7 +853,11 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn deposit_extra(owner: T::AccountId, amount: u128) -> Result<(), DispatchError> {
+		fn deposit_extra(
+			owner: T::AccountId,
+			cluster_id: ClusterId,
+			amount: u128,
+		) -> Result<(), DispatchError> {
 			let max_additional = amount.saturated_into::<BalanceOf<T>>();
 			let mut ledger = Ledger::<T>::get(&owner).ok_or(Error::<T>::NotOwner)?;
 
@@ -865,7 +874,7 @@ pub mod pallet {
 				Error::<T>::InsufficientDeposit
 			);
 
-			Self::update_ledger_and_deposit(&owner, &ledger, extra)
+			Self::update_ledger_and_deposit(&owner, &ledger, &cluster_id, extra)
 				.map_err(|_| Error::<T>::TransferFailed)?;
 			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: extra });
 

@@ -57,38 +57,41 @@ benchmarks! {
 	}
 
 	deposit {
+		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 100u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 		let amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
 
 		whitelist_account!(user);
-	}: _(RawOrigin::Signed(user.clone()), amount)
+	}: _(RawOrigin::Signed(user.clone()), cluster_id, amount)
 	verify {
 		assert!(Ledger::<T>::contains_key(user));
 	}
 
 	deposit_extra {
+		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 200u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 		let amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
 
-		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount);
+		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), cluster_id, amount);
 
 		whitelist_account!(user);
-	}: _(RawOrigin::Signed(user.clone()), amount)
+	}: _(RawOrigin::Signed(user.clone()), cluster_id, amount)
 	verify {
 		assert!(Ledger::<T>::contains_key(user));
 	}
 
 	unlock_deposit {
+		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 200u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 		let amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
 
-		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount);
+		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), cluster_id, amount);
 
 		whitelist_account!(user);
 	}: unlock_deposit(RawOrigin::Signed(user.clone()), amount)
@@ -101,12 +104,13 @@ benchmarks! {
 
 		System::<T>::set_block_number(1u32.into());
 
+		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 2000u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 		let amount = <T as pallet::Config>::Currency::minimum_balance() * 32u32.into();
 
-		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount);
+		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), cluster_id, amount);
 
 		for _k in 1 .. 32 {
 			let _ = DdcCustomers::<T>::unlock_deposit(RawOrigin::Signed(user.clone()).into(), <T as pallet::Config>::Currency::minimum_balance() * 1u32.into());
@@ -125,7 +129,7 @@ benchmarks! {
 	withdraw_unlocked_deposit_kill {
 
 		System::<T>::set_block_number(1u32.into());
-
+		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
 		let user2 = account::<T::AccountId>("user", USER_SEED, 1u32);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 2000u32.into();
@@ -133,9 +137,9 @@ benchmarks! {
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user2, balance);
 		let amount = <T as pallet::Config>::Currency::minimum_balance() * 32u32.into();
 
-		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), amount);
+		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user.clone()).into(), cluster_id, amount);
 		// To keep the balance of pallet positive
-		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user2).into(), amount);
+		let _ = DdcCustomers::<T>::deposit(RawOrigin::Signed(user2).into(), cluster_id, amount);
 
 
 		for _k in 1 .. 33 {

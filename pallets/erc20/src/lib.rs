@@ -127,7 +127,7 @@ pub mod pallet {
 					<erc721::Pallet<T>>::burn_token(source, token_id)?;
 					let resource_id = T::Erc721Id::get();
 					let tid: &mut [u8] = &mut [0; 32];
-					token_id.to_big_endian(tid);
+					token_id.to_big_endian();
 					<bridge::Pallet<T>>::transfer_nonfungible(
 						dest_id,
 						resource_id,
