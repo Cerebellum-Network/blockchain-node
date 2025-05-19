@@ -16,7 +16,7 @@ jobs:
       cancel-in-progress: true
 
     env:
-      HETZNER_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+      HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
 
     steps:
     - uses: actions/checkout@v3
@@ -25,26 +25,39 @@ jobs:
       run: |
         git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
-    - name: Install Hetzner CLI & jq
-      run: |
-        curl -LO https://github.com/hetznercloud/cli/releases/download/v1.36.0/hcloud-linux-amd64.tar.gz
-        tar -xzf hcloud-linux-amd64.tar.gz
-        sudo mv hcloud /usr/local/bin
-        sudo apt-get install -y jq
-
     - name: Generate ephemeral SSH key
+      id: sshkey
       run: |
         ssh-keygen -t ed25519 -N "" -f id_rsa
-        cat id_rsa.pub
+        echo "PRIVATE_SSH=$(base64 -w 0 id_rsa)" >> $GITHUB_ENV
+        echo "PUBLIC_SSH=$(cat id_rsa.pub)" >> $GITHUB_ENV
+
+    - name: Upload SSH key to Hetzner
+      uses: jawher/action-hcloud@v1.50.0
+      env:
+        HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+      with:
+        args: ssh-key create --name weights-key --public-key "${{ env.PUBLIC_SSH }}"
 
     - name: Create Hetzner Server
-      id: create_server
+      uses: jawher/action-hcloud@v1.50.0
+      env:
+        HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+      with:
+        args: server create --name weights-${{ github.run_id }} --type=cpx31 --image=ubuntu-22.04 --ssh-key=weights-key --location=fsn1
+
+    - name: Fetch server IP
+      uses: jawher/action-hcloud@v1.50.0
+      env:
+        HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+      with:
+        args: server describe weights-${{ github.run_id }} -o json
+
+    - name: Extract IP and prepare SSH
       run: |
-        SERVER_NAME="weights-$(date +%s)"
-        hcloud context create default <<< "$HETZNER_TOKEN"
-        hcloud server create --name "$SERVER_NAME" --type cx31 --image ubuntu-22.04 --ssh-key "$(cat id_rsa.pub)" --wait --format json > server.json
-        echo "SERVER_IP=$(jq -r '.[0].public_net.ipv4.ip' server.json)" >> $GITHUB_ENV
-        echo "SERVER_ID=$(jq -r '.[0].id' server.json)" >> $GITHUB_ENV
+        echo "SERVER_IP=$(cat ${GITHUB_WORKSPACE}/hcloud.output | jq -r '.public_net.ipv4.ip')" >> $GITHUB_ENV
+        echo "$PRIVATE_SSH" | base64 -d > id_rsa
+        chmod 600 id_rsa
 
     - name: Wait for SSH
       run: |
@@ -53,28 +66,23 @@ jobs:
           sleep 5
         done
 
-    - name: Run build and benchmark script remotely (inline heredoc)
+    - name: Run benchmarks remotely
       run: |
-        ssh -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP 'bash -s' <<'EOF'
+        ssh -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP "bash -s" <<EOF
         set -eux
+        export GH_TOKEN=${{ secrets.GH_READ_TOKEN }}
+        export BRANCH=${{ github.event.inputs.branch }}
 
         apt update && apt install -y curl git build-essential jq
 
-        # Install Rust
         curl https://sh.rustup.rs -sSf | bash -s -- -y
-        source $HOME/.cargo/env
+        source \$HOME/.cargo/env
 
-        # Configure GitHub token for private deps
-        git config --global url."https://${GH_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-
-        # Clone the repo
-        git clone --branch "$BRANCH" --single-branch https://github.com/Cerebellum-Network/blockchain-node.git
+        git config --global url."https://\${GH_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+        git clone --branch "\$BRANCH" --single-branch https://github.com/Cerebellum-Network/blockchain-node.git
         cd blockchain-node
-
-        # Build release
         cargo build --release --features=runtime-benchmarks
 
-        # Execute commands from weights.rs files
         find pallets -type f -name weights.rs | while read file; do
           echo "Processing \$file"
           CMD=\$(grep '// Executed command:' "\$file" | sed 's|.*// Executed command: ||')
@@ -82,11 +90,8 @@ jobs:
           (cd "\$(dirname "\$(dirname "\$file")")" && eval "\$CMD")
         done
         EOF
-      env:
-        GH_TOKEN: ${{ secrets.GH_READ_TOKEN }}
-        BRANCH: ${{ github.event.inputs.branch }}
 
-    - name: Download and structure weights.rs files
+    - name: Download weights.rs files
       run: |
         mkdir -p weights
         PALLET_DIRS=$(ssh -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP "find /root/blockchain-node/pallets -type f -name weights.rs | sed 's|/root/blockchain-node/pallets/||' | sed 's|/src/weights.rs||'")
@@ -95,13 +100,30 @@ jobs:
           scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallets/$dir/src/weights.rs weights/$dir/weights.rs
         done
 
-    - name: Upload weights.rs artifacts
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: weights-files
         path: weights/
 
-    - name: Destroy Hetzner server
+    - name: Cleanup Hetzner server and SSH key
       if: always()
       run: |
-        hcloud server delete --yes $SERVER_ID
+        echo "Destroying server weights-${{ github.run_id }}"
+      shell: bash
+
+    - name: Delete Hetzner server
+      uses: jawher/action-hcloud@v1.50.0
+      if: always()
+      env:
+        HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+      with:
+        args: server delete weights-${{ github.run_id }}
+
+    - name: Delete Hetzner SSH key
+      uses: jawher/action-hcloud@v1.50.0
+      if: always()
+      env:
+        HCLOUD_TOKEN: ${{ secrets.HETZNER_API_TOKEN }}
+      with:
+        args: ssh-key delete weights-key
