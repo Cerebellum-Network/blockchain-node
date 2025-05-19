@@ -125,7 +125,9 @@ fn deposit_and_deposit_extra_works() {
 		);
 
 		// Checking that event was emitted
-		System::assert_last_event(Event::Deposited { owner_id: account_1, amount: amount1 }.into());
+		System::assert_last_event(
+			Event::Deposited { cluster_id, owner_id: account_1, amount: amount1 }.into(),
+		);
 
 		// Deposit should fail when called the second time
 		assert_noop!(
@@ -171,7 +173,7 @@ fn deposit_and_deposit_extra_works() {
 
 		// Checking that event was emitted
 		System::assert_last_event(
-			Event::Deposited { owner_id: account_1, amount: extra_amount2 }.into(),
+			Event::Deposited { cluster_id, owner_id: account_1, amount: extra_amount2 }.into(),
 		);
 	})
 }
@@ -210,7 +212,9 @@ fn charge_bucket_owner_works() {
 		);
 
 		// Checking that event was emitted
-		System::assert_last_event(Event::Deposited { owner_id: account_3, amount: deposit }.into());
+		System::assert_last_event(
+			Event::Deposited { cluster_id, owner_id: account_3, amount: deposit }.into(),
+		);
 
 		// successful transfer
 		let charge1 = 10;
@@ -239,7 +243,13 @@ fn charge_bucket_owner_works() {
 
 		// Checking that event was emitted
 		System::assert_last_event(
-			Event::Charged { owner_id: account_3, charged, expected_to_charge: charged }.into(),
+			Event::Charged {
+				cluster_id,
+				owner_id: account_3,
+				charged,
+				expected_to_charge: charged,
+			}
+			.into(),
 		);
 
 		// failed transfer
@@ -254,6 +264,7 @@ fn charge_bucket_owner_works() {
 		// Checking that event was emitted
 		System::assert_last_event(
 			Event::Charged {
+				cluster_id,
 				owner_id: account_3,
 				charged: deposit - charge1,
 				expected_to_charge: charge2,
@@ -513,7 +524,7 @@ fn remove_bucket_works() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 2);
-		System::assert_last_event(Event::BucketRemoved { bucket_id: 1u64 }.into());
+		System::assert_last_event(Event::BucketRemoved { cluster_id, bucket_id: 1u64 }.into());
 
 		// Cannot remove bucket twice
 		assert_noop!(
