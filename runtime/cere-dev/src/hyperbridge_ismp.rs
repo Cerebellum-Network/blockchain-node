@@ -2,6 +2,7 @@ use frame_support::parameter_types;
 use frame_system::EnsureRoot;
 use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
 use ismp_grandpa::consensus::GrandpaConsensusClient;
+use pallet_ismp::fee_handler::WeightFeeHandler;
 use pallet_token_gateway::types::EvmToSubstrate;
 use sp_core::H160;
 
@@ -43,7 +44,7 @@ impl pallet_ismp::Config for Runtime {
 	// The default implementation for `()` should suffice
 	type OffchainDB = ();
 	// Weight provider for local modules
-	type WeightProvider = ();
+	type FeeHandler = WeightFeeHandler<()>;
 }
 
 impl pallet_hyperbridge::Config for Runtime {
