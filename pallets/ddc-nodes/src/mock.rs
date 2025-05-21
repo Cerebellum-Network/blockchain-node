@@ -62,6 +62,7 @@ impl pallet_balances::Config for Test {
 	type RuntimeFreezeReason = ();
 	type MaxFreezes = ();
 	type RuntimeHoldReason = ();
+	type DoneSlashHandler = ();
 }
 
 impl pallet_timestamp::Config for Test {

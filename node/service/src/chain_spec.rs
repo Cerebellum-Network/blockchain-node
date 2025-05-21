@@ -233,7 +233,6 @@ pub fn cere_dev_genesis(
 		},
 		"ddcPayouts": {
 		  "feederAccount": null,
-		  "authorisedCaller": null,
 		  "debtorCustomers": []
 		},
 		"sudo": { "key": Some(root_key) },
@@ -564,7 +563,6 @@ pub fn cere_thirdparty_genesis(
 		},
 		"ddcPayouts": {
 		  "feederAccount": null,
-		  "authorisedCaller": null,
 		  "debtorCustomers": []
 		},
 		"sudo": { "key": Some(root_key) },
