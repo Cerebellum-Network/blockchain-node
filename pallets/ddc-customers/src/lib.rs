@@ -15,9 +15,8 @@ use ddc_primitives::{
 		bucket::BucketManager,
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
 		customer::{CustomerCharger, CustomerDepositor, CustomerVisitor},
-		payout::StorageUsageProvider,
 	},
-	BucketId, BucketParams, BucketStorageUsage, BucketUsage, ClusterId,
+	BucketId, BucketParams, BucketUsage, ClusterId,
 };
 use frame_support::{
 	parameter_types,
@@ -67,30 +66,7 @@ pub struct Bucket<T: Config> {
 	cluster_id: ClusterId,
 	is_public: bool,
 	is_removed: bool,
-	// todo(yahortsaryk): provide migration to remove `total_customers_usage` field
-	total_customers_usage: Option<BucketUsage>,
 }
-
-// #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-// #[scale_info(skip_type_params(T))]
-// pub struct AccountsLedger<T: Config> {
-// 	/// The owner account whose balance is actually locked and can be used to pay for DDC network
-// 	/// usage.
-// 	pub owner: T::AccountId,
-// 	/// The total amount of the owner's balance that we are currently accounting for.
-// 	/// It's just `active` plus all the `unlocking` balances.
-// 	#[codec(compact)]
-// 	pub total: BalanceOf<T>,
-// 	/// The total amount of the owner's balance that will be accessible for DDC network payouts in
-// 	/// any forthcoming rounds.
-// 	#[codec(compact)]
-// 	pub active: BalanceOf<T>,
-// 	/// Any balance that is becoming free, which may eventually be transferred out of the owner
-// 	/// (assuming that the content owner has to pay for network usage). It is assumed that this
-// 	/// will be treated as a first in, first out queue where the new (higher value) eras get pushed
-// 	/// on the back.
-// 	pub unlocking: BoundedVec<UnlockChunk<T>, MaxUnlockingChunks>,
-// }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
@@ -709,7 +685,6 @@ pub mod pallet {
 				cluster_id,
 				is_public: bucket_params.is_public,
 				is_removed: false,
-				total_customers_usage: None,
 			};
 
 			<BucketsCount<T>>::set(bucket_id);
@@ -718,35 +693,6 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::BucketCreated { cluster_id, bucket_id });
 
 			Ok(())
-		}
-
-		fn storage_usage_filter(cluster_id: &ClusterId, bucket: &Bucket<T>) -> bool {
-			if bucket.is_removed || *cluster_id != bucket.cluster_id {
-				false
-			} else {
-				bucket
-					.total_customers_usage
-					.as_ref()
-					.map(|usage| usage.stored_bytes != 0)
-					.unwrap_or(false)
-			}
-		}
-
-		fn storage_usage_map(
-			bucket_id: &BucketId,
-			bucket: &Bucket<T>,
-		) -> BucketStorageUsage<T::AccountId> {
-			let stored_bytes = bucket
-				.total_customers_usage
-				.as_ref()
-				.map(|usage| usage.stored_bytes)
-				.unwrap_or(0);
-
-			BucketStorageUsage {
-				bucket_id: *bucket_id,
-				owner_id: bucket.owner_id.clone(),
-				stored_bytes,
-			}
 		}
 	}
 
@@ -991,44 +937,6 @@ pub mod pallet {
 		fn get_bucket_owner(bucket_id: &BucketId) -> Result<T::AccountId, DispatchError> {
 			let bucket = Buckets::<T>::get(bucket_id).ok_or(Error::<T>::NoBucketWithId)?;
 			Ok(bucket.owner_id)
-		}
-	}
-
-	impl<T: Config> StorageUsageProvider<BucketId, BucketStorageUsage<T::AccountId>> for Pallet<T> {
-		type Error = ();
-
-		fn iter_storage_usage<'a>(
-			cluster_id: &'a ClusterId,
-		) -> Box<dyn Iterator<Item = BucketStorageUsage<T::AccountId>> + 'a> {
-			let filter_fn: fn(&ClusterId, &Bucket<T>) -> bool = Pallet::<T>::storage_usage_filter;
-			let map_fn: fn(&BucketId, &Bucket<T>) -> BucketStorageUsage<T::AccountId> =
-				Pallet::<T>::storage_usage_map;
-
-			Box::new(
-				Buckets::<T>::iter()
-					.filter(move |(_, bucket)| filter_fn(cluster_id, bucket))
-					.map(move |(id, bucket)| map_fn(&id, &bucket)),
-			)
-		}
-
-		fn iter_storage_usage_from<'a>(
-			cluster_id: &'a ClusterId,
-			from: &'a BucketId,
-		) -> Result<Box<dyn Iterator<Item = BucketStorageUsage<T::AccountId>> + 'a>, ()> {
-			let filter_fn: fn(&ClusterId, &Bucket<T>) -> bool = Pallet::<T>::storage_usage_filter;
-			let map_fn: fn(&BucketId, &Bucket<T>) -> BucketStorageUsage<T::AccountId> =
-				Pallet::<T>::storage_usage_map;
-
-			if Buckets::<T>::contains_key(from) {
-				let from_key = Buckets::<T>::hashed_key_for(from);
-				Ok(Box::new(
-					Buckets::<T>::iter_from(from_key)
-						.filter(move |(_, bucket)| filter_fn(cluster_id, bucket))
-						.map(move |(id, bucket)| map_fn(&id, &bucket)),
-				))
-			} else {
-				Err(())
-			}
 		}
 	}
 }

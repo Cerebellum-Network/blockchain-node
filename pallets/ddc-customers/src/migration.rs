@@ -157,12 +157,12 @@ pub mod v2 {
 	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Bucket<AccountId> {
-		bucket_id: BucketId,
-		owner_id: AccountId,
-		cluster_id: ClusterId,
-		is_public: bool,
-		is_removed: bool,
-		total_customers_usage: Option<BucketUsage>, // new field
+		pub bucket_id: BucketId,
+		pub owner_id: AccountId,
+		pub cluster_id: ClusterId,
+		pub is_public: bool,
+		pub is_removed: bool,
+		pub total_customers_usage: Option<BucketUsage>, // new field
 	}
 
 	#[storage_alias]
@@ -189,7 +189,7 @@ pub mod v2 {
 
 			v2::Buckets::<T>::translate::<v1::Bucket<T::AccountId>, _>(
 				|bucket_id: BucketId, bucket: v1::Bucket<T::AccountId>| {
-					info!(target: LOG_TARGET, "     Migrating bucket for bucket ID {:?}...", bucket_id);
+					info!(target: LOG_TARGET, "Migrating bucket for bucket ID {:?}...", bucket_id);
 
 					Some(v2::Bucket {
 						bucket_id: bucket.bucket_id,
@@ -207,7 +207,7 @@ pub mod v2 {
 			let count = v1::BucketsCount::<T>::get();
 			info!(
 				target: LOG_TARGET,
-				" <<< DDC Customers storage updated to v2! Migrated {} buckets ✅", count
+				"<<< DDC Customers storage updated to v2! Migrated {} buckets ✅", count
 			);
 
 			T::DbWeight::get().reads_writes(count + 2, count + 1)
@@ -264,6 +264,116 @@ pub mod v2 {
 				);
 				Ok(())
 			})?;
+
+			Ok(())
+		}
+	}
+}
+
+pub mod v3 {
+
+	use frame_support::pallet_prelude::*;
+
+	use super::*;
+
+	#[storage_alias]
+	pub(super) type Buckets<T: Config> = StorageMap<
+		crate::Pallet<T>,
+		Twox64Concat,
+		BucketId,
+		Bucket<<T as frame_system::Config>::AccountId>,
+		OptionQuery,
+	>;
+
+	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+	#[scale_info(skip_type_params(T))]
+	pub struct Bucket<AccountId> {
+		pub bucket_id: BucketId,
+		pub owner_id: AccountId,
+		pub cluster_id: ClusterId,
+		pub is_public: bool,
+		pub is_removed: bool,
+	}
+
+	// New migration to remove total_customers_usage field
+	pub fn migrate_to_v3<T: Config>() -> Weight {
+		let on_chain_version = Pallet::<T>::on_chain_storage_version();
+		if on_chain_version == 2 {
+			let count = BucketsCount::<T>::get();
+			info!(
+				target: LOG_TARGET,
+				" >>> Updating DDC Customers storage to v3. Migrating {} buckets...", count
+			);
+
+			v3::Buckets::<T>::translate::<v2::Bucket<T::AccountId>, _>(
+				|bucket_id: BucketId, bucket: v2::Bucket<T::AccountId>| {
+					info!(target: LOG_TARGET, "Migrating bucket for bucket ID {:?}...", bucket_id);
+
+					Some(v3::Bucket {
+						bucket_id: bucket.bucket_id,
+						owner_id: bucket.owner_id,
+						cluster_id: bucket.cluster_id,
+						is_public: bucket.is_public,
+						is_removed: bucket.is_removed,
+					})
+				},
+			);
+
+			// Update storage version.
+			StorageVersion::new(3).put::<Pallet<T>>();
+			let count = BucketsCount::<T>::get();
+			info!(
+				target: LOG_TARGET,
+				" <<< DDC Customers storage updated to v3! Migrated {} buckets ✅", count
+			);
+
+			T::DbWeight::get().reads_writes(count + 2, count + 1)
+		} else {
+			info!(target: LOG_TARGET, " >>> Unused migration to v3!");
+			T::DbWeight::get().reads(1)
+		}
+	}
+
+	pub struct MigrateToV3<T>(sp_std::marker::PhantomData<T>);
+	impl<T: Config> OnRuntimeUpgrade for MigrateToV3<T> {
+		fn on_runtime_upgrade() -> Weight {
+			migrate_to_v3::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
+			let prev_bucket_id = BucketsCount::<T>::get();
+			let prev_count = v2::Buckets::<T>::iter().count();
+
+			Ok((prev_bucket_id, prev_count as u64).encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), DispatchError> {
+			let (prev_bucket_id, prev_count): (u64, u64) = Decode::decode(&mut &prev_state[..])
+				.expect("pre_upgrade provides a valid state; qed");
+
+			let post_bucket_id = BucketsCount::<T>::get();
+			ensure!(
+				prev_bucket_id == post_bucket_id,
+				"the last bucket ID before and after the v3 migration should be the same"
+			);
+
+			let post_count = v3::Buckets::<T>::iter().count() as u64;
+			ensure!(
+				prev_count == post_count,
+				"the bucket count before and after the v3 migration should be the same"
+			);
+
+			let current_version = Pallet::<T>::in_code_storage_version();
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+
+			frame_support::ensure!(current_version == 3, "must_upgrade");
+
+			ensure!(
+				current_version == on_chain_version,
+				"the current_version and on_chain_version should be the same after the v3 migration"
+			);
 
 			Ok(())
 		}

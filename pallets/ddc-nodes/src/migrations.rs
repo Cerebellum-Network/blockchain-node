@@ -17,6 +17,7 @@ use crate::{storage_node::StorageNodeProps, ClusterId};
 const LOG_TARGET: &str = "ddc-customers";
 
 pub mod v0 {
+	use ddc_primitives::NodeUsage;
 	use frame_support::pallet_prelude::*;
 
 	use super::*;
@@ -37,6 +38,8 @@ pub mod v0 {
 }
 
 pub mod v1 {
+	use ddc_primitives::NodeUsage;
+
 	use super::*;
 
 	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]

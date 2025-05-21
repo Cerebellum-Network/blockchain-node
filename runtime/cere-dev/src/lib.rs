@@ -1378,7 +1378,6 @@ impl pallet_ddc_verification::Config for Runtime {
 	type ClusterManager = DdcClusters;
 	type ClusterValidator = DdcClusters;
 	type NodeManager = DdcNodes;
-	type NodesStorageUsageProvider = DdcNodes;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type Hasher = BlakeTwo256;
@@ -1386,7 +1385,6 @@ impl pallet_ddc_verification::Config for Runtime {
 	type Currency = Balances;
 	type CustomerVisitor = DdcCustomers;
 	type BucketManager = DdcCustomers;
-	type BucketsStorageUsageProvider = DdcCustomers;
 	type InspReceiptsInterceptor =
 		pallet_ddc_verification::simulations::v1::SimulationReceiptsInterceptor;
 
