@@ -126,8 +126,8 @@ where
 impl pallet_insecure_randomness_collective_flip::Config for Test {}
 
 impl<LocalCall> frame_system::offchain::CreateTransaction<LocalCall> for Test
-	where
-		RuntimeCall: From<LocalCall>,
+where
+	RuntimeCall: From<LocalCall>,
 {
 	type Extension = ();
 

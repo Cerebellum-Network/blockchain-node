@@ -48,6 +48,7 @@ pallet-im-online = { workspace = true }
 pallet-indices = { workspace = true }
 pallet-insecure-randomness-collective-flip = { workspace = true }
 pallet-membership = { workspace = true }
+pallet-migrations = { workspace = true }
 pallet-multisig = { workspace = true }
 pallet-nomination-pools = { workspace = true }
 pallet-nomination-pools-benchmarking = { workspace = true }
@@ -210,6 +211,7 @@ std = [
   "anyhow/std",
   "frame-metadata-hash-extension/std",
   "pallet-token-gateway/std",
+  "pallet-migrations/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -264,6 +266,7 @@ runtime-benchmarks = [
   "pallet-origins/runtime-benchmarks",
   "pallet-ddc-verification/runtime-benchmarks",
   "pallet-token-gateway/runtime-benchmarks",
+  "pallet-migrations/runtime-benchmarks",
 ]
 # TODO: Will be fixed in another PR
 try-runtime = [
@@ -324,6 +327,7 @@ try-runtime = [
   "pallet-hyperbridge/try-runtime",
   "ismp-grandpa/try-runtime",
   "pallet-token-gateway/try-runtime",
+  "pallet-migrations/try-runtime",
 ]
 
 # Enable the metadata hash generation in the wasm builder.
