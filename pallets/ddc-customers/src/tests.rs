@@ -185,6 +185,102 @@ fn deposit_and_deposit_extra_works() {
 }
 
 #[test]
+fn deposit_for_works() {
+	ExtBuilder.build_and_execute(|| {
+		System::set_block_number(1);
+
+		let cluster_id = ClusterId::from([1; 20]);
+		let account_1 = 1;
+		let funder_account = 99;
+
+		// Deposit dust
+		assert_noop!(
+			DdcCustomers::deposit_for(
+				RuntimeOrigin::signed(funder_account),
+				account_1,
+				cluster_id,
+				0_u128
+			),
+			Error::<Test>::InsufficientDeposit
+		);
+
+		// Deposit all tokens fails (should not kill account)
+		assert_noop!(
+			DdcCustomers::deposit_for(
+				RuntimeOrigin::signed(funder_account),
+				account_1,
+				cluster_id,
+				1_000_001_u128
+			),
+			Error::<Test>::NotEnoughBalance
+		);
+
+		let amount1 = 5000_u128;
+		// Deposited
+		assert_ok!(DdcCustomers::deposit_for(
+			RuntimeOrigin::signed(funder_account),
+			account_1,
+			cluster_id,
+			amount1
+		));
+
+		// Check storage
+		assert_eq!(
+			ClusterLedger::<Test>::get(cluster_id, &account_1),
+			Some(CustomerLedger {
+				owner: account_1,
+				total: amount1,
+				active: amount1,
+				unlocking: Default::default()
+			})
+		);
+
+		// Checking that event was emitted
+		System::assert_last_event(
+			Event::Deposited { cluster_id, owner_id: account_1, amount: amount1 }.into(),
+		);
+
+		// Deposit of an extra amount that is more than the customer's total balance fails
+		let extra_amount1 = 2_000_000_u128;
+		assert_noop!(
+			DdcCustomers::deposit_for(
+				RuntimeOrigin::signed(funder_account),
+				account_1,
+				cluster_id,
+				extra_amount1
+			),
+			Error::<Test>::NotEnoughBalance
+		);
+
+		let extra_amount2 = 10_000_u128;
+
+		// Deposited extra
+		assert_ok!(DdcCustomers::deposit_for(
+			RuntimeOrigin::signed(funder_account),
+			account_1,
+			cluster_id,
+			extra_amount2
+		));
+
+		// Check storage
+		assert_eq!(
+			ClusterLedger::<Test>::get(cluster_id, &account_1),
+			Some(CustomerLedger {
+				owner: account_1,
+				total: amount1 + extra_amount2,
+				active: amount1 + extra_amount2,
+				unlocking: Default::default(),
+			})
+		);
+
+		// Checking that event was emitted
+		System::assert_last_event(
+			Event::Deposited { cluster_id, owner_id: account_1, amount: extra_amount2 }.into(),
+		);
+	})
+}
+
+#[test]
 fn charge_bucket_owner_works() {
 	ExtBuilder.build_and_execute(|| {
 		System::set_block_number(1);
