@@ -59,8 +59,8 @@ jobs:
           cargo build --release --features try-runtime
       - name: Check Try-Runtime
         run: |
-           try-runtime --runtime ./target/release/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm \
-           on-runtime-upgrade --blocktime 6000 --disable-idempotency-checks live --uri wss://archive.devnet.cere.network:443
+           try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
+           on-runtime-upgrade --blocktime 6000 --disable-idempotency-checks live --uri wss://archive.qanet.cere.network:443
       - name: Run dev chain
         run: |
           timeout --preserve-status 30s ./target/release/cere --dev
