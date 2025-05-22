@@ -1,5 +1,5 @@
 use frame_support::{storage_alias, traits::OnRuntimeUpgrade};
-use log::info;
+use log::{info, warn};
 
 use super::*;
 
@@ -19,10 +19,10 @@ pub mod v0 {
 	}
 
 	#[storage_alias]
-	pub(super) type BucketsCount<T: Config> = StorageValue<crate::Pallet<T>, BucketId, ValueQuery>;
+	pub type BucketsCount<T: Config> = StorageValue<crate::Pallet<T>, BucketId, ValueQuery>;
 
 	#[storage_alias]
-	pub(super) type Buckets<T: Config> = StorageMap<
+	pub type Buckets<T: Config> = StorageMap<
 		crate::Pallet<T>,
 		Twox64Concat,
 		BucketId,
@@ -37,10 +37,10 @@ pub mod v1 {
 	use super::*;
 
 	#[storage_alias]
-	pub(super) type BucketsCount<T: Config> = StorageValue<crate::Pallet<T>, BucketId, ValueQuery>;
+	pub type BucketsCount<T: Config> = StorageValue<crate::Pallet<T>, BucketId, ValueQuery>;
 
 	#[storage_alias]
-	pub(super) type Buckets<T: Config> = StorageMap<
+	pub type Buckets<T: Config> = StorageMap<
 		crate::Pallet<T>,
 		Twox64Concat,
 		BucketId,
@@ -60,7 +60,16 @@ pub mod v1 {
 	// Migrate to removable buckets
 	pub fn migrate_to_v1<T: Config>() -> Weight {
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
-		if on_chain_version == 0 {
+		let current_version = Pallet::<T>::in_code_storage_version();
+
+		info!(
+			target: LOG_TARGET,
+			"Running v1 migration with current storage version {:?} / onchain {:?}",
+			current_version,
+			on_chain_version
+		);
+
+		if on_chain_version == 0 && current_version == 1 {
 			let count = v0::BucketsCount::<T>::get();
 			info!(
 				target: LOG_TARGET,
@@ -136,7 +145,7 @@ pub mod v1 {
 				"after migration, the current_version and on_chain_version should be the same"
 			);
 
-			Buckets::<T>::iter().try_for_each(|(_id, bucket)| -> Result<(), &'static str> {
+			v1::Buckets::<T>::iter().try_for_each(|(_id, bucket)| -> Result<(), &'static str> {
 				ensure!(
 					!bucket.is_removed,
 					"At this point all the bucket should have is_removed set to false"
@@ -166,10 +175,10 @@ pub mod v2 {
 	}
 
 	#[storage_alias]
-	pub(super) type BucketsCount<T: Config> = StorageValue<crate::Pallet<T>, BucketId, ValueQuery>;
+	pub type BucketsCount<T: Config> = StorageValue<crate::Pallet<T>, BucketId, ValueQuery>;
 
 	#[storage_alias]
-	pub(super) type Buckets<T: Config> = StorageMap<
+	pub type Buckets<T: Config> = StorageMap<
 		crate::Pallet<T>,
 		Twox64Concat,
 		BucketId,
@@ -180,7 +189,16 @@ pub mod v2 {
 	// New migration to add total_customers_usage field
 	pub fn migrate_to_v2<T: Config>() -> Weight {
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
-		if on_chain_version == 1 {
+		let current_version = Pallet::<T>::in_code_storage_version();
+
+		info!(
+			target: LOG_TARGET,
+			"Running v2 migration with current storage version {:?} / onchain {:?}",
+			current_version,
+			on_chain_version
+		);
+
+		if on_chain_version == 1 && current_version == 2 {
 			let count = v1::BucketsCount::<T>::get();
 			info!(
 				target: LOG_TARGET,
@@ -204,7 +222,7 @@ pub mod v2 {
 
 			// Update storage version.
 			StorageVersion::new(2).put::<Pallet<T>>();
-			let count = v1::BucketsCount::<T>::get();
+			let count = v2::BucketsCount::<T>::get();
 			info!(
 				target: LOG_TARGET,
 				"<<< DDC Customers storage updated to v2! Migrated {} buckets ✅", count
@@ -271,13 +289,12 @@ pub mod v2 {
 }
 
 pub mod v3 {
-
 	use frame_support::pallet_prelude::*;
 
 	use super::*;
 
 	#[storage_alias]
-	pub(super) type Buckets<T: Config> = StorageMap<
+	pub type Buckets<T: Config> = StorageMap<
 		crate::Pallet<T>,
 		Twox64Concat,
 		BucketId,
@@ -298,7 +315,16 @@ pub mod v3 {
 	// New migration to remove total_customers_usage field
 	pub fn migrate_to_v3<T: Config>() -> Weight {
 		let on_chain_version = Pallet::<T>::on_chain_storage_version();
-		if on_chain_version == 2 {
+		let current_version = Pallet::<T>::in_code_storage_version();
+
+		info!(
+			target: LOG_TARGET,
+			"Running v3 migration with current storage version {:?} / onchain {:?}",
+			current_version,
+			on_chain_version
+		);
+
+		if on_chain_version == 2 && current_version == 3 {
 			let count = BucketsCount::<T>::get();
 			info!(
 				target: LOG_TARGET,
@@ -343,15 +369,31 @@ pub mod v3 {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 			let prev_bucket_id = BucketsCount::<T>::get();
-			let prev_count = v2::Buckets::<T>::iter().count();
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
 
-			Ok((prev_bucket_id, prev_count as u64).encode())
+			let mut prev_count = 0;
+			let mut post_check = false;
+			if on_chain_version == 2 {
+				prev_count = v2::Buckets::<T>::iter().count();
+				post_check = true;
+			}
+
+			Ok((prev_bucket_id as u64, prev_count as u64, post_check).encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), DispatchError> {
-			let (prev_bucket_id, prev_count): (u64, u64) = Decode::decode(&mut &prev_state[..])
-				.expect("pre_upgrade provides a valid state; qed");
+			let (prev_bucket_id, prev_count, post_check): (u64, u64, bool) =
+				Decode::decode(&mut &prev_state[..])
+					.expect("pre_upgrade provides a valid state; qed");
+
+			if !post_check {
+				warn!(
+					target: LOG_TARGET,
+					"Skipping post check in v3 migration as the upgrade was already applied",
+				);
+				return Ok(());
+			}
 
 			let post_bucket_id = BucketsCount::<T>::get();
 			ensure!(

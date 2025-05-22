@@ -35,7 +35,7 @@ use sp_std::prelude::*;
 
 use crate::weights::WeightInfo;
 
-pub mod migration;
+pub mod migrations;
 
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
@@ -130,7 +130,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(2);
+		frame_support::traits::StorageVersion::new(3);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -158,7 +158,7 @@ pub mod pallet {
 
 	// #[pallet::storage]
 	// pub type Ledger<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId,
-	// AccountsLedger<T>>;
+	// CustomerLedger<T>>;
 
 	#[pallet::storage]
 	pub type ClusterLedger<T: Config> =
