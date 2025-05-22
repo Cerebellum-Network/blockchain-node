@@ -112,8 +112,8 @@ where
 	)
 	.unwrap();
 
-	<DdcClusters<T> as ClusterProtocol<T, BalanceOf<T>>>::bond_cluster(&cluster_id).unwrap();
-	<DdcClusters<T> as ClusterProtocol<T, BalanceOf<T>>>::activate_cluster_protocol(&cluster_id)
+	<DdcClusters<T> as ClusterProtocol<T::AccountId, BlockNumberFor<T>, BalanceOf<T>>>::bond_cluster(&cluster_id).unwrap();
+	<DdcClusters<T> as ClusterProtocol<T::AccountId, BlockNumberFor<T>, BalanceOf<T>>>::activate_cluster_protocol(&cluster_id)
 		.unwrap();
 
 	let mut auth_contract = NodeProviderAuthContract::<T>::new(user.clone(), user.clone());

@@ -31,6 +31,8 @@ pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
+use pallet_balances::WeightInfo;
+extern crate alloc;
 use frame_support::{
 	derive_impl,
 	dispatch::DispatchClass,
@@ -91,7 +93,6 @@ use sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
-	create_runtime_str,
 	curve::PiecewiseLinear,
 	generic, impl_opaque_keys,
 	traits::{
@@ -154,18 +155,18 @@ pub fn wasm_binary_unwrap() -> &'static [u8] {
 /// Runtime version.
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("node"),
-	impl_name: create_runtime_str!("substrate-node"),
+	spec_name: alloc::borrow::Cow::Borrowed("node"),
+	impl_name: alloc::borrow::Cow::Borrowed("substrate-node"),
 	authoring_version: 10,
 	// Per convention: if the runtime behavior changes, increment spec_version
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73045,
+	spec_version: 73054,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
-	state_version: 0,
+	system_version: 0,
 };
 
 /// The BABE epoch configuration at genesis.
@@ -253,6 +254,7 @@ impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type SS58Prefix = ConstU16<54>;
 	type MaxConsumers = ConstU32<16>;
+	type MultiBlockMigrator = MultiBlockMigrations;
 }
 
 impl pallet_insecure_randomness_collective_flip::Config for Runtime {}
@@ -322,20 +324,20 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::Any => true,
 			ProxyType::NonTransfer => !matches!(
 				c,
-				RuntimeCall::Balances(..) |
-					RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. }) |
-					RuntimeCall::Indices(pallet_indices::Call::transfer { .. }) |
-					RuntimeCall::NominationPools(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Balances(..)
+					| RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
+					| RuntimeCall::Indices(pallet_indices::Call::transfer { .. })
+					| RuntimeCall::NominationPools(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Governance => matches!(
 				c,
-				RuntimeCall::Treasury(..) |
-					RuntimeCall::ConvictionVoting(..) |
-					RuntimeCall::Referenda(..) |
-					RuntimeCall::Whitelist(..)
+				RuntimeCall::Treasury(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Whitelist(..)
 			),
 			ProxyType::Staking => matches!(c, RuntimeCall::Staking(..)),
 		}
@@ -420,8 +422,7 @@ impl pallet_babe::Config for Runtime {
 	type DisabledValidators = Session;
 	type MaxNominators = MaxNominatorRewardedPerValidator;
 
-	type KeyOwnerProof =
-		<Historical as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
+	type KeyOwnerProof = sp_session::MembershipProof;
 
 	type EquivocationReportSystem =
 		pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
@@ -464,6 +465,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type MaxFreezes = VariantCountOf<RuntimeFreezeReason>;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type DoneSlashHandler = ();
 }
 
 parameter_types! {
@@ -491,6 +493,7 @@ impl pallet_transaction_payment::Config for Runtime {
 		MinimumMultiplier,
 		MaximumMultiplier,
 	>;
+	type WeightInfo = pallet_transaction_payment::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -711,8 +714,8 @@ impl Get<Option<BalancingConfig>> for OffchainRandomBalancing {
 			max => {
 				let seed = sp_io::offchain::random_seed();
 				let random = <u32>::decode(&mut TrailingZeroInput::new(&seed))
-					.expect("input is padded with zeroes; qed") %
-					max.saturating_add(1);
+					.expect("input is padded with zeroes; qed")
+					% max.saturating_add(1);
 				random as usize
 			},
 		};
@@ -851,6 +854,7 @@ impl pallet_treasury::Config for Runtime {
 	type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
 	type BalanceConverter = UnityAssetBalanceConversion;
 	type PayoutPeriod = ConstU32<10>;
+	type BlockNumberProvider = System;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
 }
@@ -964,16 +968,29 @@ parameter_types! {
 	pub const MaxPeerInHeartbeats: u32 = 10_000;
 }
 
+impl<LocalCall> frame_system::offchain::CreateTransaction<LocalCall> for Runtime
+where
+	RuntimeCall: From<LocalCall>,
+{
+	type Extension = TxExtension;
+
+	fn create_transaction(call: RuntimeCall, extension: TxExtension) -> UncheckedExtrinsic {
+		UncheckedExtrinsic::new_transaction(call, extension)
+	}
+}
+
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
 where
 	RuntimeCall: From<LocalCall>,
 {
-	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
+	fn create_signed_transaction<
+		C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
+	>(
 		call: RuntimeCall,
 		public: <Signature as traits::Verify>::Signer,
 		account: AccountId,
 		nonce: Nonce,
-	) -> Option<(RuntimeCall, <UncheckedExtrinsic as traits::Extrinsic>::SignaturePayload)> {
+	) -> Option<UncheckedExtrinsic> {
 		let tip = 0;
 		// take the biggest period possible.
 		let period =
@@ -984,7 +1001,7 @@ where
 			// so the actual block number is `n`.
 			.saturating_sub(1);
 		let era = Era::mortal(period, current_block);
-		let extra = (
+		let tx_ext: TxExtension = (
 			frame_system::CheckNonZeroSender::<Runtime>::new(),
 			frame_system::CheckSpecVersion::<Runtime>::new(),
 			frame_system::CheckTxVersion::<Runtime>::new(),
@@ -995,15 +1012,25 @@ where
 			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 			frame_metadata_hash_extension::CheckMetadataHash::new(false),
 		);
-		let raw_payload = SignedPayload::new(call, extra)
+		let raw_payload = SignedPayload::new(call, tx_ext)
 			.map_err(|e| {
 				log::warn!("Unable to create signed payload: {:?}", e);
 			})
 			.ok()?;
 		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
 		let address = Indices::unlookup(account);
-		let (call, extra, _) = raw_payload.deconstruct();
-		Some((call, (address, signature, extra)))
+		let (call, tx_ext, _) = raw_payload.deconstruct();
+		let transaction = UncheckedExtrinsic::new_signed(call, address, signature, tx_ext);
+		Some(transaction)
+	}
+}
+
+impl<LocalCall> frame_system::offchain::CreateInherent<LocalCall> for Runtime
+where
+	RuntimeCall: From<LocalCall>,
+{
+	fn create_inherent(call: RuntimeCall) -> UncheckedExtrinsic {
+		UncheckedExtrinsic::new_bare(call)
 	}
 }
 
@@ -1012,12 +1039,12 @@ impl frame_system::offchain::SigningTypes for Runtime {
 	type Signature = Signature;
 }
 
-impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
+impl<C> frame_system::offchain::CreateTransactionBase<C> for Runtime
 where
 	RuntimeCall: From<C>,
 {
 	type Extrinsic = UncheckedExtrinsic;
-	type OverarchingCall = RuntimeCall;
+	type RuntimeCall = RuntimeCall;
 }
 
 impl pallet_im_online::Config for Runtime {
@@ -1049,7 +1076,7 @@ parameter_types! {
 impl pallet_grandpa::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 
-	type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
+	type KeyOwnerProof = sp_session::MembershipProof;
 
 	type EquivocationReportSystem =
 		pallet_grandpa::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
@@ -1063,6 +1090,7 @@ impl pallet_grandpa::Config for Runtime {
 parameter_types! {
 	pub const BasicDeposit: Balance = 10 * DOLLARS;       // 258 bytes on-chain
 	pub const ByteDeposit: Balance = deposit(0, 1);
+	pub const UsernameDeposit: Balance = deposit(0, 32);
 	pub const SubAccountDeposit: Balance = 2 * DOLLARS;   // 53 bytes on-chain
 	pub const MaxSubAccounts: u32 = 100;
 	pub const MaxAdditionalFields: u32 = 100;
@@ -1074,6 +1102,7 @@ impl pallet_identity::Config for Runtime {
 	type Currency = Balances;
 	type BasicDeposit = BasicDeposit;
 	type ByteDeposit = ByteDeposit;
+	type UsernameDeposit = UsernameDeposit;
 	type SubAccountDeposit = SubAccountDeposit;
 	type MaxSubAccounts = MaxSubAccounts;
 	type IdentityInformation = IdentityInfo<MaxAdditionalFields>;
@@ -1085,6 +1114,7 @@ impl pallet_identity::Config for Runtime {
 	type SigningPublicKey = <Signature as Verify>::Signer;
 	type UsernameAuthorityOrigin = EitherOf<EnsureRoot<Self::AccountId>, GeneralAdmin>;
 	type PendingUsernameExpiration = ConstU32<{ 7 * DAYS }>;
+	type UsernameGracePeriod = ConstU32<{ 30 * DAYS }>;
 	type MaxSuffixLength = ConstU32<7>;
 	type MaxUsernameLength = ConstU32<32>;
 	type WeightInfo = pallet_identity::weights::SubstrateWeight<Runtime>;
@@ -1227,6 +1257,7 @@ impl pallet_ddc_nodes::Config for Runtime {
 
 parameter_types! {
 	pub const PayoutsPalletId: PalletId = PalletId(*b"payouts_");
+	pub const MajorityOfValidators: Percent = Percent::from_percent(67);
 }
 
 pub struct TreasuryWrapper;
@@ -1238,6 +1269,7 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 
 impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
 	type Currency = Balances;
 	type CustomerCharger = DdcCustomers;
@@ -1246,19 +1278,23 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type TreasuryVisitor = TreasuryWrapper;
 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
 	type VoteScoreToU64 = IdentityConvert;
-	type ValidatorVisitor = pallet_ddc_verification::Pallet<Runtime>;
-	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
+	type InspectorAuthority = DdcVerification;
+	type NodeManager = DdcNodes;
 	type AccountIdConverter = AccountId32;
 	type Hasher = BlakeTwo256;
-	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterValidator = DdcClusters;
 	type ValidatorsQuorum = MajorityOfValidators;
-	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
-	type ValidatorVerification = DdcVerification;
-	type WeightInfo = ();
-	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
-	const DISABLE_PAYOUTS_CUTOFF: bool = false;
+	type ClusterManager = DdcClusters;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
-	const BLOCK_TO_START: u16 = 1; // every block
+	#[cfg(feature = "runtime-benchmarks")]
+	type CustomerDepositor = DdcCustomers;
+	#[cfg(feature = "runtime-benchmarks")]
+	type ClusterCreator = DdcClusters;
+
+	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
+	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
+	const DISABLE_PAYOUTS_CUTOFF: bool = false;
+	const OCW_INTERVAL: u16 = 1; // every block
 }
 
 parameter_types! {
@@ -1296,6 +1332,9 @@ impl pallet_collective::Config<TechCommCollective> for Runtime {
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
 	type MaxProposalWeight = MaxCollectivesProposalWeight;
+	type DisapproveOrigin = EnsureRoot<Self::AccountId>;
+	type KillOrigin = EnsureRoot<Self::AccountId>;
+	type Consideration = ();
 }
 
 parameter_types! {
@@ -1348,43 +1387,51 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
-	pub const MajorityOfAggregators: Percent = Percent::from_percent(67);
-	pub const MajorityOfValidators: Percent = Percent::from_percent(67);
 }
 
 impl pallet_ddc_verification::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = VerificationPalletId;
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
-	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
-	type ClusterValidator = pallet_ddc_clusters::Pallet<Runtime>;
-	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
-	type PayoutProcessor = pallet_ddc_payouts::Pallet<Runtime>;
+	type ClusterProtocol = DdcClusters;
+	type ClusterManager = DdcClusters;
+	type ClusterValidator = DdcClusters;
+	type NodeManager = DdcNodes;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type Hasher = BlakeTwo256;
-	const BLOCK_TO_START: u16 = 1; // every block
-	const DAC_REDUNDANCY_FACTOR: u16 = 3;
-	type AggregatorsQuorum = MajorityOfAggregators;
-	type ValidatorsQuorum = MajorityOfValidators;
-	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
-	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
-	type AccountIdConverter = AccountId32;
-	type CustomerVisitor = pallet_ddc_customers::Pallet<Runtime>;
-	const MAX_MERKLE_NODE_IDENTIFIER: u16 = 3;
 	type Currency = Balances;
-	const DISABLE_PAYOUTS_CUTOFF: bool = false;
-	const DEBUG_MODE: bool = false;
-	type BucketsStorageUsageProvider = DdcCustomers;
-	type NodesStorageUsageProvider = DdcNodes;
-	type ClusterProtocol = DdcClusters;
-	#[cfg(feature = "runtime-benchmarks")]
-	type CustomerDepositor = DdcCustomers;
-	#[cfg(feature = "runtime-benchmarks")]
-	type ClusterCreator = DdcClusters;
+	type CustomerVisitor = DdcCustomers;
 	type BucketManager = DdcCustomers;
 	type InspReceiptsInterceptor = pallet_ddc_verification::NoReceiptsInterceptor;
+
+	const OCW_INTERVAL: u16 = 1; // every block
+}
+
+parameter_types! {
+	pub MbmServiceWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
+}
+
+impl pallet_migrations::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type Migrations = (
+		// Migrations for Customers and Node on QANET.
+		// DO NOT EXECUTE THEM ON TESTNET/MAINNET BEFORE APPLYING DAC v5 !.
+		pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
+		pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
+		pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
+	);
+	// Benchmarks need mocked migrations to guarantee that they succeed.
+	#[cfg(feature = "runtime-benchmarks")]
+	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
+	type CursorMaxLen = ConstU32<65_536>;
+	type IdentifierMaxLen = ConstU32<256>;
+	type MigrationStatusHandler = ();
+	type FailedMigrationHandler = frame_support::migrations::FreezeChainOnFailedMigration;
+	type MaxServiceWeight = MbmServiceWeight;
+	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
 }
 
 #[frame_support::runtime]
@@ -1559,6 +1606,9 @@ mod runtime {
 
 	#[runtime::pallet_index(50)]
 	pub type TokenGateway = pallet_token_gateway::Pallet<Runtime>;
+	// Migrations pallet
+	#[runtime::pallet_index(51)]
+	pub type MultiBlockMigrations = pallet_migrations;
 }
 
 /// The address format for describing accounts.
@@ -1576,7 +1626,7 @@ pub type BlockId = generic::BlockId<Block>;
 /// When you change this, you **MUST** modify [`sign`] in `bin/node/testing/src/keyring.rs`!
 ///
 /// [`sign`]: <../../testing/src/keyring.rs.html>
-pub type SignedExtra = (
+pub type TxExtension = (
 	frame_system::CheckNonZeroSender<Runtime>,
 	frame_system::CheckSpecVersion<Runtime>,
 	frame_system::CheckTxVersion<Runtime>,
@@ -1590,33 +1640,26 @@ pub type SignedExtra = (
 
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
-	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
 /// The payload being signed in transactions.
-pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
+pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 /// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
+pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
-/// Runtime migrations
 // type Migrations = (
-// 	// Migrations related to substrate version upgrades
-// 	// pallet_nomination_pools::migration::versioned::V5toV6<Runtime>,
-// 	// pallet_nomination_pools::migration::versioned::V6ToV7<Runtime>,
-// 	// pallet_nomination_pools::migration::versioned::V7ToV8<Runtime>,
-// 	// pallet_staking::migrations::v14::MigrateToV14<Runtime>,
-// 	// pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
-// 	// pallet_identity::migration::versioned::V0ToV1<Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
-
 // 	// The 'Unreleased' migration enables DAC Verification, that atm. is enabled at QANET only.
 // 	// Uncomment this line when DAC is ready for TESTNET and MAINNET migrations::Unreleased,
 // 	// migrations::Unreleased,
 // );
 
-// Migrations for Payouts on QANET
-type Migrations = (
-	pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
-	pallet_ddc_payouts::migrations::v5::MigrateToV5<Runtime>,
-);
+// Migrations for Customers and Node on QANET.
+// DO NOT EXECUTE THEM ON TESTNET/MAINNET BEFORE APPLYING DAC v5 !.
+type Migrations = (pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>,);
+
+parameter_types! {
+	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
+}
 
 pub mod migrations {
 	use super::*;
@@ -1630,9 +1673,9 @@ pub mod migrations {
 		}
 	}
 
-	/// Migrations, unreleased to TESTNET or MAINNET
+	/// Migrations, unreleased to TESTNET and MAINNET
 	pub type Unreleased = (
-		pallet_ddc_customers::migration::v2::MigrateToV2<Runtime>,
+		pallet_ddc_customers::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
 		pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>,
 		UpgradeSessionKeys,
@@ -1642,7 +1685,13 @@ pub mod migrations {
 		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
 		pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
-		pallet_ddc_payouts::migrations::v5::MigrateToV5<Runtime>,
+		// pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>, // replace with v2_mbm below
+		// pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>, // replace with v3_mbm below
+
+		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
+		// pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
+		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
+		pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>,
 	);
 }
 
@@ -1700,8 +1749,9 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
-		[pallet_ddc_verification, DdcVerification]
+		[pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
+		[pallet_migrations, MultiBlockMigrations]
 	);
 }
 
@@ -2067,6 +2117,9 @@ impl_runtime_apis! {
 		fn pool_balance(pool_id: pallet_nomination_pools::PoolId) -> Balance {
 			NominationPools::api_pool_balance(pool_id)
 		}
+		fn pool_accounts(pool_id: pallet_nomination_pools::PoolId) -> (AccountId, AccountId) {
+			NominationPools::api_pool_accounts(pool_id)
+		}
 	}
 
 	#[cfg(feature = "try-runtime")]
@@ -2089,81 +2142,81 @@ impl_runtime_apis! {
 		}
 	}
 
-	//TODO: Fix benchmakrs in another PR
-	// #[cfg(feature = "runtime-benchmarks")]
-	// impl frame_benchmarking::Benchmark<Block> for Runtime {
-	// 	fn benchmark_metadata(extra: bool) -> (
-	// 		Vec<frame_benchmarking::BenchmarkList>,
-	// 		Vec<frame_support::traits::StorageInfo>,
-	// 	) {
-	// 		use frame_benchmarking::{baseline, Benchmarking, BenchmarkList};
-	// 		use frame_support::traits::StorageInfoTrait;
-	//
-	// 		// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
-	// 		// issues. To get around that, we separated the Session benchmarks into its own crate,
-	// 		// which is why we need these two lines below.
-	// 		use pallet_session_benchmarking::Pallet as SessionBench;
-	// 		use pallet_offences_benchmarking::Pallet as OffencesBench;
-	// 		use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
-	// 		use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
-	// 		use frame_system_benchmarking::Pallet as SystemBench;
-	// 		use baseline::Pallet as BaselineBench;
-	//
-	// 		let mut list = Vec::<BenchmarkList>::new();
-	// 		list_benchmarks!(list, extra);
-	//
-	// 		let storage_info = AllPalletsWithSystem::storage_info();
-	//
-	// 		(list, storage_info)
-	// 	}
-	//
-	// 	fn dispatch_benchmark(
-	// 		config: frame_benchmarking::BenchmarkConfig
-	// 	) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-	// 		use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch};
-	// 		use sp_storage::TrackedStorageKey;
-	//
-	// 		// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
-	// 		// issues. To get around that, we separated the Session benchmarks into its own crate,
-	// 		// which is why we need these two lines below.
-	// 		use pallet_session_benchmarking::Pallet as SessionBench;
-	// 		use pallet_offences_benchmarking::Pallet as OffencesBench;
-	// 		use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
-	// 		use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
-	// 		use frame_system_benchmarking::Pallet as SystemBench;
-	// 		use baseline::Pallet as BaselineBench;
-	//
-	// 		impl pallet_session_benchmarking::Config for Runtime {}
-	// 		impl pallet_offences_benchmarking::Config for Runtime {}
-	// 		impl pallet_election_provider_support_benchmarking::Config for Runtime {}
-	// 		impl frame_system_benchmarking::Config for Runtime {}
-	// 		impl baseline::Config for Runtime {}
-	// 		impl pallet_nomination_pools_benchmarking::Config for Runtime {}
-	//
-	// 		let whitelist: Vec<TrackedStorageKey> = vec![
-	// 			// Block Number
-	// 			hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec().into(),
-	// 			// Total Issuance
-	// 			hex_literal::hex!("c2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80").to_vec().into(),
-	// 			// Execution Phase
-	// 			hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a").to_vec().into(),
-	// 			// Event Count
-	// 			hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef70a98fdbe9ce6c55837576c60c7af3850").to_vec().into(),
-	// 			// System Events
-	// 			hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7").to_vec().into(),
-	// 			// System BlockWeight
-	// 			hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef734abf5cb34d6244378cddbf18e849d96").to_vec().into(),
-	// 			// Treasury Account
-	// 			hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da95ecffd7b6c0f78751baa9d281e0bfa3a6d6f646c70792f74727372790000000000000000000000000000000000000000").to_vec().into(),
-	// 		];
-	//
-	// 		let mut batches = Vec::<BenchmarkBatch>::new();
-	// 		let params = (&config, &whitelist);
-	// 		add_benchmarks!(params, batches);
-	//
-	// 		Ok(batches)
-	// 	}
-	// }
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl frame_benchmarking::Benchmark<Block> for Runtime {
+		fn benchmark_metadata(extra: bool) -> (
+			Vec<frame_benchmarking::BenchmarkList>,
+			Vec<frame_support::traits::StorageInfo>,
+		) {
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkList};
+			use frame_support::traits::StorageInfoTrait;
+
+			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
+			// issues. To get around that, we separated the Session benchmarks into its own crate,
+			// which is why we need these two lines below.
+			use pallet_session_benchmarking::Pallet as SessionBench;
+			use pallet_offences_benchmarking::Pallet as OffencesBench;
+			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
+			use frame_system_benchmarking::Pallet as SystemBench;
+			use baseline::Pallet as BaselineBench;
+
+			let mut list = Vec::<BenchmarkList>::new();
+			list_benchmarks!(list, extra);
+
+			let storage_info = AllPalletsWithSystem::storage_info();
+
+			(list, storage_info)
+		}
+
+		fn dispatch_benchmark(
+			config: frame_benchmarking::BenchmarkConfig
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, alloc::string::String> {
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch};
+			use sp_storage::TrackedStorageKey;
+
+			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
+			// issues. To get around that, we separated the Session benchmarks into its own crate,
+			// which is why we need these two lines below.
+			use pallet_session_benchmarking::Pallet as SessionBench;
+			use pallet_offences_benchmarking::Pallet as OffencesBench;
+			use pallet_election_provider_support_benchmarking::Pallet as EPSBench;
+			use pallet_nomination_pools_benchmarking::Pallet as NominationPoolsBench;
+			use frame_system_benchmarking::Pallet as SystemBench;
+			use baseline::Pallet as BaselineBench;
+
+			impl pallet_session_benchmarking::Config for Runtime {}
+			impl pallet_offences_benchmarking::Config for Runtime {}
+			impl pallet_election_provider_support_benchmarking::Config for Runtime {}
+			impl frame_system_benchmarking::Config for Runtime {}
+			impl baseline::Config for Runtime {}
+			impl pallet_nomination_pools_benchmarking::Config for Runtime {}
+
+			let whitelist: Vec<TrackedStorageKey> = vec![
+				// Block Number
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec().into(),
+				// Total Issuance
+				hex_literal::hex!("c2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80").to_vec().into(),
+				// Execution Phase
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a").to_vec().into(),
+				// Event Count
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef70a98fdbe9ce6c55837576c60c7af3850").to_vec().into(),
+				// System Events
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7").to_vec().into(),
+				// System BlockWeight
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef734abf5cb34d6244378cddbf18e849d96").to_vec().into(),
+				// Treasury Account
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da95ecffd7b6c0f78751baa9d281e0bfa3a6d6f646c70792f74727372790000000000000000000000000000000000000000").to_vec().into(),
+			];
+
+			let mut batches = Vec::<BenchmarkBatch>::new();
+			let params = (&config, &whitelist);
+			add_benchmarks!(params, batches);
+
+			Ok(batches)
+		}
+	}
 }
 
 #[cfg(test)]
