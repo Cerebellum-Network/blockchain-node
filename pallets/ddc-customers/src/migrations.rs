@@ -368,22 +368,21 @@ pub mod v3 {
 
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
-			let prev_bucket_id = BucketsCount::<T>::get();
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+			let mut prev_state: (bool, u64, u64) = Default::default();
 
-			let mut prev_count = 0;
-			let mut post_check = false;
 			if on_chain_version == 2 {
-				prev_count = v2::Buckets::<T>::iter().count();
-				post_check = true;
+				let prev_bucket_id = BucketsCount::<T>::get();
+				let prev_count = v2::Buckets::<T>::iter().count();
+				prev_state = (true, prev_bucket_id as u64, prev_count as u64);
 			}
 
-			Ok((prev_bucket_id as u64, prev_count as u64, post_check).encode())
+			Ok(prev_state.encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), DispatchError> {
-			let (prev_bucket_id, prev_count, post_check): (u64, u64, bool) =
+			let (post_check, prev_bucket_id, prev_count): (bool, u64, u64) =
 				Decode::decode(&mut &prev_state[..])
 					.expect("pre_upgrade provides a valid state; qed");
 
