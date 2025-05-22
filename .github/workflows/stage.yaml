@@ -38,7 +38,7 @@ jobs:
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: arn:aws:iam::${{ vars.DEV_NETWORK_AWS_ACCOUNT_ID }}:role/github
+          role-to-assume: arn:aws:iam::${{ vars.SHARED_AWS_ACCOUNT_ID }}:role/github
           role-session-name: ${{ github.event.repository.name }}
           aws-region: us-west-2
 
@@ -63,7 +63,7 @@ jobs:
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.81.0
+          toolchain: 1.82.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
