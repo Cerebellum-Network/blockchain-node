@@ -1,5 +1,5 @@
 use frame_support::{storage_alias, traits::OnRuntimeUpgrade};
-use log::{info, warn};
+use log::info;
 
 use super::*;
 
@@ -69,7 +69,7 @@ pub mod v1 {
 			on_chain_version
 		);
 
-		if on_chain_version == 0 && current_version == 1 {
+		if on_chain_version == 0 && current_version >= 1 {
 			let count = v0::BucketsCount::<T>::get();
 			info!(
 				target: LOG_TARGET,
@@ -198,7 +198,7 @@ pub mod v2 {
 			on_chain_version
 		);
 
-		if on_chain_version == 1 && current_version == 2 {
+		if on_chain_version == 1 && current_version >= 2 {
 			let count = v1::BucketsCount::<T>::get();
 			info!(
 				target: LOG_TARGET,
@@ -324,7 +324,7 @@ pub mod v3 {
 			on_chain_version
 		);
 
-		if on_chain_version == 2 && current_version == 3 {
+		if on_chain_version == 2 && current_version >= 3 {
 			let count = BucketsCount::<T>::get();
 			info!(
 				target: LOG_TARGET,
@@ -369,30 +369,30 @@ pub mod v3 {
 		#[cfg(feature = "try-runtime")]
 		fn pre_upgrade() -> Result<Vec<u8>, DispatchError> {
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
-			let mut prev_state: (bool, u64, u64) = Default::default();
+			let current_version = Pallet::<T>::in_code_storage_version();
 
-			if on_chain_version == 2 {
-				let prev_bucket_id = BucketsCount::<T>::get();
-				let prev_count = v2::Buckets::<T>::iter().count();
-				prev_state = (true, prev_bucket_id as u64, prev_count as u64);
-			}
+			info!(
+				target: LOG_TARGET,
+				"Executing `pre_upgrade` check of v3 migration with current storage version {:?} / onchain {:?}",
+				current_version,
+				on_chain_version
+			);
 
-			Ok(prev_state.encode())
+			let prev_bucket_id = v3::BucketsCount::<T>::get();
+			let prev_count = v2::Buckets::<T>::iter().count();
+
+			Ok((prev_bucket_id as u64, prev_count as u64).encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), DispatchError> {
-			let (post_check, prev_bucket_id, prev_count): (bool, u64, u64) =
-				Decode::decode(&mut &prev_state[..])
-					.expect("pre_upgrade provides a valid state; qed");
+			let (prev_bucket_id, prev_count): (u64, u64) = Decode::decode(&mut &prev_state[..])
+				.expect("pre_upgrade provides a valid state; qed");
 
-			if !post_check {
-				warn!(
-					target: LOG_TARGET,
-					"Skipping post check in v3 migration as the upgrade was already applied",
-				);
-				return Ok(());
-			}
+			info!(
+				target: LOG_TARGET,
+				"Executing post check of v3 migration prev_count={:?}, prev_bucket_id={:?} ...", prev_count, prev_bucket_id
+			);
 
 			let post_bucket_id = BucketsCount::<T>::get();
 			ensure!(

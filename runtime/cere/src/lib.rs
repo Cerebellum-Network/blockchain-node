@@ -162,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73038,
+	spec_version: 73047,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -1655,12 +1655,14 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // );
 
 // Migrations for DAC and Payouts on QANET
+type Migrations = (
+	pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>,
+	pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>,
+);
 
 parameter_types! {
-			pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
+	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
-type Migrations =
-	(pallet_child_bounties::migration::MigrateV0ToV1<Runtime, BalanceTransferAllowDeath>,);
 
 pub mod migrations {
 	use super::*;
@@ -1676,7 +1678,7 @@ pub mod migrations {
 
 	/// Migrations, unreleased to TESTNET or MAINNET
 	pub type Unreleased = (
-		pallet_ddc_customers::migration::v2::MigrateToV2<Runtime>,
+		pallet_ddc_customers::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
 		pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>,
 		UpgradeSessionKeys,
@@ -1686,6 +1688,8 @@ pub mod migrations {
 		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
 		pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
+		pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>,
+		pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>,
 	);
 }
 

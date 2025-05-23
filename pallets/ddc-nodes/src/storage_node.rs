@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
 use ddc_primitives::{
-	ClusterId, NodeParams, NodePubKey, NodeType, NodeUsage, StorageNodeMode, StorageNodePubKey,
+	ClusterId, NodeParams, NodePubKey, NodeType, StorageNodeMode, StorageNodePubKey,
 };
 use frame_support::{parameter_types, BoundedVec};
 use scale_info::TypeInfo;
@@ -21,8 +21,6 @@ pub struct StorageNode<T: frame_system::Config> {
 	pub provider_id: T::AccountId,
 	pub cluster_id: Option<ClusterId>,
 	pub props: StorageNodeProps,
-	// todo(yahortsaryk): provide migration to remove `total_usage` field
-	pub total_usage: Option<NodeUsage>,
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
@@ -63,7 +61,6 @@ impl<T: frame_system::Config> StorageNode<T> {
 						grpc_port: node_params.grpc_port,
 						p2p_port: node_params.p2p_port,
 					},
-					total_usage: None,
 				}),
 			},
 		}

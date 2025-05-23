@@ -17,7 +17,6 @@ use crate::{storage_node::StorageNodeProps, ClusterId};
 const LOG_TARGET: &str = "ddc-customers";
 
 pub mod v0 {
-	use ddc_primitives::NodeUsage;
 	use frame_support::pallet_prelude::*;
 
 	use super::*;
@@ -62,12 +61,12 @@ pub mod v1 {
 
 		info!(
 			target: LOG_TARGET,
-			"Running migration with current storage version {:?} / onchain {:?}",
+			"Running v1 migration with current storage version {:?} / onchain {:?}",
 			current_version,
 			on_chain_version
 		);
 
-		if on_chain_version == 0 && current_version == 1 {
+		if on_chain_version == 0 && current_version >= 1 {
 			let weight = T::DbWeight::get().reads(1);
 
 			let mut translated = 0u64;
@@ -148,6 +147,116 @@ pub mod v1 {
 			for (_key, node) in v1::StorageNodes::<T>::iter() {
 				ensure!(node.total_usage.is_none(), "total_usage should be None");
 			}
+
+			Ok(())
+		}
+	}
+}
+
+pub mod v2 {
+	use super::*;
+
+	#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+	#[scale_info(skip_type_params(T))]
+	pub struct StorageNode<T: frame_system::Config> {
+		pub pub_key: StorageNodePubKey,
+		pub provider_id: T::AccountId,
+		pub cluster_id: Option<ClusterId>,
+		pub props: StorageNodeProps,
+	}
+
+	#[storage_alias]
+	pub type StorageNodes<T: Config> =
+		StorageMap<crate::Pallet<T>, Blake2_128Concat, StorageNodePubKey, StorageNode<T>>;
+
+	pub fn migrate_to_v2<T: Config>() -> Weight {
+		let on_chain_version = Pallet::<T>::on_chain_storage_version();
+		let current_version = Pallet::<T>::in_code_storage_version();
+
+		info!(
+			target: LOG_TARGET,
+			"Running v2 migration with current storage version {:?} / onchain {:?}",
+			current_version,
+			on_chain_version
+		);
+
+		if on_chain_version == 1 && current_version >= 2 {
+			let weight = T::DbWeight::get().reads(1);
+
+			let mut translated = 0u64;
+			let count = v1::StorageNodes::<T>::iter().count();
+			info!(
+				target: LOG_TARGET,
+				">>> Updating DDC Storage Nodes. Migrating {} nodes in v2 migration ...", count
+			);
+			v2::StorageNodes::<T>::translate::<v1::StorageNode<T>, _>(
+				|_, old: v1::StorageNode<T>| {
+					let node_pub_key_ref: &[u8; 32] = old.pub_key.as_ref();
+					let node_pub_key_string = hex::encode(node_pub_key_ref);
+					info!(target: LOG_TARGET, "Migrating node for node ID {:?} in v2 migration ...", node_pub_key_string);
+					translated.saturating_inc();
+
+					Some(v2::StorageNode {
+						pub_key: old.pub_key,
+						provider_id: old.provider_id,
+						cluster_id: old.cluster_id,
+						props: old.props,
+					})
+				},
+			);
+
+			// Update storage version.
+			StorageVersion::new(2).put::<Pallet<T>>();
+			info!(
+				target: LOG_TARGET,
+				"Upgraded {} records, storage to version {:?} in v2 migration ...",
+				count,
+				current_version
+			);
+
+			weight.saturating_add(T::DbWeight::get().reads_writes(translated + 1, translated + 1))
+		} else {
+			info!(target: LOG_TARGET, " >>> Unused v2 migration!");
+			T::DbWeight::get().reads(1)
+		}
+	}
+
+	pub struct MigrateToV2<T>(PhantomData<T>);
+	impl<T: Config> OnRuntimeUpgrade for MigrateToV2<T> {
+		fn on_runtime_upgrade() -> Weight {
+			migrate_to_v2::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
+			let prev_count = v1::StorageNodes::<T>::iter().count();
+			Ok((prev_count as u64).encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
+			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
+				.expect("pre_upgrade provides a valid state; qed");
+
+			info!(
+				target: LOG_TARGET,
+				"Executing post check of v2 migration prev_count={:?} ...", prev_count
+			);
+
+			let post_count = v2::StorageNodes::<T>::iter().count() as u64;
+			ensure!(
+				prev_count == post_count,
+				"the storage node count before and after the v2 migration should be the same"
+			);
+
+			let current_version = Pallet::<T>::in_code_storage_version();
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+
+			ensure!(current_version == 2, "must_upgrade");
+			ensure!(
+				current_version == on_chain_version,
+				"after migration, the current_version and on_chain_version should be the same in v2 migration"
+			);
 
 			Ok(())
 		}
