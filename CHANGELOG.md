@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [C] Changes is `Cere` Runtime
 - [D] Changes is `Cere Dev` Runtime
 
+## [7.3.8]
+
+- [C,D] Update Substrate from `stable2409` to `stable2412`.
+
 ## [7.3.7]
 
 - [C,D] Added extrinsic to burn tokens
