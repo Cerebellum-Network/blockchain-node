@@ -30,7 +30,7 @@ pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd, CheckedSub, Saturating, Zero},
+	traits::{AccountIdConversion, Saturating, Zero},
 	RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
