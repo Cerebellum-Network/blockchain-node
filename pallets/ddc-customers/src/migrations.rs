@@ -467,8 +467,7 @@ pub mod v3_mbm {
 			let required = match &cursor {
 				Some(state) => Self::required_weight(&state),
 				// Worst case weight for `authority_step`.
-				// None => T::WeightInfo::migration_v2_authority_step(),
-				None => Weight::from_parts(10_000_000_u64, 0),
+				None => T::WeightInfo::migration_v3_buckets_step(),
 			};
 			if meter.remaining().any_lt(required) {
 				return Err(SteppedMigrationError::InsufficientWeight { required });
@@ -480,9 +479,7 @@ pub mod v3_mbm {
 				let required_weight = match &cursor {
 					Some(state) => Self::required_weight(&state),
 					// Worst case weight for `authority_step`.
-
-					// None => T::WeightInfo::migration_v2_authority_step(),
-					None => Weight::from_parts(10_000_000_u64, 0),
+					None => T::WeightInfo::migration_v3_buckets_step(),
 				};
 				if !meter.can_consume(required_weight) {
 					break;
@@ -598,9 +595,36 @@ pub mod v3_mbm {
 
 		pub(crate) fn required_weight(step: &MigrationState) -> Weight {
 			match step {
-				MigrationState::MigratingBuckets(_) => Weight::from_parts(10_000_000_u64, 0),
+				MigrationState::MigratingBuckets(_) => T::WeightInfo::migration_v3_buckets_step(),
 				MigrationState::Finished => Weight::zero(),
 			}
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	pub(crate) struct BenchmarkingSetup {
+		pub(crate) bucket_id: BucketId,
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> LazyMigrationV2ToV3<T> {
+		pub(crate) fn setup_benchmark_env_for_migration() -> BenchmarkingSetup {
+			let bucket_id = 0;
+			let owner_id: T::AccountId = frame_benchmarking::account("account", 1, 0);
+			let cluster_id = ClusterId::from([0; 20]);
+
+			let bucket = v2::Bucket {
+				bucket_id,
+				owner_id,
+				cluster_id,
+				is_public: true,
+				is_removed: false,
+				total_customers_usage: None,
+			};
+
+			v2::Buckets::<T>::insert(&bucket_id, &bucket);
+
+			BenchmarkingSetup { bucket_id }
 		}
 	}
 }
