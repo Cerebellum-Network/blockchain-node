@@ -38,6 +38,7 @@ pub trait WeightInfo {
 	fn set_bucket_params() -> Weight;
 	fn remove_bucket() -> Weight;
 	fn migration_v3_buckets_step() -> Weight;
+	fn migration_v4_ledgers_step() -> Weight;
 }
 
 /// Weights for pallet_ddc_customers using the Substrate node and recommended hardware.
@@ -127,6 +128,17 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+	// Storage: `DdcClusters::Clusters` (r:4 w:0)
+	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	// Storage: UNKNOWN KEY `0xaffb44e1082c7d59adbb5ebdf73bb14c422adb579f1dbf4f3886c5cfa3bb8cc4` (r:2 w:0)
+	// Proof: UNKNOWN KEY `0xaffb44e1082c7d59adbb5ebdf73bb14c422adb579f1dbf4f3886c5cfa3bb8cc4` (r:2 w:0)
+	// Storage: `DdcCustomers::ClusterLedger` (r:0 w:1)
+	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	fn migration_v4_ledgers_step() -> Weight {
+		Weight::from_parts(19_000_000_u64, 0)
+			.saturating_add(T::DbWeight::get().reads(6_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
 }
 
 // For backwards compatibility and tests
@@ -213,6 +225,17 @@ impl WeightInfo for () {
 	fn migration_v3_buckets_step() -> Weight {
 		Weight::from_parts(8_000_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+	// Storage: `DdcClusters::Clusters` (r:4 w:0)
+	// Proof: `DdcClusters::Clusters` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	// Storage: UNKNOWN KEY `0xaffb44e1082c7d59adbb5ebdf73bb14c422adb579f1dbf4f3886c5cfa3bb8cc4` (r:2 w:0)
+	// Proof: UNKNOWN KEY `0xaffb44e1082c7d59adbb5ebdf73bb14c422adb579f1dbf4f3886c5cfa3bb8cc4` (r:2 w:0)
+	// Storage: `DdcCustomers::ClusterLedger` (r:0 w:1)
+	// Proof: `DdcCustomers::ClusterLedger` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	fn migration_v4_ledgers_step() -> Weight {
+		Weight::from_parts(19_000_000_u64, 0)
+			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 }

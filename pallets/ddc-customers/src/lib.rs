@@ -130,7 +130,7 @@ pub mod pallet {
 
 	/// The current storage version.
 	const STORAGE_VERSION: frame_support::traits::StorageVersion =
-		frame_support::traits::StorageVersion::new(3);
+		frame_support::traits::StorageVersion::new(4);
 
 	#[pallet::pallet]
 	#[pallet::storage_version(STORAGE_VERSION)]
@@ -155,10 +155,6 @@ pub mod pallet {
 		type ClusterCreator: ClusterCreator<Self::AccountId, BlockNumberFor<Self>, BalanceOf<Self>>;
 		type WeightInfo: WeightInfo;
 	}
-
-	// #[pallet::storage]
-	// pub type Ledger<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId,
-	// CustomerLedger<T>>;
 
 	#[pallet::storage]
 	pub type ClusterLedger<T: Config> =

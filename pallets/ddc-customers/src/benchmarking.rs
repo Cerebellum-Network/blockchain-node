@@ -281,4 +281,27 @@ mod benchmarks {
 
 		Ok(())
 	}
+
+	#[benchmark]
+	fn migration_v4_ledgers_step() -> Result<(), BenchmarkError> {
+		use crate::{
+			migrations::v4_mbm::{LazyMigrationV3ToV4, Ledger as V3Ledgers},
+			ClusterLedger as V4Ledgers,
+		};
+
+		let setup = LazyMigrationV3ToV4::<T>::setup_benchmark_env_for_migration();
+		assert_eq!(V3Ledgers::<T>::iter().count(), 1);
+
+		#[block]
+		{
+			LazyMigrationV3ToV4::<T>::ledgers_step(None, None);
+		}
+
+		assert_eq!(V4Ledgers::<T>::iter_values().count(), 1);
+		let ledger = V4Ledgers::<T>::get(&setup.cluster_id, &setup.ledger_owner);
+
+		assert!(ledger.is_some());
+
+		Ok(())
+	}
 }

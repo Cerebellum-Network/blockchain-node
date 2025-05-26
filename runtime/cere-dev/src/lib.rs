@@ -1400,6 +1400,7 @@ impl pallet_migrations::Config for Runtime {
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	type Migrations = (
 		pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
+		pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
 		pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
 	);
 	// Benchmarks need mocked migrations to guarantee that they succeed.
@@ -1626,7 +1627,7 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 
 parameter_types! {
-			pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
+	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
 
 type Migrations = ();

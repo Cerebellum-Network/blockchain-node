@@ -1420,6 +1420,7 @@ impl pallet_migrations::Config for Runtime {
 		// Migrations for Customers and Node on QANET.
 		// DO NOT EXECUTE THEM ON TESTNET/MAINNET BEFORE APPLYING DAC v5 !.
 		pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
+		pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
 		pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
 	);
 	// Benchmarks need mocked migrations to guarantee that they succeed.
@@ -1693,6 +1694,7 @@ pub mod migrations {
 		pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>,
 		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
+
 		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
 	);
 }

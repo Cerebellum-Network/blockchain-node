@@ -308,7 +308,6 @@ pub mod v2_mbm {
 			// migration cannot be complete.
 			let required = match &cursor {
 				Some(state) => Self::required_weight(&state),
-				// Worst case weight for `nodes_step`.
 				None => T::WeightInfo::migration_v2_nodes_step(),
 			};
 			if meter.remaining().any_lt(required) {
@@ -320,7 +319,6 @@ pub mod v2_mbm {
 				// scenario.
 				let required_weight = match &cursor {
 					Some(state) => Self::required_weight(&state),
-					// Worst case weight for `nodes_step`.
 					None => T::WeightInfo::migration_v2_nodes_step(),
 				};
 				if !meter.can_consume(required_weight) {
@@ -328,13 +326,9 @@ pub mod v2_mbm {
 				}
 
 				let next = match &cursor {
-					// At first, migrate any authorities.
 					None => Self::nodes_step(None),
-					// Migrate any remaining authorities.
 					Some(MigrationState::MigratingNodes(maybe_last_node)) =>
 						Self::nodes_step(Some(maybe_last_node)),
-					// After the last obsolete username was cleared from storage, the migration is
-					// done.
 					Some(MigrationState::Finished) => {
 						StorageVersion::new(Self::id().version_to as u16).put::<Pallet<T>>();
 						return Ok(None);
