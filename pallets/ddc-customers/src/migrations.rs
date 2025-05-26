@@ -4,6 +4,7 @@ use log::info;
 use super::*;
 
 const LOG_TARGET: &str = "ddc-customers";
+pub const PALLET_MIGRATIONS_ID: &[u8; 20] = b"pallet-ddc-customers";
 
 pub mod v0 {
 	use frame_support::pallet_prelude::*;
@@ -417,6 +418,189 @@ pub mod v3 {
 			);
 
 			Ok(())
+		}
+	}
+}
+
+pub mod v3_mbm {
+	use frame_support::{
+		migrations::{MigrationId, SteppedMigration, SteppedMigrationError},
+		pallet_prelude::*,
+		weights::WeightMeter,
+	};
+
+	use super::*;
+
+	/// Progressive states of a migration. The migration starts with the first variant and ends with
+	/// the last.
+	#[derive(Decode, Encode, MaxEncodedLen, Eq, PartialEq, Debug)]
+	pub enum MigrationState {
+		MigratingBuckets(BucketId),
+		Finished,
+	}
+
+	pub struct LazyMigrationV2ToV3<T: Config>(PhantomData<T>);
+
+	impl<T: Config> SteppedMigration for LazyMigrationV2ToV3<T> {
+		type Cursor = MigrationState;
+		type Identifier = MigrationId<20>;
+
+		fn id() -> Self::Identifier {
+			MigrationId { pallet_id: *PALLET_MIGRATIONS_ID, version_from: 2, version_to: 3 }
+		}
+
+		fn step(
+			mut cursor: Option<Self::Cursor>,
+			meter: &mut WeightMeter,
+		) -> Result<Option<Self::Cursor>, SteppedMigrationError> {
+			info!(
+				target: LOG_TARGET,
+				"Step in v3 migration cursor={:?}", cursor
+			);
+
+			if Pallet::<T>::on_chain_storage_version() != Self::id().version_from as u16 {
+				return Ok(None);
+			}
+
+			// Check that we have enough weight for at least the next step. If we don't, then the
+			// migration cannot be complete.
+			let required = match &cursor {
+				Some(state) => Self::required_weight(&state),
+				// Worst case weight for `authority_step`.
+				// None => T::WeightInfo::migration_v2_authority_step(),
+				None => Weight::from_parts(10_000_000_u64, 0),
+			};
+			if meter.remaining().any_lt(required) {
+				return Err(SteppedMigrationError::InsufficientWeight { required });
+			}
+
+			loop {
+				// Check that we would have enough weight to perform this step in the worst case
+				// scenario.
+				let required_weight = match &cursor {
+					Some(state) => Self::required_weight(&state),
+					// Worst case weight for `authority_step`.
+
+					// None => T::WeightInfo::migration_v2_authority_step(),
+					None => Weight::from_parts(10_000_000_u64, 0),
+				};
+				if !meter.can_consume(required_weight) {
+					break;
+				}
+
+				let next = match &cursor {
+					// At first, migrate any authorities.
+					None => Self::buckets_step(None),
+					// Migrate any remaining authorities.
+					Some(MigrationState::MigratingBuckets(maybe_last_bucket)) =>
+						Self::buckets_step(Some(maybe_last_bucket)),
+					// After the last obsolete username was cleared from storage, the migration is
+					// done.
+					Some(MigrationState::Finished) => {
+						StorageVersion::new(Self::id().version_to as u16).put::<Pallet<T>>();
+						return Ok(None);
+					},
+				};
+
+				cursor = Some(next);
+				meter.consume(required_weight);
+			}
+
+			Ok(cursor)
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
+			info!(
+				target: LOG_TARGET,
+				"-!--> PRE-CHECK Step in v3 migration <--!-"
+			);
+
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+			let current_version = Pallet::<T>::in_code_storage_version();
+
+			info!(
+				target: LOG_TARGET,
+				"Executing `pre_upgrade` check of v3 migration with current storage version {:?} / onchain {:?}",
+				current_version,
+				on_chain_version
+			);
+
+			let prev_bucket_id = BucketsCount::<T>::get();
+			let prev_count = v2::Buckets::<T>::iter().count();
+
+			Ok((prev_bucket_id as u64, prev_count as u64).encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), DispatchError> {
+			info!(
+				target: LOG_TARGET,
+				"=!==> POST-CHECK Step in v3 migration <==!="
+			);
+
+			let (prev_bucket_id, prev_count): (u64, u64) = Decode::decode(&mut &prev_state[..])
+				.expect("pre_upgrade provides a valid state; qed");
+
+			info!(
+				target: LOG_TARGET,
+				"Executing post check of v3 migration prev_count={:?}, prev_bucket_id={:?} ...", prev_count, prev_bucket_id
+			);
+
+			let post_bucket_id = BucketsCount::<T>::get();
+			ensure!(
+				prev_bucket_id == post_bucket_id,
+				"the last bucket ID before and after the v3 migration should be the same"
+			);
+
+			let post_count = v3::Buckets::<T>::iter().count() as u64;
+			ensure!(
+				prev_count == post_count,
+				"the bucket count before and after the v3 migration should be the same"
+			);
+
+			let current_version = Pallet::<T>::in_code_storage_version();
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+
+			frame_support::ensure!(current_version == 3, "must_upgrade");
+
+			ensure!(
+				current_version == on_chain_version,
+				"the current_version and on_chain_version should be the same after the v3 migration"
+			);
+
+			Ok(())
+		}
+	}
+
+	impl<T: Config> LazyMigrationV2ToV3<T> {
+		// Migrate one entry from `UsernameAuthorities` to `AuthorityOf`.
+		pub(crate) fn buckets_step(maybe_last_key: Option<&BucketId>) -> MigrationState {
+			let mut iter = if let Some(last_key) = maybe_last_key {
+				v2::Buckets::<T>::iter_from(v2::Buckets::<T>::hashed_key_for(last_key))
+			} else {
+				v2::Buckets::<T>::iter()
+			};
+			if let Some((bucket_id, bucket_v2)) = iter.next() {
+				let bucket_v3 = v3::Bucket {
+					bucket_id: bucket_v2.bucket_id,
+					owner_id: bucket_v2.owner_id,
+					cluster_id: bucket_v2.cluster_id,
+					is_public: bucket_v2.is_public,
+					is_removed: bucket_v2.is_removed,
+				};
+				v3::Buckets::<T>::insert(&bucket_id, bucket_v3);
+				MigrationState::MigratingBuckets(bucket_id)
+			} else {
+				MigrationState::Finished
+			}
+		}
+
+		pub(crate) fn required_weight(step: &MigrationState) -> Weight {
+			match step {
+				MigrationState::MigratingBuckets(_) => Weight::from_parts(10_000_000_u64, 0),
+				MigrationState::Finished => Weight::zero(),
+			}
 		}
 	}
 }

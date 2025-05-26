@@ -1416,7 +1416,12 @@ parameter_types! {
 impl pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = pallet_identity::migration::v2::LazyMigrationV1ToV2<Runtime>;
+	type Migrations = (
+		// Migrations for Customers and Node on QANET.
+		// DO NOT EXECUTE THEM ON TESTNET/MAINNET BEFORE APPLYING DAC v5 !.
+		pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
+		pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
+	);
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
@@ -1427,6 +1432,7 @@ impl pallet_migrations::Config for Runtime {
 	type MaxServiceWeight = MbmServiceWeight;
 	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
 }
+
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1654,11 +1660,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 	// migrations::Unreleased,
 // );
 
-// Migrations for DAC and Payouts on QANET
-type Migrations = (
-	pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>,
-	pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>,
-);
+type Migrations = ();
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();

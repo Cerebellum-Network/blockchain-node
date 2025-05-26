@@ -15,6 +15,7 @@ use super::*;
 use crate::{storage_node::StorageNodeProps, ClusterId};
 
 const LOG_TARGET: &str = "ddc-customers";
+pub const PALLET_MIGRATIONS_ID: &[u8; 16] = b"pallet-ddc-nodes";
 
 pub mod v0 {
 	use frame_support::pallet_prelude::*;
@@ -259,6 +260,169 @@ pub mod v2 {
 			);
 
 			Ok(())
+		}
+	}
+}
+
+pub mod v2_mbm {
+	use frame_support::{
+		migrations::{MigrationId, SteppedMigration, SteppedMigrationError},
+		pallet_prelude::*,
+		weights::WeightMeter,
+	};
+
+	use super::*;
+
+	/// Progressive states of a migration. The migration starts with the first variant and ends with
+	/// the last.
+	#[derive(Decode, Encode, MaxEncodedLen, Eq, PartialEq, Debug)]
+	pub enum MigrationState {
+		MigratingNodes(StorageNodePubKey),
+		Finished,
+	}
+
+	pub struct LazyMigrationV1ToV2<T: Config>(PhantomData<T>);
+
+	impl<T: Config> SteppedMigration for LazyMigrationV1ToV2<T> {
+		type Cursor = MigrationState;
+		type Identifier = MigrationId<16>;
+
+		fn id() -> Self::Identifier {
+			MigrationId { pallet_id: *PALLET_MIGRATIONS_ID, version_from: 1, version_to: 2 }
+		}
+
+		fn step(
+			mut cursor: Option<Self::Cursor>,
+			meter: &mut WeightMeter,
+		) -> Result<Option<Self::Cursor>, SteppedMigrationError> {
+			info!(
+				target: LOG_TARGET,
+				"Step in v2 migration cursor={:?}", cursor
+			);
+
+			if Pallet::<T>::on_chain_storage_version() != Self::id().version_from as u16 {
+				return Ok(None);
+			}
+
+			// Check that we have enough weight for at least the next step. If we don't, then the
+			// migration cannot be complete.
+			let required = match &cursor {
+				Some(state) => Self::required_weight(&state),
+				// Worst case weight for `authority_step`.
+				// None => T::WeightInfo::migration_v2_authority_step(),
+				None => Weight::from_parts(10_000_000_u64, 0),
+			};
+			if meter.remaining().any_lt(required) {
+				return Err(SteppedMigrationError::InsufficientWeight { required });
+			}
+
+			loop {
+				// Check that we would have enough weight to perform this step in the worst case
+				// scenario.
+				let required_weight = match &cursor {
+					Some(state) => Self::required_weight(&state),
+					// Worst case weight for `authority_step`.
+
+					// None => T::WeightInfo::migration_v2_authority_step(),
+					None => Weight::from_parts(10_000_000_u64, 0),
+				};
+				if !meter.can_consume(required_weight) {
+					break;
+				}
+
+				let next = match &cursor {
+					// At first, migrate any authorities.
+					None => Self::nodes_step(None),
+					// Migrate any remaining authorities.
+					Some(MigrationState::MigratingNodes(maybe_last_node)) =>
+						Self::nodes_step(Some(maybe_last_node)),
+					// After the last obsolete username was cleared from storage, the migration is
+					// done.
+					Some(MigrationState::Finished) => {
+						StorageVersion::new(Self::id().version_to as u16).put::<Pallet<T>>();
+						return Ok(None);
+					},
+				};
+
+				cursor = Some(next);
+				meter.consume(required_weight);
+			}
+
+			Ok(cursor)
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
+			info!(
+				target: LOG_TARGET,
+				"-*--> PRE-CHECK Step in v2 migration <--*-"
+			);
+
+			let prev_count = v1::StorageNodes::<T>::iter().count();
+			Ok((prev_count as u64).encode())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), DispatchError> {
+			info!(
+				target: LOG_TARGET,
+				"=*==> POST-CHECK Step in v2 migration <==*="
+			);
+
+			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
+				.expect("pre_upgrade provides a valid state; qed");
+
+			info!(
+				target: LOG_TARGET,
+				"Executing post check of v2 migration prev_count={:?} ...", prev_count
+			);
+
+			let post_count = v2::StorageNodes::<T>::iter().count() as u64;
+			ensure!(
+				prev_count == post_count,
+				"the storage node count before and after the v2 migration should be the same"
+			);
+
+			let current_version = Pallet::<T>::in_code_storage_version();
+			let on_chain_version = Pallet::<T>::on_chain_storage_version();
+
+			ensure!(current_version == 2, "must_upgrade");
+			ensure!(
+				current_version == on_chain_version,
+				"after migration, the current_version and on_chain_version should be the same in v2 migration"
+			);
+
+			Ok(())
+		}
+	}
+
+	impl<T: Config> LazyMigrationV1ToV2<T> {
+		// Migrate one entry from `UsernameAuthorities` to `AuthorityOf`.
+		pub(crate) fn nodes_step(maybe_last_key: Option<&StorageNodePubKey>) -> MigrationState {
+			let mut iter = if let Some(last_key) = maybe_last_key {
+				v1::StorageNodes::<T>::iter_from(v1::StorageNodes::<T>::hashed_key_for(last_key))
+			} else {
+				v1::StorageNodes::<T>::iter()
+			};
+			if let Some((node_key, node_v1)) = iter.next() {
+				let node_v2 = v2::StorageNode {
+					pub_key: node_v1.pub_key,
+					provider_id: node_v1.provider_id,
+					cluster_id: node_v1.cluster_id,
+					props: node_v1.props,
+				};
+				v2::StorageNodes::<T>::insert(&node_key, node_v2);
+				MigrationState::MigratingNodes(node_key)
+			} else {
+				MigrationState::Finished
+			}
+		}
+
+		pub(crate) fn required_weight(step: &MigrationState) -> Weight {
+			match step {
+				MigrationState::MigratingNodes(_) => Weight::from_parts(10_000_000_u64, 0),
+				MigrationState::Finished => Weight::zero(),
+			}
 		}
 	}
 }
