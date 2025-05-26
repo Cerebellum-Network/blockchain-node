@@ -308,9 +308,8 @@ pub mod v2_mbm {
 			// migration cannot be complete.
 			let required = match &cursor {
 				Some(state) => Self::required_weight(&state),
-				// Worst case weight for `authority_step`.
-				// None => T::WeightInfo::migration_v2_authority_step(),
-				None => Weight::from_parts(10_000_000_u64, 0),
+				// Worst case weight for `nodes_step`.
+				None => T::WeightInfo::migration_v2_nodes_step(),
 			};
 			if meter.remaining().any_lt(required) {
 				return Err(SteppedMigrationError::InsufficientWeight { required });
@@ -321,10 +320,8 @@ pub mod v2_mbm {
 				// scenario.
 				let required_weight = match &cursor {
 					Some(state) => Self::required_weight(&state),
-					// Worst case weight for `authority_step`.
-
-					// None => T::WeightInfo::migration_v2_authority_step(),
-					None => Weight::from_parts(10_000_000_u64, 0),
+					// Worst case weight for `nodes_step`.
+					None => T::WeightInfo::migration_v2_nodes_step(),
 				};
 				if !meter.can_consume(required_weight) {
 					break;
@@ -355,7 +352,7 @@ pub mod v2_mbm {
 		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
 			info!(
 				target: LOG_TARGET,
-				"-*--> PRE-CHECK Step in v2 migration <--*-"
+				"PRE-CHECK Step in v2 migration"
 			);
 
 			let prev_count = v1::StorageNodes::<T>::iter().count();
@@ -366,7 +363,7 @@ pub mod v2_mbm {
 		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), DispatchError> {
 			info!(
 				target: LOG_TARGET,
-				"=*==> POST-CHECK Step in v2 migration <==*="
+				"POST-CHECK Step in v2 migration"
 			);
 
 			let prev_count: u64 = Decode::decode(&mut &prev_state[..])
@@ -420,9 +417,47 @@ pub mod v2_mbm {
 
 		pub(crate) fn required_weight(step: &MigrationState) -> Weight {
 			match step {
-				MigrationState::MigratingNodes(_) => Weight::from_parts(10_000_000_u64, 0),
+				MigrationState::MigratingNodes(_) => T::WeightInfo::migration_v2_nodes_step(),
 				MigrationState::Finished => Weight::zero(),
 			}
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	pub(crate) struct BenchmarkingSetupV1ToV2 {
+		pub(crate) node_key: StorageNodePubKey,
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	impl<T: Config> LazyMigrationV1ToV2<T> {
+		pub(crate) fn setup_benchmark_env_for_migration() -> BenchmarkingSetupV1ToV2 {
+			use ddc_primitives::StorageNodeMode;
+
+			let node_key = StorageNodePubKey::from([0; 32]);
+
+			let provider_id: T::AccountId = frame_benchmarking::account("account", 1, 0);
+			let cluster_id = ClusterId::from([0; 20]);
+			let props = StorageNodeProps {
+				mode: StorageNodeMode::Storage,
+				host: vec![3u8; 255].try_into().unwrap(),
+				domain: vec![4u8; 255].try_into().unwrap(),
+				ssl: true,
+				http_port: 45000u16,
+				grpc_port: 55000u16,
+				p2p_port: 65000u16,
+			};
+
+			let node = v1::StorageNode {
+				pub_key: node_key.clone(),
+				provider_id,
+				cluster_id: Some(cluster_id),
+				props,
+				total_usage: None,
+			};
+
+			v1::StorageNodes::<T>::insert(&node_key, &node);
+
+			BenchmarkingSetupV1ToV2 { node_key }
 		}
 	}
 }

@@ -1692,6 +1692,8 @@ pub mod migrations {
 		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
 		pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>,
+		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
+		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
 	);
 }
 

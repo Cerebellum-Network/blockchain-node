@@ -466,7 +466,7 @@ pub mod v3_mbm {
 			// migration cannot be complete.
 			let required = match &cursor {
 				Some(state) => Self::required_weight(&state),
-				// Worst case weight for `authority_step`.
+				// Worst case weight for `buckets_step`.
 				None => T::WeightInfo::migration_v3_buckets_step(),
 			};
 			if meter.remaining().any_lt(required) {
@@ -478,7 +478,7 @@ pub mod v3_mbm {
 				// scenario.
 				let required_weight = match &cursor {
 					Some(state) => Self::required_weight(&state),
-					// Worst case weight for `authority_step`.
+					// Worst case weight for `buckets_step`.
 					None => T::WeightInfo::migration_v3_buckets_step(),
 				};
 				if !meter.can_consume(required_weight) {
@@ -510,7 +510,7 @@ pub mod v3_mbm {
 		fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::TryRuntimeError> {
 			info!(
 				target: LOG_TARGET,
-				"-!--> PRE-CHECK Step in v3 migration <--!-"
+				"PRE-CHECK Step in v3 migration"
 			);
 
 			let on_chain_version = Pallet::<T>::on_chain_storage_version();
@@ -533,7 +533,7 @@ pub mod v3_mbm {
 		fn post_upgrade(prev_state: Vec<u8>) -> Result<(), DispatchError> {
 			info!(
 				target: LOG_TARGET,
-				"=!==> POST-CHECK Step in v3 migration <==!="
+				"POST-CHECK Step in v3 migration"
 			);
 
 			let (prev_bucket_id, prev_count): (u64, u64) = Decode::decode(&mut &prev_state[..])
@@ -602,13 +602,13 @@ pub mod v3_mbm {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	pub(crate) struct BenchmarkingSetup {
+	pub(crate) struct BenchmarkingSetupV2ToV3 {
 		pub(crate) bucket_id: BucketId,
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
 	impl<T: Config> LazyMigrationV2ToV3<T> {
-		pub(crate) fn setup_benchmark_env_for_migration() -> BenchmarkingSetup {
+		pub(crate) fn setup_benchmark_env_for_migration() -> BenchmarkingSetupV2ToV3 {
 			let bucket_id = 0;
 			let owner_id: T::AccountId = frame_benchmarking::account("account", 1, 0);
 			let cluster_id = ClusterId::from([0; 20]);
@@ -624,7 +624,7 @@ pub mod v3_mbm {
 
 			v2::Buckets::<T>::insert(&bucket_id, &bucket);
 
-			BenchmarkingSetup { bucket_id }
+			BenchmarkingSetupV2ToV3 { bucket_id }
 		}
 	}
 }
