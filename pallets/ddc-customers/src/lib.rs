@@ -334,6 +334,10 @@ pub mod pallet {
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
+			ensure!(
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::cluster_exists(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
 			<Self as CustomerDepositor<T>>::deposit(owner, cluster_id, value.saturated_into())?;
 			Ok(())
 		}
@@ -352,6 +356,10 @@ pub mod pallet {
 			#[pallet::compact] max_additional: BalanceOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
+			ensure!(
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::cluster_exists(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
 			<Self as CustomerDepositor<T>>::deposit_extra(
 				owner,
 				cluster_id,
@@ -378,6 +386,10 @@ pub mod pallet {
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResult {
 			let funder = ensure_signed(origin)?;
+			ensure!(
+				<T::ClusterProtocol as ClusterQuery<T::AccountId>>::cluster_exists(&cluster_id),
+				Error::<T>::ClusterDoesNotExist
+			);
 			<Self as CustomerDepositor<T>>::deposit_for(
 				funder,
 				owner,
