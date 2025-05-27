@@ -424,7 +424,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 			let mut ledger =
-				ClusterLedger::<T>::get(&cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
+				ClusterLedger::<T>::get(cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
 			ensure!(
 				ledger.unlocking.len() < MaxUnlockingChunks::get() as usize,
 				Error::<T>::NoMoreChunks,
@@ -462,7 +462,7 @@ pub mod pallet {
 						.map_err(|_| Error::<T>::NoMoreChunks)?;
 				};
 
-				<ClusterLedger<T>>::insert(&cluster_id, &owner, &ledger);
+				<ClusterLedger<T>>::insert(cluster_id, &owner, &ledger);
 
 				Self::deposit_event(Event::<T>::InitialDepositUnlock {
 					cluster_id,
@@ -491,7 +491,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 			let mut ledger =
-				ClusterLedger::<T>::get(&cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
+				ClusterLedger::<T>::get(cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
 			let (owner, old_total) = (owner.clone(), ledger.total);
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
@@ -510,7 +510,7 @@ pub mod pallet {
 				log::debug!("Updating ledger");
 				// This was the consequence of a partial deposit unlock. just update the ledger and
 				// move on.
-				<ClusterLedger<T>>::insert(&cluster_id, &owner, &ledger);
+				<ClusterLedger<T>>::insert(cluster_id, &owner, &ledger);
 				// This is only an update, so we use less overall weight.
 				Some(<T as pallet::Config>::WeightInfo::withdraw_unlocked_deposit_update())
 			};
@@ -616,7 +616,7 @@ pub mod pallet {
 			funder: Option<&T::AccountId>,
 		) -> DispatchResult {
 			<T as pallet::Config>::Currency::transfer(
-				&funder.unwrap_or(owner),
+				funder.unwrap_or(owner),
 				&Self::cluster_vault_id(cluster_id),
 				amount,
 				ExistenceRequirement::KeepAlive,
@@ -731,7 +731,7 @@ pub mod pallet {
 		) -> Result<u128, DispatchError> {
 			let actually_charged: BalanceOf<T>;
 			let mut ledger =
-				ClusterLedger::<T>::get(&cluster_id, &bucket_owner).ok_or(Error::<T>::NotOwner)?;
+				ClusterLedger::<T>::get(cluster_id, &bucket_owner).ok_or(Error::<T>::NotOwner)?;
 			let amount_to_deduct = amount.saturated_into::<BalanceOf<T>>();
 
 			if ledger.active >= amount_to_deduct {
@@ -769,7 +769,7 @@ pub mod pallet {
 				ExistenceRequirement::AllowDeath,
 			)?;
 
-			<ClusterLedger<T>>::insert(&cluster_id, &bucket_owner, &ledger); // update state after successful transfer
+			<ClusterLedger<T>>::insert(cluster_id, &bucket_owner, &ledger); // update state after successful transfer
 			Self::deposit_event(Event::<T>::Charged {
 				cluster_id,
 				owner_id: bucket_owner,
@@ -789,7 +789,7 @@ pub mod pallet {
 		) -> Result<(), DispatchError> {
 			let value = amount.saturated_into::<BalanceOf<T>>();
 
-			if <ClusterLedger<T>>::contains_key(&cluster_id, &owner) {
+			if <ClusterLedger<T>>::contains_key(cluster_id, &owner) {
 				Err(Error::<T>::AlreadyPaired)?
 			}
 
@@ -828,7 +828,7 @@ pub mod pallet {
 		) -> Result<(), DispatchError> {
 			let max_additional = amount.saturated_into::<BalanceOf<T>>();
 			let mut ledger =
-				ClusterLedger::<T>::get(&cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
+				ClusterLedger::<T>::get(cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
 
 			let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
 			let extra = owner_balance.min(max_additional);
@@ -861,7 +861,7 @@ pub mod pallet {
 			cluster_id: ClusterId,
 			amount: u128,
 		) -> Result<(), DispatchError> {
-			if !<ClusterLedger<T>>::contains_key(&cluster_id, &owner) {
+			if !<ClusterLedger<T>>::contains_key(cluster_id, &owner) {
 				let existential_deposit = <T as pallet::Config>::Currency::minimum_balance();
 				let mut deposit_amount = amount.saturated_into::<BalanceOf<T>>();
 
@@ -925,7 +925,7 @@ pub mod pallet {
 				}
 
 				let mut ledger =
-					ClusterLedger::<T>::get(&cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
+					ClusterLedger::<T>::get(cluster_id, &owner).ok_or(Error::<T>::NotOwner)?;
 
 				ledger.total = ledger
 					.total

@@ -276,7 +276,7 @@ mod benchmarks {
 		}
 
 		assert_eq!(V3Buckets::<T>::iter().count(), 1);
-		let bucket = V3Buckets::<T>::get(&setup.bucket_id);
+		let bucket = V3Buckets::<T>::get(setup.bucket_id);
 		assert!(bucket.is_some());
 
 		Ok(())
@@ -298,7 +298,7 @@ mod benchmarks {
 		}
 
 		assert_eq!(V4Ledgers::<T>::iter_values().count(), 1);
-		let ledger = V4Ledgers::<T>::get(&setup.cluster_id, &setup.ledger_owner);
+		let ledger = V4Ledgers::<T>::get(setup.cluster_id, &setup.ledger_owner);
 
 		assert!(ledger.is_some());
 
