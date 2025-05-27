@@ -1,7 +1,7 @@
-#![allow(clippy::needless_lifetimes)] // ToDo
+#![allow(clippy::needless_lifetimes)]
 
 use codec::{Decode, Encode};
-use ddc_primitives::{NodeParams, NodePubKey, NodeType, NodeUsage};
+use ddc_primitives::{NodeParams, NodePubKey, NodeType};
 use scale_info::TypeInfo;
 use sp_runtime::RuntimeDebug;
 
@@ -28,11 +28,9 @@ pub trait NodeTrait<T: frame_system::Config> {
 	fn get_props(&self) -> NodeProps;
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError>;
 	fn set_params(&mut self, props: NodeParams) -> Result<(), NodeError>;
-	fn set_total_usage(&mut self, usage: Option<NodeUsage>);
 	fn get_cluster_id(&self) -> &Option<ClusterId>;
 	fn set_cluster_id(&mut self, cluster_id: Option<ClusterId>);
 	fn get_type(&self) -> NodeType;
-	fn get_total_usage(&self) -> &Option<NodeUsage>;
 }
 
 impl<T: frame_system::Config> Node<T> {
@@ -64,7 +62,6 @@ impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
 			Node::Storage(node) => node.get_props(),
 		}
 	}
-
 	fn set_props(&mut self, props: NodeProps) -> Result<(), NodeError> {
 		match self {
 			Node::Storage(node) => node.set_props(props),
@@ -75,21 +72,9 @@ impl<T: frame_system::Config> NodeTrait<T> for Node<T> {
 			Node::Storage(node) => node.set_params(params),
 		}
 	}
-
-	fn set_total_usage(&mut self, usage: Option<NodeUsage>) {
-		match self {
-			Node::Storage(node) => node.set_total_usage(usage),
-		}
-	}
-
 	fn get_cluster_id(&self) -> &Option<ClusterId> {
 		match &self {
 			Node::Storage(node) => node.get_cluster_id(),
-		}
-	}
-	fn get_total_usage(&self) -> &Option<NodeUsage> {
-		match &self {
-			Node::Storage(node) => node.get_total_usage(),
 		}
 	}
 	fn set_cluster_id(&mut self, cluster_id: Option<ClusterId>) {
