@@ -1630,7 +1630,7 @@ parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
 
-type Migrations = ();
+type Migrations = (pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>,);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<

@@ -9343,7 +9343,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat/ddc-customer-balance-per-cluster#218877e2f9f07d794924717b5e402b81ab2abe6b"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=feat/ddc-customer-balance-per-cluster#2554e0bb5ef69f8c4aec24ab8f29557be8ffb4b9"
 dependencies = [
  "array-bytes",
  "base64ct",

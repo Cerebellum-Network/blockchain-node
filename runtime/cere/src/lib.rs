@@ -1661,7 +1661,9 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // 	// migrations::Unreleased,
 // );
 
-type Migrations = ();
+// Migrations for Customers and Node on QANET.
+// DO NOT EXECUTE THEM ON TESTNET/MAINNET BEFORE APPLYING DAC v5 !.
+type Migrations = (pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>,);
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
@@ -1679,7 +1681,7 @@ pub mod migrations {
 		}
 	}
 
-	/// Migrations, unreleased to TESTNET or MAINNET
+	/// Migrations, unreleased to TESTNET and MAINNET
 	pub type Unreleased = (
 		pallet_ddc_customers::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
@@ -1694,8 +1696,9 @@ pub mod migrations {
 		pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>,
 		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
-
+		// pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
 		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
+		pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>,
 	);
 }
 
