@@ -1586,6 +1586,7 @@ mod runtime {
 
 	#[runtime::pallet_index(50)]
 	pub type TokenGateway = pallet_token_gateway::Pallet<Runtime>;
+
 	// Migrations pallet
 	#[runtime::pallet_index(51)]
 	pub type MultiBlockMigrations = pallet_migrations;
