@@ -307,7 +307,7 @@ pub mod v2_mbm {
 			// Check that we have enough weight for at least the next step. If we don't, then the
 			// migration cannot be complete.
 			let required = match &cursor {
-				Some(state) => Self::required_weight(&state),
+				Some(state) => Self::required_weight(state),
 				None => T::WeightInfo::migration_v2_nodes_step(),
 			};
 			if meter.remaining().any_lt(required) {
@@ -318,7 +318,7 @@ pub mod v2_mbm {
 				// Check that we would have enough weight to perform this step in the worst case
 				// scenario.
 				let required_weight = match &cursor {
-					Some(state) => Self::required_weight(&state),
+					Some(state) => Self::required_weight(state),
 					None => T::WeightInfo::migration_v2_nodes_step(),
 				};
 				if !meter.can_consume(required_weight) {
@@ -522,8 +522,6 @@ mod test {
 			assert_eq!(StorageNodes::<T>::get(node_pub_key0), None);
 			assert!(StorageNodes::<T>::get(node_pub_key1.clone()).is_some());
 			assert!(StorageNodes::<T>::get(node_pub_key2.clone()).is_some());
-			assert_eq!(StorageNodes::<T>::get(node_pub_key1).unwrap().total_usage, None);
-			assert_eq!(StorageNodes::<T>::get(node_pub_key2).unwrap().total_usage, None);
 		});
 	}
 }

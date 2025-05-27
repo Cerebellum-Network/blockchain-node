@@ -1,3 +1,6 @@
+#![allow(clippy::unnecessary_unwrap)]
+#![allow(clippy::collapsible_else_if)]
+
 use frame_support::{storage_alias, traits::OnRuntimeUpgrade};
 use hex_literal::hex;
 use log::{info, warn};
@@ -383,7 +386,7 @@ pub mod v3 {
 			let prev_bucket_id = v3::BucketsCount::<T>::get();
 			let prev_count = v2::Buckets::<T>::iter().count();
 
-			Ok((prev_bucket_id as u64, prev_count as u64).encode())
+			Ok((prev_bucket_id, prev_count as u64).encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
@@ -466,7 +469,7 @@ pub mod v3_mbm {
 			// Check that we have enough weight for at least the next step. If we don't, then the
 			// migration cannot be complete.
 			let required = match &cursor {
-				Some(state) => Self::required_weight(&state),
+				Some(state) => Self::required_weight(state),
 				None => T::WeightInfo::migration_v3_buckets_step(),
 			};
 			if meter.remaining().any_lt(required) {
@@ -477,7 +480,7 @@ pub mod v3_mbm {
 				// Check that we would have enough weight to perform this step in the worst case
 				// scenario.
 				let required_weight = match &cursor {
-					Some(state) => Self::required_weight(&state),
+					Some(state) => Self::required_weight(state),
 					None => T::WeightInfo::migration_v3_buckets_step(),
 				};
 				if !meter.can_consume(required_weight) {
@@ -521,7 +524,7 @@ pub mod v3_mbm {
 			let prev_bucket_id = BucketsCount::<T>::get();
 			let prev_count = v2::Buckets::<T>::iter().count();
 
-			Ok((prev_bucket_id as u64, prev_count as u64).encode())
+			Ok((prev_bucket_id, prev_count as u64).encode())
 		}
 
 		#[cfg(feature = "try-runtime")]
@@ -580,7 +583,7 @@ pub mod v3_mbm {
 					is_public: bucket_v2.is_public,
 					is_removed: bucket_v2.is_removed,
 				};
-				v3::Buckets::<T>::insert(&bucket_id, bucket_v3);
+				v3::Buckets::<T>::insert(bucket_id, bucket_v3);
 				MigrationState::MigratingBuckets(bucket_id)
 			} else {
 				MigrationState::Finished
@@ -616,7 +619,7 @@ pub mod v3_mbm {
 				total_customers_usage: None,
 			};
 
-			v2::Buckets::<T>::insert(&bucket_id, &bucket);
+			v2::Buckets::<T>::insert(bucket_id, &bucket);
 
 			BenchmarkingSetupV2ToV3 { bucket_id }
 		}
@@ -679,7 +682,7 @@ pub mod v4_mbm {
 			// Check that we have enough weight for at least the next step. If we don't, then the
 			// migration cannot be complete.
 			let required = match &cursor {
-				Some(state) => Self::required_weight(&state),
+				Some(state) => Self::required_weight(state),
 				None => T::WeightInfo::migration_v4_ledgers_step(),
 			};
 			if meter.remaining().any_lt(required) {
@@ -690,7 +693,7 @@ pub mod v4_mbm {
 				// Check that we would have enough weight to perform this step in the worst case
 				// scenario.
 				let required_weight = match &cursor {
-					Some(state) => Self::required_weight(&state),
+					Some(state) => Self::required_weight(state),
 					None => T::WeightInfo::migration_v4_ledgers_step(),
 				};
 				if !meter.can_consume(required_weight) {
