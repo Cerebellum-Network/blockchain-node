@@ -66,22 +66,30 @@ jobs:
           sleep 5
         done
 
-    - name: Run benchmarks remotely
+    - name: Run benchmarks and tests remotely
       run: |
-        ssh -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP "bash -s" <<EOF
+        ssh -i id_rsa -o StrictHostKeyChecking=no -o ServerAliveInterval=30 root@$SERVER_IP "bash -s" <<EOF
         set -eux
-        export GH_TOKEN=${{ secrets.GH_READ_TOKEN }}
-        export BRANCH=${{ github.event.inputs.branch }}
+        export GH_TOKEN="${{ secrets.GH_READ_TOKEN }}"
+        export BRANCH="${{ github.event.inputs.branch }}"
 
-        apt update && apt install -y curl git build-essential jq
+        apt update && apt install -y \
+          curl git build-essential jq protobuf-compiler \
+          llvm-dev libclang-dev clang pkg-config libssl-dev
 
         curl https://sh.rustup.rs -sSf | bash -s -- -y
         source \$HOME/.cargo/env
 
+        rustup install 1.82.0
+        rustup default 1.82.0
+        rustup component add clippy rustfmt rust-src
+        rustup target add wasm32-unknown-unknown
+
         git config --global url."https://\${GH_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
         git clone --branch "\$BRANCH" --single-branch https://github.com/Cerebellum-Network/blockchain-node.git
         cd blockchain-node
-        cargo build --release --features=runtime-benchmarks
+
+        cargo build --release --features=runtime-benchmarks --verbose
 
         find pallets -type f -name weights.rs | while read file; do
           echo "Processing \$file"
@@ -100,17 +108,11 @@ jobs:
           scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallets/$dir/src/weights.rs weights/$dir/weights.rs
         done
 
-    - name: Upload artifact
+    - name: Upload weights.rs artifacts
       uses: actions/upload-artifact@v4
       with:
         name: weights-files
         path: weights/
-
-    - name: Cleanup Hetzner server and SSH key
-      if: always()
-      run: |
-        echo "Destroying server weights-${{ github.run_id }}"
-      shell: bash
 
     - name: Delete Hetzner server
       uses: jawher/action-hcloud@v1.50.0
