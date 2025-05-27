@@ -607,7 +607,7 @@ pub mod pallet {
 				&funder.unwrap_or(owner),
 				&Self::cluster_vault_id(cluster_id),
 				amount,
-				ExistenceRequirement::AllowDeath,
+				ExistenceRequirement::KeepAlive,
 			)?;
 			<ClusterLedger<T>>::insert(cluster_id, owner, ledger);
 
@@ -850,14 +850,34 @@ pub mod pallet {
 			amount: u128,
 		) -> Result<(), DispatchError> {
 			if !<ClusterLedger<T>>::contains_key(&cluster_id, &owner) {
-				let deposit_amount = amount.saturated_into::<BalanceOf<T>>();
-				if deposit_amount < <T as pallet::Config>::Currency::minimum_balance() {
+				let existential_deposit = <T as pallet::Config>::Currency::minimum_balance();
+				let mut deposit_amount = amount.saturated_into::<BalanceOf<T>>();
+
+				if deposit_amount < existential_deposit {
 					Err(Error::<T>::InsufficientDeposit)?
 				}
 
 				let funder_balance = <T as pallet::Config>::Currency::free_balance(&funder);
 				if funder_balance < deposit_amount {
-					return Err(Error::<T>::NotEnoughBalance.into());
+					Err(Error::<T>::NotEnoughBalance)?
+				}
+
+				let owner_balance = <T as pallet::Config>::Currency::free_balance(&owner);
+				if owner_balance < existential_deposit {
+					<T as pallet::Config>::Currency::transfer(
+						&funder,
+						&owner,
+						existential_deposit,
+						ExistenceRequirement::KeepAlive,
+					)?;
+
+					deposit_amount = deposit_amount
+						.checked_sub(&existential_deposit)
+						.ok_or(Error::<T>::InsufficientDeposit)?;
+
+					if deposit_amount < existential_deposit || funder_balance < deposit_amount {
+						Err(Error::<T>::InsufficientDeposit)?;
+					}
 				}
 
 				frame_system::Pallet::<T>::inc_consumers(&owner)

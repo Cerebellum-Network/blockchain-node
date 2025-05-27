@@ -201,7 +201,7 @@ fn deposit_for_works() {
 			Error::<Test>::InsufficientDeposit
 		);
 
-		// Deposit all tokens fails (should not kill account)
+		// Deposit all tokens fails
 		assert_noop!(
 			DdcCustomers::deposit_for(
 				RuntimeOrigin::signed(funder_account),
@@ -211,6 +211,27 @@ fn deposit_for_works() {
 			),
 			Error::<Test>::NotEnoughBalance
 		);
+
+		// Deposit with unsufficiect tokens for owner existensial deposit fails
+		let non_existing_account = 50;
+		assert_noop!(
+			DdcCustomers::deposit_for(
+				RuntimeOrigin::signed(funder_account),
+				non_existing_account,
+				cluster_id,
+				1_u128
+			),
+			Error::<Test>::InsufficientDeposit
+		);
+
+		// Deposit with sufficiect tokens for owner existensial deposit works
+		let non_existing_account = 50;
+		assert_ok!(DdcCustomers::deposit_for(
+			RuntimeOrigin::signed(funder_account),
+			non_existing_account,
+			cluster_id,
+			2_u128
+		));
 
 		let amount1 = 5000_u128;
 		// Deposited
