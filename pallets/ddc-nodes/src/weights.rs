@@ -31,6 +31,7 @@ pub trait WeightInfo {
 	fn create_node() -> Weight;
 	fn delete_node() -> Weight;
 	fn set_node_params() -> Weight;
+	fn migration_v2_nodes_step() -> Weight;
 }
 
 /// Weights for pallet_ddc_nodes using the Substrate node and recommended hardware.
@@ -59,6 +60,13 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+	// Storage: `DdcNodes::StorageNodes` (r:2 w:1)
+	// Proof: `DdcNodes::StorageNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	fn migration_v2_nodes_step() -> Weight {
+		Weight::from_parts(9_000_000_u64, 0)
+			.saturating_add(T::DbWeight::get().reads(2_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
 }
 
 // For backwards compatibility and tests
@@ -84,6 +92,13 @@ impl WeightInfo for () {
 	fn set_node_params() -> Weight {
 		Weight::from_parts(26_469_000_u64, 0)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+	// Storage: `DdcNodes::StorageNodes` (r:2 w:1)
+	// Proof: `DdcNodes::StorageNodes` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	fn migration_v2_nodes_step() -> Weight {
+		Weight::from_parts(9_000_000_u64, 0)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 }
