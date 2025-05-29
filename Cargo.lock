@@ -9286,7 +9286,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=fix/vault-exist-deposit#121a7a5cffbab4b9ac22b480b18c8aa78d2143e1"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#a19d05a157152a222b60eecec55710f81c223b67"
 dependencies = [
  "array-bytes",
  "byte-unit",
@@ -9343,7 +9343,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#ccea6c73b373f51eacf75ef76fe98be280f97d70"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#c12716336e96e2818b6927a45f4b119ae952402e"
 dependencies = [
  "array-bytes",
  "base64ct",
