@@ -35,7 +35,11 @@ fn create_bucket_works() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::BucketCreated { bucket_id: 1u64 }.into())
+		let cluster_id = ClusterId::from([
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		]);
+		System::assert_last_event(Event::BucketCreated { cluster_id, bucket_id: 1u64 }.into())
 	})
 }
 
@@ -56,14 +60,22 @@ fn create_two_buckets_works() {
 			bucket_1_params.clone()
 		));
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::BucketCreated { bucket_id: 1u64 }.into());
+		let cluster_id = ClusterId::from([
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		]);
+		System::assert_last_event(Event::BucketCreated { cluster_id, bucket_id: 1u64 }.into());
 		assert_ok!(DdcCustomers::create_bucket(
 			RuntimeOrigin::signed(account_1),
 			cluster_id,
 			bucket_2_params.clone()
 		));
 		assert_eq!(System::events().len(), 2);
-		System::assert_last_event(Event::BucketCreated { bucket_id: 2u64 }.into());
+		let cluster_id = ClusterId::from([
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		]);
+		System::assert_last_event(Event::BucketCreated { cluster_id, bucket_id: 2u64 }.into());
 
 		// Check storage
 		assert_eq!(DdcCustomers::buckets_count(), 2);
@@ -163,9 +175,13 @@ fn deposit_and_deposit_extra_works() {
 			})
 		);
 
+		let cluster_id = ClusterId::from([
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		]);
 		// Checking that event was emitted
 		System::assert_last_event(
-			Event::Deposited { owner_id: account_1, amount: extra_amount2 }.into(),
+			Event::Deposited { cluster_id, owner_id: account_1, amount: extra_amount2 }.into(),
 		);
 	})
 }
@@ -199,8 +215,14 @@ fn charge_content_owner_works() {
 			})
 		);
 
+		let cluster_id = ClusterId::from([
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		]);
 		// Checking that event was emitted
-		System::assert_last_event(Event::Deposited { owner_id: account_3, amount: deposit }.into());
+		System::assert_last_event(
+			Event::Deposited { cluster_id, owner_id: account_3, amount: deposit }.into(),
+		);
 
 		// successful transfer
 		let charge1 = 10;
@@ -227,9 +249,20 @@ fn charge_content_owner_works() {
 			})
 		);
 
+		let cluster_id = ClusterId::from([
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		]);
+
 		// Checking that event was emitted
 		System::assert_last_event(
-			Event::Charged { owner_id: account_3, charged, expected_to_charge: charged }.into(),
+			Event::Charged {
+				cluster_id,
+				owner_id: account_3,
+				charged,
+				expected_to_charge: charged,
+			}
+			.into(),
 		);
 
 		// failed transfer
@@ -245,9 +278,15 @@ fn charge_content_owner_works() {
 			})
 		);
 
+		let cluster_id = ClusterId::from([
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		]);
+
 		// Checking that event was emitted
 		System::assert_last_event(
 			Event::Charged {
+				cluster_id,
 				owner_id: account_3,
 				charged: deposit - charge1,
 				expected_to_charge: charge2,
@@ -363,7 +402,11 @@ fn set_bucket_params_works() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::BucketCreated { bucket_id: 1u64 }.into());
+		let cluster_id = ClusterId::from([
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		]);
+		System::assert_last_event(Event::BucketCreated { cluster_id, bucket_id: 1u64 }.into());
 
 		let bucket_id = 1;
 		let update_bucket_params = BucketParams { is_public: true };
@@ -387,7 +430,11 @@ fn set_bucket_params_works() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 2);
-		System::assert_last_event(Event::BucketUpdated { bucket_id }.into());
+		let cluster_id = ClusterId::from([
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		]);
+		System::assert_last_event(Event::BucketUpdated { cluster_id, bucket_id }.into());
 	})
 }
 
@@ -409,7 +456,12 @@ fn set_bucket_params_checks_work() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 1);
-		System::assert_last_event(Event::BucketCreated { bucket_id: 1u64 }.into());
+
+		let cluster_id = ClusterId::from([
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		]);
+		System::assert_last_event(Event::BucketCreated { cluster_id, bucket_id: 1u64 }.into());
 		let bucket_id = 1;
 
 		let non_existent_bucket_id = 2;
@@ -496,7 +548,11 @@ fn remove_bucket_works() {
 
 		// Checking that event was emitted
 		assert_eq!(System::events().len(), 2);
-		System::assert_last_event(Event::BucketRemoved { bucket_id: 1u64 }.into());
+		let cluster_id = ClusterId::from([
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+		]);
+		System::assert_last_event(Event::BucketRemoved { cluster_id, bucket_id: 1u64 }.into());
 
 		// Cannot remove bucket twice
 		assert_noop!(

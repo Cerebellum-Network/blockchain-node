@@ -185,20 +185,25 @@ pub mod pallet {
 		///
 		/// NOTE: This event is only emitted when funds are deposited via a dispatchable. Notably,
 		/// it will not be emitted for staking rewards when they are added to stake.
-		Deposited { owner_id: T::AccountId, amount: BalanceOf<T> },
+		Deposited { cluster_id: ClusterId, owner_id: T::AccountId, amount: BalanceOf<T> },
 		/// An account has initiated unlock for amount. \[owner, amount\]
-		InitialDepositUnlock { owner_id: T::AccountId, amount: BalanceOf<T> },
+		InitialDepositUnlock { cluster_id: ClusterId, owner_id: T::AccountId, amount: BalanceOf<T> },
 		/// An account has called `withdraw_unlocked_deposit` and removed unlocking chunks worth
 		/// `Balance` from the unlocking queue. \[owner, amount\]
-		Withdrawn { owner_id: T::AccountId, amount: BalanceOf<T> },
+		Withdrawn { cluster_id: ClusterId, owner_id: T::AccountId, amount: BalanceOf<T> },
 		/// The account has been charged for the usage
-		Charged { owner_id: T::AccountId, charged: BalanceOf<T>, expected_to_charge: BalanceOf<T> },
+		Charged {
+			cluster_id: ClusterId,
+			owner_id: T::AccountId,
+			charged: BalanceOf<T>,
+			expected_to_charge: BalanceOf<T>,
+		},
 		/// Bucket with specific id created
-		BucketCreated { bucket_id: BucketId },
+		BucketCreated { cluster_id: ClusterId, bucket_id: BucketId },
 		/// Bucket with specific id updated
-		BucketUpdated { bucket_id: BucketId },
+		BucketUpdated { cluster_id: ClusterId, bucket_id: BucketId },
 		/// Bucket with specific id marked as removed
-		BucketRemoved { bucket_id: BucketId },
+		BucketRemoved { cluster_id: ClusterId, bucket_id: BucketId },
 	}
 
 	#[pallet::error]
@@ -319,7 +324,12 @@ pub mod pallet {
 			<BucketsCount<T>>::set(cur_bucket_id);
 			<Buckets<T>>::insert(cur_bucket_id, bucket);
 
-			Self::deposit_event(Event::<T>::BucketCreated { bucket_id: cur_bucket_id });
+			let cluster_id = ClusterId::from([
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+			]);
+
+			Self::deposit_event(Event::<T>::BucketCreated { cluster_id, bucket_id: cur_bucket_id });
 
 			Ok(())
 		}
@@ -423,7 +433,13 @@ pub mod pallet {
 
 				<Ledger<T>>::insert(&owner, &ledger);
 
+				let cluster_id = ClusterId::from([
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+				]);
+
 				Self::deposit_event(Event::<T>::InitialDepositUnlock {
+					cluster_id,
 					owner_id: ledger.owner,
 					amount: value,
 				});
@@ -450,8 +466,8 @@ pub mod pallet {
 			let current_block = <frame_system::Pallet<T>>::block_number();
 			ledger = ledger.consolidate_unlocked(current_block);
 
-			let post_info_weight = if ledger.unlocking.is_empty() &&
-				ledger.active < <T as pallet::Config>::Currency::minimum_balance()
+			let post_info_weight = if ledger.unlocking.is_empty()
+				&& ledger.active < <T as pallet::Config>::Currency::minimum_balance()
 			{
 				log::debug!("Killing owner");
 				// This account must have called `unlock_deposit()` with some value that caused the
@@ -486,7 +502,17 @@ pub mod pallet {
 					value,
 					ExistenceRequirement::AllowDeath,
 				)?;
-				Self::deposit_event(Event::<T>::Withdrawn { owner_id: owner, amount: value });
+
+				let cluster_id = ClusterId::from([
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+				]);
+
+				Self::deposit_event(Event::<T>::Withdrawn {
+					cluster_id,
+					owner_id: owner,
+					amount: value,
+				});
 			}
 
 			Ok(post_info_weight.into())
@@ -510,7 +536,11 @@ pub mod pallet {
 
 			bucket.is_public = bucket_params.is_public;
 			<Buckets<T>>::insert(bucket_id, bucket);
-			Self::deposit_event(Event::<T>::BucketUpdated { bucket_id });
+			let cluster_id = ClusterId::from([
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+			]);
+			Self::deposit_event(Event::<T>::BucketUpdated { cluster_id, bucket_id });
 
 			Ok(())
 		}
@@ -534,7 +564,12 @@ pub mod pallet {
 				Ok(())
 			})?;
 
-			Self::deposit_event(Event::<T>::BucketRemoved { bucket_id });
+			let cluster_id = ClusterId::from([
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+			]);
+
+			Self::deposit_event(Event::<T>::BucketRemoved { cluster_id, bucket_id });
 
 			Ok(())
 		}
@@ -668,7 +703,14 @@ pub mod pallet {
 			)?;
 
 			<Ledger<T>>::insert(&content_owner, &ledger); // update state after successful transfer
+
+			let cluster_id = ClusterId::from([
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+			]);
+
 			Self::deposit_event(Event::<T>::Charged {
+				cluster_id,
 				owner_id: content_owner,
 				charged: actually_charged,
 				expected_to_charge: amount_to_deduct,
@@ -704,7 +746,15 @@ pub mod pallet {
 
 			Self::update_ledger_and_deposit(&owner, &ledger, value)
 				.map_err(|_| Error::<T>::TransferFailed)?;
-			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: value });
+			let cluster_id = ClusterId::from([
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+			]);
+			Self::deposit_event(Event::<T>::Deposited {
+				cluster_id,
+				owner_id: owner,
+				amount: value,
+			});
 
 			Ok(())
 		}
@@ -728,7 +778,16 @@ pub mod pallet {
 
 			Self::update_ledger_and_deposit(&owner, &ledger, extra)
 				.map_err(|_| Error::<T>::TransferFailed)?;
-			Self::deposit_event(Event::<T>::Deposited { owner_id: owner, amount: extra });
+
+			let cluster_id = ClusterId::from([
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+			]);
+			Self::deposit_event(Event::<T>::Deposited {
+				cluster_id,
+				owner_id: owner,
+				amount: extra,
+			});
 
 			Ok(())
 		}
