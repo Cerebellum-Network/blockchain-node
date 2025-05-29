@@ -21,7 +21,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "512"]
-use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
+use codec::{Decode, Encode, MaxEncodedLen};
 use ddc_primitives::{
 	traits::pallet::{GetDdcOrigin, PalletVisitor},
 	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce, MAX_PAYOUT_BATCH_COUNT,
@@ -44,8 +44,8 @@ use frame_support::{
 		fungibles,
 		fungibles::{Dust, Inspect, Unbalanced},
 		tokens::{
-			imbalance::ResolveTo, DepositConsequence, Fortitude, PayFromAccount, Preservation,
-			Provenance, UnityAssetBalanceConversion, WithdrawConsequence,
+			DepositConsequence, Fortitude, PayFromAccount, Preservation, Provenance,
+			UnityAssetBalanceConversion, WithdrawConsequence,
 		},
 		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
@@ -75,6 +75,7 @@ use pallet_grandpa::{
 };
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use pallet_session::historical::{self as pallet_session_historical};
+#[cfg(any(feature = "std", test))]
 pub use pallet_staking::StakerStatus;
 #[cfg(any(feature = "std", test))]
 pub use pallet_sudo::Call as SudoCall;
@@ -161,10 +162,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73053,
+	spec_version: 73054,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
-	transaction_version: 25,
+	transaction_version: 24,
 	system_version: 0,
 };
 
@@ -281,7 +282,6 @@ impl pallet_multisig::Config for Runtime {
 	type DepositFactor = DepositFactor;
 	type MaxSignatories = MaxSignatories;
 	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
-	type BlockNumberProvider = frame_system::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -303,7 +303,6 @@ parameter_types! {
 	PartialOrd,
 	Encode,
 	Decode,
-	DecodeWithMemTracking,
 	RuntimeDebug,
 	MaxEncodedLen,
 	scale_info::TypeInfo,
@@ -367,7 +366,6 @@ impl pallet_proxy::Config for Runtime {
 	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
-	type BlockNumberProvider = frame_system::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -406,7 +404,6 @@ impl pallet_scheduler::Config for Runtime {
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type Preimages = Preimage;
-	type BlockNumberProvider = frame_system::Pallet<Runtime>;
 }
 
 parameter_types! {
@@ -560,13 +557,12 @@ impl pallet_session::Config for Runtime {
 	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
 	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
-	type DisablingStrategy = pallet_session::disabling::UpToLimitWithReEnablingDisablingStrategy;
 	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_session::historical::Config for Runtime {
-	type FullIdentification = ();
-	type FullIdentificationOf = pallet_staking::NullIdentity;
+	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+	type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
 }
 
 pallet_staking_reward_curve::build! {
@@ -602,15 +598,13 @@ impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
 }
 
 impl pallet_staking::Config for Runtime {
-	type OldCurrency = Balances;
 	type Currency = Balances;
 	type CurrencyBalance = Balance;
 	type UnixTime = Timestamp;
 	type CurrencyToVote = CurrencyToVote;
-	type RewardRemainder = ResolveTo<TreasuryAccount, Balances>;
+	type RewardRemainder = Treasury;
 	type RuntimeEvent = RuntimeEvent;
-	type RuntimeHoldReason = RuntimeHoldReason;
-	type Slash = ResolveTo<TreasuryAccount, Balances>; // send the slashed funds to the treasury.
+	type Slash = Treasury; // send the slashed funds to the treasury.
 	type Reward = (); // rewards are minted from the void
 	type SessionsPerEra = SessionsPerEra;
 	type BondingDuration = BondingDuration;
@@ -631,7 +625,7 @@ impl pallet_staking::Config for Runtime {
 	type WeightInfo = pallet_staking::weights::SubstrateWeight<Runtime>;
 	type BenchmarkingConfig = StakingBenchmarkingConfig;
 	type NominationsQuota = pallet_staking::FixedNominationsQuota<{ MaxNominations::get() }>;
-	type Filter = Nothing;
+	type DisablingStrategy = pallet_staking::UpToLimitDisablingStrategy;
 }
 
 impl pallet_fast_unstake::Config for Runtime {
@@ -1017,7 +1011,6 @@ where
 			frame_system::CheckWeight::<Runtime>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 			frame_metadata_hash_extension::CheckMetadataHash::new(false),
-			frame_system::WeightReclaim::<Runtime>::new(),
 		);
 		let raw_payload = SignedPayload::new(call, tx_ext)
 			.map_err(|e| {
@@ -1143,7 +1136,6 @@ impl pallet_recovery::Config for Runtime {
 	type FriendDepositFactor = FriendDepositFactor;
 	type MaxFriends = MaxFriends;
 	type RecoveryDeposit = RecoveryDeposit;
-	type BlockNumberProvider = System;
 }
 
 parameter_types! {
@@ -1223,13 +1215,10 @@ impl pallet_nomination_pools::Config for Runtime {
 	type MaxMetadataLen = frame_support::traits::ConstU32<256>;
 	// we use the same number of allowed unlocking chunks as with staking.
 	type MaxUnbonding = <Self as pallet_staking::Config>::MaxUnlockingChunks;
-	type BlockNumberProvider = System;
-	type Filter = Nothing;
 	type PalletId = PoolsPalletId;
 	type MaxPointsToBalance = MaxPointsToBalance;
 	type WeightInfo = ();
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
-	#[allow(deprecated)]
 	type StakeAdapter = pallet_nomination_pools::adapter::TransferStake<Self, Staking>;
 }
 
@@ -1647,7 +1636,6 @@ pub type TxExtension = (
 	frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
-	frame_system::WeightReclaim<Runtime>,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
@@ -1660,14 +1648,6 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
 // type Migrations = (
-// 	// Migrations related to substrate version upgrades
-// 	// pallet_nomination_pools::migration::versioned::V5toV6<Runtime>,
-// 	// pallet_nomination_pools::migration::versioned::V6ToV7<Runtime>,
-// 	// pallet_nomination_pools::migration::versioned::V7ToV8<Runtime>,
-// 	// pallet_staking::migrations::v14::MigrateToV14<Runtime>,
-// 	// pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
-// 	// pallet_identity::migration::versioned::V0ToV1<Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
-
 // 	// The 'Unreleased' migration enables DAC Verification, that atm. is enabled at QANET only.
 // 	// Uncomment this line when DAC is ready for TESTNET and MAINNET migrations::Unreleased,
 // 	// migrations::Unreleased,
@@ -1675,13 +1655,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 
 // Migrations for Customers and Node on QANET.
 // DO NOT EXECUTE THEM ON TESTNET/MAINNET BEFORE APPLYING DAC v5 !.
-type Migrations = (
-	pallet_staking::migrations::v16::MigrateV15ToV16<Runtime>,
-	pallet_session::migrations::v1::MigrateV0ToV1<
-		Runtime,
-		pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
-	>,
-);
+type Migrations = (pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>,);
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
@@ -1711,8 +1685,9 @@ pub mod migrations {
 		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
 		pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
-		pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>,
-		pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>,
+		// pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>, // replace with v2_mbm below
+		// pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>, // replace with v3_mbm below
+
 		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
 		// pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
 		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
@@ -1823,14 +1798,6 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl frame_support::view_functions::runtime_api::RuntimeViewFunction<Block> for Runtime {
-		#[allow(unconditional_recursion)]
-		fn execute_view_function(id: frame_support::view_functions::ViewFunctionId, input: Vec<u8>) -> Result<Vec<u8>, frame_support::view_functions::ViewFunctionDispatchError> {
-			Runtime::execute_view_function(id, input)
-		}
-	}
-
-
 	impl sp_block_builder::BlockBuilder<Block> for Runtime {
 		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
 			Executive::apply_extrinsic(extrinsic)
@@ -1871,7 +1838,7 @@ impl_runtime_apis! {
 		}
 
 		fn current_set_id() -> fg_primitives::SetId {
-			pallet_grandpa::CurrentSetId::<Runtime>::get()
+			Grandpa::current_set_id()
 		}
 
 		fn submit_report_equivocation_unsigned_extrinsic(
@@ -2182,7 +2149,7 @@ impl_runtime_apis! {
 			Vec<frame_benchmarking::BenchmarkList>,
 			Vec<frame_support::traits::StorageInfo>,
 		) {
-			use frame_benchmarking::{baseline, BenchmarkList};
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
@@ -2203,11 +2170,10 @@ impl_runtime_apis! {
 			(list, storage_info)
 		}
 
-		#[allow(non_local_definitions)]
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, alloc::string::String> {
-			use frame_benchmarking::{baseline, BenchmarkBatch};
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch};
 			use sp_storage::TrackedStorageKey;
 
 			// Trying to add benchmarks directly to the Session Pallet caused cyclic dependency
