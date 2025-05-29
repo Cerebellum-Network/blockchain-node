@@ -594,6 +594,10 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		pub fn pallet_account_id() -> T::AccountId {
+			T::PalletId::get().into_account_truncating()
+		}
+
 		pub fn cluster_vault_id(cluster_id: &ClusterId) -> T::AccountId {
 			let hash = blake2_128(&cluster_id.encode());
 
