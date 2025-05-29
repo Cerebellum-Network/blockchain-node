@@ -858,8 +858,9 @@ pub mod v4_mbm {
 					log::error!("❌ Error transferring balance: {:?}. Resolve this issue manually after the migration.", e);
 				} else {
 					log::info!(
-						"✅ Successfully transferred {:?} to cluster vault {:?}",
+						"✅ Successfully transferred {:?} tokens from pallet {:?} to cluster vault {:?}",
 						pallet_balance,
+						pallet_account_id,
 						cluster_vault_id
 					);
 				}
