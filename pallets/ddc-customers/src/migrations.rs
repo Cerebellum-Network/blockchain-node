@@ -654,6 +654,7 @@ pub mod v4_mbm {
 	#[derive(Decode, Encode, MaxEncodedLen, Eq, PartialEq, Debug)]
 	pub enum MigrationState<A> {
 		MigratingLedgers(A, ClusterId),
+		TransferringBalance(ClusterId),
 		Finished,
 	}
 
@@ -704,6 +705,8 @@ pub mod v4_mbm {
 					None => Self::ledgers_step(None, None),
 					Some(MigrationState::MigratingLedgers(maybe_last_ledger, maybe_cluster_id)) =>
 						Self::ledgers_step(Some(maybe_last_ledger), Some(maybe_cluster_id)),
+					Some(MigrationState::TransferringBalance(cluster_id)) =>
+						Self::transfer_balance_step(cluster_id),
 					Some(MigrationState::Finished) => {
 						StorageVersion::new(Self::id().version_to as u16).put::<Pallet<T>>();
 						return Ok(None);
@@ -833,14 +836,54 @@ pub mod v4_mbm {
 				ClusterLedger::<T>::insert(cluster_id, key.clone(), ledger);
 				MigrationState::MigratingLedgers(key, cluster_id)
 			} else {
-				MigrationState::Finished
+				MigrationState::TransferringBalance(cluster_id)
 			}
+		}
+
+		pub(crate) fn transfer_balance_step(
+			cluster_id: &ClusterId,
+		) -> MigrationState<T::AccountId> {
+			let pallet_account_id = crate::Pallet::<T>::pallet_account_id();
+			let cluster_vault_id = crate::Pallet::<T>::cluster_vault_id(&cluster_id);
+
+			let pallet_balance = <T as pallet::Config>::Currency::free_balance(&pallet_account_id);
+
+			if pallet_balance > <T as pallet::Config>::Currency::minimum_balance() {
+				if let Err(e) = <T as pallet::Config>::Currency::transfer(
+					&pallet_account_id,
+					&cluster_vault_id,
+					pallet_balance,
+					ExistenceRequirement::AllowDeath,
+				) {
+					log::error!("❌ Error transferring balance: {:?}. Resolve this issue manually after the migration.", e);
+				} else {
+					log::info!(
+						"✅ Successfully transferred {:?} to cluster vault {:?}",
+						pallet_balance,
+						cluster_vault_id
+					);
+				}
+			}
+
+			MigrationState::Finished
 		}
 
 		pub(crate) fn required_weight(step: &MigrationState<T::AccountId>) -> Weight {
 			match step {
 				MigrationState::MigratingLedgers(_, _) =>
 					T::WeightInfo::migration_v4_ledgers_step(),
+				MigrationState::TransferringBalance(_) => {
+					// This is copied from pallet_balances::WeightInfo::transfer_allow_death()
+
+					// Proof Size summary in bytes:
+					//  Measured:  `0`
+					//  Estimated: `3593`
+					// Minimum execution time: 44_771_000 picoseconds.
+					Weight::from_parts(45_635_000, 0)
+						.saturating_add(Weight::from_parts(0, 3593))
+						.saturating_add(T::DbWeight::get().reads(1))
+						.saturating_add(T::DbWeight::get().writes(1))
+				},
 				MigrationState::Finished => Weight::zero(),
 			}
 		}
