@@ -9,7 +9,7 @@ pub use frame_benchmarking::{
 };
 use frame_support::traits::Currency;
 use frame_system::RawOrigin;
-use sp_runtime::traits::StaticLookup;
+use sp_runtime::{traits::StaticLookup, Perquintill};
 use sp_std::prelude::*;
 use testing_utils::*;
 
@@ -32,6 +32,10 @@ fn fast_forward_to<T: Config>(n: BlockNumberFor<T>) {
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+}
+
+fn assert_has_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+	frame_system::Pallet::<T>::assert_has_event(generic_event.into());
 }
 
 benchmarks! {
@@ -158,8 +162,8 @@ benchmarks! {
 
 	bond_cluster {
 		let cluster_id = ClusterId::from([1; 20]);
-		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5000);
-		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5000);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 1_000_000);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 1_000_000);
 
 		T::ClusterCreator::create_cluster(
 			cluster_id,
@@ -171,7 +175,18 @@ benchmarks! {
 				erasure_coding_total: 0,
 				replication_total: 0,
 			},
-			ClusterProtocolParams::default()
+			ClusterProtocolParams {
+				treasury_share: Perquintill::default(),
+				validators_share: Perquintill::default(),
+				cluster_reserve_share: Perquintill::default(),
+				storage_bond_size: 100u32.into(),
+				storage_chill_delay: 50u32.into(),
+				storage_unbonding_delay: 50u32.into(),
+				unit_per_mb_stored: 10,
+				unit_per_mb_streamed: 10,
+				unit_per_put_request: 10,
+				unit_per_get_request: 10,
+			}
 		)?;
 
 		whitelist_account!(cluster_reserve_id);
@@ -181,13 +196,13 @@ benchmarks! {
 		assert!(ClusterBonded::<T>::contains_key(&cluster_reserve_id));
 		assert!(ClusterLedger::<T>::contains_key(&cluster_manager_id));
 		let amount = T::ClusterBondingAmount::get();
-		assert_last_event::<T>(Event::Bonded(cluster_reserve_id, amount).into());
+		assert_has_event::<T>(Event::Bonded(cluster_reserve_id, amount).into());
 	}
 
 	unbond_cluster {
 		let cluster_id = ClusterId::from([1; 20]);
-		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5000);
-		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5000);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 1_000_000) ;
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 1_000_000);
 
 		T::ClusterCreator::create_cluster(
 			cluster_id,
@@ -199,7 +214,18 @@ benchmarks! {
 				erasure_coding_total: 0,
 				replication_total: 0,
 			},
-			ClusterProtocolParams::default()
+			ClusterProtocolParams {
+				treasury_share: Perquintill::default(),
+				validators_share: Perquintill::default(),
+				cluster_reserve_share: Perquintill::default(),
+				storage_bond_size: 100u32.into(),
+				storage_chill_delay: 50u32.into(),
+				storage_unbonding_delay: 50u32.into(),
+				unit_per_mb_stored: 10,
+				unit_per_mb_streamed: 10,
+				unit_per_put_request: 10,
+				unit_per_get_request: 10,
+			}
 		)?;
 
 		DdcStaking::<T>::bond_cluster(RawOrigin::Signed(cluster_reserve_id.clone()).into(), cluster_id)?;
@@ -214,8 +240,8 @@ benchmarks! {
 
 	withdraw_unbonded_cluster {
 		let cluster_id = ClusterId::from([1; 20]);
-		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 5000);
-		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 5000);
+		let cluster_manager_id = create_funded_user_with_balance::<T>("cluster-controller", 0, 1_000_000);
+		let cluster_reserve_id = create_funded_user_with_balance::<T>("cluster-stash", 0, 1_000_000);
 
 		T::ClusterCreator::create_cluster(
 			cluster_id,
@@ -227,7 +253,18 @@ benchmarks! {
 				erasure_coding_total: 0,
 				replication_total: 0,
 			},
-			ClusterProtocolParams::default()
+			ClusterProtocolParams {
+				treasury_share: Perquintill::default(),
+				validators_share: Perquintill::default(),
+				cluster_reserve_share: Perquintill::default(),
+				storage_bond_size: 100u32.into(),
+				storage_chill_delay: 50u32.into(),
+				storage_unbonding_delay: 50u32.into(),
+				unit_per_mb_stored: 10,
+				unit_per_mb_streamed: 10,
+				unit_per_put_request: 10,
+				unit_per_get_request: 10,
+			}
 		)?;
 
 		DdcStaking::<T>::bond_cluster(RawOrigin::Signed(cluster_reserve_id.clone()).into(), cluster_id)?;

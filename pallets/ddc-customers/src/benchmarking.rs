@@ -22,10 +22,7 @@ mod benchmarks {
 
 	use super::*;
 
-	#[benchmark]
-	fn create_bucket() {
-		let cluster_id = ClusterId::from([1; 20]);
-		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+	fn create_dafault_cluster<T: Config>(cluster_owner: T::AccountId) -> ClusterId {
 		let cluster_protocol_params: ClusterProtocolParams<BalanceOf<T>, BlockNumberFor<T>> =
 			ClusterProtocolParams {
 				treasury_share: Perquintill::default(),
@@ -40,18 +37,27 @@ mod benchmarks {
 				unit_per_get_request: 10,
 			};
 
+		let cluster_id = ClusterId::from([1; 20]);
 		let _ = <T as pallet::Config>::ClusterCreator::create_cluster(
-			ClusterId::from([1; 20]),
-			user.clone(),
-			user.clone(),
+			cluster_id,
+			cluster_owner.clone(),
+			cluster_owner.clone(),
 			ClusterParams {
-				node_provider_auth_contract: Some(user.clone()),
+				node_provider_auth_contract: Some(cluster_owner.clone()),
 				erasure_coding_required: 4,
 				erasure_coding_total: 6,
 				replication_total: 3,
 			},
 			cluster_protocol_params,
 		);
+
+		cluster_id
+	}
+
+	#[benchmark]
+	fn create_bucket() {
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let cluster_id = create_dafault_cluster::<T>(user.clone());
 
 		let bucket_params = BucketParams { is_public: false };
 
@@ -64,8 +70,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn deposit() {
-		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let cluster_id = create_dafault_cluster::<T>(user.clone());
+
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 100u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 		let amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
@@ -80,8 +87,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn deposit_extra() {
-		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let cluster_id = create_dafault_cluster::<T>(user.clone());
+
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 200u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 		let amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
@@ -99,9 +107,10 @@ mod benchmarks {
 
 	#[benchmark]
 	fn deposit_for() {
-		let cluster_id = ClusterId::from([1; 20]);
 		let funder = account::<T::AccountId>("funder", USER_SEED, 0u32);
 		let user = account::<T::AccountId>("user", USER_SEED, 1u32);
+
+		let cluster_id = create_dafault_cluster::<T>(user.clone());
 
 		let balance_1 = <T as pallet::Config>::Currency::minimum_balance() * 200u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&funder, balance_1);
@@ -121,8 +130,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn unlock_deposit() {
-		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let cluster_id = create_dafault_cluster::<T>(user.clone());
+
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 200u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 		let amount = <T as pallet::Config>::Currency::minimum_balance() * 50u32.into();
@@ -142,8 +152,9 @@ mod benchmarks {
 	fn withdraw_unlocked_deposit_update() {
 		System::<T>::set_block_number(1u32.into());
 
-		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let cluster_id = create_dafault_cluster::<T>(user.clone());
+
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 2000u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
 		let amount = <T as pallet::Config>::Currency::minimum_balance() * 32u32.into();
@@ -176,8 +187,9 @@ mod benchmarks {
 	#[benchmark]
 	fn withdraw_unlocked_deposit_kill() {
 		System::<T>::set_block_number(1u32.into());
-		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let cluster_id = create_dafault_cluster::<T>(user.clone());
+
 		let user2 = account::<T::AccountId>("user", USER_SEED, 1u32);
 		let balance = <T as pallet::Config>::Currency::minimum_balance() * 2000u32.into();
 		let _ = <T as pallet::Config>::Currency::make_free_balance_be(&user, balance);
@@ -209,8 +221,8 @@ mod benchmarks {
 
 	#[benchmark]
 	fn set_bucket_params() {
-		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let cluster_id = create_dafault_cluster::<T>(user.clone());
 
 		let bucket_id = 1;
 		let bucket = Bucket {
@@ -237,8 +249,8 @@ mod benchmarks {
 
 	#[benchmark]
 	fn remove_bucket() {
-		let cluster_id = ClusterId::from([1; 20]);
 		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let cluster_id = create_dafault_cluster::<T>(user.clone());
 
 		let bucket_id = 1;
 		let bucket = Bucket {
@@ -267,6 +279,9 @@ mod benchmarks {
 			v2::Buckets as V2Buckets, v3::Buckets as V3Buckets, v3_mbm::LazyMigrationV2ToV3,
 		};
 
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let _ = create_dafault_cluster::<T>(user.clone());
+
 		let setup = LazyMigrationV2ToV3::<T>::setup_benchmark_env_for_migration();
 		assert_eq!(V2Buckets::<T>::iter().count(), 1);
 
@@ -288,6 +303,9 @@ mod benchmarks {
 			migrations::v4_mbm::{LazyMigrationV3ToV4, Ledger as V3Ledgers},
 			ClusterLedger as V4Ledgers,
 		};
+
+		let user = account::<T::AccountId>("user", USER_SEED, 0u32);
+		let _ = create_dafault_cluster::<T>(user.clone());
 
 		let setup = LazyMigrationV3ToV4::<T>::setup_benchmark_env_for_migration();
 		assert_eq!(V3Ledgers::<T>::iter().count(), 1);
