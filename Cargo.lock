@@ -10433,6 +10433,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-template"
+version = "0.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "pallet-timestamp"
 version = "38.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
