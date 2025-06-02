@@ -59,17 +59,8 @@ jobs:
           cargo build --release --features try-runtime
       - name: Check Try-Runtime
         run: |
-<<<<<<< HEAD
            try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-           on-runtime-upgrade --blocktime 6000 --disable-idempotency-checks live --uri wss://archive.qanet.cere.network:443
-=======
-           try-runtime --runtime ./target/release/wbuild/cere-dev-runtime/cere_dev_runtime.compact.compressed.wasm \
-<<<<<<< HEAD
-           on-runtime-upgrade --blocktime 6000 live --uri wss://archive.devnet.cere.network:443
->>>>>>> 80bc34b0 (fix: clippy issues)
-=======
-           on-runtime-upgrade --blocktime 6000 live --uri wss://rpc.devnet.cere.network:443
->>>>>>> 60f36942 (ci: referring to RPC node due to Archive unavailability)
+           on-runtime-upgrade --blocktime 6000 live --uri wss://archive.qanet.cere.network:443
       - name: Run dev chain
         run: |
           timeout --preserve-status 30s ./target/release/cere --dev
