@@ -1,5 +1,5 @@
 [workspace.package]
-version = "7.3.3"
+version = "7.3.2"
 authors = ["Cerebellum-Network"]
 edition = "2021"
 homepage = "https://cere.network/"
@@ -193,13 +193,8 @@ pallet-origins = { path = "pallets/origins", default-features = false }
 # Cere External Dependencies
 ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "staging", default-features = false }
 ddc-api = { git = "https://github.com/Cerebellum-Network/ddc-api.git", branch = "staging", default-features = false }
-<<<<<<< HEAD
-pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "staging", default-features = false }
-pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "staging", default-features = false }
-=======
 pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "staging", default-features = false }
 pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "staging", default-features = false }
->>>>>>> 3ed913b3 (build:  dependency upgrade)
 
 # Hyperbridge
 ismp = { default-features = false, version = "1.0.0" }
