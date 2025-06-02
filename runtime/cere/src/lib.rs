@@ -162,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73046,
+	spec_version: 73054,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -1397,7 +1397,6 @@ impl pallet_ddc_verification::Config for Runtime {
 	type ClusterManager = DdcClusters;
 	type ClusterValidator = DdcClusters;
 	type NodeManager = DdcNodes;
-	type NodesStorageUsageProvider = DdcNodes;
 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type Hasher = BlakeTwo256;
@@ -1405,7 +1404,6 @@ impl pallet_ddc_verification::Config for Runtime {
 	type Currency = Balances;
 	type CustomerVisitor = DdcCustomers;
 	type BucketManager = DdcCustomers;
-	type BucketsStorageUsageProvider = DdcCustomers;
 	type InspReceiptsInterceptor = pallet_ddc_verification::NoReceiptsInterceptor;
 
 	const OCW_INTERVAL: u16 = 1; // every block
@@ -1418,7 +1416,13 @@ parameter_types! {
 impl pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = pallet_identity::migration::v2::LazyMigrationV1ToV2<Runtime>;
+	type Migrations = (
+		// Migrations for Customers and Node on QANET.
+		// DO NOT EXECUTE THEM ON TESTNET/MAINNET BEFORE APPLYING DAC v5 !.
+		pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
+		pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
+		pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
+	);
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
@@ -1429,6 +1433,7 @@ impl pallet_migrations::Config for Runtime {
 	type MaxServiceWeight = MbmServiceWeight;
 	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
 }
+
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1643,26 +1648,18 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
 // type Migrations = (
-// 	// Migrations related to substrate version upgrades
-// 	// pallet_nomination_pools::migration::versioned::V5toV6<Runtime>,
-// 	// pallet_nomination_pools::migration::versioned::V6ToV7<Runtime>,
-// 	// pallet_nomination_pools::migration::versioned::V7ToV8<Runtime>,
-// 	// pallet_staking::migrations::v14::MigrateToV14<Runtime>,
-// 	// pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
-// 	// pallet_identity::migration::versioned::V0ToV1<Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
-
 // 	// The 'Unreleased' migration enables DAC Verification, that atm. is enabled at QANET only.
 // 	// Uncomment this line when DAC is ready for TESTNET and MAINNET migrations::Unreleased,
 // 	// migrations::Unreleased,
 // );
 
-// Migrations for DAC and Payouts on QANET
+// Migrations for Customers and Node on QANET.
+// DO NOT EXECUTE THEM ON TESTNET/MAINNET BEFORE APPLYING DAC v5 !.
+type Migrations = (pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>,);
 
 parameter_types! {
-			pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
+	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
-type Migrations =
-	(pallet_child_bounties::migration::MigrateV0ToV1<Runtime, BalanceTransferAllowDeath>,);
 
 pub mod migrations {
 	use super::*;
@@ -1676,9 +1673,9 @@ pub mod migrations {
 		}
 	}
 
-	/// Migrations, unreleased to TESTNET or MAINNET
+	/// Migrations, unreleased to TESTNET and MAINNET
 	pub type Unreleased = (
-		pallet_ddc_customers::migration::v2::MigrateToV2<Runtime>,
+		pallet_ddc_customers::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
 		pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>,
 		UpgradeSessionKeys,
@@ -1688,6 +1685,13 @@ pub mod migrations {
 		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
 		pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
+		// pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>, // replace with v2_mbm below
+		// pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>, // replace with v3_mbm below
+
+		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
+		// pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
+		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
+		pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>,
 	);
 }
 

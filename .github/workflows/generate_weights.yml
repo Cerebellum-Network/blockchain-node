@@ -66,51 +66,107 @@ jobs:
           sleep 5
         done
 
-    - name: Run benchmarks remotely
+    - name: Run benchmarks and tests remotely
       run: |
-        ssh -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP "bash -s" <<EOF
+        ssh -i id_rsa -o StrictHostKeyChecking=no -o ServerAliveInterval=30 root@$SERVER_IP "bash -s" <<EOF
         set -eux
-        export GH_TOKEN=${{ secrets.GH_READ_TOKEN }}
-        export BRANCH=${{ github.event.inputs.branch }}
+        export GH_TOKEN="${{ secrets.GH_READ_TOKEN }}"
+        export BRANCH="${{ github.event.inputs.branch }}"
 
-        apt update && apt install -y curl git build-essential jq
+        apt update && apt install -y \
+          curl git build-essential jq protobuf-compiler \
+          llvm-dev libclang-dev clang pkg-config libssl-dev
 
         curl https://sh.rustup.rs -sSf | bash -s -- -y
         source \$HOME/.cargo/env
 
+        rustup install 1.82.0
+        rustup default 1.82.0
+        rustup component add clippy rustfmt rust-src
+        rustup target add wasm32-unknown-unknown
+
         git config --global url."https://\${GH_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
         git clone --branch "\$BRANCH" --single-branch https://github.com/Cerebellum-Network/blockchain-node.git
         cd blockchain-node
-        cargo build --release --features=runtime-benchmarks
 
-        find pallets -type f -name weights.rs | while read file; do
-          echo "Processing \$file"
-          CMD=\$(grep '// Executed command:' "\$file" | sed 's|.*// Executed command: ||')
-          echo "Running: \$CMD"
-          (cd "\$(dirname "\$(dirname "\$file")")" && eval "\$CMD")
-        done
+        cargo build --release --features=runtime-benchmarks --verbose
+
+        # Benchmark the external pallet_ddc_clusters
+        ./target/release/cere benchmark pallet \
+          --chain=dev \
+          --pallet="pallet_ddc_clusters" \
+          --extrinsic="*" \
+          --steps=50 \
+          --repeat=20 \
+          --template=./.maintain/frame-weight-template.hbs \
+          --output=./pallet_ddc_clusters_weights.rs
+
+        # Benchmark the external pallet_ddc_clusters_gov
+        ./target/release/cere benchmark pallet \
+          --chain=dev \
+          --pallet="pallet_ddc_clusters_gov" \
+          --extrinsic="*" \
+          --steps=50 \
+          --repeat=20 \
+          --template=./.maintain/frame-weight-template.hbs \
+          --output=./pallet_ddc_clusters_gov_weights.rs
+
+        # Benchmark the external pallet_ddc_customers
+        ./target/release/cere benchmark pallet \
+          --chain=dev \
+          --pallet="pallet_ddc_customers" \
+          --extrinsic="*" \
+          --steps=50 \
+          --repeat=20 \
+          --template=./.maintain/frame-weight-template.hbs \
+          --output=./pallet_ddc_customers_weights.rs
+
+        # Benchmark the external pallet_ddc_nodes
+        ./target/release/cere benchmark pallet \
+          --chain=dev \
+          --pallet="pallet_ddc_nodes" \
+          --extrinsic="*" \
+          --steps=50 \
+          --repeat=20 \
+          --template=./.maintain/frame-weight-template.hbs \
+          --output=./pallet_ddc_nodes_weights.rs
+
+        # Benchmark the external pallet_ddc_staking
+        ./target/release/cere benchmark pallet \
+          --chain=dev \
+          --pallet="pallet_ddc_staking" \
+          --extrinsic="*" \
+          --steps=50 \
+          --repeat=20 \
+          --template=./.maintain/frame-weight-template.hbs \
+          --output=./pallet_ddc_staking_weights.rs
+
+        # Benchmark the external pallet_ddc_payouts
+        ./target/release/cere benchmark pallet \
+          --chain=dev \
+          --pallet="pallet_ddc_payouts" \
+          --extrinsic="*" \
+          --steps=50 \
+          --repeat=20 \
+          --template=./.maintain/frame-weight-template.hbs \
+          --output=./pallet_ddc_payouts_weights.rs
         EOF
 
     - name: Download weights.rs files
       run: |
         mkdir -p weights
-        PALLET_DIRS=$(ssh -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP "find /root/blockchain-node/pallets -type f -name weights.rs | sed 's|/root/blockchain-node/pallets/||' | sed 's|/src/weights.rs||'")
-        for dir in $PALLET_DIRS; do
-          mkdir -p "weights/$dir"
-          scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallets/$dir/src/weights.rs weights/$dir/weights.rs
-        done
+        scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_weights.rs weights/pallet_ddc_clusters_weights.rs
+        scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_clusters_gov_weights.rs weights/pallet_ddc_clusters_gov_weights.rs
+        scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_customers_weights.rs weights/pallet_ddc_customers_weights.rs
+        scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_nodes_weights.rs weights/pallet_ddc_nodes_weights.rs
+        scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_staking_weights.rs weights/pallet_ddc_staking_weights.rs
+        scp -i id_rsa -o StrictHostKeyChecking=no root@$SERVER_IP:/root/blockchain-node/pallet_ddc_payouts_weights.rs weights/pallet_ddc_payouts_weights.rs
 
-    - name: Upload artifact
+    - name: Upload weights.rs artifacts
       uses: actions/upload-artifact@v4
       with:
         name: weights-files
         path: weights/
-
-    - name: Cleanup Hetzner server and SSH key
-      if: always()
-      run: |
-        echo "Destroying server weights-${{ github.run_id }}"
-      shell: bash
 
     - name: Delete Hetzner server
       uses: jawher/action-hcloud@v1.50.0
