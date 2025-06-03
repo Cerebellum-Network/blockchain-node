@@ -441,8 +441,8 @@ impl ExtBuilder {
 			insert_unique_balance(&mut balances, controller.clone(), ENDOWMENT);
 		}
 
-		let _ =
-			pallet_balances::GenesisConfig::<Test> { balances }.assimilate_storage(&mut storage);
+		let _ = pallet_balances::GenesisConfig::<Test> { balances, ..Default::default() }
+			.assimilate_storage(&mut storage);
 
 		let _ = pallet_ddc_nodes::GenesisConfig::<Test> { storage_nodes }
 			.assimilate_storage(&mut storage);
