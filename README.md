@@ -1,5 +1,12 @@
 # Cere Blockchain Node
 
+## Generate JSON spec
+```
+./target/release/cere build-spec --disable-default-bootnode --chain=dev > plain-v54113-patch2.json
+
+./target/release/cere build-spec --chain=plain-v54113-patch2.json --raw > raw-v54113-patch2.json
+```
+
 ## Build
 
 ### Rust Setup
