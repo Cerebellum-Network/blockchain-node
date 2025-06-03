@@ -291,6 +291,7 @@ impl ExtBuilder {
 
 		let _balance_genesis = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![(1, 100), (2, 100), (3, 1000), (99, 1_000_000)],
+			..Default::default()
 		}
 		.assimilate_storage(&mut storage);
 
