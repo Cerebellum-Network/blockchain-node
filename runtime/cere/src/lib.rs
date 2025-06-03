@@ -161,7 +161,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73053,
+	spec_version: 73054,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -1660,14 +1660,6 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
 // type Migrations = (
-// 	// Migrations related to substrate version upgrades
-// 	// pallet_nomination_pools::migration::versioned::V5toV6<Runtime>,
-// 	// pallet_nomination_pools::migration::versioned::V6ToV7<Runtime>,
-// 	// pallet_nomination_pools::migration::versioned::V7ToV8<Runtime>,
-// 	// pallet_staking::migrations::v14::MigrateToV14<Runtime>,
-// 	// pallet_grandpa::migrations::MigrateV4ToV5<Runtime>,
-// 	// pallet_identity::migration::versioned::V0ToV1<Runtime, IDENTITY_MIGRATION_KEY_LIMIT>,
-
 // 	// The 'Unreleased' migration enables DAC Verification, that atm. is enabled at QANET only.
 // 	// Uncomment this line when DAC is ready for TESTNET and MAINNET migrations::Unreleased,
 // 	// migrations::Unreleased,
@@ -1711,8 +1703,9 @@ pub mod migrations {
 		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
 		pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
-		pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>,
-		pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>,
+		// pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>, // replace with v2_mbm below
+		// pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>, // replace with v3_mbm below
+
 		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
 		// pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
 		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
