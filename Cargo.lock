@@ -9101,7 +9101,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=stable2503#77f9b717750da5c37e9c2c22754407b53aa36996"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#7fe0cb0c06f92e7607ff685dc82381984f285286"
 dependencies = [
  "array-bytes",
  "byte-unit",
