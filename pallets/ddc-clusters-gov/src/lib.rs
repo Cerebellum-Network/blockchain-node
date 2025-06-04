@@ -14,7 +14,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "256"]
 #![allow(clippy::manual_inspect)]
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 #[cfg(feature = "runtime-benchmarks")]
 use ddc_primitives::traits::staking::StakerCreator;
 use ddc_primitives::{
@@ -41,13 +41,13 @@ pub use pallet::*;
 use pallet_referenda::ReferendumIndex;
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, Dispatchable},
+	traits::{AccountIdConversion, BlockNumberProvider, Dispatchable},
 	DispatchError, DispatchResult, RuntimeDebug, SaturatedConversion,
 };
 use sp_std::prelude::*;
 
 #[cfg(test)]
-pub(crate) mod mock;
+pub(crate) mod mock_clusters_gov;
 #[cfg(test)]
 mod tests;
 
@@ -59,6 +59,9 @@ pub use weights::WeightInfo;
 /// The balance type of this pallet.
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
+type ReferendumBlockNumberFor<T, I = ()> =
+	<<T as pallet_referenda::Config<I>>::BlockNumberProvider as BlockNumberProvider>::BlockNumber;
 
 pub type ReferendaCall<T> = pallet_referenda::Call<T>;
 
@@ -79,26 +82,26 @@ pub struct Votes<AccountId, BlockNumber> {
 	end: BlockNumber,
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum ClusterMember {
 	ClusterManager,
 	NodeProvider(NodePubKey),
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
 pub struct Proposal<AccountId, Call> {
 	author: AccountId,
 	kind: ProposalKind,
 	call: Call,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
 pub enum ProposalKind {
 	ActivateClusterProtocol,
 	UpdateClusterProtocol,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
 pub struct SubmissionDeposit<AccountId> {
 	depositor: AccountId,
 	amount: u128,
@@ -146,7 +149,7 @@ pub mod pallet {
 		type SeatsConsensus: SeatsConsensus;
 		type DefaultVote: DefaultVote;
 		type MinValidatedNodesCount: Get<u16>;
-		type ReferendumEnactmentDuration: Get<BlockNumberFor<Self>>;
+		type ReferendumEnactmentDuration: Get<ReferendumBlockNumberFor<Self>>;
 		#[cfg(feature = "runtime-benchmarks")]
 		type StakerCreator: StakerCreator<Self, BalanceOf<Self>>;
 	}
