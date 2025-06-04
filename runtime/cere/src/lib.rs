@@ -1641,15 +1641,9 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
-// type Migrations = (
-// 	// The 'Unreleased' migration enables DAC Verification, that atm. is enabled at QANET only.
-// 	// Uncomment this line when DAC is ready for TESTNET and MAINNET migrations::Unreleased,
-// 	// migrations::Unreleased,
-// );
-
 // Migrations for Customers and Node on QANET.
 // DO NOT EXECUTE THEM ON TESTNET/MAINNET BEFORE APPLYING DAC v5 !.
-type Migrations = (migrations::Unreleased);
+type Migrations = migrations::Unreleased;
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
