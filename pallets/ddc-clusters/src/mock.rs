@@ -266,6 +266,7 @@ impl ExtBuilder {
 				(AccountId::from([3; 32]), 100),
 				(AccountId::from([4; 32]), 100),
 			],
+			..Default::default()
 		}
 		.assimilate_storage(&mut t);
 

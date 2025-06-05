@@ -456,44 +456,6 @@ pub mod v2_mbm {
 	}
 }
 
-pub mod v0_v2 {
-	use super::*;
-
-	pub fn migrate_from_v0_to_v2<T: Config>() -> Weight {
-		let on_chain_version = Pallet::<T>::on_chain_storage_version();
-		let current_version = Pallet::<T>::in_code_storage_version();
-		let target_version: u16 = 2;
-
-		info!(
-			target: LOG_TARGET,
-			"Running v0->v2 migration with current storage version {:?} / onchain {:?}",
-			current_version,
-			on_chain_version
-		);
-
-		if on_chain_version == 0 && current_version == target_version {
-			StorageVersion::new(target_version).put::<Pallet<T>>();
-			info!(
-				target: LOG_TARGET,
-				"StorageVersion is updated to {:?}",
-				target_version
-			);
-
-			T::DbWeight::get().reads_writes(1, 1)
-		} else {
-			info!(target: LOG_TARGET, " >>> Unused v0->v2 migration!");
-			T::DbWeight::get().reads(1)
-		}
-	}
-
-	pub struct MigrateFromV0ToV2<T>(PhantomData<T>);
-	impl<T: Config> OnRuntimeUpgrade for MigrateFromV0ToV2<T> {
-		fn on_runtime_upgrade() -> Weight {
-			migrate_from_v0_to_v2::<T>()
-		}
-	}
-}
-
 #[cfg(test)]
 #[cfg(feature = "try-runtime")]
 mod test {

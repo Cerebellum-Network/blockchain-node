@@ -664,8 +664,7 @@ pub mod v4_mbm {
 		type Identifier = MigrationId<20>;
 
 		fn id() -> Self::Identifier {
-			MigrationId { pallet_id: *PALLET_MIGRATIONS_ID, version_from: 1, version_to: 4 }
-			// from 1 to 4 for TESTNET and MAINNET
+			MigrationId { pallet_id: *PALLET_MIGRATIONS_ID, version_from: 3, version_to: 4 }
 		}
 
 		fn step(
