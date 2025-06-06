@@ -191,8 +191,8 @@ pallet-erc721 = { path = "pallets/erc721", default-features = false }
 pallet-origins = { path = "pallets/origins", default-features = false }
 
 # Cere External Dependencies
-ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "staging", default-features = false }
-ddc-api = { git = "https://github.com/Cerebellum-Network/ddc-api.git", branch = "staging", default-features = false }
+ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "feat/staging-testnet", default-features = false }
+ddc-api = { git = "https://github.com/Cerebellum-Network/ddc-api.git", branch = "feat/staging-testnet", default-features = false }
 pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "feat/staging-testnet", default-features = false }
 pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "feat/staging-testnet", default-features = false }
 
