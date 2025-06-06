@@ -1655,7 +1655,13 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, Tx
 
 // Migrations for Customers and Node on QANET.
 // DO NOT EXECUTE THEM ON TESTNET/MAINNET BEFORE APPLYING DAC v5 !.
-type Migrations = ();
+type Migrations = (
+	pallet_staking::migrations::v16::MigrateV15ToV16<Runtime>,
+	pallet_session::migrations::v1::MigrateV0ToV1<
+		Runtime,
+		pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
+	>,
+);
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
