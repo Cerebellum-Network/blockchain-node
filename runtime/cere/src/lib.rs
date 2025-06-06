@@ -161,7 +161,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73116,
+	spec_version: 73129,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -1427,7 +1427,7 @@ parameter_types! {
 impl pallet_migrations::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = (pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,);
+	type Migrations = ();
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
@@ -1685,40 +1685,34 @@ pub mod migrations {
 		}
 	}
 
-	/// Migrations, unreleased to TESTNET and MAINNET
+	/// Migrations, unreleased to MAINNET
 	pub type Unreleased = (
 		// pallet_ddc_customers::migrations::v2::MigrateToV2<Runtime>, // ignore the addition of
-		// `total_customers_usage` field as it was never deployed on TESTNET and MAINNET
-		pallet_ddc_customers::migrations::v2::MigrateToV2<Runtime>,
+		// `total_customers_usage` field as it was never deployed on MAINNET
 		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
 		// pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>, // ignore the addition of
-		// `total_usage` field as it was never deployed on TESTNET and MAINNET
+		// `total_usage` field as it was never deployed on MAINNET
 		UpgradeSessionKeys,
 		// pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>, // ignore as the
-		// `ddc-verification` pallet was never deployed on TESTNET and MAINNET
+		// `ddc-verification` pallet was never deployed on MAINNET
 		pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,
 		pallet_ddc_payouts::migrations::v2::MigrateToV2<Runtime>,
 		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
 		// pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>, // ignore as the
-		// `ddc-verification` pallet was never deployed on TESTNET and MAINNET
+		// `ddc-verification` pallet was never deployed on MAINNET
 		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
 		pallet_ddc_payouts::migrations::v5::MigrateToV5<Runtime>,
 		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>, // ingore the
-		// removal of `total_customers_usage` field as it was never deployed on TESTNET and MAINNET
+		// removal of `total_customers_usage` field as it was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>, // ignore the
-		// removal of `total_usage` field as it was never deployed on TESTNET and MAINNET
+		// removal of `total_usage` field as it was never deployed on MAINNET
 		// pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>, // ignore as the
-		// `ddc-verification` pallet was never deployed on TESTNET and MAINNET
-		pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>,
-		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
-		// pallet_ddc_nodes::migrations::v2::MigrateToV2<Runtime>, // replace with v2_mbm below
-		// pallet_ddc_customers::migrations::v3::MigrateToV3<Runtime>, // replace with v3_mbm below
-
-		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>,
-		// pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,
-		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>,
-		pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>,
+		// `ddc-verification` pallet was never deployed on MAINNET
+		pallet_ddc_nodes::migrations::v0_v2::MigrateFromV0ToV2<Runtime>,
 	);
+
+	pub type UnreleasedMultiblock =
+		(pallet_ddc_customers::migrations::v4_mbm::LazyMigrationV3ToV4<Runtime>,);
 }
 
 /// Executive: handles dispatch to the various modules.
