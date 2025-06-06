@@ -111,6 +111,7 @@ impl ExtBuilder {
 		let account_id2 = AccountId::from([2; 32]);
 		let _ = pallet_balances::GenesisConfig::<Test> {
 			balances: vec![(account_id1, 100), (account_id2, 100)],
+			..Default::default()
 		}
 		.assimilate_storage(&mut t);
 

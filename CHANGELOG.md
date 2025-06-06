@@ -12,13 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [7.3.3]
 
-- [C,D] Update to Polkadot-2412 crate version
-
+- [C,D] Update to Polkadot-Stable2503 crate version
 
 ## [7.3.2]
 
+- [C,D] Update to Polkadot-2412 crate version
 - [C,D] `pallet-ddc-verification`: Inspection for DAC v5
 - [C,D] `pallet-ddc-payouts`: Payouts for DAC v5
+
 
 ## [7.3.1]
 
