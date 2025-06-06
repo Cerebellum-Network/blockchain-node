@@ -1708,7 +1708,7 @@ pub mod migrations {
 		// removal of `total_usage` field as it was never deployed on MAINNET
 		// pallet_ddc_verification::migrations::v3::MigrateToV3<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
-		pallet_ddc_nodes::migrations::v0_v2::MigrateFromV0ToV2<Runtime>,
+		// pallet_ddc_nodes::migrations::v0_v2::MigrateFromV0ToV2<Runtime>,
 	);
 
 	pub type UnreleasedMultiblock =
