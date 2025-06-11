@@ -161,7 +161,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73129,
+	spec_version: 73138,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -1305,7 +1305,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	const DISABLE_PAYOUTS_CUTOFF: bool = false;
-	const OCW_INTERVAL: u16 = 1; // every block
+	const OCW_INTERVAL: u16 = 20; // every 20th block
 }
 
 parameter_types! {
@@ -1417,7 +1417,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	type BucketManager = DdcCustomers;
 	type InspReceiptsInterceptor = pallet_ddc_verification::NoReceiptsInterceptor;
 
-	const OCW_INTERVAL: u16 = 1; // every block
+	const OCW_INTERVAL: u16 = 50; // every 50th block
 }
 
 parameter_types! {
@@ -1653,8 +1653,6 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
-// Migrations for Customers and Node on QANET.
-// DO NOT EXECUTE THEM ON TESTNET/MAINNET BEFORE APPLYING DAC v5 !.
 type Migrations = (
 	pallet_staking::migrations::v16::MigrateV15ToV16<Runtime>,
 	pallet_session::migrations::v1::MigrateV0ToV1<
@@ -1667,6 +1665,7 @@ parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
 
+/// Migrations, unreleased to MAINNET
 pub mod migrations {
 	use super::*;
 
@@ -1679,7 +1678,6 @@ pub mod migrations {
 		}
 	}
 
-	/// Migrations, unreleased to MAINNET
 	pub type Unreleased = (
 		// pallet_ddc_customers::migrations::v2::MigrateToV2<Runtime>, // ignore the addition of
 		// `total_customers_usage` field as it was never deployed on MAINNET
