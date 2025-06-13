@@ -2162,6 +2162,7 @@ dependencies = [
  "pallet-erc20",
  "pallet-erc721",
  "pallet-fast-unstake",
+ "pallet-fee-handler",
  "pallet-grandpa",
  "pallet-hyperbridge",
  "pallet-identity",
@@ -2299,6 +2300,7 @@ dependencies = [
  "pallet-erc20",
  "pallet-erc721",
  "pallet-fast-unstake",
+ "pallet-fee-handler",
  "pallet-grandpa",
  "pallet-hyperbridge",
  "pallet-identity",
@@ -9334,6 +9336,22 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-staking",
+]
+
+[[package]]
+name = "pallet-fee-handler"
+version = "7.3.3"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

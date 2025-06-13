@@ -105,6 +105,7 @@ pallet-ddc-staking = { workspace = true }
 pallet-ddc-verification = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
+pallet-fee-handler = { workspace = true }
 pallet-origins = { workspace = true }
 
 # Hyperbridge Depedencies
