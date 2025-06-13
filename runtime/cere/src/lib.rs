@@ -1445,6 +1445,19 @@ impl pallet_migrations::Config for Runtime {
 	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	pub const FeeHandlerPalletId: PalletId = PalletId(*b"fee/hand");
+}
+
+impl pallet_fee_handler::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type PalletId = FeeHandlerPalletId;
+	type TreasuryPalletId = TreasuryPalletId;
+	type WeightInfo = pallet_fee_handler::weights::SubstrateWeight<Runtime>;
+}
+
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1620,6 +1633,9 @@ mod runtime {
 	// Migrations pallet
 	#[runtime::pallet_index(51)]
 	pub type MultiBlockMigrations = pallet_migrations;
+
+	#[runtime::pallet_index(52)]
+	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
@@ -1770,6 +1786,7 @@ mod benches {
 		[pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
+		[pallet_fee_handler, FeeHandler]
 	);
 }
 
@@ -2061,7 +2078,7 @@ impl_runtime_apis! {
 	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<
 		Block,
 		Balance,
-	> for Runtime {
+> for Runtime {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
 		}
