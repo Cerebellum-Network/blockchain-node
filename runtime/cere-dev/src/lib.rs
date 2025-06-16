@@ -92,7 +92,7 @@ use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_core::{
 	crypto::{AccountId32, KeyTypeId},
-	OpaqueMetadata,
+	ConstU64, OpaqueMetadata,
 };
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_io::hashing::blake2_128;
@@ -168,7 +168,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73055,
+	spec_version: 73148,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -1299,6 +1299,11 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type CustomerDepositor = DdcCustomers;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ClusterCreator = DdcClusters;
+	#[cfg(feature = "runtime-benchmarks")]
+	type WPublic = <Signature as Verify>::Signer;
+	#[cfg(feature = "runtime-benchmarks")]
+	type WSignature = Signature;
+	type UnsignedPriority = ConstU64<500_000_000>;
 
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
@@ -1400,6 +1405,10 @@ impl pallet_ddc_verification::Config for Runtime {
 		pallet_ddc_verification::simulations::v1::SimulationReceiptsInterceptor;
 
 	const OCW_INTERVAL: u16 = 1; // every block
+	const TCA_INSPECTION_STEP: u64 = 0;
+	const INSPECTION_REDUNDANCY_FACTOR: u8 = 3;
+	const INSPECTION_BACKUPS_COUNT: u8 = 1;
+	const INSPECTION_BACKUP_BLOCK_DELAY: u32 = 25;
 }
 
 parameter_types! {
@@ -1656,13 +1665,7 @@ parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
 
-type Migrations = (
-	pallet_staking::migrations::v16::MigrateV15ToV16<Runtime>,
-	pallet_session::migrations::v1::MigrateV0ToV1<
-		Runtime,
-		pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
-	>,
-);
+type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<

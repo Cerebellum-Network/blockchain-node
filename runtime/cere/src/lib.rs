@@ -85,7 +85,7 @@ use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_core::{
 	crypto::{AccountId32, KeyTypeId},
-	OpaqueMetadata,
+	ConstU64, OpaqueMetadata,
 };
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_io::hashing::blake2_128;
@@ -161,7 +161,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73055,
+	spec_version: 73148,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -1297,15 +1297,21 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type ValidatorsQuorum = MajorityOfValidators;
 	type ClusterManager = DdcClusters;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+	type UnsignedPriority = ConstU64<500_000_000>;
+
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = DdcCustomers;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ClusterCreator = DdcClusters;
+	#[cfg(feature = "runtime-benchmarks")]
+	type WPublic = <Signature as Verify>::Signer;
+	#[cfg(feature = "runtime-benchmarks")]
+	type WSignature = Signature;
 
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	const DISABLE_PAYOUTS_CUTOFF: bool = false;
-	const OCW_INTERVAL: u16 = 1; // every block
+	const OCW_INTERVAL: u16 = 5; // every 5th block
 }
 
 parameter_types! {
@@ -1417,7 +1423,11 @@ impl pallet_ddc_verification::Config for Runtime {
 	type BucketManager = DdcCustomers;
 	type InspReceiptsInterceptor = pallet_ddc_verification::NoReceiptsInterceptor;
 
-	const OCW_INTERVAL: u16 = 1; // every block
+	const OCW_INTERVAL: u16 = 10; // every 10th block
+	const TCA_INSPECTION_STEP: u64 = 0;
+	const INSPECTION_REDUNDANCY_FACTOR: u8 = 3;
+	const INSPECTION_BACKUPS_COUNT: u8 = 2;
+	const INSPECTION_BACKUP_BLOCK_DELAY: u32 = 25;
 }
 
 parameter_types! {
@@ -1675,26 +1685,22 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, TxExtension>;
 // const IDENTITY_MIGRATION_KEY_LIMIT: u64 = u64::MAX; // for `pallet_identity` migration below
 
+/// Migrations for FRAME pallets, unreleased to MAINNET
 // type Migrations = (
-// 	// The 'Unreleased' migration enables DAC Verification, that atm. is enabled at QANET only.
-// 	// Uncomment this line when DAC is ready for TESTNET and MAINNET migrations::Unreleased,
-// 	// migrations::Unreleased,
+// 	pallet_staking::migrations::v16::MigrateV15ToV16<Runtime>,
+// 	pallet_session::migrations::v1::MigrateV0ToV1<
+// 		Runtime,
+// 		pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
+// 	>,
 // );
 
-// Migrations for Customers and Node on QANET.
-// DO NOT EXECUTE THEM ON TESTNET/MAINNET BEFORE APPLYING DAC v5 !.
-type Migrations = (
-	pallet_staking::migrations::v16::MigrateV15ToV16<Runtime>,
-	pallet_session::migrations::v1::MigrateV0ToV1<
-		Runtime,
-		pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
-	>,
-);
+type Migrations = ();
 
 parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
 
+/// Migrations for DDC pallets, unreleased to MAINNET
 pub mod migrations {
 	use super::*;
 
