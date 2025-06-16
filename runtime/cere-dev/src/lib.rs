@@ -168,7 +168,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73147,
+	spec_version: 73148,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -1429,6 +1429,20 @@ impl pallet_migrations::Config for Runtime {
 	type MaxServiceWeight = MbmServiceWeight;
 	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
 }
+
+parameter_types! {
+	pub const FeeHandlerPalletId: PalletId = PalletId(*b"feehandl");
+}
+
+impl pallet_fee_handler::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type PalletId = FeeHandlerPalletId;
+	type TreasuryPalletId = TreasuryPalletId;
+	type WeightInfo = pallet_fee_handler::weights::SubstrateWeight<Runtime>;
+}
+
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1606,6 +1620,9 @@ mod runtime {
 	// Migrations pallet
 	#[runtime::pallet_index(51)]
 	pub type MultiBlockMigrations = pallet_migrations;
+
+	#[runtime::pallet_index(52)]
+	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
@@ -1707,6 +1724,7 @@ mod benches {
 		[pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
+		[pallet_fee_handler, FeeHandler]
 	);
 }
 
@@ -1999,7 +2017,7 @@ impl_runtime_apis! {
 	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<
 		Block,
 		Balance,
-	> for Runtime {
+> for Runtime {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
 		}
@@ -2047,7 +2065,7 @@ impl_runtime_apis! {
 		Block,
 		AccountId,
 		Balance,
-	> for Runtime {
+> for Runtime {
 		fn pending_rewards(member: AccountId) -> Balance {
 			NominationPools::api_pending_rewards(member).unwrap_or_default()
 		}

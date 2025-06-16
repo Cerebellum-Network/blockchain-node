@@ -105,6 +105,7 @@ pallet-ddc-staking = { workspace = true }
 pallet-ddc-verification = { workspace = true }
 pallet-erc20 = { workspace = true }
 pallet-erc721 = { workspace = true }
+pallet-fee-handler = { workspace = true }
 pallet-origins = { workspace = true }
 
 # Hyperbridge Depedencies
@@ -215,6 +216,7 @@ std = [
   "frame-metadata-hash-extension/std",
   "pallet-token-gateway/std",
   "pallet-migrations/std",
+  "pallet-fee-handler/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -270,6 +272,7 @@ runtime-benchmarks = [
   "pallet-ddc-verification/runtime-benchmarks",
   "pallet-token-gateway/runtime-benchmarks",
   "pallet-migrations/runtime-benchmarks",
+  "pallet-fee-handler/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-executive/try-runtime",
