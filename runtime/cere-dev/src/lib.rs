@@ -1643,13 +1643,7 @@ parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
 
-type Migrations = (
-	pallet_staking::migrations::v16::MigrateV15ToV16<Runtime>,
-	pallet_session::migrations::v1::MigrateV0ToV1<
-		Runtime,
-		pallet_staking::migrations::v17::MigrateDisabledToSession<Runtime>,
-	>,
-);
+type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
