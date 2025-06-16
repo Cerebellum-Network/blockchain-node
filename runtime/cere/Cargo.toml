@@ -213,7 +213,7 @@ std = [
   "frame-metadata-hash-extension/std",
   "pallet-token-gateway/std",
   "pallet-migrations/std",
-  "pallet-fee-handler/std"
+  "pallet-fee-handler/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -269,7 +269,7 @@ runtime-benchmarks = [
   "pallet-ddc-verification/runtime-benchmarks",
   "pallet-token-gateway/runtime-benchmarks",
   "pallet-migrations/runtime-benchmarks",
-  "pallet-fee-handler/runtime-benchmarks"
+  "pallet-fee-handler/runtime-benchmarks",
 ]
 # TODO: Will be fixed in another PR
 try-runtime = [
