@@ -3952,7 +3952,7 @@ dependencies = [
 [[package]]
 name = "ddc-api"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=staging#33edb928a94d3b5cdc864509af9d51566062fca4"
+source = "git+https://github.com/Cerebellum-Network/ddc-api.git?branch=dev#552a4eeaa978405a33add6bdaa7735269bc8faec"
 dependencies = [
  "blake2 0.10.6",
  "ddc-primitives",
@@ -3978,7 +3978,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=staging#b45a7801b439f997b6270d41a4d256cc20bf4fb8"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#fce3242a29673ad3249d1f098456505750bc2a44"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -8975,7 +8975,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=staging#49b5d1d52da6c8f22938b939e16bd0d4edee4fb7"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#8738f6bdf2f860b470fdde5e8409f5f7f016dcbb"
 dependencies = [
  "array-bytes",
  "byte-unit",
@@ -9032,7 +9032,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-verification"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=staging#865d952b715b036c373f5d14f458bf0a8066a09c"
+source = "git+https://github.com/Cerebellum-Network/ddc-verification.git?branch=dev#51cc07a77ea77ac848259bb22ec86900014e72db"
 dependencies = [
  "array-bytes",
  "base64ct",
