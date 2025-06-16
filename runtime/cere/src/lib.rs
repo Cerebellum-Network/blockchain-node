@@ -1446,7 +1446,7 @@ impl pallet_migrations::Config for Runtime {
 }
 
 parameter_types! {
-	pub const FeeHandlerPalletId: PalletId = PalletId(*b"fee/hand");
+	pub const FeeHandlerPalletId: PalletId = PalletId(*b"feehandl");
 }
 
 impl pallet_fee_handler::Config for Runtime {
