@@ -116,9 +116,7 @@ mod tests {
 		},
 	};
 	use sp_core::H256;
-	use sp_runtime::{
-		traits::{BlakeTwo256, IdentityLookup},
-	};
+	use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 	use sp_std::vec::Vec;
 
 	use super::*;
