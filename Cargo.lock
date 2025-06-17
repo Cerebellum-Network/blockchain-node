@@ -2162,6 +2162,7 @@ dependencies = [
  "pallet-erc20",
  "pallet-erc721",
  "pallet-fast-unstake",
+ "pallet-fee-handler",
  "pallet-grandpa",
  "pallet-hyperbridge",
  "pallet-identity",
@@ -2299,6 +2300,7 @@ dependencies = [
  "pallet-erc20",
  "pallet-erc721",
  "pallet-fast-unstake",
+ "pallet-fee-handler",
  "pallet-grandpa",
  "pallet-hyperbridge",
  "pallet-identity",
@@ -3978,7 +3980,7 @@ dependencies = [
 [[package]]
 name = "ddc-primitives"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#fce3242a29673ad3249d1f098456505750bc2a44"
+source = "git+https://github.com/Cerebellum-Network/ddc-primitives.git?branch=dev#639781818c399e70b612683ff6f92f182d55b886"
 dependencies = [
  "blake2 0.10.6",
  "frame-support",
@@ -8975,7 +8977,7 @@ dependencies = [
 [[package]]
 name = "pallet-ddc-payouts"
 version = "7.3.2"
-source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#24cb12d43558f2ba4f4d488f542010049f4e026e"
+source = "git+https://github.com/Cerebellum-Network/ddc-payouts.git?branch=dev#d2c69bb5402d339b0df685a5cf402293b48f8ec9"
 dependencies = [
  "array-bytes",
  "byte-unit",
@@ -9223,6 +9225,23 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-staking",
+]
+
+[[package]]
+name = "pallet-fee-handler"
+version = "7.3.3"
+dependencies = [
+ "ddc-primitives",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
