@@ -47,7 +47,7 @@ use frame_support::{
 			imbalance::ResolveTo, DepositConsequence, Fortitude, PayFromAccount, Preservation,
 			Provenance, UnityAssetBalanceConversion, WithdrawConsequence,
 		},
-		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
+		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
 		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
@@ -161,7 +161,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73148,
+	spec_version: 73151,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -1297,10 +1297,16 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type ValidatorsQuorum = MajorityOfValidators;
 	type ClusterManager = DdcClusters;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+	type UnsignedPriority = ConstU64<500_000_000>;
+
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = DdcCustomers;
 	#[cfg(feature = "runtime-benchmarks")]
 	type ClusterCreator = DdcClusters;
+	#[cfg(feature = "runtime-benchmarks")]
+	type WPublic = <Signature as Verify>::Signer;
+	#[cfg(feature = "runtime-benchmarks")]
+	type WSignature = Signature;
 
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
