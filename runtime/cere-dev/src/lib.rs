@@ -50,7 +50,7 @@ use frame_support::{
 		},
 		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
-		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
+		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons, ExistenceRequirement
 	},
 	weights::{
 		constants::{
@@ -94,6 +94,7 @@ use sp_core::{
 	crypto::{AccountId32, KeyTypeId},
 	OpaqueMetadata,
 };
+use pallet_treasury::{NegativeImbalanceOf, PositiveImbalanceOf};
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
@@ -588,17 +589,47 @@ impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
 	type MaxValidators = ConstU32<1000>;
 }
 
+pub struct BurnSource;
+
+impl OnUnbalanced<NegativeImbalanceOf<Runtime>> for BurnSource {
+	fn on_unbalanced(amount: NegativeImbalanceOf<Runtime>) {
+		// Burn the tokens (decrease total issuance)
+		drop(amount);
+	}
+}
+
+pub struct RewardSource;
+
+impl OnUnbalanced<PositiveImbalanceOf<Runtime>> for RewardSource {
+	fn on_unbalanced(amount: PositiveImbalanceOf<Runtime>) {
+		let fee_pot_pallet_account: AccountId = FeeHandlerPalletId::get().into_account_truncating();
+
+		if let Ok(remaining_balance) = Balances::withdraw(
+			&fee_pot_pallet_account,
+			amount.peek(),
+			WithdrawReasons::TRANSFER,
+			ExistenceRequirement::KeepAlive,
+		) {
+			// Handle the successful withdrawal (burn)
+			let _ = remaining_balance;
+		} else {
+			// Log an error
+			log::error!("Failed to burn rewards from custom pallet account.");
+		}
+	}
+}
+
 impl pallet_staking::Config for Runtime {
 	type OldCurrency = Balances;
 	type Currency = Balances;
 	type CurrencyBalance = Balance;
 	type UnixTime = Timestamp;
 	type CurrencyToVote = CurrencyToVote;
-	type RewardRemainder = ResolveTo<TreasuryAccount, Balances>;
+	type RewardRemainder = BurnSource;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Slash = ResolveTo<TreasuryAccount, Balances>; // send the slashed funds to the treasury.
-	type Reward = (); // rewards are minted from the void
+	type Reward = RewardSource;
 	type SessionsPerEra = SessionsPerEra;
 	type BondingDuration = BondingDuration;
 	type SlashDeferDuration = SlashDeferDuration;
@@ -1429,6 +1460,20 @@ impl pallet_migrations::Config for Runtime {
 	type MaxServiceWeight = MbmServiceWeight;
 	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
 }
+
+parameter_types! {
+	pub const FeeHandlerPalletId: PalletId = PalletId(*b"feehandl");
+}
+
+impl pallet_fee_handler::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type PalletId = FeeHandlerPalletId;
+	type TreasuryPalletId = TreasuryPalletId;
+	type WeightInfo = pallet_fee_handler::weights::SubstrateWeight<Runtime>;
+}
+
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1606,6 +1651,9 @@ mod runtime {
 	// Migrations pallet
 	#[runtime::pallet_index(51)]
 	pub type MultiBlockMigrations = pallet_migrations;
+
+	#[runtime::pallet_index(52)]
+	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
@@ -1707,6 +1755,7 @@ mod benches {
 		[pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
+		[pallet_fee_handler, FeeHandler]
 	);
 }
 
