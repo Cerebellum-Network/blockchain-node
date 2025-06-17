@@ -1340,6 +1340,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	#[cfg(feature = "runtime-benchmarks")]
 	type WSignature = Signature;
 	type UnsignedPriority = ConstU64<500_000_000>;
+	type FeeHandler = FeeHandler;
 
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;

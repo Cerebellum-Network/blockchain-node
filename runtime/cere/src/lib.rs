@@ -1334,6 +1334,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type ClusterManager = DdcClusters;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type UnsignedPriority = ConstU64<500_000_000>;
+	type FeeHandler = FeeHandler;
 
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = DdcCustomers;
