@@ -32,6 +32,7 @@ pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
+//use pallet_treasury::{PositiveImbalanceOf, NegativeImbalanceOf};
 use pallet_balances::WeightInfo;
 extern crate alloc;
 use frame_support::{
@@ -41,7 +42,7 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration,
+		fungible::{Credit, Debt, HoldConsideration},
 		fungibles,
 		fungibles::{Dust, Inspect, Unbalanced},
 		tokens::{
@@ -49,8 +50,8 @@ use frame_support::{
 			Provenance, UnityAssetBalanceConversion, WithdrawConsequence,
 		},
 		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
-		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons, ExistenceRequirement
+		EqualPrivilegeOnly, ExistenceRequirement, Imbalance, InstanceFilter, KeyOwnerProofSystem,
+		LinearStoragePrice, Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -94,7 +95,6 @@ use sp_core::{
 	crypto::{AccountId32, KeyTypeId},
 	OpaqueMetadata,
 };
-use pallet_treasury::{NegativeImbalanceOf, PositiveImbalanceOf};
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
@@ -589,6 +589,11 @@ impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
 	type MaxValidators = ConstU32<1000>;
 }
 
+type PositiveImbalanceOf<T> =
+	Debt<<T as frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
+pub type NegativeImbalanceOf<T> =
+	Credit<<T as frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
+
 pub struct BurnSource;
 
 impl OnUnbalanced<NegativeImbalanceOf<Runtime>> for BurnSource {
@@ -841,7 +846,7 @@ parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 50_000 * DOLLARS;
 	pub const SpendPeriod: BlockNumber = DAYS;
-	pub const Burn: Permill = Permill::from_parts(25000);
+	pub const Burn: Permill = Permill::from_parts(0);
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
 	pub const TipReportDepositBase: Balance = 50_000 * DOLLARS;

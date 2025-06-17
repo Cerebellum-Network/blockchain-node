@@ -25,6 +25,7 @@ pub mod weights;
 #[cfg(test)]
 mod mock;
 
+use ddc_primitives::traits::FeeHandler;
 use frame_support::{
 	sp_runtime::SaturatedConversion,
 	traits::{
@@ -32,7 +33,6 @@ use frame_support::{
 		tokens::{Fortitude, Precision, Preservation},
 	},
 };
-use ddc_primitives::traits::FeeHandler;
 pub use pallet::*;
 use weights::WeightInfo;
 

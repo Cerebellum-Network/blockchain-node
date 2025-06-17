@@ -40,7 +40,7 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration,
+		fungible::{Credit, Debt, HoldConsideration},
 		fungibles,
 		fungibles::{Dust, Inspect, Unbalanced},
 		tokens::{
@@ -48,8 +48,8 @@ use frame_support::{
 			Provenance, UnityAssetBalanceConversion, WithdrawConsequence,
 		},
 		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
-		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons, ExistenceRequirement
+		EqualPrivilegeOnly, ExistenceRequirement, Imbalance, InstanceFilter, KeyOwnerProofSystem,
+		LinearStoragePrice, Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -73,7 +73,7 @@ use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
-use pallet_treasury::{NegativeImbalanceOf, PositiveImbalanceOf};
+//use pallet_treasury::{NegativeImbalanceOf, PositiveImbalanceOf};
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use pallet_session::historical::{self as pallet_session_historical};
 pub use pallet_staking::StakerStatus;
@@ -183,7 +183,6 @@ pub fn native_version() -> NativeVersion {
 }
 
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
-type PositiveImbalance = <Balances as Currency<AccountId>>::PositiveImbalance;
 
 pub struct DealWithFees;
 impl OnUnbalanced<NegativeImbalance> for DealWithFees {
@@ -603,9 +602,14 @@ impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
 	type MaxValidators = ConstU32<1000>;
 }
 
+type PositiveImbalanceOf<T> =
+	Debt<<T as frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
+pub type NegativeImbalanceOf<T> =
+	Credit<<T as frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
+
 pub struct BurnSource;
 
-impl OnUnbalanced<NegativeImbalance> for BurnSource {
+impl OnUnbalanced<NegativeImbalanceOf<Runtime>> for BurnSource {
 	fn on_unbalanced(amount: NegativeImbalanceOf<Runtime>) {
 		// Burn the tokens (decrease total issuance)
 		drop(amount);
@@ -614,7 +618,7 @@ impl OnUnbalanced<NegativeImbalance> for BurnSource {
 
 pub struct RewardSource;
 
-impl OnUnbalanced<PositiveImbalance> for RewardSource {
+impl OnUnbalanced<PositiveImbalanceOf<Runtime>> for RewardSource {
 	fn on_unbalanced(amount: PositiveImbalanceOf<Runtime>) {
 		let fee_pot_pallet_account: AccountId = FeeHandlerPalletId::get().into_account_truncating();
 
@@ -860,7 +864,7 @@ parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 50_000 * DOLLARS;
 	pub const SpendPeriod: BlockNumber = DAYS;
-	pub const Burn: Permill = Permill::from_parts(25000);
+	pub const Burn: Permill = Permill::from_parts(0);
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
 	pub const TipReportDepositBase: Balance = 50_000 * DOLLARS;

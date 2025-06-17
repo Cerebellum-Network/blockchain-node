@@ -41,7 +41,7 @@ std = [
   "frame-system/std",
   "pallet-balances/std",
   "sp-io/std",
-  "ddc-primitives/std"
+  "ddc-primitives/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
