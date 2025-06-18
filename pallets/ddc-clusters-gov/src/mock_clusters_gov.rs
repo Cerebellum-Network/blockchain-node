@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use std::cell::RefCell;
+use std::{borrow::Cow, cell::RefCell};
 
 use ddc_primitives::{
 	traits::{
@@ -31,6 +31,7 @@ use pallet_referenda::Curve;
 use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use sp_io::TestExternalities;
 use sp_runtime::{
+	str_array as s,
 	traits::{Convert, IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, MultiSignature, Perbill,
 };
@@ -55,20 +56,20 @@ type Block = MockBlock<Test>;
 frame_support::construct_runtime!(
 	pub enum Test
 	{
-		System: frame_system::{Pallet, Call, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>, HoldReason},
-		Referenda: pallet_referenda::{Pallet, Call, Storage, Event<T>},
-		ConvictionVoting: pallet_conviction_voting::{Pallet, Call, Storage, Event<T>},
-		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
-		Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>, HoldReason},
-		Randomness: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
-		DdcNodes: pallet_ddc_nodes::{Pallet, Call, Storage, Event<T>},
-		DdcClusters: pallet_ddc_clusters::{Pallet, Call, Storage, Config<T>, Event<T>},
-		DdcStaking: pallet_ddc_staking::{Pallet, Call, Storage, Event<T>},
-		Origins: pallet_mock_origins::{Origin},
-		DdcClustersGov: pallet_ddc_clusters_gov::{Pallet, Call, Storage, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		System: frame_system,
+		Balances: pallet_balances,
+		Preimage: pallet_preimage,
+		Referenda: pallet_referenda,
+		ConvictionVoting: pallet_conviction_voting,
+		Scheduler: pallet_scheduler,
+		Contracts: pallet_contracts,
+		Randomness: pallet_insecure_randomness_collective_flip,
+		DdcNodes: pallet_ddc_nodes,
+		DdcClusters: pallet_ddc_clusters,
+		DdcStaking: pallet_ddc_staking,
+		Origins: pallet_mock_origins,
+		DdcClustersGov: pallet_ddc_clusters_gov,
+		Timestamp: pallet_timestamp,
 	}
 
 );
@@ -126,7 +127,6 @@ parameter_types! {
 	pub const PreimageBaseDeposit: Balance = 0;
 	pub const PreimageByteDeposit: Balance = 0;
 	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
-
 }
 
 impl pallet_preimage::Config for Test {
@@ -166,6 +166,7 @@ impl pallet_referenda::Config for Test {
 	type AlarmInterval = AlarmInterval;
 	type Tracks = TracksInfo;
 	type Preimages = Preimage;
+	type BlockNumberProvider = System;
 }
 
 parameter_types! {
@@ -180,6 +181,8 @@ impl pallet_conviction_voting::Config for Test {
 	type MaxVotes = ConstU32<512>;
 	type MaxTurnout = frame_support::traits::TotalIssuanceOf<Balances, Self::AccountId>;
 	type Polls = Referenda;
+	type BlockNumberProvider = frame_system::Pallet<Test>;
+	type VotingHooks = ();
 }
 
 impl pallet_scheduler::Config for Test {
@@ -193,6 +196,7 @@ impl pallet_scheduler::Config for Test {
 	type WeightInfo = ();
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type Preimages = Preimage;
+	type BlockNumberProvider = frame_system::Pallet<Test>;
 }
 
 parameter_types! {
@@ -499,11 +503,11 @@ pub const CLUSTER_PROTOCOL_UPDATER_DECISION_DEPOSIT: Balance = 20 * DOLLARS;
 pub const CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID: u16 = 100;
 pub const CLUSTER_PROTOCOL_UPDATER_TRACK_ID: u16 = 101;
 
-const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 2] = [
-	(
-		CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID,
-		pallet_referenda::TrackInfo {
-			name: "cluster_protocol_activator",
+const TRACKS_DATA: [pallet_referenda::Track<u16, Balance, BlockNumber>; 2] = [
+	pallet_referenda::Track {
+		id: CLUSTER_PROTOCOL_ACTIVATOR_TRACK_ID,
+		info: pallet_referenda::TrackInfo {
+			name: s("cluster_protocol_activatr"),
 			max_deciding: 50,
 			decision_deposit: CLUSTER_PROTOCOL_ACTIVATOR_DECISION_DEPOSIT,
 			prepare_period: 0,
@@ -513,11 +517,11 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 2]
 			min_approval: APP_CLUSTER_PROTOCOL_ACTIVATOR,
 			min_support: SUP_CLUSTER_PROTOCOL_ACTIVATOR,
 		},
-	),
-	(
-		CLUSTER_PROTOCOL_UPDATER_TRACK_ID,
-		pallet_referenda::TrackInfo {
-			name: "cluster_protocol_updater",
+	},
+	pallet_referenda::Track {
+		id: CLUSTER_PROTOCOL_UPDATER_TRACK_ID,
+		info: pallet_referenda::TrackInfo {
+			name: s("cluster_protocol_updater"),
 			max_deciding: 50,
 			decision_deposit: CLUSTER_PROTOCOL_UPDATER_DECISION_DEPOSIT,
 			prepare_period: 0,
@@ -527,15 +531,17 @@ const TRACKS_DATA: [(u16, pallet_referenda::TrackInfo<Balance, BlockNumber>); 2]
 			min_approval: APP_CLUSTER_PROTOCOL_UPDATER,
 			min_support: SUP_CLUSTER_PROTOCOL_UPDATER,
 		},
-	),
+	},
 ];
 
 pub struct TracksInfo;
 impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	type Id = u16;
 	type RuntimeOrigin = <RuntimeOrigin as frame_support::traits::OriginTrait>::PalletsOrigin;
-	fn tracks() -> &'static [(Self::Id, pallet_referenda::TrackInfo<Balance, BlockNumber>)] {
-		&TRACKS_DATA[..]
+	fn tracks(
+	) -> impl Iterator<Item = Cow<'static, pallet_referenda::Track<Self::Id, Balance, BlockNumber>>>
+	{
+		TRACKS_DATA.iter().map(Cow::Borrowed)
 	}
 	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
 		if let Ok(custom_origin) = pallet_mock_origins::Origin::try_from(id.clone()) {
@@ -550,7 +556,6 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 		}
 	}
 }
-pallet_referenda::impl_tracksinfo_get!(TracksInfo, Balance, BlockNumber);
 
 #[allow(unused_imports)]
 #[frame_support::pallet]
@@ -563,7 +568,17 @@ mod pallet_mock_origins {
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
-	#[derive(PartialEq, Eq, Clone, MaxEncodedLen, Encode, Decode, TypeInfo, RuntimeDebug)]
+	#[derive(
+		PartialEq,
+		Eq,
+		Clone,
+		MaxEncodedLen,
+		Encode,
+		Decode,
+		DecodeWithMemTracking,
+		TypeInfo,
+		RuntimeDebug,
+	)]
 	#[pallet::origin]
 	pub enum Origin {
 		ClusterProtocolActivator,
@@ -718,8 +733,8 @@ impl ExtBuilder {
 		// endow system account to allow dispatching transaction
 		balances.push((DdcClustersGov::account_id(), ENDOWMENT));
 
-		let _ =
-			pallet_balances::GenesisConfig::<Test> { balances }.assimilate_storage(&mut storage);
+		let _ = pallet_balances::GenesisConfig::<Test> { balances, ..Default::default() }
+			.assimilate_storage(&mut storage);
 
 		let _ = pallet_ddc_nodes::GenesisConfig::<Test> { storage_nodes }
 			.assimilate_storage(&mut storage);

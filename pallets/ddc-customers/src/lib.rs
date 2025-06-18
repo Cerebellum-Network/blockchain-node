@@ -12,7 +12,7 @@ pub(crate) mod mock;
 #[cfg(test)]
 mod tests;
 
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery},
@@ -47,7 +47,7 @@ parameter_types! {
 }
 
 /// Just a Balance/BlockNumber tuple to encode when a chunk of funds will be unlocked.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct UnlockChunk<T: Config> {
 	/// Amount of funds to be unlocked.
@@ -58,7 +58,18 @@ pub struct UnlockChunk<T: Config> {
 	block: BlockNumberFor<T>,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, Serialize, Deserialize)]
+#[derive(
+	PartialEq,
+	Eq,
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	RuntimeDebug,
+	TypeInfo,
+	Serialize,
+	Deserialize,
+)]
 #[scale_info(skip_type_params(T))]
 pub struct Bucket<T: Config> {
 	bucket_id: BucketId,
@@ -68,12 +79,12 @@ pub struct Bucket<T: Config> {
 	is_removed: bool,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
 pub struct BucketParams {
 	is_public: bool,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct AccountsLedger<T: Config> {
 	/// The owner account whose balance is actually locked and can be used to pay for DDC network
