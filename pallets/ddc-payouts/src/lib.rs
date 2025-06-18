@@ -51,7 +51,9 @@ use sp_std::prelude::*;
 type BatchIndex = u16;
 
 /// Stores usage of customers
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
+#[derive(
+	PartialEq, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, Default, Clone,
+)]
 pub struct CustomerUsage {
 	pub transferred_bytes: u64,
 	pub stored_bytes: u64,
@@ -60,7 +62,9 @@ pub struct CustomerUsage {
 }
 
 /// Stores usage of node provider
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
+#[derive(
+	PartialEq, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, Default, Clone,
+)]
 pub struct NodeUsage {
 	pub transferred_bytes: u64,
 	pub stored_bytes: u64,
@@ -69,7 +73,9 @@ pub struct NodeUsage {
 }
 
 /// Stores reward in tokens(units) of node provider as per NodeUsage
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
+#[derive(
+	PartialEq, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, Default, Clone,
+)]
 pub struct NodeReward {
 	pub transfer: u128, // reward in tokens for NodeUsage::transferred_bytes
 	pub storage: u128,  // reward in tokens for NodeUsage::stored_bytes
@@ -77,7 +83,9 @@ pub struct NodeReward {
 	pub gets: u128,     // reward in tokens for NodeUsage::number_of_gets
 }
 
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
+#[derive(
+	PartialEq, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, Default, Clone,
+)]
 pub struct BillingReportDebt {
 	pub cluster_id: ClusterId,
 	pub era: DdcEra,
@@ -86,7 +94,9 @@ pub struct BillingReportDebt {
 }
 
 /// Stores charge in tokens(units) of customer as per CustomerUsage
-#[derive(PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, Default, Clone)]
+#[derive(
+	PartialEq, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, Default, Clone,
+)]
 pub struct CustomerCharge {
 	pub transfer: u128, // charge in tokens for CustomerUsage::transferred_bytes
 	pub storage: u128,  // charge in tokens for CustomerUsage::stored_bytes

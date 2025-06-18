@@ -3,7 +3,7 @@
 use codec::{Decode, Encode};
 use scale_info::{prelude::vec::Vec, TypeInfo};
 use serde::{Deserialize, Serialize};
-use sp_core::hash::H160;
+use sp_core::{hash::H160, DecodeWithMemTracking};
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
@@ -51,7 +51,7 @@ pub type ClusterNodesCount = u16;
 
 // ClusterParams includes Governance non-sensetive parameters only
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterParams<AccountId> {
 	pub node_provider_auth_contract: Option<AccountId>,
 	pub erasure_coding_required: u32,
@@ -73,7 +73,16 @@ impl<AccountId> Default for ClusterParams<AccountId> {
 
 // ClusterProtocolParams includes Governance sensitive parameters
 #[derive(
-	Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default, Serialize, Deserialize,
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	RuntimeDebug,
+	TypeInfo,
+	PartialEq,
+	Default,
+	Serialize,
+	Deserialize,
 )]
 #[scale_info(skip_type_params(Balance, BlockNumber, T))]
 pub struct ClusterProtocolParams<Balance, BlockNumber> {
@@ -89,7 +98,7 @@ pub struct ClusterProtocolParams<Balance, BlockNumber> {
 	pub unit_per_get_request: u128,
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterPricingParams {
 	pub unit_per_mb_stored: u128,
 	pub unit_per_mb_streamed: u128,
@@ -97,26 +106,36 @@ pub struct ClusterPricingParams {
 	pub unit_per_get_request: u128,
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterFeesParams {
 	pub treasury_share: Perquintill,
 	pub validators_share: Perquintill,
 	pub cluster_reserve_share: Perquintill,
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterBondingParams<BlockNumber> {
 	pub storage_bond_size: u128,
 	pub storage_chill_delay: BlockNumber,
 	pub storage_unbonding_delay: BlockNumber,
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+#[derive(
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	RuntimeDebug,
+	TypeInfo,
+	PartialEq,
+	Serialize,
+	Deserialize,
+)]
 pub enum NodePubKey {
 	StoragePubKey(StorageNodePubKey),
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodeType {
 	Storage = 1,
 }
@@ -139,7 +158,17 @@ impl TryFrom<u8> for NodeType {
 	}
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+#[derive(
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	RuntimeDebug,
+	TypeInfo,
+	PartialEq,
+	Serialize,
+	Deserialize,
+)]
 pub enum StorageNodeMode {
 	/// DDC Storage node operates with enabled caching in RAM and stores data in Hard Drive
 	Full = 1,
@@ -150,7 +179,7 @@ pub enum StorageNodeMode {
 }
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct StorageNodeParams {
 	pub mode: StorageNodeMode,
 	pub host: Vec<u8>,
@@ -177,13 +206,23 @@ impl Default for StorageNodeParams {
 }
 
 // Params fields are always coming from extrinsic input
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq)]
 pub enum NodeParams {
 	StorageParams(StorageNodeParams),
 }
 
 /// DDC cluster status
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+#[derive(
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	RuntimeDebug,
+	TypeInfo,
+	PartialEq,
+	Serialize,
+	Deserialize,
+)]
 pub enum ClusterStatus {
 	Unbonded,
 	Bonded,
@@ -192,28 +231,50 @@ pub enum ClusterStatus {
 }
 
 /// DDC node kind added to DDC cluster
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+#[derive(
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	RuntimeDebug,
+	TypeInfo,
+	PartialEq,
+	Serialize,
+	Deserialize,
+)]
 pub enum ClusterNodeKind {
 	Genesis,
 	External,
 }
 
 /// DDC node status in to DDC cluster
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Serialize, Deserialize)]
+#[derive(
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	RuntimeDebug,
+	TypeInfo,
+	PartialEq,
+	Serialize,
+	Deserialize,
+)]
 pub enum ClusterNodeStatus {
 	AwaitsValidation,
 	ValidationSucceeded,
 	ValidationFailed,
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq)]
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq)]
 pub struct ClusterNodeState<BlockNumber> {
 	pub kind: ClusterNodeKind,
 	pub status: ClusterNodeStatus,
 	pub added_at: BlockNumber,
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, TypeInfo, PartialEq, Default)]
+#[derive(
+	Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, PartialEq, Default,
+)]
 pub struct ClusterNodesStats {
 	pub await_validation: ClusterNodesCount,
 	pub validation_succeeded: ClusterNodesCount,

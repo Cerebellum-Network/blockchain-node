@@ -77,7 +77,10 @@ pub const ENDOWED_BALANCE: u64 = 100_000_000;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	RuntimeGenesisConfig {
-		balances: balances::GenesisConfig { balances: vec![(USER_A, ENDOWED_BALANCE)] },
+		balances: balances::GenesisConfig {
+			balances: vec![(USER_A, ENDOWED_BALANCE)],
+			..Default::default()
+		},
 	}
 	.build_storage()
 	.unwrap()

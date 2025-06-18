@@ -7,7 +7,7 @@ use pallet_ddc_clusters::Event::{ClusterActivated, ClusterProtocolParamsSet};
 use pallet_referenda::ReferendumInfo;
 use sp_runtime::Perquintill;
 
-use super::{mock::*, *};
+use super::{mock_clusters_gov::*, *};
 use crate::SubmissionDeposit as ReferendaSubmissionDeposit;
 
 fn next_block() {

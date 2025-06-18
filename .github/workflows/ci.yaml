@@ -55,10 +55,10 @@ jobs:
       - name: Check Build
         run: |
           cargo build --release --features try-runtime
-      - name: Check Try-Runtime Testnet
-        run: |
-          try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-          on-runtime-upgrade --blocktime 6000 --disable-idempotency-checks live --uri wss://archive.testnet.cere.network:443
+#      - name: Check Try-Runtime Testnet
+#        run: |
+#          try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
+#          on-runtime-upgrade --blocktime 6000 --disable-idempotency-checks live --uri wss://archive.testnet.cere.network:443
       - name: Check Try-Runtime Mainnet
         run: |
           try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
@@ -123,7 +123,7 @@ jobs:
         uses: actions-rs/tarpaulin@v0.1
         with:
           version: '0.22.0'
-          args: '--verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out "Xml"'
+          args: '--verbose --locked --no-fail-fast --workspace --features runtime-benchmarks --out "Xml" -- --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests'
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:

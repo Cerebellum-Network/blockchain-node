@@ -501,6 +501,7 @@ impl ExtBuilder {
 				(6, 1000000000000000000000000),
 				(7, 1000000000000000000000000),
 			],
+			..Default::default()
 		}
 		.assimilate_storage(&mut storage);
 
