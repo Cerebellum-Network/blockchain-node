@@ -40,7 +40,7 @@ use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration,
+		fungible::{Credit, Debt, HoldConsideration},
 		fungibles,
 		fungibles::{Dust, Inspect, Unbalanced},
 		tokens::{
@@ -48,8 +48,8 @@ use frame_support::{
 			Provenance, UnityAssetBalanceConversion, WithdrawConsequence,
 		},
 		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
-		EqualPrivilegeOnly, Imbalance, InstanceFilter, KeyOwnerProofSystem, LinearStoragePrice,
-		Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
+		EqualPrivilegeOnly, ExistenceRequirement, Imbalance, InstanceFilter, KeyOwnerProofSystem,
+		LinearStoragePrice, Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
 	weights::{
 		constants::{
@@ -73,6 +73,7 @@ use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
+//use pallet_treasury::{NegativeImbalanceOf, PositiveImbalanceOf};
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use pallet_session::historical::{self as pallet_session_historical};
 pub use pallet_staking::StakerStatus;
@@ -161,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73151,
+	spec_version: 73156,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -601,17 +602,52 @@ impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
 	type MaxValidators = ConstU32<1000>;
 }
 
+type PositiveImbalanceOf<T> =
+	Debt<<T as frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
+pub type NegativeImbalanceOf<T> =
+	Credit<<T as frame_system::Config>::AccountId, <T as pallet_staking::Config>::Currency>;
+
+pub struct BurnSource;
+
+impl OnUnbalanced<NegativeImbalanceOf<Runtime>> for BurnSource {
+	fn on_unbalanced(amount: NegativeImbalanceOf<Runtime>) {
+		// Burn the tokens (decrease total issuance)
+		drop(amount);
+	}
+}
+
+pub struct RewardSource;
+
+impl OnUnbalanced<PositiveImbalanceOf<Runtime>> for RewardSource {
+	fn on_unbalanced(amount: PositiveImbalanceOf<Runtime>) {
+		let fee_pot_pallet_account: AccountId = FeeHandlerPalletId::get().into_account_truncating();
+
+		if let Ok(remaining_balance) = Balances::withdraw(
+			&fee_pot_pallet_account,
+			amount.peek(),
+			WithdrawReasons::TRANSFER,
+			ExistenceRequirement::KeepAlive,
+		) {
+			// Handle the successful withdrawal (burn)
+			let _ = remaining_balance;
+		} else {
+			// Log an error
+			log::error!("Failed to burn rewards from custom pallet account.");
+		}
+	}
+}
+
 impl pallet_staking::Config for Runtime {
 	type OldCurrency = Balances;
 	type Currency = Balances;
 	type CurrencyBalance = Balance;
 	type UnixTime = Timestamp;
 	type CurrencyToVote = CurrencyToVote;
-	type RewardRemainder = ResolveTo<TreasuryAccount, Balances>;
+	type RewardRemainder = BurnSource;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Slash = ResolveTo<TreasuryAccount, Balances>; // send the slashed funds to the treasury.
-	type Reward = (); // rewards are minted from the void
+	type Reward = RewardSource; // rewards are minted from the void
 	type SessionsPerEra = SessionsPerEra;
 	type BondingDuration = BondingDuration;
 	type SlashDeferDuration = SlashDeferDuration;
@@ -828,7 +864,7 @@ parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 50_000 * DOLLARS;
 	pub const SpendPeriod: BlockNumber = DAYS;
-	pub const Burn: Permill = Permill::from_parts(25000);
+	pub const Burn: Permill = Permill::from_parts(0);
 	pub const TipCountdown: BlockNumber = DAYS;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
 	pub const TipReportDepositBase: Balance = 50_000 * DOLLARS;
@@ -1298,6 +1334,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	type ClusterManager = DdcClusters;
 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
 	type UnsignedPriority = ConstU64<500_000_000>;
+	type FeeHandler = FeeHandler;
 
 	#[cfg(feature = "runtime-benchmarks")]
 	type CustomerDepositor = DdcCustomers;
@@ -1404,6 +1441,7 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
+	pub const TenPercentOfValidators: Percent = Percent::from_percent(10);
 }
 
 impl pallet_ddc_verification::Config for Runtime {
@@ -1423,11 +1461,14 @@ impl pallet_ddc_verification::Config for Runtime {
 	type BucketManager = DdcCustomers;
 	type InspReceiptsInterceptor = pallet_ddc_verification::NoReceiptsInterceptor;
 
+	type InspRedundancyFactor = TenPercentOfValidators;
+	type InspBackupsFactor = TenPercentOfValidators;
+
 	const OCW_INTERVAL: u16 = 10; // every 10th block
 	const TCA_INSPECTION_STEP: u64 = 0;
-	const INSPECTION_REDUNDANCY_FACTOR: u8 = 3;
-	const INSPECTION_BACKUPS_COUNT: u8 = 2;
-	const INSPECTION_BACKUP_BLOCK_DELAY: u32 = 25;
+	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
+	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
+	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
 }
 
 parameter_types! {
@@ -1447,6 +1488,19 @@ impl pallet_migrations::Config for Runtime {
 	type FailedMigrationHandler = frame_support::migrations::FreezeChainOnFailedMigration;
 	type MaxServiceWeight = MbmServiceWeight;
 	type WeightInfo = pallet_migrations::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
+	pub const FeeHandlerPalletId: PalletId = PalletId(*b"feehandl");
+}
+
+impl pallet_fee_handler::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type PalletId = FeeHandlerPalletId;
+	type TreasuryPalletId = TreasuryPalletId;
+	type WeightInfo = pallet_fee_handler::weights::SubstrateWeight<Runtime>;
 }
 
 #[frame_support::runtime]
@@ -1624,6 +1678,9 @@ mod runtime {
 	// Migrations pallet
 	#[runtime::pallet_index(51)]
 	pub type MultiBlockMigrations = pallet_migrations;
+
+	#[runtime::pallet_index(52)]
+	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
@@ -1777,6 +1834,7 @@ mod benches {
 		[pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
+		[pallet_fee_handler, FeeHandler]
 	);
 }
 
