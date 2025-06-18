@@ -169,7 +169,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73152,
+	spec_version: 73155,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -1345,7 +1345,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	const DISABLE_PAYOUTS_CUTOFF: bool = false;
-	const OCW_INTERVAL: u16 = 1; // every block
+	const OCW_INTERVAL: u16 = 5; // every 5th block
 }
 
 parameter_types! {
@@ -1421,6 +1421,7 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
+	pub const TenPercentOfValidators: Percent = Percent::from_percent(10);
 }
 
 impl pallet_ddc_verification::Config for Runtime {
@@ -1441,11 +1442,14 @@ impl pallet_ddc_verification::Config for Runtime {
 	type InspReceiptsInterceptor =
 		pallet_ddc_verification::simulations::v1::SimulationReceiptsInterceptor;
 
-	const OCW_INTERVAL: u16 = 1; // every block
+	type InspRedundancyFactor = TenPercentOfValidators;
+	type InspBackupsFactor = TenPercentOfValidators;
+
+	const OCW_INTERVAL: u16 = 10; // every 10th block
 	const TCA_INSPECTION_STEP: u64 = 0;
-	const INSPECTION_REDUNDANCY_FACTOR: u8 = 3;
-	const INSPECTION_BACKUPS_COUNT: u8 = 1;
-	const INSPECTION_BACKUP_BLOCK_DELAY: u32 = 25;
+	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
+	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
+	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
 }
 
 parameter_types! {
