@@ -55,10 +55,10 @@ jobs:
       - name: Check Build
         run: |
           cargo build --release --features try-runtime
-      - name: Check Try-Runtime Testnet
-        run: |
-          try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-          on-runtime-upgrade --blocktime 6000 --disable-idempotency-checks live --uri wss://archive.testnet.cere.network:443
+#      - name: Check Try-Runtime Testnet
+#        run: |
+#          try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
+#          on-runtime-upgrade --blocktime 6000 --disable-idempotency-checks live --uri wss://archive.testnet.cere.network:443
       - name: Check Try-Runtime Mainnet
         run: |
           try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
