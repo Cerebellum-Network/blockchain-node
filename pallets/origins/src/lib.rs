@@ -8,14 +8,24 @@ pub use pallet::*;
 pub mod pallet {
 	use cere_runtime_common::constants::currency::{Balance, DOLLARS, GRAND};
 	use frame_support::pallet_prelude::*;
-
+	use sp_core::DecodeWithMemTracking;
 	#[pallet::config]
 	pub trait Config: frame_system::Config {}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
-	#[derive(PartialEq, Eq, Clone, MaxEncodedLen, Encode, Decode, TypeInfo, RuntimeDebug)]
+	#[derive(
+		PartialEq,
+		Eq,
+		Clone,
+		MaxEncodedLen,
+		Encode,
+		Decode,
+		DecodeWithMemTracking,
+		TypeInfo,
+		RuntimeDebug,
+	)]
 	#[pallet::origin]
 	pub enum Origin {
 		/// Origin able to cancel slashes and manage minimum commission.

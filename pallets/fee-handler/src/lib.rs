@@ -20,7 +20,7 @@
 
 // todo! Add Unit tests and Benchmarking
 
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use frame_support::{
 	__private::RuntimeDebug,
 	pallet_prelude::TypeInfo,
@@ -33,7 +33,17 @@ use frame_support::{
 pub use pallet::*;
 use sp_runtime::{Permill, Saturating};
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(
+	PartialEq,
+	Eq,
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	RuntimeDebug,
+	TypeInfo,
+	MaxEncodedLen,
+)]
 pub struct FeeDistributionProportion {
 	treasury_proportion: Permill,
 	fee_pot_proportion: Permill,

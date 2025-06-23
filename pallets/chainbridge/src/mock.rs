@@ -85,9 +85,12 @@ pub const TEST_THRESHOLD: u32 = 2;
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let bridge_id = AccountIdConversion::into_account_truncating(&MODULE_ID);
 	let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
-	pallet_balances::GenesisConfig::<Test> { balances: vec![(bridge_id, ENDOWED_BALANCE)] }
-		.assimilate_storage(&mut t)
-		.unwrap();
+	pallet_balances::GenesisConfig::<Test> {
+		balances: vec![(bridge_id, ENDOWED_BALANCE)],
+		..Default::default()
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
 	ext
