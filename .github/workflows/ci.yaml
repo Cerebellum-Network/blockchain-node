@@ -48,6 +48,8 @@ jobs:
           override: true
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
+      - name: Configure Git
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
       - name: Basic vulnerability check
         run: |
           # Use cargo tree to check for known vulnerabilities
