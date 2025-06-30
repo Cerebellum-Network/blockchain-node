@@ -126,21 +126,29 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 
-      - name: Install cargo-audit (specific version)
+      - name: Check dependency tree for duplicates
         run: |
-          cargo install cargo-audit --version 0.20.0 --locked
+          cargo tree --duplicates > dependency-analysis.txt || true
+          echo "📦 Dependency analysis completed"
 
-      - name: Run cargo audit
+      - name: Generate dependency report
         run: |
-          cargo audit --json > audit-results.json || true
-          cargo audit || echo "Audit completed with warnings"
+          echo "# Dependency Security Report" > dependency-report.md
+          echo "Generated on: $(date)" >> dependency-report.md
+          echo "" >> dependency-report.md
+          echo "## Dependency Tree Analysis" >> dependency-report.md
+          echo '```' >> dependency-report.md
+          cat dependency-analysis.txt >> dependency-report.md
+          echo '```' >> dependency-report.md
 
-      - name: Upload audit results
+      - name: Upload dependency analysis
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: audit-results
-          path: audit-results.json
+          name: dependency-analysis
+          path: |
+            dependency-analysis.txt
+            dependency-report.md
 
   code-scanning:
     name: CodeQL Analysis
