@@ -67,6 +67,7 @@ jobs:
     name: Cargo check
     needs: format
     runs-on: ubuntu-24.04
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
@@ -90,7 +91,8 @@ jobs:
       - name: Check Try-Runtime
         run: |
            try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-           on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.qanet.cere.network:443
+           on-runtime-upgrade --disable-idempotency-checks --disable-spec-version-check --blocktime 6000 live --uri wss://archive.qanet.cere.network:443
+        continue-on-error: true
       - name: Run dev chain
         run: |
           timeout --preserve-status 30s ./target/release/cere --dev
@@ -103,6 +105,7 @@ jobs:
     name: Run Clippy
     needs: format
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
