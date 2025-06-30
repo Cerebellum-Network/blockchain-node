@@ -12,6 +12,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  security-events: write
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -20,7 +21,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -33,12 +34,42 @@ jobs:
         run: |
           cargo fmt -- --check
 
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.82.0
+          override: true
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Install cargo-audit
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-audit
+          version: latest
+      - name: Run cargo audit
+        uses: actions-rs/cargo@v1
+        with:
+          command: audit
+          args: --deny warnings --deny unmaintained --deny unsound --deny yanked
+      - name: Run cargo audit fix for advisories
+        uses: actions-rs/cargo@v1
+        with:
+          command: audit
+          args: fix --dry-run
+        continue-on-error: true
+
   check:
     name: Cargo check
-    needs: format
+    needs: [format, security-audit]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain and rust-src
@@ -71,10 +102,10 @@ jobs:
 
   clippy:
     name: Run Clippy
-    needs: format
+    needs: [format, security-audit]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
       - name: Install toolchain
@@ -94,12 +125,12 @@ jobs:
 
   tests:
     name: Run tests
-    needs: format
+    needs: [format, security-audit]
     # The type of runner that the job will run on
     runs-on: ["self-hosted", "cere-network-memory-large"]
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make
       - name: Install toolchain
