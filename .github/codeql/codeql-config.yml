@@ -1,0 +1,26 @@
+name: "Blockchain Node CodeQL Configuration"
+
+# Disable the default security queries for now and focus on quality
+disable-default-queries: false
+
+# Additional query suites to run
+queries:
+  - uses: security-and-quality
+  - uses: security-experimental
+
+# Paths to ignore during analysis
+paths-ignore:
+  - "target/**"
+  - "**/*.lock"
+  - "**/node_modules/**"
+  - "**/*.min.js"
+  - "**/vendor/**"
+  - "docs/**"
+  - "scripts/**"
+
+# Paths to include specifically  
+paths:
+  - "node/**"
+  - "pallets/**"
+  - "runtime/**"
+  - ".github/workflows/**" 
