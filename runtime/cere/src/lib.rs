@@ -455,12 +455,19 @@ parameter_types! {
 	pub const MaxReserves: u32 = 50;
 }
 
+pub struct DustToTreasury;
+impl OnUnbalanced<Credit<AccountId, Balances>> for DustToTreasury {
+	fn on_unbalanced(amount: Credit<AccountId, Balances>) {
+		let _ =Balances::deposit_creating(&TreasuryAccount::get(), amount.peek());
+	}
+}
+
 impl pallet_balances::Config for Runtime {
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	type Balance = Balance;
-	type DustRemoval = ();
+	type DustRemoval = DustToTreasury;
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
