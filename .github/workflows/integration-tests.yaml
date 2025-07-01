@@ -33,6 +33,9 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2.7.3
 
+      - name: Configure Git for private dependencies
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
       - name: Quick compilation check
         run: |
           # Only check core compilation without building
