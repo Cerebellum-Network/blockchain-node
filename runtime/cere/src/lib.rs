@@ -162,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73158,
+	spec_version: 73159,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -1467,7 +1467,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const OCW_INTERVAL: u16 = 10; // every 10th block
 	const TCA_INSPECTION_STEP: u64 = 0;
 	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
-	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
+	const MIN_INSP_BACKUPS_FACTOR: u8 = 3;
 	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
 }
 
