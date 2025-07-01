@@ -1467,7 +1467,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const OCW_INTERVAL: u16 = 10; // every 10th block
 	const TCA_INSPECTION_STEP: u64 = 0;
 	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
-	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
+	const MIN_INSP_BACKUPS_FACTOR: u8 = 3;
 	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
 }
 
