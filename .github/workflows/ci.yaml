@@ -126,7 +126,7 @@ jobs:
 
   check-try-runtime:
     name: Try-Runtime Check
-    needs: check-runtime
+    needs: format
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     continue-on-error: true
