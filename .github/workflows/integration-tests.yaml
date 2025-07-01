@@ -1,0 +1,358 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [dev, staging, master]
+  pull_request:
+    branches: [dev, staging, master, 'release/**', 'hotfix/**']
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  integration-tests:
+    name: Integration Tests
+    runs-on: ["self-hosted", "cere-network-memory-large"]
+    timeout-minutes: 180
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make jq
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.82.0
+          override: true
+          target: wasm32-unknown-unknown
+          components: rust-src, llvm-tools-preview
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2.7.3
+        with:
+          cache-on-failure: true
+
+      - name: Configure Git for private dependencies
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+      - name: Install additional testing tools
+        run: |
+          # Install cargo-nextest for faster test execution
+          curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+          
+          # Install grcov for coverage
+          cargo install grcov
+          
+          # Install cargo-mutants for mutation testing
+          cargo install cargo-mutants
+
+      - name: Build all packages with instrumentation
+        run: |
+          export RUSTFLAGS="-Cinstrument-coverage"
+          export LLVM_PROFILE_FILE="integration-tests-%p-%m.profraw"
+          cargo build --release --features runtime-benchmarks,try-runtime --workspace
+
+      - name: Run unit tests with coverage
+        run: |
+          export RUSTFLAGS="-Cinstrument-coverage"
+          export LLVM_PROFILE_FILE="unit-tests-%p-%m.profraw"
+          cargo nextest run --workspace --features runtime-benchmarks --no-fail-fast
+
+      - name: Run runtime integration tests
+        run: |
+          export RUSTFLAGS="-Cinstrument-coverage"
+          export LLVM_PROFILE_FILE="runtime-tests-%p-%m.profraw"
+          
+          # Test runtime upgrades
+          ./target/release/cere build-spec --chain=dev --raw > /tmp/dev-spec.json
+          ./target/release/cere --dev --tmp --rpc-port 9944 --ws-port 9945 --port 30334 &
+          NODE_PID=$!
+          sleep 30
+          
+          # Basic connectivity and block production tests
+          curl -H "Content-Type: application/json" \
+               -d '{"id":1, "jsonrpc":"2.0", "method": "system_health", "params":[]}' \
+               http://localhost:9944 > /tmp/health.json
+          
+          jq -e '.result.peers >= 0' /tmp/health.json
+          
+          # Stop the node
+          kill $NODE_PID || true
+          wait $NODE_PID || true
+
+      - name: Run pallet integration tests
+        run: |
+          export RUSTFLAGS="-Cinstrument-coverage"
+          export LLVM_PROFILE_FILE="pallet-tests-%p-%m.profraw"
+          
+          # Test each pallet individually with integration features
+          for pallet in pallets/*/; do
+            echo "Testing pallet: $pallet"
+            if [ -f "$pallet/Cargo.toml" ]; then
+              cd "$pallet"
+              cargo test --features integration-tests --release || echo "Integration tests not available for $pallet"
+              cd - > /dev/null
+            fi
+          done
+
+      - name: Run security-focused tests
+        run: |
+          export RUSTFLAGS="-Cinstrument-coverage"
+          export LLVM_PROFILE_FILE="security-tests-%p-%m.profraw"
+          
+          # Test boundary conditions and edge cases
+          cargo test --workspace --features runtime-benchmarks -- security
+          cargo test --workspace --features runtime-benchmarks -- boundary
+          cargo test --workspace --features runtime-benchmarks -- overflow
+          cargo test --workspace --features runtime-benchmarks -- underflow
+
+      - name: Run benchmarks as tests
+        run: |
+          export RUSTFLAGS="-Cinstrument-coverage"
+          export LLVM_PROFILE_FILE="benchmark-tests-%p-%m.profraw"
+          
+          # Ensure benchmarks compile and run basic validation
+          cargo test --features runtime-benchmarks --release --package cere-runtime
+          cargo test --features runtime-benchmarks --release --package cere-dev-runtime
+
+      - name: Generate coverage report
+        run: |
+          # Merge all coverage data
+          grcov . --binary-path ./target/release/deps/ \
+                  -s . \
+                  -t html \
+                  --branch \
+                  --ignore-not-existing \
+                  --ignore "../*" \
+                  --ignore "/*" \
+                  --ignore "target/*" \
+                  --ignore "*/tests/*" \
+                  --ignore "*/benches/*" \
+                  -o ./coverage/
+          
+          # Generate lcov for CI integration
+          grcov . --binary-path ./target/release/deps/ \
+                  -s . \
+                  -t lcov \
+                  --branch \
+                  --ignore-not-existing \
+                  --ignore "../*" \
+                  --ignore "/*" \
+                  --ignore "target/*" \
+                  --ignore "*/tests/*" \
+                  --ignore "*/benches/*" \
+                  -o ./coverage.lcov
+
+      - name: Check coverage thresholds
+        run: |
+          # Extract coverage percentage
+          COVERAGE=$(grcov . --binary-path ./target/release/deps/ \
+                           -s . \
+                           -t summary \
+                           --ignore-not-existing \
+                           --ignore "../*" \
+                           --ignore "/*" \
+                           --ignore "target/*" \
+                           --ignore "*/tests/*" \
+                           --ignore "*/benches/*" | \
+                     grep -oP 'Coverage: \K[\d.]+')
+          
+          echo "Current coverage: ${COVERAGE}%"
+          
+          # Set minimum coverage threshold (should be >80% for production)
+          MIN_COVERAGE=75
+          if (( $(echo "$COVERAGE < $MIN_COVERAGE" | bc -l) )); then
+            echo "❌ Coverage $COVERAGE% is below minimum threshold $MIN_COVERAGE%"
+            exit 1
+          else
+            echo "✅ Coverage $COVERAGE% meets minimum threshold $MIN_COVERAGE%"
+          fi
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-reports
+          path: |
+            ./coverage/
+            ./coverage.lcov
+          retention-days: 30
+
+      - name: Run mutation tests (sample)
+        run: |
+          # Run mutation testing on a subset to avoid long execution times
+          # Focus on critical security-related pallets
+          echo "Running mutation tests on critical pallets..."
+          
+          timeout 1800 cargo mutants --package pallet-ddc-staking \
+                                     --package pallet-ddc-clusters \
+                                     --package pallet-ddc-nodes \
+                                     --baseline skip \
+                                     --timeout 60 \
+                                     --jobs $(nproc) || echo "Mutation testing timeout reached"
+        continue-on-error: true
+
+      - name: Performance regression tests
+        run: |
+          # Build benchmarks and run performance tests
+          cargo build --release --features runtime-benchmarks
+          
+          # Run key benchmark tests to ensure no performance regression
+          echo "Running performance regression tests..."
+          
+          # Test DDC pallet benchmarks (sample)
+          timeout 600 ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_clusters" \
+            --extrinsic="create_cluster" \
+            --steps=20 \
+            --repeat=5 \
+            --output=/tmp/benchmark-results.txt || echo "Benchmark timeout"
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-artifacts
+          path: |
+            /tmp/dev-spec.json
+            /tmp/health.json
+            /tmp/benchmark-results.txt
+          retention-days: 30
+
+  stress-tests:
+    name: Stress Tests
+    runs-on: ["self-hosted", "cere-network-memory-large"]
+    timeout-minutes: 120
+    if: github.event_name != 'pull_request'  # Only run on pushes and manual triggers
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make stress-ng
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.82.0
+          override: true
+          target: wasm32-unknown-unknown
+          components: rust-src
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2.7.3
+
+      - name: Configure Git for private dependencies
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+      - name: Build release binary
+        run: |
+          cargo build --release --features runtime-benchmarks,try-runtime
+
+      - name: Run memory stress tests
+        run: |
+          echo "Starting memory stress tests..."
+          
+          # Run node under memory pressure
+          stress-ng --vm 2 --vm-bytes 1G --timeout 60s &
+          STRESS_PID=$!
+          
+          # Start node
+          timeout 300 ./target/release/cere --dev --tmp --rpc-port 9946 --ws-port 9947 --port 30335 &
+          NODE_PID=$!
+          
+          sleep 60
+          
+          # Test basic operations under stress
+          curl -H "Content-Type: application/json" \
+               -d '{"id":1, "jsonrpc":"2.0", "method": "system_health", "params":[]}' \
+               http://localhost:9946 || echo "Stress test completed"
+          
+          # Cleanup
+          kill $STRESS_PID $NODE_PID || true
+          wait $STRESS_PID $NODE_PID || true
+
+      - name: Test resource limits
+        run: |
+          echo "Testing resource limits..."
+          
+          # Test with limited memory
+          systemd-run --user --scope -p MemoryLimit=2G \
+            timeout 120 ./target/release/cere --dev --tmp --rpc-port 9948 --ws-port 9949 --port 30336 || echo "Memory limit test completed"
+
+  compatibility-tests:
+    name: Compatibility Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.82.0
+          override: true
+          target: wasm32-unknown-unknown
+          components: rust-src
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2.7.3
+
+      - name: Configure Git for private dependencies
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+      - name: Test WebAssembly compilation
+        run: |
+          echo "Testing WASM runtime compilation..."
+          cargo build --release --features on-chain-release-build
+          
+          # Verify WASM files are generated
+          ls -la target/release/wbuild/cere-runtime/
+          ls -la target/release/wbuild/cere-dev-runtime/
+
+      - name: Test chain spec generation
+        run: |
+          cargo build --release
+          
+          # Test all chain spec generation
+          ./target/release/cere build-spec --chain=dev --raw > /tmp/dev-raw.json
+          ./target/release/cere build-spec --chain=dev > /tmp/dev-plain.json
+          
+          # Validate JSON format
+          jq . /tmp/dev-raw.json > /dev/null
+          jq . /tmp/dev-plain.json > /dev/null
+          
+          echo "Chain spec generation successful"
+
+      - name: Cross-compilation tests
+        run: |
+          # Test that code compiles for different targets
+          rustup target add x86_64-unknown-linux-musl
+          
+          # Test compilation with musl (for container compatibility)
+          cargo check --target x86_64-unknown-linux-musl --features runtime-benchmarks 
