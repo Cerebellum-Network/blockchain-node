@@ -61,13 +61,14 @@ jobs:
           if grep -r "openssl.*0\." Cargo.toml; then
             echo "⚠️  Old OpenSSL version detected"
           fi
-          echo "✅ Manual vulnerability patterns check completed"
+                    echo "✅ Manual vulnerability patterns check completed"
 
-  check:
-    name: Cargo check
+  # Split cargo check into parallel jobs for faster execution
+  check-runtime:
+    name: Check Runtime
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
@@ -79,33 +80,89 @@ jobs:
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
-      - name: Rust Cache
+      - name: Enhanced Rust Cache
         uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "runtime-build"
+          cache-on-failure: true
+      - name: Configure Git
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      - name: Check Runtime Build (Optimized)
+        run: |
+          # Build with optimizations for speed
+          CARGO_INCREMENTAL=1 cargo check --release --features try-runtime --package cere-runtime --package cere-dev-runtime
+      - name: Run dev chain
+        run: |
+          cargo build --release --bin cere
+          timeout --preserve-status 30s ./target/release/cere --dev
+
+  check-node:
+    name: Check Node
+    needs: format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install linux dependencies
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+      - name: Install toolchain and rust-src
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.82.0
+          override: true
+          target: wasm32-unknown-unknown
+          components: rust-src
+      - name: Enhanced Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "node-build"
+          cache-on-failure: true
+      - name: Configure Git
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      - name: Check Node Components
+        run: |
+          # Check node components in parallel where possible
+          CARGO_INCREMENTAL=1 cargo check --release --features runtime-benchmarks --workspace --exclude cere-runtime --exclude cere-dev-runtime
+
+  check-try-runtime:
+    name: Try-Runtime Check
+    needs: check-runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install linux dependencies
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+      - name: Install toolchain and rust-src
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.82.0
+          override: true
+          target: wasm32-unknown-unknown
+          components: rust-src
+      - name: Enhanced Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "runtime-build"
+          cache-on-failure: true
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
       - name: Install try-runtime
         run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
-      - name: Check Build
+      - name: Build for try-runtime
         run: |
-          cargo build --release --features try-runtime
+          CARGO_INCREMENTAL=1 cargo build --release --features try-runtime
       - name: Check Try-Runtime
         run: |
            try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
            on-runtime-upgrade --disable-idempotency-checks --disable-spec-version-check --blocktime 6000 live --uri wss://archive.qanet.cere.network:443
-        continue-on-error: true
-      - name: Run dev chain
-        run: |
-          timeout --preserve-status 30s ./target/release/cere --dev
-      - name: Check Build for Benchmarking
-        run: >
-          pushd node &&
-          cargo check --features=runtime-benchmarks --release
 
   clippy:
     name: Run Clippy
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
@@ -117,13 +174,17 @@ jobs:
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
-      - name: Rust Cache
+      - name: Enhanced Rust Cache
         uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "clippy-build"
+          cache-on-failure: true
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-      - name: Check with Clippy
+      - name: Check with Clippy (Optimized)
         run: |
-          cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
+          # Run clippy with incremental compilation
+          CARGO_INCREMENTAL=1 cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
 
   tests:
     name: Run tests
@@ -144,8 +205,11 @@ jobs:
           components: rust-src
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-      - name: Rust Cache
+      - name: Enhanced Rust Cache
         uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "test-build"
+          cache-on-failure: true
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
