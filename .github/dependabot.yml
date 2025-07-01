@@ -1,0 +1,62 @@
+version: 2
+updates:
+  # Enable Cargo dependency updates for the main workspace
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+    target-branch: "dev"
+    reviewers: ["Cerebellum-Network/security-team"]
+    assignees: ["Cerebellum-Network/blockchain-team"]
+    commit-message:
+      prefix: "security"
+      prefix-development: "deps"
+      include: "scope"
+    # Group security updates together
+    groups:
+      security-updates:
+        patterns: ["*"]
+        update-types: ["security"]
+      patch-updates:
+        patterns: ["*"]
+        update-types: ["patch"]
+    # Allow up to 10 open PRs at a time
+    open-pull-requests-limit: 10
+    # Only update vulnerable dependencies for security
+    versioning-strategy: increase-if-necessary
+    # Ignore major version updates for stability
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Enable GitHub Actions dependency updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+    target-branch: "dev"
+    reviewers: ["Cerebellum-Network/security-team"]
+    assignees: ["Cerebellum-Network/devops-team"]
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    open-pull-requests-limit: 5
+
+  # Enable Docker dependency updates
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+    target-branch: "dev"
+    reviewers: ["Cerebellum-Network/security-team"]
+    assignees: ["Cerebellum-Network/devops-team"]
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    open-pull-requests-limit: 3 
