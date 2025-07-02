@@ -1,0 +1,36 @@
+Description: Runtime upgrade testing
+Network: ./runtime-upgrade.toml
+Creds: config
+
+# Ensure network is healthy before upgrade
+alice: reports node_roles is 4
+bob: reports node_roles is 4
+charlie: reports node_roles is 4
+
+alice: reports peers count is at least 2
+bob: reports peers count is at least 2
+charlie: reports peers count is at least 2
+
+# Test block production and finalization before upgrade
+alice: reports block height is at least 10 within 60 seconds
+bob: reports block height is at least 10 within 60 seconds
+charlie: reports block height is at least 10 within 60 seconds
+
+# Pre-upgrade: Test DDC functionality
+alice: js-script ./test-ddc-functionality.js within 60 seconds
+
+# Execute runtime upgrade
+alice: js-script ./perform-runtime-upgrade.js within 300 seconds
+
+# Post-upgrade: Verify network continues functioning
+alice: reports block height is at least 20 within 120 seconds
+bob: reports block height is at least 20 within 120 seconds
+charlie: reports block height is at least 20 within 120 seconds
+
+# Post-upgrade: Test DDC functionality still works
+alice: js-script ./test-ddc-post-upgrade.js within 120 seconds
+
+# Verify no errors in logs
+alice: count of log lines containing "error" is 0 within 10 seconds
+bob: count of log lines containing "error" is 0 within 10 seconds
+charlie: count of log lines containing "error" is 0 within 10 seconds 
