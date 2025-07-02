@@ -14,8 +14,54 @@ permissions:
   contents: read
 
 jobs:
-  basic-checks:
-    name: Basic Integration Checks
+  security-validation:
+    name: Security Framework Validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify project structure
+        run: |
+          # Verify core project files exist
+          test -f Cargo.toml
+          test -f Dockerfile.secure
+          test -d pallets/
+          test -d runtime/
+          echo "✅ Project structure verified"
+
+      - name: Validate secure Dockerfile
+        run: |
+          # Check that secure Dockerfile has security best practices
+          grep -q "FROM.*AS builder" Dockerfile.secure
+          grep -q "RUN adduser --disabled-password" Dockerfile.secure
+          grep -q "USER blockchain" Dockerfile.secure
+          echo "✅ Secure Dockerfile validation passed"
+
+      - name: Check GitHub Actions security
+        run: |
+          # Verify workflows use secure versions
+          find .github/workflows -name "*.yaml" -o -name "*.yml" | xargs grep -l "uses:" | while read file; do
+            if grep -q "actions/checkout@v3" "$file" || grep -q "actions/setup-" "$file" | grep -q "@v3"; then
+              echo "❌ Found outdated action versions in $file"
+              exit 1
+            fi
+          done
+          echo "✅ GitHub Actions security validation passed"
+
+      - name: Verify no credential exposure
+        run: |
+          # Check that no AWS credentials are in build args
+          if grep -r "AWS_ACCESS_KEY_ID\|AWS_SECRET_ACCESS_KEY" .github/workflows/ --include="*.yaml" --include="*.yml" | grep -v "secrets\." ; then
+            echo "❌ Found exposed AWS credentials in workflows"
+            exit 1
+          fi
+          echo "✅ No credential exposure detected"
+
+  docker-security-test:
+    name: Docker Security Test
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     
@@ -23,34 +69,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
+      - name: Test secure Docker build
         run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+          # Test that secure Dockerfile builds without credentials
+          docker build -f Dockerfile.secure -t test-secure-build . --no-cache
+          echo "✅ Secure Docker build completed"
 
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: 1.82.0
-          override: true
-          target: wasm32-unknown-unknown
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2.7.3
-
-      - name: Configure Git for private dependencies
-        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-
-      - name: Quick compilation check
+      - name: Verify container security
         run: |
-          # Only check core compilation without building
-          cargo check --lib
-          echo "✅ Basic compilation verified"
-
-      - name: Verify project structure
-        run: |
-          # Just verify key files exist
-          test -f Cargo.toml
-          test -d pallets/
-          test -d runtime/
-          echo "✅ Project structure verified"
+          # Check that container runs as non-root
+          USER_ID=$(docker run --rm test-secure-build id -u)
+          if [ "$USER_ID" = "0" ]; then
+            echo "❌ Container running as root user"
+            exit 1
+          fi
+          echo "✅ Container security verified - running as user $USER_ID"
