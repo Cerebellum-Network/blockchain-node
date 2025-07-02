@@ -107,4 +107,4 @@ allow = [
   "https://github.com/Cerebellum-Network/*",
   "https://github.com/paritytech/*",
   "https://github.com/substrate-developer-hub/*",
-  ]
+]
