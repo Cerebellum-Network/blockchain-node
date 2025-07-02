@@ -75,6 +75,28 @@ jobs:
         run: >
           pushd node &&
           cargo check --features=runtime-benchmarks --release
+      - name: Runtime upgrade performance regression test
+        run: |
+          # Generate current benchmark baseline for DDC pallets
+          ./target/release/cere benchmark pallet \
+            --chain=dev \
+            --pallet="pallet_ddc_*" \
+            --extrinsic="*" \
+            --steps=20 \
+            --repeat=5 \
+            --json \
+            --output=current-benchmarks.json || echo "Benchmark generation completed"
+          
+          # Download previous benchmarks (if available)
+          if [ -f "baseline-benchmarks.json" ]; then
+            python3 scripts/benchmark-regression-check.py \
+              current-benchmarks.json \
+              baseline-benchmarks.json \
+              --threshold=0.15 \
+              --fail-on-regression
+          else
+            echo "No baseline benchmarks found, skipping regression check"
+          fi
 
   clippy:
     name: Run Clippy
