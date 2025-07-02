@@ -43,13 +43,11 @@ jobs:
 
       - name: Check GitHub Actions security
         run: |
-          # Verify workflows use secure versions
-          find .github/workflows -name "*.yaml" -o -name "*.yml" | xargs grep -l "uses:" | while read file; do
-            if grep -q "actions/checkout@v3" "$file" || grep -q "actions/setup-" "$file" | grep -q "@v3"; then
-              echo "❌ Found outdated action versions in $file"
-              exit 1
-            fi
-          done
+          # Verify workflows use secure versions  
+          if grep -r "actions/checkout@v3\|actions/setup-.*@v3\|actions/cache@v3" .github/workflows/ --include="*.yaml" --include="*.yml"; then
+            echo "❌ Found outdated action versions in workflows"
+            exit 1
+          fi
           echo "✅ GitHub Actions security validation passed"
 
       - name: Verify no credential exposure
