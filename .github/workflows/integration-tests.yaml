@@ -52,12 +52,17 @@ jobs:
 
       - name: Verify no credential exposure
         run: |
-          # Check that no AWS credentials are in build args
-          if grep -r "AWS_ACCESS_KEY_ID\|AWS_SECRET_ACCESS_KEY" .github/workflows/ --include="*.yaml" --include="*.yml" | grep -v "secrets\." ; then
-            echo "❌ Found exposed AWS credentials in workflows"
+          # Check for hardcoded AWS credentials (not environment variables or secrets)
+          if grep -r "AWS_ACCESS_KEY_ID.*AKIA\|AWS_SECRET_ACCESS_KEY.*[A-Za-z0-9/+]" .github/workflows/ --include="*.yaml" --include="*.yml"; then
+            echo "❌ Found hardcoded AWS credentials in workflows"
             exit 1
           fi
-          echo "✅ No credential exposure detected"
+          # Check for any other suspicious hardcoded patterns
+          if grep -r "aws_access_key_id.*AKIA\|aws_secret_access_key.*[A-Za-z0-9/+]" .github/workflows/ --include="*.yaml" --include="*.yml"; then
+            echo "❌ Found hardcoded AWS credentials in workflows"
+            exit 1
+          fi
+          echo "✅ No hardcoded credential exposure detected"
 
   docker-security-test:
     name: Docker Security Test
