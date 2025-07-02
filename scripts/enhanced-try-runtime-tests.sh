@@ -6,7 +6,24 @@ set -e
 RUNTIME_PATH="./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm"
 NETWORKS=("devnet" "qanet" "testnet" "mainnet")
 
+# Parse command line arguments
+DISABLE_SPEC_VERSION_CHECK=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --disable-spec-version-check)
+            DISABLE_SPEC_VERSION_CHECK="--disable-spec-version-check"
+            shift
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
 echo "🧪 Running Enhanced DDC Try-Runtime Tests"
+if [ -n "$DISABLE_SPEC_VERSION_CHECK" ]; then
+    echo "⚠️  Spec version check disabled"
+fi
 
 # Function to test specific network
 test_network() {
@@ -17,11 +34,19 @@ test_network() {
     
     # Test 1: Basic runtime upgrade
     echo "  🔄 Testing runtime upgrade on $network..."
-    try-runtime --runtime "$RUNTIME_PATH" \
+    if try-runtime --runtime "$RUNTIME_PATH" \
         on-runtime-upgrade \
         --disable-idempotency-checks \
         --blocktime 6000 \
-        live --uri "$uri" || echo "  ❌ Runtime upgrade test failed on $network"
+        $DISABLE_SPEC_VERSION_CHECK \
+        live --uri "$uri"; then
+        echo "  ✅ Runtime upgrade test passed on $network"
+    else
+        echo "  ❌ Runtime upgrade test failed on $network"
+        if [ -z "$DISABLE_SPEC_VERSION_CHECK" ]; then
+            echo "  💡 Hint: If this failed due to spec version, try: --disable-spec-version-check"
+        fi
+    fi
     
     # Test 2: Execute block with DDC activity (if available)
     echo "  📦 Testing block execution on $network..."
@@ -66,9 +91,11 @@ done
 echo "🔧 Testing with different try-runtime configurations..."
 
 # Test with checks enabled
+echo "Testing with pre-and-post checks..."
 try-runtime --runtime "$RUNTIME_PATH" \
     on-runtime-upgrade \
     --checks=pre-and-post \
+    $DISABLE_SPEC_VERSION_CHECK \
     live --uri "wss://archive.qanet.cere.network:443" || echo "Pre/post checks test failed"
 
 # Test with specific pallets
