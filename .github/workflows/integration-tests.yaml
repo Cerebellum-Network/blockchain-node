@@ -36,8 +36,9 @@ jobs:
         run: |
           # Check that secure Dockerfile has security best practices
           grep -q "FROM.*AS builder" Dockerfile.secure
-          grep -q "RUN adduser --disabled-password" Dockerfile.secure
-          grep -q "USER blockchain" Dockerfile.secure
+          grep -q "RUN useradd -m -u 1001" Dockerfile.secure
+          grep -q "USER cere" Dockerfile.secure
+          grep -q "HEALTHCHECK" Dockerfile.secure
           echo "✅ Secure Dockerfile validation passed"
 
       - name: Check GitHub Actions security
