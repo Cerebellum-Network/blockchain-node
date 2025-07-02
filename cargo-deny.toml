@@ -90,6 +90,7 @@ ignore = [
   # Add specific RUSTSEC IDs here if needed with justification
   # "RUSTSEC-YYYY-NNNN",  # Justification: reason why this is acceptable
 ]
+
 [sources]
 # Security: Only allow crates from known sources
 unknown-registry = "warn"
@@ -105,4 +106,4 @@ allow = [
   "https://github.com/Cerebellum-Network/*",
   "https://github.com/paritytech/*",
   "https://github.com/substrate-developer-hub/*",
-]
+  ]
