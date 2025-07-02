@@ -54,11 +54,11 @@ deny = [
   # Known security vulnerabilities
   { name = "openssl", version = "*" },
   { name = "openssl-sys", version = "<0.9.60" },
-  
+
   # Cryptographically broken
   { name = "md5", version = "*" },
   { name = "sha1", version = "*" },
-  
+
   # Unmaintained or problematic
   { name = "tempdir", version = "*" },
   { name = "net2", version = "*" },
@@ -87,7 +87,6 @@ notice = "warn"
 
 # Ignore specific advisories if needed (with justification)
 ignore = [
-
 
   # Add specific RUSTSEC IDs here if needed with justification
   # "RUSTSEC-YYYY-NNNN",  # Justification: reason why this is acceptable
