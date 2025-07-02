@@ -43,8 +43,8 @@ jobs:
 
       - name: Check GitHub Actions security
         run: |
-          # Verify workflows use secure versions  
-          if grep -r "actions/checkout@v3\|actions/setup-.*@v3\|actions/cache@v3" .github/workflows/ --include="*.yaml" --include="*.yml"; then
+          # Verify workflows use secure versions (exclude this validation file itself)
+          if grep -r "actions/checkout@v3\|actions/setup-.*@v3\|actions/cache@v3" .github/workflows/ --include="*.yaml" --include="*.yml" --exclude="integration-tests.yaml"; then
             echo "❌ Found outdated action versions in workflows"
             exit 1
           fi
