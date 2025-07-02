@@ -63,7 +63,7 @@ jobs:
         run: |
           # Check core node and runtime components (faster than full workspace)
           cargo check --package cere-runtime --package cere-dev-runtime
-          cargo check --package node-cli --package node-service
+          cargo check --package cere-cli --package cere-service
       - name: Check Build for Benchmarking
         run: >
           pushd node &&
