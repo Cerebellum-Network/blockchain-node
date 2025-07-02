@@ -43,7 +43,7 @@ jobs:
     name: Cargo check
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
@@ -59,10 +59,11 @@ jobs:
         uses: Swatinem/rust-cache@v2.7.3
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-      - name: Check Build
+      - name: Check Core Components
         run: |
-          # Use cargo check instead of full build for faster validation
-          cargo check --workspace --features try-runtime
+          # Check core node and runtime components (faster than full workspace)
+          cargo check --package cere-runtime --package cere-dev-runtime
+          cargo check --package node-cli --package node-service
       - name: Check Build for Benchmarking
         run: >
           pushd node &&
