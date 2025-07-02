@@ -87,6 +87,8 @@ notice = "warn"
 
 # Ignore specific advisories if needed (with justification)
 ignore = [
+
+
   # Add specific RUSTSEC IDs here if needed with justification
   # "RUSTSEC-YYYY-NNNN",  # Justification: reason why this is acceptable
 ]
