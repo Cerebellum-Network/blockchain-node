@@ -956,7 +956,7 @@ impl pallet_contracts::Config for Runtime {
 	type CallStack = [pallet_contracts::Frame<Self>; 5];
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
-	type ChainExtension = ();
+	type ChainExtension = (MyChainExtension);
 	type Schedule = Schedule;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
@@ -974,6 +974,47 @@ impl pallet_contracts::Config for Runtime {
 	type Migrations = ();
 	type ApiVersion = ();
 	type Xcm = ();
+}
+
+use pallet_contracts::chain_extension::{ChainExtension, Environment, Ext, InitState, RetVal};
+
+#[derive(Default)]
+pub struct MyChainExtension;
+impl ChainExtension<Runtime> for MyChainExtension {
+	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError> {
+		let func_id = env.func_id();
+		let ext_id = env.ext_id();
+		log::info!("MyChainExtension ----> func_id: {}, ext_id: {}", func_id, ext_id);
+		match func_id {
+			// Function ID `1`: Write to runtime storage
+			11 => {
+				let mut env = env.buf_in_buf_out();
+				let input: u32 = env.read_as_unbounded(env.in_len())?;
+				// <MyData<Runtime>>::put(input);
+				let new_val =
+					pallet_ddc_clusters::Pallet::<Runtime>::store_my_data(input).unwrap_or(999999);
+
+				env.write(&new_val.encode(), false, None)
+					.map_err(|_| DispatchError::Other("ChainExtension failed to call random"))?;
+
+				Ok(RetVal::Converging(0))
+			},
+			// Function ID `2`: Read from runtime storage
+			54 => {
+				let mut env = env.buf_in_buf_out();
+				let _input: u32 = env.read_as_unbounded(env.in_len())?;
+
+				let tt = 5448u32;
+				log::info!("54 returns ----> tt: {}", tt);
+
+				env.write(&tt.encode(), false, None)
+					.map_err(|_| DispatchError::Other("ChainExtension failed to call TT"))?;
+
+				Ok(RetVal::Converging(0))
+			},
+			_ => Err(DispatchError::Other("Unsupported function ID")),
+		}
+	}
 }
 
 impl pallet_sudo::Config for Runtime {

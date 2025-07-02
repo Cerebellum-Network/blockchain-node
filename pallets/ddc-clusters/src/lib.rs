@@ -106,6 +106,7 @@ pub mod pallet {
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
 		ClusterEraPaid { cluster_id: ClusterId, era_id: EhdEra },
+		CustomContractCall { value: u32 },
 	}
 
 	#[pallet::error]
@@ -424,6 +425,14 @@ pub mod pallet {
 			ensure!(is_authorized, Error::<T>::NodeIsNotAuthorized);
 
 			Self::do_join_cluster(cluster, node_pub_key)
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		pub fn store_my_data(input: u32) -> Result<u32, DispatchError> {
+			Self::deposit_event(Event::<T>::CustomContractCall { value: input });
+			let return_value = input + 1;
+			Ok(return_value.into())
 		}
 	}
 
