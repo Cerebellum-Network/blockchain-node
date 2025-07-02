@@ -1,10 +1,12 @@
 # cargo-deny configuration for security enforcement
 # This file is part of the comprehensive testing framework implementation
+
 [graph]
 targets = [
   { triple = "x86_64-unknown-linux-gnu" },
   { triple = "wasm32-unknown-unknown" },
 ]
+
 [licenses]
 # Security: Only allow approved licenses
 confidence-threshold = 0.8
@@ -19,6 +21,7 @@ allow = [
   "CC0-1.0",
   "GPL-3.0-or-later WITH Classpath-exception-2.0",
 ]
+
 # Deny copyleft licenses except for our own GPL-3.0
 deny = [
   "GPL-2.0",
@@ -29,12 +32,15 @@ deny = [
   "LGPL-2.1",
   "LGPL-3.0",
 ]
+
 [[licenses.exceptions]]
 allow = ["GPL-3.0-or-later WITH Classpath-exception-2.0"]
 name = "cere-runtime"
+
 [[licenses.exceptions]]
 allow = ["GPL-3.0-or-later WITH Classpath-exception-2.0"]
 name = "cere-dev-runtime"
+
 [bans]
 # Security: Deny known vulnerable crates
 multiple-versions = "warn"
@@ -42,6 +48,7 @@ wildcards = "allow"
 highlight = "all"
 workspace-default-features = "allow"
 external-default-features = "allow"
+
 # Deny specific vulnerable or problematic crates
 deny = [
   # Known security vulnerabilities
@@ -56,6 +63,7 @@ deny = [
   { name = "tempdir", version = "*" },
   { name = "net2", version = "*" },
 ]
+
 # Allow certain duplicates that are hard to resolve in blockchain ecosystem
 skip = [
   { name = "windows-sys" }, # Common in many deps
@@ -63,10 +71,12 @@ skip = [
   { name = "syn" }, # Multiple versions common
   { name = "proc-macro2" }, # Proc macro ecosystem
 ]
+
 skip-tree = [
   { name = "substrate-build-script-utils" },
   { name = "substrate-wasm-builder" },
 ]
+
 [advisories]
 # Security: Check against RustSec advisory database
 vulnerability = "deny"
@@ -74,18 +84,23 @@ unmaintained = "warn"
 unsound = "warn"
 yanked = "warn"
 notice = "warn"
+
 # Ignore specific advisories if needed (with justification)
 ignore = [
+
   # Add specific RUSTSEC IDs here if needed with justification
   # "RUSTSEC-YYYY-NNNN",  # Justification: reason why this is acceptable
 ]
+
 [sources]
 # Security: Only allow crates from known sources
 unknown-registry = "warn"
 unknown-git = "warn"
+
 [sources.allow-registry]
 # Only allow crates.io and our private registries
 allow = ["https://github.com/rust-lang/crates.io-index"]
+
 [sources.allow-git]
 # Allow specific Git dependencies we control
 allow = [
