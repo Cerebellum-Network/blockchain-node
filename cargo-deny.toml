@@ -3,34 +3,34 @@
 
 [graph]
 targets = [
-    { triple = "x86_64-unknown-linux-gnu" },
-    { triple = "wasm32-unknown-unknown" },
+  { triple = "x86_64-unknown-linux-gnu" },
+  { triple = "wasm32-unknown-unknown" },
 ]
 
 [licenses]
 # Security: Only allow approved licenses
 confidence-threshold = 0.8
 allow = [
-    "MIT",
-    "Apache-2.0",
-    "Apache-2.0 WITH LLVM-exception",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
-    "ISC",
-    "Unicode-DFS-2016",
-    "CC0-1.0",
-    "GPL-3.0-or-later WITH Classpath-exception-2.0",
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-DFS-2016",
+  "CC0-1.0",
+  "GPL-3.0-or-later WITH Classpath-exception-2.0",
 ]
 
 # Deny copyleft licenses except for our own GPL-3.0
 deny = [
-    "GPL-2.0",
-    "GPL-3.0",
-    "AGPL-1.0",
-    "AGPL-3.0",
-    "LGPL-2.0",
-    "LGPL-2.1",
-    "LGPL-3.0",
+  "GPL-2.0",
+  "GPL-3.0",
+  "AGPL-1.0",
+  "AGPL-3.0",
+  "LGPL-2.0",
+  "LGPL-2.1",
+  "LGPL-3.0",
 ]
 
 [[licenses.exceptions]]
@@ -51,30 +51,30 @@ external-default-features = "allow"
 
 # Deny specific vulnerable or problematic crates
 deny = [
-    # Known security vulnerabilities
-    { name = "openssl", version = "*" },
-    { name = "openssl-sys", version = "<0.9.60" },
-    
-    # Cryptographically broken
-    { name = "md5", version = "*" },
-    { name = "sha1", version = "*" },
-    
-    # Unmaintained or problematic
-    { name = "tempdir", version = "*" },
-    { name = "net2", version = "*" },
+  # Known security vulnerabilities
+  { name = "openssl", version = "*" },
+  { name = "openssl-sys", version = "<0.9.60" },
+  
+  # Cryptographically broken
+  { name = "md5", version = "*" },
+  { name = "sha1", version = "*" },
+  
+  # Unmaintained or problematic
+  { name = "tempdir", version = "*" },
+  { name = "net2", version = "*" },
 ]
 
 # Allow certain duplicates that are hard to resolve in blockchain ecosystem
 skip = [
-    { name = "windows-sys" },          # Common in many deps
-    { name = "windows_x86_64_msvc" },  # Windows-specific
-    { name = "syn" },                  # Multiple versions common
-    { name = "proc-macro2" },          # Proc macro ecosystem
+  { name = "windows-sys" },          # Common in many deps
+  { name = "windows_x86_64_msvc" },  # Windows-specific
+  { name = "syn" },                  # Multiple versions common
+  { name = "proc-macro2" },          # Proc macro ecosystem
 ]
 
 skip-tree = [
-    { name = "substrate-build-script-utils" },
-    { name = "substrate-wasm-builder" },
+  { name = "substrate-build-script-utils" },
+  { name = "substrate-wasm-builder" },
 ]
 
 [advisories]
@@ -87,8 +87,8 @@ notice = "warn"
 
 # Ignore specific advisories if needed (with justification)
 ignore = [
-    # Add specific RUSTSEC IDs here if needed with justification
-    # "RUSTSEC-YYYY-NNNN",  # Justification: reason why this is acceptable
+  # Add specific RUSTSEC IDs here if needed with justification
+  # "RUSTSEC-YYYY-NNNN",  # Justification: reason why this is acceptable
 ]
 
 [sources]
@@ -103,7 +103,7 @@ allow = ["https://github.com/rust-lang/crates.io-index"]
 [sources.allow-git]
 # Allow specific Git dependencies we control
 allow = [
-    "https://github.com/Cerebellum-Network/*",
-    "https://github.com/paritytech/*",
-    "https://github.com/substrate-developer-hub/*",
+  "https://github.com/Cerebellum-Network/*",
+  "https://github.com/paritytech/*",
+  "https://github.com/substrate-developer-hub/*",
 ] 
