@@ -1314,42 +1314,43 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 	}
 }
 
-impl pallet_ddc_payouts::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
-	type PalletId = PayoutsPalletId;
-	type Currency = Balances;
-	type CustomerCharger = DdcCustomers;
-	type BucketManager = DdcCustomers;
-	type ClusterProtocol = DdcClusters;
-	type TreasuryVisitor = TreasuryWrapper;
-	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
-	type VoteScoreToU64 = IdentityConvert;
-	type InspectorAuthority = DdcVerification;
-	type NodeManager = DdcNodes;
-	type AccountIdConverter = AccountId32;
-	type Hasher = BlakeTwo256;
-	type ClusterValidator = DdcClusters;
-	type ValidatorsQuorum = MajorityOfValidators;
-	type ClusterManager = DdcClusters;
-	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
-	type UnsignedPriority = ConstU64<500_000_000>;
-	type FeeHandler = FeeHandler;
-
-	#[cfg(feature = "runtime-benchmarks")]
-	type CustomerDepositor = DdcCustomers;
-	#[cfg(feature = "runtime-benchmarks")]
-	type ClusterCreator = DdcClusters;
-	#[cfg(feature = "runtime-benchmarks")]
-	type WPublic = <Signature as Verify>::Signer;
-	#[cfg(feature = "runtime-benchmarks")]
-	type WSignature = Signature;
-
-	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
-	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
-	const DISABLE_PAYOUTS_CUTOFF: bool = false;
-	const OCW_INTERVAL: u16 = 5; // every 5th block
-}
+// TEMPORARILY COMMENTED OUT - Missing pallet-ddc-payouts repository
+// impl pallet_ddc_payouts::Config for Runtime {
+// 	type RuntimeEvent = RuntimeEvent;
+// 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
+// 	type PalletId = PayoutsPalletId;
+// 	type Currency = Balances;
+// 	type CustomerCharger = DdcCustomers;
+// 	type BucketManager = DdcCustomers;
+// 	type ClusterProtocol = DdcClusters;
+// 	type TreasuryVisitor = TreasuryWrapper;
+// 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
+// 	type VoteScoreToU64 = IdentityConvert;
+// 	type InspectorAuthority = DdcVerification;
+// 	type NodeManager = DdcNodes;
+// 	type AccountIdConverter = AccountId32;
+// 	type Hasher = BlakeTwo256;
+// 	type ClusterValidator = DdcClusters;
+// 	type ValidatorsQuorum = MajorityOfValidators;
+// 	type ClusterManager = DdcClusters;
+// 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+// 	type UnsignedPriority = ConstU64<500_000_000>;
+// 	type FeeHandler = FeeHandler;
+//
+// 	#[cfg(feature = "runtime-benchmarks")]
+// 	type CustomerDepositor = DdcCustomers;
+// 	#[cfg(feature = "runtime-benchmarks")]
+// 	type ClusterCreator = DdcClusters;
+// 	#[cfg(feature = "runtime-benchmarks")]
+// 	type WPublic = <Signature as Verify>::Signer;
+// 	#[cfg(feature = "runtime-benchmarks")]
+// 	type WSignature = Signature;
+//
+// 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
+// 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
+// 	const DISABLE_PAYOUTS_CUTOFF: bool = false;
+// 	const OCW_INTERVAL: u16 = 5; // every 5th block
+// }
 
 parameter_types! {
 	pub const ClusterBondingAmount: Balance = 100 * GRAND;
@@ -1444,32 +1445,33 @@ parameter_types! {
 	pub const TenPercentOfValidators: Percent = Percent::from_percent(10);
 }
 
-impl pallet_ddc_verification::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type PalletId = VerificationPalletId;
-	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
-	type ClusterProtocol = DdcClusters;
-	type ClusterManager = DdcClusters;
-	type ClusterValidator = DdcClusters;
-	type NodeManager = DdcNodes;
-	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
-	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
-	type Hasher = BlakeTwo256;
-	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
-	type Currency = Balances;
-	type CustomerVisitor = DdcCustomers;
-	type BucketManager = DdcCustomers;
-	type InspReceiptsInterceptor = pallet_ddc_verification::NoReceiptsInterceptor;
-
-	type InspRedundancyFactor = TenPercentOfValidators;
-	type InspBackupsFactor = TenPercentOfValidators;
-
-	const OCW_INTERVAL: u16 = 10; // every 10th block
-	const TCA_INSPECTION_STEP: u64 = 0;
-	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
-	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
-	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
-}
+// TEMPORARILY COMMENTED OUT - Missing pallet-ddc-verification repository
+// impl pallet_ddc_verification::Config for Runtime {
+// 	type RuntimeEvent = RuntimeEvent;
+// 	type PalletId = VerificationPalletId;
+// 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
+// 	type ClusterProtocol = DdcClusters;
+// 	type ClusterManager = DdcClusters;
+// 	type ClusterValidator = DdcClusters;
+// 	type NodeManager = DdcNodes;
+// 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
+// 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+// 	type Hasher = BlakeTwo256;
+// 	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
+// 	type Currency = Balances;
+// 	type CustomerVisitor = DdcCustomers;
+// 	type BucketManager = DdcCustomers;
+// 	type InspReceiptsInterceptor = pallet_ddc_verification::NoReceiptsInterceptor;
+//
+// 	type InspRedundancyFactor = TenPercentOfValidators;
+// 	type InspBackupsFactor = TenPercentOfValidators;
+//
+// 	const OCW_INTERVAL: u16 = 10; // every 10th block
+// 	const TCA_INSPECTION_STEP: u64 = 0;
+// 	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
+// 	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
+// 	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
+// }
 
 parameter_types! {
 	pub MbmServiceWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
@@ -1638,11 +1640,13 @@ mod runtime {
 	#[runtime::pallet_index(38)]
 	pub type DdcClusters = pallet_ddc_clusters::Pallet<Runtime>;
 
-	#[runtime::pallet_index(39)]
-	pub type DdcPayouts = pallet_ddc_payouts::Pallet<Runtime>;
+	// TEMPORARILY COMMENTED OUT - Missing pallet-ddc-payouts repository
+	// #[runtime::pallet_index(39)]
+	// pub type DdcPayouts = pallet_ddc_payouts::Pallet<Runtime>;
 
-	#[runtime::pallet_index(40)]
-	pub type DdcVerification = pallet_ddc_verification::Pallet<Runtime>;
+	// TEMPORARILY COMMENTED OUT - Missing pallet-ddc-verification repository
+	// #[runtime::pallet_index(40)]
+	// pub type DdcVerification = pallet_ddc_verification::Pallet<Runtime>;
 
 	// Start OpenGov.
 	#[runtime::pallet_index(41)]
@@ -1757,13 +1761,14 @@ pub mod migrations {
 		UpgradeSessionKeys,
 		// pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
-		pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,
-		pallet_ddc_payouts::migrations::v2::MigrateToV2<Runtime>,
-		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
+		// TEMPORARILY COMMENTED OUT - Missing pallet-ddc-payouts repository
+		// pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,
+		// pallet_ddc_payouts::migrations::v2::MigrateToV2<Runtime>,
+		// pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
 		// pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
-		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
-		pallet_ddc_payouts::migrations::v5::MigrateToV5<Runtime>,
+		// pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
+		// pallet_ddc_payouts::migrations::v5::MigrateToV5<Runtime>,
 		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>, // ingore the
 		// removal of `total_customers_usage` field as it was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>, // ignore the
@@ -1831,7 +1836,8 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
-		[pallet_ddc_payouts, DdcPayouts]
+		// TEMPORARILY COMMENTED OUT - Missing pallet-ddc-payouts repository
+		// [pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
 		[pallet_fee_handler, FeeHandler]
