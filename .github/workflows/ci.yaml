@@ -59,6 +59,18 @@ jobs:
         uses: Swatinem/rust-cache@v2.7.3
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      - name: Install try-runtime
+        run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
+      - name: Check Build
+        run: |
+          cargo build --release --features try-runtime
+      - name: Check Try-Runtime
+        run: |
+          try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
+          on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.qanet.cere.network:443
+      - name: Run dev chain
+        run: |
+          timeout --preserve-status 30s ./target/release/cere --dev
       - name: Check Core Components
         run: |
           # Check core node and runtime components (faster than full workspace)
