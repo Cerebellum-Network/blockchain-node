@@ -1,0 +1,193 @@
+name: Security Audit
+
+on:
+  # Run on all pushes to main branches
+  push:
+    branches: [dev, staging, master]
+  # Run on all pull requests
+  pull_request:
+  # Allow manual execution
+  workflow_dispatch:
+  # Run daily at 2 AM UTC
+  schedule:
+    - cron: '0 2 * * *'
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.82.0
+          override: true
+          components: clippy
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2.7.3
+        with:
+          cache-on-failure: true
+
+      - name: Install cargo-audit
+        run: cargo install --force cargo-audit
+
+      - name: Install cargo-deny
+        run: cargo install --force cargo-deny
+
+      - name: Configure Git for private dependencies
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+      - name: Run Cargo Audit
+        run: |
+          cargo audit --json | tee audit-results.json
+          # Continue on failure to allow other checks to run
+        continue-on-error: true
+
+      - name: Run Cargo Deny (Security)
+        run: |
+          cargo deny --log-level warn check
+        continue-on-error: true
+
+      - name: Security-focused Clippy
+        run: |
+          cargo clippy --all-targets --all-features -- \
+            -W clippy::suspicious \
+            -W clippy::complexity \
+            -W clippy::perf \
+            -W clippy::nursery \
+            -D warnings
+        continue-on-error: true
+
+      - name: Upload audit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-audit-results
+          path: |
+            audit-results.json
+          retention-days: 30
+
+  secret-scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install TruffleHog
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Run TruffleHog secret scan
+        run: |
+          trufflehog git file://. \
+            --since-commit HEAD~1 \
+            --only-verified=false \
+            --format json \
+            --output trufflehog-results.json
+        continue-on-error: true
+
+      - name: Upload secret scan results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: secret-scan-results
+          path: trufflehog-results.json
+          retention-days: 30
+
+  container-security:
+    name: Container Security Scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    if: github.event_name != 'schedule'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image for scanning
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: blockchain-node:security-scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'blockchain-node:security-scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'  # Don't fail the build, just report
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  supply-chain-analysis:
+    name: Supply Chain Analysis
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.82.0
+          override: true
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2.7.3
+
+      - name: Configure Git for private dependencies
+        run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+      - name: Generate dependency tree
+        run: |
+          cargo tree --format "{p} {f}" > dependency-tree.txt
+
+      - name: Analyze dependency licenses
+        run: |
+          cargo install --force cargo-license
+          cargo license --json > license-report.json
+
+      - name: Upload supply chain analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: supply-chain-analysis
+          path: |
+            dependency-tree.txt
+            license-report.json
+          retention-days: 30 

@@ -195,8 +195,9 @@ pallet-fee-handler = { path = "pallets/fee-handler", default-features = false }
 # Cere External Dependencies
 ddc-primitives = { git = "https://github.com/Cerebellum-Network/ddc-primitives.git", branch = "dev", default-features = false }
 ddc-api = { git = "https://github.com/Cerebellum-Network/ddc-api.git", branch = "dev", default-features = false }
-pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "dev", default-features = false }
-pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "dev", default-features = false }
+# TEMPORARILY COMMENTED OUT - Missing repositories causing CI timeout (404 errors)
+# pallet-ddc-verification = { git = "https://github.com/Cerebellum-Network/ddc-verification.git", branch = "dev", default-features = false }
+# pallet-ddc-payouts = { git = "https://github.com/Cerebellum-Network/ddc-payouts.git", branch = "dev", default-features = false }
 
 # Hyperbridge
 ismp = { default-features = false, version = "1.1.0" }

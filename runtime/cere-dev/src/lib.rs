@@ -74,7 +74,8 @@ use pallet_contracts::Determinism;
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
 pub use pallet_ddc_nodes;
-pub use pallet_ddc_payouts;
+// TEMPORARILY COMMENTED OUT - Missing pallet-ddc-payouts repository
+// pub use pallet_ddc_payouts;
 pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{

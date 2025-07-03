@@ -1,0 +1,12 @@
+[relaychain]
+default_command = "./target/release/cere"
+chain = "local"
+
+[[relaychain.nodes]]
+name = "alice"
+
+[[relaychain.nodes]]
+name = "bob"
+
+[[relaychain.nodes]]
+name = "charlie"
