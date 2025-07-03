@@ -207,5 +207,26 @@ pallet-ismp-rpc = { default-features = false, version = "2503.0.0" }
 pallet-ismp-runtime-api = { default-features = false, version = "2503.0.0" }
 pallet-token-gateway = { default-features = false, version = "2503.0.0" }
 
+# Build profiles for different use cases
 [profile.release]
 panic = "unwind"
+lto = "thin"
+codegen-units = 1
+
+# Optimized profile for CI builds - faster compilation
+[profile.fast-ci]
+inherits = "release"
+debug = false
+lto = "off"
+codegen-units = 16
+incremental = true
+opt-level = 1
+
+# Profile for runtime builds - prioritizes size and performance
+[profile.production]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+debug = false
+overflow-checks = false
