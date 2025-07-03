@@ -48,6 +48,6 @@ jobs:
         run: |
           # Test against local node - much faster and more reliable
           try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-          on-runtime-upgrade --disable-idempotency-checks --disable-spec-version-check \
+          on-runtime-upgrade --disable-idempotency-checks \
           snap --path /tmp/snap
         continue-on-error: true 
