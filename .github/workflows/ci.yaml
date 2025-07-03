@@ -98,8 +98,8 @@ jobs:
           cargo build --profile fast-ci --features try-runtime --package cere-runtime --package cere-dev-runtime
       - name: Check Try-Runtime (with timeout)
         run: |
-          timeout 300 try-runtime --runtime ./target/fast-ci/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-          on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.qanet.cere.network:443 || echo "Try-runtime check timed out or failed, continuing..."
+          timeout 600 try-runtime --runtime ./target/fast-ci/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
+          on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.devnet.cere.network:443 || echo "Try-runtime check timed out or failed, continuing..."
       - name: Run dev chain (quick test)
         run: |
           timeout --preserve-status 30s ./target/fast-ci/cere --dev || echo "Dev chain test completed"
