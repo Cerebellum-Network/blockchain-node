@@ -20,6 +20,8 @@ pub mod benchmarking;
 #[cfg(any(feature = "runtime-benchmarks", test))]
 pub mod testing_utils;
 
+pub mod executor;
+
 #[cfg(test)]
 pub(crate) mod mock;
 #[cfg(test)]
@@ -28,6 +30,16 @@ mod tests;
 pub mod migrations;
 const LOG_TARGET: &str = "runtime::ddc-clusters";
 
+#[ink::trait_definition]
+pub trait CustomCereForRuntime {
+	#[ink(message)]
+	fn put_from_runtime(&mut self, value_from_runtime: u32);
+
+	#[ink(message)]
+	fn get_from_runtime(&self) -> u32;
+}
+
+// use cere_runtime_traits::CustomCereForRuntime;
 use ddc_primitives::{
 	traits::{
 		cluster::{ClusterCreator, ClusterProtocol, ClusterQuery, ClusterValidator},
@@ -44,6 +56,7 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
+use pallet_contracts::chain_extension::SysConfig;
 use pallet_ddc_nodes::{NodeRepository, NodeTrait};
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::SaturatedConversion;
@@ -106,7 +119,8 @@ pub mod pallet {
 		ClusterUnbonded { cluster_id: ClusterId },
 		ClusterNodeValidated { cluster_id: ClusterId, node_pub_key: NodePubKey, succeeded: bool },
 		ClusterEraPaid { cluster_id: ClusterId, era_id: EhdEra },
-		CustomContractCall { value: u32 },
+		FromContractToRuntimeCall { value: u32 },
+		FromRuntimeToContractCall { value: u32 },
 	}
 
 	#[pallet::error]
@@ -426,11 +440,71 @@ pub mod pallet {
 
 			Self::do_join_cluster(cluster, node_pub_key)
 		}
+
+		#[pallet::call_index(6)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_cluster())]
+		pub fn contract_put_from_runtime(
+			origin: OriginFor<T>,
+			contract: crate::executor::AccountIdOf<T>,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<crate::executor::BalanceOf<T>>,
+			contract_argument: u32,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let executor = executor::PalletContractsExecutor::<ink::env::DefaultEnvironment, T> {
+				origin: who.clone(),
+				contract: contract.clone(),
+				value: Default::default(),
+				gas_limit,
+				storage_deposit_limit,
+				marker: Default::default(),
+			};
+
+			let mut flipper = ink::message_builder!(CustomCereForRuntime);
+			let result = flipper.put_from_runtime(contract_argument).exec(&executor)?;
+
+			assert!(result.is_ok());
+
+			Ok(())
+		}
+
+		#[pallet::call_index(7)]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::join_cluster())]
+		pub fn contract_get_from_runtime(
+			origin: OriginFor<T>,
+			contract: crate::executor::AccountIdOf<T>,
+			gas_limit: Weight,
+			storage_deposit_limit: Option<crate::executor::BalanceOf<T>>,
+			contract_argument: u32,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let executor = executor::PalletContractsExecutor::<ink::env::DefaultEnvironment, T> {
+				origin: who.clone(),
+				contract: contract.clone(),
+				value: Default::default(),
+				gas_limit,
+				storage_deposit_limit,
+				marker: Default::default(),
+			};
+
+			let mut flipper = ink::message_builder!(CustomCereForRuntime);
+			let result = flipper.get_from_runtime().exec(&executor)?;
+
+			assert!(result.is_ok());
+
+			Self::deposit_event(Event::<T>::FromRuntimeToContractCall {
+				value: result.expect("must be ok"),
+			});
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
 		pub fn store_my_data(input: u32) -> Result<u32, DispatchError> {
-			Self::deposit_event(Event::<T>::CustomContractCall { value: input });
+			Self::deposit_event(Event::<T>::FromContractToRuntimeCall { value: input });
 			let return_value = input + 1;
 			Ok(return_value.into())
 		}

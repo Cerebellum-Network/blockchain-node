@@ -15,6 +15,7 @@ hex-literal = { workspace = true }
 log = { workspace = true }
 scale-info = { workspace = true }
 serde = { workspace = true }
+ink = { version = "5.1.0", default-features = false, features = ["no-panic-handler", "no-allocator"] }
 
 # Substrate dependencies
 frame-benchmarking = { workspace = true, optional = true }
@@ -53,6 +54,8 @@ std = [
   "sp-core/std",
   "sp-runtime/std",
   "sp-std/std",
+  "ink/std",
+
 ]
 runtime-benchmarks = [
   "ddc-primitives/runtime-benchmarks",
