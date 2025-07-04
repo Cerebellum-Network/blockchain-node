@@ -327,9 +327,8 @@ pub mod v2_mbm {
 
 				let next = match &cursor {
 					None => Self::nodes_step(None),
-					Some(MigrationState::MigratingNodes(maybe_last_node)) => {
-						Self::nodes_step(Some(maybe_last_node))
-					},
+					Some(MigrationState::MigratingNodes(maybe_last_node)) =>
+						Self::nodes_step(Some(maybe_last_node)),
 					Some(MigrationState::Finished) => {
 						StorageVersion::new(Self::id().version_to as u16).put::<Pallet<T>>();
 						return Ok(None);
