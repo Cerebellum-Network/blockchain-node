@@ -95,9 +95,9 @@ fn cere_dev_session_keys(
 	babe: BabeId,
 	im_online: ImOnlineId,
 	authority_discovery: AuthorityDiscoveryId,
-	ddc_verification: DdcVerificationId,
+	_ddc_verification: DdcVerificationId,
 ) -> cere_dev::SessionKeys {
-	cere_dev::SessionKeys { grandpa, babe, im_online, authority_discovery, ddc_verification }
+	cere_dev::SessionKeys { grandpa, babe, im_online, authority_discovery }
 }
 
 /// Helper function to create Cere Dev `RuntimeGenesisConfig` for testing
@@ -414,9 +414,9 @@ fn cere_session_keys(
 	babe: BabeId,
 	im_online: ImOnlineId,
 	authority_discovery: AuthorityDiscoveryId,
-	ddc_verification: DdcVerificationId,
+	_ddc_verification: DdcVerificationId,
 ) -> cere::SessionKeys {
-	cere::SessionKeys { grandpa, babe, im_online, authority_discovery, ddc_verification }
+	cere::SessionKeys { grandpa, babe, im_online, authority_discovery }
 }
 
 /// Returns the properties for the [`cere-dev-native`].
