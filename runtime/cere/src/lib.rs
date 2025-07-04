@@ -531,7 +531,6 @@ impl_opaque_keys! {
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
-		pub ddc_verification: DdcVerification,
 	}
 }
 
@@ -541,14 +540,6 @@ fn transform_session_keys(v: AccountId, old: OldSessionKeys) -> SessionKeys {
 		babe: old.babe,
 		im_online: old.im_online,
 		authority_discovery: old.authority_discovery,
-		ddc_verification: {
-			let mut id: ddc_primitives::sr25519::AuthorityId =
-				sp_core::sr25519::Public::from_raw([0u8; 32]).into();
-			let id_raw: &mut [u8] = id.as_mut();
-			id_raw[0..32].copy_from_slice(v.as_ref());
-			id_raw[0..4].copy_from_slice(b"cer!");
-			id
-		},
 	}
 }
 
