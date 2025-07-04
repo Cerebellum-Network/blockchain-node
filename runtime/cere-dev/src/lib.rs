@@ -169,7 +169,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73159,
+	spec_version: 73160,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -204,6 +204,13 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
 			Treasury::on_unbalanced(split.0);
 			Author::on_unbalanced(split.1);
 		}
+	}
+}
+
+pub struct DustToTreasury;
+impl OnUnbalanced<Credit<AccountId, Balances>> for DustToTreasury {
+	fn on_unbalanced(amount: Credit<AccountId, Balances>) {
+		let _ = Balances::deposit_creating(&TreasuryAccount::get(), amount.peek());
 	}
 }
 
@@ -467,7 +474,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	type Balance = Balance;
-	type DustRemoval = ();
+	type DustRemoval = DustToTreasury;
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
@@ -2058,7 +2065,7 @@ impl_runtime_apis! {
 	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<
 		Block,
 		Balance,
-	> for Runtime {
+> for Runtime {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
 		}
@@ -2106,7 +2113,7 @@ impl_runtime_apis! {
 		Block,
 		AccountId,
 		Balance,
-	> for Runtime {
+> for Runtime {
 		fn pending_rewards(member: AccountId) -> Balance {
 			NominationPools::api_pending_rewards(member).unwrap_or_default()
 		}

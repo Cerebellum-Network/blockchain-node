@@ -162,7 +162,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73159,
+	spec_version: 73160,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -455,12 +455,19 @@ parameter_types! {
 	pub const MaxReserves: u32 = 50;
 }
 
+pub struct DustToTreasury;
+impl OnUnbalanced<Credit<AccountId, Balances>> for DustToTreasury {
+	fn on_unbalanced(amount: Credit<AccountId, Balances>) {
+		let _ = Balances::deposit_creating(&TreasuryAccount::get(), amount.peek());
+	}
+}
+
 impl pallet_balances::Config for Runtime {
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	type Balance = Balance;
-	type DustRemoval = ();
+	type DustRemoval = DustToTreasury;
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
