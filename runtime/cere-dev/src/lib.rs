@@ -25,8 +25,7 @@
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use ddc_primitives::{
 	traits::pallet::{GetDdcOrigin, PalletVisitor},
-	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce, MAX_PAYOUT_BATCH_COUNT,
-	MAX_PAYOUT_BATCH_SIZE,
+	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce,
 };
 pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
@@ -49,7 +48,7 @@ use frame_support::{
 			imbalance::ResolveTo, DepositConsequence, Fortitude, PayFromAccount, Preservation,
 			Provenance, UnityAssetBalanceConversion, WithdrawConsequence,
 		},
-		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
+		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, ExistenceRequirement, Imbalance, InstanceFilter, KeyOwnerProofSystem,
 		LinearStoragePrice, Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
@@ -93,7 +92,7 @@ use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_core::{
-	crypto::{AccountId32, KeyTypeId},
+	crypto::KeyTypeId,
 	OpaqueMetadata,
 };
 use sp_inherents::{CheckInherentsResult, InherentData};
@@ -105,7 +104,7 @@ use sp_runtime::{
 	generic, impl_opaque_keys,
 	traits::{
 		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, Convert, ConvertInto,
-		Identity as IdentityConvert, IdentityLookup, NumberFor, OpaqueKeys, SaturatedConversion,
+		IdentityLookup, NumberFor, OpaqueKeys, SaturatedConversion,
 		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
@@ -539,7 +538,6 @@ impl_opaque_keys! {
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
-		pub ddc_verification: DdcVerification,
 	}
 }
 
@@ -1313,41 +1311,42 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 	}
 }
 
-impl pallet_ddc_payouts::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
-	type PalletId = PayoutsPalletId;
-	type Currency = Balances;
-	type CustomerCharger = DdcCustomers;
-	type BucketManager = DdcCustomers;
-	type ClusterProtocol = DdcClusters;
-	type TreasuryVisitor = TreasuryWrapper;
-	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
-	type VoteScoreToU64 = IdentityConvert;
-	type InspectorAuthority = DdcVerification;
-	type NodeManager = DdcNodes;
-	type AccountIdConverter = AccountId32;
-	type Hasher = BlakeTwo256;
-	type ClusterValidator = DdcClusters;
-	type ValidatorsQuorum = MajorityOfValidators;
-	type ClusterManager = DdcClusters;
-	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
-	#[cfg(feature = "runtime-benchmarks")]
-	type CustomerDepositor = DdcCustomers;
-	#[cfg(feature = "runtime-benchmarks")]
-	type ClusterCreator = DdcClusters;
-	#[cfg(feature = "runtime-benchmarks")]
-	type WPublic = <Signature as Verify>::Signer;
-	#[cfg(feature = "runtime-benchmarks")]
-	type WSignature = Signature;
-	type UnsignedPriority = ConstU64<500_000_000>;
-	type FeeHandler = FeeHandler;
-
-	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
-	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
-	const DISABLE_PAYOUTS_CUTOFF: bool = false;
-	const OCW_INTERVAL: u16 = 5; // every 5th block
-}
+// TEMPORARILY COMMENTED OUT - Missing pallet-ddc-verification repository
+// impl pallet_ddc_payouts::Config for Runtime {
+// 	type RuntimeEvent = RuntimeEvent;
+// 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
+// 	type PalletId = PayoutsPalletId;
+// 	type Currency = Balances;
+// 	type CustomerCharger = DdcCustomers;
+// 	type BucketManager = DdcCustomers;
+// 	type ClusterProtocol = DdcClusters;
+// 	type TreasuryVisitor = TreasuryWrapper;
+// 	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
+// 	type VoteScoreToU64 = IdentityConvert;
+// 	type InspectorAuthority = DdcVerification;
+// 	type NodeManager = DdcNodes;
+// 	type AccountIdConverter = AccountId32;
+// 	type Hasher = BlakeTwo256;
+// 	type ClusterValidator = DdcClusters;
+// 	type ValidatorsQuorum = MajorityOfValidators;
+// 	type ClusterManager = DdcClusters;
+// 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+// 	#[cfg(feature = "runtime-benchmarks")]
+// 	type CustomerDepositor = DdcCustomers;
+// 	#[cfg(feature = "runtime-benchmarks")]
+// 	type ClusterCreator = DdcClusters;
+// 	#[cfg(feature = "runtime-benchmarks")]
+// 	type WPublic = <Signature as Verify>::Signer;
+// 	#[cfg(feature = "runtime-benchmarks")]
+// 	type WSignature = Signature;
+// 	type UnsignedPriority = ConstU64<500_000_000>;
+// 	type FeeHandler = FeeHandler;
+// 
+// 	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
+// 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
+// 	const DISABLE_PAYOUTS_CUTOFF: bool = false;
+// 	const OCW_INTERVAL: u16 = 5; // every 5th block
+// }
 
 parameter_types! {
 	pub const TechnicalMotionDuration: BlockNumber = 5 * DAYS;
@@ -1381,29 +1380,6 @@ parameter_types! {
 	pub const ReferendumEnactmentDuration: BlockNumber = 1;
 }
 
-impl pallet_ddc_clusters_gov::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type PalletId = ClustersGovPalletId;
-	type Currency = Balances;
-	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
-	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterProtocolActivatorTrackOrigin, Self>;
-	type OpenGovActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterProtocolActivator>;
-	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterProtocolUpdaterTrackOrigin, Self>;
-	type OpenGovUpdaterOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterProtocolUpdater>;
-	type ClusterProposalCall = RuntimeCall;
-	type ClusterProposalDuration = ClusterProposalDuration;
-	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
-	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
-	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
-	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
-	type SeatsConsensus = pallet_ddc_clusters_gov::Unanimous;
-	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
-	type MinValidatedNodesCount = MinValidatedNodesCount;
-	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
-	#[cfg(feature = "runtime-benchmarks")]
-	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
-}
-
 pub struct ClustersGovWrapper;
 impl<T: frame_system::Config> PalletVisitor<T> for ClustersGovWrapper {
 	fn get_account_id() -> T::AccountId {
@@ -1423,34 +1399,6 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 parameter_types! {
 	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
 	pub const TenPercentOfValidators: Percent = Percent::from_percent(10);
-}
-
-impl pallet_ddc_verification::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type PalletId = VerificationPalletId;
-	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
-	type ClusterProtocol = DdcClusters;
-	type ClusterManager = DdcClusters;
-	type ClusterValidator = DdcClusters;
-	type NodeManager = DdcNodes;
-	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
-	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
-	type Hasher = BlakeTwo256;
-	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
-	type Currency = Balances;
-	type CustomerVisitor = DdcCustomers;
-	type BucketManager = DdcCustomers;
-	type InspReceiptsInterceptor =
-		pallet_ddc_verification::simulations::v1::SimulationReceiptsInterceptor;
-
-	type InspRedundancyFactor = TenPercentOfValidators;
-	type InspBackupsFactor = TenPercentOfValidators;
-
-	const OCW_INTERVAL: u16 = 10; // every 10th block
-	const TCA_INSPECTION_STEP: u64 = 0;
-	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
-	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
-	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
 }
 
 parameter_types! {
@@ -1474,15 +1422,6 @@ impl pallet_migrations::Config for Runtime {
 
 parameter_types! {
 	pub const FeeHandlerPalletId: PalletId = PalletId(*b"feehandl");
-}
-
-impl pallet_fee_handler::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Currency = Balances;
-	type GovernanceOrigin = EnsureRoot<AccountId>;
-	type PalletId = FeeHandlerPalletId;
-	type TreasuryPalletId = TreasuryPalletId;
-	type WeightInfo = pallet_fee_handler::weights::SubstrateWeight<Runtime>;
 }
 
 #[frame_support::runtime]
@@ -1620,11 +1559,13 @@ mod runtime {
 	#[runtime::pallet_index(38)]
 	pub type DdcClusters = pallet_ddc_clusters::Pallet<Runtime>;
 
-	#[runtime::pallet_index(39)]
-	pub type DdcPayouts = pallet_ddc_payouts::Pallet<Runtime>;
+	// TEMPORARILY COMMENTED OUT - Missing pallet-ddc-verification repository
+	// #[runtime::pallet_index(39)]
+	// pub type DdcPayouts = pallet_ddc_payouts::Pallet<Runtime>;
 
-	#[runtime::pallet_index(40)]
-	pub type DdcVerification = pallet_ddc_verification::Pallet<Runtime>;
+	// TEMPORARILY COMMENTED OUT - Missing pallet-ddc-verification repository
+	// #[runtime::pallet_index(40)]
+	// pub type DdcVerification = pallet_ddc_verification::Pallet<Runtime>;
 
 	// Start OpenGov.
 	#[runtime::pallet_index(41)]
@@ -1654,7 +1595,7 @@ mod runtime {
 
 	// End OpenGov.
 	#[runtime::pallet_index(49)]
-	pub type Hyperbridge = pallet_hyperbridge::Pallet<Runtim>;
+	pub type Hyperbridge = pallet_hyperbridge::Pallet<Runtime>;
 
 	#[runtime::pallet_index(50)]
 	pub type TokenGateway = pallet_token_gateway::Pallet<Runtime>;
@@ -1666,6 +1607,67 @@ mod runtime {
 	#[runtime::pallet_index(52)]
 	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
 }
+
+impl pallet_fee_handler::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+	type PalletId = FeeHandlerPalletId;
+	type TreasuryPalletId = TreasuryPalletId;
+	type WeightInfo = pallet_fee_handler::weights::SubstrateWeight<Runtime>;
+}
+
+impl pallet_ddc_clusters_gov::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = ClustersGovPalletId;
+	type Currency = Balances;
+	type WeightInfo = pallet_ddc_clusters_gov::weights::SubstrateWeight<Runtime>;
+	type OpenGovActivatorTrackOrigin = DdcOriginAsNative<ClusterProtocolActivatorTrackOrigin, Self>;
+	type OpenGovActivatorOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterProtocolActivator>;
+	type OpenGovUpdaterTrackOrigin = DdcOriginAsNative<ClusterProtocolUpdaterTrackOrigin, Self>;
+	type OpenGovUpdaterOrigin = EitherOf<EnsureRoot<Self::AccountId>, ClusterProtocolUpdater>;
+	type ClusterProposalCall = RuntimeCall;
+	type ClusterProposalDuration = ClusterProposalDuration;
+	type ClusterManager = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterCreator = pallet_ddc_clusters::Pallet<Runtime>;
+	type ClusterProtocol = pallet_ddc_clusters::Pallet<Runtime>;
+	type NodeManager = pallet_ddc_nodes::Pallet<Runtime>;
+	type SeatsConsensus = pallet_ddc_clusters_gov::Unanimous;
+	type DefaultVote = pallet_ddc_clusters_gov::NayAsDefaultVote;
+	type MinValidatedNodesCount = MinValidatedNodesCount;
+	type ReferendumEnactmentDuration = ReferendumEnactmentDuration;
+	#[cfg(feature = "runtime-benchmarks")]
+	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
+}
+
+// TEMPORARILY COMMENTED OUT - Missing pallet-ddc-verification repository
+// impl pallet_ddc_verification::Config for Runtime {
+// 	type RuntimeEvent = RuntimeEvent;
+// 	type PalletId = VerificationPalletId;
+// 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
+// 	type ClusterProtocol = DdcClusters;
+// 	type ClusterManager = DdcClusters;
+// 	type ClusterValidator = DdcClusters;
+// 	type NodeManager = DdcNodes;
+// 	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
+// 	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
+// 	type Hasher = BlakeTwo256;
+// 	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
+// 	type Currency = Balances;
+// 	type CustomerVisitor = DdcCustomers;
+// 	type BucketManager = DdcCustomers;
+// 	type InspReceiptsInterceptor =
+// 		pallet_ddc_verification::simulations::v1::SimulationReceiptsInterceptor;
+// 
+// 	type InspRedundancyFactor = TenPercentOfValidators;
+// 	type InspBackupsFactor = TenPercentOfValidators;
+// 
+// 	const OCW_INTERVAL: u16 = 10; // every 10th block
+// 	const TCA_INSPECTION_STEP: u64 = 0;
+// 	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
+// 	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
+// 	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
+// }
 
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
@@ -1763,7 +1765,7 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
-		[pallet_ddc_payouts, DdcPayouts]
+		// [pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
 		[pallet_fee_handler, FeeHandler]
