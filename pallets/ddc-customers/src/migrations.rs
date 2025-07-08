@@ -489,9 +489,8 @@ pub mod v3_mbm {
 
 				let next = match &cursor {
 					None => Self::buckets_step(None),
-					Some(MigrationState::MigratingBuckets(maybe_last_bucket)) => {
-						Self::buckets_step(Some(maybe_last_bucket))
-					},
+					Some(MigrationState::MigratingBuckets(maybe_last_bucket)) =>
+						Self::buckets_step(Some(maybe_last_bucket)),
 					Some(MigrationState::Finished) => {
 						StorageVersion::new(Self::id().version_to as u16).put::<Pallet<T>>();
 						return Ok(None);
@@ -705,12 +704,10 @@ pub mod v4_mbm {
 
 				let next = match &cursor {
 					None => Self::ledgers_step(None, None),
-					Some(MigrationState::MigratingLedgers(maybe_last_ledger, maybe_cluster_id)) => {
-						Self::ledgers_step(Some(maybe_last_ledger), Some(maybe_cluster_id))
-					},
-					Some(MigrationState::TransferringBalance(cluster_id)) => {
-						Self::transfer_balance_step(cluster_id)
-					},
+					Some(MigrationState::MigratingLedgers(maybe_last_ledger, maybe_cluster_id)) =>
+						Self::ledgers_step(Some(maybe_last_ledger), Some(maybe_cluster_id)),
+					Some(MigrationState::TransferringBalance(cluster_id)) =>
+						Self::transfer_balance_step(cluster_id),
 					Some(MigrationState::Finished) => {
 						StorageVersion::new(Self::id().version_to as u16).put::<Pallet<T>>();
 						return Ok(None);
@@ -875,9 +872,8 @@ pub mod v4_mbm {
 
 		pub(crate) fn required_weight(step: &MigrationState<T::AccountId>) -> Weight {
 			match step {
-				MigrationState::MigratingLedgers(_, _) => {
-					T::WeightInfo::migration_v4_ledgers_step()
-				},
+				MigrationState::MigratingLedgers(_, _) =>
+					T::WeightInfo::migration_v4_ledgers_step(),
 				MigrationState::TransferringBalance(_) => {
 					// This is copied from pallet_balances::WeightInfo::transfer_allow_death()
 

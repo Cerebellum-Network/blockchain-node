@@ -6,10 +6,9 @@ use frame_support::{
 	traits::{Get, UnixTime},
 };
 use frame_system::pallet_prelude::*;
+pub use pallet::*;
 use sp_runtime::traits::Saturating;
 use sp_std::vec::Vec;
-
-pub use pallet::*;
 
 /// Network health status information
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
