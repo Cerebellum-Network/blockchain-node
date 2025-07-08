@@ -34,10 +34,21 @@
           "type": "array",
           "items": {
             "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
             "items": [
-              { "type": "string", "format": "uri" },
-              { "type": "integer", "minimum": 0 }
-            ]
+              { 
+                "type": "string", 
+                "pattern": "^(https?|wss?)://.*",
+                "description": "Telemetry endpoint URL"
+              },
+              { 
+                "type": "integer", 
+                "minimum": 0,
+                "description": "Telemetry verbosity level"
+              }
+            ],
+            "additionalItems": false
           }
         }
       ]
