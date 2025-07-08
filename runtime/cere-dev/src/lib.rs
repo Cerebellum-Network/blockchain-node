@@ -525,6 +525,7 @@ impl_opaque_keys! {
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
+		pub ddc_verification: ddc_primitives::sr25519::AuthorityId,
 	}
 }
 
@@ -534,6 +535,15 @@ impl_opaque_keys! {
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
+	}
+}
+
+fn transform_session_keys(_v: AccountId, old: OldSessionKeys) -> SessionKeys {
+	SessionKeys {
+		grandpa: old.grandpa,
+		babe: old.babe,
+		im_online: old.im_online,
+		authority_discovery: old.authority_discovery,
 	}
 }
 
@@ -1705,7 +1715,26 @@ parameter_types! {
 	pub BalanceTransferAllowDeath: Weight = weights::pallet_balances_balances::WeightInfo::<Runtime>::transfer_allow_death();
 }
 
-type Migrations = ();
+/// Migrations for DDC pallets, unreleased to MAINNET
+pub mod migrations {
+	use super::*;
+
+	/// When this is removed, should also remove `OldSessionKeys`.
+	pub struct UpgradeSessionKeys;
+	impl frame_support::traits::OnRuntimeUpgrade for UpgradeSessionKeys {
+		fn on_runtime_upgrade() -> Weight {
+			Session::upgrade_keys::<OldSessionKeys, _>(transform_session_keys);
+			Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block
+		}
+	}
+
+	pub type Unreleased = (
+		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
+		UpgradeSessionKeys,
+	);
+}
+
+type Migrations = migrations::Unreleased;
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
