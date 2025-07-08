@@ -1,0 +1,377 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Chain Specification Schema",
+  "type": "object",
+  "required": ["name", "id", "chainType", "genesis"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Human-readable name of the chain"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Unique identifier for the chain"
+    },
+    "chainType": {
+      "type": "string",
+      "enum": ["Development", "Local", "Live"],
+      "description": "Type of blockchain network"
+    },
+    "bootNodes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^/ip4/.*"
+      },
+      "description": "List of bootstrap nodes"
+    },
+    "telemetryEndpoints": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": [
+              { "type": "string", "format": "uri" },
+              { "type": "integer", "minimum": 0 }
+            ]
+          }
+        }
+      ]
+    },
+    "protocolId": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Protocol identifier"
+    },
+    "properties": {
+      "type": "object",
+      "required": ["ss58Format", "tokenDecimals", "tokenSymbol"],
+      "properties": {
+        "ss58Format": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16383
+        },
+        "tokenDecimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18
+        },
+        "tokenSymbol": {
+          "type": "string",
+          "pattern": "^[A-Z]{3,6}$"
+        }
+      }
+    },
+    "genesis": {
+      "type": "object",
+      "required": ["runtime"],
+      "properties": {
+        "runtime": {
+          "type": "object",
+          "required": ["system", "balances", "sudo"],
+          "properties": {
+            "system": {
+              "type": "object",
+              "required": ["code"],
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "pattern": "^0x[a-fA-F0-9]+$",
+                  "description": "Runtime WebAssembly code"
+                }
+              }
+            },
+            "balances": {
+              "type": "object",
+              "required": ["balances"],
+              "properties": {
+                "balances": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "type": "string",
+                        "pattern": "^5[a-zA-Z0-9]{47}$",
+                        "description": "Substrate account address"
+                      },
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000000000000,
+                        "description": "Balance amount in smallest unit"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "sudo": {
+              "type": "object",
+              "required": ["key"],
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "pattern": "^5[a-zA-Z0-9]{47}$",
+                  "description": "Sudo account address"
+                }
+              }
+            },
+            "session": {
+              "type": "object",
+              "required": ["keys"],
+              "properties": {
+                "keys": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "type": "string",
+                        "pattern": "^5[a-zA-Z0-9]{47}$",
+                        "description": "Session account"
+                      },
+                      {
+                        "type": "string",
+                        "pattern": "^5[a-zA-Z0-9]{47}$",
+                        "description": "Session account duplicate"
+                      },
+                      {
+                        "type": "object",
+                        "required": ["grandpa", "babe", "im_online", "authority_discovery"],
+                        "properties": {
+                          "grandpa": {
+                            "type": "string",
+                            "pattern": "^5[a-zA-Z0-9]{47}$"
+                          },
+                          "babe": {
+                            "type": "string",
+                            "pattern": "^5[a-zA-Z0-9]{47}$"
+                          },
+                          "im_online": {
+                            "type": "string",
+                            "pattern": "^5[a-zA-Z0-9]{47}$"
+                          },
+                          "authority_discovery": {
+                            "type": "string",
+                            "pattern": "^5[a-zA-Z0-9]{47}$"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "staking": {
+              "type": "object",
+              "required": ["validatorCount", "minimumValidatorCount", "invulnerables"],
+              "properties": {
+                "validatorCount": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000
+                },
+                "minimumValidatorCount": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000
+                },
+                "invulnerables": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^5[a-zA-Z0-9]{47}$"
+                  }
+                }
+              }
+            },
+            "ddcStaking": {
+              "type": "object",
+              "required": ["storages", "clusters"],
+              "properties": {
+                "storages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "clusters": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "ddcCustomers": {
+              "type": "object",
+              "required": ["feederAccount", "buckets"],
+              "properties": {
+                "feederAccount": {
+                  "oneOf": [
+                    { "type": "null" },
+                    {
+                      "type": "string",
+                      "pattern": "^5[a-zA-Z0-9]{47}$"
+                    }
+                  ]
+                },
+                "buckets": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "type": "object",
+                        "required": ["bucket_id", "owner_id", "cluster_id", "is_public", "is_removed"],
+                        "properties": {
+                          "bucket_id": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "owner_id": {
+                            "type": "string",
+                            "pattern": "^5[a-zA-Z0-9]{47}$"
+                          },
+                          "cluster_id": {
+                            "type": "string",
+                            "pattern": "^0x[a-fA-F0-9]{64}$"
+                          },
+                          "is_public": {
+                            "type": "boolean"
+                          },
+                          "is_removed": {
+                            "type": "boolean"
+                          }
+                        }
+                      },
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "ddcNodes": {
+              "type": "object",
+              "required": ["storageNodes"],
+              "properties": {
+                "storageNodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["pub_key", "provider_id", "cluster_id", "props"],
+                    "properties": {
+                      "pub_key": {
+                        "type": "string",
+                        "pattern": "^5[a-zA-Z0-9]{47}$"
+                      },
+                      "provider_id": {
+                        "type": "string",
+                        "pattern": "^5[a-zA-Z0-9]{47}$"
+                      },
+                      "cluster_id": {
+                        "type": "string",
+                        "pattern": "^0x[a-fA-F0-9]{64}$"
+                      },
+                      "props": {
+                        "type": "object",
+                        "required": ["host", "domain", "ssl", "http_port", "grpc_port", "p2p_port", "mode"],
+                        "properties": {
+                          "host": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 255
+                            }
+                          },
+                          "domain": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer"
+                            }
+                          },
+                          "ssl": {
+                            "type": "boolean"
+                          },
+                          "http_port": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 65535
+                          },
+                          "grpc_port": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 65535
+                          },
+                          "p2p_port": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 65535
+                          },
+                          "mode": {
+                            "type": "string",
+                            "enum": ["Storage", "CDN", "Full"]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "ddcClusters": {
+              "type": "object",
+              "required": ["clusters", "clustersProtocolParams", "clustersNodes"],
+              "properties": {
+                "clusters": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["cluster_id", "manager_id", "reserve_id", "props", "status"],
+                    "properties": {
+                      "cluster_id": {
+                        "type": "string",
+                        "pattern": "^0x[a-fA-F0-9]{64}$"
+                      },
+                      "manager_id": {
+                        "type": "string",
+                        "pattern": "^5[a-zA-Z0-9]{47}$"
+                      },
+                      "reserve_id": {
+                        "type": "string",
+                        "pattern": "^5[a-zA-Z0-9]{47}$"
+                      },
+                      "props": {
+                        "type": "object"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": ["Activated", "Bonded", "Unbonding", "Unbonded"]
+                      }
+                    }
+                  }
+                },
+                "clustersProtocolParams": {
+                  "type": "array"
+                },
+                "clustersNodes": {
+                  "type": "array"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+} 
