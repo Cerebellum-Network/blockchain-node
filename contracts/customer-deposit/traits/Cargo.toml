@@ -11,11 +11,10 @@ ink = { version = "5.1.0", default-features = false }
 [lib]
 path = "lib.rs"
 
-
 [features]
 default = ["std"]
 std = [
-    "ink/std",
+  "ink/std",
 ]
 
 ink-as-dependency = []
