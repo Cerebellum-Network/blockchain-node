@@ -6,7 +6,7 @@
   "properties": {
     "name": {
       "type": "string",
-      "pattern": "^[a-zA-Z0-9_-]+$",
+      "pattern": "^[a-zA-Z0-9_\\s-]+$",
       "description": "Human-readable name of the chain"
     },
     "id": {
@@ -105,6 +105,8 @@
                   "type": "array",
                   "items": {
                     "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
                     "items": [
                       {
                         "type": "string",
@@ -117,7 +119,8 @@
                         "maximum": 1000000000000000,
                         "description": "Balance amount in smallest unit"
                       }
-                    ]
+                    ],
+                    "additionalItems": false
                   }
                 }
               }
@@ -141,6 +144,8 @@
                   "type": "array",
                   "items": {
                     "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
                     "items": [
                       {
                         "type": "string",
@@ -174,7 +179,8 @@
                           }
                         }
                       }
-                    ]
+                    ],
+                    "additionalItems": false
                   }
                 }
               }
@@ -237,6 +243,8 @@
                   "type": "array",
                   "items": {
                     "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
                     "items": [
                       {
                         "type": "object",
@@ -252,7 +260,7 @@
                           },
                           "cluster_id": {
                             "type": "string",
-                            "pattern": "^0x[a-fA-F0-9]{64}$"
+                            "pattern": "^0x[a-fA-F0-9]{40}$"
                           },
                           "is_public": {
                             "type": "boolean"
@@ -266,7 +274,8 @@
                         "type": "integer",
                         "minimum": 0
                       }
-                    ]
+                    ],
+                    "additionalItems": false
                   }
                 }
               }
@@ -291,7 +300,7 @@
                       },
                       "cluster_id": {
                         "type": "string",
-                        "pattern": "^0x[a-fA-F0-9]{64}$"
+                        "pattern": "^0x[a-fA-F0-9]{40}$"
                       },
                       "props": {
                         "type": "object",
@@ -352,7 +361,7 @@
                     "properties": {
                       "cluster_id": {
                         "type": "string",
-                        "pattern": "^0x[a-fA-F0-9]{64}$"
+                        "pattern": "^0x[a-fA-F0-9]{40}$"
                       },
                       "manager_id": {
                         "type": "string",
