@@ -74,7 +74,7 @@ use pallet_contracts::Determinism;
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
 pub use pallet_ddc_nodes;
-pub use pallet_ddc_payouts;
+// pub use pallet_ddc_payouts;
 pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
 use pallet_grandpa::{
@@ -1319,7 +1319,7 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 	}
 }
 
-impl pallet_ddc_payouts::Config for Runtime {
+/* impl pallet_ddc_payouts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
 	type PalletId = PayoutsPalletId;
@@ -1353,7 +1353,7 @@ impl pallet_ddc_payouts::Config for Runtime {
 	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
 	const DISABLE_PAYOUTS_CUTOFF: bool = false;
 	const OCW_INTERVAL: u16 = 5; // every 5th block
-}
+} */
 
 parameter_types! {
 	pub const TechnicalMotionDuration: BlockNumber = 5 * DAYS;
@@ -1431,7 +1431,7 @@ parameter_types! {
 	pub const TenPercentOfValidators: Percent = Percent::from_percent(10);
 }
 
-impl pallet_ddc_verification::Config for Runtime {
+/* impl pallet_ddc_verification::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = VerificationPalletId;
 	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
@@ -1457,7 +1457,7 @@ impl pallet_ddc_verification::Config for Runtime {
 	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
 	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
 	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
-}
+} */
 
 parameter_types! {
 	pub MbmServiceWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
@@ -1627,10 +1627,10 @@ mod runtime {
 	pub type DdcClusters = pallet_ddc_clusters::Pallet<Runtime>;
 
 	#[runtime::pallet_index(39)]
-	pub type DdcPayouts = pallet_ddc_payouts::Pallet<Runtime>;
+	// pub type DdcPayouts = pallet_ddc_payouts::Pallet<Runtime>;
 
 	#[runtime::pallet_index(40)]
-	pub type DdcVerification = pallet_ddc_verification::Pallet<Runtime>;
+	// pub type DdcVerification = pallet_ddc_verification::Pallet<Runtime>;
 
 	// Start OpenGov.
 	#[runtime::pallet_index(41)]
@@ -1769,7 +1769,7 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
-		[pallet_ddc_payouts, DdcPayouts]
+		// [pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
 		[pallet_fee_handler, FeeHandler]
