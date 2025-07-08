@@ -24,6 +24,7 @@ members = [
   "pallets/origins",
   "runtime/cere",
   "runtime/cere-dev",
+  "contracts/customer-deposit",
 ]
 resolver = "2"
 

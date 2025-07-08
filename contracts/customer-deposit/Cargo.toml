@@ -1,0 +1,21 @@
+[package]
+name = "customers-deposits"
+version = "5.1.0"
+authors = ["Use Ink <ink@use.ink>"]
+edition = "2021"
+publish = false
+
+[dependencies]
+ink = { version = "5.1.0", default-features = false }
+cere-runtime-traits = { path = "traits", default-features = false }
+
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+]
+ink-as-dependency = []
