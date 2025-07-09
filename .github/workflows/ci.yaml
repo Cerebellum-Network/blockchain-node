@@ -225,7 +225,7 @@ jobs:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 1
       CI: true
-      RUSTFLAGS: "-C link-arg=-fuse-ld=mold -C linker=clang -C link-arg=-Wl,--no-keep-memory -C link-arg=-Wl,--reduce-memory-overheads"
+      RUSTFLAGS: "-C link-arg=-fuse-ld=mold -C linker=clang -C link-arg=-Wl,--no-keep-memory"
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
