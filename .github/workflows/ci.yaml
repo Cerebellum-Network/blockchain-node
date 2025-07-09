@@ -76,6 +76,14 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Increase swap space
+        run: |
+          sudo swapoff -a
+          sudo fallocate -l 10G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          sudo swapon --show
       - name: Install linux dependencies
         run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler lld
       - name: Install toolchain and rust-src
@@ -217,14 +225,33 @@ jobs:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 1
       CI: true
+      RUSTFLAGS: "-C link-arg=-fuse-ld=mold -C linker=clang -C link-arg=-Wl,--no-keep-memory -C link-arg=-Wl,--reduce-memory-overheads"
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
+      - name: Increase swap space
+        run: |
+          sudo swapoff -a
+          sudo fallocate -l 10G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          sudo swapon --show
       - name: Install linux dependencies
         run: |
           sudo apt update
           sudo apt install -y build-essential cargo clang libssl-dev llvm libudev-dev protobuf-compiler make lld pkg-config
           sudo apt install -y libc6-dev gcc-multilib
+          
+          # Install mold linker (faster and more memory efficient)
+          git clone https://github.com/rui314/mold.git
+          cd mold
+          git checkout v1.11.0
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ ..
+          cmake --build . -j $(nproc)
+          sudo cmake --install .
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -247,6 +274,17 @@ jobs:
         run: cargo install cargo-tarpaulin --version 0.22.0
       - name: Run cargo-tarpaulin
         run: cargo tarpaulin --verbose --workspace --timeout 300 --exclude-files "target/*" --exclude-files "*/build.rs"
-      - name: Run tests
+      - name: Run tests (split into smaller chunks)
         run: |
-          cargo test --verbose --locked --no-fail-fast --workspace --features runtime-benchmarks -- --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests
+          # Run tests in smaller chunks to reduce memory usage
+          echo "Running runtime tests..."
+          cargo test --verbose --locked --no-fail-fast -p cere-runtime --features runtime-benchmarks --jobs 1
+          
+          echo "Running node tests..."
+          cargo test --verbose --locked --no-fail-fast -p cere-cli -p cere-client -p cere-service --features runtime-benchmarks --jobs 1
+          
+          echo "Running pallets tests..."
+          cargo test --verbose --locked --no-fail-fast --package "*ddc*" --features runtime-benchmarks --jobs 1 -- --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests
+          
+          echo "Running remaining tests..."
+          cargo test --verbose --locked --no-fail-fast --workspace --exclude "*ddc*" --exclude cere-runtime --exclude cere-cli --exclude cere-client --exclude cere-service --features runtime-benchmarks --jobs 1
