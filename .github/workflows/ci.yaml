@@ -236,8 +236,10 @@ jobs:
         with:
           shared-key: "test-build"
           cache-on-failure: true
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin --version 0.22.0
       - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
+        run: cargo tarpaulin --verbose --workspace --timeout 120
       - name: Run tests
         run: |
           cargo test --verbose --locked --no-fail-fast --workspace --features runtime-benchmarks -- --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests
