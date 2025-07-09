@@ -1,17 +1,51 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::{
+	codec::{Decode, Encode, MaxEncodedLen},
 	dispatch::DispatchResult,
 	pallet_prelude::*,
 	traits::{Get, UnixTime},
+	weights::Weight,
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use sp_runtime::traits::Saturating;
 use sp_std::vec::Vec;
 
+/// Weight information for network monitor pallet
+pub trait WeightInfo {
+	fn update_network_health() -> Weight;
+	fn report_peer_misbehavior() -> Weight;
+	fn update_peer_info() -> Weight;
+	fn whitelist_peer() -> Weight;
+	fn detect_network_attacks() -> Weight;
+	fn cleanup_old_data() -> Weight;
+}
+
+/// Default weight implementation
+impl WeightInfo for () {
+	fn update_network_health() -> Weight {
+		Weight::from_parts(10_000, 0)
+	}
+	fn report_peer_misbehavior() -> Weight {
+		Weight::from_parts(10_000, 0)
+	}
+	fn update_peer_info() -> Weight {
+		Weight::from_parts(10_000, 0)
+	}
+	fn whitelist_peer() -> Weight {
+		Weight::from_parts(10_000, 0)
+	}
+	fn detect_network_attacks() -> Weight {
+		Weight::from_parts(15_000, 0)
+	}
+	fn cleanup_old_data() -> Weight {
+		Weight::from_parts(20_000, 0)
+	}
+}
+
 /// Network health status information
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo, MaxEncodedLen, Default)]
 #[scale_info(skip_type_params(T))]
 pub struct NetworkHealthStatus {
 	/// Number of connected peers
@@ -24,12 +58,6 @@ pub struct NetworkHealthStatus {
 	pub security_score: u32,
 	/// Last update timestamp
 	pub last_updated: u64,
-}
-
-impl Default for NetworkHealthStatus {
-	fn default() -> Self {
-		Self { peer_count: 0, block_rate: 0, consensus_rate: 0, security_score: 0, last_updated: 0 }
-	}
 }
 
 /// Information about a connected peer
@@ -124,6 +152,9 @@ pub mod pallet {
 		/// Maximum peer count before DDoS alert
 		#[pallet::constant]
 		type MaxPeerCount: Get<u32>;
+
+		/// Weight information for extrinsics
+		type WeightInfo: WeightInfo;
 	}
 
 	/// Current network health status
@@ -231,7 +262,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Update network health status
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::update_network_health())]
 		#[pallet::call_index(0)]
 		pub fn update_network_health(origin: OriginFor<T>) -> DispatchResult {
 			ensure_signed(origin)?;
@@ -254,7 +285,7 @@ pub mod pallet {
 		}
 
 		/// Report peer misbehavior
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::report_peer_misbehavior())]
 		#[pallet::call_index(1)]
 		pub fn report_peer_misbehavior(
 			origin: OriginFor<T>,
@@ -307,7 +338,7 @@ pub mod pallet {
 			};
 
 			let current_block = frame_system::Pallet::<T>::block_number();
-			SecurityEvents::<T>::mutate(&current_block, |events| {
+			SecurityEvents::<T>::mutate(current_block, |events| {
 				if events.len() < T::MaxSecurityEvents::get() as usize {
 					let _ = events.try_push(security_event.clone());
 				}
@@ -318,7 +349,7 @@ pub mod pallet {
 		}
 
 		/// Add or update peer information
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::update_peer_info())]
 		#[pallet::call_index(2)]
 		pub fn update_peer_info(
 			origin: OriginFor<T>,
@@ -345,7 +376,7 @@ pub mod pallet {
 		}
 
 		/// Whitelist a previously blacklisted peer
-		#[pallet::weight(10_000)]
+		#[pallet::weight(T::WeightInfo::whitelist_peer())]
 		#[pallet::call_index(3)]
 		pub fn whitelist_peer(
 			origin: OriginFor<T>,
@@ -370,7 +401,7 @@ pub mod pallet {
 		}
 
 		/// Detect and report network attacks
-		#[pallet::weight(15_000)]
+		#[pallet::weight(T::WeightInfo::detect_network_attacks())]
 		#[pallet::call_index(4)]
 		pub fn detect_network_attacks(origin: OriginFor<T>) -> DispatchResult {
 			ensure_signed(origin)?;
@@ -414,7 +445,7 @@ pub mod pallet {
 		}
 
 		/// Clean up old security events and peer data
-		#[pallet::weight(20_000)]
+		#[pallet::weight(T::WeightInfo::cleanup_old_data())]
 		#[pallet::call_index(5)]
 		pub fn cleanup_old_data(
 			origin: OriginFor<T>,
@@ -475,8 +506,7 @@ pub mod pallet {
 				100
 			} else {
 				// Calculate based on failures vs successes
-				let success_rate = 100u32.saturating_sub(stats.consensus_failures.min(100));
-				success_rate
+				100u32.saturating_sub(stats.consensus_failures.min(100))
 			}
 		}
 

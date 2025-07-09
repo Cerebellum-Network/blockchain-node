@@ -25,8 +25,7 @@
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use ddc_primitives::{
 	traits::pallet::{GetDdcOrigin, PalletVisitor},
-	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce, MAX_PAYOUT_BATCH_COUNT,
-	MAX_PAYOUT_BATCH_SIZE,
+	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce,
 };
 pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
@@ -49,7 +48,7 @@ use frame_support::{
 			imbalance::ResolveTo, DepositConsequence, Fortitude, PayFromAccount, Preservation,
 			Provenance, UnityAssetBalanceConversion, WithdrawConsequence,
 		},
-		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
+		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, ExistenceRequirement, Imbalance, InstanceFilter, KeyOwnerProofSystem,
 		LinearStoragePrice, Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
@@ -74,6 +73,7 @@ use pallet_contracts::Determinism;
 pub use pallet_ddc_clusters;
 pub use pallet_ddc_customers;
 pub use pallet_ddc_nodes;
+pub use pallet_network_monitor;
 // pub use pallet_ddc_payouts;
 pub use pallet_ddc_staking;
 use pallet_election_provider_multi_phase::SolutionAccuracyOf;
@@ -92,7 +92,7 @@ use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_core::{
-	crypto::{AccountId32, KeyTypeId},
+	crypto::KeyTypeId,
 	OpaqueMetadata,
 };
 use sp_inherents::{CheckInherentsResult, InherentData};
@@ -104,7 +104,7 @@ use sp_runtime::{
 	generic, impl_opaque_keys,
 	traits::{
 		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, Convert, ConvertInto,
-		Identity as IdentityConvert, IdentityLookup, NumberFor, OpaqueKeys, SaturatedConversion,
+		IdentityLookup, NumberFor, OpaqueKeys, SaturatedConversion,
 		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
@@ -545,7 +545,6 @@ impl_opaque_keys! {
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
-		pub ddc_verification: DdcVerification,
 	}
 }
 
@@ -1491,6 +1490,25 @@ impl pallet_fee_handler::Config for Runtime {
 	type WeightInfo = pallet_fee_handler::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	pub const MaxPeers: u32 = 1000;
+	pub const SecurityThreshold: u32 = 50;
+	pub const MaxSecurityEvents: u32 = 100;
+	pub const MinPeerCount: u32 = 5;
+	pub const MaxPeerCount: u32 = 500;
+}
+
+impl pallet_network_monitor::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type MaxPeers = MaxPeers;
+	type SecurityThreshold = SecurityThreshold;
+	type MaxSecurityEvents = MaxSecurityEvents;
+	type UnixTime = Timestamp;
+	type MinPeerCount = MinPeerCount;
+	type MaxPeerCount = MaxPeerCount;
+	type WeightInfo = ();
+}
+
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1659,7 +1677,7 @@ mod runtime {
 
 	// End OpenGov.
 	#[runtime::pallet_index(49)]
-	pub type Hyperbridge = pallet_hyperbridge::Pallet<Runtim>;
+	pub type Hyperbridge = pallet_hyperbridge::Pallet<Runtime>;
 
 	#[runtime::pallet_index(50)]
 	pub type TokenGateway = pallet_token_gateway::Pallet<Runtime>;
@@ -1670,6 +1688,9 @@ mod runtime {
 
 	#[runtime::pallet_index(52)]
 	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
+
+	#[runtime::pallet_index(53)]
+	pub type NetworkMonitor = pallet_network_monitor::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
@@ -1772,6 +1793,7 @@ mod benches {
 		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
 		[pallet_fee_handler, FeeHandler]
+		[pallet_network_monitor, NetworkMonitor]
 	);
 }
 

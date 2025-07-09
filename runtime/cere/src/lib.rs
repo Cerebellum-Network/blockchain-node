@@ -538,7 +538,6 @@ impl_opaque_keys! {
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
-		pub ddc_verification: DdcVerification,
 	}
 }
 
@@ -548,14 +547,6 @@ fn transform_session_keys(v: AccountId, old: OldSessionKeys) -> SessionKeys {
 		babe: old.babe,
 		im_online: old.im_online,
 		authority_discovery: old.authority_discovery,
-		ddc_verification: {
-			let mut id: ddc_primitives::sr25519::AuthorityId =
-				sp_core::sr25519::Public::from_raw([0u8; 32]).into();
-			let id_raw: &mut [u8] = id.as_mut();
-			id_raw[0..32].copy_from_slice(v.as_ref());
-			id_raw[0..4].copy_from_slice(b"cer!");
-			id
-		},
 	}
 }
 
@@ -1510,6 +1501,25 @@ impl pallet_fee_handler::Config for Runtime {
 	type WeightInfo = pallet_fee_handler::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	pub const MaxPeers: u32 = 1000;
+	pub const SecurityThreshold: u32 = 50;
+	pub const MaxSecurityEvents: u32 = 100;
+	pub const MinPeerCount: u32 = 5;
+	pub const MaxPeerCount: u32 = 500;
+}
+
+impl pallet_network_monitor::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type MaxPeers = MaxPeers;
+	type SecurityThreshold = SecurityThreshold;
+	type MaxSecurityEvents = MaxSecurityEvents;
+	type UnixTime = Timestamp;
+	type MinPeerCount = MinPeerCount;
+	type MaxPeerCount = MaxPeerCount;
+	type WeightInfo = ();
+}
+
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -1687,6 +1697,9 @@ mod runtime {
 
 	#[runtime::pallet_index(52)]
 	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
+
+	#[runtime::pallet_index(53)]
+	pub type NetworkMonitor = pallet_network_monitor::Pallet<Runtime>;
 }
 
 /// The address format for describing accounts.
