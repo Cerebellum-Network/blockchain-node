@@ -83,7 +83,7 @@ jobs:
           toolchain: 1.82.0
           override: true
           target: wasm32-unknown-unknown
-          components: rust-src
+          components: rust-src, clippy
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Configure Git
