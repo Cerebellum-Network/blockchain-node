@@ -109,7 +109,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler lld
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
@@ -144,7 +144,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler
+        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler lld
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
@@ -194,7 +194,7 @@ jobs:
           toolchain: 1.82.0
           override: true
           target: wasm32-unknown-unknown
-          components: rust-src
+          components: rust-src, clippy
       - name: Enhanced Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
