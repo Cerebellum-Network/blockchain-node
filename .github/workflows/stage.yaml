@@ -36,29 +36,25 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ vars.SHARED_AWS_ACCOUNT_ID }}:role/github
           role-session-name: ${{ github.event.repository.name }}
           aws-region: us-west-2
+          mask-aws-account-id: true
 
-      - name: Confiure environment variables
+      - name: Configure environment variables
         run: |
           echo "GITHUB_SHA=${GITHUB_SHA:0:7}" >> ${GITHUB_ENV}
-
-          echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> ${GITHUB_ENV}
-          echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> ${GITHUB_ENV}
-          echo "AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}" >> ${GITHUB_ENV}
-
           echo "CERE_RUNTIME=cere_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
           echo "CERE_DEV_RUNTIME=cere_dev_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
@@ -75,8 +71,7 @@ jobs:
           file: Dockerfile.secure
           push: true
           build-args: |
-            "SCCACHE_REGION=us-west-2"
-            "SCCACHE_BUCKET=cere-blockchain-sccache"
+            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ env.GITHUB_SHA }}

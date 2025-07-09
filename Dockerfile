@@ -34,23 +34,13 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
     chmod +x /usr/local/protoc/bin/protoc && \
     ln -s /usr/local/protoc/bin/protoc /usr/local/bin
 
-# Build arguments for AWS and GitHub token
-ARG AWS_ACCESS_KEY_ID
-ARG AWS_SECRET_ACCESS_KEY
-ARG AWS_SESSION_TOKEN
-ARG SCCACHE_REGION=us-west-2
-ARG SCCACHE_BUCKET=cere-blockchain-sccache
-ENV \
-  AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-  AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-  AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
-  AWS_REGION=$SCCACHE_REGION \
-  SCCACHE_REGION=$SCCACHE_REGION \
-  SCCACHE_BUCKET=$SCCACHE_BUCKET \
-  SCCACHE_S3_USE_SSL=true
-
+# GitHub token for private repository access (temporary during build)
 ARG GH_READ_TOKEN
 RUN git config --global url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
+# Create non-privileged user for building
+RUN useradd -m -u 1001 builder
+USER builder
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
@@ -62,10 +52,13 @@ FROM phusion/baseimage:jammy-1.0.1
 LABEL maintainer="team@cere.network"
 LABEL description="This is the optimization to create a small image."
 ARG PROFILE=release
+
+# Copy binaries from builder stage
 COPY --from=builder /cerenetwork/target/$PROFILE/cere /usr/local/bin
 COPY --from=builder /cerenetwork/target/$PROFILE/wbuild/cere-runtime /home/cere/cere-runtime-artifacts
 COPY --from=builder /cerenetwork/target/$PROFILE/wbuild/cere-dev-runtime /home/cere/cere-dev-runtime-artifacts
 
+# Optimize image size and create non-privileged user
 RUN mv /usr/share/ca* /tmp && \
     rm -rf /usr/share/*  && \
     mv /tmp/ca-certificates /usr/share/ && \
