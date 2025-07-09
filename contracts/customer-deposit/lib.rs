@@ -316,7 +316,7 @@ mod customer_deposit {
 		}
 	}
 
-	impl cere_runtime_traits::DdcPayouts for CustomerDepositContract {
+	impl cere_runtime_traits::DdcPayoutsPayer for CustomerDepositContract {
         #[ink(message)]
         fn charge(
             &mut self,
@@ -374,7 +374,7 @@ mod tests {
 	use crate::customer_deposit::{
 		ClusterId, CustomerDepositContract, MIN_EXISTENTIAL_DEPOSIT, UNLOCK_DELAY_BLOCKS,
 	};
-    use cere_runtime_traits::DdcPayouts;
+    use cere_runtime_traits::DdcPayoutsPayer;
 
 	const TEST_CLUSTER_ID: ClusterId = [0; 20];
 	const ENDOWMENT: Balance = MIN_EXISTENTIAL_DEPOSIT * 1_000_000;

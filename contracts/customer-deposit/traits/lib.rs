@@ -5,7 +5,7 @@ use ink::{env::Environment, prelude::vec::Vec};
 type AccountId = <ink::env::DefaultEnvironment as Environment>::AccountId;
 
 #[ink::trait_definition]
-pub trait DdcPayouts {
+pub trait DdcPayoutsPayer {
 	#[ink(message)]
 	fn charge(
 		&mut self,
