@@ -24,7 +24,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-03-12
+          toolchain: nightly-2024-10-01
           override: true
           components: rustfmt
       - name: Check TOML
