@@ -1,12 +1,13 @@
 [package]
-name = "customers-deposits"
+name = "customer-deposit"
 version = "5.1.0"
 authors = ["Use Ink <ink@use.ink>"]
 edition = "2021"
 publish = false
 
 [dependencies]
-cere-runtime-traits = { path = "traits", default-features = false }
+base64ct = { version = "=1.6.0" }
+ddc-primitives = { path = "/Users/yahortsaryk/work/workspace-blockchain/ddc-primitives", default-features = false }
 ink = { version = "5.1.0", default-features = false }
 
 [lib]
@@ -16,5 +17,7 @@ path = "lib.rs"
 default = ["std"]
 std = [
   "ink/std",
+  "ddc-primitives/std",
 ]
+
 ink-as-dependency = []
