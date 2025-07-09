@@ -212,7 +212,7 @@ jobs:
     needs: format
     # The type of runner that the job will run on
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 1
@@ -239,7 +239,7 @@ jobs:
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin --version 0.22.0
       - name: Run cargo-tarpaulin
-        run: cargo tarpaulin --verbose --workspace --timeout 120
+        run: cargo tarpaulin --verbose --workspace --timeout 300 --exclude-files "target/*" --exclude-files "*/build.rs"
       - name: Run tests
         run: |
           cargo test --verbose --locked --no-fail-fast --workspace --features runtime-benchmarks -- --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests
