@@ -221,7 +221,10 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
       - name: Install linux dependencies
-        run: sudo apt update && sudo apt install -y cargo clang libssl-dev llvm libudev-dev protobuf-compiler make lld
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cargo clang libssl-dev llvm libudev-dev protobuf-compiler make lld pkg-config
+          sudo apt install -y libc6-dev gcc-multilib
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -231,6 +234,10 @@ jobs:
           components: rust-src
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      - name: Clean previous builds
+        run: |
+          cargo clean
+          rm -rf target/
       - name: Enhanced Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
