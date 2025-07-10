@@ -114,7 +114,7 @@ jobs:
         run: |
           # Build with optimizations for speed but with memory constraints in mind
           # Use a more aggressive approach to limit memory usage
-          export RUSTFLAGS="-C link-arg=-fuse-ld=mold -C linker=clang -C codegen-units=1"
+          export RUSTFLAGS="-C linker=clang -C codegen-units=1"
           
           echo "Checking cere-runtime..."
           CARGO_INCREMENTAL=0 RUST_LOG=info cargo check --release --features try-runtime --package cere-runtime --jobs 1
@@ -124,7 +124,7 @@ jobs:
       - name: Run dev chain (optimized)
         run: |
           # Build with minimal features and optimized for CI environment
-          CARGO_INCREMENTAL=0 RUSTFLAGS="-C link-arg=-fuse-ld=mold -C linker=clang -C codegen-units=1" cargo build --release --bin cere --jobs 1
+          CARGO_INCREMENTAL=0 RUSTFLAGS="-C linker=clang -C codegen-units=1" cargo build --release --bin cere --jobs 1
           
           # Run with a shorter timeout to verify basic functionality
           echo "Starting dev chain with 15s timeout..."
@@ -174,7 +174,7 @@ jobs:
       - name: Check Node Components
         run: |
           # Set optimized flags for CI environment
-          export RUSTFLAGS="-C link-arg=-fuse-ld=mold -C linker=clang -C codegen-units=1"
+          export RUSTFLAGS="-C linker=clang -C codegen-units=1"
           
           # Check node components in smaller chunks to reduce memory usage
           echo "Checking core components..."
@@ -241,7 +241,7 @@ jobs:
       - name: Build for try-runtime (optimized)
         run: |
           # Set optimized flags for CI environment
-          export RUSTFLAGS="-C link-arg=-fuse-ld=mold -C linker=clang -C codegen-units=1"
+          export RUSTFLAGS="-C linker=clang -C codegen-units=1"
           CARGO_INCREMENTAL=0 RUST_LOG=info cargo build --release --features try-runtime --jobs 1
           
       - name: Check Try-Runtime
@@ -295,7 +295,7 @@ jobs:
       - name: Check with Clippy (Optimized)
         run: |
           # Set optimized flags for CI environment
-          export RUSTFLAGS="-C link-arg=-fuse-ld=mold -C linker=clang -C codegen-units=1"
+          export RUSTFLAGS="-C linker=clang -C codegen-units=1"
           
           # Run clippy in stages to manage memory usage
           echo "Running clippy on core components..."
@@ -317,7 +317,7 @@ jobs:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 0
       CI: true
-      RUSTFLAGS: "-C link-arg=-fuse-ld=mold -C linker=clang -C codegen-units=1"
+      RUSTFLAGS: "-C linker=clang -C codegen-units=1"
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
@@ -334,16 +334,6 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential cargo clang libssl-dev llvm libudev-dev protobuf-compiler make lld pkg-config
           sudo apt install -y libc6-dev gcc-multilib
-          
-          # Install mold linker (faster and more memory efficient)
-          git clone https://github.com/rui314/mold.git
-          cd mold
-          git checkout v1.11.0
-          mkdir build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ ..
-          cmake --build . -j $(nproc)
-          sudo cmake --install .
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
