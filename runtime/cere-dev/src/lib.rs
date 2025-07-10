@@ -163,7 +163,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73149,
+	spec_version: 73150,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -448,6 +448,13 @@ impl pallet_indices::Config for Runtime {
 	type WeightInfo = pallet_indices::weights::SubstrateWeight<Runtime>;
 }
 
+pub struct DustToTreasury;
+impl OnUnbalanced<Credit<AccountId, Balances>> for DustToTreasury {
+	fn on_unbalanced(amount: Credit<AccountId, Balances>) {
+		let _ = Balances::deposit_creating(&TreasuryAccount::get(), amount.peek());
+	}
+}
+
 parameter_types! {
 	pub const ExistentialDeposit: Balance = DOLLARS;
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
@@ -461,7 +468,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	type Balance = Balance;
-	type DustRemoval = ();
+	type DustRemoval = DustToTreasury;
 	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = frame_system::Pallet<Runtime>;
