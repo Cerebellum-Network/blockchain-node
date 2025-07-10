@@ -7,7 +7,6 @@ on:
       - master
       - 'release/**'
       - 'hotfix/**'
-      - fixreleasetostage
 
 env:
   PROFILE: release
