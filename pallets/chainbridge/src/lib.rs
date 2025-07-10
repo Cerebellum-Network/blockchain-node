@@ -16,7 +16,7 @@ use frame_support::{
 	ensure,
 	pallet_prelude::*,
 	traits::{EnsureOrigin, Get},
-	PalletId, Parameter,
+	Blake2_256, PalletId, Parameter,
 };
 use frame_system::{self as system, ensure_root, ensure_signed, pallet_prelude::*};
 pub use pallet::*;
@@ -109,6 +109,7 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
+	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	/// Simple ensure origin for the bridge account
@@ -127,6 +128,10 @@ pub mod pallet {
 		#[cfg(feature = "runtime-benchmarks")]
 		fn try_successful_origin() -> Result<T::RuntimeOrigin, ()> {
 			Ok(T::RuntimeOrigin::from(system::RawOrigin::Signed(<Pallet<T>>::account_id())))
+		}
+
+		fn successful_origin() -> T::RuntimeOrigin {
+			T::RuntimeOrigin::from(system::RawOrigin::Signed(<Pallet<T>>::account_id()))
 		}
 	}
 
@@ -157,19 +162,23 @@ pub mod pallet {
 
 	/// All whitelisted chains and their respective transaction counts
 	#[pallet::storage]
+	#[pallet::getter(fn chain_nonces)]
 	pub type ChainNonces<T: Config> = StorageMap<_, Blake2_256, ChainId, DepositNonce>;
 
 	/// Tracks current relayer set
 	#[pallet::storage]
+	#[pallet::getter(fn relayers)]
 	pub type Relayers<T: Config> = StorageMap<_, Blake2_256, T::AccountId, bool>;
 
 	/// Utilized by the bridge software to map resource IDs to actual methods
 	#[pallet::storage]
+	#[pallet::getter(fn resources)]
 	pub type Resources<T: Config> = StorageMap<_, Blake2_256, ResourceId, Vec<u8>>;
 
 	/// All known proposals.
 	/// The key is the hash of the call and the deposit ID, to ensure it's unique
 	#[pallet::storage]
+	#[pallet::getter(fn votes)]
 	pub type Votes<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_256,
@@ -186,8 +195,9 @@ pub mod pallet {
 
 	/// Number of votes required for a proposal to execute
 	#[pallet::storage]
+	#[pallet::getter(fn relayer_threshold)]
 	pub type RelayerThreshold<T: Config> =
-		StorageValue<Value = u32, QueryKind = ValueQuery, OnEmpty = DefaultRelayerThreshold<T>>;
+		StorageValue<_, u32, ValueQuery, DefaultRelayerThreshold<T>>;
 
 	#[pallet::type_value]
 	pub fn DefaultRelayerCount<T: Config>() -> u32 {
@@ -196,8 +206,8 @@ pub mod pallet {
 
 	/// Number of relayers in set
 	#[pallet::storage]
-	pub type RelayerCount<T: Config> =
-		StorageValue<Value = u32, QueryKind = ValueQuery, OnEmpty = DefaultRelayerCount<T>>;
+	#[pallet::getter(fn relayer_count)]
+	pub type RelayerCount<T: Config> = StorageValue<_, u32, ValueQuery, DefaultRelayerCount<T>>;
 
 	#[pallet::error]
 	pub enum Error<T> {
