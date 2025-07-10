@@ -25,6 +25,12 @@ RUN wget -q https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERS
     && rm -rf sccache-v${SCCACHE_VERSION}-x86_64-unknown-linux-musl
 ENV RUSTC_WRAPPER=/usr/local/bin/sccache
 
+# Create non-privileged user for building
+RUN useradd -m -u 1001 builder
+
+# Change ownership of the workspace to builder user
+RUN chown -R builder:builder /cerenetwork
+
 # Installation script is taken from https://grpc.io/docs/protoc-installation/
 ENV PROTOC_VERSION=3.15.8
 RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
@@ -32,17 +38,9 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
     mkdir -p /usr/local/protoc && \
     unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d /usr/local/protoc && \
     chmod +x /usr/local/protoc/bin/protoc && \
-    ln -s /usr/local/protoc/bin/protoc /usr/local/bin
-
-# Create non-privileged user for building
-RUN useradd -m -u 1001 builder
-
-# Change ownership of the workspace to builder user
-RUN chown -R builder:builder /cerenetwork
-
-# Ensure protoc is accessible to all users
-RUN chmod +x /usr/local/protoc/bin/protoc && \
-    chmod +x /usr/local/bin/protoc
+    ln -s /usr/local/protoc/bin/protoc /usr/local/bin/protoc && \
+    chmod +x /usr/local/bin/protoc && \
+    chown -R builder:builder /usr/local/protoc
 
 # GitHub token for private repository access (temporary during build)
 ARG GH_READ_TOKEN
