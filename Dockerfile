@@ -37,6 +37,9 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
 # Create non-privileged user for building
 RUN useradd -m -u 1001 builder
 
+# Change ownership of the workspace to builder user
+RUN chown -R builder:builder /cerenetwork
+
 # GitHub token for private repository access (temporary during build)
 ARG GH_READ_TOKEN
 
