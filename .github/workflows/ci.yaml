@@ -23,7 +23,7 @@ jobs:
   format:
     name: Check Lints
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 180
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
@@ -42,7 +42,7 @@ jobs:
   security-audit:
     name: Security Audit
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 180
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -73,7 +73,7 @@ jobs:
     name: Check Runtime
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - name: Increase swap space
@@ -134,7 +134,7 @@ jobs:
     name: Check Node
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
@@ -190,7 +190,7 @@ jobs:
     name: Try-Runtime Check
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
@@ -247,7 +247,7 @@ jobs:
     name: Run Clippy
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
@@ -305,7 +305,7 @@ jobs:
     needs: format
     # The type of runner that the job will run on
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 0

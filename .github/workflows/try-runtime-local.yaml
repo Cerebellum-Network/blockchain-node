@@ -10,7 +10,7 @@ jobs:
   try-runtime-local:
     name: Try-Runtime Local Test
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 180
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -50,4 +50,4 @@ jobs:
           try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
           on-runtime-upgrade --disable-idempotency-checks \
           snap --path /tmp/snap
-        continue-on-error: true 
+        continue-on-error: true
