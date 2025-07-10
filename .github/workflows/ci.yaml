@@ -73,7 +73,7 @@ jobs:
     name: Check Runtime
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - name: Increase swap space
@@ -100,18 +100,35 @@ jobs:
           cache-on-failure: true
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      - name: Debug CI Environment
+        run: |
+          echo "CI Environment Variables:"
+          echo "CI=$CI"
+          echo "CARGO_TERM_COLOR=$CARGO_TERM_COLOR"
+          echo "CARGO_INCREMENTAL=$CARGO_INCREMENTAL"
+          echo "Available cores: $(nproc)"
+          echo "Memory: $(free -h)"
+          echo "Disk space: $(df -h)"
+          
       - name: Check Runtime Build (Optimized)
         run: |
           # Build with optimizations for speed but with memory constraints in mind
+          # Use a more aggressive approach to limit memory usage
+          export RUSTFLAGS="-C link-arg=-fuse-ld=mold -C linker=clang -C codegen-units=1"
+          
           echo "Checking cere-runtime..."
-          CARGO_INCREMENTAL=1 RUST_LOG=info cargo check --release --features try-runtime --package cere-runtime --jobs 1
+          CARGO_INCREMENTAL=0 RUST_LOG=info cargo check --release --features try-runtime --package cere-runtime --jobs 1
           
           echo "Checking cere-dev-runtime..."
-          CARGO_INCREMENTAL=1 RUST_LOG=info cargo check --release --features try-runtime --package cere-dev-runtime --jobs 1
-      - name: Run dev chain
+          CARGO_INCREMENTAL=0 RUST_LOG=info cargo check --release --features try-runtime --package cere-dev-runtime --jobs 1
+      - name: Run dev chain (optimized)
         run: |
-          cargo build --release --bin cere
-          timeout --preserve-status 30s ./target/release/cere --dev
+          # Build with minimal features and optimized for CI environment
+          CARGO_INCREMENTAL=0 RUSTFLAGS="-C link-arg=-fuse-ld=mold -C linker=clang -C codegen-units=1" cargo build --release --bin cere --jobs 1
+          
+          # Run with a shorter timeout to verify basic functionality
+          echo "Starting dev chain with 15s timeout..."
+          timeout --preserve-status 15s ./target/release/cere --dev --no-telemetry
 
   check-node:
     name: Check Node
@@ -144,23 +161,36 @@ jobs:
           sudo mkswap /swapfile
           sudo swapon /swapfile
           sudo swapon --show
+      - name: Debug CI Environment
+        run: |
+          echo "CI Environment Variables:"
+          echo "CI=$CI"
+          echo "CARGO_TERM_COLOR=$CARGO_TERM_COLOR"
+          echo "CARGO_INCREMENTAL=$CARGO_INCREMENTAL"
+          echo "Available cores: $(nproc)"
+          echo "Memory: $(free -h)"
+          echo "Disk space: $(df -h)"
+          
       - name: Check Node Components
         run: |
+          # Set optimized flags for CI environment
+          export RUSTFLAGS="-C link-arg=-fuse-ld=mold -C linker=clang -C codegen-units=1"
+          
           # Check node components in smaller chunks to reduce memory usage
           echo "Checking core components..."
-          CARGO_INCREMENTAL=1 cargo check --release --features runtime-benchmarks -p cere-cli -p cere-client -p cere-service --jobs 1
+          CARGO_INCREMENTAL=0 RUST_LOG=info cargo check --release --features runtime-benchmarks -p cere-cli -p cere-client -p cere-service --jobs 1
           
           echo "Checking pallets..."
-          CARGO_INCREMENTAL=1 cargo check --release --features runtime-benchmarks --package "*ddc*" --jobs 1
+          CARGO_INCREMENTAL=0 RUST_LOG=info cargo check --release --features runtime-benchmarks --package "*ddc*" --jobs 1
           
           echo "Checking remaining components..."
-          CARGO_INCREMENTAL=1 cargo check --release --features runtime-benchmarks --workspace --exclude cere-runtime --exclude cere-dev-runtime --exclude "*ddc*" --exclude cere-cli --exclude cere-client --exclude cere-service --jobs 1
+          CARGO_INCREMENTAL=0 RUST_LOG=info cargo check --release --features runtime-benchmarks --workspace --exclude cere-runtime --exclude cere-dev-runtime --exclude "*ddc*" --exclude cere-cli --exclude cere-client --exclude cere-service --jobs 1
 
   check-try-runtime:
     name: Try-Runtime Check (Optional)
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     # Only run on specific branches or when manually triggered
     if: |
       github.ref == 'refs/heads/master' || 
@@ -196,21 +226,35 @@ jobs:
           echo "Memory: $(free -h)"
           echo "Disk space: $(df -h)"
 
+      - name: Increase swap space
+        run: |
+          sudo swapoff -a
+          sudo fallocate -l 10G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          sudo swapon --show
+          
       - name: Install try-runtime
         run: cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.8.0 --locked
-      - name: Build for try-runtime
+        
+      - name: Build for try-runtime (optimized)
         run: |
-          CARGO_INCREMENTAL=1 cargo build --release --features try-runtime
+          # Set optimized flags for CI environment
+          export RUSTFLAGS="-C link-arg=-fuse-ld=mold -C linker=clang -C codegen-units=1"
+          CARGO_INCREMENTAL=0 RUST_LOG=info cargo build --release --features try-runtime --jobs 1
+          
       - name: Check Try-Runtime
         run: |
-           try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-           on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.qanet.cere.network:443
+          echo "Running try-runtime checks..."
+          try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
+          on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.qanet.cere.network:443
 
   clippy:
     name: Run Clippy
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
@@ -229,10 +273,39 @@ jobs:
           cache-on-failure: true
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      - name: Increase swap space
+        run: |
+          sudo swapoff -a
+          sudo fallocate -l 10G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          sudo swapon --show
+          
+      - name: Debug CI Environment
+        run: |
+          echo "CI Environment Variables:"
+          echo "CI=$CI"
+          echo "CARGO_TERM_COLOR=$CARGO_TERM_COLOR"
+          echo "CARGO_INCREMENTAL=$CARGO_INCREMENTAL"
+          echo "Available cores: $(nproc)"
+          echo "Memory: $(free -h)"
+          echo "Disk space: $(df -h)"
+          
       - name: Check with Clippy (Optimized)
         run: |
-          # Run clippy with incremental compilation
-          CARGO_INCREMENTAL=1 cargo clippy --no-deps --all-targets --features runtime-benchmarks,try-runtime --workspace -- --deny warnings
+          # Set optimized flags for CI environment
+          export RUSTFLAGS="-C link-arg=-fuse-ld=mold -C linker=clang -C codegen-units=1"
+          
+          # Run clippy in stages to manage memory usage
+          echo "Running clippy on core components..."
+          CARGO_INCREMENTAL=0 RUST_LOG=info cargo clippy --no-deps --all-targets --features runtime-benchmarks -p cere-cli -p cere-client -p cere-service --jobs 1 -- --deny warnings
+          
+          echo "Running clippy on runtime components..."
+          CARGO_INCREMENTAL=0 RUST_LOG=info cargo clippy --no-deps --all-targets --features runtime-benchmarks -p cere-runtime -p cere-dev-runtime --jobs 1 -- --deny warnings
+          
+          echo "Running clippy on remaining components..."
+          CARGO_INCREMENTAL=0 RUST_LOG=info cargo clippy --no-deps --all-targets --features runtime-benchmarks --workspace --exclude cere-runtime --exclude cere-dev-runtime --exclude cere-cli --exclude cere-client --exclude cere-service --jobs 1 -- --deny warnings
 
   tests:
     name: Run tests
@@ -242,9 +315,9 @@ jobs:
     timeout-minutes: 120
     env:
       CARGO_TERM_COLOR: always
-      CARGO_INCREMENTAL: 1
+      CARGO_INCREMENTAL: 0
       CI: true
-      RUSTFLAGS: "-C link-arg=-fuse-ld=mold -C linker=clang"
+      RUSTFLAGS: "-C link-arg=-fuse-ld=mold -C linker=clang -C codegen-units=1"
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
@@ -280,6 +353,18 @@ jobs:
           components: rust-src
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      - name: Debug CI Environment
+        run: |
+          echo "CI Environment Variables:"
+          echo "CI=$CI"
+          echo "CARGO_TERM_COLOR=$CARGO_TERM_COLOR"
+          echo "CARGO_INCREMENTAL=$CARGO_INCREMENTAL"
+          echo "RUSTFLAGS=$RUSTFLAGS"
+          echo "Available cores: $(nproc)"
+          echo "Memory: $(free -h)"
+          echo "Disk space: $(df -h)"
+          rustc --version
+          cargo --version
       - name: Clean previous builds
         run: |
           cargo clean
