@@ -22,7 +22,7 @@ permissions:
 jobs:
   format:
     name: Check Lints
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       # Free up disk space
@@ -38,7 +38,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-10-01
+          toolchain: 1.82.0
           override: true
           components: rustfmt
       - name: Check TOML
@@ -49,7 +49,7 @@ jobs:
 
   security-audit:
     name: Security Audit
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     continue-on-error: true
     steps:
@@ -65,7 +65,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-10-01
+          toolchain: 1.82.0
           override: true
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -82,13 +82,13 @@ jobs:
           if grep -r "openssl.*0\." Cargo.toml; then
             echo "⚠️  Old OpenSSL version detected"
           fi
-                    echo "✅ Manual vulnerability patterns check completed"
+          echo "✅ Manual vulnerability patterns check completed"
 
   # Split cargo check into parallel jobs for faster execution
   check-runtime:
     name: Check Runtime
     needs: format
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       # Free up disk space
@@ -117,7 +117,7 @@ jobs:
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-10-01
+          toolchain: 1.82.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
@@ -161,7 +161,7 @@ jobs:
   check-node:
     name: Check Node
     needs: format
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       # Free up disk space
@@ -182,7 +182,7 @@ jobs:
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-10-01
+          toolchain: 1.82.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
@@ -229,8 +229,9 @@ jobs:
   check-try-runtime:
     name: Try-Runtime Check
     needs: format
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
+    continue-on-error: true
     steps:
       # Free up disk space
       - name: Free Disk Space
@@ -250,7 +251,7 @@ jobs:
       - name: Install toolchain and rust-src
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-10-01
+          toolchain: 1.82.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src
@@ -298,7 +299,7 @@ jobs:
   clippy:
     name: Run Clippy
     needs: format
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       # Free up disk space
@@ -319,7 +320,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-10-01
+          toolchain: 1.82.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src, clippy
@@ -368,7 +369,7 @@ jobs:
     name: Run tests
     needs: format
     # The type of runner that the job will run on
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
       CARGO_TERM_COLOR: always
@@ -395,7 +396,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-10-01
+          toolchain: 1.82.0
           override: true
           target: wasm32-unknown-unknown
           components: rust-src

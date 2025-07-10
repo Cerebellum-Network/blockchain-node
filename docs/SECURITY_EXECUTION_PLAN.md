@@ -184,7 +184,7 @@ security-audit:
 ```bash
 # Update scripts/pre-commit.sh
 #!/bin/sh
-cargo +nightly-2024-03-12 fmt -- --check
+cargo  fmt -- --check
 dprint check
 
 # Add secret detection
