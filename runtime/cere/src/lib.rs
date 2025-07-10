@@ -83,10 +83,7 @@ pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdj
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use sp_core::{
-	crypto::KeyTypeId,
-	OpaqueMetadata,
-};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_io::hashing::blake2_128;
 #[cfg(any(feature = "std", test))]
@@ -96,8 +93,7 @@ use sp_runtime::{
 	generic, impl_opaque_keys,
 	traits::{
 		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, Convert, ConvertInto,
-		IdentityLookup, NumberFor, OpaqueKeys, SaturatedConversion,
-		StaticLookup, Verify,
+		IdentityLookup, NumberFor, OpaqueKeys, SaturatedConversion, StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill,
@@ -1311,8 +1307,6 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 	}
 }
 
-
-
 parameter_types! {
 	pub const ClusterBondingAmount: Balance = 100 * GRAND;
 	pub const ClusterUnboningDelay: BlockNumber = 28 * DAYS;
@@ -1400,8 +1394,6 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 		DdcOrigin::get()
 	}
 }
-
-
 
 parameter_types! {
 	pub MbmServiceWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
@@ -1608,8 +1600,6 @@ mod runtime {
 	#[runtime::pallet_index(52)]
 	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
 }
-
-
 
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
