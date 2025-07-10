@@ -38,6 +38,7 @@ pallet-child-bounties = { workspace = true }
 pallet-collective = { workspace = true }
 pallet-contracts = { workspace = true }
 pallet-conviction-voting = { workspace = true }
+pallet-delegated-staking = { workspace = true }
 pallet-democracy = { workspace = true }
 pallet-election-provider-multi-phase = { workspace = true }
 pallet-election-provider-support-benchmarking = { workspace = true, optional = true }
@@ -91,7 +92,6 @@ sp-std = { workspace = true }
 sp-storage = { workspace = true }
 sp-transaction-pool = { workspace = true }
 sp-version = { workspace = true }
-pallet-delegated-staking = { workspace = true }
 
 # cere dependencies
 cere-runtime-common = { workspace = true }
@@ -218,7 +218,7 @@ std = [
   "pallet-token-gateway/std",
   "pallet-migrations/std",
   "pallet-fee-handler/std",
-  "pallet-delegated-staking/std"
+  "pallet-delegated-staking/std",
 ]
 runtime-benchmarks = [
   "frame-benchmarking/runtime-benchmarks",
@@ -275,7 +275,7 @@ runtime-benchmarks = [
   "pallet-token-gateway/runtime-benchmarks",
   "pallet-migrations/runtime-benchmarks",
   "pallet-fee-handler/runtime-benchmarks",
-  "pallet-delegated-staking/runtime-benchmarks"
+  "pallet-delegated-staking/runtime-benchmarks",
 ]
 try-runtime = [
   "frame-executive/try-runtime",
