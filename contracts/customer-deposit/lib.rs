@@ -1,9 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::env::Environment;
-use ink::prelude::vec::Vec;
-use ddc_primitives::{AccountId as ChainAccountId, Balance as ChainBalance, BlockNumber as ChainBlockNumber, Timestamp as ChainTimestamp};
-
+use ddc_primitives::{Balance as ChainBalance, BlockNumber as ChainBlockNumber, Timestamp as ChainTimestamp};
+use sp_runtime::AccountId32;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[ink::scale_derive(TypeInfo)]
@@ -322,11 +321,11 @@ mod customer_deposit {
         #[ink(message)]
         fn charge(
             &mut self,
-            payout_vault: crate::ChainAccountId,
-            batch: Vec<(crate::ChainAccountId, u128)>,
-        ) -> Result<Vec<(crate::ChainAccountId, u128)>, ()> {
-            let mut charged_amounts = Vec::new();
+            payout_vault: crate::AccountId32,
+            batch: Vec<(crate::AccountId32, u128)>,
+        ) -> Vec<(crate::AccountId32, u128)> {
 
+            let mut charged_amounts = Vec::new();
 			let payout_vault = from_chain_account_id(&payout_vault);
 
             for (chain_customer_id, amount_to_deduct) in batch {
@@ -366,22 +365,15 @@ mod customer_deposit {
                     }
                 }
             }
-        
-            Ok(charged_amounts)
+
+			charged_amounts
         }
 	}
 
-	pub fn from_chain_account_id(account_id: &crate::ChainAccountId) -> AccountId {
+	pub fn from_chain_account_id(account_id: &crate::AccountId32) -> AccountId {
 		AccountId::from(<[u8; 32]>::from(account_id.clone()))
 	}
-	
-	pub fn to_contract_account_id(account_id: &AccountId) -> Result<crate::ChainAccountId, ()> {
-		if let Ok(bytes) = <[u8; 32]>::try_from(account_id.as_ref()) {
-			Ok(crate::ChainAccountId::from(bytes))
-		} else {
-			Err(())
-		}
-	}
+
 }
 
 
@@ -391,8 +383,9 @@ mod tests {
 
 	use super::*;
 	use crate::customer_deposit::{
-		ClusterId, CustomerDepositContract, MIN_EXISTENTIAL_DEPOSIT, UNLOCK_DELAY_BLOCKS, to_contract_account_id
+		ClusterId, CustomerDepositContract, MIN_EXISTENTIAL_DEPOSIT, UNLOCK_DELAY_BLOCKS
 	};
+	use sp_runtime::AccountId32;
     use ddc_primitives::traits::DdcPayoutsPayer;
 
 	const TEST_CLUSTER_ID: ClusterId = [0; 20];
@@ -409,6 +402,14 @@ mod tests {
 		);
 
 		(contract, accounts)
+	}
+
+	fn to_account_32(account_id: &<ink::env::DefaultEnvironment as Environment>::AccountId) -> Result<AccountId32, ()> {
+		if let Ok(bytes) = <[u8; 32]>::try_from(account_id.as_ref()) {
+			Ok(AccountId32::from(bytes))
+		} else {
+			Err(())
+		}
 	}
 
 	#[ink::test]
@@ -616,7 +617,7 @@ mod tests {
         let (mut contract, accounts) = setup();
         let alice = accounts.alice;
         let bob = accounts.bob;
-        let payout_vault = to_contract_account_id(&accounts.charlie).expect("Invalid contract account id");
+        let payout_vault = to_account_32(&accounts.charlie).expect("Invalid contract account id");
 
         // Deposit funds for Alice (10 units) and Bob (5 units)
         test::set_caller::<ink::env::DefaultEnvironment>(alice);
@@ -629,16 +630,16 @@ mod tests {
 
         // Charge Alice (10 units) and Bob (7 units, partial charge expected)
         let batch = vec![
-            (to_contract_account_id(&alice).expect("Invalid contract account id"), MIN_EXISTENTIAL_DEPOSIT * 10),
-            (to_contract_account_id(&bob).expect("Invalid contract account id"), MIN_EXISTENTIAL_DEPOSIT * 7),
+            (to_account_32(&alice).expect("Invalid contract account id"), MIN_EXISTENTIAL_DEPOSIT * 10),
+            (to_account_32(&bob).expect("Invalid contract account id"), MIN_EXISTENTIAL_DEPOSIT * 7),
         ];
-        let charged_amounts = contract.charge(payout_vault, batch).unwrap();
+        let charged_amounts = contract.charge(payout_vault, batch);
 
         // Verify return value:
         // - Alice: 10 units charged (full)
         // - Bob: 5 units charged (partial)
         assert_eq!(charged_amounts.len(), 2);
-        assert!(charged_amounts.contains(&(to_contract_account_id(&alice).expect("Invalid contract account id"), MIN_EXISTENTIAL_DEPOSIT * 10)));
-        assert!(charged_amounts.contains(&(to_contract_account_id(&bob).expect("Invalid contract account id"), MIN_EXISTENTIAL_DEPOSIT * 5)));
+        assert!(charged_amounts.contains(&(to_account_32(&alice).expect("Invalid contract account id"), MIN_EXISTENTIAL_DEPOSIT * 10)));
+        assert!(charged_amounts.contains(&(to_account_32(&bob).expect("Invalid contract account id"), MIN_EXISTENTIAL_DEPOSIT * 5)));
     }
 }
