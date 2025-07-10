@@ -1,6 +1,7 @@
 # ===== FIRST STAGE ======
 ARG DDC_SMART_CONTRACT_VERSION=2.2.3
 ARG ECR_REGISTRY
+ARG GH_READ_TOKEN
 FROM phusion/baseimage:0.11 as builder
 LABEL maintainer="team@cere.network"
 LABEL description="This is the build stage to create the binary."
@@ -20,6 +21,20 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
     unzip protoc-${PROTOC_VERSION}-linux-x86_64.zip -d /usr/local/protoc && \
     chmod +x /usr/local/protoc/bin/protoc && \
     ln -s /usr/local/protoc/bin/protoc /usr/local/bin
+
+# Create non-privileged user for building
+RUN useradd -m -u 1001 builder
+
+# Change ownership of the workspace to builder user
+RUN chown -R builder:builder /cerenetwork
+
+# Ensure protoc is accessible to all users
+RUN chmod +x /usr/local/protoc/bin/protoc && \
+    chmod +x /usr/local/bin/protoc
+
+# Switch to builder user and configure Git
+USER builder
+RUN git config --global url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \

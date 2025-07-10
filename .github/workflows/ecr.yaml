@@ -6,6 +6,7 @@ on:
       - dev
       - staging
       - master
+      - ecrpipelinefix
   pull_request:
     branches:
       - 'release/**'
@@ -62,3 +63,4 @@ jobs:
           push: false
           build-args: |
             "ECR_REGISTRY=${{ steps.login-ecr-org.outputs.registry }}"
+            "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
