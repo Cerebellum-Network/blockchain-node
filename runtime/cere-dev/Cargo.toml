@@ -97,7 +97,7 @@ cere-runtime-common = { workspace = true }
 ddc-primitives = { workspace = true }
 pallet-chainbridge = { workspace = true }
 pallet-ddc-clusters = { workspace = true }
-pallet-ddc-clusters-gov = { workspace = true }
+# pallet-ddc-clusters-gov = { workspace = true } # TEMPORARILY DISABLED due to trait compatibility issues
 pallet-ddc-customers = { workspace = true }
 pallet-ddc-nodes = { workspace = true }
 pallet-ddc-staking = { workspace = true }
@@ -200,7 +200,7 @@ std = [
   "pallet-conviction-voting/std",
   "pallet-referenda/std",
   "pallet-whitelist/std",
-  "pallet-ddc-clusters-gov/std",
+  # "pallet-ddc-clusters-gov/std", # TEMPORARILY DISABLED due to trait compatibility issues
   "sp-arithmetic/std",
   "pallet-origins/std",
   "pallet-hyperbridge/std",
@@ -262,7 +262,7 @@ runtime-benchmarks = [
   "pallet-referenda/runtime-benchmarks",
   "pallet-whitelist/runtime-benchmarks",
   "pallet-preimage/runtime-benchmarks",
-  "pallet-ddc-clusters-gov/runtime-benchmarks",
+  # "pallet-ddc-clusters-gov/runtime-benchmarks", # TEMPORARILY DISABLED due to trait compatibility issues
   "pallet-origins/runtime-benchmarks",
   "pallet-token-gateway/runtime-benchmarks",
   "pallet-migrations/runtime-benchmarks",
@@ -319,7 +319,7 @@ try-runtime = [
   "pallet-whitelist/try-runtime",
   "pallet-preimage/try-runtime",
   "pallet-origins/try-runtime",
-  "pallet-ddc-clusters-gov/try-runtime",
+  # "pallet-ddc-clusters-gov/try-runtime", # TEMPORARILY DISABLED due to trait compatibility issues
   "pallet-ismp/try-runtime",
   "pallet-hyperbridge/try-runtime",
   "ismp-grandpa/try-runtime",

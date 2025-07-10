@@ -19,7 +19,7 @@ members = [
   "pallets/ddc-staking",
   "pallets/erc20",
   "pallets/erc721",
-  "pallets/ddc-clusters-gov",
+  # "pallets/ddc-clusters-gov", # TEMPORARILY DISABLED due to trait compatibility issues
   "pallets/fee-handler",
   "pallets/origins",
   "runtime/cere",
@@ -183,7 +183,7 @@ cere-runtime-common = { path = "runtime/common", default-features = false }
 cere-service = { path = "node/service" }
 pallet-chainbridge = { path = "pallets/chainbridge", default-features = false }
 pallet-ddc-clusters = { path = "pallets/ddc-clusters", default-features = false }
-pallet-ddc-clusters-gov = { path = "pallets/ddc-clusters-gov", default-features = false }
+# pallet-ddc-clusters-gov = { path = "pallets/ddc-clusters-gov", default-features = false } # TEMPORARILY DISABLED due to trait compatibility issues
 pallet-ddc-customers = { path = "pallets/ddc-customers", default-features = false }
 pallet-ddc-nodes = { path = "pallets/ddc-nodes", default-features = false }
 pallet-ddc-staking = { path = "pallets/ddc-staking", default-features = false }
