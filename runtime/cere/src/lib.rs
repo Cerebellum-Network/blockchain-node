@@ -519,29 +519,11 @@ impl pallet_authorship::Config for Runtime {
 }
 
 impl_opaque_keys! {
-	pub struct OldSessionKeys {
-		pub grandpa: Grandpa,
-		pub babe: Babe,
-		pub im_online: ImOnline,
-		pub authority_discovery: AuthorityDiscovery,
-	}
-}
-
-impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub grandpa: Grandpa,
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
-	}
-}
-
-fn transform_session_keys(_v: AccountId, old: OldSessionKeys) -> SessionKeys {
-	SessionKeys {
-		grandpa: old.grandpa,
-		babe: old.babe,
-		im_online: old.im_online,
-		authority_discovery: old.authority_discovery,
 	}
 }
 
@@ -1657,22 +1639,12 @@ parameter_types! {
 pub mod migrations {
 	use super::*;
 
-	/// When this is removed, should also remove `OldSessionKeys`.
-	pub struct UpgradeSessionKeys;
-	impl frame_support::traits::OnRuntimeUpgrade for UpgradeSessionKeys {
-		fn on_runtime_upgrade() -> Weight {
-			Session::upgrade_keys::<OldSessionKeys, _>(transform_session_keys);
-			Perbill::from_percent(50) * RuntimeBlockWeights::get().max_block
-		}
-	}
-
 	pub type Unreleased = (
 		// pallet_ddc_customers::migrations::v2::MigrateToV2<Runtime>, // ignore the addition of
 		// `total_customers_usage` field as it was never deployed on MAINNET
 		pallet_ddc_clusters::migrations::v3::MigrateToV3<Runtime>,
 		// pallet_ddc_nodes::migrations::v1::MigrateToV1<Runtime>, // ignore the addition of
 		// `total_usage` field as it was never deployed on MAINNET
-		UpgradeSessionKeys,
 		// pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
 		// pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>, // ignore as the
