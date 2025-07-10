@@ -31,6 +31,7 @@ pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
 	bounds::ElectionBoundsBuilder, onchain, BalancingConfig, SequentialPhragmen, VoteWeight,
 };
+use frame_support::traits::fungible::Balanced;
 use frame_support::{
 	derive_impl,
 	dispatch::DispatchClass,
@@ -77,8 +78,7 @@ use pallet_session::historical::{self as pallet_session_historical};
 pub use pallet_staking::StakerStatus;
 #[cfg(any(feature = "std", test))]
 pub use pallet_sudo::Call as SudoCall;
-#[allow(deprecated)]
-pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
+pub use pallet_transaction_payment::{FungibleAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
@@ -131,6 +131,8 @@ use ismp::{
 	router::{Request, Response},
 };
 use sp_core::H256;
+use sp_staking::{Agent, DelegationInterface, DelegationMigrator, Delegator};
+
 mod hyperbridge_ismp;
 mod weights;
 
@@ -158,7 +160,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 73148,
+	spec_version: 73161,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 25,
@@ -179,6 +181,22 @@ pub fn native_version() -> NativeVersion {
 }
 
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
+
+pub struct ToAuthor<R>(core::marker::PhantomData<R>);
+impl<R> OnUnbalanced<Credit<R::AccountId, pallet_balances::Pallet<R>>> for ToAuthor<R>
+	where
+		R: pallet_balances::Config + pallet_authorship::Config,
+		<R as frame_system::Config>::AccountId: From<AccountId>,
+		<R as frame_system::Config>::AccountId: Into<AccountId>,
+{
+	fn on_nonzero_unbalanced(
+		amount: Credit<<R as frame_system::Config>::AccountId, pallet_balances::Pallet<R>>,
+	) {
+		if let Some(author) = <pallet_authorship::Pallet<R>>::author() {
+			let _ = <pallet_balances::Pallet<R>>::resolve(&author, amount);
+		}
+	}
+}
 
 pub struct DealWithFees;
 impl OnUnbalanced<NegativeImbalance> for DealWithFees {
@@ -480,8 +498,7 @@ parameter_types! {
 // <https://github.com/paritytech/polkadot-sdk/issues/226>
 impl pallet_transaction_payment::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	#[allow(deprecated)]
-	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees>;
+	type OnChargeTransaction = FungibleAdapter<Balances, ToAuthor<Runtime>>;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type WeightToFee = IdentityFee<Balance>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
@@ -587,7 +604,7 @@ impl OnUnbalanced<PositiveImbalanceOf<Runtime>> for RewardSource {
 	fn on_unbalanced(amount: PositiveImbalanceOf<Runtime>) {
 		let fee_pot_pallet_account: AccountId = FeeHandlerPalletId::get().into_account_truncating();
 
-		if let Ok(remaining_balance) = Balances::withdraw(
+		if let Ok(remaining_balance) =  <pallet_balances::Pallet<Runtime> as Currency<AccountId>>::withdraw(
 			&fee_pot_pallet_account,
 			amount.peek(),
 			WithdrawReasons::TRANSFER,
@@ -1211,6 +1228,60 @@ parameter_types! {
 	// Allow pools that got slashed up to 90% to remain operational.
 	pub const MaxPointsToBalance: u8 = 10;
 }
+pub struct MockDelegationInterface;
+impl DelegationInterface for MockDelegationInterface {
+	type Balance = Balance;
+	type AccountId = AccountId;
+
+	fn agent_balance(agent: Agent<Self::AccountId>) -> Option<Self::Balance> {
+		todo!()
+	}
+
+	fn agent_transferable_balance(agent: Agent<Self::AccountId>) -> Option<Self::Balance> {
+		todo!()
+	}
+
+	fn delegator_balance(delegator: Delegator<Self::AccountId>) -> Option<Self::Balance> {
+		todo!()
+	}
+
+	fn register_agent(agent: Agent<Self::AccountId>, reward_account: &Self::AccountId) -> DispatchResult {
+		todo!()
+	}
+
+	fn remove_agent(agent: Agent<Self::AccountId>) -> DispatchResult {
+		todo!()
+	}
+
+	fn delegate(delegator: Delegator<Self::AccountId>, agent: Agent<Self::AccountId>, amount: Self::Balance) -> DispatchResult {
+		todo!()
+	}
+
+	fn withdraw_delegation(delegator: Delegator<Self::AccountId>, agent: Agent<Self::AccountId>, amount: Self::Balance, num_slashing_spans: u32) -> DispatchResult {
+		todo!()
+	}
+
+	fn pending_slash(agent: Agent<Self::AccountId>) -> Option<Self::Balance> {
+		todo!()
+	}
+
+	fn delegator_slash(agent: Agent<Self::AccountId>, delegator: Delegator<Self::AccountId>, value: Self::Balance, maybe_reporter: Option<Self::AccountId>) -> DispatchResult {
+		todo!()
+	}
+}
+
+impl DelegationMigrator for MockDelegationInterface {
+	type Balance = u128;
+	type AccountId = AccountId;
+
+	fn migrate_nominator_to_agent(agent: Agent<Self::AccountId>, reward_account: &Self::AccountId) -> DispatchResult {
+		Ok(())
+	}
+
+	fn migrate_delegation(agent: Agent<Self::AccountId>, delegator: Delegator<Self::AccountId>, value: Self::Balance) -> DispatchResult {
+		Ok(())
+	}
+}
 
 impl pallet_nomination_pools::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -1229,8 +1300,7 @@ impl pallet_nomination_pools::Config for Runtime {
 	type MaxPointsToBalance = MaxPointsToBalance;
 	type WeightInfo = ();
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
-	#[allow(deprecated)]
-	type StakeAdapter = pallet_nomination_pools::adapter::TransferStake<Self, Staking>;
+	type StakeAdapter = pallet_nomination_pools::adapter::DelegateStake<Self, Staking, MockDelegationInterface>;
 }
 
 parameter_types! {
