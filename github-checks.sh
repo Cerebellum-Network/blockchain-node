@@ -21,7 +21,7 @@ dprint check
 
 # Check code formatting using rustfmt
 print_message "Checking code formatting"
-cargo +nightly-2024-03-12 fmt -- --check
+cargo  fmt -- --check
 
 # Build and check Cargo project
 print_message "Building Cargo project"

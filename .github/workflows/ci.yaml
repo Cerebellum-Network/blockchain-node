@@ -25,7 +25,7 @@ jobs:
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2024-03-12
+          toolchain: 1.82.0
           override: true
           components: rustfmt
       - name: Check TOML
@@ -68,7 +68,6 @@ jobs:
     name: Check Runtime
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
@@ -125,16 +124,9 @@ jobs:
           CARGO_INCREMENTAL=1 cargo check --release --features runtime-benchmarks --workspace --exclude cere-runtime --exclude cere-dev-runtime
 
   check-try-runtime:
-    name: Try-Runtime Check (Optional)
+    name: Try-Runtime Check
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    # Only run on specific branches or when manually triggered
-    if: |
-      github.ref == 'refs/heads/master' || 
-      github.ref == 'refs/heads/main' || 
-      contains(github.event.head_commit.message, '[try-runtime]') ||
-      github.event_name == 'workflow_dispatch'
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -162,7 +154,7 @@ jobs:
       - name: Check Try-Runtime
         run: |
            try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-           on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.qanet.cere.network:443
+           on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.devnet.cere.network:443
 
   clippy:
     name: Run Clippy
