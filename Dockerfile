@@ -34,6 +34,8 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
     chmod +x /usr/local/protoc/bin/protoc && \
     ln -s /usr/local/protoc/bin/protoc /usr/local/bin
 
+# Create non-privileged user for building
+RUN useradd -m -u 1001 builder
 
 # GitHub token for private repository access (temporary during build)
 ARG GH_READ_TOKEN
