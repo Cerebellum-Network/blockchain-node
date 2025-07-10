@@ -16,10 +16,18 @@ permissions:
 jobs:
   security-validation:
     name: Security Framework Validation
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 180
     
     steps:
+      # Free up disk space
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -59,10 +67,18 @@ jobs:
 
   docker-security-test:
     name: Docker Security Test
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 180
     
     steps:
+      # Free up disk space
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
       - name: Checkout repository
         uses: actions/checkout@v4
 
