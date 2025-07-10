@@ -132,9 +132,8 @@ jobs:
     # Only run on specific branches or when manually triggered
     if: |
       github.ref == 'refs/heads/master' || 
-      github.ref == 'refs/heads/main' || 
-      contains(github.event.head_commit.message, '[try-runtime]') ||
-      github.event_name == 'workflow_dispatch'
+      github.ref == 'refs/heads/staging' || 
+      github.ref == 'refs/heads/dev'
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -162,7 +161,7 @@ jobs:
       - name: Check Try-Runtime
         run: |
            try-runtime --runtime ./target/release/wbuild/cere-runtime/cere_runtime.compact.compressed.wasm \
-           on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.qanet.cere.network:443
+           on-runtime-upgrade --disable-idempotency-checks --blocktime 6000 live --uri wss://archive.devnet.cere.network:443
 
   clippy:
     name: Run Clippy
