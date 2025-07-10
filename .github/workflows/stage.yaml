@@ -7,6 +7,7 @@ on:
       - master
       - 'release/**'
       - 'hotfix/**'
+      - fixreleasetostage
 
 env:
   PROFILE: release
@@ -48,6 +49,10 @@ jobs:
           echo "GITHUB_SHA=${GITHUB_SHA:0:7}" >> ${GITHUB_ENV}
           echo "CERE_RUNTIME=cere_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
           echo "CERE_DEV_RUNTIME=cere_dev_runtime.compact.compressed.${GITHUB_SHA:0:7}.wasm" >> ${GITHUB_ENV}
+          
+          echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> ${GITHUB_ENV}
+          echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> ${GITHUB_ENV}
+          echo "AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}" >> ${GITHUB_ENV}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -70,6 +75,11 @@ jobs:
           context: .
           push: true
           build-args: |
+            "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}"
+            "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}"
+            "AWS_SESSION_TOKEN=${{ env.AWS_SESSION_TOKEN }}"
+            "SCCACHE_REGION=us-west-2"
+            "SCCACHE_BUCKET=cere-blockchain-sccache"
             "GH_READ_TOKEN=${{ secrets.GH_READ_TOKEN }}"
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/pos-network-node:${{ github.sha }}
