@@ -118,7 +118,6 @@ use cere_runtime_common::{
 	constants::{currency::*, time::*},
 	CurrencyToVote,
 };
-use impls::Author;
 use pallet_identity::legacy::IdentityInfo;
 use sp_runtime::generic::Era;
 use sp_std::marker::PhantomData;
