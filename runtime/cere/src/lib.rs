@@ -24,8 +24,7 @@
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use ddc_primitives::{
 	traits::pallet::{GetDdcOrigin, PalletVisitor},
-	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce, MAX_PAYOUT_BATCH_COUNT,
-	MAX_PAYOUT_BATCH_SIZE,
+	AccountIndex, Balance, BlockNumber, Hash, Moment, Nonce,
 };
 pub use ddc_primitives::{AccountId, Signature};
 use frame_election_provider_support::{
@@ -47,7 +46,7 @@ use frame_support::{
 			imbalance::ResolveTo, DepositConsequence, Fortitude, PayFromAccount, Preservation,
 			Provenance, UnityAssetBalanceConversion, WithdrawConsequence,
 		},
-		ConstBool, ConstU128, ConstU16, ConstU32, ConstU64, Currency, EitherOf, EitherOfDiverse,
+		ConstBool, ConstU128, ConstU16, ConstU32, Currency, EitherOf, EitherOfDiverse,
 		EqualPrivilegeOnly, ExistenceRequirement, Imbalance, InstanceFilter, KeyOwnerProofSystem,
 		LinearStoragePrice, Nothing, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
@@ -85,7 +84,7 @@ use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_core::{
-	crypto::{AccountId32, KeyTypeId},
+	crypto::KeyTypeId,
 	OpaqueMetadata,
 };
 use sp_inherents::{CheckInherentsResult, InherentData};
@@ -97,7 +96,7 @@ use sp_runtime::{
 	generic, impl_opaque_keys,
 	traits::{
 		self, AccountIdConversion, BlakeTwo256, Block as BlockT, Bounded, Convert, ConvertInto,
-		Identity as IdentityConvert, IdentityLookup, NumberFor, OpaqueKeys, SaturatedConversion,
+		IdentityLookup, NumberFor, OpaqueKeys, SaturatedConversion,
 		StaticLookup, Verify,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
@@ -538,24 +537,15 @@ impl_opaque_keys! {
 		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
-		pub ddc_verification: DdcVerification,
 	}
 }
 
-fn transform_session_keys(v: AccountId, old: OldSessionKeys) -> SessionKeys {
+fn transform_session_keys(_v: AccountId, old: OldSessionKeys) -> SessionKeys {
 	SessionKeys {
 		grandpa: old.grandpa,
 		babe: old.babe,
 		im_online: old.im_online,
 		authority_discovery: old.authority_discovery,
-		ddc_verification: {
-			let mut id: ddc_primitives::sr25519::AuthorityId =
-				sp_core::sr25519::Public::from_raw([0u8; 32]).into();
-			let id_raw: &mut [u8] = id.as_mut();
-			id_raw[0..32].copy_from_slice(v.as_ref());
-			id_raw[0..4].copy_from_slice(b"cer!");
-			id
-		},
 	}
 }
 
@@ -1321,42 +1311,7 @@ impl<T: frame_system::Config> PalletVisitor<T> for TreasuryWrapper {
 	}
 }
 
-impl pallet_ddc_payouts::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_ddc_payouts::weights::SubstrateWeight<Runtime>;
-	type PalletId = PayoutsPalletId;
-	type Currency = Balances;
-	type CustomerCharger = DdcCustomers;
-	type BucketManager = DdcCustomers;
-	type ClusterProtocol = DdcClusters;
-	type TreasuryVisitor = TreasuryWrapper;
-	type NominatorsAndValidatorsList = pallet_staking::UseNominatorsAndValidatorsMap<Self>;
-	type VoteScoreToU64 = IdentityConvert;
-	type InspectorAuthority = DdcVerification;
-	type NodeManager = DdcNodes;
-	type AccountIdConverter = AccountId32;
-	type Hasher = BlakeTwo256;
-	type ClusterValidator = DdcClusters;
-	type ValidatorsQuorum = MajorityOfValidators;
-	type ClusterManager = DdcClusters;
-	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
-	type UnsignedPriority = ConstU64<500_000_000>;
-	type FeeHandler = FeeHandler;
 
-	#[cfg(feature = "runtime-benchmarks")]
-	type CustomerDepositor = DdcCustomers;
-	#[cfg(feature = "runtime-benchmarks")]
-	type ClusterCreator = DdcClusters;
-	#[cfg(feature = "runtime-benchmarks")]
-	type WPublic = <Signature as Verify>::Signer;
-	#[cfg(feature = "runtime-benchmarks")]
-	type WSignature = Signature;
-
-	const MAX_PAYOUT_BATCH_SIZE: u16 = MAX_PAYOUT_BATCH_SIZE;
-	const MAX_PAYOUT_BATCH_COUNT: u16 = MAX_PAYOUT_BATCH_COUNT;
-	const DISABLE_PAYOUTS_CUTOFF: bool = false;
-	const OCW_INTERVAL: u16 = 5; // every 5th block
-}
 
 parameter_types! {
 	pub const ClusterBondingAmount: Balance = 100 * GRAND;
@@ -1446,37 +1401,7 @@ impl<DdcOrigin: Get<T::RuntimeOrigin>, T: frame_system::Config> GetDdcOrigin<T>
 	}
 }
 
-parameter_types! {
-	pub const VerificationPalletId: PalletId = PalletId(*b"verifypa");
-	pub const TenPercentOfValidators: Percent = Percent::from_percent(10);
-}
 
-impl pallet_ddc_verification::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type PalletId = VerificationPalletId;
-	type WeightInfo = pallet_ddc_verification::weights::SubstrateWeight<Runtime>;
-	type ClusterProtocol = DdcClusters;
-	type ClusterManager = DdcClusters;
-	type ClusterValidator = DdcClusters;
-	type NodeManager = DdcNodes;
-	type AuthorityId = ddc_primitives::sr25519::AuthorityId;
-	type OffchainIdentifierId = ddc_primitives::crypto::OffchainIdentifierId;
-	type Hasher = BlakeTwo256;
-	type ValidatorStaking = pallet_staking::Pallet<Runtime>;
-	type Currency = Balances;
-	type CustomerVisitor = DdcCustomers;
-	type BucketManager = DdcCustomers;
-	type InspReceiptsInterceptor = pallet_ddc_verification::NoReceiptsInterceptor;
-
-	type InspRedundancyFactor = TenPercentOfValidators;
-	type InspBackupsFactor = TenPercentOfValidators;
-
-	const OCW_INTERVAL: u16 = 10; // every 10th block
-	const TCA_INSPECTION_STEP: u64 = 0;
-	const MIN_INSP_REDUNDANCY_FACTOR: u8 = 3;
-	const MIN_INSP_BACKUPS_FACTOR: u8 = 1;
-	const INSP_BACKUP_BLOCK_DELAY: u32 = 25;
-}
 
 parameter_types! {
 	pub MbmServiceWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
@@ -1645,12 +1570,6 @@ mod runtime {
 	#[runtime::pallet_index(38)]
 	pub type DdcClusters = pallet_ddc_clusters::Pallet<Runtime>;
 
-	#[runtime::pallet_index(39)]
-	pub type DdcPayouts = pallet_ddc_payouts::Pallet<Runtime>;
-
-	#[runtime::pallet_index(40)]
-	pub type DdcVerification = pallet_ddc_verification::Pallet<Runtime>;
-
 	// Start OpenGov.
 	#[runtime::pallet_index(41)]
 	pub type ConvictionVoting = pallet_conviction_voting::Pallet<Runtime>;
@@ -1689,6 +1608,8 @@ mod runtime {
 	#[runtime::pallet_index(52)]
 	pub type FeeHandler = pallet_fee_handler::Pallet<Runtime>;
 }
+
+
 
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, AccountIndex>;
@@ -1764,13 +1685,8 @@ pub mod migrations {
 		UpgradeSessionKeys,
 		// pallet_ddc_verification::migrations::v1::MigrateToV1<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
-		pallet_ddc_payouts::migrations::v1::MigrateToV1<Runtime>,
-		pallet_ddc_payouts::migrations::v2::MigrateToV2<Runtime>,
-		pallet_ddc_payouts::migrations::v3::MigrateToV3<Runtime>,
 		// pallet_ddc_verification::migrations::v2::MigrateToV2<Runtime>, // ignore as the
 		// `ddc-verification` pallet was never deployed on MAINNET
-		pallet_ddc_payouts::migrations::v4::MigrateToV4<Runtime>,
-		pallet_ddc_payouts::migrations::v5::MigrateToV5<Runtime>,
 		// pallet_ddc_customers::migrations::v3_mbm::LazyMigrationV2ToV3<Runtime>, // ingore the
 		// removal of `total_customers_usage` field as it was never deployed on MAINNET
 		// pallet_ddc_nodes::migrations::v2_mbm::LazyMigrationV1ToV2<Runtime>, // ignore the
@@ -1838,7 +1754,6 @@ mod benches {
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
 		[pallet_ddc_clusters_gov, DdcClustersGov]
-		[pallet_ddc_payouts, DdcPayouts]
 		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
 		[pallet_fee_handler, FeeHandler]

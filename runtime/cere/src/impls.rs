@@ -17,7 +17,7 @@
 
 //! Some configurable implementations as associated type for the substrate runtime.
 
-use frame_support::traits::{Currency, OnUnbalanced};
+use frame_support::traits::{OnUnbalanced, Currency};
 
 use crate::{Authorship, Balances, NegativeImbalance};
 
