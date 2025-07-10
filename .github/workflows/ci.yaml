@@ -113,7 +113,7 @@ jobs:
     name: Check Node
     needs: format
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
@@ -132,10 +132,25 @@ jobs:
           cache-on-failure: true
       - name: Configure Git
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+      - name: Increase swap space
+        run: |
+          sudo swapoff -a
+          sudo fallocate -l 10G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          sudo swapon --show
       - name: Check Node Components
         run: |
-          # Check node components in parallel where possible
-          CARGO_INCREMENTAL=1 cargo check --release --features runtime-benchmarks --workspace --exclude cere-runtime --exclude cere-dev-runtime
+          # Check node components in smaller chunks to reduce memory usage
+          echo "Checking core components..."
+          CARGO_INCREMENTAL=1 cargo check --release --features runtime-benchmarks -p cere-cli -p cere-client -p cere-service --jobs 1
+          
+          echo "Checking pallets..."
+          CARGO_INCREMENTAL=1 cargo check --release --features runtime-benchmarks --package "*ddc*" --jobs 1
+          
+          echo "Checking remaining components..."
+          CARGO_INCREMENTAL=1 cargo check --release --features runtime-benchmarks --workspace --exclude cere-runtime --exclude cere-dev-runtime --exclude "*ddc*" --exclude cere-cli --exclude cere-client --exclude cere-service --jobs 1
 
   check-try-runtime:
     name: Try-Runtime Check (Optional)
@@ -225,7 +240,7 @@ jobs:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 1
       CI: true
-      RUSTFLAGS: "-C link-arg=-fuse-ld=mold -C linker=clang -C link-arg=-Wl,--no-keep-memory"
+      RUSTFLAGS: "-C link-arg=-fuse-ld=mold -C linker=clang"
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
