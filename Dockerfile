@@ -40,6 +40,10 @@ RUN useradd -m -u 1001 builder
 # Change ownership of the workspace to builder user
 RUN chown -R builder:builder /cerenetwork
 
+# Ensure protoc is accessible to all users
+RUN chmod +x /usr/local/protoc/bin/protoc && \
+    chmod +x /usr/local/bin/protoc
+
 # GitHub token for private repository access (temporary during build)
 ARG GH_READ_TOKEN
 
