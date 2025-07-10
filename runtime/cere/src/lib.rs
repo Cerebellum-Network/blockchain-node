@@ -120,7 +120,10 @@ use sp_std::marker::PhantomData;
 pub mod governance;
 use governance::{
 	// ClusterProtocolActivator, ClusterProtocolUpdater, // TEMPORARILY DISABLED with pallet-ddc-clusters-gov
-	GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender,
+	GeneralAdmin,
+	StakingAdmin,
+	Treasurer,
+	TreasurySpender,
 };
 /// Generated voter bag information.
 mod voter_bags;

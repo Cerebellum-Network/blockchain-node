@@ -125,7 +125,10 @@ use sp_runtime::generic::Era;
 pub mod governance;
 use governance::{
 	// ClusterProtocolActivator, ClusterProtocolUpdater, // TEMPORARILY DISABLED with pallet-ddc-clusters-gov
-	GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender,
+	GeneralAdmin,
+	StakingAdmin,
+	Treasurer,
+	TreasurySpender,
 };
 
 /// Generated voter bag information.
