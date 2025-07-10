@@ -124,8 +124,8 @@ use sp_runtime::generic::Era;
 // Governance configurations.
 pub mod governance;
 use governance::{
-	ClusterProtocolActivator, ClusterProtocolUpdater, GeneralAdmin, StakingAdmin, Treasurer,
-	TreasurySpender,
+	// ClusterProtocolActivator, ClusterProtocolUpdater, // TEMPORARILY DISABLED with pallet-ddc-clusters-gov
+	GeneralAdmin, StakingAdmin, Treasurer, TreasurySpender,
 };
 
 /// Generated voter bag information.
@@ -1335,6 +1335,10 @@ parameter_types! {
 	pub const ReferendumEnactmentDuration: BlockNumber = 1;
 }
 
+// TEMPORARILY DISABLED: pallet-ddc-clusters-gov configuration due to pallet-referenda trait compatibility issues
+// Issue: pallet-referenda 40.1.0 missing create_ongoing and end_ongoing methods in Polling trait
+// TODO: Re-enable when upstream compatibility is resolved
+/*
 impl pallet_ddc_clusters_gov::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type PalletId = ClustersGovPalletId;
@@ -1357,6 +1361,7 @@ impl pallet_ddc_clusters_gov::Config for Runtime {
 	#[cfg(feature = "runtime-benchmarks")]
 	type StakerCreator = pallet_ddc_staking::Pallet<Runtime>;
 }
+*/
 
 pub struct ClustersGovWrapper;
 impl<T: frame_system::Config> PalletVisitor<T> for ClustersGovWrapper {
@@ -1558,8 +1563,11 @@ mod runtime {
 	#[runtime::pallet_index(45)]
 	pub type TechComm = pallet_collective::Pallet<Runtime, Instance3>;
 
-	#[runtime::pallet_index(46)]
-	pub type DdcClustersGov = pallet_ddc_clusters_gov::Pallet<Runtime>;
+	// TEMPORARILY DISABLED: pallet-ddc-clusters-gov due to pallet-referenda trait compatibility issues
+	// Issue: pallet-referenda 40.1.0 missing create_ongoing and end_ongoing methods in Polling trait
+	// TODO: Re-enable when upstream compatibility is resolved
+	// #[runtime::pallet_index(46)]
+	// pub type DdcClustersGov = pallet_ddc_clusters_gov::Pallet<Runtime>;
 
 	#[runtime::pallet_index(47)]
 	pub type Ismp = pallet_ismp::Pallet<Runtime>;
@@ -1680,7 +1688,7 @@ mod benches {
 		[pallet_referenda, Referenda]
 		[pallet_whitelist, Whitelist]
 		[pallet_collective, TechComm]
-		[pallet_ddc_clusters_gov, DdcClustersGov]
+		// [pallet_ddc_clusters_gov, DdcClustersGov] // TEMPORARILY DISABLED due to trait compatibility issue
 		[pallet_token_gateway, TokenGateway]
 		[pallet_migrations, MultiBlockMigrations]
 		[pallet_fee_handler, FeeHandler]
