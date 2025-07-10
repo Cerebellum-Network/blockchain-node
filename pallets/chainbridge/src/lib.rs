@@ -3,7 +3,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::manual_inspect)]
 pub mod weights;
-use crate::weights::WeightInfo;
+pub use weights::WeightInfo;
 
 #[cfg(test)]
 pub(crate) mod mock;
@@ -18,7 +18,7 @@ use frame_support::{
 	traits::{EnsureOrigin, Get},
 	Blake2_256, PalletId, Parameter,
 };
-use frame_system::{self as system, ensure_root, ensure_signed, pallet_prelude::*};
+use frame_system::{self as system, pallet_prelude::*};
 pub use pallet::*;
 use sp_core::U256;
 use sp_runtime::{
@@ -109,7 +109,6 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
-	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	/// Simple ensure origin for the bridge account
@@ -130,10 +129,6 @@ pub mod pallet {
 			let bridge_id =
 				AccountIdConversion::<T::AccountId>::into_account_truncating(&MODULE_ID);
 			Ok(T::RuntimeOrigin::from(system::RawOrigin::Signed(bridge_id)))
-		}
-
-		fn successful_origin() -> T::RuntimeOrigin {
-			T::RuntimeOrigin::from(system::RawOrigin::Signed(<Pallet<T>>::account_id()))
 		}
 	}
 
