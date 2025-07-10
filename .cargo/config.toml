@@ -41,11 +41,11 @@ git-fetch-with-cli = true
 [env]
 # Use faster linker on Unix systems
 CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = { value = "clang", condition = { env = "CI" } }
-CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS = { value = "-C link-arg=-fuse-ld=lld", condition = { env = "CI" } }
+CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS = { value = "-C linker=clang", condition = { env = "CI" } }
 
 # Enable faster compilation for CI (Linux only)
 [target.x86_64-unknown-linux-gnu]
 rustflags = [
   "-C",
-  "link-arg=-fuse-ld=lld",
+  "linker=clang",
 ]
