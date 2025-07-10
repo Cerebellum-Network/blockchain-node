@@ -34,13 +34,15 @@ RUN PB_REL="https://github.com/protocolbuffers/protobuf/releases" && \
     chmod +x /usr/local/protoc/bin/protoc && \
     ln -s /usr/local/protoc/bin/protoc /usr/local/bin
 
-# GitHub token for private repository access (temporary during build)
-ARG GH_READ_TOKEN
-RUN git config --global url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-
 # Create non-privileged user for building
 RUN useradd -m -u 1001 builder
+
+# GitHub token for private repository access (temporary during build)
+ARG GH_READ_TOKEN
+
+# Switch to builder user and configure Git
 USER builder
+RUN git config --global url."https://${GH_READ_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
     export PATH=$PATH:$HOME/.cargo/bin && \
