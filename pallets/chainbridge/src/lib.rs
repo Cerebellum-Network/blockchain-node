@@ -127,7 +127,8 @@ pub mod pallet {
 
 		#[cfg(feature = "runtime-benchmarks")]
 		fn try_successful_origin() -> Result<T::RuntimeOrigin, ()> {
-			let bridge_id = AccountIdConversion::<T::AccountId>::into_account_truncating(&MODULE_ID);
+			let bridge_id =
+				AccountIdConversion::<T::AccountId>::into_account_truncating(&MODULE_ID);
 			Ok(T::RuntimeOrigin::from(system::RawOrigin::Signed(bridge_id)))
 		}
 
