@@ -187,17 +187,10 @@ jobs:
           CARGO_INCREMENTAL=0 RUST_LOG=info cargo check --release --features runtime-benchmarks --workspace --exclude cere-runtime --exclude cere-dev-runtime --exclude "*ddc*" --exclude cere-cli --exclude cere-client --exclude cere-service --jobs 1
 
   check-try-runtime:
-    name: Try-Runtime Check (Optional)
+    name: Try-Runtime Check
     needs: format
     runs-on: ubuntu-24.04
     timeout-minutes: 90
-    # Only run on specific branches or when manually triggered
-    if: |
-      github.ref == 'refs/heads/master' || 
-      github.ref == 'refs/heads/main' || 
-      contains(github.event.head_commit.message, '[try-runtime]') ||
-      github.event_name == 'workflow_dispatch'
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Install linux dependencies
