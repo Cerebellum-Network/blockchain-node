@@ -102,8 +102,12 @@ jobs:
         run: git config --global url."https://${{ secrets.GH_READ_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
       - name: Check Runtime Build (Optimized)
         run: |
-          # Build with optimizations for speed
-          CARGO_INCREMENTAL=1 cargo check --release --features try-runtime --package cere-runtime --package cere-dev-runtime
+          # Build with optimizations for speed but with memory constraints in mind
+          echo "Checking cere-runtime..."
+          CARGO_INCREMENTAL=1 RUST_LOG=info cargo check --release --features try-runtime --package cere-runtime --jobs 1
+          
+          echo "Checking cere-dev-runtime..."
+          CARGO_INCREMENTAL=1 RUST_LOG=info cargo check --release --features try-runtime --package cere-dev-runtime --jobs 1
       - name: Run dev chain
         run: |
           cargo build --release --bin cere
@@ -294,13 +298,13 @@ jobs:
         run: |
           # Run tests in smaller chunks to reduce memory usage
           echo "Running runtime tests..."
-          cargo test --verbose --locked --no-fail-fast -p cere-runtime --features runtime-benchmarks --jobs 1
+          RUST_LOG=info RUST_BACKTRACE=1 cargo test --verbose --locked --no-fail-fast -p cere-runtime --features runtime-benchmarks --jobs 1
           
           echo "Running node tests..."
-          cargo test --verbose --locked --no-fail-fast -p cere-cli -p cere-client -p cere-service --features runtime-benchmarks --jobs 1
+          RUST_LOG=info RUST_BACKTRACE=1 cargo test --verbose --locked --no-fail-fast -p cere-cli -p cere-client -p cere-service --features runtime-benchmarks --jobs 1
           
           echo "Running pallets tests..."
-          cargo test --verbose --locked --no-fail-fast --package "*ddc*" --features runtime-benchmarks --jobs 1 -- --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests
+          RUST_LOG=info RUST_BACKTRACE=1 cargo test --verbose --locked --no-fail-fast --package "*ddc*" --features runtime-benchmarks --jobs 1 -- --skip mock_clusters_gov::__construct_runtime_integrity_test::runtime_integrity_tests
           
           echo "Running remaining tests..."
-          cargo test --verbose --locked --no-fail-fast --workspace --exclude "*ddc*" --exclude cere-runtime --exclude cere-cli --exclude cere-client --exclude cere-service --features runtime-benchmarks --jobs 1
+          RUST_LOG=info RUST_BACKTRACE=1 cargo test --verbose --locked --no-fail-fast --workspace --exclude "*ddc*" --exclude cere-runtime --exclude cere-cli --exclude cere-client --exclude cere-service --features runtime-benchmarks --jobs 1
